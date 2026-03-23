@@ -28,9 +28,9 @@ esphome:
               } else {
                 api::global_api_server->subscribe_home_assistant_state(
                   entity_id, std::string("friendly_name"),
-                  [](const std::string &name) {
+                  std::function<void(const std::string &)>([](const std::string &name) {
                     lv_label_set_text(id(button_1_text_label), name.c_str());
-                  }
+                  })
                 );
               }
 
@@ -76,14 +76,14 @@ esphome:
               // Subscribe to entity state for checked/unchecked
               api::global_api_server->subscribe_home_assistant_state(
                 entity_id, {},
-                [](const std::string &state) {
+                std::function<void(const std::string &)>([](const std::string &state) {
                   if (state == "on" || state == "open" || state == "playing" ||
                       state == "home" || state == "unlocked") {
                     lv_obj_add_state(id(button_1), LV_STATE_CHECKED);
                   } else {
                     lv_obj_clear_state(id(button_1), LV_STATE_CHECKED);
                   }
-                }
+                })
               );
             }
 
@@ -92,7 +92,7 @@ esphome:
             if (!indoor_id.empty()) {
               api::global_api_server->subscribe_home_assistant_state(
                 indoor_id, {},
-                [](const std::string &state) {
+                std::function<void(const std::string &)>([](const std::string &state) {
                   char *end;
                   float val = strtof(state.c_str(), &end);
                   if (end != state.c_str()) {
@@ -108,7 +108,7 @@ esphome:
                       lv_label_set_text(id(temperatures), buf);
                     }
                   }
-                }
+                })
               );
             }
 
@@ -117,7 +117,7 @@ esphome:
             if (!outdoor_id.empty()) {
               api::global_api_server->subscribe_home_assistant_state(
                 outdoor_id, {},
-                [](const std::string &state) {
+                std::function<void(const std::string &)>([](const std::string &state) {
                   char *end;
                   float val = strtof(state.c_str(), &end);
                   if (end != state.c_str()) {
@@ -133,7 +133,7 @@ esphome:
                       lv_label_set_text(id(temperatures), buf);
                     }
                   }
-                }
+                })
               );
             }
 
@@ -142,12 +142,12 @@ esphome:
             if (!presence_id.empty()) {
               api::global_api_server->subscribe_home_assistant_state(
                 presence_id, {},
-                [](const std::string &state) {
+                std::function<void(const std::string &)>([](const std::string &state) {
                   if (state == "on") {
                     lv_disp_trig_activity(NULL);
                     id(display_backlight).turn_on().perform();
                     id(screensaver_idle_check).execute();
                   }
-                }
+                })
               );
             }
