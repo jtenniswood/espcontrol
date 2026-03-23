@@ -18,6 +18,18 @@ esphome:
     - priority: -100
       then:
         - lambda: |-
+            // --- Button 1: custom colors ---
+            std::string on_hex = id(button_1_on_color).state;
+            std::string off_hex = id(button_1_off_color).state;
+            if (on_hex.length() == 6) {
+              uint32_t on_val = strtoul(on_hex.c_str(), nullptr, 16);
+              lv_obj_set_style_bg_color(id(button_1), lv_color_hex(on_val), LV_PART_MAIN | LV_STATE_CHECKED);
+            }
+            if (off_hex.length() == 6) {
+              uint32_t off_val = strtoul(off_hex.c_str(), nullptr, 16);
+              lv_obj_set_style_bg_color(id(button_1), lv_color_hex(off_val), LV_PART_MAIN | LV_STATE_DEFAULT);
+            }
+
             // --- Button 1: entity state subscription ---
             std::string entity_id = id(button_1_entity).state;
             if (!entity_id.empty()) {
@@ -87,54 +99,66 @@ esphome:
               );
             }
 
+            // --- Temperature display ---
+            bool indoor_on  = id(indoor_temp_enable).state;
+            bool outdoor_on = id(outdoor_temp_enable).state;
+
+            if (!indoor_on && !outdoor_on) {
+              lv_obj_add_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
+            }
+
             // --- Indoor temperature subscription ---
-            std::string indoor_id = id(indoor_temp_entity).state;
-            if (!indoor_id.empty()) {
-              api::global_api_server->subscribe_home_assistant_state(
-                indoor_id, {},
-                std::function<void(const std::string &)>([](const std::string &state) {
-                  char *end;
-                  float val = strtof(state.c_str(), &end);
-                  if (end != state.c_str()) {
-                    id(indoor_temp) = val;
-                    float outdoor = id(outdoor_temp);
-                    if (std::isnan(outdoor)) {
-                      char buf[16];
-                      snprintf(buf, sizeof(buf), "%.0f°", val);
-                      lv_label_set_text(id(temperatures), buf);
-                    } else {
-                      char buf[16];
-                      snprintf(buf, sizeof(buf), "%.0f° / %.0f°", outdoor, val);
-                      lv_label_set_text(id(temperatures), buf);
+            if (indoor_on) {
+              std::string indoor_id = id(indoor_temp_entity).state;
+              if (!indoor_id.empty()) {
+                api::global_api_server->subscribe_home_assistant_state(
+                  indoor_id, {},
+                  std::function<void(const std::string &)>([](const std::string &state) {
+                    char *end;
+                    float val = strtof(state.c_str(), &end);
+                    if (end != state.c_str()) {
+                      id(indoor_temp) = val;
+                      float outdoor = id(outdoor_temp);
+                      if (std::isnan(outdoor)) {
+                        char buf[16];
+                        snprintf(buf, sizeof(buf), "%.0f°", val);
+                        lv_label_set_text(id(temperatures), buf);
+                      } else {
+                        char buf[16];
+                        snprintf(buf, sizeof(buf), "%.0f° / %.0f°", outdoor, val);
+                        lv_label_set_text(id(temperatures), buf);
+                      }
                     }
-                  }
-                })
-              );
+                  })
+                );
+              }
             }
 
             // --- Outdoor temperature subscription ---
-            std::string outdoor_id = id(outdoor_temp_entity).state;
-            if (!outdoor_id.empty()) {
-              api::global_api_server->subscribe_home_assistant_state(
-                outdoor_id, {},
-                std::function<void(const std::string &)>([](const std::string &state) {
-                  char *end;
-                  float val = strtof(state.c_str(), &end);
-                  if (end != state.c_str()) {
-                    id(outdoor_temp) = val;
-                    float indoor = id(indoor_temp);
-                    if (std::isnan(indoor)) {
-                      char buf[16];
-                      snprintf(buf, sizeof(buf), "%.0f°", val);
-                      lv_label_set_text(id(temperatures), buf);
-                    } else {
-                      char buf[16];
-                      snprintf(buf, sizeof(buf), "%.0f° / %.0f°", val, indoor);
-                      lv_label_set_text(id(temperatures), buf);
+            if (outdoor_on) {
+              std::string outdoor_id = id(outdoor_temp_entity).state;
+              if (!outdoor_id.empty()) {
+                api::global_api_server->subscribe_home_assistant_state(
+                  outdoor_id, {},
+                  std::function<void(const std::string &)>([](const std::string &state) {
+                    char *end;
+                    float val = strtof(state.c_str(), &end);
+                    if (end != state.c_str()) {
+                      id(outdoor_temp) = val;
+                      float indoor = id(indoor_temp);
+                      if (std::isnan(indoor)) {
+                        char buf[16];
+                        snprintf(buf, sizeof(buf), "%.0f°", val);
+                        lv_label_set_text(id(temperatures), buf);
+                      } else {
+                        char buf[16];
+                        snprintf(buf, sizeof(buf), "%.0f° / %.0f°", val, indoor);
+                        lv_label_set_text(id(temperatures), buf);
+                      }
                     }
-                  }
-                })
-              );
+                  })
+                );
+              }
             }
 
             // --- Presence sensor subscription ---

@@ -21,6 +21,12 @@ wifi:
           lambda: 'return !id(button_1_entity).state.empty();'
         then:
           - lvgl.page.show: main_page
+          - lvgl.widget.update:
+              id: temperatures
+              hidden: false
+          - lvgl.widget.update:
+              id: display_time
+              hidden: false
           - script.execute: screensaver_idle_check
         else:
           - lambda: |-
@@ -38,5 +44,11 @@ wifi:
         condition:
           lambda: 'return !id(boot_grace_period);'
         then:
+          - lvgl.widget.update:
+              id: temperatures
+              hidden: true
+          - lvgl.widget.update:
+              id: display_time
+              hidden: true
           - lvgl.page.show: wifi_setup_page
           - script.execute: setup_screen_dim

@@ -11,6 +11,7 @@ lvgl:
           x: 8
           y: 8
           text_color: 0xFFFFFF
+          hidden: true
 
       # Clock
       - label:
@@ -22,6 +23,7 @@ lvgl:
           y: 8
           text_align: center
           text_color: 0xFFFFFF
+          hidden: true
 
   pages:
     - id: main_page
@@ -44,7 +46,6 @@ lvgl:
         - button:
             height: $button_height
             width: $button_width
-            checkable: true
             id: button_1
             styles: control
             widgets:

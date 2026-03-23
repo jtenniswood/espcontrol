@@ -5,8 +5,28 @@
 # All values persist across reboots and are editable via the webserver v3 UI.
 # =============================================================================
 
+switch:
+  - platform: template
+    name: "Display: Indoor Temp"
+    id: indoor_temp_enable
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:home-thermometer"
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    name: "Display: Outdoor Temp"
+    id: outdoor_temp_enable
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:sun-thermometer"
+    web_server:
+      sorting_group_id: sg_display
+
 text:
-  # Temperature entities for the top bar
   - platform: template
     name: "Display: Indoor Temp Entity"
     id: indoor_temp_entity

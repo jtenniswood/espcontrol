@@ -34,6 +34,34 @@ text:
     web_server:
       sorting_group_id: sg_button
 
+  - platform: template
+    name: "Button: On Color"
+    id: button_1_on_color
+    optimistic: true
+    restore_value: true
+    initial_value: "FF8C00"
+    min_length: 6
+    max_length: 6
+    mode: text
+    entity_category: config
+    icon: "mdi:palette"
+    web_server:
+      sorting_group_id: sg_button
+
+  - platform: template
+    name: "Button: Off Color"
+    id: button_1_off_color
+    optimistic: true
+    restore_value: true
+    initial_value: "313131"
+    min_length: 6
+    max_length: 6
+    mode: text
+    entity_category: config
+    icon: "mdi:palette-outline"
+    web_server:
+      sorting_group_id: sg_button
+
 select:
   - platform: template
     name: "Button: Icon"
