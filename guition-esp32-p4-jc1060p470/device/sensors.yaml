@@ -83,25 +83,55 @@ esphome:
 
             static const char* icon_codepoints[] = {
               "\U000F0493",  //  0: Auto (cog fallback)
-              "\U000F0335",  //  1: Lightbulb
-              "\U000F0654",  //  2: Power Plug
-              "\U000F0210",  //  3: Fan
-              "\U000F033E",  //  4: Lock
-              "\U000F0372",  //  5: Garage
-              "\U000F1011",  //  6: Blinds Open
-              "\U000F00AC",  //  7: Blinds Closed
-              "\U000F050F",  //  8: Thermometer
-              "\U000F04C3",  //  9: Speaker
-              "\U000F0502",  // 10: Television
-              "\U000F0213",  // 11: Camera
-              "\U000F0D91",  // 12: Motion Sensor
+              "\U000F001B",  //  1: Air Conditioner
+              "\U000F009E",  //  2: Alarm
+              "\U000F0079",  //  3: Battery
+              "\U000F02E3",  //  4: Bed
+              "\U000F1A2C",  //  5: Blinds Closed
+              "\U000F1A2B",  //  6: Blinds Open
+              "\U000F0100",  //  7: Camera
+              "\U000F1797",  //  8: Ceiling Fan
+              "\U000F0769",  //  9: Ceiling Light
+              "\U000F109F",  // 10: Coffee Maker
+              "\U000F095F",  // 11: Desk Lamp
+              "\U000F0AAC",  // 12: Dishwasher
               "\U000F081A",  // 13: Door
-              "\U000F111C",  // 14: Window
-              "\U000F0F92",  // 15: Water Heater
-              "\U000F0D43",  // 16: Air Conditioner
-              "\U000F089E",  // 17: Battery
-              "\U000F07D6",  // 18: LED Strip
-              "\U000F0425",  // 19: Power
+              "\U000F0869",  // 14: Doorbell
+              "\U000F0917",  // 15: Dryer
+              "\U000F05F1",  // 16: EV Charger
+              "\U000F0210",  // 17: Fan
+              "\U000F0238",  // 18: Fire
+              "\U000F0E2E",  // 19: Fireplace
+              "\U000F08DD",  // 20: Floor Lamp
+              "\U000F0290",  // 21: Fridge
+              "\U000F0372",  // 22: Garage
+              "\U000F0299",  // 23: Gate
+              "\U000F0438",  // 24: Heater
+              "\U000F0828",  // 25: Hot Tub
+              "\U000F1099",  // 26: Humidifier
+              "\U000F06B5",  // 27: Lamp
+              "\U000F11F7",  // 28: Lawnmower
+              "\U000F07D6",  // 29: LED Strip
+              "\U000F0335",  // 30: Lightbulb
+              "\U000F033E",  // 31: Lock
+              "\U000F0C99",  // 32: Microwave
+              "\U000F0D91",  // 33: Motion Sensor
+              "\U000F04DE",  // 34: Oven
+              "\U000F0606",  // 35: Pool
+              "\U000F0425",  // 36: Power
+              "\U000F0654",  // 37: Power Plug
+              "\U000F070D",  // 38: Robot Vacuum
+              "\U000F068A",  // 39: Security
+              "\U000F0392",  // 40: Smoke Detector
+              "\U000F0D9B",  // 41: Solar Panel
+              "\U000F04C3",  // 42: Speaker
+              "\U000F105F",  // 43: Sprinkler
+              "\U000F0502",  // 44: Television
+              "\U000F050F",  // 45: Thermometer
+              "\U000F072A",  // 46: Washer
+              "\U000F058C",  // 47: Water
+              "\U000F0F92",  // 48: Water Heater
+              "\U000F111C",  // 49: Window
             };
 
             int pos = 0;
@@ -142,15 +172,15 @@ esphome:
                 size_t icon_idx = s.icon->active_index().value_or(0);
                 if (icon_idx == 0) {
                   std::string domain = entity_id.substr(0, entity_id.find('.'));
-                  if (domain == "light")              icon_idx = 1;
-                  else if (domain == "switch")        icon_idx = 2;
-                  else if (domain == "fan")           icon_idx = 3;
-                  else if (domain == "lock")          icon_idx = 4;
+                  if (domain == "light")              icon_idx = 30;
+                  else if (domain == "switch")        icon_idx = 37;
+                  else if (domain == "fan")           icon_idx = 17;
+                  else if (domain == "lock")          icon_idx = 31;
                   else if (domain == "cover")         icon_idx = 6;
-                  else if (domain == "climate")       icon_idx = 16;
-                  else if (domain == "media_player")  icon_idx = 9;
-                  else if (domain == "camera")        icon_idx = 11;
-                  else if (domain == "binary_sensor") icon_idx = 12;
+                  else if (domain == "climate")       icon_idx = 1;
+                  else if (domain == "media_player")  icon_idx = 42;
+                  else if (domain == "camera")        icon_idx = 7;
+                  else if (domain == "binary_sensor") icon_idx = 33;
                 }
                 lv_label_set_text(icon_lbl, icon_codepoints[icon_idx]);
 
@@ -174,7 +204,11 @@ esphome:
             bool indoor_on  = id(indoor_temp_enable).state;
             bool outdoor_on = id(outdoor_temp_enable).state;
 
-            if (indoor_on || outdoor_on) {
+            if (indoor_on && outdoor_on) {
+              lv_label_set_text(id(temperatures), "-° / -°");
+              lv_obj_clear_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
+            } else if (indoor_on || outdoor_on) {
+              lv_label_set_text(id(temperatures), "-°");
               lv_obj_clear_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
             }
 

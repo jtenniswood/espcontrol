@@ -16,13 +16,21 @@ switch:
     web_server:
       sorting_group_id: sg_display
     on_turn_on:
-      - lambda: 'lv_obj_clear_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);'
+      - lambda: |-
+          lv_obj_clear_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
+          if (id(outdoor_temp_enable).state) {
+            lv_label_set_text(id(temperatures), "-° / -°");
+          } else {
+            lv_label_set_text(id(temperatures), "-°");
+          }
     on_turn_off:
       - if:
           condition:
             switch.is_off: outdoor_temp_enable
           then:
             - lambda: 'lv_obj_add_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);'
+          else:
+            - lambda: 'lv_label_set_text(id(temperatures), "-°");'
 
   - platform: template
     name: "Outdoor Temp Enable"
@@ -34,13 +42,21 @@ switch:
     web_server:
       sorting_group_id: sg_display
     on_turn_on:
-      - lambda: 'lv_obj_clear_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);'
+      - lambda: |-
+          lv_obj_clear_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
+          if (id(indoor_temp_enable).state) {
+            lv_label_set_text(id(temperatures), "-° / -°");
+          } else {
+            lv_label_set_text(id(temperatures), "-°");
+          }
     on_turn_off:
       - if:
           condition:
             switch.is_off: indoor_temp_enable
           then:
             - lambda: 'lv_obj_add_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);'
+          else:
+            - lambda: 'lv_label_set_text(id(temperatures), "-°");'
 
 text:
   - platform: template

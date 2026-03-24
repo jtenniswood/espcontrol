@@ -12,26 +12,56 @@ font:
     size: 48
     bpp: 8
     glyphs:
-      - "\U000F0335"  # mdi-lightbulb
-      - "\U000F0654"  # mdi-power-plug
-      - "\U000F0210"  # mdi-fan
-      - "\U000F033E"  # mdi-lock
-      - "\U000F0372"  # mdi-garage
-      - "\U000F1011"  # mdi-blinds-open
-      - "\U000F00AC"  # mdi-blinds-closed
-      - "\U000F050F"  # mdi-thermometer
-      - "\U000F04C3"  # mdi-speaker
-      - "\U000F0502"  # mdi-television
-      - "\U000F0213"  # mdi-camera
-      - "\U000F0D91"  # mdi-motion-sensor
+      - "\U000F0493"  # mdi-cog (Auto fallback)
+      - "\U000F001B"  # mdi-air-conditioner
+      - "\U000F009E"  # mdi-bell-ring (Alarm)
+      - "\U000F0079"  # mdi-battery
+      - "\U000F02E3"  # mdi-bed
+      - "\U000F1A2C"  # mdi-blinds-horizontal-closed
+      - "\U000F1A2B"  # mdi-blinds-horizontal
+      - "\U000F0100"  # mdi-camera
+      - "\U000F1797"  # mdi-ceiling-fan
+      - "\U000F0769"  # mdi-ceiling-light
+      - "\U000F109F"  # mdi-coffee-maker
+      - "\U000F095F"  # mdi-desk-lamp
+      - "\U000F0AAC"  # mdi-dishwasher
       - "\U000F081A"  # mdi-door
-      - "\U000F111C"  # mdi-window-open-variant
-      - "\U000F0F92"  # mdi-water-boiler
-      - "\U000F0D43"  # mdi-air-filter
-      - "\U000F089E"  # mdi-battery
+      - "\U000F0869"  # mdi-doorbell-video
+      - "\U000F0917"  # mdi-tumble-dryer
+      - "\U000F05F1"  # mdi-ev-station
+      - "\U000F0210"  # mdi-fan
+      - "\U000F0238"  # mdi-fire
+      - "\U000F0E2E"  # mdi-fireplace
+      - "\U000F08DD"  # mdi-floor-lamp
+      - "\U000F0290"  # mdi-fridge
+      - "\U000F0372"  # mdi-garage
+      - "\U000F0299"  # mdi-gate
+      - "\U000F0438"  # mdi-radiator (Heater)
+      - "\U000F0828"  # mdi-hot-tub
+      - "\U000F1099"  # mdi-air-humidifier
+      - "\U000F06B5"  # mdi-lamp
+      - "\U000F11F7"  # mdi-robot-mower (Lawnmower)
       - "\U000F07D6"  # mdi-led-strip
+      - "\U000F0335"  # mdi-lightbulb
+      - "\U000F033E"  # mdi-lock
+      - "\U000F0C99"  # mdi-microwave
+      - "\U000F0D91"  # mdi-motion-sensor
+      - "\U000F04DE"  # mdi-stove (Oven)
+      - "\U000F0606"  # mdi-pool
       - "\U000F0425"  # mdi-power
-      - "\U000F0493"  # mdi-cog
+      - "\U000F0654"  # mdi-power-plug
+      - "\U000F070D"  # mdi-robot-vacuum
+      - "\U000F068A"  # mdi-shield-home (Security)
+      - "\U000F0392"  # mdi-smoke-detector
+      - "\U000F0D9B"  # mdi-solar-panel
+      - "\U000F04C3"  # mdi-speaker
+      - "\U000F105F"  # mdi-sprinkler
+      - "\U000F0502"  # mdi-television
+      - "\U000F050F"  # mdi-thermometer
+      - "\U000F072A"  # mdi-washing-machine (Washer)
+      - "\U000F058C"  # mdi-water
+      - "\U000F0F92"  # mdi-water-boiler (Water Heater)
+      - "\U000F111C"  # mdi-window-open-variant
 
   # Setup screen icons (64px)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
