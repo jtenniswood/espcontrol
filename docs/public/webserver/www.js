@@ -201,7 +201,12 @@
     ".sp-log-verbose{color:#555}" +
 
     // Empty state
-    ".sp-empty{text-align:center;padding:24px;color:#666;font-size:13px}";
+    ".sp-empty{text-align:center;padding:24px;color:#666;font-size:13px}" +
+
+    // Connection banner
+    ".sp-banner{padding:10px 16px;font-size:13px;text-align:center;display:none}" +
+    ".sp-banner.sp-error{display:block;background:#d32f2f;color:#fff}" +
+    ".sp-banner.sp-offline{display:block;background:#f57c00;color:#fff}";
 
   var state = {
     order: [],
@@ -253,28 +258,37 @@
     return b.label || b.entity || "Configure";
   }
 
+  function post(url) {
+    return fetch(url, { method: "POST" }).then(function (r) {
+      if (!r.ok) showBanner("Request failed: " + r.status, "error");
+      return r;
+    }).catch(function () {
+      showBanner("Cannot reach device \u2014 is it connected?", "error");
+    });
+  }
+
   function postText(entityId, value) {
-    fetch("/text/" + entityId + "?value=" + encodeURIComponent(value), { method: "POST" });
+    post("/text/" + entityId + "?value=" + encodeURIComponent(value));
   }
 
   function postSelect(entityId, option) {
-    fetch("/select/" + entityId + "?option=" + encodeURIComponent(option), { method: "POST" });
+    post("/select/" + entityId + "?option=" + encodeURIComponent(option));
   }
 
   function postButtonPress(entityId) {
-    fetch("/button/" + entityId + "/press", { method: "POST" });
+    post("/button/" + entityId + "/press");
   }
 
   function postSwitch(entityId, on) {
-    fetch("/switch/" + entityId + "/" + (on ? "turn_on" : "turn_off"), { method: "POST" });
+    post("/switch/" + entityId + "/" + (on ? "turn_on" : "turn_off"));
   }
 
   function postNumber(entityId, value) {
-    fetch("/number/" + entityId + "?value=" + encodeURIComponent(value), { method: "POST" });
+    post("/number/" + entityId + "?value=" + encodeURIComponent(value));
   }
 
   function postLight(entityId, brightness) {
-    fetch("/light/" + entityId + "/turn_on?brightness=" + brightness, { method: "POST" });
+    post("/light/" + entityId + "/turn_on?brightness=" + brightness);
   }
 
   function escHtml(s) {
@@ -320,9 +334,26 @@
 
   // ── Build UI ─────────────────────────────────────────────────────────
 
+  function showBanner(msg, type) {
+    if (!els.banner) return;
+    els.banner.textContent = msg;
+    els.banner.className = "sp-banner sp-" + type;
+    if (type === "error") {
+      clearTimeout(els._bannerTimer);
+      els._bannerTimer = setTimeout(function () {
+        els.banner.className = "sp-banner";
+      }, 6000);
+    }
+  }
+
   function buildUI() {
     var root = document.createElement("div");
     root.id = "sp-app";
+
+    var banner = document.createElement("div");
+    banner.className = "sp-banner";
+    root.appendChild(banner);
+    els.banner = banner;
 
     buildHeader(root);
     buildScreenPage(root);
@@ -915,6 +946,11 @@
     source.addEventListener("open", function () {
       state.selectedSlot = -1;
       orderReceived = false;
+      if (els.banner) els.banner.className = "sp-banner";
+    });
+
+    source.addEventListener("error", function () {
+      showBanner("Reconnecting to device\u2026", "offline");
     });
 
     source.addEventListener("state", function (e) {
