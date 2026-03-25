@@ -146,9 +146,6 @@ display:
   - platform: mipi_dsi
     id: my_display
     model: JC1060P470
-    dimensions:
-      width: 1024
-      height: 576
     color_order: RGB
     reset_pin:
       number: GPIO05
