@@ -215,25 +215,37 @@
   var ICON_OPTIONS = Object.keys(ICON_MAP).sort();
 
   var CSS =
-    "#sp-app{font-family:Roboto,sans-serif;color:#e0e0e0;max-width:900px;margin:0 auto}" +
+    // CSS variables
+    ":root{" +
+    "--bg:#121212;--surface:#1e1e1e;--surface2:#2a2a2a;--border:#333;" +
+    "--text:#e0e0e0;--text2:#999;--accent:#5c9cf5;--accent-hover:#7bb3ff;" +
+    "--success:#4caf50;--danger:#ef5350;--radius:10px;--gap:16px}" +
+
+    // App shell
+    "#sp-app{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
+    "color:var(--text);max-width:480px;margin:0 auto;-webkit-font-smoothing:antialiased}" +
     "esp-app{display:none !important}" +
 
     // Header
-    ".sp-header{display:flex;background:#1a1a1a;border-bottom:1px solid #333;" +
-    "position:sticky;top:0;z-index:100;border-radius:0 0 8px 8px;overflow:hidden}" +
-    ".sp-tab{flex:1;padding:14px 0;text-align:center;color:#888;cursor:pointer;" +
-    "font-size:14px;font-weight:500;border-bottom:2px solid transparent;transition:all .2s}" +
+    ".sp-header{display:flex;background:var(--surface);border-bottom:1px solid var(--border);" +
+    "position:sticky;top:0;z-index:100;border-radius:0 0 var(--radius) var(--radius);overflow:hidden}" +
+    ".sp-tab{flex:1;padding:14px 0;text-align:center;color:var(--text2);cursor:pointer;" +
+    "font-size:.9rem;font-weight:500;border-bottom:2px solid transparent;transition:all .2s}" +
     ".sp-tab:hover{color:#bbb}" +
-    ".sp-tab.active{color:#fff;border-bottom-color:#03a9f4}" +
+    ".sp-tab.active{color:#fff;border-bottom-color:var(--accent)}" +
 
     // Pages
     ".sp-page{display:none}.sp-page.active{display:block}" +
 
+    // Fade-in animation
+    ".fade-in{animation:fadeIn .3s ease}" +
+    "@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}" +
+
     // Screen preview
-    ".sp-wrap{display:flex;justify-content:center;padding:20px 16px 4px}" +
+    ".sp-wrap{display:flex;justify-content:center;padding:20px var(--gap) 4px}" +
     ".sp-screen{width:100%;aspect-ratio:1024/600;background:#000;" +
-    "border-radius:10px;position:relative;overflow:hidden;" +
-    "box-shadow:0 2px 20px rgba(0,0,0,.35);border:2px solid #1a1a1a;" +
+    "border-radius:var(--radius);position:relative;overflow:hidden;" +
+    "box-shadow:0 2px 20px rgba(0,0,0,.35);border:2px solid var(--surface);" +
     "container-type:inline-size;font-family:Roboto,sans-serif;user-select:none}" +
     ".sp-topbar{position:absolute;top:0;left:0;right:0;height:3.2cqw;" +
     "display:flex;align-items:center;padding:0.39cqw;z-index:1}" +
@@ -250,179 +262,207 @@
     "cursor:pointer;transition:all .2s;box-sizing:border-box;border:2px solid transparent;" +
     "position:relative}" +
     ".sp-btn:hover{filter:brightness(1.15)}" +
-    ".sp-btn.sp-selected{border-color:#03a9f4}" +
+    ".sp-btn.sp-selected{border-color:var(--accent)}" +
     ".sp-btn-icon{font-size:4.69cqw;line-height:1;color:#fff}" +
     ".sp-btn-label{font-size:1.8cqw;line-height:1.2;color:#fff;" +
     "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
     ".sp-sensor-badge{position:absolute;top:1cqw;right:1cqw;font-size:1.6cqw;opacity:.5}" +
     ".sp-add-btn{border:2px dashed rgba(255,255,255,.25);background:transparent !important;" +
     "display:flex;align-items:center;justify-content:center;cursor:pointer}" +
-    ".sp-add-btn:hover{border-color:#03a9f4}" +
+    ".sp-add-btn:hover{border-color:var(--accent)}" +
     ".sp-add-icon{font-size:5cqw;color:rgba(255,255,255,.35)}" +
-    ".sp-drop-placeholder{border:2px dashed rgba(3,169,244,.5) !important;" +
-    "background:rgba(3,169,244,.08) !important;cursor:default;pointer-events:none}" +
+    ".sp-drop-placeholder{border:2px dashed rgba(92,156,245,.5) !important;" +
+    "background:rgba(92,156,245,.08) !important;cursor:default;pointer-events:none}" +
 
     // Hint
-    ".sp-hint{text-align:center;font-size:11px;opacity:.4;padding:6px 0 12px}" +
+    ".sp-hint{text-align:center;font-size:.75rem;opacity:.4;padding:6px 0 12px}" +
 
     // Config area
-    ".sp-config{padding:0 16px 16px}" +
-    ".sp-section-title{font-size:13px;font-weight:500;color:#888;" +
-    "margin:16px 0 8px;text-transform:uppercase;letter-spacing:0.5px}" +
+    ".sp-config{padding:0 var(--gap) var(--gap)}" +
+    ".sp-section-title{font-size:.8rem;font-weight:600;color:var(--text2);" +
+    "margin:var(--gap) 0 8px;text-transform:uppercase;letter-spacing:.5px}" +
 
-    // Settings page panels
-    ".sp-panel{background:#1e1e1e;border-radius:8px;padding:16px;margin-top:12px;" +
-    "border:1px solid #2a2a2a}" +
+    // Collapsible cards
+    ".card{background:var(--surface);border:1px solid var(--border);" +
+    "border-radius:var(--radius);padding:20px;margin-bottom:var(--gap)}" +
+    ".card h3{font-size:.8rem;font-weight:600;margin-bottom:14px;color:var(--text2);" +
+    "text-transform:uppercase;letter-spacing:.5px}" +
+    ".card-header{display:flex;justify-content:space-between;align-items:center;" +
+    "cursor:pointer;user-select:none;" +
+    "margin:-20px -20px 0 -20px;padding:20px 20px 0 20px}" +
+    ".card-header h3{margin-bottom:0}" +
+    ".card-body{padding-top:14px}" +
+    ".card-chevron{display:inline-flex;align-items:center;justify-content:center;" +
+    "width:24px;height:24px;color:var(--text2);transition:transform .2s;flex-shrink:0}" +
+    ".card-chevron svg{width:100%;height:100%}" +
+    ".card.collapsed .card-chevron{transform:rotate(-90deg)}" +
+    ".card.collapsed .card-body{display:none}" +
+    ".card-header-right{display:flex;align-items:center;gap:8px}" +
+
+    // Settings page panels (legacy, used on screen page)
+    ".sp-panel{background:var(--surface);border-radius:var(--radius);padding:20px;" +
+    "margin-bottom:var(--gap);border:1px solid var(--border)}" +
 
     // Form fields
-    ".sp-field{margin-bottom:12px}" +
-    ".sp-field-label{display:block;font-size:11px;color:#888;margin-top:10px;margin-bottom:4px;" +
-    "text-transform:uppercase;letter-spacing:0.3px}" +
-    ".sp-input,.sp-select{width:100%;padding:9px 12px;background:#2a2a2a;" +
-    "border:1px solid #444;border-radius:6px;color:#e0e0e0;font-size:14px;" +
-    "font-family:inherit;box-sizing:border-box;outline:none;transition:border-color .2s;" +
-    "margin-bottom:4px}" +
-    ".sp-input:focus,.sp-select:focus{border-color:#03a9f4}" +
+    ".sp-field{margin-bottom:22px}.sp-field:last-child{margin-bottom:0}" +
+    ".sp-field-label{display:block;font-size:.85rem;color:var(--text2);margin-bottom:6px}" +
+    ".sp-input,.sp-select{width:100%;padding:10px 12px;background:var(--surface2);" +
+    "border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;" +
+    "font-family:inherit;box-sizing:border-box;outline:none;transition:border-color .2s}" +
+    ".sp-input:focus,.sp-select:focus{border-color:var(--accent)}" +
     ".sp-input--narrow{width:80px}" +
-    ".sp-select{appearance:auto}" +
+    ".sp-select{appearance:none;-webkit-appearance:none;" +
+    "background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E\");" +
+    "background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}" +
+    "select option{background:var(--surface);color:var(--text)}" +
 
     // Searchable icon picker
     ".sp-icon-picker{position:relative}" +
-    ".sp-icon-picker-input{width:100%;padding:9px 12px;padding-left:36px;background:#2a2a2a;" +
-    "border:1px solid #444;border-radius:6px;color:#e0e0e0;font-size:14px;" +
+    ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
+    "border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem;" +
     "font-family:inherit;box-sizing:border-box;outline:none;transition:border-color .2s}" +
-    ".sp-icon-picker-input:focus{border-color:#03a9f4}" +
+    ".sp-icon-picker-input:focus{border-color:var(--accent)}" +
     ".sp-icon-picker-input::placeholder{color:#666}" +
     ".sp-icon-picker-preview{position:absolute;left:10px;top:50%;transform:translateY(-50%);" +
-    "font-size:18px;color:#aaa;pointer-events:none}" +
+    "font-size:18px;color:var(--text2);pointer-events:none}" +
     ".sp-icon-picker.sp-open .sp-icon-picker-preview{top:19px}" +
     ".sp-icon-dropdown{display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;" +
-    "background:#2a2a2a;border:1px solid #444;border-radius:6px;max-height:200px;" +
+    "background:var(--surface2);border:1px solid var(--border);border-radius:6px;max-height:200px;" +
     "overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.4)}" +
     ".sp-icon-picker.sp-open .sp-icon-dropdown{display:block}" +
     ".sp-icon-option{display:flex;align-items:center;gap:10px;padding:8px 12px;" +
-    "cursor:pointer;font-size:14px;color:#e0e0e0;transition:background .1s}" +
+    "cursor:pointer;font-size:.9rem;color:var(--text);transition:background .1s}" +
     ".sp-icon-option:hover,.sp-icon-option.sp-highlighted{background:#3a3a3a}" +
     ".sp-icon-option.sp-active{background:#1a2a3a}" +
-    ".sp-icon-option-icon{font-size:20px;width:24px;text-align:center;color:#aaa;flex-shrink:0}" +
+    ".sp-icon-option-icon{font-size:20px;width:24px;text-align:center;color:var(--text2);flex-shrink:0}" +
     ".sp-icon-option-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
     ".sp-icon-option--empty{color:#666}" +
     ".sp-btn-row{display:flex;gap:8px;margin-top:16px}" +
-    ".sp-action-btn{padding:9px 16px;border:none;border-radius:6px;font-size:13px;" +
-    "font-weight:500;cursor:pointer;font-family:inherit;transition:filter .15s}" +
-    ".sp-action-btn:hover{filter:brightness(1.15)}" +
-    ".sp-delete-btn{background:#d32f2f;color:#fff}" +
+    ".sp-action-btn{padding:10px 20px;border:none;border-radius:6px;font-size:.9rem;" +
+    "font-weight:500;cursor:pointer;font-family:inherit;transition:background .2s,opacity .2s}" +
+    ".sp-action-btn:active{opacity:.8}" +
+    ".sp-delete-btn{background:var(--danger);color:#fff}" +
 
     // Toggle switch
     ".sp-toggle-row{display:flex;align-items:center;justify-content:space-between;" +
-    "padding:10px 0}" +
-    ".sp-toggle-label{font-size:14px}" +
+    "min-height:36px}" +
+    ".sp-toggle-row span{font-size:.9rem}" +
     ".sp-toggle{position:relative;width:44px;height:24px;flex-shrink:0}" +
     ".sp-toggle input{opacity:0;width:0;height:0;position:absolute}" +
     ".sp-toggle-track{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;" +
-    "background:#444;border-radius:24px;transition:.3s}" +
+    "background:var(--surface2);border-radius:12px;transition:background .2s;border:1px solid var(--border)}" +
     ".sp-toggle-track:before{content:'';position:absolute;height:18px;width:18px;" +
-    "left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}" +
-    ".sp-toggle input:checked+.sp-toggle-track{background:#03a9f4}" +
-    ".sp-toggle input:checked+.sp-toggle-track:before{transform:translateX(20px);background:#fff}" +
+    "left:2px;top:2px;background:#fff;border-radius:50%;transition:transform .2s}" +
+    ".sp-toggle input:checked+.sp-toggle-track{background:var(--accent);border-color:var(--accent)}" +
+    ".sp-toggle input:checked+.sp-toggle-track:before{transform:translateX(20px)}" +
 
     // Conditional field (shown below toggle when enabled)
     ".sp-cond-field{padding:0 0 8px;display:none}" +
     ".sp-cond-field.sp-visible{display:block}" +
 
     // Range slider
-    ".sp-range-row{display:flex;align-items:center;gap:12px;padding:4px 0}" +
-    ".sp-range{flex:1;height:6px;-webkit-appearance:none;appearance:none;background:#444;" +
-    "border-radius:3px;outline:none}" +
-    ".sp-range::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;" +
-    "border-radius:50%;background:#03a9f4;cursor:pointer}" +
-    ".sp-range-val{font-size:13px;color:#aaa;min-width:32px;text-align:right}" +
+    ".sp-range-row{display:flex;align-items:center;gap:12px}" +
+    ".sp-range{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:var(--surface2);" +
+    "border-radius:2px;outline:none}" +
+    ".sp-range::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;" +
+    "border-radius:50%;background:var(--accent);cursor:pointer}" +
+    ".sp-range::-moz-range-thumb{width:18px;height:18px;border-radius:50%;" +
+    "background:var(--accent);cursor:pointer;border:none}" +
+    ".sp-range-val{min-width:42px;text-align:right;font-size:.85rem;color:var(--text2);" +
+    "font-variant-numeric:tabular-nums}" +
 
     // Color picker
     ".sp-color-row{display:flex;align-items:center;gap:8px}" +
-    ".sp-color-swatch{width:40px;height:38px;border-radius:6px;border:1px solid #444;" +
+    ".sp-color-swatch{width:40px;height:38px;border-radius:6px;border:1px solid var(--border);" +
     "cursor:pointer;flex-shrink:0;position:relative;overflow:hidden;transition:border-color .2s}" +
-    ".sp-color-swatch:hover{border-color:#03a9f4}" +
+    ".sp-color-swatch:hover{border-color:var(--accent)}" +
     ".sp-color-swatch input{position:absolute;inset:-8px;width:calc(100% + 16px);" +
     "height:calc(100% + 16px);cursor:pointer;opacity:0}" +
     ".sp-color-row .sp-input{flex:1}" +
 
     // Number input
     ".sp-number-row{display:flex;align-items:center;gap:8px}" +
-    ".sp-number{width:80px;padding:8px 10px;background:#2a2a2a;border:1px solid #444;" +
-    "border-radius:6px;color:#e0e0e0;font-size:14px;font-family:inherit;text-align:center;" +
+    ".sp-number{width:80px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);" +
+    "border-radius:6px;color:var(--text);font-size:.9rem;font-family:inherit;text-align:center;" +
     "outline:none;box-sizing:border-box}" +
-    ".sp-number:focus{border-color:#03a9f4}" +
-    ".sp-number-unit{font-size:13px;color:#888}" +
+    ".sp-number:focus{border-color:var(--accent)}" +
+    ".sp-number-unit{font-size:.85rem;color:var(--text2)}" +
 
     // Apply bar
-    ".sp-apply-bar{padding:16px;text-align:center}" +
-    ".sp-apply-btn{background:#03a9f4;color:#fff;border:none;border-radius:6px;" +
-    "padding:12px 32px;font-size:14px;font-weight:500;cursor:pointer;" +
-    "font-family:inherit;transition:filter .15s}" +
-    ".sp-apply-btn:hover{filter:brightness(1.15)}" +
-    ".sp-apply-note{font-size:11px;color:#666;margin-top:6px}" +
+    ".sp-apply-bar{padding:var(--gap);text-align:center}" +
+    ".sp-apply-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;" +
+    "padding:10px 20px;font-size:.9rem;font-weight:500;cursor:pointer;" +
+    "font-family:inherit;transition:background .2s,opacity .2s}" +
+    ".sp-apply-btn:hover{background:var(--accent-hover)}" +
+    ".sp-apply-btn:active{opacity:.8}" +
+    ".sp-apply-btn:disabled{opacity:.4;cursor:not-allowed}" +
+    ".sp-apply-note{font-size:.75rem;color:var(--text2);margin-top:6px}" +
 
     // Log viewer
-    ".sp-log-toolbar{display:flex;justify-content:flex-end;padding:12px 16px 0}" +
-    ".sp-log-clear{background:#333;color:#ccc;border:none;border-radius:4px;" +
-    "padding:6px 14px;font-size:12px;cursor:pointer;font-family:inherit}" +
-    ".sp-log-clear:hover{background:#444}" +
-    ".sp-log-output{margin:8px 16px 16px;padding:12px;background:#0a0a0a;" +
-    "border-radius:8px;font-family:'Courier New',monospace;font-size:12px;" +
-    "color:#ccc;height:70vh;overflow-y:auto;white-space:pre-wrap;word-break:break-all;" +
-    "border:1px solid #1a1a1a}" +
-    ".sp-log-line{padding:1px 0}" +
-    ".sp-log-error{color:#ef5350}" +
-    ".sp-log-warn{color:#ffa726}" +
-    ".sp-log-debug{color:#666}" +
-    ".sp-log-verbose{color:#555}" +
+    ".sp-log-toolbar{display:flex;justify-content:flex-end;padding:12px var(--gap) 0}" +
+    ".sp-log-clear{background:var(--surface2);color:var(--text);border:1px solid var(--border);" +
+    "border-radius:6px;padding:8px 14px;font-size:.8rem;cursor:pointer;font-family:inherit}" +
+    ".sp-log-clear:hover{background:var(--border)}" +
+    ".sp-log-output{margin:8px var(--gap) var(--gap);padding:12px;background:#0d0d0d;" +
+    "border:1px solid var(--border);border-radius:6px;" +
+    "font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;" +
+    "font-size:.75rem;line-height:1.5;color:#b0b0b0;overflow-x:auto;overflow-y:auto;" +
+    "max-height:70vh;white-space:pre;word-break:break-all}" +
+    ".sp-log-line{padding:1px 0;border-left:3px solid transparent;padding-left:6px}" +
+    ".sp-log-error{color:var(--danger);border-left-color:var(--danger);background:rgba(239,83,80,.08)}" +
+    ".sp-log-warn{color:#fdd835;border-left-color:#fdd835;background:rgba(255,167,38,.06)}" +
+    ".sp-log-info{color:var(--success)}" +
+    ".sp-log-config{color:#ce93d8}" +
+    ".sp-log-debug{color:#aaa}" +
+    ".sp-log-verbose{color:#666}" +
 
     // Empty state
-    ".sp-empty{text-align:center;padding:24px;color:#666;font-size:13px}" +
+    ".sp-empty{text-align:center;padding:24px;color:#666;font-size:.85rem}" +
 
     // Context menu
-    ".sp-ctx-menu{position:fixed;z-index:200;background:#1e1e1e;border:1px solid #444;" +
-    "border-radius:8px;padding:4px 0;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,.5);" +
-    "font-family:Roboto,sans-serif}" +
+    ".sp-ctx-menu{position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border);" +
+    "border-radius:var(--radius);padding:4px 0;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,.5);" +
+    "font-family:inherit}" +
     ".sp-ctx-item{display:flex;align-items:center;gap:10px;padding:8px 14px;" +
-    "cursor:pointer;font-size:13px;color:#e0e0e0;transition:background .1s;white-space:nowrap}" +
+    "cursor:pointer;font-size:.85rem;color:var(--text);transition:background .1s;white-space:nowrap}" +
     ".sp-ctx-item:hover{background:#3a3a3a}" +
-    ".sp-ctx-item .mdi{font-size:16px;width:18px;text-align:center;color:#aaa}" +
-    ".sp-ctx-item.sp-ctx-danger{color:#ef5350}" +
-    ".sp-ctx-item.sp-ctx-danger .mdi{color:#ef5350}" +
-    ".sp-ctx-divider{height:1px;background:#333;margin:4px 0}" +
+    ".sp-ctx-item .mdi{font-size:16px;width:18px;text-align:center;color:var(--text2)}" +
+    ".sp-ctx-item.sp-ctx-danger{color:var(--danger)}" +
+    ".sp-ctx-item.sp-ctx-danger .mdi{color:var(--danger)}" +
+    ".sp-ctx-divider{height:1px;background:var(--border);margin:4px 0}" +
 
     // Connection banner
-    ".sp-banner{padding:10px 16px;font-size:13px;text-align:center;display:none}" +
-    ".sp-banner.sp-error{display:block;background:#d32f2f;color:#fff}" +
+    ".sp-banner{padding:10px var(--gap);font-size:.85rem;text-align:center;display:none}" +
+    ".sp-banner.sp-error{display:block;background:var(--danger);color:#fff}" +
     ".sp-banner.sp-offline{display:block;background:#f57c00;color:#fff}" +
-    ".sp-banner.sp-success{display:block;background:#2e7d32;color:#fff}" +
+    ".sp-banner.sp-success{display:block;background:var(--success);color:#fff}" +
 
     // Backup buttons
-    ".sp-backup-btns{display:flex;gap:8px;margin-top:4px}" +
+    ".sp-backup-btns{display:flex;gap:8px}" +
     ".sp-backup-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;" +
-    "padding:10px 16px;border:none;border-radius:6px;font-size:13px;font-weight:500;" +
-    "cursor:pointer;font-family:inherit;transition:filter .15s;background:#333;color:#e0e0e0}" +
-    ".sp-backup-btn:hover{filter:brightness(1.15)}" +
+    "padding:10px 16px;border:1px solid var(--border);border-radius:6px;font-size:.85rem;font-weight:500;" +
+    "cursor:pointer;font-family:inherit;transition:background .2s;background:var(--surface2);" +
+    "color:var(--text)}" +
+    ".sp-backup-btn:hover{background:var(--border)}" +
     ".sp-backup-btn .mdi{font-size:16px}" +
 
     // Sun info
-    ".sp-sun-info{font-size:13px;color:#888;padding:8px 0 2px;display:none}" +
+    ".sp-sun-info{font-size:.8rem;color:var(--text2);padding:8px 12px;background:var(--surface2);" +
+    "border-radius:6px;text-align:center;display:none}" +
     ".sp-sun-info.sp-visible{display:block}" +
 
     // Field hint
-    ".sp-field-hint{font-size:11px;color:#666;margin-top:2px}" +
+    ".sp-field-hint{font-size:.75rem;color:var(--text2);margin-top:6px}" +
 
     // Firmware
-    ".sp-fw-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0}" +
-    ".sp-fw-version{font-size:14px;color:#e0e0e0}" +
-    ".sp-fw-label{font-size:12px;color:#888}" +
-    ".sp-fw-btn{background:#333;color:#e0e0e0;border:none;border-radius:6px;" +
-    "padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;" +
-    "transition:filter .15s;white-space:nowrap}" +
-    ".sp-fw-btn:hover{filter:brightness(1.15)}" +
-    ".sp-fw-btn:disabled{opacity:.5;cursor:default}";
+    ".sp-fw-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px}" +
+    ".sp-fw-version{font-size:.9rem;color:var(--text)}" +
+    ".sp-fw-label{font-size:.8rem;color:var(--text2)}" +
+    ".sp-fw-btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);" +
+    "border-radius:6px;padding:8px 14px;font-size:.8rem;font-weight:500;cursor:pointer;" +
+    "font-family:inherit;transition:background .2s;white-space:nowrap}" +
+    ".sp-fw-btn:hover{background:var(--border)}" +
+    ".sp-fw-btn:disabled{opacity:.4;cursor:not-allowed}";
 
   var state = {
     order: [],
@@ -693,91 +733,76 @@
     page.className = "sp-page";
 
     var config = document.createElement("div");
-    config.className = "sp-config";
+    config.className = "sp-config fade-in";
 
     // --- Appearance ---
-    config.appendChild(sectionTitle("Appearance"));
+    var appearBody = document.createElement("div");
 
-    var appearPanel = document.createElement("div");
-    appearPanel.className = "sp-panel";
-
-    // On Color
-    appearPanel.appendChild(fieldLabel("On Color"));
+    appearBody.appendChild(fieldLabel("On Color"));
     var onColor = colorField("sp-set-on-color", "FF8C00", function (hex) {
       postText("Button On Color", hex);
     });
-    appearPanel.appendChild(onColor);
+    appearBody.appendChild(onColor);
     els.setOnColor = onColor;
 
-    // Off Color
-    appearPanel.appendChild(fieldLabel("Off Color"));
+    appearBody.appendChild(fieldLabel("Off Color"));
     var offColor = colorField("sp-set-off-color", "313131", function (hex) {
       postText("Button Off Color", hex);
     });
-    appearPanel.appendChild(offColor);
+    appearBody.appendChild(offColor);
     els.setOffColor = offColor;
 
-    config.appendChild(appearPanel);
+    config.appendChild(makeCollapsibleCard("Appearance", appearBody, false));
 
     // --- Brightness ---
-    config.appendChild(sectionTitle("Brightness"));
-
-    var blPanel = document.createElement("div");
-    blPanel.className = "sp-panel";
+    var blBody = document.createElement("div");
 
     var daySlider = createRangeSlider("Daytime Brightness", state.brightnessDayVal, "Screen: Daytime Brightness");
-    blPanel.appendChild(daySlider.label);
-    blPanel.appendChild(daySlider.row);
+    blBody.appendChild(daySlider.label);
+    blBody.appendChild(daySlider.row);
     els.setDayBrightness = daySlider.range;
     els.setDayBrightnessVal = daySlider.val;
 
     var nightSlider = createRangeSlider("Nighttime Brightness", state.brightnessNightVal, "Screen: Nighttime Brightness");
-    blPanel.appendChild(nightSlider.label);
-    blPanel.appendChild(nightSlider.row);
+    blBody.appendChild(nightSlider.label);
+    blBody.appendChild(nightSlider.row);
     els.setNightBrightness = nightSlider.range;
     els.setNightBrightnessVal = nightSlider.val;
 
-    // Sun info
     var sunInfo = document.createElement("div");
     sunInfo.className = "sp-sun-info";
     sunInfo.id = "sp-sun-info";
-    blPanel.appendChild(sunInfo);
+    blBody.appendChild(sunInfo);
     els.sunInfo = sunInfo;
     updateSunInfo();
 
-    config.appendChild(blPanel);
+    config.appendChild(makeCollapsibleCard("Brightness", blBody, false));
 
     // --- Temperature ---
-    config.appendChild(sectionTitle("Temperature"));
-
-    var tempPanel = document.createElement("div");
-    tempPanel.className = "sp-panel";
+    var tempBody = document.createElement("div");
 
     var indoor = createEntityToggleSection("Indoor Temperature", "sp-set-indoor-toggle", state._indoorOn,
       "Indoor Temp Enable", "Indoor Temp Entity", "Indoor Temp Entity", "e.g. sensor.indoor_temperature");
-    tempPanel.appendChild(indoor.toggle.row);
-    tempPanel.appendChild(indoor.field);
+    tempBody.appendChild(indoor.toggle.row);
+    tempBody.appendChild(indoor.field);
     els.setIndoorToggle = indoor.toggle.input;
     els.setIndoorField = indoor.field;
     els.setIndoorEntity = indoor.input;
 
     var outdoor = createEntityToggleSection("Outdoor Temperature", "sp-set-outdoor-toggle", state._outdoorOn,
       "Outdoor Temp Enable", "Outdoor Temp Entity", "Outdoor Temp Entity", "e.g. sensor.outdoor_temperature");
-    tempPanel.appendChild(outdoor.toggle.row);
-    tempPanel.appendChild(outdoor.field);
+    tempBody.appendChild(outdoor.toggle.row);
+    tempBody.appendChild(outdoor.field);
     els.setOutdoorToggle = outdoor.toggle.input;
     els.setOutdoorField = outdoor.field;
     els.setOutdoorEntity = outdoor.input;
 
-    config.appendChild(tempPanel);
+    config.appendChild(makeCollapsibleCard("Temperature", tempBody, true));
 
     // --- Screensaver ---
-    config.appendChild(sectionTitle("Screensaver"));
+    var ssBody = document.createElement("div");
 
-    var ssPanel = document.createElement("div");
-    ssPanel.className = "sp-panel";
-
-    ssPanel.appendChild(fieldLabel("Idle Timeout"));
+    ssBody.appendChild(fieldLabel("Idle Timeout"));
     var numRow = document.createElement("div");
     numRow.className = "sp-number-row";
     var numInp = document.createElement("input");
@@ -795,22 +820,19 @@
     numInp.addEventListener("keydown", function (e) { if (e.key === "Enter") this.blur(); });
     numRow.appendChild(numInp);
     numRow.appendChild(numUnit);
-    ssPanel.appendChild(numRow);
+    ssBody.appendChild(numRow);
     els.setSSTimeout = numInp;
 
-    ssPanel.appendChild(fieldLabel("Presence Sensor Entity"));
+    ssBody.appendChild(fieldLabel("Presence Sensor Entity"));
     var presInp = textInput("sp-set-presence", "", "e.g. binary_sensor.presence");
-    ssPanel.appendChild(presInp);
+    ssBody.appendChild(presInp);
     bindTextPost(presInp, "Presence Sensor Entity", {});
     els.setPresence = presInp;
 
-    config.appendChild(ssPanel);
+    config.appendChild(makeCollapsibleCard("Screensaver", ssBody, true));
 
     // --- Backup ---
-    config.appendChild(sectionTitle("Backup"));
-
-    var backupPanel = document.createElement("div");
-    backupPanel.className = "sp-panel";
+    var backupBody = document.createElement("div");
 
     var backupRow = document.createElement("div");
     backupRow.className = "sp-backup-btns";
@@ -827,14 +849,11 @@
     importBtn.addEventListener("click", importConfig);
     backupRow.appendChild(importBtn);
 
-    backupPanel.appendChild(backupRow);
-    config.appendChild(backupPanel);
+    backupBody.appendChild(backupRow);
+    config.appendChild(makeCollapsibleCard("Backup", backupBody, true));
 
     // --- Firmware ---
-    config.appendChild(sectionTitle("Firmware"));
-
-    var fwPanel = document.createElement("div");
-    fwPanel.className = "sp-panel";
+    var fwBody = document.createElement("div");
 
     var fwVersionRow = document.createElement("div");
     fwVersionRow.className = "sp-fw-row";
@@ -857,16 +876,16 @@
       }, 10000);
     });
     fwVersionRow.appendChild(fwCheckBtn);
-    fwPanel.appendChild(fwVersionRow);
+    fwBody.appendChild(fwVersionRow);
 
     var autoUpdateToggle = toggleRow("Auto Update", "sp-set-auto-update", state.autoUpdate);
-    fwPanel.appendChild(autoUpdateToggle.row);
+    fwBody.appendChild(autoUpdateToggle.row);
     autoUpdateToggle.input.addEventListener("change", function () {
       postSwitch("Firmware: Auto Update", this.checked);
     });
     els.setAutoUpdate = autoUpdateToggle.input;
 
-    fwPanel.appendChild(fieldLabel("Update Frequency"));
+    fwBody.appendChild(fieldLabel("Update Frequency"));
     var freqSelect = document.createElement("select");
     freqSelect.className = "sp-select";
     freqSelect.id = "sp-set-update-freq";
@@ -880,10 +899,10 @@
     freqSelect.addEventListener("change", function () {
       postSelect("Firmware: Update Frequency", this.value);
     });
-    fwPanel.appendChild(freqSelect);
+    fwBody.appendChild(freqSelect);
     els.setUpdateFreq = freqSelect;
 
-    config.appendChild(fwPanel);
+    config.appendChild(makeCollapsibleCard("Firmware", fwBody, true));
 
     page.appendChild(config);
     page.appendChild(buildApplyBar());
@@ -894,11 +913,29 @@
 
   // ── Settings page helpers ───────────────────────────────────────────
 
-  function sectionTitle(text) {
-    var el = document.createElement("div");
-    el.className = "sp-section-title";
-    el.textContent = text;
-    return el;
+  function makeCollapsibleCard(title, bodyElement, defaultCollapsed) {
+    var card = document.createElement("div");
+    card.className = "card";
+    var header = document.createElement("div");
+    header.className = "card-header";
+    var h3 = document.createElement("h3");
+    h3.textContent = title;
+    var rightWrap = document.createElement("div");
+    rightWrap.className = "card-header-right";
+    var chevron = document.createElement("span");
+    chevron.className = "card-chevron";
+    chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+    rightWrap.appendChild(chevron);
+    header.appendChild(h3);
+    header.appendChild(rightWrap);
+    var body = document.createElement("div");
+    body.className = "card-body";
+    body.appendChild(bodyElement);
+    card.appendChild(header);
+    card.appendChild(body);
+    if (defaultCollapsed) card.classList.add("collapsed");
+    header.onclick = function () { card.classList.toggle("collapsed"); };
+    return card;
   }
 
   function fieldLabel(text) {
@@ -1964,6 +2001,8 @@
     line.className = "sp-log-line";
     if (lvl === 1) line.classList.add("sp-log-error");
     else if (lvl === 2) line.classList.add("sp-log-warn");
+    else if (lvl === 3) line.classList.add("sp-log-info");
+    else if (lvl === 4) line.classList.add("sp-log-config");
     else if (lvl === 5) line.classList.add("sp-log-debug");
     else if (lvl >= 6) line.classList.add("sp-log-verbose");
     line.textContent = msg;
