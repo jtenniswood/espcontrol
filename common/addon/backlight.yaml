@@ -12,6 +12,9 @@ globals:
   - id: display_asleep
     type: bool
     initial_value: 'false'
+  - id: presence_detected
+    type: bool
+    initial_value: 'false'
 
 script:
   # Screensaver idle timer (restartable)
@@ -22,12 +25,18 @@ script:
           float val = id(screensaver_timeout).state;
           if (std::isnan(val) || val <= 0) val = 300;
           return (int)(val * 1000);
-      - globals.set:
-          id: display_asleep
-          value: 'true'
-      - light.turn_off: display_backlight
-      - lvgl.pause:
-          show_snow: true
+      - if:
+          condition:
+            lambda: 'return id(presence_detected);'
+          then:
+            - script.execute: screensaver_idle_check
+          else:
+            - globals.set:
+                id: display_asleep
+                value: 'true'
+            - light.turn_off: display_backlight
+            - lvgl.pause:
+                show_snow: true
 
   # Setup screen burn-in protection
   - id: setup_screen_dim

@@ -517,23 +517,14 @@
   function waitForReboot() {
     if (_eventSource) { _eventSource.close(); _eventSource = null; }
     showBanner("Restarting device\u2026", "offline");
-    function poll() {
-      fetch("/", { method: "HEAD", cache: "no-store" })
-        .then(function (r) {
-          if (r.ok) {
-            if (els.banner) els.banner.className = "sp-banner";
-            els.root.querySelectorAll(".sp-apply-btn").forEach(function (btn) {
-              btn.disabled = false;
-              btn.textContent = "Apply Configuration";
-            });
-            connectEvents();
-          } else {
-            setTimeout(poll, 1500);
-          }
-        })
-        .catch(function () { setTimeout(poll, 1500); });
-    }
-    setTimeout(poll, 2000);
+    setTimeout(function () {
+      if (els.banner) els.banner.className = "sp-banner";
+      els.root.querySelectorAll(".sp-apply-btn").forEach(function (btn) {
+        btn.disabled = false;
+        btn.textContent = "Apply Configuration";
+      });
+      connectEvents();
+    }, 15000);
   }
 
   function escHtml(s) {

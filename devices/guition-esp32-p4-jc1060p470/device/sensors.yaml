@@ -460,7 +460,9 @@ esphome:
               api::global_api_server->subscribe_home_assistant_state(
                 presence_id, {},
                 std::function<void(const std::string &)>([](const std::string &state) {
-                  if (state == "on") {
+                  bool detected = (state == "on");
+                  id(presence_detected) = detected;
+                  if (detected) {
                     lv_disp_trig_activity(NULL);
                     id(screensaver_wake).execute();
                   }
