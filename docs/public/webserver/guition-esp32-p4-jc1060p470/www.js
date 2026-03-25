@@ -243,7 +243,7 @@
 
     // Screen preview
     ".sp-wrap{display:flex;justify-content:center;padding:20px var(--gap) 4px;overflow:visible}" +
-    ".sp-screen{width:200%;max-width:960px;aspect-ratio:1024/600;background:#000;" +
+    ".sp-screen{width:400%;max-width:1920px;aspect-ratio:1024/600;background:#000;" +
     "border-radius:var(--radius);position:relative;overflow:hidden;" +
     "box-shadow:0 2px 20px rgba(0,0,0,.35);border:2px solid var(--surface);" +
     "container-type:inline-size;font-family:Roboto,sans-serif;user-select:none}" +
@@ -445,7 +445,7 @@
     // Connection banner
     ".sp-banner{padding:10px var(--gap);font-size:.85rem;text-align:center;display:none}" +
     ".sp-banner.sp-error{display:block;background:var(--danger);color:#fff}" +
-    ".sp-banner.sp-offline{display:block;background:#f57c00;color:#fff}" +
+    ".sp-banner.sp-offline{display:block;background:#1976d2;color:#fff}" +
     ".sp-banner.sp-success{display:block;background:var(--success);color:#fff}" +
 
     // Backup buttons
@@ -933,7 +933,6 @@
 
     var freqWrap = document.createElement("div");
     freqWrap.style.display = state.autoUpdate ? "" : "none";
-    freqWrap.appendChild(fieldLabel("Update Frequency"));
     var freqSelect = document.createElement("select");
     freqSelect.className = "sp-select";
     freqSelect.id = "sp-set-update-freq";
@@ -1317,17 +1316,6 @@
     bindTextPost(unitInp, "Button " + slot + " Sensor Unit", {
       onBlur: function (v) { state.buttons[slot - 1].unit = v; },
     });
-
-    var btnRow = document.createElement("div");
-    btnRow.className = "sp-btn-row";
-    var delBtn = document.createElement("button");
-    delBtn.className = "sp-action-btn sp-delete-btn";
-    delBtn.textContent = "Delete Button";
-    delBtn.addEventListener("click", function () {
-      deleteButton(slot);
-    });
-    btnRow.appendChild(delBtn);
-    panel.appendChild(btnRow);
 
     container.appendChild(panel);
   }
