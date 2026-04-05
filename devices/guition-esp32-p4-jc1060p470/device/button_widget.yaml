@@ -54,7 +54,7 @@ button:
         id: button_${num}_text_label
         text: "Configure"
   # Toggle the bound HA entity on press
-  on_press:
+  on_short_click:
     - if:
         condition:
           lambda: 'return !id(button_${num}_entity).state.empty();'

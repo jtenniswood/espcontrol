@@ -13,34 +13,41 @@ lvgl:
   # ---------------------------------------------------------------------------
   top_layer:
     widgets:
-      # Indoor/outdoor temperature (top-left)
-      - label:
-          text: "-° / -°"
-          id: temperatures
-          text_font: clockbar_font
-          align: top_left
-          x: 8
-          y: 2
-          text_color: 0xFFFFFF
-          hidden: true
-
-      # Clock (top-center, updated every minute by time.yaml)
-      - label:
-          text: "--:--"
-          id: display_time
-          text_font: clockbar_font
-          align: top_mid
-          x: 0
-          y: 2
-          text_align: center
-          text_color: 0xFFFFFF
-          hidden: true
+      - obj:
+          width: 100%
+          height: SIZE_CONTENT
+          bg_color: 0x000000
+          bg_opa: 60%
+          pad_top: 6
+          pad_bottom: 4
+          pad_left: 8
+          pad_right: 8
+          border_width: 0
+          widgets:
+            # Indoor/outdoor temperature (left)
+            - label:
+                text: "-° / -°"
+                id: temperatures
+                text_font: clockbar_font
+                align: left_mid
+                text_color: 0xFFFFFF
+                hidden: true
+            # Clock (center, updated every minute by time.yaml)
+            - label:
+                text: "--:--"
+                id: display_time
+                text_font: clockbar_font
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
+                hidden: true
 
   # ---------------------------------------------------------------------------
   # Main page (flex-wrap grid of button widgets, vertical scroll)
   # ---------------------------------------------------------------------------
   pages:
     - id: main_page
+      scrollbar_mode: "off"
       layout:
         type: flex
         flex_flow: row_wrap
