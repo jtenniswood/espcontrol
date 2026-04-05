@@ -145,6 +145,7 @@ touchscreen:
   - platform: gt911
     id: my_touchscreen
     display: my_display
+    update_interval: 16ms
     on_touch:
       - script.execute: screensaver_wake
 

@@ -13,6 +13,7 @@ button:
   width: $button_width
   id: button_${num}
   hidden: true
+  snappable: true
   styles: control
   widgets:
     # Icon (swaps to icon_on or hides for sensor overlay when entity is on)

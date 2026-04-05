@@ -48,6 +48,8 @@ lvgl:
   pages:
     - id: main_page
       scrollbar_mode: "off"
+      scroll_elastic: true
+      scroll_snap_y: CENTER
       layout:
         type: flex
         flex_flow: row_wrap
