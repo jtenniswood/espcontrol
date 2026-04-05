@@ -24,11 +24,6 @@ esp32:
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
 
-platformio_options:
-  build_flags:
-    - "-Wno-deprecated-declarations"
-    - "-Wno-literal-suffix"
-
 # ---------------------------------------------------------------------------
 # External component (sun_calc.h for on-device sunrise/sunset)
 # ---------------------------------------------------------------------------
@@ -49,6 +44,10 @@ espcontrol:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-Wno-deprecated-declarations"
+      - "-Wno-literal-suffix"
 
 # ---------------------------------------------------------------------------
 # ESP32-C6 co-processor (provides WiFi/BLE via SDIO)
