@@ -3,7 +3,8 @@
 # =============================================================================
 # Defines the primary UI: a top-layer overlay with temperature and clock
 # labels, and the main page containing a flex-wrap grid of 30 button widgets.
-# Uses row_wrap for the portrait 480x800 display with vertical scrolling.
+# Uses column_wrap for the portrait 480x800 display with horizontal scrolling.
+# 4 buttons per column, ~2.2 columns visible at a time.
 # Buttons start hidden; sensors.yaml unhides active ones at boot.
 # =============================================================================
 
@@ -37,14 +38,14 @@ lvgl:
           hidden: true
 
   # ---------------------------------------------------------------------------
-  # Main page (flex-wrap grid of button widgets, vertical scroll)
+  # Main page (flex-wrap grid of button widgets, horizontal scroll)
   # ---------------------------------------------------------------------------
   pages:
     - id: main_page
       scrollbar_mode: "off"
       layout:
         type: flex
-        flex_flow: row_wrap
+        flex_flow: column_wrap
         pad_row: 10
         pad_column: 10
       width: 100%
