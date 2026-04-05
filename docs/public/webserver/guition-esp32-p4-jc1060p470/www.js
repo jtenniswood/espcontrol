@@ -1292,7 +1292,7 @@
 
     var hasIconOn = b.icon_on && b.icon_on !== "Auto";
     var hasSensor = !!b.sensor;
-    var whenOnEnabled = hasIconOn || hasSensor;
+    var whenOnEnabled = hasIconOn || hasSensor || !!b._whenOnActive;
     var whenOnMode = hasSensor ? "sensor" : "icon";
 
     var whenOnToggle = toggleRow("When Entity On", "sp-inp-whenon-toggle", whenOnEnabled);
@@ -1356,6 +1356,7 @@
 
     function setWhenOnMode(mode) {
       whenOnMode = mode;
+      state.buttons[slot - 1]._whenOnActive = true;
       btnIcon.classList.toggle("active", mode === "icon");
       btnSensor.classList.toggle("active", mode === "sensor");
       iconOnSection.classList.toggle("sp-visible", mode === "icon");
@@ -1383,8 +1384,10 @@
 
     whenOnToggle.input.addEventListener("change", function () {
       if (this.checked) {
+        state.buttons[slot - 1]._whenOnActive = true;
         whenOnCond.classList.add("sp-visible");
       } else {
+        state.buttons[slot - 1]._whenOnActive = false;
         whenOnCond.classList.remove("sp-visible");
         sensorInp.value = "";
         unitInp.value = "";
