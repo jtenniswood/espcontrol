@@ -46,18 +46,18 @@ lvgl:
                     - label:
                         text_font: icon_font_setup
                         text: $icon_wifi
-                        text_color: 0xFFFFFF
+                        text_color: $warm_white
                         text_align: center
                     - label:
                         text: "WiFi Setup"
                         text_font: setup_title_font
-                        text_color: 0xFFFFFF
+                        text_color: $warm_white
                         width: 440
                         text_align: center
                     - label:
                         id: wifi_setup_instructions
                         text: "Connect to the WiFi hotspot\nto configure your network"
                         text_font: setup_body_font
-                        text_color: 0x888888
+                        text_color: $warm_gray
                         width: 440
                         text_align: center

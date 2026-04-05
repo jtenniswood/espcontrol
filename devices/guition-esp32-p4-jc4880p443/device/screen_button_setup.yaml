@@ -46,30 +46,30 @@ lvgl:
                     - label:
                         text_font: icon_font_setup
                         text: $icon_cog
-                        text_color: 0xFFFFFF
+                        text_color: $warm_white
                         text_align: center
                     - label:
                         text: "Setup"
                         text_font: setup_title_font
-                        text_color: 0xFFFFFF
+                        text_color: $warm_white
                         width: 440
                         text_align: center
                     - label:
                         text: "Open your browser and go to"
                         text_font: setup_body_font
-                        text_color: 0x888888
+                        text_color: $warm_gray
                         width: 440
                         text_align: center
                     - label:
                         id: setup_ip_label
                         text: "http://..."
                         text_font: setup_title_font
-                        text_color: 0xFFFFFF
+                        text_color: $warm_white
                         width: 440
                         text_align: center
                     - label:
                         text: "to configure your buttons\nand display"
                         text_font: setup_body_font
-                        text_color: 0x888888
+                        text_color: $warm_gray
                         width: 440
                         text_align: center

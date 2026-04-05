@@ -83,6 +83,14 @@ esphome:
               if (v >= 1 && v <= NUM_SLOTS) order.push_back(v);
             }
 
+            // --- Panel color warmth correction (compensates for cool cast) ---
+            auto warm_color = [](uint32_t hex) -> uint32_t {
+              int r = std::min(255, static_cast<int>(((hex >> 16) & 0xFF) * ${color_r_gain}));
+              int g = std::min(255, static_cast<int>(((hex >> 8) & 0xFF) * ${color_g_gain}));
+              int b = std::min(255, static_cast<int>((hex & 0xFF) * ${color_b_gain}));
+              return (r << 16) | (g << 8) | b;
+            };
+
             // --- Universal button colors ---
             std::string on_hex = id(button_on_color).state;
             std::string off_hex = id(button_off_color).state;
@@ -314,13 +322,13 @@ esphome:
               lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
               lv_obj_move_to_index(s.btn, pos++);
 
-              // Apply colors
+              // Apply colors (warmed to compensate for panel cool cast)
               if (has_on) {
-                lv_obj_set_style_bg_color(s.btn, lv_color_hex(on_val),
+                lv_obj_set_style_bg_color(s.btn, lv_color_hex(warm_color(on_val)),
                   static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
               }
               if (has_off) {
-                lv_obj_set_style_bg_color(s.btn, lv_color_hex(off_val),
+                lv_obj_set_style_bg_color(s.btn, lv_color_hex(warm_color(off_val)),
                   static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
               }
 
