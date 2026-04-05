@@ -319,7 +319,7 @@ esphome:
               has_sensor[idx - 1] = !sensor_id.empty();
 
               // Track whether this slot has a different icon when on
-              std::string icon_on_name = s.icon_on->state;
+              std::string icon_on_name = s.icon_on->current_option();
               has_icon_on[idx - 1] = !icon_on_name.empty() && icon_on_name != "Auto";
               if (has_icon_on[idx - 1]) {
                 icon_on_cp[idx - 1] = find_icon(icon_on_name.c_str());
@@ -344,7 +344,7 @@ esphome:
 
                 // Icon (looked up by name so order of icon_entries[] doesn't matter)
                 lv_obj_t *icon_lbl = s.icon_lbl;
-                std::string icon_name = s.icon->state;
+                std::string icon_name = s.icon->current_option();
                 const char* icon_cp = "\U000F0493";  // cog fallback
                 if (icon_name.empty() || icon_name == "Auto") {
                   std::string domain = entity_id.substr(0, entity_id.find('.'));
