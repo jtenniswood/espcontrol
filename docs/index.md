@@ -17,7 +17,7 @@ description:
 
 - **Up to 20 buttons** — control lights, switches, fans, locks, covers, media players, and more
 - **Drag-and-drop ordering** — rearrange buttons from the web page on your phone or computer
-- **Automatic icons** — the panel picks an icon based on the device type, or choose from over 140 manually
+- **Automatic icons** — the panel picks an icon based on the device type, or choose from hundreds manually
 - **Custom labels** — name each button however you like, or leave it blank to use the name from Home Assistant
 - **Colour themes** — set the on and off colours for your buttons
 - **Indoor and outdoor temperature** shown in the top bar from any Home Assistant sensor

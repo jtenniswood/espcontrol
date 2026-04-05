@@ -20,7 +20,7 @@ This is where you set up your buttons.
 - **Add buttons** — tap an empty slot to assign a Home Assistant device to it. Choose the device you want to control (its entity ID in Home Assistant, like `light.living_room`).
 - **Remove buttons** — remove a button to free up the slot.
 - **Reorder buttons** — drag and drop buttons to rearrange them.
-- **Set an icon** — pick from over 140 icons, or choose **Auto** to let the panel pick one based on the device type (lights get a lightbulb, fans get a fan, etc.).
+- **Set an icon** — pick from hundreds of icons, or choose **Auto** to let the panel pick one based on the device type (lights get a lightbulb, fans get a fan, etc.).
 - **Custom label** — give the button a name, or leave it blank to use the device's name from Home Assistant.
 - **Sensor readout** — optionally show a sensor value on the button (like a temperature reading) by entering a sensor entity and unit.
 

@@ -42,7 +42,7 @@ When you set a button's icon to **Auto**, the panel picks an appropriate icon ba
 | Binary sensor (motion, door) | Motion sensor |
 | Anything else | Gear (cog) |
 
-If you'd rather pick a specific icon, the dropdown offers over 140 choices from the [Material Design Icons](https://pictogrammers.com/library/mdi/) set — covering lighting, climate, security, weather, media, and more.
+If you'd rather pick a specific icon, the dropdown offers hundreds of choices from the [Material Design Icons](https://pictogrammers.com/library/mdi/) set — covering lighting, climate, security, weather, media, and more.
 
 ## Sensor readouts
 
