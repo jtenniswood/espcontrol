@@ -145,6 +145,12 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Advanced',
+        items: [
+          { text: 'ESPHome Manual Setup', link: '/esphome-manual-setup' },
+        ],
+      },
+      {
         text: 'Developer',
         collapsed: true,
         items: [

@@ -98,6 +98,6 @@ That's it — your panel is ready to use. See the [Web UI](/web-ui) guide for a 
 
 ## Advanced: ESPHome package install
 
-If you already use ESPHome and prefer to compile firmware yourself, see the [Package Layout](/package-layout) developer guide. This method is for users who want to customise the firmware beyond what the web page offers.
+If you already use ESPHome and prefer to compile firmware yourself, see the [ESPHome Manual Setup](/esphome-manual-setup) guide. This method is for users who want full control over the build or want to extend the configuration with their own customisations.
 
 Next: [Web UI](/web-ui)
