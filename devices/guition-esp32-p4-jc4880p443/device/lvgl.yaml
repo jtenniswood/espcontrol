@@ -51,10 +51,10 @@ lvgl:
       width: 100%
       bg_color: Black
       bg_opa: cover
-      pad_top: 42
-      pad_bottom: 5
-      pad_left: 5
-      pad_right: 5
+      pad_top: 48
+      pad_bottom: 8
+      pad_left: 8
+      pad_right: 8
 
       widgets:
         - !include { file: button_widget.yaml, vars: { num: "1" } }

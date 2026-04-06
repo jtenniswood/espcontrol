@@ -10,12 +10,12 @@
 # Substitutions (sizing and color defaults used by button_widget.yaml)
 # ---------------------------------------------------------------------------
 substitutions:
-  icon_font: icon_font
+  icon_font: icon_font_sm
   button_on_color: "0xFF8C00"
   button_text_color: "0xFFFFFF"
   button_control_color: "0x313131"
-  button_height: 130px
-  button_width: 145px
+  button_height: 140px
+  button_width: 150px
   padding: 14px
   radius: 8px
 
@@ -32,7 +32,7 @@ lvgl:
   # ---------------------------------------------------------------------------
   theme:
     button:
-      text_font: label_font
+      text_font: label_font_sm
       scroll_on_focus: false
       radius: $radius
       width: $button_width

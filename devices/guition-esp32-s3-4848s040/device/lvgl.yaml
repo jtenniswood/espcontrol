@@ -29,7 +29,7 @@ lvgl:
             - label:
                 text: "-° / -°"
                 id: temperatures
-                text_font: clockbar_font
+                text_font: clockbar_font_sm
                 align: left_mid
                 text_color: 0xFFFFFF
                 hidden: true
@@ -37,7 +37,7 @@ lvgl:
             - label:
                 text: "--:--"
                 id: display_time
-                text_font: clockbar_font
+                text_font: clockbar_font_sm
                 align: center
                 text_align: center
                 text_color: 0xFFFFFF
@@ -57,8 +57,8 @@ lvgl:
       width: 100%
       bg_color: Black
       bg_opa: cover
-      pad_top: 38
-      pad_bottom: 5
+      pad_top: 36
+      pad_bottom: 4
       pad_left: 5
       pad_right: 5
 

@@ -17,6 +17,7 @@ packages:
   device:          !include device/device.yaml
   fonts:           !include ../../common/assets/fonts.yaml
   icons:           !include ../../common/assets/icons.yaml
+  fonts_device:    !include device/fonts.yaml
   lvgl_base:       !include device/lvgl_base.yaml
   button_theme:    !include theme/button.yaml
   # ---------------------------------------------------------------------------

@@ -43,7 +43,7 @@ button:
               id: button_${num}_sensor_label
               text: "--"
           - label:
-              text_font: label_font
+              text_font: label_font_sm
               text_color: $button_text_color
               id: button_${num}_unit_label
               text: ""
