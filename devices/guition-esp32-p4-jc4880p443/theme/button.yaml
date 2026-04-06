@@ -14,7 +14,7 @@ substitutions:
   button_on_color: "0xFF8C00"
   button_text_color: "0xFFFFFF"
   button_control_color: "0x313131"
-  button_height: 165px
+  button_height: 150px
   button_width: 229px
   padding: 16px
   radius: 10px

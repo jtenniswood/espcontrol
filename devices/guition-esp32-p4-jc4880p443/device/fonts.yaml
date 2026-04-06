@@ -7,10 +7,10 @@
 # =============================================================================
 
 font:
-  # Button icons (56px, up from common 48px)
+  # Button icons (64px, up from common 48px)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: icon_font_lg
-    size: 56
+    size: 64
     bpp: 2
     glyphs:
       # --- GENERATED:ICONS START ---
@@ -209,14 +209,14 @@ font:
       - "\U000F111C"  # mdi-window-open-variant
       # --- GENERATED:ICONS END ---
 
-  # Button labels (24px, up from common 22px)
+  # Button labels (28px, up from common 22px)
   - file: "gfonts://Roboto"
     id: label_font_lg
-    size: 24
+    size: 28
     bpp: 2
 
-  # Top bar clock and temperature (22px, up from common 20px)
+  # Top bar clock and temperature (26px, up from common 20px)
   - file: "gfonts://Roboto"
     id: clockbar_font_lg
-    size: 22
+    size: 26
     bpp: 2
