@@ -544,7 +544,7 @@ esphome:
               lv_label_set_text(bl, "Back");
               lv_obj_align(bl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 
-              lv_obj_t *main_scr = id(main_page);
+              lv_obj_t *main_scr = id(main_page)->obj;
               lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
                 lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_MOVE_RIGHT, 300, 0, false);
               }, LV_EVENT_CLICKED, main_scr);
@@ -614,14 +614,11 @@ esphome:
                   lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
                     std::string *en = (std::string *)lv_event_get_user_data(e);
                     if (en && !en->empty()) {
-                      api::HomeassistantServiceResponse resp;
-                      resp.service = "homeassistant.toggle";
+                      api::HomeassistantActionResponse resp;
+                      resp.action = "homeassistant.toggle";
                       resp.is_event = false;
-                      api::HomeassistantServiceMap m;
-                      m.key = "entity_id";
-                      m.value = *en;
-                      resp.data.push_back(m);
-                      api::global_api_server->send_homeassistant_service_call(resp);
+                      resp.data.push_back(api::HomeassistantActionMap{std::string("entity_id"), std::string(*en)});
+                      api::global_api_server->send_homeassistant_action(resp);
                     }
                   }, LV_EVENT_CLICKED, eid);
                 } else {
