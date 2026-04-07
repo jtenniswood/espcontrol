@@ -119,7 +119,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 2048
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"

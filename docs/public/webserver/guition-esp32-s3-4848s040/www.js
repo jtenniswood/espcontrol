@@ -678,53 +678,45 @@
 
   // ── Subpage helpers ──────────────────────────────────────────────────
 
-  function parseSubpageConfig(json) {
-    if (!json || !json.trim()) return { order: [], buttons: [] };
-    try {
-      var d = JSON.parse(json);
-      var buttons = [];
-      if (Array.isArray(d.b)) {
-        for (var i = 0; i < d.b.length; i++) {
-          var sb = d.b[i];
-          buttons.push({
-            entity: sb.e || "",
-            label: sb.l || "",
-            icon: sb.i || "Auto",
-            icon_on: sb.io || "Auto",
-            sensor: sb.s || "",
-            unit: sb.su || "",
-          });
-        }
+  function parseSubpageConfig(str) {
+    if (!str || !str.trim()) return { order: [], buttons: [] };
+    var parts = str.split("|");
+    var order = [];
+    if (parts[0]) {
+      var op = parts[0].split(",");
+      for (var i = 0; i < op.length; i++) {
+        var s = op[i].trim();
+        if (s) order.push(s);
       }
-      var order = [];
-      if (d.o) {
-        var parts = d.o.split(",");
-        for (var i = 0; i < parts.length; i++) {
-          var s = parts[i].trim();
-          if (s) order.push(s);
-        }
-      }
-      return { order: order, buttons: buttons };
-    } catch (_) {
-      return { order: [], buttons: [] };
     }
+    var buttons = [];
+    for (var i = 1; i < parts.length; i++) {
+      var f = parts[i].split(":");
+      buttons.push({
+        entity: f[0] || "",
+        label: f[1] || "",
+        icon: f[2] || "Auto",
+        icon_on: f[3] || "Auto",
+        sensor: f[4] || "",
+        unit: f[5] || "",
+      });
+    }
+    return { order: order, buttons: buttons };
   }
 
   function serializeSubpageConfig(sp) {
     if (!sp || !sp.buttons || sp.buttons.length === 0) return "";
-    var b = [];
+    var out = sp.order.join(",");
     for (var i = 0; i < sp.buttons.length; i++) {
-      var btn = sp.buttons[i];
-      b.push({
-        e: btn.entity || "",
-        l: btn.label || "",
-        i: btn.icon || "Auto",
-        io: btn.icon_on || "Auto",
-        s: btn.sensor || "",
-        su: btn.unit || "",
-      });
+      var b = sp.buttons[i];
+      var fields = [b.entity || "", b.label || "", b.icon || "Auto", b.icon_on || "Auto", b.sensor || "", b.unit || ""];
+      while (fields.length > 1 && !fields[fields.length - 1]) fields.pop();
+      if (fields.length > 1 && fields[fields.length - 1] === "Auto") {
+        while (fields.length > 1 && (fields[fields.length - 1] === "Auto" || !fields[fields.length - 1])) fields.pop();
+      }
+      out += "|" + fields.join(":");
     }
-    return JSON.stringify({ o: sp.order.join(","), b: b });
+    return out;
   }
 
   function getSubpage(homeSlot) {

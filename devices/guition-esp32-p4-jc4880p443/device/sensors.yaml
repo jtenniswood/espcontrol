@@ -456,37 +456,41 @@ esphome:
             static lv_coord_t sp_row_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
             const lv_font_t *sp_icon_fnt = lv_obj_get_style_text_font(slots[0].icon_lbl, LV_PART_MAIN);
 
-            auto json_val = [](const std::string &json, const char *key) -> std::string {
-              std::string needle = std::string("\"") + key + "\":\"";
-              size_t pos = json.find(needle);
-              if (pos == std::string::npos) return "";
-              pos += needle.length();
-              size_t end = json.find('"', pos);
-              return (end != std::string::npos) ? json.substr(pos, end - pos) : "";
-            };
-
             for (int si = 0; si < NUM_SLOTS; si++) {
               if (btn_types[si]->state != "subpage") continue;
               std::string cfg = sp_configs[si]->state;
               if (cfg.empty()) continue;
 
-              std::string sp_order_str = json_val(cfg, "o");
+              // Parse pipe-delimited format: order_csv|entity:label:icon|entity2:label2:icon2|...
+              std::vector<std::string> pipes;
+              { size_t ps = 0;
+                while (ps <= cfg.length()) {
+                  size_t pe = cfg.find('|', ps);
+                  if (pe == std::string::npos) pe = cfg.length();
+                  pipes.push_back(cfg.substr(ps, pe - ps));
+                  ps = pe + 1;
+                }
+              }
+              if (pipes.size() < 2) continue;
+              std::string sp_order_str = pipes[0];
 
               struct SpBtn { std::string entity, label, icon; };
               std::vector<SpBtn> sp_btns;
-              size_t arr_s = cfg.find("[");
-              size_t arr_e = cfg.rfind("]");
-              if (arr_s != std::string::npos && arr_e != std::string::npos) {
-                size_t p2 = arr_s + 1;
-                while (p2 < arr_e) {
-                  size_t os = cfg.find('{', p2);
-                  if (os == std::string::npos || os >= arr_e) break;
-                  size_t oe = cfg.find('}', os);
-                  if (oe == std::string::npos) break;
-                  std::string obj = cfg.substr(os, oe - os + 1);
-                  sp_btns.push_back({json_val(obj, "e"), json_val(obj, "l"), json_val(obj, "i")});
-                  p2 = oe + 1;
+              for (size_t pi = 1; pi < pipes.size(); pi++) {
+                std::vector<std::string> flds;
+                { size_t fs = 0;
+                  while (fs <= pipes[pi].length()) {
+                    size_t fe = pipes[pi].find(':', fs);
+                    if (fe == std::string::npos) fe = pipes[pi].length();
+                    flds.push_back(pipes[pi].substr(fs, fe - fs));
+                    fs = fe + 1;
+                  }
                 }
+                std::string e = flds.size() > 0 ? flds[0] : "";
+                std::string l = flds.size() > 1 ? flds[1] : "";
+                std::string ic = flds.size() > 2 ? flds[2] : "Auto";
+                if (ic.empty()) ic = "Auto";
+                sp_btns.push_back({e, l, ic});
               }
               if (sp_btns.empty()) continue;
 
