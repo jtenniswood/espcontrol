@@ -9,6 +9,11 @@
 # Config format per button (semicolon-delimited):
 #   entity_id;label;icon;icon_on;sensor;sensor_unit;type;subpage_config
 #   0         1     2    3       4      5           6    7
+#
+# MIGRATION: Devices upgrading from the old per-field entity format
+# (Button N Entity, Label, Icon, etc.) need to export their config via the
+# web UI before upgrading, then import the backup after. The old NVS
+# entries are not auto-migrated.
 # =============================================================================
 
 globals:
@@ -25,6 +30,27 @@ esphome:
       then:
         # Phase 1: Parse config, position buttons, apply colors/icons/labels
         - lambda: |-
+            // Migration check: button_order exists but all configs empty
+            std::string order_check = id(button_order).state;
+            if (!order_check.empty()) {
+              bool all_empty = true;
+              esphome::text::Text *cfgs[] = {
+                id(button_1_config), id(button_2_config), id(button_3_config),
+                id(button_4_config), id(button_5_config), id(button_6_config),
+                id(button_7_config), id(button_8_config), id(button_9_config),
+                id(button_10_config), id(button_11_config), id(button_12_config),
+                id(button_13_config), id(button_14_config), id(button_15_config),
+                id(button_16_config), id(button_17_config), id(button_18_config),
+                id(button_19_config), id(button_20_config),
+              };
+              for (auto *c : cfgs) { if (!c->state.empty()) { all_empty = false; break; } }
+              if (all_empty) {
+                ESP_LOGW("sensors", "Button order is set but all configs are empty. "
+                  "If upgrading from the old per-field format, export your config "
+                  "from the old firmware's web UI and import it after upgrading.");
+              }
+            }
+
             static auto cfg_field = [](const std::string &cfg, int idx) -> std::string {
               size_t start = 0;
               for (int i = 0; i < idx; i++) {
