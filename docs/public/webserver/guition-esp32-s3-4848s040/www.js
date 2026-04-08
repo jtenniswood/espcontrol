@@ -2264,6 +2264,9 @@
       grid[toPos] = movingSlot;
       applySpans(grid);
     }
+    if (state.sizes[movingSlot] === 2 && toPos + GRID_COLS >= NUM_SLOTS) {
+      delete state.sizes[movingSlot];
+    }
     state.grid = grid;
   }
 
@@ -2312,6 +2315,9 @@
           if (below < maxPos) grid[below] = -1;
         }
       }
+    }
+    if (sp.sizes[movingSlot] === 2 && toPos + GRID_COLS >= maxPos) {
+      delete sp.sizes[movingSlot];
     }
     sp.grid = grid;
   }
