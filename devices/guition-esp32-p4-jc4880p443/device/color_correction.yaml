@@ -1,0 +1,91 @@
+# =============================================================================
+# COLOR CORRECTION - Per-panel HSV + channel gain adjustments
+# =============================================================================
+# Compensates for display panels whose color rendering differs from sRGB.
+# Adjustments are applied to button on/off colors at boot. All values persist
+# across reboots and are editable via the webserver settings UI.
+#
+# Workflow: set a known color (e.g. FF8C00 orange) in the web UI, then tweak
+# these sliders until the physical display matches the browser preview.
+# =============================================================================
+
+number:
+  - platform: template
+    name: "Color: Hue Shift"
+    internal: true
+    id: color_hue_shift
+    min_value: -30
+    max_value: 30
+    step: 1
+    initial_value: 0
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "°"
+    entity_category: config
+    icon: "mdi:palette-swatch"
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    name: "Color: Saturation"
+    internal: true
+    id: color_saturation
+    min_value: 50
+    max_value: 150
+    step: 5
+    initial_value: 100
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:palette"
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    name: "Color: Red Gain"
+    internal: true
+    id: color_red_gain
+    min_value: 50
+    max_value: 150
+    step: 5
+    initial_value: 100
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:circle"
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    name: "Color: Green Gain"
+    internal: true
+    id: color_green_gain
+    min_value: 50
+    max_value: 150
+    step: 5
+    initial_value: 100
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:circle"
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    name: "Color: Blue Gain"
+    internal: true
+    id: color_blue_gain
+    min_value: 50
+    max_value: 150
+    step: 5
+    initial_value: 100
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:circle"
+    web_server:
+      sorting_group_id: sg_display

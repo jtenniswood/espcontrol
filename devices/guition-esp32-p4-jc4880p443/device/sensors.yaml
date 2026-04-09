@@ -118,6 +118,46 @@ esphome:
               }
             }
 
+            static auto correct_color = [](uint32_t rgb, int hue_shift, int sat_pct,
+                                           int r_gain, int g_gain, int b_gain) -> uint32_t {
+              if (hue_shift == 0 && sat_pct == 100 && r_gain == 100 && g_gain == 100 && b_gain == 100)
+                return rgb;
+              float r = ((rgb >> 16) & 0xFF) / 255.0f;
+              float g = ((rgb >> 8) & 0xFF) / 255.0f;
+              float b = (rgb & 0xFF) / 255.0f;
+              r = fminf(1.0f, r * r_gain / 100.0f);
+              g = fminf(1.0f, g * g_gain / 100.0f);
+              b = fminf(1.0f, b * b_gain / 100.0f);
+              float cmax = fmaxf(r, fmaxf(g, b));
+              float cmin = fminf(r, fminf(g, b));
+              float delta = cmax - cmin;
+              float h = 0, s = 0, v = cmax;
+              if (delta > 0.001f) {
+                s = delta / cmax;
+                if (cmax == r) h = 60.0f * fmodf((g - b) / delta + 6.0f, 6.0f);
+                else if (cmax == g) h = 60.0f * ((b - r) / delta + 2.0f);
+                else h = 60.0f * ((r - g) / delta + 4.0f);
+              }
+              h += hue_shift;
+              if (h < 0) h += 360.0f;
+              if (h >= 360.0f) h -= 360.0f;
+              s = fminf(1.0f, fmaxf(0.0f, s * sat_pct / 100.0f));
+              float c2 = v * s;
+              float x = c2 * (1.0f - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
+              float m = v - c2;
+              float r1, g1, b1;
+              if      (h < 60)  { r1 = c2; g1 = x;  b1 = 0;  }
+              else if (h < 120) { r1 = x;  g1 = c2; b1 = 0;  }
+              else if (h < 180) { r1 = 0;  g1 = c2; b1 = x;  }
+              else if (h < 240) { r1 = 0;  g1 = x;  b1 = c2; }
+              else if (h < 300) { r1 = x;  g1 = 0;  b1 = c2; }
+              else              { r1 = c2; g1 = 0;  b1 = x;  }
+              uint8_t ro = (uint8_t)fminf(255.0f, (r1 + m) * 255.0f + 0.5f);
+              uint8_t go = (uint8_t)fminf(255.0f, (g1 + m) * 255.0f + 0.5f);
+              uint8_t bo = (uint8_t)fminf(255.0f, (b1 + m) * 255.0f + 0.5f);
+              return ((uint32_t)ro << 16) | ((uint32_t)go << 8) | bo;
+            };
+
             static uint32_t on_val = 0, off_val = 0;
             static bool has_on = false, has_off = false;
             std::string on_hex = id(button_on_color).state;
@@ -126,6 +166,14 @@ esphome:
             has_off = off_hex.length() == 6;
             if (has_on) on_val = strtoul(on_hex.c_str(), nullptr, 16);
             if (has_off) off_val = strtoul(off_hex.c_str(), nullptr, 16);
+
+            int cc_hue = (int)id(color_hue_shift).state;
+            int cc_sat = (int)id(color_saturation).state;
+            int cc_r = (int)id(color_red_gain).state;
+            int cc_g = (int)id(color_green_gain).state;
+            int cc_b = (int)id(color_blue_gain).state;
+            if (has_on) on_val = correct_color(on_val, cc_hue, cc_sat, cc_r, cc_g, cc_b);
+            if (has_off) off_val = correct_color(off_val, cc_hue, cc_sat, cc_r, cc_g, cc_b);
 
             for (int i = 0; i < NUM_SLOTS; i++) {
               lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
@@ -477,6 +525,53 @@ esphome:
             bool has_off = off_hex.length() == 6;
             if (has_on) on_val = strtoul(on_hex.c_str(), nullptr, 16);
             if (has_off) off_val = strtoul(off_hex.c_str(), nullptr, 16);
+
+            auto correct_color = [](uint32_t rgb, int hue_shift, int sat_pct,
+                                    int r_gain, int g_gain, int b_gain) -> uint32_t {
+              if (hue_shift == 0 && sat_pct == 100 && r_gain == 100 && g_gain == 100 && b_gain == 100)
+                return rgb;
+              float r = ((rgb >> 16) & 0xFF) / 255.0f;
+              float g = ((rgb >> 8) & 0xFF) / 255.0f;
+              float b = (rgb & 0xFF) / 255.0f;
+              r = fminf(1.0f, r * r_gain / 100.0f);
+              g = fminf(1.0f, g * g_gain / 100.0f);
+              b = fminf(1.0f, b * b_gain / 100.0f);
+              float cmax = fmaxf(r, fmaxf(g, b));
+              float cmin = fminf(r, fminf(g, b));
+              float delta = cmax - cmin;
+              float h = 0, s = 0, v = cmax;
+              if (delta > 0.001f) {
+                s = delta / cmax;
+                if (cmax == r) h = 60.0f * fmodf((g - b) / delta + 6.0f, 6.0f);
+                else if (cmax == g) h = 60.0f * ((b - r) / delta + 2.0f);
+                else h = 60.0f * ((r - g) / delta + 4.0f);
+              }
+              h += hue_shift;
+              if (h < 0) h += 360.0f;
+              if (h >= 360.0f) h -= 360.0f;
+              s = fminf(1.0f, fmaxf(0.0f, s * sat_pct / 100.0f));
+              float c2 = v * s;
+              float x = c2 * (1.0f - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
+              float m = v - c2;
+              float r1, g1, b1;
+              if      (h < 60)  { r1 = c2; g1 = x;  b1 = 0;  }
+              else if (h < 120) { r1 = x;  g1 = c2; b1 = 0;  }
+              else if (h < 180) { r1 = 0;  g1 = c2; b1 = x;  }
+              else if (h < 240) { r1 = 0;  g1 = x;  b1 = c2; }
+              else if (h < 300) { r1 = x;  g1 = 0;  b1 = c2; }
+              else              { r1 = c2; g1 = 0;  b1 = x;  }
+              uint8_t ro = (uint8_t)fminf(255.0f, (r1 + m) * 255.0f + 0.5f);
+              uint8_t go = (uint8_t)fminf(255.0f, (g1 + m) * 255.0f + 0.5f);
+              uint8_t bo = (uint8_t)fminf(255.0f, (b1 + m) * 255.0f + 0.5f);
+              return ((uint32_t)ro << 16) | ((uint32_t)go << 8) | bo;
+            };
+            int cc_hue = (int)id(color_hue_shift).state;
+            int cc_sat = (int)id(color_saturation).state;
+            int cc_r = (int)id(color_red_gain).state;
+            int cc_g = (int)id(color_green_gain).state;
+            int cc_b = (int)id(color_blue_gain).state;
+            if (has_on) on_val = correct_color(on_val, cc_hue, cc_sat, cc_r, cc_g, cc_b);
+            if (has_off) off_val = correct_color(off_val, cc_hue, cc_sat, cc_r, cc_g, cc_b);
 
             std::string order_str = id(button_order).state;
             int positions[NUM_SLOTS] = {};

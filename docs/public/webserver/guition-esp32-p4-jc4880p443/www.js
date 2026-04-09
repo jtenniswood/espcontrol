@@ -382,6 +382,11 @@
     screensaverTimeout: 300,
     brightnessDayVal: 100,
     brightnessNightVal: 75,
+    colorHueShift: 0,
+    colorSaturation: 100,
+    colorRedGain: 100,
+    colorGreenGain: 100,
+    colorBlueGain: 100,
     sunrise: "",
     sunset: "",
     firmwareVersion: "",
@@ -964,6 +969,45 @@
 
     config.appendChild(makeCollapsibleCard("Appearance", appearBody, true));
 
+    var ccBody = document.createElement("div");
+
+    var hueSlider = createSlider("Hue Shift", state.colorHueShift, "Color: Hue Shift",
+      { min: -30, max: 30, step: 1, suffix: "\u00B0" });
+    ccBody.appendChild(hueSlider.wrap);
+    els.ccHueShift = hueSlider.range;
+    els.ccHueShiftVal = hueSlider.val;
+
+    var satSlider = createSlider("Saturation", state.colorSaturation, "Color: Saturation",
+      { min: 50, max: 150, step: 5, suffix: "%" });
+    ccBody.appendChild(satSlider.wrap);
+    els.ccSaturation = satSlider.range;
+    els.ccSaturationVal = satSlider.val;
+
+    var redSlider = createSlider("Red Gain", state.colorRedGain, "Color: Red Gain",
+      { min: 50, max: 150, step: 5, suffix: "%" });
+    ccBody.appendChild(redSlider.wrap);
+    els.ccRedGain = redSlider.range;
+    els.ccRedGainVal = redSlider.val;
+
+    var greenSlider = createSlider("Green Gain", state.colorGreenGain, "Color: Green Gain",
+      { min: 50, max: 150, step: 5, suffix: "%" });
+    ccBody.appendChild(greenSlider.wrap);
+    els.ccGreenGain = greenSlider.range;
+    els.ccGreenGainVal = greenSlider.val;
+
+    var blueSlider = createSlider("Blue Gain", state.colorBlueGain, "Color: Blue Gain",
+      { min: 50, max: 150, step: 5, suffix: "%" });
+    ccBody.appendChild(blueSlider.wrap);
+    els.ccBlueGain = blueSlider.range;
+    els.ccBlueGainVal = blueSlider.val;
+
+    var ccHint = document.createElement("div");
+    ccHint.className = "sp-hint";
+    ccHint.textContent = "Adjusts colors sent to the display panel. Use to correct differences between the web preview and physical screen.";
+    ccBody.appendChild(ccHint);
+
+    config.appendChild(makeCollapsibleCard("Color Correction", ccBody, false));
+
     var blBody = document.createElement("div");
 
     var daySlider = createRangeSlider("Daytime Brightness", state.brightnessDayVal, "Screen: Daytime Brightness");
@@ -1273,6 +1317,14 @@
   }
 
   function createRangeSlider(label, initial, postName) {
+    return createSlider(label, initial, postName, { min: 10, max: 100, step: 5, suffix: "%" });
+  }
+
+  function createSlider(label, initial, postName, opts) {
+    var min = opts.min != null ? opts.min : 0;
+    var max = opts.max != null ? opts.max : 100;
+    var step = opts.step != null ? opts.step : 1;
+    var suffix = opts.suffix || "";
     var wrap = document.createElement("div");
     wrap.className = "sp-field";
     wrap.appendChild(fieldLabel(label));
@@ -1281,14 +1333,14 @@
     var range = document.createElement("input");
     range.type = "range";
     range.className = "sp-range";
-    range.min = "10";
-    range.max = "100";
-    range.step = "5";
+    range.min = String(min);
+    range.max = String(max);
+    range.step = String(step);
     range.value = String(initial);
     var val = document.createElement("span");
     val.className = "sp-range-val";
-    val.textContent = initial + "%";
-    range.addEventListener("input", function () { val.textContent = this.value + "%"; });
+    val.textContent = initial + suffix;
+    range.addEventListener("input", function () { val.textContent = this.value + suffix; });
     range.addEventListener("change", function () { postNumber(postName, this.value); });
     row.appendChild(range);
     row.appendChild(val);
@@ -2558,6 +2610,11 @@
         outdoor_temp_entity: state.outdoorEntity,
         presence_sensor_entity: state.presenceEntity,
         screensaver_timeout: state.screensaverTimeout,
+        color_hue_shift: state.colorHueShift,
+        color_saturation: state.colorSaturation,
+        color_red_gain: state.colorRedGain,
+        color_green_gain: state.colorGreenGain,
+        color_blue_gain: state.colorBlueGain,
       },
     };
 
@@ -2750,6 +2807,32 @@
           if (els.setSSTimeout) els.setSSTimeout.value = String(state.screensaverTimeout);
           if (els.setSsMode) els.setSsMode(state.presenceEntity ? "sensor" : "timer");
           updateTempPreview();
+
+          if (s.color_hue_shift != null) {
+            postNumber("Color: Hue Shift", s.color_hue_shift);
+            state.colorHueShift = s.color_hue_shift;
+            if (els.ccHueShift) { els.ccHueShift.value = state.colorHueShift; els.ccHueShiftVal.textContent = state.colorHueShift + "\u00B0"; }
+          }
+          if (s.color_saturation != null) {
+            postNumber("Color: Saturation", s.color_saturation);
+            state.colorSaturation = s.color_saturation;
+            if (els.ccSaturation) { els.ccSaturation.value = state.colorSaturation; els.ccSaturationVal.textContent = state.colorSaturation + "%"; }
+          }
+          if (s.color_red_gain != null) {
+            postNumber("Color: Red Gain", s.color_red_gain);
+            state.colorRedGain = s.color_red_gain;
+            if (els.ccRedGain) { els.ccRedGain.value = state.colorRedGain; els.ccRedGainVal.textContent = state.colorRedGain + "%"; }
+          }
+          if (s.color_green_gain != null) {
+            postNumber("Color: Green Gain", s.color_green_gain);
+            state.colorGreenGain = s.color_green_gain;
+            if (els.ccGreenGain) { els.ccGreenGain.value = state.colorGreenGain; els.ccGreenGainVal.textContent = state.colorGreenGain + "%"; }
+          }
+          if (s.color_blue_gain != null) {
+            postNumber("Color: Blue Gain", s.color_blue_gain);
+            state.colorBlueGain = s.color_blue_gain;
+            if (els.ccBlueGain) { els.ccBlueGain.value = state.colorBlueGain; els.ccBlueGainVal.textContent = state.colorBlueGain + "%"; }
+          }
         }
 
         state.selectedSlots = [];
@@ -2871,6 +2954,41 @@
         if (els.setNightBrightness) {
           els.setNightBrightness.value = state.brightnessNightVal;
           els.setNightBrightnessVal.textContent = Math.round(state.brightnessNightVal) + "%";
+        }
+      },
+      "number-color__hue_shift": function (val) {
+        state.colorHueShift = parseFloat(val) || 0;
+        if (els.ccHueShift) {
+          els.ccHueShift.value = state.colorHueShift;
+          els.ccHueShiftVal.textContent = Math.round(state.colorHueShift) + "\u00B0";
+        }
+      },
+      "number-color__saturation": function (val) {
+        state.colorSaturation = parseFloat(val) || 100;
+        if (els.ccSaturation) {
+          els.ccSaturation.value = state.colorSaturation;
+          els.ccSaturationVal.textContent = Math.round(state.colorSaturation) + "%";
+        }
+      },
+      "number-color__red_gain": function (val) {
+        state.colorRedGain = parseFloat(val) || 100;
+        if (els.ccRedGain) {
+          els.ccRedGain.value = state.colorRedGain;
+          els.ccRedGainVal.textContent = Math.round(state.colorRedGain) + "%";
+        }
+      },
+      "number-color__green_gain": function (val) {
+        state.colorGreenGain = parseFloat(val) || 100;
+        if (els.ccGreenGain) {
+          els.ccGreenGain.value = state.colorGreenGain;
+          els.ccGreenGainVal.textContent = Math.round(state.colorGreenGain) + "%";
+        }
+      },
+      "number-color__blue_gain": function (val) {
+        state.colorBlueGain = parseFloat(val) || 100;
+        if (els.ccBlueGain) {
+          els.ccBlueGain.value = state.colorBlueGain;
+          els.ccBlueGainVal.textContent = Math.round(state.colorBlueGain) + "%";
         }
       },
       "text_sensor-screen__sunrise": function (val) {
