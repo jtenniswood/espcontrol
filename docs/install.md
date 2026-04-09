@@ -65,6 +65,7 @@ Once the display is on your WiFi network, Home Assistant should discover it auto
 1. **Open Home Assistant** in your browser.
 2. **Look for a notification** in the bottom left — it should say a new device was discovered. If you don't see one, go to **Settings > Devices & Services** and look for a new **ESPHome** entry.
 3. **Click "Configure"** and follow the prompts to add the device.
+4. **Allow the device to perform Home Assistant actions** go to **ESPHome** integration in Home Assistant and click the **Configure** option of your device to Allow the device to perform Home Assistant actions.
 
 This connection is how the display gets the current time, temperature data, and the ability to control your devices.
 
