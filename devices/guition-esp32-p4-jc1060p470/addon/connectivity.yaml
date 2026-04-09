@@ -50,7 +50,7 @@ api:
   on_client_connected:
     - if:
         condition:
-          lambda: 'return lv_scr_act() == id(ha_setup_page);'
+          lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'
         then:
           - script.stop: setup_screen_dim
           - lvgl.page.show: ha_actions_page
