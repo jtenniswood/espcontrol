@@ -71,11 +71,11 @@ The home screen has a grid of buttons sized to fill the screen:
 - **4.3-inch JC4880P443** — 15 buttons (5 rows, 3 columns)
 - **4-inch 4848S040** — 9 buttons (3 rows, 3 columns)
 
-You can have even more using **subpages**. Any button can be turned into a folder that opens a new page of buttons. So you could have 20 buttons on the home screen, and each one could open a subpage with up to 19 more. See [Buttons & Icons — Subpages](/features/buttons-and-icons#subpages) for details.
+You can have even more using **subpages**. Any button can be turned into a folder that opens a new page of buttons. So you could have 20 buttons on the home screen, and each one could open a subpage with up to 19 more. See [Setup — Subpage buttons](/features/setup#button-types) for details.
 
 ## What are subpages?
 
-Subpages are like folders for your buttons. Set any button to the **Subpage** type and it becomes a folder — tapping it on the panel opens a new page with its own set of buttons. This is great for grouping controls by room or device type without filling up the home screen. Each subpage has its own buttons, icons, and labels, set up the same way as the home screen. See [Buttons & Icons — Subpages](/features/buttons-and-icons#subpages).
+Subpages are like folders for your buttons. Set any button to the **Subpage** type and it becomes a folder — tapping it on the panel opens a new page with its own set of buttons. This is great for grouping controls by room or device type without filling up the home screen. Each subpage has its own buttons, icons, and labels, set up the same way as the home screen. See [Setup — Subpage buttons](/features/setup#button-types).
 
 ## Can I back up my setup?
 
