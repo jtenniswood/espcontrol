@@ -1,0 +1,23 @@
+# =============================================================================
+# CONFIG: BUTTON ORDER
+# =============================================================================
+# Comma-separated list of slot numbers defining the grid layout. Suffix "d"
+# marks a double-height button. Managed by the web UI drag-and-drop editor.
+# =============================================================================
+
+text:
+  - platform: template
+    name: "Button Order"
+    internal: true
+    id: button_order
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 120
+    mode: text
+    entity_category: config
+    icon: "mdi:order-numeric-ascending"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_button

@@ -503,7 +503,7 @@
     buttons: [],
     onColor: "FF8C00",
     offColor: "313131",
-    sensorColor: "313131",
+    sensorColor: "212121",
     selectedSlots: [],
     lastClickedSlot: -1,
     activeTab: "screen",
@@ -1104,7 +1104,7 @@
     els.setOffColor = offColor;
 
     appearBody.appendChild(fieldLabel("Tertiary"));
-    var sensorColor = colorField("sp-set-sensor-color", "313131", function (hex) {
+    var sensorColor = colorField("sp-set-sensor-color", "212121", function (hex) {
       postText("Sensor Card Color", hex);
     });
     appearBody.appendChild(sensorColor);
@@ -1572,7 +1572,8 @@
         var b = c.buttons[bIdx];
         var iconName = resolveIcon(b);
         var label = b.label || b.entity || "Configure";
-        var color = (b.type === "sensor") ? state.sensorColor : state.offColor;
+        var isSensor = b.type === "sensor";
+        var color = isSensor ? state.sensorColor : state.offColor;
         var previewTypeDef = !c.isSub ? (BUTTON_TYPES[b.type || ""] || null) : null;
         var typePreview = previewTypeDef && previewTypeDef.renderPreview
           ? previewTypeDef.renderPreview(b, { escHtml: escHtml })
@@ -1582,7 +1583,13 @@
         btn.className = "sp-btn" +
           (c.sizes[slot] === 2 ? " sp-btn-double" : "") +
           (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
-        btn.style.backgroundColor = "#" + (color.length === 6 ? color : "313131");
+        if (isSensor) {
+          btn.style.backgroundColor = "transparent";
+          var borderColor = state.offColor;
+          btn.style.borderColor = "#" + (borderColor.length === 6 ? borderColor : "313131");
+        } else {
+          btn.style.backgroundColor = "#" + (color.length === 6 ? color : "313131");
+        }
         btn.draggable = true;
         btn.setAttribute("data-pos", pos);
         btn.setAttribute("data-slot", slot);
@@ -2795,7 +2802,7 @@
 
         postText("Button On Color", data.button_on_color || "FF8C00");
         postText("Button Off Color", data.button_off_color || "313131");
-        postText("Sensor Card Color", data.sensor_card_color || "313131");
+        postText("Sensor Card Color", data.sensor_card_color || "212121");
 
         var empty = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "" };
         var buttons, orderStr, spKeyMap;
@@ -2907,7 +2914,7 @@
         state.grid = parseOrder(orderStr);
         state.onColor = data.button_on_color || "FF8C00";
         state.offColor = data.button_off_color || "313131";
-        state.sensorColor = data.sensor_card_color || "313131";
+        state.sensorColor = data.sensor_card_color || "212121";
 
         if (els.setOnColor && els.setOnColor._syncColor) els.setOnColor._syncColor(state.onColor);
         if (els.setOffColor && els.setOffColor._syncColor) els.setOffColor._syncColor(state.offColor);

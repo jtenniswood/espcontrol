@@ -23,7 +23,8 @@ packages:
   # ---------------------------------------------------------------------------
   # Configuration (text/select/number components for web UI)
   # ---------------------------------------------------------------------------
-  button_config:   !include ../../common/config/button.yaml
+  colors:          !include ../../common/config/colors.yaml
+  button_order:    !include ../../common/config/button_order.yaml
   display_config:  !include ../../common/config/display.yaml
   # Per-button entity/label/icon (15 slots — 3x5 grid)
   btn_1:           !include { file: ../../common/config/button_template.yaml, vars: { num: "1" } }

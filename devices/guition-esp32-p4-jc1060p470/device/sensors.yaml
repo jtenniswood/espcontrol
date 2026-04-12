@@ -377,8 +377,14 @@ esphome:
               if (btn_type == "sensor") {
                 std::string sensor_id = cfg_field(cfg, 4);
                 if (sensor_id.empty()) continue;
-                if (has_sensor_color) {
-                  lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
+                lv_obj_set_style_bg_color(s.btn, lv_color_black(),
+                  static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+                if (has_off) {
+                  lv_obj_set_style_border_color(s.btn, lv_color_hex(off_val),
+                    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+                  lv_obj_set_style_border_width(s.btn, 2,
+                    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+                  lv_obj_set_style_border_opa(s.btn, LV_OPA_COVER,
                     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
                 }
                 lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
