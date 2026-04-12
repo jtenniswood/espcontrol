@@ -115,10 +115,10 @@ esphome:
             uint32_t on_val = 0, off_val = 0, sensor_val = 0;
             bool has_on = on_hex.length() == 6;
             bool has_off = off_hex.length() == 6;
-            bool has_sensor = sensor_hex.length() == 6;
+            bool has_sensor_color = sensor_hex.length() == 6;
             if (has_on) on_val = strtoul(on_hex.c_str(), nullptr, 16);
             if (has_off) off_val = strtoul(off_hex.c_str(), nullptr, 16);
-            if (has_sensor) sensor_val = strtoul(sensor_hex.c_str(), nullptr, 16);
+            if (has_sensor_color) sensor_val = strtoul(sensor_hex.c_str(), nullptr, 16);
 
             for (int i = 0; i < NUM_SLOTS; i++) {
               lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
@@ -357,7 +357,7 @@ esphome:
               if (btn_type == "sensor") {
                 std::string sensor_id = cfg_field(cfg, 4);
                 if (sensor_id.empty()) continue;
-                if (has_sensor) {
+                if (has_sensor_color) {
                   lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
                     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
                 }
@@ -478,10 +478,10 @@ esphome:
             uint32_t on_val = 0, off_val = 0, sensor_val = 0;
             bool has_on = on_hex.length() == 6;
             bool has_off = off_hex.length() == 6;
-            bool has_sensor = sensor_hex.length() == 6;
+            bool has_sensor_color = sensor_hex.length() == 6;
             if (has_on) on_val = strtoul(on_hex.c_str(), nullptr, 16);
             if (has_off) off_val = strtoul(off_hex.c_str(), nullptr, 16);
-            if (has_sensor) sensor_val = strtoul(sensor_hex.c_str(), nullptr, 16);
+            if (has_sensor_color) sensor_val = strtoul(sensor_hex.c_str(), nullptr, 16);
 
             static bool has_sensor[9] = {};
             static bool has_icon_on[9] = {};
