@@ -39,6 +39,22 @@ text:
       sorting_group_id: sg_display
 
   - platform: template
+    name: "Sensor Card Color"
+    internal: true
+    id: sensor_card_color
+    optimistic: true
+    restore_value: true
+    initial_value: "313131"
+    min_length: 6
+    max_length: 6
+    mode: text
+    entity_category: config
+    icon: "mdi:palette-outline"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
     name: "Button Order"
     internal: true
     id: button_order

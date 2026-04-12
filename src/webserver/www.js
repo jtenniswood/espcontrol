@@ -398,6 +398,7 @@
     buttons: [],
     onColor: "FF8C00",
     offColor: "313131",
+    sensorColor: "313131",
     selectedSlots: [],
     lastClickedSlot: -1,
     activeTab: "screen",
@@ -997,6 +998,13 @@
     appearBody.appendChild(offColor);
     els.setOffColor = offColor;
 
+    appearBody.appendChild(fieldLabel("Sensor Color"));
+    var sensorColor = colorField("sp-set-sensor-color", "313131", function (hex) {
+      postText("Sensor Card Color", hex);
+    });
+    appearBody.appendChild(sensorColor);
+    els.setSensorColor = sensorColor;
+
     config.appendChild(makeCollapsibleCard("Appearance", appearBody, true));
 
     var blBody = document.createElement("div");
@@ -1459,7 +1467,7 @@
         var b = c.buttons[bIdx];
         var iconName = resolveIcon(b);
         var label = b.label || b.entity || "Configure";
-        var color = state.offColor;
+        var color = (b.type === "sensor") ? state.sensorColor : state.offColor;
         var previewTypeDef = !c.isSub ? (BUTTON_TYPES[b.type || ""] || null) : null;
         var typePreview = previewTypeDef && previewTypeDef.renderPreview
           ? previewTypeDef.renderPreview(b, { escHtml: escHtml })
@@ -2608,6 +2616,7 @@
       button_order: serializeGrid(state.grid),
       button_on_color: state.onColor,
       button_off_color: state.offColor,
+      sensor_card_color: state.sensorColor,
       buttons: state.buttons.map(function (b) {
         return {
           entity: b.entity, label: b.label, icon: b.icon,
@@ -2681,6 +2690,7 @@
 
         postText("Button On Color", data.button_on_color || "FF8C00");
         postText("Button Off Color", data.button_off_color || "313131");
+        postText("Sensor Card Color", data.sensor_card_color || "313131");
 
         var empty = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "" };
         var buttons, orderStr, spKeyMap;
@@ -2792,9 +2802,11 @@
         state.grid = parseOrder(orderStr);
         state.onColor = data.button_on_color || "FF8C00";
         state.offColor = data.button_off_color || "313131";
+        state.sensorColor = data.sensor_card_color || "313131";
 
         if (els.setOnColor && els.setOnColor._syncColor) els.setOnColor._syncColor(state.onColor);
         if (els.setOffColor && els.setOffColor._syncColor) els.setOffColor._syncColor(state.offColor);
+        if (els.setSensorColor && els.setSensorColor._syncColor) els.setSensorColor._syncColor(state.sensorColor);
 
         if (data.settings) {
           var s = data.settings;
@@ -2901,6 +2913,11 @@
       "text-button_off_color": function (val) {
         state.offColor = val;
         if (els.setOffColor && els.setOffColor._syncColor) els.setOffColor._syncColor(val);
+        renderPreview();
+      },
+      "text-sensor_card_color": function (val) {
+        state.sensorColor = val;
+        if (els.setSensorColor && els.setSensorColor._syncColor) els.setSensorColor._syncColor(val);
         renderPreview();
       },
       "switch-indoor_temp_enable": function (val, d) {
