@@ -519,11 +519,14 @@ esphome:
 
             std::string on_hex = id(button_on_color).state;
             std::string off_hex = id(button_off_color).state;
-            uint32_t on_val = 0, off_val = 0;
+            std::string sensor_hex = id(sensor_card_color).state;
+            uint32_t on_val = 0, off_val = 0, sensor_val = 0;
             bool has_on = on_hex.length() == 6;
             bool has_off = off_hex.length() == 6;
+            bool has_sensor = sensor_hex.length() == 6;
             if (has_on) on_val = strtoul(on_hex.c_str(), nullptr, 16);
             if (has_off) off_val = strtoul(off_hex.c_str(), nullptr, 16);
+            if (has_sensor) sensor_val = strtoul(sensor_hex.c_str(), nullptr, 16);
 
             auto correct_color = [](uint32_t rgb) -> uint32_t {
               uint8_t r = (rgb >> 16) & 0xFF;
@@ -533,6 +536,7 @@ esphome:
             };
             if (has_on) on_val = correct_color(on_val);
             if (has_off) off_val = correct_color(off_val);
+            if (has_sensor) sensor_val = correct_color(sensor_val);
 
             std::string order_str = id(button_order).state;
             int positions[NUM_SLOTS] = {};
