@@ -918,9 +918,6 @@ esphome:
               std::string cfg = slots[si].config->state;
               std::string btn_type = cfg_field(cfg, 6);
               if (btn_type != "subpage") continue;
-              bool sp_agg = cfg_field(cfg, 3) == "agg";
-              int *on_count = sp_agg ? new int(0) : nullptr;
-              lv_obj_t *parent_btn = sp_agg ? slots[si].btn : nullptr;
               std::string sp_cfg = sp_configs[si]->state + sp_ext_configs[si]->state;
               if (sp_cfg.empty()) continue;
 
@@ -1087,22 +1084,13 @@ esphome:
                   }
 
                   lv_obj_t *bp = sb_btn;
-                  int *oc = on_count;
-                  lv_obj_t *pb = parent_btn;
                   api::global_api_server->subscribe_home_assistant_state(
                     sb.entity, {},
-                    std::function<void(const std::string &)>([bp, oc, pb](const std::string &state) {
+                    std::function<void(const std::string &)>([bp](const std::string &state) {
                       bool on = state == "on" || state == "open" || state == "playing" ||
                                 state == "home" || state == "unlocked";
-                      bool was_on = lv_obj_has_state(bp, LV_STATE_CHECKED);
                       if (on) lv_obj_add_state(bp, LV_STATE_CHECKED);
                       else lv_obj_clear_state(bp, LV_STATE_CHECKED);
-                      if (oc) {
-                        if (on && !was_on) (*oc)++;
-                        else if (!on && was_on) (*oc)--;
-                        if (*oc > 0) lv_obj_add_state(pb, LV_STATE_CHECKED);
-                        else lv_obj_clear_state(pb, LV_STATE_CHECKED);
-                      }
                     })
                   );
 
