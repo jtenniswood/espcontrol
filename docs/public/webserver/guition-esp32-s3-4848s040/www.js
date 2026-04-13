@@ -285,6 +285,7 @@
     ".sp-btn-double{grid-row:span 2}" +
     ".sp-btn-double .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
     ".sp-btn-double .sp-btn-label-row .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+    ".sp-btn-wide{grid-column:span 2}" +
     ".sp-empty-cell{border:2px dashed rgba(255,255,255,.15);background:transparent;" +
     "border-radius:var(--empty-r);display:flex;align-items:center;justify-content:center;" +
     "cursor:pointer;transition:border-color .2s}" +
@@ -488,6 +489,7 @@
     "overflow:hidden;word-break:break-word;min-height:0}" +
     ".sp-back-btn.sp-btn-double{grid-row:span 2}" +
     ".sp-back-btn.sp-btn-double .sp-btn-label{-webkit-line-clamp:var(--back-lines-dbl)}" +
+    ".sp-back-btn.sp-btn-wide{grid-column:span 2}" +
 
     ".sp-btn-label-row{display:flex;align-items:baseline;width:100%;overflow:hidden}" +
     ".sp-btn-label-row .sp-btn-label{flex:1;min-width:0}" +
@@ -604,11 +606,14 @@
     for (var i = 0; i < parts.length && i < NUM_SLOTS; i++) {
       var s = parts[i].trim();
       if (!s) continue;
-      var dbl = s.charAt(s.length - 1) === "d";
+      var last = s.charAt(s.length - 1);
+      var dbl = last === "d";
+      var wide = last === "w";
       var n = parseInt(s, 10);
       if (n >= 1 && n <= NUM_SLOTS && !isNaN(n)) {
         grid[i] = n;
         if (dbl) state.sizes[n] = 2;
+        else if (wide) state.sizes[n] = 3;
       }
     }
     applySpans(grid, state.sizes, NUM_SLOTS);
@@ -633,6 +638,25 @@
         }
         grid[below] = -1;
       }
+      if ((grid[i] > 0 || grid[i] === -2) && sizes[grid[i]] === 3) {
+        var right = i + 1;
+        if (right >= maxSlots || right % GRID_COLS === 0) {
+          delete sizes[grid[i]];
+          continue;
+        }
+        if (grid[right] > 0 || grid[right] === -2) {
+          var displaced = grid[right];
+          var placed = false;
+          for (var j = 0; j < maxSlots; j++) {
+            if (grid[j] === 0) { grid[j] = displaced; placed = true; break; }
+          }
+          if (!placed) {
+            delete sizes[grid[i]];
+            continue;
+          }
+        }
+        grid[right] = -1;
+      }
     }
   }
 
@@ -644,7 +668,8 @@
     if (last < 0) return "";
     return grid.slice(0, last + 1).map(function (slot) {
       if (slot <= 0) return "";
-      return slot + (state.sizes[slot] === 2 ? "d" : "");
+      var sz = state.sizes[slot];
+      return slot + (sz === 2 ? "d" : sz === 3 ? "w" : "");
     }).join(",");
   }
 
@@ -812,22 +837,27 @@
       var hasBack = false;
       for (var i = 0; i < sp.order.length; i++) {
         var t = sp.order[i];
-        if (t === "B" || t === "Bd") { hasBack = true; break; }
+        if (t === "B" || t === "Bd" || t === "Bw") { hasBack = true; break; }
       }
       if (hasBack) {
         for (var i = 0; i < sp.order.length && i < NUM_SLOTS; i++) {
           var s = sp.order[i];
           if (!s) continue;
-          if (s === "B" || s === "Bd") {
+          if (s === "B" || s === "Bd" || s === "Bw") {
             grid[i] = -2;
-            if (s === "Bd") sp.sizes[-2] = 2; else delete sp.sizes[-2];
+            if (s === "Bd") sp.sizes[-2] = 2;
+            else if (s === "Bw") sp.sizes[-2] = 3;
+            else delete sp.sizes[-2];
             continue;
           }
-          var dbl = s.charAt(s.length - 1) === "d";
+          var last = s.charAt(s.length - 1);
+          var dbl = last === "d";
+          var wide = last === "w";
           var n = parseInt(s, 10);
           if (n >= 1 && n <= sp.buttons.length && !isNaN(n)) {
             grid[i] = n;
             if (dbl) sp.sizes[n] = 2;
+            else if (wide) sp.sizes[n] = 3;
           }
         }
       } else {
@@ -836,11 +866,14 @@
         for (var i = 0; i < sp.order.length && i + 1 < NUM_SLOTS; i++) {
           var s = sp.order[i];
           if (!s) continue;
-          var dbl = s.charAt(s.length - 1) === "d";
+          var last = s.charAt(s.length - 1);
+          var dbl = last === "d";
+          var wide = last === "w";
           var n = parseInt(s, 10);
           if (n >= 1 && n <= sp.buttons.length && !isNaN(n)) {
             grid[i + 1] = n;
             if (dbl) sp.sizes[n] = 2;
+            else if (wide) sp.sizes[n] = 3;
           }
         }
       }
@@ -863,11 +896,13 @@
     var order = [];
     for (var i = 0; i <= last; i++) {
       if (grid[i] === -2) {
-        order.push(sp.sizes[-2] === 2 ? "Bd" : "B");
+        var bsz = sp.sizes[-2];
+        order.push(bsz === 2 ? "Bd" : bsz === 3 ? "Bw" : "B");
       } else if (grid[i] <= 0) {
         order.push("");
       } else {
-        order.push(grid[i] + (sp.sizes[grid[i]] === 2 ? "d" : ""));
+        var ssz = sp.sizes[grid[i]];
+        order.push(grid[i] + (ssz === 2 ? "d" : ssz === 3 ? "w" : ""));
       }
     }
     return order;
@@ -1559,7 +1594,8 @@
 
       if (slot === -2) {
         var backBtn = document.createElement("div");
-        backBtn.className = "sp-back-btn" + (c.sizes[-2] === 2 ? " sp-btn-double" : "");
+        var bkSz = c.sizes[-2];
+        backBtn.className = "sp-back-btn" + (bkSz === 2 ? " sp-btn-double" : bkSz === 3 ? " sp-btn-wide" : "");
         backBtn.innerHTML =
           '<span class="sp-btn-icon mdi mdi-chevron-left"></span>' +
           '<span class="sp-btn-label">Back</span>';
@@ -1580,8 +1616,9 @@
           : null;
 
         var btn = document.createElement("div");
+        var slotSz = c.sizes[slot];
         btn.className = "sp-btn" +
-          (c.sizes[slot] === 2 ? " sp-btn-double" : "") +
+          (slotSz === 2 ? " sp-btn-double" : slotSz === 3 ? " sp-btn-wide" : "") +
           (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
         btn.style.backgroundColor = "#" + (color.length === 6 ? color : "313131");
         btn.draggable = true;
@@ -2040,6 +2077,8 @@
     if (c.grid[pos] === -1) {
       var above = pos - GRID_COLS;
       if (above >= 0 && (c.grid[above] > 0 || c.grid[above] === -2) && c.sizes[c.grid[above]] === 2) return above;
+      var left = pos - 1;
+      if (pos % GRID_COLS !== 0 && left >= 0 && (c.grid[left] > 0 || c.grid[left] === -2) && c.sizes[c.grid[left]] === 3) return left;
     }
     return pos;
   }
@@ -2081,6 +2120,9 @@
     grid[fromPos] = targetSlot;
     applySpans(grid, c.sizes, c.maxSlots);
     if (c.sizes[movingSlot] === 2 && toPos + GRID_COLS >= c.maxSlots) {
+      delete c.sizes[movingSlot];
+    }
+    if (c.sizes[movingSlot] === 3 && (toPos + 1 >= c.maxSlots || (toPos + 1) % GRID_COLS === 0)) {
       delete c.sizes[movingSlot];
     }
     if (c.isSub) {
@@ -2343,7 +2385,8 @@
       type: src.type || "",
     };
 
-    if (state.sizes[srcSlot] === 2) state.sizes[newSlot] = 2;
+    var srcSz = state.sizes[srcSlot];
+    if (srcSz) state.sizes[newSlot] = srcSz;
 
     var srcPos = state.grid.indexOf(srcSlot);
     var newPos = firstFreeCell(srcPos + 1);
@@ -2352,6 +2395,10 @@
     if (state.sizes[newSlot] === 2) {
       var belowNew = newPos + GRID_COLS;
       if (belowNew < NUM_SLOTS && state.grid[belowNew] === 0) state.grid[belowNew] = -1;
+    }
+    if (state.sizes[newSlot] === 3) {
+      var rightNew = newPos + 1;
+      if (rightNew < NUM_SLOTS && rightNew % GRID_COLS !== 0 && state.grid[rightNew] === 0) state.grid[rightNew] = -1;
     }
 
     if (src.type === "subpage" && state.subpages[srcSlot]) {
@@ -2374,6 +2421,9 @@
         c.grid[i] = 0;
         if (c.sizes[slot] === 2 && i + GRID_COLS < c.maxSlots && c.grid[i + GRID_COLS] === -1) {
           c.grid[i + GRID_COLS] = 0;
+        }
+        if (c.sizes[slot] === 3 && i + 1 < c.maxSlots && c.grid[i + 1] === -1) {
+          c.grid[i + 1] = 0;
         }
         break;
       }
@@ -2409,6 +2459,9 @@
       if (slots.indexOf(c.grid[i]) !== -1) {
         if (c.sizes[c.grid[i]] === 2 && i + GRID_COLS < c.maxSlots && c.grid[i + GRID_COLS] === -1) {
           c.grid[i + GRID_COLS] = 0;
+        }
+        if (c.sizes[c.grid[i]] === 3 && i + 1 < c.maxSlots && c.grid[i + 1] === -1) {
+          c.grid[i + 1] = 0;
         }
         c.grid[i] = 0;
       }
@@ -2497,6 +2550,7 @@
       }
 
       var isDbl = c.sizes[slot] === 2;
+      var isWide = c.sizes[slot] === 3;
       addCtxItem("arrow-expand-vertical", isDbl ? "Single Height" : "Double Height", function () {
         var slotPos = c.grid.indexOf(slot);
         var belowPos = slotPos + GRID_COLS;
@@ -2505,6 +2559,10 @@
           if (belowPos < c.maxSlots && c.grid[belowPos] === -1) c.grid[belowPos] = 0;
         } else {
           if (belowPos >= c.maxSlots) return;
+          if (isWide) {
+            var rightPos = slotPos + 1;
+            if (rightPos < c.maxSlots && c.grid[rightPos] === -1) c.grid[rightPos] = 0;
+          }
           if (c.grid[belowPos] > 0) {
             if (c.isSub) return;
             var displaced = c.grid[belowPos];
@@ -2514,6 +2572,38 @@
           }
           c.sizes[slot] = 2;
           c.grid[belowPos] = -1;
+        }
+        if (c.isSub) {
+          var sp = getSubpage(state.editingSubpage);
+          sp.order = serializeSubpageGrid(sp);
+          saveSubpageConfig(state.editingSubpage);
+        } else {
+          postText("Button Order", serializeGrid(state.grid));
+        }
+        renderPreview();
+        renderButtonSettings();
+      });
+      addCtxItem("arrow-expand-horizontal", isWide ? "Single Width" : "Double Wide", function () {
+        var slotPos = c.grid.indexOf(slot);
+        var rightPos = slotPos + 1;
+        if (isWide) {
+          delete c.sizes[slot];
+          if (rightPos < c.maxSlots && c.grid[rightPos] === -1) c.grid[rightPos] = 0;
+        } else {
+          if (rightPos >= c.maxSlots || rightPos % GRID_COLS === 0) return;
+          if (isDbl) {
+            var belowPos = slotPos + GRID_COLS;
+            if (belowPos < c.maxSlots && c.grid[belowPos] === -1) c.grid[belowPos] = 0;
+          }
+          if (c.grid[rightPos] > 0) {
+            if (c.isSub) return;
+            var displaced = c.grid[rightPos];
+            c.grid[rightPos] = 0;
+            var freeCell = firstFreeCell(rightPos + 1);
+            if (freeCell >= 0) c.grid[freeCell] = displaced;
+          }
+          c.sizes[slot] = 3;
+          c.grid[rightPos] = -1;
         }
         if (c.isSub) {
           var sp = getSubpage(state.editingSubpage);
@@ -2545,6 +2635,7 @@
     ctxMenu.className = "sp-ctx-menu";
     var sp = getSubpage(state.editingSubpage);
     var isDbl = sp.sizes[-2] === 2;
+    var isWide = sp.sizes[-2] === 3;
     addCtxItem("arrow-expand-vertical", isDbl ? "Single Height" : "Double Height", function () {
       var backPos = sp.grid.indexOf(-2);
       var belowPos = backPos + GRID_COLS;
@@ -2553,6 +2644,10 @@
         if (belowPos < NUM_SLOTS && sp.grid[belowPos] === -1) sp.grid[belowPos] = 0;
       } else {
         if (belowPos >= NUM_SLOTS) return;
+        if (isWide) {
+          var rightPos = backPos + 1;
+          if (rightPos < NUM_SLOTS && sp.grid[rightPos] === -1) sp.grid[rightPos] = 0;
+        }
         if (sp.grid[belowPos] > 0) {
           var displaced = sp.grid[belowPos];
           sp.grid[belowPos] = 0;
@@ -2562,6 +2657,33 @@
         }
         sp.sizes[-2] = 2;
         sp.grid[belowPos] = -1;
+      }
+      sp.order = serializeSubpageGrid(sp);
+      saveSubpageConfig(state.editingSubpage);
+      renderPreview();
+      renderButtonSettings();
+    });
+    addCtxItem("arrow-expand-horizontal", isWide ? "Single Width" : "Double Wide", function () {
+      var backPos = sp.grid.indexOf(-2);
+      var rightPos = backPos + 1;
+      if (isWide) {
+        delete sp.sizes[-2];
+        if (rightPos < NUM_SLOTS && sp.grid[rightPos] === -1) sp.grid[rightPos] = 0;
+      } else {
+        if (rightPos >= NUM_SLOTS || rightPos % GRID_COLS === 0) return;
+        if (isDbl) {
+          var belowPos = backPos + GRID_COLS;
+          if (belowPos < NUM_SLOTS && sp.grid[belowPos] === -1) sp.grid[belowPos] = 0;
+        }
+        if (sp.grid[rightPos] > 0) {
+          var displaced = sp.grid[rightPos];
+          sp.grid[rightPos] = 0;
+          for (var j = 0; j < NUM_SLOTS; j++) {
+            if (sp.grid[j] === 0) { sp.grid[j] = displaced; break; }
+          }
+        }
+        sp.sizes[-2] = 3;
+        sp.grid[rightPos] = -1;
       }
       sp.order = serializeSubpageGrid(sp);
       saveSubpageConfig(state.editingSubpage);
@@ -2649,10 +2771,15 @@
         icon_on: e.icon_on, sensor: e.sensor, unit: e.unit, type: e.type || "",
       };
       if (e.size === 2) state.sizes[newSlot] = 2;
+      else if (e.size === 3) state.sizes[newSlot] = 3;
       state.grid[cell] = newSlot;
       if (e.size === 2) {
         var below = cell + GRID_COLS;
         if (below < NUM_SLOTS && state.grid[below] === 0) state.grid[below] = -1;
+      }
+      if (e.size === 3) {
+        var right = cell + 1;
+        if (right < NUM_SLOTS && right % GRID_COLS !== 0 && state.grid[right] === 0) state.grid[right] = -1;
       }
       if (e.subpageConfig) {
         var spCopy = parseSubpageConfig(e.subpageConfig);
@@ -2694,10 +2821,15 @@
         icon_on: e.icon_on, sensor: e.sensor, unit: e.unit,
       };
       if (e.size === 2) sp.sizes[newSlot] = 2;
+      else if (e.size === 3) sp.sizes[newSlot] = 3;
       sp.grid[cell] = newSlot;
       if (e.size === 2) {
         var below = cell + GRID_COLS;
         if (below < maxPos && sp.grid[below] === 0) sp.grid[below] = -1;
+      }
+      if (e.size === 3) {
+        var right = cell + 1;
+        if (right < maxPos && right % GRID_COLS !== 0 && sp.grid[right] === 0) sp.grid[right] = -1;
       }
       lastSlot = newSlot;
     }
@@ -2809,18 +2941,20 @@
           for (var j = 0; j < origParts.length; j++) {
             var tok = origParts[j].trim();
             if (!tok) continue;
-            var dbl = tok.charAt(tok.length - 1) === "d";
+            var lastCh = tok.charAt(tok.length - 1);
+            var dbl = lastCh === "d";
+            var wide = lastCh === "w";
             var num = parseInt(tok, 10);
             if (isNaN(num) || num < 1 || num > importedCount || seen[num]) continue;
             seen[num] = true;
-            usedSlots.push({ oldSlot: num, isDouble: dbl });
+            usedSlots.push({ oldSlot: num, isDouble: dbl, isWide: wide });
           }
           for (var j = 0; j < importedCount; j++) {
             var sn = j + 1;
             if (seen[sn]) continue;
             var bb = data.buttons[j];
             if (bb.entity || bb.label || bb.type) {
-              usedSlots.push({ oldSlot: sn, isDouble: false });
+              usedSlots.push({ oldSlot: sn, isDouble: false, isWide: false });
             }
           }
 
@@ -2833,6 +2967,7 @@
             slotMap[usedSlots[j].oldSlot] = ns;
             buttons.push(data.buttons[usedSlots[j].oldSlot - 1]);
             if (usedSlots[j].isDouble) newSizes[ns] = 2;
+            else if (usedSlots[j].isWide) newSizes[ns] = 3;
           }
           for (var j = limit; j < NUM_SLOTS; j++) buttons.push(empty);
 
@@ -2842,12 +2977,19 @@
           for (var j = 0; j < limit && pos < NUM_SLOTS; j++) {
             var ns = j + 1;
             var isD = newSizes[ns] === 2;
+            var isW = newSizes[ns] === 3;
             var row = Math.floor(pos / GRID_COLS);
             if (isD && row >= GRID_ROWS - 1) { isD = false; delete newSizes[ns]; }
+            var col = pos % GRID_COLS;
+            if (isW && col >= GRID_COLS - 1) { isW = false; delete newSizes[ns]; }
             newGrid[pos] = ns;
             if (isD) {
               var bp = pos + GRID_COLS;
               if (bp < NUM_SLOTS) newGrid[bp] = -1;
+            }
+            if (isW) {
+              var rp = pos + 1;
+              if (rp < NUM_SLOTS) newGrid[rp] = -1;
             }
             pos++;
             while (pos < NUM_SLOTS && newGrid[pos] === -1) pos++;
