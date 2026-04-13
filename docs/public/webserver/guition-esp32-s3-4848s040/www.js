@@ -2039,7 +2039,7 @@
       sensorSection.appendChild(sensorInp);
       sensorSection.appendChild(fieldLabel("Unit", idPrefix + "unit"));
       var unitInp = textInput(idPrefix + "unit", b.unit, "e.g. %");
-      unitInp.className = "sp-input sp-input--narrow";
+      unitInp.className = "sp-input";
       sensorSection.appendChild(unitInp);
       var sensorHint = document.createElement("div");
       sensorHint.className = "sp-field-hint";
