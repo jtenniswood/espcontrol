@@ -192,7 +192,7 @@
     allowInSubpage: false,
     labelPlaceholder: "e.g. Lighting",
     onSelect: function (b) {
-      b.entity = ""; b.sensor = ""; b.unit = ""; b.icon_on = "Auto";
+      b.entity = ""; b.sensor = ""; b.unit = ""; b.icon_on = "agg";
     },
     renderSettings: function (panel, b, slot, helpers) {
       panel.appendChild(helpers.makeIconPicker(
@@ -203,6 +203,12 @@
           renderPreview();
         }
       ));
+      var stateToggle = toggleRow("Show State", helpers.idPrefix + "show-state", b.icon_on === "agg");
+      stateToggle.input.addEventListener("change", function () {
+        b.icon_on = this.checked ? "agg" : "Auto";
+        helpers.saveField("icon_on", b.icon_on);
+      });
+      panel.appendChild(stateToggle.row);
       var configBtn = document.createElement("button");
       configBtn.className = "sp-action-btn";
       configBtn.style.background = "var(--accent)";
