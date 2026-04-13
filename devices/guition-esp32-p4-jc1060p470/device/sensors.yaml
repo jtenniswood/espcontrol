@@ -920,6 +920,7 @@ esphome:
               std::string cfg = slots[si].config->state;
               std::string btn_type = cfg_field(cfg, 6);
               if (btn_type != "subpage") continue;
+              bool sp_indicator = cfg_field(cfg, 4) == "indicator";
               std::string sp_cfg = sp_configs[si]->state + sp_ext_configs[si]->state;
               if (sp_cfg.empty()) continue;
 
@@ -1096,27 +1097,29 @@ esphome:
                     })
                   );
 
-                  lv_obj_t *parent_btn = slots[si].btn;
-                  int parent_idx = si;
-                  bool *child_was_on = new bool(false);
-                  api::global_api_server->subscribe_home_assistant_state(
-                    sb.entity, {},
-                    std::function<void(const std::string &)>([parent_btn, parent_idx, child_was_on](const std::string &state) {
-                      bool is_on = state == "on" || state == "open" || state == "playing" ||
-                                   state == "home" || state == "unlocked";
-                      if (is_on && !*child_was_on) {
-                        sp_on_count[parent_idx]++;
-                        *child_was_on = true;
-                      } else if (!is_on && *child_was_on) {
-                        sp_on_count[parent_idx]--;
-                        *child_was_on = false;
-                      }
-                      if (sp_on_count[parent_idx] > 0)
-                        lv_obj_add_state(parent_btn, LV_STATE_CHECKED);
-                      else
-                        lv_obj_clear_state(parent_btn, LV_STATE_CHECKED);
-                    })
-                  );
+                  if (sp_indicator) {
+                    lv_obj_t *parent_btn = slots[si].btn;
+                    int parent_idx = si;
+                    bool *child_was_on = new bool(false);
+                    api::global_api_server->subscribe_home_assistant_state(
+                      sb.entity, {},
+                      std::function<void(const std::string &)>([parent_btn, parent_idx, child_was_on](const std::string &state) {
+                        bool is_on = state == "on" || state == "open" || state == "playing" ||
+                                     state == "home" || state == "unlocked";
+                        if (is_on && !*child_was_on) {
+                          sp_on_count[parent_idx]++;
+                          *child_was_on = true;
+                        } else if (!is_on && *child_was_on) {
+                          sp_on_count[parent_idx]--;
+                          *child_was_on = false;
+                        }
+                        if (sp_on_count[parent_idx] > 0)
+                          lv_obj_add_state(parent_btn, LV_STATE_CHECKED);
+                        else
+                          lv_obj_clear_state(parent_btn, LV_STATE_CHECKED);
+                      })
+                    );
+                  }
 
                   std::string *eid = new std::string(sb.entity);
                   lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
