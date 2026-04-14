@@ -299,13 +299,13 @@ inline lv_obj_t *setup_light_slider(lv_obj_t *btn, uint32_t on_color) {
     static_cast<lv_style_selector_t>(LV_PART_KNOB));
   lv_obj_set_style_radius(slider, 2,
     static_cast<lv_style_selector_t>(LV_PART_KNOB));
-  lv_obj_set_style_pad_left(slider, 8,
+  lv_obj_set_style_pad_left(slider, -6,
     static_cast<lv_style_selector_t>(LV_PART_KNOB));
-  lv_obj_set_style_pad_right(slider, 8,
+  lv_obj_set_style_pad_right(slider, -6,
     static_cast<lv_style_selector_t>(LV_PART_KNOB));
-  lv_obj_set_style_pad_top(slider, -5,
+  lv_obj_set_style_pad_top(slider, -18,
     static_cast<lv_style_selector_t>(LV_PART_KNOB));
-  lv_obj_set_style_pad_bottom(slider, -5,
+  lv_obj_set_style_pad_bottom(slider, -18,
     static_cast<lv_style_selector_t>(LV_PART_KNOB));
 
   lv_obj_move_to_index(slider, 0);
