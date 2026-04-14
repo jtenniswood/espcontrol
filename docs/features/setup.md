@@ -22,7 +22,7 @@ Tap any empty space in the grid (shown as a dashed outline with a **+** icon). A
 
 ![Toggle card showing a Heater icon](/images/card-toggle.png)
 
-1. **Choose a type** — **Toggle** (the default) to control a device, **Subpage** to create a folder of extra cards, **[Button](/card-types/buttons)** to trigger Home Assistant automations with a single tap, or **[Sensor](/card-types/sensors)** to display a live reading.
+1. **Choose a type** — **Toggle** (the default) to control a device, **Subpage** to create a folder of extra cards, **[Button](/card-types/buttons)** to trigger Home Assistant automations with a single tap, **[Sensor](/card-types/sensors)** to display a live reading, **[Slider](/card-types/sliders)** to control light brightness, or **[Cover](/card-types/covers)** to control blinds and shutters.
 2. **Pick the device** you want to control by entering its Home Assistant entity name (for example, `light.living_room` or `switch.garden_lights`). You can find these under **Settings > Devices & Services** in Home Assistant. Subpage buttons don't need a device name.
 3. **Choose an icon** — type to search, or select **Auto** to let the panel pick one based on the device type.
 4. **Set a label** (optional). If left blank the button uses the device's friendly name from Home Assistant.
@@ -32,6 +32,10 @@ Tap any empty space in the grid (shown as a dashed outline with a **+** icon). A
 **[Button](/card-types/buttons)** — a momentary button that fires an event to Home Assistant for use as an automation trigger. See [Buttons](/card-types/buttons) for details.
 
 **[Sensor](/card-types/sensors)** — displays a live reading from a Home Assistant sensor entity. See [Sensors](/card-types/sensors) for details.
+
+**[Slider](/card-types/sliders)** — controls light brightness with a draggable fill bar. See [Sliders](/card-types/sliders) for details.
+
+**[Cover](/card-types/covers)** — controls blinds, shutters, and garage doors with a position slider. See [Covers](/card-types/covers) for details.
 
 ### When Entity On
 

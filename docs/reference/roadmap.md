@@ -14,13 +14,9 @@ Currently every button is either a **Toggle** (tap to switch a device on/off) or
 
 | Button type | Description |
 | --- | --- |
-| **Volume control** | Slider or +/− buttons for media player volume |
 | **Thermostat** | Temperature set-point with up/down adjustment and current reading |
 | **Media player** | Play, pause, skip, and source controls for media devices |
-| **Sensor display** | Dedicated read-only tile showing live sensor data (temperature, humidity, power, etc.) |
-| **Cover control** | Open, close, and position slider for blinds, shutters, and garage doors |
 | **Fan control** | Speed steps or a slider with an optional oscillation toggle |
-| **Scene / script** | One-tap trigger for Home Assistant scenes or scripts (no on/off state) |
 
 These are planned directions, not commitments — the order and scope will depend on community feedback. If there's a button type you'd like to see, open a feature request on GitHub.
 
