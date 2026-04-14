@@ -161,6 +161,7 @@ export default defineConfig({
           { text: 'Subpages', link: '/features/subpages' },
           { text: 'Appearance', link: '/features/appearance' },
           { text: 'Temperature', link: '/features/temperature' },
+          { text: 'Idle', link: '/features/idle' },
           { text: 'Screensaver', link: '/features/screensaver' },
           { text: 'Backlight', link: '/features/backlight' },
           { text: 'Backup', link: '/features/backup' },
