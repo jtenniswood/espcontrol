@@ -81,7 +81,7 @@ jobs:
                 "ota": {
                   "path": "${{ matrix.slug }}.ota.bin",
                   "md5": "${OTA_MD5}",
-                  "release_url": "https://github.com/jtenniswood/espcontrol/releases/tag/${VERSION}"
+                  "release_url": "https://github.com/snevs/espcontrol/releases/tag/${VERSION}"
                 }
               }
             ]
