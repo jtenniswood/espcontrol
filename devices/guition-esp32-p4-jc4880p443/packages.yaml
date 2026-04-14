@@ -33,19 +33,13 @@ packages:
   colors:          !include ../../common/config/colors.yaml
   button_order:    !include ../../common/config/button_order.yaml
   display_config:  !include ../../common/config/display.yaml
-  # Per-button entity/label/icon (12 slots — 4x3 grid)
+  # Per-button entity/label/icon (6 slots — 2x3 grid)
   btn_1:           !include { file: ../../common/config/button_template.yaml, vars: { num: "1" } }
   btn_2:           !include { file: ../../common/config/button_template.yaml, vars: { num: "2" } }
   btn_3:           !include { file: ../../common/config/button_template.yaml, vars: { num: "3" } }
   btn_4:           !include { file: ../../common/config/button_template.yaml, vars: { num: "4" } }
   btn_5:           !include { file: ../../common/config/button_template.yaml, vars: { num: "5" } }
   btn_6:           !include { file: ../../common/config/button_template.yaml, vars: { num: "6" } }
-  btn_7:           !include { file: ../../common/config/button_template.yaml, vars: { num: "7" } }
-  btn_8:           !include { file: ../../common/config/button_template.yaml, vars: { num: "8" } }
-  btn_9:           !include { file: ../../common/config/button_template.yaml, vars: { num: "9" } }
-  btn_10:          !include { file: ../../common/config/button_template.yaml, vars: { num: "10" } }
-  btn_11:          !include { file: ../../common/config/button_template.yaml, vars: { num: "11" } }
-  btn_12:          !include { file: ../../common/config/button_template.yaml, vars: { num: "12" } }
   # ---------------------------------------------------------------------------
   # Addons
   # ---------------------------------------------------------------------------

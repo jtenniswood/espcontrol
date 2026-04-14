@@ -9,7 +9,7 @@
 (function () {
   // __DEVICE_CONFIG_START__
   var DEVICE_ID = "guition-esp32-p4-jc4880p443";
-  var CFG = {"slots":12,"cols":3,"rows":4,"dragMode":"displace","dragAnimation":true,"screen":{"width":"66%","aspect":"480/800"},"topbar":{"height":7.5,"padding":"0.83cqw","fontSize":3.75},"grid":{"top":7.5,"left":1.04,"right":1.04,"bottom":0.83,"gap":2.08,"fr":"1fr"},"btn":{"radius":1.67,"padding":2.92,"iconSize":9.58,"labelSize":3.96,"labelLines":2,"labelLinesDouble":3},"emptyCell":{"radius":1.67},"sensorBadge":{"top":2.08,"right":2.08,"fontSize":3.33},"subpageBadge":{"bottom":2.08,"right":2.08,"fontSize":4},"backBtn":{"radius":1.67,"padding":2.92,"iconSize":9.58,"labelSize":3.96,"labelLines":2,"labelLinesDouble":3}};
+  var CFG = {"slots":6,"cols":3,"rows":2,"dragMode":"displace","dragAnimation":true,"screen":{"width":"66%","aspect":"480/800"},"topbar":{"height":7.5,"padding":"0.83cqw","fontSize":3.75},"grid":{"top":7.5,"left":1.04,"right":1.04,"bottom":0.83,"gap":2.08,"fr":"1fr"},"btn":{"radius":1.67,"padding":2.92,"iconSize":9.58,"labelSize":3.96,"labelLines":2,"labelLinesDouble":3},"emptyCell":{"radius":1.67},"sensorBadge":{"top":2.08,"right":2.08,"fontSize":3.33},"subpageBadge":{"bottom":2.08,"right":2.08,"fontSize":4},"backBtn":{"radius":1.67,"padding":2.92,"iconSize":9.58,"labelSize":3.96,"labelLines":2,"labelLinesDouble":3}};
   // __DEVICE_CONFIG_END__
   var NUM_SLOTS = CFG.slots;
   var GRID_COLS = CFG.cols;

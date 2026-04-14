@@ -6,9 +6,7 @@ description:
 
 # Sliders
 
-A slider card lets you control the brightness of a Home Assistant light entity by dragging a fill bar up or down (or left to right). Tapping the card toggles the light on or off.
-
-Sliders are ideal for dimmable lights, LED strips, or any light entity that supports brightness.
+A slider card lets you control the brightness of a Home Assistant light entity by dragging a fill bar up or down (or left to right). 
 
 <!-- ![Slider card showing a lightbulb icon with a brightness fill bar](/images/card-slider.png) -->
 
@@ -22,10 +20,9 @@ Sliders are ideal for dimmable lights, LED strips, or any light entity that supp
 
 ## How it works on the panel
 
-- **Tap** the card to toggle the light on or off.
 - **Drag** the slider to set the brightness from 0 to 100 percent. Releasing the slider sends the new brightness to Home Assistant.
 - A coloured **fill bar** shows the current brightness level in real time — it rises from the bottom in vertical mode or extends from the left in horizontal mode.
-- When the light is off the fill bar is empty. When the light turns on externally (from Home Assistant or another control), the fill bar updates automatically to reflect the current brightness.
+- When the light turns on externally (from Home Assistant or another control), the fill bar updates automatically to reflect the current brightness.
 
 ## Direction
 
@@ -41,7 +38,3 @@ Choose the direction that best fits your grid layout. Double-height cards work w
 Enable **Change Icon When On** to show a different icon while the light is on. For example, you could use an outline lightbulb when off and a filled lightbulb when on.
 
 When the light is off, the card reverts to the default icon.
-
-::: info Requires Home Assistant actions
-The panel must be allowed to perform Home Assistant actions for sliders to work. See [Home Assistant Actions](/getting-started/home-assistant-actions) for setup instructions.
-:::

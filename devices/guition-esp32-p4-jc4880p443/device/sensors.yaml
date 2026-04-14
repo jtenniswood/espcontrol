@@ -1,5 +1,5 @@
 # =============================================================================
-# SENSORS - Dynamic HA entity subscriptions (P4-4880 - 12 buttons, 3×4 grid)
+# SENSORS - Dynamic HA entity subscriptions (P4-4880 - 6 buttons, 3×2 grid)
 # =============================================================================
 # Uses shared C++ from button_grid.h and icons.h for parsing, icon lookup,
 # color handling, sensor cards, toggle visuals, and HA subscriptions.
@@ -26,8 +26,6 @@ esphome:
               esphome::text::Text *cfgs[] = {
                 id(button_1_config), id(button_2_config), id(button_3_config),
                 id(button_4_config), id(button_5_config), id(button_6_config),
-                id(button_7_config), id(button_8_config), id(button_9_config),
-                id(button_10_config), id(button_11_config), id(button_12_config),
               };
               for (auto *c : cfgs) { if (!c->state.empty()) { all_empty = false; break; } }
               if (all_empty) {
@@ -44,14 +42,8 @@ esphome:
               { id(button_4_config), id(button_4), id(button_4_icon_label), id(button_4_text_label), id(button_4_sensor_container), id(button_4_sensor_label), id(button_4_unit_label) },
               { id(button_5_config), id(button_5), id(button_5_icon_label), id(button_5_text_label), id(button_5_sensor_container), id(button_5_sensor_label), id(button_5_unit_label) },
               { id(button_6_config), id(button_6), id(button_6_icon_label), id(button_6_text_label), id(button_6_sensor_container), id(button_6_sensor_label), id(button_6_unit_label) },
-              { id(button_7_config), id(button_7), id(button_7_icon_label), id(button_7_text_label), id(button_7_sensor_container), id(button_7_sensor_label), id(button_7_unit_label) },
-              { id(button_8_config), id(button_8), id(button_8_icon_label), id(button_8_text_label), id(button_8_sensor_container), id(button_8_sensor_label), id(button_8_unit_label) },
-              { id(button_9_config), id(button_9), id(button_9_icon_label), id(button_9_text_label), id(button_9_sensor_container), id(button_9_sensor_label), id(button_9_unit_label) },
-              { id(button_10_config), id(button_10), id(button_10_icon_label), id(button_10_text_label), id(button_10_sensor_container), id(button_10_sensor_label), id(button_10_unit_label) },
-              { id(button_11_config), id(button_11), id(button_11_icon_label), id(button_11_text_label), id(button_11_sensor_container), id(button_11_sensor_label), id(button_11_unit_label) },
-              { id(button_12_config), id(button_12), id(button_12_icon_label), id(button_12_text_label), id(button_12_sensor_container), id(button_12_sensor_label), id(button_12_unit_label) },
             };
-            static constexpr int NUM_SLOTS = 12;
+            static constexpr int NUM_SLOTS = 6;
             static constexpr int COLS = 3;
 
             OrderResult parsed, order;
@@ -103,7 +95,7 @@ esphome:
 
         # Phase 2: HA subscriptions + subpage creation
         - lambda: |-
-            constexpr int NUM_SLOTS = 12;
+            constexpr int NUM_SLOTS = 6;
             constexpr int COLS = 3;
 
             static bool has_sensor[NUM_SLOTS] = {};
@@ -118,12 +110,6 @@ esphome:
               { id(button_4_config), id(button_4), id(button_4_icon_label), id(button_4_text_label), id(button_4_sensor_container), id(button_4_sensor_label), id(button_4_unit_label) },
               { id(button_5_config), id(button_5), id(button_5_icon_label), id(button_5_text_label), id(button_5_sensor_container), id(button_5_sensor_label), id(button_5_unit_label) },
               { id(button_6_config), id(button_6), id(button_6_icon_label), id(button_6_text_label), id(button_6_sensor_container), id(button_6_sensor_label), id(button_6_unit_label) },
-              { id(button_7_config), id(button_7), id(button_7_icon_label), id(button_7_text_label), id(button_7_sensor_container), id(button_7_sensor_label), id(button_7_unit_label) },
-              { id(button_8_config), id(button_8), id(button_8_icon_label), id(button_8_text_label), id(button_8_sensor_container), id(button_8_sensor_label), id(button_8_unit_label) },
-              { id(button_9_config), id(button_9), id(button_9_icon_label), id(button_9_text_label), id(button_9_sensor_container), id(button_9_sensor_label), id(button_9_unit_label) },
-              { id(button_10_config), id(button_10), id(button_10_icon_label), id(button_10_text_label), id(button_10_sensor_container), id(button_10_sensor_label), id(button_10_unit_label) },
-              { id(button_11_config), id(button_11), id(button_11_icon_label), id(button_11_text_label), id(button_11_sensor_container), id(button_11_sensor_label), id(button_11_unit_label) },
-              { id(button_12_config), id(button_12), id(button_12_icon_label), id(button_12_text_label), id(button_12_sensor_container), id(button_12_sensor_label), id(button_12_unit_label) },
             };
 
             bool has_on, has_off, has_sensor_color;
@@ -209,7 +195,7 @@ esphome:
 
             // --- Subpage creation ---
             static lv_coord_t sp_col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
-            static lv_coord_t sp_row_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+            static lv_coord_t sp_row_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
             const lv_font_t *sp_icon_fnt = lv_obj_get_style_text_font(slots[0].icon_lbl, LV_PART_MAIN);
 
             lv_obj_t *ref_btn = slots[0].btn;
@@ -221,14 +207,10 @@ esphome:
             esphome::text::Text *sp_configs[] = {
               id(subpage_1_config), id(subpage_2_config), id(subpage_3_config),
               id(subpage_4_config), id(subpage_5_config), id(subpage_6_config),
-              id(subpage_7_config), id(subpage_8_config), id(subpage_9_config),
-              id(subpage_10_config), id(subpage_11_config), id(subpage_12_config),
             };
             esphome::text::Text *sp_ext_configs[] = {
               id(subpage_1_config_ext), id(subpage_2_config_ext), id(subpage_3_config_ext),
               id(subpage_4_config_ext), id(subpage_5_config_ext), id(subpage_6_config_ext),
-              id(subpage_7_config_ext), id(subpage_8_config_ext), id(subpage_9_config_ext),
-              id(subpage_10_config_ext), id(subpage_11_config_ext), id(subpage_12_config_ext),
             };
 
             static int sp_on_count[NUM_SLOTS] = {};

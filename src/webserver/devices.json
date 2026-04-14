@@ -15,9 +15,9 @@
     "backBtn": { "radius": 0.78, "padding": 1.37, "iconSize": 4.69, "labelSize": 1.8, "labelLines": 2, "labelLinesDouble": 3 }
   },
   "guition-esp32-p4-jc4880p443": {
-    "slots": 12,
+    "slots": 6,
     "cols": 3,
-    "rows": 4,
+    "rows": 2,
     "dragMode": "displace",
     "dragAnimation": true,
     "screen": { "width": "66%", "aspect": "480/800" },
