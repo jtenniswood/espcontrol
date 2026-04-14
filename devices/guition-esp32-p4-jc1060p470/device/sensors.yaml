@@ -10,10 +10,10 @@
 globals:
   - id: indoor_temp
     type: float
-    initial_value: 'NAN'
+    initial_value: "NAN"
   - id: outdoor_temp
     type: float
-    initial_value: 'NAN'
+    initial_value: "NAN"
 
 esphome:
   on_boot:
@@ -89,7 +89,19 @@ esphome:
                 lv_obj_set_width(s.text_lbl, lv_pct(100));
               }
 
-              apply_button_colors(s.btn, has_on, on_val, has_off, off_val);
+              // Use per-button colors if specified, otherwise fall back to global colors
+              std::string off_color_str = cfg_field(cfg, 8);
+              std::string on_color_str = cfg_field(cfg, 9);
+              bool has_btn_off = !off_color_str.empty();
+              bool has_btn_on = !on_color_str.empty();
+              uint32_t btn_off_val = has_btn_off ? parse_hex_color(off_color_str, has_btn_off) : 0;
+              uint32_t btn_on_val = has_btn_on ? parse_hex_color(on_color_str, has_btn_on) : 0;
+
+              if (has_btn_off || has_btn_on) {
+                apply_button_colors(s.btn, has_btn_on, btn_on_val, has_btn_off, btn_off_val);
+              } else {
+                apply_button_colors(s.btn, has_on, on_val, has_off, off_val);
+              }
 
               std::string btn_type = cfg_field(cfg, 6);
               if (btn_type == "sensor") {
@@ -99,7 +111,8 @@ esphome:
                 continue;
               }
               if (btn_type == "slider") {
-                setup_slider_visual(s, cfg, has_on ? on_val : 0xFF8C00);
+                uint32_t slider_color = has_btn_on ? btn_on_val : (has_on ? on_val : 0xFF8C00);
+                setup_slider_visual(s, cfg, slider_color);
               } else {
                 setup_toggle_visual(s, cfg);
               }
