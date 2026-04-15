@@ -16,75 +16,75 @@
     var GRID_ROWS = CFG.rows;
 
     // --- GENERATED:ICONS START ---
-    var ICON_EXCEPTIONS = {
-        Auto: "cog",
-        Alarm: "bell-ring",
-        Application: "application-outline",
-        Clock: "clock-outline",
-        Doorbell: "doorbell-video",
-        Dryer: "tumble-dryer",
-        "EV Charger": "ev-station",
-        Gamepad: "gamepad-variant",
-        "Grid Export": "transmission-tower-export",
-        "Grid Import": "transmission-tower-import",
-        "Grid Off": "transmission-tower-off",
-        Heater: "radiator",
-        Humidifier: "air-humidifier",
-        "Humidity Alert": "water-percent-alert",
-        Key: "key-variant",
-        Lawnmower: "robot-mower",
-        "Outdoor Lamp": "coach-lamp",
-        Oven: "stove",
-        Package: "package-variant",
-        "Package Closed": "package-variant-closed",
-        Router: "router-wireless",
-        Security: "shield-home",
-        Shower: "shower-head",
-        Spotlight: "spotlight-beam",
-        Sun: "white-balance-sunny",
-        Table: "table-furniture",
-        Timer: "timer-outline",
-        "Wall Outlet": "power-socket",
-        Washer: "washing-machine",
-        "Water Heater": "water-boiler",
-        "Weather Night Cloudy": "weather-night-partly-cloudy",
-        Window: "window-open-variant",
-    };
-    var ICON_NAMES = [
-        "Account", "Air Conditioner", "Air Filter", "Air Purifier", "Alarm", "Alarm Light",
-        "Application", "Battery", "Battery 10%", "Battery 20%", "Battery 30%", "Battery 40%",
-        "Battery 50%", "Battery 60%", "Battery 70%", "Battery 80%", "Battery 90%", "Battery Alert",
-        "Battery Charging", "Battery Charging 100", "Battery Charging 70", "Battery High", "Battery Low", "Battery Medium",
-        "Battery Off", "Battery Outline", "Battery Unknown", "Bed", "Bell", "Blinds",
-        "Blinds Horizontal", "Blinds Horizontal Closed", "Blinds Open", "Bluetooth", "Broom", "Camera",
-        "Car Electric", "Cast", "CCTV", "Ceiling Fan", "Ceiling Light", "Chandelier",
-        "Clock", "Coffee Maker", "Current AC", "Current DC", "Curtains", "Curtains Closed",
-        "Desk Lamp", "Dishwasher", "Dog", "Door", "Door Open", "Doorbell",
-        "Dryer", "EV Charger", "Fan", "Fire", "Fireplace", "Flash",
-        "Floor Lamp", "Fountain", "Fridge", "Gamepad", "Garage", "Garage Open",
-        "Gate", "Gate Open", "Gesture Tap", "Gauge", "Gauge Empty", "Gauge Full",
-        "Gauge Low", "Grid Export", "Grid Import", "Grid Off", "Headphones", "Heater",
-        "Home", "Hot Tub", "Humidifier", "Humidity Alert", "Iron", "Kettle",
-        "Key", "Lamp", "LAN", "Lawnmower", "Leaf", "LED Strip",
-        "LED Strip Variant", "LED Strip Variant Off", "Light Switch", "Lightbulb", "Lightbulb Group", "Lightbulb Group Outline",
-        "Lightbulb Night", "Lightbulb Night Outline", "Lightbulb Off", "Lightbulb Outline", "Lightning Bolt", "Lock",
-        "Mailbox", "Message Video", "Meter Electric", "Meter Gas", "Microwave", "Monitor",
-        "Motion Sensor", "Movie Roll", "Music", "Outdoor Lamp", "Oven", "Package",
-        "Package Closed", "Pool", "Power", "Power Plug", "Printer", "Printer 3D",
-        "Projector", "Robot Vacuum", "Roller Shade", "Roller Shade Closed", "Router", "Router Network",
-        "Security", "Shower", "Smoke Detector", "Snowflake", "Snowflake Alert", "Snowflake Thermometer",
-        "Sofa", "Solar Panel", "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker",
-        "Spotlight", "Sprinkler", "String Lights", "Sun", "Table", "Television",
-        "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermostat", "Timer",
-        "Toilet", "Transmission Tower", "Trash Can", "Wall Outlet", "Washer", "Water",
-        "Water Heater", "Water Percent", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog",
-        "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night",
-        "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy",
-        "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny",
-        "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado",
-        "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check",
-        "Window",
-    ];
+  var ICON_EXCEPTIONS = {
+    Auto: "cog",
+    Alarm: "bell-ring",
+    Application: "application-outline",
+    Clock: "clock-outline",
+    Doorbell: "doorbell-video",
+    Dryer: "tumble-dryer",
+    "EV Charger": "ev-station",
+    Gamepad: "gamepad-variant",
+    "Grid Export": "transmission-tower-export",
+    "Grid Import": "transmission-tower-import",
+    "Grid Off": "transmission-tower-off",
+    Heater: "radiator",
+    Humidifier: "air-humidifier",
+    "Humidity Alert": "water-percent-alert",
+    Key: "key-variant",
+    Lawnmower: "robot-mower",
+    "Outdoor Lamp": "coach-lamp",
+    Oven: "stove",
+    Package: "package-variant",
+    "Package Closed": "package-variant-closed",
+    Router: "router-wireless",
+    Security: "shield-home",
+    Shower: "shower-head",
+    Spotlight: "spotlight-beam",
+    Sun: "white-balance-sunny",
+    Table: "table-furniture",
+    Timer: "timer-outline",
+    "Wall Outlet": "power-socket",
+    Washer: "washing-machine",
+    "Water Heater": "water-boiler",
+    "Weather Night Cloudy": "weather-night-partly-cloudy",
+    Window: "window-open-variant",
+  };
+  var ICON_NAMES = [
+    "Account", "Air Conditioner", "Air Filter", "Air Purifier", "Alarm", "Alarm Light",
+    "Application", "Battery", "Battery 10%", "Battery 20%", "Battery 30%", "Battery 40%",
+    "Battery 50%", "Battery 60%", "Battery 70%", "Battery 80%", "Battery 90%", "Battery Alert",
+    "Battery Charging", "Battery Charging 100", "Battery Charging 70", "Battery High", "Battery Low", "Battery Medium",
+    "Battery Off", "Battery Outline", "Battery Unknown", "Bed", "Bell", "Blinds",
+    "Blinds Horizontal", "Blinds Horizontal Closed", "Blinds Open", "Bluetooth", "Broom", "Camera",
+    "Car Electric", "Cast", "CCTV", "Ceiling Fan", "Ceiling Light", "Chandelier",
+    "Clock", "Coffee Maker", "Current AC", "Current DC", "Curtains", "Curtains Closed",
+    "Desk Lamp", "Dishwasher", "Dog", "Door", "Door Open", "Doorbell",
+    "Dryer", "EV Charger", "Fan", "Fire", "Fireplace", "Flash",
+    "Floor Lamp", "Fountain", "Fridge", "Gamepad", "Garage", "Garage Open",
+    "Gate", "Gate Open", "Gesture Tap", "Gauge", "Gauge Empty", "Gauge Full",
+    "Gauge Low", "Grid Export", "Grid Import", "Grid Off", "Headphones", "Heater",
+    "Home", "Hot Tub", "Humidifier", "Humidity Alert", "Iron", "Kettle",
+    "Key", "Lamp", "LAN", "Lawnmower", "Leaf", "LED Strip",
+    "LED Strip Variant", "LED Strip Variant Off", "Light Switch", "Lightbulb", "Lightbulb Group", "Lightbulb Group Outline",
+    "Lightbulb Night", "Lightbulb Night Outline", "Lightbulb Off", "Lightbulb Outline", "Lightning Bolt", "Lock",
+    "Mailbox", "Message Video", "Meter Electric", "Meter Gas", "Microwave", "Monitor",
+    "Motion Sensor", "Movie Roll", "Music", "Outdoor Lamp", "Oven", "Package",
+    "Package Closed", "Pool", "Power", "Power Plug", "Printer", "Printer 3D",
+    "Projector", "Robot Vacuum", "Roller Shade", "Roller Shade Closed", "Router", "Router Network",
+    "Security", "Shower", "Smoke Detector", "Snowflake", "Snowflake Alert", "Snowflake Thermometer",
+    "Sofa", "Solar Panel", "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker",
+    "Spotlight", "Sprinkler", "String Lights", "Sun", "Table", "Television",
+    "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermostat", "Timer",
+    "Toilet", "Transmission Tower", "Trash Can", "Wall Outlet", "Washer", "Water",
+    "Water Heater", "Water Percent", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog",
+    "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night",
+    "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy",
+    "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny",
+    "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado",
+    "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check",
+    "Window",
+  ];
     // --- GENERATED:ICONS END ---
 
     function iconSlug(name) {
@@ -97,15 +97,15 @@
 
     var DOMAIN_ICONS = {
         // --- GENERATED:DOMAIN_ICONS START ---
-        light: "lightbulb",
-        switch: "power-plug",
-        fan: "fan",
-        lock: "lock",
-        cover: "blinds-horizontal",
-        climate: "air-conditioner",
-        media_player: "speaker",
-        camera: "camera",
-        binary_sensor: "motion-sensor",
+    light: "lightbulb",
+    switch: "power-plug",
+    fan: "fan",
+    lock: "lock",
+    cover: "blinds-horizontal",
+    climate: "air-conditioner",
+    media_player: "speaker",
+    camera: "camera",
+    binary_sensor: "motion-sensor",
         // --- GENERATED:DOMAIN_ICONS END ---
     };
 
@@ -142,6 +142,7 @@
           renderPreview();
         }
       ));
+      helpers.appendColorSettings(panel, b, helpers.saveField);
     },
     renderPreview: function (b, helpers) {
       var label = b.label || "Button";
@@ -787,6 +788,8 @@
         _outdoorVal: null,
         indoorEntity: "",
         outdoorEntity: "",
+        temperatureDisplay: "Compact",
+        temperatureDisplayOptions: ["Compact", "Labeled"],
         presenceEntity: "",
         screensaverTimeout: 300,
         homeScreenTimeout: 60,
@@ -810,7 +813,7 @@
 
     for (var i = 0; i < NUM_SLOTS; i++) {
         state.grid.push(0);
-        state.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", off_color: "", on_color: "" });
+        state.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" });
     }
 
     var els = {};
@@ -1088,6 +1091,9 @@
                 sensor: f[4] || "",
                 unit: f[5] || "",
                 type: f[6] || "",
+                invert: f[7] || "",
+                off_color: f[8] || "",
+                on_color: f[9] || "",
             });
         }
         return { order: order, buttons: buttons };
@@ -1098,7 +1104,11 @@
         var out = sp.order.join(",");
         for (var i = 0; i < sp.buttons.length; i++) {
             var b = sp.buttons[i];
-            var fields = [b.entity || "", b.label || "", b.icon || "Auto", b.icon_on || "Auto", b.sensor || "", b.unit || "", b.type || ""];
+            var fields = [
+                b.entity || "", b.label || "", b.icon || "Auto", b.icon_on || "Auto",
+                b.sensor || "", b.unit || "", b.type || "", b.invert || "",
+                b.off_color || "", b.on_color || ""
+            ];
             while (fields.length > 1 && !fields[fields.length - 1]) fields.pop();
             if (fields.length > 1 && fields[fields.length - 1] === "Auto") {
                 while (fields.length > 1 && (fields[fields.length - 1] === "Auto" || !fields[fields.length - 1])) fields.pop();
@@ -1514,6 +1524,24 @@
         config.appendChild(makeCollapsibleCard("Brightness", blBody, true));
 
         var tempBody = document.createElement("div");
+
+        tempBody.appendChild(fieldLabel("Display"));
+        var tempDisplay = document.createElement("select");
+        tempDisplay.className = "sp-select";
+        state.temperatureDisplayOptions.forEach(function (opt) {
+            var o = document.createElement("option");
+            o.value = opt;
+            o.textContent = opt;
+            tempDisplay.appendChild(o);
+        });
+        tempDisplay.value = state.temperatureDisplay;
+        tempDisplay.addEventListener("change", function () {
+            state.temperatureDisplay = this.value;
+            updateTempPreview();
+            postSelect("Temperature Display", this.value);
+        });
+        tempBody.appendChild(tempDisplay);
+        els.setTemperatureDisplay = tempDisplay;
 
         var outdoor = createEntityToggleSection("Outdoor Temperature", "sp-set-outdoor-toggle", state._outdoorOn,
             "Outdoor Temp Enable", "Outdoor Temp Entity", "Outdoor Temp Entity", "sensor.outdoor_temperature");
@@ -1932,6 +1960,15 @@
         main.innerHTML = "";
         var c = ctx();
 
+        function resolvePreviewOffColor(button) {
+            if (button.type === "sensor") return state.sensorColor;
+            return button.off_color || state.offColor;
+        }
+
+        function resolvePreviewOnColor(button) {
+            return button.on_color || state.onColor;
+        }
+
         if (c.isSub) {
             if (els.previewHint) els.previewHint.style.display = "none";
         } else {
@@ -1960,7 +1997,7 @@
                 var b = c.buttons[bIdx];
                 var iconName = resolveIcon(b);
                 var label = b.label || b.entity || "Configure";
-                var color = (b.type === "sensor") ? state.sensorColor : state.offColor;
+                var color = resolvePreviewOffColor(b);
                 var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
                 if (previewTypeDef && c.isSub && !previewTypeDef.allowInSubpage) previewTypeDef = null;
                 var typePreview = previewTypeDef && previewTypeDef.renderPreview
@@ -1991,6 +2028,10 @@
                     sensorBadge +
                     iconHtml +
                     labelHtml;
+                if (b.type === "slider") {
+                    var previewFill = btn.querySelector(".sp-slider-fill");
+                    if (previewFill) previewFill.style.backgroundColor = "#" + (resolvePreviewOnColor(b).length === 6 ? resolvePreviewOnColor(b) : "FF8C00");
+                }
                 main.appendChild(btn);
             } else {
                 var empty = document.createElement("div");
@@ -2079,6 +2120,35 @@
             return icf;
         }
 
+        function appendColorSettings(panel, button, save) {
+            var colorsTitle = document.createElement("div");
+            colorsTitle.className = "sp-section-title";
+            colorsTitle.textContent = "Colors";
+            panel.appendChild(colorsTitle);
+
+            var offColorField = document.createElement("div");
+            offColorField.className = "sp-field";
+            offColorField.appendChild(fieldLabel("Off Color", idPrefix + "off-color"));
+            var offColorPicker = colorField(idPrefix + "off-color", button.off_color || "", function (hex) {
+                button.off_color = hex;
+                save("off_color", hex);
+                renderPreview();
+            });
+            offColorField.appendChild(offColorPicker);
+            panel.appendChild(offColorField);
+
+            var onColorField = document.createElement("div");
+            onColorField.className = "sp-field";
+            onColorField.appendChild(fieldLabel("On Color", idPrefix + "on-color"));
+            var onColorPicker = colorField(idPrefix + "on-color", button.on_color || "", function (hex) {
+                button.on_color = hex;
+                save("on_color", hex);
+                renderPreview();
+            });
+            onColorField.appendChild(onColorPicker);
+            panel.appendChild(onColorField);
+        }
+
         var typeDef = BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""];
         {
             var typeOpts = [];
@@ -2125,6 +2195,7 @@
 
         var typeHelpers = {
             makeIconPicker: makeIconPicker,
+            appendColorSettings: appendColorSettings,
             fieldLabel: fieldLabel,
             textInput: textInput,
             bindField: bindField,
@@ -2151,33 +2222,7 @@
                 renderPreview();
             }));
 
-            // Custom colors section
-            var colorsTitle = document.createElement("div");
-            colorsTitle.className = "sp-section-title";
-            colorsTitle.textContent = "Colors";
-            panel.appendChild(colorsTitle);
-
-            var offColorField = document.createElement("div");
-            offColorField.className = "sp-field";
-            offColorField.appendChild(fieldLabel("Off Color", idPrefix + "off-color"));
-            var offColorPicker = colorField(idPrefix + "off-color", b.off_color || "", function (hex) {
-                b.off_color = hex;
-                saveField("off_color", hex);
-                renderPreview();
-            });
-            offColorField.appendChild(offColorPicker);
-            panel.appendChild(offColorField);
-
-            var onColorField = document.createElement("div");
-            onColorField.className = "sp-field";
-            onColorField.appendChild(fieldLabel("On Color", idPrefix + "on-color"));
-            var onColorPicker = colorField(idPrefix + "on-color", b.on_color || "", function (hex) {
-                b.on_color = hex;
-                saveField("on_color", hex);
-                renderPreview();
-            });
-            onColorField.appendChild(onColorPicker);
-            panel.appendChild(onColorField);
+            appendColorSettings(panel, b, saveField);
 
             // When-on section
             var hasIconOn = b.icon_on && b.icon_on !== "Auto";
@@ -2792,7 +2837,7 @@
             var sp = getSubpage(state.editingSubpage);
             var newSlot = subpageFirstFreeSlot(sp);
             while (sp.buttons.length < newSlot) {
-                sp.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", off_color: "", on_color: "" });
+                sp.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" });
             }
             sp.grid[pos] = newSlot;
             sp.order = serializeSubpageGrid(sp);
@@ -2818,7 +2863,8 @@
         state.buttons[newSlot - 1] = {
             entity: src.entity, label: src.label, icon: src.icon,
             icon_on: src.icon_on, sensor: src.sensor, unit: src.unit,
-            type: src.type || "",
+            type: src.type || "", invert: src.invert || "",
+            off_color: src.off_color || "", on_color: src.on_color || "",
         };
 
         var srcSz = state.sizes[srcSlot];
@@ -2861,14 +2907,15 @@
         var sp = getSubpage(homeSlot);
         var newSlot = subpageFirstFreeSlot(sp);
         while (sp.buttons.length < newSlot) {
-            sp.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", off_color: "", on_color: "" });
+            sp.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" });
         }
 
         var src = sp.buttons[srcSlot - 1];
         sp.buttons[newSlot - 1] = {
             entity: src.entity, label: src.label, icon: src.icon,
             icon_on: src.icon_on, sensor: src.sensor, unit: src.unit,
-            type: src.type || "", off_color: src.off_color || "", on_color: src.on_color || "",
+            type: src.type || "", invert: src.invert || "",
+            off_color: src.off_color || "", on_color: src.on_color || "",
         };
 
         var srcSz = sp.sizes[srcSlot];
@@ -2926,14 +2973,14 @@
         if (c.isSub) {
             var sp = getSubpage(state.editingSubpage);
             if (slot >= 1 && slot <= sp.buttons.length) {
-                sp.buttons[slot - 1] = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "" };
+                sp.buttons[slot - 1] = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" };
             }
             sp.order = serializeSubpageGrid(sp);
             state.subpageLastClicked = -1;
             saveSubpageConfig(state.editingSubpage);
         } else {
             postText("Button Order", serializeGrid(state.grid));
-            state.buttons[slot - 1] = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "" };
+            state.buttons[slot - 1] = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" };
             delete state.subpages[slot];
             saveButtonConfig(slot);
             saveSubpageEntity(slot);
@@ -2966,14 +3013,14 @@
             var sp = getSubpage(state.editingSubpage);
             slots.forEach(function (slot) {
                 if (slot >= 1 && slot <= sp.buttons.length) {
-                    sp.buttons[slot - 1] = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "" };
+                    sp.buttons[slot - 1] = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" };
                 }
             });
             sp.order = serializeSubpageGrid(sp);
             saveSubpageConfig(state.editingSubpage);
         } else {
             slots.forEach(function (slot) {
-                state.buttons[slot - 1] = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "" };
+                state.buttons[slot - 1] = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" };
                 delete state.subpages[slot];
                 saveButtonConfig(slot);
                 saveSubpageEntity(slot);
@@ -3194,7 +3241,8 @@
         var entry = {
             entity: src.entity, label: src.label, icon: src.icon,
             icon_on: src.icon_on, sensor: src.sensor, unit: src.unit,
-            type: src.type || "", subpageConfig: null,
+            type: src.type || "", invert: src.invert || "",
+            off_color: src.off_color || "", on_color: src.on_color || "", subpageConfig: null,
             size: c.sizes[slot] || 1,
         };
         if (!c.isSub && src.type === "subpage" && state.subpages[slot]) {
@@ -3236,6 +3284,7 @@
             state.buttons[newSlot - 1] = {
                 entity: e.entity, label: e.label, icon: e.icon,
                 icon_on: e.icon_on, sensor: e.sensor, unit: e.unit, type: e.type || "",
+                invert: e.invert || "", off_color: e.off_color || "", on_color: e.on_color || "",
             };
             if (e.size === 4) state.sizes[newSlot] = 4;
             else if (e.size === 2) state.sizes[newSlot] = 2;
@@ -3284,13 +3333,14 @@
             if (cell < 0) break;
             var newSlot = subpageFirstFreeSlot(sp);
             while (sp.buttons.length < newSlot) {
-                sp.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", off_color: "", on_color: "" });
+                sp.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" });
             }
             var e = entries[i];
             sp.buttons[newSlot - 1] = {
                 entity: e.entity, label: e.label, icon: e.icon,
                 icon_on: e.icon_on, sensor: e.sensor, unit: e.unit,
-                type: e.type || "", off_color: e.off_color || "", on_color: e.on_color || "",
+                type: e.type || "", invert: e.invert || "",
+                off_color: e.off_color || "", on_color: e.on_color || "",
             };
             if (e.size === 4) sp.sizes[newSlot] = 4;
             else if (e.size === 2) sp.sizes[newSlot] = 2;
@@ -3332,7 +3382,8 @@
                 return {
                     entity: b.entity, label: b.label, icon: b.icon,
                     icon_on: b.icon_on, sensor: b.sensor, unit: b.unit,
-                    type: b.type || "",
+                    type: b.type || "", invert: b.invert || "",
+                    off_color: b.off_color || "", on_color: b.on_color || "",
                 };
             }),
             subpages: (function () {
@@ -3349,6 +3400,7 @@
                 outdoor_temp_enable: state._outdoorOn,
                 indoor_temp_entity: state.indoorEntity,
                 outdoor_temp_entity: state.outdoorEntity,
+                temperature_display: state.temperatureDisplay,
                 presence_sensor_entity: state.presenceEntity,
                 screensaver_timeout: state.screensaverTimeout,
                 home_screen_timeout: state.homeScreenTimeout,
@@ -3404,7 +3456,7 @@
                 postText("Button Off Color", data.button_off_color || "313131");
                 postText("Sensor Card Color", data.sensor_card_color || "212121");
 
-                var empty = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "" };
+                var empty = { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", invert: "", off_color: "", on_color: "" };
                 var buttons, orderStr, spKeyMap;
 
                 if (importedCount !== NUM_SLOTS) {
@@ -3516,7 +3568,8 @@
                         entity: b.entity || "", label: b.label || "",
                         icon: b.icon || "Auto", icon_on: b.icon_on || "Auto",
                         sensor: b.sensor || "", unit: b.unit || "",
-                        type: b.type || "",
+                        type: b.type || "", invert: b.invert || "",
+                        off_color: b.off_color || "", on_color: b.on_color || "",
                     };
                     saveButtonConfig(n);
                 }
@@ -3552,6 +3605,7 @@
                     postSwitch("Outdoor Temp Enable", !!s.outdoor_temp_enable);
                     postText("Indoor Temp Entity", s.indoor_temp_entity || "");
                     postText("Outdoor Temp Entity", s.outdoor_temp_entity || "");
+                    postSelect("Temperature Display", s.temperature_display || "Compact");
                     postText("Presence Sensor Entity", s.presence_sensor_entity || "");
                     postNumber("Screensaver Timeout", s.screensaver_timeout || 300);
                     postNumber("Home Screen Timeout", s.home_screen_timeout != null ? s.home_screen_timeout : 60);
@@ -3560,6 +3614,7 @@
                     state._outdoorOn = !!s.outdoor_temp_enable;
                     state.indoorEntity = s.indoor_temp_entity || "";
                     state.outdoorEntity = s.outdoor_temp_entity || "";
+                    state.temperatureDisplay = s.temperature_display || "Compact";
                     state.presenceEntity = s.presence_sensor_entity || "";
                     state.screensaverTimeout = s.screensaver_timeout || 300;
                     state.homeScreenTimeout = s.home_screen_timeout != null ? s.home_screen_timeout : 60;
@@ -3570,6 +3625,7 @@
                     els.setOutdoorToggle.checked = state._outdoorOn;
                     els.setOutdoorField.className = "sp-cond-field" + (state._outdoorOn ? " sp-visible" : "");
                     syncInput(els.setOutdoorEntity, state.outdoorEntity);
+                    if (els.setTemperatureDisplay) els.setTemperatureDisplay.value = state.temperatureDisplay;
                     syncInput(els.setPresence, state.presenceEntity);
                     if (els.setSSTimeout) els.setSSTimeout.value = String(state.screensaverTimeout);
                     if (els.setHSTimeout) els.setHSTimeout.value = String(state.homeScreenTimeout);
@@ -3680,6 +3736,23 @@
             "text-outdoor_temp_entity": function (val) {
                 state.outdoorEntity = val;
                 syncInput(els.setOutdoorEntity, val);
+            },
+            "select-temperature_display": function (val, d) {
+                state.temperatureDisplay = d.value || d.option || val || state.temperatureDisplay;
+                if (d.options && Array.isArray(d.options)) {
+                    state.temperatureDisplayOptions = d.options;
+                    if (els.setTemperatureDisplay) {
+                        els.setTemperatureDisplay.innerHTML = "";
+                        d.options.forEach(function (opt) {
+                            var o = document.createElement("option");
+                            o.value = opt;
+                            o.textContent = opt;
+                            els.setTemperatureDisplay.appendChild(o);
+                        });
+                    }
+                }
+                if (els.setTemperatureDisplay) els.setTemperatureDisplay.value = state.temperatureDisplay;
+                updateTempPreview();
             },
             "number-screensaver_timeout": function (val) {
                 state.screensaverTimeout = parseFloat(val) || 300;
@@ -3867,12 +3940,13 @@
         els.temp.className = "sp-temp" + (show ? " sp-visible" : "");
         var indoor = state._indoorVal != null ? state._indoorVal + "\u00B0" : "24\u00B0";
         var outdoor = state._outdoorVal != null ? state._outdoorVal + "\u00B0" : "17\u00B0";
+        var labeled = state.temperatureDisplay === "Labeled";
         if (state._indoorOn && state._outdoorOn) {
-            els.temp.textContent = outdoor + " / " + indoor;
+            els.temp.textContent = labeled ? ("Out " + outdoor + " / In " + indoor) : (outdoor + " / " + indoor);
         } else if (state._outdoorOn) {
-            els.temp.textContent = outdoor;
+            els.temp.textContent = labeled ? ("Out " + outdoor) : outdoor;
         } else if (state._indoorOn) {
-            els.temp.textContent = indoor;
+            els.temp.textContent = labeled ? ("In " + indoor) : indoor;
         }
     }
 

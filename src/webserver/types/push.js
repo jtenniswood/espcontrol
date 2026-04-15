@@ -15,6 +15,7 @@ registerButtonType("push", {
         renderPreview();
       }
     ));
+    helpers.appendColorSettings(panel, b, helpers.saveField);
   },
   renderPreview: function (b, helpers) {
     var label = b.label || "Button";

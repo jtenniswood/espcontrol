@@ -352,6 +352,21 @@ esphome:
                 lv_obj_t *stl = lv_label_create(sb_btn);
                 lv_obj_align(stl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
 
+                std::string sp_off_color_str = sb.off_color;
+                std::string sp_on_color_str = sb.on_color;
+                bool sp_has_btn_off = !sp_off_color_str.empty();
+                bool sp_has_btn_on = !sp_on_color_str.empty();
+                uint32_t sp_btn_off_val = sp_has_btn_off ? parse_hex_color(sp_off_color_str, sp_has_btn_off) : 0;
+                uint32_t sp_btn_on_val = sp_has_btn_on ? parse_hex_color(sp_on_color_str, sp_has_btn_on) : 0;
+
+                if (sp_has_btn_off || sp_has_btn_on) {
+                  if (sp_has_btn_on) sp_btn_on_val = correct_color(sp_btn_on_val);
+                  if (sp_has_btn_off) sp_btn_off_val = correct_color(sp_btn_off_val);
+                  apply_button_colors(sb_btn, sp_has_btn_on, sp_btn_on_val, sp_has_btn_off, sp_btn_off_val);
+                } else {
+                  apply_button_colors(sb_btn, has_on, on_val, has_off, off_val);
+                }
+
                 if (sb.type == "sensor") {
                   if (sb.sensor.empty()) continue;
                   if (has_sensor_color)
@@ -416,7 +431,8 @@ esphome:
                     subscribe_friendly_name(stl, sb.entity);
                   }
                   bool sp_sl_horiz = sb.sensor == "h";
-                  lv_obj_t *sl = setup_slider_widget(sb_btn, has_on ? on_val : 0xFF8C00, sp_sl_horiz);
+                  uint32_t sp_slider_color = sp_has_btn_on ? sp_btn_on_val : (has_on ? on_val : 0xFF8C00);
+                  lv_obj_t *sl = setup_slider_widget(sb_btn, sp_slider_color, sp_sl_horiz);
                   lv_coord_t sp_sl_pad = sp_radius + 4;
                   lv_obj_align(sil, LV_ALIGN_TOP_LEFT, sp_sl_pad, sp_sl_pad);
                   lv_obj_align(stl, LV_ALIGN_BOTTOM_LEFT, sp_sl_pad, -sp_sl_pad);
@@ -553,33 +569,45 @@ esphome:
         - lambda: |-
             bool indoor_on  = id(indoor_temp_enable).state;
             bool outdoor_on = id(outdoor_temp_enable).state;
+            auto render_temperatures = [](bool indoor_enabled, bool outdoor_enabled, float outdoor, float indoor) {
+              bool labeled = id(temperature_display).current_option() == "Labeled";
+              char buf[32];
+              if (indoor_enabled && outdoor_enabled) {
+                if (!std::isnan(outdoor) && !std::isnan(indoor)) {
+                  snprintf(buf, sizeof(buf), labeled ? "Out %.0f° / In %.0f°" : "%.0f° / %.0f°", outdoor, indoor);
+                } else if (!std::isnan(outdoor)) {
+                  snprintf(buf, sizeof(buf), labeled ? "Out %.0f°" : "%.0f°", outdoor);
+                } else if (!std::isnan(indoor)) {
+                  snprintf(buf, sizeof(buf), labeled ? "In %.0f°" : "%.0f°", indoor);
+                } else {
+                  snprintf(buf, sizeof(buf), "%s", labeled ? "Out -° / In -°" : "-° / -°");
+                }
+              } else if (outdoor_enabled) {
+                snprintf(buf, sizeof(buf), labeled ? (std::isnan(outdoor) ? "Out -°" : "Out %.0f°") : (std::isnan(outdoor) ? "-°" : "%.0f°"), outdoor);
+              } else if (indoor_enabled) {
+                snprintf(buf, sizeof(buf), labeled ? (std::isnan(indoor) ? "In -°" : "In %.0f°") : (std::isnan(indoor) ? "-°" : "%.0f°"), indoor);
+              } else {
+                buf[0] = '\0';
+              }
+              if (buf[0] != '\0') {
+                lv_label_set_text(id(temperatures), buf);
+              }
+            };
 
-            if (indoor_on && outdoor_on) {
-              lv_label_set_text(id(temperatures), "-° / -°");
-            } else if (indoor_on || outdoor_on) {
-              lv_label_set_text(id(temperatures), "-°");
-            }
+            render_temperatures(indoor_on, outdoor_on, NAN, NAN);
 
             if (indoor_on) {
               std::string indoor_id = id(indoor_temp_entity).state;
               if (!indoor_id.empty()) {
                 api::global_api_server->subscribe_home_assistant_state(
                   indoor_id, {},
-                  std::function<void(const std::string &)>([](const std::string &state) {
+                  std::function<void(const std::string &)>([render_temperatures](const std::string &state) {
                     char *end;
                     float val = strtof(state.c_str(), &end);
                     if (end != state.c_str()) {
                       id(indoor_temp) = val;
                       float outdoor = id(outdoor_temp);
-                      if (std::isnan(outdoor)) {
-                        char buf[16];
-                        snprintf(buf, sizeof(buf), "%.0f°", val);
-                        lv_label_set_text(id(temperatures), buf);
-                      } else {
-                        char buf[16];
-                        snprintf(buf, sizeof(buf), "%.0f° / %.0f°", outdoor, val);
-                        lv_label_set_text(id(temperatures), buf);
-                      }
+                      render_temperatures(id(indoor_temp_enable).state, id(outdoor_temp_enable).state, outdoor, val);
                     }
                   })
                 );
@@ -591,21 +619,13 @@ esphome:
               if (!outdoor_id.empty()) {
                 api::global_api_server->subscribe_home_assistant_state(
                   outdoor_id, {},
-                  std::function<void(const std::string &)>([](const std::string &state) {
+                  std::function<void(const std::string &)>([render_temperatures](const std::string &state) {
                     char *end;
                     float val = strtof(state.c_str(), &end);
                     if (end != state.c_str()) {
                       id(outdoor_temp) = val;
                       float indoor = id(indoor_temp);
-                      if (std::isnan(indoor)) {
-                        char buf[16];
-                        snprintf(buf, sizeof(buf), "%.0f°", val);
-                        lv_label_set_text(id(temperatures), buf);
-                      } else {
-                        char buf[16];
-                        snprintf(buf, sizeof(buf), "%.0f° / %.0f°", val, indoor);
-                        lv_label_set_text(id(temperatures), buf);
-                      }
+                      render_temperatures(id(indoor_temp_enable).state, id(outdoor_temp_enable).state, val, indoor);
                     }
                   })
                 );

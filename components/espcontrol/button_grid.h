@@ -465,6 +465,9 @@ struct SubpageBtn {
   std::string sensor;
   std::string unit;
   std::string type;
+  std::string invert;
+  std::string off_color;
+  std::string on_color;
 };
 
 inline std::vector<SubpageBtn> parse_subpage_config(const std::string &sp_cfg) {
@@ -499,7 +502,10 @@ inline std::vector<SubpageBtn> parse_subpage_config(const std::string &sp_cfg) {
     std::string sn = flds.size() > 4 ? flds[4] : "";
     std::string un = flds.size() > 5 ? flds[5] : "";
     std::string tp = flds.size() > 6 ? flds[6] : "";
-    btns.push_back({e, l, ic, io, sn, un, tp});
+    std::string inv = flds.size() > 7 ? flds[7] : "";
+    std::string off = flds.size() > 8 ? flds[8] : "";
+    std::string on = flds.size() > 9 ? flds[9] : "";
+    btns.push_back({e, l, ic, io, sn, un, tp, inv, off, on});
   }
   return btns;
 }

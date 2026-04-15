@@ -21,10 +21,11 @@ switch:
           if (lv_scr_act() == id(main_page)->obj) {
             lv_obj_clear_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
           }
+          bool labeled = id(temperature_display).current_option() == "Labeled";
           if (id(outdoor_temp_enable).state) {
-            lv_label_set_text(id(temperatures), "-° / -°");
+            lv_label_set_text(id(temperatures), labeled ? "Out -° / In -°" : "-° / -°");
           } else {
-            lv_label_set_text(id(temperatures), "-°");
+            lv_label_set_text(id(temperatures), labeled ? "In -°" : "-°");
           }
     on_turn_off:
       - if:
@@ -33,7 +34,9 @@ switch:
           then:
             - lambda: 'lv_obj_add_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);'
           else:
-            - lambda: 'lv_label_set_text(id(temperatures), "-°");'
+            - lambda: |-
+                bool labeled = id(temperature_display).current_option() == "Labeled";
+                lv_label_set_text(id(temperatures), labeled ? "Out -°" : "-°");
 
   - platform: template
     name: "Outdoor Temp Enable"
@@ -50,10 +53,11 @@ switch:
           if (lv_scr_act() == id(main_page)->obj) {
             lv_obj_clear_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
           }
+          bool labeled = id(temperature_display).current_option() == "Labeled";
           if (id(indoor_temp_enable).state) {
-            lv_label_set_text(id(temperatures), "-° / -°");
+            lv_label_set_text(id(temperatures), labeled ? "Out -° / In -°" : "-° / -°");
           } else {
-            lv_label_set_text(id(temperatures), "-°");
+            lv_label_set_text(id(temperatures), labeled ? "Out -°" : "-°");
           }
     on_turn_off:
       - if:
@@ -62,7 +66,37 @@ switch:
           then:
             - lambda: 'lv_obj_add_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);'
           else:
-            - lambda: 'lv_label_set_text(id(temperatures), "-°");'
+            - lambda: |-
+                bool labeled = id(temperature_display).current_option() == "Labeled";
+                lv_label_set_text(id(temperatures), labeled ? "In -°" : "-°");
+
+select:
+  - platform: template
+    name: "Temperature Display"
+    internal: true
+    id: temperature_display
+    optimistic: true
+    restore_value: true
+    initial_option: "Compact"
+    options:
+      - "Compact"
+      - "Labeled"
+    entity_category: config
+    icon: "mdi:format-list-bulleted"
+    web_server:
+      sorting_group_id: sg_display
+    set_action:
+      - lambda: |-
+          bool labeled = x == "Labeled";
+          bool indoor_on = id(indoor_temp_enable).state;
+          bool outdoor_on = id(outdoor_temp_enable).state;
+          if (indoor_on && outdoor_on) {
+            lv_label_set_text(id(temperatures), labeled ? "Out -° / In -°" : "-° / -°");
+          } else if (outdoor_on) {
+            lv_label_set_text(id(temperatures), labeled ? "Out -°" : "-°");
+          } else if (indoor_on) {
+            lv_label_set_text(id(temperatures), labeled ? "In -°" : "-°");
+          }
 
 text:
   - platform: template

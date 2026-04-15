@@ -28,7 +28,11 @@ captive_portal:
 
 wifi:
   reboot_timeout: 0s
-  ap: {}
+  ap:
+    # The ESPHome default fallback AP timeout is 90s, which makes first-time
+    # provisioning after a fresh flash feel unresponsive. Bring the hotspot up
+    # sooner while still giving normal STA connects a chance to succeed first.
+    ap_timeout: 10s
   on_connect:
     - script.stop: setup_screen_dim
     - lambda: |-

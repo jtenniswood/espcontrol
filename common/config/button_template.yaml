@@ -2,7 +2,7 @@
 # CONFIG: BUTTON TEMPLATE (parameterized by ${num})
 # =============================================================================
 # Per-button config stored as a single semicolon-delimited string:
-#   entity_id;label;icon;icon_on;sensor;sensor_unit;type
+#   entity_id;label;icon;icon_on;sensor;sensor_unit;type;invert;off_color;on_color
 # Subpage config kept separate; split across two text entities (_config +
 # _config_ext) because ESPHome caps text max_length at 255.
 # Included once per button slot from packages.yaml with vars: { num: "N" }.
