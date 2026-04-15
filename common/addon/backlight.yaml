@@ -4,9 +4,9 @@
 # Two screensaver mechanisms that coexist:
 #   1. Idle timer: configurable timeout (default 5 min), sleeps after inactivity
 #   2. Presence sensor: optional HA binary_sensor, wakes display on detection
-# When the clock screensaver is enabled, the idle timer shows a large drifting
-# clock instead of turning off the display. The label repositions each update
-# for burn-in prevention.
+# When the clock screensaver is enabled, the idle timer shows a drifting clock
+# instead of turning off the display. The label repositions each update for
+# burn-in prevention.
 # Setup screen dim: dims to 50% after 120s on static setup pages.
 # Touch wake is handled by the touchscreen on_touch in device.yaml.
 # =============================================================================
@@ -42,9 +42,7 @@ script:
                 value: 'true'
             - if:
                 condition:
-                  lambda: |-
-                    return id(clock_screensaver_enabled).state
-                        && id(presence_sensor_entity).state.empty();
+                  lambda: 'return id(clock_screensaver_enabled).state;'
                 then:
                   - script.execute: show_clock_view
                 else:

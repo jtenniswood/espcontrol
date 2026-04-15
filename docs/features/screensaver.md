@@ -14,9 +14,17 @@ There are two ways to control the screensaver, configured in the **Settings** ta
 
 The screensaver turns on after the panel hasn't been touched for a set amount of time. Choose from:
 
+- 1 minute
 - **5 minutes** (the default)
 - 10, 15, 20, 30, or 45 minutes
 - 1 hour
+
+### Clock or Display Off
+
+When the screensaver activates, you can choose what happens:
+
+- **Clock** — shows a large drifting clock at reduced brightness (the default). The clock repositions itself periodically to prevent burn-in.
+- **Display Off** — turns the backlight off completely.
 
 ## Sensor
 
