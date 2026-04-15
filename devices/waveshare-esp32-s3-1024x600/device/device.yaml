@@ -20,11 +20,23 @@ esp32:
       disable_vfs_support_termios: false
       disable_vfs_support_select: false
       disable_vfs_support_dir: false
+      loop_task_stack_size: 8192
     sdkconfig_options:
       CONFIG_SDMMC_HOST_DEFAULT: "y"
       CONFIG_COMPILER_OPTIMIZATION_SIZE: "y"
       CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
       CONFIG_LOG_DEFAULT_LEVEL: "2"
+      COMPILER_OPTIMIZATION_SIZE: y
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "60"
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: y
+      CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM: "16"
+      CONFIG_ESP_CONSOLE_UART_DEFAULT: y
+      CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG: y
+      CONFIG_ESP_INT_WDT_TIMEOUT_MS: "3000"
+      CONFIG_LOG_DEFAULT_LEVEL_INFO: y
 
 # ---------------------------------------------------------------------------
 # External component (sun_calc.h for on-device sunrise/sunset)
@@ -192,5 +204,5 @@ lvgl:
   displays: my_display
   touchscreens: my_touchscreen
   color_depth: 16
-  buffer_size: 15%
+  #buffer_size: 15%
   #byte_order: little_endian
