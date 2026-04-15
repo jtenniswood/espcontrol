@@ -191,4 +191,6 @@ display:
 lvgl:
   displays: my_display
   touchscreens: my_touchscreen
+  color_depth: 16
+  buffer_size: 15%
   #byte_order: little_endian
