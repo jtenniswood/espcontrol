@@ -1,0 +1,118 @@
+# =============================================================================
+# SENSORS - Dynamic HA entity subscriptions (P4-1060 - 15 buttons, 5×3 grid)
+# =============================================================================
+# Thin wiring layer: builds id()-based arrays and calls shared C++ functions
+# from button_grid.h for all grid layout, HA subscriptions, and subpage logic.
+# This device uses a landscape 5-column layout with label wrapping for
+# double-height buttons.
+# =============================================================================
+
+globals:
+  - id: indoor_temp
+    type: float
+    initial_value: 'NAN'
+  - id: outdoor_temp
+    type: float
+    initial_value: 'NAN'
+
+esphome:
+  on_boot:
+    - priority: -100
+      then:
+        # Phase 1: Parse config, position buttons, apply colors/icons/labels
+        - lambda: |-
+            BtnSlot slots[] = {
+              { id(button_1_config), id(button_1), id(button_1_icon_label), id(button_1_text_label), id(button_1_sensor_container), id(button_1_sensor_label), id(button_1_unit_label) },
+              { id(button_2_config), id(button_2), id(button_2_icon_label), id(button_2_text_label), id(button_2_sensor_container), id(button_2_sensor_label), id(button_2_unit_label) },
+              { id(button_3_config), id(button_3), id(button_3_icon_label), id(button_3_text_label), id(button_3_sensor_container), id(button_3_sensor_label), id(button_3_unit_label) },
+              { id(button_4_config), id(button_4), id(button_4_icon_label), id(button_4_text_label), id(button_4_sensor_container), id(button_4_sensor_label), id(button_4_unit_label) },
+              { id(button_5_config), id(button_5), id(button_5_icon_label), id(button_5_text_label), id(button_5_sensor_container), id(button_5_sensor_label), id(button_5_unit_label) },
+              { id(button_6_config), id(button_6), id(button_6_icon_label), id(button_6_text_label), id(button_6_sensor_container), id(button_6_sensor_label), id(button_6_unit_label) },
+              { id(button_7_config), id(button_7), id(button_7_icon_label), id(button_7_text_label), id(button_7_sensor_container), id(button_7_sensor_label), id(button_7_unit_label) },
+              { id(button_8_config), id(button_8), id(button_8_icon_label), id(button_8_text_label), id(button_8_sensor_container), id(button_8_sensor_label), id(button_8_unit_label) },
+              { id(button_9_config), id(button_9), id(button_9_icon_label), id(button_9_text_label), id(button_9_sensor_container), id(button_9_sensor_label), id(button_9_unit_label) },
+              { id(button_10_config), id(button_10), id(button_10_icon_label), id(button_10_text_label), id(button_10_sensor_container), id(button_10_sensor_label), id(button_10_unit_label) },
+              { id(button_11_config), id(button_11), id(button_11_icon_label), id(button_11_text_label), id(button_11_sensor_container), id(button_11_sensor_label), id(button_11_unit_label) },
+              { id(button_12_config), id(button_12), id(button_12_icon_label), id(button_12_text_label), id(button_12_sensor_container), id(button_12_sensor_label), id(button_12_unit_label) },
+              { id(button_13_config), id(button_13), id(button_13_icon_label), id(button_13_text_label), id(button_13_sensor_container), id(button_13_sensor_label), id(button_13_unit_label) },
+              { id(button_14_config), id(button_14), id(button_14_icon_label), id(button_14_text_label), id(button_14_sensor_container), id(button_14_sensor_label), id(button_14_unit_label) },
+              { id(button_15_config), id(button_15), id(button_15_icon_label), id(button_15_text_label), id(button_15_sensor_container), id(button_15_sensor_label), id(button_15_unit_label) },
+            };
+            GridConfig cfg = {};
+            cfg.num_slots = 15;
+            cfg.cols = 5;
+            cfg.wrap_tall_labels = true;
+            cfg.sp_pad_top = 42;
+            cfg.sp_pad_bottom = 5;
+            cfg.sp_pad_side = 5;
+            cfg.sp_pad_gap = 10;
+            cfg.sp_sensor_font = id(statistics_font)->get_lv_font();
+            grid_phase1(slots, cfg,
+              id(button_order).state,
+              id(button_on_color).state,
+              id(button_off_color).state,
+              id(sensor_card_color).state);
+        - delay: 100ms
+
+        # Phase 2: HA subscriptions + subpage creation
+        - lambda: |-
+            BtnSlot slots[] = {
+              { id(button_1_config), id(button_1), id(button_1_icon_label), id(button_1_text_label), id(button_1_sensor_container), id(button_1_sensor_label), id(button_1_unit_label) },
+              { id(button_2_config), id(button_2), id(button_2_icon_label), id(button_2_text_label), id(button_2_sensor_container), id(button_2_sensor_label), id(button_2_unit_label) },
+              { id(button_3_config), id(button_3), id(button_3_icon_label), id(button_3_text_label), id(button_3_sensor_container), id(button_3_sensor_label), id(button_3_unit_label) },
+              { id(button_4_config), id(button_4), id(button_4_icon_label), id(button_4_text_label), id(button_4_sensor_container), id(button_4_sensor_label), id(button_4_unit_label) },
+              { id(button_5_config), id(button_5), id(button_5_icon_label), id(button_5_text_label), id(button_5_sensor_container), id(button_5_sensor_label), id(button_5_unit_label) },
+              { id(button_6_config), id(button_6), id(button_6_icon_label), id(button_6_text_label), id(button_6_sensor_container), id(button_6_sensor_label), id(button_6_unit_label) },
+              { id(button_7_config), id(button_7), id(button_7_icon_label), id(button_7_text_label), id(button_7_sensor_container), id(button_7_sensor_label), id(button_7_unit_label) },
+              { id(button_8_config), id(button_8), id(button_8_icon_label), id(button_8_text_label), id(button_8_sensor_container), id(button_8_sensor_label), id(button_8_unit_label) },
+              { id(button_9_config), id(button_9), id(button_9_icon_label), id(button_9_text_label), id(button_9_sensor_container), id(button_9_sensor_label), id(button_9_unit_label) },
+              { id(button_10_config), id(button_10), id(button_10_icon_label), id(button_10_text_label), id(button_10_sensor_container), id(button_10_sensor_label), id(button_10_unit_label) },
+              { id(button_11_config), id(button_11), id(button_11_icon_label), id(button_11_text_label), id(button_11_sensor_container), id(button_11_sensor_label), id(button_11_unit_label) },
+              { id(button_12_config), id(button_12), id(button_12_icon_label), id(button_12_text_label), id(button_12_sensor_container), id(button_12_sensor_label), id(button_12_unit_label) },
+              { id(button_13_config), id(button_13), id(button_13_icon_label), id(button_13_text_label), id(button_13_sensor_container), id(button_13_sensor_label), id(button_13_unit_label) },
+              { id(button_14_config), id(button_14), id(button_14_icon_label), id(button_14_text_label), id(button_14_sensor_container), id(button_14_sensor_label), id(button_14_unit_label) },
+              { id(button_15_config), id(button_15), id(button_15_icon_label), id(button_15_text_label), id(button_15_sensor_container), id(button_15_sensor_label), id(button_15_unit_label) },
+            };
+            esphome::text::Text *sp_cfgs[] = {
+              id(subpage_1_config), id(subpage_2_config), id(subpage_3_config),
+              id(subpage_4_config), id(subpage_5_config), id(subpage_6_config),
+              id(subpage_7_config), id(subpage_8_config), id(subpage_9_config),
+              id(subpage_10_config), id(subpage_11_config), id(subpage_12_config),
+              id(subpage_13_config), id(subpage_14_config), id(subpage_15_config),
+            };
+            esphome::text::Text *sp_ext[] = {
+              id(subpage_1_config_ext), id(subpage_2_config_ext), id(subpage_3_config_ext),
+              id(subpage_4_config_ext), id(subpage_5_config_ext), id(subpage_6_config_ext),
+              id(subpage_7_config_ext), id(subpage_8_config_ext), id(subpage_9_config_ext),
+              id(subpage_10_config_ext), id(subpage_11_config_ext), id(subpage_12_config_ext),
+              id(subpage_13_config_ext), id(subpage_14_config_ext), id(subpage_15_config_ext),
+            };
+            GridConfig cfg = {};
+            cfg.num_slots = 15;
+            cfg.cols = 5;
+            cfg.wrap_tall_labels = true;
+            cfg.sp_pad_top = 42;
+            cfg.sp_pad_bottom = 5;
+            cfg.sp_pad_side = 5;
+            cfg.sp_pad_gap = 10;
+            cfg.sp_sensor_font = id(statistics_font)->get_lv_font();
+            grid_phase2(slots, cfg, sp_cfgs, sp_ext,
+              id(button_order).state,
+              id(button_on_color).state,
+              id(button_off_color).state,
+              id(sensor_card_color).state,
+              id(main_page)->obj);
+        - delay: 100ms
+
+        # Phase 3: Temperature + presence subscriptions
+        - lambda: |-
+            grid_phase3(
+              id(indoor_temp_enable).state,
+              id(outdoor_temp_enable).state,
+              id(indoor_temp_entity).state,
+              id(outdoor_temp_entity).state,
+              &id(indoor_temp), &id(outdoor_temp),
+              id(temperatures),
+              id(presence_sensor_entity).state,
+              &id(presence_detected),
+              []() { id(screensaver_wake).execute(); });

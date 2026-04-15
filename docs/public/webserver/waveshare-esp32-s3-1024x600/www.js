@@ -22,8 +22,8 @@
 // Custom UI: three-page layout (Screen / Settings / Logs)
 (function () {
   // __DEVICE_CONFIG_START__
-  var DEVICE_ID = "guition-esp32-p4-jc4880p443";
-  var CFG = {"slots":6,"cols":2,"rows":3,"dragMode":"displace","dragAnimation":true,"screen":{"width":"44%","aspect":"480/800"},"topbar":{"height":6.45,"padding":"1.2cqw 0.59cqw 0.59cqw","fontSize":4.5},"grid":{"top":8.58,"left":1.5,"right":1.5,"bottom":1.5,"gap":2.07,"fr":"1fr"},"btn":{"radius":1.18,"padding":2.73,"iconSize":14,"labelSize":5.5,"labelLines":2,"labelLinesDouble":3},"emptyCell":{"radius":1.18},"sensorBadge":{"top":1.52,"right":1.52,"fontSize":3.22},"subpageBadge":{"bottom":1.52,"right":1.52,"fontSize":4.03},"backBtn":{"radius":1.18,"padding":2.73,"iconSize":14,"labelSize":5.5,"labelLines":2,"labelLinesDouble":3}};
+  var DEVICE_ID = "waveshare-esp32-s3-1024x600";
+  var CFG = {"slots":15,"cols":5,"rows":3,"dragMode":"swap","dragAnimation":true,"screen":{"width":"100%","aspect":"1024/600"},"topbar":{"height":3.2,"padding":"0.39cqw","fontSize":1.95},"grid":{"top":4.4,"left":0.49,"right":0.49,"bottom":0.49,"gap":0.98,"fr":"1fr"},"btn":{"radius":0.78,"padding":1.37,"iconSize":4.69,"labelSize":1.8,"labelLines":2,"labelLinesDouble":3},"emptyCell":{"radius":0.78},"sensorBadge":{"top":1,"right":1,"fontSize":1.6},"subpageBadge":{"bottom":1,"right":1,"fontSize":2},"backBtn":{"radius":0.78,"padding":1.37,"iconSize":4.69,"labelSize":1.8,"labelLines":2,"labelLinesDouble":3}};
   // __DEVICE_CONFIG_END__
   var NUM_SLOTS = CFG.slots;
   var GRID_COLS = CFG.cols;

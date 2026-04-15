@@ -1,0 +1,75 @@
+# =============================================================================
+# PACKAGES - ESPHome include manifest
+# =============================================================================
+# Load order follows dependencies: device and assets first, then config,
+# addons, and screens. Loading screen must be the first page so LVGL shows
+# it at startup. Main page (lvgl.yaml) is included after setup screens.
+# =============================================================================
+
+substitutions:
+  device_slug: "waveshare-esp32-s3-1024x600"
+  firmware_manifest_slug: "waveshare-esp32-s3-1024x600"
+  screen_width: "1024"
+  screen_height: "600"
+  content_width: "550"
+  icon_font: icon_font
+  label_font: label_font_lt
+  unit_font: label_font_lt
+  sensor_value_font: statistics_font
+  padding: 16px
+  radius: 10px
+
+packages:
+  # ---------------------------------------------------------------------------
+  # Device, assets, and LVGL base
+  # ---------------------------------------------------------------------------
+  device:          !include device/device.yaml
+  fonts:           !include ../../common/assets/fonts.yaml
+  icons:           !include ../../common/assets/icons.yaml
+  fonts_device:    !include device/fonts.yaml
+  button_theme:    !include ../../common/theme/button.yaml
+  # ---------------------------------------------------------------------------
+  # Configuration (text/select/number components for web UI)
+  # ---------------------------------------------------------------------------
+  colors:          !include ../../common/config/colors.yaml
+  button_order:    !include ../../common/config/button_order.yaml
+  display_config:  !include ../../common/config/display.yaml
+  # Per-button entity/label/icon (15 slots — 3x5 grid)
+  btn_1:           !include { file: ../../common/config/button_template.yaml, vars: { num: "1" } }
+  btn_2:           !include { file: ../../common/config/button_template.yaml, vars: { num: "2" } }
+  btn_3:           !include { file: ../../common/config/button_template.yaml, vars: { num: "3" } }
+  btn_4:           !include { file: ../../common/config/button_template.yaml, vars: { num: "4" } }
+  btn_5:           !include { file: ../../common/config/button_template.yaml, vars: { num: "5" } }
+  btn_6:           !include { file: ../../common/config/button_template.yaml, vars: { num: "6" } }
+  btn_7:           !include { file: ../../common/config/button_template.yaml, vars: { num: "7" } }
+  btn_8:           !include { file: ../../common/config/button_template.yaml, vars: { num: "8" } }
+  btn_9:           !include { file: ../../common/config/button_template.yaml, vars: { num: "9" } }
+  btn_10:          !include { file: ../../common/config/button_template.yaml, vars: { num: "10" } }
+  btn_11:          !include { file: ../../common/config/button_template.yaml, vars: { num: "11" } }
+  btn_12:          !include { file: ../../common/config/button_template.yaml, vars: { num: "12" } }
+  btn_13:          !include { file: ../../common/config/button_template.yaml, vars: { num: "13" } }
+  btn_14:          !include { file: ../../common/config/button_template.yaml, vars: { num: "14" } }
+  btn_15:          !include { file: ../../common/config/button_template.yaml, vars: { num: "15" } }
+  # ---------------------------------------------------------------------------
+  # Addons
+  # ---------------------------------------------------------------------------
+  connectivity:    !include ../../common/addon/connectivity.yaml
+  time_sync:       !include ../../common/addon/time.yaml
+  backlight:       !include ../../common/addon/backlight.yaml
+  bl_schedule:     !include ../../common/addon/backlight_schedule.yaml
+  network:         !include ../../common/addon/network.yaml
+  fw_update:       !include ../../common/addon/firmware_update.yaml
+
+  # ---------------------------------------------------------------------------
+  # Screens (loading must be first page for LVGL startup)
+  # ---------------------------------------------------------------------------
+  screen_loading:  !include ../../common/device/screen_loading.yaml
+  screen_wifi:     !include ../../common/device/screen_wifi_setup.yaml
+  screen_ha:       !include ../../common/device/screen_ha_setup.yaml
+  screen_ha_act:   !include ../../common/device/screen_ha_actions.yaml
+  screen_setup:    !include ../../common/device/screen_button_setup.yaml
+  # ---------------------------------------------------------------------------
+  # Main page and dynamic sensor subscriptions (after setup screens)
+  # ---------------------------------------------------------------------------
+  lvgl:            !include device/lvgl.yaml
+  sensors:         !include device/sensors.yaml

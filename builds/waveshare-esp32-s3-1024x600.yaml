@@ -1,0 +1,23 @@
+# =============================================================================
+# BUILD PROFILE - Guition ESP32-P4 JC1060P470 (7" landscape)
+# =============================================================================
+# CI/local build entry point. Includes the full device package and adds
+# MAC suffix for unique naming. Used by the release workflow; the .factory
+# variant bundles the web UI JS inline for initial flash images.
+# =============================================================================
+
+substitutions:
+  name: "waveshare-esp32-s3"
+  friendly_name: "Espcontrol 7inch"
+
+esphome:
+  name_add_mac_suffix: true
+
+packages:
+  espcontrol: !include ../devices/waveshare-esp32-s3-1024x600/packages.yaml
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:

@@ -1,0 +1,28 @@
+# =============================================================================
+# FACTORY BUILD - Guition ESP32-P4 JC1060P470 (7" landscape)
+# =============================================================================
+# Factory image variant: bundles www.js inline (js_include) instead of loading
+# from GitHub CDN, so the web UI works on first boot before WiFi is configured.
+# firmware_version is overridden by the release workflow at build time.
+# dashboard_import enables one-click adoption in ESPHome Dashboard.
+# =============================================================================
+
+substitutions:
+  firmware_version: "0.0.0"
+
+packages:
+  core: !include waveshare-esp32-s3-1024x600.yaml
+
+esphome:
+  project:
+    name: jtenniswood.espcontrol
+    version: "${firmware_version}"
+
+dashboard_import:
+  package_import_url: github://jtenniswood/espcontrol/devices/waveshare-esp32-s3-1024x600/esphome.yaml@main
+
+web_server:
+  port: 80
+  version: 3
+  js_url: ""
+  js_include: "../docs/public/webserver/waveshare-esp32-s3-1024x600/www.js"

@@ -1,0 +1,75 @@
+# =============================================================================
+# LVGL MAIN PAGE - Top-layer HUD and button grid
+# =============================================================================
+# Defines the primary UI: a top-layer overlay with temperature and clock
+# labels, and the main page containing a 3x5 grid of 15 button widgets.
+# Uses LVGL grid layout for sparse cell placement on the 1024x600 landscape
+# display. Buttons start hidden; sensors.yaml unhides and places active
+# ones at boot via grid cell coords.
+# =============================================================================
+
+lvgl:
+  # ---------------------------------------------------------------------------
+  # Top layer (always visible above all pages)
+  # ---------------------------------------------------------------------------
+  top_layer:
+    widgets:
+      # Indoor/outdoor temperature (top-left)
+      - label:
+          text: "-° / -°"
+          id: temperatures
+          text_font: clockbar_font_lt
+          align: top_left
+          x: 8
+          y: 8
+          text_color: 0xFFFFFF
+          hidden: true
+
+      # Clock (top-center, updated every minute by time.yaml)
+      - label:
+          text: "--:--"
+          id: display_time
+          text_font: clockbar_font_lt
+          align: top_mid
+          x: 0
+          y: 8
+          text_align: center
+          text_color: 0xFFFFFF
+          hidden: true
+
+  # ---------------------------------------------------------------------------
+  # Main page (fixed 3x5 grid of button widgets)
+  # ---------------------------------------------------------------------------
+  pages:
+    - id: main_page
+      scrollbar_mode: "off"
+      layout:
+        type: grid
+        grid_columns: [FR(1), FR(1), FR(1), FR(1), FR(1)]
+        grid_rows: [FR(1), FR(1), FR(1)]
+        pad_row: 10
+        pad_column: 10
+      width: 100%
+      bg_color: Black
+      bg_opa: cover
+      pad_top: 42
+      pad_bottom: 5
+      pad_left: 5
+      pad_right: 5
+
+      widgets:
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "1" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "2" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "3" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "4" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "5" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "6" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "7" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "8" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "9" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "10" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "11" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "12" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "13" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "14" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "15" } }

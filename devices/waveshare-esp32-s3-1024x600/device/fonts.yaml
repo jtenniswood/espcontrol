@@ -1,0 +1,21 @@
+# =============================================================================
+# FONTS (DEVICE OVERRIDE) - Font variants for the 1060x470 display
+# =============================================================================
+# Supplements the common fonts with device-specific variants for the main UI.
+# The common fonts (icon_font, label_font, etc.) still load for setup screens;
+# these _lt variants are referenced by the device theme and LVGL config.
+# =============================================================================
+
+font:
+  # Button labels (22px)
+  - file: "gfonts://Roboto"
+    id: label_font_lt
+    size: 22
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+
+  # Top bar clock and temperature (20px)
+  - file: "gfonts://Roboto"
+    id: clockbar_font_lt
+    size: 20
+    bpp: 4
