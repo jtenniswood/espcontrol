@@ -2038,23 +2038,27 @@
 
       var pf = document.createElement("div");
       pf.className = "sp-field";
-      pf.appendChild(fieldLabel("Display precision", idPrefix + "precision"));
-      var precSel = document.createElement("select");
-      precSel.className = "sp-input sp-input--narrow";
-      precSel.id = idPrefix + "precision";
+      pf.appendChild(fieldLabel("Unit precision", idPrefix + "precision"));
+      var precSeg = document.createElement("div");
+      precSeg.className = "sp-segment";
       var precOpts = [["0", "10"], ["1", "10.2"], ["2", "10.21"]];
       for (var pi = 0; pi < precOpts.length; pi++) {
-        var po = document.createElement("option");
-        po.value = precOpts[pi][0];
-        po.textContent = precOpts[pi][1];
-        if ((b.precision || "0") === precOpts[pi][0]) po.selected = true;
-        precSel.appendChild(po);
+        (function (val, label) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = label;
+          if ((b.precision || "0") === val) btn.classList.add("active");
+          btn.addEventListener("click", function () {
+            b.precision = val === "0" ? "" : val;
+            saveField("precision", b.precision);
+            var btns = precSeg.querySelectorAll("button");
+            for (var j = 0; j < btns.length; j++) btns[j].classList.remove("active");
+            btn.classList.add("active");
+          });
+          precSeg.appendChild(btn);
+        })(precOpts[pi][0], precOpts[pi][1]);
       }
-      precSel.addEventListener("change", function () {
-        b.precision = this.value === "0" ? "" : this.value;
-        saveField("precision", b.precision);
-      });
-      pf.appendChild(precSel);
+      pf.appendChild(precSeg);
       sensorSection.appendChild(pf);
       whenOnCond.appendChild(sensorSection);
 
@@ -2074,7 +2078,8 @@
         if (mode === "icon") {
           sensorInp.value = "";
           unitInp.value = "";
-          precSel.value = "0";
+          var pbs = precSeg.querySelectorAll("button");
+          for (var j = 0; j < pbs.length; j++) pbs[j].classList.toggle("active", j === 0);
           b.sensor = "";
           b.unit = "";
           b.precision = "";
@@ -2105,7 +2110,8 @@
           whenOnCond.classList.remove("sp-visible");
           sensorInp.value = "";
           unitInp.value = "";
-          precSel.value = "0";
+          var pbs2 = precSeg.querySelectorAll("button");
+          for (var j2 = 0; j2 < pbs2.length; j2++) pbs2[j2].classList.toggle("active", j2 === 0);
           b.sensor = "";
           b.unit = "";
           b.precision = "";
