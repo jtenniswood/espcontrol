@@ -13,7 +13,6 @@ esp32:
   variant: esp32s3
   flash_size: 16MB
   cpu_frequency: 240MHZ
-  engineering_sample: true
   framework:
     type: esp-idf
     advanced:
@@ -31,6 +30,9 @@ esp32:
 # External component (sun_calc.h for on-device sunrise/sunset)
 # ---------------------------------------------------------------------------
 external_components:
+  - source: github://pr#10071
+    components: [waveshare_io_ch32v003]
+    refresh: 0s
   - source:
       type: git
       url: https://github.com/set-st/espcontrol
@@ -38,9 +40,6 @@ external_components:
       path: components
     components: [espcontrol]
     refresh: 0s
-  - source: github://pr#10071
-    components: [waveshare_io_ch32v003]
-    refresh: 1h
 
 espcontrol:
 
@@ -69,6 +68,9 @@ esphome:
   # d2_pin: GPIO16
   # d3_pin: GPIO17
   # active_high: true
+
+waveshare_io_ch32v003:
+  - id: waveshare_io_hub
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)
@@ -188,4 +190,5 @@ display:
 # ---------------------------------------------------------------------------
 lvgl:
   displays: my_display
-  byte_order: little_endian
+  touchscreens: my_touchscreen
+  #byte_order: little_endian

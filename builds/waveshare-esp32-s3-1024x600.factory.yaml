@@ -19,7 +19,7 @@ esphome:
     version: "${firmware_version}"
 
 dashboard_import:
-  package_import_url: github://jtenniswood/espcontrol/devices/waveshare-esp32-s3-1024x600/esphome.yaml@main
+  package_import_url: github://set-st/espcontrol/devices/waveshare-esp32-s3-1024x600/esphome.yaml@main
 
 web_server:
   port: 80

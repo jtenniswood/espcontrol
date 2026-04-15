@@ -28,6 +28,9 @@ jobs:
           - device: guition-esp32-s3-4848s040
             slug: guition-esp32-s3-4848s040
             chip: ESP32-S3
+          - device: waveshare-esp32-s3-1024x600
+            slug: waveshare-esp32-s3-1024x600
+            chip: ESP32-S3
     steps:
       - uses: actions/checkout@v6
 
@@ -80,7 +83,7 @@ jobs:
                 "ota": {
                   "path": "${{ matrix.slug }}.ota.bin",
                   "md5": "${OTA_MD5}",
-                  "release_url": "https://github.com/jtenniswood/espcontrol/releases/tag/${VERSION}"
+                  "release_url": "https://github.com/set-st/espcontrol/releases/tag/${VERSION}"
                 }
               }
             ]
