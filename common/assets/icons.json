@@ -275,6 +275,11 @@
       "mdi": "dog"
     },
     {
+      "name": "Downlight",
+      "codepoint": "F179B",
+      "mdi": "light-recessed"
+    },
+    {
       "name": "Door",
       "codepoint": "F081A",
       "mdi": "door"
