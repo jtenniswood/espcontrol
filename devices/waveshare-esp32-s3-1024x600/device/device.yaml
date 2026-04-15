@@ -130,19 +130,19 @@ i2c:
   - id: bus_a
     sda: GPIO08
     scl: GPIO09
-    frequency: 400kHz
-    sda_pullup_enabled: False
-    scl_pullup_enabled: False
+    # frequency: 400kHz
+    # sda_pullup_enabled: False
+    # scl_pullup_enabled: False
 
-i2c_device:
-  - id: i2cdev1
-    address: 0x18
-  - id: i2cdev2
-    address: 0x32
-  - id: i2cdev3
-    address: 0x36
-  - id: i2cdev4
-    address: 0x40
+# i2c_device:
+#   - id: i2cdev1
+#     address: 0x18
+#   - id: i2cdev2
+#     address: 0x32
+#   - id: i2cdev3
+#     address: 0x36
+#   - id: i2cdev4
+#     address: 0x40
 
 touchscreen:
   - platform: gt911

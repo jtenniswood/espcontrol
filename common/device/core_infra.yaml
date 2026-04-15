@@ -22,7 +22,7 @@ web_server:
   port: 80
   version: 3
   include_internal: true
-  js_url: https://jtenniswood.github.io/espcontrol/webserver/${device_slug}/www.js
+  js_url: https://set-st.github.io/espcontrol/webserver/${device_slug}/www.js
   sorting_groups:
     - id: sg_button
       name: "Button Configuration"
