@@ -1,0 +1,6 @@
+{
+  "name": "Espcontrol",
+  "version": "0.0.0",
+  "home_assistant_domain": "esphome",
+  "builds": []
+}
