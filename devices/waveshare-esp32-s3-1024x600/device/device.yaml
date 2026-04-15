@@ -156,6 +156,30 @@ i2c:
 #   - id: i2cdev4
 #     address: 0x40
 
+sensor:
+  # --- Internal Battery ---
+  - platform: waveshare_io_ch32v003
+    name: "Battery level"
+    id: wave_adc
+    reference_voltage: 9.9
+    update_interval: 60s
+
+  - platform: template
+    id: internal_bat_pct
+    name: "Internal Battery Percentage"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    lambda: |-
+      float volt = id(wave_adc).state;
+      if (std::isnan(volt)) return {};
+      float max_v = 4.05; 
+      float min_v = 3.1;
+      float pct = (volt - min_v) / (max_v - min_v) * 100.0;
+      if (pct > 100.0) pct = 100.0;
+      if (pct < 0.0) pct = 0.0;
+      return pct;
+    update_interval: 60s
+
 touchscreen:
   - platform: gt911
     id: my_touchscreen
