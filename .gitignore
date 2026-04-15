@@ -1,7 +1,8 @@
 node_modules/
 .nodeenv/
 .pytools/
-__pycache__/
+**/__pycache__/
+docs.vitepress/.temp/
 docs/.vitepress/cache/
 docs/.vitepress/.temp/
 docs/.vitepress/dist/
