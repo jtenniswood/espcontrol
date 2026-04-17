@@ -75,8 +75,12 @@ inline int parse_precision(const std::string &s) {
   return (v < 0) ? 0 : (v > 3) ? 3 : v;
 }
 
+inline bool is_text_sensor_card(const std::string &type, const std::string &precision) {
+  return (type == "sensor" && precision == "text") || type == "text_sensor";
+}
+
 inline bool is_text_sensor_card(const ParsedCfg &p) {
-  return (p.type == "sensor" && p.precision == "text") || p.type == "text_sensor";
+  return is_text_sensor_card(p.type, p.precision);
 }
 
 inline const char* weather_icon_for_state(const std::string &state) {
@@ -1158,7 +1162,7 @@ inline void grid_phase2(
         lv_obj_set_width(stl, lv_pct(100));
       }
 
-      if (is_text_sensor_card(sb)) {
+      if (is_text_sensor_card(sb.type, sb.precision)) {
         lv_obj_clear_flag(sil, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(sb_btn, LV_OBJ_FLAG_CLICKABLE);
         lv_label_set_text(stl, "--");
