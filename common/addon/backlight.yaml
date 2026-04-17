@@ -113,13 +113,24 @@ script:
             lambda: 'return id(display_asleep);'
           then:
             - script.stop: screensaver_idle_check
-            - script.execute: hide_clock_view
             - lvgl.resume:
-            - delay: 100ms
-            - globals.set:
-                id: display_asleep
-                value: 'false'
-            - script.execute: backlight_apply_brightness
+            - if:
+                condition:
+                  lambda: 'return id(is_clock_showing);'
+                then:
+                  - globals.set:
+                      id: display_asleep
+                      value: 'false'
+                  - script.execute: backlight_apply_brightness
+                  - delay: 300ms
+                  - script.execute: hide_clock_view
+                else:
+                  - script.execute: hide_clock_view
+                  - delay: 100ms
+                  - globals.set:
+                      id: display_asleep
+                      value: 'false'
+                  - script.execute: backlight_apply_brightness
       - script.execute: screensaver_idle_check
       - script.execute: home_screen_idle_check
 

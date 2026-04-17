@@ -30,6 +30,7 @@ lvgl:
           pad_all: 0
           scrollable: false
           scrollbar_mode: "off"
+          clickable: true
           hidden: true
           widgets:
             - label:
