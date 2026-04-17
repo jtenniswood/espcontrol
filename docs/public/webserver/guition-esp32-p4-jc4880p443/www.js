@@ -360,12 +360,11 @@
     },
     renderPreview: function (b, helpers) {
       if (b.precision === "text") {
-        var text = b.sensor || "Text Sensor";
         var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "cog";
         return {
           iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
           labelHtml:
-            '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(text) + '</span>' +
+            '<span class="sp-btn-label-row"><span class="sp-btn-label">State</span>' +
             '<span class="sp-type-badge mdi mdi-format-text"></span></span>',
         };
       }
