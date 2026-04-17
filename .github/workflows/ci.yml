@@ -65,5 +65,5 @@ jobs:
       - name: Compile S3 firmware
         run: >-
           docker run --rm -v "${PWD}:/config"
-          ghcr.io/esphome/esphome:2026.3.3
+          ghcr.io/esphome/esphome:2026.4.0
           compile /config/builds/guition-esp32-s3-4848s040.factory.yaml
