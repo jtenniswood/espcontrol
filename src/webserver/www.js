@@ -448,6 +448,9 @@
     ".sp-fw-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;margin-bottom:12px}" +
     ".sp-fw-version{font-size:.875rem;color:var(--text)}" +
     ".sp-fw-label{font-size:.8rem;color:var(--text2)}" +
+    ".sp-fw-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-left:auto}" +
+    ".sp-fw-inline-status{display:none;font-size:.8rem;color:#3dd68c;white-space:nowrap}" +
+    ".sp-fw-inline-status.sp-visible{display:inline}" +
     ".sp-fw-status{font-size:.8rem;color:var(--text2);line-height:1.4;margin:-4px 0 12px 0}" +
     ".sp-fw-status.sp-update-available{color:#3dd68c}" +
     ".sp-fw-status.sp-update-installing{color:#f9b44e}" +
@@ -457,6 +460,9 @@
     "font-family:inherit;transition:all .25s;white-space:nowrap}" +
     ".sp-fw-btn:hover{background:var(--border);border-color:#4a4d54}" +
     ".sp-fw-btn:disabled{opacity:.4;cursor:not-allowed}" +
+    ".sp-fw-btn.sp-fw-btn-busy{background:rgba(35,37,43,.5);color:#8a8d94;" +
+    "border-color:rgba(74,77,84,.45);border-radius:999px;padding:8px 28px;opacity:1}" +
+    ".sp-fw-btn.sp-fw-btn-busy:hover{background:rgba(35,37,43,.5);border-color:rgba(74,77,84,.45)}" +
 
     ".sp-back-btn{border-radius:var(--action-r);padding:var(--back-pad);display:flex;flex-direction:column;" +
     "justify-content:space-between;box-sizing:border-box;border:2px solid transparent;" +
@@ -634,6 +640,7 @@
     if (!els.fwStatus) return;
     var cls = "sp-fw-status";
     var status = "";
+    var inlineStatus = "";
     if (state.firmwareUpdateState === "INSTALLING") {
       status = "Installing update\u2026";
       cls += " sp-update-installing";
@@ -644,13 +651,19 @@
       }
       cls += " sp-update-available";
     } else if (state.firmwareUpdateState === "NO UPDATE") {
-      status = "Latest public version: " + escHtml(displayFirmwareVersion(state.firmwareVersion));
+      inlineStatus = "Up to date";
     } else if (state.firmwareChecking) {
       status = "Checking public firmware\u2026";
     }
     els.fwStatus.className = cls;
     els.fwStatus.innerHTML = status;
+    if (els.fwInlineStatus) {
+      els.fwInlineStatus.className = "sp-fw-inline-status" + (inlineStatus ? " sp-visible" : "");
+      els.fwInlineStatus.textContent = inlineStatus;
+    }
     if (els.fwCheckBtn) {
+      var isBusy = state.firmwareUpdateState === "INSTALLING" || state.firmwareChecking;
+      els.fwCheckBtn.className = "sp-fw-btn" + (isBusy ? " sp-fw-btn-busy" : "");
       if (state.firmwareUpdateState === "INSTALLING") {
         els.fwCheckBtn.disabled = true;
         els.fwCheckBtn.textContent = "Installing\u2026";
@@ -1667,6 +1680,13 @@
     renderFirmwareVersion();
     refreshFirmwareVersion();
 
+    var fwActions = document.createElement("div");
+    fwActions.className = "sp-fw-actions";
+    var fwInlineStatus = document.createElement("span");
+    fwInlineStatus.className = "sp-fw-inline-status";
+    fwActions.appendChild(fwInlineStatus);
+    els.fwInlineStatus = fwInlineStatus;
+
     var fwCheckBtn = document.createElement("button");
     fwCheckBtn.className = "sp-fw-btn";
     fwCheckBtn.textContent = "Check for Update";
@@ -1686,7 +1706,8 @@
         renderFirmwareUpdateStatus();
       }, 10000);
     });
-    fwVersionRow.appendChild(fwCheckBtn);
+    fwActions.appendChild(fwCheckBtn);
+    fwVersionRow.appendChild(fwActions);
     els.fwCheckBtn = fwCheckBtn;
     fwBody.appendChild(fwVersionRow);
 
