@@ -579,6 +579,24 @@
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  function renderFirmwareVersion() {
+    if (!els.fwVersionLabel) return;
+    els.fwVersionLabel.innerHTML = '<span class="sp-fw-label">Installed </span>' +
+      escHtml(state.firmwareVersion || "Unknown");
+  }
+
+  function isSpecificFirmwareVersion(version) {
+    return !!version && version !== "dev" && version !== "0.0.0";
+  }
+
+  function setFirmwareVersion(version) {
+    version = String(version == null ? "" : version).trim();
+    if (!version) return;
+    if (isSpecificFirmwareVersion(state.firmwareVersion) && !isSpecificFirmwareVersion(version)) return;
+    state.firmwareVersion = version;
+    renderFirmwareVersion();
+  }
+
   function escAttr(s) {
     return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
       .replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -1528,9 +1546,9 @@
     fwVersionRow.className = "sp-fw-row";
     var fwVersionLabel = document.createElement("span");
     fwVersionLabel.className = "sp-fw-version";
-    fwVersionLabel.innerHTML = '<span class="sp-fw-label">Installed </span>' + escHtml(state.firmwareVersion || "dev");
     fwVersionRow.appendChild(fwVersionLabel);
     els.fwVersionLabel = fwVersionLabel;
+    renderFirmwareVersion();
 
     var fwCheckBtn = document.createElement("button");
     fwCheckBtn.className = "sp-fw-btn";
@@ -3721,10 +3739,10 @@
         updateSunInfo();
       },
       "text_sensor-firmware__version": function (val) {
-        state.firmwareVersion = val;
-        if (els.fwVersionLabel) {
-          els.fwVersionLabel.innerHTML = '<span class="sp-fw-label">Installed </span>' + escHtml(val || "dev");
-        }
+        setFirmwareVersion(val);
+      },
+      "update-firmware__update": function (val, d) {
+        setFirmwareVersion(d.current_version);
       },
       "switch-firmware__auto_update": function (val, d) {
         state.autoUpdate = d.value === true || val === "ON";
@@ -3789,6 +3807,16 @@
       var val = d.state != null ? String(d.state) : "";
 
       if (sseHandlers[id]) { sseHandlers[id](val, d); return; }
+      if (d.name_id === "text_sensor/Firmware: Version" ||
+          (d.domain === "text_sensor" && d.name === "Firmware: Version")) {
+        setFirmwareVersion(val);
+        return;
+      }
+      if (d.name_id === "update/Firmware: Update" ||
+          (d.domain === "update" && d.name === "Firmware: Update")) {
+        setFirmwareVersion(d.current_version);
+        return;
+      }
 
       for (var i = 0; i < ssePatterns.length; i++) {
         var m = id.match(ssePatterns[i].re);
