@@ -163,8 +163,8 @@ script:
             - lvgl.display.set_rotation: 0
             - lambda: |-
                 id(my_touchscreen).set_swap_xy(false);
-                id(my_touchscreen).set_mirror_x(true);
-                id(my_touchscreen).set_mirror_y(true);
+                id(my_touchscreen).set_mirror_x(false);
+                id(my_touchscreen).set_mirror_y(false);
 
 select:
   - platform: template
