@@ -146,8 +146,8 @@ touchscreen:
     interrupt_pin: GPIO21
     transform:
       swap_xy: false
-      mirror_x: false
-      mirror_y: true
+      mirror_x: true
+      mirror_y: false
     on_touch:
       - script.execute: screensaver_wake
 
