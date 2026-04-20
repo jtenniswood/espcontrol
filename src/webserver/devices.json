@@ -1,4 +1,20 @@
 {
+  "guition-esp32-p4-jc8012p4a1": {
+    "slots": 24,
+    "cols": 6,
+    "rows": 4,
+    "dragMode": "swap",
+    "dragAnimation": true,
+    "features": { "screenRotation": true, "screenRotationOptions": ["0", "180"] },
+    "screen": { "width": "100%", "aspect": "1280/800" },
+    "topbar": { "height": 3.28, "padding": "0.31cqw", "fontSize": 1.56 },
+    "grid": { "top": 3.28, "left": 0.39, "right": 0.39, "bottom": 0.39, "gap": 0.78, "fr": "1fr" },
+    "btn": { "radius": 0.78, "padding": 1.25, "iconSize": 3.75, "labelSize": 1.72, "labelLines": 2, "labelLinesDouble": 3 },
+    "emptyCell": { "radius": 0.78 },
+    "sensorBadge": { "top": 0.78, "right": 0.78, "fontSize": 1.25 },
+    "subpageBadge": { "bottom": 0.78, "right": 0.78, "fontSize": 1.56 },
+    "backBtn": { "radius": 0.78, "padding": 1.25, "iconSize": 3.75, "labelSize": 1.72, "labelLines": 2, "labelLinesDouble": 3 }
+  },
   "guition-esp32-p4-jc1060p470": {
     "slots": 15,
     "cols": 5,

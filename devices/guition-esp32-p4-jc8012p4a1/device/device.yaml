@@ -1,0 +1,204 @@
+# =============================================================================
+# DEVICE - Guition ESP32-P4 JC8012P4A1 hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 10.1" touch panel.
+# Includes the ESP32-P4 main SoC, ESP32-C6 hosted WiFi co-processor, MIPI
+# DSI display, GSL3680 capacitive touchscreen, and backlight PWM.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# ESP32-P4 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  variant: esp32p4
+  flash_size: 16MB
+  cpu_frequency: 360MHZ
+  engineering_sample: true
+  framework:
+    type: esp-idf
+    advanced:
+      enable_idf_experimental_features: true
+      disable_vfs_support_termios: false
+      disable_vfs_support_select: false
+      disable_vfs_support_dir: false
+    sdkconfig_options:
+      CONFIG_SDMMC_HOST_DEFAULT: "y"
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: "y"
+      CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
+      CONFIG_LOG_DEFAULT_LEVEL: "2"
+
+# ---------------------------------------------------------------------------
+# External components
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: https://github.com/jtenniswood/espcontrol
+      ref: main
+      path: components
+    components: [espcontrol]
+    refresh: 0s
+  - source: github://kvj/esphome@jd9365_gsl3680
+    components: [gsl3680]
+    refresh: 0s
+
+espcontrol:
+
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-Wno-deprecated-declarations"
+    build_src_flags:
+      - "-Wno-literal-suffix"
+  on_boot:
+    - priority: -100
+      then:
+        - script.execute: apply_screen_rotation
+
+# ---------------------------------------------------------------------------
+# ESP32-C6 co-processor (provides WiFi/BLE via SDIO)
+# ---------------------------------------------------------------------------
+esp32_hosted:
+  variant: esp32c6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  active_high: true
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: hex
+  speed: 200MHz
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+  - platform: http_request
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+# ---------------------------------------------------------------------------
+# Power management (LDO channel for DSI PHY)
+# ---------------------------------------------------------------------------
+esp_ldo:
+  - channel: 3
+    id: dsi_phy_enable
+    voltage: 2.5V
+    adjustable: True
+
+# ---------------------------------------------------------------------------
+# Backlight (LEDC PWM output + monochromatic light entity)
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO23
+    id: gpio_backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: ALWAYS_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screensaver_display_off_active);'
+            then:
+              - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# I2C bus and touchscreen (GSL3680 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+i2c:
+  - id: bus_a
+    sda: GPIO07
+    scl: GPIO08
+    frequency: 400kHz
+    sda_pullup_enabled: False
+    scl_pullup_enabled: False
+
+touchscreen:
+  - platform: gsl3680
+    id: my_touchscreen
+    reset_pin: GPIO22
+    interrupt_pin: GPIO21
+    transform:
+      swap_xy: false
+      mirror_x: false
+      mirror_y: true
+    on_touch:
+      - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Display (10.1" 800x1280 native MIPI DSI panel)
+# ---------------------------------------------------------------------------
+display:
+  - platform: mipi_dsi
+    id: my_display
+    model: JC8012P4A1
+    color_order: RGB
+    reset_pin:
+      number: GPIO27
+    update_interval: never
+    auto_clear_enabled: false
+    dimensions:
+      width: 800
+      height: 1280
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+lvgl:
+  displays: my_display
+  rotation: 90
+  byte_order: little_endian
+  touchscreens: my_touchscreen
+
+script:
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "180";'
+          then:
+            - lvgl.display.set_rotation: 270
+          else:
+            - lvgl.display.set_rotation: 90
+
+select:
+  - platform: template
+    name: "Screen: Rotation"
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "0"
+    options:
+      - "0"
+      - "180"
+    on_value:
+      then:
+        - script.execute: apply_screen_rotation

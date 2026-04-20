@@ -24,6 +24,7 @@ Espcontrol is free, open-source firmware that turns **Guition ESP32** touchscree
 
 ## Where to buy
 
+- **10.1-inch panel (JC8012P4A1):** Guition / AliExpress
 - **7-inch panel (JC1060P470):** [AliExpress](https://s.click.aliexpress.com/e/_c335W0r5) (~£40)
 - **4.3-inch panel (JC4880P443):** [AliExpress](https://s.click.aliexpress.com/e/_c32jr3eN) (~£24)
 - **4-inch square panel (4848S040):** [AliExpress](https://s.click.aliexpress.com/e/_c3sIhvBv) (~£16)

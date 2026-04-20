@@ -1,0 +1,88 @@
+# =============================================================================
+# PACKAGES - ESPHome include manifest
+# =============================================================================
+# Load order follows dependencies: device and assets first, then config,
+# addons, and screens. Loading screen must be the first page so LVGL shows
+# it at startup. Main page (lvgl.yaml) is included after setup screens.
+# =============================================================================
+
+substitutions:
+  device_slug: "guition-esp32-p4-jc8012p4a1"
+  firmware_manifest_slug: "guition-esp32-p4-jc8012p4a1"
+  screen_width: "1280"
+  screen_height: "800"
+  content_width: "760"
+  icon_font: icon_font
+  label_font: label_font_lt
+  unit_font: label_font_lt
+  sensor_value_font: statistics_font
+  padding: 16px
+  radius: 10px
+  clock_font_size: "220"
+  clock_cx: "640"
+  clock_cy: "400"
+
+packages:
+  # ---------------------------------------------------------------------------
+  # Device, assets, and LVGL base
+  # ---------------------------------------------------------------------------
+  device:          !include device/device.yaml
+  fonts:           !include ../../common/assets/fonts.yaml
+  icons:           !include ../../common/assets/icons.yaml
+  fonts_device:    !include device/fonts.yaml
+  button_theme:    !include ../../common/theme/button.yaml
+  # ---------------------------------------------------------------------------
+  # Configuration (text/select/number components for web UI)
+  # ---------------------------------------------------------------------------
+  colors:          !include ../../common/config/colors.yaml
+  button_order:    !include ../../common/config/button_order.yaml
+  display_config:  !include ../../common/config/display.yaml
+  # Per-button entity/label/icon (24 slots - 4x6 grid)
+  btn_1:           !include { file: ../../common/config/button_template.yaml, vars: { num: "1" } }
+  btn_2:           !include { file: ../../common/config/button_template.yaml, vars: { num: "2" } }
+  btn_3:           !include { file: ../../common/config/button_template.yaml, vars: { num: "3" } }
+  btn_4:           !include { file: ../../common/config/button_template.yaml, vars: { num: "4" } }
+  btn_5:           !include { file: ../../common/config/button_template.yaml, vars: { num: "5" } }
+  btn_6:           !include { file: ../../common/config/button_template.yaml, vars: { num: "6" } }
+  btn_7:           !include { file: ../../common/config/button_template.yaml, vars: { num: "7" } }
+  btn_8:           !include { file: ../../common/config/button_template.yaml, vars: { num: "8" } }
+  btn_9:           !include { file: ../../common/config/button_template.yaml, vars: { num: "9" } }
+  btn_10:          !include { file: ../../common/config/button_template.yaml, vars: { num: "10" } }
+  btn_11:          !include { file: ../../common/config/button_template.yaml, vars: { num: "11" } }
+  btn_12:          !include { file: ../../common/config/button_template.yaml, vars: { num: "12" } }
+  btn_13:          !include { file: ../../common/config/button_template.yaml, vars: { num: "13" } }
+  btn_14:          !include { file: ../../common/config/button_template.yaml, vars: { num: "14" } }
+  btn_15:          !include { file: ../../common/config/button_template.yaml, vars: { num: "15" } }
+  btn_16:          !include { file: ../../common/config/button_template.yaml, vars: { num: "16" } }
+  btn_17:          !include { file: ../../common/config/button_template.yaml, vars: { num: "17" } }
+  btn_18:          !include { file: ../../common/config/button_template.yaml, vars: { num: "18" } }
+  btn_19:          !include { file: ../../common/config/button_template.yaml, vars: { num: "19" } }
+  btn_20:          !include { file: ../../common/config/button_template.yaml, vars: { num: "20" } }
+  btn_21:          !include { file: ../../common/config/button_template.yaml, vars: { num: "21" } }
+  btn_22:          !include { file: ../../common/config/button_template.yaml, vars: { num: "22" } }
+  btn_23:          !include { file: ../../common/config/button_template.yaml, vars: { num: "23" } }
+  btn_24:          !include { file: ../../common/config/button_template.yaml, vars: { num: "24" } }
+  # ---------------------------------------------------------------------------
+  # Addons
+  # ---------------------------------------------------------------------------
+  connectivity:    !include ../../common/addon/connectivity.yaml
+  time_sync:       !include ../../common/addon/time.yaml
+  backlight:       !include ../../common/addon/backlight.yaml
+  bl_schedule:     !include ../../common/addon/backlight_schedule.yaml
+  network:         !include ../../common/addon/network.yaml
+  fw_update:       !include ../../common/addon/firmware_update.yaml
+
+  # ---------------------------------------------------------------------------
+  # Screens (loading must be first page for LVGL startup)
+  # ---------------------------------------------------------------------------
+  screen_loading:  !include ../../common/device/screen_loading.yaml
+  screen_wifi:     !include ../../common/device/screen_wifi_setup.yaml
+  screen_ha:       !include ../../common/device/screen_ha_setup.yaml
+  screen_ha_act:   !include ../../common/device/screen_ha_actions.yaml
+  screen_setup:    !include ../../common/device/screen_button_setup.yaml
+  screen_clock:    !include ../../common/device/screen_clock.yaml
+  # ---------------------------------------------------------------------------
+  # Main page and dynamic sensor subscriptions (after setup screens)
+  # ---------------------------------------------------------------------------
+  lvgl:            !include device/lvgl.yaml
+  sensors:         !include device/sensors.yaml

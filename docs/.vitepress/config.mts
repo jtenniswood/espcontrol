@@ -5,7 +5,7 @@ const hostname = 'https://jtenniswood.github.io/espcontrol/'
 export default defineConfig({
   title: 'Espcontrol',
   description:
-    'Touchscreen control panel for Home Assistant on Guition ESP32 — up to 30 buttons, web configuration, automatic updates.',
+    'Touchscreen control panel for Home Assistant on Guition ESP32 — up to 24 buttons, web configuration, automatic updates.',
   base: '/espcontrol/',
   lang: 'en-US',
   cleanUrls: true,
@@ -58,7 +58,7 @@ export default defineConfig({
             url: hostname,
             name: 'Espcontrol',
             description:
-              'ESPHome firmware for Guition ESP32 touchscreens: up to 30 Home Assistant entity buttons, web UI, OTA updates.',
+              'ESPHome firmware for Guition ESP32 touchscreens: up to 24 Home Assistant entity buttons, web UI, OTA updates.',
             inLanguage: 'en-US',
           },
           {
@@ -149,6 +149,7 @@ export default defineConfig({
       {
         text: 'Supported Screens',
         items: [
+          { text: '10.1-inch JC8012P4A1', link: '/screens/jc8012p4a1' },
           { text: '7-inch JC1060P470', link: '/screens/jc1060p470' },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },

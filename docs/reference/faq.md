@@ -67,6 +67,7 @@ The panel includes hundreds of icons from the Material Design Icons set. If the 
 
 The home screen has a grid of buttons sized to fill the screen:
 
+- **10.1-inch JC8012P4A1** — 24 buttons (4 rows, 6 columns)
 - **7-inch JC1060P470** — 15 buttons (3 rows, 5 columns)
 - **4.3-inch JC4880P443** — 6 buttons (3 rows, 2 columns)
 - **4-inch 4848S040** — 9 buttons (3 rows, 3 columns)
@@ -83,8 +84,9 @@ Yes. In the [Setup](/features/setup) **Settings** tab, under **Backup**, you can
 
 ## Which panels are supported?
 
-Espcontrol currently supports three Guition touchscreen panels:
+Espcontrol currently supports four Guition touchscreen panels:
 
+- **JC8012P4A1** — 10.1-inch, 1280x800 landscape orientation (ESP32-P4)
 - **JC1060P470** — 7-inch, 1024x600, landscape orientation (ESP32-P4)
 - **JC4880P443** — 4.3-inch, 480x800, portrait orientation (ESP32-P4)
 - **4848S040** — 4-inch, 480x480, square (ESP32-S3)

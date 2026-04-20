@@ -972,6 +972,7 @@ inline void grid_phase2(
   ESP_LOGI("sensors", "Phase 2: subscriptions + subpages start (%lu ms)", esphome::millis());
   int NS = cfg.num_slots;
   int COLS = cfg.cols;
+  int ROWS = (NS + COLS - 1) / COLS;
 
   static bool has_sensor[25] = {};
   static bool has_icon_on[25] = {};
@@ -1071,7 +1072,9 @@ inline void grid_phase2(
   lv_coord_t *sp_col_dsc = new lv_coord_t[COLS + 1];
   for (int i = 0; i < COLS; i++) sp_col_dsc[i] = LV_GRID_FR(1);
   sp_col_dsc[COLS] = LV_GRID_TEMPLATE_LAST;
-  static lv_coord_t sp_row_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+  lv_coord_t *sp_row_dsc = new lv_coord_t[ROWS + 1];
+  for (int i = 0; i < ROWS; i++) sp_row_dsc[i] = LV_GRID_FR(1);
+  sp_row_dsc[ROWS] = LV_GRID_TEMPLATE_LAST;
 
   const lv_font_t *sp_icon_fnt = lv_obj_get_style_text_font(slots[0].icon_lbl, LV_PART_MAIN);
 

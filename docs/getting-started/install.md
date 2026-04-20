@@ -11,6 +11,7 @@ Flash the Espcontrol firmware to your Guition ESP32 display directly from your b
 ## What you need
 
 - **A supported Guition ESP32 panel:**
+  - **[JC8012P4A1](/screens/jc8012p4a1)** — 10.1-inch, 1280x800, landscape
   - **[JC1060P470](/screens/jc1060p470)** — 7-inch, 1024x600, landscape
   - **[JC4880P443](/screens/jc4880p443)** — 4.3-inch, 480x800, portrait
   - **[4848S040](/screens/4848s040)** — 4-inch, 480x480, square
@@ -21,6 +22,10 @@ Flash the Espcontrol firmware to your Guition ESP32 display directly from your b
 ## Flash the firmware
 
 Connect the display to your computer with the USB-C cable, then click the button for your panel.
+
+**10.1-inch (JC8012P4A1):**
+
+<EspInstallButton slug="guition-esp32-p4-jc8012p4a1" />
 
 **7-inch (JC1060P470):**
 

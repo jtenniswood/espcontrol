@@ -122,11 +122,16 @@ jobs:
       - name: Verify firmware assets
         run: |
           MISSING=false
+          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1"
           for SLUG in $DEVICE_SLUGS; do
             MANIFEST="firmware/${SLUG}/manifest.json"
             if [ ! -f "$MANIFEST" ]; then
-              echo "::error::No firmware manifest found for ${SLUG} — install page will be non-functional"
-              MISSING=true
+              if echo " ${OPTIONAL_FIRMWARE_SLUGS} " | grep -q " ${SLUG} "; then
+                echo "::warning::No firmware manifest found for ${SLUG} yet — install button will work after the first release asset is published"
+              else
+                echo "::error::No firmware manifest found for ${SLUG} — install page will be non-functional"
+                MISSING=true
+              fi
             fi
           done
           if [ "$MISSING" = true ]; then exit 1; fi
