@@ -133,9 +133,6 @@ touchscreen:
     id: my_touchscreen
     display: my_display
     update_interval: 16ms
-    transform:
-      mirror_x: true
-      mirror_y: true
     on_touch:
       - script.execute: screensaver_wake
 
@@ -167,36 +164,20 @@ script:
             lambda: 'return id(screen_rotation_select).current_option() == "90";'
           then:
             - lvgl.display.set_rotation: 270
-            - lambda: |-
-                id(my_touchscreen).set_swap_xy(true);
-                id(my_touchscreen).set_mirror_x(false);
-                id(my_touchscreen).set_mirror_y(true);
           else:
             - if:
                 condition:
                   lambda: 'return id(screen_rotation_select).current_option() == "180";'
                 then:
                   - lvgl.display.set_rotation: 0
-                  - lambda: |-
-                      id(my_touchscreen).set_swap_xy(false);
-                      id(my_touchscreen).set_mirror_x(false);
-                      id(my_touchscreen).set_mirror_y(false);
                 else:
                   - if:
                       condition:
                         lambda: 'return id(screen_rotation_select).current_option() == "270";'
                       then:
                         - lvgl.display.set_rotation: 90
-                        - lambda: |-
-                            id(my_touchscreen).set_swap_xy(true);
-                            id(my_touchscreen).set_mirror_x(true);
-                            id(my_touchscreen).set_mirror_y(false);
                       else:
                         - lvgl.display.set_rotation: 180
-                        - lambda: |-
-                            id(my_touchscreen).set_swap_xy(false);
-                            id(my_touchscreen).set_mirror_x(true);
-                            id(my_touchscreen).set_mirror_y(true);
 
 select:
   - platform: template
