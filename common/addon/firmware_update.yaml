@@ -87,7 +87,7 @@ text_sensor:
     id: firmware_version_sensor
     entity_category: diagnostic
     icon: "mdi:tag"
-    update_interval: 5s
+    update_interval: never
     lambda: 'return {"${firmware_version}"};'
     web_server:
       sorting_group_id: sg_firmware
