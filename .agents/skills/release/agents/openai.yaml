@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release"
+  short_description: "Create versioned GitHub firmware releases"
+  default_prompt: "Use $release to create the next patch, feature, or major GitHub release and watch the build action."
