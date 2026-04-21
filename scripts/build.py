@@ -12,6 +12,8 @@ Usage:
 """
 import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -234,6 +236,31 @@ def replace_config(source_text, slug, cfg):
     return source_text[: m.start(2)] + build_config_block(slug, cfg) + source_text[m.start(3) :]
 
 
+def esbuild_cmd():
+    """Return an esbuild command path, preferring the repo-installed binary."""
+    local = ROOT / "node_modules" / ".bin" / ("esbuild.cmd" if sys.platform == "win32" else "esbuild")
+    if local.exists():
+        return str(local)
+    found = shutil.which("esbuild")
+    if found:
+        return found
+    raise RuntimeError("esbuild not found. Run 'npm ci' before building www.js outputs.")
+
+
+def minify_js(source_text):
+    """Minify generated web UI JavaScript with esbuild."""
+    result = subprocess.run(
+        [esbuild_cmd(), "--loader=js", "--minify"],
+        input=source_text,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "esbuild failed")
+    return result.stdout
+
+
 def build_www(check_only=False):
     """Build per-device www.js from the single source template."""
     devices = load_json(DEVICES_JSON)
@@ -243,7 +270,7 @@ def build_www(check_only=False):
 
     for slug, cfg in devices.items():
         output_path = WWW_OUTPUT_DIR / slug / "www.js"
-        generated = replace_config(source_text, slug, cfg)
+        generated = minify_js(replace_config(source_text, slug, cfg))
 
         if output_path.exists():
             current = output_path.read_text()

@@ -12,13 +12,6 @@
 // Icon data is generated between GENERATED:ICONS / GENERATED:DOMAIN_ICONS.
 // =============================================================================
 
-// Load the original ESPHome webserver v3 React app (used for API only)
-(function () {
-  var s = document.createElement("script");
-  s.src = "https://oi.esphome.io/v3/www.js";
-  document.head.appendChild(s);
-})();
-
 // Custom UI: three-page layout (Screen / Settings / Logs)
 (function () {
   // __DEVICE_CONFIG_START__
