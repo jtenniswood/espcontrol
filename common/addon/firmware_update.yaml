@@ -1,10 +1,11 @@
 # =============================================================================
 # FIRMWARE UPDATE - OTA and HTTP update from GitHub
 # =============================================================================
-# Provides OTA and HTTP-based firmware updates. The device checks a manifest
-# on GitHub and can auto-update when new versions are available. Update checks
-# run on an interval (hourly, daily, weekly, monthly) when auto-update is
-# enabled; a manual "Check for Update" button triggers an immediate check.
+# Provides OTA and HTTP-based firmware updates. The device checks the stable
+# manifest on GitHub and can optionally check the beta manifest when the beta
+# channel is enabled. Update checks run on an interval (hourly, daily, weekly,
+# monthly) when auto-update is enabled; a manual "Check for Update" button
+# triggers an immediate check.
 # =============================================================================
 
 substitutions:
@@ -44,6 +45,13 @@ update:
             then:
               - update.perform: firmware_update
 
+  - platform: http_request
+    id: firmware_update_beta
+    name: "Firmware: Update Beta"
+    internal: true
+    source: https://jtenniswood.github.io/espcontrol/firmware/${firmware_manifest_slug}/beta/manifest.json
+    update_interval: never
+
 switch:
   - platform: template
     name: "Firmware: Auto Update"
@@ -52,6 +60,16 @@ switch:
     icon: "mdi:update"
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
+    web_server:
+      sorting_group_id: sg_firmware
+
+  - platform: template
+    name: "Firmware: Beta Channel"
+    id: beta_channel_switch
+    entity_category: config
+    icon: "mdi:beta"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
     web_server:
       sorting_group_id: sg_firmware
 
@@ -77,8 +95,12 @@ interval:
     then:
       - lambda: |-
           if (!id(auto_update_switch).state) return;
-          if (should_check_update(id(update_check_counter), id(update_frequency_select).current_option()))
+          if (should_check_update(id(update_check_counter), id(update_frequency_select).current_option())) {
             id(firmware_update).update();
+            if (id(beta_channel_switch).state) {
+              id(firmware_update_beta).update();
+            }
+          }
           id(update_check_counter) = id(update_check_counter) + 1;
 
 text_sensor:
@@ -102,5 +124,10 @@ button:
     on_press:
       - lambda: 'id(manual_check_only) = true;'
       - component.update: firmware_update
+      - if:
+          condition:
+            lambda: 'return id(beta_channel_switch).state;'
+          then:
+            - component.update: firmware_update_beta
       - delay: 15s
       - lambda: 'id(manual_check_only) = false;'

@@ -55,9 +55,11 @@ To update manually:
 1. Open the panel's web page.
 2. Go to the **Settings** tab in the [Setup](/features/setup).
 3. Under **Firmware**, press **Check for Update**.
-4. If a new version is available, the panel will download and install it.
+4. If a new version is available, press the install button that appears.
 
 See [Firmware Updates](/features/firmware-updates) for more details.
+
+Pre-release firmware is available through the **Beta Channel** switch in the same **Firmware** section. Leave it off unless you specifically want to test beta builds.
 
 ## What If the Icon I Need Isn't Listed?
 

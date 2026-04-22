@@ -613,8 +613,12 @@
     firmwareLatestVersion: "",
     firmwareUpdateState: "",
     firmwareReleaseUrl: "",
+    firmwareBetaLatestVersion: "",
+    firmwareBetaUpdateState: "",
+    firmwareBetaReleaseUrl: "",
     firmwareChecking: false,
     autoUpdate: true,
+    betaChannel: false,
     updateFrequency: "Daily",
     updateFreqOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
     subpages: {},
@@ -945,24 +949,41 @@
       isSpecificFirmwareVersion(state.firmwareLatestVersion);
   }
 
+  function firmwareBetaUpdateAvailable() {
+    return state.betaChannel &&
+      state.firmwareBetaUpdateState === "UPDATE AVAILABLE" &&
+      isSpecificFirmwareVersion(state.firmwareBetaLatestVersion);
+  }
+
   function renderFirmwareUpdateStatus() {
     if (!els.fwStatus) return;
     var cls = "sp-fw-status";
     var status = "";
     var inlineStatus = "";
-    if (state.firmwareUpdateState === "INSTALLING") {
+    var betaAvailable = firmwareBetaUpdateAvailable();
+    var stableAvailable = firmwareUpdateAvailable();
+    var installing = state.firmwareUpdateState === "INSTALLING" ||
+      state.firmwareBetaUpdateState === "INSTALLING";
+    if (installing) {
       status = "Installing update\u2026";
       cls += " sp-update-installing";
-    } else if (firmwareUpdateAvailable()) {
+    } else if (betaAvailable) {
+      status = "Latest beta version: " + escHtml(state.firmwareBetaLatestVersion);
+      if (state.firmwareBetaReleaseUrl) {
+        status += ' <a href="' + escAttr(state.firmwareBetaReleaseUrl) + '" target="_blank" rel="noopener">release notes</a>';
+      }
+      cls += " sp-update-available";
+    } else if (stableAvailable) {
       status = "Latest public version: " + escHtml(state.firmwareLatestVersion);
       if (state.firmwareReleaseUrl) {
         status += ' <a href="' + escAttr(state.firmwareReleaseUrl) + '" target="_blank" rel="noopener">release notes</a>';
       }
       cls += " sp-update-available";
-    } else if (state.firmwareUpdateState === "NO UPDATE") {
-      inlineStatus = "Up to date";
     } else if (state.firmwareChecking) {
-      status = "Checking public firmware\u2026";
+      status = "Checking firmware\u2026";
+    } else if (state.firmwareUpdateState === "NO UPDATE" &&
+        (!state.betaChannel || state.firmwareBetaUpdateState === "NO UPDATE")) {
+      inlineStatus = "Up to date";
     }
     els.fwStatus.className = cls;
     els.fwStatus.innerHTML = status;
@@ -971,12 +992,15 @@
       els.fwInlineStatus.textContent = inlineStatus;
     }
     if (els.fwCheckBtn) {
-      var isBusy = state.firmwareUpdateState === "INSTALLING" || state.firmwareChecking;
+      var isBusy = installing || state.firmwareChecking;
       els.fwCheckBtn.className = "sp-fw-btn" + (isBusy ? " sp-fw-btn-busy" : "");
-      if (state.firmwareUpdateState === "INSTALLING") {
+      if (installing) {
         els.fwCheckBtn.disabled = true;
         els.fwCheckBtn.textContent = "Installing\u2026";
-      } else if (firmwareUpdateAvailable()) {
+      } else if (betaAvailable) {
+        els.fwCheckBtn.disabled = false;
+        els.fwCheckBtn.textContent = "Install Beta";
+      } else if (stableAvailable) {
         els.fwCheckBtn.disabled = false;
         els.fwCheckBtn.textContent = "Install Update";
       } else {
@@ -986,13 +1010,20 @@
     }
   }
 
-  function setFirmwareUpdateInfo(d) {
+  function setFirmwareUpdateInfo(d, isBeta) {
     var latest = d.latest_version || d.value || "";
     if (d.current_version) setFirmwareVersion(d.current_version);
-    if (latest) state.firmwareLatestVersion = String(latest).trim();
-    state.firmwareUpdateState = String(d.state || state.firmwareUpdateState || "").trim().toUpperCase();
-    state.firmwareReleaseUrl = d.release_url || state.firmwareReleaseUrl || "";
-    if (state.firmwareUpdateState) state.firmwareChecking = false;
+    if (isBeta) {
+      if (latest) state.firmwareBetaLatestVersion = String(latest).trim();
+      state.firmwareBetaUpdateState = String(d.state || state.firmwareBetaUpdateState || "").trim().toUpperCase();
+      state.firmwareBetaReleaseUrl = d.release_url || state.firmwareBetaReleaseUrl || "";
+      if (state.firmwareBetaUpdateState) state.firmwareChecking = false;
+    } else {
+      if (latest) state.firmwareLatestVersion = String(latest).trim();
+      state.firmwareUpdateState = String(d.state || state.firmwareUpdateState || "").trim().toUpperCase();
+      state.firmwareReleaseUrl = d.release_url || state.firmwareReleaseUrl || "";
+      if (state.firmwareUpdateState) state.firmwareChecking = false;
+    }
     renderFirmwareUpdateStatus();
   }
 
@@ -1007,6 +1038,7 @@
   }
 
   function isFirmwareUpdateEvent(id, d) {
+    if (isFirmwareBetaUpdateEvent(id, d)) return false;
     id = String(id || "").toLowerCase();
     var nameId = String(d.name_id || "").toLowerCase();
     var domain = String(d.domain || "").toLowerCase();
@@ -1014,6 +1046,17 @@
     return nameId === "update/firmware: update" ||
       (domain === "update" && name === "firmware: update") ||
       (id.indexOf("update-") === 0 && id.indexOf("firmware") !== -1 && id.indexOf("update") !== -1);
+  }
+
+  function isFirmwareBetaUpdateEvent(id, d) {
+    id = String(id || "").toLowerCase();
+    var nameId = String(d.name_id || "").toLowerCase();
+    var domain = String(d.domain || "").toLowerCase();
+    var name = String(d.name || "").toLowerCase();
+    return nameId === "update/firmware: update beta" ||
+      (domain === "update" && name === "firmware: update beta") ||
+      (id.indexOf("update-") === 0 && id.indexOf("firmware") !== -1 &&
+        id.indexOf("update") !== -1 && id.indexOf("beta") !== -1);
   }
 
   function escAttr(s) {
@@ -1481,6 +1524,14 @@
     });
     getJsonQuietly("/update/" + encodeURIComponent("Firmware: Update") + "?detail=all", function (d) {
       setFirmwareUpdateInfo(d);
+    });
+    getJsonQuietly("/update/" + encodeURIComponent("Firmware: Update Beta") + "?detail=all", function (d) {
+      setFirmwareUpdateInfo(d, true);
+    });
+    getJsonQuietly("/switch/" + encodeURIComponent("Firmware: Beta Channel") + "?detail=all", function (d) {
+      state.betaChannel = d.value === true || d.state === "ON";
+      if (els.setBetaChannel) els.setBetaChannel.checked = state.betaChannel;
+      renderFirmwareUpdateStatus();
     });
   }
 
@@ -2604,6 +2655,12 @@
     fwCheckBtn.className = "sp-fw-btn";
     fwCheckBtn.textContent = "Check for Update";
     fwCheckBtn.addEventListener("click", function () {
+      if (firmwareBetaUpdateAvailable()) {
+        state.firmwareBetaUpdateState = "INSTALLING";
+        renderFirmwareUpdateStatus();
+        postUpdateInstall("Firmware: Update Beta");
+        return;
+      }
       if (firmwareUpdateAvailable()) {
         state.firmwareUpdateState = "INSTALLING";
         renderFirmwareUpdateStatus();
@@ -2637,6 +2694,15 @@
       if (els.updateFreqWrap) els.updateFreqWrap.style.display = this.checked ? "" : "none";
     });
     els.setAutoUpdate = autoUpdateToggle.input;
+
+    var betaToggle = toggleRow("Beta Channel", "sp-set-beta-channel", state.betaChannel);
+    fwBody.appendChild(betaToggle.row);
+    betaToggle.input.addEventListener("change", function () {
+      state.betaChannel = this.checked;
+      postSwitch("Firmware: Beta Channel", this.checked);
+      renderFirmwareUpdateStatus();
+    });
+    els.setBetaChannel = betaToggle.input;
 
     var freqWrap = document.createElement("div");
     freqWrap.style.display = state.autoUpdate ? "" : "none";
@@ -5484,10 +5550,18 @@
       "update-firmware__update": function (val, d) {
         setFirmwareUpdateInfo(d);
       },
+      "update-firmware__update_beta": function (val, d) {
+        setFirmwareUpdateInfo(d, true);
+      },
       "switch-firmware__auto_update": function (val, d) {
         state.autoUpdate = d.value === true || val === "ON";
         if (els.setAutoUpdate) els.setAutoUpdate.checked = state.autoUpdate;
         if (els.updateFreqWrap) els.updateFreqWrap.style.display = state.autoUpdate ? "" : "none";
+      },
+      "switch-firmware__beta_channel": function (val, d) {
+        state.betaChannel = d.value === true || val === "ON";
+        if (els.setBetaChannel) els.setBetaChannel.checked = state.betaChannel;
+        renderFirmwareUpdateStatus();
       },
       "select-firmware__update_frequency": function (val, d) {
         state.updateFrequency = d.value || val || state.updateFrequency;
@@ -5572,6 +5646,10 @@
       }
       if (isFirmwareVersionEvent(id, d)) {
         setFirmwareVersion(val);
+        return;
+      }
+      if (isFirmwareBetaUpdateEvent(id, d)) {
+        setFirmwareUpdateInfo(d, true);
         return;
       }
       if (isFirmwareUpdateEvent(id, d)) {
