@@ -105,5 +105,5 @@ jobs:
       - name: Compile firmware
         run: >-
           docker run --rm -v "${PWD}:/config"
-          ghcr.io/esphome/esphome:2026.4.0
+          ghcr.io/esphome/esphome:2026.4.1
           compile /config/builds/${{ matrix.slug }}.factory.yaml
