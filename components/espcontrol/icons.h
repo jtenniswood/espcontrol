@@ -82,7 +82,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Fountain",                   "\U000F096B"},
     {"Fridge",                     "\U000F0290"},
     {"Gamepad",                    "\U000F0297"},
-    {"Garage",                     "\U000F0372"},
+    {"Garage",                     "\U000F06D9"},
     {"Garage Open",                "\U000F06DA"},
     {"Garage Open Variant",        "\U000F12D4"},
     {"Garage Variant",             "\U000F12D3"},
@@ -146,7 +146,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Package Closed",             "\U000F03D7"},
     {"Pool",                       "\U000F0606"},
     {"Power",                      "\U000F0425"},
-    {"Power Plug",                 "\U000F0654"},
+    {"Power Plug",                 "\U000F06A5"},
     {"Printer",                    "\U000F042A"},
     {"Printer 3D",                 "\U000F042B"},
     {"Projector",                  "\U000F042E"},
@@ -246,7 +246,7 @@ inline const char* find_icon(const char* name) {
 inline const char* domain_default_icon(const std::string &domain) {
   // --- GENERATED:DOMAIN_ICONS START ---
   if (domain == "light")                      return "\U000F0335";  // Lightbulb
-  if (domain == "switch")                     return "\U000F0654";  // Power Plug
+  if (domain == "switch")                     return "\U000F06A5";  // Power Plug
   if (domain == "fan")                        return "\U000F0210";  // Fan
   if (domain == "lock")                       return "\U000F033E";  // Lock
   if (domain == "cover")                      return "\U000F1A2B";  // Blinds Horizontal

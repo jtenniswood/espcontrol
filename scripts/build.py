@@ -15,15 +15,22 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+MDI_VERSION = "7.4.47"
+MDI_CSS_URL = f"https://cdn.jsdelivr.net/npm/@mdi/font@{MDI_VERSION}/css/materialdesignicons.css"
 
 # ---------------------------------------------------------------------------
 # Shared paths
 # ---------------------------------------------------------------------------
 DEVICES_JSON = ROOT / "src" / "webserver" / "devices.json"
 ICONS_JSON = ROOT / "common" / "assets" / "icons.json"
+
+
+class BuildError(RuntimeError):
+    pass
 
 
 def load_json(path):
@@ -43,6 +50,89 @@ def replace_between_markers(text, start_tag, end_tag, new_content):
     if not m:
         raise ValueError(f"Markers not found: {start_tag} / {end_tag}")
     return text[: m.start(2)] + new_content + text[m.start(3) :]
+
+
+def icon_items(data):
+    return [data["fallback"], *data.get("structural", []), *data["icons"]]
+
+
+def load_mdi_codepoints():
+    """Load the codepoint map from the same MDI CSS version used by the web UI."""
+    try:
+        with urllib.request.urlopen(MDI_CSS_URL, timeout=20) as response:
+            css = response.read().decode("utf-8")
+    except Exception as exc:
+        raise BuildError(f"Unable to fetch pinned MDI CSS from {MDI_CSS_URL}: {exc}") from exc
+
+    return {
+        match.group(1): match.group(2).upper()
+        for match in re.finditer(
+            r'\.mdi-([a-z0-9-]+)::before \{\s*content: "\\([0-9A-Fa-f]+)";',
+            css,
+        )
+    }
+
+
+def check_duplicate_icon_fields(data):
+    errors = []
+    for field in ("name", "mdi", "codepoint"):
+        seen = {}
+        for item in icon_items(data):
+            seen.setdefault(item[field], []).append(item["name"])
+        for value, names in seen.items():
+            if len(names) > 1:
+                errors.append(f"duplicate {field} {value!r}: {', '.join(names)}")
+    return errors
+
+
+def check_mdi_versions():
+    """Make sure the browser CSS and device font URLs stay on the same MDI version."""
+    files = [
+        ROOT / "src" / "webserver" / "www.js",
+        ROOT / "common" / "assets" / "icons.yaml",
+        *sorted(ROOT.glob("devices/*/device/fonts.yaml")),
+    ]
+    version_re = re.compile(
+        r"(?:@mdi/font@|MaterialDesign-Webfont/raw/v|materialdesignicons\.com/cdn/)"
+        r"([0-9]+(?:\.[0-9]+)+)"
+    )
+    errors = []
+    for path in files:
+        versions = set(version_re.findall(path.read_text()))
+        if versions and versions != {MDI_VERSION}:
+            rel = path.relative_to(ROOT)
+            errors.append(f"{rel} references MDI version(s) {', '.join(sorted(versions))}, expected {MDI_VERSION}")
+    return errors
+
+
+def validate_icon_data(data):
+    """Verify icons.json matches the pinned Material Design Icons release."""
+    errors = []
+    errors.extend(check_duplicate_icon_fields(data))
+    errors.extend(check_mdi_versions())
+
+    mdi_codepoints = load_mdi_codepoints()
+    for item in icon_items(data):
+        mdi = item["mdi"]
+        expected = mdi_codepoints.get(mdi)
+        actual = item["codepoint"].upper()
+        if expected is None:
+            errors.append(f"{item['name']} references missing mdi-{mdi}")
+        elif actual != expected:
+            errors.append(f"{item['name']} / mdi-{mdi}: icons.json={actual}, MDI {MDI_VERSION}={expected}")
+
+    return errors
+
+
+def assert_icon_data_valid(data):
+    errors = validate_icon_data(data)
+    if not errors:
+        return
+
+    print(f"Icon data does not match Material Design Icons {MDI_VERSION}:")
+    for error in errors:
+        print(f"  {error}")
+    raise BuildError("Icon validation failed.")
 
 
 # ===========================================================================
@@ -132,6 +222,7 @@ def gen_www_js_domain_icons(data):
 def sync_icons(check_only=False):
     """Sync icon data from icons.json into all downstream files."""
     data = load_json(ICONS_JSON)
+    assert_icon_data_valid(data)
     dirty = []
 
     icons_h = ROOT / "components" / "espcontrol" / "icons.h"
@@ -305,37 +396,41 @@ def main():
 
     exit_code = 0
 
-    for cmd in commands:
-        if cmd == "all":
-            icon_dirty = sync_icons(check_only=check_only)
-            www_dirty = build_www(check_only=check_only)
-            if check_only and (icon_dirty or www_dirty):
-                exit_code = 1
-            elif not icon_dirty and not www_dirty:
-                print("All outputs are up to date.")
+    try:
+        for cmd in commands:
+            if cmd == "all":
+                icon_dirty = sync_icons(check_only=check_only)
+                www_dirty = build_www(check_only=check_only)
+                if check_only and (icon_dirty or www_dirty):
+                    exit_code = 1
+                elif not icon_dirty and not www_dirty:
+                    print("All outputs are up to date.")
+                else:
+                    total = len(icon_dirty) + len(www_dirty)
+                    print(f"Updated {total} target(s).")
+            elif cmd == "icons":
+                dirty = sync_icons(check_only=check_only)
+                if check_only and dirty:
+                    exit_code = 1
+                elif not dirty:
+                    print("Icon data is in sync.")
+                else:
+                    print(f"Synced {len(dirty)} section(s).")
+            elif cmd == "www":
+                dirty = build_www(check_only=check_only)
+                if check_only and dirty:
+                    exit_code = 1
+                elif not dirty:
+                    print("All www.js outputs are up to date.")
+                else:
+                    print(f"Built {len(dirty)} file(s).")
             else:
-                total = len(icon_dirty) + len(www_dirty)
-                print(f"Updated {total} target(s).")
-        elif cmd == "icons":
-            dirty = sync_icons(check_only=check_only)
-            if check_only and dirty:
+                print(f"Unknown command: {cmd}")
+                print("Usage: python scripts/build.py [all|icons|www] [--check]")
                 exit_code = 1
-            elif not dirty:
-                print("Icon data is in sync.")
-            else:
-                print(f"Synced {len(dirty)} section(s).")
-        elif cmd == "www":
-            dirty = build_www(check_only=check_only)
-            if check_only and dirty:
-                exit_code = 1
-            elif not dirty:
-                print("All www.js outputs are up to date.")
-            else:
-                print(f"Built {len(dirty)} file(s).")
-        else:
-            print(f"Unknown command: {cmd}")
-            print("Usage: python scripts/build.py [all|icons|www] [--check]")
-            exit_code = 1
+    except BuildError as exc:
+        print(exc)
+        return 1
 
     return exit_code
 

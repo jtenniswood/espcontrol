@@ -1,6 +1,6 @@
 # How to add an icon
 
-All button icons are defined once in [`icons.json`](icons.json) and synced to four downstream files by a script. Never edit icon lists in those files directly.
+All button icons are defined once in [`icons.json`](icons.json) and synced to the device font list, firmware lookup table, and web UI by a script. Never edit generated icon lists directly.
 
 ## 1. Find the icon on MDI
 
@@ -25,23 +25,24 @@ The array order determines display order in the LVGL font glyph list and the C++
 ## 3. Run the sync script
 
 ```sh
-python scripts/sync_icons.py
+python3 scripts/build.py icons
 ```
 
-This patches four files between their `GENERATED:ICONS` markers:
+This patches the generated icon sections in:
 
-- `common/assets/icons.yaml` — font glyph codepoints
-- `common/config/button_template.yaml` — YAML select options
-- `devices/.../device/sensors.yaml` — C++ `icon_entries[]` + domain defaults
-- `docs/public/webserver/.../www.js` — JS `ICON_MAP` + `DOMAIN_ICONS`
+- `common/assets/icon_glyphs.yaml` — LVGL font glyph codepoints
+- `components/espcontrol/icons.h` — C++ icon lookup table and domain defaults
+- `src/webserver/www.js` — web UI icon picker names and domain defaults
+
+Run `python3 scripts/build.py` to also rebuild the generated per-device web UI bundles under `docs/public/webserver/.../www.js`.
 
 ## 4. Verify
 
 ```sh
-python scripts/sync_icons.py --check
+python3 scripts/build.py icons --check
 ```
 
-Exits 0 if everything is in sync. Use this in CI to catch manual edits that drift.
+Exits 0 if everything is in sync. The check also compares each `icons.json` codepoint with the pinned Material Design Icons release, so the browser preview and device font cannot silently drift apart.
 
 ## Domain defaults
 
