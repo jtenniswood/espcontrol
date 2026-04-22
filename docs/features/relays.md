@@ -10,7 +10,7 @@ Some Guition 4-inch 4848S040 panels are sold as a relay variant, often listed as
 
 The relays have been confirmed working on the relay variant using the standard 4848S040 Espcontrol firmware.
 
-## Home Assistant entities
+## Home Assistant Entities
 
 On the 4848S040 firmware, Espcontrol exposes each relay in two ways:
 
@@ -29,7 +29,7 @@ They appear as normal Home Assistant entities on the Espcontrol device. You can 
 
 Home Assistant may adjust the exact entity ID if you have renamed the device or if another entity already used the same name. To find them, open **Settings > Devices & services**, select your Espcontrol device, then look for the three relay switches under the device entities.
 
-## Using relays on the touchscreen
+## Using Relays on the Touchscreen
 
 The relay entities are exposed to Home Assistant, so you can also add them back onto the Espcontrol touchscreen as button cards:
 
@@ -42,13 +42,13 @@ Tapping a relay switch entity will toggle the relay through Home Assistant. Tapp
 
 The push button entities are useful when the relay is wired in parallel with existing momentary wall switches, for example when it is driving a dimmer or lighting controller that expects a short button press rather than a permanent on/off output.
 
-## Hardware detection
+## Hardware Detection
 
 The relays are controlled directly by GPIO pins. That means there is no separate relay controller chip for the firmware to identify, so Espcontrol cannot reliably auto-detect whether a specific physical board has the relay hardware fitted.
 
 If your board is the relay variant, the entities will control the built-in relays. If your board does not have the relay hardware, the same entities may still appear in Home Assistant but will not switch a physical relay.
 
-## Startup behaviour
+## Startup Behaviour
 
 The relay outputs default to **off** after startup or restart. This helps avoid a relay turning on unexpectedly when the panel reboots.
 

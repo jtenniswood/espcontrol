@@ -8,7 +8,7 @@ description:
 
 Espcontrol is actively developed and improved based on user feedback. There is no fixed public roadmap — features and priorities evolve based on what users need and what Home Assistant and the hardware support.
 
-## Additional button types
+## Additional Button Types
 
 In addition to the existing card types — **Toggle**, **Subpage**, **[Button](/card-types/buttons)**, **[Sensor](/card-types/sensors)**, **[Weather](/card-types/weather)**, **[Slider](/card-types/sliders)**, and **[Cover](/card-types/covers)** — future releases will introduce more specialised controls:
 
@@ -20,7 +20,7 @@ In addition to the existing card types — **Toggle**, **Subpage**, **[Button](/
 
 These are planned directions, not commitments — the order and scope will depend on community feedback. If there's a button type you'd like to see, open a feature request on GitHub.
 
-## How to get involved
+## How to Get Involved
 
 - **Report a bug or request a feature:** [Open an issue on GitHub](https://github.com/jtenniswood/espcontrol/issues). Include as much detail as you can — what happened, what you expected, and any relevant screenshots or log entries.
 - **Stay up to date:** Watch the [GitHub Releases](https://github.com/jtenniswood/espcontrol/releases) page to see when new versions are published. If you have auto-update enabled, your panel will pick up new releases automatically.

@@ -57,7 +57,7 @@ registerButtonType("sensor", {
 
     var pf = document.createElement("div");
     pf.className = "sp-field";
-    pf.appendChild(helpers.fieldLabel("Unit precision", helpers.idPrefix + "precision"));
+    pf.appendChild(helpers.fieldLabel("Unit Precision", helpers.idPrefix + "precision"));
     var precSeg = document.createElement("div");
     precSeg.className = "sp-segment";
     var precOpts = [["0", "10"], ["1", "10.2"], ["2", "10.21"]];

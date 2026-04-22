@@ -12,7 +12,7 @@ A subpage works like a folder — tapping it on the panel opens a new page with 
 
 The subpage has one fewer slot than the home screen because the first slot is a **Back** button. Subpage buttons show a small **arrow badge** on the home screen so you can spot them easily.
 
-## Setting up a subpage
+## Setting Up a Subpage
 
 1. Select a button and change its type to **Subpage**.
 2. Click **Configure Subpage** in the button settings, or right-click the button and choose **Edit Subpage**.

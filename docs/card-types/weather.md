@@ -10,12 +10,12 @@ A weather card displays the current condition from a Home Assistant weather enti
 
 Weather cards are read-only — tapping them does nothing.
 
-## Setting up a weather card
+## Setting Up a Weather Card
 
 1. Select a card and change its type to **Weather**.
 2. Enter a **Weather Entity** — the Home Assistant weather entity ID you want to display, for example `weather.forecast_home`.
 
-## How it works on the panel
+## How It Works on the Panel
 
 - The card watches the weather entity's current state.
 - The icon changes automatically when the weather condition changes.
@@ -23,7 +23,7 @@ Weather cards are read-only — tapping them does nothing.
 - If Home Assistant reports `unknown`, `unavailable`, or an unexpected condition, the card shows a fallback weather icon and a readable label.
 - The card uses the **tertiary** colour from [Appearance](/features/appearance), like sensor cards.
 
-## Supported conditions
+## Supported Conditions
 
 | Home Assistant state | What the card shows |
 |---|---|

@@ -15,7 +15,7 @@ Sensor cards are read-only — tapping them does nothing.
 
 ![Sensor card showing 0 kph wind speed](/images/card-sensor.png)
 
-## Setting up a sensor card
+## Setting Up a Sensor Card
 
 1. Select a card and change its type to **Sensor**.
 2. Choose **Numeric** or **Text** from the mode tabs. Numeric is selected by default.
@@ -25,21 +25,21 @@ For **Numeric** mode:
 
 1. Set a **Unit** — the unit label shown next to the value, for example `°C`, `%`, `W`, or `kWh`.
 2. Set a **Label** if you want custom text under the value. If left blank, the entity name from Home Assistant is used.
-3. Set **Unit precision** if you want one or two decimal places.
+3. Set **Unit Precision** if you want one or two decimal places.
 
 For **Text** mode:
 
 1. Choose an **Icon**. This icon is always shown and does not change based on the sensor value.
 2. The live state from Home Assistant is shown where a toggle label would normally appear.
 
-## How it works on the panel
+## How It Works on the Panel
 
 - Numeric mode displays the current value in large text, with the unit beside it and the label underneath.
 - Numeric mode uses the **tertiary** colour from [Appearance](/features/appearance), so it remains visually distinct from toggles and buttons.
 - Text mode uses the same tertiary colour as Numeric mode, while keeping the normal toggle-style icon and label layout.
 - Text mode formats states in sentence case. For example, `not_home` displays as `Not home`.
 
-## Example sensors
+## Example Sensors
 
 | Entity | Mode | Unit | What it shows |
 |---|---|---|---|

@@ -10,7 +10,7 @@ A slider card lets you control the brightness of a Home Assistant light entity b
 
 <!-- ![Slider card showing a lightbulb icon with a brightness fill bar](/images/card-slider.png) -->
 
-## Setting up a slider
+## Setting Up a Slider
 
 1. Select a card and change its type to **Slider**.
 2. Enter an **Entity ID** — the Home Assistant light entity you want to control (for example, `light.living_room`).
@@ -18,7 +18,7 @@ A slider card lets you control the brightness of a Home Assistant light entity b
 4. Set a **Label** (optional) — shown at the bottom of the card. If left blank, the entity's friendly name from Home Assistant is used.
 5. Pick a **Direction** — **Vertical** (default) or **Horizontal**.
 
-## How it works on the panel
+## How It Works on the Panel
 
 - **Drag** the slider to set the brightness from 0 to 100 percent. Releasing the slider sends the new brightness to Home Assistant.
 - A coloured **fill bar** shows the current brightness level in real time — it rises from the bottom in vertical mode or extends from the left in horizontal mode.

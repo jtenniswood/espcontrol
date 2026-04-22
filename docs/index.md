@@ -1,5 +1,5 @@
 ---
-title: Espcontrol — No-code smart home touch controller
+title: Espcontrol — No-Code Smart Home Touch Controller
 titleTemplate: :title
 description: "No-code smart home controller for ESP32 touchscreens. Easy web installer, full docs, no ESPHome required. Configure buttons to control your Home Assistant devices."
 ---
@@ -22,13 +22,13 @@ Espcontrol is free, open-source firmware that turns **Guition ESP32** touchscree
 - **Edit controls** — drag-and-drop ordering, bulk select, and copy-paste between pages from the built-in web UI
 - **Screensaver** — dims and sleeps after a set time, or wakes automatically from a presence sensor
 
-## Where to buy
+## Where to Buy
 
 - **10.1-inch panel (JC8012P4A1):** Guition / AliExpress
 - **7-inch panel (JC1060P470):** [AliExpress](https://s.click.aliexpress.com/e/_c335W0r5) (~£40)
 - **4.3-inch panel (JC4880P443):** [AliExpress](https://s.click.aliexpress.com/e/_c32jr3eN) (~£24)
 - **4-inch square panel (4848S040):** [AliExpress](https://s.click.aliexpress.com/e/_c3sIhvBv) (~£16)
-## 3D printable stands
+## 3D Printable Stands
 
 - **7-inch desk stand (JC1060P470):** [MakerWorld](https://makerworld.com/en/models/2387421-guition-esp32p4-jc1060p470-7inch-screen-desk-mount#profileId-2614995)
 - **4-inch desk stand (4848S040):** [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301)
@@ -41,7 +41,7 @@ If you find this project useful, consider buying me a coffee to support ongoing 
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
 </a>
 
-## Next steps
+## Next Steps
 
 - [Install](/getting-started/install) — what you need, how to flash, and first-time setup
 - [Setup](/features/setup) — how to configure buttons, display, and screensaver from your browser

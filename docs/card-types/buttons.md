@@ -12,7 +12,7 @@ Buttons are useful for things like triggering scenes, sending notifications, act
 
 ![Button card with a tap gesture icon labelled Doorbell](/images/card-button.png)
 
-## Setting up a button
+## Setting Up a Button
 
 1. Select a button and change its type to **Button**.
 2. Set a **Label** — this is shown on the button and also sent to Home Assistant as part of the event data.
@@ -20,7 +20,7 @@ Buttons are useful for things like triggering scenes, sending notifications, act
 
 Buttons don't need an entity ID — they don't control a device directly.
 
-## How it works on the panel
+## How It Works on the Panel
 
 When you tap a button:
 
@@ -28,7 +28,7 @@ When you tap a button:
 - The colour fades smoothly back to the **off colour** over 400 ms.
 - An event is fired to Home Assistant with the button's label.
 
-## Setting up an automation in Home Assistant
+## Setting Up an Automation in Home Assistant
 
 Buttons fire an event called `esphome.push_button_pressed` on the Home Assistant event bus. The event includes the button's **label** and **slot number**.
 
@@ -54,11 +54,11 @@ label: Front Door
 Because the automation triggers on the button's **label** rather than its position, you can freely move the button to a different slot on the grid without breaking any automations.
 :::
 
-### Verifying events are firing
+### Verifying Events Are Firing
 
 If you want to confirm that events are being sent, go to **Developer Tools > Events** in Home Assistant, type `esphome.push_button_pressed` in the "Listen to events" field, and click **Start listening**. Press the button on your panel — the event should appear with the label and slot number.
 
-### Example event data
+### Example Event Data
 
 When a button labelled "Doorbell" on slot 3 is pressed, Home Assistant receives:
 

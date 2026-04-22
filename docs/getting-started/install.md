@@ -8,7 +8,7 @@ description:
 
 Flash the Espcontrol firmware to your Guition ESP32 display directly from your browser — no special software or technical knowledge required.
 
-## What you need
+## What You Need
 
 - **A supported Guition ESP32 panel:**
   - **[JC8012P4A1](/screens/jc8012p4a1)** — 10.1-inch, 1280x800, landscape
@@ -19,7 +19,7 @@ Flash the Espcontrol firmware to your Guition ESP32 display directly from your b
 - **A computer** running Chrome or Edge (desktop). Safari and Firefox are not supported for flashing.
 - **Home Assistant** running on your network
 
-## Flash the firmware
+## Flash the Firmware
 
 Connect the display to your computer with the USB-C cable, then click the button for your panel.
 
@@ -43,7 +43,7 @@ Connect the display to your computer with the USB-C cable, then click the button
 If the install button doesn't detect your device, try a different USB-C cable. Charge-only cables (often thinner and cheaper) won't work — you need one that supports data transfer.
 :::
 
-### Step by step
+### Step by Step
 
 1. **Plug in the display** using the USB-C cable. If your computer asks to install drivers, allow it.
 2. **Click "Install Espcontrol"** above. A dialog will ask you to choose a serial port — select the one that appeared when you plugged in the display.
@@ -73,7 +73,7 @@ Once the display is on your WiFi network, Home Assistant should discover it auto
 
 This connection is how the display gets the current time, temperature data, and the ability to control your devices. After adding the device, you need to [allow it to perform Home Assistant actions](/getting-started/home-assistant-actions) so the touchscreen can control your devices.
 
-## Configure your panel
+## Configure Your Panel
 
 With the display connected to WiFi and paired with Home Assistant, you're ready to set it up.
 

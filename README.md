@@ -20,7 +20,7 @@ Supported panels include the **10.1-inch JC8012P4A1** (1280×800, landscape, 20 
 
 ![Web-based button configuration on the 4-inch 4848S040](docs/public/images/4848s040-buttons.png)
 
-## Supported screens
+## Supported Screens
 
 | 10.1″ JC8012P4A1 | 7″ JC1060P470 | 4.3″ JC4880P443 | 4″ 4848S040 |
 |:-:|:-:|:-:|:-:|
@@ -32,7 +32,7 @@ Supported panels include the **10.1-inch JC8012P4A1** (1280×800, landscape, 20 
 
 See the [docs](https://jtenniswood.github.io/espcontrol/) for full specs and install instructions for each screen.
 
-## Getting started
+## Getting Started
 
 1. **Buy a panel** (see above)
 2. **Flash the firmware** from your browser — follow the [install guide](https://jtenniswood.github.io/espcontrol/getting-started/install)

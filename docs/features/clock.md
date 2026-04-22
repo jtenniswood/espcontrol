@@ -16,7 +16,7 @@ Configured in the **Clock** section of the **Settings** tab in [Setup](/features
 - **Clock Format** — choose **12h** for 12-hour time with AM/PM, or **24h** for 24-hour time. Defaults to 24h.
 - **Sunrise / Sunset** — read-only reference values calculated from your timezone, updated daily. Displayed in whichever format you chose.
 
-## How it works
+## How It Works
 
 The on-screen clock is driven by Home Assistant's time sync — no manual time setting is needed. Once the panel connects to Home Assistant, the clock appears automatically.
 

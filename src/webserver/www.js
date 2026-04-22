@@ -1935,7 +1935,7 @@
 
     var wakeTimeoutField = document.createElement("div");
     wakeTimeoutField.className = "sp-field";
-    wakeTimeoutField.appendChild(fieldLabel("When Woken, Idle Time To Screen Off", "sp-set-schedule-wake-timeout"));
+    wakeTimeoutField.appendChild(fieldLabel("When Woken, Idle Time to Screen Off", "sp-set-schedule-wake-timeout"));
     var wakeTimeoutSelect = document.createElement("select");
     wakeTimeoutSelect.className = "sp-select";
     wakeTimeoutSelect.id = "sp-set-schedule-wake-timeout";
@@ -2208,7 +2208,7 @@
     config.insertBefore(makeCollapsibleCard("Screensaver", ssBody, true, ssBadge), scheduleCard);
 
     var idleBody = document.createElement("div");
-    idleBody.appendChild(fieldLabel("Return to home after"));
+    idleBody.appendChild(fieldLabel("Return Home After"));
     var hsSelect = document.createElement("select");
     hsSelect.className = "sp-select";
     hsSelect.id = "sp-set-hs-timeout";
@@ -3142,7 +3142,7 @@
 
       var pf = document.createElement("div");
       pf.className = "sp-field";
-      pf.appendChild(fieldLabel("Unit precision", idPrefix + "precision"));
+      pf.appendChild(fieldLabel("Unit Precision", idPrefix + "precision"));
       var precSeg = document.createElement("div");
       precSeg.className = "sp-segment";
       var precOpts = [["0", "10"], ["1", "10.2"], ["2", "10.21"]];

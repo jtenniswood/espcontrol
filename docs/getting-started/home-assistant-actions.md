@@ -10,7 +10,7 @@ Espcontrol needs permission to call Home Assistant actions (like toggling lights
 
 Your display will prompt you to do this during first-time setup. Follow the steps below.
 
-## Enable actions
+## Enable Actions
 
 1. **Open Home Assistant** and go to **Settings > Devices & Services** and add the discovered device (if the device wasn't discovered, find it's IP address and add it as an ESPHome device).
 
@@ -34,12 +34,11 @@ Your display will prompt you to do this during first-time setup. Follow the step
 You only need to do this once per device. The setting persists across firmware updates and device restarts.
 :::
 
-## What if I skip this?
+## What If I Skip This?
 
 You won't be able to control any devices, it will be in a read only state, and entities such as lights, switches, and scenes, won't do anything when tapped.
 
-## Device not showing up?
+## Device Not Showing Up?
 
 If you don't see your Espcontrol device in the ESPHome integration, it may not have been added to Home Assistant yet. Head back to the [Install](/getting-started/install#add-to-home-assistant) guide to add it first.
-
 

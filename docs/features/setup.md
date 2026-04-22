@@ -4,7 +4,7 @@ description:
   How to use the built-in web page to configure buttons, icons, display settings, screensaver, and brightness on your Espcontrol panel.
 ---
 
-# Setting up your device's screen
+# Setting Up Your Device's Screen
 
 Your Espcontrol panel has a built-in web page where you can set everything up. Open it by typing the panel's address into any browser on your phone or computer.
 
@@ -14,7 +14,7 @@ Your Espcontrol panel has a built-in web page where you can set everything up. O
 The address is shown on the display screen when no buttons are configured yet. You can also find it in your router's connected devices list, or in Home Assistant under **Settings > Devices & Services > ESPHome**.
 :::
 
-### Adding a button
+### Adding a Button
 
 Tap any empty space in the grid (shown as a dashed outline with a **+** icon). A settings panel appears below the preview where you configure the button:
 
@@ -48,11 +48,11 @@ Each toggle button has an optional **When Entity On** setting that changes what 
 
 When the device is off, the button reverts to its normal icon.
 
-### Moving buttons
+### Moving Buttons
 
 Drag and drop any button to reposition it. If you drop it onto an occupied space, the existing button shifts to the next available slot.
 
-### Double-height buttons
+### Double-height Buttons
 
 Right-click a button and choose **Double Height** to make it span two rows. To revert, right-click and choose **Single Height**. If a button already occupies the space below, it gets moved automatically.
 

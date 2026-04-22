@@ -87,7 +87,7 @@ registerButtonType("subpage", {
 
     var configBtn = document.createElement("button");
     configBtn.className = "sp-action-btn sp-edit-subpage-btn";
-    configBtn.textContent = "Edit subpage";
+    configBtn.textContent = "Edit Subpage";
     configBtn.addEventListener("click", function () { closeSettings(); enterSubpage(slot); });
     panel.appendChild(configBtn);
   },
