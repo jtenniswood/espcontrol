@@ -190,6 +190,35 @@ select:
         - script.execute: backlight_recalc_sunrise_sunset
 
 # ---------------------------------------------------------------------------
+# Date source for Date cards
+# ---------------------------------------------------------------------------
+text_sensor:
+  # Diagnostic value published from the Home Assistant time source. This makes
+  # the date visible as an ESPHome state and gives Date cards a clear source.
+  - platform: template
+    name: "Screen: Date"
+    id: screen_date_sensor
+    entity_category: diagnostic
+    icon: "mdi:calendar"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_brightness
+
+  # Optional direct Home Assistant Date & Time integration source. When
+  # Home Assistant has sensor.date, use it immediately; otherwise the HA time
+  # source below remains the fallback.
+  - platform: homeassistant
+    id: homeassistant_date_sensor
+    entity_id: sensor.date
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            if (update_calendar_cards_from_date_text(x)) {
+              id(screen_date_sensor).publish_state(x);
+            }
+
+# ---------------------------------------------------------------------------
 # HA time source; sync triggers clock and sunrise/sunset recalculation
 # ---------------------------------------------------------------------------
 time:
@@ -232,4 +261,13 @@ script:
             return time_buf;
       - lambda: |-
           auto now = id(ha_time).now();
-          update_calendar_cards(now.is_valid(), now.day_of_month, now.month);
+          if (now.is_valid()) {
+            static char date_buf[11];
+            snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d",
+                     now.year, now.month, now.day_of_month);
+            id(screen_date_sensor).publish_state(date_buf);
+            update_calendar_cards(true, now.day_of_month, now.month);
+          } else if (!calendar_date_valid()) {
+            id(screen_date_sensor).publish_state("");
+            update_calendar_cards(false, 0, 0);
+          }

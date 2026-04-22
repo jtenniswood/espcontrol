@@ -351,6 +351,10 @@ inline CalendarDateState &calendar_date_state() {
   return state;
 }
 
+inline bool calendar_date_valid() {
+  return calendar_date_state().valid;
+}
+
 inline void apply_calendar_card_text(lv_obj_t *day_lbl, lv_obj_t *month_lbl,
                                      bool valid, int day, int month);
 
@@ -404,6 +408,36 @@ inline void update_calendar_cards(bool valid, int day, int month) {
     apply_calendar_card_text(refs[i].day_lbl, refs[i].month_lbl,
                              state.valid, state.day, state.month);
   }
+}
+
+inline bool parse_calendar_date_text(const std::string &value, int &day, int &month) {
+  if (value.length() < 10) return false;
+  if (!std::isdigit(static_cast<unsigned char>(value[0])) ||
+      !std::isdigit(static_cast<unsigned char>(value[1])) ||
+      !std::isdigit(static_cast<unsigned char>(value[2])) ||
+      !std::isdigit(static_cast<unsigned char>(value[3])) ||
+      value[4] != '-' ||
+      !std::isdigit(static_cast<unsigned char>(value[5])) ||
+      !std::isdigit(static_cast<unsigned char>(value[6])) ||
+      value[7] != '-' ||
+      !std::isdigit(static_cast<unsigned char>(value[8])) ||
+      !std::isdigit(static_cast<unsigned char>(value[9]))) {
+    return false;
+  }
+  int parsed_month = (value[5] - '0') * 10 + (value[6] - '0');
+  int parsed_day = (value[8] - '0') * 10 + (value[9] - '0');
+  if (parsed_day < 1 || parsed_day > 31 || parsed_month < 1 || parsed_month > 12) return false;
+  day = parsed_day;
+  month = parsed_month;
+  return true;
+}
+
+inline bool update_calendar_cards_from_date_text(const std::string &value) {
+  int day = 0;
+  int month = 0;
+  bool valid = parse_calendar_date_text(value, day, month);
+  if (valid) update_calendar_cards(true, day, month);
+  return valid;
 }
 
 inline void setup_calendar_card(BtnSlot &s, bool has_sensor_color, uint32_t sensor_val) {
