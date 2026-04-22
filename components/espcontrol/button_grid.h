@@ -422,6 +422,10 @@ inline bool garage_state_is_active(const std::string &state) {
   return state == "open" || state == "opening" || state == "closing";
 }
 
+inline bool cover_state_is_active(const std::string &state) {
+  return state == "closed" || state == "closing";
+}
+
 inline bool garage_state_uses_open_icon(const std::string &state) {
   return state == "open" || state == "opening";
 }
@@ -1055,6 +1059,24 @@ inline void subscribe_garage_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
   );
 }
 
+inline void subscribe_cover_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
+                                         TransientStatusLabel *status_label,
+                                         const char *closed_icon, const char *open_icon,
+                                         const std::string &entity_id) {
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, {},
+    std::function<void(const std::string &)>(
+      [btn_ptr, icon_lbl, status_label, closed_icon, open_icon](const std::string &state) {
+        bool active = cover_state_is_active(state);
+        if (active) lv_obj_add_state(btn_ptr, LV_STATE_CHECKED);
+        else lv_obj_clear_state(btn_ptr, LV_STATE_CHECKED);
+        lv_label_set_text(icon_lbl, garage_state_uses_open_icon(state) ? open_icon : closed_icon);
+        transient_status_label_show_if_changed(
+          status_label, garage_state_label(state), garage_state_releases_label(state));
+      })
+  );
+}
+
 // Subscribe to an entity's friendly_name attribute and use it as the button label
 inline void subscribe_friendly_name(TransientStatusLabel *status_label,
                                     const std::string &entity_id) {
@@ -1634,13 +1656,14 @@ inline void subscribe_subpage_parent_indicator(
     lv_obj_t *parent_btn, lv_obj_t *parent_icon,
     int parent_idx, bool *child_was_on,
     bool has_alt_icon, const char *off_glyph, const char *on_glyph,
-    int *sp_on_count) {
+    int *sp_on_count,
+    bool cover_on_is_closed = false) {
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, {},
     std::function<void(const std::string &)>(
       [parent_btn, parent_icon, parent_idx, child_was_on,
-       has_alt_icon, off_glyph, on_glyph, sp_on_count](const std::string &state) {
-        bool is_on = is_entity_on(state);
+       has_alt_icon, off_glyph, on_glyph, sp_on_count, cover_on_is_closed](const std::string &state) {
+        bool is_on = cover_on_is_closed ? cover_state_is_active(state) : is_entity_on(state);
         if (is_on && !*child_was_on) {
           sp_on_count[parent_idx]++;
           *child_was_on = true;
@@ -1921,7 +1944,7 @@ inline void grid_phase2(
       if (!p.entity.empty()) {
         TransientStatusLabel *status_label = create_transient_status_label(
           s.text_lbl, p.label.empty() ? "Cover" : p.label);
-        subscribe_garage_state(s.btn, s.icon_lbl, status_label,
+        subscribe_cover_toggle_state(s.btn, s.icon_lbl, status_label,
           slider_icon_off(p.type, p.entity, p.icon), slider_icon_on(p.type, p.icon_on), p.entity);
         if (p.label.empty())
           subscribe_friendly_name(status_label, p.entity);
@@ -2243,7 +2266,7 @@ inline void grid_phase2(
         if (!sb.entity.empty()) {
           TransientStatusLabel *status_label = create_transient_status_label(
             stl, sb.label.empty() ? "Cover" : sb.label);
-          subscribe_garage_state(sb_btn, sil, status_label,
+          subscribe_cover_toggle_state(sb_btn, sil, status_label,
             slider_icon_off(sb.type, sb.entity, sb.icon), slider_icon_on(sb.type, sb.icon_on), sb.entity);
           if (sb.label.empty())
             subscribe_friendly_name(status_label, sb.entity);
@@ -2260,7 +2283,7 @@ inline void grid_phase2(
               subscribe_subpage_parent_indicator(
                 sb.entity, parent_btn, parent_icon, parent_idx,
                 &sp_child_was_on[cwi], sp_has_icon_on,
-                sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+                sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count, true);
             }
           }
 
@@ -2408,7 +2431,7 @@ inline void grid_phase2(
             subscribe_subpage_parent_indicator(
               sb.entity, parent_btn, parent_icon, parent_idx,
               &sp_child_was_on[cwi], sp_has_icon_on,
-              sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+              sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count, sb.type == "cover");
           }
         }
 

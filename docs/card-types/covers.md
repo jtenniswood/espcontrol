@@ -32,7 +32,8 @@ A cover card lets you control a Home Assistant cover entity — blinds, shutters
 ### Toggle Interaction
 
 - **Tap** the card to toggle the cover through Home Assistant.
-- The card lights up while the cover is open, opening, or closing.
+- The card lights up while the cover is closed or closing.
+- When the cover is open or opening, the card uses its normal off colour.
 - When the cover state changes, the label temporarily shows the Home Assistant state, such as **Open**, **Closed**, **Opening**, or **Closing**.
 - After the state settles, the card changes back to showing the configured label.
 
