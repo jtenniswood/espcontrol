@@ -223,7 +223,6 @@ display:
     model: GUITION-4848S040
     id: my_display
     pclk_frequency: 8MHz
-    rotation: 180
     update_interval: never
     auto_clear_enabled: False
 
@@ -234,6 +233,7 @@ lvgl:
   id: main_lvgl
   buffer_size: 25%
   displays: my_display
+  rotation: 180
   touchscreens:
     - touchscreen_id: my_touchscreen
       long_press_time: 3s
@@ -245,21 +245,21 @@ script:
           condition:
             lambda: 'return id(screen_rotation_select).current_option() == "90";'
           then:
-            - lambda: 'id(main_lvgl).rotation = display::DISPLAY_ROTATION_270_DEGREES;'
+            - lvgl.display.set_rotation: 270
           else:
             - if:
                 condition:
                   lambda: 'return id(screen_rotation_select).current_option() == "180";'
                 then:
-                  - lambda: 'id(main_lvgl).rotation = display::DISPLAY_ROTATION_0_DEGREES;'
+                  - lvgl.display.set_rotation: 0
                 else:
                   - if:
                       condition:
                         lambda: 'return id(screen_rotation_select).current_option() == "270";'
                       then:
-                        - lambda: 'id(main_lvgl).rotation = display::DISPLAY_ROTATION_90_DEGREES;'
+                        - lvgl.display.set_rotation: 90
                       else:
-                        - lambda: 'id(main_lvgl).rotation = display::DISPLAY_ROTATION_180_DEGREES;'
+                        - lvgl.display.set_rotation: 180
 
 select:
   - platform: template

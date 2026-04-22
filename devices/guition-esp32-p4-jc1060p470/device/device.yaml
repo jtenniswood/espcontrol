@@ -180,7 +180,6 @@ display:
     id: my_display
     model: JC1060P470
     color_order: RGB
-    rotation: 180
     reset_pin:
       number: GPIO05
     update_interval: never
@@ -192,6 +191,7 @@ display:
 lvgl:
   id: main_lvgl
   displays: my_display
+  rotation: 180
   byte_order: little_endian
   touchscreens:
     - touchscreen_id: my_touchscreen
@@ -204,9 +204,9 @@ script:
           condition:
             lambda: 'return id(screen_rotation_select).current_option() == "180";'
           then:
-            - lambda: 'id(main_lvgl).rotation = display::DISPLAY_ROTATION_0_DEGREES;'
+            - lvgl.display.set_rotation: 0
           else:
-            - lambda: 'id(main_lvgl).rotation = display::DISPLAY_ROTATION_180_DEGREES;'
+            - lvgl.display.set_rotation: 180
 
 select:
   - platform: template
