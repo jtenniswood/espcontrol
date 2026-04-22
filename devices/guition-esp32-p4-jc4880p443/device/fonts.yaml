@@ -28,6 +28,13 @@ font:
     bpp: 4
     glyphs: "0123456789:.-°/%kWhVA "
 
+  # Timezone card clock values (62px)
+  - file: "gfonts://Roboto"
+    id: timezone_font_lg
+    size: 62
+    bpp: 4
+    glyphs: "0123456789:- "
+
   # Top bar clock and temperature (25px)
   - file: "gfonts://Roboto"
     id: clockbar_font_lg

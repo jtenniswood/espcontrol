@@ -881,7 +881,8 @@ inline void register_timezone_card(lv_obj_t *time_lbl, lv_obj_t *location_lbl,
 }
 
 inline void setup_timezone_card(BtnSlot &s, const ParsedCfg &p,
-                                bool has_sensor_color, uint32_t sensor_val) {
+                                bool has_sensor_color, uint32_t sensor_val,
+                                const lv_font_t *time_font) {
   if (has_sensor_color) {
     lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
@@ -890,6 +891,7 @@ inline void setup_timezone_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  if (time_font) lv_obj_set_style_text_font(s.sensor_lbl, time_font, LV_PART_MAIN);
   lv_label_set_text(s.sensor_lbl, "--:--");
   lv_label_set_text(s.unit_lbl, "");
   lv_label_set_text(s.text_lbl, timezone_location_label(tz_option).c_str());
@@ -1745,7 +1747,12 @@ struct GridConfig {
   bool color_correction;
   bool wrap_tall_labels;
   const lv_font_t *sp_sensor_font;
+  const lv_font_t *sp_timezone_font;
 };
+
+inline const lv_font_t *timezone_card_font(const GridConfig &cfg) {
+  return cfg.sp_timezone_font ? cfg.sp_timezone_font : cfg.sp_sensor_font;
+}
 
 // ── Phase 1: Visual setup ────────────────────────────────────────────
 
@@ -1830,7 +1837,7 @@ inline void grid_phase1(
       continue;
     }
     if (p.type == "timezone") {
-      setup_timezone_card(s, p, has_sensor_color, sensor_val);
+      setup_timezone_card(s, p, has_sensor_color, sensor_val, timezone_card_font(cfg));
       continue;
     }
     if (p.type == "weather") {
@@ -2259,7 +2266,8 @@ inline void grid_phase2(
         lv_obj_set_style_flex_cross_place(sc, LV_FLEX_ALIGN_END, LV_PART_MAIN);
 
         lv_obj_t *svl = lv_label_create(sc);
-        lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
+        const lv_font_t *time_font = timezone_card_font(cfg);
+        if (time_font) lv_obj_set_style_text_font(svl, time_font, LV_PART_MAIN);
         lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
         lv_label_set_text(svl, "--:--");
 

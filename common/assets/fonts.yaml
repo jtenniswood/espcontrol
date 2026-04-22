@@ -10,6 +10,13 @@ font:
     bpp: 4
     glyphs: "0123456789:.-°/%kWhVA "
 
+  # Main page: timezone card clock values
+  - file: "gfonts://Roboto"
+    id: timezone_font
+    size: 48
+    bpp: 4
+    glyphs: "0123456789:- "
+
   # Main page: button labels
   - file: "gfonts://Roboto"
     id: label_font
