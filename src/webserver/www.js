@@ -5619,10 +5619,17 @@
     "0;37": "sp-log-verbose"  // white → verbose
   };
   var ANSI_RE = /\033\[[\d;]*m/g;
+  var HIDDEN_STATE_LOG_RE = [
+    /\[[DS]\]\[text_sensor(?::[^\]]*)?\].*['"]Screen: Date['"].*(>>|Sending state)/,
+    /\[[DS]\]\[sensor(?::[^\]]*)?\].*['"]Wifi Strength['"].*(>>|Sending state)/
+  ];
 
   function shouldHideLogMessage(msg) {
     var clean = String(msg || "").replace(ANSI_RE, "");
-    return /\[[DS]\]\[text_sensor(?::[^\]]*)?\].*['"]Screen: Date['"].*(>>|Sending state)/.test(clean);
+    for (var i = 0; i < HIDDEN_STATE_LOG_RE.length; i++) {
+      if (HIDDEN_STATE_LOG_RE[i].test(clean)) return true;
+    }
+    return false;
   }
 
   function appendLog(msg, lvl) {
@@ -5662,6 +5669,7 @@
       serializeButtonConfig: serializeButtonConfig,
       parseSubpageConfig: parseSubpageConfig,
       serializeSubpageConfig: serializeSubpageConfig,
+      shouldHideLogMessage: shouldHideLogMessage,
     };
   }
 

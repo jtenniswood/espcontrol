@@ -297,4 +297,25 @@ const largeSubpage = {
 const largeEncoded = assertSubpageRoundTrip(hooks, "oversized subpage", largeSubpage, false);
 assert(largeEncoded.length > 255, "oversized subpage should exceed one ESPHome text value");
 
+assert.strictEqual(
+  hooks.shouldHideLogMessage("[12:48:01.064][S][text_sensor]: 'Screen: Date' >> '2026-04-22'"),
+  true,
+  "screen date status state logs should be hidden",
+);
+assert.strictEqual(
+  hooks.shouldHideLogMessage("[12:48:23.929][S][sensor]: 'Wifi Strength' >> 92 %"),
+  true,
+  "wifi strength status state logs should be hidden",
+);
+assert.strictEqual(
+  hooks.shouldHideLogMessage("[D][sensor:094]: 'Wifi Strength': Sending state 92.00000 % with 0 decimals of accuracy"),
+  true,
+  "wifi strength debug state logs should be hidden",
+);
+assert.strictEqual(
+  hooks.shouldHideLogMessage("[S][sensor]: 'Indoor Temperature' >> 21.0 C"),
+  false,
+  "unrelated sensor status logs should stay visible",
+);
+
 console.log("Config format golden tests passed.");
