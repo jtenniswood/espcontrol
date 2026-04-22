@@ -8,17 +8,30 @@ description:
 
 Espcontrol is actively developed and improved based on user feedback. There is no fixed public roadmap — features and priorities evolve based on what users need and what Home Assistant and the hardware support.
 
-## Additional Card Types
+## Priorities
 
-In addition to the existing card types — **[Trigger](/card-types/buttons)**, **[Cover](/card-types/covers)**, **[Date](/card-types/calendar)**, **[Garage Door](/card-types/garage-doors)**, **[Internal Relay](/card-types/internal-relays)**, **[Sensor](/card-types/sensors)**, **[Slider](/card-types/sliders)**, **Subpage**, **Toggle**, and **[Weather](/card-types/weather)** — future releases will introduce more specialised controls:
+The next areas of focus are richer cards and controls for common Home Assistant workflows:
 
-| Card type | Description |
+| Item | Description |
 | --- | --- |
-| **Thermostat** | Temperature set-point with up/down adjustment and current reading |
-| **Media player** | Play, pause, skip, and source controls for media devices |
-| **Fan control** | Speed steps or a slider with an optional oscillation toggle |
+| **Climate controls** | Adjust target temperature, mode, and related climate settings from the panel |
+| **Media controls** | Control playback, volume, and common media actions |
+| **Weather forecast card** | Show upcoming weather conditions, not just the current weather state |
+| **Calendar preview card** | Preview upcoming calendar events directly on the panel |
 
-These are planned directions, not commitments — the order and scope will depend on community feedback. If there's a card type you'd like to see, open a feature request on GitHub.
+These are planned directions, not commitments. The order and scope may change based on community feedback, Home Assistant support, and what works well on the screen hardware.
+
+## Under Consideration
+
+These ideas are being explored, but are not yet committed for a specific release:
+
+| Item | Description |
+| --- | --- |
+| **Independent card colour controls** | Configure colours per card instead of relying only on global colour settings |
+| **Images in cards** | Add image support for richer visual cards |
+| **Notification service** | Send notifications or alerts to the panel from Home Assistant |
+
+If there's a feature you'd like to see, open a feature request on GitHub.
 
 ## How to Get Involved
 
