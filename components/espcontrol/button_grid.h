@@ -807,6 +807,24 @@ struct SliderCtx {
   lv_coord_t radius;
 };
 
+inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizontal) {
+  if (!slider || !btn) return;
+  lv_coord_t bw = lv_obj_get_width(btn);
+  lv_coord_t bh = lv_obj_get_height(btn);
+  if (bw <= 0 || bh <= 0) return;
+
+  if (horizontal) {
+    lv_coord_t h = bh >= bw ? bw - 1 : bh;
+    if (h < 1) h = 1;
+    lv_obj_set_size(slider, bw, h);
+  } else {
+    lv_coord_t w = bw >= bh ? bh - 1 : bw;
+    if (w < 1) w = 1;
+    lv_obj_set_size(slider, w, bh);
+  }
+  lv_obj_align(slider, LV_ALIGN_CENTER, 0, 0);
+}
+
 // Resize the colored fill overlay to reflect the current slider percentage
 inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool horizontal, bool inverted, lv_coord_t r) {
   lv_coord_t bw = lv_obj_get_width(btn);
@@ -821,6 +839,27 @@ inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool hori
     lv_obj_set_size(fill, bw, h);
     lv_obj_align(fill, inverted ? LV_ALIGN_TOP_MID : LV_ALIGN_BOTTOM_MID, 0, 0);
   }
+}
+
+inline void slider_refresh_geometry(lv_obj_t *slider) {
+  if (!slider) return;
+  SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(slider);
+  lv_obj_t *btn = lv_obj_get_parent(slider);
+  if (!c || !btn) return;
+
+  slider_fit_to_button(slider, btn, c->horizontal);
+  int val = lv_slider_get_value(slider);
+  int fill_val = c->inverted ? 100 - val : val;
+  if (c->fill)
+    slider_update_fill(c->fill, btn, fill_val, c->horizontal, c->inverted, c->radius);
+}
+
+inline void slider_bind_geometry_refresh(lv_obj_t *btn, lv_obj_t *slider) {
+  lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+    lv_obj_t *sl = (lv_obj_t *)lv_event_get_user_data(e);
+    slider_refresh_geometry(sl);
+  }, LV_EVENT_SIZE_CHANGED, slider);
+  slider_refresh_geometry(slider);
 }
 
 // Create an invisible LVGL slider with a colored fill overlay inside a button
@@ -842,14 +881,7 @@ inline lv_obj_t *setup_slider_widget(lv_obj_t *btn, uint32_t on_color, bool hori
   lv_slider_set_range(slider, 0, 100);
   lv_slider_set_value(slider, 0, LV_ANIM_OFF);
   lv_obj_update_layout(btn);
-  lv_coord_t bw = lv_obj_get_width(btn);
-  lv_coord_t bh = lv_obj_get_height(btn);
-  if (horizontal) {
-    lv_obj_set_size(slider, bw, bh >= bw ? bw - 1 : bh);
-  } else {
-    lv_obj_set_size(slider, bw >= bh ? bh - 1 : bw, bh);
-  }
-  lv_obj_align(slider, LV_ALIGN_CENTER, 0, 0);
+  slider_fit_to_button(slider, btn, horizontal);
 
   lv_obj_set_style_bg_opa(slider, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(slider, LV_OPA_TRANSP,
@@ -893,6 +925,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   ctx->inverted = is_cover_entity(p.entity);
   ctx->radius = lv_obj_get_style_radius(s.btn, LV_PART_MAIN);
   lv_obj_set_user_data(slider, (void *)ctx);
+  slider_bind_geometry_refresh(s.btn, slider);
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -1042,6 +1075,7 @@ inline lv_obj_t *setup_subpage_slider(lv_obj_t *btn, lv_obj_t *icon_lbl, lv_obj_
   ctx->inverted = is_cover_entity(sb.entity);
   ctx->radius = radius;
   lv_obj_set_user_data(sl, (void *)ctx);
+  slider_bind_geometry_refresh(btn, sl);
 
   lv_obj_add_event_cb(sl, [](lv_event_t *e) {
     lv_obj_t *s = static_cast<lv_obj_t *>(lv_event_get_target(e));
