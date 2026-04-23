@@ -53,7 +53,7 @@ esphome:
             cfg.color_correction = true;
             cfg.wrap_tall_labels = true;
             cfg.sp_sensor_font = id(statistics_font_lt)->get_lv_font();
-            cfg.sp_timezone_font = id(timezone_font_lt)->get_lv_font();
+            cfg.sp_timezone_font = id(statistics_font_lt)->get_lv_font();
             // END GENERATED PHASE 1 GRID WIRING
             grid_phase1(slots, cfg,
               id(button_order).state,
@@ -132,7 +132,7 @@ esphome:
             cfg.color_correction = true;
             cfg.wrap_tall_labels = true;
             cfg.sp_sensor_font = id(statistics_font_lt)->get_lv_font();
-            cfg.sp_timezone_font = id(timezone_font_lt)->get_lv_font();
+            cfg.sp_timezone_font = id(statistics_font_lt)->get_lv_font();
             // END GENERATED PHASE 2 GRID WIRING
             grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,
               id(button_order).state,

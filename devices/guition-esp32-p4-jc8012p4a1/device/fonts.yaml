@@ -14,13 +14,6 @@ font:
     bpp: 4
     glyphs: "0123456789:.-°/%kWhVA "
 
-  # Main page: timezone card clock values
-  - file: "gfonts://Roboto"
-    id: timezone_font_lt
-    size: 60
-    bpp: 4
-    glyphs: "0123456789:- "
-
   # Main page: button icons
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: icon_font_lt
