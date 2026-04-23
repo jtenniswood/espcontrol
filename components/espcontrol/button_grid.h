@@ -1251,7 +1251,13 @@ inline const char *slider_icon_on(const std::string &type, const std::string &ic
   return find_icon(icon_on.c_str());
 }
 
+inline void apply_pill_button_shape(lv_obj_t *btn) {
+  if (!btn) return;
+  lv_obj_set_style_radius(btn, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+}
+
 inline void setup_cover_toggle_card(BtnSlot &s, const ParsedCfg &p) {
+  apply_pill_button_shape(s.btn);
   lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
   lv_label_set_text(s.text_lbl, p.label.empty() ? "Cover" : p.label.c_str());
 }
@@ -2091,6 +2097,7 @@ inline void grid_phase2(
           subscribe_weather_state(sil, stl, sb.entity);
 
       } else if (sb.type == "cover" && cover_toggle_mode(sb.sensor)) {
+        apply_pill_button_shape(sb_btn);
         lv_label_set_text(sil, slider_icon_off(sb.type, sb.entity, sb.icon));
         lv_label_set_text(stl, sb.label.empty() ? "Cover" : sb.label.c_str());
         if (!sb.entity.empty()) {
