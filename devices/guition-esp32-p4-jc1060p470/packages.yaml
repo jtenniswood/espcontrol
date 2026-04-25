@@ -29,6 +29,7 @@ substitutions:
   main_page_pad_top: "42"
   main_page_compact_pad_top: "5"
   clock_font_size: "200"
+  clock_ampm_font_size: "50"
   clock_cx: "512"
   clock_cy: "300"
   network_transport: "wifi"

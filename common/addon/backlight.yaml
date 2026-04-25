@@ -485,6 +485,16 @@ script:
             int ox = (time.minute * 7) % 61 - 30;
             int oy = (time.minute * 13) % 41 - 20;
             lv_obj_set_pos(id(clock_label), cx + ox - w/2, cy + oy - h/2);
+            if (!use_12h) {
+              lv_obj_add_flag(id(am_pm_label), LV_OBJ_FLAG_HIDDEN);
+            } else {
+              lv_label_set_text(id(am_pm_label), time.hour < 12 ? "AM" : "PM");
+              lv_obj_clear_flag(id(am_pm_label), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_update_layout(id(am_pm_label));
+              lv_coord_t pw = lv_obj_get_width(id(am_pm_label));
+              lv_coord_t ph = lv_obj_get_height(id(am_pm_label));
+              lv_obj_set_pos(id(am_pm_label), cx + ox + w/2 - pw, cy + oy + h/2 - ph);
+            }
           }
       - script.execute: backlight_fade_current_ui_to_black
       - script.wait: backlight_fade_current_ui_to_black
@@ -574,3 +584,13 @@ interval:
           int ox = (time.minute * 7) % 61 - 30;
           int oy = (time.minute * 13) % 41 - 20;
           lv_obj_set_pos(id(clock_label), cx + ox - w/2, cy + oy - h/2);
+          if (!use_12h) {
+            lv_obj_add_flag(id(am_pm_label), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_label_set_text(id(am_pm_label), time.hour < 12 ? "AM" : "PM");
+            lv_obj_clear_flag(id(am_pm_label), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_update_layout(id(am_pm_label));
+            lv_coord_t pw = lv_obj_get_width(id(am_pm_label));
+            lv_coord_t ph = lv_obj_get_height(id(am_pm_label));
+            lv_obj_set_pos(id(am_pm_label), cx + ox + w/2 - pw, cy + oy + h/2 - ph);
+          }

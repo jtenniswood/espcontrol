@@ -29,6 +29,7 @@ substitutions:
   main_page_pad_top: "42"
   main_page_compact_pad_top: "5"
   clock_font_size: "220"
+  clock_ampm_font_size: "55"
   clock_cx: "640"
   clock_cy: "400"
 

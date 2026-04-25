@@ -364,7 +364,7 @@ script:
             if (use_12h) {
               int h12 = h % 12;
               if (h12 == 0) h12 = 12;
-              snprintf(time_buf, sizeof(time_buf), "%d:%02d", h12, m);
+              snprintf(time_buf, sizeof(time_buf), "%d:%02d %s", h12, m, h < 12 ? "am" : "pm");
             } else {
               snprintf(time_buf, sizeof(time_buf), "%02d:%02d", h, m);
             }
