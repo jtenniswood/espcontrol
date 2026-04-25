@@ -12,7 +12,7 @@ substitutions:
 
 esphome:
   project:
-    name: jtenniswood.espcontrol
+    name: wonderslug.espcontrol
     version: "${firmware_version}"
   on_boot:
     priority: 200

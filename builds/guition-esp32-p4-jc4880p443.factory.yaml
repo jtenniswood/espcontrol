@@ -14,11 +14,11 @@ packages:
 
 esphome:
   project:
-    name: jtenniswood.espcontrol
+    name: wonderslug.espcontrol
     version: "${firmware_version}"
 
 dashboard_import:
-  package_import_url: github://jtenniswood/espcontrol/devices/guition-esp32-p4-jc4880p443/esphome.yaml@main
+  package_import_url: github://wonderslug/espcontrol/devices/guition-esp32-p4-jc4880p443/esphome.yaml@main
 
 web_server:
   port: 80
