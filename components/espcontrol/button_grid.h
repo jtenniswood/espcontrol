@@ -1098,6 +1098,10 @@ inline bool is_cover_entity(const std::string &entity_id) {
   return entity_id.size() > 6 && entity_id.compare(0, 6, "cover.") == 0;
 }
 
+inline bool is_fan_entity(const std::string &entity_id) {
+  return entity_id.size() > 4 && entity_id.compare(0, 4, "fan.") == 0;
+}
+
 inline bool cover_toggle_mode(const std::string &sensor) {
   return sensor == "toggle";
 }
@@ -1128,6 +1132,25 @@ inline void send_slider_action(const std::string &entity_id, int value, bool cov
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", value);
     kv2.value = decltype(kv2.value)(buf);
+  } else if (is_fan_entity(entity_id)) {
+    if (value == 0) {
+      req.service = decltype(req.service)("fan.turn_off");
+      req.data.init(1);
+      auto &kv = req.data.emplace_back();
+      kv.key = decltype(kv.key)("entity_id");
+      kv.value = decltype(kv.value)(entity_id.c_str());
+    } else {
+      req.service = decltype(req.service)("fan.turn_on");
+      req.data.init(2);
+      auto &kv1 = req.data.emplace_back();
+      kv1.key = decltype(kv1.key)("entity_id");
+      kv1.value = decltype(kv1.value)(entity_id.c_str());
+      auto &kv2 = req.data.emplace_back();
+      kv2.key = decltype(kv2.key)("percentage");
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%d", value);
+      kv2.value = decltype(kv2.value)(buf);
+    }
   } else if (value == 0) {
     req.service = decltype(req.service)("light.turn_off");
     req.data.init(1);
@@ -1378,7 +1401,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   }, LV_EVENT_RELEASED, nullptr);
 }
 
-// Subscribe to HA state for a slider entity (light brightness or cover position/tilt)
+// Subscribe to HA state for a slider entity (light brightness, fan percentage, or cover position/tilt)
 inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                   lv_obj_t *slider,
                                   bool has_icon_on,
@@ -1391,6 +1414,7 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
   bool inv = sctx ? sctx->inverted : false;
   lv_coord_t rad = sctx ? sctx->radius : 0;
   bool is_cover = is_cover_entity(entity_id);
+  bool is_fan = is_fan_entity(entity_id);
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, {},
     std::function<void(const std::string &)>(
@@ -1421,6 +1445,23 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
             if (has_icon_on) {
               lv_label_set_text(icon_lbl, pct > 0 ? icon_on : icon_off);
             }
+          }
+        })
+    );
+  } else if (is_fan) {
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+      entity_id, std::string("percentage"),
+      std::function<void(const std::string &)>(
+        [slider, btn_ptr, fill, horiz, inv, rad](const std::string &val) {
+          char *end;
+          float pct_f = strtof(val.c_str(), &end);
+          if (end != val.c_str()) {
+            int pct = (int)(pct_f + 0.5f);
+            if (pct < 0) pct = 0;
+            if (pct > 100) pct = 100;
+            lv_slider_set_value(slider, pct, LV_ANIM_OFF);
+            int fill_pct = inv ? 100 - pct : pct;
+            if (fill) slider_update_fill(fill, btn_ptr, fill_pct, horiz, inv, rad);
           }
         })
     );
