@@ -1,6 +1,7 @@
 # Extended Latin character set for UI text (labels, clockbar, setup screens).
-# Includes printable ASCII + Latin-1 Supplement + common typographic symbols.
+# Includes printable ASCII + Latin-1 Supplement + Central European extensions
+# (Slovak, Czech, Hungarian, Polish) + common typographic symbols.
 # The space glyph is provided by the fold-join between the two lines.
 >-
   !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
-  ¡¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ—–…·°•€£¥¢
+  ¡¿ÀÁÂÃÄÅÆĄÇĆČĎĐÈÉÊËĘĚÌÍÎÏĹĽŁŃŇÑÒÓÔÕÖŐØŔŘŚŠŤÙÚÛÜŮŰÝŹŻŽÞßàáâãäåæąçćčďđèéêëęěìíîïĺľłńňñòóôõöőøŕřśšťùúûüůűýźżžþÿ—–…·°•€£¥¢
