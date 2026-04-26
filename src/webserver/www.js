@@ -1979,7 +1979,10 @@
       document.body.insertBefore(root, document.body.firstChild);
     }
     els.root = root;
-    switchTab("screen");
+    switchTab(tabFromHash());
+    window.addEventListener("hashchange", function () {
+      switchTab(tabFromHash());
+    });
   }
   function buildHeader(parent) {
     var header = document.createElement("div");
@@ -2654,12 +2657,10 @@
     footer.className = "sp-settings-footer";
     var logsLink = document.createElement("a");
     logsLink.className = "sp-settings-link";
-    logsLink.href = "#logs";
+    logsLink.href = window.location.href.split("#")[0] + "#logs";
+    logsLink.target = "_blank";
+    logsLink.rel = "noopener";
     logsLink.textContent = "View logs";
-    logsLink.addEventListener("click", function (e) {
-      e.preventDefault();
-      switchTab("logs");
-    });
     footer.appendChild(logsLink);
     page.appendChild(footer);
 
@@ -2991,6 +2992,11 @@
     els.screenPage.className = "sp-page" + (tab === "screen" ? " active" : "");
     els.settingsPage.className = "sp-page" + (tab === "settings" ? " active" : "");
     els.logsPage.className = "sp-page" + (tab === "logs" ? " active" : "");
+  }
+
+  function tabFromHash() {
+    var hash = (window.location.hash || "").replace(/^#/, "");
+    return hash === "logs" || hash === "settings" ? hash : "screen";
   }
 
   // ── Preview rendering (unified) ────────────────────────────────────────
