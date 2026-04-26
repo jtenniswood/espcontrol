@@ -419,9 +419,6 @@
     ".sp-apply-btn:active{opacity:.85}" +
     ".sp-apply-btn:disabled{opacity:.4;cursor:not-allowed}" +
     ".sp-apply-note{font-size:.75rem;color:var(--text3);margin-top:8px}" +
-    ".sp-settings-footer{padding:0 var(--gap) var(--gap);text-align:center}" +
-    ".sp-settings-link{color:var(--text2);font-size:.8rem;text-decoration:underline;text-underline-offset:3px;cursor:pointer}" +
-    ".sp-settings-link:hover{color:var(--text)}" +
 
     ".sp-log-toolbar{display:flex;justify-content:flex-end;padding:12px var(--gap) 0}" +
     ".sp-log-clear{background:var(--surface2);color:var(--text);border:1px solid var(--border);" +
@@ -2000,6 +1997,7 @@
     var tabs = [
       { id: "screen", label: "Screen" },
       { id: "settings", label: "Settings" },
+      { id: "logs", label: "Logs" },
     ];
 
     tabs.forEach(function (t) {
@@ -2653,17 +2651,6 @@
     page.appendChild(config);
     page.appendChild(buildApplyBar());
 
-    var footer = document.createElement("div");
-    footer.className = "sp-settings-footer";
-    var logsLink = document.createElement("a");
-    logsLink.className = "sp-settings-link";
-    logsLink.href = window.location.href.split("#")[0] + "#logs";
-    logsLink.target = "_blank";
-    logsLink.rel = "noopener";
-    logsLink.textContent = "View logs";
-    footer.appendChild(logsLink);
-    page.appendChild(footer);
-
     parent.appendChild(page);
     els.settingsPage = page;
   }
@@ -2985,7 +2972,7 @@
 
   function switchTab(tab) {
     state.activeTab = tab;
-    ["screen", "settings"].forEach(function (t) {
+    ["screen", "settings", "logs"].forEach(function (t) {
       els["tab_" + t].className = "sp-tab" + (tab === t ? " active" : "");
       els["tab_" + t].setAttribute("aria-selected", tab === t ? "true" : "false");
     });
