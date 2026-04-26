@@ -571,6 +571,9 @@
     timezoneOptions: [],
     clockFormat: "24h",
     clockFormatOptions: ["12h", "24h"],
+    ntpServer1: "0.pool.ntp.org",
+    ntpServer2: "1.pool.ntp.org",
+    ntpServer3: "2.pool.ntp.org",
     screenRotation: "0",
     screenRotationOptions: (CFG.features && CFG.features.screenRotationOptions) || ["0", "90", "180", "270"],
     sunrise: "",
@@ -689,6 +692,11 @@
     if (n < 1) return 1;
     if (n > 100) return 100;
     return Math.round(n);
+  }
+
+  function normalizeNtpServer(value, fallback) {
+    var v = String(value == null ? "" : value).trim();
+    return v || fallback;
   }
 
   function formatDuration(seconds) {
@@ -2324,6 +2332,35 @@
     cfField.appendChild(cfSelect);
     clockBody.appendChild(cfField);
     els.setClockFormat = cfSelect;
+
+    function addNtpServerField(label, id, stateKey, postName, placeholder) {
+      var field = document.createElement("div");
+      field.className = "sp-field";
+      field.appendChild(fieldLabel(label, id));
+      var input = textInput(id, state[stateKey], placeholder);
+      input.addEventListener("blur", function () {
+        var value = this.value.trim();
+        this.value = value;
+        state[stateKey] = value;
+        postText(postName, value);
+      });
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") this.blur();
+      });
+      field.appendChild(input);
+      clockBody.appendChild(field);
+      return input;
+    }
+
+    els.setNtpServer1 = addNtpServerField(
+      "NTP Server 1", "sp-set-ntp-server-1", "ntpServer1",
+      "Screen: NTP Server 1", "0.pool.ntp.org");
+    els.setNtpServer2 = addNtpServerField(
+      "NTP Server 2", "sp-set-ntp-server-2", "ntpServer2",
+      "Screen: NTP Server 2", "1.pool.ntp.org");
+    els.setNtpServer3 = addNtpServerField(
+      "NTP Server 3", "sp-set-ntp-server-3", "ntpServer3",
+      "Screen: NTP Server 3", "2.pool.ntp.org");
 
     var clockBarBadge = document.createElement("span");
     clockBarBadge.setAttribute("aria-label", "Clock bar on");
@@ -4733,6 +4770,11 @@
         indoor_temp_entity: state.indoorEntity,
         outdoor_temp_entity: state.outdoorEntity,
         clock_bar: state.clockBarOn,
+        timezone: state.timezone,
+        clock_format: state.clockFormat,
+        ntp_server_1: state.ntpServer1,
+        ntp_server_2: state.ntpServer2,
+        ntp_server_3: state.ntpServer3,
         screensaver_mode: getActiveScreensaverMode(),
         presence_sensor_entity: state.presenceEntity,
         clock_screensaver: state.clockScreensaverOn,
@@ -4955,6 +4997,34 @@
           postText("Indoor Temp Entity", s.indoor_temp_entity || "");
           postText("Outdoor Temp Entity", s.outdoor_temp_entity || "");
           postClockBar(s.clock_bar != null ? !!s.clock_bar : true);
+          var importedTimezone = s.timezone || state.timezone;
+          var importedClockFormat =
+            state.clockFormatOptions.indexOf(s.clock_format) !== -1
+              ? s.clock_format
+              : state.clockFormat;
+          var hasNtpServer1 = Object.prototype.hasOwnProperty.call(s, "ntp_server_1");
+          var hasNtpServer2 = Object.prototype.hasOwnProperty.call(s, "ntp_server_2");
+          var hasNtpServer3 = Object.prototype.hasOwnProperty.call(s, "ntp_server_3");
+          var importedNtpServer1 = hasNtpServer1
+            ? normalizeNtpServer(s.ntp_server_1, "0.pool.ntp.org")
+            : state.ntpServer1;
+          var importedNtpServer2 = hasNtpServer2
+            ? normalizeNtpServer(s.ntp_server_2, "1.pool.ntp.org")
+            : state.ntpServer2;
+          var importedNtpServer3 = hasNtpServer3
+            ? normalizeNtpServer(s.ntp_server_3, "2.pool.ntp.org")
+            : state.ntpServer3;
+          if (s.timezone) postSelect("Screen: Timezone", importedTimezone);
+          if (s.clock_format) postSelect("Screen: Clock Format", importedClockFormat);
+          if (hasNtpServer1) {
+            postText("Screen: NTP Server 1", importedNtpServer1);
+          }
+          if (hasNtpServer2) {
+            postText("Screen: NTP Server 2", importedNtpServer2);
+          }
+          if (hasNtpServer3) {
+            postText("Screen: NTP Server 3", importedNtpServer3);
+          }
           var importedScreensaverMode = s.screensaver_mode || "disabled";
           if (importedScreensaverMode !== "sensor" &&
               importedScreensaverMode !== "timer" &&
@@ -4982,6 +5052,11 @@
           state.indoorEntity = s.indoor_temp_entity || "";
           state.outdoorEntity = s.outdoor_temp_entity || "";
           state.clockBarOn = s.clock_bar != null ? !!s.clock_bar : true;
+          state.timezone = importedTimezone;
+          state.clockFormat = importedClockFormat;
+          state.ntpServer1 = importedNtpServer1;
+          state.ntpServer2 = importedNtpServer2;
+          state.ntpServer3 = importedNtpServer3;
           state.screensaverMode = importedScreensaverMode;
           state._screensaverModeReceived = true;
           state.presenceEntity = s.presence_sensor_entity || "";
@@ -4997,6 +5072,11 @@
           syncInput(els.setIndoorEntity, state.indoorEntity);
           syncInput(els.setOutdoorEntity, state.outdoorEntity);
           syncInput(els.setPresence, state.presenceEntity);
+          if (els.setTimezone) els.setTimezone.value = state.timezone;
+          if (els.setClockFormat) els.setClockFormat.value = state.clockFormat;
+          syncInput(els.setNtpServer1, state.ntpServer1);
+          syncInput(els.setNtpServer2, state.ntpServer2);
+          syncInput(els.setNtpServer3, state.ntpServer3);
           syncClockScreensaverControls();
           syncScreensaverTimeoutUi();
           syncIdleUi();
@@ -5392,6 +5472,30 @@
         }
         if (els.setClockFormat) els.setClockFormat.value = state.clockFormat;
         updateClock();
+      },
+      "text-screen__ntp_server_1": function (val) {
+        state.ntpServer1 = normalizeNtpServer(val, "0.pool.ntp.org");
+        syncInput(els.setNtpServer1, state.ntpServer1);
+      },
+      "text-screen__ntp_server_2": function (val) {
+        state.ntpServer2 = normalizeNtpServer(val, "1.pool.ntp.org");
+        syncInput(els.setNtpServer2, state.ntpServer2);
+      },
+      "text-screen__ntp_server_3": function (val) {
+        state.ntpServer3 = normalizeNtpServer(val, "2.pool.ntp.org");
+        syncInput(els.setNtpServer3, state.ntpServer3);
+      },
+      "text-ntp_server_1": function (val) {
+        state.ntpServer1 = normalizeNtpServer(val, "0.pool.ntp.org");
+        syncInput(els.setNtpServer1, state.ntpServer1);
+      },
+      "text-ntp_server_2": function (val) {
+        state.ntpServer2 = normalizeNtpServer(val, "1.pool.ntp.org");
+        syncInput(els.setNtpServer2, state.ntpServer2);
+      },
+      "text-ntp_server_3": function (val) {
+        state.ntpServer3 = normalizeNtpServer(val, "2.pool.ntp.org");
+        syncInput(els.setNtpServer3, state.ntpServer3);
       },
       "select-screen__rotation": function (val, d) {
         state.screenRotation = normalizeScreenRotation(d.value || val || state.screenRotation);

@@ -17,7 +17,7 @@ After the initial install, everything is configured through the built-in web pag
 - **Automatic icons** — or choose from hundreds of icons manually
 - **Custom labels** — name buttons however you like
 - **Indoor and outdoor temperature** in the top bar
-- **Live clock** synced from Home Assistant
+- **Live clock** synced from NTP, with Home Assistant as a fallback
 - **Screensaver** with adjustable idle timeout and optional presence sensor to wake
 - **Day/night brightness** — adjusts automatically based on sunrise and sunset
 - **Over-the-air updates** — automatic or manual

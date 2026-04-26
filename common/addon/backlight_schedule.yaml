@@ -212,7 +212,7 @@ number:
             condition:
               lambda: |-
                 if (!id(schedule_enabled).state || id(display_asleep)) return false;
-                auto now = id(ha_time).now();
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
                 return now.is_valid() &&
                        !screen_schedule_in_window(
                          now.hour,
@@ -448,7 +448,7 @@ script:
       - lambda: |-
           if (!id(schedule_enabled).state) return;
 
-          auto now = id(ha_time).now();
+          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (!now.is_valid()) return;
 
           bool in_window = screen_schedule_in_window(
@@ -534,7 +534,7 @@ script:
             return;
           }
 
-          auto now = id(ha_time).now();
+          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (!now.is_valid()) return;
 
           if (screen_schedule_in_window(
@@ -568,7 +568,7 @@ script:
     then:
       - lambda: |-
           if (id(display_asleep)) return;
-          auto now = id(ha_time).now();
+          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (id(screen_schedule_asleep)) {
             if (screen_schedule_clock_mode(id(schedule_mode).current_option())) return;
             id(backlight_force_display_off).execute();
@@ -616,8 +616,9 @@ script:
     then:
       - lambda: |-
           const char *posix = apply_timezone(id(timezone_select).current_option());
-          id(ha_time).set_timezone(posix);
-          auto now = id(ha_time).now();
+          id(panel_time).set_timezone(posix);
+          id(homeassistant_time).set_timezone(posix);
+          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (!now.is_valid()) return;
           bool use_12h = id(clock_format_select).current_option() == "12h";
           auto r = recalc_sunrise_sunset(now.year, now.month, now.day_of_month,
@@ -646,7 +647,7 @@ interval:
             lambda: |-
               return (id(screen_schedule_asleep) &&
                       !screen_schedule_clock_mode(id(schedule_mode).current_option())) ||
-                     (id(schedule_enabled).state && !id(ha_time).now().is_valid());
+                     (id(schedule_enabled).state && !panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
           then:
             - script.execute: backlight_force_display_off
 
@@ -656,7 +657,7 @@ interval:
       - if:
           condition:
             lambda: |-
-              auto now = id(ha_time).now();
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               if (!now.is_valid()) return false;
               bool changed = check_daylight_transition(
                 id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
@@ -669,7 +670,7 @@ interval:
       - if:
           condition:
             lambda: |-
-              auto now = id(ha_time).now();
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               return now.is_valid() && now.hour == 0 && now.minute == 0;
           then:
             - script.execute: backlight_recalc_sunrise_sunset

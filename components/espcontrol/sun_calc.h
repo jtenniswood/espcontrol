@@ -4,6 +4,11 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <cctype>
+
+#if defined(USE_ESP_IDF)
+#include <esp_sntp.h>
+#endif
 
 // ============================================================================
 // Timezone coordinate and POSIX TZ lookup table
@@ -253,6 +258,52 @@ inline const char* apply_timezone(const std::string &tz_option) {
   setenv("TZ", posix, 1);
   tzset();
   return posix;
+}
+
+template <typename TimeT>
+inline TimeT panel_time_or_fallback(TimeT primary, TimeT fallback) {
+  return primary.is_valid() ? primary : fallback;
+}
+
+inline std::string trim_ntp_server(const std::string &value) {
+  size_t start = 0;
+  while (start < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[start]))) {
+    start++;
+  }
+  size_t end = value.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+    end--;
+  }
+  return value.substr(start, end - start);
+}
+
+inline void apply_ntp_servers(const std::string &server_1,
+                              const std::string &server_2,
+                              const std::string &server_3) {
+#if defined(USE_ESP_IDF)
+  static std::string active_servers[3];
+  active_servers[0] = trim_ntp_server(server_1);
+  active_servers[1] = trim_ntp_server(server_2);
+  active_servers[2] = trim_ntp_server(server_3);
+
+  if (active_servers[0].empty()) active_servers[0] = "0.pool.ntp.org";
+  if (active_servers[1].empty()) active_servers[1] = "1.pool.ntp.org";
+  if (active_servers[2].empty()) active_servers[2] = "2.pool.ntp.org";
+
+  for (int i = 0; i < 3; i++) {
+    esp_sntp_setservername(i, active_servers[i].c_str());
+  }
+
+  if (esp_sntp_enabled()) {
+    esp_sntp_restart();
+  }
+#else
+  (void) server_1;
+  (void) server_2;
+  (void) server_3;
+#endif
 }
 
 inline float utc_offset_hours_at(time_t t) {

@@ -78,7 +78,7 @@ script:
       - if:
           condition:
             lambda: |-
-              auto now = id(ha_time).now();
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               if (id(schedule_enabled).state && now.is_valid() &&
                   !screen_schedule_in_window(
                     now.hour,
@@ -252,7 +252,7 @@ script:
             lambda: |-
               return (id(screen_schedule_asleep) &&
                       !screen_schedule_clock_mode(id(schedule_mode).current_option())) ||
-                     (id(schedule_enabled).state && !id(ha_time).now().is_valid());
+                     (id(schedule_enabled).state && !panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
           then:
             - script.execute: backlight_force_display_off
           else:
@@ -295,7 +295,7 @@ script:
       - lambda: |-
           id(backlight_manual_off) = false;
           if (id(schedule_enabled).state) {
-            auto now = id(ha_time).now();
+            auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
             if (now.is_valid()) {
               bool in_window = screen_schedule_in_window(
                 now.hour,
@@ -361,7 +361,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          auto now = id(ha_time).now();
+          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
 
           float pct = 35.0f;
           if (id(screen_schedule_asleep) &&
@@ -411,7 +411,7 @@ script:
       - script.wait: clock_screensaver_refresh_brightness
       - lambda: |-
           id(is_clock_showing) = true;
-          auto time = id(ha_time).now();
+          auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (time.is_valid()) {
             char buf[12];
             int hr = time.hour, mn = time.minute;
@@ -500,7 +500,7 @@ interval:
             - script.execute: clock_screensaver_refresh_brightness
       - lambda: |-
           if (!id(is_clock_showing)) return;
-          auto time = id(ha_time).now();
+          auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (!time.is_valid()) return;
           char buf[12];
           int hr = time.hour, mn = time.minute;
