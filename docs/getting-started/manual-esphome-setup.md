@@ -91,7 +91,9 @@ The Ethernet firmware is intentionally different from the normal WiFi firmware:
 - It keeps the ESP32-C6 hosted WiFi co-processor disabled because it is not needed for wired networking.
 - It uses a higher backlight PWM frequency on this panel to avoid the visible shimmer that can appear when Ethernet is active.
 
-To switch back to WiFi later, remove `network_transport: ethernet`, add your `wifi:` block again, then recompile and install the firmware.
+When switching a display between WiFi firmware and Ethernet firmware, install the new firmware over USB. OTA updates can fail during this change because the currently running firmware and the new firmware use different network hardware.
+
+To switch back to WiFi later, remove `network_transport: ethernet`, add your `wifi:` block again, then recompile and install the firmware over USB.
 
 ::: warning Keep the device name simple
 Use lowercase letters, numbers, and hyphens for `name`. For example, `espcontrol-kitchen` is better than `Kitchen Touchscreen`.
