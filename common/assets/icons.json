@@ -225,6 +225,11 @@
       "mdi": "ceiling-light"
     },
     {
+      "name": "Ceiling Lights Multiple",
+      "codepoint": "F18DD",
+      "mdi": "ceiling-light-multiple"
+    },
+    {
       "name": "Chandelier",
       "codepoint": "F1793",
       "mdi": "chandelier"
@@ -420,14 +425,34 @@
       "mdi": "headphones"
     },
     {
-      "name": "Heater",
+      "name": "Radiator",
       "codepoint": "F0438",
       "mdi": "radiator"
+    },
+    {
+      "name": "Radiator Off",
+      "codepoint": "F0AD8",
+      "mdi": "radiator-off"
     },
     {
       "name": "Home",
       "codepoint": "F02DC",
       "mdi": "home"
+    },
+    {
+      "name": "Heat Pump",
+      "codepoint": "F1A43",
+      "mdi": "heat-pump"
+    },
+    {
+      "name": "HVAC",
+      "codepoint": "F1352",
+      "mdi": "hvac"
+    },
+    {
+      "name": "HVAC Off",
+      "codepoint": "F159E",
+      "mdi": "hvac-off"
     },
     {
       "name": "Hot Tub",
@@ -820,6 +845,21 @@
       "mdi": "string-lights-off"
     },
     {
+      "name": "Power Socket UK",
+      "codepoint": "F07E8",
+      "mdi": "power-socket-uk"
+    },
+    {
+      "name": "Power Socket EU",
+      "codepoint": "F07E7",
+      "mdi": "power-socket-eu"
+    },
+    {
+      "name": "Power Socket US",
+      "codepoint": "F07E9",
+      "mdi": "power-socket-us"
+    },
+    {
       "name": "Sun",
       "codepoint": "F05A8",
       "mdi": "white-balance-sunny"
@@ -863,6 +903,21 @@
       "name": "Thermostat",
       "codepoint": "F0393",
       "mdi": "thermostat"
+    },
+    {
+      "name": "Home-Thermostat",
+      "codepoint": "F0F54",
+      "mdi": "home-thermometer"
+    },
+    {
+      "name": "Thermostat Auto",
+      "codepoint": "F1B17",
+      "mdi": "thermostat-auto"
+    },
+    {
+      "name": "Thermometer Water",
+      "codepoint": "F1A80",
+      "mdi": "thermometer-water"
     },
     {
       "name": "Timer",
@@ -913,6 +968,11 @@
       "name": "Water Percent",
       "codepoint": "F058E",
       "mdi": "water-percent"
+    },
+    {
+      "name": "Water Alert",
+      "codepoint": "F1502",
+      "mdi": "water-alert"
     },
     {
       "name": "Weather Cloudy",
