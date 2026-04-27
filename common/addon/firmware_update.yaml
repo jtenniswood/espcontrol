@@ -34,7 +34,7 @@ update:
     id: firmware_update
     name: "Firmware: Update"
     internal: true
-    source: https://jtenniswood.github.io/espcontrol/firmware/${firmware_manifest_slug}/manifest.json
+    source: https://wonderslug.github.io/espcontrol/firmware/${firmware_manifest_slug}/manifest.json
     update_interval: never
     on_update_available:
       then:
