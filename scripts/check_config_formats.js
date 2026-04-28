@@ -49,6 +49,7 @@ function decodeField(value) {
 function subpageTypeFromCode(code) {
   return {
     D: "calendar",
+    T: "timezone",
     S: "sensor",
     W: "weather",
     L: "slider",
@@ -217,6 +218,17 @@ assertButtonRoundTrip(hooks, "cover tilt button", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "timezone card", {
+  entity: "America/New_York (GMT-5)",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "timezone",
+  precision: "",
+}, false);
+
 assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig("light.legacy;Legacy;Auto;Lightbulb;sensor.legacy;W;sensor;1")), {
   entity: "light.legacy",
   label: "Legacy",
@@ -306,6 +318,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|D")), {
     buttonShape({ type: "calendar" }),
   ],
 }, "compact calendar subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|T,America/New_York%20%28GMT-5%29")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "America/New_York (GMT-5)", type: "timezone" }),
+  ],
+}, "compact timezone subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|R,cover.garage,,Garage,Garage%20Open")), {
   order: ["1", "B"],

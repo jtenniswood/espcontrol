@@ -7,7 +7,7 @@
 //
 // Per-device config (grid size, styling) is injected between __DEVICE_CONFIG__
 // markers by scripts/build.py. Button type plugins (switch, sensor, weather,
-// calendar, slider, cover, garage, push, subpage) are injected between __BUTTON_TYPES__ markers.
+// calendar, timezone, slider, cover, garage, push, subpage) are injected between __BUTTON_TYPES__ markers.
 // Icon data is generated between GENERATED:ICONS / GENERATED:DOMAIN_ICONS.
 // =============================================================================
 
@@ -1584,6 +1584,7 @@
   function subpageTypeCode(type) {
     var map = {
       calendar: "D",
+      timezone: "T",
       sensor: "S",
       weather: "W",
       slider: "L",
@@ -1599,6 +1600,7 @@
   function subpageTypeFromCode(code) {
     var map = {
       D: "calendar",
+      T: "timezone",
       S: "sensor",
       W: "weather",
       L: "slider",
@@ -3015,7 +3017,7 @@
         var b = c.buttons[bIdx];
         var iconName = resolveIcon(b);
         var label = b.label || b.entity || "Configure";
-        var color = (b.type === "sensor" || b.type === "weather" || b.type === "calendar")
+        var color = (b.type === "sensor" || b.type === "weather" || b.type === "calendar" || b.type === "timezone")
           ? state.sensorColor : state.offColor;
         var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
         if (previewTypeDef && c.isSub && !previewTypeDef.allowInSubpage) previewTypeDef = null;

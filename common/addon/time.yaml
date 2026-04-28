@@ -352,20 +352,24 @@ script:
       - lambda: |-
           auto now = panel_time_or_fallback(id(panel_time).now(),
                                             id(homeassistant_time).now());
+          bool use_12h =
+              id(clock_format_select).current_option() == "12h";
           if (now.is_valid()) {
             static char date_buf[11];
-            bool use_12h =
-                id(clock_format_select).current_option() == "12h";
             snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d",
                      now.year, now.month, now.day_of_month);
             id(screen_date_sensor).publish_state(date_buf);
             update_calendar_cards(true, now.day_of_month, now.month);
             update_calendar_cards_time(
                 true, now.day_of_month, now.month, now.hour, now.minute, use_12h);
+            update_timezone_cards(true, now.timestamp,
+                                  id(timezone_select).current_option(), use_12h);
           } else if (!calendar_date_valid()) {
             id(screen_date_sensor).publish_state("");
             update_calendar_cards(false, 0, 0);
             update_calendar_cards_time(false, 0, 0, 0, 0, false);
+            update_timezone_cards(false, 0, id(timezone_select).current_option(), use_12h);
           } else {
             update_calendar_cards_time(false, 0, 0, 0, 0, false);
+            update_timezone_cards(false, 0, id(timezone_select).current_option(), use_12h);
           }

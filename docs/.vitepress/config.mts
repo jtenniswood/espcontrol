@@ -193,6 +193,7 @@ export default defineConfig({
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
           { text: 'Date', link: '/card-types/calendar' },
+          { text: 'Timezone', link: '/card-types/timezones' },
           { text: 'Weather', link: '/card-types/weather' },
           { text: 'Internal', link: '/card-types/internal-relays' },
           { text: 'Subpage', link: '/features/subpages' },

@@ -33,6 +33,7 @@ The **Type** dropdown uses these card names on the device:
 | **[Cover](/card-types/covers)** | Controls blinds, shutters, and similar cover entities with a slider or tap action. | Yes |
 | **[Garage Door](/card-types/garage-doors)** | Controls a garage door cover entity with an open/close tap action. | Yes |
 | **[Date](/card-types/calendar)** | Shows the local date, or the date and time. | No |
+| **[Timezone](/card-types/timezones)** | Shows the current time for another city. | Choose a timezone |
 | **[Weather](/card-types/weather)** | Shows the current condition from a weather entity. | Yes, as **Weather Entity** |
 | **[Internal](/card-types/internal-relays)** | Controls a built-in relay locally on panels that have relay hardware. | Choose a relay |
 | **[Subpage](/features/subpages)** | Opens a folder-like page of extra cards. | No |

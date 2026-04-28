@@ -4,7 +4,7 @@
 // Shared C++ utilities included by each device's sensors.yaml lambda. Handles:
 //   - Parsing semicolon-delimited button config strings into structured fields
 //   - Grid layout with double-height (d), double-wide (w), and 2×2 big (b) cells
-//   - LVGL visual setup for toggle buttons, sensor cards, and slider widgets
+//   - LVGL visual setup for toggle buttons, sensor/time cards, and slider widgets
 //   - Home Assistant state subscriptions and action dispatch
 //   - Subpage creation (nested grid screens with back button)
 // =============================================================================
@@ -14,6 +14,7 @@
 #include <cstring>
 #include <cctype>
 #include <cstdint>
+#include <ctime>
 #include <vector>
 #include <functional>
 #include "esphome/core/string_ref.h"
@@ -91,13 +92,13 @@ inline std::string decode_compact_field(const std::string &value) {
 
 // Structured view of a button config string: entity;label;icon;icon_on;sensor;unit;type;precision
 struct ParsedCfg {
-  std::string entity;      // 0  HA entity_id, or internal relay key for internal cards
+  std::string entity;      // 0  HA entity_id, internal relay key, or timezone option
   std::string label;       // 1  display name (blank = use HA friendly_name)
   std::string icon;        // 2  icon name for off/default state
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity; "h" for horizontal slider; "push" for internal relay; "toggle"/"tilt" for cover modes
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), sensor, slider, cover, garage, push, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), sensor, calendar, timezone, slider, cover, garage, push, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
 };
 
@@ -867,6 +868,115 @@ inline void subscribe_calendar_date_source(const std::string &entity_id) {
   );
 }
 
+struct TimezoneCardRef {
+  lv_obj_t *value_lbl;
+  lv_obj_t *unit_lbl;
+  lv_obj_t *label_lbl;
+  std::string timezone;
+  std::string label;
+};
+
+inline TimezoneCardRef *timezone_card_refs() {
+  static TimezoneCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
+  return refs;
+}
+
+inline int &timezone_card_count() {
+  static int count = 0;
+  return count;
+}
+
+inline void reset_timezone_cards() {
+  timezone_card_count() = 0;
+}
+
+inline std::string timezone_city_label(const std::string &tz_option) {
+  std::string tz_id = timezone_id_from_option(tz_option);
+  if (tz_id.empty()) return "Timezone";
+  if (tz_id == "UTC") return "UTC";
+  size_t slash = tz_id.rfind('/');
+  std::string city = slash == std::string::npos ? tz_id : tz_id.substr(slash + 1);
+  for (char &ch : city) {
+    if (ch == '_') ch = ' ';
+  }
+  return city.empty() ? std::string("Timezone") : city;
+}
+
+inline void set_posix_timezone_for_epoch(const std::string &tz_option, time_t epoch) {
+  std::string tz_id = timezone_id_from_option(tz_option);
+  struct tm utc_tm;
+  gmtime_r(&epoch, &utc_tm);
+  const char *posix = resolve_posix_tz_at_utc(tz_id, utc_point_from_tm(utc_tm));
+  setenv("TZ", posix, 1);
+  tzset();
+}
+
+inline bool timezone_localtime(const std::string &tz_option, time_t epoch, struct tm &out) {
+  set_posix_timezone_for_epoch(tz_option, epoch);
+  return localtime_r(&epoch, &out) != nullptr;
+}
+
+inline void apply_timezone_card_text(const TimezoneCardRef &ref,
+                                     bool valid,
+                                     time_t epoch,
+                                     const std::string &active_timezone,
+                                     bool use_12h) {
+  std::string tz_option = ref.timezone.empty() ? active_timezone : ref.timezone;
+  std::string label = ref.label.empty() ? timezone_city_label(tz_option) : ref.label;
+  const char *value_text = "--:--";
+  const char *unit_text = "";
+  char value_buf[8];
+
+  if (valid) {
+    struct tm local_tm;
+    if (timezone_localtime(tz_option, epoch, local_tm)) {
+      int hour = local_tm.tm_hour;
+      int minute = local_tm.tm_min;
+      if (use_12h) {
+        int hour12 = hour % 12;
+        if (hour12 == 0) hour12 = 12;
+        snprintf(value_buf, sizeof(value_buf), "%d:%02d", hour12, minute);
+        unit_text = hour < 12 ? "am" : "pm";
+      } else {
+        snprintf(value_buf, sizeof(value_buf), "%02d:%02d", hour, minute);
+      }
+      value_text = value_buf;
+    }
+  }
+
+  if (ref.value_lbl) lv_label_set_text(ref.value_lbl, value_text);
+  if (ref.unit_lbl) lv_label_set_text(ref.unit_lbl, unit_text);
+  if (ref.label_lbl) lv_label_set_text(ref.label_lbl, label.c_str());
+}
+
+inline void register_timezone_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
+                                   lv_obj_t *label_lbl,
+                                   const std::string &timezone,
+                                   const std::string &label) {
+  int &count = timezone_card_count();
+  if (count >= MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) {
+    ESP_LOGW("timezone", "Too many timezone cards; skipping time updates");
+    return;
+  }
+  timezone_card_refs()[count++] = {value_lbl, unit_lbl, label_lbl, timezone, label};
+  apply_timezone_card_text(timezone_card_refs()[count - 1], false, 0, timezone, false);
+}
+
+inline void update_timezone_cards(bool valid,
+                                  time_t epoch,
+                                  const std::string &active_timezone,
+                                  bool use_12h) {
+  TimezoneCardRef *refs = timezone_card_refs();
+  int count = timezone_card_count();
+  for (int i = 0; i < count; i++) {
+    apply_timezone_card_text(refs[i], valid, epoch, active_timezone, use_12h);
+  }
+  if (count > 0) {
+    if (valid) set_posix_timezone_for_epoch(active_timezone, epoch);
+    else apply_timezone(active_timezone);
+  }
+}
+
 inline void setup_calendar_card(BtnSlot &s, const ParsedCfg &p,
                                 bool has_sensor_color, uint32_t sensor_val) {
   if (has_sensor_color) {
@@ -880,6 +990,22 @@ inline void setup_calendar_card(BtnSlot &s, const ParsedCfg &p,
   lv_label_set_text(s.unit_lbl, "");
   lv_label_set_text(s.text_lbl, "Date");
   register_calendar_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, calendar_card_shows_time(p));
+}
+
+inline void setup_timezone_card(BtnSlot &s, const ParsedCfg &p,
+                                bool has_sensor_color, uint32_t sensor_val) {
+  if (has_sensor_color) {
+    lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  }
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  lv_label_set_text(s.sensor_lbl, "--:--");
+  lv_label_set_text(s.unit_lbl, "");
+  std::string label = p.label.empty() ? timezone_city_label(p.entity) : p.label;
+  lv_label_set_text(s.text_lbl, label.c_str());
+  register_timezone_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity, p.label);
 }
 
 inline void setup_weather_card(BtnSlot &s, bool has_sensor_color, uint32_t sensor_val) {
@@ -1207,7 +1333,8 @@ inline void send_slider_action(const std::string &entity_id, int value, bool cov
 inline void handle_button_click(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
   ParsedCfg p = parse_cfg(cfg);
-  if (p.type == "sensor" || p.type == "text_sensor" || p.type == "calendar") return;
+  if (p.type == "sensor" || p.type == "text_sensor" ||
+      p.type == "calendar" || p.type == "timezone") return;
   if (p.type == "push") {
     std::string label = p.label;
     if (label.empty()) {
@@ -1520,7 +1647,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity for toggle; orientation "h"|"" for slider; "toggle"/"tilt" for cover modes
   std::string unit;
-  std::string type;       // button type: "" (toggle), sensor, slider, cover, garage, push, internal, subpage
+  std::string type;       // button type: "" (toggle), sensor, calendar, timezone, slider, cover, garage, push, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
 };
 
@@ -1538,6 +1665,7 @@ inline std::vector<std::string> split_subpage_fields(const std::string &value, c
 
 inline std::string compact_subpage_type(const std::string &code) {
   if (code == "D") return "calendar";
+  if (code == "T") return "timezone";
   if (code == "S") return "sensor";
   if (code == "W") return "weather";
   if (code == "L") return "slider";
@@ -1796,6 +1924,7 @@ inline void grid_phase1(
   }
 
   reset_calendar_cards();
+  reset_timezone_cards();
 
   for (int i = 0; i < NS; i++)
     lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
@@ -1832,6 +1961,10 @@ inline void grid_phase1(
     }
     if (p.type == "calendar") {
       setup_calendar_card(s, p, has_sensor_color, sensor_val);
+      continue;
+    }
+    if (p.type == "timezone") {
+      setup_timezone_card(s, p, has_sensor_color, sensor_val);
       continue;
     }
     if (p.type == "weather") {
@@ -1934,6 +2067,9 @@ inline void grid_phase2(
     }
     if (p.type == "calendar") {
       subscribe_calendar_date_source(p.entity);
+      continue;
+    }
+    if (p.type == "timezone") {
       continue;
     }
     if (p.type == "weather") {
@@ -2226,6 +2362,40 @@ inline void grid_phase2(
         lv_label_set_text(stl, "Date");
         register_calendar_card(svl, sul, stl, sb.precision == "datetime");
         subscribe_calendar_date_source(sb.entity);
+
+      } else if (sb.type == "timezone") {
+        if (has_sensor_color)
+          lv_obj_set_style_bg_color(sb_btn, lv_color_hex(sensor_val),
+            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+        lv_obj_clear_flag(sb_btn, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_flag(sil, LV_OBJ_FLAG_HIDDEN);
+
+        lv_obj_t *sc = lv_obj_create(sb_btn);
+        lv_obj_set_align(sc, LV_ALIGN_TOP_LEFT);
+        lv_obj_set_size(sc, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_clear_flag(sc, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_clear_flag(sc, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_bg_opa(sc, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(sc, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(sc, 0, LV_PART_MAIN);
+        lv_obj_set_layout(sc, LV_LAYOUT_FLEX);
+        lv_obj_set_style_flex_flow(sc, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+        lv_obj_set_style_flex_cross_place(sc, LV_FLEX_ALIGN_END, LV_PART_MAIN);
+
+        lv_obj_t *svl = lv_label_create(sc);
+        lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
+        lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
+        lv_label_set_text(svl, "--:--");
+
+        lv_obj_t *sul = lv_label_create(sc);
+        lv_obj_set_style_text_font(sul, sp_btn_fnt, LV_PART_MAIN);
+        lv_obj_set_style_text_color(sul, sp_txt_color, LV_PART_MAIN);
+        lv_obj_set_style_pad_bottom(sul, 6, LV_PART_MAIN);
+        lv_label_set_text(sul, "");
+
+        std::string label = sb.label.empty() ? timezone_city_label(sb.entity) : sb.label;
+        lv_label_set_text(stl, label.c_str());
+        register_timezone_card(svl, sul, stl, sb.entity, sb.label);
 
       } else if (sb.type == "weather") {
         if (has_sensor_color)
