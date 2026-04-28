@@ -29,19 +29,20 @@ api:
         precision: string
       then:
         - lambda: |-
-            std::string existing;
+            esphome::text::Text *target = nullptr;
             switch (index) {
-                    case 1: existing = id(button_1_config).state; break;
-                    case 2: existing = id(button_2_config).state; break;
-                    case 3: existing = id(button_3_config).state; break;
-                    case 4: existing = id(button_4_config).state; break;
-                    case 5: existing = id(button_5_config).state; break;
-                    case 6: existing = id(button_6_config).state; break;
+                    case 1: target = id(button_1_config); break;
+                    case 2: target = id(button_2_config); break;
+                    case 3: target = id(button_3_config); break;
+                    case 4: target = id(button_4_config); break;
+                    case 5: target = id(button_5_config); break;
+                    case 6: target = id(button_6_config); break;
               default:
                 ESP_LOGW("api", "update_button: invalid index %d", index);
                 return;
             }
 
+            std::string existing = target->state;
             std::string current[8];
             size_t start = 0;
             for (int i = 0; i < 7; i++) {
@@ -75,17 +76,9 @@ api:
             std::string cfg = merged[0] + ";" + merged[1] + ";" + merged[2] + ";" +
               merged[3] + ";" + merged[4] + ";" + merged[5] + ";" + merged[6] + ";" + merged[7];
 
-            switch (index) {
-                    case 1: id(button_1_config).publish_state(cfg); break;
-                    case 2: id(button_2_config).publish_state(cfg); break;
-                    case 3: id(button_3_config).publish_state(cfg); break;
-                    case 4: id(button_4_config).publish_state(cfg); break;
-                    case 5: id(button_5_config).publish_state(cfg); break;
-                    case 6: id(button_6_config).publish_state(cfg); break;
-              default:
-                ESP_LOGW("api", "update_button: invalid index %d", index);
-                return;
-            }
+            auto call = target->make_call();
+            call.set_value(cfg);
+            call.perform();
         - logger.log:
             level: INFO
             format: "Queued update for button index %d"

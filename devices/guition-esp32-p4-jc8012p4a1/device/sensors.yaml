@@ -30,33 +30,34 @@ api:
         precision: string
       then:
         - lambda: |-
-            std::string existing;
+            esphome::text::Text *target = nullptr;
             switch (index) {
-                    case 1: existing = id(button_1_config).state; break;
-                    case 2: existing = id(button_2_config).state; break;
-                    case 3: existing = id(button_3_config).state; break;
-                    case 4: existing = id(button_4_config).state; break;
-                    case 5: existing = id(button_5_config).state; break;
-                    case 6: existing = id(button_6_config).state; break;
-                    case 7: existing = id(button_7_config).state; break;
-                    case 8: existing = id(button_8_config).state; break;
-                    case 9: existing = id(button_9_config).state; break;
-                    case 10: existing = id(button_10_config).state; break;
-                    case 11: existing = id(button_11_config).state; break;
-                    case 12: existing = id(button_12_config).state; break;
-                    case 13: existing = id(button_13_config).state; break;
-                    case 14: existing = id(button_14_config).state; break;
-                    case 15: existing = id(button_15_config).state; break;
-                    case 16: existing = id(button_16_config).state; break;
-                    case 17: existing = id(button_17_config).state; break;
-                    case 18: existing = id(button_18_config).state; break;
-                    case 19: existing = id(button_19_config).state; break;
-                    case 20: existing = id(button_20_config).state; break;
+                    case 1: target = id(button_1_config); break;
+                    case 2: target = id(button_2_config); break;
+                    case 3: target = id(button_3_config); break;
+                    case 4: target = id(button_4_config); break;
+                    case 5: target = id(button_5_config); break;
+                    case 6: target = id(button_6_config); break;
+                    case 7: target = id(button_7_config); break;
+                    case 8: target = id(button_8_config); break;
+                    case 9: target = id(button_9_config); break;
+                    case 10: target = id(button_10_config); break;
+                    case 11: target = id(button_11_config); break;
+                    case 12: target = id(button_12_config); break;
+                    case 13: target = id(button_13_config); break;
+                    case 14: target = id(button_14_config); break;
+                    case 15: target = id(button_15_config); break;
+                    case 16: target = id(button_16_config); break;
+                    case 17: target = id(button_17_config); break;
+                    case 18: target = id(button_18_config); break;
+                    case 19: target = id(button_19_config); break;
+                    case 20: target = id(button_20_config); break;
               default:
                 ESP_LOGW("api", "update_button: invalid index %d", index);
                 return;
             }
 
+            std::string existing = target->state;
             std::string current[8];
             size_t start = 0;
             for (int i = 0; i < 7; i++) {
@@ -90,31 +91,9 @@ api:
             std::string cfg = merged[0] + ";" + merged[1] + ";" + merged[2] + ";" +
               merged[3] + ";" + merged[4] + ";" + merged[5] + ";" + merged[6] + ";" + merged[7];
 
-            switch (index) {
-                    case 1: id(button_1_config).publish_state(cfg); break;
-                    case 2: id(button_2_config).publish_state(cfg); break;
-                    case 3: id(button_3_config).publish_state(cfg); break;
-                    case 4: id(button_4_config).publish_state(cfg); break;
-                    case 5: id(button_5_config).publish_state(cfg); break;
-                    case 6: id(button_6_config).publish_state(cfg); break;
-                    case 7: id(button_7_config).publish_state(cfg); break;
-                    case 8: id(button_8_config).publish_state(cfg); break;
-                    case 9: id(button_9_config).publish_state(cfg); break;
-                    case 10: id(button_10_config).publish_state(cfg); break;
-                    case 11: id(button_11_config).publish_state(cfg); break;
-                    case 12: id(button_12_config).publish_state(cfg); break;
-                    case 13: id(button_13_config).publish_state(cfg); break;
-                    case 14: id(button_14_config).publish_state(cfg); break;
-                    case 15: id(button_15_config).publish_state(cfg); break;
-                    case 16: id(button_16_config).publish_state(cfg); break;
-                    case 17: id(button_17_config).publish_state(cfg); break;
-                    case 18: id(button_18_config).publish_state(cfg); break;
-                    case 19: id(button_19_config).publish_state(cfg); break;
-                    case 20: id(button_20_config).publish_state(cfg); break;
-              default:
-                ESP_LOGW("api", "update_button: invalid index %d", index);
-                return;
-            }
+            auto call = target->make_call();
+            call.set_value(cfg);
+            call.perform();
         - logger.log:
             level: INFO
             format: "Queued update for button index %d"
