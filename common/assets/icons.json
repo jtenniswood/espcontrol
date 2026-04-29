@@ -6,9 +6,9 @@
   },
   "structural": [
     {
-      "name": "Arrow Left",
-      "codepoint": "F004D",
-      "mdi": "arrow-left",
+      "name": "Chevron Left",
+      "codepoint": "F0141",
+      "mdi": "chevron-left",
       "comment": "Back button"
     },
     {

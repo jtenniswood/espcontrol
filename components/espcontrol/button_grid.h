@@ -1097,7 +1097,7 @@ inline void climate_ensure_detail_ui(ClimateCardCtx *ctx) {
   lv_obj_set_style_bg_opa(ui.page, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_clear_flag(ui.page, LV_OBJ_FLAG_SCROLLABLE);
 
-  ui.back_btn = climate_create_round_button(ui.page, 48, "\U000F004D", ctx ? ctx->icon_font : nullptr);
+  ui.back_btn = climate_create_round_button(ui.page, 48, "\U000F0141", ctx ? ctx->icon_font : nullptr);
   lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, 12, 12);
   lv_obj_add_event_cb(ui.back_btn, [](lv_event_t *e) {
     ClimateDetailUi &ui = climate_detail_ui();
@@ -3334,7 +3334,7 @@ inline void grid_phase2(
       LV_GRID_ALIGN_STRETCH, sp_ord.back_pos / COLS, sp_ord.back_dbl ? 2 : 1);
     lv_obj_t *bi = lv_label_create(back_btn);
     lv_obj_set_style_text_font(bi, sp_icon_fnt, LV_PART_MAIN);
-    lv_label_set_text(bi, "\U000F004D");
+    lv_label_set_text(bi, "\U000F0141");
     lv_obj_align(bi, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_t *bl = lv_label_create(back_btn);
     lv_label_set_text(bl, "Back");

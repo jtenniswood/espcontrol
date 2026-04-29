@@ -29,5 +29,5 @@ substitutions:
   icon_ethernet: "\U000F0200"
   icon_cog: "\U000F0493"
   icon_home_assistant: "\U000F07D0"
-  icon_arrow_left: "\U000F004D"
+  icon_chevron_left: "\U000F0141"
   icon_chevron_right: "\U000F0142"
