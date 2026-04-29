@@ -15,7 +15,7 @@ font:
   # Climate detail page: oversized target temperature
   - file: "gfonts://Roboto@Light"
     id: climate_target_font
-    size: 132
+    size: 112
     bpp: 4
     glyphs:
       - "0123456789.-"
