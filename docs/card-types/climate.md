@@ -35,7 +35,7 @@ The detail page only shows controls that the climate entity supports:
 | `hvac_modes` | Mode selector |
 | `fan_modes` | Fan selector |
 | `swing_modes` | Swing selector |
-| `preset_modes` | Preset selector |
+| `preset_modes` | Preset tabs along the bottom |
 
 ## Heat/Cool Mode
 
