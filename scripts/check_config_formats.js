@@ -59,7 +59,6 @@ function subpageTypeFromCode(code) {
     C: "cover",
     R: "garage",
     P: "push",
-    I: "internal",
     G: "subpage",
   }[code || ""] || (code || "");
 }
@@ -187,17 +186,6 @@ assertButtonRoundTrip(hooks, "delimiter button", {
   type: "sensor",
   precision: "1",
 }, true);
-
-assertButtonRoundTrip(hooks, "internal relay push button", {
-  entity: "relay_1",
-  label: "Door Strike",
-  icon: "Gesture Tap",
-  icon_on: "Auto",
-  sensor: "push",
-  unit: "",
-  type: "internal",
-  precision: "",
-}, false);
 
 assertButtonRoundTrip(hooks, "garage label button", {
   entity: "cover.garage",
@@ -409,14 +397,6 @@ assertSubpageRoundTrip(hooks, "normal subpage", {
   ],
 }, true);
 
-assertSubpageRoundTrip(hooks, "internal relay subpage", {
-  order: ["1", "B"],
-  buttons: [
-    buttonShape({ entity: "relay_1", label: "Relay", icon: "Power Plug", type: "internal" }),
-    buttonShape({ entity: "relay_2", label: "Bell", icon: "Gesture Tap", sensor: "push", type: "internal" }),
-  ],
-}, true);
-
 assertSubpageRoundTrip(hooks, "cover toggle subpage", {
   order: ["1", "B"],
   buttons: [
@@ -517,13 +497,6 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|C,cover.offic
     buttonShape({ entity: "cover.office_blind", label: "Office Blind", icon: "Blinds", icon_on: "Blinds Open", sensor: "tilt", type: "cover" }),
   ],
 }, "compact cover tilt subpage parse");
-
-assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|I,relay_2,Gate,Power%20Plug,Power,push")), {
-  order: ["1", "B"],
-  buttons: [
-    buttonShape({ entity: "relay_2", label: "Gate", icon: "Power Plug", icon_on: "Power", sensor: "push", type: "internal" }),
-  ],
-}, "compact internal relay subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|A,scene.movie_mode,Movie%20Mode,Flash,,scene.turn_on")), {
   order: ["1", "B"],

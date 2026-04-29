@@ -1603,7 +1603,6 @@
       cover: "C",
       garage: "R",
       push: "P",
-      internal: "I",
       subpage: "G",
     };
     return map[type || ""] || (type || "");
@@ -1622,7 +1621,6 @@
       C: "cover",
       R: "garage",
       P: "push",
-      I: "internal",
       G: "subpage",
     };
     return map[code || ""] || (code || "");

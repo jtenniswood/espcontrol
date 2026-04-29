@@ -55,12 +55,7 @@
     "dragAnimation": true,
     "features": {
       "screenRotation": true,
-      "screenRotationOptions": ["0", "90", "180", "270"],
-      "internalRelays": [
-        { "key": "relay_1", "label": "Relay 1" },
-        { "key": "relay_2", "label": "Relay 2" },
-        { "key": "relay_3", "label": "Relay 3" }
-      ]
+      "screenRotationOptions": ["0", "90", "180", "270"]
     },
     "screen": { "width": "55%", "aspect": "1/1" },
     "topbar": { "height": 7.5, "padding": "0.83cqw", "fontSize": 3.75 },

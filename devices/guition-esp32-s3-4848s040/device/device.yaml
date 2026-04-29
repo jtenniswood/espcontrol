@@ -59,33 +59,6 @@ esphome:
               esp_sleep_enable_timer_wakeup(100000);
               esp_deep_sleep_start();
             }
-    - priority: 700
-      then:
-        - lambda: |-
-            register_internal_relay(
-              "relay_1", "Relay 1",
-              [=](bool on) {
-                if (on) id(relay_1).turn_on();
-                else id(relay_1).turn_off();
-              },
-              [=]() { id(relay_1_push).execute(); },
-              [=]() -> bool { return id(relay_1).state; });
-            register_internal_relay(
-              "relay_2", "Relay 2",
-              [=](bool on) {
-                if (on) id(relay_2).turn_on();
-                else id(relay_2).turn_off();
-              },
-              [=]() { id(relay_2_push).execute(); },
-              [=]() -> bool { return id(relay_2).state; });
-            register_internal_relay(
-              "relay_3", "Relay 3",
-              [=](bool on) {
-                if (on) id(relay_3).turn_on();
-                else id(relay_3).turn_off();
-              },
-              [=]() { id(relay_3_push).execute(); },
-              [=]() -> bool { return id(relay_3).state; });
     - priority: -100
       then:
         - script.execute: apply_screen_rotation
@@ -155,75 +128,6 @@ light:
                     - script.execute: screensaver_wake
 
 # ---------------------------------------------------------------------------
-# Built-in relays (4848S040C relay variant)
-# ---------------------------------------------------------------------------
-switch:
-  - platform: gpio
-    name: Relay 1
-    id: relay_1
-    icon: mdi:electric-switch
-    pin:
-      number: GPIO40
-    restore_mode: RESTORE_DEFAULT_OFF
-    on_turn_on:
-      then:
-        - lambda: 'notify_internal_relay_changed("relay_1", true);'
-    on_turn_off:
-      then:
-        - lambda: 'notify_internal_relay_changed("relay_1", false);'
-
-  - platform: gpio
-    name: Relay 2
-    id: relay_2
-    icon: mdi:electric-switch
-    pin:
-      number: GPIO2
-    restore_mode: RESTORE_DEFAULT_OFF
-    on_turn_on:
-      then:
-        - lambda: 'notify_internal_relay_changed("relay_2", true);'
-    on_turn_off:
-      then:
-        - lambda: 'notify_internal_relay_changed("relay_2", false);'
-
-  - platform: gpio
-    name: Relay 3
-    id: relay_3
-    icon: mdi:electric-switch
-    pin:
-      number: GPIO1
-    restore_mode: RESTORE_DEFAULT_OFF
-    on_turn_on:
-      then:
-        - lambda: 'notify_internal_relay_changed("relay_3", true);'
-    on_turn_off:
-      then:
-        - lambda: 'notify_internal_relay_changed("relay_3", false);'
-
-# Momentary relay buttons for push-button/dimmer inputs.
-button:
-  - platform: template
-    name: Relay 1 Push
-    icon: mdi:gesture-tap-button
-    on_press:
-      then:
-        - script.execute: relay_1_push
-
-  - platform: template
-    name: Relay 2 Push
-    icon: mdi:gesture-tap-button
-    on_press:
-      then:
-        - script.execute: relay_2_push
-
-  - platform: template
-    name: Relay 3 Push
-    icon: mdi:gesture-tap-button
-    on_press:
-      then:
-        - script.execute: relay_3_push
-
-# ---------------------------------------------------------------------------
 # SPI bus (used by MIPI RGB driver for ST7701S init sequence)
 # ---------------------------------------------------------------------------
 spi:
@@ -275,27 +179,6 @@ lvgl:
       long_press_time: 3s
 
 script:
-  - id: relay_1_push
-    mode: restart
-    then:
-      - switch.turn_on: relay_1
-      - delay: 200ms
-      - switch.turn_off: relay_1
-
-  - id: relay_2_push
-    mode: restart
-    then:
-      - switch.turn_on: relay_2
-      - delay: 200ms
-      - switch.turn_off: relay_2
-
-  - id: relay_3_push
-    mode: restart
-    then:
-      - switch.turn_on: relay_3
-      - delay: 200ms
-      - switch.turn_off: relay_3
-
   - id: apply_screen_rotation
     then:
       - if:
