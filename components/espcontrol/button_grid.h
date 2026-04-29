@@ -583,6 +583,7 @@ struct ClimateCardCtx;
 
 struct ClimateDetailUi {
   lv_obj_t *page = nullptr;
+  lv_obj_t *card = nullptr;
   lv_obj_t *back_btn = nullptr;
   lv_obj_t *arc = nullptr;
   lv_obj_t *state_label = nullptr;
@@ -1280,32 +1281,20 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_coord_t short_side = sw < sh ? sw : sh;
   lv_coord_t back_size = short_side < 520 ? 60 : 72;
   lv_coord_t menu_size = short_side < 520 ? 44 : 48;
-  ClimateHomeGridMetrics &metrics = climate_home_grid_metrics();
-  lv_obj_t *home_grid = metrics.page;
-  lv_coord_t grid_pad_top = home_grid ? lv_obj_get_style_pad_top(home_grid, LV_PART_MAIN) : (sw < sh ? 50 : (short_side < 520 ? 38 : 42));
-  lv_coord_t grid_pad_left = home_grid ? lv_obj_get_style_pad_left(home_grid, LV_PART_MAIN) : 5;
-  lv_coord_t grid_pad_right = home_grid ? lv_obj_get_style_pad_right(home_grid, LV_PART_MAIN) : 5;
-  lv_coord_t grid_pad_bottom = home_grid ? lv_obj_get_style_pad_bottom(home_grid, LV_PART_MAIN) : (short_side < 520 ? 4 : 5);
-  lv_coord_t grid_gap_col = home_grid ? lv_obj_get_style_pad_column(home_grid, LV_PART_MAIN) : (sw < sh ? 14 : 10);
-  lv_coord_t grid_gap_row = home_grid ? lv_obj_get_style_pad_row(home_grid, LV_PART_MAIN) : (sw < sh ? 14 : 10);
-  lv_coord_t grid_w = sw - grid_pad_left - grid_pad_right;
-  lv_coord_t grid_h = sh - grid_pad_top - grid_pad_bottom;
-  if (grid_w < 1) grid_w = sw;
-  if (grid_h < 1) grid_h = sh;
-  int grid_cols = home_grid && metrics.cols > 0 ? metrics.cols : (sw < sh ? 2 : (short_side < 520 ? 3 : 5));
-  int grid_rows = home_grid && metrics.rows > 0 ? metrics.rows : 3;
-  int span_cols = grid_cols < 3 ? grid_cols : 3;
-  int span_rows = grid_rows < 3 ? grid_rows : 3;
-  lv_coord_t col_w = (grid_w - grid_gap_col * (grid_cols - 1)) / grid_cols;
-  lv_coord_t row_h = (grid_h - grid_gap_row * (grid_rows - 1)) / grid_rows;
-  if (col_w < 1) col_w = grid_w / (span_cols > 0 ? span_cols : 1);
-  if (row_h < 1) row_h = grid_h / (span_rows > 0 ? span_rows : 1);
-  lv_coord_t frame_w = col_w * span_cols + grid_gap_col * (span_cols - 1);
-  lv_coord_t frame_h = row_h * span_rows + grid_gap_row * (span_rows - 1);
-  if (frame_w > grid_w) frame_w = grid_w;
-  if (frame_h > grid_h) frame_h = grid_h;
-  lv_coord_t frame_x = grid_pad_left;
-  lv_coord_t frame_y = grid_pad_top;
+  lv_coord_t outer_margin = short_side < 520 ? 12 : 24;
+  lv_coord_t card_w = sw - outer_margin * 2;
+  lv_coord_t card_h = sh - outer_margin * 2;
+  if (card_w < sw / 2) card_w = sw;
+  if (card_h < sh / 2) card_h = sh;
+  lv_coord_t card_x = (sw - card_w) / 2;
+  lv_coord_t card_y = (sh - card_h) / 2;
+  lv_coord_t card_pad = short_side < 520 ? 18 : 28;
+  lv_coord_t frame_w = card_w - card_pad * 2;
+  lv_coord_t frame_h = card_h - card_pad * 2;
+  if (frame_w < 1) frame_w = card_w;
+  if (frame_h < 1) frame_h = card_h;
+  lv_coord_t frame_x = card_x + card_pad;
+  lv_coord_t frame_y = card_y + card_pad;
   lv_coord_t frame_cx = frame_x + frame_w / 2 - sw / 2;
   lv_coord_t frame_cy = frame_y + frame_h / 2 - sh / 2;
   lv_coord_t arc_size = (frame_w < frame_h ? frame_w : frame_h) * 86 / 100;
@@ -1321,6 +1310,12 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_coord_t chip_h = sh < 520 ? 56 : 64;
   lv_coord_t control_y = frame_y + frame_h - chip_h;
 
+  if (ui.card) {
+    lv_obj_set_size(ui.card, card_w, card_h);
+    lv_obj_set_style_radius(ui.card, short_side < 520 ? 12 : 16, LV_PART_MAIN);
+    lv_obj_align(ui.card, LV_ALIGN_TOP_LEFT, card_x, card_y);
+    lv_obj_move_background(ui.card);
+  }
   lv_obj_set_size(ui.back_btn, back_size, back_size);
   lv_obj_set_style_radius(ui.back_btn, back_size / 2, LV_PART_MAIN);
   lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, frame_x, frame_y);
@@ -1415,9 +1410,16 @@ inline void climate_ensure_detail_ui(ClimateCardCtx *ctx) {
   }
 
   ui.page = lv_obj_create(NULL);
-  lv_obj_set_style_bg_color(ui.page, lv_color_hex(0x1A1A1A), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.page, lv_color_hex(0x111111), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.page, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_clear_flag(ui.page, LV_OBJ_FLAG_SCROLLABLE);
+
+  ui.card = lv_obj_create(ui.page);
+  lv_obj_set_style_bg_color(ui.card, lv_color_hex(0x252525), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.card, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.card, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.card, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.card, LV_OBJ_FLAG_SCROLLABLE);
 
   const lv_font_t *control_icon_font = ctx && ctx->climate_control_icon_font
     ? ctx->climate_control_icon_font : (ctx ? ctx->icon_font : nullptr);
