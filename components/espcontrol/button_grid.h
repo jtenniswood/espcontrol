@@ -1441,6 +1441,8 @@ inline void climate_open_options(ClimateCardCtx *ctx, const char *kind,
   if (!ctx || !ui.overlay || !ui.popup || options.empty()) return;
   lv_obj_clean(ui.popup);
   bool compact_menu = std::strcmp(kind, "preset") == 0;
+  lv_obj_set_style_pad_all(ui.popup, compact_menu ? 12 : 16, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(ui.popup, compact_menu ? 8 : 10, LV_PART_MAIN);
   if (!compact_menu) {
     lv_obj_t *title_lbl = lv_label_create(ui.popup);
     lv_label_set_text(title_lbl, title);
@@ -1451,8 +1453,8 @@ inline void climate_open_options(ClimateCardCtx *ctx, const char *kind,
 
   for (const auto &value : options) {
     lv_obj_t *btn = climate_create_chip(ui.popup, climate_mode_label(value).c_str(), ctx->label_font);
-    lv_obj_set_width(btn, lv_pct(92));
-    lv_obj_set_height(btn, 44);
+    lv_obj_set_width(btn, compact_menu ? lv_pct(100) : lv_pct(92));
+    lv_obj_set_height(btn, compact_menu ? 58 : 44);
     ClimateOptionCtx *opt = new ClimateOptionCtx();
     opt->ctx = ctx;
     opt->kind = kind;
@@ -1480,8 +1482,8 @@ inline void climate_open_options(ClimateCardCtx *ctx, const char *kind,
     lv_coord_t short_side = sw < sh ? sw : sh;
     lv_coord_t top_clearance = short_side < 520 ? 44 : 56;
     lv_coord_t menu_size = short_side < 520 ? 44 : 48;
-    lv_coord_t menu_w = sw < 420 ? sw - 40 : 240;
-    if (menu_w < 180) menu_w = 180;
+    lv_coord_t menu_w = sw < 420 ? sw - 32 : 280;
+    if (menu_w < 220) menu_w = 220;
     lv_obj_set_width(ui.popup, menu_w);
     lv_obj_align(ui.popup, LV_ALIGN_TOP_RIGHT, -12, top_clearance + menu_size + 8);
   } else {
