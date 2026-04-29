@@ -16,6 +16,12 @@
       "codepoint": "F0142",
       "mdi": "chevron-right",
       "comment": "Subpage indicator"
+    },
+    {
+      "name": "Dots Horizontal",
+      "codepoint": "F01D8",
+      "mdi": "dots-horizontal",
+      "comment": "Climate options"
     }
   ],
   "icons": [

@@ -1201,7 +1201,7 @@ inline void climate_update_detail(ClimateCardCtx *ctx) {
   climate_set_visible(ui.preset_chip, climate_has_options(ctx->hvac_modes));
   climate_set_visible(ui.fan_chip, climate_has_options(ctx->fan_modes));
   climate_set_visible(ui.swing_chip, climate_has_options(ctx->swing_modes));
-  climate_set_button_label(ui.preset_chip, "...");
+  climate_set_button_label(ui.preset_chip, "\U000F01D8");
   climate_set_button_label(ui.fan_chip, "Fan\n" + (ctx->fan_mode.empty() ? std::string("None") : climate_mode_label(ctx->fan_mode)));
   climate_set_button_label(ui.swing_chip, "Swing\n" + (ctx->swing_mode.empty() ? std::string("None") : climate_mode_label(ctx->swing_mode)));
   climate_set_visible(ui.mode_tabs, false);
@@ -1448,8 +1448,10 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, frame_x, frame_y);
   lv_obj_move_foreground(ui.back_btn);
   lv_obj_set_size(ui.preset_chip, menu_size, menu_size);
-  lv_obj_set_style_radius(ui.preset_chip, 8, LV_PART_MAIN);
-  lv_obj_align(ui.preset_chip, LV_ALIGN_TOP_LEFT, frame_x + frame_w - menu_size, frame_y);
+  lv_obj_set_style_radius(ui.preset_chip, menu_size / 2, LV_PART_MAIN);
+  lv_coord_t menu_inset = short_side < 520 ? 5 : 7;
+  lv_obj_align(ui.preset_chip, LV_ALIGN_TOP_LEFT,
+    frame_x + frame_w - menu_size - menu_inset, frame_y + menu_inset);
   lv_obj_move_foreground(ui.preset_chip);
 
   lv_obj_set_size(ui.arc, arc_size, arc_size);
@@ -1508,7 +1510,6 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
     lv_obj_set_style_text_font(ui.target_hint, ctx->label_font, LV_PART_MAIN);
     climate_set_button_label_font(ui.low_btn, ctx->label_font);
     climate_set_button_label_font(ui.high_btn, ctx->label_font);
-    climate_set_button_label_font(ui.preset_chip, ctx->label_font);
     climate_set_button_label_font(ui.fan_chip, ctx->label_font);
     climate_set_button_label_font(ui.swing_chip, ctx->label_font);
   }
@@ -1518,6 +1519,7 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
     ? ctx->climate_control_icon_font : (ctx ? ctx->icon_font : nullptr);
   if (control_icon_font) {
     climate_set_button_label_font(ui.back_btn, control_icon_font);
+    climate_set_button_label_font(ui.preset_chip, control_icon_font);
     climate_set_button_label_font(ui.minus_btn, control_icon_font);
     climate_set_button_label_font(ui.plus_btn, control_icon_font);
   }
@@ -1607,7 +1609,8 @@ inline void climate_ensure_detail_ui(ClimateCardCtx *ctx) {
     climate_update_detail(ui.active);
   }, LV_EVENT_CLICKED, nullptr);
 
-  ui.preset_chip = climate_create_chip(ui.page, "...", ctx ? ctx->label_font : nullptr);
+  ui.preset_chip = climate_create_round_button(ui.page, 48, "\U000F01D8", control_icon_font,
+    0x8A8A8A, 0xBDBDBD);
   ui.fan_chip = climate_create_chip(ui.page, "Fan\nNone", ctx ? ctx->label_font : nullptr);
   ui.swing_chip = climate_create_chip(ui.page, "Swing\nNone", ctx ? ctx->label_font : nullptr);
   ui.mode_tabs = lv_obj_create(ui.page);
