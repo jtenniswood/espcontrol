@@ -1263,33 +1263,50 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
   lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
   lv_coord_t short_side = sw < sh ? sw : sh;
-  lv_coord_t arc_size = short_side * 76 / 100;
-  if (arc_size < 300) arc_size = short_side * 78 / 100;
-  lv_coord_t arc_y = sh < 520 ? 12 : 20;
+  lv_coord_t back_size = short_side < 520 ? 60 : 72;
+  lv_coord_t menu_size = short_side < 520 ? 44 : 48;
+  lv_coord_t card_start_top = sw < sh ? 50 : (short_side < 520 ? 38 : 42);
+  lv_coord_t grid_pad_left = 5;
+  lv_coord_t grid_pad_right = 5;
+  lv_coord_t grid_pad_bottom = short_side < 520 ? 4 : 5;
+  lv_coord_t grid_gap = sw < sh ? 14 : 10;
+  lv_coord_t grid_w = sw - grid_pad_left - grid_pad_right;
+  lv_coord_t grid_h = sh - card_start_top - grid_pad_bottom;
+  if (grid_w < 1) grid_w = sw;
+  if (grid_h < 1) grid_h = sh;
+  int grid_cols = sw < sh ? 2 : (short_side < 520 ? 3 : 5);
+  int span_cols = grid_cols < 3 ? grid_cols : 3;
+  lv_coord_t col_w = (grid_w - grid_gap * (grid_cols - 1)) / grid_cols;
+  lv_coord_t frame_w = col_w * span_cols + grid_gap * (span_cols - 1);
+  if (frame_w > grid_w) frame_w = grid_w;
+  lv_coord_t frame_h = grid_h;
+  lv_coord_t frame_x = grid_pad_left + (grid_w - frame_w) / 2;
+  lv_coord_t frame_y = card_start_top;
+  lv_coord_t frame_cx = frame_x + frame_w / 2 - sw / 2;
+  lv_coord_t frame_cy = frame_y + frame_h / 2 - sh / 2;
+  lv_coord_t arc_size = (frame_w < frame_h ? frame_w : frame_h) * 86 / 100;
+  if (arc_size < 300) arc_size = (frame_w < frame_h ? frame_w : frame_h) * 88 / 100;
+  lv_coord_t arc_cx = frame_cx;
+  lv_coord_t arc_cy = frame_cy + (sh < 520 ? 8 : 14);
   lv_coord_t round_btn = short_side * 14 / 100;
   if (round_btn < 66) round_btn = 66;
   if (round_btn > 90) round_btn = 90;
-  lv_coord_t chip_w = (sw - 56) / 4;
+  lv_coord_t chip_w = (frame_w - 56) / 4;
   if (chip_w > 140) chip_w = 140;
   if (chip_w < 86) chip_w = 86;
   lv_coord_t chip_h = sh < 520 ? 56 : 64;
-  lv_coord_t bottom = sh < 520 ? -6 : -12;
-  lv_coord_t control_bottom = bottom;
-  lv_coord_t back_size = short_side < 520 ? 60 : 72;
-  lv_coord_t menu_size = short_side < 520 ? 44 : 48;
-  lv_coord_t top_clearance = short_side < 520 ? 44 : 56;
-  lv_coord_t card_start_top = sw < sh ? 50 : (short_side < 520 ? 38 : 42);
+  lv_coord_t control_y = frame_y + frame_h - chip_h;
 
   lv_obj_set_size(ui.back_btn, back_size, back_size);
-  lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, 5, card_start_top);
+  lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, frame_x, frame_y);
   lv_obj_move_foreground(ui.back_btn);
   lv_obj_set_size(ui.preset_chip, menu_size, menu_size);
   lv_obj_set_style_radius(ui.preset_chip, 8, LV_PART_MAIN);
-  lv_obj_align(ui.preset_chip, LV_ALIGN_TOP_RIGHT, -12, top_clearance);
+  lv_obj_align(ui.preset_chip, LV_ALIGN_TOP_LEFT, frame_x + frame_w - menu_size, frame_y);
   lv_obj_move_foreground(ui.preset_chip);
 
   lv_obj_set_size(ui.arc, arc_size, arc_size);
-  lv_obj_align(ui.arc, LV_ALIGN_CENTER, 0, arc_y);
+  lv_obj_align(ui.arc, LV_ALIGN_CENTER, arc_cx, arc_cy);
   lv_obj_set_style_arc_width(ui.arc, short_side < 520 ? 18 : 22, LV_PART_MAIN);
   lv_obj_set_style_arc_width(ui.arc, short_side < 520 ? 18 : 22, LV_PART_INDICATOR);
   lv_obj_set_style_pad_all(ui.arc, 8, LV_PART_KNOB);
@@ -1307,38 +1324,37 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
     if (is_visible) visible_count++;
   }
   lv_coord_t adjust_btn_x = round_btn * 3 / 4;
-  lv_coord_t adjust_btn_y = arc_y + arc_size / 2 - round_btn / 2;
-  if (visible_count > 0) {
-    lv_coord_t max_btn_y = sh / 2 + bottom - chip_h - 12 - round_btn / 2;
-    if (adjust_btn_y > max_btn_y) adjust_btn_y = max_btn_y;
-  }
-  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -adjust_btn_x, adjust_btn_y);
-  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, adjust_btn_x, adjust_btn_y);
+  lv_coord_t adjust_btn_y_abs = sh / 2 + arc_cy + arc_size / 2 - round_btn / 2;
+  lv_coord_t max_btn_y_abs = (visible_count > 0 ? control_y - 12 : frame_y + frame_h) - round_btn / 2;
+  if (adjust_btn_y_abs > max_btn_y_abs) adjust_btn_y_abs = max_btn_y_abs;
+  lv_coord_t adjust_btn_y = adjust_btn_y_abs - sh / 2;
+  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, frame_cx - adjust_btn_x, adjust_btn_y);
+  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, frame_cx + adjust_btn_x, adjust_btn_y);
 
   lv_obj_set_size(ui.fan_chip, chip_w, chip_h);
   lv_obj_set_size(ui.swing_chip, chip_w, chip_h);
-  lv_obj_set_size(ui.mode_tabs, sw > 72 ? sw - 56 : sw, chip_h);
-  lv_obj_align(ui.mode_tabs, LV_ALIGN_BOTTOM_MID, 0, bottom);
+  lv_obj_set_size(ui.mode_tabs, frame_w, chip_h);
+  lv_obj_align(ui.mode_tabs, LV_ALIGN_TOP_LEFT, frame_x, control_y);
   climate_set_visible(ui.mode_tabs, false);
 
   lv_coord_t gap = 8;
   lv_coord_t row_w = visible_count > 0 ? visible_count * chip_w + (visible_count - 1) * gap : chip_w;
-  lv_coord_t x = -row_w / 2 + chip_w / 2;
+  lv_coord_t x = frame_x + (frame_w - row_w) / 2;
   for (int i = 0; i < 2; i++) {
     if (!visible[i]) continue;
-    lv_obj_align(controls[i], LV_ALIGN_BOTTOM_MID, x, control_bottom);
+    lv_obj_align(controls[i], LV_ALIGN_TOP_LEFT, x, control_y);
     x += chip_w + gap;
   }
 
-  lv_obj_align(ui.state_label, LV_ALIGN_CENTER, 0, -arc_size / 4);
-  lv_obj_align(ui.target_value, LV_ALIGN_CENTER, 0, -arc_size / 18);
+  lv_obj_align(ui.state_label, LV_ALIGN_CENTER, frame_cx, arc_cy - arc_size / 4);
+  lv_obj_align(ui.target_value, LV_ALIGN_CENTER, frame_cx, arc_cy - arc_size / 18);
   lv_obj_align_to(ui.target_unit, ui.target_value, LV_ALIGN_OUT_RIGHT_TOP, 2, 8);
-  lv_obj_align(ui.current_value, LV_ALIGN_CENTER, 20, arc_size / 5);
+  lv_obj_align(ui.current_value, LV_ALIGN_CENTER, frame_cx + 20, arc_cy + arc_size / 5);
   lv_obj_update_layout(ui.current_value);
   lv_obj_align_to(ui.current_title, ui.current_value, LV_ALIGN_OUT_LEFT_MID, -4, 0);
-  lv_obj_align(ui.target_hint, LV_ALIGN_CENTER, 0, arc_size / 3);
-  lv_obj_align(ui.low_btn, LV_ALIGN_CENTER, -44, arc_size / 3 + 32);
-  lv_obj_align(ui.high_btn, LV_ALIGN_CENTER, 44, arc_size / 3 + 32);
+  lv_obj_align(ui.target_hint, LV_ALIGN_CENTER, frame_cx, arc_cy + arc_size / 3);
+  lv_obj_align(ui.low_btn, LV_ALIGN_CENTER, frame_cx - 44, arc_cy + arc_size / 3 + 32);
+  lv_obj_align(ui.high_btn, LV_ALIGN_CENTER, frame_cx + 44, arc_cy + arc_size / 3 + 32);
   if (ctx && ctx->target_font) {
     lv_obj_set_style_text_font(ui.target_value, ctx->target_font, LV_PART_MAIN);
   }
