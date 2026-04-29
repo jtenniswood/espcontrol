@@ -285,8 +285,10 @@ const ICON_GROUPS = {
   'Gesture Tap': 'General',
   'Home': 'General',
   'Mailbox': 'General',
+  'Minus': 'General',
   'Package': 'General',
   'Package Closed': 'General',
+  'Plus': 'General',
   'Timer': 'General',
   'Trash Can': 'General',
 }

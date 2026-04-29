@@ -655,6 +655,11 @@
       "mdi": "microwave"
     },
     {
+      "name": "Minus",
+      "codepoint": "F0374",
+      "mdi": "minus"
+    },
+    {
       "name": "Monitor",
       "codepoint": "F0379",
       "mdi": "monitor"
@@ -703,6 +708,11 @@
       "name": "Pill Multiple",
       "codepoint": "F1B4C",
       "mdi": "pill-multiple"
+    },
+    {
+      "name": "Plus",
+      "codepoint": "F0415",
+      "mdi": "plus"
     },
     {
       "name": "Pool",

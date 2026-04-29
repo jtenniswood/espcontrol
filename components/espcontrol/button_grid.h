@@ -1014,7 +1014,7 @@ inline lv_obj_t *climate_create_round_button(lv_obj_t *parent, lv_coord_t size,
   lv_obj_set_style_bg_color(btn, lv_color_hex(0x1C1C1C), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_color(btn, lv_color_hex(0x9A9A9A), LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn, 2, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 4, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   lv_obj_t *label = lv_label_create(btn);
   lv_label_set_text(label, text);
@@ -1108,8 +1108,6 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
     lv_obj_set_style_text_font(ui.state_label, ctx->label_font, LV_PART_MAIN);
     lv_obj_set_style_text_font(ui.current_value, ctx->label_font, LV_PART_MAIN);
     lv_obj_set_style_text_font(ui.target_hint, ctx->label_font, LV_PART_MAIN);
-    climate_set_button_label_font(ui.minus_btn, ctx->label_font);
-    climate_set_button_label_font(ui.plus_btn, ctx->label_font);
     climate_set_button_label_font(ui.low_btn, ctx->label_font);
     climate_set_button_label_font(ui.high_btn, ctx->label_font);
     climate_set_button_label_font(ui.mode_chip, ctx->label_font);
@@ -1122,6 +1120,8 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   if (ctx && ctx->icon_font) {
     lv_obj_set_style_text_font(ui.current_title, ctx->icon_font, LV_PART_MAIN);
     climate_set_button_label_font(ui.back_btn, ctx->icon_font);
+    climate_set_button_label_font(ui.minus_btn, ctx->icon_font);
+    climate_set_button_label_font(ui.plus_btn, ctx->icon_font);
   }
 }
 
@@ -1190,8 +1190,8 @@ inline void climate_ensure_detail_ui(ClimateCardCtx *ctx) {
   ui.target_hint = climate_create_label(ui.page, "Target", LV_ALIGN_CENTER, 0, 78, ctx ? ctx->label_font : nullptr, 0xBDBDBD);
   ui.current_title = climate_create_label(ui.page, find_icon("Thermometer"), LV_ALIGN_CENTER, -64, 70, ctx ? ctx->icon_font : nullptr, CLIMATE_HEAT_COLOR);
   ui.current_value = climate_create_label(ui.page, "-- \u00B0C", LV_ALIGN_CENTER, 22, 70, ctx ? ctx->label_font : nullptr, CLIMATE_HEAT_COLOR);
-  ui.minus_btn = climate_create_round_button(ui.page, 60, "-", ctx ? ctx->label_font : nullptr);
-  ui.plus_btn = climate_create_round_button(ui.page, 60, "+", ctx ? ctx->label_font : nullptr);
+  ui.minus_btn = climate_create_round_button(ui.page, 60, find_icon("Minus"), ctx ? ctx->icon_font : nullptr);
+  ui.plus_btn = climate_create_round_button(ui.page, 60, find_icon("Plus"), ctx ? ctx->icon_font : nullptr);
   ui.low_btn = climate_create_chip(ui.page, "Low", ctx ? ctx->label_font : nullptr);
   ui.high_btn = climate_create_chip(ui.page, "High", ctx ? ctx->label_font : nullptr);
   lv_obj_set_size(ui.low_btn, 76, 36);
