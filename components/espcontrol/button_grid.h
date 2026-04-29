@@ -1098,7 +1098,7 @@ inline void climate_update_detail(ClimateCardCtx *ctx) {
   climate_set_visible(ui.mode_chip, climate_has_options(ctx->hvac_modes));
   climate_set_visible(ui.fan_chip, climate_has_options(ctx->fan_modes));
   climate_set_visible(ui.swing_chip, climate_has_options(ctx->swing_modes));
-  climate_set_button_label(ui.mode_chip, "Mode\n" + climate_mode_label(ctx->hvac_mode));
+  climate_set_button_label(ui.mode_chip, "...");
   climate_set_button_label(ui.fan_chip, "Fan\n" + (ctx->fan_mode.empty() ? std::string("None") : climate_mode_label(ctx->fan_mode)));
   climate_set_button_label(ui.swing_chip, "Swing\n" + (ctx->swing_mode.empty() ? std::string("None") : climate_mode_label(ctx->swing_mode)));
   climate_render_preset_tabs(ctx);
@@ -1191,6 +1191,10 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_obj_set_size(ui.back_btn, back_size, back_size);
   lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, 12, top_clearance);
   lv_obj_move_foreground(ui.back_btn);
+  lv_obj_set_size(ui.mode_chip, back_size, back_size);
+  lv_obj_set_style_radius(ui.mode_chip, 8, LV_PART_MAIN);
+  lv_obj_align(ui.mode_chip, LV_ALIGN_TOP_RIGHT, -12, top_clearance);
+  lv_obj_move_foreground(ui.mode_chip);
 
   lv_obj_set_size(ui.arc, arc_size, arc_size);
   lv_obj_align(ui.arc, LV_ALIGN_CENTER, 0, sh < 520 ? -6 : -12);
@@ -1204,15 +1208,13 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -round_btn, arc_size / 2 - round_btn / 4);
   lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, round_btn, arc_size / 2 - round_btn / 4);
 
-  lv_obj_set_size(ui.mode_chip, chip_w, chip_h);
   lv_obj_set_size(ui.fan_chip, chip_w, chip_h);
   lv_obj_set_size(ui.swing_chip, chip_w, chip_h);
   lv_obj_set_size(ui.preset_tabs, sw > 72 ? sw - 56 : sw, chip_h);
   lv_obj_align(ui.preset_tabs, LV_ALIGN_BOTTOM_MID, 0, bottom);
 
-  lv_obj_t *controls[3] = {ui.mode_chip, ui.fan_chip, ui.swing_chip};
-  bool visible[3] = {
-    ctx && climate_has_options(ctx->hvac_modes),
+  lv_obj_t *controls[2] = {ui.fan_chip, ui.swing_chip};
+  bool visible[2] = {
     ctx && climate_has_options(ctx->fan_modes),
     ctx && climate_has_options(ctx->swing_modes),
   };
@@ -1223,7 +1225,7 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_coord_t gap = 8;
   lv_coord_t row_w = visible_count > 0 ? visible_count * chip_w + (visible_count - 1) * gap : chip_w;
   lv_coord_t x = -row_w / 2 + chip_w / 2;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 2; i++) {
     if (!visible[i]) continue;
     lv_obj_align(controls[i], LV_ALIGN_BOTTOM_MID, x, control_bottom);
     x += chip_w + gap;
@@ -1354,7 +1356,7 @@ inline void climate_ensure_detail_ui(ClimateCardCtx *ctx) {
     climate_update_detail(ui.active);
   }, LV_EVENT_CLICKED, nullptr);
 
-  ui.mode_chip = climate_create_chip(ui.page, "Mode\nOff", ctx ? ctx->label_font : nullptr);
+  ui.mode_chip = climate_create_chip(ui.page, "...", ctx ? ctx->label_font : nullptr);
   ui.fan_chip = climate_create_chip(ui.page, "Fan\nNone", ctx ? ctx->label_font : nullptr);
   ui.swing_chip = climate_create_chip(ui.page, "Swing\nNone", ctx ? ctx->label_font : nullptr);
   ui.preset_tabs = lv_obj_create(ui.page);
@@ -1461,7 +1463,21 @@ inline void climate_open_options(ClimateCardCtx *ctx, const char *kind,
   lv_obj_clear_flag(ui.popup, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_foreground(ui.overlay);
   lv_obj_move_foreground(ui.popup);
-  lv_obj_align(ui.popup, LV_ALIGN_CENTER, 0, 0);
+  if (std::strcmp(kind, "hvac") == 0) {
+    lv_disp_t *disp = lv_disp_get_default();
+    lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
+    lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
+    lv_coord_t short_side = sw < sh ? sw : sh;
+    lv_coord_t top_clearance = short_side < 520 ? 44 : 56;
+    lv_coord_t menu_size = short_side < 520 ? 44 : 48;
+    lv_coord_t menu_w = sw < 420 ? sw - 40 : 240;
+    if (menu_w < 180) menu_w = 180;
+    lv_obj_set_width(ui.popup, menu_w);
+    lv_obj_align(ui.popup, LV_ALIGN_TOP_RIGHT, -12, top_clearance + menu_size + 8);
+  } else {
+    lv_obj_set_width(ui.popup, lv_pct(76));
+    lv_obj_align(ui.popup, LV_ALIGN_CENTER, 0, 0);
+  }
 }
 
 inline void climate_open_detail(ClimateCardCtx *ctx, lv_obj_t *return_page) {

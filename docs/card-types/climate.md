@@ -32,7 +32,7 @@ The detail page only shows controls that the climate entity supports:
 
 | Home Assistant attribute | Control shown |
 |---|---|
-| `hvac_modes` | Mode selector |
+| `hvac_modes` | Top-right mode menu |
 | `fan_modes` | Fan selector |
 | `swing_modes` | Swing selector |
 | `preset_modes` | Preset tabs along the bottom |
