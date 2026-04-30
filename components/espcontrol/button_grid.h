@@ -1319,7 +1319,7 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_coord_t arc_size = (frame_w < frame_h ? frame_w : frame_h) * (short_side < 520 ? 90 : 96) / 100;
   if (arc_size < 300) arc_size = (frame_w < frame_h ? frame_w : frame_h) * 92 / 100;
   lv_coord_t arc_cx = frame_cx;
-  lv_coord_t arc_cy = frame_cy + (sh < 520 ? 18 : 48);
+  lv_coord_t arc_cy = frame_cy + (sh < 520 ? 24 : 60);
   lv_coord_t round_btn = short_side * 15 / 100;
   if (round_btn < 66) round_btn = 66;
   if (round_btn > 116) round_btn = 116;
