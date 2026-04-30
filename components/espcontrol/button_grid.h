@@ -1280,8 +1280,6 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
   lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
   lv_coord_t short_side = sw < sh ? sw : sh;
-  lv_coord_t back_size = short_side < 520 ? 60 : 72;
-  lv_coord_t menu_size = short_side < 520 ? 44 : 48;
   lv_coord_t outer_margin = short_side < 520 ? 12 : 24;
   lv_coord_t top_clearance = sw < sh ? 50 : (short_side < 520 ? 38 : 42);
   lv_coord_t card_w = sw - outer_margin * 2;
@@ -1318,15 +1316,15 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
     lv_obj_align(ui.card, LV_ALIGN_TOP_LEFT, card_x, card_y);
     lv_obj_move_background(ui.card);
   }
-  lv_obj_set_size(ui.back_btn, back_size, back_size);
-  lv_obj_set_style_radius(ui.back_btn, back_size / 2, LV_PART_MAIN);
+  lv_obj_set_size(ui.back_btn, round_btn, round_btn);
+  lv_obj_set_style_radius(ui.back_btn, round_btn / 2, LV_PART_MAIN);
   lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, frame_x, frame_y);
   lv_obj_move_foreground(ui.back_btn);
-  lv_obj_set_size(ui.preset_chip, menu_size, menu_size);
-  lv_obj_set_style_radius(ui.preset_chip, menu_size / 2, LV_PART_MAIN);
+  lv_obj_set_size(ui.preset_chip, round_btn, round_btn);
+  lv_obj_set_style_radius(ui.preset_chip, round_btn / 2, LV_PART_MAIN);
   lv_coord_t menu_inset = short_side < 520 ? 5 : 7;
   lv_obj_align(ui.preset_chip, LV_ALIGN_TOP_LEFT,
-    frame_x + frame_w - menu_size - menu_inset, frame_y + menu_inset);
+    frame_x + frame_w - round_btn - menu_inset, frame_y + menu_inset);
   lv_obj_move_foreground(ui.preset_chip);
 
   lv_obj_set_size(ui.arc, arc_size, arc_size);
