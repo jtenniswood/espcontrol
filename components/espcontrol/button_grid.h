@@ -1255,10 +1255,12 @@ inline void climate_set_button_label_font(lv_obj_t *btn, const lv_font_t *font) 
   if (label) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 }
 
-inline void climate_set_button_label_zoom(lv_obj_t *btn, uint16_t zoom) {
+inline void climate_tune_button_label(lv_obj_t *btn, uint16_t zoom, lv_coord_t y_offset = 0) {
   if (!btn) return;
   lv_obj_t *label = lv_obj_get_child(btn, 0);
-  if (label) lv_obj_set_style_transform_zoom(label, zoom, LV_PART_MAIN);
+  if (!label) return;
+  lv_obj_set_style_transform_zoom(label, zoom, LV_PART_MAIN);
+  lv_obj_align(label, LV_ALIGN_CENTER, 0, y_offset);
 }
 
 inline lv_obj_t *climate_create_chip(lv_obj_t *parent, const char *text,
@@ -1314,7 +1316,7 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   lv_coord_t arc_size = (frame_w < frame_h ? frame_w : frame_h) * (short_side < 520 ? 90 : 96) / 100;
   if (arc_size < 300) arc_size = (frame_w < frame_h ? frame_w : frame_h) * 92 / 100;
   lv_coord_t arc_cx = frame_cx;
-  lv_coord_t arc_cy = frame_cy + (sh < 520 ? 8 : 34);
+  lv_coord_t arc_cy = frame_cy + (sh < 520 ? 18 : 48);
   lv_coord_t round_btn = short_side * 15 / 100;
   if (round_btn < 66) round_btn = 66;
   if (round_btn > 116) round_btn = 116;
@@ -1359,7 +1361,7 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   for (bool is_visible : visible) {
     if (is_visible) visible_count++;
   }
-  lv_coord_t adjust_btn_x = round_btn * 8 / 10;
+  lv_coord_t adjust_btn_x = round_btn * 6 / 10;
   lv_coord_t adjust_btn_y_abs = sh / 2 + arc_cy + arc_size / 2 - round_btn / 2;
   lv_coord_t max_btn_y_abs = (visible_count > 0 ? control_y - 12 : frame_y + frame_h) - round_btn / 2;
   if (adjust_btn_y_abs > max_btn_y_abs) adjust_btn_y_abs = max_btn_y_abs;
@@ -1411,10 +1413,10 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   }
   const lv_font_t *menu_icon_font = ctx && ctx->icon_font ? ctx->icon_font : control_icon_font;
   if (menu_icon_font) climate_set_button_label_font(ui.preset_chip, menu_icon_font);
-  climate_set_button_label_zoom(ui.back_btn, 220);
-  climate_set_button_label_zoom(ui.preset_chip, 180);
-  climate_set_button_label_zoom(ui.minus_btn, 300);
-  climate_set_button_label_zoom(ui.plus_btn, 300);
+  climate_tune_button_label(ui.back_btn, 250, -2);
+  climate_tune_button_label(ui.preset_chip, 210, -2);
+  climate_tune_button_label(ui.minus_btn, 320, -2);
+  climate_tune_button_label(ui.plus_btn, 320, -2);
 }
 
 inline void climate_open_options(ClimateCardCtx *ctx, const char *kind,
