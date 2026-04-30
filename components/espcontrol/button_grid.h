@@ -1255,6 +1255,12 @@ inline void climate_set_button_label_font(lv_obj_t *btn, const lv_font_t *font) 
   if (label) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 }
 
+inline void climate_set_button_label_zoom(lv_obj_t *btn, uint16_t zoom) {
+  if (!btn) return;
+  lv_obj_t *label = lv_obj_get_child(btn, 0);
+  if (label) lv_obj_set_style_transform_zoom(label, zoom, LV_PART_MAIN);
+}
+
 inline lv_obj_t *climate_create_chip(lv_obj_t *parent, const char *text,
                                      const lv_font_t *font = nullptr) {
   lv_obj_t *btn = lv_btn_create(parent);
@@ -1318,11 +1324,11 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   }
   lv_obj_set_size(ui.back_btn, round_btn, round_btn);
   lv_obj_set_style_radius(ui.back_btn, round_btn / 2, LV_PART_MAIN);
-  lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, frame_x, frame_y);
+  lv_coord_t menu_inset = short_side < 520 ? 5 : 7;
+  lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, frame_x + menu_inset, frame_y + menu_inset);
   lv_obj_move_foreground(ui.back_btn);
   lv_obj_set_size(ui.preset_chip, round_btn, round_btn);
   lv_obj_set_style_radius(ui.preset_chip, round_btn / 2, LV_PART_MAIN);
-  lv_coord_t menu_inset = short_side < 520 ? 5 : 7;
   lv_obj_align(ui.preset_chip, LV_ALIGN_TOP_LEFT,
     frame_x + frame_w - round_btn - menu_inset, frame_y + menu_inset);
   lv_obj_move_foreground(ui.preset_chip);
@@ -1397,6 +1403,10 @@ inline void climate_layout_detail_ui(ClimateCardCtx *ctx) {
   }
   const lv_font_t *menu_icon_font = ctx && ctx->icon_font ? ctx->icon_font : control_icon_font;
   if (menu_icon_font) climate_set_button_label_font(ui.preset_chip, menu_icon_font);
+  climate_set_button_label_zoom(ui.back_btn, 220);
+  climate_set_button_label_zoom(ui.preset_chip, 180);
+  climate_set_button_label_zoom(ui.minus_btn, 300);
+  climate_set_button_label_zoom(ui.plus_btn, 300);
 }
 
 inline void climate_open_options(ClimateCardCtx *ctx, const char *kind,
