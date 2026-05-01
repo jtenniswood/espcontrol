@@ -2,13 +2,13 @@
 name: pr
 description: >-
   Review a new or open pull request for this repository with an adversarial
-  security and quality lens. Use when the user says "/pr", "check the new PR",
-  "is this PR safe to merge", "look for malicious code", "review outside
-  contribution", "should I merge this PR", or asks for reasons not to merge a
-  pull request.
+  security and quality lens. Use when the user says "/pr", "/pr-review",
+  "check the new PR", "is this PR safe to merge", "look for malicious code",
+  "review outside contribution", "should I merge this PR", or asks for
+  reasons not to merge a pull request.
 ---
 
-# /pr
+# /pr or /pr-review
 
 ## Overview
 

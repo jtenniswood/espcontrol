@@ -1,4 +1,4 @@
 interface:
   display_name: "/pr-review"
-  short_description: "Review new pull requests for quality and integration risk"
-  default_prompt: "Use $pr-review when I say /pr-review to review the latest submitted PR, document what changed, evaluate code quality, and recommend whether to integrate or improve it."
+  short_description: "Alias for /pr pull request review"
+  default_prompt: "Use $pr-review when I say /pr-review to review the latest submitted PR with the same workflow as /pr, including quality, security, and merge-risk checks."
