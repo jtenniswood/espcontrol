@@ -12,14 +12,6 @@ registerButtonType("weather", {
     if (b.precision !== "tomorrow") b.precision = "";
   },
   renderSettings: function (panel, b, slot, helpers) {
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Weather Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. weather.forecast_home");
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-
     var modeField = document.createElement("div");
     modeField.className = "sp-field";
     modeField.appendChild(helpers.fieldLabel("Display", helpers.idPrefix + "weather-display"));
@@ -42,6 +34,14 @@ registerButtonType("weather", {
     });
     modeField.appendChild(modeSelect);
     panel.appendChild(modeField);
+
+    var ef = document.createElement("div");
+    ef.className = "sp-field";
+    ef.appendChild(helpers.fieldLabel("Weather Entity", helpers.idPrefix + "entity"));
+    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. weather.forecast_home");
+    ef.appendChild(entityInp);
+    panel.appendChild(ef);
+    helpers.bindField(entityInp, "entity", true);
   },
   renderPreview: function (b, helpers) {
     if (b.precision === "tomorrow") {
