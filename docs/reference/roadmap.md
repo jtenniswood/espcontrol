@@ -27,7 +27,7 @@ These ideas are being explored, but are not yet committed for a specific release
 | --- | --- |
 | **Independent card colour controls** | Configure colours per card instead of relying only on global colour settings |
 | **Images in cards** | Add image support for richer visual cards |
-| **Expanded weather forecasts** | Add richer forecast layouts beyond the current tomorrow high/low card |
+| **Expanded weather forecasts** | Add richer forecast layouts beyond the Weather card's current Tomorrow high/low display |
 | **Notification service** | Send notifications or alerts to the panel from Home Assistant |
 
 If there's a feature you'd like to see, open a feature request on GitHub.

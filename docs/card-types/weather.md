@@ -10,6 +10,8 @@ A weather card displays weather information from a Home Assistant weather entity
 
 Weather cards are read-only — tapping them does nothing.
 
+Older cards that were created as **Weather Forecast** cards still work. They now load as **Weather** cards with **Display** set to **Tomorrow**.
+
 ## Setting Up a Weather Card
 
 1. Select a card and change its type to **Weather**.
@@ -24,6 +26,7 @@ Weather cards are read-only — tapping them does nothing.
 - In **Current** mode, the icon changes automatically and the label uses the condition name from Home Assistant.
 - In **Tomorrow** mode, the card asks Home Assistant for the daily forecast for the configured weather entity.
 - In **Tomorrow** mode, the unit label comes from the panel's **Temperature Unit** setting.
+- In **Tomorrow** mode, the card label on the panel always says **Tomorrow**.
 - If Home Assistant reports `unknown`, `unavailable`, or an unexpected current condition, the card shows a fallback weather icon and a readable label.
 - If tomorrow's forecast is missing or unavailable, the card shows **-- / --** instead of leaving the card blank.
 - The card uses the **tertiary** colour from [Appearance](/features/appearance), like Sensor, Date, and World Clock cards.
