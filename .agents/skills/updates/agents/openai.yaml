@@ -1,0 +1,4 @@
+interface:
+  display_name: "/updates"
+  short_description: "Summarize user-facing changes from the last 7 days"
+  default_prompt: "Use $updates when I say /updates to summarize the most important user-facing project changes from the last 7 days in one sentence per feature."
