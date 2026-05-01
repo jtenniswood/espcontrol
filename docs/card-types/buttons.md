@@ -62,11 +62,7 @@ Because the automation triggers on the card's **label** rather than its position
 
 ### Verifying Events Are Firing
 
-Before testing, tap **Apply Configuration** on the setup page and wait for the panel to restart. The setup page preview is only a preview; the event is sent when you press the trigger card on the physical panel.
-
 If you want to confirm that events are being sent, go to **Developer Tools > Events** in Home Assistant, type `esphome.push_button_pressed` in the "Listen to events" field, and click **Start listening**. Press the trigger card on your panel. Home-screen triggers include the label and slot number; subpage triggers include the label.
-
-If nothing appears, check that the panel is connected to Home Assistant and that **Allow the device to perform Home Assistant actions** is enabled for the ESPHome device. Without that permission, Home Assistant blocks the event before it reaches the event listener.
 
 ### Example Event Data
 
