@@ -14,6 +14,89 @@ globals:
   - id: outdoor_temp
     type: float
     initial_value: 'NAN'
+    
+api:
+  actions:
+    - action: update_button
+      variables:
+        index: int
+        entity: string
+        label: string
+        icon: string
+        icon_on: string
+        sensor_entity: string
+        unit: string
+        button_type: string
+        precision: string
+      then:
+        - lambda: |-
+            esphome::text::Text *target = nullptr;
+            switch (index) {
+                    case 1: target = id(button_1_config); break;
+                    case 2: target = id(button_2_config); break;
+                    case 3: target = id(button_3_config); break;
+                    case 4: target = id(button_4_config); break;
+                    case 5: target = id(button_5_config); break;
+                    case 6: target = id(button_6_config); break;
+                    case 7: target = id(button_7_config); break;
+                    case 8: target = id(button_8_config); break;
+                    case 9: target = id(button_9_config); break;
+                    case 10: target = id(button_10_config); break;
+                    case 11: target = id(button_11_config); break;
+                    case 12: target = id(button_12_config); break;
+                    case 13: target = id(button_13_config); break;
+                    case 14: target = id(button_14_config); break;
+                    case 15: target = id(button_15_config); break;
+              default:
+                ESP_LOGW("api", "update_button: invalid index %d", index);
+                return;
+            }
+
+            std::string existing = target->state;
+            std::string current[8];
+            size_t start = 0;
+            for (int i = 0; i < 7; i++) {
+              size_t sep = existing.find(';', start);
+              if (sep == std::string::npos) {
+                current[i] = existing.substr(start);
+                start = existing.size();
+              } else {
+                current[i] = existing.substr(start, sep - start);
+                start = sep + 1;
+              }
+            }
+            current[7] = (start <= existing.size()) ? existing.substr(start) : "";
+
+            auto merge_field = [](const std::string &incoming, const std::string &stored) -> std::string {
+              if (incoming.empty() || incoming == "null" || incoming == "NULL" || incoming == "undefined" || incoming == "__KEEP__") return stored;
+              if (incoming == "__EMPTY__") return "";
+              return incoming;
+            };
+
+            std::string merged[8];
+            merged[0] = merge_field(entity, current[0]);
+            merged[1] = merge_field(label, current[1]);
+            merged[2] = merge_field(icon, current[2]);
+            merged[3] = merge_field(icon_on, current[3]);
+            merged[4] = merge_field(sensor_entity, current[4]);
+            merged[5] = merge_field(unit, current[5]);
+            merged[6] = merge_field(button_type, current[6]);
+            merged[7] = merge_field(precision, current[7]);
+
+            std::string cfg = merged[0] + ";" + merged[1] + ";" + merged[2] + ";" +
+              merged[3] + ";" + merged[4] + ";" + merged[5] + ";" + merged[6] + ";" + merged[7];
+
+            auto call = target->make_call();
+            call.set_value(cfg);
+            call.perform();
+        - logger.log:
+            level: INFO
+            format: "Queued update for button index %d"
+            args: [ 'index' ]
+
+    - action: apply_button_updates
+      then:
+        - button.press: apply_configuration_button
 
 esphome:
   on_boot:

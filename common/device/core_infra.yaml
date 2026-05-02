@@ -65,6 +65,7 @@ web_server:
 
 button:
   - platform: template
+    id: apply_configuration_button
     name: "Apply Configuration"
     internal: true
     disabled_by_default: true

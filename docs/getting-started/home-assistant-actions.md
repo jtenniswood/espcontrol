@@ -34,6 +34,37 @@ Your display will prompt you to do this during first-time setup. Follow the step
 You only need to do this once per device. The setting persists across firmware updates and device restarts.
 :::
 
+## Advanced: Updating Buttons Individually from Home Assistant
+
+Firmware now exposes two ESPHome actions you can call from Home Assistant:
+
+- `esphome.<device>_update_button` - updates one button by index using the 8 button fields.
+- `esphome.<device>_apply_button_updates` - applies all queued button updates (restarts the panel safely).
+
+Use this to update one or more buttons without sending a full JSON backup payload.
+
+Example fields for `update_button`:
+
+- `index` (1-based button index)
+- `entity`
+- `label`
+- `icon`
+- `icon_on`
+- `sensor`
+- `unit`
+- `type`
+- `precision`
+
+
+Behavior notes:
+
+- If a field is omitted by Home Assistant and arrives as an empty value, or sent as `null`, `undefined`, or `__KEEP__`, the device keeps the current stored value for that field.
+- To clear a field intentionally, send `__EMPTY__`.
+
+::: tip Batch updates
+Call `update_button` multiple times, then call `apply_button_updates` once at the end so the panel reboots only once.
+:::
+
 ## What If I Skip This?
 
 You won't be able to control any devices, it will be in a read only state, and entities such as lights, switches, scenes, scripts, and helpers won't do anything when tapped. Weather cards set to **Tomorrow** also won't be able to fetch tomorrow's forecast.
