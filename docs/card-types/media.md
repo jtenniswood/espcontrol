@@ -6,6 +6,10 @@ description:
 
 # Media
 
+::: warning Experimental
+Media cards are currently behind **Developer/Experimental Features**. Open the setup page with `?developer=experimental`, then enable **Developer/Experimental Features** in the Developer settings section.
+:::
+
 Media cards control Home Assistant `media_player` entities from the panel.
 
 ## Setting Up a Media Card

@@ -1,6 +1,7 @@
 // Media player card: playback controls, volume, or track position for media_player entities.
 registerButtonType("media", {
   label: "Media",
+  experimental: "media",
   allowInSubpage: true,
   labelPlaceholder: "e.g. Living Room Speaker",
   onSelect: function (b) {
