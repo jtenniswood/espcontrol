@@ -4,7 +4,7 @@ registerButtonType("subpage", {
   allowInSubpage: false,
   labelPlaceholder: "e.g. Lighting",
   onSelect: function (b) {
-    b.entity = ""; b.sensor = ""; b.unit = ""; b.icon_on = "Auto";
+    b.entity = ""; b.sensor = ""; b.unit = ""; b.icon = "Auto"; b.icon_on = "Auto";
   },
   renderSettings: function (panel, b, slot, helpers) {
     var experimental = isExperimentalEnabled("subpage_state_modes");
