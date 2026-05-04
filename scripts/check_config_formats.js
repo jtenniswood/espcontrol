@@ -58,6 +58,7 @@ function subpageTypeFromCode(code) {
     L: "slider",
     C: "cover",
     R: "garage",
+    M: "media",
     P: "push",
     I: "internal",
     G: "subpage",
@@ -281,6 +282,39 @@ assertButtonRoundTrip(hooks, "weather tomorrow card", {
   precision: "tomorrow",
 }, false);
 
+assertButtonRoundTrip(hooks, "media controls card", {
+  entity: "media_player.living_room",
+  label: "Living Room",
+  icon: "Speaker",
+  icon_on: "Auto",
+  sensor: "controls",
+  unit: "",
+  type: "media",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "media volume card", {
+  entity: "media_player.kitchen",
+  label: "Kitchen",
+  icon: "Volume High",
+  icon_on: "Auto",
+  sensor: "volume",
+  unit: "",
+  type: "media",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "media position card", {
+  entity: "media_player.office",
+  label: "Office",
+  icon: "Progress Clock",
+  icon_on: "Auto",
+  sensor: "position",
+  unit: "",
+  type: "media",
+  precision: "",
+}, false);
+
 assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig("weather.forecast_home;Weather;Auto;Auto;;;weather_forecast")), {
   entity: "weather.forecast_home",
   label: "Weather",
@@ -473,6 +507,15 @@ assertSubpageRoundTrip(hooks, "action subpage", {
   ],
 }, true);
 
+assertSubpageRoundTrip(hooks, "media subpage", {
+  order: ["1", "B", "2", "3"],
+  buttons: [
+    buttonShape({ entity: "media_player.living_room", label: "Living Room", icon: "Speaker", sensor: "controls", type: "media" }),
+    buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Volume High", sensor: "volume", type: "media" }),
+    buttonShape({ entity: "media_player.office", label: "Office", icon: "Progress Clock", sensor: "position", type: "media" }),
+  ],
+}, true);
+
 assertSubpageRoundTrip(hooks, "delimiter subpage", {
   order: ["1", "B", "2"],
   buttons: [
@@ -558,6 +601,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|A,scene.movie
     buttonShape({ entity: "scene.movie_mode", label: "Movie Mode", icon: "Flash", icon_on: "Auto", sensor: "scene.turn_on", type: "action" }),
   ],
 }, "compact action subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|M,media_player.living_room,Living%20Room,Speaker,,controls")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "media_player.living_room", label: "Living Room", icon: "Speaker", icon_on: "Auto", sensor: "controls", type: "media" }),
+  ],
+}, "compact media subpage parse");
 
 const largeSubpage = {
   order: Array.from({ length: 25 }, (_, i) => (i === 4 ? "B" : String(i + 1))),

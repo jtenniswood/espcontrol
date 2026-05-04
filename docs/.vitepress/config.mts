@@ -403,6 +403,7 @@ export default defineConfig({
           { text: 'Slider', link: '/card-types/sliders' },
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
+          { text: 'Media', link: '/card-types/media' },
           { text: 'Date', link: '/card-types/calendar' },
           { text: 'World Clock', link: '/card-types/timezones' },
           { text: 'Weather', link: '/card-types/weather' },

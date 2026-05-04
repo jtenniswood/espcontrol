@@ -14,10 +14,15 @@ The next areas of focus are richer controls for Home Assistant workflows that ar
 
 | Item | Description |
 | --- | --- |
-| **Media controls** | Control playback, volume, and common media actions |
 | **Calendar event preview** | Preview upcoming calendar events directly on the panel |
 
 These are planned directions, not commitments. The order and scope may change based on community feedback, Home Assistant support, and what works well on the screen hardware.
+
+## Recently Added
+
+| Item | Description |
+| --- | --- |
+| **Media controls** | Control playback, volume, and track position for Home Assistant media players |
 
 ## Under Consideration
 

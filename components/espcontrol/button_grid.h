@@ -100,7 +100,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, climate, weather_forecast, slider, cover, garage, push, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, climate, weather_forecast, slider, cover, garage, media, push, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
 };
 
@@ -2933,6 +2933,49 @@ inline void send_slider_action(const std::string &entity_id, int value, bool cov
   esphome::api::global_api_server->send_homeassistant_action(req);
 }
 
+inline std::string media_card_mode(const std::string &sensor) {
+  if (sensor == "volume" || sensor == "position") return sensor;
+  return "controls";
+}
+
+inline void send_media_player_action(const std::string &entity_id,
+                                     const char *service,
+                                     const char *value_key = nullptr,
+                                     const char *value = nullptr) {
+  if (entity_id.empty() || service == nullptr || service[0] == '\0') return;
+  esphome::api::HomeassistantActionRequest req;
+  req.service = decltype(req.service)(service);
+  req.is_event = false;
+  req.data.init(value_key && value ? 2 : 1);
+  auto &entity_kv = req.data.emplace_back();
+  entity_kv.key = decltype(entity_kv.key)("entity_id");
+  entity_kv.value = decltype(entity_kv.value)(entity_id.c_str());
+  if (value_key && value) {
+    auto &value_kv = req.data.emplace_back();
+    value_kv.key = decltype(value_kv.key)(value_key);
+    value_kv.value = decltype(value_kv.value)(value);
+  }
+  esphome::api::global_api_server->send_homeassistant_action(req);
+}
+
+inline void send_media_volume_action(const std::string &entity_id, int value) {
+  if (value < 0) value = 0;
+  if (value > 100) value = 100;
+  char buf[12];
+  snprintf(buf, sizeof(buf), "%.2f", value / 100.0f);
+  send_media_player_action(entity_id, "media_player.volume_set", "volume_level", buf);
+}
+
+inline void send_media_seek_action(const std::string &entity_id, int value, float duration) {
+  if (duration <= 0.0f) return;
+  if (value < 0) value = 0;
+  if (value > 100) value = 100;
+  int seconds = (int)((duration * value / 100.0f) + 0.5f);
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%d", seconds);
+  send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
+}
+
 // ── Button click dispatch ─────────────────────────────────────────────
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
@@ -2984,6 +3027,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (!p.entity.empty()) send_internal_relay_action(p);
   } else if (p.type == "action") {
     send_action_card_action(p);
+  } else if (p.type == "media") {
+    if (!p.entity.empty() && media_card_mode(p.sensor) == "controls")
+      send_media_player_action(p.entity, "media_player.media_play_pause");
   } else if (p.type == "slider" || p.type == "cover") {
     if (!p.entity.empty()) send_slider_action(p.entity, -1, cover_tilt_mode(p.sensor));
   } else {
@@ -3001,6 +3047,16 @@ struct SliderCtx {
   bool cover_tilt;
   bool inverted;
   lv_coord_t radius;
+  bool media_volume = false;
+  bool media_position = false;
+  float media_duration = 0.0f;
+  float media_position_seconds = 0.0f;
+  uint32_t media_position_updated_ms = 0;
+  bool media_playing = false;
+  lv_obj_t *media_slider = nullptr;
+  lv_obj_t *media_value_lbl = nullptr;
+  lv_obj_t *media_status_lbl = nullptr;
+  lv_timer_t *media_timer = nullptr;
 };
 
 inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizontal) {
@@ -3253,6 +3309,334 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
   }
 }
 
+// ── Media player card helpers ─────────────────────────────────────────
+
+struct MediaActionCtx {
+  std::string entity_id;
+  const char *service;
+};
+
+inline const char *media_default_icon(const std::string &mode,
+                                      const std::string &icon) {
+  if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
+  if (mode == "volume") return find_icon("Volume High");
+  if (mode == "position") return find_icon("Progress Clock");
+  return find_icon("Speaker");
+}
+
+inline std::string media_label(const ParsedCfg &p) {
+  return p.label.empty() ? std::string("Media") : p.label;
+}
+
+inline void media_format_time(float seconds, char *buf, size_t size) {
+  if (!buf || size == 0) return;
+  if (seconds < 0.0f || !std::isfinite(seconds)) seconds = 0.0f;
+  int total = (int)(seconds + 0.5f);
+  int h = total / 3600;
+  int m = (total / 60) % 60;
+  int s = total % 60;
+  if (h > 0) snprintf(buf, size, "%d:%02d:%02d", h, m, s);
+  else snprintf(buf, size, "%d:%02d", m, s);
+}
+
+inline std::string media_status_text(const std::string &state) {
+  if (state == "playing") return "Playing";
+  if (state == "paused") return "Paused";
+  if (state == "idle") return "Idle";
+  if (state == "off") return "Off";
+  if (state == "unavailable") return "Unavailable";
+  if (state == "unknown" || state.empty()) return "Unknown";
+  return sentence_cap_text(state);
+}
+
+inline void media_apply_position(SliderCtx *ctx) {
+  if (!ctx || !ctx->media_slider) return;
+  float seconds = ctx->media_position_seconds;
+  if (ctx->media_playing && ctx->media_position_updated_ms > 0) {
+    uint32_t elapsed_ms = esphome::millis() - ctx->media_position_updated_ms;
+    seconds += elapsed_ms / 1000.0f;
+  }
+  if (ctx->media_duration > 0.0f && seconds > ctx->media_duration) {
+    seconds = ctx->media_duration;
+  }
+
+  if (ctx->media_value_lbl) {
+    char time_buf[16];
+    media_format_time(seconds, time_buf, sizeof(time_buf));
+    lv_label_set_text(ctx->media_value_lbl, time_buf);
+  }
+
+  int pct = 0;
+  if (ctx->media_duration > 0.0f) {
+    pct = (int)((seconds * 100.0f / ctx->media_duration) + 0.5f);
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+  }
+  lv_slider_set_value(ctx->media_slider, pct, LV_ANIM_OFF);
+  if (ctx->fill) {
+    lv_obj_t *btn = lv_obj_get_parent(ctx->media_slider);
+    int fill_pct = ctx->inverted ? 100 - pct : pct;
+    slider_update_fill(ctx->fill, btn, fill_pct, ctx->horizontal, ctx->inverted, ctx->radius);
+  }
+}
+
+inline void media_position_timer_cb(lv_timer_t *timer) {
+  SliderCtx *ctx = static_cast<SliderCtx *>(lv_timer_get_user_data(timer));
+  if (!ctx || !ctx->media_position || !ctx->media_playing) return;
+  media_apply_position(ctx);
+}
+
+inline lv_obj_t *media_create_control_button(lv_obj_t *parent,
+                                             const char *icon,
+                                             lv_align_t align,
+                                             const lv_font_t *icon_font,
+                                             const std::string &entity_id,
+                                             const char *service) {
+  lv_obj_t *ctrl = lv_btn_create(parent);
+  lv_obj_set_size(ctrl, lv_pct(30), lv_pct(56));
+  lv_obj_align(ctrl, align, 0, -2);
+  lv_obj_set_style_bg_opa(ctrl, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ctrl, LV_OPA_20,
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+  lv_obj_set_style_border_width(ctrl, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ctrl, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ctrl, 0, LV_PART_MAIN);
+
+  lv_obj_t *lbl = lv_label_create(ctrl);
+  if (icon_font) lv_obj_set_style_text_font(lbl, icon_font, LV_PART_MAIN);
+  lv_label_set_text(lbl, icon);
+  lv_obj_center(lbl);
+
+  MediaActionCtx *ctx = new MediaActionCtx();
+  ctx->entity_id = entity_id;
+  ctx->service = service;
+  lv_obj_add_event_cb(ctrl, [](lv_event_t *e) {
+    MediaActionCtx *ctx = static_cast<MediaActionCtx *>(lv_event_get_user_data(e));
+    if (ctx) send_media_player_action(ctx->entity_id, ctx->service);
+  }, LV_EVENT_CLICKED, ctx);
+  return ctrl;
+}
+
+inline void setup_media_controls_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
+                                        lv_obj_t *text_lbl,
+                                        const ParsedCfg &p,
+                                        lv_coord_t pad) {
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (text_lbl) {
+    lv_label_set_text(text_lbl, media_label(p).c_str());
+    lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+    configure_button_label_wrap(text_lbl);
+    lv_obj_move_foreground(text_lbl);
+  }
+
+  const lv_font_t *icon_font = icon_lbl ? lv_obj_get_style_text_font(icon_lbl, LV_PART_MAIN) : nullptr;
+  media_create_control_button(btn, find_icon("Skip Previous"), LV_ALIGN_LEFT_MID,
+    icon_font, p.entity, "media_player.media_previous_track");
+  media_create_control_button(btn, find_icon("Play Pause"), LV_ALIGN_CENTER,
+    icon_font, p.entity, "media_player.media_play_pause");
+  media_create_control_button(btn, find_icon("Skip Next"), LV_ALIGN_RIGHT_MID,
+    icon_font, p.entity, "media_player.media_next_track");
+}
+
+inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
+                                           lv_obj_t *text_lbl, lv_obj_t *value_lbl,
+                                           const ParsedCfg &p,
+                                           uint32_t on_color,
+                                           lv_coord_t pad) {
+  std::string mode = media_card_mode(p.sensor);
+  bool position = mode == "position";
+  bool horizontal = !position;
+
+  if (position) {
+    if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (value_lbl) {
+      lv_label_set_text(value_lbl, "0:00");
+      lv_obj_move_foreground(value_lbl);
+    }
+    if (text_lbl) {
+      lv_label_set_text(text_lbl, "Paused");
+      lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+      lv_obj_move_foreground(text_lbl);
+    }
+  } else {
+    if (icon_lbl) {
+      lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_label_set_text(icon_lbl, media_default_icon(mode, p.icon));
+      lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
+      lv_obj_move_foreground(icon_lbl);
+    }
+    if (text_lbl) {
+      lv_label_set_text(text_lbl, media_label(p).c_str());
+      lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+      configure_button_label_wrap(text_lbl);
+      lv_obj_move_foreground(text_lbl);
+    }
+  }
+
+  lv_obj_t *slider = setup_slider_widget(btn, on_color, horizontal);
+  lv_obj_t *fill = lv_obj_get_child(btn, 0);
+
+  SliderCtx *ctx = new SliderCtx();
+  ctx->entity_id = p.entity;
+  ctx->fill = fill;
+  ctx->horizontal = horizontal;
+  ctx->cover_tilt = false;
+  ctx->inverted = false;
+  ctx->radius = lv_obj_get_style_radius(btn, LV_PART_MAIN);
+  ctx->media_volume = mode == "volume";
+  ctx->media_position = position;
+  ctx->media_slider = slider;
+  ctx->media_value_lbl = value_lbl;
+  ctx->media_status_lbl = text_lbl;
+  lv_obj_set_user_data(slider, (void *)ctx);
+  slider_bind_geometry_refresh(btn, slider);
+
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(sl);
+    if (!ctx) return;
+    int val = lv_slider_get_value(sl);
+    int fill_val = ctx->inverted ? 100 - val : val;
+    slider_update_fill(ctx->fill, lv_obj_get_parent(sl), fill_val, ctx->horizontal, ctx->inverted, ctx->radius);
+    if (ctx->media_position && ctx->media_duration > 0.0f && ctx->media_value_lbl) {
+      char time_buf[16];
+      media_format_time(ctx->media_duration * val / 100.0f, time_buf, sizeof(time_buf));
+      lv_label_set_text(ctx->media_value_lbl, time_buf);
+    }
+  }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(sl);
+    if (!ctx || ctx->entity_id.empty()) return;
+    int val = lv_slider_get_value(sl);
+    if (ctx->media_volume) send_media_volume_action(ctx->entity_id, val);
+    else if (ctx->media_position) send_media_seek_action(ctx->entity_id, val, ctx->media_duration);
+  }, LV_EVENT_RELEASED, nullptr);
+
+  if (position) {
+    ctx->media_timer = lv_timer_create(media_position_timer_cb, 1000, ctx);
+    if (ctx->media_timer) lv_timer_pause(ctx->media_timer);
+  }
+  return slider;
+}
+
+inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color) {
+  lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
+  std::string mode = media_card_mode(p.sensor);
+  if (mode == "controls") {
+    setup_media_controls_layout(s.btn, s.icon_lbl, s.text_lbl, p, pad);
+    return;
+  }
+  if (mode == "position") {
+    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(s.unit_lbl, "");
+    lv_obj_move_foreground(s.sensor_container);
+  }
+  lv_obj_t *slider = setup_media_slider_layout(s.btn, s.icon_lbl, s.text_lbl,
+    mode == "position" ? s.sensor_lbl : nullptr, p, on_color, pad);
+  lv_obj_set_user_data(s.sensor_container, (void *)slider);
+}
+
+inline void subscribe_media_state(lv_obj_t *btn_ptr,
+                                  lv_obj_t *status_lbl,
+                                  const std::string &entity_id) {
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, {},
+    std::function<void(esphome::StringRef)>(
+      [btn_ptr, status_lbl](esphome::StringRef state) {
+        std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+        bool playing = state_text == "playing";
+        if (playing) lv_obj_add_state(btn_ptr, LV_STATE_CHECKED);
+        else lv_obj_clear_state(btn_ptr, LV_STATE_CHECKED);
+        if (status_lbl) {
+          std::string label = media_status_text(state_text);
+          lv_label_set_text(status_lbl, label.c_str());
+        }
+      })
+  );
+}
+
+inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
+                                         lv_obj_t *slider,
+                                         const std::string &entity_id) {
+  SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(slider);
+  if (!ctx) return;
+
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, {},
+    std::function<void(esphome::StringRef)>(
+      [btn_ptr, ctx](esphome::StringRef state) {
+        std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+        ctx->media_playing = state_text == "playing";
+        if (ctx->media_playing) lv_obj_add_state(btn_ptr, LV_STATE_CHECKED);
+        else lv_obj_clear_state(btn_ptr, LV_STATE_CHECKED);
+        if (ctx->media_status_lbl) {
+          std::string label = media_status_text(state_text);
+          lv_label_set_text(ctx->media_status_lbl, label.c_str());
+        }
+        if (ctx->media_timer) {
+          if (ctx->media_playing) lv_timer_resume(ctx->media_timer);
+          else lv_timer_pause(ctx->media_timer);
+        }
+      })
+  );
+
+  if (ctx->media_volume) {
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+      entity_id, std::string("volume_level"),
+      std::function<void(esphome::StringRef)>(
+        [slider, btn_ptr, ctx](esphome::StringRef val) {
+          float level = 0.0f;
+          if (!parse_float_ref(val, level)) return;
+          int pct = (int)(level * 100.0f + 0.5f);
+          if (pct < 0) pct = 0;
+          if (pct > 100) pct = 100;
+          lv_slider_set_value(slider, pct, LV_ANIM_OFF);
+          if (ctx->fill)
+            slider_update_fill(ctx->fill, btn_ptr, pct, ctx->horizontal, ctx->inverted, ctx->radius);
+        })
+    );
+    return;
+  }
+
+  if (!ctx->media_position) return;
+
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, std::string("media_duration"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef val) {
+        float duration = 0.0f;
+        if (!parse_float_ref(val, duration) || duration < 0.0f) duration = 0.0f;
+        ctx->media_duration = duration;
+        media_apply_position(ctx);
+      })
+  );
+
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, std::string("media_position"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef val) {
+        float pos = 0.0f;
+        if (!parse_float_ref(val, pos) || pos < 0.0f) pos = 0.0f;
+        ctx->media_position_seconds = pos;
+        ctx->media_position_updated_ms = esphome::millis();
+        media_apply_position(ctx);
+      })
+  );
+
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, std::string("media_position_updated_at"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef) {
+        ctx->media_position_updated_ms = esphome::millis();
+        media_apply_position(ctx);
+      })
+  );
+}
+
 // ── Subpage helpers ───────────────────────────────────────────────────
 
 // Button definition parsed from a subpage config (pipe+colon delimited)
@@ -3263,7 +3647,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, calendar, timezone, climate, weather_forecast, slider, cover, garage, push, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, calendar, timezone, climate, weather_forecast, slider, cover, garage, media, push, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
 };
 
@@ -3290,6 +3674,7 @@ inline std::string compact_subpage_type(const std::string &code) {
   if (code == "L") return "slider";
   if (code == "C") return "cover";
   if (code == "R") return "garage";
+  if (code == "M") return "media";
   if (code == "P") return "push";
   if (code == "I") return "internal";
   if (code == "G") return "subpage";
@@ -3674,6 +4059,10 @@ inline void grid_phase1(
       setup_action_card(s, p);
       continue;
     }
+    if (p.type == "media") {
+      setup_media_card(s, p, has_on ? on_val : DEFAULT_SLIDER_COLOR);
+      continue;
+    }
     if (p.type == "slider" || p.type == "cover") {
       setup_slider_visual(s, p, has_on ? on_val : DEFAULT_SLIDER_COLOR);
     } else {
@@ -3822,6 +4211,20 @@ inline void grid_phase2(
       continue;
     }
     if (p.type == "action") {
+      continue;
+    }
+    if (p.type == "media") {
+      if (!p.entity.empty()) {
+        std::string mode = media_card_mode(p.sensor);
+        if (mode == "controls") {
+          subscribe_media_state(s.btn, nullptr, p.entity);
+        } else {
+          lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
+          if (slider) subscribe_media_slider_state(s.btn, slider, p.entity);
+        }
+        if (p.label.empty())
+          subscribe_friendly_name(s.text_lbl, p.entity);
+      }
       continue;
     }
 
@@ -4367,6 +4770,59 @@ inline void grid_phase2(
             ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
             if (c) send_action_card_action(*c);
           }, LV_EVENT_CLICKED, ctx);
+        }
+
+      } else if (sb.type == "media") {
+        ParsedCfg mp;
+        mp.entity = sb.entity;
+        mp.label = sb.label;
+        mp.icon = sb.icon;
+        mp.icon_on = sb.icon_on;
+        mp.sensor = media_card_mode(sb.sensor);
+        mp.unit = sb.unit;
+        mp.type = sb.type;
+        mp.precision = sb.precision;
+
+        std::string mode = media_card_mode(mp.sensor);
+        if (mode == "controls") {
+          setup_media_controls_layout(sb_btn, sil, stl, mp, sp_pad);
+          if (!mp.entity.empty()) {
+            subscribe_media_state(sb_btn, nullptr, mp.entity);
+            if (mp.label.empty())
+              subscribe_friendly_name(stl, mp.entity);
+          }
+        } else {
+          lv_obj_t *svl = nullptr;
+          if (mode == "position") {
+            svl = lv_label_create(sb_btn);
+            lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
+            lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
+            lv_label_set_text(svl, "0:00");
+            lv_obj_align(svl, LV_ALIGN_TOP_LEFT, sp_pad, sp_pad);
+          }
+          lv_obj_t *media_slider = setup_media_slider_layout(
+            sb_btn, sil, stl, svl, mp, has_on ? on_val : DEFAULT_SLIDER_COLOR, sp_pad);
+          if (!mp.entity.empty()) {
+            subscribe_media_slider_state(sb_btn, media_slider, mp.entity);
+            if (mp.label.empty() && mode != "position")
+              subscribe_friendly_name(stl, mp.entity);
+          }
+        }
+
+        if (sp_indicator && !mp.entity.empty()) {
+          lv_obj_t *parent_btn = slots[si].btn;
+          lv_obj_t *parent_icon = slots[si].icon_lbl;
+          int parent_idx = si;
+          int cwi = sp_child_alloc_idx++;
+          if (cwi >= MAX_SUBPAGE_ITEMS) {
+            ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", mp.entity.c_str());
+          } else {
+            sp_child_was_on[cwi] = false;
+            subscribe_subpage_parent_indicator(
+              mp.entity, parent_btn, parent_icon, parent_idx,
+              &sp_child_was_on[cwi], sp_has_icon_on,
+              sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+          }
         }
 
       } else if (sb.type == "internal") {

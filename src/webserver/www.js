@@ -7,7 +7,7 @@
 //
 // Per-device config (grid size, styling) is injected between __DEVICE_CONFIG__
 // markers by scripts/build.py. Button type plugins (switch, sensor, weather,
-// action, calendar, timezone, slider, cover, garage, push, subpage) are injected between __BUTTON_TYPES__ markers.
+// action, calendar, timezone, slider, cover, garage, media, push, subpage) are injected between __BUTTON_TYPES__ markers.
 // Icon data is generated between GENERATED:ICONS / GENERATED:DOMAIN_ICONS.
 // =============================================================================
 
@@ -80,22 +80,23 @@
     "Mailbox", "Message Video", "Medication", "Medication Outline", "Meter Electric", "Meter Gas",
     "Microsoft Xbox", "Microwave", "Minus", "Monitor", "Motion Sensor", "Movie Roll",
     "Music", "Outdoor Lamp", "Oven", "Package", "Package Closed", "Pill",
-    "Pill Multiple", "Plus", "Pool", "Power", "Power Plug", "Printer",
-    "Printer 3D", "Projector", "Projector Off", "Robot Vacuum", "Roller Shade", "Roller Shade Closed",
-    "Router", "Router Network", "Security", "Shower", "Smoke Detector", "Snowflake",
-    "Snowflake Alert", "Snowflake Thermometer", "Sofa", "Solar Panel", "Solar Panel Large", "Solar Power",
-    "Solar Power Variant", "Speaker", "Spotlight", "Sprinkler", "String Lights", "String Lights Off",
-    "Power Socket UK", "Power Socket EU", "Power Socket US", "Sun", "Table", "Television",
-    "Television Off", "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermostat",
-    "Home-Thermostat", "Thermostat Auto", "Thermometer Water", "Timer", "Toilet", "Transmission Tower",
-    "Trash Can", "Wall Outlet", "Wall Sconce", "Washer", "Water", "Water Heater",
-    "Water Percent", "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog",
-    "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night",
-    "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy",
-    "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny",
-    "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado",
-    "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check",
-    "Window Closed", "Window Open", "Window Shutter", "Window Shutter Open",
+    "Pill Multiple", "Plus", "Play Pause", "Pool", "Power", "Power Plug",
+    "Progress Clock", "Printer", "Printer 3D", "Projector", "Projector Off", "Robot Vacuum",
+    "Roller Shade", "Roller Shade Closed", "Router", "Router Network", "Security", "Shower",
+    "Skip Next", "Skip Previous", "Smoke Detector", "Snowflake", "Snowflake Alert", "Snowflake Thermometer",
+    "Sofa", "Solar Panel", "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker",
+    "Spotlight", "Sprinkler", "String Lights", "String Lights Off", "Power Socket UK", "Power Socket EU",
+    "Power Socket US", "Sun", "Table", "Television", "Television Off", "Thermometer",
+    "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermostat", "Home-Thermostat", "Thermostat Auto",
+    "Thermometer Water", "Timer", "Toilet", "Transmission Tower", "Trash Can", "Volume High",
+    "Wall Outlet", "Wall Sconce", "Washer", "Water", "Water Heater", "Water Percent",
+    "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog", "Weather Hail",
+    "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night", "Weather Night Cloudy",
+    "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy", "Weather Pouring",
+    "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny", "Weather Sunny Alert",
+    "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado", "Weather Windy",
+    "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check", "Window Closed",
+    "Window Open", "Window Shutter", "Window Shutter Open",
   ];
   // --- GENERATED:ICONS END ---
 
@@ -226,6 +227,16 @@
     ".sp-slider-track{width:100%;height:100%;position:relative}" +
     ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--accent);" +
     "border-radius:var(--r)}" +
+    ".sp-media-controls-preview{display:grid;grid-template-columns:repeat(3,1fr);align-items:center;gap:.6cqw;" +
+    "width:100%;height:58%;margin:auto 0;color:#fff;pointer-events:none}" +
+    ".sp-media-control{display:flex;align-items:center;justify-content:center;font-size:calc(var(--btn-icon)*.72);" +
+    "line-height:1;min-width:0;opacity:.95}" +
+    ".sp-media-control-primary{font-size:calc(var(--btn-icon)*.86)}" +
+    ".sp-media-h-slider{position:absolute;left:8%;right:8%;top:46%;height:12%;border-radius:999px;" +
+    "background:rgba(255,255,255,.18);overflow:hidden;pointer-events:none}" +
+    ".sp-media-h-slider span{display:block;width:62%;height:100%;background:var(--accent);border-radius:999px}" +
+    ".sp-media-position-time{font-size:calc(var(--btn-icon)*.72);line-height:1;color:#fff;font-weight:300;z-index:1}" +
+    ".sp-media-position-status{font-size:var(--btn-label);line-height:1.2;color:#fff;z-index:1}" +
     ".sp-btn-double{grid-row:span 2}" +
     ".sp-btn-double .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
     ".sp-btn-double .sp-btn-label-row .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
@@ -1814,6 +1825,7 @@
       slider: "L",
       cover: "C",
       garage: "R",
+      media: "M",
       push: "P",
       internal: "I",
       subpage: "G",
@@ -1833,6 +1845,7 @@
       L: "slider",
       C: "cover",
       R: "garage",
+      M: "media",
       P: "push",
       I: "internal",
       G: "subpage",

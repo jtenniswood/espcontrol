@@ -720,6 +720,11 @@
       "mdi": "plus"
     },
     {
+      "name": "Play Pause",
+      "codepoint": "F040E",
+      "mdi": "play-pause"
+    },
+    {
       "name": "Pool",
       "codepoint": "F0606",
       "mdi": "pool"
@@ -733,6 +738,11 @@
       "name": "Power Plug",
       "codepoint": "F06A5",
       "mdi": "power-plug"
+    },
+    {
+      "name": "Progress Clock",
+      "codepoint": "F0996",
+      "mdi": "progress-clock"
     },
     {
       "name": "Printer",
@@ -788,6 +798,16 @@
       "name": "Shower",
       "codepoint": "F09A1",
       "mdi": "shower-head"
+    },
+    {
+      "name": "Skip Next",
+      "codepoint": "F04AD",
+      "mdi": "skip-next"
+    },
+    {
+      "name": "Skip Previous",
+      "codepoint": "F04AE",
+      "mdi": "skip-previous"
     },
     {
       "name": "Smoke Detector",
@@ -953,6 +973,11 @@
       "name": "Trash Can",
       "codepoint": "F0A79",
       "mdi": "trash-can"
+    },
+    {
+      "name": "Volume High",
+      "codepoint": "F057E",
+      "mdi": "volume-high"
     },
     {
       "name": "Wall Outlet",
