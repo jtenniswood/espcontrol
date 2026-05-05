@@ -3328,6 +3328,32 @@ inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool hori
   }
 }
 
+inline void slider_update_horizontal_track_fill(lv_obj_t *fill, lv_obj_t *btn, int pct) {
+  if (!fill || !btn) return;
+  lv_coord_t bw = lv_obj_get_width(btn);
+  lv_coord_t bh = lv_obj_get_height(btn);
+  if (bw <= 0 || bh <= 0) return;
+
+  lv_coord_t track_w = (lv_coord_t)((int32_t)bw * 84 / 100);
+  lv_coord_t track_h = (lv_coord_t)((int32_t)bh * 12 / 100);
+  if (track_w < 1) track_w = 1;
+  if (track_h < 4) track_h = 4;
+  lv_coord_t fill_w = (lv_coord_t)((int32_t)track_w * pct / 100);
+  if (fill_w < 0) fill_w = 0;
+
+  lv_obj_set_style_radius(fill, track_h / 2, LV_PART_MAIN);
+  lv_obj_set_size(fill, fill_w, track_h);
+  lv_obj_align(fill, LV_ALIGN_LEFT_MID, (bw - track_w) / 2, 0);
+}
+
+inline void slider_update_ctx_fill(SliderCtx *c, lv_obj_t *btn, int pct) {
+  if (!c || !c->fill || !btn) return;
+  if (c->media_position)
+    slider_update_horizontal_track_fill(c->fill, btn, pct);
+  else
+    slider_update_fill(c->fill, btn, pct, c->horizontal, c->inverted, c->radius);
+}
+
 inline void slider_refresh_geometry(lv_obj_t *slider) {
   if (!slider) return;
   SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(slider);
@@ -3337,8 +3363,7 @@ inline void slider_refresh_geometry(lv_obj_t *slider) {
   slider_fit_to_button(slider, btn, c->horizontal);
   int val = lv_slider_get_value(slider);
   int fill_val = c->inverted ? 100 - val : val;
-  if (c->fill)
-    slider_update_fill(c->fill, btn, fill_val, c->horizontal, c->inverted, c->radius);
+  slider_update_ctx_fill(c, btn, fill_val);
 }
 
 inline void slider_bind_geometry_refresh(lv_obj_t *btn, lv_obj_t *slider) {
@@ -3456,7 +3481,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     if (!c) return;
     int val = lv_slider_get_value(sl);
     int fill_val = c->inverted ? 100 - val : val;
-    slider_update_fill(c->fill, lv_obj_get_parent(sl), fill_val, c->horizontal, c->inverted, c->radius);
+    slider_update_ctx_fill(c, lv_obj_get_parent(sl), fill_val);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
@@ -3637,7 +3662,7 @@ inline void media_apply_position(SliderCtx *ctx) {
   if (ctx->fill) {
     lv_obj_t *btn = lv_obj_get_parent(ctx->media_slider);
     int fill_pct = ctx->inverted ? 100 - pct : pct;
-    slider_update_fill(ctx->fill, btn, fill_pct, ctx->horizontal, ctx->inverted, ctx->radius);
+    slider_update_ctx_fill(ctx, btn, fill_pct);
   }
 }
 
@@ -3739,7 +3764,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (!ctx) return;
     int val = lv_slider_get_value(sl);
     int fill_val = ctx->inverted ? 100 - val : val;
-    slider_update_fill(ctx->fill, lv_obj_get_parent(sl), fill_val, ctx->horizontal, ctx->inverted, ctx->radius);
+    slider_update_ctx_fill(ctx, lv_obj_get_parent(sl), fill_val);
     if (ctx->media_volume && ctx->media_value_lbl) {
       char pct_buf[12];
       media_format_percent(val, pct_buf, sizeof(pct_buf));
@@ -3846,7 +3871,7 @@ inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
             lv_label_set_text(ctx->media_value_lbl, pct_buf);
           }
           if (ctx->fill)
-            slider_update_fill(ctx->fill, btn_ptr, pct, ctx->horizontal, ctx->inverted, ctx->radius);
+            slider_update_ctx_fill(ctx, btn_ptr, pct);
         })
     );
     return;
@@ -3989,7 +4014,7 @@ inline lv_obj_t *setup_subpage_slider(lv_obj_t *btn, lv_obj_t *icon_lbl, lv_obj_
     if (!c) return;
     int val = lv_slider_get_value(s);
     int fv = c->inverted ? 100 - val : val;
-    slider_update_fill(c->fill, lv_obj_get_parent(s), fv, c->horizontal, c->inverted, c->radius);
+    slider_update_ctx_fill(c, lv_obj_get_parent(s), fv);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   lv_obj_add_event_cb(sl, [](lv_event_t *e) {
