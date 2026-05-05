@@ -45,7 +45,7 @@
       "climate_control_icon_font": "climate_control_icon_font_md_square",
       "sensor_font": "statistics_font_md_square",
       "climate_target_font": "climate_target_font_md_square",
-      "color_correction": false,
+      "color_correction": true,
       "wrap_tall_labels": false
     },
     {

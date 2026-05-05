@@ -37,6 +37,7 @@ esphome:
             GridConfig cfg = {};
             cfg.num_slots = 9;
             cfg.cols = 3;
+            cfg.color_correction = true;
             cfg.icon_font = id(icon_font_md_square)->get_lv_font();
             cfg.climate_control_icon_font = id(climate_control_icon_font_md_square)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_md_square)->get_lv_font();
@@ -100,6 +101,7 @@ esphome:
             GridConfig cfg = {};
             cfg.num_slots = 9;
             cfg.cols = 3;
+            cfg.color_correction = true;
             cfg.icon_font = id(icon_font_md_square)->get_lv_font();
             cfg.climate_control_icon_font = id(climate_control_icon_font_md_square)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_md_square)->get_lv_font();
