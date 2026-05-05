@@ -53,22 +53,6 @@ font:
     glyphs:
       - "0123456789.-"
 
-  # Forecast high / low values
-  - file: "gfonts://Roboto@Light"
-    id: forecast_font_md_square
-    size: 51
-    bpp: 4
-    glyphs:
-      - "0123456789.- /"
-
-  # Forecast unit symbols
-  - file: "gfonts://Noto Sans"
-    id: forecast_unit_font_md_square
-    size: 33
-    bpp: 4
-    glyphs:
-      - "°CF"
-
   # Top bar clock and temperature (30px)
   - file: "gfonts://Roboto"
     id: clockbar_font_md_square

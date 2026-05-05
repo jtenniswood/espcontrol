@@ -40,8 +40,6 @@ esphome:
             cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font_lg)->get_lv_font();
-            cfg.forecast_font = id(forecast_font_lg)->get_lv_font();
-            cfg.forecast_unit_font = id(forecast_unit_font_lg)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
             cfg.developer_experimental_features = id(developer_experimental_features).state;
@@ -99,8 +97,6 @@ esphome:
             cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font_lg)->get_lv_font();
-            cfg.forecast_font = id(forecast_font_lg)->get_lv_font();
-            cfg.forecast_unit_font = id(forecast_unit_font_lg)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
             cfg.developer_experimental_features = id(developer_experimental_features).state;

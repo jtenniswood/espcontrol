@@ -20,22 +20,6 @@ font:
     glyphs:
       - "0123456789.-"
 
-  # Main page: forecast high / low values
-  - file: "gfonts://Roboto@Light"
-    id: forecast_font
-    size: 42
-    bpp: 4
-    glyphs:
-      - "0123456789.- /"
-
-  # Main page: compact weather temperature unit symbols
-  - file: "gfonts://Noto Sans"
-    id: forecast_unit_font
-    size: 22
-    bpp: 4
-    glyphs:
-      - "°CF"
-
   # Main page: button labels
   - file: "gfonts://Roboto"
     id: label_font

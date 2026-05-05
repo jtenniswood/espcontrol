@@ -41,22 +41,6 @@ font:
     glyphs:
       - "0123456789.-"
 
-  # Forecast high / low values
-  - file: "gfonts://Roboto@Light"
-    id: forecast_font_lg
-    size: 46
-    bpp: 4
-    glyphs:
-      - "0123456789.- /"
-
-  # Forecast unit symbols
-  - file: "gfonts://Noto Sans"
-    id: forecast_unit_font_lg
-    size: 31
-    bpp: 4
-    glyphs:
-      - "°CF"
-
   # Top bar clock and temperature (25px)
   - file: "gfonts://Roboto"
     id: clockbar_font_lg

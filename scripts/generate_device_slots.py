@@ -87,8 +87,6 @@ def cfg_lines(device: dict) -> list[str]:
     )
     lines.append(f"            cfg.sp_sensor_font = id({device['sensor_font']})->get_lv_font();")
     lines.append(f"            cfg.climate_target_font = id({device['climate_target_font']})->get_lv_font();")
-    lines.append(f"            cfg.forecast_font = id({device['forecast_font']})->get_lv_font();")
-    lines.append(f"            cfg.forecast_unit_font = id({device['forecast_unit_font']})->get_lv_font();")
     lines.append("            cfg.temperature_unit = id(temperature_unit_select).current_option();")
     lines.append("            cfg.timezone = id(timezone_select).current_option();")
     lines.append("            cfg.developer_experimental_features = id(developer_experimental_features).state;")

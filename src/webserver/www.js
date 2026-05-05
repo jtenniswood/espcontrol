@@ -226,9 +226,8 @@
     "overflow:hidden;word-break:break-word;min-height:0}" +
     ".sp-sensor-badge{position:absolute;top:var(--sensor-top);right:var(--sensor-right);font-size:var(--sensor-fs);opacity:.5}" +
     ".sp-sensor-preview{display:flex;align-items:baseline;gap:1px;color:#fff}" +
-    ".sp-forecast-preview{white-space:nowrap}" +
+    ".sp-forecast-preview{white-space:nowrap;gap:0}" +
     ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
-    ".sp-forecast-value{font-size:calc(var(--btn-icon)*.72)}" +
     ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;opacity:.7}" +
     ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +
     ".sp-slider-track{width:100%;height:100%;position:relative}" +

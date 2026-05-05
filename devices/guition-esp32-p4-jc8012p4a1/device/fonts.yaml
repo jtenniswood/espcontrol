@@ -24,22 +24,6 @@ font:
     glyphs:
       - "0123456789.-"
 
-  # Main page: forecast high / low values
-  - file: "gfonts://Roboto@Light"
-    id: forecast_font_lt
-    size: 46
-    bpp: 4
-    glyphs:
-      - "0123456789.- /"
-
-  # Main page: forecast unit symbols
-  - file: "gfonts://Noto Sans"
-    id: forecast_unit_font_lt
-    size: 24
-    bpp: 4
-    glyphs:
-      - "°CF"
-
   # Main page: button icons
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: icon_font_lt

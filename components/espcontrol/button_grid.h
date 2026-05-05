@@ -322,7 +322,7 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
   if (ref.label_lbl) lv_label_set_text(ref.label_lbl, "Tomorrow");
   if (!ref.value_lbl || !ref.unit_lbl) return;
   if (!valid) {
-    lv_label_set_text(ref.value_lbl, "-- / --");
+    lv_label_set_text(ref.value_lbl, "--/--");
     lv_label_set_text(ref.unit_lbl, "");
     return;
   }
@@ -333,7 +333,7 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
   else snprintf(high_buf, sizeof(high_buf), "%d", high);
   if (low == WEATHER_FORECAST_TEMP_MISSING) snprintf(low_buf, sizeof(low_buf), "--");
   else snprintf(low_buf, sizeof(low_buf), "%d", low);
-  snprintf(buf, sizeof(buf), "%s / %s", high_buf, low_buf);
+  snprintf(buf, sizeof(buf), "%s/%s", high_buf, low_buf);
   lv_label_set_text(ref.value_lbl, buf);
   std::string normalized_unit = weather_forecast_unit_symbol(unit);
   lv_label_set_text(ref.unit_lbl, normalized_unit.c_str());
@@ -2572,8 +2572,6 @@ inline bool weather_card_shows_tomorrow(const ParsedCfg &p) {
 }
 
 inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
-                                        const lv_font_t *forecast_font,
-                                        const lv_font_t *forecast_unit_font,
                                         bool has_sensor_color, uint32_t sensor_val) {
   if (has_sensor_color) {
     lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
@@ -2582,13 +2580,7 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  if (forecast_font) {
-    lv_obj_set_style_text_font(s.sensor_lbl, forecast_font, LV_PART_MAIN);
-  }
-  if (forecast_unit_font) {
-    lv_obj_set_style_text_font(s.unit_lbl, forecast_unit_font, LV_PART_MAIN);
-  }
-  lv_label_set_text(s.sensor_lbl, "-- / --");
+  lv_label_set_text(s.sensor_lbl, "--/--");
   lv_label_set_text(s.unit_lbl, "");
   lv_label_set_text(s.text_lbl, "Tomorrow");
   register_weather_forecast_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity);
@@ -4207,8 +4199,6 @@ struct GridConfig {
   const lv_font_t *climate_control_icon_font;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *climate_target_font;
-  const lv_font_t *forecast_font;
-  const lv_font_t *forecast_unit_font;
   std::string temperature_unit;
   std::string timezone;
   bool developer_experimental_features;
@@ -4318,8 +4308,7 @@ inline void grid_phase1(
       continue;
     }
     if (weather_card_shows_tomorrow(p)) {
-      setup_weather_forecast_card(s, p, cfg.forecast_font, cfg.forecast_unit_font,
-        has_sensor_color, sensor_val);
+      setup_weather_forecast_card(s, p, has_sensor_color, sensor_val);
       continue;
     }
     if (p.type == "weather") {
@@ -4919,12 +4908,12 @@ inline void grid_phase2(
         lv_obj_set_style_flex_cross_place(sc, LV_FLEX_ALIGN_END, LV_PART_MAIN);
 
         lv_obj_t *svl = lv_label_create(sc);
-        lv_obj_set_style_text_font(svl, cfg.forecast_font ? cfg.forecast_font : cfg.sp_sensor_font, LV_PART_MAIN);
+        lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
         lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-        lv_label_set_text(svl, "-- / --");
+        lv_label_set_text(svl, "--/--");
 
         lv_obj_t *sul = lv_label_create(sc);
-        lv_obj_set_style_text_font(sul, cfg.forecast_unit_font ? cfg.forecast_unit_font : sp_btn_fnt, LV_PART_MAIN);
+        lv_obj_set_style_text_font(sul, sp_btn_fnt, LV_PART_MAIN);
         lv_obj_set_style_text_color(sul, sp_txt_color, LV_PART_MAIN);
         lv_obj_set_style_pad_bottom(sul, 6, LV_PART_MAIN);
         lv_label_set_text(sul, "");
