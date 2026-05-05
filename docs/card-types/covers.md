@@ -8,8 +8,6 @@ description:
 
 A cover card lets you control a Home Assistant cover entity — blinds, shutters, roller shades, gates, or garage doors — as a slider, a toggle, or a one-tap command.
 
-The **Open**, **Close**, **Stop**, and **Set Position** command modes are currently experimental. They only appear and run when **Developer: Experimental Features** is enabled on the panel.
-
 <!-- ![Cover card showing a blinds icon with a position fill bar](/images/card-cover.png) -->
 
 ## Setting Up a Cover
@@ -19,8 +17,8 @@ The **Open**, **Close**, **Stop**, and **Set Position** command modes are curren
    - **Slider: Position** lets you drag to a precise cover position.
    - **Slider: Tilt** lets you drag to a precise cover tilt position.
    - **Toggle** opens or closes the cover with a tap.
-   - **Open**, **Close**, and **Stop** send that exact cover command when experimental features are enabled.
-   - **Set Position** sends the cover to the fixed percentage you enter when experimental features are enabled.
+   - **Open**, **Close**, and **Stop** send that exact cover command.
+   - **Set Position** sends the cover to the fixed percentage you enter.
 3. Your Home Assistant cover entity needs to support tilt for **Slider: Tilt** mode to work.
 4. Set a **Label** (optional) — shown at the bottom of the card. If left blank, the entity's friendly name from Home Assistant is used.
 5. Enter an **Entity ID** — the Home Assistant cover entity you want to control (for example, `cover.office_blind`).

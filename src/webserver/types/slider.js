@@ -6,10 +6,6 @@ function coverCommandMode(mode) {
   return mode === "open" || mode === "close" || mode === "stop" || mode === "set_position";
 }
 
-function coverCommandModesEnabled() {
-  return typeof state !== "undefined" && !!state.developerExperimentalFeatures;
-}
-
 function normalizeCoverMode(mode, allowCommands) {
   if (mode === "tilt" || mode === "toggle") return mode;
   if (allowCommands && coverCommandMode(mode)) return mode;
@@ -94,22 +90,21 @@ function sliderTypeFactory(opts) {
       }
 
       if (opts.interactionMode) {
-        var allowCoverCommands = coverCommandModesEnabled();
         var storedCoverMode = normalizeCoverMode(b.sensor, true);
-        coverMode = allowCoverCommands ? storedCoverMode : normalizeCoverMode(b.sensor, false);
+        coverMode = storedCoverMode;
         if (b.sensor !== storedCoverMode) {
           b.sensor = storedCoverMode;
           helpers.saveField("sensor", storedCoverMode);
         }
-        if (storedCoverMode !== "set_position" && b.unit && (allowCoverCommands || !coverCommandMode(storedCoverMode))) {
+        if (storedCoverMode !== "set_position" && b.unit) {
           b.unit = "";
           helpers.saveField("unit", "");
         }
-        if (allowCoverCommands && coverCommandMode(storedCoverMode) && b.icon_on !== "Auto") {
+        if (coverCommandMode(storedCoverMode) && b.icon_on !== "Auto") {
           b.icon_on = "Auto";
           helpers.saveField("icon_on", "Auto");
         }
-        if (allowCoverCommands && coverCommandMode(storedCoverMode)) {
+        if (coverCommandMode(storedCoverMode)) {
           applyCoverModeDefaultIcon(storedCoverMode);
         }
 
@@ -123,15 +118,11 @@ function sliderTypeFactory(opts) {
           ["", "Slider: Position"],
           ["tilt", "Slider: Tilt"],
           ["toggle", "Toggle"],
+          ["open", "Open"],
+          ["close", "Close"],
+          ["stop", "Stop"],
+          ["set_position", "Set Position"],
         ];
-        if (allowCoverCommands) {
-          interactionOptions = interactionOptions.concat([
-            ["open", "Open"],
-            ["close", "Close"],
-            ["stop", "Stop"],
-            ["set_position", "Set Position"],
-          ]);
-        }
         interactionOptions.forEach(function (entry) {
           var option = document.createElement("option");
           option.value = entry[0];
@@ -170,7 +161,7 @@ function sliderTypeFactory(opts) {
         }
 
         function setCoverMode(mode, persist) {
-          coverMode = normalizeCoverMode(mode, allowCoverCommands);
+          coverMode = normalizeCoverMode(mode, true);
           interactionSelect.value = coverMode;
           if (coverMode === "set_position") {
             setCoverPosition(b.unit);
@@ -314,12 +305,6 @@ function sliderTypeFactory(opts) {
       }
     },
     renderPreview: function (b, helpers) {
-      if (opts.interactionMode && coverCommandMode(b.sensor) && !coverCommandModesEnabled()) {
-        return {
-          iconHtml: '<span class="sp-btn-icon mdi mdi-cog"></span>',
-          labelHtml: '<span class="sp-btn-label">Configure</span>',
-        };
-      }
       var label = b.label || b.entity || opts.fallbackLabel;
       var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : opts.fallbackIcon;
       if (opts.interactionMode && (b.sensor === "toggle" || coverCommandMode(b.sensor))) {

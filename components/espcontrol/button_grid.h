@@ -4323,7 +4323,6 @@ struct GridConfig {
 
 inline bool experimental_card_enabled(const ParsedCfg &p, bool developer_experimental_features) {
   if (p.type == "climate") return developer_experimental_features;
-  if (p.type == "cover" && cover_command_mode(p.sensor)) return developer_experimental_features;
   return true;
 }
 
