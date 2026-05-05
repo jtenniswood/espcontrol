@@ -12,7 +12,7 @@ registerButtonType("media", {
     b.icon = "Auto";
     b.icon_on = "Auto";
   },
-  renderSettings: function (panel, b, slot, helpers) {
+  renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     var modes = [
       ["play_pause", "Play/Pause Button"],
       ["previous", "Previous Button"],
@@ -47,18 +47,6 @@ registerButtonType("media", {
     var rawMode = b.sensor;
     b.sensor = validMode(b.sensor);
     if (rawMode === "controls" && isMediaDefaultIcon(rawMode, b.icon)) b.icon = "Auto";
-    b.unit = "";
-    b.precision = "";
-    b.icon_on = "Auto";
-
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Media Player Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. media_player.living_room");
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-    helpers.requireField(entityInp, "Add an entity before saving.");
 
     var mf = document.createElement("div");
     mf.className = "sp-field";
@@ -73,6 +61,44 @@ registerButtonType("media", {
       modeSelect.appendChild(opt);
     });
     modeSelect.value = b.sensor;
+    modeSelect.addEventListener("change", function () {
+      var oldMode = b.sensor;
+      b.sensor = validMode(this.value);
+      if (isMediaDefaultIcon(oldMode, b.icon)) {
+        b.icon = "Auto";
+        helpers.saveField("icon", b.icon);
+      }
+      if (b.sensor !== "play_pause" && b.precision) {
+        b.precision = "";
+        helpers.saveField("precision", "");
+      }
+      helpers.saveField("sensor", b.sensor);
+      renderButtonSettings();
+    });
+    mf.appendChild(modeSelect);
+    panel.appendChild(mf);
+  },
+  renderSettings: function (panel, b, slot, helpers) {
+    function validMode(value) {
+      if (value === "controls") return "play_pause";
+      if (value === "previous" || value === "next" || value === "volume" || value === "position") return value;
+      return "play_pause";
+    }
+
+    b.sensor = validMode(b.sensor);
+    b.unit = "";
+    b.precision = b.sensor === "play_pause" && b.precision === "state" ? "state" : "";
+    b.icon_on = "Auto";
+
+    var ef = document.createElement("div");
+    ef.className = "sp-field";
+    ef.appendChild(helpers.fieldLabel("Media Player Entity", helpers.idPrefix + "entity"));
+    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. media_player.living_room");
+    ef.appendChild(entityInp);
+    panel.appendChild(ef);
+    helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
+
     var displayField = document.createElement("div");
     var displaySelect = document.createElement("select");
 
@@ -87,19 +113,6 @@ registerButtonType("media", {
         }
       }
     }
-
-    modeSelect.addEventListener("change", function () {
-      var oldMode = b.sensor;
-      b.sensor = validMode(this.value);
-      if (isMediaDefaultIcon(oldMode, b.icon)) {
-        b.icon = "Auto";
-        helpers.saveField("icon", b.icon);
-      }
-      helpers.saveField("sensor", b.sensor);
-      syncDisplayField();
-    });
-    mf.appendChild(modeSelect);
-    panel.appendChild(mf);
 
     displayField.className = "sp-field";
     displayField.appendChild(helpers.fieldLabel("Display", helpers.idPrefix + "media-display"));

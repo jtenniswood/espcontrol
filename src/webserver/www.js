@@ -135,6 +135,7 @@
       labelPlaceholder: null,
       isAvailable: null,
       onSelect: null,
+      renderSettingsBeforeLabel: null,
       renderSettings: null,
       renderPreview: null,
       contextMenuItems: null,
@@ -3834,17 +3835,6 @@
       panel.appendChild(tf);
     }
 
-    if (!typeDef || !typeDef.hideLabel) {
-      var lf = document.createElement("div");
-      lf.className = "sp-field";
-      lf.appendChild(fieldLabel("Label", idPrefix + "label"));
-      var labelPlaceholder = (typeDef && typeDef.labelPlaceholder) || "e.g. Kitchen";
-      var labelInp = textInput(idPrefix + "label", b.label, labelPlaceholder);
-      lf.appendChild(labelInp);
-      panel.appendChild(lf);
-      bindField(labelInp, "label", true);
-    }
-
     var typeHelpers = {
       makeIconPicker: makeIconPicker,
       fieldLabel: fieldLabel,
@@ -3856,6 +3846,21 @@
       toggleRow: toggleRow,
       idPrefix: idPrefix,
     };
+
+    if (typeDef && typeDef.renderSettingsBeforeLabel && (!c.isSub || typeDef.allowInSubpage)) {
+      typeDef.renderSettingsBeforeLabel(panel, b, slot, typeHelpers);
+    }
+
+    if (!typeDef || !typeDef.hideLabel) {
+      var lf = document.createElement("div");
+      lf.className = "sp-field";
+      lf.appendChild(fieldLabel("Label", idPrefix + "label"));
+      var labelPlaceholder = (typeDef && typeDef.labelPlaceholder) || "e.g. Kitchen";
+      var labelInp = textInput(idPrefix + "label", b.label, labelPlaceholder);
+      lf.appendChild(labelInp);
+      panel.appendChild(lf);
+      bindField(labelInp, "label", true);
+    }
 
     if (typeDef && typeDef.renderSettings && (!c.isSub || typeDef.allowInSubpage)) {
       typeDef.renderSettings(panel, b, slot, typeHelpers);
