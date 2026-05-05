@@ -6,7 +6,7 @@ description:
 
 # Light Temperature Slider
 
-A light temperature slider card lets you control the colour temperature of a Home Assistant light entity by dragging a vertical fill bar. The bottom of the slider is the coolest (lowest kelvin) setting and the top is the warmest (highest kelvin).
+A light temperature slider card lets you control the colour temperature of a Home Assistant light entity by dragging a vertical fill bar. The bottom of the slider is the warmest (lowest kelvin) setting and the top is the coolest (highest kelvin).
 
 ## Setting Up a Light Temperature Slider Card
 

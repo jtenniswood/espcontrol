@@ -57,6 +57,7 @@ function subpageTypeFromCode(code) {
     F: "weather_forecast",
     L: "slider",
     C: "cover",
+    N: "light_temperature",
     R: "garage",
     K: "lock",
     M: "media",
@@ -461,6 +462,17 @@ assertButtonRoundTrip(hooks, "media now playing card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "light temperature card", {
+  entity: "light.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "kelvin",
+  unit: "2000-6500",
+  type: "light_temperature",
+  precision: "color",
+}, false);
+
 const subpageStateOff = buttonShape({
   label: "Windows",
   icon: "Window Closed",
@@ -737,6 +749,13 @@ assertSubpageRoundTrip(hooks, "media subpage", {
   ],
 }, true);
 
+assertSubpageRoundTrip(hooks, "light temperature subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "light.living_room", label: "Living Room", icon: "Auto", sensor: "kelvin", unit: "2000-6500", type: "light_temperature", precision: "color" }),
+  ],
+}, true);
+
 assertSubpageRoundTrip(hooks, "delimiter subpage", {
   order: ["1", "B", "2"],
   buttons: [
@@ -850,6 +869,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|M,media_playe
     buttonShape({ entity: "media_player.living_room", label: "Living Room", icon: "Auto", icon_on: "Auto", sensor: "play_pause", type: "media" }),
   ],
 }, "legacy media controls subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|N,light.living_room,Living%20Room,,,kelvin,2000-6500,color")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "light.living_room", label: "Living Room", icon: "Auto", icon_on: "Auto", sensor: "kelvin", unit: "2000-6500", type: "light_temperature", precision: "color" }),
+  ],
+}, "compact light temperature subpage parse");
 
 const largeSubpage = {
   order: Array.from({ length: 25 }, (_, i) => (i === 4 ? "B" : String(i + 1))),

@@ -3388,6 +3388,9 @@ struct SliderCtx {
   int kelvin_max = 6500;
   bool kelvin_color = false;
   bool light_on = false;
+  bool light_state_known = false;
+  bool light_temp_has_kelvin = false;
+  int light_temp_last_kelvin = 2000;
   bool show_kelvin = false;
   lv_obj_t *text_lbl = nullptr;
   std::string cached_label;
@@ -3777,30 +3780,57 @@ inline void subscribe_friendly_name_for_light_temp(lv_obj_t *text_lbl,
   );
 }
 
+inline void light_temp_apply_kelvin_state(SliderCtx *ctx, lv_obj_t *btn_ptr,
+                                          lv_obj_t *slider, int kelvin,
+                                          bool kelvin_color) {
+  if (!ctx || !slider || !btn_ptr) return;
+  int k = kelvin;
+  if (k < ctx->kelvin_min) k = ctx->kelvin_min;
+  if (k > ctx->kelvin_max) k = ctx->kelvin_max;
+  int range = ctx->kelvin_max - ctx->kelvin_min;
+  int pct = range > 0 ? (k - ctx->kelvin_min) * 100 / range : 50;
+  if (pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+  lv_slider_set_value(slider, pct, LV_ANIM_OFF);
+  if (ctx->fill)
+    slider_update_fill(ctx->fill, btn_ptr, pct, false, false, ctx->radius);
+  if (kelvin_color && ctx->fill)
+    lv_obj_set_style_bg_color(ctx->fill,
+      kelvin_to_fill_color(k, ctx->kelvin_min, ctx->kelvin_max), LV_PART_MAIN);
+  light_temp_apply_label(ctx, k);
+}
+
 // Subscribe to on/off state plus color_temp_kelvin for a light temperature slider.
 // When the light is off, the slider renders empty (value 0, no fill).
 inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
                                         const std::string &entity_id,
-                                        int min_k, int max_k, bool kelvin_color) {
+                                        int /*min_k*/, int /*max_k*/, bool kelvin_color) {
   if (!slider || entity_id.empty()) return;
   SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(slider);
-  lv_obj_t *fill = sctx ? sctx->fill : nullptr;
-  lv_coord_t rad = sctx ? sctx->radius : 0;
-  // Track on/off so the kelvin attribute callback can ignore stale values
-  // while the light is off (HA still emits the last color_temp_kelvin).
+  // Track on/off so kelvin updates can be ignored once the light is known off
+  // while still handling the initial case where HA sends color_temp before state.
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, {},
     std::function<void(esphome::StringRef)>(
-      [slider, btn_ptr, fill, rad, sctx](esphome::StringRef state) {
+      [slider, btn_ptr, kelvin_color, sctx](esphome::StringRef state) {
         bool on = is_entity_on_ref(state);
         bool was_on = sctx ? sctx->light_on : false;
-        if (sctx) sctx->light_on = on;
+        if (sctx) {
+          sctx->light_state_known = true;
+          sctx->light_on = on;
+        }
+        bool applied_cached = false;
         if (!on) {
           lv_slider_set_value(slider, 0, LV_ANIM_OFF);
-          if (fill) slider_update_fill(fill, btn_ptr, 0, false, false, rad);
+          if (sctx && sctx->fill)
+            slider_update_fill(sctx->fill, btn_ptr, 0, false, false, sctx->radius);
+        } else if (sctx && sctx->light_temp_has_kelvin) {
+          light_temp_apply_kelvin_state(
+            sctx, btn_ptr, slider, sctx->light_temp_last_kelvin, kelvin_color);
+          applied_cached = true;
         }
         // Refresh label on any on↔off transition so kelvin/cached_label swaps.
-        if (sctx && sctx->show_kelvin && was_on != on) {
+        if (sctx && sctx->show_kelvin && was_on != on && !applied_cached) {
           int cur_k = sctx->kelvin_min + lv_slider_get_value(slider) *
                       (sctx->kelvin_max - sctx->kelvin_min) / 100;
           light_temp_apply_label(sctx, cur_k);
@@ -3810,25 +3840,17 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, std::string("color_temp_kelvin"),
     std::function<void(esphome::StringRef)>(
-      [slider, btn_ptr, fill, rad, min_k, max_k, kelvin_color, sctx](esphome::StringRef val) {
-        if (sctx && !sctx->light_on) return;  // light is off — keep slider empty
+      [slider, btn_ptr, kelvin_color, sctx](esphome::StringRef val) {
         float k_f = 0.0f;
         if (!parse_float_ref(val, k_f)) return;
         int k = (int)(k_f + 0.5f);
-        // HA can report values outside the configured display range
-        // (the bulb's native min/max may be wider). Clamp so slider and
-        // label agree.
-        if (k < min_k) k = min_k;
-        if (k > max_k) k = max_k;
-        int range = max_k - min_k;
-        int pct = range > 0 ? (k - min_k) * 100 / range : 50;
-        if (pct < 0) pct = 0;
-        if (pct > 100) pct = 100;
-        lv_slider_set_value(slider, pct, LV_ANIM_OFF);
-        slider_update_fill(fill, btn_ptr, pct, false, false, rad);
-        if (kelvin_color && fill)
-          lv_obj_set_style_bg_color(fill, kelvin_to_fill_color(k, min_k, max_k), LV_PART_MAIN);
-        if (sctx) light_temp_apply_label(sctx, k);
+        if (!sctx) return;
+        sctx->light_temp_last_kelvin = k;
+        sctx->light_temp_has_kelvin = true;
+        if (!sctx->light_state_known || !sctx->light_on) return;
+        // HA can report values outside the configured display range. Clamp in
+        // the renderer so slider and label agree.
+        light_temp_apply_kelvin_state(sctx, btn_ptr, slider, k, kelvin_color);
       })
   );
 }
@@ -3881,9 +3903,13 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
     if (c->kelvin_color && c->fill) {
       lv_obj_set_style_bg_color(c->fill, kelvin_to_fill_color(k, c->kelvin_min, c->kelvin_max), LV_PART_MAIN);
     }
+    // Treat dragging as the light coming on so following HA attribute updates
+    // are not discarded before the on/off state echo arrives.
+    c->light_on = true;
+    c->light_state_known = true;
+    c->light_temp_has_kelvin = true;
+    c->light_temp_last_kelvin = k;
     if (c->show_kelvin) {
-      // Treat dragging as the light coming on — update label live to "<K>K".
-      c->light_on = true;
       light_temp_apply_label(c, k);
     }
   }, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -4746,8 +4772,11 @@ inline lv_obj_t *setup_subpage_light_temp(lv_obj_t *btn, lv_obj_t *icon_lbl, lv_
     if (c->kelvin_color && c->fill) {
       lv_obj_set_style_bg_color(c->fill, kelvin_to_fill_color(k, c->kelvin_min, c->kelvin_max), LV_PART_MAIN);
     }
+    c->light_on = true;
+    c->light_state_known = true;
+    c->light_temp_has_kelvin = true;
+    c->light_temp_last_kelvin = k;
     if (c->show_kelvin) {
-      c->light_on = true;
       light_temp_apply_label(c, k);
     }
   }, LV_EVENT_VALUE_CHANGED, nullptr);

@@ -1,5 +1,5 @@
 // Light temperature slider card: controls color_temp_kelvin on a light entity.
-// Slider bottom = min kelvin (cool), top = max kelvin (warm).
+// Slider bottom = min kelvin (warm), top = max kelvin (cool).
 // Config fields: unit="min-max" (kelvin range),
 // precision="color" (dynamic fill color by current temperature),
 // sensor="kelvin" (show live kelvin value as label when light is on).
