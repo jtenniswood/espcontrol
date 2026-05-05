@@ -177,8 +177,9 @@ inline std::string string_ref_limited(esphome::StringRef value, size_t max_len) 
   return std::string(value.c_str(), len);
 }
 
-inline std::string text_sensor_display_text(esphome::StringRef value) {
-  std::string raw = string_ref_limited(value, HA_TEXT_SENSOR_STATE_MAX_LEN);
+inline std::string text_sensor_display_text(esphome::StringRef value,
+                                            size_t max_len = HA_TEXT_SENSOR_STATE_MAX_LEN) {
+  std::string raw = string_ref_limited(value, max_len);
   std::string out;
   out.reserve(raw.size());
   bool cap_next = true;
@@ -243,6 +244,7 @@ inline std::string sentence_cap_text(const std::string &state) {
         out.push_back(' ');
         last_space = true;
       }
+      cap_next = true;
       continue;
     }
     if (std::isalpha(c)) {
@@ -278,31 +280,24 @@ inline const char* weather_icon_for_state(const std::string &state) {
 
 inline std::string weather_label_for_state(const std::string &state) {
   if (state == "sunny") return "Sunny";
-  if (state == "clear-night") return "Clear night";
-  if (state == "partlycloudy") return "Partly cloudy";
+  if (state == "clear-night") return "Clear Night";
+  if (state == "partlycloudy") return "Partly Cloudy";
   if (state == "cloudy") return "Cloudy";
   if (state == "fog") return "Fog";
   if (state == "hail") return "Hail";
   if (state == "lightning") return "Lightning";
-  if (state == "lightning-rainy") return "Lightning and rain";
+  if (state == "lightning-rainy") return "Lightning And Rain";
   if (state == "pouring") return "Pouring";
   if (state == "rainy") return "Rainy";
   if (state == "snowy") return "Snowy";
-  if (state == "snowy-rainy") return "Snowy and rain";
+  if (state == "snowy-rainy") return "Snowy And Rain";
   if (state == "windy") return "Windy";
-  if (state == "windy-variant") return "Windy and cloudy";
+  if (state == "windy-variant") return "Windy And Cloudy";
   if (state == "exceptional") return "Exceptional";
   if (state == "unknown") return "Unknown";
   if (state == "unavailable" || state.empty()) return "Unavailable";
 
-  std::string label = state;
-  for (size_t i = 0; i < label.length(); i++) {
-    if (label[i] == '-' || label[i] == '_') label[i] = ' ';
-  }
-  if (!label.empty()) {
-    label[0] = static_cast<char>(toupper(static_cast<unsigned char>(label[0])));
-  }
-  return label;
+  return sentence_cap_text(state);
 }
 
 struct WeatherForecastCardRef {
@@ -2764,7 +2759,8 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
         format_fixed_decimal(buf, sizeof(buf), val, precision);
         lv_label_set_text(sensor_lbl, buf);
       } else {
-        lv_label_set_text_limited(sensor_lbl, state, HA_SHORT_STATE_MAX_LEN);
+        std::string text = text_sensor_display_text(state, HA_SHORT_STATE_MAX_LEN);
+        lv_label_set_text(sensor_lbl, text.c_str());
       }
     })
   );
