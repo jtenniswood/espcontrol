@@ -3,6 +3,7 @@ registerButtonType("media", {
   label: "Media",
   experimental: "media",
   allowInSubpage: true,
+  hideLabel: true,
   labelPlaceholder: "e.g. Living Room Speaker",
   onSelect: function (b) {
     b.entity = "";
@@ -90,15 +91,6 @@ registerButtonType("media", {
     b.precision = b.sensor === "play_pause" && b.precision === "state" ? "state" : "";
     b.icon_on = "Auto";
 
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Media Player Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. media_player.living_room");
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-    helpers.requireField(entityInp, "Add an entity before saving.");
-
     var displayField = document.createElement("div");
     var displaySelect = document.createElement("select");
 
@@ -131,10 +123,30 @@ registerButtonType("media", {
     displaySelect.addEventListener("change", function () {
       b.precision = this.value === "state" ? "state" : "";
       helpers.saveField("precision", b.precision);
+      renderButtonSettings();
     });
     displayField.appendChild(displaySelect);
     panel.appendChild(displayField);
     syncDisplayField();
+
+    if (b.sensor !== "play_pause" || b.precision !== "state") {
+      var lf = document.createElement("div");
+      lf.className = "sp-field";
+      lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
+      var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Living Room Speaker");
+      lf.appendChild(labelInp);
+      panel.appendChild(lf);
+      helpers.bindField(labelInp, "label", true);
+    }
+
+    var ef = document.createElement("div");
+    ef.className = "sp-field";
+    ef.appendChild(helpers.fieldLabel("Media Player Entity", helpers.idPrefix + "entity"));
+    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. media_player.living_room");
+    ef.appendChild(entityInp);
+    panel.appendChild(ef);
+    helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
 
     panel.appendChild(helpers.makeIconPicker(
       helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
