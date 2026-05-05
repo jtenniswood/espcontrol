@@ -3174,10 +3174,18 @@ inline void parse_kelvin_range(const std::string &unit, int &min_k, int &max_k) 
 }
 
 // Map a kelvin value to an lv_color_t by lerping between warm amber (low K) and
-// cool blue-white (high K). Used when "color fill by temperature" is enabled.
-inline lv_color_t kelvin_to_fill_color(int k, int min_k, int max_k) {
-  if (max_k <= min_k) max_k = min_k + 1;
-  float t = (float)(k - min_k) / (float)(max_k - min_k);
+// cool blue-white (high K). Used when "use light color" is enabled.
+//
+// The interpolation is anchored to an absolute reference range
+// (KELVIN_REF_MIN..KELVIN_REF_MAX) rather than the user's configured slider
+// range. That way a narrow range (e.g. 5000-6000K) shows the actual subtle
+// shift between two cool-white shades — instead of stretching the full
+// amber-to-blue gradient across two values that should both look cool.
+inline lv_color_t kelvin_to_fill_color(int k, int /*min_k*/, int /*max_k*/) {
+  constexpr int KELVIN_REF_MIN = 2000;
+  constexpr int KELVIN_REF_MAX = 6500;
+  float t = (float)(k - KELVIN_REF_MIN) /
+            (float)(KELVIN_REF_MAX - KELVIN_REF_MIN);
   if (t < 0.0f) t = 0.0f;
   if (t > 1.0f) t = 1.0f;
   // warm = 0xFF8012, cool = 0xB8CCFF
