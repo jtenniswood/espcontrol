@@ -109,8 +109,10 @@ registerButtonType("media", {
     if (mode === "volume") {
       return {
         iconHtml:
-          '<span class="sp-sensor-preview"><span class="sp-sensor-value">62</span></span>' +
-          '<span class="sp-media-h-slider"><span></span></span>',
+          '<span class="sp-slider-preview"><span class="sp-slider-track">' +
+            '<span class="sp-slider-fill" style="width:62%;height:100%"></span>' +
+          '</span></span>' +
+          '<span class="sp-sensor-preview"><span class="sp-sensor-value">62</span></span>',
         labelHtml:
           '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
           badge + '</span>',
@@ -119,7 +121,9 @@ registerButtonType("media", {
     if (mode === "position") {
       return {
         iconHtml:
-          '<span class="sp-media-h-slider"><span style="width:42%"></span></span>' +
+          '<span class="sp-slider-preview"><span class="sp-slider-track">' +
+            '<span class="sp-slider-fill" style="width:42%;height:100%"></span>' +
+          '</span></span>' +
           '<span class="sp-media-position-time">1:31</span>',
         labelHtml:
           '<span class="sp-btn-label-row"><span class="sp-media-position-status">Playing</span>' +
