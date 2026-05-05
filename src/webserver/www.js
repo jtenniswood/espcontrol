@@ -85,18 +85,18 @@
     "Roller Shade", "Roller Shade Closed", "Router", "Router Network", "Security", "Shower",
     "Skip Next", "Skip Previous", "Smoke Detector", "Snowflake", "Snowflake Alert", "Snowflake Thermometer",
     "Sofa", "Solar Panel", "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker",
-    "Spotlight", "Sprinkler", "Stop", "String Lights", "String Lights Off", "Power Socket UK", "Power Socket EU",
-    "Power Socket US", "Sun", "Table", "Television", "Television Off", "Thermometer",
-    "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermostat", "Home-Thermostat", "Thermostat Auto",
-    "Thermometer Water", "Timer", "Toilet", "Transmission Tower", "Trash Can", "Volume High",
-    "Wall Outlet", "Wall Sconce", "Washer", "Water", "Water Heater", "Water Percent",
-    "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog", "Weather Hail",
-    "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night", "Weather Night Cloudy",
-    "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy", "Weather Pouring",
-    "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny", "Weather Sunny Alert",
-    "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado", "Weather Windy",
-    "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check", "Window Closed",
-    "Window Open", "Window Shutter", "Window Shutter Open",
+    "Spotlight", "Sprinkler", "Stop", "String Lights", "String Lights Off", "Power Socket UK",
+    "Power Socket EU", "Power Socket US", "Sun", "Table", "Television", "Television Off",
+    "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermostat", "Home-Thermostat",
+    "Thermostat Auto", "Thermometer Water", "Timer", "Toilet", "Transmission Tower", "Trash Can",
+    "Volume High", "Wall Outlet", "Wall Sconce", "Washer", "Water", "Water Heater",
+    "Water Percent", "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog",
+    "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night",
+    "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy",
+    "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny",
+    "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado",
+    "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check",
+    "Window Closed", "Window Open", "Window Shutter", "Window Shutter Open",
   ];
   // --- GENERATED:ICONS END ---
 
@@ -226,6 +226,7 @@
     "overflow:hidden;word-break:break-word;min-height:0}" +
     ".sp-sensor-badge{position:absolute;top:var(--sensor-top);right:var(--sensor-right);font-size:var(--sensor-fs);opacity:.5}" +
     ".sp-sensor-preview{display:flex;align-items:baseline;gap:1px;color:#fff}" +
+    ".sp-forecast-preview{white-space:nowrap}" +
     ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
     ".sp-forecast-value{font-size:calc(var(--btn-icon)*.72)}" +
     ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;opacity:.7}" +

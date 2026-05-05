@@ -870,6 +870,11 @@
       "mdi": "sprinkler"
     },
     {
+      "name": "Stop",
+      "codepoint": "F04DB",
+      "mdi": "stop"
+    },
+    {
       "name": "String Lights",
       "codepoint": "F12BA",
       "mdi": "string-lights"
