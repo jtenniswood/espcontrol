@@ -235,7 +235,8 @@ registerButtonType("media", {
         iconHtml:
           '<span class="sp-media-h-slider" style="background:#' + helpers.escHtml(trackColor) + '">' +
           '<span style="width:42%"></span></span>' +
-          '<span class="sp-media-position-time">1:31</span>',
+          '<span class="sp-sensor-preview sp-media-position-time">' +
+          '<span class="sp-sensor-value">1:31</span></span>',
         labelHtml: "",
       };
     }
