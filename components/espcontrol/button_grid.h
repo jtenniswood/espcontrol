@@ -3216,6 +3216,10 @@ inline void send_light_temp_action(const std::string &entity_id, int pct, int mi
   esphome::api::global_api_server->send_homeassistant_action(req);
 }
 
+inline const char *light_temp_icon(const std::string &icon) {
+  return (!icon.empty() && icon != "Auto") ? find_icon(icon.c_str()) : find_icon("Lightbulb");
+}
+
 inline std::string media_card_mode(const std::string &sensor) {
   if (sensor == "volume" || sensor == "position" ||
       sensor == "now_playing" || sensor == "play_pause" ||
@@ -3858,6 +3862,7 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
 // Build the visual for a light temperature slider card.
 inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color) {
   setup_toggle_visual(s, p);
+  lv_label_set_text(s.icon_lbl, light_temp_icon(p.icon));
   int min_k = 2000, max_k = 6500;
   parse_kelvin_range(p.unit, min_k, max_k);
   bool kcolor = (p.precision == "color");
@@ -4729,6 +4734,7 @@ inline lv_obj_t *setup_subpage_light_temp(lv_obj_t *btn, lv_obj_t *icon_lbl, lv_
                                            const SubpageBtn &sb, uint32_t on_color, lv_coord_t radius) {
   if (!sb.label.empty()) lv_label_set_text(text_lbl, sb.label.c_str());
   // friendly_name subscription deferred until ctx exists, so it can update cached_label.
+  lv_label_set_text(icon_lbl, light_temp_icon(sb.icon));
 
   int min_k = 2000, max_k = 6500;
   parse_kelvin_range(sb.unit, min_k, max_k);

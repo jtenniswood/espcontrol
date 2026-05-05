@@ -38,7 +38,7 @@ registerButtonType("light_temperature", {
     b.sensor = "";
     b.unit = "2000-6500";
     b.precision = "";
-    b.icon = "Auto";
+    b.icon = "Lightbulb";
     b.icon_on = "Auto";
   },
   renderSettings: function (panel, b, slot, helpers) {
@@ -129,7 +129,7 @@ registerButtonType("light_temperature", {
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Light Temp";
-    var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "thermometer";
+    var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "lightbulb";
     return {
       iconHtml:
         '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>' +
@@ -138,7 +138,7 @@ registerButtonType("light_temperature", {
         '</span></span>',
       labelHtml:
         '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
-        '<span class="sp-type-badge mdi mdi-thermometer"></span></span>',
+        '<span class="sp-type-badge mdi mdi-lightbulb"></span></span>',
     };
   },
 });
