@@ -119,9 +119,7 @@ registerButtonType("media", {
     if (mode === "position") {
       return {
         iconHtml:
-          '<span class="sp-slider-preview"><span class="sp-slider-track">' +
-            '<span class="sp-slider-fill" style="height:42%"></span>' +
-          '</span></span>' +
+          '<span class="sp-media-h-slider"><span style="width:42%"></span></span>' +
           '<span class="sp-media-position-time">1:31</span>',
         labelHtml:
           '<span class="sp-btn-label-row"><span class="sp-media-position-status">Playing</span>' +

@@ -3657,7 +3657,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   std::string mode = media_card_mode(p.sensor);
   bool position = mode == "position";
   bool volume = mode == "volume";
-  bool horizontal = !position;
+  bool horizontal = true;
 
   if (position) {
     if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
