@@ -112,14 +112,6 @@ registerButtonType("light_temperature", {
       }
     ));
 
-    // Color fill by temperature
-    var colorRow = helpers.toggleRow("Show light colour on card", helpers.idPrefix + "kelvin-color", b.precision === "color");
-    panel.appendChild(colorRow.row);
-    colorRow.input.addEventListener("change", function () {
-      b.precision = this.checked ? "color" : "";
-      helpers.saveField("precision", b.precision);
-    });
-
     // Label mode
     var labelMode = b.sensor === "kelvin" ? "setting" : "label";
     var labelModeField = document.createElement("div");

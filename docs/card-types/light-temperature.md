@@ -22,10 +22,6 @@ A light temperature slider card lets you control the colour temperature of a Hom
 
 ## Options
 
-### Show light colour on card
-
-When enabled, the fill bar changes colour to reflect the current colour temperature rather than using your configured accent colour. The fill transitions from a warm amber at the low end to a cool blue-white at the high end, giving you a visual indication of the current setting at a glance.
-
 ### Label
 
 Choose **Label** to show your configured label on the card. Choose **Setting** to replace the card's label with the live colour-temperature reading (for example, `2500K`) while the light is on. The value updates as the slider is dragged and as the light's `color_temp_kelvin` attribute changes in Home Assistant. When the light is off, the label reverts to your configured label (or the entity's friendly name).
