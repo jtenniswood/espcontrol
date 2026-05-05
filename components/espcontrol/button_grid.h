@@ -4404,6 +4404,23 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   return slider;
 }
 
+inline lv_obj_t *setup_media_position_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
+                                             lv_obj_t *text_lbl,
+                                             const ParsedCfg &p,
+                                             uint32_t on_color,
+                                             uint32_t track_color,
+                                             const lv_font_t *value_font,
+                                             lv_color_t text_color,
+                                             lv_coord_t pad) {
+  lv_obj_t *value_lbl = lv_label_create(btn);
+  if (value_font) lv_obj_set_style_text_font(value_lbl, value_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(value_lbl, text_color, LV_PART_MAIN);
+  lv_label_set_text(value_lbl, "0:00");
+  lv_obj_align(value_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
+  return setup_media_slider_layout(
+    btn, icon_lbl, text_lbl, value_lbl, p, on_color, track_color, pad);
+}
+
 inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                              uint32_t tertiary_color,
                              const lv_font_t *value_font) {
@@ -4427,13 +4444,16 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     return;
   }
   if (mode == "position") {
-    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(s.unit_lbl, "");
-    lv_label_set_text(s.sensor_lbl, "0:00");
-    lv_obj_move_foreground(s.sensor_container);
+    lv_coord_t position_pad = lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
+    lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
+    lv_obj_t *slider = setup_media_position_layout(
+      s.btn, s.icon_lbl, s.text_lbl, p, on_color, tertiary_color,
+      value_font, text_color, position_pad);
+    lv_obj_set_user_data(s.sensor_container, (void *)slider);
+    return;
   }
   lv_obj_t *slider = setup_media_slider_layout(s.btn, s.icon_lbl, s.text_lbl,
-    mode == "position" ? s.sensor_lbl : nullptr, p, on_color, tertiary_color, pad);
+    nullptr, p, on_color, tertiary_color, pad);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 }
 
@@ -6025,21 +6045,22 @@ inline void grid_phase2(
             }, LV_EVENT_CLICKED, ctx);
           }
         } else {
-          lv_obj_t *svl = nullptr;
           if (mode == "position") {
-            svl = lv_label_create(sb_btn);
-            lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
-            lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-            lv_label_set_text(svl, "0:00");
-            lv_obj_align(svl, LV_ALIGN_TOP_LEFT, sp_pad, sp_pad);
-          }
-          lv_obj_t *media_slider = setup_media_slider_layout(
-            sb_btn, sil, stl, svl, mp, has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR, sp_pad);
-          if (!mp.entity.empty()) {
-            subscribe_media_slider_state(sb_btn, media_slider, mp.entity);
-            if (mp.label.empty() && mode != "position")
-              subscribe_friendly_name(stl, mp.entity);
+            lv_obj_t *media_slider = setup_media_position_layout(
+              sb_btn, sil, stl, mp, has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+              cfg.sp_sensor_font, sp_txt_color, sp_pad);
+            if (!mp.entity.empty())
+              subscribe_media_slider_state(sb_btn, media_slider, mp.entity);
+          } else {
+            lv_obj_t *media_slider = setup_media_slider_layout(
+              sb_btn, sil, stl, nullptr, mp, has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR, sp_pad);
+            if (!mp.entity.empty()) {
+              subscribe_media_slider_state(sb_btn, media_slider, mp.entity);
+              if (mp.label.empty())
+                subscribe_friendly_name(stl, mp.entity);
+            }
           }
         }
 
