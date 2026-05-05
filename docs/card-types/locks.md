@@ -6,8 +6,6 @@ description:
 
 # Lock
 
-Lock cards are currently behind **Developer/Experimental Features**. Open the setup page with `?developer=experimental`, then enable **Developer/Experimental Features** in the Developer settings section.
-
 A Lock card controls a Home Assistant `lock` entity and shows whether it is locked, unlocked, opening, or in a problem state.
 
 ## Setting Up a Lock

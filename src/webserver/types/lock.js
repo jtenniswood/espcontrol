@@ -1,7 +1,6 @@
 // Lock card: lock/unlock toggle with safe default-to-lock behavior and state display.
 registerButtonType("lock", {
   label: "Lock",
-  experimental: "lock",
   allowInSubpage: true,
   hideLabel: true,
   onSelect: function (b) {

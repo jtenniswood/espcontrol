@@ -61,14 +61,14 @@ When you tap an Action card:
 
 If you want a shortcut that does several things, create a scene or script in Home Assistant first, then point the Action card at that scene or script. This keeps the panel setup simple and makes the behaviour easier to test inside Home Assistant.
 
-`Open Lock` is currently behind **Developer/Experimental Features**. Use a script for locks that require a PIN or code. EspControl does not store lock codes on the panel.
+Use a script for locks that require a PIN or code. EspControl does not store lock codes on the panel.
 
 Use an [Action](/card-types/actions) card when the panel should directly run something that already exists in Home Assistant. Use a [Trigger](/card-types/buttons) card when you want the panel to fire a custom event that a Home Assistant automation responds to.
 
 Use the dedicated card types for richer controls:
 
 - Use [Cover](/card-types/covers) for blinds, shutters, and covers.
-- Use [Lock](/card-types/locks) for locking and unlocking doors. Lock cards are currently behind **Developer/Experimental Features**.
+- Use [Lock](/card-types/locks) for locking and unlocking doors.
 - Use [Switch](/card-types/switches) or [Slider](/card-types/sliders) for lights.
 - Thermostat and climate controls are experimental. They are included in release firmware, but must be enabled from the hidden Developer/Experimental Features setting first.
 - Use [Media](/card-types/media) for media playback, volume, and track position. Media cards are currently behind **Developer/Experimental Features**.
