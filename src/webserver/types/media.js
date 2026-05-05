@@ -45,6 +45,13 @@ registerButtonType("media", {
       return icon === mediaDefaultIcon(value);
     }
 
+    function mediaActionLabel(value) {
+      var mode = validMode(value);
+      if (mode === "previous") return "Previous";
+      if (mode === "next") return "Next";
+      return "";
+    }
+
     var rawMode = b.sensor;
     b.sensor = validMode(b.sensor);
     if (rawMode === "controls" && isMediaDefaultIcon(rawMode, b.icon)) b.icon = "Auto";
@@ -73,6 +80,12 @@ registerButtonType("media", {
         b.precision = "";
         helpers.saveField("precision", "");
       }
+      if (b.sensor === "previous" || b.sensor === "next") {
+        b.label = mediaActionLabel(b.sensor);
+        b.icon = mediaDefaultIcon(b.sensor);
+        helpers.saveField("label", b.label);
+        helpers.saveField("icon", b.icon);
+      }
       helpers.saveField("sensor", b.sensor);
       renderButtonSettings();
     });
@@ -90,6 +103,11 @@ registerButtonType("media", {
     b.unit = "";
     b.precision = b.sensor === "play_pause" && b.precision === "state" ? "state" : "";
     b.icon_on = "Auto";
+    if ((b.sensor === "previous" || b.sensor === "next") && !b.label) {
+      b.label = b.sensor === "previous" ? "Previous" : "Next";
+    }
+    if (b.sensor === "previous" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Previous";
+    if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
 
     var displayField = document.createElement("div");
     var displaySelect = document.createElement("select");
