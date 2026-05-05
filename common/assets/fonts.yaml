@@ -60,9 +60,7 @@ font:
     id: setup_title_font
     size: 40
     bpp: 4
-    glyphs: >-
-      !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
-      ¡¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ—–…·°•€£¥¢
+    glyphs: !include setup_text_glyphs.yaml
     extras:
       - file: "gfonts://Heebo@Light"
         glyphs: !include hebrew_glyphs.yaml
@@ -72,9 +70,7 @@ font:
     id: setup_body_font
     size: 24
     bpp: 4
-    glyphs: >-
-      !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
-      ¡¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ—–…·°•€£¥¢
+    glyphs: !include setup_text_glyphs.yaml
     extras:
       - file: "gfonts://Heebo"
         glyphs: !include hebrew_glyphs.yaml

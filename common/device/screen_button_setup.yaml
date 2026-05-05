@@ -41,29 +41,29 @@ lvgl:
                     flex_flow: COLUMN
                     flex_align_main: center
                     flex_align_cross: center
-                    pad_row: 20
+                    pad_row: $setup_pad_row
                   widgets:
                     - label:
-                        text_font: icon_font_setup
+                        text_font: $setup_icon_font_id
                         text: $icon_cog
                         text_color: 0xFFFFFF
                         text_align: center
                     - label:
                         text: "Setup"
-                        text_font: setup_title_font
+                        text_font: $setup_title_font_id
                         text_color: 0xFFFFFF
                         width: $content_width
                         text_align: center
                     - label:
                         text: "Open your browser and\nconfigure your display"
-                        text_font: setup_body_font
+                        text_font: $setup_body_font_id
                         text_color: 0x888888
                         width: $content_width
                         text_align: center
                     - label:
                         id: setup_ip_label
                         text: "http://..."
-                        text_font: setup_title_font
+                        text_font: $setup_title_font_id
                         text_color: 0xFFFFFF
                         width: $content_width
                         text_align: center

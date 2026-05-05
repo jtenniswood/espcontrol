@@ -77,3 +77,34 @@ font:
     extras:
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Setup screen icons (96px, scaled from the 480x480 setup screens)
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: icon_font_setup_md_square
+    size: 96
+    bpp: 4
+    glyphs:
+      - "\U000F05A9"  # mdi-wifi
+      - "\U000F0200"  # mdi-ethernet
+      - "\U000F0493"  # mdi-cog
+      - "\U000F07D0"  # mdi-home-assistant
+
+  # Setup screen titles (60px, scaled from 40px)
+  - file: "gfonts://Roboto@Light"
+    id: setup_title_font_md_square
+    size: 60
+    bpp: 4
+    glyphs: !include ../../../common/assets/setup_text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Setup screen body text (36px, scaled from 24px)
+  - file: "gfonts://Roboto"
+    id: setup_body_font_md_square
+    size: 36
+    bpp: 4
+    glyphs: !include ../../../common/assets/setup_text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml

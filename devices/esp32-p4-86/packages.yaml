@@ -12,6 +12,14 @@ substitutions:
   screen_width: "720"
   screen_height: "720"
   content_width: "570"
+  setup_icon_font_id: icon_font_setup_md_square
+  setup_title_font_id: setup_title_font_md_square
+  setup_body_font_id: setup_body_font_md_square
+  setup_pad_row: "30"
+  setup_loading_pad_row: "60"
+  setup_action_button_width: "300"
+  setup_action_button_height: "84"
+  setup_action_button_radius: "18"
   icon_font: icon_font_md_square
   label_font: label_font_md_square
   unit_font: label_font_md_square

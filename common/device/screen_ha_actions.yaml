@@ -42,36 +42,36 @@ lvgl:
                     flex_flow: COLUMN
                     flex_align_main: center
                     flex_align_cross: center
-                    pad_row: 20
+                    pad_row: $setup_pad_row
                   widgets:
                     - label:
-                        text_font: icon_font_setup
+                        text_font: $setup_icon_font_id
                         text: $icon_home_assistant
                         text_color: 0xFFFFFF
                         text_align: center
                     - label:
                         text: "Home Assistant"
-                        text_font: setup_title_font
+                        text_font: $setup_title_font_id
                         text_color: 0xFFFFFF
                         width: $content_width
                         text_align: center
                     - label:
                         text: "Allow this device to perform\nHome Assistant actions"
-                        text_font: setup_body_font
+                        text_font: $setup_body_font_id
                         text_color: 0x888888
                         width: $content_width
                         text_align: center
                     - label:
                         text: "See the install guide for help"
-                        text_font: setup_body_font
+                        text_font: $setup_body_font_id
                         text_color: 0x555555
                         width: $content_width
                         text_align: center
                     - button:
-                        width: 200
-                        height: 56
+                        width: $setup_action_button_width
+                        height: $setup_action_button_height
                         bg_color: 0x333333
-                        radius: 12
+                        radius: $setup_action_button_radius
                         shadow_width: 0
                         on_click:
                           then:
@@ -80,5 +80,5 @@ lvgl:
                           - label:
                               align: center
                               text: "Done"
-                              text_font: setup_body_font
+                              text_font: $setup_body_font_id
                               text_color: 0xFFFFFF

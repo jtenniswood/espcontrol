@@ -12,6 +12,14 @@ substitutions:
   screen_width: "1024"
   screen_height: "600"
   content_width: "550"
+  setup_icon_font_id: icon_font_setup
+  setup_title_font_id: setup_title_font
+  setup_body_font_id: setup_body_font
+  setup_pad_row: "20"
+  setup_loading_pad_row: "40"
+  setup_action_button_width: "200"
+  setup_action_button_height: "56"
+  setup_action_button_radius: "12"
   icon_font: icon_font
   label_font: label_font_lt
   unit_font: label_font_lt
