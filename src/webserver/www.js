@@ -575,7 +575,7 @@
     indoorEntity: "",
     outdoorEntity: "",
     temperatureUnit: "Auto",
-    clockBarOn: true,
+    clockBarOn: false,
     temperatureDegreeSymbolOn: true,
     presenceEntity: "",
     screensaverMode: "disabled",
@@ -5671,7 +5671,7 @@
           postSwitch("Outdoor Temp Enable", !!s.outdoor_temp_enable);
           postText("Indoor Temp Entity", s.indoor_temp_entity || "");
           postText("Outdoor Temp Entity", s.outdoor_temp_entity || "");
-          postClockBar(s.clock_bar != null ? !!s.clock_bar : true);
+          postClockBar(s.clock_bar != null ? !!s.clock_bar : false);
           postTemperatureDegreeSymbol(s.temperature_degree_symbol != null ? !!s.temperature_degree_symbol : true);
           var importedTimezone = s.timezone || state.timezone;
           var importedTemperatureUnit = normalizeTemperatureUnit(s.temperature_unit);
@@ -5746,7 +5746,7 @@
           state.indoorEntity = s.indoor_temp_entity || "";
           state.outdoorEntity = s.outdoor_temp_entity || "";
           state.temperatureUnit = importedTemperatureUnit;
-          state.clockBarOn = s.clock_bar != null ? !!s.clock_bar : true;
+          state.clockBarOn = s.clock_bar != null ? !!s.clock_bar : false;
           state.temperatureDegreeSymbolOn = s.temperature_degree_symbol != null ? !!s.temperature_degree_symbol : true;
           state.timezone = importedTimezone;
           state.clockFormat = importedClockFormat;

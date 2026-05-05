@@ -49,7 +49,7 @@ switch:
     internal: true
     id: clock_bar_enabled
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON
+    restore_mode: RESTORE_DEFAULT_OFF
     entity_category: config
     icon: "mdi:clock-digital"
     web_server:
