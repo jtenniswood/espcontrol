@@ -3021,14 +3021,24 @@ inline int cover_position_value(const std::string &value) {
   return static_cast<int>(pos);
 }
 
+inline uint32_t next_cover_stop_call_id() {
+  static uint32_t call_id = 200000;
+  return call_id++;
+}
+
 inline void send_cover_command_action(const ParsedCfg &p) {
   const char *service = cover_command_service(p.sensor);
-  if (p.entity.empty() || service == nullptr) return;
+  if (p.entity.empty() || service == nullptr || esphome::api::global_api_server == nullptr) return;
 
   bool has_position = p.sensor == "set_position";
+  bool wants_stop_response = p.sensor == "stop";
   esphome::api::HomeassistantActionRequest req;
   req.service = decltype(req.service)(service);
   req.is_event = false;
+  if (wants_stop_response) {
+    req.call_id = next_cover_stop_call_id();
+    req.wants_response = true;
+  }
   req.data.init(has_position ? 2 : 1);
   auto &entity_kv = req.data.emplace_back();
   entity_kv.key = decltype(entity_kv.key)("entity_id");
@@ -3039,6 +3049,17 @@ inline void send_cover_command_action(const ParsedCfg &p) {
     auto &position_kv = req.data.emplace_back();
     position_kv.key = decltype(position_kv.key)("position");
     position_kv.value = decltype(position_kv.value)(buf);
+  }
+  if (wants_stop_response) {
+    std::string entity_id = p.entity;
+    esphome::api::global_api_server->register_action_response_callback(
+      req.call_id,
+      [entity_id](const esphome::api::ActionResponse &response) {
+        if (response.is_success()) return;
+        ESP_LOGW("cover", "cover.stop_cover failed for %s: %s; falling back to cover toggle",
+                 entity_id.c_str(), response.get_error_message().c_str());
+        send_toggle_action(entity_id);
+      });
   }
   esphome::api::global_api_server->send_homeassistant_action(req);
 }
