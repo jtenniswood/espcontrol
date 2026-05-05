@@ -417,6 +417,17 @@ assertButtonRoundTrip(hooks, "media position card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "media now playing card", {
+  entity: "media_player.office",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "now_playing",
+  unit: "",
+  type: "media",
+  precision: "",
+}, false);
+
 const subpageStateOff = buttonShape({
   label: "Windows",
   icon: "Window Closed",
@@ -682,13 +693,14 @@ assertSubpageRoundTrip(hooks, "lock subpage", {
 }, true);
 
 assertSubpageRoundTrip(hooks, "media subpage", {
-  order: ["1", "B", "2", "3", "4", "5"],
+  order: ["1", "B", "2", "3", "4", "5", "6"],
   buttons: [
     buttonShape({ entity: "media_player.living_room", label: "Play/Pause", icon: "Auto", sensor: "play_pause", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Previous", icon: "Auto", sensor: "previous", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Next", icon: "Auto", sensor: "next", type: "media" }),
     buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Volume High", sensor: "volume", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "Office", icon: "Progress Clock", sensor: "position", type: "media" }),
+    buttonShape({ entity: "media_player.office", label: "", icon: "Auto", sensor: "now_playing", type: "media" }),
   ],
 }, true);
 

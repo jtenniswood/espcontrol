@@ -120,7 +120,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
       p.sensor = "play_pause";
     } else if (p.sensor != "play_pause" && p.sensor != "previous" &&
                p.sensor != "next" && p.sensor != "volume" &&
-               p.sensor != "position") {
+               p.sensor != "position" && p.sensor != "now_playing") {
       p.sensor = "play_pause";
     }
   }
@@ -3140,7 +3140,8 @@ inline void send_slider_action(const std::string &entity_id, int value, bool cov
 
 inline std::string media_card_mode(const std::string &sensor) {
   if (sensor == "volume" || sensor == "position" ||
-      sensor == "play_pause" || sensor == "previous" || sensor == "next")
+      sensor == "now_playing" || sensor == "play_pause" ||
+      sensor == "previous" || sensor == "next")
     return sensor;
   if (sensor == "controls") return "play_pause";
   return "play_pause";
@@ -3591,6 +3592,7 @@ inline const char *media_default_icon(const std::string &mode,
   if (mode == "play_pause") return find_icon("Play Pause");
   if (mode == "volume") return find_icon("Volume High");
   if (mode == "position") return find_icon("Progress Clock");
+  if (mode == "now_playing") return find_icon("Music");
   return find_icon("Play Pause");
 }
 
@@ -3639,6 +3641,15 @@ inline std::string media_status_text(const std::string &state) {
   if (state == "unavailable") return "Unavailable";
   if (state == "unknown" || state.empty()) return "Unknown";
   return sentence_cap_text(state);
+}
+
+inline void media_set_metadata_text(lv_obj_t *label, esphome::StringRef value,
+                                    const char *fallback) {
+  if (!label) return;
+  std::string text = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+  if (text.empty() || text == "unknown" || text == "unavailable")
+    text = fallback ? fallback : "--";
+  lv_label_set_text(label, text.c_str());
 }
 
 inline bool media_seek_pending_active(SliderCtx *ctx) {
@@ -3714,6 +3725,28 @@ inline void setup_media_action_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     configure_button_label_wrap(text_lbl);
   }
   apply_push_button_transition(btn);
+}
+
+inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
+                                           lv_obj_t *title_lbl,
+                                           lv_obj_t *artist_lbl,
+                                           const lv_font_t *title_font,
+                                           lv_coord_t pad) {
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (title_lbl) {
+    if (title_font) lv_obj_set_style_text_font(title_lbl, title_font, LV_PART_MAIN);
+    lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(title_lbl, lv_pct(100));
+    lv_label_set_text(title_lbl, "--");
+    lv_obj_move_foreground(title_lbl);
+  }
+  if (artist_lbl) {
+    lv_label_set_text(artist_lbl, "--");
+    lv_obj_align(artist_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+    configure_button_label_wrap(artist_lbl);
+    lv_obj_move_foreground(artist_lbl);
+  }
 }
 
 inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
@@ -3820,12 +3853,21 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   return slider;
 }
 
-inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color) {
+inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
+                             const lv_font_t *value_font) {
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
   std::string mode = media_card_mode(p.sensor);
   if (media_playback_button_mode(mode)) {
     setup_media_action_layout(s.btn, s.icon_lbl, s.text_lbl, p);
+    return;
+  }
+  if (mode == "now_playing") {
+    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_width(s.sensor_container, lv_pct(100));
+    lv_label_set_text(s.unit_lbl, "");
+    setup_media_now_playing_layout(
+      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, value_font, pad);
     return;
   }
   if (mode == "position" || mode == "volume") {
@@ -3854,6 +3896,26 @@ inline void subscribe_media_state(lv_obj_t *btn_ptr,
           std::string label = media_status_text(state_text);
           lv_label_set_text(status_lbl, label.c_str());
         }
+      })
+  );
+}
+
+inline void subscribe_media_now_playing_state(lv_obj_t *title_lbl,
+                                              lv_obj_t *artist_lbl,
+                                              const std::string &entity_id) {
+  if (entity_id.empty()) return;
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, std::string("media_title"),
+    std::function<void(esphome::StringRef)>(
+      [title_lbl](esphome::StringRef title) {
+        media_set_metadata_text(title_lbl, title, "--");
+      })
+  );
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, std::string("media_artist"),
+    std::function<void(esphome::StringRef)>(
+      [artist_lbl](esphome::StringRef artist) {
+        media_set_metadata_text(artist_lbl, artist, "--");
       })
   );
 }
@@ -4403,7 +4465,7 @@ inline void grid_phase1(
       continue;
     }
     if (p.type == "media") {
-      setup_media_card(s, p, has_on ? on_val : DEFAULT_SLIDER_COLOR);
+      setup_media_card(s, p, has_on ? on_val : DEFAULT_SLIDER_COLOR, cfg.sp_sensor_font);
       continue;
     }
     if (p.type == "slider" || p.type == "cover") {
@@ -4614,6 +4676,8 @@ inline void grid_phase2(
           subscribe_media_state(s.btn, media_play_pause_show_state(p) ? s.text_lbl : nullptr, p.entity);
         } else if (media_playback_button_mode(mode)) {
           // Previous/next are momentary actions and do not reflect player state.
+        } else if (mode == "now_playing") {
+          subscribe_media_now_playing_state(s.sensor_lbl, s.text_lbl, p.entity);
         } else {
           lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
           if (slider) subscribe_media_slider_state(s.btn, slider, p.entity);
@@ -5259,6 +5323,14 @@ inline void grid_phase2(
             if (mode == "play_pause")
               subscribe_media_state(sb_btn, media_play_pause_show_state(mp) ? stl : nullptr, mp.entity);
           }
+        } else if (mode == "now_playing") {
+          lv_obj_t *svl = lv_label_create(sb_btn);
+          lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
+          lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
+          lv_obj_align(svl, LV_ALIGN_TOP_LEFT, sp_pad, sp_pad);
+          setup_media_now_playing_layout(sb_btn, sil, svl, stl, cfg.sp_sensor_font, sp_pad);
+          if (!mp.entity.empty())
+            subscribe_media_now_playing_state(svl, stl, mp.entity);
         } else {
           lv_obj_t *svl = nullptr;
           if (mode == "position" || mode == "volume") {

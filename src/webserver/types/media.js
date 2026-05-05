@@ -1,4 +1,4 @@
-// Media player card: playback buttons, volume, or track position for media_player entities.
+// Media player card: playback buttons, volume, track position, or now-playing details.
 registerButtonType("media", {
   label: "Media",
   experimental: "media",
@@ -20,6 +20,7 @@ registerButtonType("media", {
       ["next", "Next Button"],
       ["volume", "Volume Slider"],
       ["position", "Track Position"],
+      ["now_playing", "Now Playing"],
     ];
 
     function validMode(value) {
@@ -36,6 +37,7 @@ registerButtonType("media", {
       if (mode === "next") return "Skip Next";
       if (mode === "volume") return "Volume High";
       if (mode === "position") return "Progress Clock";
+      if (mode === "now_playing") return "Music";
       return "Play Pause";
     }
 
@@ -95,7 +97,8 @@ registerButtonType("media", {
   renderSettings: function (panel, b, slot, helpers) {
     function validMode(value) {
       if (value === "controls") return "play_pause";
-      if (value === "previous" || value === "next" || value === "volume" || value === "position") return value;
+      if (value === "previous" || value === "next" || value === "volume" ||
+          value === "position" || value === "now_playing") return value;
       return "play_pause";
     }
 
@@ -147,7 +150,7 @@ registerButtonType("media", {
     panel.appendChild(displayField);
     syncDisplayField();
 
-    if (b.sensor !== "play_pause" || b.precision !== "state") {
+    if (b.sensor !== "now_playing" && (b.sensor !== "play_pause" || b.precision !== "state")) {
       var lf = document.createElement("div");
       lf.className = "sp-field";
       lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
@@ -166,13 +169,15 @@ registerButtonType("media", {
     helpers.bindField(entityInp, "entity", true);
     helpers.requireField(entityInp, "Add an entity before saving.");
 
-    panel.appendChild(helpers.makeIconPicker(
-      helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
-      b.icon || "Speaker", function (opt) {
-        b.icon = opt || "Speaker";
-        helpers.saveField("icon", b.icon);
-      }
-    ));
+    if (b.sensor !== "now_playing") {
+      panel.appendChild(helpers.makeIconPicker(
+        helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
+        b.icon || "Speaker", function (opt) {
+          b.icon = opt || "Speaker";
+          helpers.saveField("icon", b.icon);
+        }
+      ));
+    }
   },
   renderPreview: function (b, helpers) {
     function modeInfo(value) {
@@ -181,6 +186,7 @@ registerButtonType("media", {
       if (value === "next") return { mode: "next", label: "Next", icon: "skip-next" };
       if (value === "volume") return { mode: "volume", label: "Media", icon: "volume-high" };
       if (value === "position") return { mode: "position", label: "Media", icon: "progress-clock" };
+      if (value === "now_playing") return { mode: "now_playing", label: "Now Playing", icon: "music" };
       return { mode: "play_pause", label: "Play/Pause", icon: "play-pause" };
     }
     var info = modeInfo(b.sensor);
@@ -206,6 +212,15 @@ registerButtonType("media", {
           '<span class="sp-media-position-time">1:31</span>',
         labelHtml:
           '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-position-status">Playing</span>' +
+          badge + '</span>',
+      };
+    }
+    if (mode === "now_playing") {
+      return {
+        iconHtml:
+          '<span class="sp-media-now-title">Midnight City</span>',
+        labelHtml:
+          '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">M83</span>' +
           badge + '</span>',
       };
     }

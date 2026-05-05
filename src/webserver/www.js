@@ -239,6 +239,9 @@
     ".sp-media-h-slider span{display:block;width:62%;height:100%;background:var(--accent);border-radius:999px}" +
     ".sp-media-position-time{font-size:calc(var(--btn-icon)*.72);line-height:1;color:#fff;font-weight:300;z-index:1}" +
     ".sp-media-position-status{font-size:var(--btn-label);line-height:1.2;color:#fff;z-index:1}" +
+    ".sp-media-now-title{font-size:var(--btn-icon);line-height:1;color:#fff;font-weight:300;z-index:1;" +
+    "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
+    ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff}" +
     ".sp-btn-double{grid-row:span 2}" +
     ".sp-btn-double .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
     ".sp-btn-double .sp-btn-label-row .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
@@ -1722,7 +1725,7 @@
       } else if (!b.sensor) {
         b.sensor = "play_pause";
       }
-      if (["play_pause", "previous", "next", "volume", "position"].indexOf(b.sensor) < 0) {
+      if (["play_pause", "previous", "next", "volume", "position", "now_playing"].indexOf(b.sensor) < 0) {
         b.sensor = "play_pause";
       }
     }
