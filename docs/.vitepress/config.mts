@@ -411,6 +411,7 @@ export default defineConfig({
           { text: 'Trigger', link: '/card-types/buttons' },
           { text: 'Sensor', link: '/card-types/sensors' },
           { text: 'Slider', link: '/card-types/sliders' },
+          { text: 'Light Temperature Slider', link: '/card-types/light-temperature' },
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
           { text: 'Lock', link: '/card-types/locks' },
