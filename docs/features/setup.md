@@ -33,7 +33,7 @@ The **Type** dropdown uses these card names on the device:
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
 | **[Cover](/card-types/covers)** | Controls blinds, shutters, and similar cover entities with a slider or tap action. | Yes |
 | **[Garage Door](/card-types/garage-doors)** | Controls a garage door cover entity with an open/close tap action. | Yes |
-| **[Media](/card-types/media)** | Controls media playback, volume, or track position for a media player. Hidden until **Developer/Experimental Features** is enabled. | Yes |
+| **[Media](/card-types/media)** | Controls media playback, opens a volume popup, or shows track details for a media player. Hidden until **Developer/Experimental Features** is enabled. | Yes |
 | **[Date](/card-types/calendar)** | Shows the local date, or the date and time. | No |
 | **[World Clock](/card-types/timezones)** | Shows the current time for another city. | No, choose a city/timezone |
 | **[Weather](/card-types/weather)** | Shows the current condition or tomorrow's forecast from a weather entity. | Yes, as **Weather Entity** |

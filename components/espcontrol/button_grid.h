@@ -3285,8 +3285,12 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     send_action_card_action(p);
   } else if (p.type == "media") {
     std::string mode = media_card_mode(p.sensor);
-    if (media_playback_button_mode(mode))
+    if (mode == "volume") {
+      MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_obj_get_user_data(btn_obj);
+      if (ctx) media_volume_open_modal(ctx);
+    } else if (media_playback_button_mode(mode)) {
       send_media_playback_action(p.entity, mode);
+    }
   } else if (p.type == "slider" || p.type == "cover") {
     if (!p.entity.empty()) send_slider_action(p.entity, -1, cover_tilt_mode(p.sensor));
   } else {
@@ -3304,7 +3308,6 @@ struct SliderCtx {
   bool cover_tilt;
   bool inverted;
   lv_coord_t radius;
-  bool media_volume = false;
   bool media_position = false;
   float media_duration = 0.0f;
   float media_position_seconds = 0.0f;
@@ -3321,6 +3324,37 @@ struct SliderCtx {
 
 constexpr uint32_t MEDIA_SEEK_PENDING_TIMEOUT_MS = 3000;
 constexpr float MEDIA_SEEK_MATCH_TOLERANCE_SECONDS = 2.0f;
+
+struct MediaVolumeCtx {
+  std::string entity_id;
+  std::string label;
+  int current_pct = 0;
+  int pending_pct = -1;
+  uint32_t pending_until_ms = 0;
+  uint32_t accent_color = DEFAULT_SLIDER_COLOR;
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *label_lbl = nullptr;
+  const lv_font_t *value_font = nullptr;
+  const lv_font_t *label_font = nullptr;
+  const lv_font_t *icon_font = nullptr;
+};
+
+struct MediaVolumeModalUi {
+  lv_obj_t *overlay = nullptr;
+  lv_obj_t *panel = nullptr;
+  lv_obj_t *arc = nullptr;
+  lv_obj_t *title_lbl = nullptr;
+  lv_obj_t *pct_lbl = nullptr;
+  lv_obj_t *minus_btn = nullptr;
+  lv_obj_t *plus_btn = nullptr;
+  MediaVolumeCtx *active = nullptr;
+  bool updating_arc = false;
+};
+
+inline MediaVolumeModalUi &media_volume_modal_ui() {
+  static MediaVolumeModalUi ui;
+  return ui;
+}
 
 inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizontal) {
   if (!slider || !btn) return;
@@ -3654,6 +3688,196 @@ inline void media_format_percent(int percent, char *buf, size_t size) {
   snprintf(buf, size, "%d%%", percent);
 }
 
+inline int media_clamp_percent(int value) {
+  if (value < 0) return 0;
+  if (value > 100) return 100;
+  return value;
+}
+
+inline bool media_volume_pending_active(MediaVolumeCtx *ctx) {
+  return ctx && ctx->pending_until_ms != 0 &&
+         (int32_t)(ctx->pending_until_ms - esphome::millis()) > 0;
+}
+
+inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct);
+
+inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
+                                       bool from_user, bool send_action) {
+  if (!ctx) return;
+  pct = media_clamp_percent(pct);
+  ctx->current_pct = pct;
+  if (from_user) {
+    ctx->pending_pct = pct;
+    ctx->pending_until_ms = esphome::millis() + 1500;
+  }
+  media_volume_set_modal_value(ctx, pct);
+  if (send_action) send_media_volume_action(ctx->entity_id, pct);
+}
+
+inline void media_volume_hide_modal() {
+  MediaVolumeModalUi &ui = media_volume_modal_ui();
+  if (ui.overlay) lv_obj_del(ui.overlay);
+  ui.overlay = nullptr;
+  ui.panel = nullptr;
+  ui.arc = nullptr;
+  ui.title_lbl = nullptr;
+  ui.pct_lbl = nullptr;
+  ui.minus_btn = nullptr;
+  ui.plus_btn = nullptr;
+  ui.active = nullptr;
+  ui.updating_arc = false;
+}
+
+inline lv_obj_t *media_volume_create_round_button(lv_obj_t *parent, lv_coord_t size,
+                                                  const char *text,
+                                                  const lv_font_t *font,
+                                                  uint32_t border_color,
+                                                  uint32_t bg_color) {
+  lv_obj_t *btn = lv_btn_create(parent);
+  lv_obj_set_size(btn, size, size);
+  lv_obj_set_style_radius(btn, size / 2, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_color(btn, lv_color_hex(border_color), LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 2, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_t *label = lv_label_create(btn);
+  lv_label_set_text(label, text);
+  lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+  lv_obj_center(label);
+  return btn;
+}
+
+inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
+  MediaVolumeModalUi &ui = media_volume_modal_ui();
+  if (!ctx || !ui.overlay || !ui.panel) return;
+  lv_disp_t *disp = lv_disp_get_default();
+  lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
+  lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
+  lv_coord_t short_side = sw < sh ? sw : sh;
+  lv_coord_t panel_w = sw * 78 / 100;
+  lv_coord_t panel_h = sh * 78 / 100;
+  if (panel_w > 620) panel_w = 620;
+  if (panel_h > 620) panel_h = 620;
+  if (panel_w < short_side * 78 / 100) panel_w = short_side * 78 / 100;
+  if (panel_h < short_side * 78 / 100) panel_h = short_side * 78 / 100;
+  lv_coord_t arc_size = panel_w < panel_h ? panel_w : panel_h;
+  arc_size = arc_size * 78 / 100;
+  if (arc_size < 220) arc_size = short_side * 62 / 100;
+  lv_coord_t btn_size = short_side * 15 / 100;
+  if (btn_size < 54) btn_size = 54;
+  if (btn_size > 108) btn_size = 108;
+
+  lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
+  lv_obj_set_size(ui.panel, panel_w, panel_h);
+  lv_obj_align(ui.panel, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_size(ui.arc, arc_size, arc_size);
+  lv_obj_align(ui.arc, LV_ALIGN_CENTER, 0, 10);
+  lv_obj_set_style_arc_width(ui.arc, short_side < 520 ? 18 : 28, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(ui.arc, short_side < 520 ? 18 : 28, LV_PART_INDICATOR);
+  lv_obj_set_style_pad_all(ui.arc, short_side < 520 ? 8 : 12, LV_PART_KNOB);
+  lv_obj_set_size(ui.minus_btn, btn_size, btn_size);
+  lv_obj_set_style_radius(ui.minus_btn, btn_size / 2, LV_PART_MAIN);
+  lv_obj_set_size(ui.plus_btn, btn_size, btn_size);
+  lv_obj_set_style_radius(ui.plus_btn, btn_size / 2, LV_PART_MAIN);
+  lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, -arc_size / 7);
+  lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, 18);
+  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + 18) / 2, arc_size / 2 - btn_size / 3);
+  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + 18) / 2, arc_size / 2 - btn_size / 3);
+}
+
+inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
+  MediaVolumeModalUi &ui = media_volume_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  pct = media_clamp_percent(pct);
+  if (ui.arc) {
+    ui.updating_arc = true;
+    lv_arc_set_value(ui.arc, pct);
+    ui.updating_arc = false;
+  }
+  if (ui.pct_lbl) {
+    char buf[12];
+    media_format_percent(pct, buf, sizeof(buf));
+    lv_label_set_text(ui.pct_lbl, buf);
+  }
+}
+
+inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
+  if (!ctx) return;
+  media_volume_hide_modal();
+  MediaVolumeModalUi &ui = media_volume_modal_ui();
+  ui.active = ctx;
+
+  lv_obj_t *parent = lv_scr_act();
+  ui.overlay = lv_obj_create(parent);
+  lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_bg_color(ui.overlay, lv_color_hex(0x000000), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.overlay, LV_OPA_60, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.overlay, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.overlay, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_event_cb(ui.overlay, [](lv_event_t *) { media_volume_hide_modal(); },
+    LV_EVENT_CLICKED, nullptr);
+
+  ui.panel = lv_obj_create(ui.overlay);
+  lv_obj_set_style_bg_color(ui.panel, lv_color_hex(0x252525), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.panel, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(ui.panel, 18, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.panel, LV_OBJ_FLAG_SCROLLABLE);
+
+  ui.arc = lv_arc_create(ui.panel);
+  lv_arc_set_bg_angles(ui.arc, 135, 45);
+  lv_arc_set_range(ui.arc, 0, 100);
+  lv_arc_set_value(ui.arc, ctx->current_pct);
+  lv_obj_set_style_bg_opa(ui.arc, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.arc, 0, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(ui.arc, lv_color_hex(0x333333), LV_PART_MAIN);
+  lv_obj_set_style_arc_color(ui.arc, lv_color_hex(ctx->accent_color), LV_PART_INDICATOR);
+  lv_obj_set_style_arc_rounded(ui.arc, true, LV_PART_MAIN);
+  lv_obj_set_style_arc_rounded(ui.arc, true, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(ui.arc, lv_color_hex(0xFFFFFF), LV_PART_KNOB);
+  lv_obj_set_style_border_width(ui.arc, 0, LV_PART_KNOB);
+  lv_obj_set_style_shadow_width(ui.arc, 0, LV_PART_KNOB);
+  lv_obj_add_flag(ui.arc, LV_OBJ_FLAG_ADV_HITTEST);
+  lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
+    MediaVolumeModalUi &ui = media_volume_modal_ui();
+    if (ui.updating_arc || !ui.active) return;
+    lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    media_volume_apply_percent(ui.active, lv_arc_get_value(arc), true, true);
+  }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+  ui.title_lbl = lv_label_create(ui.panel);
+  lv_label_set_text(ui.title_lbl, "Volume");
+  lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(0xA0A0A0), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(ui.title_lbl, ctx->label_font, LV_PART_MAIN);
+
+  ui.pct_lbl = lv_label_create(ui.panel);
+  lv_obj_set_style_text_color(ui.pct_lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (ctx->value_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->value_font, LV_PART_MAIN);
+
+  ui.minus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Minus"),
+    ctx->icon_font, 0xBDBDBD, 0x252525);
+  ui.plus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Plus"),
+    ctx->icon_font, 0xBDBDBD, 0x252525);
+  lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
+    MediaVolumeModalUi &ui = media_volume_modal_ui();
+    if (ui.active) media_volume_apply_percent(ui.active, ui.active->current_pct - 1, true, true);
+  }, LV_EVENT_CLICKED, nullptr);
+  lv_obj_add_event_cb(ui.plus_btn, [](lv_event_t *) {
+    MediaVolumeModalUi &ui = media_volume_modal_ui();
+    if (ui.active) media_volume_apply_percent(ui.active, ui.active->current_pct + 1, true, true);
+  }, LV_EVENT_CLICKED, nullptr);
+
+  media_volume_layout_modal(ctx);
+  media_volume_set_modal_value(ctx, ctx->current_pct);
+  lv_obj_move_foreground(ui.overlay);
+}
+
 inline std::string media_status_text(const std::string &state) {
   if (state == "playing") return "Playing";
   if (state == "paused") return "Paused";
@@ -3770,6 +3994,25 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   }
 }
 
+inline void setup_media_volume_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
+                                      lv_obj_t *text_lbl,
+                                      const ParsedCfg &p,
+                                      lv_coord_t pad) {
+  if (icon_lbl) {
+    lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(icon_lbl, media_default_icon("volume", p.icon));
+    lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
+    lv_obj_move_foreground(icon_lbl);
+  }
+  if (text_lbl) {
+    lv_label_set_text(text_lbl, media_label(p).c_str());
+    lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+    configure_button_label_wrap(text_lbl);
+    lv_obj_move_foreground(text_lbl);
+  }
+  apply_push_button_transition(btn);
+}
+
 inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            lv_obj_t *text_lbl, lv_obj_t *value_lbl,
                                            const ParsedCfg &p,
@@ -3777,8 +4020,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            lv_coord_t pad) {
   std::string mode = media_card_mode(p.sensor);
   bool position = mode == "position";
-  bool volume = mode == "volume";
-  bool horizontal = !volume;
+  bool horizontal = true;
 
   if (position) {
     if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -3789,18 +4031,6 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (text_lbl) {
       lv_label_set_text(text_lbl, "Paused");
       lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
-      lv_obj_move_foreground(text_lbl);
-    }
-  } else if (volume) {
-    if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    if (value_lbl) {
-      lv_label_set_text(value_lbl, "--");
-      lv_obj_move_foreground(value_lbl);
-    }
-    if (text_lbl) {
-      lv_label_set_text(text_lbl, media_label(p).c_str());
-      lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
-      configure_button_label_wrap(text_lbl);
       lv_obj_move_foreground(text_lbl);
     }
   } else {
@@ -3828,7 +4058,6 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   ctx->cover_tilt = false;
   ctx->inverted = false;
   ctx->radius = lv_obj_get_style_radius(btn, LV_PART_MAIN);
-  ctx->media_volume = mode == "volume";
   ctx->media_position = position;
   ctx->media_slider = slider;
   ctx->media_value_lbl = value_lbl;
@@ -3843,11 +4072,6 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     int val = lv_slider_get_value(sl);
     int fill_val = ctx->inverted ? 100 - val : val;
     slider_update_ctx_fill(ctx, lv_obj_get_parent(sl), fill_val);
-    if (ctx->media_volume && ctx->media_value_lbl) {
-      char pct_buf[12];
-      media_format_percent(val, pct_buf, sizeof(pct_buf));
-      lv_label_set_text(ctx->media_value_lbl, pct_buf);
-    }
     if (ctx->media_position && ctx->media_duration > 0.0f && ctx->media_value_lbl) {
       char time_buf[16];
       media_format_time(ctx->media_duration * val / 100.0f, time_buf, sizeof(time_buf));
@@ -3860,8 +4084,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(sl);
     if (!ctx || ctx->entity_id.empty()) return;
     int val = lv_slider_get_value(sl);
-    if (ctx->media_volume) send_media_volume_action(ctx->entity_id, val);
-    else if (ctx->media_position) {
+    if (ctx->media_position) {
       media_set_pending_seek_position(ctx, val);
       send_media_seek_action(ctx->entity_id, val, ctx->media_duration);
     }
@@ -3883,6 +4106,10 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     setup_media_action_layout(s.btn, s.icon_lbl, s.text_lbl, p);
     return;
   }
+  if (mode == "volume") {
+    setup_media_volume_button(s.btn, s.icon_lbl, s.text_lbl, p, pad);
+    return;
+  }
   if (mode == "now_playing") {
     lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_width(s.sensor_container, lv_pct(100));
@@ -3891,14 +4118,14 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, value_font, pad);
     return;
   }
-  if (mode == "position" || mode == "volume") {
+  if (mode == "position") {
     lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(s.unit_lbl, "");
-    lv_label_set_text(s.sensor_lbl, mode == "volume" ? "--" : "0:00");
+    lv_label_set_text(s.sensor_lbl, "0:00");
     lv_obj_move_foreground(s.sensor_container);
   }
   lv_obj_t *slider = setup_media_slider_layout(s.btn, s.icon_lbl, s.text_lbl,
-    (mode == "position" || mode == "volume") ? s.sensor_lbl : nullptr, p, on_color, pad);
+    mode == "position" ? s.sensor_lbl : nullptr, p, on_color, pad);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 }
 
@@ -3941,6 +4168,52 @@ inline void subscribe_media_now_playing_state(lv_obj_t *title_lbl,
   );
 }
 
+inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
+                                                   lv_obj_t *label_lbl,
+                                                   const ParsedCfg &p,
+                                                   uint32_t accent_color,
+                                                   const lv_font_t *value_font,
+                                                   const lv_font_t *label_font,
+                                                   const lv_font_t *icon_font) {
+  MediaVolumeCtx *ctx = new MediaVolumeCtx();
+  ctx->entity_id = p.entity;
+  ctx->label = media_label(p);
+  ctx->accent_color = accent_color;
+  ctx->btn = btn;
+  ctx->label_lbl = label_lbl;
+  ctx->value_font = value_font;
+  ctx->label_font = label_font;
+  ctx->icon_font = icon_font;
+  if (btn) lv_obj_set_user_data(btn, ctx);
+  return ctx;
+}
+
+inline void subscribe_media_volume_state(MediaVolumeCtx *ctx) {
+  if (!ctx || ctx->entity_id.empty()) return;
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    ctx->entity_id, std::string("volume_level"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef val) {
+        float level = 0.0f;
+        if (!parse_float_ref(val, level)) return;
+        int pct = media_clamp_percent((int)(level * 100.0f + 0.5f));
+        if (media_volume_pending_active(ctx)) {
+          if (pct != ctx->pending_pct) {
+            media_volume_set_modal_value(ctx, ctx->pending_pct);
+            return;
+          }
+          ctx->pending_pct = -1;
+          ctx->pending_until_ms = 0;
+        } else {
+          ctx->pending_pct = -1;
+          ctx->pending_until_ms = 0;
+        }
+        ctx->current_pct = pct;
+        media_volume_set_modal_value(ctx, pct);
+      })
+  );
+}
+
 inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
                                          lv_obj_t *slider,
                                          const std::string &entity_id) {
@@ -3963,29 +4236,6 @@ inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
         }
       })
   );
-
-  if (ctx->media_volume) {
-    esphome::api::global_api_server->subscribe_home_assistant_state(
-      entity_id, std::string("volume_level"),
-      std::function<void(esphome::StringRef)>(
-        [slider, btn_ptr, ctx](esphome::StringRef val) {
-          float level = 0.0f;
-          if (!parse_float_ref(val, level)) return;
-          int pct = (int)(level * 100.0f + 0.5f);
-          if (pct < 0) pct = 0;
-          if (pct > 100) pct = 100;
-          lv_slider_set_value(slider, pct, LV_ANIM_OFF);
-          if (ctx->media_value_lbl) {
-            char pct_buf[12];
-            media_format_percent(pct, pct_buf, sizeof(pct_buf));
-            lv_label_set_text(ctx->media_value_lbl, pct_buf);
-          }
-          if (ctx->fill)
-            slider_update_ctx_fill(ctx, btn_ptr, pct);
-        })
-    );
-    return;
-  }
 
   if (!ctx->media_position) return;
 
@@ -4099,7 +4349,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.sensor = "play_pause";
     } else if (b.sensor != "play_pause" && b.sensor != "previous" &&
                b.sensor != "next" && b.sensor != "volume" &&
-               b.sensor != "position") {
+               b.sensor != "position" && b.sensor != "now_playing") {
       b.sensor = "play_pause";
     }
   }
@@ -4696,6 +4946,13 @@ inline void grid_phase2(
           subscribe_media_state(s.btn, media_play_pause_show_state(p) ? s.text_lbl : nullptr, p.entity);
         } else if (media_playback_button_mode(mode)) {
           // Previous/next are momentary actions and do not reflect player state.
+        } else if (mode == "volume") {
+          MediaVolumeCtx *ctx = create_media_volume_context(
+            s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            cfg.sp_sensor_font, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+            cfg.icon_font);
+          subscribe_media_volume_state(ctx);
+          if (p.label.empty()) subscribe_friendly_name(s.text_lbl, p.entity);
         } else if (mode == "now_playing") {
           subscribe_media_now_playing_state(s.sensor_lbl, s.text_lbl, p.entity);
         } else {
@@ -5348,13 +5605,27 @@ inline void grid_phase2(
           setup_media_now_playing_layout(sb_btn, sil, svl, stl, cfg.sp_sensor_font, sp_pad);
           if (!mp.entity.empty())
             subscribe_media_now_playing_state(svl, stl, mp.entity);
+        } else if (mode == "volume") {
+          setup_media_volume_button(sb_btn, sil, stl, mp, sp_pad);
+          if (!mp.entity.empty()) {
+            MediaVolumeCtx *ctx = create_media_volume_context(
+              sb_btn, stl, mp, has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              cfg.sp_sensor_font, lv_obj_get_style_text_font(stl, LV_PART_MAIN),
+              cfg.icon_font);
+            subscribe_media_volume_state(ctx);
+            if (mp.label.empty()) subscribe_friendly_name(stl, mp.entity);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_event_get_user_data(e);
+              if (ctx) media_volume_open_modal(ctx);
+            }, LV_EVENT_CLICKED, ctx);
+          }
         } else {
           lv_obj_t *svl = nullptr;
-          if (mode == "position" || mode == "volume") {
+          if (mode == "position") {
             svl = lv_label_create(sb_btn);
             lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
             lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-            lv_label_set_text(svl, mode == "volume" ? "--" : "0:00");
+            lv_label_set_text(svl, "0:00");
             lv_obj_align(svl, LV_ALIGN_TOP_LEFT, sp_pad, sp_pad);
           }
           lv_obj_t *media_slider = setup_media_slider_layout(

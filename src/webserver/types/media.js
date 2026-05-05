@@ -18,7 +18,7 @@ registerButtonType("media", {
       ["play_pause", "Play/Pause Button"],
       ["previous", "Previous Button"],
       ["next", "Next Button"],
-      ["volume", "Volume Slider"],
+      ["volume", "Volume Button"],
       ["position", "Track Position"],
       ["now_playing", "Now Playing"],
     ];
@@ -196,10 +196,7 @@ registerButtonType("media", {
     if (mode === "volume") {
       return {
         iconHtml:
-          '<span class="sp-slider-preview"><span class="sp-slider-track">' +
-            '<span class="sp-slider-fill" style="width:100%;height:62%"></span>' +
-          '</span></span>' +
-          '<span class="sp-sensor-preview"><span class="sp-sensor-value">62%</span></span>',
+          '<span class="sp-btn-icon mdi mdi-' + (b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : info.icon) + '"></span>',
         labelHtml:
           '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
           badge + '</span>',

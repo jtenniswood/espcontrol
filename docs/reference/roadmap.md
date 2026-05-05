@@ -22,7 +22,7 @@ These are planned directions, not commitments. The order and scope may change ba
 
 | Item | Description |
 | --- | --- |
-| **Media controls** | Control playback, volume, and track position for Home Assistant media players |
+| **Media controls** | Control playback, open volume controls, and show track details for Home Assistant media players |
 
 ## Under Consideration
 
