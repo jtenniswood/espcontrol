@@ -395,6 +395,28 @@ assertButtonRoundTrip(hooks, "media next card", {
   precision: "",
 }, false);
 
+assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(
+  "media_player.living_room;Skip Previous;Auto;Auto;previous;;media"
+)), buttonShape({
+  entity: "media_player.living_room",
+  label: "Previous",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "previous",
+  type: "media",
+}), "legacy media previous label drops Skip");
+
+assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(
+  "media_player.living_room;Skip Next;Auto;Auto;next;;media"
+)), buttonShape({
+  entity: "media_player.living_room",
+  label: "Next",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "next",
+  type: "media",
+}), "legacy media next label drops Skip");
+
 assertButtonRoundTrip(hooks, "media volume card", {
   entity: "media_player.kitchen",
   label: "Kitchen",

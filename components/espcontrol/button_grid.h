@@ -124,6 +124,8 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
                p.sensor != "position" && p.sensor != "now_playing") {
       p.sensor = "play_pause";
     }
+    if (p.sensor == "previous" && p.label == "Skip Previous") p.label = "Previous";
+    if (p.sensor == "next" && p.label == "Skip Next") p.label = "Next";
   }
   return p;
 }
@@ -4395,6 +4397,8 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
                b.sensor != "position" && b.sensor != "now_playing") {
       b.sensor = "play_pause";
     }
+    if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
+    if (b.sensor == "next" && b.label == "Skip Next") b.label = "Next";
   }
   return b;
 }

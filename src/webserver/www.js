@@ -1867,6 +1867,8 @@
       if (["play_pause", "previous", "next", "volume", "position", "now_playing"].indexOf(b.sensor) < 0) {
         b.sensor = "play_pause";
       }
+      if (b.sensor === "previous" && b.label === "Skip Previous") b.label = "Previous";
+      if (b.sensor === "next" && b.label === "Skip Next") b.label = "Next";
     }
     return b;
   }

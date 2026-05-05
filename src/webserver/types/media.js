@@ -106,6 +106,14 @@ registerButtonType("media", {
     b.unit = "";
     b.precision = b.sensor === "play_pause" && b.precision === "state" ? "state" : "";
     b.icon_on = "Auto";
+    if (b.sensor === "previous" && b.label === "Skip Previous") {
+      b.label = "Previous";
+      helpers.saveField("label", b.label);
+    }
+    if (b.sensor === "next" && b.label === "Skip Next") {
+      b.label = "Next";
+      helpers.saveField("label", b.label);
+    }
     if ((b.sensor === "previous" || b.sensor === "next") && !b.label) {
       b.label = b.sensor === "previous" ? "Previous" : "Next";
     }
