@@ -2677,6 +2677,9 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
       lv_label_set_text(s.icon_lbl, "\U000F0741");
       apply_push_button_transition(s.btn);
     }
+    if (p.type == "push" && p.label.empty()) {
+      lv_label_set_text(s.text_lbl, "Push");
+    }
   }
 }
 
@@ -4691,136 +4694,92 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   return b;
 }
 
-// Create a slider button inside a subpage screen (reuses main grid slider logic)
-inline lv_obj_t *setup_subpage_slider(lv_obj_t *btn, lv_obj_t *icon_lbl, lv_obj_t *text_lbl,
-                                       const SubpageBtn &sb, uint32_t on_color, lv_coord_t radius) {
-  if (!sb.label.empty()) lv_label_set_text(text_lbl, sb.label.c_str());
-  else subscribe_friendly_name(text_lbl, sb.entity);
-
-  bool horiz = false;
-  lv_obj_t *sl = setup_slider_widget(btn, on_color, horiz);
-  lv_coord_t pad = radius + 4;
-  lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
-  lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
-  if (sb.type == "cover")
-    lv_label_set_text(icon_lbl, slider_icon_off(sb.type, sb.entity, sb.icon));
-
-  lv_obj_t *fill = lv_obj_get_child(btn, 0);
-  // Intentionally leaked -- lives for the lifetime of the display
-  SliderCtx *ctx = new SliderCtx();
-  ctx->entity_id = sb.entity;
-  ctx->fill = fill;
-  ctx->horizontal = horiz;
-  ctx->cover_tilt = sb.type == "cover" && cover_tilt_mode(sb.sensor);
-  ctx->inverted = is_cover_entity(sb.entity);
-  ctx->radius = radius;
-  lv_obj_set_user_data(sl, (void *)ctx);
-  slider_bind_geometry_refresh(btn, sl);
-
-  lv_obj_add_event_cb(sl, [](lv_event_t *e) {
-    lv_obj_t *s = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(s);
-    if (!c) return;
-    int val = lv_slider_get_value(s);
-    int fv = c->inverted ? 100 - val : val;
-    slider_update_ctx_fill(c, lv_obj_get_parent(s), fv);
-  }, LV_EVENT_VALUE_CHANGED, nullptr);
-
-  lv_obj_add_event_cb(sl, [](lv_event_t *e) {
-    lv_obj_t *s = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(s);
-    if (c && !c->entity_id.empty())
-      send_slider_action(c->entity_id, lv_slider_get_value(s), c->cover_tilt);
-  }, LV_EVENT_RELEASED, nullptr);
-
-  bool has_icon_on = slider_has_alt_icon(sb.type, sb.icon_on);
-  const char *sl_icon_on = has_icon_on ? slider_icon_on(sb.type, sb.entity, sb.icon, sb.icon_on) : nullptr;
-  const char *sl_icon_off = has_icon_on ? slider_icon_off(sb.type, sb.entity, sb.icon) : nullptr;
-  subscribe_slider_state(btn, icon_lbl, sl, has_icon_on, sl_icon_off, sl_icon_on,
-    sb.entity, ctx->cover_tilt);
-
-  // Intentionally leaked -- lives for the lifetime of the display
-  std::string *eid = new std::string(sb.entity);
-  lv_obj_add_event_cb(btn, [](lv_event_t *e) {
-    std::string *en = (std::string *)lv_event_get_user_data(e);
-    if (en && !en->empty()) send_slider_action(*en, -1);
-  }, LV_EVENT_CLICKED, eid);
-
-  return sl;
+inline ParsedCfg parsed_cfg_from_subpage_btn(const SubpageBtn &b) {
+  ParsedCfg p;
+  p.entity = b.entity;
+  p.label = b.label;
+  p.icon = b.icon;
+  p.icon_on = b.icon_on;
+  p.sensor = b.sensor;
+  p.unit = b.unit;
+  p.type = b.type;
+  p.precision = b.precision;
+  return normalize_parsed_cfg(p);
 }
 
-// Create a light temperature slider inside a subpage screen.
-inline lv_obj_t *setup_subpage_light_temp(lv_obj_t *btn, lv_obj_t *icon_lbl, lv_obj_t *text_lbl,
-                                           const SubpageBtn &sb, uint32_t on_color, lv_coord_t radius) {
-  if (!sb.label.empty()) lv_label_set_text(text_lbl, sb.label.c_str());
-  // friendly_name subscription deferred until ctx exists, so it can update cached_label.
-  lv_label_set_text(icon_lbl, light_temp_icon(sb.icon));
+inline lv_obj_t *create_grid_card_button(lv_obj_t *parent, lv_coord_t radius,
+                                         lv_coord_t pad,
+                                         const lv_font_t *label_font,
+                                         lv_color_t text_color) {
+  lv_obj_t *btn = lv_btn_create(parent);
+  lv_obj_set_style_radius(btn, radius, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(btn, pad, LV_PART_MAIN);
+  if (label_font) lv_obj_set_style_text_font(btn, label_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(btn, text_color, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  return btn;
+}
 
-  int min_k = 2000, max_k = 6500;
-  parse_kelvin_range(sb.unit, min_k, max_k);
-  bool kcolor = (sb.precision == "color");
+inline lv_obj_t *create_card_sensor_container(lv_obj_t *parent,
+                                              const lv_font_t *value_font,
+                                              const lv_font_t *unit_font,
+                                              lv_color_t text_color,
+                                              lv_obj_t **value_lbl,
+                                              lv_obj_t **unit_lbl) {
+  lv_obj_t *container = lv_obj_create(parent);
+  lv_obj_set_align(container, LV_ALIGN_TOP_LEFT);
+  lv_obj_set_size(container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_clear_flag(container, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(container, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_set_style_bg_opa(container, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(container, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(container, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(container, 0, LV_PART_MAIN);
+  lv_obj_set_layout(container, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(container, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(container, LV_FLEX_ALIGN_END, LV_PART_MAIN);
 
-  lv_obj_t *sl = setup_slider_widget(btn, on_color, false);
-  lv_coord_t pad = radius + 4;
-  lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
-  lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+  lv_obj_t *value = lv_label_create(container);
+  if (value_font) lv_obj_set_style_text_font(value, value_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(value, text_color, LV_PART_MAIN);
+  lv_label_set_text(value, "--");
 
-  lv_obj_t *fill = lv_obj_get_child(btn, 0);
-  // Intentionally leaked -- lives for the lifetime of the display
-  SliderCtx *ctx = new SliderCtx();
-  ctx->entity_id = sb.entity;
-  ctx->fill = fill;
-  ctx->horizontal = false;
-  ctx->cover_tilt = false;
-  ctx->inverted = false;
-  ctx->radius = radius;
-  ctx->light_temp = true;
-  ctx->kelvin_min = min_k;
-  ctx->kelvin_max = max_k;
-  ctx->kelvin_color = kcolor;
-  ctx->light_on = false;
-  ctx->show_kelvin = (sb.sensor == "kelvin");
-  ctx->text_lbl = text_lbl;
-  ctx->cached_label = sb.label;  // may be empty; friendly_name sub fills it later
-  lv_obj_set_user_data(sl, (void *)ctx);
-  slider_bind_geometry_refresh(btn, sl);
+  lv_obj_t *unit = lv_label_create(container);
+  if (unit_font) lv_obj_set_style_text_font(unit, unit_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(unit, text_color, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(unit, 6, LV_PART_MAIN);
+  lv_label_set_text(unit, "");
 
-  if (kcolor && fill) {
-    int mid_k = min_k + (max_k - min_k) / 2;
-    lv_obj_set_style_bg_color(fill, kelvin_to_fill_color(mid_k, min_k, max_k), LV_PART_MAIN);
-  }
+  if (value_lbl) *value_lbl = value;
+  if (unit_lbl) *unit_lbl = unit;
+  return container;
+}
 
-  lv_obj_add_event_cb(sl, [](lv_event_t *e) {
-    lv_obj_t *s = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(s);
-    if (!c) return;
-    int val = lv_slider_get_value(s);
-    slider_update_fill(c->fill, lv_obj_get_parent(s), val, false, false, c->radius);
-    int k = c->kelvin_min + val * (c->kelvin_max - c->kelvin_min) / 100;
-    if (c->kelvin_color && c->fill) {
-      lv_obj_set_style_bg_color(c->fill, kelvin_to_fill_color(k, c->kelvin_min, c->kelvin_max), LV_PART_MAIN);
-    }
-    c->light_on = true;
-    c->light_state_known = true;
-    c->light_temp_has_kelvin = true;
-    c->light_temp_last_kelvin = k;
-    if (c->show_kelvin) {
-      light_temp_apply_label(c, k);
-    }
-  }, LV_EVENT_VALUE_CHANGED, nullptr);
+inline BtnSlot create_dynamic_card_slot(lv_obj_t *btn,
+                                        const lv_font_t *icon_font,
+                                        const lv_font_t *value_font,
+                                        const lv_font_t *label_font,
+                                        lv_color_t text_color) {
+  BtnSlot slot{};
+  slot.config = nullptr;
+  slot.btn = btn;
+  slot.icon_lbl = lv_label_create(btn);
+  if (icon_font) lv_obj_set_style_text_font(slot.icon_lbl, icon_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(slot.icon_lbl, text_color, LV_PART_MAIN);
+  lv_label_set_text(slot.icon_lbl, "\U000F0493");
+  lv_obj_align(slot.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
 
-  lv_obj_add_event_cb(sl, [](lv_event_t *e) {
-    lv_obj_t *s = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(s);
-    if (c && !c->entity_id.empty())
-      send_light_temp_action(c->entity_id, lv_slider_get_value(s), c->kelvin_min, c->kelvin_max);
-  }, LV_EVENT_RELEASED, nullptr);
+  slot.sensor_container = create_card_sensor_container(
+    btn, value_font, label_font, text_color, &slot.sensor_lbl, &slot.unit_lbl);
 
-  subscribe_light_temp_state(btn, sl, sb.entity, min_k, max_k, kcolor);
-  if (sb.label.empty())
-    subscribe_friendly_name_for_light_temp(text_lbl, ctx, sb.entity);
-
-  return sl;
+  slot.text_lbl = lv_label_create(btn);
+  if (label_font) lv_obj_set_style_text_font(slot.text_lbl, label_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(slot.text_lbl, text_color, LV_PART_MAIN);
+  lv_label_set_text(slot.text_lbl, "Configure");
+  lv_obj_align(slot.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  configure_button_label_wrap(slot.text_lbl);
+  return slot;
 }
 
 // Parse "order|entity:label:icon:...|entity:label:..." into a vector of SubpageBtns
@@ -5010,6 +4969,101 @@ inline bool experimental_card_enabled(const ParsedCfg &p, const GridConfig &cfg)
   return experimental_card_enabled(p, cfg.developer_experimental_features);
 }
 
+struct CardPalette {
+  bool has_on = false;
+  bool has_off = false;
+  bool has_sensor_color = false;
+  uint32_t on_val = DEFAULT_SLIDER_COLOR;
+  uint32_t off_val = CLIMATE_NEUTRAL_COLOR;
+  uint32_t sensor_val = DEFAULT_TERTIARY_COLOR;
+};
+
+inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
+                              const GridConfig &cfg,
+                              const CardPalette &palette) {
+  apply_button_colors(s.btn, palette.has_on, palette.on_val,
+    palette.has_off, palette.off_val);
+
+  if (!experimental_card_enabled(p, cfg)) {
+    setup_toggle_visual(s, ParsedCfg{});
+    return;
+  }
+  if (is_text_sensor_card(p)) {
+    setup_text_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
+  if (p.type == "sensor") {
+    if (p.sensor.empty()) return;
+    setup_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
+  if (p.type == "calendar") {
+    setup_calendar_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
+  if (p.type == "timezone") {
+    setup_timezone_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
+  if (weather_card_shows_tomorrow(p)) {
+    setup_weather_forecast_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
+  if (p.type == "weather") {
+    setup_weather_card(s, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
+  if (p.type == "climate") {
+    setup_climate_card(s, p, cfg.sp_sensor_font,
+      palette.has_off ? palette.off_val : CLIMATE_NEUTRAL_COLOR);
+    return;
+  }
+  if (p.type == "garage") {
+    setup_garage_card(s, p);
+    return;
+  }
+  if (subpage_parent_sensor_state_enabled(p)) {
+    setup_subpage_parent_state_card(s, p, cfg.sp_sensor_font);
+    return;
+  }
+  if (p.type == "lock") {
+    setup_lock_card(s, p);
+    return;
+  }
+  if (p.type == "cover" && cover_command_mode(p.sensor)) {
+    setup_cover_command_card(s, p);
+    return;
+  }
+  if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
+    setup_cover_toggle_card(s, p);
+    return;
+  }
+  if (p.type == "internal") {
+    setup_internal_relay_card(s, p);
+    return;
+  }
+  if (p.type == "action") {
+    setup_action_card(s, p);
+    return;
+  }
+  if (p.type == "media") {
+    setup_media_card(s, p,
+      palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
+      palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+      cfg.sp_sensor_font);
+    return;
+  }
+  if (p.type == "slider" || p.type == "cover") {
+    setup_slider_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
+    return;
+  }
+  if (p.type == "light_temperature") {
+    setup_light_temp_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
+    return;
+  }
+  setup_toggle_visual(s, p);
+}
+
 // ── Phase 1: Visual setup ────────────────────────────────────────────
 
 inline void grid_phase1(
@@ -5053,6 +5107,14 @@ inline void grid_phase1(
     if (has_sensor_color) sensor_val = correct_color(sensor_val);
   }
 
+  CardPalette palette;
+  palette.has_on = has_on;
+  palette.has_off = has_off;
+  palette.has_sensor_color = has_sensor_color;
+  palette.on_val = has_on ? on_val : DEFAULT_SLIDER_COLOR;
+  palette.off_val = has_off ? off_val : CLIMATE_NEUTRAL_COLOR;
+  palette.sensor_val = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
+
   reset_calendar_cards();
   reset_timezone_cards();
   reset_weather_forecast_cards();
@@ -5079,82 +5141,8 @@ inline void grid_phase1(
       lv_obj_set_width(s.text_lbl, lv_pct(100));
     }
 
-    apply_button_colors(s.btn, has_on, on_val, has_off, off_val);
-
     ParsedCfg p = parse_cfg(scfg);
-    if (!experimental_card_enabled(p, cfg)) {
-      setup_toggle_visual(s, ParsedCfg{});
-      continue;
-    }
-    if (is_text_sensor_card(p)) {
-      setup_text_sensor_card(s, p, has_sensor_color, sensor_val);
-      continue;
-    }
-    if (p.type == "sensor") {
-      if (p.sensor.empty()) continue;
-      setup_sensor_card(s, p, has_sensor_color, sensor_val);
-      continue;
-    }
-    if (p.type == "calendar") {
-      setup_calendar_card(s, p, has_sensor_color, sensor_val);
-      continue;
-    }
-    if (p.type == "timezone") {
-      setup_timezone_card(s, p, has_sensor_color, sensor_val);
-      continue;
-    }
-    if (weather_card_shows_tomorrow(p)) {
-      setup_weather_forecast_card(s, p, has_sensor_color, sensor_val);
-      continue;
-    }
-    if (p.type == "weather") {
-      setup_weather_card(s, has_sensor_color, sensor_val);
-      continue;
-    }
-    if (p.type == "climate") {
-      setup_climate_card(s, p, cfg.sp_sensor_font, has_off ? off_val : CLIMATE_NEUTRAL_COLOR);
-      continue;
-    }
-    if (p.type == "garage") {
-      setup_garage_card(s, p);
-      continue;
-    }
-    if (subpage_parent_sensor_state_enabled(p)) {
-      setup_subpage_parent_state_card(s, p, cfg.sp_sensor_font);
-      continue;
-    }
-    if (p.type == "lock") {
-      setup_lock_card(s, p);
-      continue;
-    }
-    if (p.type == "cover" && cover_command_mode(p.sensor)) {
-      setup_cover_command_card(s, p);
-      continue;
-    }
-    if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
-      setup_cover_toggle_card(s, p);
-      continue;
-    }
-    if (p.type == "internal") {
-      setup_internal_relay_card(s, p);
-      continue;
-    }
-    if (p.type == "action") {
-      setup_action_card(s, p);
-      continue;
-    }
-    if (p.type == "media") {
-      setup_media_card(s, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
-        has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR, cfg.sp_sensor_font);
-      continue;
-    }
-    if (p.type == "slider" || p.type == "cover") {
-      setup_slider_visual(s, p, has_on ? on_val : DEFAULT_SLIDER_COLOR);
-    } else if (p.type == "light_temperature") {
-      setup_light_temp_visual(s, p, has_on ? on_val : DEFAULT_SLIDER_COLOR);
-    } else {
-      setup_toggle_visual(s, p);
-    }
+    setup_card_visual(s, p, cfg, palette);
   }
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
 }
@@ -5213,6 +5201,14 @@ inline void grid_phase2(
     if (has_off) off_val = correct_color(off_val);
     if (has_sensor_color) sensor_val = correct_color(sensor_val);
   }
+
+  CardPalette palette;
+  palette.has_on = has_on;
+  palette.has_off = has_off;
+  palette.has_sensor_color = has_sensor_color;
+  palette.on_val = has_on ? on_val : DEFAULT_SLIDER_COLOR;
+  palette.off_val = has_off ? off_val : CLIMATE_NEUTRAL_COLOR;
+  palette.sensor_val = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
 
   OrderResult parsed;
   parse_order_string(order_str, NS, parsed);
@@ -5520,271 +5516,115 @@ inline void grid_phase2(
     lv_obj_set_style_pad_column(sub_scr, mp_pad_col, LV_PART_MAIN);
     lv_obj_clear_flag(sub_scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *back_btn = lv_btn_create(sub_scr);
-    lv_obj_set_style_radius(back_btn, sp_radius, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(back_btn, sp_pad, LV_PART_MAIN);
-    lv_obj_set_style_text_font(back_btn, sp_btn_fnt, LV_PART_MAIN);
-    lv_obj_set_style_text_color(back_btn, sp_txt_color, LV_PART_MAIN);
-    lv_obj_set_style_shadow_width(back_btn, 0, LV_PART_MAIN);
-    if (has_off) lv_obj_set_style_bg_color(back_btn, lv_color_hex(off_val),
-      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+    lv_obj_t *back_btn = create_grid_card_button(
+      sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
+    apply_button_colors(back_btn, false, DEFAULT_SLIDER_COLOR, has_off, off_val);
     lv_obj_set_grid_cell(back_btn, LV_GRID_ALIGN_STRETCH, sp_ord.back_pos % COLS, sp_ord.back_wide ? 2 : 1,
       LV_GRID_ALIGN_STRETCH, sp_ord.back_pos / COLS, sp_ord.back_dbl ? 2 : 1);
-    lv_obj_t *bi = lv_label_create(back_btn);
-    lv_obj_set_style_text_font(bi, sp_icon_fnt, LV_PART_MAIN);
-    lv_label_set_text(bi, "\U000F0141");
-    lv_obj_align(bi, LV_ALIGN_TOP_LEFT, 0, 0);
-    lv_obj_t *bl = lv_label_create(back_btn);
-    lv_label_set_text(bl, "Back");
-    lv_obj_align(bl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-    configure_button_label_wrap(bl);
+    BtnSlot back_slot = create_dynamic_card_slot(
+      back_btn, sp_icon_fnt, cfg.sp_sensor_font, sp_btn_fnt, sp_txt_color);
+    lv_label_set_text(back_slot.icon_lbl, "\U000F0141");
+    lv_label_set_text(back_slot.text_lbl, "Back");
 
     lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
     }, LV_EVENT_CLICKED, main_page_obj);
 
+    auto add_parent_indicator = [&](const std::string &entity_id, bool climate_indicator) {
+      if (!sp_indicator || entity_id.empty()) return;
+      lv_obj_t *parent_btn = slots[si].btn;
+      lv_obj_t *parent_icon = slots[si].icon_lbl;
+      int parent_idx = si;
+      int cwi = sp_child_alloc_idx++;
+      if (cwi >= MAX_SUBPAGE_ITEMS) {
+        ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", entity_id.c_str());
+        return;
+      }
+      sp_child_was_on[cwi] = false;
+      if (climate_indicator) {
+        subscribe_subpage_parent_climate_indicator(
+          entity_id, parent_btn, parent_icon, parent_idx,
+          &sp_child_was_on[cwi], sp_has_icon_on,
+          sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+      } else {
+        subscribe_subpage_parent_indicator(
+          entity_id, parent_btn, parent_icon, parent_idx,
+          &sp_child_was_on[cwi], sp_has_icon_on,
+          sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+      }
+    };
+
+    auto add_subpage_toggle_click = [&](lv_obj_t *btn, const std::string &entity_id, bool set_checked) {
+      if (entity_id.empty()) return;
+      int eid_idx = sp_entity_alloc_idx++;
+      if (eid_idx >= MAX_SUBPAGE_ITEMS) {
+        ESP_LOGW("sensors", "Too many subpage click handlers; skipping %s", entity_id.c_str());
+        return;
+      }
+      sp_entity_ids[eid_idx] = entity_id;
+      if (set_checked) {
+        lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+          lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
+          lv_obj_add_state(target, LV_STATE_CHECKED);
+          std::string *en = (std::string *)lv_event_get_user_data(e);
+          if (en && !en->empty()) send_toggle_action(*en);
+        }, LV_EVENT_CLICKED, &sp_entity_ids[eid_idx]);
+      } else {
+        lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+          std::string *en = (std::string *)lv_event_get_user_data(e);
+          if (en && !en->empty()) send_toggle_action(*en);
+        }, LV_EVENT_CLICKED, &sp_entity_ids[eid_idx]);
+      }
+    };
+
     for (int gp = 0; gp < NS; gp++) {
       int bn = sp_ord.positions[gp];
       if (bn < 1 || bn > (int)sp_btns.size()) continue;
       auto &sb = sp_btns[bn - 1];
-      ParsedCfg sb_cfg;
-      sb_cfg.type = sb.type;
-      sb_cfg.sensor = sb.sensor;
+      ParsedCfg sb_cfg = parsed_cfg_from_subpage_btn(sb);
       if (!experimental_card_enabled(sb_cfg, cfg)) continue;
       int col, row;
       if (sp_ord.has_back_token) { col = gp % COLS; row = gp / COLS; }
       else { int op = gp + 1; col = op % COLS; row = op / COLS; }
       int rs = sp_ord.is_double[bn - 1] ? 2 : 1;
 
-      lv_obj_t *sb_btn = lv_btn_create(sub_scr);
-      lv_obj_set_style_radius(sb_btn, sp_radius, LV_PART_MAIN);
-      lv_obj_set_style_pad_all(sb_btn, sp_pad, LV_PART_MAIN);
-      lv_obj_set_style_text_font(sb_btn, sp_btn_fnt, LV_PART_MAIN);
-      lv_obj_set_style_text_color(sb_btn, sp_txt_color, LV_PART_MAIN);
-      lv_obj_set_style_shadow_width(sb_btn, 0, LV_PART_MAIN);
-      apply_button_colors(sb_btn, has_on, on_val, has_off, off_val);
+      lv_obj_t *sb_btn = create_grid_card_button(
+        sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
       int cs = sp_ord.is_wide[bn - 1] ? 2 : 1;
       lv_obj_set_grid_cell(sb_btn, LV_GRID_ALIGN_STRETCH, col, cs, LV_GRID_ALIGN_STRETCH, row, rs);
+      BtnSlot sub_slot = create_dynamic_card_slot(
+        sb_btn, sp_icon_fnt, cfg.sp_sensor_font, sp_btn_fnt, sp_txt_color);
+      setup_card_visual(sub_slot, sb_cfg, cfg, palette);
 
-      lv_obj_t *sil = lv_label_create(sb_btn);
-      lv_obj_set_style_text_font(sil, sp_icon_fnt, LV_PART_MAIN);
-      const char *sic = find_icon(sb.icon.c_str());
-      if ((sb.icon.empty() || sb.icon == "Auto") && !sb.entity.empty()) {
-        sic = domain_default_icon(sb.entity.substr(0, sb.entity.find('.')));
+      if (is_text_sensor_card(sb_cfg)) {
+        if (!sb_cfg.sensor.empty())
+          subscribe_text_sensor_value(sub_slot.text_lbl, sb_cfg.sensor);
+        continue;
       }
-      lv_label_set_text(sil, sic);
-      lv_obj_align(sil, LV_ALIGN_TOP_LEFT, 0, 0);
-
-      lv_obj_t *stl = lv_label_create(sb_btn);
-      lv_obj_align(stl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-      configure_button_label_wrap(stl);
-
-      if (is_text_sensor_card(sb.type, sb.precision)) {
-        if (has_sensor_color)
-          lv_obj_set_style_bg_color(sb_btn, lv_color_hex(sensor_val),
-            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-        lv_obj_clear_flag(sil, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(sb_btn, LV_OBJ_FLAG_CLICKABLE);
-        lv_label_set_text(stl, "--");
-        if (!sb.sensor.empty())
-          subscribe_text_sensor_value(stl, sb.sensor);
-
-      } else if (sb.type == "sensor") {
-        if (sb.sensor.empty()) continue;
-        if (has_sensor_color)
-          lv_obj_set_style_bg_color(sb_btn, lv_color_hex(sensor_val),
-            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-        lv_obj_clear_flag(sb_btn, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_flag(sil, LV_OBJ_FLAG_HIDDEN);
-
-        lv_obj_t *sc = lv_obj_create(sb_btn);
-        lv_obj_set_align(sc, LV_ALIGN_TOP_LEFT);
-        lv_obj_set_size(sc, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_bg_opa(sc, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_border_width(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_column(sc, 0, LV_PART_MAIN);
-        lv_obj_set_layout(sc, LV_LAYOUT_FLEX);
-        lv_obj_set_style_flex_flow(sc, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-        lv_obj_set_style_flex_cross_place(sc, LV_FLEX_ALIGN_END, LV_PART_MAIN);
-
-        lv_obj_t *svl = lv_label_create(sc);
-        lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
-        lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-        lv_label_set_text(svl, "--");
-
-        lv_obj_t *sul = lv_label_create(sc);
-        lv_obj_set_style_text_font(sul, sp_btn_fnt, LV_PART_MAIN);
-        lv_obj_set_style_text_color(sul, sp_txt_color, LV_PART_MAIN);
-        lv_obj_set_style_pad_bottom(sul, 6, LV_PART_MAIN);
-        if (!sb.unit.empty())
-          lv_label_set_text(sul, sb.unit.c_str());
-
-        subscribe_sensor_value(svl, sb.sensor, parse_precision(sb.precision));
-        if (!sb.label.empty()) {
-          lv_label_set_text(stl, sb.label.c_str());
-        } else {
-          subscribe_friendly_name(stl, sb.sensor);
-        }
-
-      } else if (sb.type == "calendar") {
-        if (has_sensor_color)
-          lv_obj_set_style_bg_color(sb_btn, lv_color_hex(sensor_val),
-            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-        lv_obj_clear_flag(sb_btn, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_flag(sil, LV_OBJ_FLAG_HIDDEN);
-
-        lv_obj_t *sc = lv_obj_create(sb_btn);
-        lv_obj_set_align(sc, LV_ALIGN_TOP_LEFT);
-        lv_obj_set_size(sc, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_bg_opa(sc, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_border_width(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_column(sc, 0, LV_PART_MAIN);
-        lv_obj_set_layout(sc, LV_LAYOUT_FLEX);
-        lv_obj_set_style_flex_flow(sc, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-        lv_obj_set_style_flex_cross_place(sc, LV_FLEX_ALIGN_END, LV_PART_MAIN);
-
-        lv_obj_t *svl = lv_label_create(sc);
-        lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
-        lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-        lv_label_set_text(svl, "--");
-
-        lv_obj_t *sul = lv_label_create(sc);
-        lv_obj_set_style_text_font(sul, sp_btn_fnt, LV_PART_MAIN);
-        lv_obj_set_style_text_color(sul, sp_txt_color, LV_PART_MAIN);
-        lv_obj_set_style_pad_bottom(sul, 6, LV_PART_MAIN);
-        lv_label_set_text(sul, "");
-
-        lv_label_set_text(stl, "Date");
-        register_calendar_card(svl, sul, stl, sb.precision == "datetime");
-        subscribe_calendar_date_source(sb.entity);
-
-      } else if (sb.type == "timezone") {
-        if (has_sensor_color)
-          lv_obj_set_style_bg_color(sb_btn, lv_color_hex(sensor_val),
-            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-        lv_obj_clear_flag(sb_btn, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_flag(sil, LV_OBJ_FLAG_HIDDEN);
-
-        lv_obj_t *sc = lv_obj_create(sb_btn);
-        lv_obj_set_align(sc, LV_ALIGN_TOP_LEFT);
-        lv_obj_set_size(sc, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_bg_opa(sc, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_border_width(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_column(sc, 0, LV_PART_MAIN);
-        lv_obj_set_layout(sc, LV_LAYOUT_FLEX);
-        lv_obj_set_style_flex_flow(sc, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-        lv_obj_set_style_flex_cross_place(sc, LV_FLEX_ALIGN_END, LV_PART_MAIN);
-
-        lv_obj_t *svl = lv_label_create(sc);
-        lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
-        lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-        lv_label_set_text(svl, "--:--");
-
-        lv_obj_t *sul = lv_label_create(sc);
-        lv_obj_set_style_text_font(sul, sp_btn_fnt, LV_PART_MAIN);
-        lv_obj_set_style_text_color(sul, sp_txt_color, LV_PART_MAIN);
-        lv_obj_set_style_pad_bottom(sul, 6, LV_PART_MAIN);
-        lv_label_set_text(sul, "");
-
-        std::string label = sb.label.empty() ? timezone_city_label(sb.entity) : sb.label;
-        lv_label_set_text(stl, label.c_str());
-        register_timezone_card(svl, sul, stl, sb.entity, sb.label);
-
-      } else if (sb.type == "weather" && sb.precision != "tomorrow") {
-        if (has_sensor_color)
-          lv_obj_set_style_bg_color(sb_btn, lv_color_hex(sensor_val),
-            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-        lv_obj_clear_flag(sb_btn, LV_OBJ_FLAG_CLICKABLE);
-        lv_label_set_text(sil, find_icon("Weather Cloudy"));
-        lv_label_set_text(stl, "Weather");
-        if (!sb.entity.empty())
-          subscribe_weather_state(sil, stl, sb.entity);
-
-      } else if (sb.type == "weather_forecast" || (sb.type == "weather" && sb.precision == "tomorrow")) {
-        if (has_sensor_color)
-          lv_obj_set_style_bg_color(sb_btn, lv_color_hex(sensor_val),
-            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-        lv_obj_clear_flag(sb_btn, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_flag(sil, LV_OBJ_FLAG_HIDDEN);
-
-        lv_obj_t *sc = lv_obj_create(sb_btn);
-        lv_obj_set_align(sc, LV_ALIGN_TOP_LEFT);
-        lv_obj_set_size(sc, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_bg_opa(sc, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_border_width(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_column(sc, 0, LV_PART_MAIN);
-        lv_obj_set_layout(sc, LV_LAYOUT_FLEX);
-        lv_obj_set_style_flex_flow(sc, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-        lv_obj_set_style_flex_cross_place(sc, LV_FLEX_ALIGN_END, LV_PART_MAIN);
-
-        lv_obj_t *svl = lv_label_create(sc);
-        lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
-        lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-        lv_label_set_text(svl, "--/--");
-
-        lv_obj_t *sul = lv_label_create(sc);
-        lv_obj_set_style_text_font(sul, sp_btn_fnt, LV_PART_MAIN);
-        lv_obj_set_style_text_color(sul, sp_txt_color, LV_PART_MAIN);
-        lv_obj_set_style_pad_bottom(sul, 6, LV_PART_MAIN);
-        lv_label_set_text(sul, "");
-
-        lv_label_set_text(stl, "Tomorrow");
-        register_weather_forecast_card(svl, sul, stl, sb.entity);
-
-      } else if (sb.type == "climate") {
-        lv_obj_add_flag(sil, LV_OBJ_FLAG_HIDDEN);
-
-        lv_obj_t *sc = lv_obj_create(sb_btn);
-        lv_obj_set_align(sc, LV_ALIGN_TOP_LEFT);
-        lv_obj_set_size(sc, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_clear_flag(sc, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_bg_opa(sc, LV_OPA_TRANSP, LV_PART_MAIN);
-        lv_obj_set_style_border_width(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(sc, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_column(sc, 0, LV_PART_MAIN);
-        lv_obj_set_layout(sc, LV_LAYOUT_FLEX);
-        lv_obj_set_style_flex_flow(sc, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-        lv_obj_set_style_flex_cross_place(sc, LV_FLEX_ALIGN_END, LV_PART_MAIN);
-
-        lv_obj_t *svl = lv_label_create(sc);
-        lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
-        lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-        lv_label_set_text(svl, "--");
-
-        lv_obj_t *sul = lv_label_create(sc);
-        lv_obj_set_style_text_font(sul, sp_btn_fnt, LV_PART_MAIN);
-        lv_obj_set_style_text_color(sul, sp_txt_color, LV_PART_MAIN);
-        lv_obj_set_style_pad_bottom(sul, 6, LV_PART_MAIN);
-        lv_label_set_text(sul, "");
-
-        ParsedCfg cp;
-        cp.entity = sb.entity;
-        cp.label = sb.label;
-        cp.icon = sb.icon;
-        cp.icon_on = sb.icon_on;
-        cp.sensor = sb.sensor;
-        cp.unit = sb.unit;
-        cp.type = sb.type;
-        cp.precision = sb.precision;
-        lv_label_set_text(stl, cp.label.empty() ? "Climate" : cp.label.c_str());
-        climate_apply_btn_color(sb_btn, has_off ? off_val : CLIMATE_NEUTRAL_COLOR);
-
-        if (!sb.entity.empty()) {
+      if (sb_cfg.type == "sensor") {
+        if (sb_cfg.sensor.empty()) continue;
+        subscribe_sensor_value(sub_slot.sensor_lbl, sb_cfg.sensor, parse_precision(sb_cfg.precision));
+        if (sb_cfg.label.empty())
+          subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.sensor);
+        continue;
+      }
+      if (sb_cfg.type == "calendar") {
+        subscribe_calendar_date_source(sb_cfg.entity);
+        continue;
+      }
+      if (sb_cfg.type == "timezone" || weather_card_shows_tomorrow(sb_cfg)) {
+        continue;
+      }
+      if (sb_cfg.type == "weather") {
+        if (!sb_cfg.entity.empty())
+          subscribe_weather_state(sub_slot.icon_lbl, sub_slot.text_lbl, sb_cfg.entity);
+        continue;
+      }
+      if (sb_cfg.type == "climate") {
+        if (!sb_cfg.entity.empty()) {
           ClimateCardCtx *climate_ctx = create_climate_context(
-            sb_btn, sc, svl, sul, stl, sil, cp,
+            sub_slot.btn, sub_slot.sensor_container, sub_slot.sensor_lbl,
+            sub_slot.unit_lbl, sub_slot.text_lbl, sub_slot.icon_lbl, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
             has_off ? off_val : CLIMATE_NEUTRAL_COLOR,
             cfg.sp_sensor_font,
@@ -5792,176 +5632,75 @@ inline void grid_phase2(
             cfg.icon_font,
             cfg.climate_control_icon_font ? cfg.climate_control_icon_font : cfg.icon_font);
           subscribe_climate_card(climate_ctx);
-          if (sp_indicator) {
-            lv_obj_t *parent_btn = slots[si].btn;
-            lv_obj_t *parent_icon = slots[si].icon_lbl;
-            int parent_idx = si;
-            int cwi = sp_child_alloc_idx++;
-            if (cwi >= MAX_SUBPAGE_ITEMS) {
-              ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb.entity.c_str());
-            } else {
-              sp_child_was_on[cwi] = false;
-              subscribe_subpage_parent_climate_indicator(
-                sb.entity, parent_btn, parent_icon, parent_idx,
-                &sp_child_was_on[cwi], sp_has_icon_on,
-                sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
-            }
-          }
+          add_parent_indicator(sb_cfg.entity, true);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             ClimateCardCtx *ctx = (ClimateCardCtx *)lv_event_get_user_data(e);
             if (ctx) climate_open_detail(ctx, lv_scr_act());
           }, LV_EVENT_CLICKED, climate_ctx);
         }
-
-      } else if (sb.type == "cover" && cover_command_mode(sb.sensor)) {
-        lv_label_set_text(sil, slider_icon_off(sb.type, sb.entity, sb.icon));
-        lv_label_set_text(stl, sb.label.empty() ? "Cover" : sb.label.c_str());
-        apply_push_button_transition(sb_btn);
-        if (!sb.entity.empty()) {
-          if (sb.label.empty())
-            subscribe_friendly_name(stl, sb.entity);
-
-          ParsedCfg *ctx = new ParsedCfg();
-          ctx->entity = sb.entity;
-          ctx->label = sb.label;
-          ctx->icon = sb.icon;
-          ctx->icon_on = sb.icon_on;
-          ctx->sensor = sb.sensor;
-          ctx->unit = sb.unit;
-          ctx->type = sb.type;
-          ctx->precision = sb.precision;
+        continue;
+      }
+      if (sb_cfg.type == "cover" && cover_command_mode(sb_cfg.sensor)) {
+        if (!sb_cfg.entity.empty()) {
+          if (sb_cfg.label.empty())
+            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
+          ParsedCfg *ctx = new ParsedCfg(sb_cfg);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
             if (c) send_cover_command_action(*c);
           }, LV_EVENT_CLICKED, ctx);
         }
-
-      } else if (sb.type == "cover" && cover_toggle_mode(sb.sensor)) {
-        lv_label_set_text(sil, slider_icon_off(sb.type, sb.entity, sb.icon));
-        lv_label_set_text(stl, sb.label.empty() ? "Cover" : sb.label.c_str());
-        if (!sb.entity.empty()) {
+        continue;
+      }
+      if (sb_cfg.type == "cover" && cover_toggle_mode(sb_cfg.sensor)) {
+        if (!sb_cfg.entity.empty()) {
           TransientStatusLabel *status_label = create_transient_status_label(
-            stl, sb.label.empty() ? "Cover" : sb.label);
-          subscribe_cover_toggle_state(sb_btn, sil, status_label,
-            slider_icon_off(sb.type, sb.entity, sb.icon), slider_icon_on(sb.type, sb.entity, sb.icon, sb.icon_on), sb.entity);
-          if (sb.label.empty())
-            subscribe_friendly_name(status_label, sb.entity);
-
-          if (sp_indicator) {
-            lv_obj_t *parent_btn = slots[si].btn;
-            lv_obj_t *parent_icon = slots[si].icon_lbl;
-            int parent_idx = si;
-            int cwi = sp_child_alloc_idx++;
-            if (cwi >= MAX_SUBPAGE_ITEMS) {
-              ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb.entity.c_str());
-            } else {
-              sp_child_was_on[cwi] = false;
-              subscribe_subpage_parent_indicator(
-                sb.entity, parent_btn, parent_icon, parent_idx,
-                &sp_child_was_on[cwi], sp_has_icon_on,
-                sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
-            }
-          }
-
-          int eid_idx = sp_entity_alloc_idx++;
-          if (eid_idx >= MAX_SUBPAGE_ITEMS) {
-            ESP_LOGW("sensors", "Too many subpage click handlers; skipping %s", sb.entity.c_str());
-          } else {
-            sp_entity_ids[eid_idx] = sb.entity;
-            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-              lv_obj_add_state(target, LV_STATE_CHECKED);
-              std::string *en = (std::string *)lv_event_get_user_data(e);
-              if (en && !en->empty()) send_toggle_action(*en);
-            }, LV_EVENT_CLICKED, &sp_entity_ids[eid_idx]);
-          }
+            sub_slot.text_lbl, sb_cfg.label.empty() ? "Cover" : sb_cfg.label);
+          subscribe_cover_toggle_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
+            slider_icon_off(sb_cfg.type, sb_cfg.entity, sb_cfg.icon),
+            slider_icon_on(sb_cfg.type, sb_cfg.entity, sb_cfg.icon, sb_cfg.icon_on),
+            sb_cfg.entity);
+          if (sb_cfg.label.empty())
+            subscribe_friendly_name(status_label, sb_cfg.entity);
+          add_parent_indicator(sb_cfg.entity, false);
+          add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
         }
-
-      } else if (sb.type == "garage") {
-        lv_label_set_text(sil, garage_closed_icon(sb.icon));
-        lv_label_set_text(stl, sb.label.empty() ? "Garage Door" : sb.label.c_str());
-        if (!sb.entity.empty()) {
+        continue;
+      }
+      if (sb_cfg.type == "garage") {
+        if (!sb_cfg.entity.empty()) {
           TransientStatusLabel *status_label = create_transient_status_label(
-            stl, sb.label.empty() ? "Garage Door" : sb.label);
-          subscribe_garage_state(sb_btn, sil, status_label,
-            garage_closed_icon(sb.icon), garage_open_icon(sb.icon_on), sb.entity);
-          if (sb.label.empty())
-            subscribe_friendly_name(status_label, sb.entity);
-
-          if (sp_indicator) {
-            lv_obj_t *parent_btn = slots[si].btn;
-            lv_obj_t *parent_icon = slots[si].icon_lbl;
-            int parent_idx = si;
-            int cwi = sp_child_alloc_idx++;
-            if (cwi >= MAX_SUBPAGE_ITEMS) {
-              ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb.entity.c_str());
-            } else {
-              sp_child_was_on[cwi] = false;
-              subscribe_subpage_parent_indicator(
-                sb.entity, parent_btn, parent_icon, parent_idx,
-                &sp_child_was_on[cwi], sp_has_icon_on,
-                sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
-            }
-          }
-
-          int eid_idx = sp_entity_alloc_idx++;
-          if (eid_idx >= MAX_SUBPAGE_ITEMS) {
-            ESP_LOGW("sensors", "Too many subpage click handlers; skipping %s", sb.entity.c_str());
-          } else {
-            sp_entity_ids[eid_idx] = sb.entity;
-            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-              lv_obj_add_state(target, LV_STATE_CHECKED);
-              std::string *en = (std::string *)lv_event_get_user_data(e);
-              if (en && !en->empty()) send_toggle_action(*en);
-            }, LV_EVENT_CLICKED, &sp_entity_ids[eid_idx]);
-          }
+            sub_slot.text_lbl, sb_cfg.label.empty() ? "Garage Door" : sb_cfg.label);
+          subscribe_garage_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
+            garage_closed_icon(sb_cfg.icon), garage_open_icon(sb_cfg.icon_on), sb_cfg.entity);
+          if (sb_cfg.label.empty())
+            subscribe_friendly_name(status_label, sb_cfg.entity);
+          add_parent_indicator(sb_cfg.entity, false);
+          add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
         }
-
-      } else if (sb.type == "lock") {
-        lv_label_set_text(sil, lock_locked_icon(sb.icon));
-        lv_label_set_text(stl, sb.label.empty() ? "Lock" : sb.label.c_str());
-        if (!sb.entity.empty()) {
+        continue;
+      }
+      if (sb_cfg.type == "lock") {
+        if (!sb_cfg.entity.empty()) {
           LockCardCtx *lock_ctx = new LockCardCtx();
-          lock_ctx->entity_id = sb.entity;
+          lock_ctx->entity_id = sb_cfg.entity;
           lv_obj_set_user_data(sb_btn, lock_ctx);
           TransientStatusLabel *status_label = create_transient_status_label(
-            stl, sb.label.empty() ? "Lock" : sb.label);
-          subscribe_lock_state(sb_btn, sil, status_label,
-            lock_locked_icon(sb.icon), lock_unlocked_icon(sb.icon_on), lock_ctx);
-          if (sb.label.empty())
-            subscribe_friendly_name(status_label, sb.entity);
-
-          if (sp_indicator) {
-            lv_obj_t *parent_btn = slots[si].btn;
-            lv_obj_t *parent_icon = slots[si].icon_lbl;
-            int parent_idx = si;
-            int cwi = sp_child_alloc_idx++;
-            if (cwi >= MAX_SUBPAGE_ITEMS) {
-              ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb.entity.c_str());
-            } else {
-              sp_child_was_on[cwi] = false;
-              subscribe_subpage_parent_indicator(
-                sb.entity, parent_btn, parent_icon, parent_idx,
-                &sp_child_was_on[cwi], sp_has_icon_on,
-                sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
-            }
-          }
-
+            sub_slot.text_lbl, sb_cfg.label.empty() ? "Lock" : sb_cfg.label);
+          subscribe_lock_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
+            lock_locked_icon(sb_cfg.icon), lock_unlocked_icon(sb_cfg.icon_on), lock_ctx);
+          if (sb_cfg.label.empty())
+            subscribe_friendly_name(status_label, sb_cfg.entity);
+          add_parent_indicator(sb_cfg.entity, false);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             LockCardCtx *ctx = (LockCardCtx *)lv_event_get_user_data(e);
             if (ctx) send_lock_action(ctx);
           }, LV_EVENT_CLICKED, lock_ctx);
         }
-
-      } else if (sb.type == "push") {
-        if (!sb.label.empty()) {
-          lv_label_set_text(stl, sb.label.c_str());
-        } else {
-          lv_label_set_text(stl, "Push");
-        }
-        std::string push_label = sb.label.empty() ? "Push" : sb.label;
-        // Intentionally leaked -- lives for the lifetime of the display.
+        continue;
+      }
+      if (sb_cfg.type == "push") {
+        std::string push_label = sb_cfg.label.empty() ? "Push" : sb_cfg.label;
         std::string *label = new std::string(push_label);
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           std::string *label = (std::string *)lv_event_get_user_data(e);
@@ -5974,140 +5713,68 @@ inline void grid_phase2(
           kv.value = decltype(kv.value)(label->c_str());
           esphome::api::global_api_server->send_homeassistant_action(req);
         }, LV_EVENT_CLICKED, label);
-
-      } else if (sb.type == "action") {
-        lv_label_set_text(stl, sb.label.empty() ? (sb.entity.empty() ? "Action" : sb.entity.c_str()) : sb.label.c_str());
-        const char *action_icon = (sb.icon.empty() || sb.icon == "Auto") ? find_icon("Flash") : find_icon(sb.icon.c_str());
-        lv_label_set_text(sil, action_icon);
-        apply_push_button_transition(sb_btn);
-        if (!sb.entity.empty() && !sb.sensor.empty()) {
-          ParsedCfg *ctx = new ParsedCfg();
-          ctx->entity = sb.entity;
-          ctx->label = sb.label;
-          ctx->icon = sb.icon;
-          ctx->icon_on = sb.icon_on;
-          ctx->sensor = sb.sensor;
-          ctx->unit = sb.unit;
-          ctx->type = sb.type;
-          ctx->precision = sb.precision;
+        continue;
+      }
+      if (sb_cfg.type == "action") {
+        if (!sb_cfg.entity.empty() && !sb_cfg.sensor.empty()) {
+          ParsedCfg *ctx = new ParsedCfg(sb_cfg);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
             if (c) send_action_card_action(*c);
           }, LV_EVENT_CLICKED, ctx);
         }
-
-      } else if (sb.type == "media") {
-        ParsedCfg mp;
-        mp.entity = sb.entity;
-        mp.label = sb.label;
-        mp.icon = sb.icon;
-        mp.icon_on = sb.icon_on;
-        mp.sensor = sb.sensor;
-        mp.unit = sb.unit;
-        mp.type = sb.type;
-        mp.precision = sb.precision;
-
-        std::string mode = media_card_mode(mp.sensor);
-        if (media_playback_button_mode(mode)) {
-          mp.sensor = mode;
-          setup_media_action_layout(sb_btn, sil, stl, mp);
-          if (!mp.entity.empty()) {
-            ParsedCfg *ctx = new ParsedCfg();
-            ctx->entity = mp.entity;
+        continue;
+      }
+      if (sb_cfg.type == "media") {
+        std::string mode = media_card_mode(sb_cfg.sensor);
+        if (!sb_cfg.entity.empty()) {
+          if (media_playback_button_mode(mode)) {
+            ParsedCfg *ctx = new ParsedCfg(sb_cfg);
             ctx->sensor = mode;
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_media_playback_action(c->entity, media_card_mode(c->sensor));
             }, LV_EVENT_CLICKED, ctx);
             if (mode == "play_pause")
-              subscribe_media_state(sb_btn, media_play_pause_show_state(mp) ? stl : nullptr, mp.entity);
-          }
-        } else if (mode == "now_playing") {
-          lv_obj_t *svl = lv_label_create(sb_btn);
-          lv_obj_set_style_text_font(svl, cfg.sp_sensor_font, LV_PART_MAIN);
-          lv_obj_set_style_text_color(svl, sp_txt_color, LV_PART_MAIN);
-          lv_obj_align(svl, LV_ALIGN_TOP_LEFT, sp_pad, sp_pad);
-          setup_media_now_playing_layout(sb_btn, sil, svl, stl, cfg.sp_sensor_font, sp_pad);
-          if (!mp.entity.empty())
-            subscribe_media_now_playing_state(svl, stl, mp.entity);
-        } else if (mode == "volume") {
-          setup_media_volume_button(sb_btn, sil, stl, mp);
-          if (!mp.entity.empty()) {
+              subscribe_media_state(sub_slot.btn,
+                media_play_pause_show_state(sb_cfg) ? sub_slot.text_lbl : nullptr,
+                sb_cfg.entity);
+          } else if (mode == "volume") {
             MediaVolumeCtx *ctx = create_media_volume_context(
-              sb_btn, stl, mp, has_on ? on_val : DEFAULT_SLIDER_COLOR,
-              cfg.sp_sensor_font, lv_obj_get_style_text_font(stl, LV_PART_MAIN),
+              sub_slot.btn, sub_slot.text_lbl, sb_cfg,
+              has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              cfg.sp_sensor_font, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
               cfg.icon_font);
             subscribe_media_volume_state(ctx);
-            if (mp.label.empty()) subscribe_friendly_name(stl, mp.entity);
+            if (sb_cfg.label.empty()) subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_event_get_user_data(e);
               if (ctx) media_volume_open_modal(ctx);
             }, LV_EVENT_CLICKED, ctx);
-          }
-        } else {
-          if (mode == "position") {
-            lv_obj_t *media_slider = setup_media_position_layout(
-              sb_btn, sil, stl, mp, has_on ? on_val : DEFAULT_SLIDER_COLOR,
-              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-              cfg.sp_sensor_font, sp_txt_color, sp_pad);
-            if (!mp.entity.empty())
-              subscribe_media_slider_state(sb_btn, media_slider, mp.entity);
+          } else if (mode == "now_playing") {
+            subscribe_media_now_playing_state(sub_slot.sensor_lbl, sub_slot.text_lbl, sb_cfg.entity);
           } else {
-            lv_obj_t *media_slider = setup_media_slider_layout(
-              sb_btn, sil, stl, nullptr, mp, has_on ? on_val : DEFAULT_SLIDER_COLOR,
-              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR, sp_pad);
-            if (!mp.entity.empty()) {
-              subscribe_media_slider_state(sb_btn, media_slider, mp.entity);
-              if (mp.label.empty())
-                subscribe_friendly_name(stl, mp.entity);
-            }
+            lv_obj_t *media_slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
+            if (media_slider) subscribe_media_slider_state(sub_slot.btn, media_slider, sb_cfg.entity);
+            if (sb_cfg.label.empty() && mode != "position")
+              subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
           }
+          add_parent_indicator(sb_cfg.entity, false);
         }
-
-        if (sp_indicator && !mp.entity.empty()) {
-          lv_obj_t *parent_btn = slots[si].btn;
-          lv_obj_t *parent_icon = slots[si].icon_lbl;
-          int parent_idx = si;
-          int cwi = sp_child_alloc_idx++;
-          if (cwi >= MAX_SUBPAGE_ITEMS) {
-            ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", mp.entity.c_str());
-          } else {
-            sp_child_was_on[cwi] = false;
-            subscribe_subpage_parent_indicator(
-              mp.entity, parent_btn, parent_icon, parent_idx,
-              &sp_child_was_on[cwi], sp_has_icon_on,
-              sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
-          }
-        }
-
-      } else if (sb.type == "internal") {
-        ParsedCfg ip;
-        ip.entity = sb.entity;
-        ip.label = sb.label;
-        ip.icon = sb.icon;
-        ip.icon_on = sb.icon_on;
-        ip.sensor = sb.sensor;
-        ip.type = sb.type;
-
-        bool push_mode = internal_relay_push_mode(ip);
-        const char *internal_icon_off = internal_relay_icon(ip, push_mode);
-        lv_label_set_text(sil, internal_icon_off);
-        std::string internal_label = internal_relay_label(ip);
-        lv_label_set_text(stl, internal_label.c_str());
-
-        if (push_mode) {
-          apply_push_button_transition(sb_btn);
-        } else if (!sb.entity.empty()) {
-          bool internal_has_icon_on = !sb.icon_on.empty() && sb.icon_on != "Auto";
-          const char *internal_icon_on = internal_has_icon_on ? find_icon(sb.icon_on.c_str()) : nullptr;
-
+        continue;
+      }
+      if (sb_cfg.type == "internal") {
+        bool push_mode = internal_relay_push_mode(sb_cfg);
+        if (!push_mode && !sb_cfg.entity.empty()) {
+          bool internal_has_icon_on = !sb_cfg.icon_on.empty() && sb_cfg.icon_on != "Auto";
+          const char *internal_icon_on = internal_has_icon_on ? find_icon(sb_cfg.icon_on.c_str()) : nullptr;
           bool *child_was_on = nullptr;
           lv_obj_t *parent_btn = nullptr;
           lv_obj_t *parent_icon = nullptr;
           if (sp_indicator) {
             int cwi = sp_child_alloc_idx++;
             if (cwi >= MAX_SUBPAGE_ITEMS) {
-              ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb.entity.c_str());
+              ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb_cfg.entity.c_str());
             } else {
               sp_child_was_on[cwi] = false;
               child_was_on = &sp_child_was_on[cwi];
@@ -6115,161 +5782,105 @@ inline void grid_phase2(
               parent_icon = slots[si].icon_lbl;
             }
           }
-
           watch_internal_relay_state(
-            sb.entity, sb_btn, sil,
-            internal_has_icon_on, internal_icon_off, internal_icon_on,
+            sb_cfg.entity, sub_slot.btn, sub_slot.icon_lbl,
+            internal_has_icon_on, internal_relay_icon(sb_cfg, push_mode), internal_icon_on,
             child_was_on, parent_btn, parent_icon, si,
             sp_has_icon_on, sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
         }
-
-        if (!sb.entity.empty()) {
+        if (!sb_cfg.entity.empty()) {
           InternalRelayClickCtx *ctx = new InternalRelayClickCtx();
-          ctx->key = sb.entity;
+          ctx->key = sb_cfg.entity;
           ctx->push_mode = push_mode;
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             InternalRelayClickCtx *c = (InternalRelayClickCtx *)lv_event_get_user_data(e);
             if (c && !c->key.empty()) send_internal_relay_action(c->key, c->push_mode);
           }, LV_EVENT_CLICKED, ctx);
         }
-
-      } else if (sb.type == "light_temperature" && !sb.entity.empty()) {
-        lv_obj_t *sl = setup_subpage_light_temp(sb_btn, sil, stl, sb, has_on ? on_val : DEFAULT_SLIDER_COLOR, sp_radius);
-
-        if (sp_indicator) {
-          lv_obj_t *parent_btn = slots[si].btn;
-          lv_obj_t *parent_icon = slots[si].icon_lbl;
-          int parent_idx = si;
-          int cwi = sp_child_alloc_idx++;
-          if (cwi >= MAX_SUBPAGE_ITEMS) {
-            ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb.entity.c_str());
-          } else {
-            sp_child_was_on[cwi] = false;
-            subscribe_subpage_parent_indicator(
-              sb.entity, parent_btn, parent_icon, parent_idx,
-              &sp_child_was_on[cwi], sp_has_icon_on,
-              sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+        continue;
+      }
+      if (sb_cfg.type == "light_temperature") {
+        if (!sb_cfg.entity.empty()) {
+          lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
+          if (slider) {
+            int min_k = 2000, max_k = 6500;
+            parse_kelvin_range(sb_cfg.unit, min_k, max_k);
+            subscribe_light_temp_state(sub_slot.btn, slider, sb_cfg.entity,
+              min_k, max_k, sb_cfg.precision == "color");
+            if (sb_cfg.label.empty()) {
+              SliderCtx *lctx = (SliderCtx *)lv_obj_get_user_data(slider);
+              subscribe_friendly_name_for_light_temp(sub_slot.text_lbl, lctx, sb_cfg.entity);
+            }
           }
+          add_parent_indicator(sb_cfg.entity, false);
         }
-        (void)sl;
-
-      } else if ((sb.type == "slider" || sb.type == "cover") && !sb.entity.empty()) {
-        lv_obj_t *sl = setup_subpage_slider(sb_btn, sil, stl, sb, has_on ? on_val : DEFAULT_SLIDER_COLOR, sp_radius);
-
-        if (sp_indicator) {
-          lv_obj_t *parent_btn = slots[si].btn;
-          lv_obj_t *parent_icon = slots[si].icon_lbl;
-          int parent_idx = si;
-          int cwi = sp_child_alloc_idx++;
-          if (cwi >= MAX_SUBPAGE_ITEMS) {
-            ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb.entity.c_str());
-          } else {
-            sp_child_was_on[cwi] = false;
-            subscribe_subpage_parent_indicator(
-              sb.entity, parent_btn, parent_icon, parent_idx,
-              &sp_child_was_on[cwi], sp_has_icon_on,
-              sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+        continue;
+      }
+      if (sb_cfg.type == "slider" || sb_cfg.type == "cover") {
+        if (!sb_cfg.entity.empty()) {
+          lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
+          bool sl_has_icon_on = slider_has_alt_icon(sb_cfg.type, sb_cfg.icon_on);
+          const char *sl_icon_on = sl_has_icon_on
+            ? slider_icon_on(sb_cfg.type, sb_cfg.entity, sb_cfg.icon, sb_cfg.icon_on) : nullptr;
+          const char *sl_icon_off = sl_has_icon_on
+            ? slider_icon_off(sb_cfg.type, sb_cfg.entity, sb_cfg.icon) : nullptr;
+          if (slider) {
+            subscribe_slider_state(sub_slot.btn, sub_slot.icon_lbl, slider,
+              sl_has_icon_on, sl_icon_off, sl_icon_on, sb_cfg.entity,
+              sb_cfg.type == "cover" && cover_tilt_mode(sb_cfg.sensor));
           }
+          if (sb_cfg.label.empty())
+            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
+          add_parent_indicator(sb_cfg.entity, false);
+          std::string *eid = new std::string(sb_cfg.entity);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            std::string *en = (std::string *)lv_event_get_user_data(e);
+            if (en && !en->empty()) send_slider_action(*en, -1);
+          }, LV_EVENT_CLICKED, eid);
         }
-
-      } else if (!sb.entity.empty()) {
-        bool switch_has_sensor = !sb.sensor.empty();
-        bool switch_sensor_text_mode = switch_has_sensor && sb.precision == "text";
-        bool switch_has_icon_on = !sb.icon_on.empty() && sb.icon_on != "Auto";
-        const char *switch_icon_on = switch_has_icon_on ? find_icon(sb.icon_on.c_str()) : nullptr;
-
-        lv_obj_t *switch_sensor_ctr = nullptr;
-        lv_obj_t *switch_sensor_lbl = nullptr;
-        if (switch_has_sensor && !switch_sensor_text_mode) {
-          switch_sensor_ctr = lv_obj_create(sb_btn);
-          lv_obj_set_align(switch_sensor_ctr, LV_ALIGN_TOP_LEFT);
-          lv_obj_set_size(switch_sensor_ctr, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-          lv_obj_clear_flag(switch_sensor_ctr, LV_OBJ_FLAG_CLICKABLE);
-          lv_obj_clear_flag(switch_sensor_ctr, LV_OBJ_FLAG_SCROLLABLE);
-          lv_obj_add_flag(switch_sensor_ctr, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_set_style_bg_opa(switch_sensor_ctr, LV_OPA_TRANSP, LV_PART_MAIN);
-          lv_obj_set_style_border_width(switch_sensor_ctr, 0, LV_PART_MAIN);
-          lv_obj_set_style_pad_all(switch_sensor_ctr, 0, LV_PART_MAIN);
-          lv_obj_set_style_pad_column(switch_sensor_ctr, 0, LV_PART_MAIN);
-          lv_obj_set_layout(switch_sensor_ctr, LV_LAYOUT_FLEX);
-          lv_obj_set_style_flex_flow(switch_sensor_ctr, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-          lv_obj_set_style_flex_cross_place(switch_sensor_ctr, LV_FLEX_ALIGN_END, LV_PART_MAIN);
-
-          switch_sensor_lbl = lv_label_create(switch_sensor_ctr);
-          lv_obj_set_style_text_font(switch_sensor_lbl, cfg.sp_sensor_font, LV_PART_MAIN);
-          lv_obj_set_style_text_color(switch_sensor_lbl, sp_txt_color, LV_PART_MAIN);
-          lv_label_set_text(switch_sensor_lbl, "--");
-
-          lv_obj_t *switch_unit_lbl = lv_label_create(switch_sensor_ctr);
-          lv_obj_set_style_text_font(switch_unit_lbl, sp_btn_fnt, LV_PART_MAIN);
-          lv_obj_set_style_text_color(switch_unit_lbl, sp_txt_color, LV_PART_MAIN);
-          lv_obj_set_style_pad_bottom(switch_unit_lbl, 6, LV_PART_MAIN);
-          if (!sb.unit.empty())
-            lv_label_set_text(switch_unit_lbl, sb.unit.c_str());
-        }
-
-        if (!sb.label.empty()) {
-          lv_label_set_text(stl, sb.label.c_str());
-        }
+        continue;
+      }
+      if (!sb_cfg.entity.empty()) {
+        bool switch_has_sensor = !sb_cfg.sensor.empty();
+        bool switch_sensor_text_mode = switch_has_sensor && sb_cfg.precision == "text";
+        bool switch_has_icon_on = !sb_cfg.icon_on.empty() && sb_cfg.icon_on != "Auto";
+        const char *switch_icon_on = switch_has_icon_on ? find_icon(sb_cfg.icon_on.c_str()) : nullptr;
+        const char *switch_icon_off = (sb_cfg.icon.empty() || sb_cfg.icon == "Auto")
+          ? domain_default_icon(sb_cfg.entity.substr(0, sb_cfg.entity.find('.')))
+          : find_icon(sb_cfg.icon.c_str());
 
         ToggleTextSensorCtx *switch_text_ctx = nullptr;
         if (switch_sensor_text_mode) {
           switch_text_ctx = new ToggleTextSensorCtx();
-          switch_text_ctx->text_lbl = stl;
-          switch_text_ctx->steady_text = label_text_or_empty(stl);
+          switch_text_ctx->text_lbl = sub_slot.text_lbl;
+          switch_text_ctx->steady_text = label_text_or_empty(sub_slot.text_lbl);
         }
 
-        if (sb.label.empty()) {
+        if (sb_cfg.label.empty()) {
           if (switch_text_ctx)
-            subscribe_friendly_name(switch_text_ctx, sb.entity);
+            subscribe_friendly_name(switch_text_ctx, sb_cfg.entity);
           else
-            subscribe_friendly_name(stl, sb.entity);
+            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
         }
 
         bool *switch_has_sensor_ptr = new bool(switch_has_sensor);
         bool *switch_sensor_text_ptr = new bool(switch_sensor_text_mode);
         bool *switch_has_icon_on_ptr = new bool(switch_has_icon_on);
-        const char **switch_icon_off_ptr = new const char*(sic);
+        const char **switch_icon_off_ptr = new const char*(switch_icon_off);
         const char **switch_icon_on_ptr = new const char*(switch_icon_on);
-        subscribe_toggle_state(sb_btn, sil, switch_sensor_ctr,
+        subscribe_toggle_state(sub_slot.btn, sub_slot.icon_lbl, sub_slot.sensor_container,
           switch_has_sensor_ptr, switch_sensor_text_ptr, switch_has_icon_on_ptr,
-          switch_icon_off_ptr, switch_icon_on_ptr, switch_text_ctx, sb.entity);
+          switch_icon_off_ptr, switch_icon_on_ptr, switch_text_ctx, sb_cfg.entity);
 
         if (switch_has_sensor) {
           if (switch_sensor_text_mode)
-            subscribe_toggle_text_sensor_value(switch_text_ctx, sb.sensor);
-          else if (switch_sensor_lbl)
-            subscribe_sensor_value(switch_sensor_lbl, sb.sensor, parse_precision(sb.precision));
+            subscribe_toggle_text_sensor_value(switch_text_ctx, sb_cfg.sensor);
+          else
+            subscribe_sensor_value(sub_slot.sensor_lbl, sb_cfg.sensor, parse_precision(sb_cfg.precision));
         }
 
-        if (sp_indicator) {
-          lv_obj_t *parent_btn = slots[si].btn;
-          lv_obj_t *parent_icon = slots[si].icon_lbl;
-          int parent_idx = si;
-          int cwi = sp_child_alloc_idx++;
-          if (cwi >= MAX_SUBPAGE_ITEMS) {
-            ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb.entity.c_str());
-          } else {
-            sp_child_was_on[cwi] = false;
-            subscribe_subpage_parent_indicator(
-              sb.entity, parent_btn, parent_icon, parent_idx,
-              &sp_child_was_on[cwi], sp_has_icon_on,
-              sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
-          }
-        }
-
-        int eid_idx = sp_entity_alloc_idx++;
-        if (eid_idx >= MAX_SUBPAGE_ITEMS) {
-          ESP_LOGW("sensors", "Too many subpage click handlers; skipping %s", sb.entity.c_str());
-        } else {
-          sp_entity_ids[eid_idx] = sb.entity;
-          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            std::string *en = (std::string *)lv_event_get_user_data(e);
-            if (en && !en->empty()) send_toggle_action(*en);
-          }, LV_EVENT_CLICKED, &sp_entity_ids[eid_idx]);
-        }
-      } else {
-        lv_label_set_text(stl, sb.label.empty() ? "Configure" : sb.label.c_str());
+        add_parent_indicator(sb_cfg.entity, false);
+        add_subpage_toggle_click(sb_btn, sb_cfg.entity, false);
       }
     }
 

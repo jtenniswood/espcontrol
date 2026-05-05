@@ -12,8 +12,7 @@
     "btn": { "radius": 0.86, "padding": 1.41, "iconSize": 4.1, "labelSize": 1.88, "labelLines": 2, "labelLinesDouble": 3 },
     "emptyCell": { "radius": 0.86 },
     "sensorBadge": { "top": 0.86, "right": 0.86, "fontSize": 1.41 },
-    "subpageBadge": { "bottom": 0.86, "right": 0.86, "fontSize": 1.56 },
-    "backBtn": { "radius": 0.86, "padding": 1.41, "iconSize": 4.1, "labelSize": 1.88, "labelLines": 2, "labelLinesDouble": 3 }
+    "subpageBadge": { "bottom": 0.86, "right": 0.86, "fontSize": 1.56 }
   },
   "guition-esp32-p4-jc1060p470": {
     "slots": 15,
@@ -28,8 +27,7 @@
     "btn": { "radius": 0.78, "padding": 1.37, "iconSize": 4.69, "labelSize": 1.8, "labelLines": 2, "labelLinesDouble": 3 },
     "emptyCell": { "radius": 0.78 },
     "sensorBadge": { "top": 1, "right": 1, "fontSize": 1.6 },
-    "subpageBadge": { "bottom": 1, "right": 1, "fontSize": 2 },
-    "backBtn": { "radius": 0.78, "padding": 1.37, "iconSize": 4.69, "labelSize": 1.8, "labelLines": 2, "labelLinesDouble": 3 }
+    "subpageBadge": { "bottom": 1, "right": 1, "fontSize": 2 }
   },
   "guition-esp32-p4-jc4880p443": {
     "slots": 6,
@@ -44,8 +42,7 @@
     "btn": { "radius": 1.18, "padding": 2.73, "iconSize": 14, "labelSize": 5.5, "labelLines": 2, "labelLinesDouble": 3 },
     "emptyCell": { "radius": 1.18 },
     "sensorBadge": { "top": 1.52, "right": 1.52, "fontSize": 3.22 },
-    "subpageBadge": { "bottom": 1.52, "right": 1.52, "fontSize": 4.03 },
-    "backBtn": { "radius": 1.18, "padding": 2.73, "iconSize": 14, "labelSize": 5.5, "labelLines": 2, "labelLinesDouble": 3 }
+    "subpageBadge": { "bottom": 1.52, "right": 1.52, "fontSize": 4.03 }
   },
   "esp32-p4-86": {
     "slots": 9,
@@ -67,8 +64,7 @@
     "btn": { "radius": 1.67, "padding": 2.92, "iconSize": 9.17, "labelSize": 3.72, "labelLines": 2, "labelLinesDouble": 3 },
     "emptyCell": { "radius": 1.67 },
     "sensorBadge": { "top": 2.08, "right": 2.08, "fontSize": 3.12 },
-    "subpageBadge": { "bottom": 2.08, "right": 2.08, "fontSize": 3.75 },
-    "backBtn": { "radius": 1.67, "padding": 2.92, "iconSize": 9.17, "labelSize": 3.72, "labelLines": 2, "labelLinesDouble": 3 }
+    "subpageBadge": { "bottom": 2.08, "right": 2.08, "fontSize": 3.75 }
   },
   "guition-esp32-s3-4848s040": {
     "slots": 9,
@@ -91,7 +87,6 @@
     "btn": { "radius": 1.67, "padding": 2.92, "iconSize": 9.58, "labelSize": 3.96, "labelLines": 2, "labelLinesDouble": 3 },
     "emptyCell": { "radius": 1.67 },
     "sensorBadge": { "top": 2.08, "right": 2.08, "fontSize": 3.33 },
-    "subpageBadge": { "bottom": 2.08, "right": 2.08, "fontSize": 4 },
-    "backBtn": { "radius": 1.67, "padding": 2.92, "iconSize": 9.58, "labelSize": 3.96, "labelLines": 2, "labelLinesDouble": 3 }
+    "subpageBadge": { "bottom": 2.08, "right": 2.08, "fontSize": 4 }
   }
 }
