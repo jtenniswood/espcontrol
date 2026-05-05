@@ -51,6 +51,8 @@ registerButtonType("media", {
       var mode = validMode(value);
       if (mode === "previous") return "Previous";
       if (mode === "next") return "Next";
+      if (mode === "volume") return "Volume";
+      if (mode === "play_pause") return "Play/Pause";
       return "";
     }
 
@@ -88,6 +90,15 @@ registerButtonType("media", {
         helpers.saveField("label", b.label);
         helpers.saveField("icon", b.icon);
       }
+      if (b.sensor === "volume") {
+        var oldDefaultLabel = mediaActionLabel(oldMode);
+        if (!b.label || b.label === oldDefaultLabel || b.label === "Media") {
+          b.label = mediaActionLabel(b.sensor);
+          helpers.saveField("label", b.label);
+        }
+        b.icon = "Auto";
+        helpers.saveField("icon", b.icon);
+      }
       helpers.saveField("sensor", b.sensor);
       renderButtonSettings();
     });
@@ -116,6 +127,13 @@ registerButtonType("media", {
     }
     if ((b.sensor === "previous" || b.sensor === "next") && !b.label) {
       b.label = b.sensor === "previous" ? "Previous" : "Next";
+    }
+    if (b.sensor === "volume") {
+      if (!b.label || b.label === "Media") b.label = "Volume";
+      if (b.icon !== "Auto") {
+        b.icon = "Auto";
+        helpers.saveField("icon", b.icon);
+      }
     }
     if (b.sensor === "previous" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Previous";
     if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
@@ -178,7 +196,7 @@ registerButtonType("media", {
     helpers.bindField(entityInp, "entity", true);
     helpers.requireField(entityInp, "Add an entity before saving.");
 
-    if (b.sensor !== "now_playing" && b.sensor !== "position") {
+    if (b.sensor !== "now_playing" && b.sensor !== "position" && b.sensor !== "volume") {
       panel.appendChild(helpers.makeIconPicker(
         helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
         b.icon || "Speaker", function (opt) {
@@ -193,14 +211,14 @@ registerButtonType("media", {
       if (value === "controls") value = "play_pause";
       if (value === "previous") return { mode: "previous", label: "Previous", icon: "skip-previous" };
       if (value === "next") return { mode: "next", label: "Next", icon: "skip-next" };
-      if (value === "volume") return { mode: "volume", label: "Media", icon: "volume-high" };
+      if (value === "volume") return { mode: "volume", label: "Volume", icon: "volume-high" };
       if (value === "position") return { mode: "position", label: "Media", icon: "progress-clock" };
       if (value === "now_playing") return { mode: "now_playing", label: "Now Playing", icon: "music" };
       return { mode: "play_pause", label: "Play/Pause", icon: "play-pause" };
     }
     var info = modeInfo(b.sensor);
     var mode = info.mode;
-    var label = b.label || (mode === "volume" || mode === "position" ? (b.entity || "Media") : info.label);
+    var label = b.label || (mode === "position" ? (b.entity || "Media") : info.label);
     var badge = '<span class="sp-type-badge mdi mdi-speaker"></span>';
     if (mode === "volume") {
       return {

@@ -420,13 +420,24 @@ assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(
 assertButtonRoundTrip(hooks, "media volume card", {
   entity: "media_player.kitchen",
   label: "Kitchen",
-  icon: "Volume High",
+  icon: "Auto",
   icon_on: "Auto",
   sensor: "volume",
   unit: "",
   type: "media",
   precision: "",
 }, false);
+
+assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(
+  "media_player.kitchen;;Volume High;Auto;volume;;media"
+)), buttonShape({
+  entity: "media_player.kitchen",
+  label: "Volume",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "volume",
+  type: "media",
+}), "media volume defaults to Volume label and fixed icon");
 
 assertButtonRoundTrip(hooks, "media position card", {
   entity: "media_player.office",
@@ -720,7 +731,7 @@ assertSubpageRoundTrip(hooks, "media subpage", {
     buttonShape({ entity: "media_player.living_room", label: "Play/Pause", icon: "Auto", sensor: "play_pause", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Previous", icon: "Auto", sensor: "previous", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Next", icon: "Auto", sensor: "next", type: "media" }),
-    buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Volume High", sensor: "volume", type: "media" }),
+    buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Auto", sensor: "volume", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "Office", icon: "Progress Clock", sensor: "position", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "", icon: "Auto", sensor: "now_playing", type: "media" }),
   ],

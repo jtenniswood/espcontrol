@@ -1869,6 +1869,10 @@
       }
       if (b.sensor === "previous" && b.label === "Skip Previous") b.label = "Previous";
       if (b.sensor === "next" && b.label === "Skip Next") b.label = "Next";
+      if (b.sensor === "volume") {
+        if (!b.label || b.label === "Media") b.label = "Volume";
+        b.icon = "Auto";
+      }
     }
     return b;
   }

@@ -126,6 +126,10 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     }
     if (p.sensor == "previous" && p.label == "Skip Previous") p.label = "Previous";
     if (p.sensor == "next" && p.label == "Skip Next") p.label = "Next";
+    if (p.sensor == "volume") {
+      if (p.label.empty() || p.label == "Media") p.label = "Volume";
+      p.icon = "Auto";
+    }
   }
   return p;
 }
@@ -3684,12 +3688,13 @@ inline const char *media_default_icon(const std::string &mode,
 inline std::string media_default_label(const std::string &mode) {
   if (mode == "previous") return "Previous";
   if (mode == "next") return "Next";
+  if (mode == "volume") return "Volume";
   if (mode == "play_pause") return "Play/Pause";
   return "Media";
 }
 
 inline std::string media_label(const ParsedCfg &p) {
-  return p.label.empty() ? std::string("Media") : p.label;
+  return p.label.empty() ? std::string("Volume") : p.label;
 }
 
 inline std::string media_action_label(const ParsedCfg &p, const std::string &mode) {
@@ -4399,6 +4404,10 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     }
     if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
     if (b.sensor == "next" && b.label == "Skip Next") b.label = "Next";
+    if (b.sensor == "volume") {
+      if (b.label.empty() || b.label == "Media") b.label = "Volume";
+      b.icon = "Auto";
+    }
   }
   return b;
 }
