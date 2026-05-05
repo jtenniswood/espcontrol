@@ -19,6 +19,7 @@ registerButtonType("climate", {
     ef.appendChild(entityInp);
     panel.appendChild(ef);
     helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
 
     var pf = document.createElement("div");
     pf.className = "sp-field";

@@ -153,10 +153,9 @@
     return !!state.developerExperimentalFeatures;
   }
 
-  function subpageStateDisplayMode(b, experimentalEnabled) {
+  function subpageStateDisplayMode(b) {
     if (!b || !b.sensor) return "off";
     if (b.sensor === "indicator") return "icon";
-    if (!experimentalEnabled) return "off";
     return b.precision === "text" ? "text" : "numeric";
   }
   // __BUTTON_TYPES_START__
@@ -337,11 +336,14 @@
     "transition:border-color .25s,box-shadow .25s}" +
     ".sp-input:focus,.sp-select:focus{border-color:var(--accent);" +
     "box-shadow:0 0 0 3px var(--accent-soft)}" +
+    ".sp-input.sp-input-error,.sp-select.sp-input-error{border-color:var(--danger);" +
+    "box-shadow:0 0 0 3px rgba(241,65,88,.16)}" +
     ".sp-input--narrow{width:80px}" +
     ".sp-select{appearance:none;-webkit-appearance:none;" +
     "background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2398989f' d='M6 8L1 3h10z'/%3E%3C/svg%3E\");" +
     "background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}" +
     "select option{background:var(--surface);color:var(--text)}" +
+    ".sp-field-error{font-size:.75rem;color:#f66f81;margin-top:6px;line-height:1.35}" +
 
     ".sp-icon-picker{position:relative}" +
     ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
@@ -3668,6 +3670,7 @@
     panel.className = "sp-panel";
 
     var idPrefix = c.isSub ? "sp-sp-inp-" : "sp-inp-";
+    var requiredFields = [];
 
     function markDraftDirty() {
       if (state.settingsDraft && state.settingsDraft.key === draftKey) {
@@ -3677,6 +3680,78 @@
 
     function saveField(field, val) {
       markDraftDirty();
+    }
+
+    function fieldContainer(input) {
+      return input && input.closest ? input.closest(".sp-field") : null;
+    }
+
+    function clearFieldError(input) {
+      if (!input) return;
+      input.classList.remove("sp-input-error");
+      input.removeAttribute("aria-invalid");
+      input.removeAttribute("aria-describedby");
+      var field = fieldContainer(input);
+      if (field) field.classList.remove("sp-field-invalid");
+      var existing = field ? field.querySelector(".sp-field-error") : null;
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    }
+
+    function showFieldError(input, message) {
+      if (!input) return;
+      var field = fieldContainer(input);
+      input.classList.add("sp-input-error");
+      input.setAttribute("aria-invalid", "true");
+      if (field) field.classList.add("sp-field-invalid");
+      var existing = field ? field.querySelector(".sp-field-error") : null;
+      if (!existing && field) {
+        existing = document.createElement("div");
+        existing.className = "sp-field-error";
+        existing.id = (input.id || "sp-field") + "-error";
+        field.appendChild(existing);
+      }
+      if (existing) {
+        existing.textContent = message || "Add an entity before saving.";
+        input.setAttribute("aria-describedby", existing.id);
+      }
+    }
+
+    function requireField(input, message, isActive) {
+      if (!input) return;
+      requiredFields.push({
+        input: input,
+        message: message || "Add an entity before saving.",
+        isActive: isActive || function () { return true; },
+      });
+      function maybeClearError() {
+        if (!isActive || isActive()) {
+          if (String(input.value || "").trim()) clearFieldError(input);
+        } else {
+          clearFieldError(input);
+        }
+      }
+      input.addEventListener("input", maybeClearError);
+      input.addEventListener("change", maybeClearError);
+    }
+
+    function validateSettingsDraft() {
+      var firstInvalid = null;
+      for (var i = 0; i < requiredFields.length; i++) {
+        var rule = requiredFields[i];
+        if (rule.isActive && !rule.isActive()) {
+          clearFieldError(rule.input);
+          continue;
+        }
+        if (String(rule.input.value || "").trim()) {
+          clearFieldError(rule.input);
+          continue;
+        }
+        if (!firstInvalid) firstInvalid = rule.input;
+        showFieldError(rule.input, rule.message);
+      }
+      if (!firstInvalid) return true;
+      firstInvalid.focus();
+      return false;
     }
 
     function applySettingsDraft() {
@@ -3785,6 +3860,8 @@
       textInput: textInput,
       bindField: bindField,
       saveField: saveField,
+      requireField: requireField,
+      clearFieldError: clearFieldError,
       toggleRow: toggleRow,
       idPrefix: idPrefix,
     };
@@ -3800,6 +3877,7 @@
       ef.appendChild(entityInp);
       panel.appendChild(ef);
       bindField(entityInp, "entity", true);
+      requireField(entityInp, "Add an entity before saving.");
 
       panel.appendChild(makeIconPicker(idPrefix + "icon-picker", idPrefix + "icon", b.icon || "Auto", function (opt) {
         b.icon = opt;
@@ -3975,6 +4053,7 @@
     saveBtn.className = "sp-action-btn sp-save-btn";
     saveBtn.textContent = "Save";
     saveBtn.addEventListener("click", function () {
+      if (!validateSettingsDraft()) return;
       applySettingsDraft();
       closeSettings();
     });

@@ -2661,15 +2661,14 @@ inline void setup_text_sensor_card(BtnSlot &s, const ParsedCfg &p,
   lv_label_set_text(s.text_lbl, "--");
 }
 
-inline bool subpage_parent_sensor_state_enabled(const ParsedCfg &p, bool experimental_enabled) {
-  return experimental_enabled &&
-         p.type == "subpage" &&
+inline bool subpage_parent_sensor_state_enabled(const ParsedCfg &p) {
+  return p.type == "subpage" &&
          !p.sensor.empty() &&
          p.sensor != "indicator";
 }
 
-inline bool subpage_parent_text_state_enabled(const ParsedCfg &p, bool experimental_enabled) {
-  return subpage_parent_sensor_state_enabled(p, experimental_enabled) &&
+inline bool subpage_parent_text_state_enabled(const ParsedCfg &p) {
+  return subpage_parent_sensor_state_enabled(p) &&
          p.precision == "text";
 }
 
@@ -4279,7 +4278,7 @@ inline void grid_phase1(
       setup_garage_card(s, p);
       continue;
     }
-    if (subpage_parent_sensor_state_enabled(p, cfg.developer_experimental_features)) {
+    if (subpage_parent_sensor_state_enabled(p)) {
       setup_subpage_parent_state_card(s, p, cfg.sp_sensor_font);
       continue;
     }
@@ -4434,8 +4433,8 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (subpage_parent_sensor_state_enabled(p, cfg.developer_experimental_features)) {
-      if (subpage_parent_text_state_enabled(p, cfg.developer_experimental_features)) {
+    if (subpage_parent_sensor_state_enabled(p)) {
+      if (subpage_parent_text_state_enabled(p)) {
         subscribe_text_sensor_value(s.text_lbl, p.sensor);
       } else {
         subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision));

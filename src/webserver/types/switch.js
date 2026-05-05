@@ -13,6 +13,7 @@ registerButtonType("", {
     ef.appendChild(entityInp);
     panel.appendChild(ef);
     helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
 
     panel.appendChild(helpers.makeIconPicker(
       helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",

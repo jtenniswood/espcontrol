@@ -58,6 +58,7 @@ registerButtonType("media", {
     ef.appendChild(entityInp);
     panel.appendChild(ef);
     helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
 
     var mf = document.createElement("div");
     mf.className = "sp-field";

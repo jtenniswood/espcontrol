@@ -434,12 +434,10 @@ assertButtonRoundTrip(hooks, "subpage state numeric", subpageStateNumeric, false
 assertButtonRoundTrip(hooks, "subpage state numeric precision", subpageStateNumericPrecision, false);
 assertButtonRoundTrip(hooks, "subpage state text", subpageStateText, false);
 
-assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateOff, false), "off", "subpage state off without flag");
-assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateIcon, false), "icon", "subpage icon state without flag");
-assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateNumeric, false), "off", "subpage numeric state disabled without flag");
-assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateText, false), "off", "subpage text state disabled without flag");
-assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateNumeric, true), "numeric", "subpage numeric state enabled with flag");
-assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateText, true), "text", "subpage text state enabled with flag");
+assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateOff), "off", "subpage state off");
+assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateIcon), "icon", "subpage icon state");
+assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateNumeric), "numeric", "subpage numeric state");
+assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateText), "text", "subpage text state");
 
 assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig("weather.forecast_home;Weather;Auto;Auto;;;weather_forecast")), {
   entity: "weather.forecast_home",

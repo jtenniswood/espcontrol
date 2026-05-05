@@ -7,13 +7,7 @@ registerButtonType("subpage", {
     b.entity = ""; b.sensor = ""; b.unit = ""; b.icon = "Auto"; b.icon_on = "Auto";
   },
   renderSettings: function (panel, b, slot, helpers) {
-    var experimental = isExperimentalEnabled("subpage_state_modes");
-    if (!experimental) {
-      renderLegacySubpageSettings(panel, b, slot, helpers);
-      return;
-    }
-
-    var mode = subpageStateDisplayMode(b, true);
+    var mode = subpageStateDisplayMode(b);
     var showState = mode !== "off";
     var sensorEntity = b.sensor && b.sensor !== "indicator" ? b.sensor : "";
     var iconFields = [];
@@ -89,6 +83,9 @@ registerButtonType("subpage", {
     sf.appendChild(sensorInp);
     sensorField.appendChild(sf);
     stateCond.appendChild(sensorField);
+    helpers.requireField(sensorInp, "Add a sensor entity before saving.", function () {
+      return showState && (mode === "numeric" || mode === "text");
+    });
 
     function saveSensorEntity() {
       sensorEntity = sensorInp.value;
@@ -160,6 +157,7 @@ registerButtonType("subpage", {
       sensorField.classList.toggle("sp-visible", mode === "numeric" || mode === "text");
       numericSection.classList.toggle("sp-visible", mode === "numeric");
       textSection.classList.toggle("sp-visible", mode === "text");
+      if (mode !== "numeric" && mode !== "text") helpers.clearFieldError(sensorInp);
       if (!persist) return;
 
       if (mode === "off") {
@@ -214,10 +212,7 @@ registerButtonType("subpage", {
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Configure";
-    var mode = subpageStateDisplayMode(
-      b,
-      typeof state !== "undefined" && state.developerExperimentalFeatures
-    );
+    var mode = subpageStateDisplayMode(b);
 
     if (mode === "numeric") {
       var unit = b.unit ? helpers.escHtml(b.unit) : "";
@@ -263,72 +258,4 @@ function appendEditSubpageButton(panel, slot) {
   configBtn.textContent = "Edit Subpage";
   configBtn.addEventListener("click", function () { closeSettings(); enterSubpage(slot); });
   panel.appendChild(configBtn);
-}
-
-function renderLegacySubpageSettings(panel, b, slot, helpers) {
-  panel.appendChild(helpers.makeIconPicker(
-    helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
-    b.icon || "Auto", function (opt) {
-      b.icon = opt;
-      helpers.saveField("icon", opt);
-    }
-  ));
-  var displayStateEnabled = b.sensor === "indicator";
-  var displayStateToggle = helpers.toggleRow("Display State", helpers.idPrefix + "whenon-toggle", displayStateEnabled);
-  panel.appendChild(displayStateToggle.row);
-
-  var hasIconOn = b.icon_on && b.icon_on !== "Auto";
-
-  var iconOnToggle = helpers.toggleRow("Change Icon When On", helpers.idPrefix + "iconon-toggle", hasIconOn);
-  iconOnToggle.row.style.display = displayStateEnabled ? "" : "none";
-  panel.appendChild(iconOnToggle.row);
-
-  var iconOnCond = condField();
-  if (displayStateEnabled && hasIconOn) iconOnCond.classList.add("sp-visible");
-
-  var iconOnSection = helpers.makeIconPicker(
-    helpers.idPrefix + "icon-on-picker", helpers.idPrefix + "icon-on",
-    hasIconOn ? b.icon_on : "Auto", function (opt) {
-      b.icon_on = opt;
-      helpers.saveField("icon_on", opt);
-    }, "Icon When On"
-  );
-  iconOnCond.appendChild(iconOnSection);
-  panel.appendChild(iconOnCond);
-
-  function resetIconOn() {
-    b.icon_on = "Auto";
-    helpers.saveField("icon_on", "Auto");
-    iconOnCond.classList.remove("sp-visible");
-    var ionPreview = iconOnSection.querySelector(".sp-icon-picker-preview");
-    if (ionPreview) ionPreview.className = "sp-icon-picker-preview mdi mdi-cog";
-    var ionInput = iconOnSection.querySelector(".sp-icon-picker-input");
-    if (ionInput) ionInput.value = "Auto";
-  }
-
-  iconOnToggle.input.addEventListener("change", function () {
-    if (this.checked) {
-      iconOnCond.classList.add("sp-visible");
-    } else {
-      resetIconOn();
-    }
-  });
-
-  displayStateToggle.input.addEventListener("change", function () {
-    if (this.checked) {
-      b.sensor = "indicator";
-      helpers.saveField("sensor", "indicator");
-      iconOnToggle.row.style.display = "";
-    } else {
-      b.sensor = "";
-      helpers.saveField("sensor", "");
-      iconOnToggle.row.style.display = "none";
-      if (iconOnToggle.input.checked) {
-        iconOnToggle.input.checked = false;
-        resetIconOn();
-      }
-    }
-  });
-
-  appendEditSubpageButton(panel, slot);
 }

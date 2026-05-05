@@ -22,6 +22,7 @@ registerButtonType("weather_forecast", {
     ef.appendChild(entityInp);
     panel.appendChild(ef);
     helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
   },
   renderPreview: function (b, helpers) {
     return {

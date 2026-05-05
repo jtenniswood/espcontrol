@@ -35,6 +35,7 @@ registerButtonType("sensor", {
     sf.appendChild(sensorInp);
     panel.appendChild(sf);
     helpers.bindField(sensorInp, "sensor", true);
+    helpers.requireField(sensorInp, "Add a sensor entity before saving.");
 
     var numericSection = condField();
 

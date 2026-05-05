@@ -62,6 +62,7 @@ registerButtonType("action", {
     ef.appendChild(entityInp);
     panel.appendChild(ef);
     helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
 
     var valueField = document.createElement("div");
     valueField.className = "sp-field";

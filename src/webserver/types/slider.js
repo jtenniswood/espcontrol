@@ -192,6 +192,7 @@ function sliderTypeFactory(opts) {
       ef.appendChild(entityInp);
       panel.appendChild(ef);
       helpers.bindField(entityInp, "entity", true);
+      helpers.requireField(entityInp, "Add an entity before saving.");
 
       function iconField(label, inputSuffix, field, currentVal, defaultVal) {
         var section = document.createElement("div");

@@ -52,6 +52,7 @@ registerButtonType("garage", {
     ef.appendChild(entityInp);
     panel.appendChild(ef);
     helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
 
     var closedIconVal = b.icon && b.icon !== "Auto" ? b.icon : "Garage";
     var iconOnVal = b.icon_on && b.icon_on !== "Auto" ? b.icon_on : "Garage Open";

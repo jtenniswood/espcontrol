@@ -24,25 +24,17 @@ You can also right-click an empty space on the home screen and choose **Create S
 
 Subpages can contain Switch, Action, Trigger, Sensor, Slider, Cover, Garage Door, Date, World Clock, Weather, and Internal cards. Media cards can also be used when **Developer/Experimental Features** is enabled. Subpages cannot contain another Subpage card.
 
-## Display State
+## Show State
 
-Turn on **Display State** if you want the Subpage card on the home screen to show when something inside the subpage is active.
+Turn on **Show State** if you want the Subpage card on the home screen to show state.
 
-When **Display State** is on:
+Subpage cards can show state in three ways:
 
-- The Subpage card lights up if any active-capable card inside it is on, open, playing, unlocked, or otherwise active.
-- You can also enable **Change Icon When On** to use a different icon while anything inside the subpage is active.
-- Read-only cards such as Sensor, Date, World Clock, and Weather do not affect the Subpage card state.
-
-::: info Experimental
-When **Developer: Experimental Features** is enabled, Subpage cards use **Show State** instead of **Display State** and can show state in three ways:
-
-- **Icon** keeps the existing active indicator behavior, with separate Off Icon and On Icon choices.
+- **Icon** keeps the existing active indicator behavior, with separate Off Icon and On Icon choices. The Subpage card lights up if any active-capable card inside it is on, open, playing, unlocked, or otherwise active.
 - **Numeric** shows a Home Assistant sensor value in the large number style used by Sensor cards.
 - **Text** shows a Home Assistant sensor state where the card label normally appears.
 
-Numeric and Text modes use the sensor entity you enter on the Subpage card. They do not automatically count the cards inside the subpage; use a Home Assistant helper or template sensor for that.
-:::
+Read-only cards such as Sensor, Date, World Clock, and Weather do not affect Icon mode. Numeric and Text modes use the sensor entity you enter on the Subpage card. They do not automatically count the cards inside the subpage; use a Home Assistant helper or template sensor for that.
 
 ## Moving Cards Between Pages
 
