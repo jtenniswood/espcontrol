@@ -68,7 +68,7 @@ function sliderTypeFactory(opts) {
 
       function coverModeDefaultIcon(mode) {
         if (mode === "open") return opts.defaultIconOn;
-        if (mode === "stop") return "Minus";
+        if (mode === "stop") return "Stop";
         return opts.defaultIcon;
       }
 
@@ -78,7 +78,8 @@ function sliderTypeFactory(opts) {
           b.icon === "Auto" ||
           b.icon === opts.defaultIcon ||
           b.icon === opts.defaultIconOn ||
-          b.icon === "Minus"
+          b.icon === "Minus" ||
+          b.icon === "Stop"
         );
       }
 

@@ -85,7 +85,7 @@
     "Roller Shade", "Roller Shade Closed", "Router", "Router Network", "Security", "Shower",
     "Skip Next", "Skip Previous", "Smoke Detector", "Snowflake", "Snowflake Alert", "Snowflake Thermometer",
     "Sofa", "Solar Panel", "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker",
-    "Spotlight", "Sprinkler", "String Lights", "String Lights Off", "Power Socket UK", "Power Socket EU",
+    "Spotlight", "Sprinkler", "Stop", "String Lights", "String Lights Off", "Power Socket UK", "Power Socket EU",
     "Power Socket US", "Sun", "Table", "Television", "Television Off", "Thermometer",
     "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermostat", "Home-Thermostat", "Thermostat Auto",
     "Thermometer Water", "Timer", "Toilet", "Transmission Tower", "Trash Can", "Volume High",

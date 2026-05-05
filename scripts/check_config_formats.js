@@ -297,7 +297,7 @@ assertButtonRoundTrip(hooks, "cover close command button", {
 assertButtonRoundTrip(hooks, "cover stop command button", {
   entity: "cover.office_blind",
   label: "Stop Blind",
-  icon: "Minus",
+  icon: "Stop",
   icon_on: "Auto",
   sensor: "stop",
   unit: "",
@@ -620,7 +620,7 @@ assertSubpageRoundTrip(hooks, "cover command subpage", {
   order: ["1", "B", "2", "3"],
   buttons: [
     buttonShape({ entity: "cover.office_blind", label: "Open", icon: "Blinds Open", icon_on: "Auto", sensor: "open", type: "cover" }),
-    buttonShape({ entity: "cover.office_blind", label: "Stop", icon: "Minus", icon_on: "Auto", sensor: "stop", type: "cover" }),
+    buttonShape({ entity: "cover.office_blind", label: "Stop", icon: "Stop", icon_on: "Auto", sensor: "stop", type: "cover" }),
     buttonShape({ entity: "cover.office_blind", label: "50%", icon: "Blinds", icon_on: "Auto", sensor: "set_position", unit: "50", type: "cover" }),
   ],
 }, true);
