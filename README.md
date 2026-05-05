@@ -86,7 +86,7 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 - [Documentation](https://jtenniswood.github.io/espcontrol/)
 - [Install guide](https://jtenniswood.github.io/espcontrol/getting-started/install)
 - [FAQ](https://jtenniswood.github.io/espcontrol/reference/faq)
-- [Report a bug or request a feature](https://github.com/jtenniswood/espcontrol/issues)
+- [Report a bug or request a feature](https://github.com/benJDtom/espcontrol/issues)
 
 ## Support This Project
 

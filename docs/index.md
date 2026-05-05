@@ -12,7 +12,7 @@ description: "No-code smart home controller for ESP32 touchscreens. Easy web ins
 
 EspControl is free, open-source firmware that turns supported **ESP32 touchscreens** into beautiful control panels for [Home Assistant](https://www.home-assistant.io/). It comes with **full documentation** and an **[easy-to-use web installer](/getting-started/install)** — you can go from unboxing to a working wall panel in minutes.
 
-**Source code and issues:** [github.com/jtenniswood/espcontrol](https://github.com/jtenniswood/espcontrol).
+**Source code and issues:** [github.com/jtenniswood/espcontrol](https://github.com/benJDtom/espcontrol).
 
 ## Features
 

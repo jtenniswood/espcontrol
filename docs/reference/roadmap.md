@@ -39,5 +39,5 @@ If there's a feature you'd like to see, open a feature request on GitHub.
 
 ## How to Get Involved
 
-- **Report a bug or request a feature:** [Open an issue on GitHub](https://github.com/jtenniswood/espcontrol/issues). Include as much detail as you can — what happened, what you expected, and any relevant screenshots or log entries.
-- **Stay up to date:** Watch the [GitHub Releases](https://github.com/jtenniswood/espcontrol/releases) page to see when new versions are published. If you have auto-update enabled, your panel will pick up new releases automatically.
+- **Report a bug or request a feature:** [Open an issue on GitHub](https://github.com/benJDtom/espcontrol/issues). Include as much detail as you can — what happened, what you expected, and any relevant screenshots or log entries.
+- **Stay up to date:** Watch the [GitHub Releases](https://github.com/benJDtom/espcontrol/releases) page to see when new versions are published. If you have auto-update enabled, your panel will pick up new releases automatically.

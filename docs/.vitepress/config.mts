@@ -361,7 +361,7 @@ export default defineConfig({
     nav: [
       { text: 'Install', link: '/getting-started/install' },
       { text: 'Docs', link: '/' },
-      { text: 'GitHub', link: 'https://github.com/jtenniswood/espcontrol' },
+      { text: 'GitHub', link: 'https://github.com/benJDtom/espcontrol' },
     ],
 
     sidebar: [
@@ -433,11 +433,11 @@ export default defineConfig({
     ],
 
     editLink: {
-      pattern: 'https://github.com/jtenniswood/espcontrol/edit/main/docs/:path',
+      pattern: 'https://github.com/benJDtom/espcontrol/edit/main/docs/:path',
       text: 'Edit this page on GitHub',
     },
 
-    socialLinks: [{ icon: 'github', link: 'https://github.com/jtenniswood/espcontrol' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/benJDtom/espcontrol' }],
 
     search: {
       provider: 'local',

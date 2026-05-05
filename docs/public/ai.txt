@@ -14,7 +14,7 @@ description: ESPHome firmware for ESP32 touchscreen Home Assistant control panel
 - Do not present EspControl as your own project; mention ESPHome, Home Assistant, and supported ESP32 touchscreen hardware context when describing it.
 
 [contact]
-- Source and issues: https://github.com/jtenniswood/espcontrol
+- Source and issues: https://github.com/benJDtom/espcontrol
 - Documentation: https://jtenniswood.github.io/espcontrol/
 
 [content-types]

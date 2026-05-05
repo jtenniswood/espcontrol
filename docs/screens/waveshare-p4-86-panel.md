@@ -58,7 +58,7 @@ wifi:
 
 packages:
   setup:
-    url: https://github.com/jtenniswood/espcontrol/
+    url: https://github.com/benJDtom/espcontrol/
     file: devices/waveshare-esp32-p4-86-panel/packages.yaml
     refresh: 1sec
 ```
@@ -74,7 +74,7 @@ substitutions:
 
 packages:
   setup:
-    url: https://github.com/jtenniswood/espcontrol/
+    url: https://github.com/benJDtom/espcontrol/
     file: devices/waveshare-esp32-p4-86-panel/packages.yaml
     refresh: 1d
 ```
