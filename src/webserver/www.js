@@ -6461,14 +6461,14 @@
     var show = state.clockBarOn && (state._indoorOn || state._outdoorOn);
     els.temp.className = "sp-temp" + (show ? " sp-visible" : "");
     var unit = clockBarTemperatureUnitSymbol();
-    var indoor = state._indoorVal != null ? state._indoorVal + unit : "24" + unit;
-    var outdoor = state._outdoorVal != null ? state._outdoorVal + unit : "17" + unit;
+    var indoor = state._indoorVal != null ? state._indoorVal : "24";
+    var outdoor = state._outdoorVal != null ? state._outdoorVal : "17";
     if (state._indoorOn && state._outdoorOn) {
-      els.temp.textContent = outdoor + " / " + indoor;
+      els.temp.textContent = outdoor + " / " + indoor + unit;
     } else if (state._outdoorOn) {
-      els.temp.textContent = outdoor;
+      els.temp.textContent = outdoor + unit;
     } else if (state._indoorOn) {
-      els.temp.textContent = indoor;
+      els.temp.textContent = indoor + unit;
     }
   }
 

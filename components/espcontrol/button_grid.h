@@ -5917,12 +5917,11 @@ inline void grid_phase3(
 
   if (indoor_on && outdoor_on) {
     char buf[32];
-    snprintf(buf, sizeof(buf), "-%s / -%s",
-             display_clock_bar_temperature_unit_symbol(), display_clock_bar_temperature_unit_symbol());
+    format_clock_bar_temperature_pair(buf, sizeof(buf), "-", "-");
     lv_label_set_text(temp_label, buf);
   } else if (indoor_on || outdoor_on) {
     char buf[16];
-    snprintf(buf, sizeof(buf), "-%s", display_clock_bar_temperature_unit_symbol());
+    format_clock_bar_temperature_single(buf, sizeof(buf), "-");
     lv_label_set_text(temp_label, buf);
   }
 
@@ -5937,16 +5936,15 @@ inline void grid_phase3(
             float outdoor = *outdoor_temp_ptr;
             char buf[40];
             if (std::isnan(outdoor)) {
-              format_fixed_decimal_unit(buf, sizeof(buf), val, 0,
-                                        display_clock_bar_temperature_unit_symbol());
+              char indoor_buf[16];
+              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), val, 0);
+              format_clock_bar_temperature_single(buf, sizeof(buf), indoor_buf);
             } else {
               char outdoor_buf[16];
               char indoor_buf[16];
-              format_fixed_decimal_unit(outdoor_buf, sizeof(outdoor_buf), outdoor, 0,
-                                        display_clock_bar_temperature_unit_symbol());
-              format_fixed_decimal_unit(indoor_buf, sizeof(indoor_buf), val, 0,
-                                        display_clock_bar_temperature_unit_symbol());
-              snprintf(buf, sizeof(buf), "%s / %s", outdoor_buf, indoor_buf);
+              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), outdoor, 0);
+              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), val, 0);
+              format_clock_bar_temperature_pair(buf, sizeof(buf), outdoor_buf, indoor_buf);
             }
             lv_label_set_text(temp_label, buf);
           }
@@ -5965,16 +5963,15 @@ inline void grid_phase3(
             float indoor = *indoor_temp_ptr;
             char buf[40];
             if (std::isnan(indoor)) {
-              format_fixed_decimal_unit(buf, sizeof(buf), val, 0,
-                                        display_clock_bar_temperature_unit_symbol());
+              char outdoor_buf[16];
+              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), val, 0);
+              format_clock_bar_temperature_single(buf, sizeof(buf), outdoor_buf);
             } else {
               char outdoor_buf[16];
               char indoor_buf[16];
-              format_fixed_decimal_unit(outdoor_buf, sizeof(outdoor_buf), val, 0,
-                                        display_clock_bar_temperature_unit_symbol());
-              format_fixed_decimal_unit(indoor_buf, sizeof(indoor_buf), indoor, 0,
-                                        display_clock_bar_temperature_unit_symbol());
-              snprintf(buf, sizeof(buf), "%s / %s", outdoor_buf, indoor_buf);
+              format_fixed_decimal(outdoor_buf, sizeof(outdoor_buf), val, 0);
+              format_fixed_decimal(indoor_buf, sizeof(indoor_buf), indoor, 0);
+              format_clock_bar_temperature_pair(buf, sizeof(buf), outdoor_buf, indoor_buf);
             }
             lv_label_set_text(temp_label, buf);
           }
