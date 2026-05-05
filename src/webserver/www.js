@@ -236,7 +236,7 @@
     "border-radius:var(--r)}" +
     ".sp-media-h-slider{position:absolute;left:8%;right:8%;bottom:10%;height:7.5%;border-radius:999px;" +
     "background:#212121;overflow:hidden;pointer-events:none}" +
-    ".sp-media-h-slider span{display:block;width:62%;height:100%;background:var(--accent);border-radius:999px}" +
+    ".sp-media-h-slider span{display:block;width:62%;height:100%;background:#fff;border-radius:999px}" +
     ".sp-media-position-time{z-index:1}" +
     ".sp-media-now-title{font-size:var(--btn-icon);line-height:1;color:#fff;font-weight:300;z-index:1;" +
     "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
