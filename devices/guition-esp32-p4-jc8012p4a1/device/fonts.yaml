@@ -16,6 +16,16 @@ font:
       - "0123456789.-°/%kWhVA "
       - ":"
 
+  # Media now-playing titles (full text glyph coverage)
+  - file: "gfonts://Roboto@Light"
+    id: media_title_font_lt
+    size: 46
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
   # Climate detail page: oversized target temperature
   - file: "gfonts://Roboto@Light"
     id: climate_target_font_lt

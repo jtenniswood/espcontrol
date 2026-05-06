@@ -39,6 +39,7 @@ esphome:
             cfg.icon_font = id(icon_font_lg)->get_lv_font();
             cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();
+            cfg.media_title_font = id(media_title_font_lg)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font_lg)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
@@ -98,6 +99,7 @@ esphome:
             cfg.icon_font = id(icon_font_lg)->get_lv_font();
             cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();
+            cfg.media_title_font = id(media_title_font_lg)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font_lg)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();

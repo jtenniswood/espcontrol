@@ -33,6 +33,16 @@ font:
       - "0123456789.-°/%kWhVA "
       - ":"
 
+  # Media now-playing titles (full text glyph coverage)
+  - file: "gfonts://Roboto@Light"
+    id: media_title_font_md_square
+    size: 50
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
   # Climate detail controls (chevron-left, dots-horizontal, minus, plus, thermometer)
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: climate_control_icon_font_md_square

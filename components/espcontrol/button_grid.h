@@ -4354,7 +4354,7 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   }
   if (artist_lbl) {
     lv_label_set_text(artist_lbl, "--");
-    lv_obj_align(artist_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+    lv_obj_align(artist_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     configure_button_label_wrap(artist_lbl);
     lv_obj_move_foreground(artist_lbl);
   }
@@ -5047,6 +5047,7 @@ struct GridConfig {
   const lv_font_t *icon_font;
   const lv_font_t *climate_control_icon_font;
   const lv_font_t *sp_sensor_font;
+  const lv_font_t *media_title_font;
   const lv_font_t *climate_target_font;
   std::string temperature_unit;
   std::string timezone;
@@ -5146,7 +5147,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_media_card(s, p,
       palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
       palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
-      cfg.sp_sensor_font);
+      cfg.media_title_font ? cfg.media_title_font : cfg.sp_sensor_font);
     return;
   }
   if (p.type == "slider" || p.type == "cover") {
