@@ -324,7 +324,7 @@ script:
           condition:
             lambda: |-
               float val = id(home_screen_timeout).state;
-              return !std::isnan(val) && val > 0;
+              return !id(home_screen_idle_suspended) && !std::isnan(val) && val > 0;
           then:
             - delay: !lambda |-
                 float val = id(home_screen_timeout).state;
