@@ -4098,17 +4098,29 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
   lv_coord_t short_side = sw < sh ? sw : sh;
   lv_coord_t panel_w = sw * 78 / 100;
-  lv_coord_t panel_h = sh * 78 / 100;
+  lv_coord_t panel_h = sh * 88 / 100;
   if (panel_w > 620) panel_w = 620;
-  if (panel_h > 620) panel_h = 620;
+  if (panel_h > 680) panel_h = 680;
   if (panel_w < short_side * 78 / 100) panel_w = short_side * 78 / 100;
   if (panel_h < short_side * 78 / 100) panel_h = short_side * 78 / 100;
   lv_coord_t arc_size = panel_w < panel_h ? panel_w : panel_h;
-  arc_size = arc_size * 78 / 100;
+  arc_size = arc_size * 84 / 100;
   if (arc_size < 220) arc_size = short_side * 62 / 100;
   lv_coord_t btn_size = short_side * 15 / 100;
   if (btn_size < 54) btn_size = 54;
   if (btn_size > 108) btn_size = 108;
+  lv_coord_t arc_stroke = short_side < 520 ? 18 : 28;
+  lv_coord_t controls_gap = btn_size / 3;
+  if (controls_gap < 18) controls_gap = 18;
+  lv_coord_t bottom_pad = short_side * 6 / 100;
+  if (bottom_pad < 24) bottom_pad = 24;
+  lv_coord_t top_pad = short_side * 6 / 100;
+  if (top_pad < 24) top_pad = 24;
+  lv_coord_t max_arc_h = panel_h - top_pad - bottom_pad - btn_size - controls_gap;
+  if (arc_size > max_arc_h) arc_size = max_arc_h;
+  lv_coord_t max_arc_w = panel_w - 36;
+  if (arc_size > max_arc_w) arc_size = max_arc_w;
+  if (arc_size < 180) arc_size = 180;
   lv_coord_t visible_arc_w = compensated_width(arc_size, ctx->width_compensation_percent);
   lv_coord_t panel_side_pad = short_side * 10 / 100;
   if (panel_side_pad < 42) panel_side_pad = 42;
@@ -4122,20 +4134,23 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
   lv_obj_set_size(ui.panel, panel_w, panel_h);
   lv_obj_align(ui.panel, LV_ALIGN_CENTER, 0, 0);
+  lv_coord_t arc_center_y = (top_pad + arc_size / 2) - panel_h / 2;
+  lv_coord_t controls_center_y = panel_h / 2 - bottom_pad - btn_size / 2;
+
   lv_obj_set_size(ui.arc, arc_size, arc_size);
   apply_width_compensation(ui.arc, ctx->width_compensation_percent);
-  lv_obj_align(ui.arc, LV_ALIGN_CENTER, 0, 10);
-  lv_obj_set_style_arc_width(ui.arc, short_side < 520 ? 18 : 28, LV_PART_MAIN);
-  lv_obj_set_style_arc_width(ui.arc, short_side < 520 ? 18 : 28, LV_PART_INDICATOR);
+  lv_obj_align(ui.arc, LV_ALIGN_CENTER, 0, arc_center_y);
+  lv_obj_set_style_arc_width(ui.arc, arc_stroke, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(ui.arc, arc_stroke, LV_PART_INDICATOR);
   lv_obj_set_style_pad_all(ui.arc, short_side < 520 ? 8 : 12, LV_PART_KNOB);
   lv_obj_set_size(ui.minus_btn, btn_size, btn_size);
   lv_obj_set_style_radius(ui.minus_btn, btn_size / 2, LV_PART_MAIN);
   lv_obj_set_size(ui.plus_btn, btn_size, btn_size);
   lv_obj_set_style_radius(ui.plus_btn, btn_size / 2, LV_PART_MAIN);
-  lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, -arc_size / 7);
-  lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, 18);
-  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + 18) / 2, arc_size / 2 - btn_size / 3);
-  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + 18) / 2, arc_size / 2 - btn_size / 3);
+  lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, arc_center_y - arc_size / 7);
+  lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, arc_center_y + arc_stroke);
+  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + 18) / 2, controls_center_y);
+  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + 18) / 2, controls_center_y);
 }
 
 inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
