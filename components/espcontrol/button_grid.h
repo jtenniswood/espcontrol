@@ -4349,6 +4349,7 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (title_font) lv_obj_set_style_text_font(title_lbl, title_font, LV_PART_MAIN);
     lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(title_lbl, lv_pct(100));
+    lv_obj_align(title_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_label_set_text(title_lbl, "--");
     lv_obj_move_foreground(title_lbl);
   }
@@ -4520,9 +4521,11 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     return;
   }
   if (mode == "now_playing") {
-    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_width(s.sensor_container, lv_pct(100));
-    lv_label_set_text(s.unit_lbl, "");
+    lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
+    lv_obj_t *title_lbl = lv_label_create(s.btn);
+    lv_obj_set_style_text_color(title_lbl, text_color, LV_PART_MAIN);
+    s.sensor_lbl = title_lbl;
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, value_font, pad);
     return;
