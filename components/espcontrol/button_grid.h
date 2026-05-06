@@ -4318,18 +4318,15 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
 inline void setup_media_volume_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                       lv_obj_t *text_lbl,
                                       const ParsedCfg &p) {
-  lv_coord_t pad_left = lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
-  lv_coord_t pad_top = lv_obj_get_style_pad_top(btn, LV_PART_MAIN);
-  lv_coord_t pad_bottom = lv_obj_get_style_pad_bottom(btn, LV_PART_MAIN);
   if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(icon_lbl, media_default_icon("volume", p.icon));
-    lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, pad_left, pad_top);
+    lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_move_foreground(icon_lbl);
   }
   if (text_lbl) {
     lv_label_set_text(text_lbl, media_label(p).c_str());
-    lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad_left, -pad_bottom);
+    lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     configure_button_label_wrap(text_lbl);
     lv_obj_move_foreground(text_lbl);
   }
