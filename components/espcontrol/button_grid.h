@@ -4553,7 +4553,8 @@ inline lv_obj_t *setup_media_position_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
 
 inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                              uint32_t tertiary_color,
-                             const lv_font_t *value_font,
+                             const lv_font_t *sensor_font,
+                             const lv_font_t *media_title_font,
                              int width_compensation_percent = 100) {
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
@@ -4575,7 +4576,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     apply_width_compensation(title_lbl, width_compensation_percent);
     s.sensor_lbl = title_lbl;
     setup_media_now_playing_layout(
-      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, value_font, pad);
+      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad);
     return;
   }
   if (mode == "position") {
@@ -4583,7 +4584,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
     lv_obj_t *slider = setup_media_position_layout(
       s.btn, s.icon_lbl, s.text_lbl, p, on_color, tertiary_color,
-      value_font, text_color, position_pad, width_compensation_percent);
+      sensor_font, text_color, position_pad, width_compensation_percent);
     lv_obj_set_user_data(s.sensor_container, (void *)slider);
     return;
   }
@@ -5198,6 +5199,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_media_card(s, p,
       palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
       palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+      cfg.sp_sensor_font,
       cfg.media_title_font ? cfg.media_title_font : cfg.sp_sensor_font,
       cfg.width_compensation_percent);
     return;
