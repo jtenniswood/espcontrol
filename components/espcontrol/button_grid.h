@@ -165,6 +165,20 @@ inline int parse_precision(const std::string &s) {
   return (v < 0) ? 0 : (v > 3) ? 3 : v;
 }
 
+inline std::string trim_display_unit(const std::string &unit) {
+  size_t start = 0;
+  while (start < unit.size() &&
+         std::isspace(static_cast<unsigned char>(unit[start]))) {
+    start++;
+  }
+  size_t end = unit.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(unit[end - 1]))) {
+    end--;
+  }
+  return unit.substr(start, end - start);
+}
+
 inline bool is_text_sensor_card(const std::string &type, const std::string &precision) {
   return (type == "sensor" && precision == "text") || type == "text_sensor";
 }
@@ -2234,7 +2248,8 @@ inline void setup_sensor_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   if (!p.unit.empty()) {
-    lv_label_set_text(s.unit_lbl, p.unit.c_str());
+    std::string unit = trim_display_unit(p.unit);
+    lv_label_set_text(s.unit_lbl, unit.c_str());
   }
   if (!p.label.empty()) {
     lv_label_set_text(s.text_lbl, p.label.c_str());
@@ -2690,7 +2705,8 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
 
     if (!p.sensor.empty()) {
       if (!p.unit.empty()) {
-        lv_label_set_text(s.unit_lbl, p.unit.c_str());
+        std::string unit = trim_display_unit(p.unit);
+        lv_label_set_text(s.unit_lbl, unit.c_str());
       }
     }
   } else {
@@ -2760,7 +2776,8 @@ inline void setup_subpage_parent_state_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   if (value_font) lv_obj_set_style_text_font(s.sensor_lbl, value_font, LV_PART_MAIN);
   lv_label_set_text(s.sensor_lbl, "--");
-  lv_label_set_text(s.unit_lbl, p.unit.c_str());
+  std::string unit = trim_display_unit(p.unit);
+  lv_label_set_text(s.unit_lbl, unit.c_str());
   lv_label_set_text(s.text_lbl, p.label.empty() ? "Subpage" : p.label.c_str());
 }
 
