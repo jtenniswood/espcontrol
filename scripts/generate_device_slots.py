@@ -89,6 +89,7 @@ def cfg_lines(device: dict) -> list[str]:
     )
     lines.append(f"            cfg.sp_sensor_font = id({device['sensor_font']})->get_lv_font();")
     lines.append(f"            cfg.media_title_font = id({device['media_title_font']})->get_lv_font();")
+    lines.append("            cfg.volume_number_font = id(volume_modal_number_font)->get_lv_font();")
     lines.append(f"            cfg.climate_target_font = id({device['climate_target_font']})->get_lv_font();")
     lines.append("            cfg.temperature_unit = id(temperature_unit_select).current_option();")
     lines.append("            cfg.timezone = id(timezone_select).current_option();")

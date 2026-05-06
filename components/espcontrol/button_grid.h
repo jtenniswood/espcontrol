@@ -3487,6 +3487,8 @@ struct MediaVolumeCtx {
   lv_obj_t *unit_lbl = nullptr;
   int width_compensation_percent = 100;
   const lv_font_t *value_font = nullptr;
+  const lv_font_t *number_font = nullptr;
+  const lv_font_t *unit_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
   std::function<void()> pause_home_idle;
@@ -3499,6 +3501,7 @@ struct MediaVolumeModalUi {
   lv_obj_t *arc = nullptr;
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *pct_lbl = nullptr;
+  lv_obj_t *pct_unit_lbl = nullptr;
   lv_obj_t *minus_btn = nullptr;
   lv_obj_t *plus_btn = nullptr;
   MediaVolumeCtx *active = nullptr;
@@ -4101,6 +4104,7 @@ inline void media_volume_hide_modal() {
   ui.arc = nullptr;
   ui.title_lbl = nullptr;
   ui.pct_lbl = nullptr;
+  ui.pct_unit_lbl = nullptr;
   ui.minus_btn = nullptr;
   ui.plus_btn = nullptr;
   ui.active = nullptr;
@@ -4139,49 +4143,46 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
   lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
   lv_coord_t short_side = sw < sh ? sw : sh;
-  lv_coord_t panel_w = sw * 78 / 100;
-  lv_coord_t panel_h = sh * 88 / 100;
-  if (panel_w > 620) panel_w = 620;
-  if (panel_h > 680) panel_h = 680;
-  if (panel_w < short_side * 78 / 100) panel_w = short_side * 78 / 100;
-  if (panel_h < short_side * 78 / 100) panel_h = short_side * 78 / 100;
-  lv_coord_t arc_size = panel_w < panel_h ? panel_w : panel_h;
-  arc_size = arc_size * 84 / 100;
-  if (arc_size < 220) arc_size = short_side * 62 / 100;
+  lv_coord_t panel_side = short_side * 88 / 100;
+  if (panel_side > 680) panel_side = 680;
+  if (panel_side < short_side * 78 / 100) panel_side = short_side * 78 / 100;
   lv_coord_t btn_size = short_side * 15 / 100;
   if (btn_size < 54) btn_size = 54;
   if (btn_size > 108) btn_size = 108;
-  lv_coord_t arc_stroke = short_side < 520 ? 18 : 28;
+  lv_coord_t arc_stroke = short_side < 520 ? 12 : 18;
   lv_coord_t controls_gap = btn_size / 3;
   if (controls_gap < 18) controls_gap = 18;
   lv_coord_t bottom_pad = short_side * 6 / 100;
   if (bottom_pad < 24) bottom_pad = 24;
   lv_coord_t top_pad = short_side * 6 / 100;
   if (top_pad < 24) top_pad = 24;
-  lv_coord_t max_arc_h = panel_h - top_pad - bottom_pad - btn_size - controls_gap;
+  lv_coord_t max_arc_h = panel_side - top_pad - bottom_pad - btn_size - controls_gap;
+  lv_coord_t max_arc_w = panel_side - 36;
+  lv_coord_t arc_size = panel_side * 84 / 100;
   if (arc_size > max_arc_h) arc_size = max_arc_h;
-  lv_coord_t max_arc_w = panel_w - 36;
   if (arc_size > max_arc_w) arc_size = max_arc_w;
   if (arc_size < 180) arc_size = 180;
   lv_coord_t visible_arc_w = compensated_width(arc_size, ctx->width_compensation_percent);
   lv_coord_t panel_side_pad = short_side * 10 / 100;
   if (panel_side_pad < 42) panel_side_pad = 42;
   if (panel_side_pad > 70) panel_side_pad = 70;
-  lv_coord_t compact_panel_w = visible_arc_w + panel_side_pad * 2;
+  lv_coord_t min_panel_side = visible_arc_w + panel_side_pad * 2;
   lv_coord_t min_button_w = (btn_size + 18) + compensated_width(btn_size, ctx->width_compensation_percent) + panel_side_pad;
-  if (compact_panel_w < min_button_w) compact_panel_w = min_button_w;
-  if (compact_panel_w < short_side * 72 / 100) compact_panel_w = short_side * 72 / 100;
-  if (compact_panel_w < panel_w) panel_w = compact_panel_w;
+  if (min_panel_side < min_button_w) min_panel_side = min_button_w;
+  if (min_panel_side < short_side * 72 / 100) min_panel_side = short_side * 72 / 100;
+  if (panel_side < min_panel_side) panel_side = min_panel_side;
+  if (panel_side > short_side) panel_side = short_side;
 
   lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
-  lv_obj_set_size(ui.panel, panel_w, panel_h);
+  lv_obj_set_size(ui.panel, panel_side, panel_side);
   lv_obj_align(ui.panel, LV_ALIGN_CENTER, 0, 0);
-  lv_coord_t arc_center_y = (top_pad + arc_size / 2) - panel_h / 2;
-  lv_coord_t controls_center_y = panel_h / 2 - bottom_pad - btn_size / 2;
+  lv_coord_t arc_center_x = (arc_size - visible_arc_w) / 2;
+  lv_coord_t arc_center_y = (top_pad + arc_size / 2) - panel_side / 2;
+  lv_coord_t controls_center_y = panel_side / 2 - bottom_pad - btn_size / 2;
 
   lv_obj_set_size(ui.arc, arc_size, arc_size);
   apply_width_compensation(ui.arc, ctx->width_compensation_percent);
-  lv_obj_align(ui.arc, LV_ALIGN_CENTER, 0, arc_center_y);
+  lv_obj_align(ui.arc, LV_ALIGN_CENTER, arc_center_x, arc_center_y);
   lv_obj_set_style_arc_width(ui.arc, arc_stroke, LV_PART_MAIN);
   lv_obj_set_style_arc_width(ui.arc, arc_stroke, LV_PART_INDICATOR);
   lv_obj_set_style_pad_all(ui.arc, short_side < 520 ? 8 : 12, LV_PART_KNOB);
@@ -4191,6 +4192,7 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_radius(ui.plus_btn, btn_size / 2, LV_PART_MAIN);
   lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, arc_center_y - arc_size / 7);
   lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, arc_center_y + arc_stroke);
+  lv_obj_align_to(ui.pct_unit_lbl, ui.pct_lbl, LV_ALIGN_OUT_RIGHT_BOTTOM, 4, -8);
   lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + 18) / 2, controls_center_y);
   lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + 18) / 2, controls_center_y);
 }
@@ -4205,10 +4207,11 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
     ui.updating_arc = false;
   }
   if (ui.pct_lbl) {
-    char buf[12];
-    media_format_percent(pct, buf, sizeof(buf));
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%d", pct);
     lv_label_set_text(ui.pct_lbl, buf);
   }
+  if (ui.pct_unit_lbl) lv_label_set_text(ui.pct_unit_lbl, "%");
 }
 
 inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
@@ -4267,8 +4270,15 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   ui.pct_lbl = lv_label_create(ui.panel);
   lv_obj_set_style_text_color(ui.pct_lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->value_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->value_font, LV_PART_MAIN);
+  if (ctx->number_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->number_font, LV_PART_MAIN);
   apply_width_compensation(ui.pct_lbl, ctx->width_compensation_percent);
+
+  ui.pct_unit_lbl = lv_label_create(ui.panel);
+  lv_label_set_text(ui.pct_unit_lbl, "%");
+  lv_obj_set_style_text_color(ui.pct_unit_lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (ctx->unit_font) lv_obj_set_style_text_font(ui.pct_unit_lbl, ctx->unit_font, LV_PART_MAIN);
+  apply_width_compensation(ui.pct_unit_lbl, ctx->width_compensation_percent);
 
   ui.minus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Minus"),
     ctx->icon_font, 0xBDBDBD, 0x252525, ctx->width_compensation_percent);
@@ -4644,6 +4654,8 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
                                                    const ParsedCfg &p,
                                                    uint32_t accent_color,
                                                    const lv_font_t *value_font,
+                                                   const lv_font_t *number_font,
+                                                   const lv_font_t *unit_font,
                                                    const lv_font_t *label_font,
                                                    const lv_font_t *icon_font,
                                                    int width_compensation_percent = 100,
@@ -4661,6 +4673,8 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
   ctx->unit_lbl = unit_lbl;
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);
   ctx->value_font = value_font;
+  ctx->number_font = number_font ? number_font : value_font;
+  ctx->unit_font = unit_font;
   ctx->label_font = label_font;
   ctx->icon_font = icon_font;
   ctx->pause_home_idle = pause_home_idle;
@@ -5107,6 +5121,7 @@ struct GridConfig {
   const lv_font_t *climate_control_icon_font;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *media_title_font;
+  const lv_font_t *volume_number_font;
   const lv_font_t *climate_target_font;
   std::string temperature_unit;
   std::string timezone;
@@ -5521,7 +5536,10 @@ inline void grid_phase2(
         } else if (mode == "volume") {
           MediaVolumeCtx *ctx = create_media_volume_context(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            cfg.sp_sensor_font, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+            cfg.sp_sensor_font,
+            cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
+            lv_obj_get_style_text_font(s.unit_lbl, LV_PART_MAIN),
+            lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
             cfg.icon_font, cfg.width_compensation_percent,
             s.sensor_lbl, s.unit_lbl,
             cfg.pause_home_idle, cfg.resume_home_idle);
@@ -5914,7 +5932,10 @@ inline void grid_phase2(
             MediaVolumeCtx *ctx = create_media_volume_context(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
-              cfg.sp_sensor_font, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+              cfg.sp_sensor_font,
+              cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
+              lv_obj_get_style_text_font(sub_slot.unit_lbl, LV_PART_MAIN),
+              lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
               cfg.icon_font, cfg.width_compensation_percent,
               sub_slot.sensor_lbl, sub_slot.unit_lbl,
               cfg.pause_home_idle, cfg.resume_home_idle);
