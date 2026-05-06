@@ -223,7 +223,8 @@ registerButtonType("media", {
     if (mode === "volume") {
       return {
         iconHtml:
-          '<span class="sp-btn-icon mdi mdi-' + (b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : info.icon) + '"></span>',
+          '<span class="sp-sensor-preview"><span class="sp-sensor-value">42</span>' +
+          '<span class="sp-sensor-unit">%</span></span>',
         labelHtml:
           '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
           badge + '</span>',

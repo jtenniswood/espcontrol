@@ -3441,10 +3441,14 @@ struct MediaVolumeCtx {
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
   lv_obj_t *btn = nullptr;
   lv_obj_t *label_lbl = nullptr;
+  lv_obj_t *pct_lbl = nullptr;
+  lv_obj_t *unit_lbl = nullptr;
   int width_compensation_percent = 100;
   const lv_font_t *value_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
+  std::function<void()> pause_home_idle;
+  std::function<void()> resume_home_idle;
 };
 
 struct MediaVolumeModalUi {
@@ -4022,6 +4026,15 @@ inline bool media_volume_pending_active(MediaVolumeCtx *ctx) {
 
 inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct);
 
+inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
+  if (!ctx || !ctx->pct_lbl) return;
+  pct = media_clamp_percent(pct);
+  char buf[8];
+  snprintf(buf, sizeof(buf), "%d", pct);
+  lv_label_set_text(ctx->pct_lbl, buf);
+  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "%");
+}
+
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
                                        bool from_user, bool send_action) {
   if (!ctx) return;
@@ -4031,12 +4044,15 @@ inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
     ctx->pending_pct = pct;
     ctx->pending_until_ms = esphome::millis() + 1500;
   }
+  media_volume_set_card_value(ctx, pct);
   media_volume_set_modal_value(ctx, pct);
   if (send_action) send_media_volume_action(ctx->entity_id, pct);
 }
 
 inline void media_volume_hide_modal() {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
+  std::function<void()> resume_home_idle;
+  if (ui.active) resume_home_idle = ui.active->resume_home_idle;
   if (ui.overlay) lv_obj_del(ui.overlay);
   ui.overlay = nullptr;
   ui.panel = nullptr;
@@ -4047,6 +4063,7 @@ inline void media_volume_hide_modal() {
   ui.plus_btn = nullptr;
   ui.active = nullptr;
   ui.updating_arc = false;
+  if (resume_home_idle) resume_home_idle();
 }
 
 inline lv_obj_t *media_volume_create_round_button(lv_obj_t *parent, lv_coord_t size,
@@ -4140,6 +4157,7 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
 inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   if (!ctx) return;
   media_volume_hide_modal();
+  if (ctx->pause_home_idle) ctx->pause_home_idle();
   MediaVolumeModalUi &ui = media_volume_modal_ui();
   ui.active = ctx;
 
@@ -4328,13 +4346,24 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
 }
 
 inline void setup_media_volume_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
+                                      lv_obj_t *sensor_container,
+                                      lv_obj_t *sensor_lbl,
+                                      lv_obj_t *unit_lbl,
                                       lv_obj_t *text_lbl,
                                       const ParsedCfg &p) {
   if (icon_lbl) {
-    lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(icon_lbl, media_default_icon("volume", p.icon));
-    lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
-    lv_obj_move_foreground(icon_lbl);
+    lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (sensor_container) {
+    lv_obj_clear_flag(sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_align(sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_move_foreground(sensor_container);
+  }
+  if (sensor_lbl) {
+    lv_label_set_text(sensor_lbl, "--");
+  }
+  if (unit_lbl) {
+    lv_label_set_text(unit_lbl, "%");
   }
   if (text_lbl) {
     lv_label_set_text(text_lbl, media_label(p).c_str());
@@ -4471,7 +4500,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     return;
   }
   if (mode == "volume") {
-    setup_media_volume_button(s.btn, s.icon_lbl, s.text_lbl, p);
+    setup_media_volume_button(
+      s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);
     return;
   }
   if (mode == "now_playing") {
@@ -4542,17 +4572,25 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
                                                    const lv_font_t *value_font,
                                                    const lv_font_t *label_font,
                                                    const lv_font_t *icon_font,
-                                                   int width_compensation_percent = 100) {
+                                                   int width_compensation_percent = 100,
+                                                   lv_obj_t *pct_lbl = nullptr,
+                                                   lv_obj_t *unit_lbl = nullptr,
+                                                   std::function<void()> pause_home_idle = nullptr,
+                                                   std::function<void()> resume_home_idle = nullptr) {
   MediaVolumeCtx *ctx = new MediaVolumeCtx();
   ctx->entity_id = p.entity;
   ctx->label = media_label(p);
   ctx->accent_color = accent_color;
   ctx->btn = btn;
   ctx->label_lbl = label_lbl;
+  ctx->pct_lbl = pct_lbl;
+  ctx->unit_lbl = unit_lbl;
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);
   ctx->value_font = value_font;
   ctx->label_font = label_font;
   ctx->icon_font = icon_font;
+  ctx->pause_home_idle = pause_home_idle;
+  ctx->resume_home_idle = resume_home_idle;
   if (btn) lv_obj_set_user_data(btn, ctx);
   return ctx;
 }
@@ -4578,6 +4616,7 @@ inline void subscribe_media_volume_state(MediaVolumeCtx *ctx) {
           ctx->pending_until_ms = 0;
         }
         ctx->current_pct = pct;
+        media_volume_set_card_value(ctx, pct);
         media_volume_set_modal_value(ctx, pct);
       })
   );
@@ -4997,6 +5036,8 @@ struct GridConfig {
   std::string temperature_unit;
   std::string timezone;
   bool developer_experimental_features;
+  std::function<void()> pause_home_idle;
+  std::function<void()> resume_home_idle;
 };
 
 inline bool experimental_card_enabled(const ParsedCfg &p, bool developer_experimental_features) {
@@ -5399,7 +5440,9 @@ inline void grid_phase2(
           MediaVolumeCtx *ctx = create_media_volume_context(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
             cfg.sp_sensor_font, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-            cfg.icon_font, cfg.width_compensation_percent);
+            cfg.icon_font, cfg.width_compensation_percent,
+            s.sensor_lbl, s.unit_lbl,
+            cfg.pause_home_idle, cfg.resume_home_idle);
           subscribe_media_volume_state(ctx);
           if (p.label.empty()) subscribe_friendly_name(s.text_lbl, p.entity);
         } else if (mode == "now_playing") {
@@ -5787,7 +5830,9 @@ inline void grid_phase2(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
               cfg.sp_sensor_font, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-              cfg.icon_font, cfg.width_compensation_percent);
+              cfg.icon_font, cfg.width_compensation_percent,
+              sub_slot.sensor_lbl, sub_slot.unit_lbl,
+              cfg.pause_home_idle, cfg.resume_home_idle);
             subscribe_media_volume_state(ctx);
             if (sb_cfg.label.empty()) subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
