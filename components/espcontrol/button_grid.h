@@ -4074,7 +4074,7 @@ inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
   char buf[8];
   snprintf(buf, sizeof(buf), "%d", pct);
   lv_label_set_text(ctx->pct_lbl, buf);
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "%");
+  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, " %");
 }
 
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
@@ -4428,7 +4428,7 @@ inline void setup_media_volume_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
     lv_label_set_text(sensor_lbl, "--");
   }
   if (unit_lbl) {
-    lv_label_set_text(unit_lbl, "%");
+    lv_label_set_text(unit_lbl, " %");
   }
   if (text_lbl) {
     lv_label_set_text(text_lbl, media_label(p).c_str());
