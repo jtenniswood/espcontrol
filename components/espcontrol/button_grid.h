@@ -2618,7 +2618,8 @@ inline bool weather_card_shows_tomorrow(const ParsedCfg &p) {
 }
 
 inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
-                                        bool has_sensor_color, uint32_t sensor_val) {
+                                        bool has_sensor_color, uint32_t sensor_val,
+                                        int width_compensation_percent = 100) {
   if (has_sensor_color) {
     lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
@@ -2629,6 +2630,8 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
   lv_label_set_text(s.sensor_lbl, "--/--");
   lv_label_set_text(s.unit_lbl, "");
   lv_label_set_text(s.text_lbl, "Tomorrow");
+  apply_width_compensation(s.sensor_container, width_compensation_percent);
+  apply_width_compensation(s.text_lbl, width_compensation_percent);
   register_weather_forecast_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity);
 }
 
@@ -5042,7 +5045,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
   if (weather_card_shows_tomorrow(p)) {
-    setup_weather_forecast_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    setup_weather_forecast_card(s, p, palette.has_sensor_color, palette.sensor_val,
+      cfg.width_compensation_percent);
     return;
   }
   if (p.type == "weather") {
