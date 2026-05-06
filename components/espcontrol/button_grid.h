@@ -4386,13 +4386,18 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            lv_obj_t *title_lbl,
                                            lv_obj_t *artist_lbl,
                                            const lv_font_t *title_font,
-                                           lv_coord_t pad) {
+                                           lv_coord_t pad,
+                                           bool limit_title_lines) {
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
   if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (title_lbl) {
     if (title_font) lv_obj_set_style_text_font(title_lbl, title_font, LV_PART_MAIN);
     lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(title_lbl, lv_pct(100));
+    if (limit_title_lines) {
+      const lv_font_t *font = title_font ? title_font : lv_obj_get_style_text_font(title_lbl, LV_PART_MAIN);
+      if (font && font->line_height > 0) lv_obj_set_height(title_lbl, font->line_height * 2);
+    }
     lv_obj_align(title_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_label_set_text(title_lbl, "--");
     lv_obj_move_foreground(title_lbl);
@@ -4555,7 +4560,9 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
                              uint32_t tertiary_color,
                              const lv_font_t *sensor_font,
                              const lv_font_t *media_title_font,
-                             int width_compensation_percent = 100) {
+                             int width_compensation_percent = 100,
+                             int /*row_span*/ = 1,
+                             int col_span = 1) {
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
   std::string mode = media_card_mode(p.sensor);
@@ -4576,7 +4583,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     apply_width_compensation(title_lbl, width_compensation_percent);
     s.sensor_lbl = title_lbl;
     setup_media_now_playing_layout(
-      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad);
+      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad, col_span == 1);
     return;
   }
   if (mode == "position") {
@@ -5128,7 +5135,9 @@ struct CardPalette {
 
 inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               const GridConfig &cfg,
-                              const CardPalette &palette) {
+                              const CardPalette &palette,
+                              int row_span = 1,
+                              int col_span = 1) {
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
 
@@ -5201,7 +5210,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
       cfg.sp_sensor_font,
       cfg.media_title_font ? cfg.media_title_font : cfg.sp_sensor_font,
-      cfg.width_compensation_percent);
+      cfg.width_compensation_percent,
+      row_span, col_span);
     return;
   }
   if (p.type == "slider" || p.type == "cover") {
@@ -5295,7 +5305,7 @@ inline void grid_phase1(
     ParsedCfg p = parse_cfg(scfg);
     apply_width_compensation(s.icon_lbl, cfg.width_compensation_percent);
     apply_slot_text_width_compensation(s, cfg.width_compensation_percent);
-    setup_card_visual(s, p, cfg, palette);
+    setup_card_visual(s, p, cfg, palette, row_span, col_span);
   }
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
 }
@@ -5754,7 +5764,7 @@ inline void grid_phase2(
         sb_btn, sp_icon_fnt, cfg.sp_sensor_font, sp_btn_fnt, sp_txt_color);
       apply_width_compensation(sub_slot.icon_lbl, cfg.width_compensation_percent);
       apply_slot_text_width_compensation(sub_slot, cfg.width_compensation_percent);
-      setup_card_visual(sub_slot, sb_cfg, cfg, palette);
+      setup_card_visual(sub_slot, sb_cfg, cfg, palette, rs, cs);
 
       if (is_text_sensor_card(sb_cfg)) {
         if (!sb_cfg.sensor.empty())
