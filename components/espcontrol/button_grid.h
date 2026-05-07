@@ -4041,6 +4041,10 @@ inline bool media_play_pause_show_state(const ParsedCfg &p) {
   return media_card_mode(p.sensor) == "play_pause" && p.precision == "state";
 }
 
+inline bool media_position_show_state(const ParsedCfg &p) {
+  return media_card_mode(p.sensor) == "position" && p.precision == "state";
+}
+
 inline void media_format_time(float seconds, char *buf, size_t size) {
   if (!buf || size == 0) return;
   if (seconds < 0.0f || !std::isfinite(seconds)) seconds = 0.0f;
@@ -4487,7 +4491,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     }
     if (text_lbl) {
       lv_obj_clear_flag(text_lbl, LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(text_lbl, p.label.empty() ? "Position" : p.label.c_str());
+      lv_label_set_text(text_lbl, media_position_show_state(p) ? "Paused" : (p.label.empty() ? "Track" : p.label.c_str()));
       lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
       configure_button_label_wrap(text_lbl);
       lv_obj_move_foreground(text_lbl);
@@ -4522,7 +4526,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   ctx->media_slider = slider;
   ctx->media_track_bg = track;
   ctx->media_value_lbl = value_lbl;
-  ctx->media_status_lbl = nullptr;
+  ctx->media_status_lbl = position && media_position_show_state(p) ? text_lbl : nullptr;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
 
