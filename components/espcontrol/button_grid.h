@@ -4340,7 +4340,7 @@ inline bool media_seek_pending_active(SliderCtx *ctx) {
 }
 
 inline void media_apply_position(SliderCtx *ctx) {
-  if (!ctx || !ctx->media_slider) return;
+  if (!ctx) return;
   float seconds = ctx->media_position_seconds;
   if (ctx->media_playing && ctx->media_position_updated_ms > 0) {
     uint32_t elapsed_ms = esphome::millis() - ctx->media_position_updated_ms;
@@ -4362,8 +4362,8 @@ inline void media_apply_position(SliderCtx *ctx) {
     if (pct < 0) pct = 0;
     if (pct > 100) pct = 100;
   }
-  lv_slider_set_value(ctx->media_slider, pct, LV_ANIM_OFF);
-  if (ctx->fill) {
+  if (ctx->media_slider) lv_slider_set_value(ctx->media_slider, pct, LV_ANIM_OFF);
+  if (ctx->media_slider && ctx->fill) {
     lv_obj_t *btn = lv_obj_get_parent(ctx->media_slider);
     int fill_pct = ctx->inverted ? 100 - pct : pct;
     slider_update_ctx_fill(ctx, btn, fill_pct);
@@ -4558,20 +4558,46 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
 inline lv_obj_t *setup_media_position_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                              lv_obj_t *text_lbl,
                                              const ParsedCfg &p,
-                                             uint32_t on_color,
-                                             uint32_t track_color,
+                                             uint32_t /*on_color*/,
+                                             uint32_t /*track_color*/,
                                              const lv_font_t *value_font,
                                              lv_color_t text_color,
                                              lv_coord_t pad,
                                              int width_compensation_percent = 100) {
+  if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
+
   lv_obj_t *value_lbl = lv_label_create(btn);
   if (value_font) lv_obj_set_style_text_font(value_lbl, value_font, LV_PART_MAIN);
   lv_obj_set_style_text_color(value_lbl, text_color, LV_PART_MAIN);
   apply_width_compensation(value_lbl, width_compensation_percent);
   lv_label_set_text(value_lbl, "0:00");
   lv_obj_align(value_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
-  return setup_media_slider_layout(
-    btn, icon_lbl, text_lbl, value_lbl, p, on_color, track_color, pad);
+  lv_obj_move_foreground(value_lbl);
+
+  if (text_lbl) {
+    lv_obj_clear_flag(text_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(text_lbl, p.label.empty() ? "Position" : p.label.c_str());
+    lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
+    configure_button_label_wrap(text_lbl);
+    lv_obj_move_foreground(text_lbl);
+  }
+
+  SliderCtx *ctx = new SliderCtx();
+  ctx->entity_id = p.entity;
+  ctx->fill = nullptr;
+  ctx->horizontal = true;
+  ctx->cover_tilt = false;
+  ctx->inverted = false;
+  ctx->radius = lv_obj_get_style_radius(btn, LV_PART_MAIN);
+  ctx->media_position = true;
+  ctx->media_slider = nullptr;
+  ctx->media_track_bg = nullptr;
+  ctx->media_value_lbl = value_lbl;
+  ctx->media_status_lbl = nullptr;
+  ctx->media_timer = lv_timer_create(media_position_timer_cb, 1000, ctx);
+  if (ctx->media_timer) lv_timer_pause(ctx->media_timer);
+  lv_obj_set_user_data(value_lbl, (void *)ctx);
+  return value_lbl;
 }
 
 inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
