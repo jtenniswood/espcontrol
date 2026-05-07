@@ -1,8 +1,9 @@
 # Extended Latin character set for UI text (labels, clockbar, setup screens).
 # Includes printable ASCII + Latin-1 Supplement + Central European extensions
 # (Slovak, Czech, Hungarian, Polish) + common title/typographic symbols.
-# The space glyph is provided by the fold-join between the two lines.
->-
-  !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
-  ¡¿ÀÁÂÃÄÅÆĄÇĆČĎĐÈÉÊËĘĚÌÍÎÏĹĽŁŃŇÑÒÓÔÕÖŐØŔŘŚŠŤÙÚÛÜŮŰÝŹŻŽÞßàáâãäåæąçćčďđèéêëęěìíîïĺľłńňñòóôõöőøŕřśšťùúûüůűýźżžþÿ
-  —–…·°•€£¥¢µμ¹²³¼½¾ªº«»‘’‚‛“”„‟′″‹›©®™¬¯±×÷
+# Keep this as a list of strings so wrapped YAML lines do not inject duplicate
+# space glyphs during parsing.
+- " "
+- "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+- "¡¿ÀÁÂÃÄÅÆĄÇĆČĎĐÈÉÊËĘĚÌÍÎÏĹĽŁŃŇÑÒÓÔÕÖŐØŔŘŚŠŤÙÚÛÜŮŰÝŹŻŽÞßàáâãäåæąçćčďđèéêëęěìíîïĺľłńňñòóôõöőøŕřśšťùúûüůűýźżžþÿ"
+- "—–…·°•€£¥¢µμ¹²³¼½¾ªº«»‘’‚‛“”„′″‹›©®™¬¯±×÷"
