@@ -4779,6 +4779,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     lv_obj_set_style_text_color(title_lbl, text_color, LV_PART_MAIN);
     apply_width_compensation(title_lbl, width_compensation_percent);
     s.sensor_lbl = title_lbl;
+    lv_obj_set_user_data(s.sensor_container, (void *)title_lbl);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad, col_span == 1);
     return;
@@ -5752,7 +5753,8 @@ inline void grid_phase2(
           subscribe_media_volume_state(ctx);
           if (p.label.empty()) subscribe_friendly_name(s.text_lbl, p.entity);
         } else if (mode == "now_playing") {
-          subscribe_media_now_playing_state(s.sensor_lbl, s.text_lbl, p.entity);
+          lv_obj_t *title_lbl = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
+          subscribe_media_now_playing_state(title_lbl ? title_lbl : s.sensor_lbl, s.text_lbl, p.entity);
         } else {
           lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
           if (slider) subscribe_media_slider_state(s.btn, slider, p.entity);
@@ -6152,7 +6154,8 @@ inline void grid_phase2(
               if (ctx) media_volume_open_modal(ctx);
             }, LV_EVENT_CLICKED, ctx);
           } else if (mode == "now_playing") {
-            subscribe_media_now_playing_state(sub_slot.sensor_lbl, sub_slot.text_lbl, sb_cfg.entity);
+            lv_obj_t *title_lbl = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
+            subscribe_media_now_playing_state(title_lbl ? title_lbl : sub_slot.sensor_lbl, sub_slot.text_lbl, sb_cfg.entity);
           } else {
             lv_obj_t *media_slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
             if (media_slider) subscribe_media_slider_state(sub_slot.btn, media_slider, sb_cfg.entity);
