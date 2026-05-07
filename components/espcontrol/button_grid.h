@@ -4333,6 +4333,10 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
 
   ui.back_btn = media_volume_create_round_button(ui.panel, 32, "\U000F0141",
     ctx->icon_font, 0x454545, 0x252525, ctx->width_compensation_percent);
+  lv_obj_set_style_bg_opa(ui.back_btn, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.back_btn, 0, LV_PART_MAIN);
+  lv_obj_t *back_label = lv_obj_get_child(ui.back_btn, 0);
+  if (back_label) lv_obj_set_style_text_color(back_label, lv_color_hex(0x000000), LV_PART_MAIN);
   lv_obj_add_event_cb(ui.back_btn, [](lv_event_t *) {
     media_volume_hide_modal();
   }, LV_EVENT_CLICKED, nullptr);
