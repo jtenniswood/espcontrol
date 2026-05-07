@@ -135,6 +135,10 @@ registerButtonType("media", {
         helpers.saveField("icon", b.icon);
       }
     }
+    if (b.sensor === "play_pause" && b.icon !== "Auto") {
+      b.icon = "Auto";
+      helpers.saveField("icon", b.icon);
+    }
     if (b.sensor === "previous" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Previous";
     if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
 
@@ -196,7 +200,8 @@ registerButtonType("media", {
     helpers.bindField(entityInp, "entity", true);
     helpers.requireField(entityInp, "Add an entity before saving.");
 
-    if (b.sensor !== "now_playing" && b.sensor !== "position" && b.sensor !== "volume") {
+    if (b.sensor !== "play_pause" && b.sensor !== "now_playing" &&
+        b.sensor !== "position" && b.sensor !== "volume") {
       panel.appendChild(helpers.makeIconPicker(
         helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
         b.icon || "Speaker", function (opt) {
