@@ -4190,8 +4190,12 @@ inline void media_volume_grid_card_rect(lv_coord_t sw, lv_coord_t sh,
   lv_coord_t gap_row = lv_obj_get_style_pad_row(home, LV_PART_MAIN);
   lv_coord_t usable_w = sw - pad_left - pad_right - gap_col * (cols - 1);
   lv_coord_t usable_h = sh - pad_top - pad_bottom - gap_row * (rows - 1);
-  if (usable_w > 0) w = usable_w / cols;
-  if (usable_h > 0) h = usable_h / rows;
+  lv_coord_t cell_w = usable_w > 0 ? usable_w / cols : w;
+  lv_coord_t cell_h = usable_h > 0 ? usable_h / rows : h;
+  int span_cols = cols < 3 ? cols : 3;
+  int span_rows = rows < 3 ? rows : 3;
+  w = cell_w * span_cols + gap_col * (span_cols - 1);
+  h = cell_h * span_rows + gap_row * (span_rows - 1);
   x = pad_left;
   y = pad_top;
 }
