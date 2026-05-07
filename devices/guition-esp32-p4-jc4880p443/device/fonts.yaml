@@ -36,7 +36,7 @@ font:
   # Media now-playing titles (full text glyph coverage)
   - file: "gfonts://Roboto@Light"
     id: media_title_font_lg
-    size: 46
+    size: 54
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:

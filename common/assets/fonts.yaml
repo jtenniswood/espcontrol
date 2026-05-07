@@ -23,7 +23,7 @@ font:
   # Main page: media now-playing titles
   - file: "gfonts://Roboto@Light"
     id: media_title_font
-    size: 36
+    size: 42
     bpp: 4
     glyphs: !include text_glyphs.yaml
     extras:
