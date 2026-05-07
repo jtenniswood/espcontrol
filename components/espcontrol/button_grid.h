@@ -4228,8 +4228,10 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
   lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
   lv_coord_t short_side = sw < sh ? sw : sh;
-  lv_coord_t panel_x, panel_y, panel_w, panel_h;
-  media_volume_grid_card_rect(sw, sh, panel_x, panel_y, panel_w, panel_h);
+  lv_coord_t panel_x = 0;
+  lv_coord_t panel_y = 0;
+  lv_coord_t panel_w = sw;
+  lv_coord_t panel_h = sh;
   int width_percent = normalize_width_compensation_percent(ctx->width_compensation_percent);
   lv_coord_t min_side = panel_w < panel_h ? panel_w : panel_h;
   lv_coord_t back_size = min_side * 22 / 100;
@@ -4327,7 +4329,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_bg_opa(ui.panel, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.panel, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.panel, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(ui.panel, 18, LV_PART_MAIN);
+  lv_obj_set_style_radius(ui.panel, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.panel, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.panel, LV_OBJ_FLAG_SCROLLABLE);
 
