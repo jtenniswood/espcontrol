@@ -4204,7 +4204,7 @@ inline void media_volume_grid_card_rect(lv_coord_t sw, lv_coord_t sh,
   if (metrics.first_card) {
     lv_area_t card_area;
     lv_obj_get_coords(metrics.first_card, &card_area);
-    x = card_area.x1;
+    x = 10;
     y = card_area.y1;
     w = lv_obj_get_width(metrics.first_card) * span_cols + gap_col * (span_cols - 1);
     h = lv_obj_get_height(metrics.first_card) * span_rows + gap_row * (span_rows - 1);
@@ -4217,7 +4217,7 @@ inline void media_volume_grid_card_rect(lv_coord_t sw, lv_coord_t sh,
   lv_coord_t cell_h = usable_h > 0 ? usable_h / rows : h;
   w = cell_w * span_cols + gap_col * (span_cols - 1);
   h = cell_h * span_rows + gap_row * (span_rows - 1);
-  x = pad_left;
+  x = 10;
   y = pad_top;
 }
 
