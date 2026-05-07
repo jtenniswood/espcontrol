@@ -2,6 +2,7 @@
 registerButtonType("subpage", {
   label: "Subpage",
   allowInSubpage: false,
+  hideLabel: true,
   labelPlaceholder: "e.g. Lighting",
   onSelect: function (b) {
     b.entity = ""; b.sensor = ""; b.unit = ""; b.icon = "Auto"; b.icon_on = "Auto";
@@ -12,6 +13,38 @@ registerButtonType("subpage", {
     var sensorEntity = b.sensor && b.sensor !== "indicator" ? b.sensor : "";
     var iconStateEntity = mode === "icon" ? (b.entity || "") : "";
     var iconFields = [];
+    var labelInputs = [];
+
+    function syncLabelInputs(source) {
+      for (var i = 0; i < labelInputs.length; i++) {
+        if (labelInputs[i] !== source) labelInputs[i].value = b.label || "";
+      }
+    }
+
+    function saveLabelInput(input) {
+      b.label = input.value;
+      helpers.saveField("label", b.label);
+      syncLabelInputs(input);
+    }
+
+    function makeSubpageLabelField(suffix) {
+      var field = document.createElement("div");
+      field.className = "sp-field";
+      field.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + suffix));
+      var labelInp = helpers.textInput(helpers.idPrefix + suffix, b.label, "e.g. Lighting");
+      field.appendChild(labelInp);
+      labelInputs.push(labelInp);
+      labelInp.addEventListener("input", function () { saveLabelInput(labelInp); });
+      labelInp.addEventListener("change", function () { saveLabelInput(labelInp); });
+      labelInp.addEventListener("blur", function () { saveLabelInput(labelInp); });
+      labelInp.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          saveLabelInput(labelInp);
+          this.blur();
+        }
+      });
+      return field;
+    }
 
     function syncIconFields(value) {
       for (var i = 0; i < iconFields.length; i++) {
@@ -34,6 +67,9 @@ registerButtonType("subpage", {
       iconFields.push(field);
       return field;
     }
+
+    var singleLabelSection = makeSubpageLabelField("label");
+    panel.appendChild(singleLabelSection);
 
     var singleIconSection = makeSubpageIconPicker("Icon", "icon");
     panel.appendChild(singleIconSection);
@@ -65,6 +101,7 @@ registerButtonType("subpage", {
     stateCond.appendChild(modeField);
 
     var iconSection = condField();
+    iconSection.appendChild(makeSubpageLabelField("icon-label"));
     var iconEntityField = document.createElement("div");
     iconEntityField.className = "sp-field";
     iconEntityField.appendChild(helpers.fieldLabel("State Entity", helpers.idPrefix + "icon-state-entity"));
@@ -132,6 +169,7 @@ registerButtonType("subpage", {
     });
 
     var numericSection = condField();
+    numericSection.appendChild(makeSubpageLabelField("numeric-label"));
 
     var uf = document.createElement("div");
     uf.className = "sp-field";
@@ -176,6 +214,7 @@ registerButtonType("subpage", {
       mode = nextMode;
       showState = mode !== "off";
       showStateToggle.input.checked = showState;
+      singleLabelSection.style.display = showState ? "none" : "";
       singleIconSection.style.display = showState ? "none" : "";
       stateCond.classList.toggle("sp-visible", showState);
       iconBtn.classList.toggle("active", mode === "icon");
