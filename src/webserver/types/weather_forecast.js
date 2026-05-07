@@ -1,4 +1,4 @@
-// Read-only forecast card: displays tomorrow's high / low temperature.
+// Legacy read-only forecast card: displays tomorrow's high / low temperature.
 registerButtonType("weather_forecast", {
   label: "Weather Forecast",
   allowInSubpage: true,
@@ -32,7 +32,7 @@ registerButtonType("weather_forecast", {
           '<span class="sp-sensor-unit">' + temperatureUnitSymbol() + '</span>' +
         '</span>',
       labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">Tomorrow</span>' +
+        '<span class="sp-btn-label-row"><span class="sp-btn-label">Temperatures Tomorrow</span>' +
         '<span class="sp-type-badge mdi mdi-weather-partly-cloudy"></span></span>',
     };
   },

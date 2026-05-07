@@ -326,6 +326,7 @@ struct WeatherForecastCardRef {
   lv_obj_t *unit_lbl;
   lv_obj_t *label_lbl;
   std::string entity_id;
+  std::string day;
   bool valid = false;
   int high = 0;
   int low = 0;
@@ -356,7 +357,10 @@ inline std::string weather_forecast_unit_symbol(const std::string &unit) {
 inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
                                              bool valid, int high, int low,
                                              const std::string &unit) {
-  if (ref.label_lbl) lv_label_set_text(ref.label_lbl, "Tomorrow");
+  if (ref.label_lbl) {
+    lv_label_set_text(ref.label_lbl,
+      ref.day == "today" ? "Temperatures Today" : "Temperatures Tomorrow");
+  }
   if (!ref.value_lbl || !ref.unit_lbl) return;
   if (!valid) {
     lv_label_set_text(ref.value_lbl, "--/--");
@@ -377,12 +381,13 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
 }
 
 inline void apply_weather_forecast_to_entity(const std::string &entity_id,
+                                             const std::string &day,
                                              bool valid, int high, int low,
                                              const std::string &unit) {
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
-    if (refs[i].entity_id == entity_id) {
+    if (refs[i].entity_id == entity_id && refs[i].day == day) {
       refs[i].valid = valid;
       refs[i].high = high;
       refs[i].low = low;
@@ -394,13 +399,16 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
 
 inline void register_weather_forecast_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
                                            lv_obj_t *label_lbl,
-                                           const std::string &entity_id) {
+                                           const std::string &entity_id,
+                                           const std::string &day) {
   int &count = weather_forecast_card_count();
   if (count >= MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) {
     ESP_LOGW("weather_forecast", "Too many forecast cards; skipping updates");
     return;
   }
-  weather_forecast_card_refs()[count++] = {value_lbl, unit_lbl, label_lbl, entity_id, false, 0, 0, ""};
+  weather_forecast_card_refs()[count++] = {
+    value_lbl, unit_lbl, label_lbl, entity_id, day, false, 0, 0, ""
+  };
   apply_weather_forecast_card_text(weather_forecast_card_refs()[count - 1], false, 0, 0, "");
 }
 
@@ -438,17 +446,22 @@ inline bool parse_weather_forecast_payload(const std::string &payload,
   return has_high || has_low;
 }
 
-inline std::string weather_forecast_response_template(const std::string &entity_id) {
+inline std::string weather_forecast_response_template(const std::string &entity_id,
+                                                      const std::string &day) {
+  const char *target_date_template = day == "today"
+    ? "now().date().isoformat()"
+    : "(now().date() + timedelta(days=1)).isoformat()";
   return std::string("{% set entity = '") + entity_id + "' %}"
     "{% set forecasts = response.get(entity, {}).get('forecast', []) %}"
-    "{% set tomorrow = (now().date() + timedelta(days=1)).isoformat() %}"
+    "{% set target_date = " + target_date_template + " %}"
     "{% set ns = namespace(forecast=none) %}"
     "{% for item in forecasts %}"
-    "{% if ns.forecast is none and item.datetime is defined and item.datetime[:10] == tomorrow %}"
+    "{% if ns.forecast is none and item.datetime is defined and item.datetime[:10] == target_date %}"
     "{% set ns.forecast = item %}"
     "{% endif %}"
     "{% endfor %}"
-    "{% set f = ns.forecast if ns.forecast is not none else (forecasts[1] if forecasts|length > 1 else (forecasts[0] if forecasts|length > 0 else none)) %}"
+    "{% set fallback_index = 0 if target_date == now().date().isoformat() else 1 %}"
+    "{% set f = ns.forecast if ns.forecast is not none else (forecasts[fallback_index] if forecasts|length > fallback_index else (forecasts[0] if forecasts|length > 0 else none)) %}"
     "{% set high = f.temperature if f is not none and f.temperature is defined else (f.temperature_high if f is not none and f.temperature_high is defined else (f.high_temperature if f is not none and f.high_temperature is defined else (f.high if f is not none and f.high is defined else ''))) %}"
     "{% set low = f.templow if f is not none and f.templow is defined else (f.temperature_low if f is not none and f.temperature_low is defined else (f.low_temperature if f is not none and f.low_temperature is defined else (f.low if f is not none and f.low is defined else ''))) %}"
     "{{ high }}|{{ low }}|"
@@ -460,9 +473,10 @@ inline uint32_t next_weather_forecast_call_id() {
   return call_id++;
 }
 
-inline void request_weather_forecast_entity(const std::string &entity_id) {
+inline void request_weather_forecast_entity(const std::string &entity_id,
+                                            const std::string &day) {
   if (!weather_forecast_entity_id_safe(entity_id) || esphome::api::global_api_server == nullptr) {
-    apply_weather_forecast_to_entity(entity_id, false, 0, 0, "");
+    apply_weather_forecast_to_entity(entity_id, day, false, 0, 0, "");
     return;
   }
 
@@ -471,7 +485,7 @@ inline void request_weather_forecast_entity(const std::string &entity_id) {
   req.is_event = false;
   req.call_id = next_weather_forecast_call_id();
   req.wants_response = true;
-  std::string response_template = weather_forecast_response_template(entity_id);
+  std::string response_template = weather_forecast_response_template(entity_id, day);
   req.response_template = decltype(req.response_template)(response_template);
   req.data.init(2);
   auto &entity_kv = req.data.emplace_back();
@@ -483,17 +497,17 @@ inline void request_weather_forecast_entity(const std::string &entity_id) {
 
   esphome::api::global_api_server->register_action_response_callback(
     req.call_id,
-    [entity_id](const esphome::api::ActionResponse &response) {
+    [entity_id, day](const esphome::api::ActionResponse &response) {
       if (!response.is_success()) {
         ESP_LOGW("weather_forecast", "Forecast request failed for %s: %s",
           entity_id.c_str(), response.get_error_message().c_str());
-        apply_weather_forecast_to_entity(entity_id, false, 0, 0, "");
+        apply_weather_forecast_to_entity(entity_id, day, false, 0, 0, "");
         return;
       }
       auto json = response.get_json();
       const char *payload = json["response"].as<const char *>();
       if (payload == nullptr) {
-        apply_weather_forecast_to_entity(entity_id, false, 0, 0, "");
+        apply_weather_forecast_to_entity(entity_id, day, false, 0, 0, "");
         return;
       }
       int high = 0;
@@ -503,7 +517,7 @@ inline void request_weather_forecast_entity(const std::string &entity_id) {
       if (!valid) {
         ESP_LOGW("weather_forecast", "No usable forecast temperatures for %s", entity_id.c_str());
       }
-      apply_weather_forecast_to_entity(entity_id, valid, high, low, unit);
+      apply_weather_forecast_to_entity(entity_id, day, valid, high, low, unit);
     });
   esphome::api::global_api_server->send_homeassistant_action(req);
 }
@@ -517,16 +531,18 @@ inline void refresh_weather_forecast_cards() {
   for (int i = 0; i < count; i++) {
     const std::string &entity_id = refs[i].entity_id;
     if (entity_id.empty()) continue;
+    const std::string &day = refs[i].day;
+    std::string request_key = entity_id + "|" + day;
     bool already_requested = false;
     for (const auto &existing : requested) {
-      if (existing == entity_id) {
+      if (existing == request_key) {
         already_requested = true;
         break;
       }
     }
     if (already_requested) continue;
-    requested.push_back(entity_id);
-    request_weather_forecast_entity(entity_id);
+    requested.push_back(request_key);
+    request_weather_forecast_entity(entity_id, day);
   }
 }
 
@@ -2653,8 +2669,13 @@ inline void setup_weather_card(BtnSlot &s, bool has_sensor_color, uint32_t senso
   lv_label_set_text(s.text_lbl, "Weather");
 }
 
-inline bool weather_card_shows_tomorrow(const ParsedCfg &p) {
-  return p.type == "weather_forecast" || (p.type == "weather" && p.precision == "tomorrow");
+inline bool weather_card_shows_forecast(const ParsedCfg &p) {
+  return p.type == "weather_forecast" ||
+    (p.type == "weather" && (p.precision == "today" || p.precision == "tomorrow"));
+}
+
+inline std::string weather_card_forecast_day(const ParsedCfg &p) {
+  return p.precision == "today" ? "today" : "tomorrow";
 }
 
 inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
@@ -2669,10 +2690,11 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_label_set_text(s.sensor_lbl, "--/--");
   lv_label_set_text(s.unit_lbl, "");
-  lv_label_set_text(s.text_lbl, "Tomorrow");
+  std::string day = weather_card_forecast_day(p);
+  lv_label_set_text(s.text_lbl, day == "today" ? "Temperatures Today" : "Temperatures Tomorrow");
   apply_width_compensation(s.sensor_container, width_compensation_percent);
   apply_width_compensation(s.text_lbl, width_compensation_percent);
-  register_weather_forecast_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity);
+  register_weather_forecast_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity, day);
 }
 
 inline void setup_garage_card(BtnSlot &s, const ParsedCfg &p) {
@@ -5195,7 +5217,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_timezone_card(s, p, palette.has_sensor_color, palette.sensor_val);
     return;
   }
-  if (weather_card_shows_tomorrow(p)) {
+  if (weather_card_shows_forecast(p)) {
     setup_weather_forecast_card(s, p, palette.has_sensor_color, palette.sensor_val,
       cfg.width_compensation_percent);
     return;
@@ -5437,7 +5459,7 @@ inline void grid_phase2(
     if (p.type == "timezone") {
       continue;
     }
-    if (weather_card_shows_tomorrow(p)) {
+    if (weather_card_shows_forecast(p)) {
       continue;
     }
     if (p.type == "weather") {
@@ -5819,7 +5841,7 @@ inline void grid_phase2(
         subscribe_calendar_date_source(sb_cfg.entity);
         continue;
       }
-      if (sb_cfg.type == "timezone" || weather_card_shows_tomorrow(sb_cfg)) {
+      if (sb_cfg.type == "timezone" || weather_card_shows_forecast(sb_cfg)) {
         continue;
       }
       if (sb_cfg.type == "weather") {

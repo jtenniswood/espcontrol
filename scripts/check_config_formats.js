@@ -354,6 +354,17 @@ assertButtonRoundTrip(hooks, "weather tomorrow card", {
   precision: "tomorrow",
 }, false);
 
+assertButtonRoundTrip(hooks, "weather today card", {
+  entity: "weather.forecast_home",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "weather",
+  precision: "today",
+}, false);
+
 assertButtonRoundTrip(hooks, "media play pause card", {
   entity: "media_player.living_room",
   label: "Play/Pause",
@@ -794,6 +805,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|F,weather.for
     buttonShape({ entity: "weather.forecast_home", type: "weather", precision: "tomorrow" }),
   ],
 }, "compact weather forecast subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|W,weather.forecast_home,,,,,,today")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "weather.forecast_home", type: "weather", precision: "today" }),
+  ],
+}, "compact weather today subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|H,climate.living_room,Living%20Room,Thermostat")), {
   order: ["1", "B"],

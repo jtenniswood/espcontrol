@@ -36,7 +36,7 @@ You only need to do this once per device. The setting persists across firmware u
 
 ## What If I Skip This?
 
-You won't be able to control any devices, it will be in a read only state, and entities such as lights, switches, scenes, scripts, and helpers won't do anything when tapped. Weather cards set to **Tomorrow** also won't be able to fetch tomorrow's forecast.
+You won't be able to control any devices, it will be in a read only state, and entities such as lights, switches, scenes, scripts, and helpers won't do anything when tapped. Weather cards set to **Temperatures Today** or **Temperatures Tomorrow** also won't be able to fetch the daily forecast.
 
 ## Device Not Showing Up?
 
