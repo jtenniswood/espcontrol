@@ -229,7 +229,7 @@ registerButtonType("media", {
     }
     var info = modeInfo(b.sensor);
     var mode = info.mode;
-    var label = b.label || info.label;
+    var label = (b.label && b.label.trim()) || info.label;
     var badge = '<span class="sp-type-badge mdi mdi-speaker"></span>';
     if (mode === "volume") {
       return {
