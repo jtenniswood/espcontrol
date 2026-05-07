@@ -3470,6 +3470,8 @@ struct SliderCtx {
   float media_duration = 0.0f;
   float media_position_seconds = 0.0f;
   uint32_t media_position_updated_ms = 0;
+  bool media_position_updated_at_known = false;
+  uint32_t media_position_updated_at_ms = 0;
   bool media_seek_pending = false;
   float media_seek_target_seconds = 0.0f;
   uint32_t media_seek_pending_ms = 0;
@@ -4369,6 +4371,83 @@ inline bool media_seek_pending_active(SliderCtx *ctx) {
          (esphome::millis() - ctx->media_seek_pending_ms) < MEDIA_SEEK_PENDING_TIMEOUT_MS;
 }
 
+inline bool media_parse_fixed_int(const char *text, size_t len, size_t pos,
+                                  size_t digits, int &out) {
+  if (!text || pos + digits > len) return false;
+  int value = 0;
+  for (size_t i = 0; i < digits; i++) {
+    char c = text[pos + i];
+    if (c < '0' || c > '9') return false;
+    value = value * 10 + (c - '0');
+  }
+  out = value;
+  return true;
+}
+
+inline int64_t media_days_from_civil(int year, unsigned month, unsigned day) {
+  year -= month <= 2;
+  const int era = (year >= 0 ? year : year - 399) / 400;
+  const unsigned yoe = static_cast<unsigned>(year - era * 400);
+  const unsigned doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+  const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return static_cast<int64_t>(era) * 146097 + static_cast<int64_t>(doe) - 719468;
+}
+
+inline bool media_parse_ha_timestamp(esphome::StringRef value, time_t &epoch) {
+  std::string text = string_ref_limited(value, 40);
+  const char *s = text.c_str();
+  size_t len = text.size();
+  if (len < 19 || s[4] != '-' || s[7] != '-' || (s[10] != 'T' && s[10] != ' ')) return false;
+  int year, month, day, hour, minute, second;
+  if (!media_parse_fixed_int(s, len, 0, 4, year) ||
+      !media_parse_fixed_int(s, len, 5, 2, month) ||
+      !media_parse_fixed_int(s, len, 8, 2, day) ||
+      !media_parse_fixed_int(s, len, 11, 2, hour) ||
+      !media_parse_fixed_int(s, len, 14, 2, minute) ||
+      !media_parse_fixed_int(s, len, 17, 2, second)) {
+    return false;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31 ||
+      hour < 0 || hour > 23 || minute < 0 || minute > 59 ||
+      second < 0 || second > 60) {
+    return false;
+  }
+
+  size_t tz_pos = 19;
+  while (tz_pos < len && s[tz_pos] != 'Z' && s[tz_pos] != '+' && s[tz_pos] != '-') tz_pos++;
+  int offset_seconds = 0;
+  if (tz_pos < len && (s[tz_pos] == '+' || s[tz_pos] == '-')) {
+    int offset_hour, offset_minute;
+    if (!media_parse_fixed_int(s, len, tz_pos + 1, 2, offset_hour) ||
+        tz_pos + 3 >= len || s[tz_pos + 3] != ':' ||
+        !media_parse_fixed_int(s, len, tz_pos + 4, 2, offset_minute) ||
+        offset_hour > 23 || offset_minute > 59) {
+      return false;
+    }
+    offset_seconds = (offset_hour * 60 + offset_minute) * 60;
+    if (s[tz_pos] == '-') offset_seconds = -offset_seconds;
+  }
+
+  int64_t days = media_days_from_civil(year, static_cast<unsigned>(month),
+                                       static_cast<unsigned>(day));
+  int64_t seconds_since_epoch = days * 86400 + hour * 3600 + minute * 60 + second;
+  seconds_since_epoch -= offset_seconds;
+  if (seconds_since_epoch < 0) return false;
+  epoch = static_cast<time_t>(seconds_since_epoch);
+  return true;
+}
+
+inline bool media_position_timestamp_ms(esphome::StringRef value, uint32_t &updated_ms) {
+  time_t updated_epoch;
+  if (!media_parse_ha_timestamp(value, updated_epoch)) return false;
+  time_t now_epoch = std::time(nullptr);
+  if (now_epoch <= 0 || updated_epoch <= 0 || updated_epoch > now_epoch) return false;
+  uint64_t elapsed_ms = static_cast<uint64_t>(now_epoch - updated_epoch) * 1000ULL;
+  if (elapsed_ms > 0xFFFFFFFFULL) elapsed_ms = 0xFFFFFFFFULL;
+  updated_ms = esphome::millis() - static_cast<uint32_t>(elapsed_ms);
+  return true;
+}
+
 inline void media_apply_position(SliderCtx *ctx) {
   if (!ctx) return;
   float seconds = ctx->media_position_seconds;
@@ -4808,7 +4887,9 @@ inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
           ctx->media_seek_pending = false;
         }
         ctx->media_position_seconds = pos;
-        ctx->media_position_updated_ms = esphome::millis();
+        ctx->media_position_updated_ms = ctx->media_position_updated_at_known
+          ? ctx->media_position_updated_at_ms
+          : esphome::millis();
         media_apply_position(ctx);
       })
   );
@@ -4816,13 +4897,22 @@ inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, std::string("media_position_updated_at"),
     std::function<void(esphome::StringRef)>(
-      [ctx](esphome::StringRef) {
+      [ctx](esphome::StringRef val) {
         if (media_seek_pending_active(ctx)) {
           media_apply_position(ctx);
           return;
         }
         ctx->media_seek_pending = false;
-        ctx->media_position_updated_ms = esphome::millis();
+        uint32_t updated_ms = 0;
+        if (media_position_timestamp_ms(val, updated_ms)) {
+          ctx->media_position_updated_at_known = true;
+          ctx->media_position_updated_at_ms = updated_ms;
+          ctx->media_position_updated_ms = updated_ms;
+        } else {
+          ctx->media_position_updated_at_known = false;
+          ctx->media_position_updated_at_ms = 0;
+          ctx->media_position_updated_ms = esphome::millis();
+        }
         media_apply_position(ctx);
       })
   );
