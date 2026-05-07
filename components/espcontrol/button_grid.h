@@ -4229,7 +4229,7 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
   lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
   lv_coord_t short_side = sw < sh ? sw : sh;
-  lv_coord_t panel_x = 16;
+  lv_coord_t panel_x = 8;
   lv_coord_t panel_y = 0;
   lv_coord_t panel_w = sw - panel_x - 8;
   lv_coord_t panel_h = sh;
