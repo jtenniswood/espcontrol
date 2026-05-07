@@ -3516,6 +3516,7 @@ struct MediaVolumeCtx {
   int pending_pct = -1;
   uint32_t pending_until_ms = 0;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
+  uint32_t secondary_color = CLIMATE_NEUTRAL_COLOR;
   lv_obj_t *btn = nullptr;
   lv_obj_t *label_lbl = nullptr;
   lv_obj_t *pct_lbl = nullptr;
@@ -4325,7 +4326,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
     LV_EVENT_CLICKED, nullptr);
 
   ui.panel = lv_obj_create(ui.overlay);
-  lv_obj_set_style_bg_color(ui.panel, lv_color_hex(0x252525), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.panel, lv_color_hex(ctx->secondary_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.panel, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.panel, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.panel, 0, LV_PART_MAIN);
@@ -4334,7 +4335,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_clear_flag(ui.panel, LV_OBJ_FLAG_SCROLLABLE);
 
   ui.back_btn = media_volume_create_round_button(ui.panel, 32, "\U000F0141",
-    ctx->icon_font, 0x454545, 0x252525, ctx->width_compensation_percent);
+    ctx->icon_font, 0x454545, ctx->secondary_color, ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.back_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.back_btn, 0, LV_PART_MAIN);
   lv_obj_t *back_label = lv_obj_get_child(ui.back_btn, 0);
@@ -4399,9 +4400,9 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   apply_width_compensation(ui.pct_unit_lbl, ctx->width_compensation_percent);
 
   ui.minus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Minus"),
-    ctx->icon_font, 0xBDBDBD, 0x252525, ctx->width_compensation_percent);
+    ctx->icon_font, 0xBDBDBD, ctx->secondary_color, ctx->width_compensation_percent);
   ui.plus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Plus"),
-    ctx->icon_font, 0xBDBDBD, 0x252525, ctx->width_compensation_percent);
+    ctx->icon_font, 0xBDBDBD, ctx->secondary_color, ctx->width_compensation_percent);
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
     if (ui.active) media_volume_apply_percent(ui.active, ui.active->current_pct - 1, true, true);
@@ -4849,6 +4850,7 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
                                                    lv_obj_t *label_lbl,
                                                    const ParsedCfg &p,
                                                    uint32_t accent_color,
+                                                   uint32_t secondary_color,
                                                    const lv_font_t *value_font,
                                                    const lv_font_t *number_font,
                                                    const lv_font_t *unit_font,
@@ -4863,6 +4865,7 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
   ctx->entity_id = p.entity;
   ctx->label = media_label(p);
   ctx->accent_color = accent_color;
+  ctx->secondary_color = secondary_color;
   ctx->btn = btn;
   ctx->label_lbl = label_lbl;
   ctx->pct_lbl = pct_lbl;
@@ -5751,6 +5754,7 @@ inline void grid_phase2(
         } else if (mode == "volume") {
           MediaVolumeCtx *ctx = create_media_volume_context(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            has_off ? off_val : CLIMATE_NEUTRAL_COLOR,
             cfg.sp_sensor_font,
             cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
             lv_obj_get_style_text_font(s.unit_lbl, LV_PART_MAIN),
@@ -6148,6 +6152,7 @@ inline void grid_phase2(
             MediaVolumeCtx *ctx = create_media_volume_context(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              has_off ? off_val : CLIMATE_NEUTRAL_COLOR,
               cfg.sp_sensor_font,
               cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
               lv_obj_get_style_text_font(sub_slot.unit_lbl, LV_PART_MAIN),
