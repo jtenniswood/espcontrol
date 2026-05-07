@@ -18,6 +18,8 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
+    version: 5.5.2
+    platform_version: 55.03.37
     sdkconfig_options:
       # The S3 display stack leaves little internal RAM for HTTPS OTA checks.
       # Allocate mbedTLS buffers from PSRAM so firmware downloads can connect.
@@ -54,6 +56,9 @@ espcontrol:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
+  platformio_options:
+    platform_packages:
+      - "pioarduino/framework-espidf@https://github.com/pioarduino/esp-idf/releases/download/v5.5.2/esp-idf-v5.5.2.tar.xz"
   on_boot:
     - priority: 800
       then:

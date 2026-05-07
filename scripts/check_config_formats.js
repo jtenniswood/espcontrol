@@ -354,6 +354,17 @@ assertButtonRoundTrip(hooks, "weather tomorrow card", {
   precision: "tomorrow",
 }, false);
 
+assertButtonRoundTrip(hooks, "weather tomorrow card custom label", {
+  entity: "weather.forecast_home",
+  label: "Garden",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "weather",
+  precision: "tomorrow",
+}, false);
+
 assertButtonRoundTrip(hooks, "weather today card", {
   entity: "weather.forecast_home",
   label: "",
@@ -544,7 +555,7 @@ assert.strictEqual(hooks.subpageStateDisplayMode(subpageStateText), "text", "sub
 
 assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig("weather.forecast_home;Weather;Auto;Auto;;;weather_forecast")), {
   entity: "weather.forecast_home",
-  label: "Weather",
+  label: "",
   icon: "Auto",
   icon_on: "Auto",
   sensor: "",

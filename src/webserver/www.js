@@ -1836,6 +1836,7 @@
     if (b && b.type === "weather_forecast") {
       b.type = "weather";
       b.precision = "tomorrow";
+      if (b.label === "Weather") b.label = "";
     }
     if (b && b.type === "text_sensor") {
       b.type = "sensor";

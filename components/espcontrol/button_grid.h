@@ -112,6 +112,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   if (p.type == "weather_forecast") {
     p.type = "weather";
     p.precision = "tomorrow";
+    if (p.label == "Weather") p.label.clear();
   }
   if (p.type == "media") {
     if (p.sensor == "controls") {
@@ -327,6 +328,7 @@ struct WeatherForecastCardRef {
   lv_obj_t *label_lbl;
   std::string entity_id;
   std::string day;
+  std::string label;
   bool valid = false;
   int high = 0;
   int low = 0;
@@ -358,8 +360,10 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
                                              bool valid, int high, int low,
                                              const std::string &unit) {
   if (ref.label_lbl) {
-    lv_label_set_text(ref.label_lbl,
-      ref.day == "today" ? "Temperatures Today" : "Temperatures Tomorrow");
+    std::string label = ref.label.empty()
+      ? (ref.day == "today" ? "Temperatures Today" : "Temperatures Tomorrow")
+      : ref.label;
+    lv_label_set_text(ref.label_lbl, label.c_str());
   }
   if (!ref.value_lbl || !ref.unit_lbl) return;
   if (!valid) {
@@ -400,14 +404,15 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
 inline void register_weather_forecast_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
                                            lv_obj_t *label_lbl,
                                            const std::string &entity_id,
-                                           const std::string &day) {
+                                           const std::string &day,
+                                           const std::string &label) {
   int &count = weather_forecast_card_count();
   if (count >= MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) {
     ESP_LOGW("weather_forecast", "Too many forecast cards; skipping updates");
     return;
   }
   weather_forecast_card_refs()[count++] = {
-    value_lbl, unit_lbl, label_lbl, entity_id, day, false, 0, 0, ""
+    value_lbl, unit_lbl, label_lbl, entity_id, day, label, false, 0, 0, ""
   };
   apply_weather_forecast_card_text(weather_forecast_card_refs()[count - 1], false, 0, 0, "");
 }
@@ -2691,10 +2696,13 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
   lv_label_set_text(s.sensor_lbl, "--/--");
   lv_label_set_text(s.unit_lbl, "");
   std::string day = weather_card_forecast_day(p);
-  lv_label_set_text(s.text_lbl, day == "today" ? "Temperatures Today" : "Temperatures Tomorrow");
+  std::string label = p.label.empty()
+    ? (day == "today" ? "Temperatures Today" : "Temperatures Tomorrow")
+    : p.label;
+  lv_label_set_text(s.text_lbl, label.c_str());
   apply_width_compensation(s.sensor_container, width_compensation_percent);
   apply_width_compensation(s.text_lbl, width_compensation_percent);
-  register_weather_forecast_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity, day);
+  register_weather_forecast_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity, day, p.label);
 }
 
 inline void setup_garage_card(BtnSlot &s, const ParsedCfg &p) {
@@ -5017,6 +5025,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   if (b.type == "weather_forecast") {
     b.type = "weather";
     b.precision = "tomorrow";
+    if (b.label == "Weather") b.label.clear();
   }
   if (b.type == "media") {
     if (b.sensor == "controls") {
