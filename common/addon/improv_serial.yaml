@@ -1,7 +1,7 @@
 # =============================================================================
 # IMPROV SERIAL - Serial WiFi provisioning
 # =============================================================================
-# ESPHome 2026.4.3 does not compile improv_serial for ESP32-P4, so this package
+# ESPHome 2026.4.5 does not compile improv_serial for ESP32-P4, so this package
 # is included only by boards where the component is supported.
 # =============================================================================
 
