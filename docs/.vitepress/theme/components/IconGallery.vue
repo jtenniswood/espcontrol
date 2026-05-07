@@ -238,6 +238,8 @@ const ICON_GROUPS = {
   'Monitor': 'Media & Entertainment',
   'Movie Roll': 'Media & Entertainment',
   'Music': 'Media & Entertainment',
+  'Pause': 'Media & Entertainment',
+  'Play': 'Media & Entertainment',
   'Play Pause': 'Media & Entertainment',
   'Projector': 'Media & Entertainment',
   'Projector Off': 'Media & Entertainment',
