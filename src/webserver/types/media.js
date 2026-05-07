@@ -142,10 +142,18 @@ registerButtonType("media", {
     if (b.sensor === "previous" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Previous";
     if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
 
+    var ef = document.createElement("div");
+    ef.className = "sp-field";
+    ef.appendChild(helpers.fieldLabel("Media Player Entity", helpers.idPrefix + "entity"));
+    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. media_player.living_room");
+    ef.appendChild(entityInp);
+    panel.appendChild(ef);
+    helpers.bindField(entityInp, "entity", true);
+    helpers.requireField(entityInp, "Add an entity before saving.");
+
     var displayField = document.createElement("div");
     var labelModeBtn = document.createElement("button");
     var stateModeBtn = document.createElement("button");
-
     function syncDisplayField() {
       if (b.sensor === "play_pause" || b.sensor === "position") {
         displayField.style.display = "";
@@ -197,15 +205,6 @@ registerButtonType("media", {
       panel.appendChild(lf);
       helpers.bindField(labelInp, "label", true);
     }
-
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Media Player Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.textInput(helpers.idPrefix + "entity", b.entity, "e.g. media_player.living_room");
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-    helpers.requireField(entityInp, "Add an entity before saving.");
 
     if (b.sensor !== "play_pause" && b.sensor !== "now_playing" &&
         b.sensor !== "position" && b.sensor !== "volume") {
