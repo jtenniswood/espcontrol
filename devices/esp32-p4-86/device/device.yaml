@@ -55,6 +55,8 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   platformio_options:
+    platform_packages:
+      - "pioarduino/framework-espidf@https://github.com/pioarduino/esp-idf/releases/download/v5.5.2/esp-idf-v5.5.2.tar.xz"
     build_flags:
       - "-Wno-deprecated-declarations"
     build_src_flags:
