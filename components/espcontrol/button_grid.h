@@ -3522,6 +3522,7 @@ struct MediaVolumeCtx {
 struct MediaVolumeModalUi {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *panel = nullptr;
+  lv_obj_t *back_btn = nullptr;
   lv_obj_t *arc = nullptr;
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *pct_row = nullptr;
@@ -4130,6 +4131,7 @@ inline void media_volume_hide_modal() {
   if (ui.overlay) lv_obj_del(ui.overlay);
   ui.overlay = nullptr;
   ui.panel = nullptr;
+  ui.back_btn = nullptr;
   ui.arc = nullptr;
   ui.title_lbl = nullptr;
   ui.pct_row = nullptr;
@@ -4166,6 +4168,34 @@ inline lv_obj_t *media_volume_create_round_button(lv_obj_t *parent, lv_coord_t s
   return btn;
 }
 
+inline void media_volume_grid_card_rect(lv_coord_t sw, lv_coord_t sh,
+                                        lv_coord_t &x, lv_coord_t &y,
+                                        lv_coord_t &w, lv_coord_t &h) {
+  ClimateHomeGridMetrics &metrics = climate_home_grid_metrics();
+  lv_obj_t *home = metrics.page;
+  int cols = metrics.cols > 0 ? metrics.cols : 3;
+  int rows = metrics.rows > 0 ? metrics.rows : 3;
+  x = 0;
+  y = 0;
+  w = sw / cols;
+  h = sh / rows;
+  if (!home) return;
+
+  lv_obj_update_layout(home);
+  lv_coord_t pad_left = lv_obj_get_style_pad_left(home, LV_PART_MAIN);
+  lv_coord_t pad_right = lv_obj_get_style_pad_right(home, LV_PART_MAIN);
+  lv_coord_t pad_top = lv_obj_get_style_pad_top(home, LV_PART_MAIN);
+  lv_coord_t pad_bottom = lv_obj_get_style_pad_bottom(home, LV_PART_MAIN);
+  lv_coord_t gap_col = lv_obj_get_style_pad_column(home, LV_PART_MAIN);
+  lv_coord_t gap_row = lv_obj_get_style_pad_row(home, LV_PART_MAIN);
+  lv_coord_t usable_w = sw - pad_left - pad_right - gap_col * (cols - 1);
+  lv_coord_t usable_h = sh - pad_top - pad_bottom - gap_row * (rows - 1);
+  if (usable_w > 0) w = usable_w / cols;
+  if (usable_h > 0) h = usable_h / rows;
+  x = pad_left;
+  y = pad_top;
+}
+
 inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
   if (!ctx || !ui.overlay || !ui.panel) return;
@@ -4173,45 +4203,48 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
   lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
   lv_coord_t short_side = sw < sh ? sw : sh;
-  lv_coord_t panel_side = short_side * 88 / 100;
-  if (panel_side > 680) panel_side = 680;
-  if (panel_side < short_side * 78 / 100) panel_side = short_side * 78 / 100;
-  lv_coord_t btn_size = short_side * 15 / 100;
-  if (btn_size < 54) btn_size = 54;
-  if (btn_size > 108) btn_size = 108;
-  lv_coord_t arc_stroke = short_side < 520 ? 12 : 18;
-  lv_coord_t controls_gap = btn_size / 4;
-  if (controls_gap < 12) controls_gap = 12;
-  lv_coord_t bottom_pad = short_side * 5 / 100;
-  if (bottom_pad < 18) bottom_pad = 18;
-  lv_coord_t top_pad = short_side * 4 / 100;
-  if (top_pad < 16) top_pad = 16;
-  lv_coord_t max_arc_h = panel_side - top_pad - bottom_pad - btn_size - controls_gap;
-  lv_coord_t max_arc_w = panel_side - 24;
-  lv_coord_t arc_size = panel_side * 90 / 100;
-  if (arc_size > max_arc_h) arc_size = max_arc_h;
-  if (arc_size > max_arc_w) arc_size = max_arc_w;
-  if (arc_size < 180) arc_size = 180;
-  lv_coord_t visible_arc_w = compensated_width(arc_size, ctx->width_compensation_percent);
-  lv_coord_t panel_side_pad = short_side * 10 / 100;
-  if (panel_side_pad < 42) panel_side_pad = 42;
-  if (panel_side_pad > 70) panel_side_pad = 70;
-  lv_coord_t min_panel_side = visible_arc_w + panel_side_pad * 2;
-  lv_coord_t min_button_w = (btn_size + 18) + compensated_width(btn_size, ctx->width_compensation_percent) + panel_side_pad;
-  if (min_panel_side < min_button_w) min_panel_side = min_button_w;
-  if (min_panel_side < short_side * 72 / 100) min_panel_side = short_side * 72 / 100;
-  if (panel_side < min_panel_side) panel_side = min_panel_side;
-  if (panel_side > short_side) panel_side = short_side;
+  lv_coord_t panel_x, panel_y, panel_w, panel_h;
+  media_volume_grid_card_rect(sw, sh, panel_x, panel_y, panel_w, panel_h);
+  int width_percent = normalize_width_compensation_percent(ctx->width_compensation_percent);
+  lv_coord_t min_side = panel_w < panel_h ? panel_w : panel_h;
+  lv_coord_t back_size = min_side * 22 / 100;
+  if (back_size < 28) back_size = 28;
+  if (back_size > 46) back_size = 46;
+  lv_coord_t btn_size = min_side * 28 / 100;
+  if (btn_size < 36) btn_size = 36;
+  if (btn_size > 62) btn_size = 62;
+  lv_coord_t inset = min_side * 6 / 100;
+  if (inset < 8) inset = 8;
+  lv_coord_t arc_stroke = min_side * 8 / 100;
+  if (arc_stroke < 8) arc_stroke = 8;
+  if (arc_stroke > 14) arc_stroke = 14;
+  lv_coord_t controls_gap = btn_size / 5;
+  if (controls_gap < 8) controls_gap = 8;
+  lv_coord_t arc_size = panel_w < panel_h ? panel_w : panel_h;
+  arc_size -= inset * 2;
+  lv_coord_t reserved_bottom = btn_size + inset * 2;
+  lv_coord_t available_h = panel_h - inset * 2;
+  if (available_h > reserved_bottom) {
+    lv_coord_t fit_h = available_h - reserved_bottom + arc_stroke;
+    if (arc_size > fit_h) arc_size = fit_h;
+  }
+  if (arc_size < 74) arc_size = 74;
+  lv_coord_t visible_arc_w = compensated_width(arc_size, width_percent);
+  if (visible_arc_w > panel_w - inset * 2) {
+    arc_size = (panel_w - inset * 2) * 100 / width_percent;
+    visible_arc_w = compensated_width(arc_size, width_percent);
+  }
 
   lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
-  lv_obj_set_size(ui.panel, panel_side, panel_side);
-  lv_obj_align(ui.panel, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_size(ui.panel, panel_w, panel_h);
+  lv_obj_align(ui.panel, LV_ALIGN_TOP_LEFT, panel_x, panel_y);
   lv_coord_t arc_center_x = (arc_size - visible_arc_w) / 2;
-  lv_coord_t vertical_nudge = short_side * 4 / 100;
-  if (vertical_nudge < 14) vertical_nudge = 14;
-  lv_coord_t arc_center_y = (top_pad + arc_size / 2) - panel_side / 2 + vertical_nudge;
-  lv_coord_t controls_center_y = panel_side / 2 - bottom_pad - btn_size / 2 - vertical_nudge;
+  lv_coord_t arc_center_y = inset + arc_size / 2 - panel_h / 2 + (short_side < 520 ? 6 : 10);
+  lv_coord_t controls_center_y = panel_h / 2 - inset - btn_size / 2;
 
+  lv_obj_set_size(ui.back_btn, back_size, back_size);
+  lv_obj_set_style_radius(ui.back_btn, back_size / 2, LV_PART_MAIN);
+  lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, inset, inset);
   lv_obj_set_size(ui.arc, arc_size, arc_size);
   apply_width_compensation(ui.arc, ctx->width_compensation_percent);
   lv_obj_align(ui.arc, LV_ALIGN_CENTER, arc_center_x, arc_center_y);
@@ -4222,10 +4255,11 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_radius(ui.minus_btn, btn_size / 2, LV_PART_MAIN);
   lv_obj_set_size(ui.plus_btn, btn_size, btn_size);
   lv_obj_set_style_radius(ui.plus_btn, btn_size / 2, LV_PART_MAIN);
-  lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, arc_center_y - arc_size / 7);
+  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, inset);
   lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, arc_center_y + arc_stroke);
-  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + 18) / 2, controls_center_y);
-  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + 18) / 2, controls_center_y);
+  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + controls_gap) / 2, controls_center_y);
+  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + controls_gap) / 2, controls_center_y);
+  lv_obj_move_foreground(ui.back_btn);
 }
 
 inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
@@ -4269,6 +4303,12 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_shadow_width(ui.panel, 0, LV_PART_MAIN);
   lv_obj_set_style_radius(ui.panel, 18, LV_PART_MAIN);
   lv_obj_clear_flag(ui.panel, LV_OBJ_FLAG_SCROLLABLE);
+
+  ui.back_btn = media_volume_create_round_button(ui.panel, 32, "\U000F0141",
+    ctx->icon_font, 0x454545, 0x252525, ctx->width_compensation_percent);
+  lv_obj_add_event_cb(ui.back_btn, [](lv_event_t *) {
+    media_volume_hide_modal();
+  }, LV_EVENT_CLICKED, nullptr);
 
   ui.arc = lv_arc_create(ui.panel);
   lv_arc_set_bg_angles(ui.arc, 135, 45);
