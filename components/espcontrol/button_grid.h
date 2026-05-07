@@ -4748,7 +4748,7 @@ inline lv_obj_t *setup_media_position_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   lv_label_set_text(value_lbl, "0:00");
   lv_obj_align(value_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
   lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_STATE_CHECKED | LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN | LV_STATE_CHECKED);
   return setup_media_slider_layout(
     btn, icon_lbl, text_lbl, value_lbl, p, progress_color, background_color, pad);
 }
