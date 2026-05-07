@@ -40,7 +40,7 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol]
+    components: [espcontrol, web_server_idf]
     refresh: 0s
 
 espcontrol:
