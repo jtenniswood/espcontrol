@@ -242,18 +242,17 @@ registerButtonType("media", {
       };
     }
     if (mode === "position") {
-      var bgColor = (typeof state !== "undefined" && state.sensorColor) ? state.sensorColor : "212121";
-      var progressColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "313131";
-      var displayText = b.precision === "state" ? "1:31" : label;
+      var bgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "313131";
+      var progressColor = "444444";
       return {
         iconHtml:
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(bgColor) + '">' +
           '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' +
           helpers.escHtml(progressColor) + '"></span></span></span>' +
           '<span class="sp-sensor-preview sp-media-position-time">' +
-          '<span class="sp-sensor-value">' + helpers.escHtml(displayText) + '</span></span>',
+          '<span class="sp-sensor-value">0:00</span></span>',
         labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label"></span>' +
+          '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
           badge + '</span>',
       };
     }
