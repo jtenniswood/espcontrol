@@ -15,7 +15,7 @@ font:
   # Volume modal: large numeric percentage value
   - file: "gfonts://Roboto@Light"
     id: volume_modal_number_font
-    size: 80
+    size: 112
     bpp: 4
     glyphs:
       - "0123456789"

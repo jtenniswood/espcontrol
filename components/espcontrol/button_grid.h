@@ -3517,6 +3517,7 @@ struct MediaVolumeCtx {
   uint32_t pending_until_ms = 0;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
   uint32_t secondary_color = CLIMATE_NEUTRAL_COLOR;
+  uint32_t tertiary_color = DEFAULT_TERTIARY_COLOR;
   lv_obj_t *btn = nullptr;
   lv_obj_t *label_lbl = nullptr;
   lv_obj_t *pct_lbl = nullptr;
@@ -4238,16 +4239,17 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_coord_t back_size = min_side * 22 / 100;
   if (back_size < 28) back_size = 28;
   if (back_size > 46) back_size = 46;
-  lv_coord_t btn_size = min_side * 28 / 100;
-  if (btn_size < 36) btn_size = 36;
-  if (btn_size > 62) btn_size = 62;
+  lv_coord_t btn_size = min_side * 18 / 100;
+  if (btn_size < 76) btn_size = 76;
+  if (btn_size > 88) btn_size = 88;
   lv_coord_t inset = min_side * 6 / 100;
   if (inset < 8) inset = 8;
-  lv_coord_t arc_stroke = min_side * 8 / 100;
-  if (arc_stroke < 8) arc_stroke = 8;
-  if (arc_stroke > 14) arc_stroke = 14;
-  lv_coord_t controls_gap = btn_size / 5;
-  if (controls_gap < 8) controls_gap = 8;
+  lv_coord_t arc_stroke = min_side * 10 / 100;
+  if (arc_stroke < 12) arc_stroke = 12;
+  if (arc_stroke > 22) arc_stroke = 22;
+  lv_coord_t controls_gap = min_side * 10 / 100;
+  if (controls_gap < 48) controls_gap = 48;
+  if (controls_gap > 120) controls_gap = 120;
   lv_coord_t arc_size = panel_w < panel_h ? panel_w : panel_h;
   arc_size -= inset * 2;
   lv_coord_t reserved_bottom = btn_size + inset * 2;
@@ -4267,8 +4269,10 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_size(ui.panel, panel_w, panel_h);
   lv_obj_set_pos(ui.panel, panel_x, panel_y);
   lv_coord_t arc_center_x = (arc_size - visible_arc_w) / 2;
-  lv_coord_t arc_center_y = inset + arc_size / 2 - panel_h / 2 + (short_side < 520 ? 6 : 10);
-  lv_coord_t controls_center_y = panel_h / 2 - inset - btn_size / 2;
+  lv_coord_t arc_center_y = 0;
+  lv_coord_t controls_center_y = arc_size / 2 - btn_size / 2 - inset;
+  lv_coord_t value_center_y = arc_stroke / 2;
+  lv_coord_t title_center_y = value_center_y - min_side * 16 / 100;
 
   lv_obj_set_size(ui.back_btn, back_size, back_size);
   lv_obj_set_style_radius(ui.back_btn, back_size / 2, LV_PART_MAIN);
@@ -4283,8 +4287,8 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_radius(ui.minus_btn, btn_size / 2, LV_PART_MAIN);
   lv_obj_set_size(ui.plus_btn, btn_size, btn_size);
   lv_obj_set_style_radius(ui.plus_btn, btn_size / 2, LV_PART_MAIN);
-  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, inset);
-  lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, arc_center_y + arc_stroke);
+  lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, title_center_y);
+  lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, value_center_y);
   lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + controls_gap) / 2, controls_center_y);
   lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + controls_gap) / 2, controls_center_y);
   lv_obj_move_foreground(ui.back_btn);
@@ -4326,7 +4330,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
     LV_EVENT_CLICKED, nullptr);
 
   ui.panel = lv_obj_create(ui.overlay);
-  lv_obj_set_style_bg_color(ui.panel, lv_color_hex(ctx->secondary_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.panel, lv_color_hex(ctx->tertiary_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.panel, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.panel, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.panel, 0, LV_PART_MAIN);
@@ -4335,11 +4339,11 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_clear_flag(ui.panel, LV_OBJ_FLAG_SCROLLABLE);
 
   ui.back_btn = media_volume_create_round_button(ui.panel, 32, "\U000F0141",
-    ctx->icon_font, 0x454545, ctx->secondary_color, ctx->width_compensation_percent);
+    ctx->icon_font, 0x454545, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.back_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.back_btn, 0, LV_PART_MAIN);
   lv_obj_t *back_label = lv_obj_get_child(ui.back_btn, 0);
-  if (back_label) lv_obj_set_style_text_color(back_label, lv_color_hex(0x000000), LV_PART_MAIN);
+  if (back_label) lv_obj_set_style_text_color(back_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
   lv_obj_add_event_cb(ui.back_btn, [](lv_event_t *) {
     media_volume_hide_modal();
   }, LV_EVENT_CLICKED, nullptr);
@@ -4396,13 +4400,13 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_text_color(ui.pct_unit_lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->unit_font) lv_obj_set_style_text_font(ui.pct_unit_lbl, ctx->unit_font, LV_PART_MAIN);
-  lv_obj_set_style_translate_y(ui.pct_unit_lbl, -15, LV_PART_MAIN);
+  lv_obj_set_style_translate_y(ui.pct_unit_lbl, -22, LV_PART_MAIN);
   apply_width_compensation(ui.pct_unit_lbl, ctx->width_compensation_percent);
 
   ui.minus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Minus"),
-    ctx->icon_font, 0xBDBDBD, ctx->secondary_color, ctx->width_compensation_percent);
+    ctx->icon_font, 0xBDBDBD, ctx->tertiary_color, ctx->width_compensation_percent);
   ui.plus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Plus"),
-    ctx->icon_font, 0xBDBDBD, ctx->secondary_color, ctx->width_compensation_percent);
+    ctx->icon_font, 0xBDBDBD, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
     if (ui.active) media_volume_apply_percent(ui.active, ui.active->current_pct - 1, true, true);
@@ -4851,6 +4855,7 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
                                                    const ParsedCfg &p,
                                                    uint32_t accent_color,
                                                    uint32_t secondary_color,
+                                                   uint32_t tertiary_color,
                                                    const lv_font_t *value_font,
                                                    const lv_font_t *number_font,
                                                    const lv_font_t *unit_font,
@@ -4866,6 +4871,7 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
   ctx->label = media_label(p);
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
+  ctx->tertiary_color = tertiary_color;
   ctx->btn = btn;
   ctx->label_lbl = label_lbl;
   ctx->pct_lbl = pct_lbl;
@@ -5755,6 +5761,7 @@ inline void grid_phase2(
           MediaVolumeCtx *ctx = create_media_volume_context(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
             has_off ? off_val : CLIMATE_NEUTRAL_COLOR,
+            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
             cfg.sp_sensor_font,
             cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
             lv_obj_get_style_text_font(s.unit_lbl, LV_PART_MAIN),
@@ -6153,6 +6160,7 @@ inline void grid_phase2(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
               has_off ? off_val : CLIMATE_NEUTRAL_COLOR,
+              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
               cfg.sp_sensor_font,
               cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
               lv_obj_get_style_text_font(sub_slot.unit_lbl, LV_PART_MAIN),
