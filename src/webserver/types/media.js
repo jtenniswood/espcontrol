@@ -8,18 +8,8 @@ function mediaEditorMode(value) {
   return "play_pause";
 }
 
-function mediaEditorModeExperimental(value) {
-  var mode = mediaEditorMode(value);
-  return mode === "volume" || mode === "now_playing";
-}
-
-function mediaEditorModeAvailable(value) {
-  return !mediaEditorModeExperimental(value) || isExperimentalEnabled("media_" + mediaEditorMode(value));
-}
-
 function mediaEditorValidMode(value) {
-  var mode = mediaEditorMode(value);
-  return mediaEditorModeAvailable(mode) ? mode : "play_pause";
+  return mediaEditorMode(value);
 }
 
 registerButtonType("media", {
@@ -85,7 +75,6 @@ registerButtonType("media", {
     modeSelect.className = "sp-select";
     modeSelect.id = helpers.idPrefix + "media-mode";
     modes.forEach(function (entry) {
-      if (!mediaEditorModeAvailable(entry[0])) return;
       var opt = document.createElement("option");
       opt.value = entry[0];
       opt.textContent = entry[1];
