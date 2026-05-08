@@ -427,6 +427,7 @@ export default defineConfig({
           { text: 'Icon Reference', link: '/reference/icons' },
           { text: 'FAQ', link: '/reference/faq' },
           { text: 'Roadmap', link: '/reference/roadmap' },
+          { text: 'Climate Control Spec', link: '/development/climate-control' },
         ],
       },
     ],
