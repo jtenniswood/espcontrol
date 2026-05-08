@@ -2,7 +2,7 @@
 // Slider bottom = min kelvin (warm), top = max kelvin (cool).
 // Config fields: unit="min-max" (kelvin range),
 // precision="color" (dynamic fill color by current temperature),
-// sensor="kelvin" (show live kelvin value as label when light is on).
+// sensor is unused; legacy "kelvin" values are ignored by firmware.
 
 function lightTempParseRange(unit) {
   var parts = (unit || "2000-6500").split("-");
@@ -66,6 +66,19 @@ registerButtonType("light_temperature", {
     panel.appendChild(ef);
     helpers.bindField(entityInp, "entity", true);
 
+    var lf = document.createElement("div");
+    lf.className = "sp-field";
+    lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
+    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Living Room");
+    lf.appendChild(labelInp);
+    panel.appendChild(lf);
+    helpers.bindField(labelInp, "label", true);
+
+    if (b.sensor === "kelvin") {
+      b.sensor = "";
+      helpers.saveField("sensor", "");
+    }
+
     // Kelvin range
     var range = lightTempParseRange(b.unit);
     var curMin = range[0], curMax = range[1];
@@ -125,47 +138,6 @@ registerButtonType("light_temperature", {
         helpers.saveField("icon", opt);
       }
     ));
-
-    // Label mode
-    var labelMode = b.sensor === "kelvin" ? "setting" : "label";
-    var labelModeField = document.createElement("div");
-    labelModeField.className = "sp-field";
-    labelModeField.appendChild(helpers.fieldLabel("Label"));
-    var labelModeSeg = document.createElement("div");
-    labelModeSeg.className = "sp-segment";
-    var labelBtn = document.createElement("button");
-    labelBtn.type = "button";
-    labelBtn.textContent = "Label";
-    var settingBtn = document.createElement("button");
-    settingBtn.type = "button";
-    settingBtn.textContent = "Setting";
-    labelModeSeg.appendChild(labelBtn);
-    labelModeSeg.appendChild(settingBtn);
-    labelModeField.appendChild(labelModeSeg);
-    panel.appendChild(labelModeField);
-
-    var labelSection = condField();
-    var lf = document.createElement("div");
-    lf.className = "sp-field";
-    lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Living Room");
-    lf.appendChild(labelInp);
-    labelSection.appendChild(lf);
-    panel.appendChild(labelSection);
-    helpers.bindField(labelInp, "label", true);
-
-    function setLabelMode(mode, persist) {
-      labelMode = mode === "setting" ? "setting" : "label";
-      labelBtn.classList.toggle("active", labelMode === "label");
-      settingBtn.classList.toggle("active", labelMode === "setting");
-      labelSection.classList.toggle("sp-visible", labelMode === "label");
-      if (!persist) return;
-      b.sensor = labelMode === "setting" ? "kelvin" : "";
-      helpers.saveField("sensor", b.sensor);
-    }
-    labelBtn.addEventListener("click", function () { setLabelMode("label", true); });
-    settingBtn.addEventListener("click", function () { setLabelMode("setting", true); });
-    setLabelMode(labelMode, false);
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Light Temp";

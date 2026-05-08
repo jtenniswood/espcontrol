@@ -30,7 +30,7 @@ font:
     size: 62
     bpp: 4
     glyphs:
-      - "0123456789.-°/%kWhVA "
+      - "0123456789.-°/%KkWhVA "
       - ":"
 
   # Media now-playing titles (sensor value size, full text glyph coverage)

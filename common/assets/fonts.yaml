@@ -9,7 +9,7 @@ font:
     size: 48
     bpp: 4
     glyphs:
-      - "0123456789.-°/%kWhVA "
+      - "0123456789.-°/%KkWhVA "
       - ":"
 
   # Volume modal: large numeric percentage value

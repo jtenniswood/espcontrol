@@ -3501,8 +3501,11 @@ struct SliderCtx {
   bool light_state_known = false;
   bool light_temp_has_kelvin = false;
   int light_temp_last_kelvin = 2000;
-  bool show_kelvin = false;
   lv_obj_t *text_lbl = nullptr;
+  lv_obj_t *icon_lbl = nullptr;
+  const lv_font_t *icon_font = nullptr;
+  const lv_font_t *kelvin_font = nullptr;
+  std::string icon_text;
   std::string cached_label;
 };
 
@@ -3871,29 +3874,35 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
 
 // ── Light temperature card helpers ───────────────────────────────────
 
-// Apply the resolved label for a light_temperature card. When show_kelvin is
-// enabled and the light is on, displays "<K>K"; otherwise restores the cached
-// configured label (user-set label or last known friendly_name).
-//
 // Bulbs store color temperature as integer mireds, so a 5500K command echoes
-// back from HA as ~5494K. Rounding the displayed value to 50K makes the drag
-// preview and post-release echo render identically.
-inline void light_temp_apply_label(SliderCtx *ctx, int kelvin) {
-  if (!ctx || !ctx->text_lbl) return;
-  if (ctx->show_kelvin && ctx->light_on) {
-    int rounded = ((kelvin + 25) / 50) * 50;
-    if (rounded < ctx->kelvin_min) rounded = ctx->kelvin_min;
-    if (rounded > ctx->kelvin_max) rounded = ctx->kelvin_max;
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%dK", rounded);
-    lv_label_set_text(ctx->text_lbl, buf);
-  } else {
-    lv_label_set_text(ctx->text_lbl, ctx->cached_label.c_str());
-  }
+// back from HA as ~5494K. Rounding the drag preview to 50K keeps the displayed
+// value steady while the user fine-tunes the slider.
+inline int light_temp_rounded_kelvin(SliderCtx *ctx, int kelvin) {
+  if (!ctx) return kelvin;
+  int rounded = ((kelvin + 25) / 50) * 50;
+  if (rounded < ctx->kelvin_min) rounded = ctx->kelvin_min;
+  if (rounded > ctx->kelvin_max) rounded = ctx->kelvin_max;
+  return rounded;
+}
+
+inline void light_temp_show_drag_kelvin(SliderCtx *ctx, int kelvin) {
+  if (!ctx || !ctx->icon_lbl) return;
+  if (ctx->kelvin_font)
+    lv_obj_set_style_text_font(ctx->icon_lbl, ctx->kelvin_font, LV_PART_MAIN);
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%dK", light_temp_rounded_kelvin(ctx, kelvin));
+  lv_label_set_text(ctx->icon_lbl, buf);
+}
+
+inline void light_temp_restore_icon(SliderCtx *ctx) {
+  if (!ctx || !ctx->icon_lbl) return;
+  if (ctx->icon_font)
+    lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
+  lv_label_set_text(ctx->icon_lbl, ctx->icon_text.c_str());
 }
 
 // Subscribe to friendly_name and keep the SliderCtx cached_label in sync;
-// only writes to the visible label when not currently displaying kelvin.
+// the bottom label always stays as a configured label or friendly name.
 inline void subscribe_friendly_name_for_light_temp(lv_obj_t *text_lbl,
                                                     SliderCtx *ctx,
                                                     const std::string &entity_id) {
@@ -3903,9 +3912,7 @@ inline void subscribe_friendly_name_for_light_temp(lv_obj_t *text_lbl,
     std::function<void(esphome::StringRef)>(
       [text_lbl, ctx](esphome::StringRef name) {
         if (ctx) ctx->cached_label = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
-        if (!ctx || !ctx->show_kelvin || !ctx->light_on) {
-          lv_label_set_text_limited(text_lbl, name, HA_FRIENDLY_NAME_MAX_LEN);
-        }
+        lv_label_set_text_limited(text_lbl, name, HA_FRIENDLY_NAME_MAX_LEN);
       })
   );
 }
@@ -3927,7 +3934,6 @@ inline void light_temp_apply_kelvin_state(SliderCtx *ctx, lv_obj_t *btn_ptr,
   if (kelvin_color && ctx->fill)
     lv_obj_set_style_bg_color(ctx->fill,
       kelvin_to_fill_color(k, ctx->kelvin_min, ctx->kelvin_max), LV_PART_MAIN);
-  light_temp_apply_label(ctx, k);
 }
 
 // Subscribe to on/off state plus color_temp_kelvin for a light temperature slider.
@@ -3944,12 +3950,10 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
     std::function<void(esphome::StringRef)>(
       [slider, btn_ptr, kelvin_color, sctx](esphome::StringRef state) {
         bool on = is_entity_on_ref(state);
-        bool was_on = sctx ? sctx->light_on : false;
         if (sctx) {
           sctx->light_state_known = true;
           sctx->light_on = on;
         }
-        bool applied_cached = false;
         if (!on) {
           lv_slider_set_value(slider, 0, LV_ANIM_OFF);
           if (sctx && sctx->fill)
@@ -3957,13 +3961,6 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
         } else if (sctx && sctx->light_temp_has_kelvin) {
           light_temp_apply_kelvin_state(
             sctx, btn_ptr, slider, sctx->light_temp_last_kelvin, kelvin_color);
-          applied_cached = true;
-        }
-        // Refresh label on any on↔off transition so kelvin/cached_label swaps.
-        if (sctx && sctx->show_kelvin && was_on != on && !applied_cached) {
-          int cur_k = sctx->kelvin_min + lv_slider_get_value(slider) *
-                      (sctx->kelvin_max - sctx->kelvin_min) / 100;
-          light_temp_apply_label(sctx, cur_k);
         }
       })
   );
@@ -3986,7 +3983,8 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
 }
 
 // Build the visual for a light temperature slider card.
-inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color) {
+inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
+                                    const lv_font_t *kelvin_font) {
   setup_toggle_visual(s, p);
   lv_label_set_text(s.icon_lbl, light_temp_icon(p.icon));
   int min_k = 2000, max_k = 6500;
@@ -3996,6 +3994,8 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   lv_obj_t *slider = setup_slider_widget(s.btn, on_color, false);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
   lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, pad, pad);
+  lv_label_set_long_mode(s.icon_lbl, LV_LABEL_LONG_CLIP);
+  lv_obj_set_width(s.icon_lbl, lv_pct(100));
   lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 
@@ -4013,8 +4013,11 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   ctx->kelvin_max = max_k;
   ctx->kelvin_color = kcolor;
   ctx->light_on = false;
-  ctx->show_kelvin = (p.sensor == "kelvin");
   ctx->text_lbl = s.text_lbl;
+  ctx->icon_lbl = s.icon_lbl;
+  ctx->icon_font = lv_obj_get_style_text_font(s.icon_lbl, LV_PART_MAIN);
+  ctx->kelvin_font = kelvin_font ? kelvin_font : ctx->icon_font;
+  ctx->icon_text = light_temp_icon(p.icon);
   ctx->cached_label = p.label;  // may be empty; friendly_name sub fills it later
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
@@ -4040,14 +4043,13 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
     c->light_state_known = true;
     c->light_temp_has_kelvin = true;
     c->light_temp_last_kelvin = k;
-    if (c->show_kelvin) {
-      light_temp_apply_label(c, k);
-    }
+    light_temp_show_drag_kelvin(c, k);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
     SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
+    if (c) light_temp_restore_icon(c);
     if (c && !c->entity_id.empty())
       send_light_temp_action(c->entity_id, lv_slider_get_value(sl), c->kelvin_min, c->kelvin_max);
   }, LV_EVENT_RELEASED, nullptr);
@@ -5470,7 +5472,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
   if (p.type == "light_temperature") {
-    setup_light_temp_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
+    setup_light_temp_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
+      cfg.sp_sensor_font);
     return;
   }
   setup_toggle_visual(s, p);
@@ -5788,7 +5791,7 @@ inline void grid_phase2(
             cfg.volume_label_font
               ? cfg.volume_label_font
               : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-            cfg.volume_icon_font ? cfg.volume_icon_font : cfg.icon_font,
+            cfg.icon_font,
             cfg.width_compensation_percent,
             s.sensor_lbl, s.unit_lbl,
             cfg.pause_home_idle, cfg.resume_home_idle);
@@ -6192,7 +6195,7 @@ inline void grid_phase2(
               cfg.volume_label_font
                 ? cfg.volume_label_font
                 : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-              cfg.volume_icon_font ? cfg.volume_icon_font : cfg.icon_font,
+              cfg.icon_font,
               cfg.width_compensation_percent,
               sub_slot.sensor_lbl, sub_slot.unit_lbl,
               cfg.pause_home_idle, cfg.resume_home_idle);
