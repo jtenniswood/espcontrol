@@ -47,7 +47,7 @@ These are the current reference sizes from the S3 480px screen.
 | Climate/detail icons | `42` | Back, dots, minus, plus, thermometer |
 | Setup screen icons | `61` | WiFi, Ethernet, cog, Home Assistant setup icons |
 | Volume modal number | `112` | Large percentage number |
-| Volume modal label | `22` | `Volume` label and `%` unit |
+| Volume modal label | `22` | `Volume` label |
 | Volume modal icons | `44` | Back, minus, and plus controls |
 | Volume modal arc stroke | `18` | Runtime layout constant, not a font |
 

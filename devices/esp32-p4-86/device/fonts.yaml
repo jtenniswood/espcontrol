@@ -77,7 +77,7 @@ font:
     size: 33
     bpp: 4
     glyphs:
-      - "Volume%"
+      - "Volume"
 
   # Top bar clock and temperature (28px)
   - file: "gfonts://Roboto"

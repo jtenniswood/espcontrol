@@ -4128,7 +4128,7 @@ inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
   char buf[8];
   snprintf(buf, sizeof(buf), "%d", pct);
   lv_label_set_text(ctx->pct_lbl, buf);
-  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, " %");
+  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
 }
 
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
@@ -4324,7 +4324,7 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
     snprintf(buf, sizeof(buf), "%d", pct);
     lv_label_set_text(ui.pct_lbl, buf);
   }
-  if (ui.pct_unit_lbl) lv_label_set_text(ui.pct_unit_lbl, "%");
+  if (ui.pct_unit_lbl) lv_label_set_text(ui.pct_unit_lbl, "");
 }
 
 inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
@@ -4412,7 +4412,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   apply_width_compensation(ui.pct_lbl, ctx->width_compensation_percent);
 
   ui.pct_unit_lbl = lv_label_create(ui.pct_row);
-  lv_label_set_text(ui.pct_unit_lbl, "%");
+  lv_label_set_text(ui.pct_unit_lbl, "");
   lv_obj_set_style_text_color(ui.pct_unit_lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->unit_font) lv_obj_set_style_text_font(ui.pct_unit_lbl, ctx->unit_font, LV_PART_MAIN);
@@ -4657,7 +4657,7 @@ inline void setup_media_volume_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
     lv_label_set_text(sensor_lbl, "--");
   }
   if (unit_lbl) {
-    lv_label_set_text(unit_lbl, " %");
+    lv_label_set_text(unit_lbl, "");
   }
   if (text_lbl) {
     lv_label_set_text(text_lbl, media_label(p).c_str());

@@ -48,7 +48,7 @@ font:
     size: 37
     bpp: 4
     glyphs:
-      - "Volume%"
+      - "Volume"
 
   # Volume modal controls: 44px on the 480px S3 reference scaled to this 800px short side
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
