@@ -215,7 +215,7 @@ registerButtonType("media", {
       var labelInp = helpers.textInput(
         helpers.idPrefix + "label",
         b.label,
-        b.sensor === "position" ? "Track" : "e.g. Living Room Speaker"
+        b.sensor === "position" ? "Position" : "e.g. Living Room Speaker"
       );
       lf.appendChild(labelInp);
       panel.appendChild(lf);
@@ -259,6 +259,7 @@ registerButtonType("media", {
     if (mode === "position") {
       var bgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "313131";
       var progressColor = "444444";
+      var positionLabel = b.precision === "state" ? "Paused" : label;
       return {
         iconHtml:
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(bgColor) + '">' +
@@ -267,7 +268,7 @@ registerButtonType("media", {
           '<span class="sp-sensor-preview sp-media-position-time">' +
           '<span class="sp-sensor-value">0:00</span></span>',
         labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
+          '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(positionLabel) + '</span>' +
           badge + '</span>',
       };
     }
