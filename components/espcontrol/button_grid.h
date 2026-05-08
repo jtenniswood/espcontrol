@@ -131,6 +131,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
       if (p.label.empty() || p.label == "Media") p.label = "Volume";
       p.icon = "Auto";
     }
+    if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = "Position";
   }
   return p;
 }
@@ -4071,6 +4072,7 @@ inline std::string media_default_label(const std::string &mode) {
   if (mode == "previous") return "Previous";
   if (mode == "next") return "Next";
   if (mode == "volume") return "Volume";
+  if (mode == "position") return "Position";
   if (mode == "play_pause") return "Play/Pause";
   return "Media";
 }
@@ -4687,7 +4689,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     }
     if (text_lbl) {
       lv_obj_clear_flag(text_lbl, LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(text_lbl, media_position_show_state(p) ? "Paused" : (p.label.empty() ? "Track" : p.label.c_str()));
+      lv_label_set_text(text_lbl, media_position_show_state(p) ? "Paused" : media_action_label(p, mode).c_str());
       lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, pad, -pad);
       configure_button_label_wrap(text_lbl);
       lv_obj_move_foreground(text_lbl);

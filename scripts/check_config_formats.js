@@ -475,6 +475,17 @@ assertButtonRoundTrip(hooks, "media position card", {
   precision: "",
 }, false);
 
+assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(
+  "media_player.office;;Progress Clock;Auto;position;;media"
+)), buttonShape({
+  entity: "media_player.office",
+  label: "Position",
+  icon: "Progress Clock",
+  icon_on: "Auto",
+  sensor: "position",
+  type: "media",
+}), "media position defaults to Position label");
+
 assertButtonRoundTrip(hooks, "media now playing card", {
   entity: "media_player.office",
   label: "",

@@ -1863,6 +1863,7 @@
         if (!b.label || b.label === "Media") b.label = "Volume";
         b.icon = "Auto";
       }
+      if (b.sensor === "position" && (!b.label || b.label === "Track")) b.label = "Position";
     }
     return b;
   }
