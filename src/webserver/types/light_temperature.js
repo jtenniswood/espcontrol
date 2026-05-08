@@ -30,7 +30,7 @@ function lightTempClampMax(v, mn) {
 }
 
 registerButtonType("light_temperature", {
-  label: "Light Temperature Slider",
+  label: "Lights",
   experimental: "light_temperature",
   allowInSubpage: true,
   hideLabel: true,
@@ -43,6 +43,21 @@ registerButtonType("light_temperature", {
     b.icon_on = "Auto";
   },
   renderSettings: function (panel, b, slot, helpers) {
+    // Light control type
+    var typeF = document.createElement("div");
+    typeF.className = "sp-field";
+    typeF.appendChild(helpers.fieldLabel("Type", helpers.idPrefix + "light-control-type"));
+    var typeSelect = document.createElement("select");
+    typeSelect.className = "sp-select";
+    typeSelect.id = helpers.idPrefix + "light-control-type";
+    var colorTempOpt = document.createElement("option");
+    colorTempOpt.value = "colour_temperature";
+    colorTempOpt.textContent = "Colour Temperature";
+    typeSelect.appendChild(colorTempOpt);
+    typeSelect.value = "colour_temperature";
+    typeF.appendChild(typeSelect);
+    panel.appendChild(typeF);
+
     // Entity ID
     var ef = document.createElement("div");
     ef.className = "sp-field";
