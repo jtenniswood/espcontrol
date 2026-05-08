@@ -3537,11 +3537,12 @@ inline void subscribe_timer_card(TimerCardCtx *ctx) {
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef state) {
         ctx->state = std::string(state.c_str(), state.size());
-        if (ctx->state != "active") {
-          // remaining_anchor only matters while counting down
-        }
         // Cancel any pending confirmation if state changed away from active.
         if (ctx->state != "active") confirmation_disarm(&ctx->confirm);
+        if (ctx->btn) {
+          if (ctx->state == "active") lv_obj_add_state(ctx->btn, LV_STATE_CHECKED);
+          else lv_obj_clear_state(ctx->btn, LV_STATE_CHECKED);
+        }
         timer_card_refresh(ctx);
       })
   );
