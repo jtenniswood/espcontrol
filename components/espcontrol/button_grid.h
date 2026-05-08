@@ -3501,11 +3501,8 @@ struct SliderCtx {
   bool light_state_known = false;
   bool light_temp_has_kelvin = false;
   int light_temp_last_kelvin = 2000;
+  bool light_temp_dragging = false;
   lv_obj_t *text_lbl = nullptr;
-  lv_obj_t *icon_lbl = nullptr;
-  const lv_font_t *icon_font = nullptr;
-  const lv_font_t *kelvin_font = nullptr;
-  std::string icon_text;
   std::string cached_label;
 };
 
@@ -3891,19 +3888,15 @@ inline int light_temp_rounded_kelvin(SliderCtx *ctx, int kelvin) {
 }
 
 inline void light_temp_show_drag_kelvin(SliderCtx *ctx, int kelvin) {
-  if (!ctx || !ctx->icon_lbl) return;
-  if (ctx->kelvin_font)
-    lv_obj_set_style_text_font(ctx->icon_lbl, ctx->kelvin_font, LV_PART_MAIN);
+  if (!ctx || !ctx->text_lbl) return;
   char buf[16];
   snprintf(buf, sizeof(buf), "%dK", light_temp_rounded_kelvin(ctx, kelvin));
-  lv_label_set_text(ctx->icon_lbl, buf);
+  lv_label_set_text(ctx->text_lbl, buf);
 }
 
-inline void light_temp_restore_icon(SliderCtx *ctx) {
-  if (!ctx || !ctx->icon_lbl) return;
-  if (ctx->icon_font)
-    lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
-  lv_label_set_text(ctx->icon_lbl, ctx->icon_text.c_str());
+inline void light_temp_restore_label(SliderCtx *ctx) {
+  if (!ctx || !ctx->text_lbl) return;
+  lv_label_set_text(ctx->text_lbl, ctx->cached_label.c_str());
 }
 
 // Subscribe to friendly_name and keep the SliderCtx cached_label in sync;
@@ -3917,6 +3910,7 @@ inline void subscribe_friendly_name_for_light_temp(lv_obj_t *text_lbl,
     std::function<void(esphome::StringRef)>(
       [text_lbl, ctx](esphome::StringRef name) {
         if (ctx) ctx->cached_label = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
+        if (ctx && ctx->light_temp_dragging) return;
         lv_label_set_text_limited(text_lbl, name, HA_FRIENDLY_NAME_MAX_LEN);
       })
   );
@@ -3988,8 +3982,7 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
 }
 
 // Build the visual for a light temperature slider card.
-inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
-                                    const lv_font_t *kelvin_font) {
+inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color) {
   setup_toggle_visual(s, p);
   lv_label_set_text(s.icon_lbl, light_temp_icon(p.icon));
   int min_k = 2000, max_k = 6500;
@@ -4019,10 +4012,6 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   ctx->kelvin_color = kcolor;
   ctx->light_on = false;
   ctx->text_lbl = s.text_lbl;
-  ctx->icon_lbl = s.icon_lbl;
-  ctx->icon_font = lv_obj_get_style_text_font(s.icon_lbl, LV_PART_MAIN);
-  ctx->kelvin_font = kelvin_font ? kelvin_font : ctx->icon_font;
-  ctx->icon_text = light_temp_icon(p.icon);
   ctx->cached_label = p.label;  // may be empty; friendly_name sub fills it later
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
@@ -4048,13 +4037,17 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
     c->light_state_known = true;
     c->light_temp_has_kelvin = true;
     c->light_temp_last_kelvin = k;
+    c->light_temp_dragging = true;
     light_temp_show_drag_kelvin(c, k);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
     SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
-    if (c) light_temp_restore_icon(c);
+    if (c) {
+      c->light_temp_dragging = false;
+      light_temp_restore_label(c);
+    }
     if (c && !c->entity_id.empty())
       send_light_temp_action(c->entity_id, lv_slider_get_value(sl), c->kelvin_min, c->kelvin_max);
   }, LV_EVENT_RELEASED, nullptr);
@@ -5478,8 +5471,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
   if (p.type == "light_temperature") {
-    setup_light_temp_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
-      cfg.sp_sensor_font);
+    setup_light_temp_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
     return;
   }
   setup_toggle_visual(s, p);
