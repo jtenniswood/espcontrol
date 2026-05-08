@@ -12,7 +12,7 @@ substitutions:
   screen_width: "480"
   screen_height: "800"
   content_width: "440"
-  setup_icon_font_id: icon_font_setup
+  setup_icon_font_id: icon_font_setup_480
   setup_title_font_id: setup_title_font
   setup_body_font_id: setup_body_font
   setup_pad_row: "20"
@@ -20,7 +20,7 @@ substitutions:
   setup_action_button_width: "200"
   setup_action_button_height: "56"
   setup_action_button_radius: "12"
-  icon_font: icon_font_lg
+  icon_font: icon_font_480
   label_font: label_font_lg
   unit_font: label_font_lg
   sensor_value_font: statistics_font_lg

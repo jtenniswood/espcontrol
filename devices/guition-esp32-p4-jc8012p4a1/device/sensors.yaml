@@ -52,8 +52,8 @@ esphome:
             cfg.cols = 5;
             cfg.color_correction = true;
             cfg.wrap_tall_labels = true;
-            cfg.icon_font = id(icon_font_lt)->get_lv_font();
-            cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
+            cfg.icon_font = id(icon_font_800)->get_lv_font();
+            cfg.climate_control_icon_font = id(climate_control_icon_font_800)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lt)->get_lv_font();
             cfg.media_title_font = id(media_title_font_lt)->get_lv_font();
             cfg.volume_number_font = id(volume_modal_number_font_800)->get_lv_font();
@@ -151,8 +151,8 @@ esphome:
             cfg.cols = 5;
             cfg.color_correction = true;
             cfg.wrap_tall_labels = true;
-            cfg.icon_font = id(icon_font_lt)->get_lv_font();
-            cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
+            cfg.icon_font = id(icon_font_800)->get_lv_font();
+            cfg.climate_control_icon_font = id(climate_control_icon_font_800)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lt)->get_lv_font();
             cfg.media_title_font = id(media_title_font_lt)->get_lv_font();
             cfg.volume_number_font = id(volume_modal_number_font_800)->get_lv_font();

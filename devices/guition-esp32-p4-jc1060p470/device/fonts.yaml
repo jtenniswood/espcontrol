@@ -7,6 +7,13 @@
 # =============================================================================
 
 font:
+  # Main page icons: 44px on the 480px S3 reference scaled to this 600px short side
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: icon_font_600
+    size: 55
+    bpp: 4
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml
+
   # Button labels (22px)
   - file: "gfonts://Roboto"
     id: label_font_lt
@@ -51,3 +58,26 @@ font:
       - "\U000F0141"  # mdi-chevron-left
       - "\U000F0374"  # mdi-minus
       - "\U000F0415"  # mdi-plus
+
+  # Climate detail controls: 42px on the 480px S3 reference scaled to this 600px short side
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: climate_control_icon_font_600
+    size: 53
+    bpp: 4
+    glyphs:
+      - "\U000F0141"  # mdi-chevron-left
+      - "\U000F01D8"  # mdi-dots-horizontal
+      - "\U000F0374"  # mdi-minus
+      - "\U000F0415"  # mdi-plus
+      - "\U000F050F"  # mdi-thermometer
+
+  # Setup screen icons: 61px on the 480px S3 reference scaled to this 600px short side
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: icon_font_setup_600
+    size: 76
+    bpp: 4
+    glyphs:
+      - "\U000F05A9"  # mdi-wifi
+      - "\U000F0200"  # mdi-ethernet
+      - "\U000F0493"  # mdi-cog
+      - "\U000F07D0"  # mdi-home-assistant

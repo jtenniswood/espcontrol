@@ -7,10 +7,10 @@
 # =============================================================================
 
 font:
-  # Button icons (64px)
+  # Main page icons: 44px on the 480px S3 reference scaled to this 480px short side
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_lg
-    size: 64
+    id: icon_font_480
+    size: 44
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
@@ -59,3 +59,36 @@ font:
     extras:
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Climate detail controls: 42px on the 480px S3 reference scaled to this 480px short side
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: climate_control_icon_font_480
+    size: 42
+    bpp: 4
+    glyphs:
+      - "\U000F0141"  # mdi-chevron-left
+      - "\U000F01D8"  # mdi-dots-horizontal
+      - "\U000F0374"  # mdi-minus
+      - "\U000F0415"  # mdi-plus
+      - "\U000F050F"  # mdi-thermometer
+
+  # Volume modal controls: 44px on the 480px S3 reference scaled to this 480px short side
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: volume_modal_icon_font_480
+    size: 44
+    bpp: 4
+    glyphs:
+      - "\U000F0141"  # mdi-chevron-left
+      - "\U000F0374"  # mdi-minus
+      - "\U000F0415"  # mdi-plus
+
+  # Setup screen icons: 61px on the 480px S3 reference scaled to this 480px short side
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: icon_font_setup_480
+    size: 61
+    bpp: 4
+    glyphs:
+      - "\U000F05A9"  # mdi-wifi
+      - "\U000F0200"  # mdi-ethernet
+      - "\U000F0493"  # mdi-cog
+      - "\U000F07D0"  # mdi-home-assistant
