@@ -3468,6 +3468,7 @@ struct TimerCardCtx {
   int remaining_secs = 0;
   uint32_t remaining_anchor_ms = 0;
   uint32_t finished_at_ms = 0;  // millis() when state went active → idle; 0 otherwise
+  time_t finishes_at_epoch = 0; // wall-clock epoch when an active timer fires; 0 if unknown
   lv_timer_t *tick_timer = nullptr;
   bool confirm_enabled = false;
   uint16_t confirm_timeout_secs = 3;
@@ -3480,6 +3481,48 @@ inline int parse_timer_hms(esphome::StringRef value) {
   if (sscanf(value.c_str(), "%d:%d:%d", &h, &m, &s) == 3)
     return h * 3600 + m * 60 + s;
   return 0;
+}
+
+// Parse HA's ISO 8601 finishes_at (e.g. "2026-05-08T12:34:56.789012-06:00" or
+// "...Z") into a unix epoch. Returns 0 on failure.
+inline time_t parse_iso8601_to_epoch(esphome::StringRef value) {
+  const char *s = value.c_str();
+  int Y, Mo, D, h, mi, sec;
+  int n = 0;
+  if (sscanf(s, "%4d-%2d-%2dT%2d:%2d:%2d%n", &Y, &Mo, &D, &h, &mi, &sec, &n) != 6)
+    return 0;
+  const char *p = s + n;
+  // Skip optional fractional seconds.
+  if (*p == '.') {
+    ++p;
+    while (*p >= '0' && *p <= '9') ++p;
+  }
+  int tz_off = 0;
+  if (*p == 'Z') {
+    tz_off = 0;
+  } else if (*p == '+' || *p == '-') {
+    int sign = (*p == '-') ? -1 : 1;
+    int th = 0, tm = 0;
+    if (sscanf(p + 1, "%2d:%2d", &th, &tm) != 2) return 0;
+    tz_off = sign * (th * 3600 + tm * 60);
+  }
+  struct tm tmv = {};
+  tmv.tm_year = Y - 1900;
+  tmv.tm_mon = Mo - 1;
+  tmv.tm_mday = D;
+  tmv.tm_hour = h;
+  tmv.tm_min = mi;
+  tmv.tm_sec = sec;
+  // timegm() isn't always available on ESP toolchain; compute UTC manually.
+  // Days since 1970-01-01 using civil_from_days style algorithm.
+  int y = (Mo <= 2) ? Y - 1 : Y;
+  int era = (y >= 0 ? y : y - 399) / 400;
+  unsigned yoe = (unsigned)(y - era * 400);
+  unsigned doy = (153 * (Mo + (Mo > 2 ? -3 : 9)) + 2) / 5 + D - 1;
+  unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  long days = (long)era * 146097 + (long)doe - 719468;
+  time_t t = (time_t)days * 86400 + h * 3600 + mi * 60 + sec - tz_off;
+  return t;
 }
 
 inline void format_timer_secs(int secs, char *buf, size_t bufsz) {
@@ -3502,8 +3545,16 @@ inline void timer_card_refresh(TimerCardCtx *ctx) {
   if (!ctx || !ctx->value_lbl) return;
   int secs;
   if (ctx->state == "active") {
-    int elapsed = (int)((esphome::millis() - ctx->remaining_anchor_ms) / 1000);
-    secs = ctx->remaining_secs - elapsed;
+    // Prefer wall clock vs. HA's absolute finishes_at when system time is
+    // synced. This stays accurate across device restarts mid-countdown,
+    // where HA's `remaining` is stale until the next state change.
+    time_t now_epoch = ::time(nullptr);
+    if (ctx->finishes_at_epoch != 0 && now_epoch > 100000) {
+      secs = (int)(ctx->finishes_at_epoch - now_epoch);
+    } else {
+      int elapsed = (int)((esphome::millis() - ctx->remaining_anchor_ms) / 1000);
+      secs = ctx->remaining_secs - elapsed;
+    }
     if (secs < 0) secs = 0;
   } else if (ctx->state == "paused") {
     secs = ctx->remaining_secs;
@@ -3568,6 +3619,7 @@ inline void subscribe_timer_card(TimerCardCtx *ctx) {
         } else if (ctx->state == "active") {
           ctx->finished_at_ms = 0;
         }
+        if (ctx->state != "active") ctx->finishes_at_epoch = 0;
         timer_card_refresh(ctx);
       })
   );
@@ -3587,6 +3639,21 @@ inline void subscribe_timer_card(TimerCardCtx *ctx) {
       [ctx](esphome::StringRef state) {
         ctx->remaining_secs = parse_timer_hms(state);
         ctx->remaining_anchor_ms = esphome::millis();
+        timer_card_refresh(ctx);
+      })
+  );
+  // Absolute finish time (ISO 8601, present while active). Survives a device
+  // restart mid-countdown, unlike `remaining` which only updates on state
+  // changes and goes stale across reconnects.
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    ctx->entity_id, std::string("finishes_at"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef state) {
+        if (state.size() == 0 || state.c_str()[0] == '\0') {
+          ctx->finishes_at_epoch = 0;
+        } else {
+          ctx->finishes_at_epoch = parse_iso8601_to_epoch(state);
+        }
         timer_card_refresh(ctx);
       })
   );
