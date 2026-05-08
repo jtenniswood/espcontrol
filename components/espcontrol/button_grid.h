@@ -3552,8 +3552,17 @@ inline void subscribe_timer_card(TimerCardCtx *ctx) {
           else lv_obj_clear_state(ctx->btn, LV_STATE_CHECKED);
         }
         if (prev == "active" && ctx->state == "idle") {
-          ctx->finished_at_ms = esphome::millis();
-          if (ctx->finished_at_ms == 0) ctx->finished_at_ms = 1;  // 0 means "no finish recorded"
+          // Distinguish a natural finish (countdown reached zero) from a
+          // cancel (user tapped while running). At a natural finish the
+          // estimated remaining is ~0; on cancel it's still well above 0.
+          int elapsed = (int)((esphome::millis() - ctx->remaining_anchor_ms) / 1000);
+          int est_remaining = ctx->remaining_secs - elapsed;
+          if (est_remaining < 2) {
+            ctx->finished_at_ms = esphome::millis();
+            if (ctx->finished_at_ms == 0) ctx->finished_at_ms = 1;  // 0 means "no finish recorded"
+          } else {
+            ctx->finished_at_ms = 0;
+          }
         } else if (ctx->state == "active") {
           ctx->finished_at_ms = 0;
         }
