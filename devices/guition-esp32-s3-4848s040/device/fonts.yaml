@@ -26,6 +26,15 @@ font:
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
+  # Sensor value large number (44px, proportional to 66px on the 720x720 square panel)
+  - file: "gfonts://Roboto@Light"
+    id: statistics_font_sm
+    size: 44
+    bpp: 4
+    glyphs:
+      - "0123456789.-°/%kWhVA "
+      - ":"
+
   # Climate detail page: oversized target temperature
   - file: "gfonts://Roboto@Light"
     id: climate_target_font_sm

@@ -39,7 +39,7 @@ esphome:
             cfg.cols = 3;
             cfg.icon_font = id(icon_font_sm)->get_lv_font();
             cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
-            cfg.sp_sensor_font = id(statistics_font)->get_lv_font();
+            cfg.sp_sensor_font = id(statistics_font_sm)->get_lv_font();
             cfg.media_title_font = id(media_title_font)->get_lv_font();
             cfg.volume_number_font = id(volume_modal_number_font)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font_sm)->get_lv_font();
@@ -115,7 +115,7 @@ esphome:
             cfg.cols = 3;
             cfg.icon_font = id(icon_font_sm)->get_lv_font();
             cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
-            cfg.sp_sensor_font = id(statistics_font)->get_lv_font();
+            cfg.sp_sensor_font = id(statistics_font_sm)->get_lv_font();
             cfg.media_title_font = id(media_title_font)->get_lv_font();
             cfg.volume_number_font = id(volume_modal_number_font)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font_sm)->get_lv_font();

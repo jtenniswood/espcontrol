@@ -59,7 +59,7 @@
       "grid": "3x3",
       "icon_font": "icon_font_sm",
       "climate_control_icon_font": "climate_control_icon_font",
-      "sensor_font": "statistics_font",
+      "sensor_font": "statistics_font_sm",
       "media_title_font": "media_title_font",
       "climate_target_font": "climate_target_font_sm",
       "color_correction": false,

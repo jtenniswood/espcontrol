@@ -23,7 +23,7 @@ substitutions:
   icon_font: icon_font_sm
   label_font: label_font_sm
   unit_font: label_font_sm
-  sensor_value_font: statistics_font
+  sensor_value_font: statistics_font_sm
   padding: 14px
   radius: 8px
   main_page_pad_top: "38"
