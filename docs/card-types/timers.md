@@ -19,7 +19,7 @@ A timer card displays a Home Assistant `timer.*` entity as a live countdown. Tap
 ## How It Works on the Panel
 
 - The card shows the time remaining as a large number, with the label below.
-- Format auto-switches between `M:SS` (under one hour) and `H:MM:SS` (one hour or more).
+- Format auto-switches between `M:SS` (under one hour) and `H:MM` (one hour or more — seconds are dropped so the value fits the card).
 - When the timer is **idle**, the card displays its configured `duration` — the value it will start at on the next tap.
 - When **active**, the card counts down once per second to `0:00`.
 - When **paused**, the card freezes at the remaining value.
