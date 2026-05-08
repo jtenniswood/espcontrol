@@ -3,7 +3,7 @@
 [identity]
 name: EspControl
 url: https://jtenniswood.github.io/espcontrol/
-description: ESPHome firmware for ESP32 touchscreen Home Assistant control panels, including ESP32-P4 JC8012P4A1, JC1060P470, JC4880P443, Waveshare ESP32-P4 86 Panel, and ESP32-S3 4848S040. LVGL UI, web configuration, optional OTA from GitHub Pages.
+description: ESPHome firmware for ESP32 touchscreen Home Assistant control panels, including ESP32-P4 JC8012P4A1, JC1060P470, JC4880P443, ESP32-P4 86 Panel, and ESP32-S3 4848S040. LVGL UI, web configuration, optional OTA from GitHub Pages.
 
 [permissions]
 - You may summarize, quote, and cite content from this site.
@@ -19,4 +19,4 @@ description: ESPHome firmware for ESP32 touchscreen Home Assistant control panel
 
 [content-types]
 - Documentation (install, web UI, cards, display, backlight, firmware, hardware, package layout).
-- Open-source ESPHome configuration and custom component for supported ESP32 touchscreens (JC8012P4A1, JC1060P470, JC4880P443, Waveshare ESP32-P4 86 Panel, and 4848S040).
+- Open-source ESPHome configuration and custom component for supported ESP32 touchscreens (JC8012P4A1, JC1060P470, JC4880P443, ESP32-P4 86 Panel, and 4848S040).

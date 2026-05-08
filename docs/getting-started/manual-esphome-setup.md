@@ -28,7 +28,7 @@ Each screen uses a different ESPHome package file. Pick the one that matches you
 | 10.1-inch JC8012P4A1 | `devices/guition-esp32-p4-jc8012p4a1/packages.yaml` |
 | 7-inch JC1060P470 | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
 | 4.3-inch JC4880P443 | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |
-| 4-inch Waveshare ESP32-P4 86 Panel | `devices/esp32-p4-86/packages.yaml` |
+| 4-inch ESP32-P4 86 Panel | `devices/esp32-p4-86/packages.yaml` |
 | 4-inch 4848S040 | `devices/guition-esp32-s3-4848s040/packages.yaml` |
 
 ## ESPHome Device Builder
@@ -73,7 +73,7 @@ Use this template for Ethernet-capable models. Do not add a `wifi:` block. Chang
 | Panel | Ethernet package file |
 | --- | --- |
 | 7-inch JC1060P470 Ethernet model | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
-| Waveshare ESP32-P4 86 Panel ETH-2RO | `devices/esp32-p4-86/packages.yaml` |
+| ESP32-P4 86 Panel ETH-2RO | `devices/esp32-p4-86/packages.yaml` |
 
 ```yaml
 substitutions:

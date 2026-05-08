@@ -8,7 +8,7 @@ description:
 
 Internal Switches cards control the panel's built-in relay hardware directly from the touchscreen. They do not send a command through Home Assistant, so they can still work when Home Assistant is offline.
 
-This card type appears on devices that define built-in relays, such as the 4848S040 relay variant and the Waveshare ESP32-P4-86-Panel-ETH-2RO.
+This card type appears on devices that define built-in relays, such as the 4848S040 relay variant and the ESP32-P4-86-Panel-ETH-2RO.
 
 ## Setting Up an Internal Switches Card
 

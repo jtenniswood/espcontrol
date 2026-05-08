@@ -28,7 +28,7 @@ EspControl is free, open-source firmware that turns supported **ESP32 touchscree
 - **10.1-inch panel (JC8012P4A1):** Guition / AliExpress
 - **7-inch panel (JC1060P470):** [AliExpress](https://s.click.aliexpress.com/e/_c335W0r5) (~£40)
 - **4.3-inch panel (JC4880P443):** [AliExpress](https://s.click.aliexpress.com/e/_c32jr3eN) (~£24)
-- **4-inch Waveshare ESP32-P4 86 Panel:** [Waveshare](https://www.waveshare.com/esp32-p4-wifi6-touch-lcd-4b.htm)
+- **4-inch ESP32-P4 86 Panel:** ESP32-P4 Smart 86 Box
 - **4-inch square panel (4848S040):** [AliExpress](https://s.click.aliexpress.com/e/_c3sIhvBv) (~£16)
 ## 3D Printable Stands
 

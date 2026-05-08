@@ -70,7 +70,7 @@ The home screen has a grid of card slots sized to fill the screen:
 - **10.1-inch JC8012P4A1** — 20 cards (4 rows, 5 columns)
 - **7-inch JC1060P470** — 15 cards (3 rows, 5 columns)
 - **4.3-inch JC4880P443** — 6 cards (3 rows, 2 columns)
-- **4-inch Waveshare ESP32-P4 86 Panel** — 9 cards (3 rows, 3 columns)
+- **4-inch ESP32-P4 86 Panel** — 9 cards (3 rows, 3 columns)
 - **4-inch 4848S040** — 9 cards (3 rows, 3 columns)
 
 You can have even more using **Subpage** cards. Any home-screen card can be turned into a folder that opens a new page of cards. Each subpage has one fewer usable slot than the home screen because it includes a Back card. See [Subpage](/features/subpages) for details.
@@ -90,7 +90,7 @@ EspControl currently supports these touchscreen panels:
 - **JC8012P4A1** — 10.1-inch, 1280x800 landscape orientation (ESP32-P4)
 - **JC1060P470** — 7-inch, 1024x600, landscape orientation (ESP32-P4)
 - **JC4880P443** — 4.3-inch, 480x800, portrait orientation (ESP32-P4)
-- **Waveshare ESP32-P4 86 Panel** — 4-inch, 720x720, square (ESP32-P4)
+- **ESP32-P4 86 Panel** — 4-inch, 720x720, square (ESP32-P4)
 - **4848S040** — 4-inch, 480x480, square (ESP32-S3)
 
 All use the same firmware features, card configuration, and web UI. The grid layout automatically matches each panel's screen size and orientation.

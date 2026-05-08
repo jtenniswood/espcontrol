@@ -6,7 +6,7 @@ description:
 
 # Built-in Relays
 
-Some supported panels include physical relays that can switch external low-voltage circuits. The Guition 4-inch relay variant is often listed as **4848S040C** and includes three relays. The Waveshare **ESP32-P4-86-Panel-ETH-2RO** includes two relays.
+Some supported panels include physical relays that can switch external low-voltage circuits. The Guition 4-inch relay variant is often listed as **4848S040C** and includes three relays. The **ESP32-P4-86-Panel-ETH-2RO** includes two relays.
 
 The relays are exposed by the standard firmware for each supported relay panel.
 
@@ -22,8 +22,8 @@ EspControl exposes each relay in two ways:
 | 4848S040C | **Relay 1** | `switch.<device_name>_relay_1` | `button.<device_name>_relay_1_push` | GPIO40 |
 | 4848S040C | **Relay 2** | `switch.<device_name>_relay_2` | `button.<device_name>_relay_2_push` | GPIO2 |
 | 4848S040C | **Relay 3** | `switch.<device_name>_relay_3` | `button.<device_name>_relay_3_push` | GPIO1 |
-| Waveshare ETH-2RO | **Relay 1** | `switch.<device_name>_relay_1` | `button.<device_name>_relay_1_push` | GPIO32 |
-| Waveshare ETH-2RO | **Relay 2** | `switch.<device_name>_relay_2` | `button.<device_name>_relay_2_push` | GPIO46 |
+| ETH-2RO | **Relay 1** | `switch.<device_name>_relay_1` | `button.<device_name>_relay_1_push` | GPIO32 |
+| ETH-2RO | **Relay 2** | `switch.<device_name>_relay_2` | `button.<device_name>_relay_2_push` | GPIO46 |
 
 They appear as normal Home Assistant entities on the EspControl device. You can control them from Home Assistant dashboards, automations, scripts, and voice assistants.
 
