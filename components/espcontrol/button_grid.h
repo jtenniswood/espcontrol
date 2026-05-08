@@ -4624,7 +4624,7 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            const lv_font_t *title_font,
                                            lv_coord_t pad,
                                            bool limit_title_lines) {
-  constexpr lv_coord_t TITLE_LINE_SPACE = -4;
+  constexpr lv_coord_t TITLE_LINE_SPACE = -2;
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
   if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (title_lbl) {
