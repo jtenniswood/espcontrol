@@ -4968,6 +4968,37 @@ inline std::string get_subpage_order(const std::string &sp_cfg) {
   return sp_cfg.substr(start, pe - start);
 }
 
+inline std::string subpage_back_token_base(std::string token) {
+  size_t eq = token.find('=');
+  if (eq != std::string::npos) token = token.substr(0, eq);
+  return token;
+}
+
+inline std::string subpage_back_label_from_order_token(const std::string &token) {
+  size_t eq = token.find('=');
+  if (eq == std::string::npos) return "Back";
+  std::string label = decode_compact_subpage_field(token.substr(eq + 1));
+  return label.empty() ? "Back" : label;
+}
+
+inline std::string get_subpage_back_label(const std::string &order_str) {
+  if (order_str.empty()) return "Back";
+  size_t st = 0;
+  while (st <= order_str.length()) {
+    size_t cm = order_str.find(',', st);
+    if (cm == std::string::npos) cm = order_str.length();
+    if (cm > st) {
+      std::string tk = order_str.substr(st, cm - st);
+      std::string base = subpage_back_token_base(tk);
+      if (base == "B" || base == "Bd" || base == "Bw" || base == "Bb") {
+        return subpage_back_label_from_order_token(tk);
+      }
+    }
+    st = cm + 1;
+  }
+  return "Back";
+}
+
 // Subpage grid layout with support for a back button token ("B")
 struct SubpageOrder {
   int positions[MAX_GRID_SLOTS] = {};
@@ -5021,6 +5052,7 @@ inline void parse_subpage_order(const std::string &order_str, int num_slots, int
     if (cm == std::string::npos) cm = order_str.length();
     if (cm > st2) {
       std::string tk = order_str.substr(st2, cm - st2);
+      tk = subpage_back_token_base(tk);
       if (tk == "B" || tk == "Bd" || tk == "Bw" || tk == "Bb") {
         result.back_pos = gp2;
         result.back_dbl = (tk == "Bd" || tk == "Bb");
@@ -5646,6 +5678,7 @@ inline void grid_phase2(
     auto sp_btns = parse_subpage_config(sp_cfg);
     if (sp_btns.empty()) continue;
     std::string sp_order_str = get_subpage_order(sp_cfg);
+    std::string sp_back_label = get_subpage_back_label(sp_order_str);
 
     SubpageOrder sp_ord;
     parse_subpage_order(sp_order_str, NS, sp_btns.size(), sp_ord);
@@ -5673,7 +5706,7 @@ inline void grid_phase2(
     apply_width_compensation(back_slot.icon_lbl, cfg.width_compensation_percent);
     apply_slot_text_width_compensation(back_slot, cfg.width_compensation_percent);
     lv_label_set_text(back_slot.icon_lbl, "\U000F0141");
-    lv_label_set_text(back_slot.text_lbl, "Back");
+    lv_label_set_text(back_slot.text_lbl, sp_back_label.c_str());
 
     lv_obj_add_event_cb(back_btn, [](lv_event_t *e) {
       lv_scr_load_anim((lv_obj_t *)lv_event_get_user_data(e), LV_SCR_LOAD_ANIM_NONE, 0, 0, false);

@@ -88,7 +88,11 @@ function firmwareParseSubpageConfig(str) {
   const body = compact ? str.slice(1) : str;
   const pipes = splitFields(body, "|");
   if (pipes.length < 2) return { order: [], buttons: [] };
-  const order = pipes[0] ? pipes[0].split(",").map((s) => s.trim()) : [];
+  const order = pipes[0] ? pipes[0].split(",").map((s) => {
+    const token = s.trim();
+    const eq = token.indexOf("=");
+    return eq >= 0 ? token.slice(0, eq) : token;
+  }) : [];
   const buttons = [];
   for (let i = 1; i < pipes.length; i++) {
     if (compact) {
@@ -862,6 +866,24 @@ assertSubpageRoundTrip(hooks, "delimiter subpage", {
     buttonShape({ entity: "sensor.zone", label: "Temp: west | 50%", icon: "Thermometer", icon_on: "Auto", sensor: "sensor.zone", unit: "deg:C", type: "sensor", precision: "1" }),
   ],
 }, true);
+
+const customBackLabelSubpage = {
+  order: ["1", "B", "2"],
+  backLabel: "Return Home",
+  buttons: [
+    buttonShape({ entity: "light.zone", label: "Zone", icon: "Auto", icon_on: "Auto" }),
+    buttonShape({ entity: "sensor.zone", label: "Temp", icon: "Thermometer", icon_on: "Auto", sensor: "sensor.zone", unit: "°C", type: "sensor", precision: "1" }),
+  ],
+};
+const customBackLabelEncoded = assertSubpageRoundTrip(hooks, "custom back label subpage", customBackLabelSubpage, true);
+assert.strictEqual(hooks.parseSubpageConfig(customBackLabelEncoded).backLabel, "Return Home", "custom back label round-trips through subpage config");
+
+assert.strictEqual(hooks.backOrderToken("B", "Back"), "B", "default back label keeps compact B token");
+assert.strictEqual(hooks.backLabelFromOrder(["1", "B", "2"]), "Back", "missing back label defaults to Back");
+assert.strictEqual(JSON.stringify(hooks.parseBackOrderToken("Bw=Return%20Home")), JSON.stringify({
+  token: "Bw",
+  label: "Return Home",
+}), "back order token decodes custom label");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B,2|L,light.strip,Strip%20A,Lightbulb,Lightbulb%20On,h,,|S,sensor.temp,Temp,Thermometer,,sensor.temp,deg%20C,1")), {
   order: ["1", "B", "2"],

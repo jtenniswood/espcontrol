@@ -1994,18 +1994,69 @@
     return buttonConfigChangedByNormalize(parseRawButtonConfig(str || ""));
   }
 
-  function parseSubpageConfig(str, raw) {
-    if (str && str.charAt(0) === "~") return parseCompactSubpageConfig(str, raw);
-    if (!str || !str.trim()) return { order: [], buttons: [] };
-    var parts = str.split("|");
-    var order = [];
-    if (parts[0]) {
-      var op = parts[0].split(",");
-      for (var i = 0; i < op.length; i++) {
-        var s = op[i].trim();
-        order.push(s);
+  function parseBackOrderToken(value) {
+    var raw = String(value || "").trim();
+    var eq = raw.indexOf("=");
+    var token = eq >= 0 ? raw.substring(0, eq) : raw;
+    var label = eq >= 0 ? decodeSubpageField(raw.substring(eq + 1)) : "Back";
+    if (token !== "B" && token !== "Bd" && token !== "Bw" && token !== "Bb") {
+      return { token: raw, label: "Back" };
+    }
+    return { token: token, label: label || "Back" };
+  }
+
+  function backOrderToken(baseToken, label) {
+    var token = parseBackOrderToken(baseToken).token;
+    var text = label || "Back";
+    return text === "Back" ? token : token + "=" + encodeSubpageField(text);
+  }
+
+  function backLabelFromOrder(order) {
+    for (var i = 0; i < (order || []).length; i++) {
+      var parsed = parseBackOrderToken(order[i]);
+      if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" || parsed.token === "Bb") {
+        return parsed.label || "Back";
       }
     }
+    return "Back";
+  }
+
+  function parseSubpageOrder(orderStr) {
+    var order = [];
+    var backLabel = "Back";
+    if (orderStr) {
+      var op = orderStr.split(",");
+      for (var i = 0; i < op.length; i++) {
+        var parsed = parseBackOrderToken(op[i]);
+        order.push(parsed.token);
+        if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" || parsed.token === "Bb") {
+          backLabel = parsed.label || "Back";
+        }
+      }
+    }
+    return { order: order, backLabel: backLabel };
+  }
+
+  function subpageOrderForSerialize(sp) {
+    var order = [];
+    for (var i = 0; i < ((sp && sp.order) || []).length; i++) {
+      var parsed = parseBackOrderToken(sp.order[i]);
+      if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" || parsed.token === "Bb") {
+        order.push(backOrderToken(parsed.token, sp.backLabel || parsed.label || "Back"));
+      } else {
+        order.push(parsed.token);
+      }
+    }
+    return order;
+  }
+
+  function parseSubpageConfig(str, raw) {
+    if (str && str.charAt(0) === "~") return parseCompactSubpageConfig(str, raw);
+    if (!str || !str.trim()) return { order: [], buttons: [], backLabel: "Back" };
+    var parts = str.split("|");
+    var parsedOrder = parseSubpageOrder(parts[0] || "");
+    var order = parsedOrder.order;
+    var backLabel = parsedOrder.backLabel;
     var buttons = [];
     for (var i = 1; i < parts.length; i++) {
       var f = parts[i].split(":");
@@ -2021,7 +2072,7 @@
       };
       buttons.push(raw ? button : normalizeButtonConfig(button));
     }
-    return { order: order, buttons: buttons };
+    return { order: order, buttons: buttons, backLabel: backLabel };
   }
 
   function subpageTypeCode(type) {
@@ -2077,13 +2128,11 @@
   }
 
   function parseCompactSubpageConfig(str, raw) {
-    if (!str || str.length < 2) return { order: [], buttons: [] };
+    if (!str || str.length < 2) return { order: [], buttons: [], backLabel: "Back" };
     var parts = str.substring(1).split("|");
-    var order = [];
-    if (parts[0]) {
-      var op = parts[0].split(",");
-      for (var i = 0; i < op.length; i++) order.push(op[i].trim());
-    }
+    var parsedOrder = parseSubpageOrder(parts[0] || "");
+    var order = parsedOrder.order;
+    var backLabel = parsedOrder.backLabel;
     var buttons = [];
     for (var i = 1; i < parts.length; i++) {
       var f = parts[i].split(",");
@@ -2099,7 +2148,7 @@
       };
       buttons.push(raw ? button : normalizeButtonConfig(button));
     }
-    return { order: order, buttons: buttons };
+    return { order: order, buttons: buttons, backLabel: backLabel };
   }
 
   function subpageConfigHasLegacySliderDirection(str) {
@@ -2148,7 +2197,7 @@
 
   function serializeLegacySubpageConfig(sp) {
     if (!sp || !sp.buttons || sp.buttons.length === 0) return "";
-    var out = sp.order.join(",");
+    var out = subpageOrderForSerialize(sp).join(",");
     for (var i = 0; i < sp.buttons.length; i++) {
       var b = sp.buttons[i];
       var sensor = (b.type === "slider" || b.type === "climate") ? "" : (b.sensor || "");
@@ -2169,7 +2218,7 @@
 
   function serializeCompactSubpageConfig(sp) {
     if (!sp || !sp.buttons || sp.buttons.length === 0) return "";
-    var out = "~" + sp.order.join(",");
+    var out = "~" + subpageOrderForSerialize(sp).join(",");
     for (var i = 0; i < sp.buttons.length; i++) {
       var b = sp.buttons[i];
       var sensor = (b.type === "slider" || b.type === "climate") ? "" : (b.sensor || "");
@@ -2235,7 +2284,9 @@
 
   function getSubpage(homeSlot) {
     if (!state.subpages[homeSlot]) {
-      state.subpages[homeSlot] = { order: [], buttons: [], grid: [], sizes: {} };
+      state.subpages[homeSlot] = { order: [], buttons: [], grid: [], sizes: {}, backLabel: "Back" };
+    } else if (!state.subpages[homeSlot].backLabel) {
+      state.subpages[homeSlot].backLabel = backLabelFromOrder(state.subpages[homeSlot].order);
     }
     return state.subpages[homeSlot];
   }
@@ -2247,12 +2298,12 @@
     if (sp.order.length > 0) {
       var hasBack = false;
       for (var i = 0; i < sp.order.length; i++) {
-        var t = sp.order[i];
+        var t = parseBackOrderToken(sp.order[i]).token;
         if (t === "B" || t === "Bd" || t === "Bw" || t === "Bb") { hasBack = true; break; }
       }
       if (hasBack) {
         for (var i = 0; i < sp.order.length && i < NUM_SLOTS; i++) {
-          var s = sp.order[i];
+          var s = parseBackOrderToken(sp.order[i]).token;
           if (!s) continue;
           if (s === "B" || s === "Bd" || s === "Bw" || s === "Bb") {
             grid[i] = -2;
@@ -2278,7 +2329,7 @@
         grid[0] = -2;
         delete sp.sizes[-2];
         for (var i = 0; i < sp.order.length && i + 1 < NUM_SLOTS; i++) {
-          var s = sp.order[i];
+          var s = parseBackOrderToken(sp.order[i]).token;
           if (!s) continue;
           var last = s.charAt(s.length - 1);
           var dbl = last === "d";
@@ -2313,7 +2364,7 @@
     for (var i = 0; i <= last; i++) {
       if (grid[i] === -2) {
         var bsz = sp.sizes[-2];
-        order.push(bsz === 4 ? "Bb" : bsz === 2 ? "Bd" : bsz === 3 ? "Bw" : "B");
+        order.push(backOrderToken(bsz === 4 ? "Bb" : bsz === 2 ? "Bd" : bsz === 3 ? "Bw" : "B", sp.backLabel || "Back"));
       } else if (grid[i] <= 0) {
         order.push("");
       } else {
@@ -3617,10 +3668,12 @@
       if (slot === -2) {
         var backBtn = document.createElement("div");
         var bkSz = c.sizes[-2];
-        backBtn.className = "sp-btn sp-back-btn" + (bkSz === 4 ? " sp-btn-big" : bkSz === 2 ? " sp-btn-double" : bkSz === 3 ? " sp-btn-wide" : "");
+        var backLabel = c.isSub ? (getSubpage(state.editingSubpage).backLabel || "Back") : "Back";
+        backBtn.className = "sp-btn sp-back-btn" + (bkSz === 4 ? " sp-btn-big" : bkSz === 2 ? " sp-btn-double" : bkSz === 3 ? " sp-btn-wide" : "") +
+          (c.selected.indexOf(-2) !== -1 ? " sp-selected" : "");
         backBtn.innerHTML =
           '<span class="sp-btn-icon mdi mdi-chevron-left"></span>' +
-          '<span class="sp-btn-label">Back</span>';
+          '<span class="sp-btn-label">' + escHtml(backLabel) + '</span>';
         backBtn.style.backgroundColor = "#" + (state.offColor.length === 6 ? state.offColor : "313131");
         backBtn.style.cursor = "pointer";
         backBtn.setAttribute("data-pos", pos);
@@ -3784,12 +3837,57 @@
 
   function openCardSettings(slot) {
     var c = ctx();
-    if (slot > 0 && c.selected.indexOf(slot) === -1) {
+    if ((slot > 0 || (slot === -2 && c.isSub)) && c.selected.indexOf(slot) === -1) {
       c.setSelected([slot]);
       c.setLastClicked(slot);
       renderPreview();
     }
     renderButtonSettings(true);
+  }
+
+  function renderBackButtonSettings(container, c) {
+    if (!c.isSub || c.selected[0] !== -2) return false;
+    if (els.settingsOverlay) els.settingsOverlay.classList.add("sp-visible");
+    var sp = getSubpage(state.editingSubpage);
+
+    var title = document.createElement("div");
+    title.className = "sp-section-title";
+    title.textContent = "Back Button";
+    container.appendChild(title);
+
+    var panel = document.createElement("div");
+    panel.className = "sp-panel";
+    var lf = document.createElement("div");
+    lf.className = "sp-field";
+    lf.appendChild(fieldLabel("Label", "sp-sp-inp-back-label"));
+    var labelInp = textInput("sp-sp-inp-back-label", sp.backLabel || "Back", "Back");
+    lf.appendChild(labelInp);
+    panel.appendChild(lf);
+
+    function saveBackLabel() {
+      sp.backLabel = labelInp.value || "Back";
+      saveSubpageConfig(state.editingSubpage);
+      renderPreview();
+    }
+    labelInp.addEventListener("input", saveBackLabel);
+    labelInp.addEventListener("change", saveBackLabel);
+    labelInp.addEventListener("blur", saveBackLabel);
+    labelInp.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        saveBackLabel();
+        this.blur();
+      }
+    });
+
+    var exitBtn = document.createElement("button");
+    exitBtn.type = "button";
+    exitBtn.className = "sp-action-btn";
+    exitBtn.textContent = "Exit Subpage";
+    exitBtn.addEventListener("click", function () { exitSubpage(); });
+    panel.appendChild(exitBtn);
+
+    container.appendChild(panel);
+    return true;
   }
 
   function renderButtonSettings(forceOpen) {
@@ -3813,6 +3911,8 @@
     }
 
     if (els.settingsOverlay) els.settingsOverlay.classList.add("sp-visible");
+
+    if (renderBackButtonSettings(container, c)) return;
 
     var slot = c.selected[0];
     var bIdx = slot - 1;
@@ -4662,7 +4762,7 @@
         handleBtnClick(e, slot, pos);
       } else if (slot === -2) {
         if (didDrag) { didDrag = false; return; }
-        exitSubpage();
+        openCardSettings(-2);
       } else if (slot === 0) {
         if (state.clipboard) {
           e.preventDefault();
@@ -5279,6 +5379,9 @@
     ctxMenu.className = "sp-ctx-menu";
     var sp = getSubpage(state.editingSubpage);
     var bkSz = sp.sizes[-2] || 1;
+    addCtxItem("pencil", "Edit Label", function () { openCardSettings(-2); });
+    addCtxItem("keyboard-return", "Exit Subpage", function () { exitSubpage(); });
+    addCtxDivider();
     addCtxSubmenu("arrow-expand-all", "Size", function (sub) {
       addSubItem(sub, "", "Single", function () { resizeSlot(-2, 1); }, bkSz === 1);
       addSubItem(sub, "", "Tall", function () { resizeSlot(-2, 2); }, bkSz === 2);
@@ -6538,6 +6641,9 @@
       serializeButtonConfig: serializeButtonConfig,
       parseSubpageConfig: parseSubpageConfig,
       serializeSubpageConfig: serializeSubpageConfig,
+      parseBackOrderToken: parseBackOrderToken,
+      backOrderToken: backOrderToken,
+      backLabelFromOrder: backLabelFromOrder,
       subpageStateDisplayMode: subpageStateDisplayMode,
       buttonConfigNeedsMigration: buttonConfigNeedsMigration,
       subpageConfigNeedsMigration: subpageConfigNeedsMigration,
