@@ -25,7 +25,7 @@ EspControl is free, open-source firmware that turns supported **ESP32 touchscree
 
 ## Where to Buy
 
-- **10.1-inch panel (JC8012P4A1):** Guition / AliExpress
+- **10.1-inch panel (JC8012P4A1):** [AliExpress](https://s.click.aliexpress.com/e/_c4W6TYvp)
 - **7-inch panel (JC1060P470):** [AliExpress](https://s.click.aliexpress.com/e/_c335W0r5) (~£40)
 - **4.3-inch panel (JC4880P443):** [AliExpress](https://s.click.aliexpress.com/e/_c32jr3eN) (~£24)
 - **4-inch ESP32-P4 86 Panel:** [AliExpress](https://s.click.aliexpress.com/e/_c3O6ndAX) (~£45)
