@@ -3467,6 +3467,7 @@ struct TimerCardCtx {
   int duration_secs = 0;
   int remaining_secs = 0;
   uint32_t remaining_anchor_ms = 0;
+  uint32_t finished_at_ms = 0;  // millis() when state went active → idle; 0 otherwise
   lv_timer_t *tick_timer = nullptr;
   bool confirm_enabled = false;
   uint16_t confirm_timeout_secs = 3;
@@ -3505,10 +3506,13 @@ inline void timer_card_refresh(TimerCardCtx *ctx) {
   } else if (ctx->state == "paused") {
     secs = ctx->remaining_secs;
   } else {
-    // Idle (never started or just finished): always show 0:00 so the card
-    // doesn't snap back to the configured duration in the last second of a
-    // countdown when HA transitions the entity to idle.
-    secs = 0;
+    // Idle: hold at 0:00 for a short grace window after a timer completes
+    // (HA flips to idle just before the visible countdown reaches zero),
+    // then revert to the configured duration so the user can see what the
+    // next start will count down from.
+    bool just_finished = ctx->finished_at_ms != 0 &&
+      (esphome::millis() - ctx->finished_at_ms) < 5000;
+    secs = just_finished ? 0 : ctx->duration_secs;
   }
   char buf[16];
   format_timer_secs(secs, buf, sizeof(buf));
@@ -3539,12 +3543,19 @@ inline void subscribe_timer_card(TimerCardCtx *ctx) {
     ctx->entity_id, {},
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef state) {
+        std::string prev = ctx->state;
         ctx->state = std::string(state.c_str(), state.size());
         // Cancel any pending confirmation if state changed away from active.
         if (ctx->state != "active") confirmation_disarm(&ctx->confirm);
         if (ctx->btn) {
           if (ctx->state == "active") lv_obj_add_state(ctx->btn, LV_STATE_CHECKED);
           else lv_obj_clear_state(ctx->btn, LV_STATE_CHECKED);
+        }
+        if (prev == "active" && ctx->state == "idle") {
+          ctx->finished_at_ms = esphome::millis();
+          if (ctx->finished_at_ms == 0) ctx->finished_at_ms = 1;  // 0 means "no finish recorded"
+        } else if (ctx->state == "active") {
+          ctx->finished_at_ms = 0;
         }
         timer_card_refresh(ctx);
       })
