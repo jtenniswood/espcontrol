@@ -34,9 +34,12 @@ function timezoneCardTimeParts(tzOption) {
 }
 
 registerButtonType("timezone", {
-  label: "World Clock",
+  label: "Date & Time",
   allowInSubpage: true,
   hideLabel: true,
+  isAvailable: function () {
+    return false;
+  },
   onSelect: function (b) {
     b.entity = (typeof state !== "undefined" && state.timezone) || "UTC (GMT+0)";
     b.label = "";
@@ -52,6 +55,50 @@ registerButtonType("timezone", {
       b.label = "";
       helpers.saveField("label", "");
     }
+
+    var displayField = document.createElement("div");
+    displayField.className = "sp-field";
+    displayField.appendChild(helpers.fieldLabel("Display", helpers.idPrefix + "calendar-mode"));
+    var modeSelect = document.createElement("select");
+    modeSelect.className = "sp-select";
+    modeSelect.id = helpers.idPrefix + "calendar-mode";
+
+    [
+      { value: "datetime", label: "Time & Date" },
+      { value: "", label: "Date" },
+      { value: "timezone", label: "World Clock" }
+    ].forEach(function (optCfg) {
+      var opt = document.createElement("option");
+      opt.value = optCfg.value;
+      opt.textContent = optCfg.label;
+      modeSelect.appendChild(opt);
+    });
+
+    modeSelect.value = "timezone";
+    modeSelect.addEventListener("change", function () {
+      if (this.value !== "timezone") {
+        b.type = "calendar";
+        b.entity = "sensor.date";
+        b.label = "";
+        b.icon = "Auto";
+        b.icon_on = "Auto";
+        b.sensor = "";
+        b.unit = "";
+        b.precision = this.value === "datetime" ? "datetime" : "";
+        helpers.saveField("type", "calendar");
+        helpers.saveField("entity", "sensor.date");
+        helpers.saveField("label", "");
+        helpers.saveField("icon", "Auto");
+        helpers.saveField("icon_on", "Auto");
+        helpers.saveField("sensor", "");
+        helpers.saveField("unit", "");
+        helpers.saveField("precision", b.precision);
+        renderButtonSettings();
+      }
+    });
+
+    displayField.appendChild(modeSelect);
+    panel.appendChild(displayField);
 
     var tzField = document.createElement("div");
     tzField.className = "sp-field";

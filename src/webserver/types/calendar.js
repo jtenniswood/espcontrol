@@ -1,6 +1,6 @@
 // Read-only date card: displays either the day/month or local time/date.
 registerButtonType("calendar", {
-  label: "Date",
+  label: "Date & Time",
   allowInSubpage: true,
   hideLabel: true,
   onSelect: function (b) {
@@ -24,8 +24,9 @@ registerButtonType("calendar", {
     modeSelect.id = helpers.idPrefix + "calendar-mode";
 
     [
-      { value: "", label: "Date only" },
-      { value: "datetime", label: "Date & time" }
+      { value: "datetime", label: "Time & Date" },
+      { value: "", label: "Date" },
+      { value: "timezone", label: "World Clock" }
     ].forEach(function (optCfg) {
       var opt = document.createElement("option");
       opt.value = optCfg.value;
@@ -34,9 +35,32 @@ registerButtonType("calendar", {
     });
 
     modeSelect.value = b.precision;
+    modeSelect.addEventListener("change", function () {
+      if (this.value === "timezone") {
+        b.type = "timezone";
+        b.entity = (typeof state !== "undefined" && state.timezone) || "UTC (GMT+0)";
+        b.label = "";
+        b.icon = "Auto";
+        b.icon_on = "Auto";
+        b.sensor = "";
+        b.unit = "";
+        b.precision = "";
+        helpers.saveField("type", "timezone");
+        helpers.saveField("entity", b.entity);
+        helpers.saveField("label", "");
+        helpers.saveField("icon", "Auto");
+        helpers.saveField("icon_on", "Auto");
+        helpers.saveField("sensor", "");
+        helpers.saveField("unit", "");
+        helpers.saveField("precision", "");
+        renderButtonSettings();
+      } else {
+        b.precision = this.value === "datetime" ? "datetime" : "";
+        helpers.saveField("precision", b.precision);
+      }
+    });
     displayField.appendChild(modeSelect);
     panel.appendChild(displayField);
-    helpers.bindField(modeSelect, "precision", true);
   },
   renderPreview: function (b, helpers) {
     var now = new Date();
