@@ -121,11 +121,15 @@ void AsyncWebServer::begin() {
   if (this->server_) {
     this->end();
   }
-  // The ESPControl web UI exposes many internal configuration entities over
-  // EventSource on connect. The ESP-IDF default plus ESPHome's small bump can
-  // overflow while serializing that first state burst.
+  // The ESPControl web UI exposes many internal configuration entities. Larger
+  // P4 panels can overflow the ESP-IDF default while serving entity details.
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-  config.stack_size = 8192;
+  config.stack_size = 16384;
+  // Keep browser bursts from opening several web sessions at once. The config
+  // UI fetches details sequentially, so two client sockets are enough and leave
+  // more internal heap available for LVGL/display work on P4 panels.
+  config.max_open_sockets = 5;
+  config.backlog_conn = 2;
   config.server_port = this->port_;
   config.uri_match_fn = [](const char * /*unused*/, const char * /*unused*/, size_t /*unused*/) { return true; };
   // Always enable LRU purging to handle socket exhaustion gracefully.
