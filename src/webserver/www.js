@@ -1996,6 +1996,7 @@
       push: "P",
       internal: "I",
       subpage: "G",
+      timer: "Z",
     };
     return map[type || ""] || (type || "");
   }
@@ -2018,6 +2019,7 @@
       P: "push",
       I: "internal",
       G: "subpage",
+      Z: "timer",
     };
     return map[code || ""] || (code || "");
   }

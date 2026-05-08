@@ -414,6 +414,7 @@ export default defineConfig({
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
           { text: 'Lock', link: '/card-types/locks' },
+          { text: 'Timer', link: '/card-types/timers' },
           { text: 'Date', link: '/card-types/calendar' },
           { text: 'World Clock', link: '/card-types/timezones' },
           { text: 'Weather', link: '/card-types/weather' },

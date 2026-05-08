@@ -3387,6 +3387,219 @@ inline void send_media_playback_action(const std::string &entity_id,
   send_media_player_action(entity_id, media_service_for_mode(mode));
 }
 
+// ── Reusable confirmation prompt ──────────────────────────────────────
+// Two-tap confirmation for destructive actions. Captures a label's text,
+// swaps in a prompt ("Confirm?"), and arms a one-shot timeout. A second
+// tap within the window invokes the supplied callback; otherwise the
+// timeout restores the original text and disarms.
+struct ConfirmationCtx {
+  lv_obj_t *prompt_lbl = nullptr;
+  std::string original_text;
+  std::function<void()> on_confirm;
+  lv_timer_t *timeout_timer = nullptr;
+  bool armed = false;
+};
+
+inline void confirmation_disarm(ConfirmationCtx *c) {
+  if (!c || !c->armed) return;
+  c->armed = false;
+  if (c->timeout_timer) {
+    lv_timer_del(c->timeout_timer);
+    c->timeout_timer = nullptr;
+  }
+  if (c->prompt_lbl)
+    lv_label_set_text(c->prompt_lbl, c->original_text.c_str());
+  c->on_confirm = nullptr;
+}
+
+inline void confirmation_timeout_cb(lv_timer_t *t) {
+  ConfirmationCtx *c = (ConfirmationCtx *)lv_timer_get_user_data(t);
+  if (!c) return;
+  // The timer is one-shot via lv_timer_set_repeat_count(1); LVGL deletes it
+  // automatically after this callback returns. Drop our pointer before
+  // calling disarm so it does not double-delete.
+  c->timeout_timer = nullptr;
+  c->armed = false;
+  if (c->prompt_lbl)
+    lv_label_set_text(c->prompt_lbl, c->original_text.c_str());
+  c->on_confirm = nullptr;
+}
+
+// Returns true if the action was performed (second tap), false if armed.
+inline bool confirmation_try(ConfirmationCtx *c, lv_obj_t *prompt_lbl,
+                             const char *prompt_text, uint16_t timeout_secs,
+                             std::function<void()> on_confirm) {
+  if (!c) {
+    if (on_confirm) on_confirm();
+    return true;
+  }
+  if (c->armed) {
+    auto cb = c->on_confirm;
+    confirmation_disarm(c);
+    if (cb) cb();
+    return true;
+  }
+  c->prompt_lbl = prompt_lbl;
+  if (prompt_lbl) {
+    const char *cur = lv_label_get_text(prompt_lbl);
+    c->original_text = cur ? cur : "";
+    lv_label_set_text(prompt_lbl, prompt_text ? prompt_text : "Confirm?");
+  } else {
+    c->original_text.clear();
+  }
+  c->on_confirm = on_confirm;
+  c->armed = true;
+  uint32_t period = (uint32_t)(timeout_secs ? timeout_secs : 3) * 1000;
+  c->timeout_timer = lv_timer_create(confirmation_timeout_cb, period, c);
+  if (c->timeout_timer) lv_timer_set_repeat_count(c->timeout_timer, 1);
+  return false;
+}
+
+// ── Timer card ────────────────────────────────────────────────────────
+// Counts down a HA timer.* entity. Tap idle/paused = start (paused = resume),
+// tap active = cancel (optionally with confirmation prompt).
+struct TimerCardCtx {
+  std::string entity_id;
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *value_lbl = nullptr;
+  lv_obj_t *text_lbl = nullptr;
+  std::string state;       // "idle" / "active" / "paused" / ""
+  int duration_secs = 0;
+  int remaining_secs = 0;
+  uint32_t remaining_anchor_ms = 0;
+  lv_timer_t *tick_timer = nullptr;
+  bool confirm_enabled = false;
+  uint16_t confirm_timeout_secs = 3;
+  ConfirmationCtx confirm;
+};
+
+inline int parse_timer_hms(esphome::StringRef value) {
+  // HA timer attrs are formatted "H:MM:SS" (e.g. "0:05:00").
+  int h = 0, m = 0, s = 0;
+  if (sscanf(value.c_str(), "%d:%d:%d", &h, &m, &s) == 3)
+    return h * 3600 + m * 60 + s;
+  return 0;
+}
+
+inline void format_timer_secs(int secs, char *buf, size_t bufsz) {
+  if (secs < 0) secs = 0;
+  if (secs >= 3600) {
+    int h = secs / 3600;
+    int m = (secs / 60) % 60;
+    int s = secs % 60;
+    snprintf(buf, bufsz, "%d:%02d:%02d", h, m, s);
+  } else {
+    int m = secs / 60;
+    int s = secs % 60;
+    snprintf(buf, bufsz, "%d:%02d", m, s);
+  }
+}
+
+inline void timer_card_refresh(TimerCardCtx *ctx) {
+  if (!ctx || !ctx->value_lbl) return;
+  int secs;
+  if (ctx->state == "active") {
+    int elapsed = (int)((esphome::millis() - ctx->remaining_anchor_ms) / 1000);
+    secs = ctx->remaining_secs - elapsed;
+    if (secs < 0) secs = 0;
+  } else if (ctx->state == "paused") {
+    secs = ctx->remaining_secs;
+  } else {
+    secs = ctx->duration_secs;
+  }
+  char buf[16];
+  format_timer_secs(secs, buf, sizeof(buf));
+  lv_label_set_text(ctx->value_lbl, buf);
+}
+
+inline void timer_card_tick_cb(lv_timer_t *t) {
+  TimerCardCtx *ctx = (TimerCardCtx *)lv_timer_get_user_data(t);
+  if (ctx) timer_card_refresh(ctx);
+}
+
+inline void send_timer_service(const std::string &entity_id, const char *service) {
+  if (entity_id.empty()) return;
+  esphome::api::HomeassistantActionRequest req;
+  req.is_event = false;
+  req.service = decltype(req.service)(service);
+  req.data.init(1);
+  auto &kv = req.data.emplace_back();
+  kv.key = decltype(kv.key)("entity_id");
+  kv.value = decltype(kv.value)(entity_id.c_str());
+  esphome::api::global_api_server->send_homeassistant_action(req);
+}
+
+inline void subscribe_timer_card(TimerCardCtx *ctx) {
+  if (!ctx || ctx->entity_id.empty()) return;
+  // Main state
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    ctx->entity_id, {},
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef state) {
+        ctx->state = std::string(state.c_str(), state.size());
+        if (ctx->state != "active") {
+          // remaining_anchor only matters while counting down
+        }
+        // Cancel any pending confirmation if state changed away from active.
+        if (ctx->state != "active") confirmation_disarm(&ctx->confirm);
+        timer_card_refresh(ctx);
+      })
+  );
+  // Duration attribute (configured run length)
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    ctx->entity_id, std::string("duration"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef state) {
+        ctx->duration_secs = parse_timer_hms(state);
+        timer_card_refresh(ctx);
+      })
+  );
+  // Remaining attribute (only fires while active/paused)
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    ctx->entity_id, std::string("remaining"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef state) {
+        ctx->remaining_secs = parse_timer_hms(state);
+        ctx->remaining_anchor_ms = esphome::millis();
+        timer_card_refresh(ctx);
+      })
+  );
+}
+
+inline void handle_timer_card_click(TimerCardCtx *ctx) {
+  if (!ctx || ctx->entity_id.empty()) return;
+  if (ctx->state == "active") {
+    std::string entity = ctx->entity_id;
+    auto do_cancel = [entity]() { send_timer_service(entity, "timer.cancel"); };
+    if (ctx->confirm_enabled) {
+      confirmation_try(&ctx->confirm, ctx->text_lbl, "Confirm?",
+                       ctx->confirm_timeout_secs, do_cancel);
+    } else {
+      do_cancel();
+    }
+  } else {
+    confirmation_disarm(&ctx->confirm);
+    send_timer_service(ctx->entity_id, "timer.start");
+  }
+}
+
+inline void setup_timer_card(BtnSlot &s, const ParsedCfg &p,
+                             const lv_font_t *value_font) {
+  lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  if (value_font) lv_obj_set_style_text_font(s.sensor_lbl, value_font, LV_PART_MAIN);
+  lv_label_set_text(s.sensor_lbl, "0:00");
+  lv_label_set_text(s.unit_lbl, "");
+  lv_label_set_text(s.text_lbl, p.label.empty() ? "Timer" : p.label.c_str());
+}
+
+inline uint16_t timer_parse_confirm_timeout(const std::string &unit) {
+  int n = atoi(unit.c_str());
+  if (n < 1) n = 3;
+  if (n > 30) n = 30;
+  return (uint16_t)n;
+}
+
 // ── Button click dispatch ─────────────────────────────────────────────
 
 inline bool experimental_card_enabled(const ParsedCfg &p, bool developer_experimental_features);
@@ -3460,6 +3673,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     }
   } else if (p.type == "light_temperature") {
     // Tap does nothing; only dragging the slider sends commands.
+  } else if (p.type == "timer") {
+    TimerCardCtx *ctx = (TimerCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) handle_timer_card_click(ctx);
   } else if (p.type == "slider" || p.type == "cover") {
     if (!p.entity.empty()) send_slider_action(p.entity, -1, cover_tilt_mode(p.sensor));
   } else {
@@ -5041,6 +5257,7 @@ inline std::string compact_subpage_type(const std::string &code) {
   if (code == "P") return "push";
   if (code == "I") return "internal";
   if (code == "G") return "subpage";
+  if (code == "Z") return "timer";
   return code;
 }
 
@@ -5447,6 +5664,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       row_span, col_span);
     return;
   }
+  if (p.type == "timer") {
+    setup_timer_card(s, p, cfg.sp_sensor_font);
+    return;
+  }
   if (p.type == "slider" || p.type == "cover") {
     setup_slider_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
     return;
@@ -5796,6 +6017,21 @@ inline void grid_phase2(
         p.type == "cover" && cover_tilt_mode(p.sensor));
       if (p.label.empty())
         subscribe_friendly_name(s.text_lbl, p.entity);
+      continue;
+    }
+    if (p.type == "timer") {
+      TimerCardCtx *ctx = new TimerCardCtx();
+      ctx->entity_id = p.entity;
+      ctx->btn = s.btn;
+      ctx->value_lbl = s.sensor_lbl;
+      ctx->text_lbl = s.text_lbl;
+      ctx->confirm_enabled = (p.sensor == "confirm");
+      ctx->confirm_timeout_secs = timer_parse_confirm_timeout(p.unit);
+      lv_obj_set_user_data(s.btn, (void *)ctx);
+      subscribe_timer_card(ctx);
+      if (p.label.empty())
+        subscribe_friendly_name(s.text_lbl, p.entity);
+      ctx->tick_timer = lv_timer_create(timer_card_tick_cb, 1000, ctx);
       continue;
     }
     if (p.type == "light_temperature") {
@@ -6184,6 +6420,27 @@ inline void grid_phase2(
               subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
           }
           add_parent_indicator(sb_cfg.entity, false);
+        }
+        continue;
+      }
+      if (sb_cfg.type == "timer") {
+        if (!sb_cfg.entity.empty()) {
+          TimerCardCtx *ctx = new TimerCardCtx();
+          ctx->entity_id = sb_cfg.entity;
+          ctx->btn = sub_slot.btn;
+          ctx->value_lbl = sub_slot.sensor_lbl;
+          ctx->text_lbl = sub_slot.text_lbl;
+          ctx->confirm_enabled = (sb_cfg.sensor == "confirm");
+          ctx->confirm_timeout_secs = timer_parse_confirm_timeout(sb_cfg.unit);
+          lv_obj_set_user_data(sub_slot.btn, (void *)ctx);
+          subscribe_timer_card(ctx);
+          if (sb_cfg.label.empty())
+            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
+          ctx->tick_timer = lv_timer_create(timer_card_tick_cb, 250, ctx);
+          lv_obj_add_event_cb(sub_slot.btn, [](lv_event_t *e) {
+            TimerCardCtx *c = (TimerCardCtx *)lv_event_get_user_data(e);
+            if (c) handle_timer_card_click(c);
+          }, LV_EVENT_CLICKED, ctx);
         }
         continue;
       }
