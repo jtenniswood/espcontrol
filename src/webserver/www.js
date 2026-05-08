@@ -1865,6 +1865,13 @@
       }
       if (b.sensor === "position" && (!b.label || b.label === "Track")) b.label = "Position";
     }
+    if (b && b.type === "climate") {
+      b.sensor = "";
+      b.unit = "";
+      b.icon = "Auto";
+      b.icon_on = "Auto";
+      if (["", "0", "1", "2", "3"].indexOf(String(b.precision || "")) < 0) b.precision = "";
+    }
     return b;
   }
 
@@ -1906,9 +1913,12 @@
 
   function buttonConfigFields(b) {
     var type = b && b.type || "";
-    var sensor = type === "slider" ? "" : (b && b.sensor || "");
-    var unit = b && b.unit || "";
+    var sensor = (type === "slider" || type === "climate") ? "" : (b && b.sensor || "");
+    var unit = type === "climate" ? "" : (b && b.unit || "");
+    var icon = type === "climate" ? "Auto" : (b && b.icon || "Auto");
+    var iconOn = type === "climate" ? "Auto" : (b && b.icon_on || "Auto");
     var precision = b && b.precision || "";
+    if (type === "climate" && ["", "0", "1", "2", "3"].indexOf(String(precision)) < 0) precision = "";
     if (!type && !sensor) {
       unit = "";
       precision = "";
@@ -1916,8 +1926,8 @@
     return trimConfigFields([
       b && b.entity || "",
       b && b.label || "",
-      b && b.icon || "Auto",
-      b && b.icon_on || "Auto",
+      icon,
+      iconOn,
       sensor,
       unit,
       type,
@@ -2028,6 +2038,7 @@
       garage: "R",
       lock: "K",
       media: "M",
+      climate: "H",
       push: "P",
       internal: "I",
       subpage: "G",
@@ -2049,6 +2060,7 @@
       R: "garage",
       K: "lock",
       M: "media",
+      H: "climate",
       P: "push",
       I: "internal",
       G: "subpage",
@@ -2118,7 +2130,13 @@
     if (!sp || !sp.buttons) return true;
     for (var i = 0; i < sp.buttons.length; i++) {
       var b = sp.buttons[i];
-      var fields = [b.entity || "", b.label || "", b.icon || "Auto", b.icon_on || "Auto", b.sensor || "", b.unit || "", b.type || "", b.precision || ""];
+      var sensor = b.type === "climate" ? "" : (b.sensor || "");
+      var unit = b.type === "climate" ? "" : (b.unit || "");
+      var icon = b.type === "climate" ? "Auto" : (b.icon || "Auto");
+      var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
+      var precision = b.precision || "";
+      if (b.type === "climate" && ["", "0", "1", "2", "3"].indexOf(String(precision)) < 0) precision = "";
+      var fields = [b.entity || "", b.label || "", icon, iconOn, sensor, unit, b.type || "", precision];
       for (var j = 0; j < fields.length; j++) {
         if (String(fields[j] || "").indexOf("|") >= 0 || String(fields[j] || "").indexOf(":") >= 0) {
           return false;
@@ -2133,8 +2151,13 @@
     var out = sp.order.join(",");
     for (var i = 0; i < sp.buttons.length; i++) {
       var b = sp.buttons[i];
-      var sensor = b.type === "slider" ? "" : (b.sensor || "");
-      var fields = [b.entity || "", b.label || "", b.icon || "Auto", b.icon_on || "Auto", sensor, b.unit || "", b.type || "", b.precision || ""];
+      var sensor = (b.type === "slider" || b.type === "climate") ? "" : (b.sensor || "");
+      var unit = b.type === "climate" ? "" : (b.unit || "");
+      var icon = b.type === "climate" ? "Auto" : (b.icon || "Auto");
+      var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
+      var precision = b.precision || "";
+      if (b.type === "climate" && ["", "0", "1", "2", "3"].indexOf(String(precision)) < 0) precision = "";
+      var fields = [b.entity || "", b.label || "", icon, iconOn, sensor, unit, b.type || "", precision];
       while (fields.length > 1 && !fields[fields.length - 1]) fields.pop();
       if (fields.length > 1 && fields[fields.length - 1] === "Auto") {
         while (fields.length > 1 && (fields[fields.length - 1] === "Auto" || !fields[fields.length - 1])) fields.pop();
@@ -2149,16 +2172,21 @@
     var out = "~" + sp.order.join(",");
     for (var i = 0; i < sp.buttons.length; i++) {
       var b = sp.buttons[i];
-      var sensor = b.type === "slider" ? "" : (b.sensor || "");
+      var sensor = (b.type === "slider" || b.type === "climate") ? "" : (b.sensor || "");
+      var unit = b.type === "climate" ? "" : (b.unit || "");
+      var icon = b.type === "climate" ? "Auto" : (b.icon || "Auto");
+      var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
+      var precision = b.precision || "";
+      if (b.type === "climate" && ["", "0", "1", "2", "3"].indexOf(String(precision)) < 0) precision = "";
       var fields = [
         subpageTypeCode(b.type || ""),
         encodeSubpageField(b.entity),
         encodeSubpageField(b.label),
-        b.icon && b.icon !== "Auto" ? encodeSubpageField(b.icon) : "",
-        b.icon_on && b.icon_on !== "Auto" ? encodeSubpageField(b.icon_on) : "",
+        icon && icon !== "Auto" ? encodeSubpageField(icon) : "",
+        iconOn && iconOn !== "Auto" ? encodeSubpageField(iconOn) : "",
         encodeSubpageField(sensor),
-        encodeSubpageField(b.unit),
-        encodeSubpageField(b.precision),
+        encodeSubpageField(unit),
+        encodeSubpageField(precision),
       ];
       while (fields.length > 1 && !fields[fields.length - 1]) fields.pop();
       out += "|" + fields.join(",");

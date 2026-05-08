@@ -43,21 +43,21 @@ font:
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
-  # Volume modal: 96px on the 480px S3 reference scaled to this 720px short side
+  # Volume/climate modal: 96px on the 480px S3 reference scaled to this 720px short side
   - file: "gfonts://Roboto@Thin"
     id: volume_modal_number_font_md_square
     size: 144
     bpp: 4
     glyphs:
-      - "0123456789"
+      - "0123456789.-"
 
-  # Volume modal labels: 22px on the 480px S3 reference scaled to this 720px short side
+  # Volume/climate modal labels: 22px on the 480px S3 reference scaled to this 720px short side
   - file: "gfonts://Roboto"
     id: volume_modal_label_font_md_square
     size: 33
     bpp: 4
     glyphs:
-      - "Volume"
+      - "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/"
 
   # Top bar clock and temperature (28px)
   - file: "gfonts://Roboto"

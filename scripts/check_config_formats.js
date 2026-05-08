@@ -60,6 +60,7 @@ function subpageTypeFromCode(code) {
     R: "garage",
     K: "lock",
     M: "media",
+    H: "climate",
     P: "push",
     I: "internal",
     G: "subpage",
@@ -484,6 +485,50 @@ assertButtonRoundTrip(hooks, "media now playing card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "climate card", {
+  entity: "climate.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate",
+  precision: "1",
+}, false);
+
+assertButtonRoundTrip(hooks, "climate card precision 2", {
+  entity: "climate.bedroom",
+  label: "Bedroom",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate",
+  precision: "2",
+}, false);
+
+assertButtonRoundTrip(hooks, "climate card firmware precision 3", {
+  entity: "climate.office",
+  label: "Office",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate",
+  precision: "3",
+}, false);
+
+assertButtonMigration(hooks, "climate clears ignored fields", "climate.living_room;Living;Thermostat;Radiator;sensor.temp;deg C;climate;bad", {
+  entity: "climate.living_room",
+  label: "Living",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate",
+  precision: "",
+});
+
 assertButtonRoundTrip(hooks, "light temperature card", {
   entity: "light.living_room",
   label: "Living Room",
@@ -796,6 +841,13 @@ assertSubpageRoundTrip(hooks, "media subpage", {
   ],
 }, true);
 
+assertSubpageRoundTrip(hooks, "climate subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate", precision: "1" }),
+  ],
+}, true);
+
 assertSubpageRoundTrip(hooks, "light temperature subpage", {
   order: ["1", "B"],
   buttons: [
@@ -916,6 +968,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|M,media_playe
     buttonShape({ entity: "media_player.living_room", label: "Living Room", icon: "Auto", icon_on: "Auto", sensor: "play_pause", type: "media" }),
   ],
 }, "legacy media controls subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|H,climate.living_room,Living%20Room,,,,,1")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate", precision: "1" }),
+  ],
+}, "compact climate subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|N,light.living_room,Living%20Room,,,kelvin,2000-6500,color")), {
   order: ["1", "B"],

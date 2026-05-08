@@ -43,13 +43,13 @@ font:
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
-  # Volume modal: 96px on the S3 reference scaled for the larger 4.3-inch portrait card grid
+  # Volume/climate modal: 96px on the S3 reference scaled for the larger 4.3-inch portrait card grid
   - file: "gfonts://Roboto@Thin"
     id: volume_modal_number_font_lg
     size: 135
     bpp: 4
     glyphs:
-      - "0123456789"
+      - "0123456789.-"
 
   # Top bar clock and temperature (25px)
   - file: "gfonts://Roboto"

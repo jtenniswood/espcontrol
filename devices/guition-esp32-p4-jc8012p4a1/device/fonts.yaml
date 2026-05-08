@@ -26,21 +26,21 @@ font:
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
-  # Volume modal: 96px on the 480px S3 reference scaled to this 800px short side
+  # Volume/climate modal: 96px on the 480px S3 reference scaled to this 800px short side
   - file: "gfonts://Roboto@Thin"
     id: volume_modal_number_font_800
     size: 160
     bpp: 4
     glyphs:
-      - "0123456789"
+      - "0123456789.-"
 
-  # Volume modal labels: 22px on the 480px S3 reference scaled to this 800px short side
+  # Volume/climate modal labels: 22px on the 480px S3 reference scaled to this 800px short side
   - file: "gfonts://Roboto"
     id: volume_modal_label_font_800
     size: 37
     bpp: 4
     glyphs:
-      - "Volume"
+      - "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/"
 
   # Main page icons: 44px on the 480px S3 reference scaled to this 800px short side
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
