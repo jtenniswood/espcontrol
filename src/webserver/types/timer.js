@@ -14,6 +14,7 @@ registerButtonType("timer", {
   label: "Timer",
   allowInSubpage: true,
   hideLabel: true,
+  experimental: "timer",
   onSelect: function (b) {
     b.entity = "";
     b.icon = "Auto";

@@ -5591,7 +5591,7 @@ struct GridConfig {
 };
 
 inline bool experimental_card_enabled(const ParsedCfg &p, bool developer_experimental_features) {
-  if (p.type == "climate" || p.type == "light_temperature") return developer_experimental_features;
+  if (p.type == "climate" || p.type == "light_temperature" || p.type == "timer") return developer_experimental_features;
   return true;
 }
 
