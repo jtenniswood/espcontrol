@@ -4343,8 +4343,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_t *parent = lv_layer_top();
   ui.overlay = lv_obj_create(parent);
   lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
-  lv_obj_set_style_bg_color(ui.overlay, lv_color_hex(0x000000), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.overlay, LV_OPA_60, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.overlay, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.overlay, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.overlay, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.overlay, LV_OBJ_FLAG_SCROLLABLE);
