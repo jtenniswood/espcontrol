@@ -6055,7 +6055,7 @@ inline void grid_phase2(
       subscribe_timer_card(ctx);
       if (p.label.empty())
         subscribe_friendly_name(s.text_lbl, p.entity);
-      ctx->tick_timer = lv_timer_create(timer_card_tick_cb, 1000, ctx);
+      ctx->tick_timer = lv_timer_create(timer_card_tick_cb, 250, ctx);
       continue;
     }
     if (p.type == "light_temperature") {
