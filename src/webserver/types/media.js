@@ -1,7 +1,29 @@
 // Media player card: playback buttons, volume, track position, or now-playing details.
+function mediaEditorMode(value) {
+  if (value === "controls") return "play_pause";
+  if (value === "previous" || value === "next" || value === "volume" ||
+      value === "position" || value === "now_playing" || value === "play_pause") {
+    return value;
+  }
+  return "play_pause";
+}
+
+function mediaEditorModeExperimental(value) {
+  var mode = mediaEditorMode(value);
+  return mode === "volume" || mode === "now_playing";
+}
+
+function mediaEditorModeAvailable(value) {
+  return !mediaEditorModeExperimental(value) || isExperimentalEnabled("media_" + mediaEditorMode(value));
+}
+
+function mediaEditorValidMode(value) {
+  var mode = mediaEditorMode(value);
+  return mediaEditorModeAvailable(mode) ? mode : "play_pause";
+}
+
 registerButtonType("media", {
   label: "Media",
-  experimental: "media",
   allowInSubpage: true,
   hideLabel: true,
   labelPlaceholder: "e.g. Living Room Speaker",
@@ -24,15 +46,11 @@ registerButtonType("media", {
     ];
 
     function validMode(value) {
-      if (value === "controls") return "play_pause";
-      for (var i = 0; i < modes.length; i++) {
-        if (modes[i][0] === value) return value;
-      }
-      return "play_pause";
+      return mediaEditorValidMode(value);
     }
 
     function mediaDefaultIcon(value) {
-      var mode = validMode(value);
+      var mode = mediaEditorMode(value);
       if (mode === "previous") return "Skip Previous";
       if (mode === "next") return "Skip Next";
       if (mode === "volume") return "Volume High";
@@ -48,7 +66,7 @@ registerButtonType("media", {
     }
 
     function mediaActionLabel(value) {
-      var mode = validMode(value);
+      var mode = mediaEditorMode(value);
       if (mode === "previous") return "Previous";
       if (mode === "next") return "Next";
       if (mode === "volume") return "Volume";
@@ -67,6 +85,7 @@ registerButtonType("media", {
     modeSelect.className = "sp-select";
     modeSelect.id = helpers.idPrefix + "media-mode";
     modes.forEach(function (entry) {
+      if (!mediaEditorModeAvailable(entry[0])) return;
       var opt = document.createElement("option");
       opt.value = entry[0];
       opt.textContent = entry[1];
@@ -107,10 +126,7 @@ registerButtonType("media", {
   },
   renderSettings: function (panel, b, slot, helpers) {
     function validMode(value) {
-      if (value === "controls") return "play_pause";
-      if (value === "previous" || value === "next" || value === "volume" ||
-          value === "position" || value === "now_playing") return value;
-      return "play_pause";
+      return mediaEditorValidMode(value);
     }
 
     b.sensor = validMode(b.sensor);
@@ -227,7 +243,7 @@ registerButtonType("media", {
       if (value === "now_playing") return { mode: "now_playing", label: "Now Playing", icon: "music" };
       return { mode: "play_pause", label: "Play/Pause", icon: "play-pause" };
     }
-    var info = modeInfo(b.sensor);
+    var info = modeInfo(mediaEditorValidMode(b.sensor));
     var mode = info.mode;
     var label = (b.label && b.label.trim()) || info.label;
     var badge = '<span class="sp-type-badge mdi mdi-speaker"></span>';
