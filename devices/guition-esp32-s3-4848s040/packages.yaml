@@ -12,7 +12,7 @@ substitutions:
   screen_width: "480"
   screen_height: "480"
   content_width: "380"
-  setup_icon_font_id: icon_font_setup
+  setup_icon_font_id: icon_font_setup_sm
   setup_title_font_id: setup_title_font
   setup_body_font_id: setup_body_font
   setup_pad_row: "20"
