@@ -32,6 +32,7 @@ EspControl is free, open-source firmware that turns supported **ESP32 touchscree
 - **4-inch square panel (4848S040):** [AliExpress](https://s.click.aliexpress.com/e/_c3sIhvBv) (~£16)
 ## 3D Printable Stands
 
+- **10.1-inch desk stand (JC8012P4A1):** [MakerWorld](https://makerworld.com/en/models/2490049-guition-p4-10inch-screen-stand#profileId-2736046)
 - **7-inch desk stand (JC1060P470):** [MakerWorld](https://makerworld.com/en/models/2387421-guition-esp32p4-jc1060p470-7inch-screen-desk-mount#profileId-2614995)
 - **4-inch desk stand (4848S040):** [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301)
 
