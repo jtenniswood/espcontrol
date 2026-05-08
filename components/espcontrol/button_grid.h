@@ -3485,10 +3485,12 @@ inline int parse_timer_hms(esphome::StringRef value) {
 inline void format_timer_secs(int secs, char *buf, size_t bufsz) {
   if (secs < 0) secs = 0;
   if (secs >= 3600) {
+    // Drop seconds at or above one hour so the string stays short enough
+    // to fit the card. Reverts to M:SS automatically once the timer drops
+    // back below an hour.
     int h = secs / 3600;
     int m = (secs / 60) % 60;
-    int s = secs % 60;
-    snprintf(buf, bufsz, "%d:%02d:%02d", h, m, s);
+    snprintf(buf, bufsz, "%d:%02d", h, m);
   } else {
     int m = secs / 60;
     int s = secs % 60;
