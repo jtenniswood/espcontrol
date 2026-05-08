@@ -3505,7 +3505,10 @@ inline void timer_card_refresh(TimerCardCtx *ctx) {
   } else if (ctx->state == "paused") {
     secs = ctx->remaining_secs;
   } else {
-    secs = ctx->duration_secs;
+    // Idle (never started or just finished): always show 0:00 so the card
+    // doesn't snap back to the configured duration in the last second of a
+    // countdown when HA transitions the entity to idle.
+    secs = 0;
   }
   char buf[16];
   format_timer_secs(secs, buf, sizeof(buf));
