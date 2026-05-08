@@ -11,7 +11,6 @@
       "media_title_font": "media_title_font",
       "volume_number_font": "volume_modal_number_font_600",
       "volume_label_font": "volume_modal_label_font_600",
-      "volume_icon_font": "volume_modal_icon_font_600",
       "climate_target_font": "climate_target_font",
       "color_correction": false,
       "wrap_tall_labels": true
@@ -27,7 +26,6 @@
       "media_title_font": "media_title_font_lg",
       "volume_number_font": "volume_modal_number_font_lg",
       "volume_label_font": "label_font_lg",
-      "volume_icon_font": "volume_modal_icon_font_480",
       "climate_target_font": "climate_target_font_lg",
       "color_correction": true,
       "wrap_tall_labels": false
@@ -43,7 +41,6 @@
       "media_title_font": "media_title_font_lt",
       "volume_number_font": "volume_modal_number_font_800",
       "volume_label_font": "volume_modal_label_font_800",
-      "volume_icon_font": "volume_modal_icon_font_800",
       "climate_target_font": "climate_target_font_lt",
       "color_correction": true,
       "wrap_tall_labels": true
@@ -59,7 +56,6 @@
       "media_title_font": "media_title_font_md_square",
       "volume_number_font": "volume_modal_number_font_md_square",
       "volume_label_font": "volume_modal_label_font_md_square",
-      "volume_icon_font": "icon_font_md_square",
       "climate_target_font": "climate_target_font_md_square",
       "color_correction": true,
       "wrap_tall_labels": false
@@ -75,7 +71,6 @@
       "media_title_font": "media_title_font",
       "volume_number_font": "volume_modal_number_font",
       "volume_label_font": "label_font_sm",
-      "volume_icon_font": "icon_font_sm",
       "climate_target_font": "climate_target_font_sm",
       "color_correction": false,
       "wrap_tall_labels": false

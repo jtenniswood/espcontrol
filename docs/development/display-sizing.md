@@ -48,7 +48,7 @@ These are the current reference sizes from the S3 480px screen.
 | Setup screen icons | `61` | WiFi, Ethernet, cog, Home Assistant setup icons |
 | Volume modal number | `112` | Large percentage number |
 | Volume modal label | `22` | `Volume` label |
-| Volume modal icons | `44` | Back, minus, and plus controls |
+| Volume modal icons | `44` | Back, minus, and plus controls using the standard card icon font |
 | Volume modal arc stroke | `18` | Runtime layout constant, not a font |
 
 If a master size changes, update each native target font using the same formula.
@@ -133,4 +133,3 @@ python3 -c 'import math; ref=44; short=600; print(math.floor(ref * short / 480 +
 ```
 
 Change `ref` to the 480px reference size and `short` to the target device's short side.
-

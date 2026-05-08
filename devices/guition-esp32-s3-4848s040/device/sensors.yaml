@@ -43,7 +43,6 @@ esphome:
             cfg.media_title_font = id(media_title_font)->get_lv_font();
             cfg.volume_number_font = id(volume_modal_number_font)->get_lv_font();
             cfg.volume_label_font = id(label_font_sm)->get_lv_font();
-            cfg.volume_icon_font = id(icon_font_sm)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font_sm)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
@@ -121,7 +120,6 @@ esphome:
             cfg.media_title_font = id(media_title_font)->get_lv_font();
             cfg.volume_number_font = id(volume_modal_number_font)->get_lv_font();
             cfg.volume_label_font = id(label_font_sm)->get_lv_font();
-            cfg.volume_icon_font = id(icon_font_sm)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font_sm)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();

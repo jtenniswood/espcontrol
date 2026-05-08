@@ -80,16 +80,6 @@ font:
       - "\U000F0415"  # mdi-plus
       - "\U000F050F"  # mdi-thermometer
 
-  # Volume modal controls: 44px on the S3 reference scaled for the larger 4.3-inch portrait card grid
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: volume_modal_icon_font_480
-    size: 62
-    bpp: 4
-    glyphs:
-      - "\U000F0141"  # mdi-chevron-left
-      - "\U000F0374"  # mdi-minus
-      - "\U000F0415"  # mdi-plus
-
   # Setup screen icons: 61px on the S3 reference scaled for the larger 4.3-inch portrait setup layout
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: icon_font_setup_480

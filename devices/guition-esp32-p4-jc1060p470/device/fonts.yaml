@@ -49,16 +49,6 @@ font:
     glyphs:
       - "Volume"
 
-  # Volume modal controls: 44px on the 480px S3 reference scaled to this 600px short side
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: volume_modal_icon_font_600
-    size: 55
-    bpp: 4
-    glyphs:
-      - "\U000F0141"  # mdi-chevron-left
-      - "\U000F0374"  # mdi-minus
-      - "\U000F0415"  # mdi-plus
-
   # Climate detail controls: 42px on the 480px S3 reference scaled to this 600px short side
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: climate_control_icon_font_600
