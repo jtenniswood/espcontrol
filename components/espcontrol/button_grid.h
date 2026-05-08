@@ -4193,18 +4193,6 @@ inline lv_coord_t media_volume_scaled_px(lv_coord_t px, lv_coord_t short_side) {
   return px * short_side / MEDIA_VOLUME_REFERENCE_SIDE_PX;
 }
 
-inline int media_volume_scaled_zoom(lv_coord_t short_side) {
-  return 256 * short_side / MEDIA_VOLUME_REFERENCE_SIDE_PX;
-}
-
-inline void media_volume_set_child_label_zoom(lv_obj_t *btn, int zoom) {
-  if (!btn) return;
-  lv_obj_t *label = lv_obj_get_child(btn, 0);
-  if (!label) return;
-  lv_obj_set_style_transform_zoom(label, zoom, LV_PART_MAIN);
-  lv_obj_center(label);
-}
-
 inline void media_volume_grid_card_rect(lv_coord_t sw, lv_coord_t sh,
                                         lv_coord_t &x, lv_coord_t &y,
                                         lv_coord_t &w, lv_coord_t &h) {
@@ -4269,7 +4257,6 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
     panel_h = sh - panel_y - panel_bottom;
   }
   int width_percent = normalize_width_compensation_percent(ctx->width_compensation_percent);
-  int modal_zoom = media_volume_scaled_zoom(short_side);
   lv_coord_t back_size = media_volume_scaled_px(MEDIA_VOLUME_BACK_BUTTON_REF_PX, short_side);
   lv_coord_t btn_size = media_volume_scaled_px(MEDIA_VOLUME_BUTTON_REF_PX, short_side);
   lv_coord_t inset = media_volume_scaled_px(MEDIA_VOLUME_INSET_REF_PX, short_side);
@@ -4304,7 +4291,6 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_size(ui.back_btn, back_size, back_size);
   lv_obj_set_style_radius(ui.back_btn, back_size / 2, LV_PART_MAIN);
   lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, inset, inset);
-  media_volume_set_child_label_zoom(ui.back_btn, modal_zoom);
   lv_obj_set_size(ui.arc, arc_size, arc_size);
   apply_width_compensation(ui.arc, ctx->width_compensation_percent);
   lv_obj_align(ui.arc, LV_ALIGN_CENTER, arc_center_x, arc_center_y);
@@ -4315,11 +4301,6 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_radius(ui.minus_btn, btn_size / 2, LV_PART_MAIN);
   lv_obj_set_size(ui.plus_btn, btn_size, btn_size);
   lv_obj_set_style_radius(ui.plus_btn, btn_size / 2, LV_PART_MAIN);
-  media_volume_set_child_label_zoom(ui.minus_btn, modal_zoom);
-  media_volume_set_child_label_zoom(ui.plus_btn, modal_zoom);
-  lv_obj_set_style_transform_zoom(ui.title_lbl, modal_zoom, LV_PART_MAIN);
-  lv_obj_set_style_transform_zoom(ui.pct_lbl, modal_zoom, LV_PART_MAIN);
-  lv_obj_set_style_transform_zoom(ui.pct_unit_lbl, modal_zoom, LV_PART_MAIN);
   lv_obj_set_style_translate_y(ui.pct_unit_lbl,
     media_volume_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, short_side), LV_PART_MAIN);
   lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, title_center_y);
@@ -5374,6 +5355,8 @@ struct GridConfig {
   const lv_font_t *sp_sensor_font;
   const lv_font_t *media_title_font;
   const lv_font_t *volume_number_font;
+  const lv_font_t *volume_label_font = nullptr;
+  const lv_font_t *volume_icon_font = nullptr;
   const lv_font_t *climate_target_font;
   std::string temperature_unit;
   std::string timezone;
@@ -5799,9 +5782,14 @@ inline void grid_phase2(
             has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
             cfg.sp_sensor_font,
             cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
-            lv_obj_get_style_text_font(s.unit_lbl, LV_PART_MAIN),
-            lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-            cfg.icon_font, cfg.width_compensation_percent,
+            cfg.volume_label_font
+              ? cfg.volume_label_font
+              : lv_obj_get_style_text_font(s.unit_lbl, LV_PART_MAIN),
+            cfg.volume_label_font
+              ? cfg.volume_label_font
+              : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+            cfg.volume_icon_font ? cfg.volume_icon_font : cfg.icon_font,
+            cfg.width_compensation_percent,
             s.sensor_lbl, s.unit_lbl,
             cfg.pause_home_idle, cfg.resume_home_idle);
           subscribe_media_volume_state(ctx);
@@ -6198,9 +6186,14 @@ inline void grid_phase2(
               has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
               cfg.sp_sensor_font,
               cfg.volume_number_font ? cfg.volume_number_font : cfg.sp_sensor_font,
-              lv_obj_get_style_text_font(sub_slot.unit_lbl, LV_PART_MAIN),
-              lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-              cfg.icon_font, cfg.width_compensation_percent,
+              cfg.volume_label_font
+                ? cfg.volume_label_font
+                : lv_obj_get_style_text_font(sub_slot.unit_lbl, LV_PART_MAIN),
+              cfg.volume_label_font
+                ? cfg.volume_label_font
+                : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+              cfg.volume_icon_font ? cfg.volume_icon_font : cfg.icon_font,
+              cfg.width_compensation_percent,
               sub_slot.sensor_lbl, sub_slot.unit_lbl,
               cfg.pause_home_idle, cfg.resume_home_idle);
             subscribe_media_volume_state(ctx);

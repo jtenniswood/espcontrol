@@ -63,6 +63,22 @@ font:
     glyphs:
       - "0123456789.-"
 
+  # Volume modal: 112px on the 480px S3 reference scaled to this 720px short side
+  - file: "gfonts://Roboto@Light"
+    id: volume_modal_number_font_md_square
+    size: 168
+    bpp: 4
+    glyphs:
+      - "0123456789"
+
+  # Volume modal labels: 22px on the 480px S3 reference scaled to this 720px short side
+  - file: "gfonts://Roboto"
+    id: volume_modal_label_font_md_square
+    size: 33
+    bpp: 4
+    glyphs:
+      - "Volume%"
+
   # Top bar clock and temperature (28px)
   - file: "gfonts://Roboto"
     id: clockbar_font_md_square

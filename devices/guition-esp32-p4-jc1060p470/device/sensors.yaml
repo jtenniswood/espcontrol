@@ -50,7 +50,9 @@ esphome:
             cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font)->get_lv_font();
             cfg.media_title_font = id(media_title_font)->get_lv_font();
-            cfg.volume_number_font = id(volume_modal_number_font)->get_lv_font();
+            cfg.volume_number_font = id(volume_modal_number_font_600)->get_lv_font();
+            cfg.volume_label_font = id(volume_modal_label_font_600)->get_lv_font();
+            cfg.volume_icon_font = id(volume_modal_icon_font_600)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
@@ -137,7 +139,9 @@ esphome:
             cfg.climate_control_icon_font = id(climate_control_icon_font)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font)->get_lv_font();
             cfg.media_title_font = id(media_title_font)->get_lv_font();
-            cfg.volume_number_font = id(volume_modal_number_font)->get_lv_font();
+            cfg.volume_number_font = id(volume_modal_number_font_600)->get_lv_font();
+            cfg.volume_label_font = id(volume_modal_label_font_600)->get_lv_font();
+            cfg.volume_icon_font = id(volume_modal_icon_font_600)->get_lv_font();
             cfg.climate_target_font = id(climate_target_font)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
