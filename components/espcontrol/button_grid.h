@@ -3516,7 +3516,7 @@ constexpr lv_coord_t MEDIA_VOLUME_BUTTON_REF_PX = 80;
 constexpr lv_coord_t MEDIA_VOLUME_INSET_REF_PX = 18;
 constexpr lv_coord_t MEDIA_VOLUME_CONTROLS_GAP_REF_PX = 24;
 constexpr lv_coord_t MEDIA_VOLUME_CONTROLS_DOWN_REF_PX = 22;
-constexpr lv_coord_t MEDIA_VOLUME_TITLE_OFFSET_REF_PX = 70;
+constexpr lv_coord_t MEDIA_VOLUME_TITLE_GAP_REF_PX = 10;
 constexpr lv_coord_t MEDIA_VOLUME_UNIT_Y_REF_PX = -22;
 
 struct MediaVolumeCtx {
@@ -4290,8 +4290,13 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_coord_t controls_center_y = arc_size / 2 - btn_size / 2 - inset +
     media_volume_scaled_px(MEDIA_VOLUME_CONTROLS_DOWN_REF_PX, short_side);
   lv_coord_t value_center_y = arc_stroke / 2;
+  if (ui.title_lbl) lv_obj_update_layout(ui.title_lbl);
+  if (ui.pct_row) lv_obj_update_layout(ui.pct_row);
+  lv_coord_t title_h = ui.title_lbl ? lv_obj_get_height(ui.title_lbl) : 0;
+  lv_coord_t value_h = ui.pct_row ? lv_obj_get_height(ui.pct_row) : 0;
+  lv_coord_t title_gap = media_volume_scaled_px(MEDIA_VOLUME_TITLE_GAP_REF_PX, short_side);
   lv_coord_t title_center_y = value_center_y -
-    media_volume_scaled_px(MEDIA_VOLUME_TITLE_OFFSET_REF_PX, short_side);
+    (value_h / 2 + title_gap + title_h / 2);
 
   lv_obj_set_size(ui.back_btn, back_size, back_size);
   lv_obj_set_style_radius(ui.back_btn, back_size / 2, LV_PART_MAIN);
