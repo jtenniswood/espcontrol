@@ -42,7 +42,7 @@ function ensureInternalRelaySelection(b) {
 }
 
 registerButtonType("internal", {
-  label: "Internal",
+  label: "Internal Switches",
   allowInSubpage: true,
   labelPlaceholder: "e.g. Porch Light",
   isAvailable: function () {

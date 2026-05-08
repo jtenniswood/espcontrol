@@ -22,7 +22,7 @@ A subpage has one fewer usable slot than the home screen because it includes a *
 
 You can also right-click an empty space on the home screen and choose **Create Subpage**.
 
-Subpages can contain Switch, Action, Trigger, Sensor, Slider, Cover, Garage Door, Date, World Clock, Weather, and Internal cards. Subpages cannot contain another Subpage card.
+Subpages can contain Switch, Action, Trigger, Sensor, Slider, Cover, Garage Door, Date, World Clock, Weather, and Internal Switches cards. Subpages cannot contain another Subpage card.
 
 ## Show State
 

@@ -36,7 +36,7 @@ The **Type** dropdown uses these card names on the device:
 | **[Date](/card-types/calendar)** | Shows the local date, or the date and time. | No |
 | **[World Clock](/card-types/timezones)** | Shows the current time for another city. | No, choose a city/timezone |
 | **[Weather](/card-types/weather)** | Shows the current condition or tomorrow's forecast from a weather entity. | Yes, as **Weather Entity** |
-| **[Internal](/card-types/internal-relays)** | Controls a built-in relay locally on panels that have relay hardware. | Choose a relay |
+| **[Internal Switches](/card-types/internal-relays)** | Controls a built-in relay locally on panels that have relay hardware. | Choose a relay |
 | **[Subpage](/features/subpages)** | Opens a folder-like page of extra cards. | No |
 
 For cards that use Home Assistant, enter the entity name from Home Assistant, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. You can find entity names under **Settings > Devices & Services** in Home Assistant.
