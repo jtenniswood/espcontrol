@@ -8,7 +8,7 @@
 
 font:
   # Main page: large statistics / sensor values
-  - file: "gfonts://Roboto@Light"
+  - file: "gfonts://Roboto@Thin"
     id: statistics_font_lt
     size: 56
     bpp: 4
@@ -17,7 +17,7 @@ font:
       - ":"
 
   # Media now-playing titles (sensor value size, full text glyph coverage)
-  - file: "gfonts://Roboto@Light"
+  - file: "gfonts://Roboto@Thin"
     id: media_title_font_lt
     size: 50
     bpp: 4
