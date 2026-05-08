@@ -10,7 +10,7 @@ font:
   # Main page: large statistics / sensor values
   - file: "gfonts://Roboto@Thin"
     id: statistics_font_lt
-    size: 56
+    size: 52
     bpp: 4
     glyphs:
       - "0123456789.-°/%kWhVA "
@@ -19,7 +19,7 @@ font:
   # Media now-playing titles (sensor value size, full text glyph coverage)
   - file: "gfonts://Roboto@Thin"
     id: media_title_font_lt
-    size: 50
+    size: 46
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
@@ -53,7 +53,7 @@ font:
   # Main page icons: 44px on the 480px S3 reference scaled to this 800px short side
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: icon_font_800
-    size: 66
+    size: 60
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
