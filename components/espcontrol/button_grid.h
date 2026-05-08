@@ -3563,6 +3563,11 @@ inline MediaVolumeModalUi &media_volume_modal_ui() {
   return ui;
 }
 
+inline lv_coord_t media_volume_card_radius(MediaVolumeCtx *ctx) {
+  if (!ctx || !ctx->btn) return 18;
+  return lv_obj_get_style_radius(ctx->btn, LV_PART_MAIN);
+}
+
 inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizontal) {
   if (!slider || !btn) return;
   lv_coord_t bw = lv_obj_get_width(btn);
@@ -4283,6 +4288,7 @@ inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
   lv_obj_set_size(ui.panel, panel_w, panel_h);
   lv_obj_set_pos(ui.panel, panel_x, panel_y);
+  lv_obj_set_style_radius(ui.panel, media_volume_card_radius(ctx), LV_PART_MAIN);
   lv_coord_t arc_center_x = (arc_size - visible_arc_w) / 2;
   lv_coord_t arc_center_y = 0;
   lv_coord_t controls_center_y = arc_size / 2 - btn_size / 2 - inset;
@@ -4352,7 +4358,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_bg_opa(ui.panel, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.panel, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.panel, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(ui.panel, 18, LV_PART_MAIN);
+  lv_obj_set_style_radius(ui.panel, media_volume_card_radius(ctx), LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.panel, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.panel, LV_OBJ_FLAG_SCROLLABLE);
 
