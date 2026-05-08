@@ -102,8 +102,8 @@ const screenProducts: Record<string, Record<string, string>> = {
     processor: 'ESP32-P4',
   },
   'screens/p4-86.md': {
-    name: 'Waveshare ESP32-P4 86 Panel',
-    brand: 'Waveshare',
+    name: 'ESP32-P4 86 Panel',
+    brand: 'ESP32-P4',
     model: 'ESP32-P4-86-Panel-ETH-2RO',
     size: '4 inches',
     resolution: '720 x 720',
@@ -150,7 +150,7 @@ const faqItems = [
   {
     question: 'How Many Cards Can I Have?',
     answer:
-      'The home screen supports 20 cards on JC8012P4A1, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040 or the Waveshare ESP32-P4 86 Panel, with more available through subpages.',
+      'The home screen supports 20 cards on JC8012P4A1, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
   },
   {
     question: 'What Is a Subpage?',
@@ -165,7 +165,7 @@ const faqItems = [
   {
     question: 'Which Panels Are Supported?',
     answer:
-      'EspControl supports the Guition JC8012P4A1, JC1060P470, JC4880P443, 4848S040, and Waveshare ESP32-P4 86 Panel touchscreens.',
+      'EspControl supports the Guition JC8012P4A1, JC1060P470, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
   },
   {
     question: 'Does the Panel Work with Other Smart Home Platforms?',
@@ -205,7 +205,7 @@ export default defineConfig({
       {
         name: 'keywords',
         content:
-          'Espcontrol, ESPHome, Home Assistant, ESP32-P4, ESP32-S3, Guition, Waveshare, LVGL, touchscreen, control panel',
+          'Espcontrol, ESPHome, Home Assistant, ESP32-P4, ESP32-S3, Guition, LVGL, touchscreen, control panel',
       },
     ],
     ['meta', { property: 'og:type', content: 'website' }],
@@ -381,7 +381,7 @@ export default defineConfig({
           { text: '10.1-inch JC8012P4A1', link: '/screens/jc8012p4a1' },
           { text: '7-inch JC1060P470', link: '/screens/jc1060p470' },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
-          { text: '4-inch Waveshare P4 86 Panel', link: '/screens/p4-86' },
+          { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
         ],
       },
