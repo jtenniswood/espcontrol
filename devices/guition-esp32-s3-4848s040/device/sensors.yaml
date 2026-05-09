@@ -53,6 +53,7 @@ esphome:
               id(home_screen_idle_suspended) = false;
               id(home_screen_idle_check).execute();
             };
+            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
@@ -128,6 +129,7 @@ esphome:
               id(home_screen_idle_suspended) = false;
               id(home_screen_idle_check).execute();
             };
+            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);

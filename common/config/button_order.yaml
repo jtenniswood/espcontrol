@@ -3,7 +3,9 @@
 # =============================================================================
 # Comma-separated list of slot numbers defining the grid layout. Suffix "d"
 # marks a double-height button, suffix "w" marks a double-wide button,
-# and suffix "b" marks a 2×2 (big) button. Managed by the web UI editor.
+# suffix "b" marks a 2×2 (big) button, suffix "t" marks a 3×1 extra-tall
+# button, and suffix "x" marks a 1×3 extra-wide button. Managed by the web UI
+# editor.
 # =============================================================================
 
 text:

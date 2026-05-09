@@ -198,11 +198,23 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return id(screen_rotation_select).current_option() == "180";'
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
           then:
-            - lvgl.display.set_rotation: 0
+            - lvgl.display.set_rotation: 270
           else:
-            - lvgl.display.set_rotation: 180
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 0
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 90
+                      else:
+                        - lvgl.display.set_rotation: 180
 
 select:
   - platform: template
@@ -217,7 +229,9 @@ select:
     initial_option: "0"
     options:
       - "0"
+      - "90"
       - "180"
+      - "270"
     on_value:
       then:
         - script.execute: apply_screen_rotation

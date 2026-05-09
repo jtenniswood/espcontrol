@@ -928,15 +928,26 @@ inline int width_compensation_scale(int percent) {
   return 256 * percent / 100;
 }
 
+inline bool &width_compensation_vertical_axis() {
+  static bool vertical = false;
+  return vertical;
+}
+
+inline void set_width_compensation_vertical_axis(bool vertical) {
+  width_compensation_vertical_axis() = vertical;
+}
+
 inline lv_coord_t compensated_width(lv_coord_t width, int percent) {
+  if (width_compensation_vertical_axis()) return width;
   percent = normalize_width_compensation_percent(percent);
   return width * percent / 100;
 }
 
 inline void apply_width_compensation(lv_obj_t *obj, int percent) {
   if (!obj) return;
-  lv_obj_set_style_transform_scale_x(obj, width_compensation_scale(percent), LV_PART_MAIN);
-  lv_obj_set_style_transform_scale_y(obj, 256, LV_PART_MAIN);
+  int scale = width_compensation_scale(percent);
+  lv_obj_set_style_transform_scale_x(obj, width_compensation_vertical_axis() ? 256 : scale, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_y(obj, width_compensation_vertical_axis() ? scale : 256, LV_PART_MAIN);
 }
 
 inline void apply_slot_text_width_compensation(const BtnSlot &s, int percent) {
@@ -949,15 +960,32 @@ inline void apply_slot_text_width_compensation(const BtnSlot &s, int percent) {
 // Result of parsing a button_order CSV string into grid cell positions
 struct OrderResult {
   int positions[MAX_GRID_SLOTS] = {};    // slot number at each grid position (1-based, 0=empty)
-  bool is_double[MAX_GRID_SLOTS] = {};   // slot uses double height (suffix "d" or "b")
-  bool is_wide[MAX_GRID_SLOTS] = {};     // slot uses double width (suffix "w" or "b")
+  int row_span[MAX_GRID_SLOTS] = {};     // number of grid rows used by each slot
+  int col_span[MAX_GRID_SLOTS] = {};     // number of grid columns used by each slot
 };
 
-// Parse "1,2d,3w,4b,..." into positions + double/wide flags
+inline void grid_token_spans(char suffix, int &row_span, int &col_span) {
+  row_span = 1;
+  col_span = 1;
+  if (suffix == 'd') row_span = 2;
+  else if (suffix == 'w') col_span = 2;
+  else if (suffix == 'b') { row_span = 2; col_span = 2; }
+  else if (suffix == 't') row_span = 3;
+  else if (suffix == 'x') col_span = 3;
+}
+
+inline bool grid_token_has_span_suffix(char suffix) {
+  return suffix == 'd' || suffix == 'w' || suffix == 'b' ||
+    suffix == 't' || suffix == 'x';
+}
+
+// Parse "1,2d,3w,4b,5t,6x,..." into positions + row/column spans
 inline void parse_order_string(const std::string &order_str, int num_slots, OrderResult &result) {
   memset(result.positions, 0, sizeof(result.positions));
-  memset(result.is_double, 0, sizeof(result.is_double));
-  memset(result.is_wide, 0, sizeof(result.is_wide));
+  for (int i = 0; i < MAX_GRID_SLOTS; i++) {
+    result.row_span[i] = 1;
+    result.col_span[i] = 1;
+  }
   int slot_limit = bounded_grid_slots(num_slots);
   if (order_str.empty()) return;
   size_t gpos = 0, start = 0;
@@ -966,16 +994,16 @@ inline void parse_order_string(const std::string &order_str, int num_slots, Orde
     if (comma == std::string::npos) comma = order_str.length();
     if (comma > start) {
       std::string token = order_str.substr(start, comma - start);
-      bool dbl = !token.empty() && token.back() == 'd';
-      bool wide = !token.empty() && token.back() == 'w';
-      bool big = !token.empty() && token.back() == 'b';
-      if (big) { dbl = true; wide = true; }
-      if (dbl || wide) token.pop_back();
+      int row_span = 1, col_span = 1;
+      if (!token.empty() && grid_token_has_span_suffix(token.back())) {
+        grid_token_spans(token.back(), row_span, col_span);
+        token.pop_back();
+      }
       int v = atoi(token.c_str());
       if (v >= 1 && v <= slot_limit) {
         result.positions[gpos] = v;
-        result.is_double[v - 1] = dbl;
-        result.is_wide[v - 1] = wide;
+        result.row_span[v - 1] = row_span;
+        result.col_span[v - 1] = col_span;
       }
     }
     gpos++;
@@ -983,25 +1011,27 @@ inline void parse_order_string(const std::string &order_str, int num_slots, Orde
   }
 }
 
-// Zero out grid cells that are covered by a neighbouring double/wide/big button
+// Zero out grid cells that are covered by a neighbouring multi-cell button
 inline void clear_spanned_cells(const OrderResult &order, int num_slots, int cols, OrderResult &result) {
   int slot_limit = bounded_grid_slots(num_slots);
   for (int p = 0; p < slot_limit; p++) {
     result.positions[p] = order.positions[p];
-    result.is_double[p] = order.is_double[p];
-    result.is_wide[p] = order.is_wide[p];
+    result.row_span[p] = order.row_span[p] > 0 ? order.row_span[p] : 1;
+    result.col_span[p] = order.col_span[p] > 0 ? order.col_span[p] : 1;
   }
   for (int p = 0; p < slot_limit; p++) {
     if (result.positions[p] <= 0) continue;
     int idx = result.positions[p] - 1;
-    if (result.is_double[idx] && p + cols < slot_limit) {
-      result.positions[p + cols] = 0;
-    }
-    if (result.is_wide[idx] && (p + 1) % cols != 0 && p + 1 < slot_limit) {
-      result.positions[p + 1] = 0;
-    }
-    if (result.is_double[idx] && result.is_wide[idx] && (p + 1) % cols != 0 && p + cols + 1 < slot_limit) {
-      result.positions[p + cols + 1] = 0;
+    int row_span = result.row_span[idx] > 0 ? result.row_span[idx] : 1;
+    int col_span = result.col_span[idx] > 0 ? result.col_span[idx] : 1;
+    int col = p % cols;
+    for (int r = 0; r < row_span; r++) {
+      for (int c = 0; c < col_span; c++) {
+        if (r == 0 && c == 0) continue;
+        if (col + c >= cols) continue;
+        int covered = p + r * cols + c;
+        if (covered < slot_limit) result.positions[covered] = 0;
+      }
     }
   }
 }
@@ -3467,6 +3497,10 @@ inline bool climate_is_active(ClimateControlCtx *ctx) {
            ctx->hvac_action == "unavailable");
 }
 
+inline bool climate_temperature_controls_enabled(ClimateControlCtx *ctx) {
+  return ctx && ctx->available && ctx->hvac_mode != "off";
+}
+
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
   if (!ctx) return DEFAULT_SLIDER_COLOR;
   if (ctx->hvac_action == "heating") return CLIMATE_HEATING_COLOR;
@@ -3532,7 +3566,7 @@ inline std::string climate_service_temp_value(int tenths) {
 }
 
 inline void climate_send_temperature(ClimateControlCtx *ctx) {
-  if (!ctx || ctx->entity_id.empty()) return;
+  if (!ctx || ctx->entity_id.empty() || !climate_temperature_controls_enabled(ctx)) return;
   if (climate_dual_target(ctx)) {
     climate_send_action(ctx->entity_id, "climate.set_temperature", {
       {"target_temp_low", climate_service_temp_value(ctx->low_tenths)},
@@ -3571,6 +3605,10 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx);
 
 inline void climate_apply_selected_target(ClimateControlCtx *ctx, int value, bool send_now, bool debounce) {
   if (!ctx) return;
+  if (!climate_temperature_controls_enabled(ctx)) {
+    climate_control_set_modal_value(ctx);
+    return;
+  }
   value = climate_round_to_step(ctx, value);
   if (climate_dual_target(ctx)) {
     int gap = ctx->step_tenths > 0 ? ctx->step_tenths : CLIMATE_DEFAULT_STEP_TENTHS;
@@ -3819,18 +3857,39 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
 inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
+  bool temp_enabled = climate_temperature_controls_enabled(ctx);
   int target = climate_selected_target(ctx);
   if (ui.arc) {
-    ui.updating_arc = true;
-    lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
-    lv_arc_set_value(ui.arc, climate_clamp_tenths(ctx, target));
-    lv_obj_set_style_arc_color(ui.arc, lv_color_hex(climate_is_active(ctx) ? climate_active_color(ctx) : ctx->secondary_color), LV_PART_INDICATOR);
-    ui.updating_arc = false;
+    climate_set_obj_visible(ui.arc, temp_enabled);
+    if (temp_enabled) {
+      ui.updating_arc = true;
+      lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
+      lv_arc_set_value(ui.arc, climate_clamp_tenths(ctx, target));
+      lv_obj_set_style_arc_color(ui.arc, lv_color_hex(climate_is_active(ctx) ? climate_active_color(ctx) : ctx->secondary_color), LV_PART_INDICATOR);
+      ui.updating_arc = false;
+    }
   }
-  if (ui.target_lbl) lv_label_set_text(ui.target_lbl, climate_format_tenths(target, ctx->precision).c_str());
-  if (ui.unit_lbl) lv_label_set_text(ui.unit_lbl, display_temperature_unit_symbol());
-  if (ui.status_lbl) lv_label_set_text(ui.status_lbl, climate_action_label(ctx).c_str());
-  bool dual = climate_dual_target(ctx);
+  if (ui.target_row) climate_set_obj_visible(ui.target_row, true);
+  if (ui.target_lbl) {
+    if (!ctx->available) lv_label_set_text(ui.target_lbl, "--");
+    else if (!temp_enabled) lv_label_set_text(ui.target_lbl, "Off");
+    else lv_label_set_text(ui.target_lbl, climate_format_tenths(target, ctx->precision).c_str());
+  }
+  if (ui.unit_lbl) {
+    lv_label_set_text(ui.unit_lbl, temp_enabled ? display_temperature_unit_symbol() : "");
+    climate_set_obj_visible(ui.unit_lbl, temp_enabled);
+  }
+  if (ui.status_lbl) {
+    if (!temp_enabled) {
+      if (!ctx->available) lv_label_set_text(ui.status_lbl, "Unavailable");
+      else if (!ctx->configured_label.empty()) lv_label_set_text(ui.status_lbl, ctx->configured_label.c_str());
+      else if (!ctx->friendly_name.empty()) lv_label_set_text(ui.status_lbl, ctx->friendly_name.c_str());
+      else lv_label_set_text(ui.status_lbl, "Climate");
+    } else {
+      lv_label_set_text(ui.status_lbl, climate_action_label(ctx).c_str());
+    }
+  }
+  bool dual = temp_enabled && climate_dual_target(ctx);
   if (ui.hint_lbl) {
     lv_label_set_text(ui.hint_lbl, dual ? (ctx->edit_high ? "High target" : "Low target") : "");
     if (dual) lv_obj_clear_flag(ui.hint_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -3848,8 +3907,11 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
     if (ctx->edit_high) lv_obj_add_state(ui.high_btn, LV_STATE_CHECKED);
     else lv_obj_clear_state(ui.high_btn, LV_STATE_CHECKED);
   }
+  climate_set_obj_visible(ui.minus_btn, temp_enabled);
+  climate_set_obj_visible(ui.plus_btn, temp_enabled);
   climate_update_chip(ui.fan_chip, "Fan", ctx->fan_mode, !ctx->fan_modes.empty());
   climate_update_chip(ui.swing_chip, "Swing", ctx->swing_mode, !ctx->swing_modes.empty());
+  climate_set_obj_visible(ui.chips, temp_enabled);
   climate_update_menu_tile(ui.menu_mode_btn, "Mode", ctx->hvac_mode, !ctx->hvac_modes.empty());
   climate_update_menu_tile(ui.menu_preset_btn, "Preset", ctx->preset_mode, !ctx->preset_modes.empty());
   if (ui.action_menu_open) climate_set_dial_controls_visible(false);
@@ -5175,7 +5237,8 @@ inline std::string get_subpage_back_label(const std::string &order_str) {
     if (cm > st) {
       std::string tk = order_str.substr(st, cm - st);
       std::string base = subpage_back_token_base(tk);
-      if (base == "B" || base == "Bd" || base == "Bw" || base == "Bb") {
+      if (base == "B" || base == "Bd" || base == "Bw" || base == "Bb" ||
+          base == "Bt" || base == "Bx") {
         return subpage_back_label_from_order_token(tk);
       }
     }
@@ -5187,11 +5250,11 @@ inline std::string get_subpage_back_label(const std::string &order_str) {
 // Subpage grid layout with support for a back button token ("B")
 struct SubpageOrder {
   int positions[MAX_GRID_SLOTS] = {};
-  bool is_double[MAX_GRID_SLOTS] = {};
-  bool is_wide[MAX_GRID_SLOTS] = {};
+  int row_span[MAX_GRID_SLOTS] = {};
+  int col_span[MAX_GRID_SLOTS] = {};
   int back_pos = 0;
-  bool back_dbl = false;
-  bool back_wide = false;
+  int back_row_span = 1;
+  int back_col_span = 1;
   bool has_back_token = false;
 };
 
@@ -5225,11 +5288,15 @@ inline void subscribe_subpage_parent_indicator(
   );
 }
 
-// Parse subpage order CSV; "B"/"Bd"/"Bw"/"Bb" tokens mark the back button position
+// Parse subpage order CSV; "B"/"Bd"/"Bw"/"Bb"/"Bt"/"Bx" tokens mark the back button position
 inline void parse_subpage_order(const std::string &order_str, int num_slots, int num_btns,
                                 SubpageOrder &result) {
   int slot_limit = bounded_grid_slots(num_slots);
   int btn_limit = bounded_grid_slots(num_btns);
+  for (int i = 0; i < MAX_GRID_SLOTS; i++) {
+    result.row_span[i] = 1;
+    result.col_span[i] = 1;
+  }
   if (order_str.empty()) return;
   size_t gp2 = 0, st2 = 0;
   while (st2 <= order_str.length() && gp2 < (size_t)slot_limit) {
@@ -5238,22 +5305,21 @@ inline void parse_subpage_order(const std::string &order_str, int num_slots, int
     if (cm > st2) {
       std::string tk = order_str.substr(st2, cm - st2);
       tk = subpage_back_token_base(tk);
-      if (tk == "B" || tk == "Bd" || tk == "Bw" || tk == "Bb") {
+      if (tk == "B" || tk == "Bd" || tk == "Bw" || tk == "Bb" || tk == "Bt" || tk == "Bx") {
         result.back_pos = gp2;
-        result.back_dbl = (tk == "Bd" || tk == "Bb");
-        result.back_wide = (tk == "Bw" || tk == "Bb");
+        grid_token_spans(tk.length() > 1 ? tk[1] : '\0', result.back_row_span, result.back_col_span);
         result.has_back_token = true;
       } else {
-        bool d = !tk.empty() && tk.back() == 'd';
-        bool w = !tk.empty() && tk.back() == 'w';
-        bool bg = !tk.empty() && tk.back() == 'b';
-        if (bg) { d = true; w = true; }
-        if (d || w) tk.pop_back();
+        int row_span = 1, col_span = 1;
+        if (!tk.empty() && grid_token_has_span_suffix(tk.back())) {
+          grid_token_spans(tk.back(), row_span, col_span);
+          tk.pop_back();
+        }
         int v = atoi(tk.c_str());
         if (v >= 1 && v <= btn_limit) {
           result.positions[gp2] = v;
-          result.is_double[v - 1] = d;
-          result.is_wide[v - 1] = w;
+          result.row_span[v - 1] = row_span;
+          result.col_span[v - 1] = col_span;
         }
       }
     }
@@ -5272,6 +5338,7 @@ inline void parse_subpage_order(const std::string &order_str, int num_slots, int
 struct GridConfig {
   int num_slots;
   int cols;
+  bool width_compensation_vertical = false;
   bool color_correction;
   bool wrap_tall_labels;
   int width_compensation_percent = 100;
@@ -5296,6 +5363,25 @@ inline bool experimental_card_enabled(const ParsedCfg &p, bool developer_experim
 
 inline bool experimental_card_enabled(const ParsedCfg &p, const GridConfig &cfg) {
   return experimental_card_enabled(p, cfg.developer_experimental_features);
+}
+
+inline void configure_grid_layout(lv_obj_t *page, int num_slots, int cols) {
+  if (!page) return;
+  int slot_count = bounded_grid_slots(num_slots);
+  int col_count = cols > 0 ? cols : 1;
+  if (col_count > MAX_GRID_SLOTS) col_count = MAX_GRID_SLOTS;
+  int row_count = (slot_count + col_count - 1) / col_count;
+  if (row_count < 1) row_count = 1;
+  if (row_count > MAX_GRID_SLOTS) row_count = MAX_GRID_SLOTS;
+
+  static lv_coord_t col_dsc[MAX_GRID_SLOTS + 1];
+  static lv_coord_t row_dsc[MAX_GRID_SLOTS + 1];
+  for (int i = 0; i < col_count; i++) col_dsc[i] = LV_GRID_FR(1);
+  col_dsc[col_count] = LV_GRID_TEMPLATE_LAST;
+  for (int i = 0; i < row_count; i++) row_dsc[i] = LV_GRID_FR(1);
+  row_dsc[row_count] = LV_GRID_TEMPLATE_LAST;
+  lv_obj_set_grid_dsc_array(page, col_dsc, row_dsc);
+  lv_obj_update_layout(page);
 }
 
 struct CardPalette {
@@ -5406,11 +5492,14 @@ inline void grid_phase1(
     BtnSlot *slots, const GridConfig &cfg,
     const std::string &order_str,
     const std::string &on_hex, const std::string &off_hex,
-    const std::string &sensor_hex) {
+    const std::string &sensor_hex,
+    lv_obj_t *main_page_obj = nullptr) {
   ESP_LOGI("sensors", "Phase 1: visual setup start (%lu ms)", esphome::millis());
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
+  set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
+  configure_grid_layout(main_page_obj, NS, COLS);
   if (NS != cfg.num_slots) {
     ESP_LOGW("sensors", "Grid slot count %d exceeds max %d; ignoring extra slots",
       cfg.num_slots, MAX_GRID_SLOTS);
@@ -5466,8 +5555,8 @@ inline void grid_phase1(
     std::string scfg = s.config->state;
     lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
     int col = pos % COLS, row = pos / COLS;
-    int row_span = order.is_double[idx - 1] ? 2 : 1;
-    int col_span = order.is_wide[idx - 1] ? 2 : 1;
+    int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
+    int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     lv_obj_set_grid_cell(s.btn,
       LV_GRID_ALIGN_STRETCH, col, col_span,
       LV_GRID_ALIGN_STRETCH, row, row_span);
@@ -5503,8 +5592,10 @@ inline void grid_phase2(
     lv_obj_t *main_page_obj) {
   ESP_LOGI("sensors", "Phase 2: subscriptions + subpages start (%lu ms)", esphome::millis());
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
+  set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
+  configure_grid_layout(main_page_obj, NS, COLS);
   if (NS != cfg.num_slots) {
     ESP_LOGW("sensors", "Grid slot count %d exceeds max %d; ignoring extra slots",
       cfg.num_slots, MAX_GRID_SLOTS);
@@ -5884,8 +5975,8 @@ inline void grid_phase2(
     lv_obj_t *back_btn = create_grid_card_button(
       sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
     apply_button_colors(back_btn, false, DEFAULT_SLIDER_COLOR, has_off, off_val);
-    lv_obj_set_grid_cell(back_btn, LV_GRID_ALIGN_STRETCH, sp_ord.back_pos % COLS, sp_ord.back_wide ? 2 : 1,
-      LV_GRID_ALIGN_STRETCH, sp_ord.back_pos / COLS, sp_ord.back_dbl ? 2 : 1);
+    lv_obj_set_grid_cell(back_btn, LV_GRID_ALIGN_STRETCH, sp_ord.back_pos % COLS, sp_ord.back_col_span,
+      LV_GRID_ALIGN_STRETCH, sp_ord.back_pos / COLS, sp_ord.back_row_span);
     BtnSlot back_slot = create_dynamic_card_slot(
       back_btn, sp_icon_fnt, cfg.sp_sensor_font, sp_btn_fnt, sp_txt_color);
     apply_width_compensation(back_slot.icon_lbl, cfg.width_compensation_percent);
@@ -5946,11 +6037,11 @@ inline void grid_phase2(
       int col, row;
       if (sp_ord.has_back_token) { col = gp % COLS; row = gp / COLS; }
       else { int op = gp + 1; col = op % COLS; row = op / COLS; }
-      int rs = sp_ord.is_double[bn - 1] ? 2 : 1;
+      int rs = sp_ord.row_span[bn - 1] > 0 ? sp_ord.row_span[bn - 1] : 1;
 
       lv_obj_t *sb_btn = create_grid_card_button(
         sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
-      int cs = sp_ord.is_wide[bn - 1] ? 2 : 1;
+      int cs = sp_ord.col_span[bn - 1] > 0 ? sp_ord.col_span[bn - 1] : 1;
       lv_obj_set_grid_cell(sb_btn, LV_GRID_ALIGN_STRETCH, col, cs, LV_GRID_ALIGN_STRETCH, row, rs);
       BtnSlot sub_slot = create_dynamic_card_slot(
         sb_btn, sp_icon_fnt, cfg.sp_sensor_font, sp_btn_fnt, sp_txt_color);

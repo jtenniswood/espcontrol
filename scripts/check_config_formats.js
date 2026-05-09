@@ -206,6 +206,18 @@ assert.deepStrictEqual({
 }, "same-size imports clear stale button sizing");
 const importedSizedOrder = hooks.importedButtonOrderFor("1d,2,3", {});
 assert.strictEqual(importedSizedOrder.sizes["1"], 2, "imported button sizing is preserved");
+const importedExtraTallOrder = hooks.importedButtonOrderFor("1t,2,3", {});
+assert.strictEqual(importedExtraTallOrder.sizes["1"], 5, "imported extra tall sizing is preserved");
+assert.deepStrictEqual(Array.from(importedExtraTallOrder.grid.slice(0, 11)), [1, 2, 3, 0, 0, -1, 0, 0, 0, 0, -1], "extra tall spans three rows");
+const importedExtraWideOrder = hooks.importedButtonOrderFor("1x,2,3", {});
+assert.strictEqual(importedExtraWideOrder.sizes["1"], 6, "imported extra wide sizing is preserved");
+assert.deepStrictEqual(Array.from(importedExtraWideOrder.grid.slice(0, 5)), [1, -1, -1, 2, 3], "extra wide spans three columns");
+const duplicateExtraWideGrid = Array.from({ length: 20 }, (_, i) => i + 1);
+duplicateExtraWideGrid[1] = 0;
+duplicateExtraWideGrid[2] = 3;
+const duplicateExtraWideFallback = hooks.findDuplicatePlacementFor(duplicateExtraWideGrid, 19, 6, 20);
+assert.strictEqual(duplicateExtraWideFallback.pos, 1, "extra wide duplicate placement falls back to a free single slot");
+assert.strictEqual(duplicateExtraWideFallback.size, 1, "extra wide duplicate placement falls back to normal size when no matching space fits");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, false, 60, 3600), true, "short timeout allowed before limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 60, 3600), false, "short timeout blocked after old limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 10, 3600), true, "short timeout allowed after new limits load");
@@ -894,6 +906,21 @@ assert.strictEqual(JSON.stringify(hooks.parseBackOrderToken("Bw=Return%20Home"))
   token: "Bw",
   label: "Return Home",
 }), "back order token decodes custom label");
+assert.strictEqual(JSON.stringify(hooks.parseBackOrderToken("Bt=Return%20Home")), JSON.stringify({
+  token: "Bt",
+  label: "Return Home",
+}), "extra tall back order token decodes custom label");
+assert.strictEqual(JSON.stringify(hooks.parseBackOrderToken("Bx=Return%20Home")), JSON.stringify({
+  token: "Bx",
+  label: "Return Home",
+}), "extra wide back order token decodes custom label");
+assertSubpageRoundTrip(hooks, "extra tall and extra wide subpage order", {
+  order: ["Bt", "1t", "", "", "", "Bx", "2x"],
+  buttons: [
+    buttonShape({ entity: "light.tall", label: "Tall", icon: "Auto", icon_on: "Auto" }),
+    buttonShape({ entity: "light.wide", label: "Wide", icon: "Auto", icon_on: "Auto" }),
+  ],
+}, false);
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B,2|L,light.strip,Strip%20A,Lightbulb,Lightbulb%20On,h,,|S,sensor.temp,Temp,Thermometer,,sensor.temp,deg%20C,1")), {
   order: ["1", "B", "2"],

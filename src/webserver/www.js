@@ -21,6 +21,39 @@
   var GRID_COLS = CFG.cols;
   var GRID_ROWS = CFG.rows;
 
+  function isPortraitRotation(value) {
+    value = String(value == null ? "0" : value);
+    return value === "90" || value === "270";
+  }
+
+  function activeLayout() {
+    if (isPortraitRotation(state.screenRotation) && CFG.portrait) return CFG.portrait;
+    return CFG;
+  }
+
+  function syncPreviewOrientation() {
+    var layout = activeLayout();
+    var screen = layout.screen || CFG.screen;
+    GRID_COLS = layout.cols || CFG.cols;
+    GRID_ROWS = layout.rows || Math.ceil(NUM_SLOTS / GRID_COLS);
+
+    var r = document.documentElement.style;
+    r.setProperty("--screen-w", screen.width || CFG.screen.width);
+    r.setProperty("--screen-aspect", screen.aspect || CFG.screen.aspect);
+    r.setProperty("--grid-cols", "repeat(" + GRID_COLS + "," + CFG.grid.fr + ")");
+    r.setProperty("--grid-rows", "repeat(" + GRID_ROWS + "," + CFG.grid.fr + ")");
+
+    if (state.grid && state.grid.length) {
+      clearSpans(state.grid, NUM_SLOTS);
+      applySpans(state.grid, state.sizes, NUM_SLOTS);
+    }
+    if (state.editingSubpage) {
+      var sp = getSubpage(state.editingSubpage);
+      clearSpans(sp.grid, NUM_SLOTS);
+      applySpans(sp.grid, sp.sizes, NUM_SLOTS);
+    }
+  }
+
   // --- GENERATED:ICONS START ---
   var ICON_EXCEPTIONS = {
     Auto: "cog",
@@ -248,6 +281,12 @@
     ".sp-btn-double .sp-media-now-title{-webkit-line-clamp:2}" +
     ".sp-btn-wide{grid-column:span 2}" +
     ".sp-btn-wide .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+    ".sp-btn-extra-tall{grid-row:span 3}" +
+    ".sp-btn-extra-tall .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+    ".sp-btn-extra-tall .sp-btn-label-row .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+    ".sp-btn-extra-tall .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+    ".sp-btn-extra-wide{grid-column:span 3}" +
+    ".sp-btn-extra-wide .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
     ".sp-btn-big{grid-row:span 2;grid-column:span 2}" +
     ".sp-btn-big .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
     ".sp-btn-big .sp-btn-label-row .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
@@ -1201,6 +1240,61 @@
 
   // ── Grid helpers ───────────────────────────────────────────────────────
 
+  function sizeFromToken(token) {
+    return token === "d" ? 2 : token === "w" ? 3 : token === "b" ? 4 :
+      token === "t" ? 5 : token === "x" ? 6 : 1;
+  }
+
+  function sizeToken(size) {
+    return size === 4 ? "b" : size === 2 ? "d" : size === 3 ? "w" :
+      size === 5 ? "t" : size === 6 ? "x" : "";
+  }
+
+  function sizeRowSpan(size) {
+    return size === 5 ? 3 : (size === 2 || size === 4) ? 2 : 1;
+  }
+
+  function sizeColSpan(size) {
+    return size === 6 ? 3 : (size === 3 || size === 4) ? 2 : 1;
+  }
+
+  function sizeClass(size) {
+    return size === 4 ? " sp-btn-big" : size === 2 ? " sp-btn-double" :
+      size === 3 ? " sp-btn-wide" : size === 5 ? " sp-btn-extra-tall" :
+      size === 6 ? " sp-btn-extra-wide" : "";
+  }
+
+  function coveredCells(pos, size, maxSlots, includeOrigin) {
+    var cells = [];
+    var rowSpan = sizeRowSpan(size);
+    var colSpan = sizeColSpan(size);
+    for (var r = 0; r < rowSpan; r++) {
+      for (var c = 0; c < colSpan; c++) {
+        if (!includeOrigin && r === 0 && c === 0) continue;
+        cells.push(pos + r * GRID_COLS + c);
+      }
+    }
+    return cells;
+  }
+
+  function sizeFitsAt(pos, size, maxSlots) {
+    if (pos < 0 || pos >= maxSlots) return false;
+    var col = pos % GRID_COLS;
+    var row = Math.floor(pos / GRID_COLS);
+    var rows = Math.ceil(maxSlots / GRID_COLS);
+    return col + sizeColSpan(size) <= GRID_COLS &&
+      row + sizeRowSpan(size) <= rows &&
+      pos + (sizeRowSpan(size) - 1) * GRID_COLS + sizeColSpan(size) - 1 < maxSlots;
+  }
+
+  function markSpannedCells(grid, pos, size, maxSlots) {
+    var cells = coveredCells(pos, size, maxSlots, false);
+    for (var i = 0; i < cells.length; i++) {
+      var cell = cells[i];
+      if (cell >= 0 && cell < maxSlots) grid[cell] = -1;
+    }
+  }
+
   function parseOrder(str) {
     var grid = [];
     for (var i = 0; i < NUM_SLOTS; i++) grid.push(0);
@@ -1210,15 +1304,11 @@
       var s = parts[i].trim();
       if (!s) continue;
       var last = s.charAt(s.length - 1);
-      var dbl = last === "d";
-      var wide = last === "w";
-      var big = last === "b";
+      var parsedSize = sizeFromToken(last);
       var n = parseInt(s, 10);
       if (n >= 1 && n <= NUM_SLOTS && !isNaN(n)) {
         grid[i] = n;
-        if (big) state.sizes[n] = 4;
-        else if (dbl) state.sizes[n] = 2;
-        else if (wide) state.sizes[n] = 3;
+        if (parsedSize > 1) state.sizes[n] = parsedSize;
       }
     }
     applySpans(grid, state.sizes, NUM_SLOTS);
@@ -1227,66 +1317,29 @@
 
   function applySpans(grid, sizes, maxSlots) {
     for (var i = 0; i < maxSlots; i++) {
-      if ((grid[i] > 0 || grid[i] === -2) && sizes[grid[i]] === 4) {
-        var below = i + GRID_COLS;
-        var right = i + 1;
-        var diag = i + GRID_COLS + 1;
-        if (below >= maxSlots || right >= maxSlots || right % GRID_COLS === 0 || diag >= maxSlots) {
-          delete sizes[grid[i]];
-          continue;
-        }
-        var toRes = [below, right, diag];
-        var ok = true;
-        for (var ci = 0; ci < toRes.length; ci++) {
-          if (grid[toRes[ci]] > 0 || grid[toRes[ci]] === -2) {
-            var displaced = grid[toRes[ci]];
-            var placed = false;
-            for (var j = 0; j < maxSlots; j++) {
-              if (grid[j] === 0) { grid[j] = displaced; placed = true; break; }
-            }
-            if (!placed) { ok = false; break; }
-            grid[toRes[ci]] = 0;
-          }
-        }
-        if (!ok) { delete sizes[grid[i]]; continue; }
-        for (var ci = 0; ci < toRes.length; ci++) grid[toRes[ci]] = -1;
+      if (!(grid[i] > 0 || grid[i] === -2)) continue;
+      var slot = grid[i];
+      var size = sizes[slot] || 1;
+      if (size <= 1) continue;
+      if (!sizeFitsAt(i, size, maxSlots)) {
+        delete sizes[slot];
         continue;
       }
-      if ((grid[i] > 0 || grid[i] === -2) && sizes[grid[i]] === 2) {
-        var below = i + GRID_COLS;
-        if (below >= maxSlots) continue;
-        if (grid[below] > 0 || grid[below] === -2) {
-          var displaced = grid[below];
+      var toRes = coveredCells(i, size, maxSlots, false);
+      var ok = true;
+      for (var ci = 0; ci < toRes.length; ci++) {
+        if (grid[toRes[ci]] > 0 || grid[toRes[ci]] === -2) {
+          var displaced = grid[toRes[ci]];
           var placed = false;
           for (var j = 0; j < maxSlots; j++) {
-            if (grid[j] === 0) { grid[j] = displaced; placed = true; break; }
+            if (grid[j] === 0 && toRes.indexOf(j) === -1) { grid[j] = displaced; placed = true; break; }
           }
-          if (!placed) {
-            delete sizes[grid[i]];
-            continue;
-          }
+          if (!placed) { ok = false; break; }
+          grid[toRes[ci]] = 0;
         }
-        grid[below] = -1;
       }
-      if ((grid[i] > 0 || grid[i] === -2) && sizes[grid[i]] === 3) {
-        var right = i + 1;
-        if (right >= maxSlots || right % GRID_COLS === 0) {
-          delete sizes[grid[i]];
-          continue;
-        }
-        if (grid[right] > 0 || grid[right] === -2) {
-          var displaced = grid[right];
-          var placed = false;
-          for (var j = 0; j < maxSlots; j++) {
-            if (grid[j] === 0) { grid[j] = displaced; placed = true; break; }
-          }
-          if (!placed) {
-            delete sizes[grid[i]];
-            continue;
-          }
-        }
-        grid[right] = -1;
-      }
+      if (!ok) { delete sizes[slot]; continue; }
+      for (var mi = 0; mi < toRes.length; mi++) grid[toRes[mi]] = -1;
     }
   }
 
@@ -1299,7 +1352,7 @@
     return grid.slice(0, last + 1).map(function (slot) {
       if (slot <= 0) return "";
       var sz = state.sizes[slot];
-      return slot + (sz === 4 ? "b" : sz === 2 ? "d" : sz === 3 ? "w" : "");
+      return slot + sizeToken(sz);
     }).join(",");
   }
 
@@ -2000,7 +2053,8 @@
     var eq = raw.indexOf("=");
     var token = eq >= 0 ? raw.substring(0, eq) : raw;
     var label = eq >= 0 ? decodeSubpageField(raw.substring(eq + 1)) : "Back";
-    if (token !== "B" && token !== "Bd" && token !== "Bw" && token !== "Bb") {
+    if (token !== "B" && token !== "Bd" && token !== "Bw" && token !== "Bb" &&
+        token !== "Bt" && token !== "Bx") {
       return { token: raw, label: "Back" };
     }
     return { token: token, label: label || "Back" };
@@ -2015,7 +2069,8 @@
   function backLabelFromOrder(order) {
     for (var i = 0; i < (order || []).length; i++) {
       var parsed = parseBackOrderToken(order[i]);
-      if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" || parsed.token === "Bb") {
+      if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" ||
+          parsed.token === "Bb" || parsed.token === "Bt" || parsed.token === "Bx") {
         return parsed.label || "Back";
       }
     }
@@ -2030,7 +2085,8 @@
       for (var i = 0; i < op.length; i++) {
         var parsed = parseBackOrderToken(op[i]);
         order.push(parsed.token);
-        if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" || parsed.token === "Bb") {
+        if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" ||
+            parsed.token === "Bb" || parsed.token === "Bt" || parsed.token === "Bx") {
           backLabel = parsed.label || "Back";
         }
       }
@@ -2042,7 +2098,8 @@
     var order = [];
     for (var i = 0; i < ((sp && sp.order) || []).length; i++) {
       var parsed = parseBackOrderToken(sp.order[i]);
-      if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" || parsed.token === "Bb") {
+      if (parsed.token === "B" || parsed.token === "Bd" || parsed.token === "Bw" ||
+          parsed.token === "Bb" || parsed.token === "Bt" || parsed.token === "Bx") {
         order.push(backOrderToken(parsed.token, sp.backLabel || parsed.label || "Back"));
       } else {
         order.push(parsed.token);
@@ -2300,30 +2357,25 @@
       var hasBack = false;
       for (var i = 0; i < sp.order.length; i++) {
         var t = parseBackOrderToken(sp.order[i]).token;
-        if (t === "B" || t === "Bd" || t === "Bw" || t === "Bb") { hasBack = true; break; }
+        if (t === "B" || t === "Bd" || t === "Bw" || t === "Bb" || t === "Bt" || t === "Bx") { hasBack = true; break; }
       }
       if (hasBack) {
         for (var i = 0; i < sp.order.length && i < NUM_SLOTS; i++) {
           var s = parseBackOrderToken(sp.order[i]).token;
           if (!s) continue;
-          if (s === "B" || s === "Bd" || s === "Bw" || s === "Bb") {
+          if (s === "B" || s === "Bd" || s === "Bw" || s === "Bb" || s === "Bt" || s === "Bx") {
             grid[i] = -2;
-            if (s === "Bb") sp.sizes[-2] = 4;
-            else if (s === "Bd") sp.sizes[-2] = 2;
-            else if (s === "Bw") sp.sizes[-2] = 3;
+            var backSize = sizeFromToken(s.charAt(1));
+            if (backSize > 1) sp.sizes[-2] = backSize;
             else delete sp.sizes[-2];
             continue;
           }
           var last = s.charAt(s.length - 1);
-          var dbl = last === "d";
-          var wide = last === "w";
-          var big = last === "b";
+          var parsedSize = sizeFromToken(last);
           var n = parseInt(s, 10);
           if (n >= 1 && n <= sp.buttons.length && !isNaN(n)) {
             grid[i] = n;
-            if (big) sp.sizes[n] = 4;
-            else if (dbl) sp.sizes[n] = 2;
-            else if (wide) sp.sizes[n] = 3;
+            if (parsedSize > 1) sp.sizes[n] = parsedSize;
           }
         }
       } else {
@@ -2333,15 +2385,11 @@
           var s = parseBackOrderToken(sp.order[i]).token;
           if (!s) continue;
           var last = s.charAt(s.length - 1);
-          var dbl = last === "d";
-          var wide = last === "w";
-          var big = last === "b";
+          var parsedSize = sizeFromToken(last);
           var n = parseInt(s, 10);
           if (n >= 1 && n <= sp.buttons.length && !isNaN(n)) {
             grid[i + 1] = n;
-            if (big) sp.sizes[n] = 4;
-            else if (dbl) sp.sizes[n] = 2;
-            else if (wide) sp.sizes[n] = 3;
+            if (parsedSize > 1) sp.sizes[n] = parsedSize;
           }
         }
       }
@@ -2365,12 +2413,12 @@
     for (var i = 0; i <= last; i++) {
       if (grid[i] === -2) {
         var bsz = sp.sizes[-2];
-        order.push(backOrderToken(bsz === 4 ? "Bb" : bsz === 2 ? "Bd" : bsz === 3 ? "Bw" : "B", sp.backLabel || "Back"));
+        order.push(backOrderToken("B" + sizeToken(bsz), sp.backLabel || "Back"));
       } else if (grid[i] <= 0) {
         order.push("");
       } else {
         var ssz = sp.sizes[grid[i]];
-        order.push(grid[i] + (ssz === 4 ? "b" : ssz === 2 ? "d" : ssz === 3 ? "w" : ""));
+        order.push(grid[i] + sizeToken(ssz));
       }
     }
     return order;
@@ -2446,8 +2494,6 @@
 
     // Set CSS custom properties from device config
     var r = document.documentElement.style;
-    r.setProperty("--screen-w", CFG.screen.width);
-    r.setProperty("--screen-aspect", CFG.screen.aspect);
     r.setProperty("--topbar-h", CFG.topbar.height + "cqw");
     r.setProperty("--topbar-pad", CFG.topbar.padding);
     r.setProperty("--topbar-fs", CFG.topbar.fontSize + "cqw");
@@ -2457,8 +2503,7 @@
     r.setProperty("--grid-right", CFG.grid.right + "cqw");
     r.setProperty("--grid-bottom", CFG.grid.bottom + "cqw");
     r.setProperty("--grid-gap", CFG.grid.gap + "cqw");
-    r.setProperty("--grid-cols", "repeat(" + GRID_COLS + "," + CFG.grid.fr + ")");
-    r.setProperty("--grid-rows", "repeat(" + GRID_ROWS + "," + CFG.grid.fr + ")");
+    syncPreviewOrientation();
     r.setProperty("--btn-r", CFG.btn.radius + "cqw");
     r.setProperty("--btn-pad", CFG.btn.padding + "cqw");
     r.setProperty("--btn-icon", CFG.btn.iconSize + "cqw");
@@ -3021,6 +3066,8 @@
       rotSelect.value = state.screenRotation;
       rotSelect.addEventListener("change", function () {
         state.screenRotation = normalizeScreenRotation(this.value);
+        syncPreviewOrientation();
+        renderPreview();
         postSelect("Screen: Rotation", this.value);
       });
       rotField.appendChild(rotSelect);
@@ -3670,7 +3717,7 @@
         var backBtn = document.createElement("div");
         var bkSz = c.sizes[-2];
         var backLabel = c.isSub ? (getSubpage(state.editingSubpage).backLabel || "Back") : "Back";
-        backBtn.className = "sp-btn sp-back-btn" + (bkSz === 4 ? " sp-btn-big" : bkSz === 2 ? " sp-btn-double" : bkSz === 3 ? " sp-btn-wide" : "") +
+        backBtn.className = "sp-btn sp-back-btn" + sizeClass(bkSz) +
           (c.selected.indexOf(-2) !== -1 ? " sp-selected" : "");
         backBtn.innerHTML =
           '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
@@ -3701,8 +3748,7 @@
 
         var btn = document.createElement("div");
         var slotSz = c.sizes[slot];
-        btn.className = "sp-btn" +
-          (slotSz === 4 ? " sp-btn-big" : slotSz === 2 ? " sp-btn-double" : slotSz === 3 ? " sp-btn-wide" : "") +
+        btn.className = "sp-btn" + sizeClass(slotSz) +
           (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
         btn.style.backgroundColor = "#" + (color.length === 6 ? color : "313131");
         btn.draggable = true;
@@ -4557,12 +4603,12 @@
   function resolveSpanPos(pos) {
     var c = ctx();
     if (c.grid[pos] === -1) {
-      var above = pos - GRID_COLS;
-      if (above >= 0 && (c.grid[above] > 0 || c.grid[above] === -2) && (c.sizes[c.grid[above]] === 2 || c.sizes[c.grid[above]] === 4)) return above;
-      var left = pos - 1;
-      if (pos % GRID_COLS !== 0 && left >= 0 && (c.grid[left] > 0 || c.grid[left] === -2) && (c.sizes[c.grid[left]] === 3 || c.sizes[c.grid[left]] === 4)) return left;
-      var diag = pos - GRID_COLS - 1;
-      if (pos % GRID_COLS !== 0 && diag >= 0 && (c.grid[diag] > 0 || c.grid[diag] === -2) && c.sizes[c.grid[diag]] === 4) return diag;
+      for (var anchor = 0; anchor < c.maxSlots; anchor++) {
+        var slot = c.grid[anchor];
+        if (!(slot > 0 || slot === -2)) continue;
+        var cells = coveredCells(anchor, c.sizes[slot] || 1, c.maxSlots, false);
+        if (cells.indexOf(pos) !== -1) return anchor;
+      }
     }
     return pos;
   }
@@ -4603,13 +4649,7 @@
     grid[toPos] = movingSlot;
     grid[fromPos] = targetSlot;
     applySpans(grid, c.sizes, c.maxSlots);
-    if (c.sizes[movingSlot] === 4 && (toPos + GRID_COLS >= c.maxSlots || toPos + 1 >= c.maxSlots || (toPos + 1) % GRID_COLS === 0 || toPos + GRID_COLS + 1 >= c.maxSlots)) {
-      delete c.sizes[movingSlot];
-    }
-    if (c.sizes[movingSlot] === 2 && toPos + GRID_COLS >= c.maxSlots) {
-      delete c.sizes[movingSlot];
-    }
-    if (c.sizes[movingSlot] === 3 && (toPos + 1 >= c.maxSlots || (toPos + 1) % GRID_COLS === 0)) {
+    if ((c.sizes[movingSlot] || 1) > 1 && !sizeFitsAt(toPos, c.sizes[movingSlot], c.maxSlots)) {
       delete c.sizes[movingSlot];
     }
     if (c.isSub) {
@@ -4622,17 +4662,10 @@
 
   function canPlaceSlotAt(grid, pos, size, maxSlots) {
     if (pos < 0 || pos >= maxSlots || grid[pos] !== 0) return false;
-    if (size === 2 || size === 4) {
-      var below = pos + GRID_COLS;
-      if (below >= maxSlots || grid[below] !== 0) return false;
-    }
-    if (size === 3 || size === 4) {
-      var right = pos + 1;
-      if (right >= maxSlots || right % GRID_COLS === 0 || grid[right] !== 0) return false;
-    }
-    if (size === 4) {
-      var diag = pos + GRID_COLS + 1;
-      if (diag >= maxSlots || grid[diag] !== 0) return false;
+    if (!sizeFitsAt(pos, size, maxSlots)) return false;
+    var cells = coveredCells(pos, size, maxSlots, false);
+    for (var i = 0; i < cells.length; i++) {
+      if (grid[cells[i]] !== 0) return false;
     }
     return true;
   }
@@ -4658,9 +4691,7 @@
 
   function placeSlotAt(grid, slot, pos, size) {
     grid[pos] = slot;
-    if (size === 2 || size === 4) grid[pos + GRID_COLS] = -1;
-    if (size === 3 || size === 4) grid[pos + 1] = -1;
-    if (size === 4) grid[pos + GRID_COLS + 1] = -1;
+    markSpannedCells(grid, pos, size, grid.length);
   }
 
   function placeOrderedGridEntries(entries, sizes, maxSlots) {
@@ -5104,14 +5135,9 @@
     for (var i = 0; i < c.maxSlots; i++) {
       if (c.grid[i] === slot) {
         c.grid[i] = 0;
-        if ((c.sizes[slot] === 2 || c.sizes[slot] === 4) && i + GRID_COLS < c.maxSlots && c.grid[i + GRID_COLS] === -1) {
-          c.grid[i + GRID_COLS] = 0;
-        }
-        if ((c.sizes[slot] === 3 || c.sizes[slot] === 4) && i + 1 < c.maxSlots && c.grid[i + 1] === -1) {
-          c.grid[i + 1] = 0;
-        }
-        if (c.sizes[slot] === 4 && i + GRID_COLS + 1 < c.maxSlots && c.grid[i + GRID_COLS + 1] === -1) {
-          c.grid[i + GRID_COLS + 1] = 0;
+        var cells = coveredCells(i, c.sizes[slot] || 1, c.maxSlots, false);
+        for (var ci = 0; ci < cells.length; ci++) {
+          if (c.grid[cells[ci]] === -1) c.grid[cells[ci]] = 0;
         }
         break;
       }
@@ -5145,14 +5171,9 @@
     var c = ctx();
     for (var i = 0; i < c.maxSlots; i++) {
       if (slots.indexOf(c.grid[i]) !== -1) {
-        if ((c.sizes[c.grid[i]] === 2 || c.sizes[c.grid[i]] === 4) && i + GRID_COLS < c.maxSlots && c.grid[i + GRID_COLS] === -1) {
-          c.grid[i + GRID_COLS] = 0;
-        }
-        if ((c.sizes[c.grid[i]] === 3 || c.sizes[c.grid[i]] === 4) && i + 1 < c.maxSlots && c.grid[i + 1] === -1) {
-          c.grid[i + 1] = 0;
-        }
-        if (c.sizes[c.grid[i]] === 4 && i + GRID_COLS + 1 < c.maxSlots && c.grid[i + GRID_COLS + 1] === -1) {
-          c.grid[i + GRID_COLS + 1] = 0;
+        var cells = coveredCells(i, c.sizes[c.grid[i]] || 1, c.maxSlots, false);
+        for (var ci = 0; ci < cells.length; ci++) {
+          if (c.grid[cells[ci]] === -1) c.grid[cells[ci]] = 0;
         }
         c.grid[i] = 0;
       }
@@ -5250,23 +5271,19 @@
     var curSz = c.sizes[slot] || 1;
     if (curSz === targetSz) return;
 
-    var curD = curSz === 2 || curSz === 4;
-    var curW = curSz === 3 || curSz === 4;
-    if (curD) { var bp = slotPos + GRID_COLS; if (bp < c.maxSlots && c.grid[bp] === -1) c.grid[bp] = 0; }
-    if (curW) { var rp = slotPos + 1; if (rp < c.maxSlots && c.grid[rp] === -1) c.grid[rp] = 0; }
-    if (curSz === 4) { var dp = slotPos + GRID_COLS + 1; if (dp < c.maxSlots && c.grid[dp] === -1) c.grid[dp] = 0; }
+    var oldCells = coveredCells(slotPos, curSz, c.maxSlots, false);
+    for (var oi = 0; oi < oldCells.length; oi++) {
+      if (c.grid[oldCells[oi]] === -1) c.grid[oldCells[oi]] = 0;
+    }
 
-    var wantD = targetSz === 2 || targetSz === 4;
-    var wantW = targetSz === 3 || targetSz === 4;
-    var need = [];
-    if (wantD) need.push(slotPos + GRID_COLS);
-    if (wantW) need.push(slotPos + 1);
-    if (wantD && wantW) need.push(slotPos + GRID_COLS + 1);
+    if (targetSz > 1 && !sizeFitsAt(slotPos, targetSz, c.maxSlots)) {
+      delete c.sizes[slot];
+      return;
+    }
+    var need = coveredCells(slotPos, targetSz, c.maxSlots, false);
 
     for (var i = 0; i < need.length; i++) {
       var p = need[i];
-      if (p >= c.maxSlots) { if (targetSz > 1) delete c.sizes[slot]; return; }
-      if (wantW && (slotPos + 1) % GRID_COLS === 0) { if (targetSz > 1) delete c.sizes[slot]; return; }
       if (c.grid[p] > 0 || c.grid[p] === -2) {
         if (c.isSub && c.grid[p] > 0) return;
         var displaced = c.grid[p];
@@ -5317,6 +5334,8 @@
       addSubItem(sub, "", "Tall", function () { resizeSlot(slot, 2); }, sz === 2);
       addSubItem(sub, "", "Wide", function () { resizeSlot(slot, 3); }, sz === 3);
       addSubItem(sub, "", "Large", function () { resizeSlot(slot, 4); }, sz === 4);
+      addSubItem(sub, "", "Extra Tall", function () { resizeSlot(slot, 5); }, sz === 5);
+      addSubItem(sub, "", "Extra Wide", function () { resizeSlot(slot, 6); }, sz === 6);
     });
 
     addCtxDivider();
@@ -5388,6 +5407,8 @@
       addSubItem(sub, "", "Tall", function () { resizeSlot(-2, 2); }, bkSz === 2);
       addSubItem(sub, "", "Wide", function () { resizeSlot(-2, 3); }, bkSz === 3);
       addSubItem(sub, "", "Large", function () { resizeSlot(-2, 4); }, bkSz === 4);
+      addSubItem(sub, "", "Extra Tall", function () { resizeSlot(-2, 5); }, bkSz === 5);
+      addSubItem(sub, "", "Extra Wide", function () { resizeSlot(-2, 6); }, bkSz === 6);
     });
     document.body.appendChild(ctxMenu);
     positionMenu(ctxMenu, e);
@@ -5468,30 +5489,18 @@
     for (var i = 0; i < entries.length; i++) {
       var newSlot = firstFreeSlot();
       if (newSlot < 0) break;
-      var cell = firstFreeCell(pos);
-      if (cell < 0) break;
       var e = entries[i];
+      var placement = findDuplicatePlacement(state.grid, pos, e.size || 1, NUM_SLOTS);
+      if (placement.pos < 0) break;
+      var cell = placement.pos;
+      var placeSize = placement.size;
       state.buttons[newSlot - 1] = {
         entity: e.entity, label: e.label, icon: e.icon,
         icon_on: e.icon_on, sensor: e.sensor, unit: e.unit,
         type: e.type || "", precision: e.precision || "",
       };
-      if (e.size === 4) state.sizes[newSlot] = 4;
-      else if (e.size === 2) state.sizes[newSlot] = 2;
-      else if (e.size === 3) state.sizes[newSlot] = 3;
-      state.grid[cell] = newSlot;
-      if (e.size === 2 || e.size === 4) {
-        var below = cell + GRID_COLS;
-        if (below < NUM_SLOTS && state.grid[below] === 0) state.grid[below] = -1;
-      }
-      if (e.size === 3 || e.size === 4) {
-        var right = cell + 1;
-        if (right < NUM_SLOTS && right % GRID_COLS !== 0 && state.grid[right] === 0) state.grid[right] = -1;
-      }
-      if (e.size === 4) {
-        var diag = cell + GRID_COLS + 1;
-        if (diag < NUM_SLOTS && (cell + 1) % GRID_COLS !== 0 && state.grid[diag] === 0) state.grid[diag] = -1;
-      }
+      if (placeSize === 1) delete state.sizes[newSlot]; else state.sizes[newSlot] = placeSize;
+      placeSlotAt(state.grid, newSlot, cell, placeSize);
       if (e.subpageConfig) {
         var spCopy = parseSubpageConfig(e.subpageConfig);
         spCopy.sizes = {};
@@ -5516,37 +5525,22 @@
     var entries = state.clipboard.buttons;
     var lastSlot = -1;
     for (var i = 0; i < entries.length; i++) {
-      var cell = -1;
-      for (var c = pos; c < maxPos; c++) {
-        if (sp.grid[c] === 0) { cell = c; break; }
-      }
-      if (cell < 0) break;
+      var e = entries[i];
+      var placement = findDuplicatePlacement(sp.grid, pos, e.size || 1, maxPos);
+      if (placement.pos < 0) break;
+      var cell = placement.pos;
+      var placeSize = placement.size;
       var newSlot = subpageFirstFreeSlot(sp);
       while (sp.buttons.length < newSlot) {
         sp.buttons.push(emptyButtonConfig());
       }
-      var e = entries[i];
       sp.buttons[newSlot - 1] = {
         entity: e.entity, label: e.label, icon: e.icon,
         icon_on: e.icon_on, sensor: e.sensor, unit: e.unit,
         type: e.type || "", precision: e.precision || "",
       };
-      if (e.size === 4) sp.sizes[newSlot] = 4;
-      else if (e.size === 2) sp.sizes[newSlot] = 2;
-      else if (e.size === 3) sp.sizes[newSlot] = 3;
-      sp.grid[cell] = newSlot;
-      if (e.size === 2 || e.size === 4) {
-        var below = cell + GRID_COLS;
-        if (below < maxPos && sp.grid[below] === 0) sp.grid[below] = -1;
-      }
-      if (e.size === 3 || e.size === 4) {
-        var right = cell + 1;
-        if (right < maxPos && right % GRID_COLS !== 0 && sp.grid[right] === 0) sp.grid[right] = -1;
-      }
-      if (e.size === 4) {
-        var diag = cell + GRID_COLS + 1;
-        if (diag < maxPos && (cell + 1) % GRID_COLS !== 0 && sp.grid[diag] === 0) sp.grid[diag] = -1;
-      }
+      if (placeSize === 1) delete sp.sizes[newSlot]; else sp.sizes[newSlot] = placeSize;
+      placeSlotAt(sp.grid, newSlot, cell, placeSize);
       lastSlot = newSlot;
     }
     sp.order = serializeSubpageGrid(sp);
@@ -5697,20 +5691,18 @@
             var tok = origParts[j].trim();
             if (!tok) continue;
             var lastCh = tok.charAt(tok.length - 1);
-            var dbl = lastCh === "d";
-            var wide = lastCh === "w";
-            var big = lastCh === "b";
+            var parsedSize = sizeFromToken(lastCh);
             var num = parseInt(tok, 10);
             if (isNaN(num) || num < 1 || num > importedCount || seen[num]) continue;
             seen[num] = true;
-            usedSlots.push({ oldSlot: num, isDouble: dbl || big, isWide: wide || big, isBig: big });
+            usedSlots.push({ oldSlot: num, size: parsedSize });
           }
           for (var j = 0; j < importedCount; j++) {
             var sn = j + 1;
             if (seen[sn]) continue;
             var bb = data.buttons[j];
             if (bb.entity || bb.label || bb.type) {
-              usedSlots.push({ oldSlot: sn, isDouble: false, isWide: false, isBig: false });
+              usedSlots.push({ oldSlot: sn, size: 1 });
             }
           }
 
@@ -5722,9 +5714,7 @@
             var ns = j + 1;
             slotMap[usedSlots[j].oldSlot] = ns;
             buttons.push(data.buttons[usedSlots[j].oldSlot - 1]);
-            if (usedSlots[j].isBig) newSizes[ns] = 4;
-            else if (usedSlots[j].isDouble) newSizes[ns] = 2;
-            else if (usedSlots[j].isWide) newSizes[ns] = 3;
+            if (usedSlots[j].size > 1) newSizes[ns] = usedSlots[j].size;
           }
           for (var j = limit; j < NUM_SLOTS; j++) buttons.push(empty);
 
@@ -5733,34 +5723,12 @@
           var pos = 0;
           for (var j = 0; j < limit && pos < NUM_SLOTS; j++) {
             var ns = j + 1;
-            var isB = newSizes[ns] === 4;
-            var isD = isB || newSizes[ns] === 2;
-            var isW = isB || newSizes[ns] === 3;
-            var row = Math.floor(pos / GRID_COLS);
-            if (isD && row >= GRID_ROWS - 1) {
-              isD = false;
-              if (isB) { isB = false; newSizes[ns] = isW ? 3 : undefined; if (!newSizes[ns]) delete newSizes[ns]; }
-              else delete newSizes[ns];
+            var targetSize = newSizes[ns] || 1;
+            if (!sizeFitsAt(pos, targetSize, NUM_SLOTS)) {
+              targetSize = 1;
+              delete newSizes[ns];
             }
-            var col = pos % GRID_COLS;
-            if (isW && col >= GRID_COLS - 1) {
-              isW = false;
-              if (isB) { isB = false; newSizes[ns] = isD ? 2 : undefined; if (!newSizes[ns]) delete newSizes[ns]; }
-              else delete newSizes[ns];
-            }
-            newGrid[pos] = ns;
-            if (isD) {
-              var bp = pos + GRID_COLS;
-              if (bp < NUM_SLOTS) newGrid[bp] = -1;
-            }
-            if (isW) {
-              var rp = pos + 1;
-              if (rp < NUM_SLOTS) newGrid[rp] = -1;
-            }
-            if (isD && isW) {
-              var dp = pos + GRID_COLS + 1;
-              if (dp < NUM_SLOTS) newGrid[dp] = -1;
-            }
+            placeSlotAt(newGrid, ns, pos, targetSize);
             pos++;
             while (pos < NUM_SLOTS && newGrid[pos] === -1) pos++;
           }
@@ -5946,6 +5914,7 @@
           syncScreensaverTimeoutUi();
           syncIdleUi();
           if (els.setScreenRotation) els.setScreenRotation.value = state.screenRotation;
+          syncPreviewOrientation();
           if (els.setDeveloperExperimentalFeatures) {
             els.setDeveloperExperimentalFeatures.checked = state.developerExperimentalFeatures;
           }
@@ -6413,6 +6382,8 @@
           }
         }
         if (els.setScreenRotation) els.setScreenRotation.value = state.screenRotation;
+        syncPreviewOrientation();
+        renderPreview();
       },
       "text_sensor-screen__sunrise": function (val) {
         state.sunrise = val;

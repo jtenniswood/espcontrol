@@ -4,6 +4,7 @@
       "slug": "guition-esp32-p4-jc1060p470",
       "slots": 15,
       "cols": 5,
+      "portrait_cols": 3,
       "grid": "3x5",
       "icon_font": "icon_font_600",
       "sensor_font": "statistics_font_600",
@@ -12,6 +13,7 @@
       "volume_label_font": "volume_modal_label_font_600",
       "color_correction": false,
       "volume_width_compensation_percent": 95,
+      "rotate_width_compensation": true,
       "wrap_tall_labels": true
     },
     {
@@ -31,6 +33,7 @@
       "slug": "guition-esp32-p4-jc8012p4a1",
       "slots": 20,
       "cols": 5,
+      "portrait_cols": 4,
       "grid": "5x4",
       "icon_font": "icon_font_800",
       "sensor_font": "statistics_font_lt",

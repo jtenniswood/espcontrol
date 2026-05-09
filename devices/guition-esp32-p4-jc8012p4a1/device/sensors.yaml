@@ -49,7 +49,8 @@ esphome:
             #undef BTN_SLOT
             GridConfig cfg = {};
             cfg.num_slots = 20;
-            cfg.cols = 5;
+            bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
+            cfg.cols = portrait ? 4 : 5;
             cfg.color_correction = true;
             cfg.wrap_tall_labels = true;
             cfg.icon_font = id(icon_font_800)->get_lv_font();
@@ -68,6 +69,7 @@ esphome:
               id(home_screen_idle_suspended) = false;
               id(home_screen_idle_check).execute();
             };
+            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
@@ -76,7 +78,8 @@ esphome:
               id(button_order).state,
               id(button_on_color).state,
               id(button_off_color).state,
-              id(sensor_card_color).state);
+              id(sensor_card_color).state,
+              id(main_page)->obj);
         - delay: 100ms
 
         # Phase 2: HA subscriptions + subpage creation
@@ -145,7 +148,8 @@ esphome:
             #undef SP_EXT3
             GridConfig cfg = {};
             cfg.num_slots = 20;
-            cfg.cols = 5;
+            bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
+            cfg.cols = portrait ? 4 : 5;
             cfg.color_correction = true;
             cfg.wrap_tall_labels = true;
             cfg.icon_font = id(icon_font_800)->get_lv_font();
@@ -164,6 +168,7 @@ esphome:
               id(home_screen_idle_suspended) = false;
               id(home_screen_idle_check).execute();
             };
+            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);

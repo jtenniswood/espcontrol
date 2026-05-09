@@ -75,8 +75,14 @@ def cfg_lines(device: dict) -> list[str]:
     lines = [
         "            GridConfig cfg = {};",
         f"            cfg.num_slots = {device['slots']};",
-        f"            cfg.cols = {device['cols']};",
     ]
+    if "portrait_cols" in device:
+        lines.append('            bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";')
+        lines.append(f"            cfg.cols = portrait ? {device['portrait_cols']} : {device['cols']};")
+        if device.get("rotate_width_compensation", False):
+            lines.append("            cfg.width_compensation_vertical = portrait;")
+    else:
+        lines.append(f"            cfg.cols = {device['cols']};")
     if device["color_correction"]:
         lines.append("            cfg.color_correction = true;")
     if device["wrap_tall_labels"]:
@@ -103,6 +109,7 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("              id(home_screen_idle_suspended) = false;")
     lines.append("              id(home_screen_idle_check).execute();")
     lines.append("            };")
+    lines.append("            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);")
     lines.append("            apply_width_compensation(id(display_time), cfg.width_compensation_percent);")
     lines.append("            apply_width_compensation(id(temperatures), cfg.width_compensation_percent);")
     lines.append("            apply_width_compensation(id(clock_label), cfg.width_compensation_percent);")
