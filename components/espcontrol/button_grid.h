@@ -3985,7 +3985,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
   ui.menu_overlay = lv_obj_create(lv_layer_top());
   lv_obj_set_size(ui.menu_overlay, lv_pct(100), lv_pct(100));
   lv_obj_set_style_bg_color(ui.menu_overlay, lv_color_hex(0x000000), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.menu_overlay, LV_OPA_50, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.menu_overlay, kind == "hvac" ? LV_OPA_TRANSP : LV_OPA_50, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.menu_overlay, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.menu_overlay, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.menu_overlay, LV_OBJ_FLAG_SCROLLABLE);
@@ -3994,29 +3994,33 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
   }, LV_EVENT_CLICKED, nullptr);
 
   lv_obj_t *box = lv_obj_create(ui.menu_overlay);
-  lv_obj_set_width(box, 220);
+  lv_obj_set_width(box, kind == "hvac" ? 190 : 220);
   lv_obj_set_height(box, LV_SIZE_CONTENT);
   lv_obj_set_style_bg_color(box, lv_color_hex(CLIMATE_POPUP_COLOR), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(box, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(box, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(box, 14, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(box, 10, LV_PART_MAIN);
-  lv_obj_set_style_pad_row(box, 6, LV_PART_MAIN);
+  lv_obj_set_style_radius(box, kind == "hvac" ? 8 : 14, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(box, kind == "hvac" ? 8 : 10, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(box, kind == "hvac" ? 2 : 6, LV_PART_MAIN);
   lv_obj_set_layout(box, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(box, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
-  lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
-  lv_obj_add_flag(box, LV_OBJ_FLAG_EVENT_BUBBLE);
+  if (kind == "hvac") lv_obj_align(box, LV_ALIGN_TOP_RIGHT, -10, 52);
+  else lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
 
   for (const auto &option : *options) {
+    bool selected = climate_option_selected(ctx, kind, option);
     lv_obj_t *btn = lv_btn_create(box);
     lv_obj_set_width(btn, lv_pct(100));
-    lv_obj_set_height(btn, 42);
-    lv_obj_set_style_radius(btn, 8, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(btn, lv_color_hex(0x333333), LV_PART_MAIN);
+    lv_obj_set_height(btn, kind == "hvac" ? 36 : 42);
+    lv_obj_set_style_radius(btn, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, climate_option_label(option).c_str());
-    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(selected ? ctx->accent_color : 0xFFFFFF), LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(label, ctx->label_font, LV_PART_MAIN);
     lv_obj_center(label);
     ClimateOptionClick *click = new ClimateOptionClick();
     click->ctx = ctx;
@@ -4273,17 +4277,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
 
 inline void climate_show_action_menu(ClimateControlCtx *ctx) {
   if (!ctx) return;
-  climate_hide_option_menu();
-  ClimateControlModalUi &ui = climate_control_modal_ui();
-  ui.action_menu_open = true;
-  climate_hide_inline_option_list();
-  climate_set_dial_controls_visible(false);
-  climate_set_obj_visible(ui.menu_view, true);
-  climate_set_obj_visible(ui.menu_close_btn, true);
-  climate_update_menu_tile(ui.menu_mode_btn, "Mode", ctx->hvac_mode, !ctx->hvac_modes.empty());
-  climate_update_menu_tile(ui.menu_preset_btn, "Preset", ctx->preset_mode, !ctx->preset_modes.empty());
-  climate_open_inline_option_list(ctx, "all");
-  climate_control_layout_modal(ctx);
+  climate_open_option_menu(ctx, "hvac");
 }
 
 inline void climate_hide_action_menu() {
@@ -4423,7 +4417,6 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
       return;
     }
     climate_show_action_menu(ui.active);
-    climate_open_inline_option_list(ui.active, "hvac");
   }, LV_EVENT_CLICKED, nullptr);
 
   ui.unit_lbl = lv_label_create(ui.target_row);
