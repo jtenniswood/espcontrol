@@ -639,6 +639,8 @@
     ntpServer3: NTP_SERVER_DEFAULTS[2],
     screenRotation: "0",
     screenRotationOptions: (CFG.features && CFG.features.screenRotationOptions) || ["0", "90", "180", "270"],
+    screenRotationExperimentalOptions: (CFG.features && CFG.features.screenRotationExperimentalOptions) || [],
+    screenRotationDeviceOptions: null,
     sunrise: "",
     sunset: "",
     firmwareVersion: "",
@@ -676,7 +678,41 @@
 
   function normalizeScreenRotation(value) {
     value = String(value == null ? "" : value);
-    return state.screenRotationOptions.indexOf(value) !== -1 ? value : "0";
+    return allScreenRotationOptions().indexOf(value) !== -1 ? value : "0";
+  }
+
+  function uniqueOptions(options) {
+    var out = [];
+    (options || []).forEach(function (opt) {
+      opt = String(opt);
+      if (out.indexOf(opt) < 0) out.push(opt);
+    });
+    return out;
+  }
+
+  function activeScreenRotationOptions() {
+    var options = state.screenRotationOptions || [];
+    if (state.developerExperimentalFeatures) {
+      options = options.concat(state.screenRotationExperimentalOptions || []);
+    }
+    return uniqueOptions(options);
+  }
+
+  function allScreenRotationOptions() {
+    return uniqueOptions(
+      (state.screenRotationOptions || [])
+        .concat(state.screenRotationExperimentalOptions || [])
+        .concat(state.screenRotationDeviceOptions || [])
+    );
+  }
+
+  function syncScreenRotationSelect() {
+    if (!els.setScreenRotation) return;
+    els.setScreenRotation.innerHTML = "";
+    activeScreenRotationOptions().forEach(function (opt) {
+      appendScreenRotationOption(els.setScreenRotation, opt);
+    });
+    els.setScreenRotation.value = state.screenRotation;
   }
 
   function displayScreenRotation(value) {
@@ -3092,7 +3128,7 @@
       var rotSelect = document.createElement("select");
       rotSelect.className = "sp-select";
       rotSelect.id = "sp-set-screen-rotation";
-      state.screenRotationOptions.forEach(function (opt) {
+      activeScreenRotationOptions().forEach(function (opt) {
         appendScreenRotationOption(rotSelect, opt);
       });
       rotSelect.value = state.screenRotation;
@@ -6405,15 +6441,12 @@
       "select-screen__rotation": function (val, d) {
         state.screenRotation = normalizeScreenRotation(d.value || val || state.screenRotation);
         if (d.option && Array.isArray(d.option)) {
-          state.screenRotationOptions = d.option;
-          if (els.setScreenRotation) {
-            els.setScreenRotation.innerHTML = "";
-            d.option.forEach(function (opt) {
-              appendScreenRotationOption(els.setScreenRotation, opt);
-            });
+          state.screenRotationDeviceOptions = d.option;
+          if (!(CFG.features && CFG.features.screenRotationExperimentalOptions)) {
+            state.screenRotationOptions = d.option;
           }
         }
-        if (els.setScreenRotation) els.setScreenRotation.value = state.screenRotation;
+        syncScreenRotationSelect();
         syncPreviewOrientation();
         renderPreview();
       },
@@ -6452,6 +6485,7 @@
         if (els.setDeveloperExperimentalFeatures) {
           els.setDeveloperExperimentalFeatures.checked = state.developerExperimentalFeatures;
         }
+        syncScreenRotationSelect();
         scheduleRender();
       },
       "switch-developer_experimental_features": function (val, d) {
@@ -6459,6 +6493,7 @@
         if (els.setDeveloperExperimentalFeatures) {
           els.setDeveloperExperimentalFeatures.checked = state.developerExperimentalFeatures;
         }
+        syncScreenRotationSelect();
         scheduleRender();
       },
       "select-firmware__update_frequency": function (val, d) {
