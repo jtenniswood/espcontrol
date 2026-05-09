@@ -3931,7 +3931,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
     lv_obj_t *title_lbl = lv_label_create(parent);
     lv_label_set_text(title_lbl, section_title);
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(CLIMATE_TEXT_COLOR), LV_PART_MAIN);
-    lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(title_lbl, ctx->label_font, LV_PART_MAIN);
     lv_obj_set_width(title_lbl, lv_pct(100));
 
@@ -3945,17 +3945,17 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
       lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
       lv_obj_set_style_pad_left(btn, 0, LV_PART_MAIN);
-      lv_obj_set_style_pad_right(btn, 26, LV_PART_MAIN);
+      lv_obj_set_style_pad_right(btn, 0, LV_PART_MAIN);
       lv_obj_set_style_pad_column(btn, 0, LV_PART_MAIN);
       lv_obj_set_layout(btn, LV_LAYOUT_FLEX);
       lv_obj_set_style_flex_flow(btn, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-      lv_obj_set_style_flex_main_place(btn, LV_FLEX_ALIGN_START, LV_PART_MAIN);
+      lv_obj_set_style_flex_main_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
       lv_obj_set_style_flex_cross_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
 
       lv_obj_t *label = lv_label_create(btn);
       lv_label_set_text(label, climate_option_label(option).c_str());
       lv_obj_set_style_text_color(label, lv_color_hex(selected ? ctx->accent_color : 0xE8E8E8), LV_PART_MAIN);
-      lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+      lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->label_font) lv_obj_set_style_text_font(label, ctx->label_font, LV_PART_MAIN);
 
       ClimateOptionClick *click = new ClimateOptionClick();
