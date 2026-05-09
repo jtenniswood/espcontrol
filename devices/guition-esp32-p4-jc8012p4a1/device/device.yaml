@@ -240,3 +240,4 @@ select:
     on_value:
       then:
         - script.execute: apply_screen_rotation
+        - script.execute: refresh_button_grid
