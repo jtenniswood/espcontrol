@@ -42,14 +42,13 @@ registerButtonType("climate", {
     [
       ["", "10"],
       ["1", "10.2"],
-      ["2", "10.21"],
     ].forEach(function (entry) {
       var opt = document.createElement("option");
       opt.value = entry[0];
       opt.textContent = entry[1];
       precision.appendChild(opt);
     });
-    precision.value = b.precision === "1" || b.precision === "2" ? b.precision : "";
+    precision.value = b.precision === "1" ? b.precision : "";
     precision.addEventListener("change", function () {
       b.precision = this.value;
       helpers.saveField("precision", b.precision);
