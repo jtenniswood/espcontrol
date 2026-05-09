@@ -3880,12 +3880,15 @@
       }
     });
 
-    var exitBtn = document.createElement("button");
-    exitBtn.type = "button";
-    exitBtn.className = "sp-action-btn";
-    exitBtn.textContent = "Exit Subpage";
-    exitBtn.addEventListener("click", function () { exitSubpage(); });
-    panel.appendChild(exitBtn);
+    var doneRow = document.createElement("div");
+    doneRow.className = "sp-btn-row sp-btn-row--save";
+    var doneBtn = document.createElement("button");
+    doneBtn.type = "button";
+    doneBtn.className = "sp-action-btn sp-save-btn";
+    doneBtn.textContent = "Done";
+    doneBtn.addEventListener("click", closeSettings);
+    doneRow.appendChild(doneBtn);
+    panel.appendChild(doneRow);
 
     container.appendChild(panel);
     return true;
