@@ -544,6 +544,17 @@ assertButtonRoundTrip(hooks, "climate card firmware precision 3", {
   precision: "3",
 }, false);
 
+assertButtonRoundTrip(hooks, "climate card custom range", {
+  entity: "climate.hallway",
+  label: "Hallway",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate",
+  precision: "1:16:30",
+}, false);
+
 assertButtonMigration(hooks, "climate clears ignored fields", "climate.living_room;Living;Thermostat;Radiator;sensor.temp;deg C;climate;bad", {
   entity: "climate.living_room",
   label: "Living",
@@ -874,6 +885,13 @@ assertSubpageRoundTrip(hooks, "climate subpage", {
   ],
 }, true);
 
+assertSubpageRoundTrip(hooks, "climate subpage custom range", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "0:16:30" }),
+  ],
+}, true);
+
 assertSubpageRoundTrip(hooks, "light temperature subpage", {
   order: ["1", "B"],
   buttons: [
@@ -1034,6 +1052,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|H,climate.liv
     buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate", precision: "1" }),
   ],
 }, "compact climate subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|H,climate.hallway,Hallway,,,,,0%3A16%3A30")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "0:16:30" }),
+  ],
+}, "compact climate range subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|N,light.living_room,Living%20Room,,,kelvin,2000-6500,color")), {
   order: ["1", "B"],

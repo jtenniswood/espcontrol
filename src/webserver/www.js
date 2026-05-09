@@ -1925,9 +1925,41 @@
       b.unit = "";
       b.icon = "Auto";
       b.icon_on = "Auto";
-      if (["", "0", "1", "2", "3"].indexOf(String(b.precision || "")) < 0) b.precision = "";
+      b.precision = normalizeClimatePrecisionConfig(b.precision);
     }
     return b;
+  }
+
+  function parseClimatePrecisionConfig(value) {
+    var raw = String(value || "");
+    var parts = raw.split(":");
+    var precision = parts[0] || "";
+    if (precision === "0") precision = "";
+    if (["", "1", "2", "3"].indexOf(precision) < 0) precision = "";
+    var min = parts.length > 1 ? sanitizeClimateRangeValue(parts[1]) : "";
+    var max = parts.length > 2 ? sanitizeClimateRangeValue(parts[2]) : "";
+    return { precision: precision, min: min, max: max };
+  }
+
+  function sanitizeClimateRangeValue(value) {
+    var text = String(value || "").trim();
+    if (!text) return "";
+    var num = Number(text);
+    if (!isFinite(num)) return "";
+    return String(Math.round(num * 10) / 10).replace(/\.0$/, "");
+  }
+
+  function climatePrecisionConfig(precision, min, max) {
+    var p = ["", "1", "2", "3"].indexOf(String(precision || "")) >= 0 ? String(precision || "") : "";
+    var lo = sanitizeClimateRangeValue(min);
+    var hi = sanitizeClimateRangeValue(max);
+    if (!lo && !hi) return p;
+    return (p || "0") + ":" + lo + ":" + hi;
+  }
+
+  function normalizeClimatePrecisionConfig(value) {
+    var parsed = parseClimatePrecisionConfig(value);
+    return climatePrecisionConfig(parsed.precision, parsed.min, parsed.max);
   }
 
   function buttonConfigChangedByNormalize(raw) {
@@ -1973,7 +2005,7 @@
     var icon = type === "climate" ? "Auto" : (b && b.icon || "Auto");
     var iconOn = type === "climate" ? "Auto" : (b && b.icon_on || "Auto");
     var precision = b && b.precision || "";
-    if (type === "climate" && ["", "0", "1", "2", "3"].indexOf(String(precision)) < 0) precision = "";
+    if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
     if (!type && !sensor) {
       unit = "";
       precision = "";
@@ -2243,7 +2275,7 @@
       var icon = b.type === "climate" ? "Auto" : (b.icon || "Auto");
       var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
       var precision = b.precision || "";
-      if (b.type === "climate" && ["", "0", "1", "2", "3"].indexOf(String(precision)) < 0) precision = "";
+      if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
       var fields = [b.entity || "", b.label || "", icon, iconOn, sensor, unit, b.type || "", precision];
       for (var j = 0; j < fields.length; j++) {
         if (String(fields[j] || "").indexOf("|") >= 0 || String(fields[j] || "").indexOf(":") >= 0) {
@@ -2264,7 +2296,7 @@
       var icon = b.type === "climate" ? "Auto" : (b.icon || "Auto");
       var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
       var precision = b.precision || "";
-      if (b.type === "climate" && ["", "0", "1", "2", "3"].indexOf(String(precision)) < 0) precision = "";
+      if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
       var fields = [b.entity || "", b.label || "", icon, iconOn, sensor, unit, b.type || "", precision];
       while (fields.length > 1 && !fields[fields.length - 1]) fields.pop();
       if (fields.length > 1 && fields[fields.length - 1] === "Auto") {
@@ -2285,7 +2317,7 @@
       var icon = b.type === "climate" ? "Auto" : (b.icon || "Auto");
       var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
       var precision = b.precision || "";
-      if (b.type === "climate" && ["", "0", "1", "2", "3"].indexOf(String(precision)) < 0) precision = "";
+      if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
       var fields = [
         subpageTypeCode(b.type || ""),
         encodeSubpageField(b.entity),

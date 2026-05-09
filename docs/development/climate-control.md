@@ -27,7 +27,7 @@ Each climate card needs these saved fields:
 | `entity` | Yes | Home Assistant climate entity ID. | `climate.living_room` |
 | `label` | No | User-facing name. If empty, use Home Assistant `friendly_name`, then the entity ID, then `Climate`. | `Living Room` |
 | `type` | Yes | Card type marker. | `climate` |
-| `precision` | No | Display decimal places for temperatures. Empty or `0` means whole numbers. | `1` |
+| `precision` | No | Display decimal places for temperatures. Empty or `0` means whole numbers. Climate cards may append a custom arc range as `precision:min:max`. | `1:16:30` |
 
 The card should ignore generic sensor/unit fields used by other card types. It should force or default its icon to a thermostat in configuration previews.
 
@@ -39,6 +39,10 @@ Supported precision values:
 | `1` | 1 decimal place |
 | `2` | 2 decimal places |
 | `3` | 3 decimal places, allowed by firmware-level parsing even if the setup UI only offers up to 2 |
+
+When the setup UI advanced range fields are used, save the value in `precision` as `precision:min:max`.
+For example, `0:16:30` means whole-number display with an arc limited to 16-30, and `1:16:30` means one decimal place with the same range.
+If no custom range is saved, use Home Assistant `min_temp` and `max_temp`.
 
 Temperature units come from the global panel temperature setting, not from a per-card field. The implementation should display the panel's current unit symbol, such as `°C` or `°F`.
 

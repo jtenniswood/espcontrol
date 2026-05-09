@@ -19,9 +19,15 @@ registerButtonType("climate", {
     b.unit = "";
     b.icon = "Auto";
     b.icon_on = "Auto";
-    if (String(b.precision || "") !== "1") {
-      b.precision = "";
-      helpers.saveField("precision", "");
+    var climateConfig = parseClimatePrecisionConfig(b.precision);
+    var normalizedPrecision = climatePrecisionConfig(
+      climateConfig.precision,
+      climateConfig.min,
+      climateConfig.max
+    );
+    if (b.precision !== normalizedPrecision) {
+      b.precision = normalizedPrecision;
+      helpers.saveField("precision", normalizedPrecision);
     }
 
     var ef = document.createElement("div");
@@ -56,18 +62,61 @@ registerButtonType("climate", {
       opt.textContent = entry[1];
       precision.appendChild(opt);
     });
-    precision.value = b.precision === "1" ? b.precision : "";
-    precision.addEventListener("change", function () {
-      b.precision = this.value;
+    precision.value = climateConfig.precision;
+    function saveClimateAdvancedSettings() {
+      b.precision = climatePrecisionConfig(precision.value, minInp.value, maxInp.value);
       helpers.saveField("precision", b.precision);
       scheduleRender();
-    });
+    }
+    precision.addEventListener("change", saveClimateAdvancedSettings);
     pf.appendChild(precision);
     panel.appendChild(pf);
+
+    var hasRange = !!(climateConfig.min || climateConfig.max);
+    var advancedToggle = helpers.toggleRow(
+      "Advanced",
+      helpers.idPrefix + "climate-advanced-toggle",
+      hasRange
+    );
+    panel.appendChild(advancedToggle.row);
+
+    var advanced = condField();
+    if (hasRange) advanced.classList.add("sp-visible");
+
+    var minField = document.createElement("div");
+    minField.className = "sp-field";
+    minField.appendChild(helpers.fieldLabel("Minimum Temperature", helpers.idPrefix + "climate-min"));
+    var minInp = helpers.textInput(helpers.idPrefix + "climate-min", climateConfig.min, "e.g. 16");
+    minInp.inputMode = "decimal";
+    minField.appendChild(minInp);
+    advanced.appendChild(minField);
+
+    var maxField = document.createElement("div");
+    maxField.className = "sp-field";
+    maxField.appendChild(helpers.fieldLabel("Maximum Temperature", helpers.idPrefix + "climate-max"));
+    var maxInp = helpers.textInput(helpers.idPrefix + "climate-max", climateConfig.max, "e.g. 30");
+    maxInp.inputMode = "decimal";
+    maxField.appendChild(maxInp);
+    advanced.appendChild(maxField);
+
+    minInp.addEventListener("change", saveClimateAdvancedSettings);
+    maxInp.addEventListener("change", saveClimateAdvancedSettings);
+    advancedToggle.input.addEventListener("change", function () {
+      if (this.checked) {
+        advanced.classList.add("sp-visible");
+      } else {
+        advanced.classList.remove("sp-visible");
+        minInp.value = "";
+        maxInp.value = "";
+        saveClimateAdvancedSettings();
+      }
+    });
+    panel.appendChild(advanced);
   },
   renderPreview: function (b, helpers) {
     var label = (b.label && b.label.trim()) || (b.entity && b.entity.trim()) || "Climate";
-    var value = b.precision === "1" ? "20.0" : (b.precision === "2" ? "20.00" : "20");
+    var climateConfig = parseClimatePrecisionConfig(b.precision);
+    var value = climateConfig.precision === "1" ? "20.0" : (climateConfig.precision === "2" ? "20.00" : "20");
     var unit = (typeof state !== "undefined" && state.temperatureUnit && state.temperatureUnit !== "Auto")
       ? state.temperatureUnit
       : "°C";

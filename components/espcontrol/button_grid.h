@@ -3282,6 +3282,8 @@ struct ClimateControlCtx {
   int high_tenths = CLIMATE_DEFAULT_HIGH_TENTHS;
   int min_tenths = CLIMATE_DEFAULT_MIN_TENTHS;
   int max_tenths = CLIMATE_DEFAULT_MAX_TENTHS;
+  bool custom_min = false;
+  bool custom_max = false;
   int step_tenths = CLIMATE_DEFAULT_STEP_TENTHS;
   int precision = 0;
   int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
@@ -3376,6 +3378,35 @@ inline bool climate_parse_tenths(esphome::StringRef value, int &out) {
   if (!parse_float_ref(value, parsed) || !std::isfinite(parsed)) return false;
   out = (int)(parsed * 10.0f + (parsed >= 0.0f ? 0.5f : -0.5f));
   return true;
+}
+
+inline bool climate_parse_tenths_string(const std::string &value, int &out) {
+  char *end = nullptr;
+  float parsed = strtof(value.c_str(), &end);
+  if (end == value.c_str() || !std::isfinite(parsed)) return false;
+  out = (int)(parsed * 10.0f + (parsed >= 0.0f ? 0.5f : -0.5f));
+  return true;
+}
+
+inline void climate_apply_saved_range(ClimateControlCtx *ctx, const std::string &precision) {
+  if (!ctx) return;
+  size_t first = precision.find(':');
+  if (first == std::string::npos) return;
+  size_t second = precision.find(':', first + 1);
+  std::string min_value = second == std::string::npos
+    ? precision.substr(first + 1)
+    : precision.substr(first + 1, second - first - 1);
+  std::string max_value = second == std::string::npos ? "" : precision.substr(second + 1);
+  int tenths = 0;
+  if (!min_value.empty() && climate_parse_tenths_string(min_value, tenths)) {
+    ctx->min_tenths = tenths;
+    ctx->custom_min = true;
+  }
+  if (!max_value.empty() && climate_parse_tenths_string(max_value, tenths)) {
+    ctx->max_tenths = tenths;
+    ctx->custom_max = true;
+  }
+  if (ctx->max_tenths <= ctx->min_tenths) ctx->max_tenths = ctx->min_tenths + 10;
 }
 
 inline int climate_clamp_tenths(ClimateControlCtx *ctx, int value) {
@@ -4275,6 +4306,7 @@ inline ClimateControlCtx *create_climate_control_context(
   ctx->entity_id = p.entity;
   ctx->configured_label = p.label;
   ctx->precision = parse_precision(p.precision);
+  climate_apply_saved_range(ctx, p.precision);
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;
@@ -4350,7 +4382,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef value) {
         int tenths = 0;
-        if (climate_parse_tenths(value, tenths)) ctx->min_tenths = tenths;
+        if (!ctx->custom_min && climate_parse_tenths(value, tenths)) ctx->min_tenths = tenths;
         if (ctx->max_tenths <= ctx->min_tenths) ctx->max_tenths = ctx->min_tenths + 10;
         refresh();
       })
@@ -4360,7 +4392,7 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
     std::function<void(esphome::StringRef)>(
       [ctx, refresh](esphome::StringRef value) {
         int tenths = 0;
-        if (climate_parse_tenths(value, tenths)) ctx->max_tenths = tenths;
+        if (!ctx->custom_max && climate_parse_tenths(value, tenths)) ctx->max_tenths = tenths;
         if (ctx->max_tenths <= ctx->min_tenths) ctx->max_tenths = ctx->min_tenths + 10;
         refresh();
       })
