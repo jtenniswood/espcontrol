@@ -4035,6 +4035,11 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
     if (!ctx->available) lv_label_set_text(ui.target_lbl, "--");
     else if (!temp_enabled) lv_label_set_text(ui.target_lbl, "Off");
     else lv_label_set_text(ui.target_lbl, climate_format_tenths(target, ctx->precision).c_str());
+    if (ctx->available && ctx->hvac_mode == "off" && !ctx->hvac_modes.empty()) {
+      lv_obj_add_flag(ui.target_lbl, LV_OBJ_FLAG_CLICKABLE);
+    } else {
+      lv_obj_clear_flag(ui.target_lbl, LV_OBJ_FLAG_CLICKABLE);
+    }
   }
   if (ui.unit_lbl) {
     lv_label_set_text(ui.unit_lbl, temp_enabled ? display_temperature_unit_symbol() : "");
@@ -4347,6 +4352,15 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_set_style_text_align(ui.target_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->number_font) lv_obj_set_style_text_font(ui.target_lbl, ctx->number_font, LV_PART_MAIN);
   apply_width_compensation(ui.target_lbl, ctx->width_compensation_percent);
+  lv_obj_add_event_cb(ui.target_lbl, [](lv_event_t *) {
+    ClimateControlModalUi &ui = climate_control_modal_ui();
+    if (!ui.active || !ui.active->available || ui.active->hvac_mode != "off" ||
+        ui.active->hvac_modes.empty()) {
+      return;
+    }
+    climate_show_action_menu(ui.active);
+    climate_open_inline_option_list(ui.active, "hvac");
+  }, LV_EVENT_CLICKED, nullptr);
 
   ui.unit_lbl = lv_label_create(ui.target_row);
   lv_obj_set_style_text_color(ui.unit_lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
