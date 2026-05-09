@@ -19,7 +19,7 @@ registerButtonType("climate", {
     b.unit = "";
     b.icon = "Auto";
     b.icon_on = "Auto";
-    if (["", "0", "1", "2", "3"].indexOf(String(b.precision || "")) < 0) {
+    if (String(b.precision || "") !== "1") {
       b.precision = "";
       helpers.saveField("precision", "");
     }
