@@ -58,45 +58,46 @@
   };
   var ICON_NAMES = [
     "Account", "Air Conditioner", "Air Filter", "Air Purifier", "Alarm", "Alarm Light",
-    "Application", "Battery", "Battery 10%", "Battery 20%", "Battery 30%", "Battery 40%",
-    "Battery 50%", "Battery 60%", "Battery 70%", "Battery 80%", "Battery 90%", "Battery Alert",
-    "Battery Charging", "Battery Charging 100", "Battery Charging 70", "Battery High", "Battery Low", "Battery Medium",
-    "Battery Off", "Battery Outline", "Battery Unknown", "Bed", "Bell", "Blinds",
-    "Blinds Horizontal", "Blinds Horizontal Closed", "Blinds Open", "Bluetooth", "Broom", "Camera",
-    "Car Electric", "Cast", "CCTV", "Ceiling Fan", "Ceiling Light", "Ceiling Lights Multiple",
-    "Chandelier", "Clock", "Coffee Maker", "Current AC", "Current DC", "Curtains",
-    "Curtains Closed", "Desk Lamp", "Dishwasher", "Dog", "Downlight", "Door",
-    "Door Open", "Doorbell", "Dots Horizontal", "Dryer", "EV Charger", "Fan",
-    "Fire", "Fireplace", "Flash", "Floor Lamp", "Fountain", "Fridge",
-    "Gamepad", "Garage", "Garage Open", "Garage Open Variant", "Garage Variant", "Gate",
-    "Gate Open", "Gesture Tap", "Gauge", "Gauge Empty", "Gauge Full", "Gauge Low",
-    "Grid Export", "Grid Import", "Grid Off", "Headphones", "Radiator", "Radiator Off",
-    "Home", "Heat Pump", "HVAC", "HVAC Off", "Hot Tub", "Humidifier",
-    "Humidity Alert", "Iron", "Kettle", "Key", "Lamp", "Lamp Outline",
-    "LAN", "Lawnmower", "Leaf", "LED Strip", "LED Strip Variant", "LED Strip Variant Off",
-    "Light Switch", "Lightbulb", "Lightbulb Group", "Lightbulb Group Outline", "Lightbulb Night", "Lightbulb Night Outline",
-    "Lightbulb Off", "Lightbulb On Outline", "Lightbulb Spot", "Lightbulb Spot Off", "Lightbulb Variant", "Lightbulb Variant Outline",
-    "Lightbulb Outline", "Lightning Bolt", "Lock", "Lock Open", "Lock Open Outline", "Lock Outline",
-    "Mailbox", "Message Video", "Medication", "Medication Outline", "Meter Electric", "Meter Gas",
-    "Microsoft Xbox", "Microwave", "Minus", "Monitor", "Motion Sensor", "Movie Roll",
-    "Music", "Outdoor Lamp", "Oven", "Package", "Package Closed", "Pill",
-    "Pill Multiple", "Plus", "Play Pause", "Pool", "Power", "Power Plug",
-    "Progress Clock", "Printer", "Printer 3D", "Projector", "Projector Off", "Robot Vacuum",
-    "Roller Shade", "Roller Shade Closed", "Router", "Router Network", "Security", "Shower",
-    "Skip Next", "Skip Previous", "Smoke Detector", "Snowflake", "Snowflake Alert", "Snowflake Thermometer",
-    "Sofa", "Solar Panel", "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker",
-    "Spotlight", "Sprinkler", "Stop", "String Lights", "String Lights Off", "Power Socket UK",
-    "Power Socket EU", "Power Socket US", "Sun", "Table", "Television", "Television Off",
-    "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low", "Thermostat", "Home-Thermostat",
-    "Thermostat Auto", "Thermometer Water", "Timer", "Toilet", "Transmission Tower", "Trash Can",
-    "Volume High", "Wall Outlet", "Wall Sconce", "Washer", "Water", "Water Heater",
-    "Water Percent", "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog",
-    "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night",
-    "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy",
-    "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny",
-    "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado",
-    "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check",
-    "Window Closed", "Window Open", "Window Shutter", "Window Shutter Open",
+    "Application", "Arrow Down", "Arrow Up", "Battery", "Battery 10%", "Battery 20%",
+    "Battery 30%", "Battery 40%", "Battery 50%", "Battery 60%", "Battery 70%", "Battery 80%",
+    "Battery 90%", "Battery Alert", "Battery Charging", "Battery Charging 100", "Battery Charging 70", "Battery High",
+    "Battery Low", "Battery Medium", "Battery Off", "Battery Outline", "Battery Unknown", "Bed",
+    "Bell", "Blinds", "Blinds Horizontal", "Blinds Horizontal Closed", "Blinds Open", "Bluetooth",
+    "Broom", "Camera", "Car Electric", "Cast", "CCTV", "Ceiling Fan",
+    "Ceiling Light", "Ceiling Lights Multiple", "Chandelier", "Chevron Down", "Chevron Up", "Clock",
+    "Coffee Maker", "Current AC", "Current DC", "Curtains", "Curtains Closed", "Desk Lamp",
+    "Dishwasher", "Dog", "Downlight", "Door", "Door Open", "Doorbell",
+    "Dots Horizontal", "Dryer", "EV Charger", "Fan", "Fire", "Fireplace",
+    "Flash", "Floor Lamp", "Fountain", "Fridge", "Gamepad", "Garage",
+    "Garage Open", "Garage Open Variant", "Garage Variant", "Gate", "Gate Open", "Gesture Tap",
+    "Gauge", "Gauge Empty", "Gauge Full", "Gauge Low", "Grid Export", "Grid Import",
+    "Grid Off", "Headphones", "Radiator", "Radiator Off", "Home", "Heat Pump",
+    "HVAC", "HVAC Off", "Hot Tub", "Humidifier", "Humidity Alert", "Iron",
+    "Kettle", "Key", "Lamp", "Lamp Outline", "LAN", "Lawnmower",
+    "Leaf", "LED Strip", "LED Strip Variant", "LED Strip Variant Off", "Light Switch", "Lightbulb",
+    "Lightbulb Group", "Lightbulb Group Outline", "Lightbulb Night", "Lightbulb Night Outline", "Lightbulb Off", "Lightbulb On Outline",
+    "Lightbulb Spot", "Lightbulb Spot Off", "Lightbulb Variant", "Lightbulb Variant Outline", "Lightbulb Outline", "Lightning Bolt",
+    "Lock", "Lock Open", "Lock Open Outline", "Lock Outline", "Mailbox", "Message Video",
+    "Medication", "Medication Outline", "Meter Electric", "Meter Gas", "Microsoft Xbox", "Microwave",
+    "Minus", "Monitor", "Motion Sensor", "Movie Roll", "Music", "Outdoor Lamp",
+    "Oven", "Package", "Package Closed", "Pill", "Pill Multiple", "Plus",
+    "Play Pause", "Pool", "Power", "Power Plug", "Progress Clock", "Printer",
+    "Printer 3D", "Projector", "Projector Off", "Robot Vacuum", "Roller Shade", "Roller Shade Closed",
+    "Router", "Router Network", "Security", "Shower", "Skip Next", "Skip Previous",
+    "Smoke Detector", "Snowflake", "Snowflake Alert", "Snowflake Thermometer", "Sofa", "Solar Panel",
+    "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker", "Spotlight", "Sprinkler",
+    "Stop", "String Lights", "String Lights Off", "Power Socket UK", "Power Socket EU", "Power Socket US",
+    "Sun", "Table", "Television", "Television Off", "Thermometer", "Thermometer Alert",
+    "Thermometer High", "Thermometer Low", "Thermostat", "Home-Thermostat", "Thermostat Auto", "Thermometer Water",
+    "Timer", "Toilet", "Transmission Tower", "Trash Can", "Volume High", "Wall Outlet",
+    "Wall Sconce", "Washer", "Water", "Water Heater", "Water Percent", "Water Alert",
+    "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog", "Weather Hail", "Weather Hazy",
+    "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night", "Weather Night Cloudy", "Weather Partly Cloudy",
+    "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy", "Weather Pouring", "Weather Rainy",
+    "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny", "Weather Sunny Alert", "Weather Sunny Off",
+    "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado", "Weather Windy", "Weather Windy Variant",
+    "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check", "Window Closed", "Window Open",
+    "Window Shutter", "Window Shutter Open",
   ];
   // --- GENERATED:ICONS END ---
 
@@ -4639,6 +4640,17 @@
       if (canPlaceSlotAt(grid, candidate, size, maxSlots)) return candidate;
     }
     return -1;
+  }
+
+  function findDuplicatePlacement(grid, start, size, maxSlots) {
+    var targetSize = size || 1;
+    var pos = findPlacementCell(grid, start, targetSize, maxSlots);
+    if (pos >= 0) return { pos: pos, size: targetSize };
+    if (targetSize !== 1) {
+      pos = findPlacementCell(grid, start, 1, maxSlots);
+      if (pos >= 0) return { pos: pos, size: 1 };
+    }
+    return { pos: -1, size: targetSize };
   }
 
   function placeSlotAt(grid, slot, pos, size) {

@@ -55,6 +55,16 @@
       "mdi": "application-outline"
     },
     {
+      "name": "Arrow Down",
+      "codepoint": "F0045",
+      "mdi": "arrow-down"
+    },
+    {
+      "name": "Arrow Up",
+      "codepoint": "F005D",
+      "mdi": "arrow-up"
+    },
+    {
       "name": "Battery",
       "codepoint": "F0079",
       "mdi": "battery"
@@ -233,6 +243,16 @@
       "name": "Chandelier",
       "codepoint": "F1793",
       "mdi": "chandelier"
+    },
+    {
+      "name": "Chevron Down",
+      "codepoint": "F0140",
+      "mdi": "chevron-down"
+    },
+    {
+      "name": "Chevron Up",
+      "codepoint": "F0143",
+      "mdi": "chevron-up"
     },
     {
       "name": "Clock",
