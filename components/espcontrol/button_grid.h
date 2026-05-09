@@ -4103,7 +4103,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_clear_flag(ui.menu_view, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.menu_view, LV_OBJ_FLAG_HIDDEN);
 
-  ui.menu_close_btn = media_volume_create_round_button(ui.panel, 32, "X", ctx->label_font,
+  ui.menu_close_btn = media_volume_create_round_button(ui.panel, 32, "\U000F0156", ctx->icon_font,
     0x454545, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.menu_close_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.menu_close_btn, 0, LV_PART_MAIN);

@@ -16,6 +16,12 @@
       "codepoint": "F0142",
       "mdi": "chevron-right",
       "comment": "Subpage indicator"
+    },
+    {
+      "name": "Close",
+      "codepoint": "F0156",
+      "mdi": "close",
+      "comment": "Modal close button"
     }
   ],
   "icons": [
