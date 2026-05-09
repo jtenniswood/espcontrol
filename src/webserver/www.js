@@ -4774,7 +4774,7 @@
         handleBtnClick(e, slot, pos);
       } else if (slot === -2) {
         if (didDrag) { didDrag = false; return; }
-        openCardSettings(-2);
+        exitSubpage();
       } else if (slot === 0) {
         if (state.clipboard) {
           e.preventDefault();
