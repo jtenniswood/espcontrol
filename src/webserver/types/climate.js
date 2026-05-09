@@ -33,6 +33,14 @@ registerButtonType("climate", {
     helpers.bindField(entityInp, "entity", true);
     helpers.requireField(entityInp, "Add a climate entity before saving.");
 
+    var lf = document.createElement("div");
+    lf.className = "sp-field";
+    lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
+    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Living Room");
+    lf.appendChild(labelInp);
+    panel.appendChild(lf);
+    helpers.bindField(labelInp, "label", true);
+
     var pf = document.createElement("div");
     pf.className = "sp-field";
     pf.appendChild(helpers.fieldLabel("Unit Precision", helpers.idPrefix + "climate-precision"));
@@ -56,14 +64,6 @@ registerButtonType("climate", {
     });
     pf.appendChild(precision);
     panel.appendChild(pf);
-
-    var lf = document.createElement("div");
-    lf.className = "sp-field";
-    lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Living Room");
-    lf.appendChild(labelInp);
-    panel.appendChild(lf);
-    helpers.bindField(labelInp, "label", true);
   },
   renderPreview: function (b, helpers) {
     var label = (b.label && b.label.trim()) || (b.entity && b.entity.trim()) || "Climate";
