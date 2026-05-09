@@ -4014,14 +4014,15 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
   lv_obj_set_style_border_width(box, 0, LV_PART_MAIN);
   lv_obj_set_style_radius(box, kind == "hvac" ? 8 : 14, LV_PART_MAIN);
   lv_obj_set_style_pad_all(box, kind == "hvac" ? 12 : 10, LV_PART_MAIN);
-  lv_obj_set_style_pad_row(box, kind == "hvac" ? 6 : 6, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(box, kind == "hvac" ? 0 : 6, LV_PART_MAIN);
   lv_obj_set_layout(box, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(box, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
   if (kind == "hvac") lv_obj_align(box, LV_ALIGN_TOP_RIGHT, -10, 64);
   else lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
   lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
 
-  for (const auto &option : *options) {
+  for (size_t option_index = 0; option_index < options->size(); option_index++) {
+    const auto &option = (*options)[option_index];
     bool selected = climate_option_selected(ctx, kind, option);
     lv_obj_t *btn = lv_btn_create(box);
     lv_obj_set_width(btn, lv_pct(100));
@@ -4047,6 +4048,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
         lv_label_set_text(check_lbl, find_icon("Check"));
         lv_obj_set_style_text_color(check_lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
         if (ctx->icon_font) lv_obj_set_style_text_font(check_lbl, ctx->icon_font, LV_PART_MAIN);
+        lv_obj_set_style_transform_zoom(check_lbl, 170, LV_PART_MAIN);
         lv_obj_align(check_lbl, LV_ALIGN_RIGHT_MID, 0, 0);
       }
     } else {
@@ -4061,6 +4063,17 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
       if (click) climate_send_option(click->ctx, click->kind, click->value);
       climate_hide_option_menu();
     }, LV_EVENT_CLICKED, click);
+    if (kind == "hvac" && option_index + 1 < options->size()) {
+      lv_obj_t *divider = lv_obj_create(box);
+      lv_obj_set_width(divider, lv_pct(100));
+      lv_obj_set_height(divider, 1);
+      lv_obj_set_style_bg_color(divider, lv_color_hex(ctx->tertiary_color), LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(divider, LV_OPA_COVER, LV_PART_MAIN);
+      lv_obj_set_style_border_width(divider, 0, LV_PART_MAIN);
+      lv_obj_set_style_shadow_width(divider, 0, LV_PART_MAIN);
+      lv_obj_set_style_pad_all(divider, 0, LV_PART_MAIN);
+      lv_obj_clear_flag(divider, LV_OBJ_FLAG_SCROLLABLE);
+    }
   }
   lv_obj_move_foreground(ui.menu_overlay);
 }
