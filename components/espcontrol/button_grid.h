@@ -4118,7 +4118,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (ui.active) climate_open_option_menu(ui.active, "hvac");
   }, LV_EVENT_CLICKED, nullptr);
-  ui.menu_preset_btn = climate_create_menu_tile(ui.menu_view, find_icon("Thermostat Auto"), "Preset\nNone",
+  ui.menu_preset_btn = climate_create_menu_tile(ui.menu_view, find_icon("Air Filter"), "Preset\nNone",
     ctx->icon_font, ctx->label_font, ctx->width_compensation_percent);
   lv_obj_add_event_cb(ui.menu_preset_btn, [](lv_event_t *) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
