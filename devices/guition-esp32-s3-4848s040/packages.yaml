@@ -69,7 +69,7 @@ packages:
   backlight:       !include ../../common/addon/backlight.yaml
   bl_schedule:     !include ../../common/addon/backlight_schedule.yaml
   network:         !include ../../common/addon/network.yaml
-  bluetooth:       !include ../../common/addon/bluetooth_proxy.yaml
+  bluetooth:       !include ../../common/addon/bluetooth_proxy_disabled.yaml
   fw_update:       !include ../../common/addon/firmware_update.yaml
 
   # ---------------------------------------------------------------------------
