@@ -4019,11 +4019,26 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
     lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_top(btn, kind == "hvac" ? 8 : 0, LV_PART_MAIN);
     lv_obj_set_style_pad_bottom(btn, kind == "hvac" ? 8 : 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_left(btn, kind == "hvac" ? 6 : 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(btn, kind == "hvac" ? 6 : 0, LV_PART_MAIN);
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, climate_option_label(option).c_str());
-    lv_obj_set_style_text_color(label, lv_color_hex(selected ? ctx->accent_color : 0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(label, ctx->label_font, LV_PART_MAIN);
-    lv_obj_center(label);
+    if (kind == "hvac") {
+      lv_obj_set_width(label, lv_pct(78));
+      lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
+      if (selected) {
+        lv_obj_t *check_lbl = lv_label_create(btn);
+        lv_label_set_text(check_lbl, find_icon("Check"));
+        lv_obj_set_style_text_color(check_lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+        if (ctx->icon_font) lv_obj_set_style_text_font(check_lbl, ctx->icon_font, LV_PART_MAIN);
+        lv_obj_align(check_lbl, LV_ALIGN_RIGHT_MID, 0, 0);
+      }
+    } else {
+      lv_obj_center(label);
+    }
     ClimateOptionClick *click = new ClimateOptionClick();
     click->ctx = ctx;
     click->kind = kind;

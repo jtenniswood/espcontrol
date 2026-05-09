@@ -251,6 +251,11 @@
       "mdi": "chandelier"
     },
     {
+      "name": "Check",
+      "codepoint": "F012C",
+      "mdi": "check"
+    },
+    {
       "name": "Chevron Down",
       "codepoint": "F0140",
       "mdi": "chevron-down"
