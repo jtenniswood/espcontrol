@@ -3996,7 +3996,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
   lv_obj_t *box = lv_obj_create(ui.menu_overlay);
   lv_obj_set_width(box, kind == "hvac" ? 190 : 220);
   lv_obj_set_height(box, LV_SIZE_CONTENT);
-  lv_obj_set_style_bg_color(box, lv_color_hex(ctx->tertiary_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(box, lv_color_hex(ctx->secondary_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(box, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(box, 0, LV_PART_MAIN);
   lv_obj_set_style_radius(box, kind == "hvac" ? 8 : 14, LV_PART_MAIN);
