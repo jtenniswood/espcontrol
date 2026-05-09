@@ -65,6 +65,19 @@
       "climate_target_font": "climate_target_font_sm",
       "color_correction": false,
       "wrap_tall_labels": false
+    },
+    {
+      "slug": "waveshare-esp32-s3-touch-lcd-7b",
+      "slots": 20,
+      "cols": 5,
+      "grid": "5x4",
+      "icon_font": "icon_font_lt",
+      "climate_control_icon_font": "climate_target_font_lt",
+      "sensor_font": "statistics_font",
+      "media_title_font": "media_title_font",
+      "climate_target_font": "climate_target_font_lt",
+      "color_correction": false,
+      "wrap_tall_labels": false
     }
   ]
 }

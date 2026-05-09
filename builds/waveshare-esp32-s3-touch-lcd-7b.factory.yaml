@@ -1,0 +1,30 @@
+# =============================================================================
+# FACTORY BUILD - Waveshare ESP32-S3 Touch LCD 7B (7" landscape)
+# =============================================================================
+# Factory image variant: bundles www.js inline (js_include) instead of loading
+# from GitHub CDN, so the web UI works on first boot before WiFi is configured.
+# firmware_version is overridden by the release workflow at build time.
+# dashboard_import enables one-click adoption in ESPHome Dashboard.
+# =============================================================================
+
+substitutions:
+  firmware_version: "0.0.0"
+  espcontrol_component_url: "file:///config"
+  espcontrol_component_ref: "HEAD"
+
+packages:
+  core: !include waveshare-esp32-s3-touch-lcd-7b.yaml
+
+esphome:
+  project:
+    name: jtenniswood.espcontrol
+    version: "${firmware_version}"
+
+dashboard_import:
+  package_import_url: github://jtenniswood/espcontrol/devices/waveshare-esp32-s3-touch-lcd-7b/esphome.yaml@main
+
+web_server:
+  port: 80
+  version: 3
+  js_url: ""
+  js_include: "../docs/public/webserver/waveshare-esp32-s3-touch-lcd-7b/www.js"

@@ -1,0 +1,275 @@
+# =============================================================================
+# DEVICE - Waveshare ESP32-S3 Touch LCD 7B hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 7" 1024x600
+# Type B panel. Includes the ESP32-S3 SoC, RGB LCD panel, GT911 capacitive
+# touchscreen, and Waveshare CH32V003 I/O controller for reset/backlight.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+
+# ---------------------------------------------------------------------------
+# ESP32-S3 platform (16MB flash, 8MB octal PSRAM, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  cpu_frequency: 240MHz
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      CONFIG_FREERTOS_HZ: "1000"
+      CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240: "y"
+      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
+      CONFIG_SPIRAM_RODATA: "y"
+
+# ---------------------------------------------------------------------------
+# External components
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [espcontrol]
+    refresh: 0s
+  # Native ESPHome support for this board's CH32V003 I/O controller is still
+  # under review upstream. Use the PR component until it is released.
+  - source: github://pr#10071
+    components: [waveshare_io_ch32v003]
+    refresh: 1h
+
+espcontrol:
+
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-DBOARD_HAS_PSRAM"
+      - "-Wno-deprecated-declarations"
+  on_boot:
+    - priority: -100
+      then:
+        - script.execute: apply_screen_rotation
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: octal
+  speed: 80MHz
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - light.turn_off: display_backlight
+  - platform: http_request
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+logger:
+  hardware_uart: UART0
+
+wifi:
+  use_psram: true
+
+# ---------------------------------------------------------------------------
+# I2C bus and Waveshare I/O controller
+# ---------------------------------------------------------------------------
+i2c:
+  - id: bus_a
+    sda: GPIO8
+    scl: GPIO9
+    frequency: 400kHz
+
+waveshare_io_ch32v003:
+  - id: waveshare_io
+    address: 0x24
+    i2c_id: bus_a
+
+# ---------------------------------------------------------------------------
+# Backlight (CH32V003 PWM output + monochromatic light entity)
+# ---------------------------------------------------------------------------
+output:
+  - platform: waveshare_io_ch32v003
+    id: gpio_backlight_pwm
+    waveshare_io_ch32v003_id: waveshare_io
+    inverted: true
+    zero_means_zero: true
+    safe_pwm_levels:
+      min_value: 1
+      max_value: 247
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return id(screen_schedule_asleep) ||
+                       (id(schedule_enabled).state && !panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(screensaver_display_off_active);'
+                  then:
+                    - script.execute: screensaver_wake
+
+sensor:
+  - platform: waveshare_io_ch32v003
+    name: Battery Voltage
+    id: battery_voltage
+    waveshare_io_ch32v003_id: waveshare_io
+    reference_voltage: 9.9
+    unit_of_measurement: V
+    accuracy_decimals: 2
+    disabled_by_default: true
+    entity_category: diagnostic
+
+# ---------------------------------------------------------------------------
+# I2C touchscreen (GT911 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    display: my_display
+    i2c_id: bus_a
+    interrupt_pin: GPIO4
+    reset_pin:
+      waveshare_io_ch32v003: waveshare_io
+      number: 1
+      mode:
+        output: true
+    on_touch:
+      - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Display (7" 1024x600 RGB DPI panel)
+# ---------------------------------------------------------------------------
+display:
+  - platform: mipi_rgb
+    model: RPI
+    id: my_display
+    rotation: 0
+    update_interval: never
+    auto_clear_enabled: false
+    dimensions:
+      width: 1024
+      height: 600
+    de_pin:
+      number: GPIO5
+    hsync_pin:
+      number: GPIO46
+      ignore_strapping_warning: true
+    vsync_pin:
+      number: GPIO3
+      ignore_strapping_warning: true
+    pclk_pin: GPIO7
+    pclk_inverted: true
+    reset_pin:
+      waveshare_io_ch32v003: waveshare_io
+      number: 3
+      mode:
+        output: true
+    hsync_pulse_width: 20
+    hsync_front_porch: 160
+    hsync_back_porch: 140
+    vsync_pulse_width: 3
+    vsync_front_porch: 12
+    vsync_back_porch: 20
+    pclk_frequency: 20MHz
+    color_order: RGB 
+    data_pins:
+      red:
+        - GPIO1   # R3
+        - GPIO2   # R4
+        - GPIO42  # R5
+        - GPIO41  # R6
+        - GPIO40  # R7
+      green:
+        - GPIO39  # G2
+        - GPIO0   # G3
+        - GPIO45  # G4
+        - GPIO48  # G5
+        - GPIO47  # G6
+        - GPIO21  # G7
+      blue:
+        - GPIO14  # B3
+        - GPIO38  # B4
+        - GPIO18  # B5
+        - GPIO17  # B6
+        - GPIO10  # B7
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+lvgl:
+  id: main_lvgl
+  # Keep LVGL after WiFi and after the display driver.
+  setup_priority: 230
+  buffer_size: 25%
+  displays: my_display
+  rotation: 180 # Was 0
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "180";'
+          then:
+            - lvgl.display.set_rotation: 180 # Was 0
+          else:
+            - lvgl.display.set_rotation: 0 # Was 180
+
+select:
+  - platform: template
+    name: "Screen: Rotation"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "0"
+    options:
+      - "0"
+      - "180"
+    on_value:
+      then:
+        - script.execute: apply_screen_rotation
