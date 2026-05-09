@@ -3931,7 +3931,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
     lv_obj_t *title_lbl = lv_label_create(parent);
     lv_label_set_text(title_lbl, section_title);
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(CLIMATE_TEXT_COLOR), LV_PART_MAIN);
-    lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(title_lbl, ctx->label_font, LV_PART_MAIN);
     lv_obj_set_width(title_lbl, lv_pct(100));
 
