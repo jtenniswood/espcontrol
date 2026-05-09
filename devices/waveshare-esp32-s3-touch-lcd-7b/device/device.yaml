@@ -208,7 +208,7 @@ display:
     vsync_pulse_width: 3
     vsync_front_porch: 12
     vsync_back_porch: 20
-    pclk_frequency: 20MHz
+    pclk_frequency: 26MHz
     color_order: RGB 
     data_pins:
       red:
