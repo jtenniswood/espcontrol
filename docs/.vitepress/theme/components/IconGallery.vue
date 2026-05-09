@@ -291,6 +291,7 @@ const ICON_GROUPS = {
 
   'Account': 'General',
   'Broom': 'General',
+  'Check': 'General',
   'Clock': 'General',
   'Dog': 'General',
   'Dots Horizontal': 'General',
