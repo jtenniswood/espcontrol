@@ -186,6 +186,16 @@ assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "°C", "centigr
 assert.strictEqual(hooks.temperatureUnitSymbolFor("America/New_York (GMT-5)", "Auto"), "°F", "auto unit for US timezone");
 assert.strictEqual(hooks.temperatureUnitSymbolFor("Europe/London (GMT+0)", "Auto"), "°C", "auto unit for UK timezone");
 assert.strictEqual(hooks.temperatureUnitSymbolFor("Europe/London (GMT+0)", "°F"), "°F", "manual fahrenheit override");
+const duplicateWrapGrid = Array.from({ length: 20 }, (_, i) => i + 1);
+duplicateWrapGrid[1] = 0;
+duplicateWrapGrid[2] = 0;
+const duplicateWidePlacement = hooks.findDuplicatePlacementFor(duplicateWrapGrid, 19, 3, 20);
+assert.strictEqual(duplicateWidePlacement.pos, 1, "duplicate placement wraps to earlier slots when a matching space exists");
+assert.strictEqual(duplicateWidePlacement.size, 3, "duplicate placement preserves card size when the wrapped space fits");
+duplicateWrapGrid[2] = 3;
+const duplicateFallbackPlacement = hooks.findDuplicatePlacementFor(duplicateWrapGrid, 19, 3, 20);
+assert.strictEqual(duplicateFallbackPlacement.pos, 1, "duplicate placement still wraps when copied size will not fit");
+assert.strictEqual(duplicateFallbackPlacement.size, 1, "duplicate placement falls back to a normal card when the copied size will not fit");
 const importedPlainOrder = hooks.importedButtonOrderFor("1,2,3", { 1: 2 });
 assert.deepStrictEqual({
   grid: Array.from(importedPlainOrder.grid),

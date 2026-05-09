@@ -5022,6 +5022,10 @@
   function duplicateButton(srcSlot) {
     var newSlot = firstFreeSlot();
     if (newSlot < 0) return;
+    var srcSz = state.sizes[srcSlot] || 1;
+    var srcPos = state.grid.indexOf(srcSlot);
+    var placement = findDuplicatePlacement(state.grid, srcPos + 1, srcSz, NUM_SLOTS);
+    if (placement.pos < 0) return;
 
     var src = state.buttons[srcSlot - 1];
     state.buttons[newSlot - 1] = {
@@ -5030,25 +5034,8 @@
       type: src.type || "", precision: src.precision || "",
     };
 
-    var srcSz = state.sizes[srcSlot];
-    if (srcSz) state.sizes[newSlot] = srcSz;
-
-    var srcPos = state.grid.indexOf(srcSlot);
-    var newPos = firstFreeCell(srcPos + 1);
-    if (newPos < 0) return;
-    state.grid[newPos] = newSlot;
-    if (state.sizes[newSlot] === 2 || state.sizes[newSlot] === 4) {
-      var belowNew = newPos + GRID_COLS;
-      if (belowNew < NUM_SLOTS && state.grid[belowNew] === 0) state.grid[belowNew] = -1;
-    }
-    if (state.sizes[newSlot] === 3 || state.sizes[newSlot] === 4) {
-      var rightNew = newPos + 1;
-      if (rightNew < NUM_SLOTS && rightNew % GRID_COLS !== 0 && state.grid[rightNew] === 0) state.grid[rightNew] = -1;
-    }
-    if (state.sizes[newSlot] === 4) {
-      var diagNew = newPos + GRID_COLS + 1;
-      if (diagNew < NUM_SLOTS && (newPos + 1) % GRID_COLS !== 0 && state.grid[diagNew] === 0) state.grid[diagNew] = -1;
-    }
+    if (placement.size === 1) delete state.sizes[newSlot]; else state.sizes[newSlot] = placement.size;
+    placeSlotAt(state.grid, newSlot, placement.pos, placement.size);
 
     if (src.type === "subpage" && state.subpages[srcSlot]) {
       var spJson = serializeSubpageConfig(state.subpages[srcSlot]);
@@ -5072,6 +5059,10 @@
     while (sp.buttons.length < newSlot) {
       sp.buttons.push(emptyButtonConfig());
     }
+    var srcSz = sp.sizes[srcSlot] || 1;
+    var srcPos = sp.grid.indexOf(srcSlot);
+    var placement = findDuplicatePlacement(sp.grid, srcPos + 1, srcSz, NUM_SLOTS);
+    if (placement.pos < 0) return;
 
     var src = sp.buttons[srcSlot - 1];
     sp.buttons[newSlot - 1] = {
@@ -5080,28 +5071,8 @@
       type: src.type || "", precision: src.precision || "",
     };
 
-    var srcSz = sp.sizes[srcSlot];
-    if (srcSz) sp.sizes[newSlot] = srcSz;
-
-    var srcPos = sp.grid.indexOf(srcSlot);
-    var newPos = -1;
-    for (var c = srcPos + 1; c < NUM_SLOTS; c++) {
-      if (sp.grid[c] === 0) { newPos = c; break; }
-    }
-    if (newPos < 0) return;
-    sp.grid[newPos] = newSlot;
-    if (sp.sizes[newSlot] === 2 || sp.sizes[newSlot] === 4) {
-      var below = newPos + GRID_COLS;
-      if (below < NUM_SLOTS && sp.grid[below] === 0) sp.grid[below] = -1;
-    }
-    if (sp.sizes[newSlot] === 3 || sp.sizes[newSlot] === 4) {
-      var right = newPos + 1;
-      if (right < NUM_SLOTS && right % GRID_COLS !== 0 && sp.grid[right] === 0) sp.grid[right] = -1;
-    }
-    if (sp.sizes[newSlot] === 4) {
-      var diag = newPos + GRID_COLS + 1;
-      if (diag < NUM_SLOTS && (newPos + 1) % GRID_COLS !== 0 && sp.grid[diag] === 0) sp.grid[diag] = -1;
-    }
+    if (placement.size === 1) delete sp.sizes[newSlot]; else sp.sizes[newSlot] = placement.size;
+    placeSlotAt(sp.grid, newSlot, placement.pos, placement.size);
 
     sp.order = serializeSubpageGrid(sp);
     saveSubpageConfig(homeSlot);
@@ -6661,6 +6632,9 @@
       subpageConfigNeedsMigration: subpageConfigNeedsMigration,
       normalizeTemperatureUnit: normalizeTemperatureUnit,
       previewHtmlValue: previewHtmlValue,
+      findDuplicatePlacementFor: function (grid, start, size, maxSlots) {
+        return findDuplicatePlacement(grid.slice(), start, size, maxSlots || NUM_SLOTS);
+      },
       importedButtonOrderFor: function (orderStr, existingSizes) {
         var oldSizes = state.sizes;
         var oldGrid = state.grid;
