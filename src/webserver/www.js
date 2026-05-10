@@ -1934,6 +1934,13 @@
         b.icon = "Auto";
       }
       if (b.sensor === "position" && (!b.label || b.label === "Track")) b.label = "Position";
+      if (b.sensor === "now_playing") {
+        b.precision = b.precision === "progress" ? "progress" : "";
+      } else if ((b.sensor === "play_pause" || b.sensor === "position") && b.precision === "state") {
+        b.precision = "state";
+      } else {
+        b.precision = "";
+      }
     }
     if (b && b.type === "climate") {
       b.sensor = "";

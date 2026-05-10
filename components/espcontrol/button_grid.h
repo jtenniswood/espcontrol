@@ -133,6 +133,13 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
       p.icon = "Auto";
     }
     if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = "Position";
+    if (p.sensor == "now_playing") {
+      p.precision = p.precision == "progress" ? "progress" : "";
+    } else if ((p.sensor == "play_pause" || p.sensor == "position") && p.precision == "state") {
+      p.precision = "state";
+    } else {
+      p.precision.clear();
+    }
   }
   if (p.type == "climate") {
     p.sensor.clear();
@@ -2290,6 +2297,12 @@ struct SliderCtx {
   std::string cached_label;
 };
 
+struct MediaNowPlayingCtx {
+  lv_obj_t *title_lbl = nullptr;
+  lv_obj_t *artist_lbl = nullptr;
+  lv_obj_t *progress_slider = nullptr;
+};
+
 constexpr uint32_t MEDIA_SEEK_PENDING_TIMEOUT_MS = 3000;
 constexpr float MEDIA_SEEK_MATCH_TOLERANCE_SECONDS = 2.0f;
 constexpr lv_coord_t MEDIA_VOLUME_REFERENCE_SIDE_PX = 480;
@@ -2896,6 +2909,10 @@ inline bool media_play_pause_show_state(const ParsedCfg &p) {
 
 inline bool media_position_show_state(const ParsedCfg &p) {
   return media_card_mode(p.sensor) == "position" && p.precision == "state";
+}
+
+inline bool media_now_playing_progress_enabled(const ParsedCfg &p) {
+  return media_card_mode(p.sensor) == "now_playing" && p.precision == "progress";
 }
 
 inline void media_format_time(float seconds, char *buf, size_t size) {
@@ -4946,6 +4963,35 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   }
 }
 
+inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
+                                                 uint32_t progress_color,
+                                                 uint32_t background_color) {
+  lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(
+    btn, lv_color_hex(background_color),
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) |
+      static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
+
+  lv_obj_t *slider = setup_slider_widget(btn, progress_color, true);
+  lv_obj_t *fill = lv_obj_get_child(btn, 0);
+  lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+
+  SliderCtx *ctx = new SliderCtx();
+  ctx->fill = fill;
+  ctx->horizontal = true;
+  ctx->cover_tilt = false;
+  ctx->inverted = false;
+  ctx->radius = lv_obj_get_style_radius(btn, LV_PART_MAIN);
+  ctx->media_position = true;
+  ctx->media_slider = slider;
+  lv_obj_set_user_data(slider, (void *)ctx);
+  slider_bind_geometry_refresh(btn, slider);
+
+  ctx->media_timer = lv_timer_create(media_position_timer_cb, 1000, ctx);
+  if (ctx->media_timer) lv_timer_pause(ctx->media_timer);
+  return slider;
+}
+
 inline void setup_media_volume_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                       lv_obj_t *sensor_container,
                                       lv_obj_t *sensor_lbl,
@@ -5115,11 +5161,17 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
   if (mode == "now_playing") {
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
+    MediaNowPlayingCtx *ctx = new MediaNowPlayingCtx();
+    if (media_now_playing_progress_enabled(p)) {
+      ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color);
+    }
     lv_obj_t *title_lbl = lv_label_create(s.btn);
     lv_obj_set_style_text_color(title_lbl, text_color, LV_PART_MAIN);
     apply_width_compensation(title_lbl, width_compensation_percent);
     s.sensor_lbl = title_lbl;
-    lv_obj_set_user_data(s.sensor_container, (void *)title_lbl);
+    ctx->title_lbl = title_lbl;
+    ctx->artist_lbl = s.text_lbl;
+    lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad, row_span == 1);
     return;
@@ -5157,10 +5209,15 @@ inline void subscribe_media_state(lv_obj_t *btn_ptr,
   );
 }
 
-inline void subscribe_media_now_playing_state(lv_obj_t *title_lbl,
-                                              lv_obj_t *artist_lbl,
+inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
+                                         lv_obj_t *slider,
+                                         const std::string &entity_id);
+
+inline void subscribe_media_now_playing_state(MediaNowPlayingCtx *ctx,
                                               const std::string &entity_id) {
   if (entity_id.empty()) return;
+  lv_obj_t *title_lbl = ctx ? ctx->title_lbl : nullptr;
+  lv_obj_t *artist_lbl = ctx ? ctx->artist_lbl : nullptr;
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, std::string("media_title"),
     std::function<void(esphome::StringRef)>(
@@ -5175,6 +5232,9 @@ inline void subscribe_media_now_playing_state(lv_obj_t *title_lbl,
         media_set_metadata_text(artist_lbl, artist, "--");
       })
   );
+  if (ctx && ctx->progress_slider) {
+    subscribe_media_slider_state(lv_obj_get_parent(ctx->progress_slider), ctx->progress_slider, entity_id);
+  }
 }
 
 inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
@@ -5398,6 +5458,14 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     if (b.sensor == "volume") {
       if (b.label.empty() || b.label == "Media") b.label = "Volume";
       b.icon = "Auto";
+    }
+    if (b.sensor == "position" && (b.label.empty() || b.label == "Track")) b.label = "Position";
+    if (b.sensor == "now_playing") {
+      b.precision = b.precision == "progress" ? "progress" : "";
+    } else if ((b.sensor == "play_pause" || b.sensor == "position") && b.precision == "state") {
+      b.precision = "state";
+    } else {
+      b.precision.clear();
     }
   }
   if (b.type == "climate") {
@@ -6127,8 +6195,8 @@ inline void grid_phase2(
           subscribe_media_volume_state(ctx);
           if (p.label.empty()) subscribe_friendly_name(s.text_lbl, p.entity);
         } else if (mode == "now_playing") {
-          lv_obj_t *title_lbl = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
-          subscribe_media_now_playing_state(title_lbl ? title_lbl : s.sensor_lbl, s.text_lbl, p.entity);
+          MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
+          subscribe_media_now_playing_state(ctx, p.entity);
         } else {
           lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
           if (slider) subscribe_media_slider_state(s.btn, slider, p.entity);
@@ -6529,8 +6597,8 @@ inline void grid_phase2(
               if (ctx) media_volume_open_modal(ctx);
             }, LV_EVENT_CLICKED, ctx);
           } else if (mode == "now_playing") {
-            lv_obj_t *title_lbl = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
-            subscribe_media_now_playing_state(title_lbl ? title_lbl : sub_slot.sensor_lbl, sub_slot.text_lbl, sb_cfg.entity);
+            MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(sub_slot.sensor_container);
+            subscribe_media_now_playing_state(ctx, sb_cfg.entity);
           } else {
             lv_obj_t *media_slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
             if (media_slider) subscribe_media_slider_state(sub_slot.btn, media_slider, sb_cfg.entity);

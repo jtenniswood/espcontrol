@@ -12,6 +12,10 @@ function mediaEditorValidMode(value) {
   return mediaEditorMode(value);
 }
 
+function mediaNowPlayingProgressEnabled(b) {
+  return b && b.sensor === "now_playing" && b.precision === "progress";
+}
+
 registerButtonType("media", {
   label: "Media",
   allowInSubpage: true,
@@ -88,7 +92,13 @@ registerButtonType("media", {
         b.icon = "Auto";
         helpers.saveField("icon", b.icon);
       }
-      if (b.sensor !== "play_pause" && b.sensor !== "position" && b.precision) {
+      if (b.sensor === "now_playing") {
+        b.precision = b.precision === "progress" ? "progress" : "";
+        helpers.saveField("precision", b.precision);
+      } else if (b.sensor === "play_pause" || b.sensor === "position") {
+        b.precision = b.precision === "state" ? "state" : "";
+        helpers.saveField("precision", b.precision);
+      } else if (b.precision) {
         b.precision = "";
         helpers.saveField("precision", "");
       }
@@ -120,7 +130,9 @@ registerButtonType("media", {
 
     b.sensor = validMode(b.sensor);
     b.unit = "";
-    b.precision = (b.sensor === "play_pause" || b.sensor === "position") && b.precision === "state" ? "state" : "";
+    b.precision = b.sensor === "now_playing" && b.precision === "progress"
+      ? "progress"
+      : ((b.sensor === "play_pause" || b.sensor === "position") && b.precision === "state" ? "state" : "");
     b.icon_on = "Auto";
     if (b.sensor === "previous" && b.label === "Skip Previous") {
       b.label = "Previous";
@@ -164,7 +176,7 @@ registerButtonType("media", {
         displayField.style.display = "";
       } else {
         displayField.style.display = "none";
-        if (b.precision) {
+        if (b.precision && !mediaNowPlayingProgressEnabled(b)) {
           b.precision = "";
           helpers.saveField("precision", "");
         }
@@ -194,6 +206,20 @@ registerButtonType("media", {
     displayField.appendChild(displaySeg);
     panel.appendChild(displayField);
     syncDisplayField();
+
+    if (b.sensor === "now_playing") {
+      var progressToggle = toggleRow(
+        "Track progress background",
+        helpers.idPrefix + "media-progress",
+        mediaNowPlayingProgressEnabled(b)
+      );
+      progressToggle.input.addEventListener("change", function () {
+        b.precision = this.checked ? "progress" : "";
+        helpers.saveField("precision", b.precision);
+        renderButtonSettings();
+      });
+      panel.appendChild(progressToggle.row);
+    }
 
     if (b.sensor !== "now_playing" &&
         (b.sensor !== "play_pause" || b.precision !== "state") &&
@@ -262,9 +288,17 @@ registerButtonType("media", {
       };
     }
     if (mode === "now_playing") {
+      var progressBg = "";
+      if (mediaNowPlayingProgressEnabled(b)) {
+        var nowBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "313131";
+        progressBg =
+          '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(nowBgColor) + '">' +
+          '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#444444">' +
+          '</span></span></span>';
+      }
       return {
         iconHtml:
-          '<span class="sp-media-now-title">Midnight City</span>',
+          progressBg + '<span class="sp-media-now-title">Midnight City</span>',
         labelHtml:
           '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">M83</span>' +
           badge + '</span>',

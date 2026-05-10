@@ -511,6 +511,17 @@ assertButtonRoundTrip(hooks, "media now playing card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "media now playing progress background", {
+  entity: "media_player.office",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "now_playing",
+  unit: "",
+  type: "media",
+  precision: "progress",
+}, false);
+
 assertButtonRoundTrip(hooks, "climate card", {
   entity: "climate.living_room",
   label: "Living Room",
