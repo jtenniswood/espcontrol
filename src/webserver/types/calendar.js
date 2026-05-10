@@ -16,26 +16,11 @@ registerButtonType("calendar", {
     if (!b.entity) b.entity = "sensor.date";
     if (b.precision !== "datetime") b.precision = "";
 
-    var displayField = document.createElement("div");
-    displayField.className = "sp-field";
-    displayField.appendChild(helpers.fieldLabel("Display", helpers.idPrefix + "calendar-mode"));
-    var modeSelect = document.createElement("select");
-    modeSelect.className = "sp-select";
-    modeSelect.id = helpers.idPrefix + "calendar-mode";
-
-    [
+    var modeField = helpers.selectField("Display", helpers.idPrefix + "calendar-mode", [
       { value: "datetime", label: "Time & Date" },
       { value: "", label: "Date" },
       { value: "timezone", label: "World Clock" }
-    ].forEach(function (optCfg) {
-      var opt = document.createElement("option");
-      opt.value = optCfg.value;
-      opt.textContent = optCfg.label;
-      modeSelect.appendChild(opt);
-    });
-
-    modeSelect.value = b.precision;
-    modeSelect.addEventListener("change", function () {
+    ], b.precision, function () {
       if (this.value === "timezone") {
         b.type = "timezone";
         b.entity = (typeof state !== "undefined" && state.timezone) || "UTC (GMT+0)";
@@ -59,8 +44,7 @@ registerButtonType("calendar", {
         helpers.saveField("precision", b.precision);
       }
     });
-    displayField.appendChild(modeSelect);
-    panel.appendChild(displayField);
+    panel.appendChild(modeField.field);
   },
   renderPreview: function (b, helpers) {
     var now = new Date();

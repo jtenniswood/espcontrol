@@ -43,36 +43,17 @@ registerButtonType("light_temperature", {
   },
   renderSettings: function (panel, b, slot, helpers) {
     // Light control type
-    var typeF = document.createElement("div");
-    typeF.className = "sp-field";
-    typeF.appendChild(helpers.fieldLabel("Type", helpers.idPrefix + "light-control-type"));
-    var typeSelect = document.createElement("select");
-    typeSelect.className = "sp-select";
-    typeSelect.id = helpers.idPrefix + "light-control-type";
-    var colorTempOpt = document.createElement("option");
-    colorTempOpt.value = "colour_temperature";
-    colorTempOpt.textContent = "Colour Temperature";
-    typeSelect.appendChild(colorTempOpt);
-    typeSelect.value = "colour_temperature";
-    typeF.appendChild(typeSelect);
-    panel.appendChild(typeF);
+    panel.appendChild(helpers.selectField(
+      "Type", helpers.idPrefix + "light-control-type",
+      [["colour_temperature", "Colour Temperature"]], "colour_temperature").field);
 
     // Entity
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.entityInput(helpers.idPrefix + "entity", b.entity, "e.g. light.living_room", ["light"]);
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
+    panel.appendChild(helpers.entityField(
+      "Entity", helpers.idPrefix + "entity", b.entity, "e.g. light.living_room",
+      ["light"], "entity", true).field);
 
-    var lf = document.createElement("div");
-    lf.className = "sp-field";
-    lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Living Room");
-    lf.appendChild(labelInp);
-    panel.appendChild(lf);
-    helpers.bindField(labelInp, "label", true);
+    panel.appendChild(helpers.textField(
+      "Label", helpers.idPrefix + "label", b.label, "e.g. Living Room", "label", true).field);
 
     if (b.sensor === "kelvin") {
       b.sensor = "";
@@ -131,7 +112,7 @@ registerButtonType("light_temperature", {
     maxInp.addEventListener("blur", onRangeChange);
 
     // Icon
-    panel.appendChild(helpers.makeIconPicker(
+    panel.appendChild(helpers.iconPickerField(
       helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
       b.icon || "Auto", function (opt) {
         b.icon = opt;

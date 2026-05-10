@@ -33,13 +33,14 @@ function sliderTypeFactory(opts) {
     },
     renderSettings: function (panel, b, slot, helpers) {
       function labelField() {
-        var lf = document.createElement("div");
-        lf.className = "sp-field";
-        lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-        var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, opts.placeholder);
-        lf.appendChild(labelInp);
-        panel.appendChild(lf);
-        helpers.bindField(labelInp, "label", true);
+        panel.appendChild(helpers.textField(
+          "Label",
+          helpers.idPrefix + "label",
+          b.label,
+          opts.placeholder,
+          "label",
+          true
+        ).field);
       }
 
       var coverMode = "";
@@ -108,12 +109,6 @@ function sliderTypeFactory(opts) {
           applyCoverModeDefaultIcon(storedCoverMode);
         }
 
-        var imf = document.createElement("div");
-        imf.className = "sp-field";
-        imf.appendChild(helpers.fieldLabel("Interaction", helpers.idPrefix + "cover-interaction"));
-        var interactionSelect = document.createElement("select");
-        interactionSelect.className = "sp-select";
-        interactionSelect.id = helpers.idPrefix + "cover-interaction";
         var interactionOptions = [
           ["", "Slider: Position"],
           ["tilt", "Slider: Tilt"],
@@ -123,15 +118,9 @@ function sliderTypeFactory(opts) {
           ["stop", "Stop"],
           ["set_position", "Set Position"],
         ];
-        interactionOptions.forEach(function (entry) {
-          var option = document.createElement("option");
-          option.value = entry[0];
-          option.textContent = entry[1];
-          interactionSelect.appendChild(option);
-        });
-        interactionSelect.value = coverMode;
-        imf.appendChild(interactionSelect);
-        panel.appendChild(imf);
+        var interactionField = helpers.selectField("Interaction", helpers.idPrefix + "cover-interaction", interactionOptions, coverMode);
+        var interactionSelect = interactionField.select;
+        panel.appendChild(interactionField.field);
 
         coverPositionField = document.createElement("div");
         coverPositionField.className = "sp-field";
@@ -191,33 +180,22 @@ function sliderTypeFactory(opts) {
 
       if (opts.renderLabelInSettings) labelField();
 
-      var ef = document.createElement("div");
-      ef.className = "sp-field";
-      ef.appendChild(helpers.fieldLabel("Entity", helpers.idPrefix + "entity"));
-      var entityInp = helpers.entityInput(helpers.idPrefix + "entity", b.entity, opts.entityPlaceholder, opts.entityDomains);
-      ef.appendChild(entityInp);
-      panel.appendChild(ef);
-      helpers.bindField(entityInp, "entity", true);
-      helpers.requireField(entityInp, "Add an entity before saving.");
+      panel.appendChild(helpers.entityField(
+        "Entity",
+        helpers.idPrefix + "entity",
+        b.entity,
+        opts.entityPlaceholder,
+        opts.entityDomains,
+        "entity",
+        true,
+        "Add an entity before saving."
+      ).field);
 
       function iconField(label, inputSuffix, field, currentVal, defaultVal) {
-        var section = document.createElement("div");
-        section.className = "sp-field";
-        section.appendChild(helpers.fieldLabel(label, helpers.idPrefix + inputSuffix));
-        var picker = document.createElement("div");
-        picker.className = "sp-icon-picker";
-        picker.id = helpers.idPrefix + inputSuffix + "-picker";
-        picker.innerHTML =
-          '<span class="sp-icon-picker-preview mdi mdi-' + iconSlug(currentVal) + '"></span>' +
-          '<input class="sp-icon-picker-input" id="' + helpers.idPrefix + inputSuffix + '" type="text" ' +
-          'placeholder="Search icons\u2026" value="' + escAttr(currentVal) + '" autocomplete="off">' +
-          '<div class="sp-icon-dropdown"></div>';
-        section.appendChild(picker);
-        initIconPicker(picker, currentVal, function (opt) {
+        return helpers.iconPickerField(helpers.idPrefix + inputSuffix + "-picker", helpers.idPrefix + inputSuffix, currentVal, function (opt) {
           b[field] = opt || defaultVal;
           helpers.saveField(field, b[field]);
-        });
-        return section;
+        }, label);
       }
 
       if (opts.alwaysShowIconPair) {
@@ -245,12 +223,13 @@ function sliderTypeFactory(opts) {
         };
         syncCoverUi();
       } else {
-        panel.appendChild(helpers.makeIconPicker(
+        panel.appendChild(helpers.iconPickerField(
           helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
           b.icon || "Auto", function (opt) {
             b.icon = opt;
             helpers.saveField("icon", opt);
-          }
+          },
+          "Icon"
         ));
       }
 
@@ -261,31 +240,25 @@ function sliderTypeFactory(opts) {
 
       if (!opts.alwaysShowIconPair) {
         var hasIconOn = b.icon_on && b.icon_on !== "Auto";
-        var iconOnToggle = helpers.toggleRow(opts.iconOnLabel, helpers.idPrefix + "iconon-toggle", hasIconOn);
+        var iconOnToggleSection = helpers.toggleSection(opts.iconOnLabel, helpers.idPrefix + "iconon-toggle", hasIconOn);
+        var iconOnToggle = iconOnToggleSection.toggle;
+        var iconOnCond = iconOnToggleSection.section;
         panel.appendChild(iconOnToggle.row);
-
-        var iconOnCond = condField();
         if (hasIconOn) iconOnCond.classList.add("sp-visible");
 
-        var iconOnSection = document.createElement("div");
-        iconOnSection.className = "sp-field";
-        iconOnSection.appendChild(helpers.fieldLabel(opts.iconOnFieldLabel, helpers.idPrefix + "icon-on"));
         var iconOnVal = hasIconOn ? b.icon_on : "Auto";
-        var iconOnPicker = document.createElement("div");
-        iconOnPicker.className = "sp-icon-picker";
-        iconOnPicker.id = helpers.idPrefix + "icon-on-picker";
-        iconOnPicker.innerHTML =
-          '<span class="sp-icon-picker-preview mdi mdi-' + iconSlug(iconOnVal) + '"></span>' +
-          '<input class="sp-icon-picker-input" id="' + helpers.idPrefix + 'icon-on" type="text" ' +
-          'placeholder="Search icons\u2026" value="' + escAttr(iconOnVal) + '" autocomplete="off">' +
-          '<div class="sp-icon-dropdown"></div>';
-        iconOnSection.appendChild(iconOnPicker);
+        var iconOnSection = helpers.iconPickerField(
+          helpers.idPrefix + "icon-on-picker",
+          helpers.idPrefix + "icon-on",
+          iconOnVal,
+          function (opt) {
+            b.icon_on = opt;
+            helpers.saveField("icon_on", opt);
+          },
+          opts.iconOnFieldLabel
+        );
+        var iconOnPicker = iconOnSection.querySelector(".sp-icon-picker");
         iconOnCond.appendChild(iconOnSection);
-
-        initIconPicker(iconOnPicker, iconOnVal, function (opt) {
-          b.icon_on = opt;
-          helpers.saveField("icon_on", opt);
-        });
 
         panel.appendChild(iconOnCond);
 

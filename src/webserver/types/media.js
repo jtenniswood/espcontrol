@@ -81,20 +81,7 @@ registerButtonType("media", {
     b.sensor = validMode(b.sensor);
     if (rawMode === "controls" && isMediaDefaultIcon(rawMode, b.icon)) b.icon = "Auto";
 
-    var mf = document.createElement("div");
-    mf.className = "sp-field";
-    mf.appendChild(helpers.fieldLabel("Media Mode", helpers.idPrefix + "media-mode"));
-    var modeSelect = document.createElement("select");
-    modeSelect.className = "sp-select";
-    modeSelect.id = helpers.idPrefix + "media-mode";
-    modes.forEach(function (entry) {
-      var opt = document.createElement("option");
-      opt.value = entry[0];
-      opt.textContent = entry[1];
-      modeSelect.appendChild(opt);
-    });
-    modeSelect.value = b.sensor;
-    modeSelect.addEventListener("change", function () {
+    var modeField = helpers.selectField("Media Mode", helpers.idPrefix + "media-mode", modes, b.sensor, function () {
       var oldMode = b.sensor;
       b.sensor = validMode(this.value);
       if (isMediaDefaultIcon(oldMode, b.icon)) {
@@ -129,8 +116,7 @@ registerButtonType("media", {
       helpers.saveField("sensor", b.sensor);
       renderButtonSettings();
     });
-    mf.appendChild(modeSelect);
-    panel.appendChild(mf);
+    panel.appendChild(modeField.field);
   },
   renderSettings: function (panel, b, slot, helpers) {
     function validMode(value) {
@@ -168,18 +154,20 @@ registerButtonType("media", {
     if (b.sensor === "previous" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Previous";
     if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
 
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Media Player Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.entityInput(helpers.idPrefix + "entity", b.entity, "e.g. media_player.living_room", ["media_player"]);
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-    helpers.requireField(entityInp, "Add an entity before saving.");
+    var entityField = helpers.entityField(
+      "Media Player Entity", helpers.idPrefix + "entity", b.entity,
+      "e.g. media_player.living_room", ["media_player"], "entity", true,
+      "Add an entity before saving.");
+    panel.appendChild(entityField.field);
 
-    var displayField = document.createElement("div");
-    var labelModeBtn = document.createElement("button");
-    var stateModeBtn = document.createElement("button");
+    var displayMode = helpers.segmentControl([
+      ["", "Label"],
+      ["state", "State"],
+    ], b.precision === "state" ? "state" : "", function (value) { setDisplayMode(value); });
+    var displayField = helpers.fieldWithControl(
+      "Display", helpers.idPrefix + "media-display", displayMode.segment);
+    var labelModeBtn = displayMode.buttons[""];
+    var stateModeBtn = displayMode.buttons.state;
     function syncDisplayField() {
       if (b.sensor === "play_pause" || b.sensor === "position") {
         displayField.style.display = "";
@@ -200,46 +188,21 @@ registerButtonType("media", {
       renderButtonSettings();
     }
 
-    displayField.className = "sp-field";
-    displayField.appendChild(helpers.fieldLabel("Display", helpers.idPrefix + "media-display"));
-    var displaySeg = document.createElement("div");
-    displaySeg.className = "sp-segment";
-    labelModeBtn.type = "button";
-    labelModeBtn.textContent = "Label";
-    labelModeBtn.addEventListener("click", function () { setDisplayMode(""); });
-    stateModeBtn.type = "button";
-    stateModeBtn.textContent = "State";
-    stateModeBtn.addEventListener("click", function () { setDisplayMode("state"); });
-    displaySeg.appendChild(labelModeBtn);
-    displaySeg.appendChild(stateModeBtn);
-    displayField.appendChild(displaySeg);
     panel.appendChild(displayField);
     syncDisplayField();
 
     if (b.sensor === "now_playing") {
-      var controlsField = document.createElement("div");
-      controlsField.className = "sp-field";
-      controlsField.appendChild(helpers.fieldLabel("Controls", helpers.idPrefix + "media-controls"));
-      var controlsSeg = document.createElement("div");
-      controlsSeg.className = "sp-segment";
-      [
+      var controls = helpers.segmentControl([
         ["", "None"],
         ["progress", "Track Position"],
         ["play_pause", "Play/Pause"],
-      ].forEach(function (entry) {
-        var btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = entry[1];
-        btn.classList.toggle("active", mediaNowPlayingControls(b) === entry[0]);
-        btn.addEventListener("click", function () {
-          b.precision = entry[0];
-          helpers.saveField("precision", b.precision);
-          renderButtonSettings();
-        });
-        controlsSeg.appendChild(btn);
+      ], mediaNowPlayingControls(b), function (value) {
+        b.precision = value;
+        helpers.saveField("precision", b.precision);
+        renderButtonSettings();
       });
-      controlsField.appendChild(controlsSeg);
-      panel.appendChild(controlsField);
+      panel.appendChild(helpers.fieldWithControl(
+        "Controls", helpers.idPrefix + "media-controls", controls.segment));
     }
 
     if (b.sensor === "now_playing") {
@@ -253,22 +216,15 @@ registerButtonType("media", {
     if (b.sensor !== "now_playing" &&
         (b.sensor !== "play_pause" || b.precision !== "state") &&
         (b.sensor !== "position" || b.precision !== "state")) {
-      var lf = document.createElement("div");
-      lf.className = "sp-field";
-      lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-      var labelInp = helpers.textInput(
-        helpers.idPrefix + "label",
-        b.label,
-        b.sensor === "position" ? "Position" : "e.g. Living Room Speaker"
-      );
-      lf.appendChild(labelInp);
-      panel.appendChild(lf);
-      helpers.bindField(labelInp, "label", true);
+      panel.appendChild(helpers.textField(
+        "Label", helpers.idPrefix + "label", b.label,
+        b.sensor === "position" ? "Position" : "e.g. Living Room Speaker",
+        "label", true).field);
     }
 
     if (b.sensor !== "play_pause" && b.sensor !== "now_playing" &&
         b.sensor !== "position" && b.sensor !== "volume") {
-      panel.appendChild(helpers.makeIconPicker(
+      panel.appendChild(helpers.iconPickerField(
         helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
         b.icon || "Speaker", function (opt) {
           b.icon = opt || "Speaker";

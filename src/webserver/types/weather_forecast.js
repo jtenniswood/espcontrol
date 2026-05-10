@@ -15,14 +15,11 @@ registerButtonType("weather_forecast", {
     b.precision = "tomorrow";
   },
   renderSettings: function (panel, b, slot, helpers) {
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Weather Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.entityInput(helpers.idPrefix + "entity", b.entity, "e.g. weather.forecast_home", ["weather"]);
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-    helpers.requireField(entityInp, "Add an entity before saving.");
+    var entityField = helpers.entityField(
+      "Weather Entity", helpers.idPrefix + "entity", b.entity,
+      "e.g. weather.forecast_home", ["weather"], "entity", true,
+      "Add an entity before saving.");
+    panel.appendChild(entityField.field);
   },
   renderPreview: function (b, helpers) {
     return {

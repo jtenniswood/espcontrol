@@ -56,26 +56,11 @@ registerButtonType("timezone", {
       helpers.saveField("label", "");
     }
 
-    var displayField = document.createElement("div");
-    displayField.className = "sp-field";
-    displayField.appendChild(helpers.fieldLabel("Display", helpers.idPrefix + "calendar-mode"));
-    var modeSelect = document.createElement("select");
-    modeSelect.className = "sp-select";
-    modeSelect.id = helpers.idPrefix + "calendar-mode";
-
-    [
+    var modeField = helpers.selectField("Display", helpers.idPrefix + "calendar-mode", [
       { value: "datetime", label: "Time & Date" },
       { value: "", label: "Date" },
       { value: "timezone", label: "World Clock" }
-    ].forEach(function (optCfg) {
-      var opt = document.createElement("option");
-      opt.value = optCfg.value;
-      opt.textContent = optCfg.label;
-      modeSelect.appendChild(opt);
-    });
-
-    modeSelect.value = "timezone";
-    modeSelect.addEventListener("change", function () {
+    ], "timezone", function () {
       if (this.value !== "timezone") {
         b.type = "calendar";
         b.entity = "sensor.date";
@@ -96,13 +81,7 @@ registerButtonType("timezone", {
         renderButtonSettings();
       }
     });
-
-    displayField.appendChild(modeSelect);
-    panel.appendChild(displayField);
-
-    var tzField = document.createElement("div");
-    tzField.className = "sp-field";
-    tzField.appendChild(helpers.fieldLabel("City / Timezone", helpers.idPrefix + "timezone"));
+    panel.appendChild(modeField.field);
 
     var tzSelect = document.createElement("select");
     tzSelect.className = "sp-select";
@@ -125,8 +104,7 @@ registerButtonType("timezone", {
       helpers.saveField("label", "");
     });
 
-    tzField.appendChild(tzSelect);
-    panel.appendChild(tzField);
+    panel.appendChild(helpers.fieldWithControl("City / Timezone", helpers.idPrefix + "timezone", tzSelect));
   },
   renderPreview: function (b, helpers) {
     var tz = b.entity || (typeof state !== "undefined" && state.timezone) || "UTC (GMT+0)";

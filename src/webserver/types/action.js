@@ -36,47 +36,37 @@ registerButtonType("action", {
     b.icon_on = "Auto";
     b.precision = "";
 
-    var af = document.createElement("div");
-    af.className = "sp-field";
-    af.appendChild(helpers.fieldLabel("Action", helpers.idPrefix + "action"));
-    var actionSelect = document.createElement("select");
-    actionSelect.className = "sp-select";
-    actionSelect.id = helpers.idPrefix + "action";
-    for (var ai = 0; ai < actions.length; ai++) {
-      var opt = document.createElement("option");
-      opt.value = actions[ai].value;
-      opt.textContent = actions[ai].label;
-      actionSelect.appendChild(opt);
-    }
-    actionSelect.value = b.sensor;
-    af.appendChild(actionSelect);
-    panel.appendChild(af);
+    var actionField = helpers.selectField("Action", helpers.idPrefix + "action", actions, b.sensor);
+    var actionSelect = actionField.select;
+    panel.appendChild(actionField.field);
 
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    var entityLabel = helpers.fieldLabel("Entity", helpers.idPrefix + "entity");
-    ef.appendChild(entityLabel);
-    var entityInp = helpers.entityInput(
+    var entityField = helpers.entityField(
+      "Entity",
       helpers.idPrefix + "entity",
       b.entity,
       actionInfo(b.sensor).placeholder,
-      actionInfo(b.sensor).domains
+      actionInfo(b.sensor).domains,
+      "entity",
+      true,
+      "Add an entity before saving."
     );
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-    helpers.requireField(entityInp, "Add an entity before saving.");
+    var entityInp = entityField.input;
+    panel.appendChild(entityField.field);
 
+    var valueInput = helpers.textInput(
+      helpers.idPrefix + "action-value",
+      b.unit,
+      "e.g. 50"
+    );
+    var valueLabel = helpers.fieldLabel("Value", helpers.idPrefix + "action-value");
     var valueField = document.createElement("div");
     valueField.className = "sp-field";
-    var valueLabel = helpers.fieldLabel("Value", helpers.idPrefix + "action-value");
     valueField.appendChild(valueLabel);
-    var valueInp = helpers.textInput(helpers.idPrefix + "action-value", b.unit, "e.g. 50");
-    valueField.appendChild(valueInp);
+    valueField.appendChild(valueInput);
     panel.appendChild(valueField);
-    helpers.bindField(valueInp, "unit", true);
+    helpers.bindField(valueInput, "unit", true);
 
-    panel.appendChild(helpers.makeIconPicker(
+    panel.appendChild(helpers.iconPickerField(
       helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
       b.icon || "Flash", function (opt) {
         b.icon = opt;
@@ -93,13 +83,13 @@ registerButtonType("action", {
       var needsOption = actionSelect.value === "input_select.select_option";
       valueField.style.display = needsValue || needsOption ? "" : "none";
       valueLabel.textContent = needsOption ? "Option" : "Value";
-      valueInp.placeholder = needsOption ? "e.g. Away" : "e.g. 50";
+      valueInput.placeholder = needsOption ? "e.g. Away" : "e.g. 50";
       if (!persist) return;
       b.sensor = actionSelect.value;
       helpers.saveField("sensor", b.sensor);
       if (!needsValue && !needsOption) {
         b.unit = "";
-        valueInp.value = "";
+        valueInput.value = "";
         helpers.saveField("unit", "");
       }
       b.icon_on = "Auto";

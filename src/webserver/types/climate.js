@@ -30,74 +30,50 @@ registerButtonType("climate", {
       helpers.saveField("precision", normalizedPrecision);
     }
 
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Climate Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.entityInput(helpers.idPrefix + "entity", b.entity, "e.g. climate.living_room", ["climate"]);
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-    helpers.requireField(entityInp, "Add a climate entity before saving.");
+    var entityField = helpers.entityField(
+      "Climate Entity", helpers.idPrefix + "entity", b.entity,
+      "e.g. climate.living_room", ["climate"], "entity", true,
+      "Add a climate entity before saving.");
+    panel.appendChild(entityField.field);
 
-    var lf = document.createElement("div");
-    lf.className = "sp-field";
-    lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Living Room");
-    lf.appendChild(labelInp);
-    panel.appendChild(lf);
-    helpers.bindField(labelInp, "label", true);
+    panel.appendChild(helpers.textField(
+      "Label", helpers.idPrefix + "label", b.label, "e.g. Living Room", "label", true).field);
 
-    var pf = document.createElement("div");
-    pf.className = "sp-field";
-    pf.appendChild(helpers.fieldLabel("Unit Precision", helpers.idPrefix + "climate-precision"));
-    var precision = document.createElement("select");
-    precision.className = "sp-select";
-    precision.id = helpers.idPrefix + "climate-precision";
-    [
+    var precisionField = helpers.selectField("Unit Precision", helpers.idPrefix + "climate-precision", [
       ["", "10"],
       ["1", "10.2"],
-    ].forEach(function (entry) {
-      var opt = document.createElement("option");
-      opt.value = entry[0];
-      opt.textContent = entry[1];
-      precision.appendChild(opt);
-    });
-    precision.value = climateConfig.precision;
+    ], climateConfig.precision);
+    var precision = precisionField.select;
     function saveClimateAdvancedSettings() {
       b.precision = climatePrecisionConfig(precision.value, minInp.value, maxInp.value);
       helpers.saveField("precision", b.precision);
       scheduleRender();
     }
     precision.addEventListener("change", saveClimateAdvancedSettings);
-    pf.appendChild(precision);
-    panel.appendChild(pf);
+    panel.appendChild(precisionField.field);
 
     var hasRange = !!(climateConfig.min || climateConfig.max);
-    var advancedToggle = helpers.toggleRow(
+    var advancedToggleSection = helpers.toggleSection(
       "Advanced",
       helpers.idPrefix + "climate-advanced-toggle",
       hasRange
     );
+    var advancedToggle = advancedToggleSection.toggle;
+    var advanced = advancedToggleSection.section;
     panel.appendChild(advancedToggle.row);
-
-    var advanced = condField();
     if (hasRange) advanced.classList.add("sp-visible");
 
-    var minField = document.createElement("div");
-    minField.className = "sp-field";
-    minField.appendChild(helpers.fieldLabel("Minimum Temperature", helpers.idPrefix + "climate-min"));
-    var minInp = helpers.textInput(helpers.idPrefix + "climate-min", climateConfig.min, "e.g. 16");
+    var minField = helpers.textField(
+      "Minimum Temperature", helpers.idPrefix + "climate-min", climateConfig.min, "e.g. 16");
+    var minInp = minField.input;
     minInp.inputMode = "decimal";
-    minField.appendChild(minInp);
-    advanced.appendChild(minField);
+    advanced.appendChild(minField.field);
 
-    var maxField = document.createElement("div");
-    maxField.className = "sp-field";
-    maxField.appendChild(helpers.fieldLabel("Maximum Temperature", helpers.idPrefix + "climate-max"));
-    var maxInp = helpers.textInput(helpers.idPrefix + "climate-max", climateConfig.max, "e.g. 30");
+    var maxField = helpers.textField(
+      "Maximum Temperature", helpers.idPrefix + "climate-max", climateConfig.max, "e.g. 30");
+    var maxInp = maxField.input;
     maxInp.inputMode = "decimal";
-    maxField.appendChild(maxInp);
-    advanced.appendChild(maxField);
+    advanced.appendChild(maxField.field);
 
     minInp.addEventListener("change", saveClimateAdvancedSettings);
     maxInp.addEventListener("change", saveClimateAdvancedSettings);

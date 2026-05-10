@@ -9,7 +9,7 @@ registerButtonType("push", {
     b.icon = "Gesture Tap";
   },
   renderSettings: function (panel, b, slot, helpers) {
-    panel.appendChild(helpers.makeIconPicker(
+    panel.appendChild(helpers.iconPickerField(
       helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
       b.icon || "Auto", function (opt) {
         b.icon = opt;

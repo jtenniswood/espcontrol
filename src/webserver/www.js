@@ -4320,6 +4320,102 @@
       return icf;
     }
 
+    function fieldWithControl(labelText, inputId, control) {
+      var field = document.createElement("div");
+      field.className = "sp-field";
+      field.appendChild(fieldLabel(labelText, inputId));
+      if (control) field.appendChild(control);
+      return field;
+    }
+
+    function optionValue(option) {
+      if (Array.isArray(option)) return option[0];
+      if (option && typeof option === "object") return option.value;
+      return option;
+    }
+
+    function optionLabel(option) {
+      if (Array.isArray(option)) return option[1];
+      if (option && typeof option === "object") return option.label;
+      return option;
+    }
+
+    function selectField(labelText, inputId, options, value, onChange) {
+      var select = document.createElement("select");
+      select.className = "sp-select";
+      if (inputId) select.id = inputId;
+      (options || []).forEach(function (entry) {
+        var option = document.createElement("option");
+        option.value = optionValue(entry);
+        option.textContent = optionLabel(entry);
+        select.appendChild(option);
+      });
+      select.value = value || "";
+      if (onChange) select.addEventListener("change", onChange);
+      return {
+        field: fieldWithControl(labelText, inputId, select),
+        select: select,
+      };
+    }
+
+    function entityField(labelText, inputId, value, placeholder, domains, bindName, rerender, requiredMessage) {
+      var input = entityInput(inputId, value, placeholder, domains);
+      var field = fieldWithControl(labelText, inputId, input);
+      if (bindName) bindField(input, bindName, rerender);
+      if (requiredMessage) requireField(input, requiredMessage);
+      return {
+        field: field,
+        input: input,
+      };
+    }
+
+    function textField(labelText, inputId, value, placeholder, bindName, rerender) {
+      var input = textInput(inputId, value, placeholder);
+      var field = fieldWithControl(labelText, inputId, input);
+      if (bindName) bindField(input, bindName, rerender);
+      return {
+        field: field,
+        input: input,
+      };
+    }
+
+    function segmentControl(options, value, onSelect) {
+      var segment = document.createElement("div");
+      segment.className = "sp-segment";
+      var buttons = {};
+      (options || []).forEach(function (entry) {
+        var optValue = optionValue(entry);
+        var button = document.createElement("button");
+        button.type = "button";
+        button.textContent = optionLabel(entry);
+        button.classList.toggle("active", optValue === value);
+        button.addEventListener("click", function () {
+          if (onSelect) onSelect(optValue, button);
+        });
+        segment.appendChild(button);
+        buttons[optValue] = button;
+      });
+      return {
+        segment: segment,
+        buttons: buttons,
+      };
+    }
+
+    function toggleSection(labelText, inputId, checked) {
+      return {
+        toggle: toggleRow(labelText, inputId, checked),
+        section: condField(),
+      };
+    }
+
+    function precisionField(inputId, value, onChange) {
+      return selectField("Unit Precision", inputId, [
+        ["0", "10"],
+        ["1", "10.2"],
+        ["2", "10.21"],
+      ], value || "0", onChange);
+    }
+
     var typeDef = BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""];
     if (typeDef && typeDef.experimental && !isExperimentalEnabled(typeDef.experimental)) {
       typeDef = BUTTON_TYPES[""];
@@ -4363,6 +4459,14 @@
 
     var typeHelpers = {
       makeIconPicker: makeIconPicker,
+      iconPickerField: makeIconPicker,
+      fieldWithControl: fieldWithControl,
+      selectField: selectField,
+      entityField: entityField,
+      textField: textField,
+      segmentControl: segmentControl,
+      toggleSection: toggleSection,
+      precisionField: precisionField,
       fieldLabel: fieldLabel,
       textInput: textInput,
       entityInput: entityInput,

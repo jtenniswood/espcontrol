@@ -16,33 +16,20 @@ registerButtonType("weather", {
       return b.precision === "today" ? "Today" : "Tomorrow";
     }
 
-    var modeField = document.createElement("div");
-    modeField.className = "sp-field";
-    modeField.appendChild(helpers.fieldLabel("Display", helpers.idPrefix + "weather-display"));
-    var modeSelect = document.createElement("select");
-    modeSelect.className = "sp-select";
-    modeSelect.id = helpers.idPrefix + "weather-display";
-    [
+    var modeField = helpers.selectField("Display", helpers.idPrefix + "weather-display", [
       ["", "Current Conditions"],
       ["today", "Temperatures Today"],
       ["tomorrow", "Temperatures Tomorrow"],
-    ].forEach(function (item) {
-      var opt = document.createElement("option");
-      opt.value = item[0];
-      opt.textContent = item[1];
-      modeSelect.appendChild(opt);
-    });
-    modeSelect.value = b.precision === "today" || b.precision === "tomorrow" ? b.precision : "";
-    modeField.appendChild(modeSelect);
-    panel.appendChild(modeField);
+    ], b.precision === "today" || b.precision === "tomorrow" ? b.precision : "");
+    var modeSelect = modeField.select;
+    panel.appendChild(modeField.field);
 
-    var labelField = document.createElement("div");
-    labelField.className = "sp-field";
-    labelField.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. " + defaultForecastLabel());
-    labelField.appendChild(labelInp);
+    var labelControl = helpers.textField(
+      "Label", helpers.idPrefix + "label", b.label, "e.g. " + defaultForecastLabel(),
+      "label", true);
+    var labelField = labelControl.field;
+    var labelInp = labelControl.input;
     panel.appendChild(labelField);
-    helpers.bindField(labelInp, "label", true);
 
     function syncLabelField() {
       var forecast = b.precision === "today" || b.precision === "tomorrow";
@@ -57,14 +44,11 @@ registerButtonType("weather", {
     });
     syncLabelField();
 
-    var ef = document.createElement("div");
-    ef.className = "sp-field";
-    ef.appendChild(helpers.fieldLabel("Weather Entity", helpers.idPrefix + "entity"));
-    var entityInp = helpers.entityInput(helpers.idPrefix + "entity", b.entity, "e.g. weather.forecast_home", ["weather"]);
-    ef.appendChild(entityInp);
-    panel.appendChild(ef);
-    helpers.bindField(entityInp, "entity", true);
-    helpers.requireField(entityInp, "Add an entity before saving.");
+    var entityField = helpers.entityField(
+      "Weather Entity", helpers.idPrefix + "entity", b.entity,
+      "e.g. weather.forecast_home", ["weather"], "entity", true,
+      "Add an entity before saving.");
+    panel.appendChild(entityField.field);
   },
   renderPreview: function (b, helpers) {
     if (b.precision === "today" || b.precision === "tomorrow") {

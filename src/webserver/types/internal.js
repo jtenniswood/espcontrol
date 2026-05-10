@@ -65,64 +65,39 @@ registerButtonType("internal", {
       b.icon_on = internalRelayDefaultOnIcon();
     }
 
-    var rf = document.createElement("div");
-    rf.className = "sp-field";
-    rf.appendChild(helpers.fieldLabel("Internal Relay", helpers.idPrefix + "internal-relay"));
-    var relaySelect = document.createElement("select");
-    relaySelect.className = "sp-select";
-    relaySelect.id = helpers.idPrefix + "internal-relay";
-    if (!relays.length) {
-      var emptyOpt = document.createElement("option");
-      emptyOpt.value = "";
-      emptyOpt.textContent = "No relays";
-      relaySelect.appendChild(emptyOpt);
-      relaySelect.disabled = true;
-    } else {
-      relays.forEach(function (relay) {
-        var opt = document.createElement("option");
-        opt.value = relay.key;
-        opt.textContent = relay.label;
-        if (b.entity === relay.key) opt.selected = true;
-        relaySelect.appendChild(opt);
-      });
-    }
+    var relayField = helpers.selectField(
+      "Internal Relay",
+      helpers.idPrefix + "internal-relay",
+      relays.length ? relays.map(function (relay) {
+        return { value: relay.key, label: relay.label };
+      }) : [["", "No relays"]],
+      relays.length ? b.entity : ""
+    );
+    var relaySelect = relayField.select;
+    relaySelect.disabled = !relays.length;
     relaySelect.addEventListener("change", function () {
       b.entity = this.value;
       helpers.saveField("entity", b.entity);
     });
-    rf.appendChild(relaySelect);
-    panel.appendChild(rf);
+    panel.appendChild(relayField.field);
 
-    var mf = document.createElement("div");
-    mf.className = "sp-field";
-    mf.appendChild(helpers.fieldLabel("Mode", helpers.idPrefix + "internal-mode"));
-    var modeSeg = document.createElement("div");
-    modeSeg.className = "sp-segment";
-    var switchBtn = document.createElement("button");
-    switchBtn.type = "button";
-    switchBtn.textContent = "Switch";
-    var pushBtn = document.createElement("button");
-    pushBtn.type = "button";
-    pushBtn.textContent = "Push Button";
-    modeSeg.appendChild(switchBtn);
-    modeSeg.appendChild(pushBtn);
-    mf.appendChild(modeSeg);
-    panel.appendChild(mf);
+    var modeControl = helpers.segmentControl([
+      ["switch", "Switch"],
+      ["push", "Push Button"],
+    ], mode, function (value) { setMode(value); });
+    var switchBtn = modeControl.buttons.switch;
+    var pushBtn = modeControl.buttons.push;
+    panel.appendChild(helpers.fieldWithControl("Mode", helpers.idPrefix + "internal-mode", modeControl.segment));
 
     function makeLabeledIconPicker(label, inputSuffix, pickerSuffix, value, onSelect) {
-      var section = document.createElement("div");
-      section.className = "sp-field";
-      section.appendChild(helpers.fieldLabel(label, helpers.idPrefix + inputSuffix));
-      var picker = document.createElement("div");
-      picker.className = "sp-icon-picker";
-      picker.id = helpers.idPrefix + pickerSuffix;
-      picker.innerHTML =
-        '<span class="sp-icon-picker-preview mdi mdi-' + iconSlug(value) + '"></span>' +
-        '<input class="sp-icon-picker-input" id="' + helpers.idPrefix + inputSuffix + '" type="text" ' +
-        'placeholder="Search icons\u2026" value="' + escAttr(value) + '" autocomplete="off">' +
-        '<div class="sp-icon-dropdown"></div>';
-      section.appendChild(picker);
-      initIconPicker(picker, value, onSelect);
+      var section = helpers.iconPickerField(
+        helpers.idPrefix + pickerSuffix,
+        helpers.idPrefix + inputSuffix,
+        value,
+        onSelect,
+        label
+      );
+      var picker = section.querySelector(".sp-icon-picker");
       return { section: section, picker: picker };
     }
 
@@ -197,9 +172,6 @@ registerButtonType("internal", {
       }
       syncModeUi();
     }
-
-    switchBtn.addEventListener("click", function () { setMode("switch"); });
-    pushBtn.addEventListener("click", function () { setMode("push"); });
     syncModeUi();
   },
   renderPreview: function (b, helpers) {

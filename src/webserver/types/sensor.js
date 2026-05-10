@@ -12,76 +12,45 @@ registerButtonType("sensor", {
   renderSettings: function (panel, b, slot, helpers) {
     var isTextMode = b.precision === "text";
 
-    var modeField = document.createElement("div");
-    modeField.className = "sp-field";
-    modeField.appendChild(helpers.fieldLabel("Display"));
-    var modeSeg = document.createElement("div");
-    modeSeg.className = "sp-segment";
-    var numericBtn = document.createElement("button");
-    numericBtn.type = "button";
-    numericBtn.textContent = "Numeric";
-    var textBtn = document.createElement("button");
-    textBtn.type = "button";
-    textBtn.textContent = "Text";
-    modeSeg.appendChild(numericBtn);
-    modeSeg.appendChild(textBtn);
-    modeField.appendChild(modeSeg);
-    panel.appendChild(modeField);
+    var mode = helpers.segmentControl([
+      ["numeric", "Numeric"],
+      ["text", "Text"],
+    ], isTextMode ? "text" : "numeric", function (value) { setMode(value, true); });
+    var numericBtn = mode.buttons.numeric;
+    var textBtn = mode.buttons.text;
+    panel.appendChild(helpers.fieldWithControl("Display", null, mode.segment));
 
-    var sf = document.createElement("div");
-    sf.className = "sp-field";
-    sf.appendChild(helpers.fieldLabel("Sensor Entity", helpers.idPrefix + "sensor"));
-    var sensorInp = helpers.entityInput(helpers.idPrefix + "sensor", b.sensor, "e.g. sensor.living_room_temperature", [
-      "sensor", "binary_sensor", "text_sensor"
-    ]);
-    sf.appendChild(sensorInp);
-    panel.appendChild(sf);
-    helpers.bindField(sensorInp, "sensor", true);
-    helpers.requireField(sensorInp, "Add a sensor entity before saving.");
+    var sensorField = helpers.entityField(
+      "Sensor Entity", helpers.idPrefix + "sensor", b.sensor,
+      "e.g. sensor.living_room_temperature",
+      ["sensor", "binary_sensor", "text_sensor"], "sensor", true,
+      "Add a sensor entity before saving.");
+    panel.appendChild(sensorField.field);
 
     var numericSection = condField();
 
-    var lf = document.createElement("div");
-    lf.className = "sp-field";
-    lf.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Living Room");
-    lf.appendChild(labelInp);
-    numericSection.appendChild(lf);
-    helpers.bindField(labelInp, "label", true);
+    var labelField = helpers.textField(
+      "Label", helpers.idPrefix + "label", b.label, "e.g. Living Room", "label", true);
+    var labelInp = labelField.input;
+    numericSection.appendChild(labelField.field);
 
-    var uf = document.createElement("div");
-    uf.className = "sp-field";
-    uf.appendChild(helpers.fieldLabel("Unit", helpers.idPrefix + "unit"));
-    var unitInp = helpers.textInput(helpers.idPrefix + "unit", b.unit, "e.g. \u00B0C");
+    var unitField = helpers.textField(
+      "Unit", helpers.idPrefix + "unit", b.unit, "e.g. \u00B0C", "unit", true);
+    var unitInp = unitField.input;
     unitInp.className = "sp-input";
-    uf.appendChild(unitInp);
-    numericSection.appendChild(uf);
-    helpers.bindField(unitInp, "unit", true);
+    numericSection.appendChild(unitField.field);
 
-    var pf = document.createElement("div");
-    pf.className = "sp-field";
-    pf.appendChild(helpers.fieldLabel("Unit Precision", helpers.idPrefix + "precision"));
-    var precisionSelect = document.createElement("select");
-    precisionSelect.className = "sp-select";
-    precisionSelect.id = helpers.idPrefix + "precision";
-    var precOpts = [["0", "10"], ["1", "10.2"], ["2", "10.21"]];
-    for (var i = 0; i < precOpts.length; i++) {
-      var opt = document.createElement("option");
-      opt.value = precOpts[i][0];
-      opt.textContent = precOpts[i][1];
-      precisionSelect.appendChild(opt);
-    }
-    precisionSelect.value = !isTextMode ? (b.precision || "0") : "0";
-    precisionSelect.addEventListener("change", function () {
+    var precisionField = helpers.precisionField(helpers.idPrefix + "precision",
+      !isTextMode ? (b.precision || "0") : "0", function () {
       b.precision = this.value === "0" ? "" : this.value;
       helpers.saveField("precision", b.precision);
     });
-    pf.appendChild(precisionSelect);
-    numericSection.appendChild(pf);
+    var precisionSelect = precisionField.select;
+    numericSection.appendChild(precisionField.field);
     panel.appendChild(numericSection);
 
     var textSection = condField();
-    var textIconPicker = helpers.makeIconPicker(
+    var textIconPicker = helpers.iconPickerField(
       helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
       b.icon || "Auto", function (opt) {
         b.icon = opt;
@@ -122,8 +91,6 @@ registerButtonType("sensor", {
       }
     }
 
-    numericBtn.addEventListener("click", function () { setMode("numeric", true); });
-    textBtn.addEventListener("click", function () { setMode("text", true); });
     setMode(isTextMode ? "text" : "numeric", false);
   },
   renderPreview: function (b, helpers) {

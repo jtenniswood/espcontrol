@@ -13,15 +13,10 @@ registerButtonType("subpage", {
     var sensorEntity = b.sensor && b.sensor !== "indicator" ? b.sensor : "";
     var iconStateEntity = mode === "icon" ? (b.entity || "") : "";
 
-    var labelSection = document.createElement("div");
-    labelSection.className = "sp-field";
-    labelSection.appendChild(helpers.fieldLabel("Label", helpers.idPrefix + "label"));
-    var labelInp = helpers.textInput(helpers.idPrefix + "label", b.label, "e.g. Lighting");
-    labelSection.appendChild(labelInp);
-    panel.appendChild(labelSection);
-    helpers.bindField(labelInp, "label", true);
+    panel.appendChild(helpers.textField(
+      "Label", helpers.idPrefix + "label", b.label, "e.g. Lighting", "label", true).field);
 
-    var iconSectionMain = helpers.makeIconPicker(
+    var iconSectionMain = helpers.iconPickerField(
       helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
       b.icon || "Auto", function (opt) {
         b.icon = opt;
@@ -30,45 +25,33 @@ registerButtonType("subpage", {
     );
     panel.appendChild(iconSectionMain);
 
-    var showStateToggle = helpers.toggleRow("Show State", helpers.idPrefix + "state-toggle", showState);
+    var showStateToggleSection = helpers.toggleSection("Show State", helpers.idPrefix + "state-toggle", showState);
+    var showStateToggle = showStateToggleSection.toggle;
+    var stateCond = showStateToggleSection.section;
     panel.appendChild(showStateToggle.row);
-
-    var stateCond = condField();
     if (showState) stateCond.classList.add("sp-visible");
 
-    var modeField = document.createElement("div");
-    modeField.className = "sp-field";
-    modeField.appendChild(helpers.fieldLabel("Display"));
-    var modeSeg = document.createElement("div");
-    modeSeg.className = "sp-segment";
-    var iconBtn = document.createElement("button");
-    iconBtn.type = "button";
-    iconBtn.textContent = "Icon";
-    var numericBtn = document.createElement("button");
-    numericBtn.type = "button";
-    numericBtn.textContent = "Numeric";
-    var textBtn = document.createElement("button");
-    textBtn.type = "button";
-    textBtn.textContent = "Text";
-    modeSeg.appendChild(iconBtn);
-    modeSeg.appendChild(numericBtn);
-    modeSeg.appendChild(textBtn);
-    modeField.appendChild(modeSeg);
-    stateCond.appendChild(modeField);
+    var modeControl = helpers.segmentControl([
+      ["icon", "Icon"],
+      ["numeric", "Numeric"],
+      ["text", "Text"],
+    ], mode, function (value) { setMode(value, true); });
+    var iconBtn = modeControl.buttons.icon;
+    var numericBtn = modeControl.buttons.numeric;
+    var textBtn = modeControl.buttons.text;
+    stateCond.appendChild(helpers.fieldWithControl("Display", null, modeControl.segment));
 
     var stateIconSection = condField();
-    var iconEntityField = document.createElement("div");
-    iconEntityField.className = "sp-field";
-    iconEntityField.appendChild(helpers.fieldLabel("State Entity", helpers.idPrefix + "icon-state-entity"));
-    var iconEntityInp = helpers.entityInput(
+    var iconEntityField = helpers.entityField(
+      "State Entity",
       helpers.idPrefix + "icon-state-entity",
       iconStateEntity,
       "e.g. cover.office_blind",
       ["light", "switch", "input_boolean", "binary_sensor", "cover", "lock", "media_player", "fan", "person", "device_tracker"]
     );
-    iconEntityField.appendChild(iconEntityInp);
-    stateIconSection.appendChild(iconEntityField);
-    var onIconSection = helpers.makeIconPicker(
+    var iconEntityInp = iconEntityField.input;
+    stateIconSection.appendChild(iconEntityField.field);
+    var onIconSection = helpers.iconPickerField(
       helpers.idPrefix + "icon-on-picker", helpers.idPrefix + "icon-on",
       b.icon_on || "Auto", function (opt) {
         b.icon_on = opt;
@@ -79,14 +62,11 @@ registerButtonType("subpage", {
     stateCond.appendChild(stateIconSection);
 
     var sensorField = condField();
-    var sf = document.createElement("div");
-    sf.className = "sp-field";
-    sf.appendChild(helpers.fieldLabel("Sensor Entity", helpers.idPrefix + "sensor"));
-    var sensorInp = helpers.entityInput(helpers.idPrefix + "sensor", sensorEntity, "e.g. sensor.open_windows", [
-      "sensor", "binary_sensor", "text_sensor"
-    ]);
-    sf.appendChild(sensorInp);
-    sensorField.appendChild(sf);
+    var sensorEntityField = helpers.entityField(
+      "Sensor Entity", helpers.idPrefix + "sensor", sensorEntity, "e.g. sensor.open_windows",
+      ["sensor", "binary_sensor", "text_sensor"]);
+    var sensorInp = sensorEntityField.input;
+    sensorField.appendChild(sensorEntityField.field);
     helpers.requireField(sensorInp, "Add a sensor entity before saving.", function () {
       return showState && (mode === "numeric" || mode === "text");
     });
@@ -127,36 +107,19 @@ registerButtonType("subpage", {
 
     var numericSection = condField();
 
-    var uf = document.createElement("div");
-    uf.className = "sp-field";
-    uf.appendChild(helpers.fieldLabel("Unit", helpers.idPrefix + "unit"));
-    var unitInp = helpers.textInput(helpers.idPrefix + "unit", b.unit, "e.g. %");
+    var unitField = helpers.textField("Unit", helpers.idPrefix + "unit", b.unit, "e.g. %", "unit", false);
+    var unitInp = unitField.input;
     unitInp.className = "sp-input";
-    uf.appendChild(unitInp);
-    numericSection.appendChild(uf);
-    helpers.bindField(unitInp, "unit", false);
+    numericSection.appendChild(unitField.field);
 
-    var pf = document.createElement("div");
-    pf.className = "sp-field";
-    pf.appendChild(helpers.fieldLabel("Unit Precision", helpers.idPrefix + "precision"));
-    var precisionSelect = document.createElement("select");
-    precisionSelect.className = "sp-select";
-    precisionSelect.id = helpers.idPrefix + "precision";
-    var precOpts = [["0", "10"], ["1", "10.2"], ["2", "10.21"]];
-    for (var pi = 0; pi < precOpts.length; pi++) {
-      var opt = document.createElement("option");
-      opt.value = precOpts[pi][0];
-      opt.textContent = precOpts[pi][1];
-      precisionSelect.appendChild(opt);
-    }
-    precisionSelect.value = mode === "numeric" ? (b.precision || "0") : "0";
-    precisionSelect.addEventListener("change", function () {
+    var precisionField = helpers.precisionField(helpers.idPrefix + "precision",
+      mode === "numeric" ? (b.precision || "0") : "0", function () {
       if (mode !== "numeric") return;
       b.precision = this.value === "0" ? "" : this.value;
       helpers.saveField("precision", b.precision);
     });
-    pf.appendChild(precisionSelect);
-    numericSection.appendChild(pf);
+    var precisionSelect = precisionField.select;
+    numericSection.appendChild(precisionField.field);
 
     sensorField.appendChild(numericSection);
     stateCond.appendChild(sensorField);
@@ -230,9 +193,6 @@ registerButtonType("subpage", {
       }
     }
 
-    iconBtn.addEventListener("click", function () { setMode("icon", true); });
-    numericBtn.addEventListener("click", function () { setMode("numeric", true); });
-    textBtn.addEventListener("click", function () { setMode("text", true); });
     showStateToggle.input.addEventListener("change", function () {
       setMode(this.checked ? (mode === "off" ? "icon" : mode) : "off", true);
     });
