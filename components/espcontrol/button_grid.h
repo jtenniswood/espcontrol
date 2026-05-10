@@ -633,6 +633,51 @@ struct InternalRelayClickCtx {
   bool push_mode;
 };
 
+// ── Local action controls ─────────────────────────────────────────────
+//
+// Devices register named one-shot callbacks here at boot. The button type
+// "local" dispatches to these by key, so device-specific addons (e.g. BLE
+// keyboard) can be triggered from the grid without going through HA.
+
+struct LocalActionControl {
+  std::string key;
+  std::string label;
+  std::function<void()> action;
+};
+
+inline std::vector<LocalActionControl> &local_action_registry() {
+  static std::vector<LocalActionControl> actions;
+  return actions;
+}
+
+inline void register_local_action(
+    const std::string &key, const std::string &label,
+    std::function<void()> action) {
+  if (key.empty()) return;
+  LocalActionControl a;
+  a.key = key;
+  a.label = label;
+  a.action = action;
+  auto &reg = local_action_registry();
+  for (auto &existing : reg) {
+    if (existing.key == key) {
+      existing = a;
+      return;
+    }
+  }
+  reg.push_back(a);
+}
+
+inline void send_local_action(const std::string &key) {
+  for (auto &a : local_action_registry()) {
+    if (a.key == key) {
+      if (a.action) a.action();
+      return;
+    }
+  }
+  ESP_LOGW("espcontrol", "Local action '%s' not registered", key.c_str());
+}
+
 inline std::vector<InternalRelayControl> &internal_relay_registry() {
   static std::vector<InternalRelayControl> relays;
   return relays;
@@ -1572,6 +1617,14 @@ inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
   apply_push_button_transition(s.btn);
 }
 
+inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p) {
+  std::string label = p.label.empty() ? (p.entity.empty() ? "Local Action" : sentence_cap_text(p.entity)) : p.label;
+  lv_label_set_text(s.text_lbl, label.c_str());
+  const char *icon_cp = (p.icon.empty() || p.icon == "Auto") ? find_icon("Gesture Tap") : find_icon(p.icon.c_str());
+  lv_label_set_text(s.icon_lbl, icon_cp);
+  apply_push_button_transition(s.btn);
+}
+
 inline void setup_text_sensor_card(BtnSlot &s, const ParsedCfg &p,
                                    bool has_sensor_color, uint32_t sensor_val) {
   if (has_sensor_color) {
@@ -2229,6 +2282,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     }
   } else if (p.type == "internal") {
     if (!p.entity.empty()) send_internal_relay_action(p);
+  } else if (p.type == "local") {
+    if (!p.entity.empty()) send_local_action(p.entity);
   } else if (p.type == "action") {
     send_action_card_action(p);
   } else if (p.type == "media") {
@@ -5785,6 +5840,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
   if (p.type == "internal") {
     setup_internal_relay_card(s, p);
+    return;
+  }
+  if (p.type == "local") {
+    setup_local_action_card(s, p);
     return;
   }
   if (p.type == "action") {
