@@ -115,6 +115,7 @@ function exportConfig() {
       outdoor_temp_entity: state.outdoorEntity,
       temperature_unit: normalizeTemperatureUnit(state.temperatureUnit),
       clock_bar: state.clockBarOn,
+      network_status_icon: state.networkStatusOn,
       temperature_degree_symbol: state.temperatureDegreeSymbolOn,
       timezone: state.timezone,
       clock_format: state.clockFormat,
@@ -338,6 +339,7 @@ function importConfig() {
         postText("Indoor Temp Entity", s.indoor_temp_entity || "");
         postText("Outdoor Temp Entity", s.outdoor_temp_entity || "");
         postClockBar(s.clock_bar != null ? !!s.clock_bar : false);
+        postNetworkStatusIcon(s.network_status_icon != null ? !!s.network_status_icon : true);
         postTemperatureDegreeSymbol(s.temperature_degree_symbol != null ? !!s.temperature_degree_symbol : true);
         var importedTimezone = s.timezone || state.timezone;
         var importedTemperatureUnit = normalizeTemperatureUnit(s.temperature_unit);
@@ -414,6 +416,7 @@ function importConfig() {
         state.outdoorEntity = s.outdoor_temp_entity || "";
         state.temperatureUnit = importedTemperatureUnit;
         state.clockBarOn = s.clock_bar != null ? !!s.clock_bar : false;
+        state.networkStatusOn = s.network_status_icon != null ? !!s.network_status_icon : true;
         state.temperatureDegreeSymbolOn = s.temperature_degree_symbol != null ? !!s.temperature_degree_symbol : true;
         state.timezone = importedTimezone;
         state.clockFormat = importedClockFormat;
@@ -690,6 +693,18 @@ function connectEvents() {
     },
     "switch-clock_bar_enabled": function (val, d) {
       state.clockBarOn = d.value === true || val === "ON";
+      syncClockBarUi();
+    },
+    "switch-screen__network_status_icon": function (val, d) {
+      state.networkStatusOn = d.value === true || val === "ON";
+      syncClockBarUi();
+    },
+    "switch-screen_network_status_icon": function (val, d) {
+      state.networkStatusOn = d.value === true || val === "ON";
+      syncClockBarUi();
+    },
+    "switch-network_status_enabled": function (val, d) {
+      state.networkStatusOn = d.value === true || val === "ON";
       syncClockBarUi();
     },
     "switch-screen__temperature_degree_symbol": function (val, d) {

@@ -365,6 +365,17 @@ function postClockBar(on) {
   ], on, CLOCK_BAR_UNAVAILABLE);
 }
 
+var NETWORK_STATUS_ICON_UNAVAILABLE =
+  "Network status icon setting is not available on this firmware. Update the device firmware, then reload this page.";
+
+function postNetworkStatusIcon(on) {
+  postSwitchWithObjectIds("Screen: Network Status Icon", [
+    "screen__network_status_icon",
+    "screen_network_status_icon",
+    "network_status_enabled",
+  ], on, NETWORK_STATUS_ICON_UNAVAILABLE);
+}
+
 var TEMPERATURE_DEGREE_SYMBOL_UNAVAILABLE =
   "Temperature degree symbol setting is not available on this firmware. Update the device firmware, then reload this page.";
 
@@ -484,6 +495,7 @@ function settingsStateEntities() {
     ["switch", "Indoor Temp Enable"],
     ["switch", "Outdoor Temp Enable"],
     ["switch", "Screen: Clock Bar"],
+    ["switch", "Screen: Network Status Icon"],
     ["switch", "Screen: Temperature Degree Symbol"],
     ["select", "Screen: Temperature Unit"],
     ["text", "Indoor Temp Entity"],

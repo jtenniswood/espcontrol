@@ -11,7 +11,6 @@
 #include <cmath>
 #include "sun_calc.h"
 #include "temperature_unit.h"
-#include "network_status.h"
 
 #ifdef USE_ESP32
 #include <esp_sleep.h>

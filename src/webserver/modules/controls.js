@@ -458,6 +458,15 @@ function buildSettingsPage(parent) {
     postClockBar(state.clockBarOn);
   });
 
+  var networkStatus = toggleRow("Show Network Status Icon", "sp-set-network-status-icon", state.networkStatusOn);
+  clockBarBody.appendChild(networkStatus.row);
+  els.setNetworkStatusToggle = networkStatus.input;
+  networkStatus.input.addEventListener("change", function () {
+    state.networkStatusOn = this.checked;
+    syncClockBarUi();
+    postNetworkStatusIcon(state.networkStatusOn);
+  });
+
   var outdoor = createEntityToggleSection("Outdoor Temperature", "sp-set-outdoor-toggle", state._outdoorOn,
     "Outdoor Temp Enable", "Outdoor Temp Entity", "Outdoor Temp Entity", "sensor.outdoor_temperature");
   clockBarBody.appendChild(outdoor.toggle.row);

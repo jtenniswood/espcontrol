@@ -636,8 +636,15 @@ script:
             switch.is_on: clock_bar_enabled
           then:
             - lvgl.widget.show: display_time
-            - lvgl.widget.show: network_status_button
-            - script.execute: network_status_refresh
+            - if:
+                condition:
+                  switch.is_on: network_status_enabled
+                then:
+                  - lvgl.widget.show: network_status_button
+                  - script.execute: network_status_refresh
+                else:
+                  - lvgl.widget.hide: network_status_button
+                  - lambda: 'network_status_hide_modal();'
             - if:
                 condition:
                   or:

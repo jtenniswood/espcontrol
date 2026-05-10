@@ -20,6 +20,7 @@ var state = {
   outdoorEntity: "",
   temperatureUnit: "Auto",
   clockBarOn: false,
+  networkStatusOn: true,
   temperatureDegreeSymbolOn: true,
   presenceEntity: "",
   mediaPlayerSleepPreventionOn: false,
@@ -471,6 +472,9 @@ function syncClockBarUi() {
   document.documentElement.style.setProperty("--grid-top", gridTop + "cqw");
   if (els.topbar) els.topbar.className = "sp-topbar" + (state.clockBarOn ? "" : " sp-hidden");
   if (els.setClockBarToggle) els.setClockBarToggle.checked = !!state.clockBarOn;
+  if (els.setNetworkStatusToggle) {
+    els.setNetworkStatusToggle.checked = !!state.networkStatusOn;
+  }
   if (els.setClockBarBadge) {
     els.setClockBarBadge.className = "sp-card-badge" + (state.clockBarOn ? "" : " sp-hidden");
   }

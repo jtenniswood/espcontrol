@@ -18,7 +18,9 @@ Configured in the **Time Settings** section of the **Settings** tab in [Setup](/
 - **NTP Server 1 / 2 / 3** — choose the network time servers used to keep the panel clock accurate when custom NTP servers are enabled.
 - **Sunrise / Sunset** — read-only reference values calculated from your timezone, updated daily. Displayed in whichever format you chose.
 
-The **Clock Bar** section controls whether the top bar is shown. It also contains the indoor and outdoor temperature controls shown in that bar, including whether temperatures include the `°C` or `°F` suffix. When the clock bar is enabled, the small network icon beside the clock shows WiFi strength or Ethernet status. Tap it to see the device name, IP address, WiFi strength, uptime, and firmware version.
+The **Clock Bar** section controls whether the top bar is shown. It also contains the indoor and outdoor temperature controls shown in that bar, including whether temperatures include the `°C` or `°F` suffix. When the clock bar is enabled, the small network icon at the far right shows WiFi strength or Ethernet status. Tap it to see the device name, IP address, WiFi strength, uptime, and firmware version.
+
+The network status icon is on by default. Turn off **Show Network Status Icon** in the Clock Bar settings if you only want the clock and temperature items in the top bar.
 
 ## How It Works
 

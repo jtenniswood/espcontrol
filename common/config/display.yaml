@@ -22,6 +22,7 @@ script:
     then:
       - lambda: |-
           bool enabled = id(clock_bar_enabled).state;
+          bool show_network = enabled && id(network_status_enabled).state;
           lv_obj_set_style_pad_top(
             id(main_page)->obj,
             enabled ? ${main_page_pad_top} : ${main_page_compact_pad_top},
@@ -31,16 +32,21 @@ script:
           if (!enabled) {
             lv_obj_add_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(temperatures), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
             network_status_hide_modal();
-            return;
           }
 
           if (lv_scr_act() == id(main_page)->obj) {
             lv_obj_clear_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
           }
-          id(network_status_refresh).execute();
+          if (show_network && lv_scr_act() == id(main_page)->obj) {
+            lv_obj_clear_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
+            id(network_status_refresh).execute();
+          } else {
+            lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
+            network_status_hide_modal();
+          }
+          if (!enabled) return;
+
           refresh_temp_label_values(id(temperatures), id(main_page)->obj,
                                     enabled,
                                     id(indoor_temp_enable).state,
@@ -56,6 +62,21 @@ switch:
     restore_mode: RESTORE_DEFAULT_OFF
     entity_category: config
     icon: "mdi:clock-digital"
+    web_server:
+      sorting_group_id: sg_display
+    on_turn_on:
+      - script.execute: clock_bar_apply
+    on_turn_off:
+      - script.execute: clock_bar_apply
+
+  - platform: template
+    name: "Screen: Network Status Icon"
+    internal: true
+    id: network_status_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    icon: "mdi:wifi"
     web_server:
       sorting_group_id: sg_display
     on_turn_on:

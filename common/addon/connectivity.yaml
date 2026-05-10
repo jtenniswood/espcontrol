@@ -106,10 +106,19 @@ script:
                   - lvgl.widget.update:
                       id: display_time
                       hidden: false
-                  - lvgl.widget.update:
-                      id: network_status_button
-                      hidden: false
-                  - script.execute: network_status_refresh
+                  - if:
+                      condition:
+                        switch.is_on: network_status_enabled
+                      then:
+                        - lvgl.widget.update:
+                            id: network_status_button
+                            hidden: false
+                        - script.execute: network_status_refresh
+                      else:
+                        - lvgl.widget.update:
+                            id: network_status_button
+                            hidden: true
+                        - lambda: 'network_status_hide_modal();'
                 else:
                   - lvgl.widget.update:
                       id: temperatures

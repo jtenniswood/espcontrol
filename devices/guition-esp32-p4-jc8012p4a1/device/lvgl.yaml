@@ -37,11 +37,11 @@ lvgl:
           text_color: 0xFFFFFF
           hidden: true
 
-      # Network status (tappable, left of clock)
+      # Network status (tappable, far right of clock bar)
       - obj:
           id: network_status_button
-          align: top_mid
-          x: -46
+          align: top_right
+          x: -8
           y: 1
           width: 38
           height: 34
