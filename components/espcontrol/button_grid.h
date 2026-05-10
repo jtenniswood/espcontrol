@@ -2361,6 +2361,156 @@ inline void set_media_home_grid_metrics(lv_obj_t *page, int cols, int rows,
   metrics.rows = rows > 0 ? rows : 3;
 }
 
+struct ControlModalLayout {
+  lv_coord_t sw = 480;
+  lv_coord_t sh = 480;
+  lv_coord_t short_side = 480;
+  lv_coord_t panel_x = 4;
+  lv_coord_t panel_y = 0;
+  lv_coord_t panel_w = 472;
+  lv_coord_t panel_h = 480;
+  lv_coord_t inset = MEDIA_VOLUME_INSET_REF_PX;
+  lv_coord_t back_size = MEDIA_VOLUME_BACK_BUTTON_REF_PX;
+  lv_coord_t btn_size = MEDIA_VOLUME_BUTTON_REF_PX;
+  lv_coord_t arc_stroke = MEDIA_VOLUME_ARC_STROKE_REF_PX;
+  lv_coord_t controls_gap = MEDIA_VOLUME_CONTROLS_GAP_REF_PX;
+  lv_coord_t arc_size = 320;
+  lv_coord_t arc_center_x = 0;
+  lv_coord_t arc_center_y = 0;
+  lv_coord_t value_center_y = 0;
+  lv_coord_t title_gap = MEDIA_VOLUME_TITLE_GAP_REF_PX;
+  lv_coord_t controls_center_y = 0;
+};
+
+inline lv_coord_t control_modal_scaled_px(lv_coord_t px, lv_coord_t short_side) {
+  return px * short_side / MEDIA_VOLUME_REFERENCE_SIDE_PX;
+}
+
+inline lv_coord_t control_modal_card_radius(lv_obj_t *btn) {
+  return btn ? lv_obj_get_style_radius(btn, LV_PART_MAIN) : 18;
+}
+
+inline ControlModalLayout control_modal_calc_layout(int width_compensation_percent) {
+  ControlModalLayout layout;
+  lv_disp_t *disp = lv_disp_get_default();
+  layout.sw = disp ? lv_disp_get_hor_res(disp) : 480;
+  layout.sh = disp ? lv_disp_get_ver_res(disp) : 480;
+  layout.short_side = layout.sw < layout.sh ? layout.sw : layout.sh;
+
+  layout.panel_x = 4;
+  layout.panel_y = 0;
+  layout.panel_w = layout.sw - layout.panel_x - 4;
+  layout.panel_h = layout.sh;
+  MediaHomeGridMetrics &metrics = media_home_grid_metrics();
+  if (metrics.page) {
+    lv_obj_update_layout(metrics.page);
+    layout.panel_x = lv_obj_get_style_pad_left(metrics.page, LV_PART_MAIN);
+    layout.panel_y = lv_obj_get_style_pad_top(metrics.page, LV_PART_MAIN);
+    layout.panel_w = layout.sw - layout.panel_x - lv_obj_get_style_pad_right(metrics.page, LV_PART_MAIN);
+    layout.panel_h = layout.sh - layout.panel_y - lv_obj_get_style_pad_bottom(metrics.page, LV_PART_MAIN);
+  }
+
+  layout.back_size = control_modal_scaled_px(MEDIA_VOLUME_BACK_BUTTON_REF_PX, layout.short_side);
+  layout.btn_size = control_modal_scaled_px(MEDIA_VOLUME_BUTTON_REF_PX, layout.short_side);
+  layout.inset = control_modal_scaled_px(MEDIA_VOLUME_INSET_REF_PX, layout.short_side);
+  if (layout.inset < 8) layout.inset = 8;
+  layout.arc_stroke = control_modal_scaled_px(MEDIA_VOLUME_ARC_STROKE_REF_PX, layout.short_side);
+  layout.controls_gap = control_modal_scaled_px(MEDIA_VOLUME_CONTROLS_GAP_REF_PX, layout.short_side);
+  layout.title_gap = control_modal_scaled_px(MEDIA_VOLUME_TITLE_GAP_REF_PX, layout.short_side);
+
+  layout.arc_size = layout.panel_w < layout.panel_h ? layout.panel_w : layout.panel_h;
+  layout.arc_size -= layout.inset * 2;
+  lv_coord_t reserved_bottom = layout.btn_size / 3 + layout.inset;
+  lv_coord_t available_h = layout.panel_h - layout.inset * 2;
+  if (available_h > reserved_bottom) {
+    lv_coord_t fit_h = available_h - reserved_bottom + layout.arc_stroke;
+    if (layout.arc_size > fit_h) layout.arc_size = fit_h;
+  }
+  if (layout.arc_size < 74) layout.arc_size = 74;
+
+  int width_percent = normalize_width_compensation_percent(width_compensation_percent);
+  lv_coord_t visible_arc_w = compensated_width(layout.arc_size, width_percent);
+  if (visible_arc_w > layout.panel_w - layout.inset * 2) {
+    layout.arc_size = (layout.panel_w - layout.inset * 2) * 100 / width_percent;
+    visible_arc_w = compensated_width(layout.arc_size, width_percent);
+  }
+
+  layout.arc_center_x = (layout.arc_size - visible_arc_w) / 2;
+  layout.arc_center_y = 0;
+  layout.value_center_y = layout.arc_stroke / 2;
+  layout.controls_center_y = layout.arc_size / 2 - layout.btn_size / 2 - layout.inset +
+    control_modal_scaled_px(MEDIA_VOLUME_CONTROLS_DOWN_REF_PX, layout.short_side);
+  return layout;
+}
+
+inline void control_modal_style_overlay(lv_obj_t *overlay) {
+  if (!overlay) return;
+  lv_obj_set_size(overlay, lv_pct(100), lv_pct(100));
+  lv_obj_set_style_bg_opa(overlay, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(overlay, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+inline void control_modal_style_panel(lv_obj_t *panel, uint32_t bg_color, lv_coord_t radius) {
+  if (!panel) return;
+  lv_obj_set_style_bg_color(panel, lv_color_hex(bg_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(panel, radius, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(panel, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+inline void control_modal_apply_panel_layout(lv_obj_t *overlay, lv_obj_t *panel,
+                                             const ControlModalLayout &layout,
+                                             lv_coord_t radius) {
+  if (overlay) lv_obj_set_size(overlay, lv_pct(100), lv_pct(100));
+  if (!panel) return;
+  lv_obj_set_size(panel, layout.panel_w, layout.panel_h);
+  lv_obj_set_pos(panel, layout.panel_x, layout.panel_y);
+  lv_obj_set_style_radius(panel, radius, LV_PART_MAIN);
+}
+
+inline void control_modal_apply_back_button_layout(lv_obj_t *btn,
+                                                   const ControlModalLayout &layout) {
+  if (!btn) return;
+  lv_obj_set_size(btn, layout.back_size, layout.back_size);
+  lv_obj_set_style_radius(btn, layout.back_size / 2, LV_PART_MAIN);
+  lv_obj_align(btn, LV_ALIGN_TOP_LEFT, layout.inset, layout.inset);
+}
+
+inline void control_modal_apply_arc_layout(lv_obj_t *arc,
+                                           const ControlModalLayout &layout,
+                                           int width_compensation_percent,
+                                           bool with_knob = true) {
+  if (!arc) return;
+  lv_obj_set_size(arc, layout.arc_size, layout.arc_size);
+  apply_width_compensation(arc, width_compensation_percent);
+  lv_obj_align(arc, LV_ALIGN_CENTER, layout.arc_center_x, layout.arc_center_y);
+  lv_obj_set_style_arc_width(arc, layout.arc_stroke, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(arc, layout.arc_stroke, LV_PART_INDICATOR);
+  if (with_knob) lv_obj_set_style_pad_all(arc, layout.short_side < 520 ? 4 : 6, LV_PART_KNOB);
+}
+
+inline void control_modal_apply_step_buttons_layout(lv_obj_t *minus_btn,
+                                                    lv_obj_t *plus_btn,
+                                                    const ControlModalLayout &layout) {
+  if (minus_btn) {
+    lv_obj_set_size(minus_btn, layout.btn_size, layout.btn_size);
+    lv_obj_set_style_radius(minus_btn, layout.btn_size / 2, LV_PART_MAIN);
+    lv_obj_align(minus_btn, LV_ALIGN_CENTER,
+      -(layout.btn_size + layout.controls_gap) / 2, layout.controls_center_y);
+  }
+  if (plus_btn) {
+    lv_obj_set_size(plus_btn, layout.btn_size, layout.btn_size);
+    lv_obj_set_style_radius(plus_btn, layout.btn_size / 2, LV_PART_MAIN);
+    lv_obj_align(plus_btn, LV_ALIGN_CENTER,
+      (layout.btn_size + layout.controls_gap) / 2, layout.controls_center_y);
+  }
+}
+
 struct MediaVolumeModalUi {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *panel = nullptr;
@@ -2992,7 +3142,7 @@ inline void media_volume_hide_modal() {
   ui.updating_arc = false;
 }
 
-inline lv_obj_t *media_volume_create_round_button(lv_obj_t *parent, lv_coord_t size,
+inline lv_obj_t *control_modal_create_round_button(lv_obj_t *parent, lv_coord_t size,
                                                   const char *text,
                                                   const lv_font_t *font,
                                                   uint32_t border_color,
@@ -3017,7 +3167,7 @@ inline lv_obj_t *media_volume_create_round_button(lv_obj_t *parent, lv_coord_t s
 }
 
 inline lv_coord_t media_volume_scaled_px(lv_coord_t px, lv_coord_t short_side) {
-  return px * short_side / MEDIA_VOLUME_REFERENCE_SIDE_PX;
+  return control_modal_scaled_px(px, short_side);
 }
 
 inline void media_volume_grid_card_rect(lv_coord_t sw, lv_coord_t sh,
@@ -3065,82 +3215,22 @@ inline void media_volume_grid_card_rect(lv_coord_t sw, lv_coord_t sh,
 inline void media_volume_layout_modal(MediaVolumeCtx *ctx) {
   MediaVolumeModalUi &ui = media_volume_modal_ui();
   if (!ctx || !ui.overlay || !ui.panel) return;
-  lv_disp_t *disp = lv_disp_get_default();
-  lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
-  lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
-  lv_coord_t short_side = sw < sh ? sw : sh;
-  lv_coord_t panel_x = 4;
-  lv_coord_t panel_y = 0;
-  lv_coord_t panel_w = sw - panel_x - 4;
-  lv_coord_t panel_h = sh;
-  MediaHomeGridMetrics &metrics = media_home_grid_metrics();
-  if (metrics.page) {
-    lv_obj_update_layout(metrics.page);
-    panel_x = lv_obj_get_style_pad_left(metrics.page, LV_PART_MAIN);
-    panel_y = lv_obj_get_style_pad_top(metrics.page, LV_PART_MAIN);
-    lv_coord_t panel_right = lv_obj_get_style_pad_right(metrics.page, LV_PART_MAIN);
-    lv_coord_t panel_bottom = lv_obj_get_style_pad_bottom(metrics.page, LV_PART_MAIN);
-    panel_w = sw - panel_x - panel_right;
-    panel_h = sh - panel_y - panel_bottom;
-  }
-  int width_percent = normalize_width_compensation_percent(ctx->width_compensation_percent);
-  lv_coord_t back_size = media_volume_scaled_px(MEDIA_VOLUME_BACK_BUTTON_REF_PX, short_side);
-  lv_coord_t btn_size = media_volume_scaled_px(MEDIA_VOLUME_BUTTON_REF_PX, short_side);
-  lv_coord_t inset = media_volume_scaled_px(MEDIA_VOLUME_INSET_REF_PX, short_side);
-  if (inset < 8) inset = 8;
-  lv_coord_t arc_stroke = media_volume_scaled_px(MEDIA_VOLUME_ARC_STROKE_REF_PX, short_side);
-  lv_coord_t controls_gap = media_volume_scaled_px(MEDIA_VOLUME_CONTROLS_GAP_REF_PX, short_side);
-  lv_coord_t arc_size = panel_w < panel_h ? panel_w : panel_h;
-  arc_size -= inset * 2;
-  lv_coord_t reserved_bottom = btn_size / 3 + inset;
-  lv_coord_t available_h = panel_h - inset * 2;
-  if (available_h > reserved_bottom) {
-    lv_coord_t fit_h = available_h - reserved_bottom + arc_stroke;
-    if (arc_size > fit_h) arc_size = fit_h;
-  }
-  if (arc_size < 74) arc_size = 74;
-  lv_coord_t visible_arc_w = compensated_width(arc_size, width_percent);
-  if (visible_arc_w > panel_w - inset * 2) {
-    arc_size = (panel_w - inset * 2) * 100 / width_percent;
-    visible_arc_w = compensated_width(arc_size, width_percent);
-  }
-
-  lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
-  lv_obj_set_size(ui.panel, panel_w, panel_h);
-  lv_obj_set_pos(ui.panel, panel_x, panel_y);
-  lv_obj_set_style_radius(ui.panel, media_volume_card_radius(ctx), LV_PART_MAIN);
-  lv_coord_t arc_center_x = (arc_size - visible_arc_w) / 2;
-  lv_coord_t arc_center_y = 0;
-  lv_coord_t controls_center_y = arc_size / 2 - btn_size / 2 - inset +
-    media_volume_scaled_px(MEDIA_VOLUME_CONTROLS_DOWN_REF_PX, short_side);
-  lv_coord_t value_center_y = arc_stroke / 2;
+  ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
+  control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, media_volume_card_radius(ctx));
   if (ui.title_lbl) lv_obj_update_layout(ui.title_lbl);
   if (ui.pct_row) lv_obj_update_layout(ui.pct_row);
   lv_coord_t title_h = ui.title_lbl ? lv_obj_get_height(ui.title_lbl) : 0;
   lv_coord_t value_h = ui.pct_row ? lv_obj_get_height(ui.pct_row) : 0;
-  lv_coord_t title_gap = media_volume_scaled_px(MEDIA_VOLUME_TITLE_GAP_REF_PX, short_side);
-  lv_coord_t title_center_y = value_center_y -
-    (value_h / 2 + title_gap + title_h / 2);
+  lv_coord_t title_center_y = layout.value_center_y -
+    (value_h / 2 + layout.title_gap + title_h / 2);
 
-  lv_obj_set_size(ui.back_btn, back_size, back_size);
-  lv_obj_set_style_radius(ui.back_btn, back_size / 2, LV_PART_MAIN);
-  lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, inset, inset);
-  lv_obj_set_size(ui.arc, arc_size, arc_size);
-  apply_width_compensation(ui.arc, ctx->width_compensation_percent);
-  lv_obj_align(ui.arc, LV_ALIGN_CENTER, arc_center_x, arc_center_y);
-  lv_obj_set_style_arc_width(ui.arc, arc_stroke, LV_PART_MAIN);
-  lv_obj_set_style_arc_width(ui.arc, arc_stroke, LV_PART_INDICATOR);
-  lv_obj_set_style_pad_all(ui.arc, short_side < 520 ? 4 : 6, LV_PART_KNOB);
-  lv_obj_set_size(ui.minus_btn, btn_size, btn_size);
-  lv_obj_set_style_radius(ui.minus_btn, btn_size / 2, LV_PART_MAIN);
-  lv_obj_set_size(ui.plus_btn, btn_size, btn_size);
-  lv_obj_set_style_radius(ui.plus_btn, btn_size / 2, LV_PART_MAIN);
+  control_modal_apply_back_button_layout(ui.back_btn, layout);
+  control_modal_apply_arc_layout(ui.arc, layout, ctx->width_compensation_percent);
+  control_modal_apply_step_buttons_layout(ui.minus_btn, ui.plus_btn, layout);
   lv_obj_set_style_translate_y(ui.pct_unit_lbl,
-    media_volume_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, short_side), LV_PART_MAIN);
+    control_modal_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, layout.short_side), LV_PART_MAIN);
   lv_obj_align(ui.title_lbl, LV_ALIGN_CENTER, 0, title_center_y);
-  lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, value_center_y);
-  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + controls_gap) / 2, controls_center_y);
-  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + controls_gap) / 2, controls_center_y);
+  lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, layout.value_center_y);
   lv_obj_move_foreground(ui.back_btn);
 }
 
@@ -3169,22 +3259,12 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
 
   lv_obj_t *parent = lv_layer_top();
   ui.overlay = lv_obj_create(parent);
-  lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
-  lv_obj_set_style_bg_opa(ui.overlay, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.overlay, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.overlay, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.overlay, LV_OBJ_FLAG_SCROLLABLE);
+  control_modal_style_overlay(ui.overlay);
 
   ui.panel = lv_obj_create(ui.overlay);
-  lv_obj_set_style_bg_color(ui.panel, lv_color_hex(ctx->tertiary_color), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.panel, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.panel, 0, LV_PART_MAIN);
-  lv_obj_set_style_shadow_width(ui.panel, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(ui.panel, media_volume_card_radius(ctx), LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.panel, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.panel, LV_OBJ_FLAG_SCROLLABLE);
+  control_modal_style_panel(ui.panel, ctx->tertiary_color, media_volume_card_radius(ctx));
 
-  ui.back_btn = media_volume_create_round_button(ui.panel, 32, "\U000F0141",
+  ui.back_btn = control_modal_create_round_button(ui.panel, 32, "\U000F0141",
     ctx->icon_font, 0x454545, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.back_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.back_btn, 0, LV_PART_MAIN);
@@ -3249,9 +3329,9 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   lv_obj_set_style_translate_y(ui.pct_unit_lbl, MEDIA_VOLUME_UNIT_Y_REF_PX, LV_PART_MAIN);
   apply_width_compensation(ui.pct_unit_lbl, ctx->width_compensation_percent);
 
-  ui.minus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Minus"),
+  ui.minus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Minus"),
     ctx->icon_font, 0xBDBDBD, ctx->tertiary_color, ctx->width_compensation_percent);
-  ui.plus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Plus"),
+  ui.plus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Plus"),
     ctx->icon_font, 0xBDBDBD, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
@@ -4188,105 +4268,47 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
 inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   if (!ctx || !ui.overlay || !ui.panel) return;
-  lv_disp_t *disp = lv_disp_get_default();
-  lv_coord_t sw = disp ? lv_disp_get_hor_res(disp) : 480;
-  lv_coord_t sh = disp ? lv_disp_get_ver_res(disp) : 480;
-  lv_coord_t short_side = sw < sh ? sw : sh;
-  MediaHomeGridMetrics &metrics = media_home_grid_metrics();
-  lv_coord_t panel_x = 4, panel_y = 0, panel_w = sw - 8, panel_h = sh;
-  if (metrics.page) {
-    lv_obj_update_layout(metrics.page);
-    panel_x = lv_obj_get_style_pad_left(metrics.page, LV_PART_MAIN);
-    panel_y = lv_obj_get_style_pad_top(metrics.page, LV_PART_MAIN);
-    panel_w = sw - panel_x - lv_obj_get_style_pad_right(metrics.page, LV_PART_MAIN);
-    panel_h = sh - panel_y - lv_obj_get_style_pad_bottom(metrics.page, LV_PART_MAIN);
-  }
-  lv_coord_t back_size = media_volume_scaled_px(MEDIA_VOLUME_BACK_BUTTON_REF_PX, short_side);
-  lv_coord_t btn_size = media_volume_scaled_px(MEDIA_VOLUME_BUTTON_REF_PX, short_side);
-  lv_coord_t inset = media_volume_scaled_px(MEDIA_VOLUME_INSET_REF_PX, short_side);
-  if (inset < 8) inset = 8;
-  lv_coord_t arc_stroke = media_volume_scaled_px(MEDIA_VOLUME_ARC_STROKE_REF_PX, short_side);
-  lv_coord_t controls_gap = media_volume_scaled_px(MEDIA_VOLUME_CONTROLS_GAP_REF_PX, short_side);
-  lv_coord_t arc_size = panel_w < panel_h ? panel_w : panel_h;
-  arc_size -= inset * 2;
-  lv_coord_t reserved_bottom = btn_size / 3 + inset;
-  lv_coord_t available_h = panel_h - inset * 2;
-  if (available_h > reserved_bottom) {
-    lv_coord_t fit_h = available_h - reserved_bottom + arc_stroke;
-    if (arc_size > fit_h) arc_size = fit_h;
-  }
-  if (arc_size < 74) arc_size = 74;
-  int width_percent = normalize_width_compensation_percent(ctx->width_compensation_percent);
-  lv_coord_t visible_arc_w = compensated_width(arc_size, width_percent);
-  if (visible_arc_w > panel_w - inset * 2) {
-    arc_size = (panel_w - inset * 2) * 100 / width_percent;
-    visible_arc_w = compensated_width(arc_size, width_percent);
-  }
-  lv_coord_t arc_center_x = (arc_size - visible_arc_w) / 2;
-  lv_coord_t arc_center_y = 0;
-  lv_coord_t value_center_y = arc_stroke / 2;
-  lv_coord_t controls_y = arc_size / 2 - btn_size / 2 - inset +
-    media_volume_scaled_px(MEDIA_VOLUME_CONTROLS_DOWN_REF_PX, short_side);
+  ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
   if (ui.status_lbl) lv_obj_update_layout(ui.status_lbl);
   if (ui.target_row) lv_obj_update_layout(ui.target_row);
   lv_coord_t title_h = ui.status_lbl ? lv_obj_get_height(ui.status_lbl) : 0;
   lv_coord_t value_h = ui.target_row ? lv_obj_get_height(ui.target_row) : 0;
-  lv_coord_t title_gap = media_volume_scaled_px(MEDIA_VOLUME_TITLE_GAP_REF_PX, short_side);
-  lv_coord_t title_center_y = value_center_y -
-    (value_h / 2 + title_gap + title_h / 2);
-  lv_coord_t chip_h = short_side < 520 ? 48 : 56;
+  lv_coord_t title_center_y = layout.value_center_y -
+    (value_h / 2 + layout.title_gap + title_h / 2);
+  lv_coord_t chip_h = layout.short_side < 520 ? 48 : 56;
 
-  lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
-  lv_obj_set_size(ui.panel, panel_w, panel_h);
-  lv_obj_set_pos(ui.panel, panel_x, panel_y);
-  lv_obj_set_style_radius(ui.panel,
-    ctx->btn ? lv_obj_get_style_radius(ctx->btn, LV_PART_MAIN) : 18, LV_PART_MAIN);
-  lv_obj_set_size(ui.back_btn, back_size, back_size);
-  lv_obj_set_style_radius(ui.back_btn, back_size / 2, LV_PART_MAIN);
-  lv_obj_align(ui.back_btn, LV_ALIGN_TOP_LEFT, inset, inset);
-  lv_obj_set_size(ui.mode_btn, back_size, back_size);
-  lv_obj_set_style_radius(ui.mode_btn, back_size / 2, LV_PART_MAIN);
-  lv_obj_align(ui.mode_btn, LV_ALIGN_TOP_RIGHT, -inset, inset);
+  control_modal_apply_panel_layout(ui.overlay, ui.panel, layout,
+    control_modal_card_radius(ctx->btn));
+  control_modal_apply_back_button_layout(ui.back_btn, layout);
+  lv_obj_set_size(ui.mode_btn, layout.back_size, layout.back_size);
+  lv_obj_set_style_radius(ui.mode_btn, layout.back_size / 2, LV_PART_MAIN);
+  lv_obj_align(ui.mode_btn, LV_ALIGN_TOP_RIGHT, -layout.inset, layout.inset);
   if (ui.menu_close_btn) {
-    lv_obj_set_size(ui.menu_close_btn, back_size, back_size);
-    lv_obj_set_style_radius(ui.menu_close_btn, back_size / 2, LV_PART_MAIN);
-    lv_obj_align(ui.menu_close_btn, LV_ALIGN_TOP_RIGHT, -inset, inset);
+    lv_obj_set_size(ui.menu_close_btn, layout.back_size, layout.back_size);
+    lv_obj_set_style_radius(ui.menu_close_btn, layout.back_size / 2, LV_PART_MAIN);
+    lv_obj_align(ui.menu_close_btn, LV_ALIGN_TOP_RIGHT, -layout.inset, layout.inset);
   }
-  lv_obj_set_size(ui.arc, arc_size, arc_size);
-  apply_width_compensation(ui.arc, ctx->width_compensation_percent);
-  lv_obj_align(ui.arc, LV_ALIGN_CENTER, arc_center_x, arc_center_y);
-  lv_obj_set_style_arc_width(ui.arc, arc_stroke, LV_PART_MAIN);
-  lv_obj_set_style_arc_width(ui.arc, arc_stroke, LV_PART_INDICATOR);
-  lv_obj_set_style_pad_all(ui.arc, short_side < 520 ? 4 : 6, LV_PART_KNOB);
+  control_modal_apply_arc_layout(ui.arc, layout, ctx->width_compensation_percent);
   if (ui.current_arc) {
-    lv_obj_set_size(ui.current_arc, arc_size, arc_size);
-    apply_width_compensation(ui.current_arc, ctx->width_compensation_percent);
-    lv_obj_align(ui.current_arc, LV_ALIGN_CENTER, arc_center_x, arc_center_y);
-    lv_obj_set_style_arc_width(ui.current_arc, arc_stroke, LV_PART_MAIN);
-    lv_obj_set_style_arc_width(ui.current_arc, arc_stroke, LV_PART_INDICATOR);
+    control_modal_apply_arc_layout(ui.current_arc, layout, ctx->width_compensation_percent, false);
   }
   lv_obj_align(ui.status_lbl, LV_ALIGN_CENTER, 0, title_center_y);
-  lv_obj_align(ui.target_row, LV_ALIGN_CENTER, 0, value_center_y);
-  lv_obj_align(ui.hint_lbl, LV_ALIGN_CENTER, 0, controls_y - btn_size / 2 - 50);
+  lv_obj_align(ui.target_row, LV_ALIGN_CENTER, 0, layout.value_center_y);
+  lv_obj_align(ui.hint_lbl, LV_ALIGN_CENTER, 0, layout.controls_center_y - layout.btn_size / 2 - 50);
   lv_obj_set_style_translate_y(ui.unit_lbl,
-    media_volume_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, short_side), LV_PART_MAIN);
-  lv_obj_set_size(ui.minus_btn, btn_size, btn_size);
-  lv_obj_set_style_radius(ui.minus_btn, btn_size / 2, LV_PART_MAIN);
-  lv_obj_set_size(ui.plus_btn, btn_size, btn_size);
-  lv_obj_set_style_radius(ui.plus_btn, btn_size / 2, LV_PART_MAIN);
-  lv_obj_align(ui.minus_btn, LV_ALIGN_CENTER, -(btn_size + controls_gap) / 2, controls_y);
-  lv_obj_align(ui.plus_btn, LV_ALIGN_CENTER, (btn_size + controls_gap) / 2, controls_y);
-  lv_obj_align(ui.low_btn, LV_ALIGN_CENTER, -46, controls_y - btn_size / 2 - 24);
-  lv_obj_align(ui.high_btn, LV_ALIGN_CENTER, 46, controls_y - btn_size / 2 - 24);
+    control_modal_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, layout.short_side), LV_PART_MAIN);
+  control_modal_apply_step_buttons_layout(ui.minus_btn, ui.plus_btn, layout);
+  lv_obj_align(ui.low_btn, LV_ALIGN_CENTER, -46, layout.controls_center_y - layout.btn_size / 2 - 24);
+  lv_obj_align(ui.high_btn, LV_ALIGN_CENTER, 46, layout.controls_center_y - layout.btn_size / 2 - 24);
   lv_obj_set_height(ui.chips, chip_h);
-  lv_obj_align(ui.chips, LV_ALIGN_BOTTOM_MID, 0, -inset);
+  lv_obj_align(ui.chips, LV_ALIGN_BOTTOM_MID, 0, -layout.inset);
   if (ui.menu_view) {
-    lv_obj_set_size(ui.menu_view, panel_w, panel_h);
+    lv_obj_set_size(ui.menu_view, layout.panel_w, layout.panel_h);
     lv_obj_set_pos(ui.menu_view, 0, 0);
-    lv_coord_t menu_gap = media_volume_scaled_px(16, short_side);
-    lv_coord_t tile_w = panel_w - inset * 2;
+    lv_coord_t menu_gap = control_modal_scaled_px(16, layout.short_side);
+    lv_coord_t tile_w = layout.panel_w - layout.inset * 2;
     if (tile_w > 280) tile_w = 280;
-    lv_coord_t tile_h = short_side < 520 ? 86 : 94;
+    lv_coord_t tile_h = layout.short_side < 520 ? 86 : 94;
     lv_obj_set_size(ui.menu_mode_btn, tile_w, tile_h);
     lv_obj_set_size(ui.menu_preset_btn, tile_w, tile_h);
     apply_width_compensation(ui.menu_mode_btn, ctx->width_compensation_percent);
@@ -4294,18 +4316,18 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     lv_obj_align(ui.menu_mode_btn, LV_ALIGN_CENTER, 0, -(tile_h + menu_gap) / 2);
     lv_obj_align(ui.menu_preset_btn, LV_ALIGN_CENTER, 0, (tile_h + menu_gap) / 2);
     if (ui.option_list_view) {
-      lv_coord_t list_top = inset + back_size + 8;
-      lv_coord_t list_bottom = inset;
-      lv_coord_t list_content_h = panel_h - list_top - list_bottom;
+      lv_coord_t list_top = layout.inset + layout.back_size + 8;
+      lv_coord_t list_bottom = layout.inset;
+      lv_coord_t list_content_h = layout.panel_h - list_top - list_bottom;
       if (list_content_h < 120) list_content_h = 120;
-      lv_obj_set_size(ui.option_list_view, panel_w, panel_h);
+      lv_obj_set_size(ui.option_list_view, layout.panel_w, layout.panel_h);
       lv_obj_set_style_pad_top(ui.option_list_view, list_top, LV_PART_MAIN);
-      lv_obj_set_style_pad_left(ui.option_list_view, inset, LV_PART_MAIN);
-      lv_obj_set_style_pad_right(ui.option_list_view, inset, LV_PART_MAIN);
+      lv_obj_set_style_pad_left(ui.option_list_view, layout.inset, LV_PART_MAIN);
+      lv_obj_set_style_pad_right(ui.option_list_view, layout.inset, LV_PART_MAIN);
       lv_obj_set_style_pad_bottom(ui.option_list_view, list_bottom, LV_PART_MAIN);
       lv_coord_t title_row_h = ctx->label_font ? ctx->label_font->line_height : 28;
-      lv_coord_t row_gap = short_side < 520 ? 6 : 8;
-      lv_coord_t default_row_h = short_side < 520 ? 54 : 68;
+      lv_coord_t row_gap = layout.short_side < 520 ? 6 : 8;
+      lv_coord_t default_row_h = layout.short_side < 520 ? 54 : 68;
       lv_coord_t min_row_h = title_row_h + 6;
       lv_obj_set_style_pad_row(ui.option_list_view, row_gap, LV_PART_MAIN);
 
@@ -4392,29 +4414,19 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   ui.active = ctx;
   ui.overlay = lv_obj_create(lv_layer_top());
-  lv_obj_set_size(ui.overlay, lv_pct(100), lv_pct(100));
-  lv_obj_set_style_bg_opa(ui.overlay, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.overlay, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.overlay, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.overlay, LV_OBJ_FLAG_SCROLLABLE);
+  control_modal_style_overlay(ui.overlay);
 
   ui.panel = lv_obj_create(ui.overlay);
-  lv_obj_set_style_bg_color(ui.panel, lv_color_hex(ctx->tertiary_color), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.panel, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.panel, 0, LV_PART_MAIN);
-  lv_obj_set_style_shadow_width(ui.panel, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(ui.panel,
-    ctx->btn ? lv_obj_get_style_radius(ctx->btn, LV_PART_MAIN) : 18, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.panel, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.panel, LV_OBJ_FLAG_SCROLLABLE);
+  control_modal_style_panel(ui.panel, ctx->tertiary_color,
+    control_modal_card_radius(ctx->btn));
 
-  ui.back_btn = media_volume_create_round_button(ui.panel, 32, "\U000F0141", ctx->icon_font,
+  ui.back_btn = control_modal_create_round_button(ui.panel, 32, "\U000F0141", ctx->icon_font,
     0x454545, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.back_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.back_btn, 0, LV_PART_MAIN);
   lv_obj_add_event_cb(ui.back_btn, [](lv_event_t *) { climate_control_hide_modal(); }, LV_EVENT_CLICKED, nullptr);
 
-  ui.mode_btn = media_volume_create_round_button(ui.panel, 32, find_icon("Dots Horizontal"), ctx->icon_font,
+  ui.mode_btn = control_modal_create_round_button(ui.panel, 32, find_icon("Dots Horizontal"), ctx->icon_font,
     0x454545, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.mode_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.mode_btn, 0, LV_PART_MAIN);
@@ -4431,7 +4443,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_clear_flag(ui.menu_view, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.menu_view, LV_OBJ_FLAG_HIDDEN);
 
-  ui.menu_close_btn = media_volume_create_round_button(ui.panel, 32, "\U000F0156", ctx->icon_font,
+  ui.menu_close_btn = control_modal_create_round_button(ui.panel, 32, "\U000F0156", ctx->icon_font,
     0x454545, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.menu_close_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.menu_close_btn, 0, LV_PART_MAIN);
@@ -4549,9 +4561,9 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     if (ui.active) { ui.active->edit_high = true; climate_control_set_modal_value(ui.active); }
   }, LV_EVENT_CLICKED, nullptr);
 
-  ui.minus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Minus"), ctx->icon_font,
+  ui.minus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Minus"), ctx->icon_font,
     CLIMATE_NEUTRAL_COLOR, ctx->tertiary_color, ctx->width_compensation_percent);
-  ui.plus_btn = media_volume_create_round_button(ui.panel, 72, find_icon("Plus"), ctx->icon_font,
+  ui.plus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Plus"), ctx->icon_font,
     CLIMATE_NEUTRAL_COLOR, ctx->tertiary_color, ctx->width_compensation_percent);
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
