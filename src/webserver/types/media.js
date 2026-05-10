@@ -281,7 +281,7 @@ registerButtonType("media", {
           '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#444444">' +
           '</span></span></span>';
       } else if (mediaNowPlayingPlayPauseEnabled(b)) {
-        var playBgColor = (typeof state !== "undefined" && state.onColor) ? state.onColor : "FF8C00";
+        var playBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "313131";
         progressBg =
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(playBgColor) + '">' +
           '</span>';
