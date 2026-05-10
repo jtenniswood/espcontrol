@@ -36,7 +36,7 @@ font:
       - ":"
 
   # Large-card sensor values (2.5x the regular sensor value font)
-  - file: "gfonts://Roboto@Light"
+  - file: "gfonts://Roboto@Thin"
     id: statistics_font_sm_xl
     size: 110
     bpp: 4
