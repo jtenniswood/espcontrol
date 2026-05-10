@@ -226,7 +226,8 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
 
 inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
                                                  uint32_t progress_color,
-                                                 uint32_t background_color) {
+                                                 uint32_t background_color,
+                                                 const std::string &entity_id) {
   lv_obj_set_style_bg_color(btn, lv_color_hex(background_color), LV_PART_MAIN);
   lv_obj_set_style_bg_color(
     btn, lv_color_hex(background_color),
@@ -235,9 +236,9 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
 
   lv_obj_t *slider = setup_slider_widget(btn, progress_color, true);
   lv_obj_t *fill = lv_obj_get_child(btn, 0);
-  lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
 
   SliderCtx *ctx = new SliderCtx();
+  ctx->entity_id = entity_id;
   ctx->fill = fill;
   ctx->horizontal = true;
   ctx->cover_tilt = false;
@@ -245,9 +246,25 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
   ctx->radius = lv_obj_get_style_radius(btn, LV_PART_MAIN);
   ctx->media_position = true;
   ctx->media_slider = slider;
-  ctx->interactive = false;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
+
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(sl);
+    if (!ctx) return;
+    int val = lv_slider_get_value(sl);
+    slider_update_ctx_fill(ctx, lv_obj_get_parent(sl), ctx->inverted ? 100 - val : val);
+  }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(sl);
+    if (!ctx || ctx->entity_id.empty() || !ctx->available) return;
+    int val = lv_slider_get_value(sl);
+    media_set_pending_seek_position(ctx, val);
+    send_media_seek_action(ctx->entity_id, val, ctx->media_duration);
+  }, LV_EVENT_RELEASED, nullptr);
 
   ctx->media_timer = lv_timer_create(media_position_timer_cb, 1000, ctx);
   if (ctx->media_timer) lv_timer_pause(ctx->media_timer);
@@ -428,7 +445,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->btn = s.btn;
     ctx->play_pause_background = media_now_playing_play_pause_enabled(p);
     if (media_now_playing_progress_enabled(p)) {
-      ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color);
+      ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color, p.entity);
     }
     lv_obj_t *title_lbl = lv_label_create(s.btn);
     lv_obj_set_style_text_color(title_lbl, text_color, LV_PART_MAIN);
