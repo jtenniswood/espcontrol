@@ -343,7 +343,7 @@ inline void climate_layout_current_dot(ClimateControlCtx *ctx, const ControlModa
   ClimateControlModalUi &ui = climate_control_modal_ui();
   lv_coord_t dot_size = control_modal_scaled_px(10, layout.short_side);
   if (dot_size < 8) dot_size = 8;
-  lv_coord_t radius = layout.arc_size / 2 - layout.arc_stroke - dot_size / 2;
+  lv_coord_t radius = layout.arc_size / 2 - layout.arc_stroke / 2;
   if (radius < 0) radius = layout.arc_size / 2;
   climate_layout_arc_dot(ctx, layout, ui.current_dot, ctx ? ctx->current_tenths : CLIMATE_DEFAULT_TARGET_TENTHS, dot_size, radius);
 }
@@ -355,6 +355,12 @@ inline void climate_layout_handle_dot(ClimateControlCtx *ctx, const ControlModal
   lv_coord_t radius = layout.arc_size / 2 - layout.arc_stroke / 2;
   if (radius < 0) radius = layout.arc_size / 2;
   climate_layout_arc_dot(ctx, layout, ui.handle_dot, climate_selected_target(ctx), handle_size, radius);
+}
+
+inline void climate_raise_arc_markers() {
+  ClimateControlModalUi &ui = climate_control_modal_ui();
+  if (ui.current_dot) lv_obj_move_foreground(ui.current_dot);
+  if (ui.handle_dot) lv_obj_move_foreground(ui.handle_dot);
 }
 
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
@@ -917,6 +923,7 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
     climate_set_obj_visible(ui.handle_dot, temp_enabled);
     if (temp_enabled && ui.panel) climate_layout_handle_dot(ctx, control_modal_calc_layout(ctx->width_compensation_percent));
   }
+  climate_raise_arc_markers();
   if (ui.target_row) climate_set_obj_visible(ui.target_row, true);
   if (ui.target_lbl) {
     if (!ctx->available) lv_label_set_text(ui.target_lbl, "--");
@@ -1000,6 +1007,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   control_modal_apply_arc_layout(ui.arc, layout, ctx->width_compensation_percent);
   if (ui.current_dot) climate_layout_current_dot(ctx, layout);
   if (ui.handle_dot) climate_layout_handle_dot(ctx, layout);
+  climate_raise_arc_markers();
   lv_obj_align(ui.status_lbl, LV_ALIGN_CENTER, 0, title_center_y);
   lv_obj_align(ui.target_row, LV_ALIGN_CENTER, 0, layout.value_center_y);
   lv_obj_align(ui.hint_lbl, LV_ALIGN_CENTER, 0, layout.controls_center_y - layout.btn_size / 2 - 50);
