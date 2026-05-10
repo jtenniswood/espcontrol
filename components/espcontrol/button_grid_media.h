@@ -179,8 +179,15 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            const lv_font_t *title_font,
                                            lv_coord_t pad,
                                            bool limit_title_lines,
-                                           bool tappable) {
+                                           bool tappable,
+                                           lv_coord_t content_inset = 0) {
   constexpr lv_coord_t TITLE_LINE_SPACE = -1;
+  lv_coord_t text_width = lv_pct(100);
+  if (btn && content_inset > 0) {
+    lv_obj_update_layout(btn);
+    lv_coord_t available_width = lv_obj_get_width(btn) - content_inset * 2;
+    if (available_width > 1) text_width = available_width;
+  }
   if (tappable) {
     lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
     apply_push_button_transition(btn);
@@ -195,14 +202,14 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
       const lv_font_t *font = title_font ? title_font : lv_obj_get_style_text_font(title_lbl, LV_PART_MAIN);
       lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
       if (font && font->line_height > 0) {
-        lv_obj_set_size(title_lbl, lv_pct(100), font->line_height * 2 + TITLE_LINE_SPACE);
+        lv_obj_set_size(title_lbl, text_width, font->line_height * 2 + TITLE_LINE_SPACE);
       }
-      else lv_obj_set_width(title_lbl, lv_pct(100));
+      else lv_obj_set_width(title_lbl, text_width);
     } else {
       lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_WRAP);
-      lv_obj_set_width(title_lbl, lv_pct(100));
+      lv_obj_set_width(title_lbl, text_width);
     }
-    lv_obj_align(title_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_align(title_lbl, LV_ALIGN_TOP_LEFT, content_inset, content_inset);
     lv_label_set_text(title_lbl, "--");
     lv_obj_move_foreground(title_lbl);
   }
@@ -210,9 +217,9 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     const lv_font_t *font = lv_obj_get_style_text_font(artist_lbl, LV_PART_MAIN);
     lv_label_set_text(artist_lbl, "--");
     lv_label_set_long_mode(artist_lbl, LV_LABEL_LONG_DOT);
-    if (font && font->line_height > 0) lv_obj_set_size(artist_lbl, lv_pct(100), font->line_height);
-    else lv_obj_set_width(artist_lbl, lv_pct(100));
-    lv_obj_align(artist_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    if (font && font->line_height > 0) lv_obj_set_size(artist_lbl, text_width, font->line_height);
+    else lv_obj_set_width(artist_lbl, text_width);
+    lv_obj_align(artist_lbl, LV_ALIGN_BOTTOM_LEFT, content_inset, -content_inset);
     lv_obj_move_foreground(artist_lbl);
   }
 }
@@ -430,7 +437,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad,
-      row_span == 1, ctx->play_pause_background);
+      row_span == 1, ctx->play_pause_background,
+      media_now_playing_progress_enabled(p) ? pad : 0);
     return;
   }
   if (mode == "position") {

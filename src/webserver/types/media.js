@@ -201,6 +201,7 @@ registerButtonType("media", {
         helpers.saveField("precision", b.precision);
         renderButtonSettings();
       });
+      controls.segment.classList.add("sp-segment-scroll");
       panel.appendChild(helpers.fieldWithControl(
         "Controls", helpers.idPrefix + "media-controls", controls.segment));
     }
