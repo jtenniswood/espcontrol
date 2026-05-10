@@ -22,7 +22,7 @@ struct ClimateControlCtx {
   std::string configured_label;
   std::string friendly_name;
   std::string hvac_mode = "off";
-  std::string hvac_action = "idle";
+  std::string hvac_action;
   std::vector<std::string> hvac_modes;
   std::string fan_mode;
   std::vector<std::string> fan_modes;
@@ -277,11 +277,15 @@ inline std::string climate_hvac_service_value(const std::string &raw) {
 
 inline std::string climate_action_label(ClimateControlCtx *ctx) {
   if (!ctx || !ctx->available) return "Unavailable";
+  if (ctx->hvac_mode == "off") return "Off";
+  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
+      ctx->hvac_action == "unavailable") return climate_option_label(ctx->hvac_mode);
   if (ctx->hvac_action == "heating") return "Heating";
   if (ctx->hvac_action == "cooling") return "Cooling";
   if (ctx->hvac_action == "drying") return "Drying";
   if (ctx->hvac_action == "fan") return "Fan";
-  if (ctx->hvac_mode == "off") return "Off";
+  if (ctx->hvac_action == "idle") return "Idle";
+  if (ctx->hvac_action == "off") return "Off";
   return "Idle";
 }
 
