@@ -1,0 +1,4 @@
+# Generated/minified build outputs. Review the source files instead.
+docs/public/webserver/*/www.js linguist-generated=true -diff
+common/assets/icon_glyphs.yaml linguist-generated=true
+components/espcontrol/icons.h linguist-generated=true
