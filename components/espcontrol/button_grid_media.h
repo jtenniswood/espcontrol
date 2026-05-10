@@ -178,9 +178,15 @@ inline void setup_media_now_playing_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
                                            lv_obj_t *artist_lbl,
                                            const lv_font_t *title_font,
                                            lv_coord_t pad,
-                                           bool limit_title_lines) {
+                                           bool limit_title_lines,
+                                           bool tappable) {
   constexpr lv_coord_t TITLE_LINE_SPACE = -1;
-  lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  if (tappable) {
+    lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+    apply_push_button_transition(btn);
+  } else {
+    lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  }
   if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
   if (title_lbl) {
     if (title_font) lv_obj_set_style_text_font(title_lbl, title_font, LV_PART_MAIN);
@@ -423,7 +429,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     ctx->artist_lbl = s.text_lbl;
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     setup_media_now_playing_layout(
-      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad, row_span == 1);
+      s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad,
+      row_span == 1, ctx->play_pause_background);
     return;
   }
   if (mode == "position") {

@@ -873,6 +873,13 @@ inline void grid_phase2(
           } else if (mode == "now_playing") {
             MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(sub_slot.sensor_container);
             subscribe_media_now_playing_state(ctx, sb_cfg.entity);
+            if (media_now_playing_play_pause_enabled(sb_cfg)) {
+              ParsedCfg *click_ctx = new ParsedCfg(sb_cfg);
+              lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+                ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
+                if (c) send_media_playback_action(c->entity, "play_pause");
+              }, LV_EVENT_CLICKED, click_ctx);
+            }
           } else {
             lv_obj_t *media_slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
             if (media_slider) subscribe_media_slider_state(sub_slot.btn, media_slider, sb_cfg.entity);

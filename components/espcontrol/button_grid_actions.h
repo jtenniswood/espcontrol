@@ -415,6 +415,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (mode == "volume") {
       MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_obj_get_user_data(btn_obj);
       if (ctx) media_volume_open_modal(ctx);
+    } else if (mode == "now_playing" && p.precision == "play_pause") {
+      send_media_playback_action(p.entity, "play_pause");
     } else if (media_playback_button_mode(mode)) {
       send_media_playback_action(p.entity, mode);
     }
