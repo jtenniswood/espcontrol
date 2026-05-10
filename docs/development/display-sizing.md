@@ -75,11 +75,11 @@ Device package substitutions select setup-screen and main-card fonts:
 
 Generated C++ setup for home and subpage grids comes from:
 
-- `scripts/device_slots.json`
+- `devices/manifest.json`
 - `scripts/generate_device_slots.py`
 - `devices/<device>/device/sensors.yaml`
 
-Do not hand-edit the generated `device/sensors.yaml` font assignments. Update `scripts/device_slots.json`, then regenerate.
+Do not hand-edit the generated `device/sensors.yaml` font assignments. Update `devices/manifest.json`, then regenerate.
 
 ## Volume Modal Layout
 
@@ -106,7 +106,7 @@ For text and icon glyphs, prefer native font sizes in YAML instead of `transform
 2. Calculate each target size with `reference size * target short side / 480`.
 3. Round to the nearest whole number.
 4. Update the matching native font entries in `devices/<device>/device/fonts.yaml`.
-5. If a font ID changes, update `scripts/device_slots.json` and the matching `devices/<device>/packages.yaml` substitution.
+5. If a font ID changes, update `devices/manifest.json` and the matching `devices/<device>/packages.yaml` substitution.
 6. Regenerate generated device config:
 
 ```sh

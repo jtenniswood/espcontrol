@@ -10,6 +10,7 @@ Usage:
     python scripts/build.py www           # build www.js only
     python scripts/build.py icons --check # check icons only
 """
+import copy
 import json
 import re
 import shutil
@@ -25,7 +26,7 @@ MDI_CSS_URL = f"https://cdn.jsdelivr.net/npm/@mdi/font@{MDI_VERSION}/css/materia
 # ---------------------------------------------------------------------------
 # Shared paths
 # ---------------------------------------------------------------------------
-DEVICES_JSON = ROOT / "src" / "webserver" / "devices.json"
+DEVICE_MANIFEST = ROOT / "devices" / "manifest.json"
 ICONS_JSON = ROOT / "common" / "assets" / "icons.json"
 
 
@@ -36,6 +37,10 @@ class BuildError(RuntimeError):
 def load_json(path):
     with open(path) as f:
         return json.load(f)
+
+
+def load_device_manifest():
+    return load_json(DEVICE_MANIFEST)["devices"]
 
 
 def replace_between_markers(text, start_tag, end_tag, new_content):
@@ -299,6 +304,41 @@ def build_config_block(slug, cfg):
     )
 
 
+def web_features(device):
+    features = {}
+    rotation = device.get("rotation") or {}
+    if rotation.get("enabled"):
+        features["screenRotation"] = True
+        features["screenRotationOptions"] = rotation.get("options", [])
+        if rotation.get("experimentalOptions"):
+            features["screenRotationExperimentalOptions"] = rotation["experimentalOptions"]
+        if "displayOffset" in rotation:
+            features["screenRotationDisplayOffset"] = rotation["displayOffset"]
+    if device.get("internalRelays"):
+        features["internalRelays"] = device["internalRelays"]
+    return features
+
+
+def build_web_devices():
+    devices = {}
+    for slug, device in load_device_manifest().items():
+        layout = device["layout"]
+        features = web_features(device)
+        cfg = {
+            "slots": device["slots"],
+            "cols": layout["cols"],
+            "rows": layout["rows"],
+        }
+        for key, value in device["web"].items():
+            cfg[key] = copy.deepcopy(value)
+            if key == "dragAnimation" and features:
+                cfg["features"] = copy.deepcopy(features)
+        if features and "features" not in cfg:
+            cfg["features"] = copy.deepcopy(features)
+        devices[slug] = cfg
+    return devices
+
+
 def load_button_types():
     if not TYPES_DIR.is_dir():
         return ""
@@ -392,7 +432,7 @@ def minify_js(source_text):
 
 def build_www(check_only=False):
     """Build per-device www.js from the single source template."""
-    devices = load_json(DEVICES_JSON)
+    devices = build_web_devices()
     source_text = WWW_SOURCE.read_text()
     source_text = replace_types(source_text)
     source_text = replace_modules(source_text)

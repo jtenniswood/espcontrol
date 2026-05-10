@@ -1,0 +1,417 @@
+{
+  "devices": {
+    "guition-esp32-p4-jc1060p470": {
+      "slots": 15,
+      "layout": {
+        "cols": 5,
+        "rows": 3,
+        "firmwareGrid": "3x5",
+        "portraitCols": 3
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "180"
+        ],
+        "experimentalOptions": [
+          "90",
+          "270"
+        ],
+        "displayOffset": 180,
+        "rotateWidthCompensation": true
+      },
+      "web": {
+        "dragMode": "swap",
+        "dragAnimation": true,
+        "screen": {
+          "width": "100%",
+          "aspect": "1024/600"
+        },
+        "portrait": {
+          "cols": 3,
+          "rows": 5,
+          "screen": {
+            "width": "59%",
+            "aspect": "600/1024"
+          }
+        },
+        "topbar": {
+          "height": 3.2,
+          "padding": "0.39cqw",
+          "fontSize": 1.95
+        },
+        "grid": {
+          "top": 4.4,
+          "compactTop": 0.49,
+          "left": 0.49,
+          "right": 0.49,
+          "bottom": 0.49,
+          "gap": 0.98,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 0.78,
+          "padding": 1.37,
+          "iconSize": 4.69,
+          "labelSize": 1.8,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 0.78
+        },
+        "sensorBadge": {
+          "top": 1,
+          "right": 1,
+          "fontSize": 1.6
+        },
+        "subpageBadge": {
+          "bottom": 1,
+          "right": 1,
+          "fontSize": 2
+        }
+      },
+      "firmware": {
+        "fonts": {
+          "icon": "icon_font_600",
+          "sensor": "statistics_font_600",
+          "mediaTitle": "media_title_font",
+          "volumeNumber": "volume_modal_number_font_600",
+          "volumeLabel": "volume_modal_label_font_600"
+        },
+        "display": {
+          "colorCorrection": false,
+          "wrapTallLabels": true,
+          "volumeWidthCompensationPercent": 95
+        }
+      }
+    },
+    "guition-esp32-p4-jc4880p443": {
+      "slots": 6,
+      "layout": {
+        "cols": 2,
+        "rows": 3,
+        "firmwareGrid": "3x2"
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "180"
+        ],
+        "displayOffset": 180
+      },
+      "web": {
+        "dragMode": "displace",
+        "dragAnimation": true,
+        "screen": {
+          "width": "44%",
+          "aspect": "480/800"
+        },
+        "topbar": {
+          "height": 6.45,
+          "padding": "1.2cqw 0.59cqw 0.59cqw",
+          "fontSize": 4.5
+        },
+        "grid": {
+          "top": 8.58,
+          "compactTop": 1.5,
+          "left": 1.5,
+          "right": 1.5,
+          "bottom": 1.5,
+          "gap": 2.07,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 1.18,
+          "padding": 2.73,
+          "iconSize": 14,
+          "labelSize": 5.5,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 1.18
+        },
+        "sensorBadge": {
+          "top": 1.52,
+          "right": 1.52,
+          "fontSize": 3.22
+        },
+        "subpageBadge": {
+          "bottom": 1.52,
+          "right": 1.52,
+          "fontSize": 4.03
+        }
+      },
+      "firmware": {
+        "fonts": {
+          "icon": "icon_font_480",
+          "sensor": "statistics_font_lg",
+          "mediaTitle": "media_title_font_lg",
+          "volumeNumber": "volume_modal_number_font_lg",
+          "volumeLabel": "label_font_lg"
+        },
+        "display": {
+          "colorCorrection": true,
+          "wrapTallLabels": false
+        }
+      }
+    },
+    "guition-esp32-p4-jc8012p4a1": {
+      "slots": 20,
+      "layout": {
+        "cols": 5,
+        "rows": 4,
+        "firmwareGrid": "5x4",
+        "portraitCols": 4
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "180"
+        ],
+        "experimentalOptions": [
+          "90",
+          "270"
+        ]
+      },
+      "web": {
+        "dragMode": "swap",
+        "dragAnimation": true,
+        "screen": {
+          "width": "100%",
+          "aspect": "1280/800"
+        },
+        "portrait": {
+          "cols": 4,
+          "rows": 5,
+          "screen": {
+            "width": "63%",
+            "aspect": "800/1280"
+          }
+        },
+        "topbar": {
+          "height": 3.28,
+          "padding": "0.47cqw",
+          "fontSize": 1.72
+        },
+        "grid": {
+          "top": 3.28,
+          "compactTop": 0.39,
+          "left": 0.39,
+          "right": 0.39,
+          "bottom": 0.39,
+          "gap": 0.78,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 0.86,
+          "padding": 1.41,
+          "iconSize": 4.1,
+          "labelSize": 1.88,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 0.86
+        },
+        "sensorBadge": {
+          "top": 0.86,
+          "right": 0.86,
+          "fontSize": 1.41
+        },
+        "subpageBadge": {
+          "bottom": 0.86,
+          "right": 0.86,
+          "fontSize": 1.56
+        }
+      },
+      "firmware": {
+        "fonts": {
+          "icon": "icon_font_800",
+          "sensor": "statistics_font_lt",
+          "mediaTitle": "media_title_font_lt",
+          "volumeNumber": "volume_modal_number_font_800",
+          "volumeLabel": "volume_modal_label_font_800"
+        },
+        "display": {
+          "colorCorrection": true,
+          "wrapTallLabels": true
+        }
+      }
+    },
+    "esp32-p4-86": {
+      "slots": 9,
+      "layout": {
+        "cols": 3,
+        "rows": 3,
+        "firmwareGrid": "3x3"
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ]
+      },
+      "internalRelays": [
+        {
+          "key": "relay_1",
+          "label": "Relay 1"
+        },
+        {
+          "key": "relay_2",
+          "label": "Relay 2"
+        }
+      ],
+      "web": {
+        "dragMode": "displace",
+        "dragAnimation": true,
+        "screen": {
+          "width": "55%",
+          "aspect": "1/1"
+        },
+        "topbar": {
+          "height": 7.5,
+          "padding": "0.83cqw",
+          "fontSize": 3.5
+        },
+        "grid": {
+          "top": 8.5,
+          "compactTop": 0.83,
+          "left": 1.04,
+          "right": 1.04,
+          "bottom": 0.83,
+          "gap": 2.08,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 1.67,
+          "padding": 2.92,
+          "iconSize": 9.17,
+          "labelSize": 3.72,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 1.67
+        },
+        "sensorBadge": {
+          "top": 2.08,
+          "right": 2.08,
+          "fontSize": 3.12
+        },
+        "subpageBadge": {
+          "bottom": 2.08,
+          "right": 2.08,
+          "fontSize": 3.75
+        }
+      },
+      "firmware": {
+        "fonts": {
+          "icon": "icon_font_md_square",
+          "sensor": "statistics_font_md_square",
+          "mediaTitle": "media_title_font_md_square",
+          "volumeNumber": "volume_modal_number_font_md_square",
+          "volumeLabel": "volume_modal_label_font_md_square"
+        },
+        "display": {
+          "colorCorrection": true,
+          "wrapTallLabels": false
+        }
+      }
+    },
+    "guition-esp32-s3-4848s040": {
+      "slots": 9,
+      "layout": {
+        "cols": 3,
+        "rows": 3,
+        "firmwareGrid": "3x3"
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ]
+      },
+      "internalRelays": [
+        {
+          "key": "relay_1",
+          "label": "Relay 1"
+        },
+        {
+          "key": "relay_2",
+          "label": "Relay 2"
+        },
+        {
+          "key": "relay_3",
+          "label": "Relay 3"
+        }
+      ],
+      "web": {
+        "dragMode": "displace",
+        "dragAnimation": true,
+        "screen": {
+          "width": "55%",
+          "aspect": "1/1"
+        },
+        "topbar": {
+          "height": 7.5,
+          "padding": "0.83cqw",
+          "fontSize": 3.75
+        },
+        "grid": {
+          "top": 8.5,
+          "compactTop": 0.83,
+          "left": 1.04,
+          "right": 1.04,
+          "bottom": 0.83,
+          "gap": 2.08,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 1.67,
+          "padding": 2.92,
+          "iconSize": 9.58,
+          "labelSize": 3.96,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 1.67
+        },
+        "sensorBadge": {
+          "top": 2.08,
+          "right": 2.08,
+          "fontSize": 3.33
+        },
+        "subpageBadge": {
+          "bottom": 2.08,
+          "right": 2.08,
+          "fontSize": 4
+        }
+      },
+      "firmware": {
+        "fonts": {
+          "icon": "icon_font_sm",
+          "sensor": "statistics_font_sm",
+          "mediaTitle": "media_title_font_sm",
+          "volumeNumber": "volume_modal_number_font",
+          "volumeLabel": "label_font_sm"
+        },
+        "display": {
+          "colorCorrection": false,
+          "wrapTallLabels": false
+        }
+      }
+    }
+  }
+}
