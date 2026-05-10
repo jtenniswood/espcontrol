@@ -74,7 +74,7 @@ struct ClimateControlModalUi {
   lv_obj_t *menu_preset_btn = nullptr;
   lv_obj_t *option_list_view = nullptr;
   lv_obj_t *arc = nullptr;
-  lv_obj_t *current_arc = nullptr;
+  lv_obj_t *current_dot = nullptr;
   lv_obj_t *target_row = nullptr;
   lv_obj_t *target_lbl = nullptr;
   lv_obj_t *unit_lbl = nullptr;
@@ -301,6 +301,31 @@ inline int climate_arc_angle_for_tenths(ClimateControlCtx *ctx, int value) {
   int span = ctx->max_tenths - ctx->min_tenths;
   int offset = (value - ctx->min_tenths) * 270 / span;
   return (135 + offset) % 360;
+}
+
+inline void climate_layout_current_dot(ClimateControlCtx *ctx, const ControlModalLayout &layout) {
+  ClimateControlModalUi &ui = climate_control_modal_ui();
+  if (!ctx || !ui.current_dot) return;
+  lv_coord_t dot_size = control_modal_scaled_px(10, layout.short_side);
+  if (dot_size < 8) dot_size = 8;
+  lv_coord_t radius = layout.arc_size / 2 - layout.arc_stroke - dot_size / 2;
+  if (radius < 0) radius = layout.arc_size / 2;
+  int angle = climate_arc_angle_for_tenths(ctx, ctx->current_tenths);
+  float radians = (float)angle * 3.14159265f / 180.0f;
+  lv_coord_t arc_left = layout.panel_w / 2 + layout.arc_center_x - layout.arc_size / 2;
+  lv_coord_t arc_top = layout.panel_h / 2 + layout.arc_center_y - layout.arc_size / 2;
+  lv_coord_t center_x = arc_left + layout.arc_size / 2;
+  lv_coord_t center_y = arc_top + layout.arc_size / 2;
+  float x_radius = radius;
+  float y_radius = radius;
+  int width_percent = normalize_width_compensation_percent(ctx->width_compensation_percent);
+  if (width_compensation_vertical_axis()) y_radius = y_radius * width_percent / 100.0f;
+  else x_radius = x_radius * width_percent / 100.0f;
+  lv_obj_set_size(ui.current_dot, dot_size, dot_size);
+  lv_obj_set_style_radius(ui.current_dot, dot_size / 2, LV_PART_MAIN);
+  lv_obj_set_pos(ui.current_dot,
+    center_x + (lv_coord_t)(std::cos(radians) * x_radius) - dot_size / 2,
+    center_y + (lv_coord_t)(std::sin(radians) * y_radius) - dot_size / 2);
 }
 
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
@@ -851,17 +876,10 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
       ui.updating_arc = false;
     }
   }
-  if (ui.current_arc) {
+  if (ui.current_dot) {
     bool show_current = temp_enabled && ctx->has_current;
-    climate_set_obj_visible(ui.current_arc, show_current);
-    if (show_current) {
-      int angle = climate_arc_angle_for_tenths(ctx, ctx->current_tenths);
-      int start = (angle + 356) % 360;
-      int end = (angle + 4) % 360;
-      lv_arc_set_bg_angles(ui.current_arc, start, end);
-      lv_arc_set_range(ui.current_arc, 0, 10);
-      lv_arc_set_value(ui.current_arc, 10);
-    }
+    climate_set_obj_visible(ui.current_dot, show_current);
+    if (show_current && ui.panel) climate_layout_current_dot(ctx, control_modal_calc_layout(ctx->width_compensation_percent));
   }
   if (ui.target_row) climate_set_obj_visible(ui.target_row, true);
   if (ui.target_lbl) {
@@ -944,9 +962,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     lv_obj_align(ui.menu_close_btn, LV_ALIGN_TOP_RIGHT, -layout.inset, layout.inset);
   }
   control_modal_apply_arc_layout(ui.arc, layout, ctx->width_compensation_percent);
-  if (ui.current_arc) {
-    control_modal_apply_arc_layout(ui.current_arc, layout, ctx->width_compensation_percent, false);
-  }
+  if (ui.current_dot) climate_layout_current_dot(ctx, layout);
   lv_obj_align(ui.status_lbl, LV_ALIGN_CENTER, 0, title_center_y);
   lv_obj_align(ui.target_row, LV_ALIGN_CENTER, 0, layout.value_center_y);
   lv_obj_align(ui.hint_lbl, LV_ALIGN_CENTER, 0, layout.controls_center_y - layout.btn_size / 2 - 50);
@@ -1120,6 +1136,16 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     if (ui.active) climate_open_option_menu(ui.active, "preset");
   }, LV_EVENT_CLICKED, nullptr);
 
+  ui.current_dot = lv_obj_create(ui.panel);
+  lv_obj_set_style_bg_color(ui.current_dot, lv_color_hex(CLIMATE_NEUTRAL_COLOR), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.current_dot, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.current_dot, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.current_dot, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.current_dot, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.current_dot, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(ui.current_dot, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(ui.current_dot, LV_OBJ_FLAG_HIDDEN);
+
   ui.arc = lv_arc_create(ui.panel);
   lv_arc_set_bg_angles(ui.arc, 135, 45);
   lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
@@ -1146,21 +1172,6 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     ui.dragging_arc = false;
     climate_apply_selected_target(ui.active, lv_arc_get_value(arc), true, false);
   }, LV_EVENT_RELEASED, nullptr);
-
-  ui.current_arc = lv_arc_create(ui.panel);
-  lv_arc_set_bg_angles(ui.current_arc, 135, 45);
-  lv_arc_set_range(ui.current_arc, 0, 10);
-  lv_arc_set_value(ui.current_arc, 10);
-  lv_obj_set_style_bg_opa(ui.current_arc, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.current_arc, 0, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(ui.current_arc, lv_color_hex(CLIMATE_NEUTRAL_COLOR), LV_PART_INDICATOR);
-  lv_obj_set_style_arc_opa(ui.current_arc, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_arc_rounded(ui.current_arc, true, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(ui.current_arc, LV_OPA_TRANSP, LV_PART_KNOB);
-  lv_obj_set_style_border_width(ui.current_arc, 0, LV_PART_KNOB);
-  lv_obj_set_style_shadow_width(ui.current_arc, 0, LV_PART_KNOB);
-  lv_obj_clear_flag(ui.current_arc, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_flag(ui.current_arc, LV_OBJ_FLAG_HIDDEN);
 
   ui.target_row = lv_obj_create(ui.panel);
   lv_obj_set_size(ui.target_row, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
