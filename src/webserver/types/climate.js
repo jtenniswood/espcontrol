@@ -40,19 +40,19 @@ registerButtonType("climate", {
       "Label", helpers.idPrefix + "label", b.label, "e.g. Living Room", "label", true).field);
 
     panel.appendChild(helpers.iconPickerField(
+      helpers.idPrefix + "climate-on-icon-picker", helpers.idPrefix + "climate-on-icon",
+      b.icon_on || b.icon || "Thermostat", function (opt) {
+        b.icon_on = opt;
+        helpers.saveField("icon_on", opt);
+      }, "On Icon"
+    ));
+
+    panel.appendChild(helpers.iconPickerField(
       helpers.idPrefix + "climate-off-icon-picker", helpers.idPrefix + "climate-off-icon",
       b.icon || "Thermostat", function (opt) {
         b.icon = opt;
         helpers.saveField("icon", opt);
       }, "Off Icon"
-    ));
-
-    panel.appendChild(helpers.iconPickerField(
-      helpers.idPrefix + "climate-on-icon-picker", helpers.idPrefix + "climate-on-icon",
-      b.icon_on || b.icon || "Thermostat", function (opt) {
-        b.icon_on = opt;
-        helpers.saveField("icon_on", opt);
-      }, "On / Idle Icon"
     ));
 
     var precisionField = helpers.selectField("Unit Precision", helpers.idPrefix + "climate-precision", [
