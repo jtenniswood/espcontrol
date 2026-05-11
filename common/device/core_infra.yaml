@@ -34,10 +34,12 @@ logger:
   logs:
     light: WARN
     script: INFO
+    camera_popup: INFO
 
 http_request:
   id: http_req
   timeout: 10s
+  watchdog_timeout: 15000ms
 
 web_server:
   port: 80

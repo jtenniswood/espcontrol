@@ -512,6 +512,34 @@ function buildSettingsPage(parent) {
   syncTemperatureUi();
   config.appendChild(makeCollapsibleCard("Clock Bar", clockBarBody, true, clockBarBadge));
 
+  var haBody = document.createElement("div");
+
+  var haUrlField = document.createElement("div");
+  haUrlField.className = "sp-field";
+  haUrlField.appendChild(fieldLabel("URL", "sp-set-ha-base-url"));
+  var haUrlInp = textInput("sp-set-ha-base-url", state.haBaseUrl, "http://homeassistant.local:8123");
+  haUrlField.appendChild(haUrlInp);
+  haBody.appendChild(haUrlField);
+  bindTextPost(haUrlInp, "Home Assistant URL", {
+    onBlur: function (value) { state.haBaseUrl = value; },
+  });
+  els.setHaBaseUrl = haUrlInp;
+
+  var haTokenField = document.createElement("div");
+  haTokenField.className = "sp-field";
+  haTokenField.appendChild(fieldLabel("Long-Lived Token", "sp-set-ha-rest-token"));
+  var haTokenInp = textInput("sp-set-ha-rest-token", state.haRestToken, "Optional — leave blank if unauthenticated");
+  haTokenInp.type = "password";
+  haTokenInp.autocomplete = "off";
+  haTokenField.appendChild(haTokenInp);
+  haBody.appendChild(haTokenField);
+  bindTextPost(haTokenInp, "Home Assistant Token", {
+    onBlur: function (value) { state.haRestToken = value; },
+  });
+  els.setHaRestToken = haTokenInp;
+
+  config.appendChild(makeCollapsibleCard("Home Assistant", haBody, true));
+
   if (CFG.features && CFG.features.screenRotation) {
     var rotationBody = document.createElement("div");
     var rotField = document.createElement("div");

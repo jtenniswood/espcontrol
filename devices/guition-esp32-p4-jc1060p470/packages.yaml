@@ -95,4 +95,5 @@ packages:
   # Main page and dynamic sensor subscriptions (after setup screens)
   # ---------------------------------------------------------------------------
   lvgl:            !include device/lvgl.yaml
+  camera_popup:    !include ../../common/addon/camera_popup.yaml
   sensors:         !include device/sensors.yaml

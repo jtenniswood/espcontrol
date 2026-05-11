@@ -35,5 +35,6 @@
 #include "button_grid_confirm.h"
 #include "network_status.h"
 #include "button_grid_media.h"
+#include "button_grid_camera.h"
 #include "button_grid_subpages.h"
 #include "button_grid_grid.h"

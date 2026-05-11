@@ -384,6 +384,40 @@ text:
             then:
               - script.execute: screensaver_idle_check
 
+  # Home Assistant base URL for camera snapshots (defaults to homeassistant.local:8123)
+  - platform: template
+    name: "Home Assistant URL"
+    internal: true
+    id: ha_base_url
+    optimistic: true
+    restore_value: true
+    initial_value: "http://homeassistant.local:8123"
+    min_length: 10
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:home-assistant"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
+
+  # Long-lived access token for camera proxy (leave empty for unauthenticated HA)
+  - platform: template
+    name: "Home Assistant Token"
+    internal: true
+    id: ha_rest_token
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: password
+    entity_category: config
+    icon: "mdi:key"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
+
 number:
   - platform: template
     name: "Screen Saver: Daytime Clock Brightness"

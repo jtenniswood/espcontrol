@@ -502,6 +502,8 @@ function settingsStateEntities() {
     ["select", "Screen: Temperature Unit"],
     ["text", "Indoor Temp Entity"],
     ["text", "Outdoor Temp Entity"],
+    ["text", "Home Assistant URL"],
+    ["text", "Home Assistant Token"],
     ["text", "Screensaver Mode"],
     ["select", "Screen Saver: Action"],
     ["text", "Presence Sensor Entity"],

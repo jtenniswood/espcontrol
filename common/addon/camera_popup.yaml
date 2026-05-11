@@ -1,0 +1,181 @@
+# =============================================================================
+# CAMERA POPUP - Home Assistant camera snapshot overlay
+# =============================================================================
+# Pulls periodic JPEG snapshots from HA's camera proxy REST endpoint and shows
+# them in a fullscreen top-layer popup. The popup is opened from C++ via
+# camera_popup_open_script and closed by tapping the scrim or close button.
+#
+# Configuration (set in device web UI under Home Assistant settings):
+#   Home Assistant URL: defaults to "http://homeassistant.local:8123"
+#   Home Assistant Token: long-lived access token (leave empty for unauthenticated)
+#   camera_popup_resize: substitution to cap decode RAM; tune per device profile
+#
+# Include this package AFTER the device's lvgl package so the top_layer
+# widget list appends correctly:
+#   camera_popup: !include ../../common/addon/camera_popup.yaml
+# =============================================================================
+
+substitutions:
+  camera_popup_resize: "400x400"
+
+globals:
+  - id: camera_popup_entity
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  - id: camera_popup_refresh_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '5000'
+  - id: camera_popup_open_flag
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: camera_popup_last_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+
+online_image:
+  - id: camera_popup_image
+    url: "http://placeholder"
+    format: JPEG
+    type: RGB565
+    update_interval: never
+    resize: "${camera_popup_resize}"
+    buffer_size: 65536
+    request_headers:
+      Authorization: !lambda |-
+        std::string token = id(ha_rest_token).state;
+        if (token.empty()) return std::string("");
+        return "Bearer " + token;
+    on_download_finished:
+      - lvgl.widget.hide: camera_popup_spinner
+      - lvgl.image.update:
+          id: camera_popup_img_widget
+          src: camera_popup_image
+    on_error:
+      - logger.log:
+          level: WARN
+          tag: camera_popup
+          format: "Camera snapshot download failed"
+      - if:
+          condition:
+            lambda: return id(camera_popup_open_flag);
+          then:
+            - lambda: id(camera_popup_open_flag) = false;
+            - lvgl.widget.hide: camera_popup_spinner
+            - lvgl.widget.hide: camera_popup_overlay
+
+esphome:
+  on_boot:
+    - priority: 600
+      then:
+        - lambda: |-
+            camera_popup_register_fn([](const std::string &entity, uint32_t refresh_ms) {
+              id(camera_popup_entity) = entity;
+              id(camera_popup_refresh_ms) = refresh_ms;
+              id(camera_popup_open_script).execute();
+            });
+
+script:
+  # Builds the timestamped URL and triggers a single image download.
+  # The Authorization header is applied automatically via the online_image headers config.
+  - id: camera_popup_fetch_script
+    then:
+      - lambda: |-
+          std::string url = id(ha_base_url).state + "/api/camera_proxy/" +
+            id(camera_popup_entity) + "?t=" + std::to_string(millis());
+          std::string token = id(ha_rest_token).state;
+          if (token.empty()) {
+            ESP_LOGW("camera_popup", "Fetch: no token set — request will be unauthenticated");
+          } else {
+            ESP_LOGD("camera_popup", "Fetch: token present (len=%d), first4=%s", (int)token.size(), token.substr(0,4).c_str());
+          }
+          ESP_LOGD("camera_popup", "Fetch URL: %s", url.c_str());
+          id(camera_popup_image).set_url(url.c_str());
+      - component.update: camera_popup_image
+
+  - id: camera_popup_open_script
+    then:
+      - if:
+          condition:
+            lambda: return !id(camera_popup_entity).empty();
+          then:
+            - lambda: |-
+                id(camera_popup_open_flag) = true;
+                id(camera_popup_last_ms) = millis();
+            - lvgl.widget.show: camera_popup_overlay
+            - lvgl.widget.show: camera_popup_spinner
+            - script.execute: camera_popup_fetch_script
+
+  - id: camera_popup_close_script
+    then:
+      - lambda: id(camera_popup_open_flag) = false;
+      - lvgl.widget.hide: camera_popup_spinner
+      - lvgl.widget.hide: camera_popup_overlay
+      - online_image.release: camera_popup_image
+
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!id(camera_popup_open_flag)) return false;
+              return (millis() - id(camera_popup_last_ms)) >= id(camera_popup_refresh_ms);
+          then:
+            - lambda: id(camera_popup_last_ms) = millis();
+            - script.execute: camera_popup_fetch_script
+
+lvgl:
+  top_layer:
+    widgets:
+      - obj:
+          id: camera_popup_overlay
+          hidden: true
+          width: 100%
+          height: 100%
+          bg_color: 0x000000
+          bg_opa: 80%
+          border_width: 0
+          pad_all: 0
+          clickable: true
+          on_click:
+            - script.execute: camera_popup_close_script
+          widgets:
+            - image:
+                id: camera_popup_img_widget
+                src: camera_popup_image
+                align: center
+            - spinner:
+                id: camera_popup_spinner
+                hidden: true
+                width: 72
+                height: 72
+                align: center
+                arc_length: 60
+                arc_color: 0x444444
+                indicator:
+                  arc_color: 0xFFFFFF
+            - obj:
+                id: camera_popup_close_btn
+                width: 48
+                height: 48
+                align: top_right
+                x: -8
+                y: 8
+                radius: 24
+                bg_color: 0x333333
+                bg_opa: 90%
+                border_width: 0
+                scrollbar_mode: "off"
+                clickable: true
+                on_click:
+                  - script.execute: camera_popup_close_script
+                widgets:
+                  - label:
+                      text: "\U000F0156"
+                      text_font: icon_font
+                      align: center
+                      text_color: 0xFFFFFF

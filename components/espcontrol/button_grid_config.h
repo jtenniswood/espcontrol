@@ -136,6 +136,16 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   if (!p.type.empty() && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
+  if (p.type == "camera") {
+    // sensor field = refresh interval in seconds (default 5, clamped 2-120)
+    int secs = p.sensor.empty() ? 5 : atoi(p.sensor.c_str());
+    if (secs < 2) secs = 2;
+    if (secs > 120) secs = 120;
+    p.sensor = std::to_string(secs);
+    p.icon_on.clear();
+    p.unit.clear();
+    p.precision.clear();
+  }
   return p;
 }
 

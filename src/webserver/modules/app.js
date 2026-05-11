@@ -114,6 +114,8 @@ function exportConfig() {
       outdoor_temp_enable: state._outdoorOn,
       indoor_temp_entity: state.indoorEntity,
       outdoor_temp_entity: state.outdoorEntity,
+      ha_base_url: state.haBaseUrl,
+      ha_rest_token: state.haRestToken,
       temperature_unit: normalizeTemperatureUnit(state.temperatureUnit),
       clock_bar: state.clockBarOn,
       network_status_icon: state.networkStatusOn,
@@ -388,6 +390,8 @@ function importConfig() {
         postText("Presence Sensor Entity", s.presence_sensor_entity || "");
         postSwitch("Screen Saver: Media Player Sleep Prevention", !!s.media_player_sleep_prevention);
         postText("Media Player Sleep Prevention Entity", s.media_player_sleep_prevention_entity || "");
+        if (s.ha_base_url) postText("Home Assistant URL", s.ha_base_url);
+        if (s.ha_rest_token) postText("Home Assistant Token", s.ha_rest_token);
         var importedScreensaverAction = normalizeScreensaverAction(
           s.screensaver_action != null
             ? s.screensaver_action
@@ -431,6 +435,8 @@ function importConfig() {
         state.presenceEntity = s.presence_sensor_entity || "";
         state.mediaPlayerSleepPreventionOn = !!s.media_player_sleep_prevention;
         state.mediaPlayerSleepPreventionEntity = s.media_player_sleep_prevention_entity || "";
+        if (s.ha_base_url) state.haBaseUrl = s.ha_base_url;
+        if (s.ha_rest_token) state.haRestToken = s.ha_rest_token;
         state.screensaverAction = importedScreensaverAction;
         state._screensaverActionReceived = true;
         state.clockScreensaverOn = importedScreensaverAction === "clock";
@@ -451,6 +457,8 @@ function importConfig() {
         if (els.setTemperatureUnit) els.setTemperatureUnit.value = state.temperatureUnit;
         syncInput(els.setPresence, state.presenceEntity);
         syncInput(els.setMediaPlayerSleepPrevention, state.mediaPlayerSleepPreventionEntity);
+        syncInput(els.setHaBaseUrl, state.haBaseUrl);
+        syncInput(els.setHaRestToken, state.haRestToken);
         syncMediaPlayerSleepPreventionUi();
         if (els.setTimezone) els.setTimezone.value = state.timezone;
         if (els.setClockFormat) els.setClockFormat.value = state.clockFormat;
@@ -798,6 +806,14 @@ function connectEvents() {
     "text-media_player_sleep_prevention_entity": function (val) {
       state.mediaPlayerSleepPreventionEntity = val;
       syncInput(els.setMediaPlayerSleepPrevention, val);
+    },
+    "text-ha_base_url": function (val) {
+      state.haBaseUrl = val;
+      syncInput(els.setHaBaseUrl, val);
+    },
+    "text-ha_rest_token": function (val) {
+      state.haRestToken = val;
+      syncInput(els.setHaRestToken, val);
     },
     "text-screensaver_mode": function (val) {
       state._screensaverModeReceived = true;

@@ -367,6 +367,7 @@ struct MediaVolumeCtx;
 inline void media_volume_open_modal(MediaVolumeCtx *ctx);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
+inline void camera_popup_open_from_cfg(const ParsedCfg &p);
 inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj);
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
@@ -437,6 +438,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "climate") {
     ClimateControlCtx *ctx = (ClimateControlCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) climate_control_open_modal(ctx);
+  } else if (p.type == "camera") {
+    camera_popup_open_from_cfg(p);
   } else if (p.type == "light_temperature") {
     // Tap does nothing; only dragging the slider sends commands.
   } else if (p.type == "slider" || p.type == "cover") {

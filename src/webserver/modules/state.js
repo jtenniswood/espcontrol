@@ -24,6 +24,8 @@ var state = {
   networkTransport: "wifi",
   wifiStrengthPercent: 100,
   temperatureDegreeSymbolOn: true,
+  haBaseUrl: "http://homeassistant.local:8123",
+  haRestToken: "",
   presenceEntity: "",
   mediaPlayerSleepPreventionOn: false,
   mediaPlayerSleepPreventionEntity: "",
