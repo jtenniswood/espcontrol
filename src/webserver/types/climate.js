@@ -107,16 +107,9 @@ registerButtonType("climate", {
   },
   renderPreview: function (b, helpers) {
     var label = (b.label && b.label.trim()) || (b.entity && b.entity.trim()) || "Climate";
-    var climateConfig = parseClimatePrecisionConfig(b.precision);
-    var value = climateConfig.precision === "1" ? "20.0" : (climateConfig.precision === "2" ? "20.00" : "20");
-    var unit = (typeof state !== "undefined" && state.temperatureUnit && state.temperatureUnit !== "Auto")
-      ? state.temperatureUnit
-      : "°C";
+    var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "thermostat";
     return {
-      iconHtml:
-        '<span class="sp-sensor-preview"><span class="sp-sensor-value">' +
-        helpers.escHtml(value) + '</span><span class="sp-sensor-unit">' +
-        helpers.escHtml(unit) + '</span></span>',
+      iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
       labelHtml:
         '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
         helpers.escHtml(label) + '</span><span class="sp-type-badge mdi mdi-thermostat"></span></span>',
