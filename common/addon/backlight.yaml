@@ -396,7 +396,12 @@ script:
       - script.stop: backlight_fade_current_ui_to_black
       - script.stop: backlight_sleep_display_off
       - script.stop: backlight_schedule_display_off
+      - script.stop: screensaver_sleep_timer
+      - script.stop: screensaver_sleep_sensor
+      - script.stop: screensaver_sleep_display_off
       - script.stop: screen_schedule_show_clock
+      - script.stop: show_clock_view
+      - script.stop: clock_screensaver_refresh_brightness
       - script.stop: show_dimmed_view
       - script.stop: screensaver_dimmed_refresh_brightness
       - lambda: |-
