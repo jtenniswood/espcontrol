@@ -48,8 +48,10 @@ registerButtonType("timezone", {
     b.sensor = "";
     b.unit = "";
     b.precision = "";
+    b.options = "";
   },
   renderSettings: function (panel, b, slot, helpers) {
+    var isLargeCard = helpers.cardSize === 4;
     if (!b.entity) b.entity = (typeof state !== "undefined" && state.timezone) || "UTC (GMT+0)";
     if (b.label) {
       b.label = "";
@@ -78,10 +80,22 @@ registerButtonType("timezone", {
         helpers.saveField("sensor", "");
         helpers.saveField("unit", "");
         helpers.saveField("precision", b.precision);
+        helpers.saveField("options", b.options);
         renderButtonSettings();
       }
     });
     panel.appendChild(modeField.field);
+
+    if (isLargeCard) {
+      var largeNumbersToggle = helpers.toggleRow(
+        "Large Date / Time Numbers", helpers.idPrefix + "large-date-time-numbers",
+        cardLargeNumbersEnabled(b));
+      panel.appendChild(largeNumbersToggle.row);
+      largeNumbersToggle.input.addEventListener("change", function () {
+        setSensorLargeNumbersEnabled(b, this.checked);
+        helpers.saveField("options", b.options);
+      });
+    }
 
     var tzSelect = document.createElement("select");
     tzSelect.className = "sp-select";
@@ -111,7 +125,8 @@ registerButtonType("timezone", {
     var time = timezoneCardTimeParts(tz);
     return {
       iconHtml:
-        '<span class="sp-sensor-preview">' +
+        '<span class="sp-sensor-preview' +
+          (helpers.cardSize === 4 && cardLargeNumbersEnabled(b) ? " sp-sensor-preview-large" : "") + '">' +
           '<span class="sp-sensor-value">' + helpers.escHtml(time.value) + '</span>' +
           '<span class="sp-sensor-unit">' + helpers.escHtml(time.unit) + '</span>' +
         '</span>',

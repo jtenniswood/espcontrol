@@ -88,7 +88,9 @@ struct ParsedCfg {
 
 inline bool card_large_numbers_supported(const ParsedCfg &p) {
   return (p.type == "sensor" && p.precision != "text") ||
-    (p.type == "weather" && (p.precision == "today" || p.precision == "tomorrow"));
+    (p.type == "weather" && (p.precision == "today" || p.precision == "tomorrow")) ||
+    p.type == "calendar" ||
+    p.type == "timezone";
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {

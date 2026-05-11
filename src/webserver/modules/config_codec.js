@@ -121,7 +121,9 @@ function setConfigOptionValue(options, name, value) {
 function cardLargeNumbersSupported(b) {
   if (!b) return false;
   return (b.type === "sensor" && b.precision !== "text") ||
-    (b.type === "weather" && (b.precision === "today" || b.precision === "tomorrow"));
+    (b.type === "weather" && (b.precision === "today" || b.precision === "tomorrow")) ||
+    b.type === "calendar" ||
+    b.type === "timezone";
 }
 
 function cardLargeNumbersEnabled(b) {

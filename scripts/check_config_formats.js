@@ -397,6 +397,18 @@ assertButtonRoundTrip(hooks, "cover set position command button", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "calendar large numbers option", {
+  entity: "sensor.date",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "calendar",
+  precision: "datetime",
+  options: "large_numbers",
+}, false);
+
 assertButtonRoundTrip(hooks, "timezone card", {
   entity: "America/New_York (GMT-5)",
   label: "",
@@ -406,6 +418,18 @@ assertButtonRoundTrip(hooks, "timezone card", {
   unit: "",
   type: "timezone",
   precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "timezone large numbers option", {
+  entity: "America/New_York (GMT-5)",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "timezone",
+  precision: "",
+  options: "large_numbers",
 }, false);
 
 assertButtonRoundTrip(hooks, "weather tomorrow card", {
@@ -903,6 +927,14 @@ assertSubpageRoundTrip(hooks, "normal subpage", {
   buttons: [
     buttonShape({ entity: "light.kitchen", label: "Kitchen", icon: "Auto", icon_on: "Lightbulb" }),
     buttonShape({ type: "calendar" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "date time large numbers subpage", {
+  order: ["1", "B", "2"],
+  buttons: [
+    buttonShape({ type: "calendar", precision: "datetime", options: "large_numbers" }),
+    buttonShape({ entity: "America/New_York (GMT-5)", type: "timezone", options: "large_numbers" }),
   ],
 }, true);
 

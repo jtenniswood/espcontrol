@@ -114,10 +114,20 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
   if (p.type == "calendar") {
     setup_calendar_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    if (row_span == 2 && col_span == 2 &&
+        card_large_numbers_enabled(p) && cfg.sp_large_sensor_font) {
+      apply_large_sensor_number_style(
+        s, cfg.sp_large_sensor_font, cfg.large_sensor_unit_offset_percent);
+    }
     return;
   }
   if (p.type == "timezone") {
     setup_timezone_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    if (row_span == 2 && col_span == 2 &&
+        card_large_numbers_enabled(p) && cfg.sp_large_sensor_font) {
+      apply_large_sensor_number_style(
+        s, cfg.sp_large_sensor_font, cfg.large_sensor_unit_offset_percent);
+    }
     return;
   }
   if (weather_card_shows_forecast(p)) {
