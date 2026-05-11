@@ -12,13 +12,16 @@ registerButtonType("climate", {
     b.unit = "";
     b.precision = "";
     b.icon = "Thermostat";
-    b.icon_on = "Thermostat";
+    b.icon_on = "Auto";
   },
   renderSettings: function (panel, b, slot, helpers) {
     b.sensor = "";
     b.unit = "";
     if (!b.icon) b.icon = "Thermostat";
-    if (!b.icon_on) b.icon_on = b.icon;
+    if (b.icon_on !== "Auto") {
+      b.icon_on = "Auto";
+      helpers.saveField("icon_on", "Auto");
+    }
     var climateConfig = parseClimatePrecisionConfig(b.precision);
     var normalizedPrecision = climatePrecisionConfig(
       climateConfig.precision,
@@ -40,19 +43,11 @@ registerButtonType("climate", {
       "Label", helpers.idPrefix + "label", b.label, "e.g. Living Room", "label", true).field);
 
     panel.appendChild(helpers.iconPickerField(
-      helpers.idPrefix + "climate-on-icon-picker", helpers.idPrefix + "climate-on-icon",
-      b.icon_on || b.icon || "Thermostat", function (opt) {
-        b.icon_on = opt;
-        helpers.saveField("icon_on", opt);
-      }, "On Icon"
-    ));
-
-    panel.appendChild(helpers.iconPickerField(
-      helpers.idPrefix + "climate-off-icon-picker", helpers.idPrefix + "climate-off-icon",
+      helpers.idPrefix + "climate-icon-picker", helpers.idPrefix + "climate-icon",
       b.icon || "Thermostat", function (opt) {
         b.icon = opt;
         helpers.saveField("icon", opt);
-      }, "Off Icon"
+      }, "Icon"
     ));
 
     var precisionField = helpers.selectField("Unit Precision", helpers.idPrefix + "climate-precision", [

@@ -131,6 +131,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   if (p.type == "climate") {
     p.sensor.clear();
     p.unit.clear();
+    p.icon_on.clear();
   }
   if (!p.type.empty() && !card_large_numbers_supported(p)) {
     p.options.clear();
