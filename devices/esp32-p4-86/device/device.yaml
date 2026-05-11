@@ -296,7 +296,7 @@ select:
     icon: "mdi:screen-rotation"
     optimistic: true
     restore_value: false
-    initial_option: "0"
+    initial_option: "180"
     options:
       - "0"
       - "90"
