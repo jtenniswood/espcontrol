@@ -124,8 +124,6 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   if (p.type == "climate") {
     p.sensor.clear();
     p.unit.clear();
-    p.icon = "Auto";
-    p.icon_on = "Auto";
   }
   if (!p.type.empty() && (p.type != "sensor" || p.precision == "text")) {
     p.options.clear();

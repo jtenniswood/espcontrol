@@ -89,8 +89,6 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   if (b.type == "climate") {
     b.sensor.clear();
     b.unit.clear();
-    b.icon = "Auto";
-    b.icon_on = "Auto";
   }
   if (!b.type.empty() && (b.type != "sensor" || b.precision == "text")) {
     b.options.clear();
