@@ -43,6 +43,10 @@ def load_device_manifest():
     return load_json(DEVICE_MANIFEST)["devices"]
 
 
+def load_device_manifest_data():
+    return load_json(DEVICE_MANIFEST)
+
+
 def replace_between_markers(text, start_tag, end_tag, new_content):
     """Replace content between marker lines, preserving the markers themselves."""
     pattern = re.compile(
@@ -323,13 +327,19 @@ def web_features(device):
 
 def build_web_devices():
     devices = {}
-    for slug, device in load_device_manifest().items():
+    manifest = load_device_manifest_data()
+    settings = {
+        "largeSensorUnitOffsetPercent": -10,
+        **manifest.get("settings", {}),
+    }
+    for slug, device in manifest["devices"].items():
         layout = device["layout"]
         features = web_features(device)
         cfg = {
             "slots": device["slots"],
             "cols": layout["cols"],
             "rows": layout["rows"],
+            "largeSensorUnitOffsetPercent": settings["largeSensorUnitOffsetPercent"],
         }
         for key, value in device["web"].items():
             cfg[key] = copy.deepcopy(value)

@@ -42,6 +42,10 @@
     r.setProperty("--screen-aspect", screen.aspect || CFG.screen.aspect);
     r.setProperty("--grid-cols", "repeat(" + GRID_COLS + "," + CFG.grid.fr + ")");
     r.setProperty("--grid-rows", "repeat(" + GRID_ROWS + "," + CFG.grid.fr + ")");
+    var largeSensorUnitOffsetPercent = typeof CFG.largeSensorUnitOffsetPercent === "number"
+      ? CFG.largeSensorUnitOffsetPercent : -10;
+    r.setProperty("--large-sensor-unit-offset-y",
+      "calc(var(--btn-icon) * 3 * " + (largeSensorUnitOffsetPercent / 100) + ")");
 
     if (state.grid && state.grid.length) {
       clearSpans(state.grid, NUM_SLOTS);

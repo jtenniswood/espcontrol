@@ -20,6 +20,7 @@ struct GridConfig {
   const lv_font_t *icon_font;
   const lv_font_t *sp_sensor_font;
   const lv_font_t *sp_large_sensor_font = nullptr;
+  int large_sensor_unit_offset_percent = -10;
   const lv_font_t *media_title_font;
   const lv_font_t *volume_number_font;
   const lv_font_t *volume_label_font = nullptr;
@@ -68,14 +69,19 @@ struct CardPalette {
   uint32_t sensor_val = DEFAULT_TERTIARY_COLOR;
 };
 
-constexpr lv_coord_t LARGE_SENSOR_UNIT_Y_OFFSET_PX = -20;
+inline lv_coord_t large_sensor_unit_offset_px(const lv_font_t *large_font, int percent) {
+  if (!large_font || large_font->line_height <= 0) return 0;
+  return large_font->line_height * percent / 100;
+}
 
-inline void apply_large_sensor_number_style(const BtnSlot &s, const lv_font_t *large_font) {
+inline void apply_large_sensor_number_style(const BtnSlot &s, const lv_font_t *large_font,
+                                            int unit_offset_percent) {
   if (s.sensor_lbl && large_font) {
     lv_obj_set_style_text_font(s.sensor_lbl, large_font, LV_PART_MAIN);
   }
   if (s.unit_lbl) {
-    lv_obj_set_style_translate_y(s.unit_lbl, LARGE_SENSOR_UNIT_Y_OFFSET_PX, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(
+      s.unit_lbl, large_sensor_unit_offset_px(large_font, unit_offset_percent), LV_PART_MAIN);
   }
 }
 
@@ -101,7 +107,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     if (row_span == 2 && col_span == 2 &&
         sensor_large_numbers_enabled(p) && cfg.sp_large_sensor_font) {
-      apply_large_sensor_number_style(s, cfg.sp_large_sensor_font);
+      apply_large_sensor_number_style(
+        s, cfg.sp_large_sensor_font, cfg.large_sensor_unit_offset_percent);
     }
     return;
   }

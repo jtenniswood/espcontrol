@@ -39,6 +39,7 @@ esphome:
             cfg.icon_font = id(icon_font_480)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();
             cfg.sp_large_sensor_font = id(statistics_font_lg_xl)->get_lv_font();
+            cfg.large_sensor_unit_offset_percent = -10;
             cfg.media_title_font = id(media_title_font_lg)->get_lv_font();
             cfg.volume_number_font = id(volume_modal_number_font_lg)->get_lv_font();
             cfg.volume_label_font = id(label_font_lg)->get_lv_font();
@@ -110,6 +111,7 @@ esphome:
             cfg.icon_font = id(icon_font_480)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();
             cfg.sp_large_sensor_font = id(statistics_font_lg_xl)->get_lv_font();
+            cfg.large_sensor_unit_offset_percent = -10;
             cfg.media_title_font = id(media_title_font_lg)->get_lv_font();
             cfg.volume_number_font = id(volume_modal_number_font_lg)->get_lv_font();
             cfg.volume_label_font = id(label_font_lg)->get_lv_font();

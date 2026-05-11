@@ -14,13 +14,16 @@ ROOT = Path(__file__).resolve().parents[1]
 DEVICE_MANIFEST = ROOT / "devices" / "manifest.json"
 
 
-def load_manifest() -> dict:
+def load_manifest_data() -> dict:
     with DEVICE_MANIFEST.open(encoding="utf-8") as f:
-        data = json.load(f)
-    return data["devices"]
+        return json.load(f)
 
 
-def slot_device(slug: str, device: dict) -> dict:
+def load_manifest() -> dict:
+    return load_manifest_data()["devices"]
+
+
+def slot_device(slug: str, device: dict, settings: dict) -> dict:
     layout = device["layout"]
     fonts = device["firmware"]["fonts"]
     display = device["firmware"]["display"]
@@ -33,6 +36,7 @@ def slot_device(slug: str, device: dict) -> dict:
         "icon_font": fonts["icon"],
         "sensor_font": fonts["sensor"],
         "large_sensor_font": fonts["largeSensor"],
+        "large_sensor_unit_offset_percent": settings["largeSensorUnitOffsetPercent"],
         "media_title_font": fonts["mediaTitle"],
         "volume_number_font": fonts["volumeNumber"],
         "volume_label_font": fonts["volumeLabel"],
@@ -51,7 +55,12 @@ def slot_device(slug: str, device: dict) -> dict:
 
 
 def load_devices() -> list[dict]:
-    return [slot_device(slug, device) for slug, device in load_manifest().items()]
+    data = load_manifest_data()
+    settings = {
+        "largeSensorUnitOffsetPercent": -10,
+        **data.get("settings", {}),
+    }
+    return [slot_device(slug, device, settings) for slug, device in data["devices"].items()]
 
 
 def button_package_block(device: dict) -> str:
@@ -130,6 +139,7 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append(f"            cfg.icon_font = id({device['icon_font']})->get_lv_font();")
     lines.append(f"            cfg.sp_sensor_font = id({device['sensor_font']})->get_lv_font();")
     lines.append(f"            cfg.sp_large_sensor_font = id({device['large_sensor_font']})->get_lv_font();")
+    lines.append(f"            cfg.large_sensor_unit_offset_percent = {device['large_sensor_unit_offset_percent']};")
     lines.append(f"            cfg.media_title_font = id({device['media_title_font']})->get_lv_font();")
     lines.append(f"            cfg.volume_number_font = id({device['volume_number_font']})->get_lv_font();")
     lines.append(f"            cfg.volume_label_font = id({device['volume_label_font']})->get_lv_font();")

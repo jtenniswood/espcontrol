@@ -1,4 +1,7 @@
 {
+  "settings": {
+    "largeSensorUnitOffsetPercent": -10
+  },
   "devices": {
     "guition-esp32-p4-jc1060p470": {
       "slots": 15,
