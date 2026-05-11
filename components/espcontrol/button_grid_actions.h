@@ -445,6 +445,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     }
   } else if (p.type == "internal") {
     if (!p.entity.empty()) send_internal_relay_action(p);
+  } else if (p.type == "local") {
+    if (!p.entity.empty()) send_local_action(p.entity);
   } else if (p.type == "action") {
     send_action_card_action(p);
   } else if (p.type == "media") {
