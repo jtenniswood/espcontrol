@@ -81,7 +81,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, cover, garage, lock, media, climate, push, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, cover, garage, lock, media, climate, push, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -93,10 +93,14 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
     p.type == "timezone";
 }
 
+inline bool brightness_slider_type(const std::string &type) {
+  return type == "slider" || type == "light_brightness";
+}
+
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
-  if (p.type == "slider" && !p.sensor.empty()) p.sensor.clear();
+  if (brightness_slider_type(p.type) && !p.sensor.empty()) p.sensor.clear();
   if (p.type == "weather_forecast") {
     p.type = "weather";
     p.precision = "tomorrow";

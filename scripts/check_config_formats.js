@@ -54,6 +54,7 @@ function subpageTypeFromCode(code) {
     S: "sensor",
     W: "weather",
     F: "weather_forecast",
+    V: "light_brightness",
     L: "slider",
     C: "cover",
     N: "light_temperature",
@@ -709,6 +710,17 @@ assertButtonRoundTrip(hooks, "light temperature card", {
   precision: "color",
 }, false);
 
+assertButtonRoundTrip(hooks, "light brightness card", {
+  entity: "light.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "light_brightness",
+  precision: "",
+}, false);
+
 const subpageStateOff = buttonShape({
   label: "Windows",
   icon: "Window Closed",
@@ -1051,6 +1063,13 @@ assertSubpageRoundTrip(hooks, "light temperature subpage", {
   order: ["1", "B"],
   buttons: [
     buttonShape({ entity: "light.living_room", label: "Living Room", icon: "Auto", sensor: "kelvin", unit: "2000-6500", type: "light_temperature", precision: "color" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "light brightness subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "light.living_room", label: "Living Room", icon: "Auto", icon_on: "Auto", type: "light_brightness" }),
   ],
 }, true);
 

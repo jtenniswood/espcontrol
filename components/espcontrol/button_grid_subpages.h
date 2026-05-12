@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, cover, garage, lock, media, push, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, cover, garage, lock, media, push, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -36,6 +36,7 @@ inline std::string compact_subpage_type(const std::string &code) {
   if (code == "S") return "sensor";
   if (code == "W") return "weather";
   if (code == "F") return "weather_forecast";
+  if (code == "V") return "light_brightness";
   if (code == "L") return "slider";
   if (code == "C") return "cover";
   if (code == "N") return "light_temperature";
@@ -54,7 +55,7 @@ inline std::string decode_compact_subpage_field(const std::string &value) {
 }
 
 inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
-  if (b.type == "slider" && !b.sensor.empty()) b.sensor.clear();
+  if (brightness_slider_type(b.type) && !b.sensor.empty()) b.sensor.clear();
   if (b.type == "weather_forecast") {
     b.type = "weather";
     b.precision = "tomorrow";

@@ -441,7 +441,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (ctx) climate_control_open_modal(ctx);
   } else if (p.type == "light_temperature") {
     // Tap does nothing; only dragging the slider sends commands.
-  } else if (p.type == "slider" || p.type == "cover") {
+  } else if (brightness_slider_type(p.type) || p.type == "cover") {
     if (!p.entity.empty()) send_slider_action(p.entity, -1, cover_tilt_mode(p.sensor));
   } else {
     if (!p.entity.empty()) {

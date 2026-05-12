@@ -2,7 +2,7 @@
 
 function normalizeButtonConfig(b) {
   if (b) b.options = b.options || "";
-  if (b && b.type === "slider" && b.sensor) {
+  if (b && isBrightnessSliderType(b.type) && b.sensor) {
     b.sensor = "";
   }
   if (b && b.type === "weather_forecast") {
@@ -63,6 +63,10 @@ function normalizeButtonConfig(b) {
     b.options = "";
   }
   return b;
+}
+
+function isBrightnessSliderType(type) {
+  return type === "slider" || type === "light_brightness";
 }
 
 var SENSOR_LARGE_NUMBERS_OPTION = "large_numbers";
@@ -275,7 +279,7 @@ function trimConfigFields(fields) {
 
 function buttonConfigFields(b) {
   var type = b && b.type || "";
-  var sensor = (type === "slider" || type === "climate") ? "" : (b && b.sensor || "");
+  var sensor = (isBrightnessSliderType(type) || type === "climate") ? "" : (b && b.sensor || "");
   var unit = type === "climate" ? "" : (b && b.unit || "");
   var icon = b && b.icon || "Auto";
   var iconOn = type === "climate" ? "Auto" : (b && b.icon_on || "Auto");
@@ -353,7 +357,7 @@ function parseButtonConfig(str) {
 }
 
 function hasLegacySliderDirection(b) {
-  return !!(b && b.type === "slider" && b.sensor);
+  return !!(b && isBrightnessSliderType(b.type) && b.sensor);
 }
 
 function buttonConfigHasLegacySliderDirection(str) {
@@ -458,6 +462,7 @@ function subpageTypeCode(type) {
     sensor: "S",
     weather: "W",
     weather_forecast: "F",
+    light_brightness: "V",
     slider: "L",
     cover: "C",
     light_temperature: "N",
@@ -480,6 +485,7 @@ function subpageTypeFromCode(code) {
     S: "sensor",
     W: "weather",
     F: "weather_forecast",
+    V: "light_brightness",
     L: "slider",
     C: "cover",
     N: "light_temperature",
@@ -582,7 +588,7 @@ function serializeLegacySubpageConfig(sp) {
   var out = subpageOrderForSerialize(sp).join(",");
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
-    var sensor = (b.type === "slider" || b.type === "climate") ? "" : (b.sensor || "");
+    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate") ? "" : (b.sensor || "");
     var unit = b.type === "climate" ? "" : (b.unit || "");
     var icon = b.icon || "Auto";
     var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
@@ -609,7 +615,7 @@ function serializeCompactSubpageConfig(sp) {
   var out = "~" + subpageOrderForSerialize(sp).join(",");
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
-    var sensor = (b.type === "slider" || b.type === "climate") ? "" : (b.sensor || "");
+    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate") ? "" : (b.sensor || "");
     var unit = b.type === "climate" ? "" : (b.unit || "");
     var icon = b.icon || "Auto";
     var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");

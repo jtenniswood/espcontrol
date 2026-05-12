@@ -188,7 +188,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);
     return;
   }
-  if (p.type == "slider" || p.type == "cover") {
+  if (brightness_slider_type(p.type) || p.type == "cover") {
     setup_slider_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
     return;
   }
@@ -271,7 +271,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
 
   if (p.type == "media") {
     refresh_media_card_layout(s, p, cfg, row_span);
-  } else if (p.type == "slider" || p.type == "light_temperature" ||
+  } else if (brightness_slider_type(p.type) || p.type == "light_temperature" ||
              (p.type == "cover" && !cover_command_mode(p.sensor) && !cover_toggle_mode(p.sensor))) {
     refresh_slider_card_layout(s);
   }
@@ -686,7 +686,7 @@ inline void grid_phase2(
 
     if (p.entity.empty()) continue;
 
-    if (p.type == "slider" || p.type == "cover") {
+    if (brightness_slider_type(p.type) || p.type == "cover") {
       lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
       bool sl_has_icon_on = slider_has_alt_icon(p.type, p.icon_on);
       const char *sl_icon_on_cp = sl_has_icon_on ? slider_icon_on(p.type, p.entity, p.icon, p.icon_on) : nullptr;
@@ -769,7 +769,7 @@ inline void grid_phase2(
   lv_obj_t *ref_btn = slots[0].btn;
   for (int i = 0; i < NS; i++) {
     ParsedCfg pc = parse_cfg(slots[i].config->state);
-    if (pc.type != "slider" && pc.type != "cover") {
+    if (!brightness_slider_type(pc.type) && pc.type != "cover") {
       ref_btn = slots[i].btn;
       break;
     }
@@ -1165,7 +1165,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "slider" || sb_cfg.type == "cover") {
+      if (brightness_slider_type(sb_cfg.type) || sb_cfg.type == "cover") {
         if (!sb_cfg.entity.empty()) {
           lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
           bool sl_has_icon_on = slider_has_alt_icon(sb_cfg.type, sb_cfg.icon_on);

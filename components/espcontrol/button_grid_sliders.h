@@ -437,7 +437,7 @@ inline lv_obj_t *setup_slider_widget(lv_obj_t *btn, uint32_t on_color, bool hori
 }
 
 inline bool slider_has_alt_icon(const std::string &type, const std::string &icon_on) {
-  return type == "slider" || type == "cover" || (!icon_on.empty() && icon_on != "Auto");
+  return brightness_slider_type(type) || type == "cover" || (!icon_on.empty() && icon_on != "Auto");
 }
 
 inline const char *slider_icon_off(const std::string &type, const std::string &entity_id,
@@ -453,7 +453,7 @@ inline const char *slider_icon_on(const std::string &type, const std::string &en
                                   const std::string &icon, const std::string &icon_on) {
   if (type == "cover" && (icon_on.empty() || icon_on == "Auto"))
     return find_icon("Blinds Open");
-  if (type == "slider" && (icon_on.empty() || icon_on == "Auto"))
+  if (brightness_slider_type(type) && (icon_on.empty() || icon_on == "Auto"))
     return slider_icon_off(type, entity_id, icon);
   return find_icon(icon_on.c_str());
 }

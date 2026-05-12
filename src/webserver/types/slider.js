@@ -302,6 +302,22 @@ function sliderTypeFactory(opts) {
   };
 }
 
+registerButtonType("light_brightness", sliderTypeFactory({
+  label: "Light Brightness",
+  placeholder: "e.g. Living Room",
+  entityPlaceholder: "e.g. light.living_room",
+  entityDomains: ["light"],
+  defaultIcon: "Auto",
+  defaultIconOn: "Auto",
+  fallbackLabel: "Light Brightness",
+  fallbackIcon: "lightbulb",
+  badgeIcon: "tune-vertical-variant",
+  alwaysShowIconPair: true,
+  onIconInheritsOff: true,
+  iconOffFieldLabel: "Off Icon",
+  iconOnFieldLabel: "On Icon",
+}));
+
 registerButtonType("slider", sliderTypeFactory({
   label: "Slider",
   placeholder: "e.g. Living Room",

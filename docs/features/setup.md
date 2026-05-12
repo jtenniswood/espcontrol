@@ -30,6 +30,7 @@ The **Type** dropdown uses these card names on the device:
 | **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, or helper action. | Yes |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
 | **[Sensor](/card-types/sensors)** | Shows a live numeric reading or text state. | Yes, as **Sensor Entity** |
+| **[Light Brightness](/card-types/sliders)** | Controls light brightness with a draggable fill bar. | Yes |
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
 | **[Cover](/card-types/covers)** | Controls blinds, shutters, and similar cover entities with a slider or tap action. | Yes |
 | **[Garage Door](/card-types/garage-doors)** | Controls a garage door cover entity with an open/close tap action. | Yes |
