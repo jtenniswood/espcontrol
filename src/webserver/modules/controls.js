@@ -1299,7 +1299,7 @@ function renderPreview() {
       var b = c.buttons[bIdx];
       var iconName = resolveIcon(b);
       var label = b.label || b.entity || "Configure";
-      var color = (b.type === "sensor" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "timezone")
+      var color = (b.type === "sensor" || b.type === "local_sensor" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "timezone")
         ? state.sensorColor : state.offColor;
       var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
       if (previewTypeDef && c.isSub && !previewTypeDef.allowInSubpage) previewTypeDef = null;

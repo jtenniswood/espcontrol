@@ -207,6 +207,12 @@ class AsyncWebServerRequest {
 
 class AsyncWebHandler;
 
+class AsyncWebServer;
+inline AsyncWebServer *&global_async_web_server() {
+  static AsyncWebServer *ptr = nullptr;
+  return ptr;
+}
+
 class AsyncWebServer {
  public:
   AsyncWebServer(uint16_t port) : port_(port){};
