@@ -29,6 +29,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ESPHOME_DOCKER_IMAGE: ghcr.io/esphome/esphome:2026.4.5
 
 jobs:
   validate:
@@ -103,8 +104,26 @@ jobs:
           restore-keys: |
             esphome-ci-${{ matrix.slug }}-
 
+      - name: Pull ESPHome image
+        run: |
+          for attempt in 1 2 3 4 5; do
+            echo "Pulling $ESPHOME_DOCKER_IMAGE (attempt $attempt of 5)"
+            if docker pull "$ESPHOME_DOCKER_IMAGE"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "Unable to pull $ESPHOME_DOCKER_IMAGE after $attempt attempts"
+              exit 1
+            fi
+
+            delay=$((attempt * 15))
+            echo "Pull failed; retrying in $delay seconds"
+            sleep "$delay"
+          done
+
       - name: Compile firmware
         run: >-
           docker run --rm -v "${PWD}:/config"
-          ghcr.io/esphome/esphome:2026.4.5
+          "$ESPHOME_DOCKER_IMAGE"
           compile /config/builds/${{ matrix.slug }}.factory.yaml
