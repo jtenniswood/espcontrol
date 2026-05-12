@@ -344,7 +344,6 @@ function buildSettingsPage(parent) {
   els.setScheduleBadge = scheduleBadge;
   syncScreenScheduleUi();
   var scheduleCard = makeCollapsibleCard("Night Schedule", scheduleBody, true, scheduleBadge);
-  config.appendChild(scheduleCard);
 
   var clockBody = document.createElement("div");
 
@@ -711,7 +710,7 @@ function buildSettingsPage(parent) {
   els.setSsMode = setSsMode;
   setSsMode(ssMode);
 
-  config.insertBefore(makeCollapsibleCard("Screensaver", ssBody, true, ssBadge), scheduleCard);
+  var screensaverCard = makeCollapsibleCard("Screensaver", ssBody, true, ssBadge);
 
   var idleBody = document.createElement("div");
   idleBody.appendChild(fieldLabel("Return Home After"));
@@ -747,6 +746,8 @@ function buildSettingsPage(parent) {
   els.setIdleBadge = idleBadge;
   syncIdleUi();
   config.appendChild(makeCollapsibleCard("Idle", idleBody, true, idleBadge));
+  config.appendChild(screensaverCard);
+  config.appendChild(scheduleCard);
 
   var backupBody = document.createElement("div");
 
