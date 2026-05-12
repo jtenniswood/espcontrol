@@ -31,6 +31,7 @@ script:
             id(uptime_sensor).state,
             id(firmware_version_sensor).state,
             id(${label_font})->get_lv_font(),
+            id(${media_title_font})->get_lv_font(),
             id(${icon_font})->get_lv_font(),
             id(sensor_card_color).state);
 

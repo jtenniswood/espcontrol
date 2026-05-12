@@ -22,6 +22,7 @@ substitutions:
   setup_action_button_radius: "12"
   icon_font: icon_font_480
   label_font: label_font_lg
+  media_title_font: media_title_font_lg
   unit_font: label_font_lg
   sensor_value_font: statistics_font_lg
   padding: 21px

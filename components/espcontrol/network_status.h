@@ -156,12 +156,27 @@ inline void network_status_add_table_row(lv_obj_t *table,
   lv_obj_set_style_text_align(value_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
 }
 
+inline void network_status_add_device_name(lv_obj_t *table,
+                                           const std::string &device_name,
+                                           const lv_font_t *font,
+                                           lv_coord_t width) {
+  if (!table) return;
+  lv_obj_t *label = network_status_add_table_label(
+    table,
+    device_name.empty() ? "Not available" : device_name.c_str(),
+    font,
+    width,
+    0xFFFFFF);
+  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+}
+
 inline void network_status_open_modal(const std::string &device_name,
                                       const std::string &ip_address,
                                       const std::string &wifi_strength,
                                       float uptime_seconds,
                                       const std::string &firmware_version,
                                       const lv_font_t *label_font,
+                                      const lv_font_t *device_name_font,
                                       const lv_font_t *icon_font,
                                       const std::string &panel_color_hex) {
   media_volume_hide_modal();
@@ -213,9 +228,8 @@ inline void network_status_open_modal(const std::string &device_name,
 
   std::string uptime = network_status_uptime_text(uptime_seconds);
   std::string firmware = firmware_version.empty() ? "Not available" : firmware_version;
-  network_status_add_table_row(ui.table, "Device name",
-    device_name.empty() ? std::string("Not available") : device_name,
-    label_font, table_w, name_w, value_w, row_gap);
+  network_status_add_device_name(ui.table, device_name,
+    device_name_font ? device_name_font : label_font, table_w);
   network_status_add_table_row(ui.table, "IP address", ip_address,
     label_font, table_w, name_w, value_w, row_gap);
   network_status_add_table_row(ui.table, "WiFi strength", wifi_strength,
