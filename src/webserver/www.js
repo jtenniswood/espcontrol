@@ -124,7 +124,7 @@
     var largeSensorUnitOffsetPercent = typeof CFG.largeSensorUnitOffsetPercent === "number"
       ? CFG.largeSensorUnitOffsetPercent : -10;
     r.setProperty("--large-sensor-unit-offset-y",
-      "calc(var(--btn-icon) * 3 * " + (largeSensorUnitOffsetPercent / 100) + ")");
+      "calc(var(--btn-icon) * 2.5 * " + (largeSensorUnitOffsetPercent / 100) + ")");
 
     if (state.grid && state.grid.length) {
       clearSpans(state.grid, NUM_SLOTS);

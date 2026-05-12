@@ -35,10 +35,10 @@ font:
       - "0123456789.-°/%"
       - ":"
 
-  # Large-card sensor values (3x the regular sensor value font)
+  # Large-card sensor values (2.5x the regular sensor value font)
   - file: "gfonts://Roboto@Thin"
     id: statistics_font_sm_xl
-    size: 132
+    size: 110
     bpp: 4
     glyphs:
       - "0123456789.-°/%"
