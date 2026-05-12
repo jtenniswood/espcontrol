@@ -61,6 +61,20 @@ esphome:
     - priority: -100
       then:
         - script.execute: apply_screen_rotation
+    - priority: -100
+      then:
+        # Wait until ESPHome has marked the OTA boot successful before allowing
+        # user rotation changes to trigger the reboot/apply path.
+        - delay: 70s
+        - globals.set:
+            id: screen_rotation_runtime_enabled
+            value: 'true'
+
+globals:
+  - id: screen_rotation_runtime_enabled
+    type: bool
+    restore_value: false
+    initial_value: 'false'
 
 # ---------------------------------------------------------------------------
 # ESP32-C6 co-processor (provides WiFi/BLE via SDIO)
@@ -205,12 +219,19 @@ script:
   - id: rotate_screen
     mode: restart
     then:
-      # Runtime LVGL rotation crashes this ESP32-P4/MIPI panel while LVGL
-      # recalculates object styles. Persist the selection and apply it at boot.
-      - delay: 500ms
-      - lambda: |-
-          global_preferences->sync();
-          App.safe_reboot();
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_runtime_enabled);'
+          then:
+            # Runtime LVGL rotation crashes this ESP32-P4/MIPI panel while LVGL
+            # recalculates object styles. Persist the selection and apply it at boot.
+            - delay: 500ms
+            - lambda: |-
+                global_preferences->sync();
+                App.safe_reboot();
+          else:
+            - lambda: |-
+                ESP_LOGD("rotation", "Startup rotation restore detected; reboot skipped");
 
 select:
   - platform: template
