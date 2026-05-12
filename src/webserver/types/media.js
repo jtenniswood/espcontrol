@@ -155,7 +155,7 @@ registerButtonType("media", {
     if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
 
     var entityField = helpers.entityField(
-      "Media Player Entity", helpers.idPrefix + "entity", b.entity,
+      "Entity", helpers.idPrefix + "entity", b.entity,
       "e.g. media_player.living_room", ["media_player"], "entity", true,
       "Add an entity before saving.");
     panel.appendChild(entityField.field);
