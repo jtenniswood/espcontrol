@@ -3055,12 +3055,12 @@ function addSingleCardMenuItems(slot) {
 
   var sz = c.sizes[slot] || 1;
   addCtxSubmenu("arrow-expand-all", "Size", function (sub) {
-    addSubItem(sub, "", "Single", function () { resizeSlot(slot, 1); }, sz === 1);
-    addSubItem(sub, "", "Tall", function () { resizeSlot(slot, 2); }, sz === 2);
-    addSubItem(sub, "", "Wide", function () { resizeSlot(slot, 3); }, sz === 3);
-    addSubItem(sub, "", "Large", function () { resizeSlot(slot, 4); }, sz === 4);
-    addSubItem(sub, "", "Extra Tall", function () { resizeSlot(slot, 5); }, sz === 5);
-    addSubItem(sub, "", "Extra Wide", function () { resizeSlot(slot, 6); }, sz === 6);
+    addSubItem(sub, "", "Single (1x1)", function () { resizeSlot(slot, 1); }, sz === 1);
+    addSubItem(sub, "", "Tall (2x1)", function () { resizeSlot(slot, 2); }, sz === 2);
+    addSubItem(sub, "", "Extra Tall (3x1)", function () { resizeSlot(slot, 5); }, sz === 5);
+    addSubItem(sub, "", "Wide (1x2)", function () { resizeSlot(slot, 3); }, sz === 3);
+    addSubItem(sub, "", "Extra Wide (1x3)", function () { resizeSlot(slot, 6); }, sz === 6);
+    addSubItem(sub, "", "Large (2x2)", function () { resizeSlot(slot, 4); }, sz === 4);
   });
 
   addCtxDivider();
@@ -3131,12 +3131,12 @@ function showBackContextMenu(e) {
   addCtxItem("keyboard-return", "Exit Subpage", function () { exitSubpage(); });
   addCtxDivider();
   addCtxSubmenu("arrow-expand-all", "Size", function (sub) {
-    addSubItem(sub, "", "Single", function () { resizeSlot(-2, 1); }, bkSz === 1);
-    addSubItem(sub, "", "Tall", function () { resizeSlot(-2, 2); }, bkSz === 2);
-    addSubItem(sub, "", "Wide", function () { resizeSlot(-2, 3); }, bkSz === 3);
-    addSubItem(sub, "", "Large", function () { resizeSlot(-2, 4); }, bkSz === 4);
-    addSubItem(sub, "", "Extra Tall", function () { resizeSlot(-2, 5); }, bkSz === 5);
-    addSubItem(sub, "", "Extra Wide", function () { resizeSlot(-2, 6); }, bkSz === 6);
+    addSubItem(sub, "", "Single (1x1)", function () { resizeSlot(-2, 1); }, bkSz === 1);
+    addSubItem(sub, "", "Tall (2x1)", function () { resizeSlot(-2, 2); }, bkSz === 2);
+    addSubItem(sub, "", "Extra Tall (3x1)", function () { resizeSlot(-2, 5); }, bkSz === 5);
+    addSubItem(sub, "", "Wide (1x2)", function () { resizeSlot(-2, 3); }, bkSz === 3);
+    addSubItem(sub, "", "Extra Wide (1x3)", function () { resizeSlot(-2, 6); }, bkSz === 6);
+    addSubItem(sub, "", "Large (2x2)", function () { resizeSlot(-2, 4); }, bkSz === 4);
   });
   document.body.appendChild(ctxMenu);
   positionMenu(ctxMenu, e);
