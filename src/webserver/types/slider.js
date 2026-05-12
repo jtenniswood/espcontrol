@@ -118,7 +118,7 @@ function sliderTypeFactory(opts) {
           ["stop", "Stop"],
           ["set_position", "Set Position"],
         ];
-        var interactionField = helpers.selectField("Interaction", helpers.idPrefix + "cover-interaction", interactionOptions, coverMode);
+        var interactionField = helpers.selectField("Type", helpers.idPrefix + "cover-interaction", interactionOptions, coverMode);
         var interactionSelect = interactionField.select;
         panel.appendChild(interactionField.field);
 
