@@ -520,6 +520,28 @@ inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
   apply_push_button_transition(s.btn);
 }
 
+inline void send_local_sensor_update(const std::string &key, float value) {
+  for (auto &s : local_sensor_registry()) {
+    if (s.key != key || s.is_text) continue;
+    char buf[32];
+    if (s.precision == 1) snprintf(buf, sizeof(buf), "%.1f", value);
+    else if (s.precision == 2) snprintf(buf, sizeof(buf), "%.2f", value);
+    else snprintf(buf, sizeof(buf), "%.0f", value);
+    if (s.sensor_lbl) lv_label_set_text(s.sensor_lbl, buf);
+    return;
+  }
+  ESP_LOGW("espcontrol", "Local sensor '%s' not registered", key.c_str());
+}
+
+inline void send_local_sensor_update(const std::string &key, const char *value) {
+  for (auto &s : local_sensor_registry()) {
+    if (s.key != key || !s.is_text) continue;
+    if (s.text_lbl) set_wrapped_button_label_text(s.text_lbl, value ? value : "--");
+    return;
+  }
+  ESP_LOGW("espcontrol", "Local sensor '%s' not registered", key.c_str());
+}
+
 inline void setup_text_sensor_card(BtnSlot &s, const ParsedCfg &p,
                                    bool has_sensor_color, uint32_t sensor_val) {
   if (has_sensor_color) {
@@ -531,6 +553,89 @@ inline void setup_text_sensor_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   set_wrapped_button_label_text(s.text_lbl, "--");
+}
+
+inline void setup_local_sensor_card(BtnSlot &s, const ParsedCfg &p,
+                                    bool has_sensor_color, uint32_t sensor_val) {
+  if (has_sensor_color) {
+    lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  }
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+
+  bool is_text = (p.precision == "text");
+  LocalSensorControl ctrl;
+  ctrl.key = p.entity;
+  ctrl.is_text = is_text;
+  ctrl.precision = 0;
+  ctrl.sensor_lbl = nullptr;
+  ctrl.text_lbl = nullptr;
+
+  if (is_text) {
+    setup_toggle_visual(s, p);
+    lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    set_wrapped_button_label_text(s.text_lbl, "--");
+    ctrl.text_lbl = s.text_lbl;
+  } else {
+    lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(s.sensor_lbl, "--");
+    if (!p.unit.empty()) lv_label_set_text(s.unit_lbl, trim_display_unit(p.unit).c_str());
+    if (!p.label.empty()) lv_label_set_text(s.text_lbl, p.label.c_str());
+    ctrl.sensor_lbl = s.sensor_lbl;
+    if (!p.precision.empty()) ctrl.precision = atoi(p.precision.c_str());
+  }
+
+  auto &reg = local_sensor_registry();
+  bool found = false;
+  for (auto &existing : reg) {
+    if (existing.key == ctrl.key) { existing = ctrl; found = true; break; }
+  }
+  if (!found) reg.push_back(ctrl);
+
+#ifdef USE_SENSOR
+  if (!is_text) {
+    for (auto *esp_s : esphome::App.get_sensors()) {
+      char oid_buf[128];
+      if (std::string(esp_s->get_object_id_to(oid_buf).c_str()) != ctrl.key) continue;
+      auto *lbl = ctrl.sensor_lbl;
+      int prec = ctrl.precision;
+      esp_s->add_on_state_callback([lbl, prec](float val) {
+        if (!lbl || std::isnan(val)) return;
+        char buf[32];
+        if (prec == 1) snprintf(buf, sizeof(buf), "%.1f", val);
+        else if (prec == 2) snprintf(buf, sizeof(buf), "%.2f", val);
+        else snprintf(buf, sizeof(buf), "%.0f", val);
+        lv_label_set_text(lbl, buf);
+      });
+      if (!std::isnan(esp_s->state) && ctrl.sensor_lbl) {
+        char buf[32];
+        if (ctrl.precision == 1) snprintf(buf, sizeof(buf), "%.1f", esp_s->state);
+        else if (ctrl.precision == 2) snprintf(buf, sizeof(buf), "%.2f", esp_s->state);
+        else snprintf(buf, sizeof(buf), "%.0f", esp_s->state);
+        lv_label_set_text(ctrl.sensor_lbl, buf);
+      }
+      break;
+    }
+  }
+#endif
+#ifdef USE_TEXT_SENSOR
+  if (is_text) {
+    for (auto *esp_ts : esphome::App.get_text_sensors()) {
+      char oid_buf[128];
+      if (std::string(esp_ts->get_object_id_to(oid_buf).c_str()) != ctrl.key) continue;
+      auto *lbl = ctrl.text_lbl;
+      esp_ts->add_on_state_callback([lbl](std::string val) {
+        if (!lbl) return;
+        set_wrapped_button_label_text(lbl, val);
+      });
+      if (!esp_ts->state.empty() && ctrl.text_lbl)
+        set_wrapped_button_label_text(ctrl.text_lbl, esp_ts->state);
+      break;
+    }
+  }
+#endif
 }
 
 inline bool subpage_parent_sensor_state_enabled(const ParsedCfg &p) {

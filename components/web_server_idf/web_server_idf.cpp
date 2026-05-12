@@ -140,6 +140,7 @@ void AsyncWebServer::begin() {
   // Use custom close function that shuts down before closing to prevent lwIP race conditions
   config.close_fn = AsyncWebServer::safe_close_with_shutdown;
   if (httpd_start(&this->server_, &config) == ESP_OK) {
+    global_async_web_server() = this;
     const httpd_uri_t handler_get = {
         .uri = "",
         .method = HTTP_GET,

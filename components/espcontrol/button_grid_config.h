@@ -1,6 +1,16 @@
 #pragma once
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
+#ifdef USE_SENSOR
+#include "esphome/components/sensor/sensor.h"
+#endif
+#ifdef USE_TEXT_SENSOR
+#include "esphome/components/text_sensor/text_sensor.h"
+#endif
+#ifdef USE_WEBSERVER
+#include <esp_http_server.h>
+#include "esphome/components/web_server_idf/web_server_idf.h"
+#endif
 
 constexpr uint32_t DEFAULT_SLIDER_COLOR = 0xFF8C00;
 constexpr uint32_t DEFAULT_OFF_COLOR = 0x313131;
@@ -748,6 +758,103 @@ struct InternalRelayClickCtx {
   std::string key;
   bool push_mode;
 };
+
+// ── Local sensor controls ─────────────────────────────────────────────
+//
+// Displays a live value from any ESPHome sensor/text_sensor on the device.
+// The device auto-subscribes to sensor callbacks; send_local_sensor_update()
+// is available as a fallback for computed/non-entity values.
+
+struct LocalSensorControl {
+  std::string key;
+  bool is_text;
+  int precision;
+  lv_obj_t *sensor_lbl;
+  lv_obj_t *text_lbl;
+};
+
+inline std::vector<LocalSensorControl> &local_sensor_registry() {
+  static std::vector<LocalSensorControl> sensors;
+  return sensors;
+}
+
+#ifdef USE_WEBSERVER
+class LocalSensorHandler : public esphome::web_server_idf::AsyncWebHandler {
+ public:
+  static std::string json_escape(const std::string &s) {
+    std::string out;
+    out.reserve(s.size() + 4);
+    for (char c : s) {
+      if (c == '"') out += "\\\"";
+      else if (c == '\\') out += "\\\\";
+      else out += c;
+    }
+    return out;
+  }
+
+  static std::string build_json() {
+    std::string json;
+    json.reserve(512);
+    json = "[";
+    bool first = true;
+    auto append = [&](const std::string &key, const std::string &name,
+                      const std::string &unit, const char *type, bool internal) {
+      if (!first) json += ",";
+      first = false;
+      json += "{\"key\":\"" + json_escape(key) + "\",\"name\":\"" + json_escape(name) +
+              "\",\"unit\":\"" + json_escape(unit) + "\",\"type\":\"" + type + "\"";
+      if (internal) json += ",\"internal\":true";
+      json += "}";
+    };
+    char oid_buf[128];
+#ifdef USE_SENSOR
+    for (auto *s : esphome::App.get_sensors()) {
+      bool internal = (int) s->get_entity_category() != 0;
+      append(std::string(s->get_object_id_to(oid_buf).c_str()), std::string(s->get_name()),
+             std::string(s->get_unit_of_measurement_ref()), "numeric", internal);
+    }
+#endif
+#ifdef USE_TEXT_SENSOR
+    for (auto *ts : esphome::App.get_text_sensors()) {
+      bool internal = (int) ts->get_entity_category() != 0;
+      append(std::string(ts->get_object_id_to(oid_buf).c_str()), std::string(ts->get_name()),
+             "", "text", internal);
+    }
+#endif
+    json += "]";
+    return json;
+  }
+
+  bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
+    if (request->method() != HTTP_GET) return false;
+    char url_buf[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
+    esphome::StringRef url = request->url_to(url_buf);
+    return strncmp(url.c_str(), "/local_sensors", 14) == 0;
+  }
+
+  void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
+    std::string json = build_json();
+    httpd_req_t *req = *request;
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t err = httpd_resp_send(req, json.c_str(), HTTPD_RESP_USE_STRLEN);
+    if (err != ESP_OK) ESP_LOGE("sensors", "httpd_resp_send failed: %d", err);
+  }
+};
+
+inline void register_local_sensor_endpoint() {
+  static bool registered = false;
+  if (registered) return;
+  auto *server = esphome::web_server_idf::global_async_web_server();
+  if (!server) {
+    ESP_LOGW("sensors", "register_local_sensor_endpoint: server not ready");
+    return;
+  }
+  server->addHandler(new LocalSensorHandler());
+  registered = true;
+  ESP_LOGI("sensors", "Local sensor endpoint registered");
+}
+#endif  // USE_WEBSERVER
 
 inline std::vector<InternalRelayControl> &internal_relay_registry() {
   static std::vector<InternalRelayControl> relays;

@@ -417,6 +417,7 @@ export default defineConfig({
           { text: 'World Clock', link: '/card-types/timezones' },
           { text: 'Weather', link: '/card-types/weather' },
           { text: 'Internal', link: '/card-types/internal-relays' },
+          { text: 'Local Sensor', link: '/card-types/local-sensors' },
           { text: 'Subpage', link: '/features/subpages' },
         ],
       },

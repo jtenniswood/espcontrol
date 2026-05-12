@@ -20,6 +20,7 @@ api:
   on_client_connected:
     - lambda: |-
         refresh_weather_forecast_cards();
+        register_local_sensor_endpoint();
     - delay: 10s
     - lambda: |-
         refresh_weather_forecast_cards();
