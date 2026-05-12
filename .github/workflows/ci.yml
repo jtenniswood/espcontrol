@@ -127,3 +127,10 @@ jobs:
           docker run --rm -v "${PWD}:/config"
           "$ESPHOME_DOCKER_IMAGE"
           compile /config/builds/${{ matrix.slug }}.factory.yaml
+
+      - name: Fix ESPHome cache permissions
+        if: always()
+        run: |
+          if [ -d builds/.esphome ]; then
+            sudo chown -R "$USER:$USER" builds/.esphome
+          fi
