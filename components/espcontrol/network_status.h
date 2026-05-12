@@ -20,7 +20,6 @@ struct NetworkStatusModalUi {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
-  lv_obj_t *title_lbl = nullptr;
   lv_obj_t *table = nullptr;
 };
 
@@ -115,7 +114,6 @@ inline void network_status_hide_modal() {
   ui.overlay = nullptr;
   ui.panel = nullptr;
   ui.back_btn = nullptr;
-  ui.title_lbl = nullptr;
   ui.table = nullptr;
 }
 
@@ -182,7 +180,7 @@ inline void network_status_open_modal(const std::string &device_name,
   lv_coord_t value_w = table_w - name_w - row_gap;
   if (value_w < table_w / 2) value_w = table_w / 2;
   lv_coord_t table_top = layout.inset + layout.back_size +
-    control_modal_scaled_px(28, layout.short_side);
+    control_modal_scaled_px(12, layout.short_side);
   lv_coord_t table_h = layout.panel_h - table_top - layout.inset;
   if (table_h < 120) table_h = layout.panel_h - layout.inset * 2;
 
@@ -204,14 +202,6 @@ inline void network_status_open_modal(const std::string &device_name,
     network_status_hide_modal();
   }, LV_EVENT_CLICKED, nullptr);
   control_modal_apply_back_button_layout(ui.back_btn, layout);
-
-  ui.title_lbl = lv_label_create(ui.panel);
-  lv_label_set_text(ui.title_lbl, "Device Info");
-  lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(0xA0A0A0), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (label_font) lv_obj_set_style_text_font(ui.title_lbl, label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.title_lbl, 100);
-  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, layout.inset);
 
   ui.table = lv_obj_create(ui.panel);
   network_status_clean_obj(ui.table);
