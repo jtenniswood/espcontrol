@@ -163,6 +163,8 @@ display:
   - platform: mipi_dsi
     id: my_display
     model: JC4880P443
+    update_interval: never
+    auto_clear_enabled: false
 
 # ---------------------------------------------------------------------------
 # LVGL base (display binding, must be before any page definitions)
@@ -200,6 +202,23 @@ script:
                       else:
                         - lvgl.display.set_rotation: 180
 
+  - id: rotate_screen
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(main_lvgl).is_paused();'
+          then:
+            - script.execute: apply_screen_rotation
+            - delay: 100ms
+            - script.execute: refresh_button_grid
+          else:
+            - lvgl.pause:
+            - script.execute: apply_screen_rotation
+            - delay: 100ms
+            - script.execute: refresh_button_grid
+            - lvgl.resume:
+
 select:
   - platform: template
     name: "Screen: Rotation"
@@ -218,5 +237,4 @@ select:
       - "270"
     on_value:
       then:
-        - script.execute: apply_screen_rotation
-        - script.execute: refresh_button_grid
+        - script.execute: rotate_screen
