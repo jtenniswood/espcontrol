@@ -1,4 +1,34 @@
 // Action card: one-tap Home Assistant shortcuts for scenes, scripts, buttons, and helpers.
+var ACTION_CARD_ACTIONS = [
+  { value: "scene.turn_on", label: "Run Scene", placeholder: "e.g. scene.movie_mode", icon: "movie-open", domains: ["scene"] },
+  { value: "script.turn_on", label: "Run Script", placeholder: "e.g. script.goodnight", icon: "script-text-play", domains: ["script"] },
+  { value: "automation.trigger", label: "Trigger Automation", placeholder: "e.g. automation.goodnight", icon: "home-automation", domains: ["automation"] },
+  { value: "button.press", label: "Press Button", placeholder: "e.g. button.restart_router", icon: "gesture-tap-button", domains: ["button"] },
+  { value: "input_button.press", label: "Press Input Button", placeholder: "e.g. input_button.doorbell", icon: "gesture-tap-button", domains: ["input_button"] },
+  { value: "lock.open", label: "Open Lock", placeholder: "e.g. lock.front_door", icon: "lock-open", domains: ["lock"] },
+  { value: "input_boolean.toggle", label: "Toggle Helper", placeholder: "e.g. input_boolean.guest_mode", icon: "toggle-switch-variant", domains: ["input_boolean"] },
+  { value: "input_number.set_value", label: "Set Number Helper", placeholder: "e.g. input_number.target_level", icon: "counter", domains: ["input_number"] },
+  { value: "input_select.select_option", label: "Select Option Helper", placeholder: "e.g. input_select.house_mode", icon: "form-dropdown", domains: ["input_select"] },
+];
+
+function actionCardInfo(value) {
+  for (var i = 0; i < ACTION_CARD_ACTIONS.length; i++) {
+    if (ACTION_CARD_ACTIONS[i].value === value) return ACTION_CARD_ACTIONS[i];
+  }
+  return null;
+}
+
+function normalizeActionCardConfig(b) {
+  if (!b.sensor) b.sensor = "scene.turn_on";
+  if (!actionCardInfo(b.sensor)) b.sensor = "scene.turn_on";
+  b.icon_on = "Auto";
+  b.precision = "";
+}
+
+function actionCardNeedsExtraValue(value) {
+  return value === "input_number.set_value" || value === "input_select.select_option";
+}
+
 registerButtonType("action", {
   label: "Action",
   allowInSubpage: true,
@@ -11,41 +41,37 @@ registerButtonType("action", {
     b.icon_on = "Auto";
     b.precision = "";
   },
-  renderSettings: function (panel, b, slot, helpers) {
-    var actions = [
-      { value: "scene.turn_on", label: "Run Scene", placeholder: "e.g. scene.movie_mode", icon: "movie-open", domains: ["scene"] },
-      { value: "script.turn_on", label: "Run Script", placeholder: "e.g. script.goodnight", icon: "script-text-play", domains: ["script"] },
-      { value: "automation.trigger", label: "Trigger Automation", placeholder: "e.g. automation.goodnight", icon: "home-automation", domains: ["automation"] },
-      { value: "button.press", label: "Press Button", placeholder: "e.g. button.restart_router", icon: "gesture-tap-button", domains: ["button"] },
-      { value: "input_button.press", label: "Press Input Button", placeholder: "e.g. input_button.doorbell", icon: "gesture-tap-button", domains: ["input_button"] },
-      { value: "lock.open", label: "Open Lock", placeholder: "e.g. lock.front_door", icon: "lock-open", domains: ["lock"] },
-      { value: "input_boolean.toggle", label: "Toggle Helper", placeholder: "e.g. input_boolean.guest_mode", icon: "toggle-switch-variant", domains: ["input_boolean"] },
-      { value: "input_number.set_value", label: "Set Number Helper", placeholder: "e.g. input_number.target_level", icon: "counter", domains: ["input_number"] },
-      { value: "input_select.select_option", label: "Select Option Helper", placeholder: "e.g. input_select.house_mode", icon: "form-dropdown", domains: ["input_select"] },
-    ];
+  renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
+    normalizeActionCardConfig(b);
 
-    function actionInfo(value) {
-      for (var i = 0; i < actions.length; i++) {
-        if (actions[i].value === value) return actions[i];
-      }
-      return null;
-    }
-
-    if (!b.sensor) b.sensor = "scene.turn_on";
-    if (!actionInfo(b.sensor)) b.sensor = "scene.turn_on";
-    b.icon_on = "Auto";
-    b.precision = "";
-
-    var actionField = helpers.selectField("Action", helpers.idPrefix + "action", actions, b.sensor);
+    var actionField = helpers.selectField("Action", helpers.idPrefix + "action", ACTION_CARD_ACTIONS, b.sensor);
     var actionSelect = actionField.select;
     panel.appendChild(actionField.field);
 
+    actionSelect.addEventListener("change", function () {
+      b.sensor = this.value;
+      helpers.saveField("sensor", b.sensor);
+      if (!actionCardNeedsExtraValue(b.sensor)) {
+        b.unit = "";
+        helpers.saveField("unit", "");
+      }
+      b.icon_on = "Auto";
+      b.precision = "";
+      helpers.saveField("icon_on", "Auto");
+      helpers.saveField("precision", "");
+      renderButtonSettings();
+    });
+  },
+  renderSettings: function (panel, b, slot, helpers) {
+    normalizeActionCardConfig(b);
+
+    var info = actionCardInfo(b.sensor) || ACTION_CARD_ACTIONS[0];
     var entityField = helpers.entityField(
       "Entity",
       helpers.idPrefix + "entity",
       b.entity,
-      actionInfo(b.sensor).placeholder,
-      actionInfo(b.sensor).domains,
+      info.placeholder,
+      info.domains,
       "entity",
       true,
       "Add an entity before saving."
@@ -74,32 +100,11 @@ registerButtonType("action", {
       }
     ));
 
-    function updateForAction(persist) {
-      var info = actionInfo(actionSelect.value) || actions[0];
-      entityInp.placeholder = info.placeholder;
-      entityInp._entityDomains = info.domains || [];
-      refreshEntityDatalist(entityInp);
-      var needsValue = actionSelect.value === "input_number.set_value";
-      var needsOption = actionSelect.value === "input_select.select_option";
-      valueField.style.display = needsValue || needsOption ? "" : "none";
-      valueLabel.textContent = needsOption ? "Option" : "Value";
-      valueInput.placeholder = needsOption ? "e.g. Away" : "e.g. 50";
-      if (!persist) return;
-      b.sensor = actionSelect.value;
-      helpers.saveField("sensor", b.sensor);
-      if (!needsValue && !needsOption) {
-        b.unit = "";
-        valueInput.value = "";
-        helpers.saveField("unit", "");
-      }
-      b.icon_on = "Auto";
-      b.precision = "";
-      helpers.saveField("icon_on", "Auto");
-      helpers.saveField("precision", "");
-    }
-
-    actionSelect.addEventListener("change", function () { updateForAction(true); });
-    updateForAction(false);
+    valueField.style.display = actionCardNeedsExtraValue(b.sensor) ? "" : "none";
+    valueLabel.textContent = b.sensor === "input_select.select_option" ? "Option" : "Value";
+    valueInput.placeholder = b.sensor === "input_select.select_option" ? "e.g. Away" : "e.g. 50";
+    entityInp._entityDomains = info.domains || [];
+    refreshEntityDatalist(entityInp);
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Action";
