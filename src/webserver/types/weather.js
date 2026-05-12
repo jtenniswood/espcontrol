@@ -31,6 +31,12 @@ registerButtonType("weather", {
     var modeSelect = modeField.select;
     panel.appendChild(modeField.field);
 
+    var entityField = helpers.entityField(
+      "Weather Entity", helpers.idPrefix + "entity", b.entity,
+      "e.g. weather.forecast_home", ["weather"], "entity", true,
+      "Add an entity before saving.");
+    panel.appendChild(entityField.field);
+
     var labelControl = helpers.textField(
       "Label", helpers.idPrefix + "label", b.label, "e.g. " + defaultForecastLabel(),
       "label", true);
@@ -70,12 +76,6 @@ registerButtonType("weather", {
       syncForecastFields();
     });
     syncForecastFields();
-
-    var entityField = helpers.entityField(
-      "Weather Entity", helpers.idPrefix + "entity", b.entity,
-      "e.g. weather.forecast_home", ["weather"], "entity", true,
-      "Add an entity before saving.");
-    panel.appendChild(entityField.field);
   },
   renderPreview: function (b, helpers) {
     if (b.precision === "today" || b.precision === "tomorrow") {
