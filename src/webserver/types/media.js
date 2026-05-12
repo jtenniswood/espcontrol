@@ -81,7 +81,7 @@ registerButtonType("media", {
     b.sensor = validMode(b.sensor);
     if (rawMode === "controls" && isMediaDefaultIcon(rawMode, b.icon)) b.icon = "Auto";
 
-    var modeField = helpers.selectField("Media Mode", helpers.idPrefix + "media-mode", modes, b.sensor, function () {
+    var modeField = helpers.selectField("Type", helpers.idPrefix + "media-mode", modes, b.sensor, function () {
       var oldMode = b.sensor;
       b.sensor = validMode(this.value);
       if (isMediaDefaultIcon(oldMode, b.icon)) {
