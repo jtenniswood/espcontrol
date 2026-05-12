@@ -119,7 +119,7 @@ function activeScreenRotationOptions() {
   if (state.developerExperimentalFeatures) {
     options = options.concat(state.screenRotationExperimentalOptions || []);
   }
-  return uniqueOptions(options);
+  return sortScreenRotationOptions(uniqueOptions(options));
 }
 
 function allScreenRotationOptions() {
@@ -147,6 +147,19 @@ function displayScreenRotation(value) {
   var n = parseInt(value, 10);
   if (!isFinite(n)) return value;
   return String((n + offset + 360) % 360);
+}
+
+function screenRotationSortValue(value) {
+  var displayed = parseInt(displayScreenRotation(value), 10);
+  if (isFinite(displayed)) return (displayed + 360) % 360;
+  var raw = parseInt(value, 10);
+  return isFinite(raw) ? (raw + 360) % 360 : 999;
+}
+
+function sortScreenRotationOptions(options) {
+  return (options || []).slice().sort(function (a, b) {
+    return screenRotationSortValue(a) - screenRotationSortValue(b);
+  });
 }
 
 function normalizeTemperatureUnit(value) {
