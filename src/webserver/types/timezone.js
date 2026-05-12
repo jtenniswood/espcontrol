@@ -58,7 +58,7 @@ registerButtonType("timezone", {
       helpers.saveField("label", "");
     }
 
-    var modeField = helpers.selectField("Display", helpers.idPrefix + "calendar-mode", [
+    var modeField = helpers.selectField("Type", helpers.idPrefix + "calendar-mode", [
       { value: "datetime", label: "Time & Date" },
       { value: "", label: "Date" },
       { value: "timezone", label: "World Clock" }

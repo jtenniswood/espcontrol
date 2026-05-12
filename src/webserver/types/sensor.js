@@ -20,7 +20,7 @@ registerButtonType("sensor", {
     ], isTextMode ? "text" : "numeric", function (value) { setMode(value, true); });
     var numericBtn = mode.buttons.numeric;
     var textBtn = mode.buttons.text;
-    panel.appendChild(helpers.fieldWithControl("Display", null, mode.segment));
+    panel.appendChild(helpers.fieldWithControl("Type", null, mode.segment));
 
     var sensorField = helpers.entityField(
       "Sensor Entity", helpers.idPrefix + "sensor", b.sensor,

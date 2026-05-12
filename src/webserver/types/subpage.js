@@ -39,7 +39,7 @@ registerButtonType("subpage", {
     var iconBtn = modeControl.buttons.icon;
     var numericBtn = modeControl.buttons.numeric;
     var textBtn = modeControl.buttons.text;
-    stateCond.appendChild(helpers.fieldWithControl("Display", null, modeControl.segment));
+    stateCond.appendChild(helpers.fieldWithControl("Type", null, modeControl.segment));
 
     var stateIconSection = condField();
     var iconEntityField = helpers.entityField(

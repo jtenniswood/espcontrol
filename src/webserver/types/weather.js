@@ -23,7 +23,7 @@ registerButtonType("weather", {
       return b.precision === "today" || b.precision === "tomorrow";
     }
 
-    var modeField = helpers.selectField("Display", helpers.idPrefix + "weather-display", [
+    var modeField = helpers.selectField("Type", helpers.idPrefix + "weather-display", [
       ["", "Current Conditions"],
       ["today", "Temperatures Today"],
       ["tomorrow", "Temperatures Tomorrow"],

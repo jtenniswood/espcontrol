@@ -18,7 +18,7 @@ registerButtonType("calendar", {
     if (!b.entity) b.entity = "sensor.date";
     if (b.precision !== "datetime") b.precision = "";
 
-    var modeField = helpers.selectField("Display", helpers.idPrefix + "calendar-mode", [
+    var modeField = helpers.selectField("Type", helpers.idPrefix + "calendar-mode", [
       { value: "datetime", label: "Time & Date" },
       { value: "", label: "Date" },
       { value: "timezone", label: "World Clock" }

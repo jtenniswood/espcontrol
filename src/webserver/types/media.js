@@ -165,7 +165,7 @@ registerButtonType("media", {
       ["state", "State"],
     ], b.precision === "state" ? "state" : "", function (value) { setDisplayMode(value); });
     var displayField = helpers.fieldWithControl(
-      "Display", helpers.idPrefix + "media-display", displayMode.segment);
+      "Type", helpers.idPrefix + "media-display", displayMode.segment);
     var labelModeBtn = displayMode.buttons[""];
     var stateModeBtn = displayMode.buttons.state;
     function syncDisplayField() {

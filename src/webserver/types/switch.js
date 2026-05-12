@@ -44,7 +44,7 @@ registerButtonType("", {
     ], sensorMode, function (value) { setSensorMode(value, true); });
     var numericBtn = mode.buttons.numeric;
     var textBtn = mode.buttons.text;
-    sensorSection.appendChild(helpers.fieldWithControl("Display", null, mode.segment));
+    sensorSection.appendChild(helpers.fieldWithControl("Type", null, mode.segment));
 
     var sensorField = helpers.entityField(
       "Sensor Entity", helpers.idPrefix + "sensor", b.sensor,
