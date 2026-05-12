@@ -136,6 +136,10 @@ function refreshEntityDatalist(input) {
   ensureEntityDropdown(input);
   var dropdown = input._entityDropdown;
   if (!dropdown) return;
+  if (input._entitySuppressDropdown) {
+    closeEntityDropdown(input);
+    return;
+  }
   dropdown.innerHTML = "";
   var query = String(input.value || "").trim().toLowerCase();
   var items = entitySuggestions(input._entityDomains || []).filter(function (item) {
@@ -150,11 +154,13 @@ function refreshEntityDatalist(input) {
     option.textContent = item.value;
     option.addEventListener("mousedown", function (e) {
       e.preventDefault();
+      input._entitySuppressDropdown = true;
       input.value = item.value;
       rememberEntityName(item.value, item.label || titleFromEntityId(item.value));
       input.dispatchEvent(new Event("input", { bubbles: true }));
       input.dispatchEvent(new Event("change", { bubbles: true }));
       closeEntityDropdown(input);
+      input._entitySuppressDropdown = false;
     });
     dropdown.appendChild(option);
   });
