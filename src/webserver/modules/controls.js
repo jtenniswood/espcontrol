@@ -1850,7 +1850,7 @@ function renderButtonSettings(forceOpen) {
     });
     var tf = document.createElement("div");
     tf.className = "sp-field";
-    tf.appendChild(fieldLabel("Type", "sp-inp-type"));
+    tf.appendChild(fieldLabel("Card", "sp-inp-type"));
     var typeSelect = document.createElement("select");
     typeSelect.className = "sp-select";
     typeSelect.id = "sp-inp-type";
