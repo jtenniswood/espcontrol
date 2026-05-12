@@ -205,19 +205,12 @@ script:
   - id: rotate_screen
     mode: restart
     then:
-      - if:
-          condition:
-            lambda: 'return id(main_lvgl).is_paused();'
-          then:
-            - script.execute: apply_screen_rotation
-            - delay: 100ms
-            - script.execute: refresh_button_grid
-          else:
-            - lvgl.pause:
-            - script.execute: apply_screen_rotation
-            - delay: 100ms
-            - script.execute: refresh_button_grid
-            - lvgl.resume:
+      # Runtime LVGL rotation crashes this ESP32-P4/MIPI panel while LVGL
+      # recalculates object styles. Persist the selection and apply it at boot.
+      - delay: 500ms
+      - lambda: |-
+          global_preferences->sync();
+          App.safe_reboot();
 
 select:
   - platform: template
