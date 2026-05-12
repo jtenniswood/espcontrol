@@ -471,9 +471,7 @@ function syncNtpServerUi() {
 }
 
 function syncClockBarUi() {
-  var compactTop = CFG.grid.compactTop != null ? CFG.grid.compactTop : CFG.grid.bottom;
-  var gridTop = state.clockBarOn ? CFG.grid.top : compactTop;
-  document.documentElement.style.setProperty("--grid-top", gridTop + "cqw");
+  syncPreviewGridTop();
   if (els.topbar) els.topbar.className = "sp-topbar" + (state.clockBarOn ? "" : " sp-hidden");
   if (els.setClockBarToggle) els.setClockBarToggle.checked = !!state.clockBarOn;
   if (els.setNetworkStatusToggle) {

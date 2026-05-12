@@ -24,31 +24,8 @@ function addSupportButton() {
 function init() {
   setFavicon();
 
-  // Set CSS custom properties from device config
-  var r = document.documentElement.style;
-  r.setProperty("--topbar-h", CFG.topbar.height + "cqw");
-  r.setProperty("--topbar-pad", CFG.topbar.padding);
-  r.setProperty("--topbar-fs", CFG.topbar.fontSize + "cqw");
-  if (CFG.topbar.clockFontSize) r.setProperty("--clock-fs", CFG.topbar.clockFontSize + "cqw");
-  r.setProperty("--grid-top", CFG.grid.top + "cqw");
-  r.setProperty("--grid-left", CFG.grid.left + "cqw");
-  r.setProperty("--grid-right", CFG.grid.right + "cqw");
-  r.setProperty("--grid-bottom", CFG.grid.bottom + "cqw");
-  r.setProperty("--grid-gap", CFG.grid.gap + "cqw");
+  // Set CSS custom properties from the active device orientation.
   syncPreviewOrientation();
-  r.setProperty("--btn-r", CFG.btn.radius + "cqw");
-  r.setProperty("--btn-pad", CFG.btn.padding + "cqw");
-  r.setProperty("--btn-icon", CFG.btn.iconSize + "cqw");
-  r.setProperty("--btn-label", CFG.btn.labelSize + "cqw");
-  r.setProperty("--btn-lines", String(CFG.btn.labelLines || 1));
-  r.setProperty("--btn-lines-dbl", String(CFG.btn.labelLinesDouble || CFG.btn.labelLines || 1));
-  r.setProperty("--sensor-top", CFG.sensorBadge.top + "cqw");
-  r.setProperty("--sensor-right", CFG.sensorBadge.right + "cqw");
-  r.setProperty("--sensor-fs", CFG.sensorBadge.fontSize + "cqw");
-  r.setProperty("--empty-r", CFG.emptyCell.radius + "cqw");
-  r.setProperty("--subpage-bottom", CFG.subpageBadge.bottom + "cqw");
-  r.setProperty("--subpage-right", CFG.subpageBadge.right + "cqw");
-  r.setProperty("--subpage-fs", CFG.subpageBadge.fontSize + "cqw");
 
   var style = document.createElement("style");
   style.textContent = CSS;

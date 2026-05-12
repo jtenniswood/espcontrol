@@ -31,9 +31,87 @@
     return CFG;
   }
 
+  function screenWidthPercent(screen) {
+    var width = screen && screen.width;
+    if (typeof width !== "string") return null;
+    var match = width.trim().match(/^([0-9]+(?:\.[0-9]+)?)%$/);
+    if (!match) return null;
+    var pct = parseFloat(match[1]);
+    return isFinite(pct) && pct > 0 ? pct : null;
+  }
+
+  function previewLayoutScale(layout) {
+    var baseWidth = screenWidthPercent(CFG.screen);
+    var activeWidth = screenWidthPercent((layout && layout.screen) || CFG.screen);
+    if (!baseWidth || !activeWidth) return 1;
+    return baseWidth / activeWidth;
+  }
+
+  function layoutSection(layout, key) {
+    return (layout && layout[key]) || CFG[key] || {};
+  }
+
+  function scaledCqw(value, scale) {
+    value = parseFloat(value);
+    if (!isFinite(value)) value = 0;
+    return (value * scale) + "cqw";
+  }
+
+  function scaledCqwText(value, scale) {
+    return String(value || "").replace(/(-?[0-9]+(?:\.[0-9]+)?)cqw/g, function (_, num) {
+      return scaledCqw(num, scale);
+    });
+  }
+
+  function syncPreviewGridTop(layout, scale) {
+    var grid = layoutSection(layout || activeLayout(), "grid");
+    scale = scale || previewLayoutScale(layout || activeLayout());
+    var compactTop = grid.compactTop != null ? grid.compactTop : grid.bottom;
+    var gridTop = state.clockBarOn ? grid.top : compactTop;
+    document.documentElement.style.setProperty("--grid-top", scaledCqw(gridTop, scale));
+  }
+
+  function syncPreviewStyleVars(layout, scale) {
+    var r = document.documentElement.style;
+    var topbar = layoutSection(layout, "topbar");
+    var grid = layoutSection(layout, "grid");
+    var btn = layoutSection(layout, "btn");
+    var sensorBadge = layoutSection(layout, "sensorBadge");
+    var emptyCell = layoutSection(layout, "emptyCell");
+    var subpageBadge = layoutSection(layout, "subpageBadge");
+
+    r.setProperty("--topbar-h", scaledCqw(topbar.height, scale));
+    r.setProperty("--topbar-pad", scaledCqwText(topbar.padding, scale));
+    r.setProperty("--topbar-fs", scaledCqw(topbar.fontSize, scale));
+    if (topbar.clockFontSize) r.setProperty("--clock-fs", scaledCqw(topbar.clockFontSize, scale));
+    else r.removeProperty("--clock-fs");
+
+    syncPreviewGridTop(layout, scale);
+    r.setProperty("--grid-left", scaledCqw(grid.left, scale));
+    r.setProperty("--grid-right", scaledCqw(grid.right, scale));
+    r.setProperty("--grid-bottom", scaledCqw(grid.bottom, scale));
+    r.setProperty("--grid-gap", scaledCqw(grid.gap, scale));
+
+    r.setProperty("--btn-r", scaledCqw(btn.radius, scale));
+    r.setProperty("--btn-pad", scaledCqw(btn.padding, scale));
+    r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
+    r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
+    r.setProperty("--btn-lines", String(btn.labelLines || 1));
+    r.setProperty("--btn-lines-dbl", String(btn.labelLinesDouble || btn.labelLines || 1));
+
+    r.setProperty("--sensor-top", scaledCqw(sensorBadge.top, scale));
+    r.setProperty("--sensor-right", scaledCqw(sensorBadge.right, scale));
+    r.setProperty("--sensor-fs", scaledCqw(sensorBadge.fontSize, scale));
+    r.setProperty("--empty-r", scaledCqw(emptyCell.radius, scale));
+    r.setProperty("--subpage-bottom", scaledCqw(subpageBadge.bottom, scale));
+    r.setProperty("--subpage-right", scaledCqw(subpageBadge.right, scale));
+    r.setProperty("--subpage-fs", scaledCqw(subpageBadge.fontSize, scale));
+  }
+
   function syncPreviewOrientation() {
     var layout = activeLayout();
     var screen = layout.screen || CFG.screen;
+    var scale = previewLayoutScale(layout);
     GRID_COLS = layout.cols || CFG.cols;
     GRID_ROWS = layout.rows || Math.ceil(NUM_SLOTS / GRID_COLS);
 
@@ -42,6 +120,7 @@
     r.setProperty("--screen-aspect", screen.aspect || CFG.screen.aspect);
     r.setProperty("--grid-cols", "repeat(" + GRID_COLS + "," + CFG.grid.fr + ")");
     r.setProperty("--grid-rows", "repeat(" + GRID_ROWS + "," + CFG.grid.fr + ")");
+    syncPreviewStyleVars(layout, scale);
     var largeSensorUnitOffsetPercent = typeof CFG.largeSensorUnitOffsetPercent === "number"
       ? CFG.largeSensorUnitOffsetPercent : -10;
     r.setProperty("--large-sensor-unit-offset-y",
