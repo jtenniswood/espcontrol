@@ -354,6 +354,28 @@ assertButtonRoundTrip(hooks, "lock button", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "lock command button", {
+  entity: "lock.front_door",
+  label: "Lock",
+  icon: "Lock",
+  icon_on: "Auto",
+  sensor: "lock",
+  unit: "",
+  type: "lock",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "unlock command button", {
+  entity: "lock.front_door",
+  label: "Unlock",
+  icon: "Lock Open",
+  icon_on: "Auto",
+  sensor: "unlock",
+  unit: "",
+  type: "lock",
+  precision: "",
+}, false);
+
 assertButtonRoundTrip(hooks, "cover toggle button", {
   entity: "cover.office_blind",
   label: "Office Blind",
@@ -1030,6 +1052,14 @@ assertSubpageRoundTrip(hooks, "lock subpage", {
   order: ["1", "B"],
   buttons: [
     buttonShape({ entity: "lock.front_door", label: "Front Door", icon: "Lock", icon_on: "Lock Open", type: "lock" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "lock command subpage", {
+  order: ["1", "B", "2"],
+  buttons: [
+    buttonShape({ entity: "lock.front_door", label: "Lock", icon: "Lock", icon_on: "Auto", sensor: "lock", type: "lock" }),
+    buttonShape({ entity: "lock.front_door", label: "Unlock", icon: "Lock Open", icon_on: "Auto", sensor: "unlock", type: "lock" }),
   ],
 }, true);
 

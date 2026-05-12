@@ -580,15 +580,19 @@ inline void grid_phase2(
     }
     if (p.type == "lock") {
       if (!p.entity.empty()) {
-        LockCardCtx *ctx = new LockCardCtx();
-        ctx->entity_id = p.entity;
-        lv_obj_set_user_data(s.btn, ctx);
-        TransientStatusLabel *status_label = create_transient_status_label(
-          s.text_lbl, p.label.empty() ? "Lock" : p.label);
-        subscribe_lock_state(s.btn, s.icon_lbl, status_label,
-          lock_locked_icon(p.icon), lock_unlocked_icon(p.icon_on), ctx);
-        if (p.label.empty())
-          subscribe_friendly_name(status_label, p.entity);
+        if (lock_command_mode(p.sensor)) {
+          subscribe_control_availability(s.btn, s.btn, p.entity);
+        } else {
+          LockCardCtx *ctx = new LockCardCtx();
+          ctx->entity_id = p.entity;
+          lv_obj_set_user_data(s.btn, ctx);
+          TransientStatusLabel *status_label = create_transient_status_label(
+            s.text_lbl, p.label.empty() ? "Lock" : p.label);
+          subscribe_lock_state(s.btn, s.icon_lbl, status_label,
+            lock_locked_icon(p.icon), lock_unlocked_icon(p.icon_on), ctx);
+          if (p.label.empty())
+            subscribe_friendly_name(status_label, p.entity);
+        }
       }
       continue;
     }
@@ -984,20 +988,29 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "lock") {
         if (!sb_cfg.entity.empty()) {
-          LockCardCtx *lock_ctx = new LockCardCtx();
-          lock_ctx->entity_id = sb_cfg.entity;
-          lv_obj_set_user_data(sb_btn, lock_ctx);
-          TransientStatusLabel *status_label = create_transient_status_label(
-            sub_slot.text_lbl, sb_cfg.label.empty() ? "Lock" : sb_cfg.label);
-          subscribe_lock_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
-            lock_locked_icon(sb_cfg.icon), lock_unlocked_icon(sb_cfg.icon_on), lock_ctx);
-          if (sb_cfg.label.empty())
-            subscribe_friendly_name(status_label, sb_cfg.entity);
-          add_parent_indicator(sb_cfg.entity);
-          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            LockCardCtx *ctx = (LockCardCtx *)lv_event_get_user_data(e);
-            if (ctx) send_lock_action(ctx);
-          }, LV_EVENT_CLICKED, lock_ctx);
+          if (lock_command_mode(sb_cfg.sensor)) {
+            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+            ParsedCfg *ctx = new ParsedCfg(sb_cfg);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
+              if (c) send_lock_command_action(*c);
+            }, LV_EVENT_CLICKED, ctx);
+          } else {
+            LockCardCtx *lock_ctx = new LockCardCtx();
+            lock_ctx->entity_id = sb_cfg.entity;
+            lv_obj_set_user_data(sb_btn, lock_ctx);
+            TransientStatusLabel *status_label = create_transient_status_label(
+              sub_slot.text_lbl, sb_cfg.label.empty() ? "Lock" : sb_cfg.label);
+            subscribe_lock_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
+              lock_locked_icon(sb_cfg.icon), lock_unlocked_icon(sb_cfg.icon_on), lock_ctx);
+            if (sb_cfg.label.empty())
+              subscribe_friendly_name(status_label, sb_cfg.entity);
+            add_parent_indicator(sb_cfg.entity);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              LockCardCtx *ctx = (LockCardCtx *)lv_event_get_user_data(e);
+              if (ctx) send_lock_action(ctx);
+            }, LV_EVENT_CLICKED, lock_ctx);
+          }
         }
         continue;
       }

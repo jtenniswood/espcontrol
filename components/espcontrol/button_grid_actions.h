@@ -94,6 +94,23 @@ inline void send_lock_action(LockCardCtx *ctx) {
   send_lock_action(ctx->entity_id, ctx->state);
 }
 
+inline void send_lock_command_action(const ParsedCfg &p) {
+  if (p.entity.empty() || esphome::api::global_api_server == nullptr) return;
+  const char *service = nullptr;
+  if (p.sensor == "lock") service = "lock.lock";
+  else if (p.sensor == "unlock") service = "lock.unlock";
+  if (service == nullptr) return;
+
+  esphome::api::HomeassistantActionRequest req;
+  req.service = decltype(req.service)(service);
+  req.is_event = false;
+  req.data.init(1);
+  auto &kv = req.data.emplace_back();
+  kv.key = decltype(kv.key)("entity_id");
+  kv.value = decltype(kv.value)(p.entity.c_str());
+  esphome::api::global_api_server->send_homeassistant_action(req);
+}
+
 // ── Slider card helpers ────────────────────────────────────────────────
 
 inline bool is_cover_entity(const std::string &entity_id) {
@@ -412,9 +429,13 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       send_toggle_action(p.entity);
     }
   } else if (p.type == "lock") {
-    LockCardCtx *ctx = (LockCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) send_lock_action(ctx);
-    else send_lock_action(p.entity, "");
+    if (lock_command_mode(p.sensor)) {
+      send_lock_command_action(p);
+    } else {
+      LockCardCtx *ctx = (LockCardCtx *)lv_obj_get_user_data(btn_obj);
+      if (ctx) send_lock_action(ctx);
+      else send_lock_action(p.entity, "");
+    }
   } else if (p.type == "cover" && cover_command_mode(p.sensor)) {
     send_cover_command_action(p);
   } else if (p.type == "cover" && cover_toggle_mode(p.sensor)) {

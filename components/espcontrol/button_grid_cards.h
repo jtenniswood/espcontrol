@@ -438,8 +438,14 @@ inline void setup_garage_card(BtnSlot &s, const ParsedCfg &p) {
 }
 
 inline void setup_lock_card(BtnSlot &s, const ParsedCfg &p) {
+  if (lock_command_mode(p.sensor)) {
+    lv_label_set_text(s.icon_lbl, lock_command_icon(p));
+    lv_label_set_text(s.text_lbl, lock_card_label(p));
+    apply_push_button_transition(s.btn);
+    return;
+  }
   lv_label_set_text(s.icon_lbl, lock_locked_icon(p.icon));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? "Lock" : p.label.c_str());
+  lv_label_set_text(s.text_lbl, lock_card_label(p));
 }
 
 inline void apply_push_button_transition(lv_obj_t *btn) {

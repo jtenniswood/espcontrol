@@ -697,6 +697,22 @@ inline const char* lock_unlocked_icon(const std::string &icon_on) {
   return (icon_on.empty() || icon_on == "Auto") ? find_icon("Lock Open") : find_icon(icon_on.c_str());
 }
 
+inline bool lock_command_mode(const std::string &sensor) {
+  return sensor == "lock" || sensor == "unlock";
+}
+
+inline const char *lock_command_icon(const ParsedCfg &p) {
+  if (!p.icon.empty() && p.icon != "Auto") return find_icon(p.icon.c_str());
+  return find_icon(p.sensor == "unlock" ? "Lock Open" : "Lock");
+}
+
+inline const char *lock_card_label(const ParsedCfg &p) {
+  if (!p.label.empty()) return p.label.c_str();
+  if (p.sensor == "lock") return "Lock";
+  if (p.sensor == "unlock") return "Unlock";
+  return "Lock";
+}
+
 // ── Internal relay controls ───────────────────────────────────────────
 //
 // Only devices that actually have relays register entries here. The shared
