@@ -66,12 +66,19 @@ esphome:
         # Wait until ESPHome has marked the OTA boot successful before allowing
         # user rotation changes to trigger the reboot/apply path.
         - delay: 70s
+        - lambda: |-
+            auto option = id(screen_rotation_select).current_option();
+            id(screen_rotation_landscape_grid) = option == "90" || option == "270";
         - globals.set:
             id: screen_rotation_runtime_enabled
             value: 'true'
 
 globals:
   - id: screen_rotation_runtime_enabled
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: screen_rotation_landscape_grid
     type: bool
     restore_value: false
     initial_value: 'false'
@@ -223,12 +230,25 @@ script:
           condition:
             lambda: 'return id(screen_rotation_runtime_enabled);'
           then:
-            # Runtime LVGL rotation crashes this ESP32-P4/MIPI panel while LVGL
-            # recalculates object styles. Persist the selection and apply it at boot.
-            - delay: 500ms
-            - lambda: |-
-                global_preferences->sync();
-                App.safe_reboot();
+            - if:
+                condition:
+                  lambda: |-
+                    auto option = id(screen_rotation_select).current_option();
+                    bool next_landscape = option == "90" || option == "270";
+                    return next_landscape == id(screen_rotation_landscape_grid);
+                then:
+                  - script.execute: apply_screen_rotation
+                  - lambda: |-
+                      auto option = id(screen_rotation_select).current_option();
+                      id(screen_rotation_landscape_grid) = option == "90" || option == "270";
+                      ESP_LOGD("rotation", "Live rotation applied without grid rebuild");
+                else:
+                  # Runtime rotation plus a portrait/landscape grid rebuild crashes
+                  # this ESP32-P4/MIPI panel. Persist the selection and apply it at boot.
+                  - delay: 500ms
+                  - lambda: |-
+                      global_preferences->sync();
+                      App.safe_reboot();
           else:
             - lambda: |-
                 ESP_LOGD("rotation", "Startup rotation restore detected; reboot skipped");
