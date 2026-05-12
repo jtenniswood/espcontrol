@@ -286,6 +286,10 @@ inline void grid_refresh_layout(
   set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
+  // When the grid shape changes, LVGL can otherwise lay out children that
+  // still point at now-invalid cells from the previous descriptor.
+  for (int i = 0; i < NS; i++)
+    lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
   configure_grid_layout(main_page_obj, NS, COLS);
   int ROWS = (NS + COLS - 1) / COLS;
 
@@ -300,9 +304,6 @@ inline void grid_refresh_layout(
     first_card = slots[0].btn;
   }
   set_media_home_grid_metrics(main_page_obj, COLS, ROWS, first_card);
-
-  for (int i = 0; i < NS; i++)
-    lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
 
   for (int pos = 0; pos < NS; pos++) {
     int idx = order.positions[pos];
@@ -343,6 +344,8 @@ inline void grid_phase1(
   set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
+  for (int i = 0; i < NS; i++)
+    lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
   configure_grid_layout(main_page_obj, NS, COLS);
   if (NS != cfg.num_slots) {
     ESP_LOGW("sensors", "Grid slot count %d exceeds max %d; ignoring extra slots",
@@ -388,9 +391,6 @@ inline void grid_phase1(
   reset_timezone_cards();
   reset_weather_forecast_cards();
   reset_climate_control_refs();
-
-  for (int i = 0; i < NS; i++)
-    lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
 
   for (int pos = 0; pos < NS; pos++) {
     int idx = order.positions[pos];
