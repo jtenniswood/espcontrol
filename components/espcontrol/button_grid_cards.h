@@ -520,6 +520,14 @@ inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
   apply_push_button_transition(s.btn);
 }
 
+inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p) {
+  std::string label = p.label.empty() ? (p.entity.empty() ? "Local Action" : sentence_cap_text(p.entity)) : p.label;
+  lv_label_set_text(s.text_lbl, label.c_str());
+  const char *icon_cp = (p.icon.empty() || p.icon == "Auto") ? find_icon("Gesture Tap") : find_icon(p.icon.c_str());
+  lv_label_set_text(s.icon_lbl, icon_cp);
+  apply_push_button_transition(s.btn);
+}
+
 inline void setup_text_sensor_card(BtnSlot &s, const ParsedCfg &p,
                                    bool has_sensor_color, uint32_t sensor_val) {
   if (has_sensor_color) {
