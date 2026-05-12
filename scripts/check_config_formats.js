@@ -320,6 +320,28 @@ assertButtonRoundTrip(hooks, "garage label button", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "garage open command button", {
+  entity: "cover.garage",
+  label: "Open",
+  icon: "Garage Open",
+  icon_on: "Auto",
+  sensor: "open",
+  unit: "",
+  type: "garage",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "garage close command button", {
+  entity: "cover.garage",
+  label: "Close",
+  icon: "Garage",
+  icon_on: "Auto",
+  sensor: "close",
+  unit: "",
+  type: "garage",
+  precision: "",
+}, false);
+
 assertButtonRoundTrip(hooks, "lock button", {
   entity: "lock.front_door",
   label: "Front Door",
@@ -976,6 +998,14 @@ assertSubpageRoundTrip(hooks, "cover command subpage", {
   ],
 }, true);
 
+assertSubpageRoundTrip(hooks, "garage command subpage", {
+  order: ["1", "B", "2"],
+  buttons: [
+    buttonShape({ entity: "cover.garage", label: "Open", icon: "Garage Open", icon_on: "Auto", sensor: "open", type: "garage" }),
+    buttonShape({ entity: "cover.garage", label: "Close", icon: "Garage", icon_on: "Auto", sensor: "close", type: "garage" }),
+  ],
+}, true);
+
 assertSubpageRoundTrip(hooks, "action subpage", {
   order: ["1", "B", "2"],
   buttons: [
@@ -1114,6 +1144,14 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|R,cover.garag
     buttonShape({ entity: "cover.garage", label: "Garage Door", icon: "Garage", icon_on: "Garage Open", type: "garage" }),
   ],
 }, "compact garage label subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B,2|R,cover.garage,Open,Garage%20Open,,open|R,cover.garage,Close,Garage,,close")), {
+  order: ["1", "B", "2"],
+  buttons: [
+    buttonShape({ entity: "cover.garage", label: "Open", icon: "Garage Open", icon_on: "Auto", sensor: "open", type: "garage" }),
+    buttonShape({ entity: "cover.garage", label: "Close", icon: "Garage", icon_on: "Auto", sensor: "close", type: "garage" }),
+  ],
+}, "compact garage command subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|C,cover.office_blind,Office%20Blind,Blinds,Blinds%20Open,toggle")), {
   order: ["1", "B"],

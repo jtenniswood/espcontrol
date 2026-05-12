@@ -424,9 +424,17 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
   register_weather_forecast_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity, day, p.label);
 }
 
+inline void apply_push_button_transition(lv_obj_t *btn);
+
 inline void setup_garage_card(BtnSlot &s, const ParsedCfg &p) {
+  if (garage_command_mode(p.sensor)) {
+    lv_label_set_text(s.icon_lbl, garage_command_icon(p));
+    lv_label_set_text(s.text_lbl, garage_card_label(p));
+    apply_push_button_transition(s.btn);
+    return;
+  }
   lv_label_set_text(s.icon_lbl, garage_closed_icon(p.icon));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? "Garage Door" : p.label.c_str());
+  lv_label_set_text(s.text_lbl, garage_card_label(p));
 }
 
 inline void setup_lock_card(BtnSlot &s, const ParsedCfg &p) {

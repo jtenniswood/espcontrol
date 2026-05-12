@@ -531,12 +531,16 @@ inline void grid_phase2(
     }
     if (p.type == "garage") {
       if (!p.entity.empty()) {
-        TransientStatusLabel *status_label = create_transient_status_label(
-          s.text_lbl, p.label.empty() ? "Garage Door" : p.label);
-        subscribe_garage_state(s.btn, s.icon_lbl, status_label,
-          garage_closed_icon(p.icon), garage_open_icon(p.icon_on), p.entity);
-        if (p.label.empty())
-          subscribe_friendly_name(status_label, p.entity);
+        if (garage_command_mode(p.sensor)) {
+          subscribe_control_availability(s.btn, s.btn, p.entity);
+        } else {
+          TransientStatusLabel *status_label = create_transient_status_label(
+            s.text_lbl, p.label.empty() ? "Garage Door" : p.label);
+          subscribe_garage_state(s.btn, s.icon_lbl, status_label,
+            garage_closed_icon(p.icon), garage_open_icon(p.icon_on), p.entity);
+          if (p.label.empty())
+            subscribe_friendly_name(status_label, p.entity);
+        }
       }
       continue;
     }
@@ -957,14 +961,23 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "garage") {
         if (!sb_cfg.entity.empty()) {
-          TransientStatusLabel *status_label = create_transient_status_label(
-            sub_slot.text_lbl, sb_cfg.label.empty() ? "Garage Door" : sb_cfg.label);
-          subscribe_garage_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
-            garage_closed_icon(sb_cfg.icon), garage_open_icon(sb_cfg.icon_on), sb_cfg.entity);
-          if (sb_cfg.label.empty())
-            subscribe_friendly_name(status_label, sb_cfg.entity);
-          add_parent_indicator(sb_cfg.entity);
-          add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
+          if (garage_command_mode(sb_cfg.sensor)) {
+            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+            ParsedCfg *ctx = new ParsedCfg(sb_cfg);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
+              if (c) send_cover_command_action(*c);
+            }, LV_EVENT_CLICKED, ctx);
+          } else {
+            TransientStatusLabel *status_label = create_transient_status_label(
+              sub_slot.text_lbl, sb_cfg.label.empty() ? "Garage Door" : sb_cfg.label);
+            subscribe_garage_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
+              garage_closed_icon(sb_cfg.icon), garage_open_icon(sb_cfg.icon_on), sb_cfg.entity);
+            if (sb_cfg.label.empty())
+              subscribe_friendly_name(status_label, sb_cfg.entity);
+            add_parent_indicator(sb_cfg.entity);
+            add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
+          }
         }
         continue;
       }

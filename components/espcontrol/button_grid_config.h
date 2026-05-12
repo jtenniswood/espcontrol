@@ -133,6 +133,12 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.unit.clear();
     p.icon_on.clear();
   }
+  if (p.type == "garage") {
+    if (p.sensor != "open" && p.sensor != "close") p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    if (!p.sensor.empty()) p.icon_on.clear();
+  }
   if (!p.type.empty() && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
@@ -661,6 +667,22 @@ inline const char* garage_closed_icon(const std::string &icon) {
 
 inline const char* garage_open_icon(const std::string &icon_on) {
   return (icon_on.empty() || icon_on == "Auto") ? find_icon("Garage Open") : find_icon(icon_on.c_str());
+}
+
+inline bool garage_command_mode(const std::string &sensor) {
+  return sensor == "open" || sensor == "close";
+}
+
+inline const char *garage_command_icon(const ParsedCfg &p) {
+  if (!p.icon.empty() && p.icon != "Auto") return find_icon(p.icon.c_str());
+  return find_icon(p.sensor == "open" ? "Garage Open" : "Garage");
+}
+
+inline const char *garage_card_label(const ParsedCfg &p) {
+  if (!p.label.empty()) return p.label.c_str();
+  if (p.sensor == "open") return "Open";
+  if (p.sensor == "close") return "Close";
+  return "Garage Door";
 }
 
 inline const char* lock_locked_icon(const std::string &icon) {

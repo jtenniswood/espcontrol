@@ -405,7 +405,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (sub_scr)
       lv_scr_load_anim(sub_scr, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
   } else if (p.type == "garage") {
-    if (!p.entity.empty()) {
+    if (garage_command_mode(p.sensor)) {
+      send_cover_command_action(p);
+    } else if (!p.entity.empty()) {
       lv_obj_add_state(btn_obj, LV_STATE_CHECKED);
       send_toggle_action(p.entity);
     }

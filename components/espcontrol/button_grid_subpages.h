@@ -90,6 +90,12 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.sensor.clear();
     b.unit.clear();
   }
+  if (b.type == "garage") {
+    if (b.sensor != "open" && b.sensor != "close") b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    if (!b.sensor.empty()) b.icon_on.clear();
+  }
   ParsedCfg p;
   p.type = b.type;
   p.precision = b.precision;

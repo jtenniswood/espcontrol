@@ -51,6 +51,12 @@ function normalizeButtonConfig(b) {
     b.icon_on = "Auto";
     b.precision = normalizeClimatePrecisionConfig(b.precision);
   }
+  if (b && b.type === "garage") {
+    if (b.sensor !== "open" && b.sensor !== "close") b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    if (b.sensor === "open" || b.sensor === "close") b.icon_on = "Auto";
+  }
   if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
   } else if (b && !cardLargeNumbersSupported(b)) {
