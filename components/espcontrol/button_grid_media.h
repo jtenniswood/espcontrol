@@ -359,6 +359,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   ctx->media_track_bg = track;
   ctx->media_value_lbl = value_lbl;
   ctx->media_status_lbl = position && media_position_show_state(p) ? text_lbl : nullptr;
+  ctx->content_pad = pad;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
 

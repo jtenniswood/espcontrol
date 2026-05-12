@@ -27,6 +27,7 @@ struct SliderCtx {
   lv_obj_t *media_value_lbl = nullptr;
   lv_obj_t *media_status_lbl = nullptr;
   lv_timer_t *media_timer = nullptr;
+  lv_coord_t content_pad = 0;
   bool available = true;
   bool interactive = true;
   // light_temperature fields

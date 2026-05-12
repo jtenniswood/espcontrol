@@ -222,7 +222,9 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   if (mode == "position") {
     lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
     SliderCtx *ctx = slider ? (SliderCtx *)lv_obj_get_user_data(slider) : nullptr;
-    lv_coord_t position_pad = lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
+    lv_coord_t position_pad = ctx && ctx->content_pad > 0
+      ? ctx->content_pad
+      : lv_obj_get_style_pad_top(s.btn, LV_PART_MAIN);
     if (ctx && ctx->media_value_lbl) {
       apply_width_compensation(ctx->media_value_lbl, cfg.width_compensation_percent);
       lv_obj_align(ctx->media_value_lbl, LV_ALIGN_TOP_LEFT, position_pad, position_pad);
