@@ -508,7 +508,8 @@ inline void grid_phase2(
     }
     if (p.type == "sensor") {
       if (p.sensor.empty()) continue;
-      subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision));
+      subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision),
+        s.unit_lbl, p.unit, s.btn);
       if (p.label.empty())
         subscribe_friendly_name(s.text_lbl, p.sensor);
       continue;
@@ -543,7 +544,8 @@ inline void grid_phase2(
       if (subpage_parent_text_state_enabled(p)) {
         subscribe_text_sensor_value(s.text_lbl, p.sensor);
       } else {
-        subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision));
+        subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision),
+          s.unit_lbl, p.unit);
         if (p.label.empty())
           subscribe_friendly_name(s.text_lbl, p.sensor);
       }
@@ -744,7 +746,8 @@ inline void grid_phase2(
       if (sensor_text_mode[idx - 1])
         subscribe_toggle_text_sensor_value(text_sensor_ctx, p.sensor);
       else
-        subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision));
+        subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision),
+          s.unit_lbl, p.unit);
     }
   }
 
@@ -906,7 +909,8 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "sensor") {
         if (sb_cfg.sensor.empty()) continue;
-        subscribe_sensor_value(sub_slot.sensor_lbl, sb_cfg.sensor, parse_precision(sb_cfg.precision));
+        subscribe_sensor_value(sub_slot.sensor_lbl, sb_cfg.sensor, parse_precision(sb_cfg.precision),
+          sub_slot.unit_lbl, sb_cfg.unit, sub_slot.btn);
         if (sb_cfg.label.empty())
           subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.sensor);
         continue;
@@ -1208,7 +1212,8 @@ inline void grid_phase2(
           if (switch_sensor_text_mode)
             subscribe_toggle_text_sensor_value(switch_text_ctx, sb_cfg.sensor);
           else
-            subscribe_sensor_value(sub_slot.sensor_lbl, sb_cfg.sensor, parse_precision(sb_cfg.precision));
+            subscribe_sensor_value(sub_slot.sensor_lbl, sb_cfg.sensor, parse_precision(sb_cfg.precision),
+              sub_slot.unit_lbl, sb_cfg.unit);
         }
 
         add_parent_indicator(sb_cfg.entity);

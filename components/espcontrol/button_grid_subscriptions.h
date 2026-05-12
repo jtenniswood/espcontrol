@@ -22,19 +22,31 @@ inline void apply_toggle_text_sensor_label(ToggleTextSensorCtx *ctx) {
   set_wrapped_button_label_text(ctx->text_lbl, ctx->on ? ctx->sensor_text : ctx->steady_text);
 }
 
-// Subscribe to a HA sensor entity and update an LVGL label with its value
-inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sensor_id, int precision = 0) {
+// Subscribe to a HA sensor entity and update an LVGL label with its numeric value.
+inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sensor_id,
+                                   int precision = 0,
+                                   lv_obj_t *unit_lbl = nullptr,
+                                   const std::string &unit = "",
+                                   lv_obj_t *availability_obj = nullptr) {
+  std::string display_unit = trim_display_unit(unit);
   esphome::api::global_api_server->subscribe_home_assistant_state(
     sensor_id, {},
-    std::function<void(esphome::StringRef)>([sensor_lbl, precision](esphome::StringRef state) {
+    std::function<void(esphome::StringRef)>(
+      [sensor_lbl, precision, unit_lbl, display_unit, availability_obj](esphome::StringRef state) {
+      bool unavailable = ha_state_unavailable_ref(state);
+      if (availability_obj) {
+        apply_control_availability(availability_obj, availability_obj, !unavailable, false);
+      }
+
       float val = 0.0f;
-      if (parse_float_ref(state, val)) {
+      if (!unavailable && parse_float_ref(state, val) && std::isfinite(val)) {
         char buf[16];
         format_fixed_decimal(buf, sizeof(buf), val, precision);
         lv_label_set_text(sensor_lbl, buf);
+        if (unit_lbl) lv_label_set_text(unit_lbl, display_unit.c_str());
       } else {
-        std::string text = text_sensor_display_text(state, HA_SHORT_STATE_MAX_LEN);
-        lv_label_set_text(sensor_lbl, text.c_str());
+        lv_label_set_text(sensor_lbl, "");
+        if (unit_lbl) lv_label_set_text(unit_lbl, "");
       }
     })
   );
