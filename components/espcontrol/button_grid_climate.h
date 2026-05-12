@@ -16,7 +16,6 @@ constexpr int CLIMATE_DEFAULT_MIN_TENTHS = 50;
 constexpr int CLIMATE_DEFAULT_MAX_TENTHS = 350;
 constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;
 constexpr uint32_t CLIMATE_TEMP_DEBOUNCE_MS = 450;
-constexpr uint32_t CLIMATE_DRAG_PREVIEW_FRAME_MS = 16;
 
 struct ClimateControlCtx {
   std::string entity_id;
@@ -99,7 +98,6 @@ struct ClimateControlModalUi {
   bool dragging_arc = false;
   bool has_drag_preview = false;
   int drag_preview_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
-  uint32_t last_drag_preview_ms = 0;
   bool action_menu_open = false;
 };
 
@@ -329,20 +327,21 @@ inline bool climate_temperature_controls_enabled(ClimateControlCtx *ctx) {
   return ctx && ctx->available && ctx->hvac_mode != "off";
 }
 
-inline int climate_arc_angle_for_tenths(ClimateControlCtx *ctx, int value) {
-  if (!ctx || ctx->max_tenths <= ctx->min_tenths) return 135;
+inline float climate_arc_angle_for_tenths(ClimateControlCtx *ctx, int value) {
+  if (!ctx || ctx->max_tenths <= ctx->min_tenths) return 135.0f;
   value = climate_clamp_tenths(ctx, value);
   int span = ctx->max_tenths - ctx->min_tenths;
-  int offset = (value - ctx->min_tenths) * 270 / span;
-  return (135 + offset) % 360;
+  float offset = (float)(value - ctx->min_tenths) * 270.0f / (float)span;
+  float angle = 135.0f + offset;
+  return angle >= 360.0f ? angle - 360.0f : angle;
 }
 
 inline void climate_layout_arc_dot(ClimateControlCtx *ctx, const ControlModalLayout &layout,
                                    lv_obj_t *dot, int tenths, lv_coord_t size,
                                    lv_coord_t radius) {
   if (!ctx || !dot) return;
-  int angle = climate_arc_angle_for_tenths(ctx, tenths);
-  float radians = (float)angle * 3.14159265f / 180.0f;
+  float angle = climate_arc_angle_for_tenths(ctx, tenths);
+  float radians = angle * 3.14159265f / 180.0f;
   float x_radius = radius;
   float y_radius = radius;
   int width_percent = normalize_width_compensation_percent(ctx->width_compensation_percent);
@@ -564,17 +563,10 @@ inline void climate_apply_selected_target(ClimateControlCtx *ctx, int value, boo
 inline void climate_preview_selected_target(ClimateControlCtx *ctx, int value) {
   if (!ctx || !climate_temperature_controls_enabled(ctx)) return;
   ClimateControlModalUi &ui = climate_control_modal_ui();
-  uint32_t now = esphome::millis();
-  value = climate_round_to_step(ctx, climate_constrain_selected_target(ctx, value));
+  value = climate_constrain_selected_target(ctx, value);
   if (ui.has_drag_preview && ui.drag_preview_tenths == value) return;
-  if (ui.has_drag_preview &&
-      (uint32_t)(now - ui.last_drag_preview_ms) < CLIMATE_DRAG_PREVIEW_FRAME_MS) {
-    ui.drag_preview_tenths = value;
-    return;
-  }
   ui.drag_preview_tenths = value;
   ui.has_drag_preview = true;
-  ui.last_drag_preview_ms = now;
   climate_update_drag_preview(ctx);
 }
 
@@ -1293,7 +1285,6 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     int value = ui.has_drag_preview ? ui.drag_preview_tenths : lv_arc_get_value(arc);
     ui.dragging_arc = false;
     ui.has_drag_preview = false;
-    ui.last_drag_preview_ms = 0;
     climate_apply_selected_target(ui.active, value, true, false);
   }, LV_EVENT_RELEASED, nullptr);
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *) {
@@ -1301,7 +1292,6 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     if (!ui.active) return;
     ui.dragging_arc = false;
     ui.has_drag_preview = false;
-    ui.last_drag_preview_ms = 0;
     climate_control_set_modal_value(ui.active);
   }, LV_EVENT_PRESS_LOST, nullptr);
 
