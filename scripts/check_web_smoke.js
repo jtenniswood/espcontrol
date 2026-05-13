@@ -120,6 +120,11 @@ assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 25), "wifi-strength-2");
 assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 50), "wifi-strength-3");
 assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 75), "wifi-strength-4");
 assert.strictEqual(hooks.networkPreviewIconSlug("ethernet", 0), "ethernet");
+assert.strictEqual(hooks.displayFirmwareVersion("v1.11.1"), "v1.11.1");
+assert.strictEqual(hooks.displayFirmwareVersion("dev"), "Dev build");
+assert.strictEqual(hooks.displayFirmwareVersion("0.0.0"), "Dev build");
+assert.strictEqual(hooks.displayFirmwareVersion("main"), "Dev build");
+assert.strictEqual(hooks.displayFirmwareVersion(""), "Version unavailable");
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", true), true);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", false), false);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("ethernet", true), false);
@@ -129,7 +134,7 @@ assert.strictEqual(
 );
 assert.strictEqual(
   hooks.firmwareVersionAfterUpdateInfo("Dev", { state: "UPDATE AVAILABLE", latest_version: "v1.11.1" }).version,
-  "Dev"
+  "Dev build"
 );
 assert.strictEqual(
   hooks.firmwareVersionAfterUpdateInfo("v1.10.0", { state: "NO UPDATE", latest_version: "v1.11.1" }).version,

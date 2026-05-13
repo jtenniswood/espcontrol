@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'scripts/firmware_release.py'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/pages.yml'
@@ -65,35 +66,58 @@ jobs:
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.release-meta.outputs.release_tag }}
+      device_slugs: ${{ steps.release-meta.outputs.device_slugs }}
     steps:
       - uses: actions/checkout@v6
         with:
-          sparse-checkout: devices/manifest.json
+          sparse-checkout: |
+            devices/manifest.json
+            scripts/firmware_release.py
           sparse-checkout-cone-mode: false
 
-      - name: Set device slugs
-        run: echo "DEVICE_SLUGS=$(jq -r '.devices | keys | join(" ")' devices/manifest.json)" >> $GITHUB_ENV
+      - name: Set release metadata
+        id: release-meta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          RELEASE_TAG=$(gh release view --json tagName -q .tagName)
+          DEVICE_SLUGS=$(jq -r '.devices | keys | join(" ")' devices/manifest.json)
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> "$GITHUB_ENV"
+          echo "DEVICE_SLUGS=${DEVICE_SLUGS}" >> "$GITHUB_ENV"
+          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "device_slugs=${DEVICE_SLUGS}" >> "$GITHUB_OUTPUT"
 
       - name: Download firmware from latest release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          PIDS=""
           for SLUG in $DEVICE_SLUGS; do
             (
               mkdir -p "firmware/${SLUG}"
-              gh release download \
+              gh release download "$RELEASE_TAG" \
                 --pattern "${SLUG}.manifest.json" \
                 --pattern "${SLUG}.factory.bin" \
                 --pattern "${SLUG}.ota.bin" \
-                --dir "firmware/${SLUG}/" || true
+                --dir "firmware/${SLUG}/"
               if [ -f "firmware/${SLUG}/${SLUG}.manifest.json" ]; then
                 mv "firmware/${SLUG}/${SLUG}.manifest.json" \
                    "firmware/${SLUG}/manifest.json"
               fi
             ) &
+            PIDS="$PIDS $!"
           done
-          wait
+          FAILED=false
+          for PID in $PIDS; do
+            if ! wait "$PID"; then
+              FAILED=true
+            fi
+          done
+          if [ "$FAILED" = true ]; then exit 1; fi
 
       - name: Download firmware from latest pre-release
         env:
@@ -108,6 +132,7 @@ jobs:
                 mkdir -p "firmware/${SLUG}/beta"
                 gh release download "$BETA_TAG" \
                   --pattern "${SLUG}.manifest.json" \
+                  --pattern "${SLUG}.factory.bin" \
                   --pattern "${SLUG}.ota.bin" \
                   --dir "firmware/${SLUG}/beta/" || true
                 if [ -f "firmware/${SLUG}/beta/${SLUG}.manifest.json" ]; then
@@ -120,21 +145,11 @@ jobs:
           fi
 
       - name: Verify firmware assets
-        run: |
-          MISSING=false
-          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 esp32-p4-86"
-          for SLUG in $DEVICE_SLUGS; do
-            MANIFEST="firmware/${SLUG}/manifest.json"
-            if [ ! -f "$MANIFEST" ]; then
-              if echo " ${OPTIONAL_FIRMWARE_SLUGS} " | grep -q " ${SLUG} "; then
-                echo "::warning::No firmware manifest found for ${SLUG} yet — install button will work after the first release asset is published"
-              else
-                echo "::error::No firmware manifest found for ${SLUG} — install page will be non-functional"
-                MISSING=true
-              fi
-            fi
-          done
-          if [ "$MISSING" = true ]; then exit 1; fi
+        run: >-
+          python3 scripts/firmware_release.py verify-directory
+          --version "$RELEASE_TAG"
+          --dir firmware
+          --slugs $DEVICE_SLUGS
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v7
@@ -150,15 +165,22 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: scripts/firmware_release.py
+          sparse-checkout-cone-mode: false
+
       - name: Download docs artifact
         uses: actions/download-artifact@v8
         with:
           name: docs-dist
           path: dist
 
+      - name: Clear bundled firmware placeholders
+        run: rm -rf dist/firmware
+
       - name: Download firmware artifact
         uses: actions/download-artifact@v8
-        continue-on-error: true
         with:
           name: firmware
           path: dist/firmware
@@ -171,3 +193,12 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+      - name: Verify public firmware
+        run: >-
+          python3 scripts/firmware_release.py verify-pages
+          --version "${{ needs.download-firmware.outputs.release_tag }}"
+          --base-url "https://jtenniswood.github.io/espcontrol"
+          --slugs ${{ needs.download-firmware.outputs.device_slugs }}
+          --retries 10
+          --delay 15

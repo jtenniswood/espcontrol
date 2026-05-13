@@ -2,8 +2,9 @@
   "name": "espcontrol",
   "private": true,
   "scripts": {
-    "check:all": "npm run check:config && npm run check:web-smoke && npm run check:generated && python3 scripts/generate_device_slots.py --check && python3 scripts/check_icon_groups.py && npm run check:timezones && npm run docs:build",
+    "check:all": "npm run check:config && npm run check:web-smoke && npm run check:firmware-release && npm run check:generated && python3 scripts/generate_device_slots.py --check && python3 scripts/check_icon_groups.py && npm run check:timezones && npm run docs:build",
     "check:config": "node scripts/check_config_formats.js",
+    "check:firmware-release": "python3 scripts/check_firmware_release.py",
     "check:generated": "python3 scripts/build.py --check",
     "check:timezones": "python3 scripts/check_timezones.py",
     "check:web-smoke": "node scripts/check_web_smoke.js",

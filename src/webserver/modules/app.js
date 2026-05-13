@@ -1245,6 +1245,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     normalizeScreensaverDimmedBrightness: normalizeScreensaverDimmedBrightness,
     previewHtmlValue: previewHtmlValue,
     networkPreviewIconSlug: networkPreviewIconSlug,
+    displayFirmwareVersion: displayFirmwareVersion,
     firmwareUpdateControlsVisibleFor: function (transport, supported) {
       var oldTransport = state.networkTransport;
       var oldSupported = state.firmwareUpdateControlsSupported;

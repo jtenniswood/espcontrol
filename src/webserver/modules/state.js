@@ -582,6 +582,8 @@ var pendingSliderSubpageMigrations = {};
 var _eventSource = null;
 var firmwareInstallRefreshTimer = null;
 var firmwareInstallRefreshUntil = 0;
+var FIRMWARE_DEV_VERSION_LABEL = "Dev build";
+var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unavailable";
 
 // ── Utilities ──────────────────────────────────────────────────────────
 
@@ -593,26 +595,29 @@ function escHtml(s) {
 function renderFirmwareVersion() {
   if (!els.fwVersionLabel) return;
   els.fwVersionLabel.innerHTML = '<span class="sp-fw-label">Installed </span>' +
-    escHtml(state.firmwareVersion || "Dev");
+    escHtml(displayFirmwareVersion(state.firmwareVersion));
 }
 
 function isSpecificFirmwareVersion(version) {
-  version = String(version == null ? "" : version).trim().toLowerCase();
-  return !!version && version !== "dev" && version !== "0.0.0";
+  version = String(version == null ? "" : version).trim();
+  return /^v[0-9]+(\.[0-9]+){2}([-+][0-9A-Za-z.-]+)?$/i.test(version);
 }
 
 function setFirmwareVersion(version) {
   version = String(version == null ? "" : version).trim();
   if (!version) return;
   if (isSpecificFirmwareVersion(state.firmwareVersion) && !isSpecificFirmwareVersion(version)) return;
-  state.firmwareVersion = isSpecificFirmwareVersion(version) ? version : "Dev";
+  state.firmwareVersion = displayFirmwareVersion(version);
   renderFirmwareVersion();
   renderFirmwareUpdateStatus();
   stopFirmwareInstallRefreshIfComplete();
 }
 
 function displayFirmwareVersion(version) {
-  return isSpecificFirmwareVersion(version) ? String(version).trim() : "Dev";
+  version = String(version == null ? "" : version).trim();
+  if (!version) return FIRMWARE_UNKNOWN_VERSION_LABEL;
+  if (version === FIRMWARE_UNKNOWN_VERSION_LABEL) return FIRMWARE_UNKNOWN_VERSION_LABEL;
+  return isSpecificFirmwareVersion(version) ? version : FIRMWARE_DEV_VERSION_LABEL;
 }
 
 function firmwareUpdateAvailable() {

@@ -49,19 +49,9 @@ jobs:
         env:
           VERSION: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
-          python3 - <<'PY'
-          import os
-          from pathlib import Path
-
-          path = Path("builds/${{ matrix.slug }}.factory.yaml")
-          text = path.read_text()
-          version = os.environ["VERSION"]
-          old = '  firmware_version: "0.0.0"'
-          new = f'  firmware_version: "{version}"'
-          if old not in text:
-              raise SystemExit(f"Expected placeholder not found in {path}")
-          path.write_text(text.replace(old, new, 1))
-          PY
+          python3 scripts/firmware_release.py inject \
+            --slug "${{ matrix.slug }}" \
+            --version "${VERSION}"
 
           docker run --rm \
             -v "${PWD}:/config" \
@@ -82,44 +72,22 @@ jobs:
           sudo cp "${BUILD_DIR}/firmware.factory.bin" output/${{ matrix.slug }}.factory.bin
           sudo cp "${BUILD_DIR}/firmware.bin" output/${{ matrix.slug }}.ota.bin
 
-          OTA_MD5=$(md5sum output/${{ matrix.slug }}.ota.bin | cut -d ' ' -f 1)
           VERSION="${{ github.event.release.tag_name || github.ref_name }}"
 
-          for IMAGE in output/${{ matrix.slug }}.factory.bin output/${{ matrix.slug }}.ota.bin; do
-            if ! strings "${IMAGE}" | grep -Fxq "${VERSION}"; then
-              echo "::error::${IMAGE} does not contain firmware version ${VERSION}"
-              exit 1
-            fi
-            if strings "${IMAGE}" | grep -Fxq "dev"; then
-              echo "::error::${IMAGE} still contains the dev firmware version placeholder"
-              exit 1
-            fi
-            if strings "${IMAGE}" | grep -Fxq "0.0.0"; then
-              echo "::error::${IMAGE} still contains the release firmware version placeholder"
-              exit 1
-            fi
-          done
+          python3 scripts/firmware_release.py manifest \
+            --slug "${{ matrix.slug }}" \
+            --chip "${{ matrix.chip }}" \
+            --version "${VERSION}" \
+            --factory output/${{ matrix.slug }}.factory.bin \
+            --ota output/${{ matrix.slug }}.ota.bin \
+            --out output/${{ matrix.slug }}.manifest.json
 
-          cat > output/${{ matrix.slug }}.manifest.json << EOF
-          {
-            "name": "Espcontrol",
-            "version": "${VERSION}",
-            "home_assistant_domain": "esphome",
-            "builds": [
-              {
-                "chipFamily": "${{ matrix.chip }}",
-                "parts": [
-                  { "path": "${{ matrix.slug }}.factory.bin", "offset": 0 }
-                ],
-                "ota": {
-                  "path": "${{ matrix.slug }}.ota.bin",
-                  "md5": "${OTA_MD5}",
-                  "release_url": "https://github.com/jtenniswood/espcontrol/releases/tag/${VERSION}"
-                }
-              }
-            ]
-          }
-          EOF
+          python3 scripts/firmware_release.py verify-files \
+            --slug "${{ matrix.slug }}" \
+            --version "${VERSION}" \
+            --manifest output/${{ matrix.slug }}.manifest.json \
+            --factory output/${{ matrix.slug }}.factory.bin \
+            --ota output/${{ matrix.slug }}.ota.bin
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v7
@@ -133,6 +101,18 @@ jobs:
     needs: build-firmware
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            devices/manifest.json
+            scripts/firmware_release.py
+          sparse-checkout-cone-mode: false
+
+      - name: Set release metadata
+        run: |
+          echo "VERSION=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
+          echo "DEVICE_SLUGS=$(jq -r '.devices | keys | join(" ")' devices/manifest.json)" >> "$GITHUB_ENV"
+
       - name: Download all firmware artifacts
         uses: actions/download-artifact@v8
         with:
@@ -145,3 +125,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: gh release upload "${{ github.event.release.tag_name }}" firmware/* --clobber
+
+      - name: Verify uploaded release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p published
+          gh release download "${VERSION}" \
+            --pattern "*.manifest.json" \
+            --pattern "*.factory.bin" \
+            --pattern "*.ota.bin" \
+            --dir published
+          python3 scripts/firmware_release.py verify-directory \
+            --version "${VERSION}" \
+            --dir published \
+            --slugs ${DEVICE_SLUGS}
