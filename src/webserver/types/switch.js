@@ -208,8 +208,8 @@ registerButtonType("light_switch", {
     b.unit = "";
     b.precision = "";
     b.options = "";
-    b.icon = "Auto";
-    b.icon_on = "Auto";
+    b.icon = "Lightbulb Outline";
+    b.icon_on = "Lightbulb";
   },
   renderSettings: function (panel, b, slot, helpers) {
     renderLightControlTypeField(panel, b, helpers);
