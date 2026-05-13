@@ -970,11 +970,13 @@ function connectEvents() {
     "text_sensor-network_transport": function (val) {
       state.networkTransport = normalizeNetworkTransport(val);
       updateNetworkPreview();
+      syncFirmwareUpdateUi();
     },
     "sensor-wifi_strength": function (val) {
       state.networkTransport = "wifi";
       state.wifiStrengthPercent = normalizeWifiStrengthPercent(val);
       updateNetworkPreview();
+      syncFirmwareUpdateUi();
     },
     "text_sensor-firmware__version": function (val) {
       setFirmwareVersion(val);
@@ -986,9 +988,10 @@ function connectEvents() {
       setFirmwareUpdateInfo(d);
     },
     "switch-firmware__auto_update": function (val, d) {
+      state.firmwareUpdateControlsSupported = true;
       state.autoUpdate = d.value === true || val === "ON";
       if (els.setAutoUpdate) els.setAutoUpdate.checked = state.autoUpdate;
-      if (els.updateFreqWrap) els.updateFreqWrap.style.display = state.autoUpdate ? "" : "none";
+      syncFirmwareUpdateUi();
     },
     "switch-developer__experimental_features": function (val, d) {
       state.developerExperimentalFeatures = d.value === true || val === "ON";
@@ -1007,11 +1010,13 @@ function connectEvents() {
       scheduleRender();
     },
     "select-firmware__update_frequency": function (val, d) {
+      state.firmwareUpdateControlsSupported = true;
       state.updateFrequency = d.value || val || state.updateFrequency;
       if (els.setUpdateFreq) els.setUpdateFreq.value = state.updateFrequency;
       if (d.option && Array.isArray(d.option)) {
         state.updateFreqOptions = d.option;
       }
+      syncFirmwareUpdateUi();
     },
   };
 
@@ -1240,6 +1245,16 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     normalizeScreensaverDimmedBrightness: normalizeScreensaverDimmedBrightness,
     previewHtmlValue: previewHtmlValue,
     networkPreviewIconSlug: networkPreviewIconSlug,
+    firmwareUpdateControlsVisibleFor: function (transport, supported) {
+      var oldTransport = state.networkTransport;
+      var oldSupported = state.firmwareUpdateControlsSupported;
+      state.networkTransport = normalizeNetworkTransport(transport);
+      state.firmwareUpdateControlsSupported = supported;
+      var visible = firmwareUpdateControlsVisible();
+      state.networkTransport = oldTransport;
+      state.firmwareUpdateControlsSupported = oldSupported;
+      return visible;
+    },
     findDuplicatePlacementFor: function (grid, start, size, maxSlots) {
       return findDuplicatePlacement(grid.slice(), start, size, maxSlots || NUM_SLOTS);
     },

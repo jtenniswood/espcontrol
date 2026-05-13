@@ -120,5 +120,8 @@ assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 25), "wifi-strength-2");
 assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 50), "wifi-strength-3");
 assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 75), "wifi-strength-4");
 assert.strictEqual(hooks.networkPreviewIconSlug("ethernet", 0), "ethernet");
+assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", true), true);
+assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", false), false);
+assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("ethernet", true), false);
 
 console.log("Web UI smoke tests passed.");

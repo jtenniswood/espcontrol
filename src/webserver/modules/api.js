@@ -661,6 +661,11 @@ function refreshFirmwareVersion() {
   });
   getJsonQuietly("/update/" + encodeURIComponent("Firmware: Update") + "?detail=all", function (d) {
     setFirmwareUpdateInfo(d);
+  }).then(function (data) {
+    if (!data && state.firmwareUpdateControlsSupported !== true) {
+      state.firmwareUpdateControlsSupported = false;
+      syncFirmwareUpdateUi();
+    }
   });
 }
 

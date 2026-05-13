@@ -837,6 +837,7 @@ function buildSettingsPage(parent) {
 
   var fwActions = document.createElement("div");
   fwActions.className = "sp-fw-actions";
+  els.fwActions = fwActions;
   var fwInlineStatus = document.createElement("span");
   fwInlineStatus.className = "sp-fw-inline-status";
   fwActions.appendChild(fwInlineStatus);
@@ -846,6 +847,7 @@ function buildSettingsPage(parent) {
   fwCheckBtn.className = "sp-fw-btn";
   fwCheckBtn.textContent = "Check for Update";
   fwCheckBtn.addEventListener("click", function () {
+    if (!firmwareUpdateControlsVisible()) return;
     if (firmwareUpdateAvailable()) {
       state.firmwareInstallTargetVersion = state.firmwareLatestVersion;
       state.firmwareUpdateState = "INSTALLING";
@@ -877,9 +879,14 @@ function buildSettingsPage(parent) {
   var autoUpdateToggle = toggleRow("Auto Update", "sp-set-auto-update", state.autoUpdate);
   fwBody.appendChild(autoUpdateToggle.row);
   autoUpdateToggle.input.addEventListener("change", function () {
+    if (!firmwareUpdateControlsVisible()) {
+      syncFirmwareUpdateUi();
+      return;
+    }
     postSwitch("Firmware: Auto Update", this.checked);
-    if (els.updateFreqWrap) els.updateFreqWrap.style.display = this.checked ? "" : "none";
+    syncFirmwareUpdateUi();
   });
+  els.setAutoUpdateRow = autoUpdateToggle.row;
   els.setAutoUpdate = autoUpdateToggle.input;
 
   var freqWrap = document.createElement("div");
@@ -895,12 +902,14 @@ function buildSettingsPage(parent) {
   });
   freqSelect.value = state.updateFrequency;
   freqSelect.addEventListener("change", function () {
+    if (!firmwareUpdateControlsVisible()) return;
     postSelect("Firmware: Update Frequency", this.value);
   });
   freqWrap.appendChild(freqSelect);
   fwBody.appendChild(freqWrap);
   els.updateFreqWrap = freqWrap;
   els.setUpdateFreq = freqSelect;
+  syncFirmwareUpdateUi();
 
   config.appendChild(makeCollapsibleCard("Firmware", fwBody, true));
 

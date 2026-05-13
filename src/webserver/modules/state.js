@@ -77,6 +77,7 @@ var state = {
   firmwareReleaseUrl: "",
   firmwareChecking: false,
   firmwareInstallTargetVersion: "",
+  firmwareUpdateControlsSupported: false,
   autoUpdate: true,
   updateFrequency: "Daily",
   updateFreqOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
@@ -619,6 +620,21 @@ function firmwareUpdateAvailable() {
     isSpecificFirmwareVersion(state.firmwareLatestVersion);
 }
 
+function firmwareUpdateControlsVisible() {
+  var transport = String(state.networkTransport == null ? "" : state.networkTransport).trim().toLowerCase();
+  return state.firmwareUpdateControlsSupported === true && transport !== "ethernet";
+}
+
+function syncFirmwareUpdateUi() {
+  var show = firmwareUpdateControlsVisible();
+  if (els.fwActions) els.fwActions.style.display = show ? "" : "none";
+  if (els.fwStatus) els.fwStatus.style.display = show ? "" : "none";
+  if (els.setAutoUpdateRow) els.setAutoUpdateRow.style.display = show ? "" : "none";
+  if (els.updateFreqWrap) {
+    els.updateFreqWrap.style.display = show && state.autoUpdate ? "" : "none";
+  }
+}
+
 function renderFirmwareUpdateStatus() {
   if (!els.fwStatus) return;
   var cls = "sp-fw-status";
@@ -658,9 +674,11 @@ function renderFirmwareUpdateStatus() {
       els.fwCheckBtn.textContent = state.firmwareChecking ? "Checking\u2026" : "Check for Update";
     }
   }
+  syncFirmwareUpdateUi();
 }
 
 function setFirmwareUpdateInfo(d) {
+  state.firmwareUpdateControlsSupported = true;
   var latest = d.latest_version || d.value || "";
   var updateState = String(d.state || state.firmwareUpdateState || "").trim().toUpperCase();
   if (d.current_version) setFirmwareVersion(d.current_version);
