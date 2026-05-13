@@ -389,6 +389,9 @@ var CSS =
   ".sp-brand{font-size:.875rem}" +
   ".sp-tab{padding:0 12px;font-size:.8rem}" +
   ".sp-tab-docs{margin-left:4px;padding-left:18px}" +
+  ".sp-wrap{padding-left:0;padding-right:0}" +
+  ".sp-screen{box-sizing:border-box;width:100%;max-width:100%}" +
+  ".sp-hint{padding-left:var(--gap);padding-right:var(--gap);line-height:1.35}" +
   ".card{padding:16px}" +
   ".card-header{margin:-16px -16px 0 -16px;padding:16px 16px 0 16px}" +
   ".card-body{padding-top:14px}" +
