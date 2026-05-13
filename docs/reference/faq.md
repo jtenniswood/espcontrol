@@ -63,6 +63,12 @@ See [Firmware Updates](/features/firmware-updates) for more details.
 
 The panel includes hundreds of icons from the Material Design Icons set. If the one you need isn't there, [open an issue on GitHub](https://github.com/jtenniswood/espcontrol/issues) with the icon name (from [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/)) and what you'd use it for. We'll look into adding it.
 
+## What Card Types Are Available?
+
+The setup page currently includes Switch, Lights, Action, Trigger, Sensor, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Internal Switches, and Subpage cards.
+
+Climate cards are also available as an experimental feature. See [Climate cards](/card-types/climate) before using them.
+
 ## How Many Cards Can I Have?
 
 The home screen has a grid of card slots sized to fill the screen:

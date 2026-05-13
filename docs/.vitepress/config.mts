@@ -148,6 +148,11 @@ const faqItems = [
       'Open a GitHub issue with the Material Design Icons name and what you would use it for.',
   },
   {
+    question: 'What Card Types Are Available?',
+    answer:
+      'The setup page includes Switch, Lights, Action, Trigger, Sensor, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Internal Switches, Subpage, and experimental Climate cards.',
+  },
+  {
     question: 'How Many Cards Can I Have?',
     answer:
       'The home screen supports 20 cards on JC8012P4A1, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
@@ -406,6 +411,7 @@ export default defineConfig({
         text: 'Card Types',
         items: [
           { text: 'Switch', link: '/card-types/switches' },
+          { text: 'Lights', link: '/card-types/lights' },
           { text: 'Action', link: '/card-types/actions' },
           { text: 'Trigger', link: '/card-types/buttons' },
           { text: 'Sensor', link: '/card-types/sensors' },
@@ -413,9 +419,11 @@ export default defineConfig({
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
           { text: 'Lock', link: '/card-types/locks' },
-          { text: 'Date', link: '/card-types/calendar' },
+          { text: 'Date & Time', link: '/card-types/calendar' },
           { text: 'World Clock', link: '/card-types/timezones' },
           { text: 'Weather', link: '/card-types/weather' },
+          { text: 'Media', link: '/card-types/media' },
+          { text: 'Climate', link: '/card-types/climate' },
           { text: 'Internal', link: '/card-types/internal-relays' },
           { text: 'Subpage', link: '/features/subpages' },
         ],

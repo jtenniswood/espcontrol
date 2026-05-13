@@ -1,10 +1,10 @@
 ---
-title: Date Cards
+title: Date & Time Cards
 description:
-  How to show today's date on your EspControl panel.
+  How to show the date or local date and time on your EspControl panel.
 ---
 
-# Date
+# Date & Time
 
 A date card can show either just the date, or the local date and time. In date-only mode, the large number shows the day and the label underneath shows the month. In date-and-time mode, the large number shows the local time and the label underneath shows the day and month.
 
@@ -12,9 +12,10 @@ Date cards are read-only — tapping them does nothing.
 
 ## Setting Up a Date Card
 
-1. Select a card and change its type to **Date**.
-2. Choose **Date only** or **Date & time** from the **Display** dropdown.
+1. Select a card and change its type to **Date & Time**.
+2. Choose **Date** or **Time & Date** from the **Type** dropdown.
 3. Apply the configuration so the panel restarts with the new card.
+4. On a **Large** card, turn on **Large Date / Time Numbers** if you want the main value scaled much larger.
 
 ## How It Works on the Panel
 
@@ -25,3 +26,5 @@ Date cards are read-only — tapping them does nothing.
 - The panel publishes a **Screen: Date** diagnostic value, so you can check whether the device currently knows the date.
 - The card uses the **tertiary** colour from [Appearance](/features/appearance), like Sensor, World Clock, and Weather cards.
 - If the panel has not synced time yet, the card shows `--` until time becomes available.
+
+The same **Date & Time** card settings also include **World Clock**. Choosing that changes the card into a [World Clock](/card-types/timezones) card for another city or timezone.

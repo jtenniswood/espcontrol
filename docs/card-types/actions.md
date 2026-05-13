@@ -18,6 +18,7 @@ Use Action cards for shortcuts such as running a scene, starting a script, trigg
 4. Enter the **Entity** for the thing you want the action to use.
 5. If you choose **Set Number Helper** or **Select Option Helper**, enter the value or option.
 6. Choose an **Icon**.
+7. Optionally turn on **Show State** if the Action card should light up based on another Home Assistant entity.
 
 ## Run an Existing Home Assistant Script
 
@@ -48,13 +49,22 @@ Action cards do not currently pass script variables or extra data. If a script n
 | **Set Number Helper** | `input_number.target_level` | Value |
 | **Select Option Helper** | `input_select.house_mode` | Option |
 
+## Show State
+
+Action cards are normally stateless: they flash when tapped, then return to their normal colour.
+
+Turn on **Show State** when an action should behave like a shortcut but still show whether something is active. For example, an Action card might run a scene called `scene.movie_mode`, while **State Entity** watches `input_boolean.movie_mode`.
+
+When the state entity is active, the Action card stays highlighted. If either the action entity or the state entity is unavailable, the card is disabled until Home Assistant reports it as available again.
+
 ## How It Works on the Panel
 
 When you tap an Action card:
 
 - The card briefly flashes the highlight colour.
 - The selected Home Assistant action is sent with the configured entity.
-- The card does not stay highlighted, because Action cards are stateless shortcuts.
+- If **Show State** is off, the card does not stay highlighted.
+- If **Show State** is on, the card highlight follows the state entity you chose.
 
 ## When to Use a Scene or Script
 
@@ -68,7 +78,9 @@ Use the dedicated card types for richer controls:
 
 - Use [Cover](/card-types/covers) for blinds, shutters, and covers.
 - Use [Lock](/card-types/locks) for locking and unlocking doors.
-- Use [Switch](/card-types/switches) or [Slider](/card-types/sliders) for lights.
+- Use [Lights](/card-types/lights) for light switching, brightness, and colour temperature.
+- Use [Media](/card-types/media) for media player playback, volume, and now-playing controls.
+- Use [Climate](/card-types/climate) for thermostat and HVAC controls.
 
 ::: info Requires Home Assistant actions
 Action cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Home Assistant Actions](/getting-started/home-assistant-actions).

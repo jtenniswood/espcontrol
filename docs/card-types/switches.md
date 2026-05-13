@@ -10,6 +10,8 @@ A Switch card is the default on/off card. It controls one Home Assistant entity 
 
 Use Switch cards for common Home Assistant entities such as lights, switches, fans, media players, covers, and button entities. The entity needs to support a Home Assistant toggle or button press action to respond when tapped.
 
+For light-only controls, the [Lights](/card-types/lights) card gives you a more guided setup with Switch, Brightness, and Colour Temperature options.
+
 Use a [Lock](/card-types/locks) card for door locks. Lock cards use Home Assistant's lock and unlock actions directly and avoid unlocking when the current state is unknown.
 
 ![Switch card showing a Heater icon](/images/card-toggle.png)

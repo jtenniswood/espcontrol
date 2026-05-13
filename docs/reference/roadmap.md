@@ -22,6 +22,11 @@ These are planned directions, not commitments. The order and scope may change ba
 
 | Item | Description |
 | --- | --- |
+| **Lights card** | Light-specific Switch, Brightness, and Colour Temperature controls grouped into one card type |
+| **Media card** | Playback buttons, volume popup, track position, and now-playing display for Home Assistant media players |
+| **Climate card** | Experimental thermostat/HVAC control card with temperature, HVAC mode, fan, swing, and preset controls |
+| **Action card state display** | Action shortcuts can optionally watch another entity so the card stays highlighted when that state is active |
+| **Switch off confirmation** | Switch cards can ask for confirmation before turning an active device off |
 
 ## Under Consideration
 

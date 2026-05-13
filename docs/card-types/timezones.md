@@ -12,9 +12,10 @@ World clock cards are read-only — tapping them does nothing. They do not need 
 
 ## Setting Up a World Clock Card
 
-1. Select a card and change its type to **World Clock**.
-2. Choose the city/timezone from the **City / Timezone** dropdown.
-3. Apply the configuration so the panel restarts with the new card.
+1. Select a card and change its type to **Date & Time**.
+2. Set **Type** to **World Clock**.
+3. Choose the city/timezone from the **City / Timezone** dropdown.
+4. Apply the configuration so the panel restarts with the new card.
 
 ## How It Works on the Panel
 

@@ -27,7 +27,8 @@ EspControl works with devices and helpers that are already in Home Assistant, in
 - Lights, switches, fans, and plugs
 - Scenes, scripts, buttons, and automations
 - Blinds, shutters, covers, and garage doors
-- Climate controls
+- Media players for playback, volume, progress, and now-playing display
+- Climate controls for thermostats and HVAC devices
 - Sensors such as temperature, humidity, power, battery, or custom text states
 - Weather, clocks, dates, and time zones
 - Built-in relays on supported panels
@@ -69,6 +70,7 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 - **Drag-and-drop layout** - move controls around without editing files.
 - **Subpages** - make folder-like pages for rooms or groups of controls.
 - **Different card sizes** - make important controls larger and keep smaller items compact.
+- **Dedicated card types** - Switch, Lights, Action, Trigger, Sensor, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Climate (experimental), Internal Switches, and Subpage.
 - **Screensaver and brightness controls** - dim or sleep the display when it is not in use.
 - **Automatic updates** - keep firmware current over WiFi after the first install.
 - **Backup and restore** - save your layout and copy it to another panel.

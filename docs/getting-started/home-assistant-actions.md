@@ -6,13 +6,13 @@ description:
 
 # Home Assistant Actions
 
-EspControl needs permission to call Home Assistant actions (like toggling lights or switches) on your behalf. Without this, the touchscreen can display the time and screensaver but **cards won't be able to control your devices or request forecast data**.
+EspControl needs permission to call Home Assistant actions (like toggling lights, running scripts, changing media volume, or adjusting climate targets) on your behalf. Without this, the touchscreen can display read-only information but **cards won't be able to control your devices or request forecast data**.
 
 Your display will prompt you to do this during first-time setup. Follow the steps below.
 
 ## Enable Actions
 
-1. **Open Home Assistant** and go to **Settings > Devices & Services** and add the discovered device (if the device wasn't discovered, find it's IP address and add it as an ESPHome device).
+1. **Open Home Assistant** and go to **Settings > Devices & Services** and add the discovered device (if the device wasn't discovered, find its IP address and add it as an ESPHome device).
 
 ![Home Assistant discovering the EspControl device](/images/ha-actions-step-1.png)
 
@@ -36,7 +36,7 @@ You only need to do this once per device. The setting persists across firmware u
 
 ## What If I Skip This?
 
-You won't be able to control any devices, it will be in a read only state, and entities such as lights, switches, scenes, scripts, and helpers won't do anything when tapped. Weather cards set to **Temperatures Today** or **Temperatures Tomorrow** also won't be able to fetch the daily forecast.
+You won't be able to control any devices, it will be in a read-only state, and entities such as lights, switches, scenes, scripts, helpers, covers, locks, media players, and climate devices won't do anything when tapped. Weather cards set to **Temperatures Today** or **Temperatures Tomorrow** also won't be able to fetch the daily forecast.
 
 ## Device Not Showing Up?
 

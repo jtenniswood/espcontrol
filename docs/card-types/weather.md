@@ -21,6 +21,7 @@ Older cards that were created as **Weather Forecast** cards still work. They now
    - **Temperatures Today** shows today's high / low temperature.
    - **Temperatures Tomorrow** shows tomorrow's high / low temperature.
 4. For temperature displays, optionally enter a **Label** to override the default card label.
+5. On a **Large** card, turn on **Large Temperature Numbers** if you want the high / low reading scaled much larger.
 
 ## How It Works on the Panel
 
