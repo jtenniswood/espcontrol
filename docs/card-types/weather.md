@@ -6,7 +6,7 @@ description:
 
 # Weather
 
-A weather card displays weather information from a Home Assistant weather entity. It can show either the current condition, such as **Sunny**, **Cloudy**, or **Rainy**, or the high / low temperatures for today or tomorrow, such as **18/10°C**.
+A weather card displays weather information from a Home Assistant weather entity. It can show either the current condition from Home Assistant, or the high / low temperatures for today or tomorrow, such as **18/10°C**.
 
 Weather cards are read-only — tapping them does nothing.
 
@@ -25,11 +25,11 @@ Older cards that were created as **Weather Forecast** cards still work. They now
 ## How It Works on the Panel
 
 - In **Current Conditions** mode, the card watches the weather entity's current state.
-- In **Current Conditions** mode, the icon changes automatically and the label uses the condition name from Home Assistant.
+- In **Current Conditions** mode, the icon changes automatically and the label is based on the condition state from Home Assistant.
 - In **Temperatures Today** and **Temperatures Tomorrow** modes, the card asks Home Assistant for the daily forecast for the configured weather entity.
 - In temperature modes, the unit label comes from the panel's **Temperature Unit** setting.
-- In temperature modes, the card label defaults to **Today** or **Tomorrow**, unless you set your own label.
-- If Home Assistant reports `unknown`, `unavailable`, or an unexpected current condition, the card shows a fallback weather icon and a readable label.
+- In temperature modes, the card label comes from the forecast information Home Assistant sends, unless you set your own label.
+- If Home Assistant reports `unknown`, `unavailable`, or an unexpected current condition, the card shows a fallback weather icon and formats the state text it received.
 - If the requested forecast is missing or unavailable, the card shows **--/--** instead of leaving the card blank.
 - The card uses the **tertiary** colour from [Appearance](/features/appearance), like Sensor, Date, and World Clock cards.
 
@@ -39,22 +39,4 @@ The temperature displays need the same **Allow the device to perform Home Assist
 
 ## Supported Conditions
 
-| Home Assistant state | What the card shows |
-|---|---|
-| `sunny` | Sunny |
-| `clear-night` | Clear night |
-| `partlycloudy` | Partly cloudy |
-| `cloudy` | Cloudy |
-| `fog` | Fog |
-| `hail` | Hail |
-| `lightning` | Lightning |
-| `lightning-rainy` | Lightning and rain |
-| `pouring` | Pouring |
-| `rainy` | Rainy |
-| `snowy` | Snowy |
-| `snowy-rainy` | Snowy and rain |
-| `windy` | Windy |
-| `windy-variant` | Windy and cloudy |
-| `exceptional` | Exceptional |
-| `unknown` | Unknown |
-| `unavailable` | Unavailable |
+The weather icon still follows the standard Home Assistant weather states, such as `sunny`, `cloudy`, `rainy`, `snowy`, and `windy`. The text label is no longer a fixed list; it is formatted from the state or forecast text Home Assistant sends.

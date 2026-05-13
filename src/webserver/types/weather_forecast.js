@@ -29,7 +29,7 @@ registerButtonType("weather_forecast", {
           '<span class="sp-sensor-unit">' + temperatureUnitSymbol() + '</span>' +
         '</span>',
       labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">Temperatures Tomorrow</span>' +
+        '<span class="sp-btn-label-row"><span class="sp-btn-label"></span>' +
         '<span class="sp-type-badge mdi mdi-weather-partly-cloudy"></span></span>',
     };
   },

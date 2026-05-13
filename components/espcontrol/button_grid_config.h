@@ -399,24 +399,6 @@ inline const char* weather_icon_for_state(const std::string &state) {
 }
 
 inline std::string weather_label_for_state(const std::string &state) {
-  if (state == "sunny") return "Sunny";
-  if (state == "clear-night") return "Clear Night";
-  if (state == "partlycloudy") return "Partly Cloudy";
-  if (state == "cloudy") return "Cloudy";
-  if (state == "fog") return "Fog";
-  if (state == "hail") return "Hail";
-  if (state == "lightning") return "Lightning";
-  if (state == "lightning-rainy") return "Lightning And Rain";
-  if (state == "pouring") return "Pouring";
-  if (state == "rainy") return "Rainy";
-  if (state == "snowy") return "Snowy";
-  if (state == "snowy-rainy") return "Snowy And Rain";
-  if (state == "windy") return "Windy";
-  if (state == "windy-variant") return "Windy And Cloudy";
-  if (state == "exceptional") return "Exceptional";
-  if (state == "unknown") return "Unknown";
-  if (state == "unavailable" || state.empty()) return "Unavailable";
-
   return sentence_cap_text(state);
 }
 
@@ -427,6 +409,7 @@ struct WeatherForecastCardRef {
   std::string entity_id;
   std::string day;
   std::string label;
+  std::string source_label;
   bool valid = false;
   int high = 0;
   int low = 0;
@@ -459,7 +442,7 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
                                              const std::string &unit) {
   if (ref.label_lbl) {
     std::string label = ref.label.empty()
-      ? (ref.day == "today" ? "Today" : "Tomorrow")
+      ? sentence_cap_text(ref.source_label)
       : ref.label;
     lv_label_set_text(ref.label_lbl, label.c_str());
   }
@@ -485,7 +468,8 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
 inline void apply_weather_forecast_to_entity(const std::string &entity_id,
                                              const std::string &day,
                                              bool valid, int high, int low,
-                                             const std::string &unit) {
+                                             const std::string &unit,
+                                             const std::string &source_label = "") {
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
@@ -494,6 +478,7 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
       refs[i].high = high;
       refs[i].low = low;
       refs[i].source_unit = unit;
+      refs[i].source_label = source_label;
       apply_weather_forecast_card_text(refs[i], valid, high, low, unit);
     }
   }
@@ -510,7 +495,7 @@ inline void register_weather_forecast_card(lv_obj_t *value_lbl, lv_obj_t *unit_l
     return;
   }
   weather_forecast_card_refs()[count++] = {
-    value_lbl, unit_lbl, label_lbl, entity_id, day, label, false, 0, 0, ""
+    value_lbl, unit_lbl, label_lbl, entity_id, day, label, "", false, 0, 0, ""
   };
   apply_weather_forecast_card_text(weather_forecast_card_refs()[count - 1], false, 0, 0, "");
 }
@@ -534,14 +519,19 @@ inline bool parse_weather_forecast_temp(const std::string &value, int &out) {
 
 inline bool parse_weather_forecast_payload(const std::string &payload,
                                            int &high, int &low,
-                                           std::string &unit) {
+                                           std::string &unit,
+                                           std::string &source_label) {
   size_t p1 = payload.find('|');
   if (p1 == std::string::npos) return false;
   size_t p2 = payload.find('|', p1 + 1);
   if (p2 == std::string::npos) return false;
+  size_t p3 = payload.find('|', p2 + 1);
   std::string high_text = payload.substr(0, p1);
   std::string low_text = payload.substr(p1 + 1, p2 - p1 - 1);
-  unit = payload.substr(p2 + 1);
+  unit = p3 == std::string::npos
+    ? payload.substr(p2 + 1)
+    : payload.substr(p2 + 1, p3 - p2 - 1);
+  source_label = p3 == std::string::npos ? "" : payload.substr(p3 + 1);
   high = WEATHER_FORECAST_TEMP_MISSING;
   low = WEATHER_FORECAST_TEMP_MISSING;
   bool has_high = parse_weather_forecast_temp(high_text, high);
@@ -567,8 +557,10 @@ inline std::string weather_forecast_response_template(const std::string &entity_
     "{% set f = ns.forecast if ns.forecast is not none else (forecasts[fallback_index] if forecasts|length > fallback_index else (forecasts[0] if forecasts|length > 0 else none)) %}"
     "{% set high = f.temperature if f is not none and f.temperature is defined else (f.temperature_high if f is not none and f.temperature_high is defined else (f.high_temperature if f is not none and f.high_temperature is defined else (f.high if f is not none and f.high is defined else ''))) %}"
     "{% set low = f.templow if f is not none and f.templow is defined else (f.temperature_low if f is not none and f.temperature_low is defined else (f.low_temperature if f is not none and f.low_temperature is defined else (f.low if f is not none and f.low is defined else ''))) %}"
+    "{% set source_label = f.condition if f is not none and f.condition is defined else (f.datetime[:10] if f is not none and f.datetime is defined else target_date) %}"
     "{{ high }}|{{ low }}|"
-    "{{ state_attr(entity, 'temperature_unit') or '' }}";
+    "{{ state_attr(entity, 'temperature_unit') or '' }}|"
+    "{{ source_label }}";
 }
 
 inline uint32_t next_weather_forecast_call_id() {
@@ -616,11 +608,12 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
       int high = 0;
       int low = 0;
       std::string unit;
-      bool valid = parse_weather_forecast_payload(payload, high, low, unit);
+      std::string source_label;
+      bool valid = parse_weather_forecast_payload(payload, high, low, unit, source_label);
       if (!valid) {
         ESP_LOGW("weather_forecast", "No usable forecast temperatures for %s", entity_id.c_str());
       }
-      apply_weather_forecast_to_entity(entity_id, day, valid, high, low, unit);
+      apply_weather_forecast_to_entity(entity_id, day, valid, high, low, unit, source_label);
     });
   esphome::api::global_api_server->send_homeassistant_action(req);
 }

@@ -79,8 +79,7 @@ registerButtonType("weather", {
   },
   renderPreview: function (b, helpers) {
     if (b.precision === "today" || b.precision === "tomorrow") {
-      var defaultLabel = b.precision === "today" ? "Today" : "Tomorrow";
-      var label = b.label || defaultLabel;
+      var label = b.label || "";
       var previewClass = "sp-sensor-preview sp-forecast-preview" +
         (helpers.cardSize === 4 && cardLargeNumbersEnabled(b) ? " sp-sensor-preview-large" : "");
       return {
@@ -97,7 +96,7 @@ registerButtonType("weather", {
     return {
       iconHtml: '<span class="sp-btn-icon mdi mdi-weather-cloudy"></span>',
       labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">Cloudy</span>' +
+        '<span class="sp-btn-label-row"><span class="sp-btn-label"></span>' +
         '<span class="sp-type-badge mdi mdi-weather-cloudy"></span></span>',
     };
   },
