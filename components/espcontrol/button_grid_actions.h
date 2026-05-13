@@ -50,7 +50,6 @@ inline bool action_card_action_allowed(const std::string &action) {
          action == "automation.trigger" ||
          action == "button.press" ||
          action == "input_button.press" ||
-         action == "lock.open" ||
          action == "input_boolean.toggle" ||
          action == "input_boolean.turn_on" ||
          action == "input_boolean.turn_off" ||

@@ -8,7 +8,7 @@ description:
 
 An Action card is a simple one-tap shortcut. It sends a selected Home Assistant action when you tap it, but it does not show an on/off state.
 
-Use Action cards for shortcuts such as running a scene, starting a script, triggering an automation, pressing a Home Assistant button entity, opening a lock latch, or changing a helper.
+Use Action cards for shortcuts such as running a scene, starting a script, triggering an automation, pressing a Home Assistant button entity, or changing a helper.
 
 ## Setting Up an Action Card
 
@@ -44,7 +44,6 @@ Action cards do not currently pass script variables or extra data. If a script n
 | **Trigger Automation** | `automation.goodnight` | None |
 | **Press Button** | `button.restart_router` | None |
 | **Press Input Button** | `input_button.doorbell` | None |
-| **Open Lock** | `lock.front_door` | None |
 | **Toggle Helper** | `input_boolean.guest_mode` | None |
 | **Set Number Helper** | `input_number.target_level` | Value |
 | **Select Option Helper** | `input_select.house_mode` | Option |

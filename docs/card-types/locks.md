@@ -30,7 +30,7 @@ A Lock card controls a Home Assistant `lock` entity. It can work as a state-awar
 
 ## Opening or Unlatching
 
-Some locks support Home Assistant's optional `lock.open` action, usually to unlatch a door. Use an [Action](/card-types/actions) card with **Open Lock** when you need that command.
+Lock cards handle locking and unlocking. If your lock hardware has a separate open or unlatch command, create a Home Assistant script for that command and run the script with an [Action](/card-types/actions) card.
 
 ## Locks That Need a Code
 
