@@ -439,6 +439,7 @@ inline void grid_phase2(
   set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
   set_switch_confirmation_message_font(
     cfg.media_title_font ? cfg.media_title_font : cfg.volume_label_font);
+  set_switch_confirmation_icon_font(cfg.icon_font);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   configure_grid_layout(main_page_obj, NS, COLS);
