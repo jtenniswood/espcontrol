@@ -267,8 +267,6 @@ def replace_phase(text: str, phase: int, block: str, call: str, slug: str) -> st
 
 
 def replace_script_block(text: str, device: dict) -> str:
-    if "portrait_cols" not in device:
-        return text
     block = script_block(device)
     marker = re.compile(
         r"(?ms)^script:\n"
@@ -284,6 +282,8 @@ def replace_script_block(text: str, device: dict) -> str:
     )
     if marker.search(text):
         return marker.sub(block, text, count=1)
+    if "portrait_cols" not in device:
+        return text
     insert_at = text.find("\nesphome:")
     if insert_at < 0:
         raise ValueError(f"Could not find esphome block for {device['slug']}")

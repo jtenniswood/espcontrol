@@ -202,12 +202,6 @@ script:
                       else:
                         - lvgl.display.set_rotation: 180
 
-  - id: rotate_screen
-    mode: restart
-    then:
-      - script.execute: apply_screen_rotation
-      - script.execute: refresh_button_grid
-
 select:
   - platform: template
     name: "Screen: Rotation"
@@ -226,4 +220,4 @@ select:
       - "270"
     on_value:
       then:
-        - script.execute: rotate_screen
+        - script.execute: apply_screen_rotation
