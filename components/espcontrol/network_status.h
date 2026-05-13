@@ -84,9 +84,9 @@ inline std::string network_status_trim_copy(const std::string &value) {
 
 inline std::string network_status_firmware_label(const std::string &version) {
   std::string trimmed = network_status_trim_copy(version);
-  if (trimmed.empty()) return "Firmware: Version unavailable";
-  if (trimmed == "dev" || trimmed == "Dev" || trimmed == "0.0.0") return "Firmware: Dev build";
-  return "Firmware: " + trimmed;
+  if (trimmed.empty()) return "Version unavailable";
+  if (trimmed == "dev" || trimmed == "Dev" || trimmed == "0.0.0") return "Dev build";
+  return trimmed;
 }
 
 inline void network_status_clean_obj(lv_obj_t *obj) {
