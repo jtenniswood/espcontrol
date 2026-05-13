@@ -63,28 +63,6 @@
     });
   }
 
-  function previewWrapContentWidth() {
-    var wrap = document.querySelector(".sp-wrap");
-    if (!wrap) return 0;
-    var style = window.getComputedStyle ? window.getComputedStyle(wrap) : null;
-    var padding = style
-      ? (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0)
-      : 0;
-    return Math.max(0, wrap.clientWidth - padding);
-  }
-
-  function previewFontSize(value, scale, layout) {
-    value = parseFloat(value);
-    if (!isFinite(value)) value = 0;
-    layout = layout || activeLayout();
-    scale = scale || previewLayoutScale(layout);
-    var screen = (layout && layout.screen) || CFG.screen;
-    var widthPercent = screenWidthPercent(screen);
-    var wrapWidth = previewWrapContentWidth();
-    if (!widthPercent || !wrapWidth) return scaledCqw(value, scale);
-    return ((value * scale * widthPercent * wrapWidth) / 10000) + "px";
-  }
-
   function syncPreviewGridTop(layout, scale) {
     var grid = layoutSection(layout || activeLayout(), "grid");
     scale = scale || previewLayoutScale(layout || activeLayout());
@@ -104,8 +82,8 @@
 
     r.setProperty("--topbar-h", scaledCqw(topbar.height, scale));
     r.setProperty("--topbar-pad", scaledCqwText(topbar.padding, scale));
-    r.setProperty("--topbar-fs", previewFontSize(topbar.fontSize, scale, layout));
-    if (topbar.clockFontSize) r.setProperty("--clock-fs", previewFontSize(topbar.clockFontSize, scale, layout));
+    r.setProperty("--topbar-fs", scaledCqw(topbar.fontSize, scale));
+    if (topbar.clockFontSize) r.setProperty("--clock-fs", scaledCqw(topbar.clockFontSize, scale));
     else r.removeProperty("--clock-fs");
 
     syncPreviewGridTop(layout, scale);
@@ -116,19 +94,18 @@
 
     r.setProperty("--btn-r", scaledCqw(btn.radius, scale));
     r.setProperty("--btn-pad", scaledCqw(btn.padding, scale));
-    r.setProperty("--btn-icon", previewFontSize(btn.iconSize, scale, layout));
-    r.setProperty("--btn-label", previewFontSize(btn.labelSize, scale, layout));
+    r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
+    r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
     r.setProperty("--btn-lines", String(btn.labelLines || 1));
     r.setProperty("--btn-lines-dbl", String(btn.labelLinesDouble || btn.labelLines || 1));
 
     r.setProperty("--sensor-top", scaledCqw(sensorBadge.top, scale));
     r.setProperty("--sensor-right", scaledCqw(sensorBadge.right, scale));
-    r.setProperty("--sensor-fs", previewFontSize(sensorBadge.fontSize, scale, layout));
+    r.setProperty("--sensor-fs", scaledCqw(sensorBadge.fontSize, scale));
     r.setProperty("--empty-r", scaledCqw(emptyCell.radius, scale));
     r.setProperty("--subpage-bottom", scaledCqw(subpageBadge.bottom, scale));
     r.setProperty("--subpage-right", scaledCqw(subpageBadge.right, scale));
-    r.setProperty("--subpage-fs", previewFontSize(subpageBadge.fontSize, scale, layout));
-    r.setProperty("--add-icon", previewFontSize(2.8, scale, layout));
+    r.setProperty("--subpage-fs", scaledCqw(subpageBadge.fontSize, scale));
   }
 
   function syncPreviewOrientation() {

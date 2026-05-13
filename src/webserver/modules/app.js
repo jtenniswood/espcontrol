@@ -42,7 +42,6 @@ function init() {
   document.head.appendChild(fonts);
 
   buildUI();
-  syncPreviewOrientation();
   addSupportButton();
   syncClockBarUi();
   setupPreviewEvents();
@@ -57,9 +56,6 @@ function init() {
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") hideContextMenu();
   });
-  if (typeof window !== "undefined" && window.addEventListener) {
-    window.addEventListener("resize", syncPreviewOrientation);
-  }
 }
 
 // ── Export / Import ────────────────────────────────────────────────────
