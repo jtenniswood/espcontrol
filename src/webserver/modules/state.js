@@ -586,7 +586,7 @@ var firmwareInstallRefreshUntil = 0;
 var FIRMWARE_VERSION_METADATA_PATH = "/espcontrol/version";
 var FIRMWARE_CHECKING_VERSION_LABEL = "Checking version...";
 var FIRMWARE_DEV_VERSION_LABEL = "Dev build";
-var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unavailable";
+var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unknown";
 
 // ── Utilities ──────────────────────────────────────────────────────────
 

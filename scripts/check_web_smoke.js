@@ -124,12 +124,12 @@ assert.strictEqual(hooks.displayFirmwareVersion("v1.11.1"), "v1.11.1");
 assert.strictEqual(hooks.displayFirmwareVersion("dev"), "Dev build");
 assert.strictEqual(hooks.displayFirmwareVersion("0.0.0"), "Dev build");
 assert.strictEqual(hooks.displayFirmwareVersion("main"), "Dev build");
-assert.strictEqual(hooks.displayFirmwareVersion(""), "Version unavailable");
+assert.strictEqual(hooks.displayFirmwareVersion(""), "Version unknown");
 assert.strictEqual(hooks.firmwareVersionFromMetadata({ firmware_version: "v1.12.0" }), "v1.12.0");
 assert.strictEqual(hooks.firmwareVersionFromMetadata({ project_version: "v1.12.1" }), "v1.12.1");
 assert.strictEqual(hooks.firmwareVersionFromMetadata({ version: "dev" }), "dev");
 assert.strictEqual(hooks.firmwareVersionLabelFor("", true), "Checking version...");
-assert.strictEqual(hooks.firmwareVersionLabelFor("", false), "Version unavailable");
+assert.strictEqual(hooks.firmwareVersionLabelFor("", false), "Version unknown");
 assert.deepStrictEqual(hooks.entityDetailPaths("text_sensor", [
   "Firmware: Version",
   "firmware__version",
