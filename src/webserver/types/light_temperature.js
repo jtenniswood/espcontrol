@@ -29,10 +29,46 @@ function lightTempClampMax(v, mn) {
   return n;
 }
 
+var LIGHT_CONTROL_TYPE_OPTIONS = [
+  ["light_brightness", "Brightness"],
+  ["light_temperature", "Colour Temperature"],
+];
+
+function normalizeLightControlType(type) {
+  return type === "light_temperature" ? "light_temperature" : "light_brightness";
+}
+
+function setLightControlType(b, type, helpers) {
+  var nextType = normalizeLightControlType(type);
+  if (b.type === nextType) return;
+  b.type = nextType;
+  var td = BUTTON_TYPES[nextType];
+  if (td && td.onSelect) td.onSelect(b);
+  helpers.saveField("type", nextType);
+  helpers.saveField("sensor", b.sensor || "");
+  helpers.saveField("unit", b.unit || "");
+  helpers.saveField("precision", b.precision || "");
+  helpers.saveField("icon", b.icon || "Auto");
+  helpers.saveField("icon_on", b.icon_on || "Auto");
+  renderButtonSettings();
+}
+
+function renderLightControlTypeField(panel, b, helpers) {
+  panel.appendChild(helpers.selectField(
+    "Type", helpers.idPrefix + "light-control-type",
+    LIGHT_CONTROL_TYPE_OPTIONS, normalizeLightControlType(b.type), function () {
+      setLightControlType(b, this.value, helpers);
+    }).field);
+}
+
 registerButtonType("light_temperature", {
   label: "Lights",
   allowInSubpage: true,
   hideLabel: true,
+  pickerKey: "light_brightness",
+  isAvailable: function () {
+    return false;
+  },
   labelPlaceholder: "e.g. Living Room",
   onSelect: function (b) {
     b.sensor = "";
@@ -42,10 +78,7 @@ registerButtonType("light_temperature", {
     b.icon_on = "Auto";
   },
   renderSettings: function (panel, b, slot, helpers) {
-    // Light control type
-    panel.appendChild(helpers.selectField(
-      "Type", helpers.idPrefix + "light-control-type",
-      [["colour_temperature", "Colour Temperature"]], "colour_temperature").field);
+    renderLightControlTypeField(panel, b, helpers);
 
     // Entity
     panel.appendChild(helpers.entityField(

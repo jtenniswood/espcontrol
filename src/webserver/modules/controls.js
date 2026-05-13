@@ -1838,10 +1838,12 @@ function renderButtonSettings(forceOpen) {
   }
   {
     var typeOpts = [];
+    var selectedTypeKey = (typeDef && typeDef.pickerKey) || (b.type || "");
     for (var k in BUTTON_TYPES) {
       var td = BUTTON_TYPES[k];
+      if (td.pickerKey && td.pickerKey !== td.key) continue;
       if (c.isSub && !td.allowInSubpage) continue;
-      if (td.isAvailable && !td.isAvailable({ isSub: c.isSub }) && (b.type || "") !== td.key) continue;
+      if (td.isAvailable && !td.isAvailable({ isSub: c.isSub }) && selectedTypeKey !== td.key) continue;
       if (td.experimental && !isExperimentalEnabled(td.experimental)) continue;
       typeOpts.push([td.key, td.label]);
     }
@@ -1858,7 +1860,7 @@ function renderButtonSettings(forceOpen) {
       var opt = document.createElement("option");
       opt.value = o[0];
       opt.textContent = o[1];
-      if ((b.type || "") === o[0]) opt.selected = true;
+      if (selectedTypeKey === o[0]) opt.selected = true;
       typeSelect.appendChild(opt);
     });
     typeSelect.addEventListener("change", function () {

@@ -43,6 +43,8 @@ function sliderTypeFactory(opts) {
         ).field);
       }
 
+      if (opts.lightControlType) renderLightControlTypeField(panel, b, helpers);
+
       var coverMode = "";
       var coverPositionField = null;
       var coverPositionInput = null;
@@ -178,7 +180,7 @@ function sliderTypeFactory(opts) {
         coverPositionInput.addEventListener("blur", function () { setCoverPosition(this.value); });
       }
 
-      if (opts.renderLabelInSettings) labelField();
+      if (opts.renderLabelInSettings && !opts.labelAfterEntity) labelField();
 
       panel.appendChild(helpers.entityField(
         "Entity",
@@ -190,6 +192,8 @@ function sliderTypeFactory(opts) {
         true,
         "Add an entity before saving."
       ).field);
+
+      if (opts.renderLabelInSettings && opts.labelAfterEntity) labelField();
 
       function iconField(label, inputSuffix, field, currentVal, defaultVal) {
         return helpers.iconPickerField(helpers.idPrefix + inputSuffix + "-picker", helpers.idPrefix + inputSuffix, currentVal, function (opt) {
@@ -303,19 +307,23 @@ function sliderTypeFactory(opts) {
 }
 
 registerButtonType("light_brightness", sliderTypeFactory({
-  label: "Light Brightness",
+  label: "Lights",
   placeholder: "e.g. Living Room",
   entityPlaceholder: "e.g. light.living_room",
   entityDomains: ["light"],
   defaultIcon: "Auto",
   defaultIconOn: "Auto",
-  fallbackLabel: "Light Brightness",
+  fallbackLabel: "Brightness",
   fallbackIcon: "lightbulb",
   badgeIcon: "tune-vertical-variant",
   alwaysShowIconPair: true,
   onIconInheritsOff: true,
   iconOffFieldLabel: "Off Icon",
   iconOnFieldLabel: "On Icon",
+  hideLabel: true,
+  renderLabelInSettings: true,
+  labelAfterEntity: true,
+  lightControlType: true,
 }));
 
 registerButtonType("slider", sliderTypeFactory({

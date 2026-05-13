@@ -250,6 +250,7 @@
       allowInSubpage: false,
       hideLabel: false,
       labelPlaceholder: null,
+      pickerKey: null,
       isAvailable: null,
       onSelect: null,
       renderSettingsBeforeLabel: null,
