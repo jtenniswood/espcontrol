@@ -690,6 +690,11 @@ function setFirmwareUpdateInfo(d) {
   }
   state.firmwareUpdateState = updateState;
   state.firmwareReleaseUrl = d.release_url || state.firmwareReleaseUrl || "";
+  if (state.firmwareUpdateState === "NO UPDATE" &&
+      !isSpecificFirmwareVersion(state.firmwareVersion) &&
+      isSpecificFirmwareVersion(state.firmwareLatestVersion)) {
+    setFirmwareVersion(state.firmwareLatestVersion);
+  }
   if (state.firmwareUpdateState) state.firmwareChecking = false;
   if (state.firmwareUpdateState === "INSTALLING") {
     startFirmwareInstallRefresh();

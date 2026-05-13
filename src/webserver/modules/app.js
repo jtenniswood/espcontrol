@@ -1255,6 +1255,37 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareUpdateControlsSupported = oldSupported;
       return visible;
     },
+    firmwareVersionAfterUpdateInfo: function (initialVersion, updateInfo) {
+      var oldVersion = state.firmwareVersion;
+      var oldLatest = state.firmwareLatestVersion;
+      var oldUpdateState = state.firmwareUpdateState;
+      var oldReleaseUrl = state.firmwareReleaseUrl;
+      var oldChecking = state.firmwareChecking;
+      var oldSupported = state.firmwareUpdateControlsSupported;
+      var oldInstallTarget = state.firmwareInstallTargetVersion;
+      state.firmwareVersion = "";
+      state.firmwareLatestVersion = "";
+      state.firmwareUpdateState = "";
+      state.firmwareReleaseUrl = "";
+      state.firmwareChecking = false;
+      state.firmwareUpdateControlsSupported = false;
+      state.firmwareInstallTargetVersion = "";
+      setFirmwareVersion(initialVersion);
+      setFirmwareUpdateInfo(updateInfo || {});
+      var result = {
+        version: state.firmwareVersion,
+        latest: state.firmwareLatestVersion,
+        updateState: state.firmwareUpdateState,
+      };
+      state.firmwareVersion = oldVersion;
+      state.firmwareLatestVersion = oldLatest;
+      state.firmwareUpdateState = oldUpdateState;
+      state.firmwareReleaseUrl = oldReleaseUrl;
+      state.firmwareChecking = oldChecking;
+      state.firmwareUpdateControlsSupported = oldSupported;
+      state.firmwareInstallTargetVersion = oldInstallTarget;
+      return result;
+    },
     findDuplicatePlacementFor: function (grid, start, size, maxSlots) {
       return findDuplicatePlacement(grid.slice(), start, size, maxSlots || NUM_SLOTS);
     },

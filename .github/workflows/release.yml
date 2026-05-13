@@ -85,6 +85,21 @@ jobs:
           OTA_MD5=$(md5sum output/${{ matrix.slug }}.ota.bin | cut -d ' ' -f 1)
           VERSION="${{ github.event.release.tag_name || github.ref_name }}"
 
+          for IMAGE in output/${{ matrix.slug }}.factory.bin output/${{ matrix.slug }}.ota.bin; do
+            if ! strings "${IMAGE}" | grep -Fxq "${VERSION}"; then
+              echo "::error::${IMAGE} does not contain firmware version ${VERSION}"
+              exit 1
+            fi
+            if strings "${IMAGE}" | grep -Fxq "dev"; then
+              echo "::error::${IMAGE} still contains the dev firmware version placeholder"
+              exit 1
+            fi
+            if strings "${IMAGE}" | grep -Fxq "0.0.0"; then
+              echo "::error::${IMAGE} still contains the release firmware version placeholder"
+              exit 1
+            fi
+          done
+
           cat > output/${{ matrix.slug }}.manifest.json << EOF
           {
             "name": "Espcontrol",

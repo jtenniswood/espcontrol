@@ -123,5 +123,17 @@ assert.strictEqual(hooks.networkPreviewIconSlug("ethernet", 0), "ethernet");
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", true), true);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", false), false);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("ethernet", true), false);
+assert.strictEqual(
+  hooks.firmwareVersionAfterUpdateInfo("Dev", { state: "NO UPDATE", latest_version: "v1.11.1" }).version,
+  "v1.11.1"
+);
+assert.strictEqual(
+  hooks.firmwareVersionAfterUpdateInfo("Dev", { state: "UPDATE AVAILABLE", latest_version: "v1.11.1" }).version,
+  "Dev"
+);
+assert.strictEqual(
+  hooks.firmwareVersionAfterUpdateInfo("v1.10.0", { state: "NO UPDATE", latest_version: "v1.11.1" }).version,
+  "v1.10.0"
+);
 
 console.log("Web UI smoke tests passed.");
