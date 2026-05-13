@@ -7,6 +7,7 @@ struct SwitchConfirmationModalUi {
   lv_obj_t *panel = nullptr;
   lv_obj_t *message_lbl = nullptr;
   lv_obj_t *close_btn = nullptr;
+  lv_obj_t *no_btn = nullptr;
   lv_obj_t *confirm_btn = nullptr;
   lv_obj_t *btn_obj = nullptr;
   ParsedCfg cfg;
@@ -124,8 +125,11 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
   if (button_gap < 8) button_gap = 8;
   lv_coord_t button_h = control_modal_scaled_px(52, layout.short_side);
   if (button_h < 36) button_h = 36;
-  lv_coord_t button_min_w = button_h * 2;
-  if (button_min_w > content_w) button_min_w = content_w;
+  lv_coord_t button_max_w = (content_w - button_gap) / 2;
+  if (button_max_w < 48) button_max_w = content_w;
+  lv_coord_t button_min_w = button_h + control_modal_scaled_px(16, layout.short_side);
+  if (button_min_w < 56) button_min_w = 56;
+  if (button_min_w > button_max_w) button_min_w = button_max_w;
 
   const lv_font_t *button_font = btn_obj
     ? lv_obj_get_style_text_font(btn_obj, LV_PART_MAIN)
@@ -158,15 +162,23 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
   lv_obj_set_style_text_align(ui.message_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (message_font) lv_obj_set_style_text_font(ui.message_lbl, message_font, LV_PART_MAIN);
 
+  ui.no_btn = switch_confirmation_create_text_button(
+    ui.panel, switch_confirmation_no_text(p), button_max_w, button_min_w, button_h,
+    button_h / 2, 0x454545, button_font);
   ui.confirm_btn = switch_confirmation_create_text_button(
-    ui.panel, switch_confirmation_yes_text(p), content_w, button_min_w, button_h,
+    ui.panel, switch_confirmation_yes_text(p), button_max_w, button_min_w, button_h,
     button_h / 2, DEFAULT_SLIDER_COLOR, button_font);
 
   lv_obj_update_layout(ui.message_lbl);
+  lv_obj_update_layout(ui.no_btn);
   lv_obj_update_layout(ui.confirm_btn);
   lv_coord_t message_h = lv_obj_get_height(ui.message_lbl);
+  lv_coord_t no_w = lv_obj_get_width(ui.no_btn);
+  lv_coord_t no_h = lv_obj_get_height(ui.no_btn);
+  lv_coord_t confirm_w = lv_obj_get_width(ui.confirm_btn);
   lv_coord_t confirm_h = lv_obj_get_height(ui.confirm_btn);
-  lv_coord_t group_h = message_h + button_gap + confirm_h;
+  lv_coord_t action_h = no_h > confirm_h ? no_h : confirm_h;
+  lv_coord_t group_h = message_h + button_gap + action_h;
   lv_coord_t group_top = (layout.panel_h - group_h) / 2;
   lv_coord_t top_limit = layout.inset + layout.back_size + button_gap;
   if (group_top < top_limit) group_top = top_limit;
@@ -175,11 +187,18 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
   if (group_top < layout.inset) group_top = layout.inset;
 
   lv_coord_t message_y = group_top + message_h / 2 - layout.panel_h / 2;
-  lv_coord_t confirm_y = group_top + message_h + button_gap + confirm_h / 2 - layout.panel_h / 2;
+  lv_coord_t action_y = group_top + message_h + button_gap + action_h / 2 - layout.panel_h / 2;
+  lv_coord_t action_w = no_w + button_gap + confirm_w;
+  lv_coord_t no_x = -action_w / 2 + no_w / 2;
+  lv_coord_t confirm_x = action_w / 2 - confirm_w / 2;
   lv_obj_align(ui.message_lbl, LV_ALIGN_CENTER, 0, message_y);
-  lv_obj_align(ui.confirm_btn, LV_ALIGN_CENTER, 0, confirm_y);
+  lv_obj_align(ui.no_btn, LV_ALIGN_CENTER, no_x, action_y);
+  lv_obj_align(ui.confirm_btn, LV_ALIGN_CENTER, confirm_x, action_y);
 
   lv_obj_add_event_cb(ui.close_btn, [](lv_event_t *) {
+    switch_confirmation_hide_modal();
+  }, LV_EVENT_CLICKED, nullptr);
+  lv_obj_add_event_cb(ui.no_btn, [](lv_event_t *) {
     switch_confirmation_hide_modal();
   }, LV_EVENT_CLICKED, nullptr);
   lv_obj_add_event_cb(ui.confirm_btn, [](lv_event_t *) {
