@@ -65,7 +65,7 @@ function normalizeButtonConfig(b) {
   }
   if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
-  } else if (b && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -294,7 +294,7 @@ function buttonConfigFields(b) {
   var options = b && b.options || "";
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options);
-  } else if (!cardLargeNumbersSupported({ type: type, precision: precision })) {
+  } else if (type !== "action" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
   }
   if (!type && !sensor) {
@@ -578,7 +578,7 @@ function legacySubpageConfigSafe(sp) {
     var options = b.options || "";
     if (!b.type) {
       options = normalizeSwitchConfirmationOptions(options);
-    } else if (!cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
+    } else if (b.type !== "action" && !cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
       options = "";
     }
     var fields = [b.entity || "", b.label || "", icon, iconOn, sensor, unit, b.type || "", precision, options];
@@ -605,7 +605,7 @@ function serializeLegacySubpageConfig(sp) {
     var options = b.options || "";
     if (!b.type) {
       options = normalizeSwitchConfirmationOptions(options);
-    } else if (!cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
+    } else if (b.type !== "action" && !cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
       options = "";
     }
     var fields = [b.entity || "", b.label || "", icon, iconOn, sensor, unit, b.type || "", precision, options];
@@ -632,7 +632,7 @@ function serializeCompactSubpageConfig(sp) {
     var options = b.options || "";
     if (!b.type) {
       options = normalizeSwitchConfirmationOptions(options);
-    } else if (!cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
+    } else if (b.type !== "action" && !cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
       options = "";
     }
     var fields = [

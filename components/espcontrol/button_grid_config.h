@@ -149,7 +149,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.precision.clear();
     p.options.clear();
   }
-  if (!p.type.empty() && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   return p;
@@ -207,6 +207,10 @@ inline std::string cfg_option_value(const std::string &options, const char *name
     start = end + 1;
   }
   return "";
+}
+
+inline std::string action_card_state_entity(const ParsedCfg &p) {
+  return p.type == "action" ? cfg_option_value(p.options, "state_entity") : "";
 }
 
 inline bool card_large_numbers_enabled(const ParsedCfg &p) {

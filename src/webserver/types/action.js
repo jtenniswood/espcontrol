@@ -24,6 +24,18 @@ function normalizeActionCardConfig(b) {
   b.precision = "";
 }
 
+var ACTION_CARD_STATE_ENTITY_OPTION = "state_entity";
+
+function actionCardStateEntity(b) {
+  return configOptionValue(b && b.options, ACTION_CARD_STATE_ENTITY_OPTION);
+}
+
+function setActionCardStateEntity(b, entity) {
+  if (!b) return "";
+  b.options = setConfigOptionValue(b.options, ACTION_CARD_STATE_ENTITY_OPTION, entity);
+  return b.options;
+}
+
 function actionCardNeedsExtraValue(value) {
   return value === "input_number.set_value" || value === "input_select.select_option";
 }
@@ -39,6 +51,7 @@ registerButtonType("action", {
     b.icon = "Flash";
     b.icon_on = "Auto";
     b.precision = "";
+    b.options = "";
   },
   renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     normalizeActionCardConfig(b);
@@ -66,7 +79,7 @@ registerButtonType("action", {
 
     var info = actionCardInfo(b.sensor) || ACTION_CARD_ACTIONS[0];
     var entityField = helpers.entityField(
-      "Entity",
+      "Action Entity",
       helpers.idPrefix + "entity",
       b.entity,
       info.placeholder,
@@ -104,12 +117,65 @@ registerButtonType("action", {
     valueInput.placeholder = b.sensor === "input_select.select_option" ? "e.g. Away" : "e.g. 50";
     entityInp._entityDomains = info.domains || [];
     refreshEntityDatalist(entityInp);
+
+    var stateEntity = actionCardStateEntity(b);
+    var showStateSection = helpers.toggleSection("Show State", helpers.idPrefix + "action-state-toggle", !!stateEntity);
+    var showStateToggle = showStateSection.toggle;
+    var stateCond = showStateSection.section;
+    panel.appendChild(showStateToggle.row);
+    if (stateEntity) stateCond.classList.add("sp-visible");
+
+    var stateEntityField = helpers.entityField(
+      "State Entity",
+      helpers.idPrefix + "action-state-entity",
+      stateEntity,
+      "e.g. light.kitchen",
+      ["light", "switch", "input_boolean", "binary_sensor", "cover", "lock", "media_player", "fan", "person", "device_tracker"]
+    );
+    var stateEntityInp = stateEntityField.input;
+    stateCond.appendChild(stateEntityField.field);
+    panel.appendChild(stateCond);
+
+    helpers.requireField(stateEntityInp, "Add a state entity before saving.", function () {
+      return showStateToggle.input.checked;
+    });
+
+    function saveStateEntity() {
+      if (!showStateToggle.input.checked) return;
+      stateEntity = stateEntityInp.value;
+      helpers.saveField("options", setActionCardStateEntity(b, stateEntity));
+    }
+    stateEntityInp.addEventListener("input", saveStateEntity);
+    stateEntityInp.addEventListener("change", saveStateEntity);
+    stateEntityInp.addEventListener("blur", saveStateEntity);
+    stateEntityInp.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        saveStateEntity();
+        this.blur();
+      }
+    });
+
+    showStateToggle.input.addEventListener("change", function () {
+      stateCond.classList.toggle("sp-visible", this.checked);
+      if (this.checked) {
+        stateEntity = stateEntityInp.value;
+        helpers.saveField("options", setActionCardStateEntity(b, stateEntity));
+      } else {
+        stateEntity = "";
+        stateEntityInp.value = "";
+        helpers.clearFieldError(stateEntityInp);
+        helpers.saveField("options", setActionCardStateEntity(b, ""));
+      }
+    });
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Action";
     var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "flash";
+    var stateBadge = actionCardStateEntity(b)
+      ? '<span class="sp-sensor-badge mdi mdi-eye"></span>'
+      : "";
     return {
-      iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
+      iconHtml: stateBadge + '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
       labelHtml:
         '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
         '<span class="sp-type-badge mdi mdi-flash"></span></span>',

@@ -1225,6 +1225,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     switchConfirmationMessage: switchConfirmationMessage,
     switchConfirmationYesText: switchConfirmationYesText,
     switchConfirmationNoText: switchConfirmationNoText,
+    actionCardStateEntity: actionCardStateEntity,
     parseSubpageConfig: parseSubpageConfig,
     serializeSubpageConfig: serializeSubpageConfig,
     parseBackOrderToken: parseBackOrderToken,

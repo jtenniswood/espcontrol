@@ -626,7 +626,15 @@ inline void grid_phase2(
       continue;
     }
     if (p.type == "action") {
-      subscribe_control_availability(s.btn, s.btn, p.entity);
+      std::string state_entity = action_card_state_entity(p);
+      if (!state_entity.empty()) {
+        ActionCardStateCtx *ctx = new ActionCardStateCtx();
+        ctx->btn = s.btn;
+        subscribe_action_card_target_availability(ctx, p.entity);
+        subscribe_action_card_display_state(ctx, state_entity);
+      } else {
+        subscribe_control_availability(s.btn, s.btn, p.entity);
+      }
       continue;
     }
     if (p.type == "media") {
@@ -1033,7 +1041,15 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "action") {
         if (!sb_cfg.entity.empty() && !sb_cfg.sensor.empty()) {
-          subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+          std::string state_entity = action_card_state_entity(sb_cfg);
+          if (!state_entity.empty()) {
+            ActionCardStateCtx *action_ctx = new ActionCardStateCtx();
+            action_ctx->btn = sub_slot.btn;
+            subscribe_action_card_target_availability(action_ctx, sb_cfg.entity);
+            subscribe_action_card_display_state(action_ctx, state_entity);
+          } else {
+            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+          }
           ParsedCfg *ctx = new ParsedCfg(sb_cfg);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);

@@ -107,7 +107,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   ParsedCfg p;
   p.type = b.type;
   p.precision = b.precision;
-  if (!b.type.empty() && !card_large_numbers_supported(p)) {
+  if (!b.type.empty() && b.type != "action" && !card_large_numbers_supported(p)) {
     b.options.clear();
   }
   return b;

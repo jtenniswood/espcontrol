@@ -878,6 +878,24 @@ assertButtonRoundTrip(hooks, "script action card", {
   precision: "",
 }, false);
 
+const scriptActionStateCard = {
+  entity: "script.kitchen_lights",
+  label: "Kitchen Lights",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "script.turn_on",
+  unit: "",
+  type: "action",
+  precision: "",
+  options: "state_entity=light.kitchen",
+};
+assertButtonRoundTrip(hooks, "script action card with state entity", scriptActionStateCard, false);
+assert.strictEqual(
+  hooks.actionCardStateEntity(hooks.parseButtonConfig(hooks.serializeButtonConfig(scriptActionStateCard))),
+  "light.kitchen",
+  "action card state entity option"
+);
+
 assertButtonRoundTrip(hooks, "automation action card", {
   entity: "automation.goodnight",
   label: "Goodnight Automation",
@@ -1067,7 +1085,7 @@ assertSubpageRoundTrip(hooks, "garage command subpage", {
 assertSubpageRoundTrip(hooks, "action subpage", {
   order: ["1", "B", "2"],
   buttons: [
-    buttonShape({ entity: "scene.movie_mode", label: "Movie Mode", icon: "Flash", sensor: "scene.turn_on", type: "action" }),
+    buttonShape({ entity: "scene.movie_mode", label: "Movie Mode", icon: "Flash", sensor: "scene.turn_on", type: "action", options: "state_entity=light.living_room" }),
     buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Flash", sensor: "input_select.select_option", unit: "Away: overnight | 50%, main", type: "action" }),
   ],
 }, true);
@@ -1267,6 +1285,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|A,scene.movie
     buttonShape({ entity: "scene.movie_mode", label: "Movie Mode", icon: "Flash", icon_on: "Auto", sensor: "scene.turn_on", type: "action" }),
   ],
 }, "compact action subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|A,scene.movie_mode,Movie%20Mode,Flash,,scene.turn_on,,,state_entity=light.living_room")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "scene.movie_mode", label: "Movie Mode", icon: "Flash", icon_on: "Auto", sensor: "scene.turn_on", type: "action", options: "state_entity=light.living_room" }),
+  ],
+}, "compact action subpage state entity parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|K,lock.front_door,Front%20Door,Lock,Lock%20Open")), {
   order: ["1", "B"],

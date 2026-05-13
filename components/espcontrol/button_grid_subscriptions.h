@@ -239,3 +239,45 @@ inline void subscribe_control_availability(lv_obj_t *visual_obj, lv_obj_t *input
       })
   );
 }
+
+struct ActionCardStateCtx {
+  lv_obj_t *btn = nullptr;
+  bool action_available = true;
+  bool state_available = true;
+  bool has_state_entity = false;
+};
+
+inline void apply_action_card_availability(ActionCardStateCtx *ctx) {
+  if (!ctx || !ctx->btn) return;
+  bool available = ctx->action_available &&
+                   (!ctx->has_state_entity || ctx->state_available);
+  apply_control_availability(ctx->btn, ctx->btn, available);
+}
+
+inline void subscribe_action_card_target_availability(ActionCardStateCtx *ctx,
+                                                      const std::string &entity_id) {
+  if (!ctx || entity_id.empty()) return;
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, {},
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
+      ctx->action_available = !ha_state_unavailable_ref(state);
+      apply_action_card_availability(ctx);
+    })
+  );
+}
+
+inline void subscribe_action_card_display_state(ActionCardStateCtx *ctx,
+                                                const std::string &entity_id) {
+  if (!ctx || entity_id.empty()) return;
+  ctx->has_state_entity = true;
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, {},
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
+      bool unavailable = ha_state_unavailable_ref(state);
+      ctx->state_available = !unavailable;
+      if (!unavailable && is_entity_on_ref(state)) lv_obj_add_state(ctx->btn, LV_STATE_CHECKED);
+      else lv_obj_clear_state(ctx->btn, LV_STATE_CHECKED);
+      apply_action_card_availability(ctx);
+    })
+  );
+}
