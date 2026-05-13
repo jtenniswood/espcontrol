@@ -8,6 +8,7 @@
 
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#include "esphome/core/defines.h"
 
 #include "esp_tls_crypto.h"
 #include <freertos/FreeRTOS.h>
@@ -51,6 +52,73 @@ DefaultHeaders default_headers_instance;
 DefaultHeaders &DefaultHeaders::Instance() { return default_headers_instance; }
 
 namespace {
+#ifdef ESPHOME_PROJECT_NAME
+static constexpr const char *ESPCONTROL_PROJECT_NAME = ESPHOME_PROJECT_NAME;
+#else
+static constexpr const char *ESPCONTROL_PROJECT_NAME = "";
+#endif
+
+#ifdef ESPHOME_PROJECT_VERSION
+static constexpr const char *ESPCONTROL_PROJECT_VERSION = ESPHOME_PROJECT_VERSION;
+#else
+static constexpr const char *ESPCONTROL_PROJECT_VERSION = "";
+#endif
+
+void append_json_string(std::string &out, const char *value) {
+  out.push_back('"');
+  for (const char *p = value; p != nullptr && *p != '\0'; ++p) {
+    switch (*p) {
+      case '\\':
+      case '"':
+        out.push_back('\\');
+        out.push_back(*p);
+        break;
+      case '\n':
+        out.append("\\n");
+        break;
+      case '\r':
+        out.append("\\r");
+        break;
+      case '\t':
+        out.append("\\t");
+        break;
+      default:
+        out.push_back(*p);
+        break;
+    }
+  }
+  out.push_back('"');
+}
+
+std::string firmware_version_json() {
+  std::string out;
+  out.reserve(128);
+  out.append("{\"project_name\":");
+  append_json_string(out, ESPCONTROL_PROJECT_NAME);
+  out.append(",\"project_version\":");
+  append_json_string(out, ESPCONTROL_PROJECT_VERSION);
+  out.append(",\"firmware_version\":");
+  append_json_string(out, ESPCONTROL_PROJECT_VERSION);
+  out.append(",\"version\":");
+  append_json_string(out, ESPCONTROL_PROJECT_VERSION);
+  out.push_back('}');
+  return out;
+}
+
+bool handle_firmware_version_request(AsyncWebServerRequest *request) {
+  if (request->method() != HTTP_GET) {
+    return false;
+  }
+  char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+  StringRef url = request->url_to(url_buf);
+  if (url != "/espcontrol/version" && url != "/espcontrol/version.json") {
+    return false;
+  }
+  std::string body = firmware_version_json();
+  request->send(200, "application/json", body.c_str());
+  return true;
+}
+
 // Non-blocking send function to prevent watchdog timeouts when TCP buffers are full
 /**
  * Sends data on a socket in non-blocking mode.
@@ -227,6 +295,9 @@ esp_err_t AsyncWebServer::request_handler(httpd_req_t *r) {
 }
 
 esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const {
+  if (handle_firmware_version_request(request)) {
+    return ESP_OK;
+  }
   for (auto *handler : this->handlers_) {
     if (handler->canHandle(request)) {
       // At now process only basic requests.

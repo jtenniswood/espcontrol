@@ -1246,6 +1246,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     previewHtmlValue: previewHtmlValue,
     networkPreviewIconSlug: networkPreviewIconSlug,
     displayFirmwareVersion: displayFirmwareVersion,
+    firmwareVersionFromMetadata: firmwareVersionFromMetadata,
     firmwareVersionLabelFor: function (version, pending) {
       var oldVersion = state.firmwareVersion;
       var oldPending = state.firmwareVersionRefreshPending;

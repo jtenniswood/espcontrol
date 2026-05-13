@@ -675,7 +675,7 @@ function loadInitialState(handleState, onLoaded) {
 }
 
 function refreshFirmwareVersion() {
-  var pending = 2;
+  var pending = 3;
   if (!state.firmwareVersion) {
     state.firmwareVersionRefreshPending = true;
     renderFirmwareVersion();
@@ -687,10 +687,14 @@ function refreshFirmwareVersion() {
     renderFirmwareVersion();
   }
 
+  getJsonQuietly(FIRMWARE_VERSION_METADATA_PATH, function (d) {
+    setFirmwareVersion(firmwareVersionFromMetadata(d));
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
   getJsonFirst(entityDetailPaths("text_sensor", [
     "Firmware: Version",
     "firmware__version",
     "firmware_version",
+    "firmware_version_sensor",
   ]), function (d) {
     setFirmwareVersion(d.state || d.value);
   }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
