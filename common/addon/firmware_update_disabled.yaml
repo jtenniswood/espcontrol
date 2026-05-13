@@ -14,11 +14,11 @@ esphome:
     name: jtenniswood.espcontrol
     version: "${firmware_version}"
   on_boot:
-    priority: 200
-    then:
-      - text_sensor.template.publish:
-          id: firmware_version_sensor
-          state: "${firmware_version}"
+    - priority: 200
+      then:
+        - text_sensor.template.publish:
+            id: firmware_version_sensor
+            state: "${firmware_version}"
 
 text_sensor:
   - platform: template

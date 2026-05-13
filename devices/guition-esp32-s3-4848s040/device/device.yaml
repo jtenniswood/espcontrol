@@ -62,6 +62,17 @@ esphome:
       then:
         - lambda: |-
             auto reason = esp_reset_reason();
+            if (reason == ESP_RST_SW) {
+              esp_ota_img_states_t ota_state;
+              const esp_partition_t *running = esp_ota_get_running_partition();
+              if (running != nullptr &&
+                  esp_ota_get_state_partition(running, &ota_state) == ESP_OK &&
+                  ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+                ESP_LOGI("s3_reset", "Delaying deep-sleep reset until OTA image is marked valid");
+                id(post_ota_hardware_reset).execute();
+                return;
+              }
+            }
             if (reason == ESP_RST_USB || reason == ESP_RST_SW) {
               esp_sleep_enable_timer_wakeup(100000);
               esp_deep_sleep_start();
@@ -305,6 +316,17 @@ lvgl:
       long_press_time: 3s
 
 script:
+  - id: post_ota_hardware_reset
+    mode: single
+    then:
+      # Safe Mode marks the new OTA image valid after 60s. Wait a little
+      # longer, then perform the hardware-reset workaround for this S3 panel.
+      - delay: 75s
+      - lambda: |-
+          ESP_LOGI("s3_reset", "Performing delayed post-OTA deep-sleep reset");
+          esp_sleep_enable_timer_wakeup(100000);
+          esp_deep_sleep_start();
+
   - id: relay_1_push
     mode: restart
     then:
