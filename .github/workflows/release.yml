@@ -80,6 +80,14 @@ jobs:
             ghcr.io/esphome/esphome:2026.4.5 \
             compile /config/builds/${{ matrix.slug }}.factory.yaml
 
+      - name: Fix ESPHome cache permissions
+        if: always()
+        run: |
+          if [ -d builds/.esphome ]; then
+            sudo chown -R "$USER:$USER" builds/.esphome
+            chmod -R u+rwX builds/.esphome
+          fi
+
       - name: Collect firmware files and generate manifest
         id: firmware
         run: |

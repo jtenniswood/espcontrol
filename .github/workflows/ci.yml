@@ -139,4 +139,5 @@ jobs:
         run: |
           if [ -d builds/.esphome ]; then
             sudo chown -R "$USER:$USER" builds/.esphome
+            chmod -R u+rwX builds/.esphome
           fi
