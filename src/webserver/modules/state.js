@@ -78,6 +78,7 @@ var state = {
   firmwareChecking: false,
   firmwareVersionRefreshPending: false,
   firmwareInstallTargetVersion: "",
+  firmwareInstallPostPending: false,
   firmwareUpdateControlsSupported: false,
   firmwareInstallControlsSupported: false,
   autoUpdate: true,
@@ -784,9 +785,18 @@ function setFirmwareUpdateInfo(d) {
   var updateState = String(d.state || state.firmwareUpdateState || "").trim().toUpperCase();
   if (d.current_version) setFirmwareVersion(d.current_version);
   if (latest) state.firmwareLatestVersion = String(latest).trim();
-  if (state.firmwareInstallTargetVersion &&
-      updateState === "UPDATE AVAILABLE" &&
-      Date.now() < firmwareInstallRefreshUntil) {
+  var installWindowActive = !!state.firmwareInstallTargetVersion &&
+    Date.now() < firmwareInstallRefreshUntil;
+  if (state.firmwareInstallPostPending) {
+    if (installWindowActive && updateState === "UPDATE AVAILABLE") {
+      state.firmwareInstallPostPending = false;
+      postFirmwareUpdateInstall();
+      updateState = "INSTALLING";
+    } else if (!installWindowActive || updateState === "NO UPDATE") {
+      state.firmwareInstallPostPending = false;
+    }
+  }
+  if (installWindowActive && updateState === "UPDATE AVAILABLE") {
     updateState = "INSTALLING";
   }
   state.firmwareUpdateState = updateState;
@@ -815,6 +825,7 @@ function stopFirmwareInstallRefresh() {
   firmwareInstallRefreshTimer = null;
   firmwareInstallRefreshUntil = 0;
   state.firmwareInstallTargetVersion = "";
+  state.firmwareInstallPostPending = false;
 }
 
 function stopFirmwareInstallRefreshIfComplete() {

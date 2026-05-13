@@ -327,6 +327,19 @@ function postFirmwareUpdateInstall() {
   post(urls, null, "Could not start firmware update.");
 }
 
+function postFirmwareUpdateCheck() {
+  var urls = [];
+  rememberedPostUrls("button", "Firmware: Check for Update", [
+    "firmware__check_for_update",
+    "firmware_check_for_update",
+  ], "press").forEach(function (url) { uniquePush(urls, url); });
+  uniquePush(urls, "/button/" + encodeURIComponent("Firmware: Check for Update") + "/press");
+  uniquePush(urls, "/button/" + encodeURIComponent("firmware__check_for_update") + "/press");
+  uniquePush(urls, "/button/" + encodeURIComponent("firmware_check_for_update") + "/press");
+
+  post(urls, null, "Could not check for firmware update.");
+}
+
 function postSwitch(name, on) {
   post("/switch/" + encodeURIComponent(name) + "/" + (on ? "turn_on" : "turn_off"));
 }

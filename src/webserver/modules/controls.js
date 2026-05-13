@@ -849,16 +849,23 @@ function buildSettingsPage(parent) {
   fwCheckBtn.addEventListener("click", function () {
     if (!firmwareUpdateControlsVisible()) return;
     if (firmwareInstallAvailable()) {
+      var updateReady = firmwareUpdateAvailable();
       state.firmwareInstallTargetVersion = state.firmwareLatestVersion;
+      state.firmwareInstallPostPending = !updateReady;
       state.firmwareUpdateState = "INSTALLING";
+      state.firmwareChecking = false;
       renderFirmwareUpdateStatus();
-      postFirmwareUpdateInstall();
+      if (updateReady) {
+        postFirmwareUpdateInstall();
+      } else {
+        postFirmwareUpdateCheck();
+      }
       startFirmwareInstallRefresh();
       return;
     }
     state.firmwareChecking = true;
     renderFirmwareUpdateStatus();
-    postButtonPress("Firmware: Check for Update");
+    postFirmwareUpdateCheck();
     getJsonQuietly(publicFirmwareManifestUrl(), function (d) {
       setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
     });

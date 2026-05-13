@@ -1289,6 +1289,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       var oldSupported = state.firmwareUpdateControlsSupported;
       var oldInstallSupported = state.firmwareInstallControlsSupported;
       var oldInstallTarget = state.firmwareInstallTargetVersion;
+      var oldInstallPostPending = state.firmwareInstallPostPending;
       state.firmwareVersion = "";
       state.firmwareLatestVersion = "";
       state.firmwareUpdateState = "";
@@ -1297,6 +1298,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareUpdateControlsSupported = false;
       state.firmwareInstallControlsSupported = false;
       state.firmwareInstallTargetVersion = "";
+      state.firmwareInstallPostPending = false;
       setFirmwareVersion(initialVersion);
       setFirmwareUpdateInfo(updateInfo || {});
       var result = {
@@ -1313,6 +1315,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareUpdateControlsSupported = oldSupported;
       state.firmwareInstallControlsSupported = oldInstallSupported;
       state.firmwareInstallTargetVersion = oldInstallTarget;
+      state.firmwareInstallPostPending = oldInstallPostPending;
       return result;
     },
     firmwareStateAfterPublicManifest: function (initialVersion, manifest) {
@@ -1321,11 +1324,13 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       var oldUpdateState = state.firmwareUpdateState;
       var oldReleaseUrl = state.firmwareReleaseUrl;
       var oldInstallSupported = state.firmwareInstallControlsSupported;
+      var oldInstallPostPending = state.firmwareInstallPostPending;
       state.firmwareVersion = "";
       state.firmwareLatestVersion = "";
       state.firmwareUpdateState = "";
       state.firmwareReleaseUrl = "";
       state.firmwareInstallControlsSupported = true;
+      state.firmwareInstallPostPending = false;
       setFirmwareVersion(initialVersion);
       setPublicFirmwareInfo(firmwareInfoFromPublicManifest(manifest));
       var result = {
@@ -1341,6 +1346,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareUpdateState = oldUpdateState;
       state.firmwareReleaseUrl = oldReleaseUrl;
       state.firmwareInstallControlsSupported = oldInstallSupported;
+      state.firmwareInstallPostPending = oldInstallPostPending;
       return result;
     },
     findDuplicatePlacementFor: function (grid, start, size, maxSlots) {

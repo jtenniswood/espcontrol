@@ -112,4 +112,16 @@ button:
     web_server:
       sorting_group_id: sg_firmware
     on_press:
-      - update.perform: firmware_update
+      - lambda: 'id(manual_check_only) = true;'
+      - component.update: firmware_update
+      - wait_until:
+          condition:
+            update.is_available: firmware_update
+          timeout: 30s
+      - if:
+          condition:
+            update.is_available: firmware_update
+          then:
+            - update.perform: firmware_update
+      - delay: 15s
+      - lambda: 'id(manual_check_only) = false;'
