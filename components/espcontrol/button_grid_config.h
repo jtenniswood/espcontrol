@@ -222,12 +222,12 @@ inline std::string switch_confirmation_message(const ParsedCfg &p) {
 
 inline std::string switch_confirmation_yes_text(const ParsedCfg &p) {
   std::string value = cfg_option_value(p.options, "confirm_yes");
-  return value.empty() ? std::string("Turn Off") : value;
+  return value.empty() ? std::string("Yes") : value;
 }
 
 inline std::string switch_confirmation_no_text(const ParsedCfg &p) {
   std::string value = cfg_option_value(p.options, "confirm_no");
-  return value.empty() ? std::string("Cancel") : value;
+  return value.empty() ? std::string("No") : value;
 }
 
 inline int parse_precision(const std::string &s) {

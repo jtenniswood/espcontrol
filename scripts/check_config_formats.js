@@ -275,6 +275,9 @@ assert.strictEqual(hooks.switchConfirmationEnabled(parsedConfirmSwitch), true, "
 assert.strictEqual(hooks.switchConfirmationMessage(parsedConfirmSwitch), "Stop the print?", "switch confirmation message");
 assert.strictEqual(hooks.switchConfirmationYesText(parsedConfirmSwitch), "Power Down", "switch confirmation yes text");
 assert.strictEqual(hooks.switchConfirmationNoText(parsedConfirmSwitch), "Keep On", "switch confirmation no text");
+const defaultConfirmSwitch = hooks.parseButtonConfig("switch.printer;Printer;Printer 3D;Auto;;;;;confirm_off");
+assert.strictEqual(hooks.switchConfirmationYesText(defaultConfirmSwitch), "Yes", "switch confirmation default yes text");
+assert.strictEqual(hooks.switchConfirmationNoText(defaultConfirmSwitch), "No", "switch confirmation default no text");
 
 assertButtonRoundTrip(hooks, "delimiter button", {
   entity: "sensor.kitchen_temperature",

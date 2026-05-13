@@ -75,8 +75,8 @@ var SWITCH_CONFIRM_MESSAGE_OPTION = "confirm_message";
 var SWITCH_CONFIRM_YES_OPTION = "confirm_yes";
 var SWITCH_CONFIRM_NO_OPTION = "confirm_no";
 var SWITCH_CONFIRM_DEFAULT_MESSAGE = "Turn off this device?";
-var SWITCH_CONFIRM_DEFAULT_YES = "Turn Off";
-var SWITCH_CONFIRM_DEFAULT_NO = "Cancel";
+var SWITCH_CONFIRM_DEFAULT_YES = "Yes";
+var SWITCH_CONFIRM_DEFAULT_NO = "No";
 
 function configOptionEnabled(options, name) {
   var parts = String(options || "").split(",");
