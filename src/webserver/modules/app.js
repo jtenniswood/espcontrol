@@ -100,6 +100,7 @@ function exportConfig() {
       ntp_server_1: state.ntpServer1,
       ntp_server_2: state.ntpServer2,
       ntp_server_3: state.ntpServer3,
+      month_names: serializeMonthNames(state.monthNames),
       screensaver_mode: getActiveScreensaverMode(),
       presence_sensor_entity: state.presenceEntity,
       media_player_sleep_prevention: state.mediaPlayerSleepPreventionOn,
@@ -329,6 +330,7 @@ function importConfig() {
         var hasNtpServer1 = Object.prototype.hasOwnProperty.call(s, "ntp_server_1");
         var hasNtpServer2 = Object.prototype.hasOwnProperty.call(s, "ntp_server_2");
         var hasNtpServer3 = Object.prototype.hasOwnProperty.call(s, "ntp_server_3");
+        var hasMonthNames = Object.prototype.hasOwnProperty.call(s, "month_names");
         var hasDeveloperExperimentalFeatures =
           Object.prototype.hasOwnProperty.call(s, "developer_experimental_features");
         var importedDeveloperExperimentalFeatures = hasDeveloperExperimentalFeatures
@@ -343,6 +345,9 @@ function importConfig() {
         var importedNtpServer3 = hasNtpServer3
           ? normalizeNtpServer(s.ntp_server_3, NTP_SERVER_DEFAULTS[2])
           : state.ntpServer3;
+        var importedMonthNames = hasMonthNames
+          ? normalizeMonthNames(s.month_names)
+          : state.monthNames;
         if (s.timezone) postSelect("Screen: Timezone", importedTimezone);
         postSelect("Screen: Temperature Unit", importedTemperatureUnit);
         if (s.clock_format) postSelect("Screen: Clock Format", importedClockFormat);
@@ -354,6 +359,9 @@ function importConfig() {
         }
         if (hasNtpServer3) {
           postText("Screen: NTP Server 3", importedNtpServer3);
+        }
+        if (hasMonthNames) {
+          postText("Screen: Month Names", serializeMonthNames(importedMonthNames));
         }
         var importedScreensaverMode = s.screensaver_mode || "disabled";
         if (importedScreensaverMode !== "sensor" &&
@@ -402,6 +410,8 @@ function importConfig() {
         state.ntpServer1 = importedNtpServer1;
         state.ntpServer2 = importedNtpServer2;
         state.ntpServer3 = importedNtpServer3;
+        state.monthNames = importedMonthNames;
+        state.customMonthNames = hasCustomMonthNames();
         state.customNtpServers = hasCustomNtpServers();
         state.screensaverMode = importedScreensaverMode;
         state._screensaverModeReceived = true;
@@ -432,6 +442,7 @@ function importConfig() {
         if (els.setTimezone) els.setTimezone.value = state.timezone;
         if (els.setClockFormat) els.setClockFormat.value = state.clockFormat;
         syncNtpServerUi();
+        syncMonthNameUi();
         syncClockScreensaverControls();
         syncScreensaverTimeoutUi();
         syncIdleUi();
@@ -909,6 +920,12 @@ function connectEvents() {
       state.customNtpServers = state.customNtpServers || hasCustomNtpServers();
       syncNtpServerUi();
     },
+    "text-screen__month_names": function (val) {
+      state.monthNames = normalizeMonthNames(val);
+      state.customMonthNames = hasCustomMonthNames();
+      syncMonthNameUi();
+      renderPreview();
+    },
     "text-ntp_server_1": function (val) {
       state.ntpServer1 = normalizeNtpServer(val, NTP_SERVER_DEFAULTS[0]);
       state.customNtpServers = state.customNtpServers || hasCustomNtpServers();
@@ -923,6 +940,12 @@ function connectEvents() {
       state.ntpServer3 = normalizeNtpServer(val, NTP_SERVER_DEFAULTS[2]);
       state.customNtpServers = state.customNtpServers || hasCustomNtpServers();
       syncNtpServerUi();
+    },
+    "text-month_names": function (val) {
+      state.monthNames = normalizeMonthNames(val);
+      state.customMonthNames = hasCustomMonthNames();
+      syncMonthNameUi();
+      renderPreview();
     },
     "select-screen__rotation": function (val, d) {
       state.screenRotation = normalizeScreenRotation(d.value || val || state.screenRotation);

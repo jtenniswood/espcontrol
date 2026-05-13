@@ -16,6 +16,7 @@ esphome:
           id(homeassistant_time).set_timezone(posix);
           set_display_temperature_unit(id(temperature_unit_select).current_option(),
                                        id(timezone_select).current_option());
+          set_calendar_month_names(id(calendar_month_names).state);
       - script.execute: ntp_servers_apply
 
 # Ask Home Assistant for time as soon as the native API connects. This makes
@@ -272,6 +273,26 @@ text:
     on_value:
       then:
         - script.execute: ntp_servers_apply
+
+  - platform: template
+    name: "Screen: Month Names"
+    internal: true
+    id: calendar_month_names
+    optimistic: true
+    restore_value: true
+    initial_value: "January,February,March,April,May,June,July,August,September,October,November,December"
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:calendar-text"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - lambda: |-
+            set_calendar_month_names(x);
 
 text_sensor:
   # Diagnostic value published from the active time source. This makes

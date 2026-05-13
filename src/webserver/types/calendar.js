@@ -64,7 +64,9 @@ registerButtonType("calendar", {
     var now = new Date();
     var isDateTime = b.precision === "datetime";
     var day = String(now.getDate());
-    var month = now.toLocaleString("en", { month: "long" });
+    var month = typeof monthNameForIndex === "function"
+      ? monthNameForIndex(now.getMonth())
+      : now.toLocaleString("en", { month: "long" });
 
     if (isDateTime) {
       var use12h = typeof state !== "undefined" && state.clockFormat === "12h";

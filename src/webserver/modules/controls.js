@@ -446,6 +446,60 @@ function buildSettingsPage(parent) {
   syncNtpServerUi();
   clockBody.appendChild(ntpField);
 
+  var monthNamesField = document.createElement("div");
+  monthNamesField.className = "sp-field";
+  monthNamesField.appendChild(fieldLabel("Advanced Date Labels", "sp-set-custom-month-names"));
+  state.monthNames = normalizeMonthNames(state.monthNames);
+  state.customMonthNames = state.customMonthNames || hasCustomMonthNames();
+  var customMonthNames = toggleRow("Custom Month Names", "sp-set-custom-month-names", state.customMonthNames);
+  monthNamesField.appendChild(customMonthNames.row);
+  els.setCustomMonthNamesToggle = customMonthNames.input;
+  customMonthNames.input.addEventListener("change", function () {
+    state.customMonthNames = this.checked;
+    if (!state.customMonthNames) {
+      resetMonthNamesToDefaults();
+      postText("Screen: Month Names", serializeMonthNames(state.monthNames));
+      renderPreview();
+    }
+    syncMonthNameUi();
+  });
+
+  var monthList = document.createElement("div");
+  monthList.className = "sp-field-stack";
+  els.setMonthNameFields = monthList;
+  els.setMonthNameInputs = [];
+
+  function addMonthNameInput(index) {
+    var input = textInput(
+      "sp-set-month-name-" + (index + 1),
+      state.monthNames[index],
+      MONTH_NAME_DEFAULTS[index]
+    );
+    input.setAttribute("aria-label", MONTH_NAME_DEFAULTS[index] + " label");
+    input.addEventListener("blur", function () {
+      var names = normalizeMonthNames(state.monthNames);
+      names[index] = this.value.trim() || MONTH_NAME_DEFAULTS[index];
+      state.monthNames = names;
+      this.value = names[index];
+      state.customMonthNames = hasCustomMonthNames();
+      syncMonthNameUi();
+      postText("Screen: Month Names", serializeMonthNames(state.monthNames));
+      renderPreview();
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") this.blur();
+    });
+    monthList.appendChild(input);
+    els.setMonthNameInputs.push(input);
+  }
+
+  for (var monthIndex = 0; monthIndex < 12; monthIndex++) {
+    addMonthNameInput(monthIndex);
+  }
+  monthNamesField.appendChild(monthList);
+  syncMonthNameUi();
+  clockBody.appendChild(monthNamesField);
+
   var timeSettingsCard = makeCollapsibleCard("Time Settings", clockBody, true);
 
   var clockBarBody = document.createElement("div");

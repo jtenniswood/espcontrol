@@ -560,6 +560,7 @@ function settingsStateEntities() {
     ["text", "Screen: NTP Server 1"],
     ["text", "Screen: NTP Server 2"],
     ["text", "Screen: NTP Server 3"],
+    ["text", "Screen: Month Names"],
     ["text_sensor", "Screen: Sunrise"],
     ["text_sensor", "Screen: Sunset"],
     ["text_sensor", "Network Transport"],

@@ -38,6 +38,11 @@ inline int &calendar_card_count() {
   return count;
 }
 
+inline std::string *calendar_custom_month_names() {
+  static std::string names[12];
+  return names;
+}
+
 struct CalendarDateState {
   bool date_valid;
   int day;
@@ -86,6 +91,8 @@ inline const char *calendar_month_name(int month) {
     "July", "August", "September", "October", "November", "December"
   };
   if (month < 1 || month > 12) return "Date";
+  const std::string &custom = calendar_custom_month_names()[month - 1];
+  if (!custom.empty()) return custom.c_str();
   return months[month - 1];
 }
 
@@ -127,6 +134,26 @@ inline void apply_calendar_card_text(const CalendarCardRef &ref,
   if (ref.label_lbl) lv_label_set_text(ref.label_lbl, label_text);
 }
 
+inline void refresh_calendar_cards() {
+  CalendarDateState &state = calendar_date_state();
+  CalendarCardRef *refs = calendar_card_refs();
+  int count = calendar_card_count();
+  for (int i = 0; i < count; i++) {
+    apply_calendar_card_text(refs[i], state);
+  }
+}
+
+inline void set_calendar_month_names(const std::string &value) {
+  std::string *names = calendar_custom_month_names();
+  for (int i = 0; i < 12; i++) names[i].clear();
+
+  std::vector<std::string> parts = split_config_fields(value, ',');
+  for (int i = 0; i < 12 && i < static_cast<int>(parts.size()); i++) {
+    names[i] = trim_display_unit(parts[i]);
+  }
+  refresh_calendar_cards();
+}
+
 inline void update_calendar_cards(bool valid, int day, int month) {
   CalendarDateState &state = calendar_date_state();
   state.date_valid = valid && day >= 1 && day <= 31 && month >= 1 && month <= 12;
@@ -138,11 +165,7 @@ inline void update_calendar_cards(bool valid, int day, int month) {
     state.use_12h = false;
   }
 
-  CalendarCardRef *refs = calendar_card_refs();
-  int count = calendar_card_count();
-  for (int i = 0; i < count; i++) {
-    apply_calendar_card_text(refs[i], state);
-  }
+  refresh_calendar_cards();
 }
 
 inline void update_calendar_cards_time(bool valid, int day, int month,
@@ -162,11 +185,7 @@ inline void update_calendar_cards_time(bool valid, int day, int month,
     state.month = month;
   }
 
-  CalendarCardRef *refs = calendar_card_refs();
-  int count = calendar_card_count();
-  for (int i = 0; i < count; i++) {
-    apply_calendar_card_text(refs[i], state);
-  }
+  refresh_calendar_cards();
 }
 
 inline bool parse_calendar_date_text(const std::string &value, int &day, int &month) {
