@@ -32,7 +32,8 @@ script:
           #undef BTN_SLOT
           GridConfig cfg = {};
           cfg.num_slots = 6;
-          cfg.cols = 2;
+          bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
+          cfg.cols = portrait ? 3 : 2;
           cfg.color_correction = true;
           cfg.icon_font = id(icon_font_480)->get_lv_font();
           cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();
@@ -80,7 +81,8 @@ esphome:
             #undef BTN_SLOT
             GridConfig cfg = {};
             cfg.num_slots = 6;
-            cfg.cols = 2;
+            bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
+            cfg.cols = portrait ? 3 : 2;
             cfg.color_correction = true;
             cfg.icon_font = id(icon_font_480)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();
@@ -152,7 +154,8 @@ esphome:
             #undef SP_EXT3
             GridConfig cfg = {};
             cfg.num_slots = 6;
-            cfg.cols = 2;
+            bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
+            cfg.cols = portrait ? 3 : 2;
             cfg.color_correction = true;
             cfg.icon_font = id(icon_font_480)->get_lv_font();
             cfg.sp_sensor_font = id(statistics_font_lg)->get_lv_font();

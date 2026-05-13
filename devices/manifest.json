@@ -96,7 +96,8 @@
       "layout": {
         "cols": 2,
         "rows": 3,
-        "firmwareGrid": "3x2"
+        "firmwareGrid": "3x2",
+        "portraitCols": 3
       },
       "rotation": {
         "enabled": true,
