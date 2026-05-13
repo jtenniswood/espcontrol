@@ -30,11 +30,13 @@ function lightTempClampMax(v, mn) {
 }
 
 var LIGHT_CONTROL_TYPE_OPTIONS = [
+  ["light_switch", "Switch"],
   ["light_brightness", "Brightness"],
   ["light_temperature", "Colour Temperature"],
 ];
 
 function normalizeLightControlType(type) {
+  if (type === "light_switch") return "light_switch";
   return type === "light_temperature" ? "light_temperature" : "light_brightness";
 }
 

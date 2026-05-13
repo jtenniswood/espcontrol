@@ -55,6 +55,7 @@ function subpageTypeFromCode(code) {
     W: "weather",
     F: "weather_forecast",
     V: "light_brightness",
+    Q: "light_switch",
     L: "slider",
     C: "cover",
     N: "light_temperature",
@@ -746,6 +747,26 @@ assertButtonRoundTrip(hooks, "light brightness card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "light switch card", {
+  entity: "light.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "light_switch",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonMigration(hooks, "light switch clears ignored fields", "light.living_room;Living Room;Auto;Auto;sensor.living_room_power;W;light_switch;1;confirm_off", {
+  entity: "light.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  type: "light_switch",
+});
+
 const subpageStateOff = buttonShape({
   label: "Windows",
   icon: "Window Closed",
@@ -1103,6 +1124,13 @@ assertSubpageRoundTrip(hooks, "light brightness subpage", {
   order: ["1", "B"],
   buttons: [
     buttonShape({ entity: "light.living_room", label: "Living Room", icon: "Auto", icon_on: "Auto", type: "light_brightness" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "light switch subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "light.living_room", label: "Living Room", icon: "Auto", icon_on: "Auto", type: "light_switch" }),
   ],
 }, true);
 

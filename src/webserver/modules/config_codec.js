@@ -57,6 +57,12 @@ function normalizeButtonConfig(b) {
     b.precision = "";
     if (b.sensor === "open" || b.sensor === "close") b.icon_on = "Auto";
   }
+  if (b && b.type === "light_switch") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+  }
   if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
   } else if (b && !cardLargeNumbersSupported(b)) {
@@ -279,11 +285,11 @@ function trimConfigFields(fields) {
 
 function buttonConfigFields(b) {
   var type = b && b.type || "";
-  var sensor = (isBrightnessSliderType(type) || type === "climate") ? "" : (b && b.sensor || "");
-  var unit = type === "climate" ? "" : (b && b.unit || "");
+  var sensor = (isBrightnessSliderType(type) || type === "climate" || type === "light_switch") ? "" : (b && b.sensor || "");
+  var unit = (type === "climate" || type === "light_switch") ? "" : (b && b.unit || "");
   var icon = b && b.icon || "Auto";
   var iconOn = type === "climate" ? "Auto" : (b && b.icon_on || "Auto");
-  var precision = b && b.precision || "";
+  var precision = type === "light_switch" ? "" : (b && b.precision || "");
   if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
   var options = b && b.options || "";
   if (type === "") {
@@ -463,6 +469,7 @@ function subpageTypeCode(type) {
     weather: "W",
     weather_forecast: "F",
     light_brightness: "V",
+    light_switch: "Q",
     slider: "L",
     cover: "C",
     light_temperature: "N",
@@ -486,6 +493,7 @@ function subpageTypeFromCode(code) {
     W: "weather",
     F: "weather_forecast",
     V: "light_brightness",
+    Q: "light_switch",
     L: "slider",
     C: "cover",
     N: "light_temperature",
@@ -561,11 +569,11 @@ function legacySubpageConfigSafe(sp) {
   if (!sp || !sp.buttons) return true;
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
-    var sensor = b.type === "climate" ? "" : (b.sensor || "");
-    var unit = b.type === "climate" ? "" : (b.unit || "");
+    var sensor = (b.type === "climate" || b.type === "light_switch") ? "" : (b.sensor || "");
+    var unit = (b.type === "climate" || b.type === "light_switch") ? "" : (b.unit || "");
     var icon = b.icon || "Auto";
     var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
-    var precision = b.precision || "";
+    var precision = b.type === "light_switch" ? "" : (b.precision || "");
     if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
     var options = b.options || "";
     if (!b.type) {
@@ -588,11 +596,11 @@ function serializeLegacySubpageConfig(sp) {
   var out = subpageOrderForSerialize(sp).join(",");
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
-    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate") ? "" : (b.sensor || "");
-    var unit = b.type === "climate" ? "" : (b.unit || "");
+    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate" || b.type === "light_switch") ? "" : (b.sensor || "");
+    var unit = (b.type === "climate" || b.type === "light_switch") ? "" : (b.unit || "");
     var icon = b.icon || "Auto";
     var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
-    var precision = b.precision || "";
+    var precision = b.type === "light_switch" ? "" : (b.precision || "");
     if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
     var options = b.options || "";
     if (!b.type) {
@@ -615,11 +623,11 @@ function serializeCompactSubpageConfig(sp) {
   var out = "~" + subpageOrderForSerialize(sp).join(",");
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
-    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate") ? "" : (b.sensor || "");
-    var unit = b.type === "climate" ? "" : (b.unit || "");
+    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate" || b.type === "light_switch") ? "" : (b.sensor || "");
+    var unit = (b.type === "climate" || b.type === "light_switch") ? "" : (b.unit || "");
     var icon = b.icon || "Auto";
     var iconOn = b.type === "climate" ? "Auto" : (b.icon_on || "Auto");
-    var precision = b.precision || "";
+    var precision = b.type === "light_switch" ? "" : (b.precision || "");
     if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
     var options = b.options || "";
     if (!b.type) {

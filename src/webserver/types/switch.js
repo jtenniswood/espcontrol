@@ -193,3 +193,69 @@ registerButtonType("", {
     };
   },
 });
+
+registerButtonType("light_switch", {
+  label: "Lights",
+  allowInSubpage: true,
+  hideLabel: true,
+  pickerKey: "light_brightness",
+  isAvailable: function () {
+    return false;
+  },
+  labelPlaceholder: "e.g. Living Room",
+  onSelect: function (b) {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    b.icon = "Auto";
+    b.icon_on = "Auto";
+  },
+  renderSettings: function (panel, b, slot, helpers) {
+    renderLightControlTypeField(panel, b, helpers);
+
+    panel.appendChild(helpers.entityField(
+      "Entity",
+      helpers.idPrefix + "entity",
+      b.entity,
+      "e.g. light.living_room",
+      ["light"],
+      "entity",
+      true,
+      "Add a light entity before saving."
+    ).field);
+
+    panel.appendChild(helpers.textField(
+      "Label",
+      helpers.idPrefix + "label",
+      b.label,
+      "e.g. Living Room",
+      "label",
+      true
+    ).field);
+
+    panel.appendChild(helpers.iconPickerField(
+      helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
+      b.icon || "Auto", function (opt) {
+        b.icon = opt;
+        helpers.saveField("icon", opt);
+      }, "Off Icon"
+    ));
+
+    panel.appendChild(helpers.iconPickerField(
+      helpers.idPrefix + "icon-on-picker", helpers.idPrefix + "icon-on",
+      b.icon_on || "Auto", function (opt) {
+        b.icon_on = opt;
+        helpers.saveField("icon_on", opt);
+      }, "On Icon"
+    ));
+  },
+  renderPreview: function (b, helpers) {
+    var label = b.label || b.entity || "Configure";
+    return {
+      labelHtml:
+        '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
+        '<span class="sp-type-badge mdi mdi-lightbulb"></span></span>',
+    };
+  },
+});
