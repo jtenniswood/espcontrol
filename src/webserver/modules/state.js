@@ -79,8 +79,12 @@ var state = {
   firmwareVersionRefreshPending: false,
   firmwareInstallTargetVersion: "",
   firmwareInstallPostPending: false,
+  firmwareInstallStatus: "",
   firmwareUpdateControlsSupported: false,
   firmwareInstallControlsSupported: false,
+  firmwareOtaUrl: "",
+  firmwareOtaFilename: "",
+  firmwareOtaMd5: "",
   autoUpdate: true,
   updateFrequency: "Daily",
   updateFreqOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
@@ -585,8 +589,10 @@ var pendingSliderSubpageMigrations = {};
 var _eventSource = null;
 var firmwareInstallRefreshTimer = null;
 var firmwareInstallRefreshUntil = 0;
+var firmwareWebOtaFallbackTimer = null;
 var FIRMWARE_VERSION_METADATA_PATH = "/espcontrol/version";
 var FIRMWARE_PUBLIC_MANIFEST_BASE = "https://jtenniswood.github.io/espcontrol/firmware/";
+var FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS = 12000;
 var FIRMWARE_CHECKING_VERSION_LABEL = "Checking version...";
 var FIRMWARE_DEV_VERSION_LABEL = "Dev build";
 var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unknown";
@@ -661,6 +667,17 @@ function publicFirmwareManifestUrl() {
   return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(DEVICE_ID) + "/manifest.json";
 }
 
+function publicFirmwareAssetUrl(assetPath) {
+  assetPath = String(assetPath || "").trim();
+  if (!assetPath) return "";
+  try {
+    return new URL(assetPath, publicFirmwareManifestUrl()).href;
+  } catch (err) {
+    if (/^https?:\/\//i.test(assetPath)) return assetPath;
+    return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(DEVICE_ID) + "/" + assetPath.replace(/^\/+/, "");
+  }
+}
+
 function firmwareInfoFromPublicManifest(data) {
   if (!data || typeof data !== "object") return null;
   var version = String(data.version || "").trim();
@@ -670,10 +687,14 @@ function firmwareInfoFromPublicManifest(data) {
   for (var i = 0; i < builds.length; i++) {
     var build = builds[i] || {};
     var ota = build.ota || {};
-    if (ota.path === expectedOta) {
+    var otaPath = String(ota.path || "").trim();
+    if (otaPath === expectedOta) {
       return {
         latest_version: version,
         release_url: String(ota.release_url || "").trim(),
+        ota_url: publicFirmwareAssetUrl(otaPath),
+        ota_filename: expectedOta,
+        ota_md5: String(ota.md5 || "").trim(),
       };
     }
   }
@@ -686,6 +707,9 @@ function setPublicFirmwareInfo(info) {
   if (!isSpecificFirmwareVersion(latest)) return false;
   state.firmwareLatestVersion = latest;
   if (info.release_url) state.firmwareReleaseUrl = String(info.release_url).trim();
+  if (info.ota_url) state.firmwareOtaUrl = String(info.ota_url).trim();
+  if (info.ota_filename) state.firmwareOtaFilename = String(info.ota_filename).trim();
+  if (info.ota_md5) state.firmwareOtaMd5 = String(info.ota_md5).trim();
   if (state.firmwareUpdateState === "NO UPDATE" &&
       !isSpecificFirmwareVersion(state.firmwareVersion)) {
     setFirmwareVersion(latest);
@@ -733,7 +757,7 @@ function renderFirmwareUpdateStatus() {
   var status = "";
   var inlineStatus = "";
   if (state.firmwareUpdateState === "INSTALLING") {
-    status = "Installing update\u2026";
+    status = state.firmwareInstallStatus || "Installing update\u2026";
     cls += " sp-update-installing";
   } else if (firmwareUpdateAvailable() || publicFirmwareInstallAvailable()) {
     status = publicFirmwareStatusHtml();
@@ -790,9 +814,11 @@ function setFirmwareUpdateInfo(d) {
   if (state.firmwareInstallPostPending) {
     if (installWindowActive && updateState === "UPDATE AVAILABLE") {
       state.firmwareInstallPostPending = false;
+      clearFirmwareWebOtaFallback();
+      state.firmwareInstallStatus = "Installing update\u2026";
       postFirmwareUpdateInstall();
       updateState = "INSTALLING";
-    } else if (!installWindowActive || updateState === "NO UPDATE") {
+    } else if (!installWindowActive || (updateState === "NO UPDATE" && !publicFirmwareInstallAvailable())) {
       state.firmwareInstallPostPending = false;
     }
   }
@@ -824,8 +850,10 @@ function stopFirmwareInstallRefresh() {
   if (firmwareInstallRefreshTimer) clearTimeout(firmwareInstallRefreshTimer);
   firmwareInstallRefreshTimer = null;
   firmwareInstallRefreshUntil = 0;
+  clearFirmwareWebOtaFallback();
   state.firmwareInstallTargetVersion = "";
   state.firmwareInstallPostPending = false;
+  state.firmwareInstallStatus = "";
 }
 
 function stopFirmwareInstallRefreshIfComplete() {
@@ -856,6 +884,22 @@ function startFirmwareInstallRefresh() {
   firmwareInstallRefreshUntil = Date.now() + 180000;
   if (firmwareInstallRefreshTimer) clearTimeout(firmwareInstallRefreshTimer);
   firmwareInstallRefreshTimer = setTimeout(pollFirmwareInstallRefresh, 5000);
+}
+
+function clearFirmwareWebOtaFallback() {
+  if (firmwareWebOtaFallbackTimer) clearTimeout(firmwareWebOtaFallbackTimer);
+  firmwareWebOtaFallbackTimer = null;
+}
+
+function scheduleFirmwareWebOtaFallback() {
+  clearFirmwareWebOtaFallback();
+  firmwareWebOtaFallbackTimer = setTimeout(function () {
+    firmwareWebOtaFallbackTimer = null;
+    if (!state.firmwareInstallPostPending) return;
+    if (firmwareUpdateAvailable()) return;
+    if (!publicFirmwareInstallAvailable()) return;
+    installPublicFirmwareViaWebOta();
+  }, FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS);
 }
 
 function isFirmwareVersionEvent(id, d) {

@@ -853,12 +853,15 @@ function buildSettingsPage(parent) {
       state.firmwareInstallTargetVersion = state.firmwareLatestVersion;
       state.firmwareInstallPostPending = !updateReady;
       state.firmwareUpdateState = "INSTALLING";
+      state.firmwareInstallStatus = updateReady ? "Installing update\u2026" : "Checking update before install\u2026";
       state.firmwareChecking = false;
       renderFirmwareUpdateStatus();
       if (updateReady) {
+        clearFirmwareWebOtaFallback();
         postFirmwareUpdateInstall();
       } else {
         postFirmwareUpdateCheck();
+        scheduleFirmwareWebOtaFallback();
       }
       startFirmwareInstallRefresh();
       return;

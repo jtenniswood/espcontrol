@@ -340,6 +340,77 @@ function postFirmwareUpdateCheck() {
   post(urls, null, "Could not check for firmware update.");
 }
 
+function ensurePublicFirmwareOtaUrl() {
+  if (state.firmwareOtaUrl) return Promise.resolve(state.firmwareOtaUrl);
+  return getJsonQuietly(publicFirmwareManifestUrl(), function (d) {
+    setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
+  }).then(function () {
+    return state.firmwareOtaUrl || "";
+  });
+}
+
+function waitForFirmwareRestart() {
+  state.firmwareInstallStatus = "Waiting for device to restart\u2026";
+  renderFirmwareUpdateStatus();
+  setConfigLocked(true, "Waiting for device to restart\u2026");
+  showBanner("Firmware uploaded. Waiting for device to restart\u2026", "offline");
+  setTimeout(connectEvents, 5000);
+}
+
+function failPublicFirmwareUpload(message) {
+  stopFirmwareInstallRefresh();
+  state.firmwareUpdateState = "";
+  renderFirmwareUpdateStatus();
+  showBanner(message || "Could not upload firmware update.", "error");
+}
+
+function installPublicFirmwareViaWebOta() {
+  clearFirmwareWebOtaFallback();
+  state.firmwareInstallPostPending = false;
+  state.firmwareChecking = false;
+  state.firmwareUpdateState = "INSTALLING";
+  state.firmwareInstallStatus = "Uploading firmware update\u2026";
+  renderFirmwareUpdateStatus();
+  startFirmwareInstallRefresh();
+
+  var uploadStarted = false;
+  var uploadResponseReceived = false;
+  return ensurePublicFirmwareOtaUrl().then(function (otaUrl) {
+    if (!otaUrl) throw new Error("Firmware file is not available yet.");
+    return fetch(otaUrl, { cache: "no-store" });
+  }).then(function (response) {
+    if (!response.ok) throw new Error("Could not download firmware file (" + response.status + ").");
+    return response.blob();
+  }).then(function (blob) {
+    var filename = state.firmwareOtaFilename || (DEVICE_ID + ".ota.bin");
+    var form = new FormData();
+    form.append("file", blob, filename);
+    uploadStarted = true;
+    return fetch("/update", { method: "POST", body: form });
+  }).then(function (response) {
+    uploadResponseReceived = true;
+    return response.text().catch(function () {
+      return "";
+    }).then(function (text) {
+      if (!response.ok) {
+        throw new Error("Device rejected firmware upload (" + response.status + ").");
+      }
+      if (/update failed/i.test(text)) {
+        throw new Error("Device reported that the firmware upload failed.");
+      }
+      waitForFirmwareRestart();
+      return true;
+    });
+  }).catch(function (err) {
+    if (uploadStarted && !uploadResponseReceived) {
+      waitForFirmwareRestart();
+      return true;
+    }
+    failPublicFirmwareUpload(err && err.message);
+    return false;
+  });
+}
+
 function postSwitch(name, on) {
   post("/switch/" + encodeURIComponent(name) + "/" + (on ? "turn_on" : "turn_off"));
 }

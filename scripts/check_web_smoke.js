@@ -134,6 +134,7 @@ const publicManifest = {
     chipFamily: "ESP32-P4",
     ota: {
       path: "guition-esp32-p4-jc1060p470.ota.bin",
+      md5: "0123456789abcdef0123456789abcdef",
       release_url: "https://github.com/jtenniswood/espcontrol/releases/tag/v1.12.0",
     },
   }],
@@ -141,6 +142,9 @@ const publicManifest = {
 assert.deepStrictEqual(plain(hooks.firmwareInfoFromPublicManifest(publicManifest)), {
   latest_version: "v1.12.0",
   release_url: "https://github.com/jtenniswood/espcontrol/releases/tag/v1.12.0",
+  ota_url: "https://jtenniswood.github.io/espcontrol/firmware/guition-esp32-p4-jc1060p470/guition-esp32-p4-jc1060p470.ota.bin",
+  ota_filename: "guition-esp32-p4-jc1060p470.ota.bin",
+  ota_md5: "0123456789abcdef0123456789abcdef",
 });
 assert.strictEqual(
   hooks.firmwareInfoFromPublicManifest({
