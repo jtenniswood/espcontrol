@@ -859,6 +859,9 @@ function buildSettingsPage(parent) {
     state.firmwareChecking = true;
     renderFirmwareUpdateStatus();
     postButtonPress("Firmware: Check for Update");
+    getJsonQuietly(publicFirmwareManifestUrl(), function (d) {
+      setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
+    });
     setTimeout(function () {
       state.firmwareChecking = false;
       refreshFirmwareVersion();

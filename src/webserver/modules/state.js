@@ -584,6 +584,7 @@ var _eventSource = null;
 var firmwareInstallRefreshTimer = null;
 var firmwareInstallRefreshUntil = 0;
 var FIRMWARE_VERSION_METADATA_PATH = "/espcontrol/version";
+var FIRMWARE_PUBLIC_MANIFEST_BASE = "https://jtenniswood.github.io/espcontrol/firmware/";
 var FIRMWARE_CHECKING_VERSION_LABEL = "Checking version...";
 var FIRMWARE_DEV_VERSION_LABEL = "Dev build";
 var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unknown";
@@ -640,6 +641,66 @@ function firmwareUpdateAvailable() {
     isSpecificFirmwareVersion(state.firmwareLatestVersion);
 }
 
+function firmwareVersionsSame(a, b) {
+  return String(a == null ? "" : a).trim().toLowerCase() ===
+    String(b == null ? "" : b).trim().toLowerCase();
+}
+
+function publicFirmwareManifestUrl() {
+  return FIRMWARE_PUBLIC_MANIFEST_BASE + encodeURIComponent(DEVICE_ID) + "/manifest.json";
+}
+
+function firmwareInfoFromPublicManifest(data) {
+  if (!data || typeof data !== "object") return null;
+  var version = String(data.version || "").trim();
+  if (!isSpecificFirmwareVersion(version)) return null;
+  var builds = Array.isArray(data.builds) ? data.builds : [];
+  var expectedOta = DEVICE_ID + ".ota.bin";
+  for (var i = 0; i < builds.length; i++) {
+    var build = builds[i] || {};
+    var ota = build.ota || {};
+    if (ota.path === expectedOta) {
+      return {
+        latest_version: version,
+        release_url: String(ota.release_url || "").trim(),
+      };
+    }
+  }
+  return null;
+}
+
+function setPublicFirmwareInfo(info) {
+  if (!info) return false;
+  var latest = String(info.latest_version || "").trim();
+  if (!isSpecificFirmwareVersion(latest)) return false;
+  state.firmwareLatestVersion = latest;
+  if (info.release_url) state.firmwareReleaseUrl = String(info.release_url).trim();
+  if (state.firmwareUpdateState === "NO UPDATE" &&
+      !isSpecificFirmwareVersion(state.firmwareVersion)) {
+    setFirmwareVersion(latest);
+  }
+  renderFirmwareUpdateStatus();
+  return true;
+}
+
+function publicFirmwareReleaseKnown() {
+  return isSpecificFirmwareVersion(state.firmwareLatestVersion);
+}
+
+function installedFirmwareMatchesPublicRelease() {
+  return publicFirmwareReleaseKnown() &&
+    isSpecificFirmwareVersion(state.firmwareVersion) &&
+    firmwareVersionsSame(state.firmwareVersion, state.firmwareLatestVersion);
+}
+
+function publicFirmwareStatusHtml() {
+  var status = "Latest public version: " + escHtml(state.firmwareLatestVersion);
+  if (state.firmwareReleaseUrl) {
+    status += ' <a href="' + escAttr(state.firmwareReleaseUrl) + '" target="_blank" rel="noopener">release notes</a>';
+  }
+  return status;
+}
+
 function firmwareUpdateControlsVisible() {
   var transport = String(state.networkTransport == null ? "" : state.networkTransport).trim().toLowerCase();
   return state.firmwareUpdateControlsSupported === true && transport !== "ethernet";
@@ -664,13 +725,22 @@ function renderFirmwareUpdateStatus() {
     status = "Installing update\u2026";
     cls += " sp-update-installing";
   } else if (firmwareUpdateAvailable()) {
-    status = "Latest public version: " + escHtml(state.firmwareLatestVersion);
-    if (state.firmwareReleaseUrl) {
-      status += ' <a href="' + escAttr(state.firmwareReleaseUrl) + '" target="_blank" rel="noopener">release notes</a>';
-    }
+    status = publicFirmwareStatusHtml();
     cls += " sp-update-available";
   } else if (state.firmwareUpdateState === "NO UPDATE") {
-    inlineStatus = "Up to date";
+    if (publicFirmwareReleaseKnown() &&
+        isSpecificFirmwareVersion(state.firmwareVersion) &&
+        !installedFirmwareMatchesPublicRelease()) {
+      status = publicFirmwareStatusHtml();
+    } else {
+      inlineStatus = "Up to date";
+    }
+  } else if (publicFirmwareReleaseKnown()) {
+    if (installedFirmwareMatchesPublicRelease()) {
+      inlineStatus = "Up to date";
+    } else {
+      status = publicFirmwareStatusHtml();
+    }
   } else if (state.firmwareChecking) {
     status = "Checking public firmware\u2026";
   }

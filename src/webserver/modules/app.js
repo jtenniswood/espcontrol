@@ -1247,6 +1247,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     networkPreviewIconSlug: networkPreviewIconSlug,
     displayFirmwareVersion: displayFirmwareVersion,
     firmwareVersionFromMetadata: firmwareVersionFromMetadata,
+    firmwareInfoFromPublicManifest: firmwareInfoFromPublicManifest,
     firmwareVersionLabelFor: function (version, pending) {
       var oldVersion = state.firmwareVersion;
       var oldPending = state.firmwareVersionRefreshPending;
@@ -1297,6 +1298,30 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareChecking = oldChecking;
       state.firmwareUpdateControlsSupported = oldSupported;
       state.firmwareInstallTargetVersion = oldInstallTarget;
+      return result;
+    },
+    firmwareStateAfterPublicManifest: function (initialVersion, manifest) {
+      var oldVersion = state.firmwareVersion;
+      var oldLatest = state.firmwareLatestVersion;
+      var oldUpdateState = state.firmwareUpdateState;
+      var oldReleaseUrl = state.firmwareReleaseUrl;
+      state.firmwareVersion = "";
+      state.firmwareLatestVersion = "";
+      state.firmwareUpdateState = "";
+      state.firmwareReleaseUrl = "";
+      setFirmwareVersion(initialVersion);
+      setPublicFirmwareInfo(firmwareInfoFromPublicManifest(manifest));
+      var result = {
+        version: state.firmwareVersion,
+        latest: state.firmwareLatestVersion,
+        updateState: state.firmwareUpdateState,
+        releaseUrl: state.firmwareReleaseUrl,
+        updateAvailable: firmwareUpdateAvailable(),
+      };
+      state.firmwareVersion = oldVersion;
+      state.firmwareLatestVersion = oldLatest;
+      state.firmwareUpdateState = oldUpdateState;
+      state.firmwareReleaseUrl = oldReleaseUrl;
       return result;
     },
     findDuplicatePlacementFor: function (grid, start, size, maxSlots) {

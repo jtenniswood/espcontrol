@@ -128,6 +128,27 @@ assert.strictEqual(hooks.displayFirmwareVersion(""), "Version unknown");
 assert.strictEqual(hooks.firmwareVersionFromMetadata({ firmware_version: "v1.12.0" }), "v1.12.0");
 assert.strictEqual(hooks.firmwareVersionFromMetadata({ project_version: "v1.12.1" }), "v1.12.1");
 assert.strictEqual(hooks.firmwareVersionFromMetadata({ version: "dev" }), "dev");
+const publicManifest = {
+  version: "v1.12.0",
+  builds: [{
+    chipFamily: "ESP32-P4",
+    ota: {
+      path: "guition-esp32-p4-jc1060p470.ota.bin",
+      release_url: "https://github.com/jtenniswood/espcontrol/releases/tag/v1.12.0",
+    },
+  }],
+};
+assert.deepStrictEqual(plain(hooks.firmwareInfoFromPublicManifest(publicManifest)), {
+  latest_version: "v1.12.0",
+  release_url: "https://github.com/jtenniswood/espcontrol/releases/tag/v1.12.0",
+});
+assert.strictEqual(
+  hooks.firmwareInfoFromPublicManifest({
+    version: "v1.12.0",
+    builds: [{ chipFamily: "ESP32-S3", ota: { path: "wrong-device.ota.bin" } }],
+  }),
+  null
+);
 assert.strictEqual(hooks.firmwareVersionLabelFor("", true), "Checking version...");
 assert.strictEqual(hooks.firmwareVersionLabelFor("", false), "Version unknown");
 assert.deepStrictEqual(hooks.entityDetailPaths("text_sensor", [
@@ -156,5 +177,12 @@ assert.strictEqual(
   hooks.firmwareVersionAfterUpdateInfo("v1.10.0", { state: "NO UPDATE", latest_version: "v1.11.1" }).version,
   "v1.10.0"
 );
+assert.deepStrictEqual(plain(hooks.firmwareStateAfterPublicManifest("Dev", publicManifest)), {
+  version: "Dev build",
+  latest: "v1.12.0",
+  updateState: "",
+  releaseUrl: "https://github.com/jtenniswood/espcontrol/releases/tag/v1.12.0",
+  updateAvailable: false,
+});
 
 console.log("Web UI smoke tests passed.");
