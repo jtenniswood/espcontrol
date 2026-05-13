@@ -110,7 +110,7 @@ var CSS =
   "height:4.6cqw;padding:0 1.8cqw;border-radius:9999px;border:1px solid rgba(255,255,255,.18);" +
   "background:rgba(255,255,255,.06);box-shadow:var(--shadow-1)}" +
   ".sp-empty-cell:hover .sp-add-pill{border-color:rgba(168,177,255,.45);background:rgba(92,115,231,.18)}" +
-  ".sp-empty-cell .sp-add-icon{font-size:2.8cqw;color:rgba(255,255,255,.82)}" +
+  ".sp-empty-cell .sp-add-icon{font-size:var(--add-icon);color:rgba(255,255,255,.82)}" +
   ".sp-empty-cell.sp-drop-placeholder{border:2px dashed rgba(92,156,245,.5) !important;" +
   "background:rgba(92,156,245,.08) !important;cursor:default;pointer-events:none}" +
   ".sp-btn.sp-drop-placeholder{box-shadow:0 0 0 2px rgba(92,156,245,.6),0 0 12px rgba(92,156,245,.25) !important;" +
