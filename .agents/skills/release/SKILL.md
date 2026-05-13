@@ -69,7 +69,21 @@ patch            v1.2.3 -> v1.2.4
 If there is no existing stable release, treat the first stable release as
 `v1.0.0` unless the user asks for a different full tag.
 
-### 3. Create the Release
+### 3. Build the Changelog
+
+Create detailed release notes before publishing the GitHub Release:
+
+```bash
+TAG="vX.Y.Z"
+NOTES_FILE="$(mktemp -t espcontrol-${TAG}-notes.XXXXXX.md)"
+npm run changelog:release -- "$TAG" --output "$NOTES_FILE"
+```
+
+Review the generated notes for obvious wording problems before publishing. The
+script compares `HEAD` with the latest stable release tag when the new tag does
+not exist yet, which is the normal release preparation path from `main`.
+
+### 4. Create the Release
 
 Use a published release, not a draft, so GitHub emits the `release.published`
 event and starts the firmware build.
@@ -80,7 +94,7 @@ Stable release:
 TAG="vX.Y.Z"
 gh release create "$TAG" \
   --target main \
-  --generate-notes \
+  --notes-file "$NOTES_FILE" \
   --fail-on-no-commits
 ```
 
@@ -90,7 +104,7 @@ Pre-release:
 TAG="vX.Y.Z-beta.N"
 gh release create "$TAG" \
   --target main \
-  --generate-notes \
+  --notes-file "$NOTES_FILE" \
   --fail-on-no-commits \
   --prerelease \
   --latest=false
@@ -106,7 +120,7 @@ gh release edit "$TAG" --draft=false
 Do not close GitHub issues as part of this workflow unless the user explicitly
 asks; they prefer to test before issues are closed.
 
-### 4. Verify the Release Action Started
+### 5. Verify the Release Action Started
 
 The related action is `Build Release` in `.github/workflows/release.yml`.
 Publishing the release should start it automatically.
@@ -138,7 +152,7 @@ gh workflow run release.yml --ref "$TAG"
 Warn the user before using this fallback because workflow-dispatched runs
 produce an artifact but do not upload firmware files to the GitHub release.
 
-### 5. Verify Outputs
+### 6. Verify Outputs
 
 After `Build Release` succeeds, confirm the release has the expected assets:
 
@@ -151,12 +165,21 @@ gh release view "$TAG" \
 Expected release assets:
 
 ```text
-immich-frame.factory.bin
-immich-frame.ota.bin
-immich-frame-7inch.factory.bin
-immich-frame-7inch.ota.bin
-manifest.json
-manifest-7inch.json
+esp32-p4-86.factory.bin
+esp32-p4-86.manifest.json
+esp32-p4-86.ota.bin
+guition-esp32-p4-jc1060p470.factory.bin
+guition-esp32-p4-jc1060p470.manifest.json
+guition-esp32-p4-jc1060p470.ota.bin
+guition-esp32-p4-jc4880p443.factory.bin
+guition-esp32-p4-jc4880p443.manifest.json
+guition-esp32-p4-jc4880p443.ota.bin
+guition-esp32-p4-jc8012p4a1.factory.bin
+guition-esp32-p4-jc8012p4a1.manifest.json
+guition-esp32-p4-jc8012p4a1.ota.bin
+guition-esp32-s3-4848s040.factory.bin
+guition-esp32-s3-4848s040.manifest.json
+guition-esp32-s3-4848s040.ota.bin
 ```
 
 The `Deploy Docs` workflow is configured to run after a successful
@@ -164,7 +187,7 @@ The `Deploy Docs` workflow is configured to run after a successful
 availability:
 
 ```bash
-gh run list --workflow docs.yml --event workflow_run --limit 5
+gh run list --workflow pages.yml --event workflow_run --limit 5
 ```
 
 ## Report Back

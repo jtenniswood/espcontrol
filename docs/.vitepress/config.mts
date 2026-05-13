@@ -432,6 +432,7 @@ export default defineConfig({
         text: 'Development',
         items: [
           { text: 'Project Organization', link: '/development/project-organization' },
+          { text: 'Release Changelogs', link: '/development/release-changelogs' },
           { text: 'Display Sizing Notes', link: '/development/display-sizing' },
           { text: 'Climate Control Spec', link: '/development/climate-control' },
           { text: 'Light Modal UX Plan', link: '/development/light-modal-ux-plan' },
