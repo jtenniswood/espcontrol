@@ -183,6 +183,11 @@ assert.deepStrictEqual(plain(hooks.firmwareStateAfterPublicManifest("Dev", publi
   updateState: "",
   releaseUrl: "https://github.com/jtenniswood/espcontrol/releases/tag/v1.12.0",
   updateAvailable: false,
+  installAvailable: true,
 });
+assert.strictEqual(
+  hooks.firmwareStateAfterPublicManifest("v1.12.0", publicManifest).installAvailable,
+  false
+);
 
 console.log("Web UI smoke tests passed.");

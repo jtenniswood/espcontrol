@@ -848,11 +848,11 @@ function buildSettingsPage(parent) {
   fwCheckBtn.textContent = "Check for Update";
   fwCheckBtn.addEventListener("click", function () {
     if (!firmwareUpdateControlsVisible()) return;
-    if (firmwareUpdateAvailable()) {
+    if (firmwareInstallAvailable()) {
       state.firmwareInstallTargetVersion = state.firmwareLatestVersion;
       state.firmwareUpdateState = "INSTALLING";
       renderFirmwareUpdateStatus();
-      postUpdateInstall("Firmware: Update");
+      postFirmwareUpdateInstall();
       startFirmwareInstallRefresh();
       return;
     }

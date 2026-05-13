@@ -79,6 +79,7 @@ var state = {
   firmwareVersionRefreshPending: false,
   firmwareInstallTargetVersion: "",
   firmwareUpdateControlsSupported: false,
+  firmwareInstallControlsSupported: false,
   autoUpdate: true,
   updateFrequency: "Daily",
   updateFreqOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
@@ -641,6 +642,15 @@ function firmwareUpdateAvailable() {
     isSpecificFirmwareVersion(state.firmwareLatestVersion);
 }
 
+function publicFirmwareInstallAvailable() {
+  return publicFirmwareReleaseKnown() && !installedFirmwareMatchesPublicRelease();
+}
+
+function firmwareInstallAvailable() {
+  return state.firmwareInstallControlsSupported === true &&
+    (firmwareUpdateAvailable() || publicFirmwareInstallAvailable());
+}
+
 function firmwareVersionsSame(a, b) {
   return String(a == null ? "" : a).trim().toLowerCase() ===
     String(b == null ? "" : b).trim().toLowerCase();
@@ -724,7 +734,7 @@ function renderFirmwareUpdateStatus() {
   if (state.firmwareUpdateState === "INSTALLING") {
     status = "Installing update\u2026";
     cls += " sp-update-installing";
-  } else if (firmwareUpdateAvailable()) {
+  } else if (firmwareUpdateAvailable() || publicFirmwareInstallAvailable()) {
     status = publicFirmwareStatusHtml();
     cls += " sp-update-available";
   } else if (state.firmwareUpdateState === "NO UPDATE") {
@@ -756,7 +766,7 @@ function renderFirmwareUpdateStatus() {
     if (state.firmwareUpdateState === "INSTALLING") {
       els.fwCheckBtn.disabled = true;
       els.fwCheckBtn.textContent = "Installing\u2026";
-    } else if (firmwareUpdateAvailable()) {
+    } else if (firmwareInstallAvailable()) {
       els.fwCheckBtn.disabled = false;
       els.fwCheckBtn.textContent = "Install Update";
     } else {
@@ -769,6 +779,7 @@ function renderFirmwareUpdateStatus() {
 
 function setFirmwareUpdateInfo(d) {
   state.firmwareUpdateControlsSupported = true;
+  state.firmwareInstallControlsSupported = true;
   var latest = d.latest_version || d.value || "";
   var updateState = String(d.state || state.firmwareUpdateState || "").trim().toUpperCase();
   if (d.current_version) setFirmwareVersion(d.current_version);
@@ -854,6 +865,28 @@ function isFirmwareUpdateEvent(id, d) {
   return nameId === "update/firmware: update" ||
     (domain === "update" && name === "firmware: update") ||
     (id.indexOf("update-") === 0 && id.indexOf("firmware") !== -1 && id.indexOf("update") !== -1);
+}
+
+function isFirmwareCheckButtonEvent(id, d) {
+  id = String(id || "").toLowerCase();
+  var nameId = String(d.name_id || "").toLowerCase();
+  var domain = String(d.domain || "").toLowerCase();
+  var name = String(d.name || "").toLowerCase();
+  return nameId === "button/firmware: check for update" ||
+    (domain === "button" && name === "firmware: check for update") ||
+    (id.indexOf("button-") === 0 && id.indexOf("firmware") !== -1 &&
+      id.indexOf("check") !== -1 && id.indexOf("update") !== -1);
+}
+
+function isFirmwareInstallButtonEvent(id, d) {
+  id = String(id || "").toLowerCase();
+  var nameId = String(d.name_id || "").toLowerCase();
+  var domain = String(d.domain || "").toLowerCase();
+  var name = String(d.name || "").toLowerCase();
+  return nameId === "button/firmware: install update" ||
+    (domain === "button" && name === "firmware: install update") ||
+    (id.indexOf("button-") === 0 && id.indexOf("firmware") !== -1 &&
+      id.indexOf("install") !== -1 && id.indexOf("update") !== -1);
 }
 
 function escAttr(s) {

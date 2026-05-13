@@ -1105,6 +1105,17 @@ function connectEvents() {
       setFirmwareUpdateInfo(d);
       return;
     }
+    if (isFirmwareInstallButtonEvent(id, d)) {
+      state.firmwareUpdateControlsSupported = true;
+      state.firmwareInstallControlsSupported = true;
+      renderFirmwareUpdateStatus();
+      return;
+    }
+    if (isFirmwareCheckButtonEvent(id, d)) {
+      state.firmwareUpdateControlsSupported = true;
+      renderFirmwareUpdateStatus();
+      return;
+    }
 
     for (var i = 0; i < ssePatterns.length; i++) {
       for (var pk = 0; pk < keys.length; pk++) {
@@ -1280,6 +1291,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       var oldReleaseUrl = state.firmwareReleaseUrl;
       var oldChecking = state.firmwareChecking;
       var oldSupported = state.firmwareUpdateControlsSupported;
+      var oldInstallSupported = state.firmwareInstallControlsSupported;
       var oldInstallTarget = state.firmwareInstallTargetVersion;
       state.firmwareVersion = "";
       state.firmwareLatestVersion = "";
@@ -1287,6 +1299,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareReleaseUrl = "";
       state.firmwareChecking = false;
       state.firmwareUpdateControlsSupported = false;
+      state.firmwareInstallControlsSupported = false;
       state.firmwareInstallTargetVersion = "";
       setFirmwareVersion(initialVersion);
       setFirmwareUpdateInfo(updateInfo || {});
@@ -1294,6 +1307,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         version: state.firmwareVersion,
         latest: state.firmwareLatestVersion,
         updateState: state.firmwareUpdateState,
+        installAvailable: firmwareInstallAvailable(),
       };
       state.firmwareVersion = oldVersion;
       state.firmwareLatestVersion = oldLatest;
@@ -1301,6 +1315,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareReleaseUrl = oldReleaseUrl;
       state.firmwareChecking = oldChecking;
       state.firmwareUpdateControlsSupported = oldSupported;
+      state.firmwareInstallControlsSupported = oldInstallSupported;
       state.firmwareInstallTargetVersion = oldInstallTarget;
       return result;
     },
@@ -1309,10 +1324,12 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       var oldLatest = state.firmwareLatestVersion;
       var oldUpdateState = state.firmwareUpdateState;
       var oldReleaseUrl = state.firmwareReleaseUrl;
+      var oldInstallSupported = state.firmwareInstallControlsSupported;
       state.firmwareVersion = "";
       state.firmwareLatestVersion = "";
       state.firmwareUpdateState = "";
       state.firmwareReleaseUrl = "";
+      state.firmwareInstallControlsSupported = true;
       setFirmwareVersion(initialVersion);
       setPublicFirmwareInfo(firmwareInfoFromPublicManifest(manifest));
       var result = {
@@ -1321,11 +1338,13 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         updateState: state.firmwareUpdateState,
         releaseUrl: state.firmwareReleaseUrl,
         updateAvailable: firmwareUpdateAvailable(),
+        installAvailable: firmwareInstallAvailable(),
       };
       state.firmwareVersion = oldVersion;
       state.firmwareLatestVersion = oldLatest;
       state.firmwareUpdateState = oldUpdateState;
       state.firmwareReleaseUrl = oldReleaseUrl;
+      state.firmwareInstallControlsSupported = oldInstallSupported;
       return result;
     },
     findDuplicatePlacementFor: function (grid, start, size, maxSlots) {

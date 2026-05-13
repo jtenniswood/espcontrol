@@ -306,8 +306,25 @@ function postButtonPress(name) {
   post("/button/" + encodeURIComponent(name) + "/press");
 }
 
-function postUpdateInstall(name) {
-  post("/update/" + encodeURIComponent(name) + "/install");
+function postFirmwareUpdateInstall() {
+  var urls = [];
+  rememberedPostUrls("button", "Firmware: Install Update", [
+    "firmware__install_update",
+    "firmware_install_update",
+  ], "press").forEach(function (url) { uniquePush(urls, url); });
+  uniquePush(urls, "/button/" + encodeURIComponent("Firmware: Install Update") + "/press");
+  uniquePush(urls, "/button/" + encodeURIComponent("firmware__install_update") + "/press");
+  uniquePush(urls, "/button/" + encodeURIComponent("firmware_install_update") + "/press");
+
+  rememberedPostUrls("update", "Firmware: Update", [
+    "firmware__update",
+    "firmware_update",
+  ], "install").forEach(function (url) { uniquePush(urls, url); });
+  uniquePush(urls, "/update/" + encodeURIComponent("Firmware: Update") + "/install");
+  uniquePush(urls, "/update/" + encodeURIComponent("firmware__update") + "/install");
+  uniquePush(urls, "/update/" + encodeURIComponent("firmware_update") + "/install");
+
+  post(urls, null, "Could not start firmware update.");
 }
 
 function postSwitch(name, on) {
@@ -596,6 +613,8 @@ function settingsStateEntities() {
     ["number", "Screen: Nighttime Brightness"],
     ["text_sensor", "Firmware: Version"],
     ["update", "Firmware: Update"],
+    ["button", "Firmware: Check for Update"],
+    ["button", "Firmware: Install Update"],
     ["switch", "Firmware: Auto Update"],
     ["select", "Firmware: Update Frequency"],
     ["switch", "Developer: Experimental Features"],
@@ -675,7 +694,7 @@ function loadInitialState(handleState, onLoaded) {
 }
 
 function refreshFirmwareVersion() {
-  var pending = 4;
+  var pending = 6;
   if (!state.firmwareVersion) {
     state.firmwareVersionRefreshPending = true;
     renderFirmwareVersion();
@@ -706,6 +725,7 @@ function refreshFirmwareVersion() {
     "firmware__update",
     "firmware_update",
   ]), function (d) {
+    rememberEntityPostPath(d);
     setFirmwareUpdateInfo(d);
   }).then(function (data) {
     if (!data && state.firmwareUpdateControlsSupported !== true) {
@@ -714,6 +734,27 @@ function refreshFirmwareVersion() {
     }
     finishFirmwareVersionRefresh();
   }, finishFirmwareVersionRefresh);
+  getJsonFirst(entityDetailPaths("button", [
+    "Firmware: Install Update",
+    "firmware__install_update",
+    "firmware_install_update",
+  ]), function (d) {
+    rememberEntityPostPath(d);
+    state.firmwareUpdateControlsSupported = true;
+    state.firmwareInstallControlsSupported = true;
+    renderFirmwareUpdateStatus();
+    syncFirmwareUpdateUi();
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+  getJsonFirst(entityDetailPaths("button", [
+    "Firmware: Check for Update",
+    "firmware__check_for_update",
+    "firmware_check_for_update",
+  ]), function (d) {
+    rememberEntityPostPath(d);
+    state.firmwareUpdateControlsSupported = true;
+    renderFirmwareUpdateStatus();
+    syncFirmwareUpdateUi();
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
 }
 
 function refreshScreensaverTimeout() {

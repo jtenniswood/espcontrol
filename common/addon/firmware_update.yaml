@@ -104,3 +104,12 @@ button:
       - component.update: firmware_update
       - delay: 15s
       - lambda: 'id(manual_check_only) = false;'
+
+  - platform: template
+    name: "Firmware: Install Update"
+    entity_category: config
+    icon: "mdi:download"
+    web_server:
+      sorting_group_id: sg_firmware
+    on_press:
+      - update.perform: firmware_update
