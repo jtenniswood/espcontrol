@@ -89,6 +89,16 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 - [Report a bug or request a feature](https://github.com/jtenniswood/espcontrol/issues)
 - [Maintainer notes: display sizing](docs/development/display-sizing.md)
 
+## License
+
+EspControl is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+In plain terms, you can view, change, and share the software for non-commercial purposes. Commercial use needs separate permission from the project owner.
+
+This is a source-available non-commercial license rather than an OSI-approved open source license, because the standard open source definition does not allow restrictions on commercial use.
+
+Required notice: see [NOTICE](NOTICE).
+
 ## Support This Project
 
 If EspControl is useful in your home, you can support ongoing development by buying me a coffee.
