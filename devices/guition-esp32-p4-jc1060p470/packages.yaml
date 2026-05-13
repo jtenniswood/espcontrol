@@ -38,6 +38,9 @@ substitutions:
   firmware_update_package_suffix: ${ "_disabled" if disable_updates == "true" else "" }
   backlight_pwm_frequency: ${ "20000Hz" if network_transport == "ethernet" else "1000Hz" }
 
+web_server:
+  js_include: "../../docs/public/webserver/${device_slug}/www.js"
+
 packages:
   # ---------------------------------------------------------------------------
   # Device, assets, and LVGL base

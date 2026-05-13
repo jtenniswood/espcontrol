@@ -23,3 +23,6 @@ wifi:
     ssid: "${friendly_name}"
 
 captive_portal:
+
+web_server:
+  js_include: "../docs/public/webserver/${device_slug}/www.js"

@@ -33,6 +33,9 @@ substitutions:
   clock_cx: "640"
   clock_cy: "400"
 
+web_server:
+  js_include: "../../docs/public/webserver/${device_slug}/www.js"
+
 packages:
   # ---------------------------------------------------------------------------
   # Device, assets, and LVGL base
