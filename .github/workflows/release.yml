@@ -12,6 +12,28 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  release-notes:
+    name: Update Release Notes
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Build detailed changelog
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
+        run: python3 scripts/release_changelog.py "$VERSION" --output "$RUNNER_TEMP/release-notes.md"
+
+      - name: Update GitHub release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ github.event.release.tag_name }}
+        run: gh release edit "$VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
+
   build-firmware:
     name: Build ${{ matrix.slug }}
     runs-on: ubuntu-latest

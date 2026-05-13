@@ -69,24 +69,13 @@ patch            v1.2.3 -> v1.2.4
 If there is no existing stable release, treat the first stable release as
 `v1.0.0` unless the user asks for a different full tag.
 
-### 3. Build the Changelog
-
-Create detailed release notes before publishing the GitHub Release:
-
-```bash
-TAG="vX.Y.Z"
-NOTES_FILE="$(mktemp -t espcontrol-${TAG}-notes.XXXXXX.md)"
-npm run changelog:release -- "$TAG" --output "$NOTES_FILE"
-```
-
-Review the generated notes for obvious wording problems before publishing. The
-script compares `HEAD` with the latest stable release tag when the new tag does
-not exist yet, which is the normal release preparation path from `main`.
-
-### 4. Create the Release
+### 3. Create the Release
 
 Use a published release, not a draft, so GitHub emits the `release.published`
 event and starts the firmware build.
+
+The `Build Release` workflow automatically replaces the release body with a
+detailed changelog after the release is published.
 
 Stable release:
 
@@ -94,7 +83,7 @@ Stable release:
 TAG="vX.Y.Z"
 gh release create "$TAG" \
   --target main \
-  --notes-file "$NOTES_FILE" \
+  --notes "Detailed changelog will be added automatically by the Build Release workflow." \
   --fail-on-no-commits
 ```
 
@@ -104,7 +93,7 @@ Pre-release:
 TAG="vX.Y.Z-beta.N"
 gh release create "$TAG" \
   --target main \
-  --notes-file "$NOTES_FILE" \
+  --notes "Detailed changelog will be added automatically by the Build Release workflow." \
   --fail-on-no-commits \
   --prerelease \
   --latest=false
@@ -120,7 +109,7 @@ gh release edit "$TAG" --draft=false
 Do not close GitHub issues as part of this workflow unless the user explicitly
 asks; they prefer to test before issues are closed.
 
-### 5. Verify the Release Action Started
+### 4. Verify the Release Action Started
 
 The related action is `Build Release` in `.github/workflows/release.yml`.
 Publishing the release should start it automatically.
@@ -152,7 +141,7 @@ gh workflow run release.yml --ref "$TAG"
 Warn the user before using this fallback because workflow-dispatched runs
 produce an artifact but do not upload firmware files to the GitHub release.
 
-### 6. Verify Outputs
+### 5. Verify Outputs
 
 After `Build Release` succeeds, confirm the release has the expected assets:
 
@@ -196,6 +185,7 @@ Summarize in plain language:
 
 - Release tag and GitHub release URL
 - `Build Release` run URL and current result
+- Whether the automatic release notes update job ran
 - Whether the expected firmware assets are attached
 - Any docs deployment run URL if checked
 - Any action needed from the user, especially if a run failed

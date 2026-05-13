@@ -5,17 +5,27 @@ description: Maintainer notes for building detailed release changelogs from git 
 
 # Release Changelogs
 
-Use the release changelog script before publishing a GitHub Release. It looks at the commits since the previous stable release tag, groups them by area, and creates Markdown that can be used as the release description.
+The GitHub release workflow updates release notes automatically when a release is published. It looks at the commits since the previous stable release tag, groups them by area, and saves the generated Markdown as the GitHub Release description.
 
-## Create Notes for the Next Release
+## Automatic Release Notes
 
-For a new release that has not been tagged yet, pass the version you plan to publish:
+When a release is published, `.github/workflows/release.yml` runs the changelog script with the release tag:
 
 ```sh
-npm run changelog:release -- v1.12.0
+python3 scripts/release_changelog.py "$VERSION" --output "$RUNNER_TEMP/release-notes.md"
 ```
 
-The script compares `HEAD` with the latest stable tag, such as `v1.11.1`. This is the normal workflow when preparing release notes from `main`.
+The workflow checks out full git history so the script can find the previous release tag. It then edits the GitHub Release body with the generated notes.
+
+## Preview Notes Locally
+
+You can still preview notes before publishing a release:
+
+```sh
+npm run changelog:release -- v1.12.1
+```
+
+For a version that has not been tagged yet, the script compares `HEAD` with the latest stable tag, such as `v1.12.0`.
 
 ## Create Notes for an Existing Tag
 
@@ -25,7 +35,7 @@ If the release tag already exists, use the same command:
 npm run changelog:release -- v1.12.0
 ```
 
-When `v1.12.0` already exists as a tag, the script compares that tag with the previous stable release tag.
+When `v1.12.0` already exists as a tag, the script compares that tag with the previous stable release tag. This is the same mode the release workflow uses.
 
 ## Save the Changelog to a File
 
