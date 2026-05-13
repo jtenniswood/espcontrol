@@ -506,8 +506,27 @@ function getJsonQuietly(path, callback) {
   }).catch(function () {});
 }
 
+function getJsonFirst(paths, callback) {
+  var index = 0;
+  function tryNext() {
+    if (index >= paths.length) return Promise.resolve(null);
+    return getJsonQuietly(paths[index++]).then(function (data) {
+      if (data) {
+        if (callback) callback(data);
+        return data;
+      }
+      return tryNext();
+    });
+  }
+  return tryNext();
+}
+
 function entityDetailPath(domain, name) {
   return "/" + encodeURIComponent(domain) + "/" + encodeURIComponent(name) + "?detail=all";
+}
+
+function entityDetailPaths(domain, names) {
+  return names.map(function (name) { return entityDetailPath(domain, name); });
 }
 
 function eventStreamEnabled() {
@@ -656,17 +675,38 @@ function loadInitialState(handleState, onLoaded) {
 }
 
 function refreshFirmwareVersion() {
-  getJsonQuietly("/text_sensor/" + encodeURIComponent("Firmware: Version") + "?detail=all", function (d) {
+  var pending = 2;
+  if (!state.firmwareVersion) {
+    state.firmwareVersionRefreshPending = true;
+    renderFirmwareVersion();
+  }
+  function finishFirmwareVersionRefresh() {
+    pending--;
+    if (pending > 0) return;
+    state.firmwareVersionRefreshPending = false;
+    renderFirmwareVersion();
+  }
+
+  getJsonFirst(entityDetailPaths("text_sensor", [
+    "Firmware: Version",
+    "firmware__version",
+    "firmware_version",
+  ]), function (d) {
     setFirmwareVersion(d.state || d.value);
-  });
-  getJsonQuietly("/update/" + encodeURIComponent("Firmware: Update") + "?detail=all", function (d) {
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+  getJsonFirst(entityDetailPaths("update", [
+    "Firmware: Update",
+    "firmware__update",
+    "firmware_update",
+  ]), function (d) {
     setFirmwareUpdateInfo(d);
   }).then(function (data) {
     if (!data && state.firmwareUpdateControlsSupported !== true) {
       state.firmwareUpdateControlsSupported = false;
       syncFirmwareUpdateUi();
     }
-  });
+    finishFirmwareVersionRefresh();
+  }, finishFirmwareVersionRefresh);
 }
 
 function refreshScreensaverTimeout() {

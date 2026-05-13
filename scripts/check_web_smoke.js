@@ -125,6 +125,17 @@ assert.strictEqual(hooks.displayFirmwareVersion("dev"), "Dev build");
 assert.strictEqual(hooks.displayFirmwareVersion("0.0.0"), "Dev build");
 assert.strictEqual(hooks.displayFirmwareVersion("main"), "Dev build");
 assert.strictEqual(hooks.displayFirmwareVersion(""), "Version unavailable");
+assert.strictEqual(hooks.firmwareVersionLabelFor("", true), "Checking version...");
+assert.strictEqual(hooks.firmwareVersionLabelFor("", false), "Version unavailable");
+assert.deepStrictEqual(hooks.entityDetailPaths("text_sensor", [
+  "Firmware: Version",
+  "firmware__version",
+  "firmware_version",
+]), [
+  "/text_sensor/Firmware%3A%20Version?detail=all",
+  "/text_sensor/firmware__version?detail=all",
+  "/text_sensor/firmware_version?detail=all",
+]);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", true), true);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", false), false);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("ethernet", true), false);

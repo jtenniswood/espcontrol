@@ -76,6 +76,7 @@ var state = {
   firmwareUpdateState: "",
   firmwareReleaseUrl: "",
   firmwareChecking: false,
+  firmwareVersionRefreshPending: false,
   firmwareInstallTargetVersion: "",
   firmwareUpdateControlsSupported: false,
   autoUpdate: true,
@@ -582,6 +583,7 @@ var pendingSliderSubpageMigrations = {};
 var _eventSource = null;
 var firmwareInstallRefreshTimer = null;
 var firmwareInstallRefreshUntil = 0;
+var FIRMWARE_CHECKING_VERSION_LABEL = "Checking version...";
 var FIRMWARE_DEV_VERSION_LABEL = "Dev build";
 var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unavailable";
 
@@ -595,7 +597,7 @@ function escHtml(s) {
 function renderFirmwareVersion() {
   if (!els.fwVersionLabel) return;
   els.fwVersionLabel.innerHTML = '<span class="sp-fw-label">Installed </span>' +
-    escHtml(displayFirmwareVersion(state.firmwareVersion));
+    escHtml(firmwareVersionLabel());
 }
 
 function isSpecificFirmwareVersion(version) {
@@ -618,6 +620,13 @@ function displayFirmwareVersion(version) {
   if (!version) return FIRMWARE_UNKNOWN_VERSION_LABEL;
   if (version === FIRMWARE_UNKNOWN_VERSION_LABEL) return FIRMWARE_UNKNOWN_VERSION_LABEL;
   return isSpecificFirmwareVersion(version) ? version : FIRMWARE_DEV_VERSION_LABEL;
+}
+
+function firmwareVersionLabel() {
+  if (!state.firmwareVersion && state.firmwareVersionRefreshPending) {
+    return FIRMWARE_CHECKING_VERSION_LABEL;
+  }
+  return displayFirmwareVersion(state.firmwareVersion);
 }
 
 function firmwareUpdateAvailable() {

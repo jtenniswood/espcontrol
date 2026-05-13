@@ -22,6 +22,7 @@ struct NetworkStatusModalUi {
   lv_obj_t *content = nullptr;
   lv_obj_t *device_name_lbl = nullptr;
   lv_obj_t *ip_lbl = nullptr;
+  lv_obj_t *firmware_lbl = nullptr;
 };
 
 inline NetworkStatusModalUi &network_status_modal_ui() {
@@ -74,6 +75,20 @@ inline std::string network_status_ip_address() {
   return "Not available";
 }
 
+inline std::string network_status_trim_copy(const std::string &value) {
+  const size_t first = value.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos) return "";
+  const size_t last = value.find_last_not_of(" \t\r\n");
+  return value.substr(first, last - first + 1);
+}
+
+inline std::string network_status_firmware_label(const std::string &version) {
+  std::string trimmed = network_status_trim_copy(version);
+  if (trimmed.empty()) return "Firmware: Version unavailable";
+  if (trimmed == "dev" || trimmed == "Dev" || trimmed == "0.0.0") return "Firmware: Dev build";
+  return "Firmware: " + trimmed;
+}
+
 inline void network_status_clean_obj(lv_obj_t *obj) {
   if (!obj) return;
   lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -92,6 +107,7 @@ inline void network_status_hide_modal() {
   ui.content = nullptr;
   ui.device_name_lbl = nullptr;
   ui.ip_lbl = nullptr;
+  ui.firmware_lbl = nullptr;
 }
 
 inline lv_obj_t *network_status_add_center_label(lv_obj_t *parent,
@@ -111,6 +127,7 @@ inline lv_obj_t *network_status_add_center_label(lv_obj_t *parent,
 
 inline void network_status_open_modal(const std::string &device_name,
                                       const std::string &ip_address,
+                                      const std::string &firmware_version,
                                       const lv_font_t *text_font,
                                       const lv_font_t *icon_font,
                                       const std::string &panel_color_hex) {
@@ -165,6 +182,13 @@ inline void network_status_open_modal(const std::string &device_name,
   ui.ip_lbl = network_status_add_center_label(
     ui.content,
     ip_address.empty() ? "Not available" : ip_address.c_str(),
+    text_font,
+    content_w,
+    0xA0A0A0);
+  std::string firmware_label = network_status_firmware_label(firmware_version);
+  ui.firmware_lbl = network_status_add_center_label(
+    ui.content,
+    firmware_label.c_str(),
     text_font,
     content_w,
     0xA0A0A0);

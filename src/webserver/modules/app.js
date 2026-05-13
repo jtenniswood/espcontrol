@@ -1246,6 +1246,17 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     previewHtmlValue: previewHtmlValue,
     networkPreviewIconSlug: networkPreviewIconSlug,
     displayFirmwareVersion: displayFirmwareVersion,
+    firmwareVersionLabelFor: function (version, pending) {
+      var oldVersion = state.firmwareVersion;
+      var oldPending = state.firmwareVersionRefreshPending;
+      state.firmwareVersion = version;
+      state.firmwareVersionRefreshPending = !!pending;
+      var label = firmwareVersionLabel();
+      state.firmwareVersion = oldVersion;
+      state.firmwareVersionRefreshPending = oldPending;
+      return label;
+    },
+    entityDetailPaths: entityDetailPaths,
     firmwareUpdateControlsVisibleFor: function (transport, supported) {
       var oldTransport = state.networkTransport;
       var oldSupported = state.firmwareUpdateControlsSupported;
