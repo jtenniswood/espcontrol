@@ -379,10 +379,9 @@ script:
             snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d",
                      now.year, now.month, now.day_of_month);
             id(screen_date_sensor).publish_state(date_buf);
-            update_calendar_cards(true, now.day_of_month, now.month, date_buf);
+            update_calendar_cards(true, now.day_of_month, now.month);
             update_calendar_cards_time(
-                true, now.day_of_month, now.month, now.hour, now.minute, use_12h,
-                date_buf);
+                true, now.day_of_month, now.month, now.hour, now.minute, use_12h);
             update_timezone_cards(true, now.timestamp,
                                   id(timezone_select).current_option(), use_12h);
           } else if (!calendar_date_valid()) {

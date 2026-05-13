@@ -64,9 +64,7 @@ registerButtonType("calendar", {
     var now = new Date();
     var isDateTime = b.precision === "datetime";
     var day = String(now.getDate());
-    var dateLabel = String(now.getFullYear()) + "-" +
-      String(now.getMonth() + 1).padStart(2, "0") + "-" +
-      String(now.getDate()).padStart(2, "0");
+    var month = now.toLocaleString("en", { month: "long" });
 
     if (isDateTime) {
       var use12h = typeof state !== "undefined" && state.clockFormat === "12h";
@@ -93,7 +91,7 @@ registerButtonType("calendar", {
           '</span>',
         labelHtml:
           '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
-            helpers.escHtml(dateLabel) +
+            helpers.escHtml(day + " " + month) +
           '</span><span class="sp-type-badge mdi mdi-calendar-month"></span></span>',
       };
     }
@@ -105,7 +103,7 @@ registerButtonType("calendar", {
           '<span class="sp-sensor-value">' + day + '</span>' +
         '</span>',
       labelHtml:
-        '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(dateLabel) + '</span>' +
+        '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(month) + '</span>' +
         '<span class="sp-type-badge mdi mdi-calendar-month"></span></span>',
     };
   },

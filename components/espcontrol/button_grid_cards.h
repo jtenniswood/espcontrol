@@ -42,7 +42,6 @@ struct CalendarDateState {
   bool date_valid;
   int day;
   int month;
-  std::string date_text;
   bool time_valid;
   int hour;
   int minute;
@@ -50,7 +49,7 @@ struct CalendarDateState {
 };
 
 inline CalendarDateState &calendar_date_state() {
-  static CalendarDateState state = {false, 0, 0, "", false, 0, 0, false};
+  static CalendarDateState state = {false, 0, 0, false, 0, 0, false};
   return state;
 }
 
@@ -81,12 +80,22 @@ inline void register_calendar_card(lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
   apply_calendar_card_text(calendar_card_refs()[count - 1], state);
 }
 
+inline const char *calendar_month_name(int month) {
+  static const char *months[] = {
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  };
+  if (month < 1 || month > 12) return "Date";
+  return months[month - 1];
+}
+
 inline void apply_calendar_card_text(const CalendarCardRef &ref,
                                      const CalendarDateState &state) {
   char value_buf[8];
+  char label_buf[32];
   const char *value_text = "--";
   const char *unit_text = "";
-  const char *label_text = state.date_text.c_str();
+  const char *label_text = "Date";
 
   if (ref.show_time) {
     if (state.time_valid &&
@@ -103,29 +112,26 @@ inline void apply_calendar_card_text(const CalendarCardRef &ref,
         snprintf(value_buf, sizeof(value_buf), "%02d:%02d", state.hour, state.minute);
       }
       value_text = value_buf;
+      snprintf(label_buf, sizeof(label_buf), "%d %s", state.day, calendar_month_name(state.month));
+      label_text = label_buf;
     }
   } else if (state.date_valid &&
              state.day >= 1 && state.day <= 31 &&
              state.month >= 1 && state.month <= 12) {
     snprintf(value_buf, sizeof(value_buf), "%d", state.day);
     value_text = value_buf;
+    label_text = calendar_month_name(state.month);
   }
   if (ref.value_lbl) lv_label_set_text(ref.value_lbl, value_text);
   if (ref.unit_lbl) lv_label_set_text(ref.unit_lbl, unit_text);
   if (ref.label_lbl) lv_label_set_text(ref.label_lbl, label_text);
 }
 
-inline void update_calendar_cards(bool valid, int day, int month,
-                                  const std::string &date_text = "") {
+inline void update_calendar_cards(bool valid, int day, int month) {
   CalendarDateState &state = calendar_date_state();
   state.date_valid = valid && day >= 1 && day <= 31 && month >= 1 && month <= 12;
   state.day = state.date_valid ? day : 0;
   state.month = state.date_valid ? month : 0;
-  if (state.date_valid) {
-    if (!date_text.empty()) state.date_text = date_text;
-  } else {
-    state.date_text.clear();
-  }
   if (!state.date_valid && !state.time_valid) {
     state.hour = 0;
     state.minute = 0;
@@ -140,8 +146,7 @@ inline void update_calendar_cards(bool valid, int day, int month,
 }
 
 inline void update_calendar_cards_time(bool valid, int day, int month,
-                                       int hour, int minute, bool use_12h,
-                                       const std::string &date_text = "") {
+                                       int hour, int minute, bool use_12h) {
   CalendarDateState &state = calendar_date_state();
   state.time_valid = valid &&
                      day >= 1 && day <= 31 &&
@@ -155,9 +160,6 @@ inline void update_calendar_cards_time(bool valid, int day, int month,
     state.date_valid = true;
     state.day = day;
     state.month = month;
-    if (!date_text.empty()) state.date_text = date_text;
-  } else if (!state.date_valid) {
-    state.date_text.clear();
   }
 
   CalendarCardRef *refs = calendar_card_refs();
@@ -216,7 +218,7 @@ inline bool update_calendar_cards_from_date_text(const std::string &value) {
   int month = 0;
   bool valid = parse_calendar_date_text(value, day, month) ||
                parse_calendar_date_text_dmy(value, day, month);
-  if (valid) update_calendar_cards(true, day, month, value);
+  if (valid) update_calendar_cards(true, day, month);
   return valid;
 }
 
@@ -361,7 +363,7 @@ inline void setup_calendar_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_label_set_text(s.sensor_lbl, "--");
   lv_label_set_text(s.unit_lbl, "");
-  lv_label_set_text(s.text_lbl, "");
+  lv_label_set_text(s.text_lbl, "Date");
   register_calendar_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, calendar_card_shows_time(p));
 }
 
@@ -388,7 +390,7 @@ inline void setup_weather_card(BtnSlot &s, bool has_sensor_color, uint32_t senso
   }
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   lv_label_set_text(s.icon_lbl, find_icon("Weather Cloudy"));
-  lv_label_set_text(s.text_lbl, "");
+  lv_label_set_text(s.text_lbl, "Weather");
 }
 
 inline bool weather_card_shows_forecast(const ParsedCfg &p) {
@@ -413,7 +415,10 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
   lv_label_set_text(s.sensor_lbl, "--/--");
   lv_label_set_text(s.unit_lbl, "");
   std::string day = weather_card_forecast_day(p);
-  lv_label_set_text(s.text_lbl, p.label.c_str());
+  std::string label = p.label.empty()
+    ? (day == "today" ? "Today" : "Tomorrow")
+    : p.label;
+  lv_label_set_text(s.text_lbl, label.c_str());
   apply_width_compensation(s.sensor_container, width_compensation_percent);
   apply_width_compensation(s.text_lbl, width_compensation_percent);
   register_weather_forecast_card(s.sensor_lbl, s.unit_lbl, s.text_lbl, p.entity, day, p.label);
