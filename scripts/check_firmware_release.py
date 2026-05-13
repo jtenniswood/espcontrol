@@ -18,6 +18,7 @@ import firmware_release
 SLUG = "demo-panel"
 VERSION = "v9.8.7"
 CHIP = "ESP32-S3"
+PROJECT_NAME = "jtenniswood.espcontrol"
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -31,6 +32,26 @@ def write_image(path: Path, *strings: str) -> None:
         payload.extend(item.encode("ascii"))
         payload.append(0)
     path.write_bytes(bytes(payload))
+
+
+def project_version_string(version: str) -> str:
+    return f"Project {PROJECT_NAME} version {version}"
+
+
+def release_image_strings(version: str, *extra: str) -> tuple[str, ...]:
+    return (
+        version,
+        project_version_string(version),
+        "package_import_url",
+        version,
+        PROJECT_NAME,
+        "project_version",
+        *extra,
+    )
+
+
+def write_release_image(path: Path, version: str, *extra: str) -> None:
+    write_image(path, *release_image_strings(version, *extra))
 
 
 def run_ok(args: list[str]) -> None:
@@ -48,8 +69,8 @@ def make_release_files(base: Path, slug: str = SLUG, version: str = VERSION) -> 
     factory = base / f"{slug}.factory.bin"
     ota = base / f"{slug}.ota.bin"
     manifest = base / f"{slug}.manifest.json"
-    write_image(factory, version, "jtenniswood.espcontrol")
-    write_image(ota, version, "jtenniswood.espcontrol")
+    write_release_image(factory, version)
+    write_release_image(ota, version)
     run_ok([
         "manifest",
         "--slug", slug,
@@ -81,8 +102,41 @@ def test_placeholder_fails() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
         manifest, factory, ota = make_release_files(base)
-        write_image(ota, VERSION, "dev")
+        write_release_image(ota, VERSION, project_version_string("dev"))
+        run_ok([
+            "manifest",
+            "--slug", SLUG,
+            "--chip", CHIP,
+            "--version", VERSION,
+            "--factory", str(factory),
+            "--ota", str(ota),
+            "--out", str(manifest),
+        ])
         run_fails([
+            "verify-files",
+            "--slug", SLUG,
+            "--version", VERSION,
+            "--manifest", str(manifest),
+            "--factory", str(factory),
+            "--ota", str(ota),
+        ])
+
+
+def test_unrelated_placeholder_strings_pass() -> None:
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        manifest, factory, ota = make_release_files(base)
+        write_release_image(ota, VERSION, "Version unknown", "Dev", "0.0.0", "Dev build", "dev")
+        run_ok([
+            "manifest",
+            "--slug", SLUG,
+            "--chip", CHIP,
+            "--version", VERSION,
+            "--factory", str(factory),
+            "--ota", str(ota),
+            "--out", str(manifest),
+        ])
+        run_ok([
             "verify-files",
             "--slug", SLUG,
             "--version", VERSION,
@@ -181,6 +235,7 @@ def test_public_pages_verification() -> None:
 def main() -> int:
     test_valid_files_and_directory()
     test_placeholder_fails()
+    test_unrelated_placeholder_strings_pass()
     test_wrong_manifest_version_fails()
     test_wrong_md5_fails()
     test_missing_asset_fails()

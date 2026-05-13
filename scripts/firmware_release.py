@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FIRMWARE_VERSION_PLACEHOLDER = '  firmware_version: "0.0.0"'
 PLACEHOLDER_STRINGS = {"dev", "0.0.0"}
 RELEASE_URL_BASE = "https://github.com/jtenniswood/espcontrol/releases/tag/"
+PROJECT_NAME = "jtenniswood.espcontrol"
 
 
 class FirmwareReleaseError(RuntimeError):
@@ -37,15 +38,15 @@ def md5sum(path: Path) -> str:
     return digest.hexdigest()
 
 
-def printable_strings(path: Path, min_length: int = 3) -> set[str]:
+def printable_string_list(path: Path, min_length: int = 3) -> list[str]:
     data = path.read_bytes()
-    strings: set[str] = set()
+    strings: list[str] = []
     current = bytearray()
 
     def flush() -> None:
         nonlocal current
         if len(current) >= min_length:
-            strings.add(current.decode("ascii", errors="ignore"))
+            strings.append(current.decode("ascii", errors="ignore"))
         current = bytearray()
 
     for byte in data:
@@ -57,6 +58,17 @@ def printable_strings(path: Path, min_length: int = 3) -> set[str]:
     return strings
 
 
+def printable_strings(path: Path, min_length: int = 3) -> set[str]:
+    return set(printable_string_list(path, min_length))
+
+
+def contains_sequence(strings: list[str], sequence: list[str]) -> bool:
+    if len(strings) < len(sequence):
+        return False
+    last_start = len(strings) - len(sequence) + 1
+    return any(strings[idx:idx + len(sequence)] == sequence for idx in range(last_start))
+
+
 def require_file(path: Path, label: str) -> None:
     if not path.is_file():
         raise FirmwareReleaseError(f"{label} not found: {path}")
@@ -64,11 +76,21 @@ def require_file(path: Path, label: str) -> None:
 
 def assert_binary_version(path: Path, version: str) -> None:
     require_file(path, "firmware image")
-    strings = printable_strings(path)
-    if version not in strings:
+    strings = printable_string_list(path)
+    string_set = set(strings)
+    if version not in string_set:
         raise FirmwareReleaseError(f"{path} does not contain firmware version {version}")
+    expected_log_version = f"Project {PROJECT_NAME} version {version}"
+    if expected_log_version not in string_set:
+        raise FirmwareReleaseError(f"{path} does not contain ESPHome project version {version}")
+    expected_project_metadata = ["package_import_url", version, PROJECT_NAME, "project_version"]
+    if not contains_sequence(strings, expected_project_metadata):
+        raise FirmwareReleaseError(f"{path} does not contain API project metadata version {version}")
+
     for placeholder in PLACEHOLDER_STRINGS:
-        if placeholder in strings:
+        placeholder_log_version = f"Project {PROJECT_NAME} version {placeholder}"
+        placeholder_project_metadata = ["package_import_url", placeholder, PROJECT_NAME, "project_version"]
+        if placeholder_log_version in string_set or contains_sequence(strings, placeholder_project_metadata):
             raise FirmwareReleaseError(f"{path} still contains firmware version placeholder {placeholder}")
 
 
