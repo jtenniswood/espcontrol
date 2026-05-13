@@ -202,6 +202,59 @@ script:
                       else:
                         - lvgl.display.set_rotation: 180
 
+  - id: reflow_button_grid
+    then:
+      - lambda: |-
+          #define BTN_SLOT(n) { button_##n##_config, button_##n, button_##n##_icon_label, button_##n##_text_label, button_##n##_sensor_container, button_##n##_sensor_label, button_##n##_unit_label }
+          BtnSlot slots[] = {
+            BTN_SLOT(1),
+            BTN_SLOT(2),
+            BTN_SLOT(3),
+            BTN_SLOT(4),
+            BTN_SLOT(5),
+            BTN_SLOT(6),
+          };
+          #undef BTN_SLOT
+          GridConfig cfg = {};
+          cfg.num_slots = 6;
+          bool portrait = id(screen_rotation_select).current_option() == "90" || id(screen_rotation_select).current_option() == "270";
+          cfg.cols = portrait ? 3 : 2;
+          ESP_LOGI("sensors", "Grid reflow: layout start (%lu ms)", esphome::millis());
+          int NS = bounded_grid_slots(cfg.num_slots);
+          int COLS = cfg.cols > 0 ? cfg.cols : 1;
+          for (int i = 0; i < NS; i++)
+            lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
+          configure_grid_layout(id(main_page)->obj, NS, COLS);
+          int ROWS = (NS + COLS - 1) / COLS;
+
+          OrderResult parsed, order;
+          parse_order_string(id(button_order).state, NS, parsed);
+          clear_spanned_cells(parsed, NS, COLS, order);
+
+          lv_obj_t *first_card = nullptr;
+          if (parsed.positions[0] >= 1 && parsed.positions[0] <= NS) {
+            first_card = slots[parsed.positions[0] - 1].btn;
+          } else if (NS > 0) {
+            first_card = slots[0].btn;
+          }
+          set_media_home_grid_metrics(id(main_page)->obj, COLS, ROWS, first_card);
+
+          for (int pos = 0; pos < NS; pos++) {
+            int idx = order.positions[pos];
+            if (idx < 1 || idx > NS) continue;
+            auto &s = slots[idx - 1];
+            int col = pos % COLS, row = pos / COLS;
+            int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
+            int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
+            lv_obj_set_grid_cell(s.btn,
+              LV_GRID_ALIGN_STRETCH, col, col_span,
+              LV_GRID_ALIGN_STRETCH, row, row_span);
+            lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
+          }
+
+          lv_obj_update_layout(id(main_page)->obj);
+          ESP_LOGI("sensors", "Grid reflow: layout done (%lu ms)", esphome::millis());
+
 select:
   - platform: template
     name: "Screen: Rotation"
@@ -221,3 +274,5 @@ select:
     on_value:
       then:
         - script.execute: apply_screen_rotation
+        - delay: 100ms
+        - script.execute: reflow_button_grid
