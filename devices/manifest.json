@@ -15,10 +15,8 @@
         "enabled": true,
         "options": [
           "0",
-          "180"
-        ],
-        "experimentalOptions": [
           "90",
+          "180",
           "270"
         ],
         "displayOffset": 180,
@@ -187,10 +185,8 @@
         "enabled": true,
         "options": [
           "0",
-          "180"
-        ],
-        "experimentalOptions": [
           "90",
+          "180",
           "270"
         ]
       },

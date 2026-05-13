@@ -1,25 +1,12 @@
 ---
 title: Climate Cards
 description:
-  How to use experimental climate cards on your EspControl panel to control Home Assistant climate entities.
+  How to use climate cards on your EspControl panel to control Home Assistant climate entities.
 ---
 
 # Climate
 
 A Climate card controls a Home Assistant `climate` entity, such as a thermostat, heat pump, air conditioner, or radiator thermostat.
-
-Climate cards are currently experimental. They can be useful, but they may change as more real devices are tested.
-
-## Enabling Climate Cards
-
-Climate cards only appear when experimental features are enabled:
-
-1. Open the setup page with `?developer=experimental` at the end of the address, for example `http://192.168.1.50/?developer=experimental`.
-2. Go to **Settings > Developer**.
-3. Turn on **Developer/Experimental Features**.
-4. Return to the **Screen** tab and add a **Climate** card.
-
-If the card appears in the setup page but the panel does not show it after applying the configuration, install the latest [firmware update](/features/firmware-updates).
 
 ## Setting Up a Climate Card
 

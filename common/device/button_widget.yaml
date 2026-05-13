@@ -61,6 +61,6 @@ button:
         then:
           - script.execute: screensaver_wake
         else:
-          - lambda: 'handle_button_click(id(button_${num}_config).state, ${num}, id(button_${num}), id(developer_experimental_features).state);'
+          - lambda: 'handle_button_click(id(button_${num}_config).state, ${num}, id(button_${num}));'
   on_long_press:
     - script.execute: screen_schedule_manual_sleep

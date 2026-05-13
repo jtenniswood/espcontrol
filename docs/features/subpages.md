@@ -24,8 +24,6 @@ You can also right-click an empty space on the home screen and choose **Create S
 
 Subpages can contain Switch, Lights, Action, Trigger, Sensor, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Climate, and Internal Switches cards. Subpages cannot contain another Subpage card.
 
-Climate cards are still experimental, so they only appear in subpages when experimental features are enabled.
-
 ## Show State
 
 Turn on **Show State** if you want the Subpage card on the home screen to show state.

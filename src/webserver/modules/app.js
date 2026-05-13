@@ -951,9 +951,7 @@ function connectEvents() {
       state.screenRotation = normalizeScreenRotation(d.value || val || state.screenRotation);
       if (d.option && Array.isArray(d.option)) {
         state.screenRotationDeviceOptions = d.option;
-        if (!(CFG.features && CFG.features.screenRotationExperimentalOptions)) {
-          state.screenRotationOptions = d.option;
-        }
+        state.screenRotationOptions = d.option;
       }
       syncScreenRotationSelect();
       syncPreviewOrientation();

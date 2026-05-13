@@ -38,15 +38,13 @@ The **Type** dropdown uses these card names on the device:
 | **[Date & Time](/card-types/calendar)** | Shows the local date, date and time, or a world clock. | No |
 | **[Weather](/card-types/weather)** | Shows the current condition or today's/tomorrow's forecast from a weather entity. | Yes, as **Weather Entity** |
 | **[Media](/card-types/media)** | Controls playback, volume, track position, or now-playing details for a media player. | Yes, as a media player entity |
-| **[Climate](/card-types/climate)** | Controls a Home Assistant thermostat or HVAC entity. Experimental. | Yes, as a climate entity |
+| **[Climate](/card-types/climate)** | Controls a Home Assistant thermostat or HVAC entity. | Yes, as a climate entity |
 | **[Internal Switches](/card-types/internal-relays)** | Controls a built-in relay locally on panels that have relay hardware. | Choose a relay |
 | **[Subpage](/features/subpages)** | Opens a folder-like page of extra cards. | No |
 
 For cards that use Home Assistant, enter the entity name from Home Assistant in the **Entity** field, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. Some card types use a more specific label, such as **Sensor Entity**, **Weather Entity**, or **Climate Entity**. You can find entity names under **Settings > Devices & Services** in Home Assistant.
 
 Some card names group several related controls together. **Lights** contains Switch, Brightness, and Colour Temperature options. **Date & Time** contains Date, Time & Date, and World Clock options.
-
-Climate cards are experimental and only appear after enabling developer/experimental features. See [Climate](/card-types/climate) before using them.
 
 Most cards also let you choose an icon and set a label. If the label is left blank, the panel uses the friendly name from Home Assistant when it can.
 

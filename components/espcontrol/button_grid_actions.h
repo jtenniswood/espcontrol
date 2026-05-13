@@ -378,7 +378,6 @@ inline void send_media_playback_action(const std::string &entity_id,
 
 // ── Button click dispatch ─────────────────────────────────────────────
 
-inline bool experimental_card_enabled(const ParsedCfg &p, bool developer_experimental_features);
 struct MediaVolumeCtx;
 inline void media_volume_open_modal(MediaVolumeCtx *ctx);
 struct ClimateControlCtx;
@@ -388,11 +387,9 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
 inline void handle_button_click(const std::string &cfg, int slot_num,
-                                lv_obj_t *btn_obj,
-                                bool developer_experimental_features = false) {
+                                lv_obj_t *btn_obj) {
   if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
-  if (!experimental_card_enabled(p, developer_experimental_features)) return;
   if (p.type == "sensor" || p.type == "text_sensor" ||
       p.type == "calendar" || p.type == "timezone" ||
       p.type == "weather_forecast") return;

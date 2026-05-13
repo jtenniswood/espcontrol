@@ -145,7 +145,6 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append(f"            cfg.volume_label_font = id({device['volume_label_font']})->get_lv_font();")
     lines.append("            cfg.temperature_unit = id(temperature_unit_select).current_option();")
     lines.append("            cfg.timezone = id(timezone_select).current_option();")
-    lines.append("            cfg.developer_experimental_features = id(developer_experimental_features).state;")
     lines.append("            cfg.pause_home_idle = []() {")
     lines.append("              id(home_screen_idle_suspended) = true;")
     lines.append("              id(home_screen_idle_check).stop();")

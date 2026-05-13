@@ -67,7 +67,6 @@ var state = {
   monthNames: MONTH_NAME_DEFAULTS.slice(),
   screenRotation: "0",
   screenRotationOptions: (CFG.features && CFG.features.screenRotationOptions) || ["0", "90", "180", "270"],
-  screenRotationExperimentalOptions: (CFG.features && CFG.features.screenRotationExperimentalOptions) || [],
   screenRotationDeviceOptions: null,
   sunrise: "",
   sunset: "",
@@ -129,17 +128,12 @@ function uniqueOptions(options) {
 }
 
 function activeScreenRotationOptions() {
-  var options = state.screenRotationOptions || [];
-  if (state.developerExperimentalFeatures) {
-    options = options.concat(state.screenRotationExperimentalOptions || []);
-  }
-  return sortScreenRotationOptions(uniqueOptions(options));
+  return sortScreenRotationOptions(uniqueOptions(state.screenRotationOptions || []));
 }
 
 function allScreenRotationOptions() {
   return uniqueOptions(
     (state.screenRotationOptions || [])
-      .concat(state.screenRotationExperimentalOptions || [])
       .concat(state.screenRotationDeviceOptions || [])
   );
 }

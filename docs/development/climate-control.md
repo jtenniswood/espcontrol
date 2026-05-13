@@ -16,7 +16,7 @@ The feature controls a Home Assistant `climate` entity. It depends on Home Assis
 
 ## Feature Status
 
-Climate cards are treated as an experimental feature. A firmware or app build may hide, ignore, or render them as a default card unless experimental features are enabled.
+Climate cards are a standard card type in the setup UI and firmware.
 
 ## Configuration Model
 

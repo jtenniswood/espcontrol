@@ -70,7 +70,7 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 - **Drag-and-drop layout** - move controls around without editing files.
 - **Subpages** - make folder-like pages for rooms or groups of controls.
 - **Different card sizes** - make important controls larger and keep smaller items compact.
-- **Dedicated card types** - Switch, Lights, Action, Trigger, Sensor, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Climate (experimental), Internal Switches, and Subpage.
+- **Dedicated card types** - Switch, Lights, Action, Trigger, Sensor, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Climate, Internal Switches, and Subpage.
 - **Screensaver and brightness controls** - dim or sleep the display when it is not in use.
 - **Automatic updates** - keep firmware current over WiFi after the first install.
 - **Backup and restore** - save your layout and copy it to another panel.

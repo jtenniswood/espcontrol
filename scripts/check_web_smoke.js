@@ -12,10 +12,6 @@ const SOURCE = path.join(ROOT, "src", "webserver", "www.js");
 const DEVICE_MANIFEST = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = path.join(ROOT, "docs", "public", "webserver");
 const ALL_ROTATIONS = ["0", "90", "180", "270"];
-const LARGE_LANDSCAPE_ROTATION_DEVICES = new Set([
-  "guition-esp32-p4-jc1060p470",
-  "guition-esp32-p4-jc8012p4a1",
-]);
 
 function loadHooks() {
   const sandbox = {
@@ -60,20 +56,13 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
     /features:\{[^}]*screenRotation:!0/.test(generated),
     `${slug}: generated web UI must expose screen rotation when rotation is enabled`
   );
-  if (LARGE_LANDSCAPE_ROTATION_DEVICES.has(slug)) {
-    assert.deepStrictEqual(device.rotation.options, ["0", "180"], `${slug}: normal rotation options`);
-    assert.deepStrictEqual(device.rotation.experimentalOptions, ["90", "270"], `${slug}: dev-only rotation options`);
-    assertGeneratedRotationOptions(slug, featureConfig, "screenRotationOptions", ["0", "180"]);
-    assertGeneratedRotationOptions(slug, featureConfig, "screenRotationExperimentalOptions", ["90", "270"]);
-  } else {
-    assert.deepStrictEqual(device.rotation.options, ALL_ROTATIONS, `${slug}: normal rotation options`);
-    assert.strictEqual(device.rotation.experimentalOptions, undefined, `${slug}: no dev-only rotation options`);
-    assertGeneratedRotationOptions(slug, featureConfig, "screenRotationOptions", ALL_ROTATIONS);
-    assert(
-      !featureConfig.includes("screenRotationExperimentalOptions"),
-      `${slug}: generated web UI must not hide rotation options behind the dev flag`
-    );
-  }
+  assert.deepStrictEqual(device.rotation.options, ALL_ROTATIONS, `${slug}: normal rotation options`);
+  assert.strictEqual(device.rotation.experimentalOptions, undefined, `${slug}: no hidden rotation options`);
+  assertGeneratedRotationOptions(slug, featureConfig, "screenRotationOptions", ALL_ROTATIONS);
+  assert(
+    !featureConfig.includes("screenRotationExperimentalOptions"),
+    `${slug}: generated web UI must not hide rotation options behind the dev flag`
+  );
 }
 
 const button = {

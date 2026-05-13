@@ -47,7 +47,6 @@ esphome:
             cfg.volume_label_font = id(volume_modal_label_font_md_square)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
-            cfg.developer_experimental_features = id(developer_experimental_features).state;
             cfg.pause_home_idle = []() {
               id(home_screen_idle_suspended) = true;
               id(home_screen_idle_check).stop();
@@ -126,7 +125,6 @@ esphome:
             cfg.volume_label_font = id(volume_modal_label_font_md_square)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
-            cfg.developer_experimental_features = id(developer_experimental_features).state;
             cfg.pause_home_idle = []() {
               id(home_screen_idle_suspended) = true;
               id(home_screen_idle_check).stop();

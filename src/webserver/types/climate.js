@@ -4,7 +4,6 @@ registerButtonType("climate", {
   allowInSubpage: true,
   hideLabel: true,
   labelPlaceholder: "e.g. Living Room",
-  experimental: "climate",
   onSelect: function (b) {
     b.entity = "";
     b.label = "";
