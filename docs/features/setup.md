@@ -35,7 +35,6 @@ The **Type** dropdown uses these card names on the device:
 | **[Cover](/card-types/covers)** | Controls blinds, shutters, and similar cover entities with a slider or tap action. | Yes |
 | **[Garage Door](/card-types/garage-doors)** | Controls a garage door cover entity with an open/close tap action. | Yes |
 | **[Lock](/card-types/locks)** | Locks, unlocks, or toggles a Home Assistant lock entity. | Yes |
-| **[Alarm](/card-types/alarm)** | Experimental card for arming, disarming, and viewing an alarm control panel. | Yes, as **Alarm Entity** |
 | **[Fans](/card-types/fans)** | Experimental card for fan switching, speed, oscillation, direction, and presets. | Yes, as **Fan Entity** |
 | **[Date & Time](/card-types/calendar)** | Shows the local date, date and time, or a world clock. | No |
 | **[Weather](/card-types/weather)** | Shows the current condition or today's/tomorrow's forecast from a weather entity. | Yes, as **Weather Entity** |
@@ -48,7 +47,7 @@ For cards that use Home Assistant, enter the entity name from Home Assistant in 
 
 Some card names group several related controls together. **Lights** contains Switch, Brightness, and Colour Temperature options. **Fans** contains Switch, Speed, Oscillation, Direction, and Preset options. **Date & Time** contains Date, Time & Date, and World Clock options.
 
-Experimental card types, such as **Alarm** and **Fans**, only appear after enabling **Developer/Experimental Features** from a setup page opened with `?developer=experimental`.
+Experimental card types, such as **Fans**, only appear after enabling **Developer/Experimental Features** from a setup page opened with `?developer=experimental`.
 
 Most cards also let you choose an icon and set a label. If the label is left blank, the panel uses the friendly name from Home Assistant when it can.
 

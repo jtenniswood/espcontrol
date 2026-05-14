@@ -78,7 +78,6 @@ Use the dedicated card types for richer controls:
 
 - Use [Cover](/card-types/covers) for blinds, shutters, and covers.
 - Use [Lock](/card-types/locks) for locking and unlocking doors.
-- Use [Alarm](/card-types/alarm) for alarm control panels.
 - Use [Lights](/card-types/lights) for light switching, brightness, and colour temperature.
 - Use [Fans](/card-types/fans) for fan switching, speed, oscillation, direction, and presets.
 - Use [Media](/card-types/media) for media player playback, volume, and now-playing controls.
