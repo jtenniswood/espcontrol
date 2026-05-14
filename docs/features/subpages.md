@@ -22,7 +22,7 @@ A subpage has one fewer usable slot than the home screen because it includes a *
 
 You can also right-click an empty space on the home screen and choose **Create Subpage**.
 
-Subpages can contain Switch, Lights, Action, Trigger, Sensor, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Climate, and Internal Switches cards. Experimental Fans cards can also be used in subpages when Developer/Experimental Features are enabled. Subpages cannot contain another Subpage card.
+Subpages can contain Switch, Lights, Action, Trigger, Sensor, Slider, Cover, Garage Door, Lock, Date & Time, World Clock, Weather, Media, Climate, and Internal Switches cards. Subpages cannot contain another Subpage card.
 
 ## Show State
 
