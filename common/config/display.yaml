@@ -402,6 +402,7 @@ number:
       sorting_group_id: sg_screensaver
     on_value:
       then:
+        - lambda: 'global_preferences->sync();'
         - if:
             condition:
               lambda: 'return id(is_clock_showing);'
@@ -425,6 +426,7 @@ number:
       sorting_group_id: sg_screensaver
     on_value:
       then:
+        - lambda: 'global_preferences->sync();'
         - if:
             condition:
               lambda: 'return id(is_clock_showing);'
@@ -456,8 +458,7 @@ number:
 
   # Legacy setting kept so existing panels can migrate their saved single
   # clock brightness into the new day/night settings, and so older cached web
-  # UIs still change the live screensaver brightness. The boot guard prevents
-  # the restored legacy value from overwriting the saved day/night values.
+  # UIs still change the live screensaver brightness after startup.
   - platform: template
     name: "Screen Saver: Clock Brightness"
     internal: true
@@ -475,10 +476,17 @@ number:
       then:
         - lambda: |-
             if (!id(clock_brightness_legacy_sync_ready)) return;
-            float legacy_pct = id(clock_brightness).state;
-            if (std::isnan(legacy_pct) || legacy_pct <= 0.0f) legacy_pct = 35.0f;
-            if (legacy_pct < 1.0f) legacy_pct = 1.0f;
-            if (legacy_pct > 100.0f) legacy_pct = 100.0f;
+            auto clamp_clock_pct = [](float pct, float fallback) -> float {
+              if (std::isnan(pct) || pct <= 0.0f) pct = fallback;
+              if (pct < 1.0f) pct = 1.0f;
+              if (pct > 100.0f) pct = 100.0f;
+              return pct;
+            };
+            float legacy_pct = clamp_clock_pct(id(clock_brightness).state, 35.0f);
+            float previous_pct = clamp_clock_pct(
+              id(clock_brightness_legacy_last_level), legacy_pct);
+            if (legacy_pct == previous_pct) return;
+            id(clock_brightness_legacy_last_level) = legacy_pct;
 
             auto day_call = id(clock_brightness_day).make_call();
             day_call.set_value(legacy_pct);
@@ -487,6 +495,7 @@ number:
             auto night_call = id(clock_brightness_night).make_call();
             night_call.set_value(legacy_pct);
             night_call.perform();
+            global_preferences->sync();
 
   # Screensaver idle timeout
   - platform: template

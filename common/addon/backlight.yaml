@@ -62,6 +62,9 @@ globals:
   - id: clock_brightness_legacy_sync_ready
     type: bool
     initial_value: 'false'
+  - id: clock_brightness_legacy_last_level
+    type: float
+    initial_value: '35.0'
   - id: screensaver_action_migrated
     type: bool
     restore_value: true
@@ -82,25 +85,34 @@ esphome:
             global_preferences->sync();
           }
 
+          auto clamp_clock_pct = [](float pct, float fallback) -> float {
+            if (std::isnan(pct) || pct <= 0.0f) pct = fallback;
+            if (pct < 1.0f) pct = 1.0f;
+            if (pct > 100.0f) pct = 100.0f;
+            return pct;
+          };
+          float legacy_pct = clamp_clock_pct(id(clock_brightness).state, 35.0f);
+          id(clock_brightness_legacy_last_level) = legacy_pct;
+
           if (!id(clock_brightness_migrated)) {
-            float legacy_pct = id(clock_brightness).state;
-            if (std::isnan(legacy_pct) || legacy_pct <= 0.0f) legacy_pct = 35.0f;
-            if (legacy_pct < 1.0f) legacy_pct = 1.0f;
-            if (legacy_pct > 100.0f) legacy_pct = 100.0f;
+            float day_pct = clamp_clock_pct(id(clock_brightness_day).state, 35.0f);
+            float night_pct = clamp_clock_pct(id(clock_brightness_night).state, 35.0f);
 
-            auto day_call = id(clock_brightness_day).make_call();
-            day_call.set_value(legacy_pct);
-            day_call.perform();
+            if (day_pct == 35.0f && night_pct == 35.0f) {
+              auto day_call = id(clock_brightness_day).make_call();
+              day_call.set_value(legacy_pct);
+              day_call.perform();
 
-            auto night_call = id(clock_brightness_night).make_call();
-            night_call.set_value(legacy_pct);
-            night_call.perform();
+              auto night_call = id(clock_brightness_night).make_call();
+              night_call.set_value(legacy_pct);
+              night_call.perform();
+            }
 
             id(clock_brightness_migrated) = true;
             global_preferences->sync();
           }
-
-          id(clock_brightness_legacy_sync_ready) = true;
+      - delay: 10s
+      - lambda: 'id(clock_brightness_legacy_sync_ready) = true;'
 
 script:
   # Screensaver idle timer (restartable)
