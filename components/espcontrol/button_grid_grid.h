@@ -142,6 +142,14 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_lock_card(s, p);
     return;
   }
+  if (p.type == "alarm") {
+    setup_alarm_card(s, p);
+    return;
+  }
+  if (fan_non_speed_card_type(p.type)) {
+    setup_fan_card(s, p);
+    return;
+  }
   if (p.type == "cover" && cover_command_mode(p.sensor)) {
     setup_cover_command_card(s, p);
     return;
@@ -582,6 +590,37 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "alarm") {
+      if (!p.entity.empty()) {
+        AlarmCardCtx *ctx = create_alarm_card_context(
+          s, p, main_page_obj, NS, COLS,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          has_off ? off_val : DEFAULT_OFF_COLOR,
+          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          cfg.icon_font,
+          cfg.sp_sensor_font,
+          lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+          lv_obj_get_style_text_color(s.text_lbl, LV_PART_MAIN),
+          cfg.width_compensation_percent);
+        lv_obj_set_user_data(s.btn, ctx);
+        subscribe_alarm_state(ctx);
+        if (p.label.empty())
+          subscribe_friendly_name(ctx->status_label, p.entity);
+      }
+      continue;
+    }
+    if (fan_non_speed_card_type(p.type)) {
+      if (!p.entity.empty()) {
+        FanCardCtx *ctx = create_fan_card_context(
+          s, p,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          has_off ? off_val : DEFAULT_OFF_COLOR,
+          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN));
+        subscribe_fan_card_state(ctx);
+      }
+      continue;
+    }
     if (p.type == "cover" && cover_command_mode(p.sensor)) {
       if (!p.entity.empty()) {
         if (p.label.empty())
@@ -1004,6 +1043,27 @@ inline void grid_phase2(
               if (ctx) send_lock_action(ctx);
             }, LV_EVENT_CLICKED, lock_ctx);
           }
+        }
+        continue;
+      }
+      if (sb_cfg.type == "alarm") {
+        apply_control_availability(sub_slot.btn, sub_slot.btn, false);
+        continue;
+      }
+      if (fan_non_speed_card_type(sb_cfg.type)) {
+        if (!sb_cfg.entity.empty()) {
+          FanCardCtx *ctx = create_fan_card_context(
+            sub_slot, sb_cfg,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            has_off ? off_val : DEFAULT_OFF_COLOR,
+            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN));
+          subscribe_fan_card_state(ctx);
+          add_parent_indicator(sb_cfg.entity);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            FanCardCtx *ctx = (FanCardCtx *)lv_event_get_user_data(e);
+            if (ctx) fan_card_handle_click(ctx);
+          }, LV_EVENT_CLICKED, ctx);
         }
         continue;
       }

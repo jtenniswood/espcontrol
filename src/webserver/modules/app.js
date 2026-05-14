@@ -1240,6 +1240,23 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     switchConfirmationYesText: switchConfirmationYesText,
     switchConfirmationNoText: switchConfirmationNoText,
     actionCardStateEntity: actionCardStateEntity,
+    alarmPinRequired: alarmPinRequired,
+    alarmVisibleActions: alarmVisibleActions,
+    normalizeAlarmOptions: normalizeAlarmOptions,
+    buttonTypePickerKeysForExperimental: function (enabled, isSub, selectedTypeKey) {
+      var oldExperimental = state.developerExperimentalFeatures;
+      state.developerExperimentalFeatures = !!enabled;
+      var keys = buttonTypePickerKeys(!!isSub, selectedTypeKey || "");
+      state.developerExperimentalFeatures = oldExperimental;
+      return keys;
+    },
+    buttonTypeVisibleInPickerForExperimental: function (key, enabled, isSub) {
+      var oldExperimental = state.developerExperimentalFeatures;
+      state.developerExperimentalFeatures = !!enabled;
+      var visible = buttonTypeVisibleInPicker(key, !!isSub);
+      state.developerExperimentalFeatures = oldExperimental;
+      return visible;
+    },
     parseSubpageConfig: parseSubpageConfig,
     serializeSubpageConfig: serializeSubpageConfig,
     parseBackOrderToken: parseBackOrderToken,

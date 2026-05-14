@@ -371,6 +371,31 @@
       "mdi": "fan"
     },
     {
+      "name": "Fan Off",
+      "codepoint": "F081D",
+      "mdi": "fan-off"
+    },
+    {
+      "name": "Fan Auto",
+      "codepoint": "F171D",
+      "mdi": "fan-auto"
+    },
+    {
+      "name": "Fan Speed 1",
+      "codepoint": "F1472",
+      "mdi": "fan-speed-1"
+    },
+    {
+      "name": "Fan Speed 2",
+      "codepoint": "F1473",
+      "mdi": "fan-speed-2"
+    },
+    {
+      "name": "Fan Speed 3",
+      "codepoint": "F1474",
+      "mdi": "fan-speed-3"
+    },
+    {
       "name": "Fire",
       "codepoint": "F0238",
       "mdi": "fire"
@@ -954,6 +979,11 @@
       "name": "String Lights Off",
       "codepoint": "F12BB",
       "mdi": "string-lights-off"
+    },
+    {
+      "name": "Swap Horizontal",
+      "codepoint": "F04E1",
+      "mdi": "swap-horizontal"
     },
     {
       "name": "Power Socket UK",

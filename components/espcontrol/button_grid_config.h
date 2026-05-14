@@ -81,7 +81,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, cover, garage, lock, media, climate, push, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, climate, push, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -94,13 +94,41 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
 }
 
 inline bool brightness_slider_type(const std::string &type) {
-  return type == "slider" || type == "light_brightness";
+  return type == "slider" || type == "light_brightness" || type == "fan_speed";
+}
+
+inline bool fan_card_type(const std::string &type) {
+  return type == "fan_switch" ||
+         type == "fan_speed" ||
+         type == "fan_oscillate" ||
+         type == "fan_direction" ||
+         type == "fan_preset";
+}
+
+inline const char *fan_card_default_icon_name(const std::string &type) {
+  if (type == "fan_switch") return "Fan Off";
+  if (type == "fan_oscillate") return "Fan";
+  if (type == "fan_direction") return "Swap Horizontal";
+  if (type == "fan_preset") return "Fan Auto";
+  return "Fan Speed 2";
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
   if (brightness_slider_type(p.type) && !p.sensor.empty()) p.sensor.clear();
+  if (fan_card_type(p.type)) {
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    if (p.icon.empty() || p.icon == "Auto") p.icon = fan_card_default_icon_name(p.type);
+    if (p.type == "fan_switch") {
+      if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Fan";
+    } else {
+      p.icon_on.clear();
+    }
+  }
   if (p.type == "weather_forecast") {
     p.type = "weather";
     p.precision = "tomorrow";
@@ -143,13 +171,20 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.precision.clear();
     if (!p.sensor.empty()) p.icon_on.clear();
   }
+  if (p.type == "alarm") {
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.icon_on.clear();
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Security";
+  }
   if (p.type == "light_switch") {
     p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
     p.options.clear();
   }
-  if (!p.type.empty() && p.type != "action" && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   return p;

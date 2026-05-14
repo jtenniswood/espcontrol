@@ -19,6 +19,7 @@
 #include <vector>
 #include <functional>
 #include "esphome/components/api/homeassistant_service.h"
+#include "esphome/components/lvgl/lvgl_esphome.h"
 #include "esphome/core/string_ref.h"
 #include "icons.h"
 #include "backlight.h"
@@ -31,9 +32,11 @@
 #include "button_grid_subscriptions.h"
 #include "button_grid_actions.h"
 #include "button_grid_sliders.h"
+#include "button_grid_fan.h"
 #include "button_grid_climate.h"
 #include "button_grid_confirm.h"
 #include "network_status.h"
 #include "button_grid_media.h"
 #include "button_grid_subpages.h"
+#include "button_grid_alarm.h"
 #include "button_grid_grid.h"

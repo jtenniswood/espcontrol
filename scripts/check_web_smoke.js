@@ -98,6 +98,21 @@ assert.strictEqual(hooks.switchConfirmationEnabled(confirmationRoundTrip), true)
 assert.strictEqual(hooks.switchConfirmationMessage(confirmationRoundTrip), "Stop the print?");
 assert.strictEqual(hooks.switchConfirmationYesText(confirmationRoundTrip), "Power Down");
 assert.strictEqual(hooks.switchConfirmationNoText(confirmationRoundTrip), "Keep On");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", false, false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", true, false), true);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", true, true), false);
+assert.deepStrictEqual(Array.from(hooks.alarmVisibleActions(hooks.parseButtonConfig(
+  "alarm_control_panel.house;House;Security;Auto;;;alarm;;actions=away%7Cdisarm"
+))), ["away", "disarm"]);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", false, false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", true, false), true);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", true, true), true);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_switch", true, false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_oscillate", true, true), false);
+assert(
+  hooks.buttonTypePickerKeysForExperimental(false, false, "fan_speed").includes("fan_speed"),
+  "saved fan cards remain represented while hidden"
+);
 
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "\u00b0F");
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "\u00b0C");

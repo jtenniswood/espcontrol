@@ -383,6 +383,11 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
 inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj);
+struct AlarmCardCtx;
+inline void alarm_card_open_page(AlarmCardCtx *ctx);
+struct FanCardCtx;
+inline bool fan_non_speed_card_type(const std::string &type);
+inline void fan_card_handle_click(FanCardCtx *ctx);
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
@@ -417,6 +422,12 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     lv_obj_t *sub_scr = (lv_obj_t *)lv_obj_get_user_data(btn_obj);
     if (sub_scr)
       lv_scr_load_anim(sub_scr, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  } else if (p.type == "alarm") {
+    AlarmCardCtx *ctx = (AlarmCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) alarm_card_open_page(ctx);
+  } else if (fan_non_speed_card_type(p.type)) {
+    FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) fan_card_handle_click(ctx);
   } else if (p.type == "garage") {
     if (garage_command_mode(p.sensor)) {
       send_cover_command_action(p);

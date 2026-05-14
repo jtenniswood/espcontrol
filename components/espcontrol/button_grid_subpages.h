@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, cover, garage, lock, media, push, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, push, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -36,8 +36,14 @@ inline std::string compact_subpage_type(const std::string &code) {
   if (code == "S") return "sensor";
   if (code == "W") return "weather";
   if (code == "F") return "weather_forecast";
+  if (code == "B") return "fan_switch";
+  if (code == "J") return "fan_speed";
+  if (code == "O") return "fan_oscillate";
+  if (code == "E") return "fan_direction";
+  if (code == "Z") return "fan_preset";
   if (code == "V") return "light_brightness";
   if (code == "Q") return "light_switch";
+  if (code == "Y") return "alarm";
   if (code == "L") return "slider";
   if (code == "C") return "cover";
   if (code == "N") return "light_temperature";
@@ -57,6 +63,18 @@ inline std::string decode_compact_subpage_field(const std::string &value) {
 
 inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   if (brightness_slider_type(b.type) && !b.sensor.empty()) b.sensor.clear();
+  if (fan_card_type(b.type)) {
+    b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    b.options.clear();
+    if (b.icon.empty() || b.icon == "Auto") b.icon = fan_card_default_icon_name(b.type);
+    if (b.type == "fan_switch") {
+      if (b.icon_on.empty() || b.icon_on == "Auto") b.icon_on = "Fan";
+    } else {
+      b.icon_on.clear();
+    }
+  }
   if (b.type == "weather_forecast") {
     b.type = "weather";
     b.precision = "tomorrow";
@@ -98,6 +116,13 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     if (!b.sensor.empty()) b.icon_on.clear();
   }
+  if (b.type == "alarm") {
+    b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    b.icon_on.clear();
+    if (b.icon.empty() || b.icon == "Auto") b.icon = "Security";
+  }
   if (b.type == "light_switch") {
     b.sensor.clear();
     b.unit.clear();
@@ -107,7 +132,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   ParsedCfg p;
   p.type = b.type;
   p.precision = b.precision;
-  if (!b.type.empty() && b.type != "action" && !card_large_numbers_supported(p)) {
+  if (!b.type.empty() && b.type != "action" && b.type != "alarm" && !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }
   return b;

@@ -1344,6 +1344,59 @@ function previewHtmlValue(typePreview, key, fallback) {
     : fallback;
 }
 
+function buttonTypePickerOptionList(isSub, selectedTypeKey) {
+  var typeOpts = [];
+  var selectedHiddenExperimental = null;
+  for (var k in BUTTON_TYPES) {
+    var td = BUTTON_TYPES[k];
+    if (td.pickerKey && td.pickerKey !== td.key) continue;
+    if (isSub && !td.allowInSubpage) continue;
+    if (td.isAvailable && !td.isAvailable({ isSub: isSub }) && selectedTypeKey !== td.key) continue;
+    var experimentalHidden = td.experimental && !isExperimentalEnabled(td.experimental);
+    if (experimentalHidden) {
+      if (selectedTypeKey === td.key) selectedHiddenExperimental = td;
+      continue;
+    }
+    typeOpts.push({ key: td.key, label: td.label, disabled: false });
+  }
+  if (selectedHiddenExperimental) {
+    typeOpts.push({
+      key: selectedHiddenExperimental.key,
+      label: selectedHiddenExperimental.label + " (experimental)",
+      disabled: true,
+    });
+  }
+  typeOpts.sort(function (a, b) {
+    return a.label.localeCompare(b.label);
+  });
+  return typeOpts;
+}
+
+function buttonTypePickerKeys(isSub, selectedTypeKey) {
+  return buttonTypePickerOptionList(!!isSub, selectedTypeKey || "").map(function (opt) {
+    return opt.key;
+  });
+}
+
+function buttonTypeVisibleInPicker(key, isSub) {
+  return buttonTypePickerKeys(!!isSub, "").indexOf(key) >= 0;
+}
+
+function hiddenExperimentalButtonTypeDef(typeDef) {
+  if (!typeDef) return null;
+  return Object.assign({}, typeDef, {
+    hideLabel: true,
+    renderSettingsBeforeLabel: null,
+    renderSettings: function (panel) {
+      var note = document.createElement("div");
+      note.className = "sp-field-hint";
+      note.textContent = "Enable Developer/Experimental Features from ?developer=experimental to edit this card.";
+      panel.appendChild(note);
+    },
+    contextMenuItems: null,
+  });
+}
+
 function renderPreview() {
   var main = els.previewMain;
   main.innerHTML = "";
@@ -1379,11 +1432,6 @@ function renderPreview() {
         ? state.sensorColor : state.offColor;
       var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
       if (previewTypeDef && c.isSub && !previewTypeDef.allowInSubpage) previewTypeDef = null;
-      if (previewTypeDef && previewTypeDef.experimental && !isExperimentalEnabled(previewTypeDef.experimental)) {
-        previewTypeDef = null;
-        iconName = "cog";
-        label = "Configure";
-      }
       var slotSz = c.sizes[slot];
       var typePreview = previewTypeDef && previewTypeDef.renderPreview
         ? previewTypeDef.renderPreview(b, { escHtml: escHtml, cardSize: slotSz || 1 })
@@ -1908,24 +1956,14 @@ function renderButtonSettings(forceOpen) {
     ], value || "0", onChange);
   }
 
-  var typeDef = BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""];
-  if (typeDef && typeDef.experimental && !isExperimentalEnabled(typeDef.experimental)) {
-    typeDef = BUTTON_TYPES[""];
+  var rawTypeDef = BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""];
+  var typeDef = rawTypeDef;
+  if (rawTypeDef && rawTypeDef.experimental && !isExperimentalEnabled(rawTypeDef.experimental)) {
+    typeDef = hiddenExperimentalButtonTypeDef(rawTypeDef);
   }
   {
-    var typeOpts = [];
-    var selectedTypeKey = (typeDef && typeDef.pickerKey) || (b.type || "");
-    for (var k in BUTTON_TYPES) {
-      var td = BUTTON_TYPES[k];
-      if (td.pickerKey && td.pickerKey !== td.key) continue;
-      if (c.isSub && !td.allowInSubpage) continue;
-      if (td.isAvailable && !td.isAvailable({ isSub: c.isSub }) && selectedTypeKey !== td.key) continue;
-      if (td.experimental && !isExperimentalEnabled(td.experimental)) continue;
-      typeOpts.push([td.key, td.label]);
-    }
-    typeOpts.sort(function (a, b) {
-      return a[1].localeCompare(b[1]);
-    });
+    var selectedTypeKey = (rawTypeDef && rawTypeDef.pickerKey) || (b.type || "");
+    var typeOpts = buttonTypePickerOptionList(c.isSub, selectedTypeKey);
     var tf = document.createElement("div");
     tf.className = "sp-field";
     tf.appendChild(fieldLabel("Card", "sp-inp-type"));
@@ -1934,9 +1972,10 @@ function renderButtonSettings(forceOpen) {
     typeSelect.id = "sp-inp-type";
     typeOpts.forEach(function (o) {
       var opt = document.createElement("option");
-      opt.value = o[0];
-      opt.textContent = o[1];
-      if (selectedTypeKey === o[0]) opt.selected = true;
+      opt.value = o.key;
+      opt.textContent = o.label;
+      opt.disabled = !!o.disabled;
+      if (selectedTypeKey === o.key) opt.selected = true;
       typeSelect.appendChild(opt);
     });
     typeSelect.addEventListener("change", function () {

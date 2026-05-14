@@ -54,8 +54,14 @@ function subpageTypeFromCode(code) {
     S: "sensor",
     W: "weather",
     F: "weather_forecast",
+    B: "fan_switch",
+    J: "fan_speed",
+    O: "fan_oscillate",
+    E: "fan_direction",
+    Z: "fan_preset",
     V: "light_brightness",
     Q: "light_switch",
+    Y: "alarm",
     L: "slider",
     C: "cover",
     N: "light_temperature",
@@ -379,6 +385,59 @@ assertButtonRoundTrip(hooks, "unlock command button", {
   type: "lock",
   precision: "",
 }, false);
+
+const defaultAlarmCard = {
+  entity: "alarm_control_panel.house",
+  label: "House Alarm",
+  icon: "Security",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "alarm",
+  precision: "",
+  options: "",
+};
+assertButtonRoundTrip(hooks, "alarm card default options", defaultAlarmCard, false);
+assert.strictEqual(hooks.alarmPinRequired(defaultAlarmCard, "arm"), true, "alarm arm PIN default");
+assert.strictEqual(hooks.alarmPinRequired(defaultAlarmCard, "disarm"), true, "alarm disarm PIN default");
+assert.deepStrictEqual(Array.from(hooks.alarmVisibleActions(defaultAlarmCard)), ["away", "home", "night", "disarm"], "alarm default visible actions");
+
+const customAlarmCard = {
+  entity: "alarm_control_panel.house",
+  label: "House Alarm",
+  icon: "Alarm",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "alarm",
+  precision: "",
+  options: "pin_arm=0,actions=away%7Cdisarm",
+};
+assertButtonRoundTrip(hooks, "alarm card custom options", customAlarmCard, false);
+const parsedCustomAlarm = hooks.parseButtonConfig(hooks.serializeButtonConfig(customAlarmCard));
+assert.strictEqual(hooks.alarmPinRequired(parsedCustomAlarm, "arm"), false, "alarm arm PIN override");
+assert.strictEqual(hooks.alarmPinRequired(parsedCustomAlarm, "disarm"), true, "alarm disarm PIN remains default");
+assert.deepStrictEqual(Array.from(hooks.alarmVisibleActions(parsedCustomAlarm)), ["away", "disarm"], "alarm visible action subset");
+
+assertButtonMigration(hooks, "alarm clears ignored fields", "alarm_control_panel.house;House;Auto;Alarm;sensor.temp;W;alarm;2;pin_disarm=0,actions=home%7Cnight", {
+  entity: "alarm_control_panel.house",
+  label: "House",
+  icon: "Security",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "alarm",
+  precision: "",
+  options: "pin_disarm=0,actions=home%7Cnight",
+});
+
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", false, false), false, "alarm picker hidden without experimental flag");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", true, false), true, "alarm picker visible with experimental flag");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", true, true), false, "alarm picker hidden in subpages");
+assert.strictEqual(
+  hooks.buttonTypePickerKeysForExperimental(false, false, "alarm").indexOf("alarm") >= 0,
+  true,
+  "saved alarm type remains selectable while hidden");
 
 assertButtonRoundTrip(hooks, "cover toggle button", {
   entity: "cover.office_blind",
@@ -767,6 +826,87 @@ assertButtonMigration(hooks, "light switch clears ignored fields", "light.living
   type: "light_switch",
 });
 
+assertButtonRoundTrip(hooks, "fan switch card", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan Off",
+  icon_on: "Fan",
+  sensor: "",
+  unit: "",
+  type: "fan_switch",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "fan speed card", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan Speed 2",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "fan_speed",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "fan oscillation card", {
+  entity: "fan.bedroom",
+  label: "Oscillation",
+  icon: "Fan",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "fan_oscillate",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "fan direction card", {
+  entity: "fan.bedroom",
+  label: "Direction",
+  icon: "Swap Horizontal",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "fan_direction",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "fan preset card", {
+  entity: "fan.bedroom",
+  label: "Preset",
+  icon: "Fan Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "fan_preset",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonMigration(hooks, "fan card clears ignored fields", "fan.bedroom;Bedroom;Auto;Fan;sensor.temp;W;fan_direction;2;large_numbers", {
+  entity: "fan.bedroom",
+  label: "Bedroom",
+  icon: "Swap Horizontal",
+  icon_on: "Auto",
+  type: "fan_direction",
+});
+
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", false, false), false, "fan picker hidden without experimental flag");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", true, false), true, "fan picker visible with experimental flag");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", true, true), true, "fan picker visible in subpages with experimental flag");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_switch", true, false), false, "fan subtype hidden from top-level picker");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_switch", true, true), false, "fan switch subtype hidden from subpage picker");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_oscillate", true, true), false, "fan oscillation subtype hidden from subpage picker");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_direction", true, true), false, "fan direction subtype hidden from subpage picker");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_preset", true, true), false, "fan preset subtype hidden from subpage picker");
+assert.strictEqual(
+  hooks.buttonTypePickerKeysForExperimental(false, false, "fan_speed").indexOf("fan_speed") >= 0,
+  true,
+  "saved fan type remains selectable while hidden");
+
 const subpageStateOff = buttonShape({
   label: "Windows",
   icon: "Window Closed",
@@ -1152,6 +1292,48 @@ assertSubpageRoundTrip(hooks, "light switch subpage", {
   ],
 }, true);
 
+assertSubpageRoundTrip(hooks, "fan switch subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Bedroom Fan", icon: "Fan Off", icon_on: "Fan", type: "fan_switch" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "fan speed subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Bedroom Fan", icon: "Fan Speed 2", icon_on: "Auto", type: "fan_speed" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "fan oscillation subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Oscillation", icon: "Fan", icon_on: "Auto", type: "fan_oscillate" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "fan direction subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Direction", icon: "Swap Horizontal", icon_on: "Auto", type: "fan_direction" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "fan preset subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Preset", icon: "Fan Auto", icon_on: "Auto", type: "fan_preset" }),
+  ],
+}, true);
+
+assertSubpageMigration(hooks, "fan subpage clears ignored fields", "~1,B|E,fan.bedroom,Bedroom,Auto,Fan,sensor.temp,W,2,large_numbers", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Bedroom", icon: "Swap Horizontal", icon_on: "Auto", type: "fan_direction" }),
+  ],
+});
+
 assertSubpageRoundTrip(hooks, "delimiter subpage", {
   order: ["1", "B", "2"],
   buttons: [
@@ -1334,6 +1516,41 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|N,light.livin
     buttonShape({ entity: "light.living_room", label: "Living Room", icon: "Auto", icon_on: "Auto", sensor: "kelvin", unit: "2000-6500", type: "light_temperature", precision: "color" }),
   ],
 }, "compact light temperature subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|B,fan.bedroom,Bedroom%20Fan,Fan%20Off,Fan")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Bedroom Fan", icon: "Fan Off", icon_on: "Fan", type: "fan_switch" }),
+  ],
+}, "compact fan switch subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|J,fan.bedroom,Bedroom%20Fan,Fan%20Speed%202")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Bedroom Fan", icon: "Fan Speed 2", icon_on: "Auto", type: "fan_speed" }),
+  ],
+}, "compact fan speed subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|O,fan.bedroom,Oscillation,Fan")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Oscillation", icon: "Fan", icon_on: "Auto", type: "fan_oscillate" }),
+  ],
+}, "compact fan oscillation subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|E,fan.bedroom,Direction,Swap%20Horizontal")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Direction", icon: "Swap Horizontal", icon_on: "Auto", type: "fan_direction" }),
+  ],
+}, "compact fan direction subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|Z,fan.bedroom,Preset,Fan%20Auto")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Preset", icon: "Fan Auto", icon_on: "Auto", type: "fan_preset" }),
+  ],
+}, "compact fan preset subpage parse");
 
 const largeSubpage = {
   order: Array.from({ length: 25 }, (_, i) => (i === 4 ? "B" : String(i + 1))),
