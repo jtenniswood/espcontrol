@@ -83,6 +83,13 @@ function normalizeButtonConfig(b) {
     b.precision = "";
     b.options = "";
   }
+  if (b && b.type === "option_select") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.icon_on = "Auto";
+    b.options = "";
+  }
   if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
   } else if (b && b.type !== "action" && b.type !== "alarm" && !cardLargeNumbersSupported(b)) {
@@ -101,6 +108,10 @@ function isFanCardType(type) {
     type === "fan_oscillate" ||
     type === "fan_direction" ||
     type === "fan_preset";
+}
+
+function isOptionSelectType(type) {
+  return type === "option_select";
 }
 
 function fanCardDefaultIcon(type) {
@@ -411,21 +422,21 @@ function trimConfigFields(fields) {
 
 function buttonConfigFields(b) {
   var type = b && b.type || "";
-  var sensor = (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "alarm" || isFanCardType(type)) ? "" : (b && b.sensor || "");
-  var unit = (type === "climate" || type === "light_switch" || type === "alarm" || isFanCardType(type)) ? "" : (b && b.unit || "");
+  var sensor = (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "alarm" || isFanCardType(type) || isOptionSelectType(type)) ? "" : (b && b.sensor || "");
+  var unit = (type === "climate" || type === "light_switch" || type === "alarm" || isFanCardType(type) || isOptionSelectType(type)) ? "" : (b && b.unit || "");
   var icon = b && b.icon || "Auto";
   if (type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
   if (isFanCardType(type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(type);
-  var iconOn = (type === "climate" || type === "alarm" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
+  var iconOn = (type === "climate" || type === "alarm" || isOptionSelectType(type) || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
-  var precision = (type === "light_switch" || type === "alarm" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  var precision = (type === "light_switch" || type === "alarm" || isFanCardType(type) || isOptionSelectType(type)) ? "" : (b && b.precision || "");
   if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
   var options = b && b.options || "";
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options);
   } else if (type === "alarm") {
     options = normalizeAlarmOptions(options);
-  } else if (isFanCardType(type)) {
+  } else if (isFanCardType(type) || isOptionSelectType(type)) {
     options = "";
   } else if (type !== "action" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
@@ -601,6 +612,7 @@ function subpageTypeCode(type) {
     sensor: "S",
     weather: "W",
     weather_forecast: "F",
+    option_select: "U",
     fan_switch: "B",
     fan_speed: "J",
     fan_oscillate: "O",
@@ -631,6 +643,7 @@ function subpageTypeFromCode(code) {
     S: "sensor",
     W: "weather",
     F: "weather_forecast",
+    U: "option_select",
     B: "fan_switch",
     J: "fan_speed",
     O: "fan_oscillate",
@@ -714,21 +727,21 @@ function legacySubpageConfigSafe(sp) {
   if (!sp || !sp.buttons) return true;
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
-    var sensor = (b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.sensor || "");
-    var unit = (b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.unit || "");
+    var sensor = (b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.sensor || "");
+    var unit = (b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.unit || "");
     var icon = b.icon || "Auto";
     if (b.type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
     if (isFanCardType(b.type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(b.type);
-    var iconOn = (b.type === "climate" || b.type === "alarm" || (isFanCardType(b.type) && b.type !== "fan_switch")) ? "Auto" : (b.icon_on || "Auto");
+    var iconOn = (b.type === "climate" || b.type === "alarm" || isOptionSelectType(b.type) || (isFanCardType(b.type) && b.type !== "fan_switch")) ? "Auto" : (b.icon_on || "Auto");
     if (b.type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
-    var precision = (b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.precision || "");
+    var precision = (b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.precision || "");
     if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
     var options = b.options || "";
     if (!b.type) {
       options = normalizeSwitchConfirmationOptions(options);
     } else if (b.type === "alarm") {
       options = normalizeAlarmOptions(options);
-    } else if (isFanCardType(b.type)) {
+    } else if (isFanCardType(b.type) || isOptionSelectType(b.type)) {
       options = "";
     } else if (b.type !== "action" && !cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
       options = "";
@@ -748,21 +761,21 @@ function serializeLegacySubpageConfig(sp) {
   var out = subpageOrderForSerialize(sp).join(",");
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
-    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.sensor || "");
-    var unit = (b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.unit || "");
+    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.sensor || "");
+    var unit = (b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.unit || "");
     var icon = b.icon || "Auto";
     if (b.type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
     if (isFanCardType(b.type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(b.type);
-    var iconOn = (b.type === "climate" || b.type === "alarm" || (isFanCardType(b.type) && b.type !== "fan_switch")) ? "Auto" : (b.icon_on || "Auto");
+    var iconOn = (b.type === "climate" || b.type === "alarm" || isOptionSelectType(b.type) || (isFanCardType(b.type) && b.type !== "fan_switch")) ? "Auto" : (b.icon_on || "Auto");
     if (b.type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
-    var precision = (b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.precision || "");
+    var precision = (b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.precision || "");
     if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
     var options = b.options || "";
     if (!b.type) {
       options = normalizeSwitchConfirmationOptions(options);
     } else if (b.type === "alarm") {
       options = normalizeAlarmOptions(options);
-    } else if (isFanCardType(b.type)) {
+    } else if (isFanCardType(b.type) || isOptionSelectType(b.type)) {
       options = "";
     } else if (b.type !== "action" && !cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
       options = "";
@@ -782,21 +795,21 @@ function serializeCompactSubpageConfig(sp) {
   var out = "~" + subpageOrderForSerialize(sp).join(",");
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
-    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.sensor || "");
-    var unit = (b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.unit || "");
+    var sensor = (isBrightnessSliderType(b.type) || b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.sensor || "");
+    var unit = (b.type === "climate" || b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.unit || "");
     var icon = b.icon || "Auto";
     if (b.type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
     if (isFanCardType(b.type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(b.type);
-    var iconOn = (b.type === "climate" || b.type === "alarm" || (isFanCardType(b.type) && b.type !== "fan_switch")) ? "Auto" : (b.icon_on || "Auto");
+    var iconOn = (b.type === "climate" || b.type === "alarm" || isOptionSelectType(b.type) || (isFanCardType(b.type) && b.type !== "fan_switch")) ? "Auto" : (b.icon_on || "Auto");
     if (b.type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
-    var precision = (b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type)) ? "" : (b.precision || "");
+    var precision = (b.type === "light_switch" || b.type === "alarm" || isFanCardType(b.type) || isOptionSelectType(b.type)) ? "" : (b.precision || "");
     if (b.type === "climate") precision = normalizeClimatePrecisionConfig(precision);
     var options = b.options || "";
     if (!b.type) {
       options = normalizeSwitchConfirmationOptions(options);
     } else if (b.type === "alarm") {
       options = normalizeAlarmOptions(options);
-    } else if (isFanCardType(b.type)) {
+    } else if (isFanCardType(b.type) || isOptionSelectType(b.type)) {
       options = "";
     } else if (b.type !== "action" && !cardLargeNumbersSupported({ type: b.type || "", precision: precision })) {
       options = "";

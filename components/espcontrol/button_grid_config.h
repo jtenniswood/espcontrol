@@ -81,7 +81,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, climate, push, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, option_select, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, climate, push, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -184,6 +184,13 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.precision.clear();
     p.options.clear();
   }
+  if (p.type == "option_select") {
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on.clear();
+  }
   if (!p.type.empty() && p.type != "action" && p.type != "alarm" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
@@ -246,6 +253,32 @@ inline std::string cfg_option_value(const std::string &options, const char *name
 
 inline std::string action_card_state_entity(const ParsedCfg &p) {
   return p.type == "action" ? cfg_option_value(p.options, "state_entity") : "";
+}
+
+inline std::string action_card_state_unit(const ParsedCfg &p) {
+  return p.type == "action" ? cfg_option_value(p.options, "state_unit") : "";
+}
+
+inline std::string action_card_state_precision(const ParsedCfg &p) {
+  return p.type == "action" ? cfg_option_value(p.options, "state_precision") : "";
+}
+
+inline bool action_card_state_display_enabled(const ParsedCfg &p) {
+  if (action_card_state_entity(p).empty()) return false;
+  std::string precision = action_card_state_precision(p);
+  return precision == "text" || precision == "0" ||
+         precision == "1" || precision == "2" ||
+         !action_card_state_unit(p).empty();
+}
+
+inline bool action_card_state_text_mode(const ParsedCfg &p) {
+  return action_card_state_display_enabled(p) &&
+         action_card_state_precision(p) == "text";
+}
+
+inline bool action_card_state_numeric_mode(const ParsedCfg &p) {
+  return action_card_state_display_enabled(p) &&
+         action_card_state_precision(p) != "text";
 }
 
 inline bool card_large_numbers_enabled(const ParsedCfg &p) {

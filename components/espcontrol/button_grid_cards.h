@@ -536,6 +536,16 @@ inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
   lv_label_set_text(s.text_lbl, p.label.empty() ? (p.entity.empty() ? "Action" : p.entity.c_str()) : p.label.c_str());
   const char *icon_cp = (p.icon.empty() || p.icon == "Auto") ? find_icon("Flash") : find_icon(p.icon.c_str());
   lv_label_set_text(s.icon_lbl, icon_cp);
+  if (action_card_state_text_mode(p)) {
+    lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  } else if (action_card_state_numeric_mode(p)) {
+    lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(s.sensor_lbl, "--");
+    std::string unit = trim_display_unit(action_card_state_unit(p));
+    lv_label_set_text(s.unit_lbl, unit.c_str());
+  }
   apply_push_button_transition(s.btn);
 }
 

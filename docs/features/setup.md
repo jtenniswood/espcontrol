@@ -29,6 +29,7 @@ The **Type** dropdown uses these card names on the device:
 | **[Switch](/card-types/switches)** | Controls a Home Assistant entity and shows its on/off state. This is the default card type. | Yes |
 | **[Lights](/card-types/lights)** | Controls a light as a switch, brightness slider, or colour temperature slider. | Yes, as a light entity |
 | **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, or helper action. | Yes |
+| **[Option Select](/card-types/option-select)** | Shows and changes the current option on a `select` or `input_select` entity. | Yes, as a select entity |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
 | **[Sensor](/card-types/sensors)** | Shows a live numeric reading or text state. | Yes, as **Sensor Entity** |
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |

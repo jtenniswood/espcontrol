@@ -242,16 +242,59 @@ inline void subscribe_control_availability(lv_obj_t *visual_obj, lv_obj_t *input
 
 struct ActionCardStateCtx {
   lv_obj_t *btn = nullptr;
+  lv_obj_t *text_lbl = nullptr;
+  lv_obj_t *sensor_lbl = nullptr;
+  lv_obj_t *unit_lbl = nullptr;
   bool action_available = true;
   bool state_available = true;
   bool has_state_entity = false;
+  bool show_text_state = false;
+  bool show_numeric_state = false;
+  int precision = 0;
+  std::string unit;
 };
+
+inline ActionCardStateCtx *create_action_card_state_context(const BtnSlot &s,
+                                                            const ParsedCfg &p) {
+  ActionCardStateCtx *ctx = new ActionCardStateCtx();
+  ctx->btn = s.btn;
+  ctx->text_lbl = s.text_lbl;
+  ctx->sensor_lbl = s.sensor_lbl;
+  ctx->unit_lbl = s.unit_lbl;
+  ctx->show_text_state = action_card_state_text_mode(p);
+  ctx->show_numeric_state = action_card_state_numeric_mode(p);
+  ctx->precision = parse_precision(action_card_state_precision(p));
+  ctx->unit = trim_display_unit(action_card_state_unit(p));
+  return ctx;
+}
 
 inline void apply_action_card_availability(ActionCardStateCtx *ctx) {
   if (!ctx || !ctx->btn) return;
   bool available = ctx->action_available &&
                    (!ctx->has_state_entity || ctx->state_available);
   apply_control_availability(ctx->btn, ctx->btn, available);
+}
+
+inline void apply_action_card_display_value(ActionCardStateCtx *ctx,
+                                            esphome::StringRef state,
+                                            bool unavailable) {
+  if (!ctx) return;
+  if (ctx->show_text_state && ctx->text_lbl) {
+    set_wrapped_button_label_text(ctx->text_lbl, text_sensor_display_text(state, HA_STATE_TEXT_MAX_LEN));
+    return;
+  }
+  if (!ctx->show_numeric_state || !ctx->sensor_lbl) return;
+
+  float val = 0.0f;
+  if (!unavailable && parse_float_ref(state, val) && std::isfinite(val)) {
+    char buf[16];
+    format_fixed_decimal(buf, sizeof(buf), val, ctx->precision);
+    lv_label_set_text(ctx->sensor_lbl, buf);
+    if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, ctx->unit.c_str());
+  } else {
+    lv_label_set_text(ctx->sensor_lbl, "");
+    if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  }
 }
 
 inline void subscribe_action_card_target_availability(ActionCardStateCtx *ctx,
@@ -277,6 +320,7 @@ inline void subscribe_action_card_display_state(ActionCardStateCtx *ctx,
       ctx->state_available = !unavailable;
       if (!unavailable && is_entity_on_ref(state)) lv_obj_add_state(ctx->btn, LV_STATE_CHECKED);
       else lv_obj_clear_state(ctx->btn, LV_STATE_CHECKED);
+      apply_action_card_display_value(ctx, state, unavailable);
       apply_action_card_availability(ctx);
     })
   );

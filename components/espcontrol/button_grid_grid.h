@@ -166,6 +166,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_action_card(s, p);
     return;
   }
+  if (p.type == "option_select") {
+    setup_option_select_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
   if (p.type == "media") {
     setup_media_card(s, p,
       palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
@@ -652,12 +656,24 @@ inline void grid_phase2(
     if (p.type == "action") {
       std::string state_entity = action_card_state_entity(p);
       if (!state_entity.empty()) {
-        ActionCardStateCtx *ctx = new ActionCardStateCtx();
-        ctx->btn = s.btn;
+        ActionCardStateCtx *ctx = create_action_card_state_context(s, p);
         subscribe_action_card_target_availability(ctx, p.entity);
         subscribe_action_card_display_state(ctx, state_entity);
       } else {
         subscribe_control_availability(s.btn, s.btn, p.entity);
+      }
+      continue;
+    }
+    if (p.type == "option_select") {
+      if (!p.entity.empty()) {
+        OptionSelectCtx *ctx = create_option_select_context(
+          s, p,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          has_off ? off_val : DEFAULT_OFF_COLOR,
+          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          cfg.width_compensation_percent);
+        subscribe_option_select_state(ctx);
+        subscribe_option_select_friendly_name(ctx);
       }
       continue;
     }
@@ -1087,8 +1103,7 @@ inline void grid_phase2(
         if (!sb_cfg.entity.empty() && !sb_cfg.sensor.empty()) {
           std::string state_entity = action_card_state_entity(sb_cfg);
           if (!state_entity.empty()) {
-            ActionCardStateCtx *action_ctx = new ActionCardStateCtx();
-            action_ctx->btn = sub_slot.btn;
+            ActionCardStateCtx *action_ctx = create_action_card_state_context(sub_slot, sb_cfg);
             subscribe_action_card_target_availability(action_ctx, sb_cfg.entity);
             subscribe_action_card_display_state(action_ctx, state_entity);
           } else {
@@ -1098,6 +1113,23 @@ inline void grid_phase2(
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
             if (c) send_action_card_action(*c);
+          }, LV_EVENT_CLICKED, ctx);
+        }
+        continue;
+      }
+      if (sb_cfg.type == "option_select") {
+        if (!sb_cfg.entity.empty()) {
+          OptionSelectCtx *ctx = create_option_select_context(
+            sub_slot, sb_cfg,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            has_off ? off_val : DEFAULT_OFF_COLOR,
+            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            cfg.width_compensation_percent);
+          subscribe_option_select_state(ctx);
+          subscribe_option_select_friendly_name(ctx);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            OptionSelectCtx *ctx = (OptionSelectCtx *)lv_event_get_user_data(e);
+            if (ctx) option_select_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
         }
         continue;

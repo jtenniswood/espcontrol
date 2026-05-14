@@ -383,6 +383,8 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
 inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj);
+struct OptionSelectCtx;
+inline void option_select_open_modal(OptionSelectCtx *ctx);
 struct AlarmCardCtx;
 inline void alarm_card_open_page(AlarmCardCtx *ctx);
 struct FanCardCtx;
@@ -454,6 +456,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (!p.entity.empty()) send_internal_relay_action(p);
   } else if (p.type == "action") {
     send_action_card_action(p);
+  } else if (p.type == "option_select") {
+    OptionSelectCtx *ctx = (OptionSelectCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) option_select_open_modal(ctx);
   } else if (p.type == "media") {
     std::string mode = media_card_mode(p.sensor);
     if (mode == "volume") {

@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, push, internal, subpage
+  std::string type;       // button type: "" (toggle), action, option_select, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, push, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -31,6 +31,7 @@ inline std::vector<std::string> split_subpage_fields(const std::string &value, c
 
 inline std::string compact_subpage_type(const std::string &code) {
   if (code == "A") return "action";
+  if (code == "U") return "option_select";
   if (code == "D") return "calendar";
   if (code == "T") return "timezone";
   if (code == "S") return "sensor";
@@ -128,6 +129,13 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.unit.clear();
     b.precision.clear();
     b.options.clear();
+  }
+  if (b.type == "option_select") {
+    b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    b.options.clear();
+    b.icon_on.clear();
   }
   ParsedCfg p;
   p.type = b.type;

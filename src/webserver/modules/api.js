@@ -72,6 +72,10 @@ function rememberConfiguredButtonEntities(button) {
   if (button.sensor && parseHomeAssistantEntity(button.sensor)) {
     rememberEntityName(button.sensor, label || titleFromEntityId(button.sensor));
   }
+  if (button.type === "action") {
+    var stateEntity = actionCardStateEntity(button);
+    if (stateEntity) rememberEntityName(stateEntity, titleFromEntityId(stateEntity));
+  }
 }
 
 function rememberConfiguredEntities() {

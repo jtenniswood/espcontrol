@@ -49,6 +49,7 @@ function decodeField(value) {
 function subpageTypeFromCode(code) {
   return {
     A: "action",
+    U: "option_select",
     D: "calendar",
     T: "timezone",
     S: "sensor",
@@ -1035,6 +1036,44 @@ assert.strictEqual(
   "light.kitchen",
   "action card state entity option"
 );
+assert.strictEqual(
+  hooks.actionCardStateDisplayMode(hooks.parseButtonConfig(hooks.serializeButtonConfig(scriptActionStateCard))),
+  "text",
+  "legacy action card state entity defaults to text display in editor"
+);
+
+const scriptActionNumericStateCard = {
+  entity: "script.kitchen_lights",
+  label: "Kitchen Lights",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "script.turn_on",
+  unit: "",
+  type: "action",
+  precision: "",
+  options: "state_entity=sensor.kitchen_power,state_unit=W,state_precision=1",
+};
+assertButtonRoundTrip(hooks, "script action card with numeric state display", scriptActionNumericStateCard, false);
+const parsedActionNumericState = hooks.parseButtonConfig(hooks.serializeButtonConfig(scriptActionNumericStateCard));
+assert.strictEqual(hooks.actionCardStateDisplayMode(parsedActionNumericState), "numeric", "action card numeric state mode");
+assert.strictEqual(hooks.actionCardStateUnit(parsedActionNumericState), "W", "action card numeric state unit");
+assert.strictEqual(hooks.actionCardStatePrecision(parsedActionNumericState), "1", "action card numeric state precision");
+
+const scriptActionTextStateCard = {
+  entity: "script.washer",
+  label: "Washer",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "script.turn_on",
+  unit: "",
+  type: "action",
+  precision: "",
+  options: "state_entity=text_sensor.washer_state,state_precision=text",
+};
+assertButtonRoundTrip(hooks, "script action card with text state display", scriptActionTextStateCard, false);
+const parsedActionTextState = hooks.parseButtonConfig(hooks.serializeButtonConfig(scriptActionTextStateCard));
+assert.strictEqual(hooks.actionCardStateDisplayMode(parsedActionTextState), "text", "action card text state mode");
+assert.strictEqual(hooks.actionCardStatePrecision(parsedActionTextState), "text", "action card text state precision");
 
 assertButtonRoundTrip(hooks, "automation action card", {
   entity: "automation.goodnight",
@@ -1101,6 +1140,28 @@ assertButtonRoundTrip(hooks, "input select delimiter action card", {
   type: "action",
   precision: "",
 }, true);
+
+assertButtonRoundTrip(hooks, "option select card", {
+  entity: "select.wled_preset",
+  label: "WLED Preset",
+  icon: "Chevron Down",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "option_select",
+  precision: "",
+}, false);
+
+assertButtonMigration(hooks, "option select clears ignored fields", "select.wled_preset;WLED Preset;Chevron Down;Lightbulb;sensor.stale;%;option_select;2;large_numbers", {
+  entity: "select.wled_preset",
+  label: "WLED Preset",
+  icon: "Chevron Down",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "option_select",
+  precision: "",
+});
 
 assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig("light.legacy;Legacy;Auto;Lightbulb;sensor.legacy;W;sensor;1")), buttonShape({
   entity: "light.legacy",
@@ -1227,6 +1288,13 @@ assertSubpageRoundTrip(hooks, "action subpage", {
   buttons: [
     buttonShape({ entity: "scene.movie_mode", label: "Movie Mode", icon: "Flash", sensor: "scene.turn_on", type: "action", options: "state_entity=light.living_room" }),
     buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Flash", sensor: "input_select.select_option", unit: "Away: overnight | 50%, main", type: "action" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "option select subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Chevron Down", icon_on: "Auto", type: "option_select" }),
   ],
 }, true);
 
@@ -1474,6 +1542,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|A,scene.movie
     buttonShape({ entity: "scene.movie_mode", label: "Movie Mode", icon: "Flash", icon_on: "Auto", sensor: "scene.turn_on", type: "action", options: "state_entity=light.living_room" }),
   ],
 }, "compact action subpage state entity parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|U,input_select.house_mode,House%20Mode,Chevron%20Down")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Chevron Down", icon_on: "Auto", type: "option_select" }),
+  ],
+}, "compact option select subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|K,lock.front_door,Front%20Door,Lock,Lock%20Open")), {
   order: ["1", "B"],

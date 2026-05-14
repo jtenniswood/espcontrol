@@ -76,6 +76,7 @@ Use an [Action](/card-types/actions) card when the panel should directly run som
 
 Use the dedicated card types for richer controls:
 
+- Use [Option Select](/card-types/option-select) for choosing between live `select` or `input_select` options.
 - Use [Cover](/card-types/covers) for blinds, shutters, and covers.
 - Use [Lock](/card-types/locks) for locking and unlocking doors.
 - Use [Lights](/card-types/lights) for light switching, brightness, and colour temperature.

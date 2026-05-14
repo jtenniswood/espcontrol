@@ -25,14 +25,52 @@ function normalizeActionCardConfig(b) {
 }
 
 var ACTION_CARD_STATE_ENTITY_OPTION = "state_entity";
+var ACTION_CARD_STATE_UNIT_OPTION = "state_unit";
+var ACTION_CARD_STATE_PRECISION_OPTION = "state_precision";
 
 function actionCardStateEntity(b) {
   return configOptionValue(b && b.options, ACTION_CARD_STATE_ENTITY_OPTION);
 }
 
-function setActionCardStateEntity(b, entity) {
+function actionCardStateUnit(b) {
+  return configOptionValue(b && b.options, ACTION_CARD_STATE_UNIT_OPTION);
+}
+
+function actionCardStatePrecision(b) {
+  var value = configOptionValue(b && b.options, ACTION_CARD_STATE_PRECISION_OPTION);
+  if (value === "text") return "text";
+  return value === "1" || value === "2" ? value : "0";
+}
+
+function actionCardStateDisplayMode(b) {
+  var rawPrecision = configOptionValue(b && b.options, ACTION_CARD_STATE_PRECISION_OPTION);
+  if (rawPrecision === "text") return "text";
+  if (rawPrecision === "0" || rawPrecision === "1" || rawPrecision === "2" || actionCardStateUnit(b)) {
+    return "numeric";
+  }
+  return actionCardStateEntity(b) ? "text" : "numeric";
+}
+
+function setActionCardStateOptions(b, entity, mode, unit, precision) {
   if (!b) return "";
-  b.options = setConfigOptionValue(b.options, ACTION_CARD_STATE_ENTITY_OPTION, entity);
+  var options = b.options;
+  entity = String(entity || "").trim();
+  if (!entity) {
+    options = setConfigOptionValue(options, ACTION_CARD_STATE_ENTITY_OPTION, "");
+    options = setConfigOptionValue(options, ACTION_CARD_STATE_UNIT_OPTION, "");
+    options = setConfigOptionValue(options, ACTION_CARD_STATE_PRECISION_OPTION, "");
+    b.options = options;
+    return b.options;
+  }
+  options = setConfigOptionValue(options, ACTION_CARD_STATE_ENTITY_OPTION, entity);
+  if (mode === "text") {
+    options = setConfigOptionValue(options, ACTION_CARD_STATE_UNIT_OPTION, "");
+    options = setConfigOptionValue(options, ACTION_CARD_STATE_PRECISION_OPTION, "text");
+  } else {
+    options = setConfigOptionValue(options, ACTION_CARD_STATE_UNIT_OPTION, unit || "");
+    options = setConfigOptionValue(options, ACTION_CARD_STATE_PRECISION_OPTION, precision || "0");
+  }
+  b.options = options;
   return b.options;
 }
 
@@ -119,52 +157,87 @@ registerButtonType("action", {
     refreshEntityDatalist(entityInp);
 
     var stateEntity = actionCardStateEntity(b);
-    var showStateSection = helpers.toggleSection("Show State", helpers.idPrefix + "action-state-toggle", !!stateEntity);
-    var showStateToggle = showStateSection.toggle;
-    var stateCond = showStateSection.section;
-    panel.appendChild(showStateToggle.row);
-    if (stateEntity) stateCond.classList.add("sp-visible");
+    var stateMode = actionCardStateDisplayMode(b);
+    var stateUnit = actionCardStateUnit(b);
+    var statePrecision = actionCardStatePrecision(b);
+
+    var mode = helpers.segmentControl([
+      ["numeric", "Numeric"],
+      ["text", "Text"],
+    ], stateMode, function (value) { setStateMode(value, true); });
+    var numericBtn = mode.buttons.numeric;
+    var textBtn = mode.buttons.text;
+    panel.appendChild(helpers.fieldWithControl("Type", null, mode.segment));
 
     var stateEntityField = helpers.entityField(
-      "State Entity",
+      "Sensor Entity",
       helpers.idPrefix + "action-state-entity",
       stateEntity,
-      "e.g. light.kitchen",
-      ["light", "switch", "input_boolean", "binary_sensor", "cover", "lock", "media_player", "fan", "person", "device_tracker"]
+      "e.g. sensor.printer_percent_complete",
+      ["sensor", "binary_sensor", "text_sensor"]
     );
     var stateEntityInp = stateEntityField.input;
-    stateCond.appendChild(stateEntityField.field);
-    panel.appendChild(stateCond);
+    panel.appendChild(stateEntityField.field);
 
-    helpers.requireField(stateEntityInp, "Add a state entity before saving.", function () {
-      return showStateToggle.input.checked;
-    });
+    var numericSection = condField();
+    var stateUnitField = helpers.textField(
+      "Unit", helpers.idPrefix + "action-state-unit", stateUnit, "e.g. %");
+    var stateUnitInp = stateUnitField.input;
+    stateUnitInp.className = "sp-input";
+    numericSection.appendChild(stateUnitField.field);
 
-    function saveStateEntity() {
-      if (!showStateToggle.input.checked) return;
+    var statePrecisionField = helpers.precisionField(
+      helpers.idPrefix + "action-state-precision",
+      stateMode === "numeric" ? statePrecision : "0",
+      function () {
+        statePrecision = this.value || "0";
+        saveStateOptions();
+      }
+    );
+    var statePrecisionSelect = statePrecisionField.select;
+    numericSection.appendChild(statePrecisionField.field);
+    panel.appendChild(numericSection);
+
+    function saveStateOptions() {
       stateEntity = stateEntityInp.value;
-      helpers.saveField("options", setActionCardStateEntity(b, stateEntity));
+      stateUnit = stateUnitInp.value;
+      helpers.saveField("options", setActionCardStateOptions(
+        b, stateEntity, stateMode, stateUnit, statePrecision));
     }
-    stateEntityInp.addEventListener("input", saveStateEntity);
-    stateEntityInp.addEventListener("change", saveStateEntity);
-    stateEntityInp.addEventListener("blur", saveStateEntity);
+
+    function setStateMode(modeValue, persist) {
+      stateMode = modeValue === "text" ? "text" : "numeric";
+      numericBtn.classList.toggle("active", stateMode === "numeric");
+      textBtn.classList.toggle("active", stateMode === "text");
+      numericSection.classList.toggle("sp-visible", stateMode === "numeric");
+      if (!persist) return;
+      if (stateMode === "text") {
+        stateUnit = "";
+        stateUnitInp.value = "";
+        statePrecision = "0";
+        statePrecisionSelect.value = "0";
+      }
+      saveStateOptions();
+    }
+
+    setStateMode(stateMode, false);
+
+    stateEntityInp.addEventListener("input", saveStateOptions);
+    stateEntityInp.addEventListener("change", saveStateOptions);
+    stateEntityInp.addEventListener("blur", saveStateOptions);
     stateEntityInp.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
-        saveStateEntity();
+        saveStateOptions();
         this.blur();
       }
     });
-
-    showStateToggle.input.addEventListener("change", function () {
-      stateCond.classList.toggle("sp-visible", this.checked);
-      if (this.checked) {
-        stateEntity = stateEntityInp.value;
-        helpers.saveField("options", setActionCardStateEntity(b, stateEntity));
-      } else {
-        stateEntity = "";
-        stateEntityInp.value = "";
-        helpers.clearFieldError(stateEntityInp);
-        helpers.saveField("options", setActionCardStateEntity(b, ""));
+    stateUnitInp.addEventListener("input", saveStateOptions);
+    stateUnitInp.addEventListener("change", saveStateOptions);
+    stateUnitInp.addEventListener("blur", saveStateOptions);
+    stateUnitInp.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        saveStateOptions();
+        this.blur();
       }
     });
   },
@@ -172,7 +245,9 @@ registerButtonType("action", {
     var label = b.label || b.entity || "Action";
     var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "flash";
     var stateBadge = actionCardStateEntity(b)
-      ? '<span class="sp-sensor-badge mdi mdi-eye"></span>'
+      ? '<span class="sp-sensor-badge mdi mdi-' +
+        (actionCardStateDisplayMode(b) === "text" ? "format-text" : "gauge") +
+        '"></span>'
       : "";
     return {
       iconHtml: stateBadge + '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
