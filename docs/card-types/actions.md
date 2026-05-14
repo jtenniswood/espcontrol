@@ -16,7 +16,7 @@ Use Action cards for shortcuts such as running a scene, starting a script, trigg
 2. Set a **Label** - this is the text shown on the card.
 3. Choose an **Action**.
 4. Enter the **Entity** for the thing you want the action to use.
-5. If you choose **Set Number Helper** or **Select Option Helper**, enter the value or option.
+5. If you choose **Set Number Helper**, enter the value.
 6. Choose an **Icon**.
 7. Optionally turn on **Show State** if the Action card should light up based on another Home Assistant entity.
 
@@ -47,7 +47,15 @@ Action cards do not currently pass script variables or extra data. If a script n
 | **Press Input Button** | `input_button.doorbell` | None |
 | **Toggle Helper** | `input_boolean.guest_mode` | None |
 | **Set Number Helper** | `input_number.target_level` | Value |
-| **Select Option Helper** | `input_select.house_mode` | Option |
+| **Option Select** | `select.wled_preset` or `input_select.house_mode` | Opens option list |
+
+## Option Select
+
+Choose **Option Select** inside the Action card when you want the panel to show and change a live `select` or `input_select` value.
+
+When you tap the card, EspControl opens the option list reported by Home Assistant. Choosing an option sends `select.select_option` for `select` entities or `input_select.select_option` for `input_select` helpers.
+
+This is useful for WLED presets, room modes, house modes, and similar helpers where you want to pick from the current list rather than hard-code one option into the card.
 
 ## Show State
 
@@ -76,7 +84,6 @@ Use an [Action](/card-types/actions) card when the panel should directly run som
 
 Use the dedicated card types for richer controls:
 
-- Use [Option Select](/card-types/option-select) for choosing between live `select` or `input_select` options.
 - Use [Cover](/card-types/covers) for blinds, shutters, and covers.
 - Use [Lock](/card-types/locks) for locking and unlocking doors.
 - Use [Lights](/card-types/lights) for light switching, brightness, and colour temperature.

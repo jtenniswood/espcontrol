@@ -163,6 +163,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
   if (p.type == "action") {
+    if (action_card_option_select(p)) {
+      setup_option_select_card(s, p, palette.has_sensor_color, palette.sensor_val);
+      return;
+    }
     setup_action_card(s, p);
     return;
   }
@@ -654,6 +658,19 @@ inline void grid_phase2(
       continue;
     }
     if (p.type == "action") {
+      if (action_card_option_select(p)) {
+        if (!p.entity.empty()) {
+          OptionSelectCtx *ctx = create_option_select_context(
+            s, p,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            has_off ? off_val : DEFAULT_OFF_COLOR,
+            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            cfg.width_compensation_percent);
+          subscribe_option_select_state(ctx);
+          subscribe_option_select_friendly_name(ctx);
+        }
+        continue;
+      }
       std::string state_entity = action_card_state_entity(p);
       if (!state_entity.empty()) {
         ActionCardStateCtx *ctx = create_action_card_state_context(s, p);
@@ -1101,6 +1118,21 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "action") {
         if (!sb_cfg.entity.empty() && !sb_cfg.sensor.empty()) {
+          if (action_card_option_select(sb_cfg)) {
+            OptionSelectCtx *ctx = create_option_select_context(
+              sub_slot, sb_cfg,
+              has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              has_off ? off_val : DEFAULT_OFF_COLOR,
+              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+              cfg.width_compensation_percent);
+            subscribe_option_select_state(ctx);
+            subscribe_option_select_friendly_name(ctx);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              OptionSelectCtx *ctx = (OptionSelectCtx *)lv_event_get_user_data(e);
+              if (ctx) option_select_open_modal(ctx);
+            }, LV_EVENT_CLICKED, ctx);
+            continue;
+          }
           std::string state_entity = action_card_state_entity(sb_cfg);
           if (!state_entity.empty()) {
             ActionCardStateCtx *action_ctx = create_action_card_state_context(sub_slot, sb_cfg);

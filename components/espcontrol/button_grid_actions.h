@@ -35,12 +35,11 @@ inline void send_turn_off_action(const std::string &entity_id) {
 }
 
 inline bool action_card_requires_value(const std::string &action) {
-  return action == "input_number.set_value" || action == "input_select.select_option";
+  return action == "input_number.set_value";
 }
 
 inline const char *action_card_value_key(const std::string &action) {
   if (action == "input_number.set_value") return "value";
-  if (action == "input_select.select_option") return "option";
   return nullptr;
 }
 
@@ -53,11 +52,13 @@ inline bool action_card_action_allowed(const std::string &action) {
          action == "input_boolean.toggle" ||
          action == "input_boolean.turn_on" ||
          action == "input_boolean.turn_off" ||
+         action_card_option_select_action(action) ||
          action_card_requires_value(action);
 }
 
 inline void send_action_card_action(const ParsedCfg &p) {
   if (p.entity.empty() || p.sensor.empty() || !action_card_action_allowed(p.sensor)) return;
+  if (action_card_option_select(p)) return;
   const char *value_key = action_card_value_key(p.sensor);
   if (value_key && p.unit.empty()) return;
 
@@ -455,10 +456,12 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "internal") {
     if (!p.entity.empty()) send_internal_relay_action(p);
   } else if (p.type == "action") {
-    send_action_card_action(p);
-  } else if (p.type == "option_select") {
-    OptionSelectCtx *ctx = (OptionSelectCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) option_select_open_modal(ctx);
+    if (action_card_option_select(p)) {
+      OptionSelectCtx *ctx = (OptionSelectCtx *)lv_obj_get_user_data(btn_obj);
+      if (ctx) option_select_open_modal(ctx);
+    } else {
+      send_action_card_action(p);
+    }
   } else if (p.type == "media") {
     std::string mode = media_card_mode(p.sensor);
     if (mode == "volume") {

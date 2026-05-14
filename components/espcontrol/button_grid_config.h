@@ -81,7 +81,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, option_select, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, climate, push, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, media, climate, push, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -111,6 +111,15 @@ inline const char *fan_card_default_icon_name(const std::string &type) {
   if (type == "fan_direction") return "Swap Horizontal";
   if (type == "fan_preset") return "Fan Auto";
   return "Fan Speed 2";
+}
+
+inline bool action_card_option_select_action(const std::string &action) {
+  return action == "input_select.select_option" ||
+         action == "select.select_option";
+}
+
+inline bool action_card_option_select(const ParsedCfg &p) {
+  return p.type == "action" && action_card_option_select_action(p.sensor);
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
@@ -185,11 +194,21 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options.clear();
   }
   if (p.type == "option_select") {
-    p.sensor.clear();
+    p.type = "action";
+    p.sensor = "input_select.select_option";
     p.unit.clear();
     p.precision.clear();
     p.options.clear();
     p.icon_on.clear();
+    if (p.icon.empty() || p.icon == "Auto" || p.icon == "Chevron Down") p.icon = "Flash";
+  }
+  if (action_card_option_select(p)) {
+    p.sensor = "input_select.select_option";
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on.clear();
+    if (p.icon.empty() || p.icon == "Auto" || p.icon == "Chevron Down") p.icon = "Flash";
   }
   if (!p.type.empty() && p.type != "action" && p.type != "alarm" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();

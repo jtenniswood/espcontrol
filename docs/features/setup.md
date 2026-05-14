@@ -28,8 +28,7 @@ The **Type** dropdown uses these card names on the device:
 |---|---|---|
 | **[Switch](/card-types/switches)** | Controls a Home Assistant entity and shows its on/off state. This is the default card type. | Yes |
 | **[Lights](/card-types/lights)** | Controls a light as a switch, brightness slider, or colour temperature slider. | Yes, as a light entity |
-| **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, or helper action. | Yes |
-| **[Option Select](/card-types/option-select)** | Shows and changes the current option on a `select` or `input_select` entity. | Yes, as a select entity |
+| **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, helper action, or Option Select picker. | Yes |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
 | **[Sensor](/card-types/sensors)** | Shows a live numeric reading or text state. | Yes, as **Sensor Entity** |
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
@@ -45,7 +44,7 @@ The **Type** dropdown uses these card names on the device:
 
 For cards that use Home Assistant, enter the entity name from Home Assistant in the **Entity** field, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. Some card types use a more specific label, such as **Sensor Entity**, **Weather Entity**, or **Climate Entity**. You can find entity names under **Settings > Devices & Services** in Home Assistant.
 
-Some card names group several related controls together. **Lights** contains Switch, Brightness, and Colour Temperature options. **Date & Time** contains Date, Time & Date, and World Clock options.
+Some card names group several related controls together. **Lights** contains Switch, Brightness, and Colour Temperature options. **Action** contains scene, script, helper, and Option Select actions. **Date & Time** contains Date, Time & Date, and World Clock options.
 
 Most cards also let you choose an icon and set a label. If the label is left blank, the panel uses the friendly name from Home Assistant when it can.
 

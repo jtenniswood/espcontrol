@@ -7,8 +7,9 @@ var ACTION_CARD_ACTIONS = [
   { value: "input_button.press", label: "Press Input Button", placeholder: "e.g. input_button.doorbell", icon: "gesture-tap-button", domains: ["input_button"] },
   { value: "input_boolean.toggle", label: "Toggle Helper", placeholder: "e.g. input_boolean.guest_mode", icon: "toggle-switch-variant", domains: ["input_boolean"] },
   { value: "input_number.set_value", label: "Set Number Helper", placeholder: "e.g. input_number.target_level", icon: "counter", domains: ["input_number"] },
-  { value: "input_select.select_option", label: "Select Option Helper", placeholder: "e.g. input_select.house_mode", icon: "form-dropdown", domains: ["input_select"] },
+  { value: "input_select.select_option", label: "Option Select", placeholder: "e.g. select.wled_preset", icon: "form-dropdown", domains: ["select", "input_select"] },
 ];
+var ACTION_CARD_OPTION_SELECT_ACTION = "input_select.select_option";
 
 function actionCardInfo(value) {
   for (var i = 0; i < ACTION_CARD_ACTIONS.length; i++) {
@@ -17,11 +18,22 @@ function actionCardInfo(value) {
   return null;
 }
 
+function actionCardIsOptionSelect(b) {
+  var value = typeof b === "string" ? b : b && b.sensor;
+  return value === ACTION_CARD_OPTION_SELECT_ACTION || value === "select.select_option";
+}
+
 function normalizeActionCardConfig(b) {
+  if (b && b.sensor === "select.select_option") b.sensor = ACTION_CARD_OPTION_SELECT_ACTION;
   if (!b.sensor) b.sensor = "scene.turn_on";
   if (!actionCardInfo(b.sensor)) b.sensor = "scene.turn_on";
   b.icon_on = "Auto";
   b.precision = "";
+  if (actionCardIsOptionSelect(b)) {
+    b.unit = "";
+    b.options = "";
+    if (!b.icon || b.icon === "Auto" || b.icon === "Chevron Down") b.icon = "Flash";
+  }
 }
 
 var ACTION_CARD_STATE_ENTITY_OPTION = "state_entity";
@@ -75,7 +87,7 @@ function setActionCardStateOptions(b, entity, mode, unit, precision) {
 }
 
 function actionCardNeedsExtraValue(value) {
-  return value === "input_number.set_value" || value === "input_select.select_option";
+  return value === "input_number.set_value";
 }
 
 registerButtonType("action", {
@@ -105,6 +117,10 @@ registerButtonType("action", {
         b.unit = "";
         helpers.saveField("unit", "");
       }
+      if (actionCardIsOptionSelect(b)) {
+        b.options = "";
+        helpers.saveField("options", "");
+      }
       b.icon_on = "Auto";
       b.precision = "";
       helpers.saveField("icon_on", "Auto");
@@ -116,8 +132,9 @@ registerButtonType("action", {
     normalizeActionCardConfig(b);
 
     var info = actionCardInfo(b.sensor) || ACTION_CARD_ACTIONS[0];
+    var isOptionSelect = actionCardIsOptionSelect(b);
     var entityField = helpers.entityField(
-      "Action Entity",
+      isOptionSelect ? "Select Entity" : "Action Entity",
       helpers.idPrefix + "entity",
       b.entity,
       info.placeholder,
@@ -129,32 +146,34 @@ registerButtonType("action", {
     var entityInp = entityField.input;
     panel.appendChild(entityField.field);
 
-    var valueInput = helpers.textInput(
-      helpers.idPrefix + "action-value",
-      b.unit,
-      "e.g. 50"
-    );
-    var valueLabel = helpers.fieldLabel("Value", helpers.idPrefix + "action-value");
-    var valueField = document.createElement("div");
-    valueField.className = "sp-field";
-    valueField.appendChild(valueLabel);
-    valueField.appendChild(valueInput);
-    panel.appendChild(valueField);
-    helpers.bindField(valueInput, "unit", true);
+    if (actionCardNeedsExtraValue(b.sensor)) {
+      var valueInput = helpers.textInput(
+        helpers.idPrefix + "action-value",
+        b.unit,
+        "e.g. 50"
+      );
+      var valueLabel = helpers.fieldLabel("Value", helpers.idPrefix + "action-value");
+      var valueField = document.createElement("div");
+      valueField.className = "sp-field";
+      valueField.appendChild(valueLabel);
+      valueField.appendChild(valueInput);
+      panel.appendChild(valueField);
+      helpers.bindField(valueInput, "unit", true);
+    }
 
-    panel.appendChild(helpers.iconPickerField(
-      helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
-      b.icon || "Flash", function (opt) {
-        b.icon = opt;
-        helpers.saveField("icon", opt);
-      }
-    ));
+    if (!isOptionSelect) {
+      panel.appendChild(helpers.iconPickerField(
+        helpers.idPrefix + "icon-picker", helpers.idPrefix + "icon",
+        b.icon || "Flash", function (opt) {
+          b.icon = opt;
+          helpers.saveField("icon", opt);
+        }
+      ));
+    }
 
-    valueField.style.display = actionCardNeedsExtraValue(b.sensor) ? "" : "none";
-    valueLabel.textContent = b.sensor === "input_select.select_option" ? "Option" : "Value";
-    valueInput.placeholder = b.sensor === "input_select.select_option" ? "e.g. Away" : "e.g. 50";
     entityInp._entityDomains = info.domains || [];
     refreshEntityDatalist(entityInp);
+    if (isOptionSelect) return;
 
     var stateEntity = actionCardStateEntity(b);
     var stateMode = actionCardStateDisplayMode(b);
@@ -243,6 +262,17 @@ registerButtonType("action", {
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Action";
+    if (actionCardIsOptionSelect(b)) {
+      return {
+        iconHtml:
+          '<span class="sp-sensor-preview">' +
+            '<span class="sp-sensor-value">Option</span>' +
+          '</span>',
+        labelHtml:
+          '<span class="sp-btn-label-row"><span class="sp-btn-label">' + helpers.escHtml(label) + '</span>' +
+          '<span class="sp-type-badge mdi mdi-chevron-down"></span></span>',
+      };
+    }
     var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "flash";
     var stateBadge = actionCardStateEntity(b)
       ? '<span class="sp-sensor-badge mdi mdi-' +

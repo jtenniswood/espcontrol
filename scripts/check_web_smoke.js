@@ -109,8 +109,8 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", t
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", true, true), true);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_switch", true, false), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_oscillate", true, true), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("option_select", false, false), true);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("option_select", false, true), true);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("option_select", false, false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("option_select", false, true), false);
 assert(
   hooks.buttonTypePickerKeysForExperimental(false, false, "fan_speed").includes("fan_speed"),
   "saved fan cards remain represented while hidden"

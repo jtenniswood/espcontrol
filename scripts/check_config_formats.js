@@ -1130,36 +1130,36 @@ assertButtonRoundTrip(hooks, "input number action card", {
   precision: "",
 }, false);
 
-assertButtonRoundTrip(hooks, "input select delimiter action card", {
+assertButtonRoundTrip(hooks, "input select option action card", {
   entity: "input_select.house_mode",
   label: "House Mode",
   icon: "Flash",
   icon_on: "Auto",
   sensor: "input_select.select_option",
-  unit: "Away; overnight | 50%, main",
-  type: "action",
-  precision: "",
-}, true);
-
-assertButtonRoundTrip(hooks, "option select card", {
-  entity: "select.wled_preset",
-  label: "WLED Preset",
-  icon: "Chevron Down",
-  icon_on: "Auto",
-  sensor: "",
   unit: "",
-  type: "option_select",
+  type: "action",
   precision: "",
 }, false);
 
-assertButtonMigration(hooks, "option select clears ignored fields", "select.wled_preset;WLED Preset;Chevron Down;Lightbulb;sensor.stale;%;option_select;2;large_numbers", {
+assertButtonRoundTrip(hooks, "select option action card", {
   entity: "select.wled_preset",
   label: "WLED Preset",
-  icon: "Chevron Down",
+  icon: "Flash",
   icon_on: "Auto",
-  sensor: "",
+  sensor: "input_select.select_option",
   unit: "",
-  type: "option_select",
+  type: "action",
+  precision: "",
+}, false);
+
+assertButtonMigration(hooks, "legacy option select becomes action subtype", "select.wled_preset;WLED Preset;Chevron Down;Lightbulb;sensor.stale;%;option_select;2;large_numbers", {
+  entity: "select.wled_preset",
+  label: "WLED Preset",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "input_select.select_option",
+  unit: "",
+  type: "action",
   precision: "",
 });
 
@@ -1287,14 +1287,14 @@ assertSubpageRoundTrip(hooks, "action subpage", {
   order: ["1", "B", "2"],
   buttons: [
     buttonShape({ entity: "scene.movie_mode", label: "Movie Mode", icon: "Flash", sensor: "scene.turn_on", type: "action", options: "state_entity=light.living_room" }),
-    buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Flash", sensor: "input_select.select_option", unit: "Away: overnight | 50%, main", type: "action" }),
+    buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Flash", sensor: "input_select.select_option", type: "action" }),
   ],
 }, true);
 
-assertSubpageRoundTrip(hooks, "option select subpage", {
+assertSubpageRoundTrip(hooks, "option select action subpage", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Chevron Down", icon_on: "Auto", type: "option_select" }),
+    buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Flash", icon_on: "Auto", sensor: "input_select.select_option", type: "action" }),
   ],
 }, true);
 
@@ -1546,9 +1546,9 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|A,scene.movie
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|U,input_select.house_mode,House%20Mode,Chevron%20Down")), {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Chevron Down", icon_on: "Auto", type: "option_select" }),
+    buttonShape({ entity: "input_select.house_mode", label: "House Mode", icon: "Flash", icon_on: "Auto", sensor: "input_select.select_option", type: "action" }),
   ],
-}, "compact option select subpage parse");
+}, "compact option select subpage migration");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|K,lock.front_door,Front%20Door,Lock,Lock%20Open")), {
   order: ["1", "B"],
