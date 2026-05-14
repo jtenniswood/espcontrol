@@ -419,6 +419,13 @@ function postSwitch(name, on) {
   post("/switch/" + encodeURIComponent(name) + "/" + (on ? "turn_on" : "turn_off"));
 }
 
+function postDeveloperExperimentalFeatures(on) {
+  postSwitchWithObjectIds("Developer: Experimental Features", [
+    "developer__experimental_features",
+    "developer_experimental_features",
+  ], on);
+}
+
 function postNumber(name, value) {
   post("/number/" + encodeURIComponent(name) + "/set?value=" + encodeURIComponent(value));
 }

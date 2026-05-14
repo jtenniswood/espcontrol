@@ -9,10 +9,12 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "www.js");
 
-function loadHooks() {
+function loadHooks(search) {
   const sandbox = {
     __ESPCONTROL_TEST_HOOKS__: {},
     console: { log() {}, warn() {}, error() {} },
+    location: { search: search || "" },
+    URLSearchParams,
     setTimeout,
     clearTimeout,
     requestAnimationFrame(fn) { return setTimeout(fn, 0); },
@@ -435,6 +437,11 @@ assertButtonMigration(hooks, "alarm clears ignored fields", "alarm_control_panel
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", false, false), false, "alarm picker hidden without experimental flag");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", true, false), true, "alarm picker visible with experimental flag");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("alarm", true, true), false, "alarm picker hidden in subpages");
+assert.strictEqual(
+  loadHooks("?developer=experimental").buttonTypeVisibleInPickerForExperimental("alarm", false, false),
+  true,
+  "alarm picker visible with developer URL flag"
+);
 assert.strictEqual(
   hooks.buttonTypePickerKeysForExperimental(false, false, "alarm").indexOf("alarm") >= 0,
   true,

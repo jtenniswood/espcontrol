@@ -270,7 +270,7 @@
   }
 
   function isExperimentalEnabled(key) {
-    return !!state.developerExperimentalFeatures;
+    return developerExperimentalUrlFlag() || !!state.developerExperimentalFeatures;
   }
 
   function subpageStateDisplayMode(b) {

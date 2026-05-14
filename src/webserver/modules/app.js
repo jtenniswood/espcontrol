@@ -395,7 +395,7 @@ function importConfig() {
         var importedScreenRotation = normalizeScreenRotation(s.screen_rotation);
         if (CFG.features && CFG.features.screenRotation) postSelect("Screen: Rotation", importedScreenRotation);
         if (hasDeveloperExperimentalFeatures) {
-          postSwitch("Developer: Experimental Features", importedDeveloperExperimentalFeatures);
+          postDeveloperExperimentalFeatures(importedDeveloperExperimentalFeatures);
         }
         state._indoorOn = !!s.indoor_temp_enable;
         state._outdoorOn = !!s.outdoor_temp_enable;

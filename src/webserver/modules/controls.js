@@ -936,7 +936,7 @@ function buildSettingsPage(parent) {
     devBody.appendChild(experimentalToggle.row);
     experimentalToggle.input.addEventListener("change", function () {
       state.developerExperimentalFeatures = this.checked;
-      postSwitch("Developer: Experimental Features", state.developerExperimentalFeatures);
+      postDeveloperExperimentalFeatures(state.developerExperimentalFeatures);
       scheduleRender();
     });
     els.setDeveloperExperimentalFeatures = experimentalToggle.input;
