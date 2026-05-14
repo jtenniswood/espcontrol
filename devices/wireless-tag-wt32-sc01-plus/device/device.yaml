@@ -1,0 +1,260 @@
+# =============================================================================
+# DEVICE - Wireless-Tag WT32-SC01 Plus hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 3.5" 480x320 panel.
+# Includes the ESP32-S3 SoC (native WiFi), ST7796 display on 8-bit 8080
+# parallel bus, FT6336 capacitive touchscreen, and backlight PWM.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+
+# ---------------------------------------------------------------------------
+# ESP32-S3 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    version: 5.5.2
+    source: https://github.com/pioarduino/esp-idf/releases/download/v5.5.2/esp-idf-v5.5.2.tar.xz
+    platform_version: 55.03.37
+    sdkconfig_options:
+      # The S3 display stack leaves little internal RAM for HTTPS OTA checks.
+      # Allocate mbedTLS buffers from PSRAM so firmware downloads can connect.
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      # Keep WiFi startup inside the internal-RAM budget after the display
+      # and LVGL buffers are initialized.
+      CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+
+# ---------------------------------------------------------------------------
+# External component
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [espcontrol, web_server_idf]
+    refresh: 0s
+
+espcontrol:
+
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+# ESP32-S3 with PSRAM and the 8080 parallel display bus fails to
+# reinitialize peripherals after a software reset. A brief deep sleep
+# forces a full hardware reset on wake, equivalent to a power cycle.
+# The on_boot handler catches USB-triggered and software-triggered
+# resets (the latter fired by the "Apply Configuration" restart
+# button); the OTA on_end hook catches wireless updates.
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    - priority: 800
+      then:
+        - lambda: |-
+            auto reason = esp_reset_reason();
+            if (reason == ESP_RST_USB || reason == ESP_RST_SW) {
+              esp_sleep_enable_timer_wakeup(100000);
+              esp_deep_sleep_start();
+            }
+    - priority: -100
+      then:
+        - script.execute: apply_screen_rotation
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: quad
+  speed: 80MHz
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - light.turn_off: display_backlight
+    on_end:
+      then:
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+  - platform: http_request
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+# The S3 panel runs close to the internal RAM limit once the display,
+# LVGL, web UI, and API are all active. Keep the native API connection pool
+# small so Home Assistant can connect without reserving memory for unused
+# concurrent clients.
+api:
+  listen_backlog: 2
+  max_connections: 2
+  max_send_queue: 4
+
+# The WT32-SC01 Plus USB-C port is exposed as UART0 through a CP2102N
+# USB-UART bridge, so logs route through there rather than USB_SERIAL_JTAG.
+logger:
+  hardware_uart: UART0
+
+wifi:
+  use_psram: true
+
+# ---------------------------------------------------------------------------
+# Backlight (LEDC PWM output + monochromatic light entity)
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin:
+      number: GPIO45
+      ignore_strapping_warning: true
+    id: gpio_backlight_pwm
+    frequency: 150Hz
+    min_power: 0.01
+    zero_means_zero: true
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return id(screen_schedule_asleep) ||
+                       (id(schedule_enabled).state && !panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(screensaver_display_off_active);'
+                  then:
+                    - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Octal SPI bus (8-bit 8080 parallel data path used by the ST7796 driver)
+# ---------------------------------------------------------------------------
+spi:
+  type: octal
+  clk_pin: GPIO47
+  data_pins:
+    - 9
+    - ignore_strapping_warning: true
+      number: 46    
+    - ignore_strapping_warning: true
+      number: 3
+    - 8
+    - 18
+    - 17
+    - 16
+    - 15
+
+# ---------------------------------------------------------------------------
+# I2C bus and touchscreen (FT6336 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+i2c:
+  sda: GPIO06
+  scl: GPIO05
+
+touchscreen:
+  - platform: ft63x6
+    id: my_touchscreen
+    interrupt_pin: GPIO07
+    display: my_display
+    update_interval: 16ms
+    on_touch:
+      - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Display (3.5" 480x320 ST7796 panel on 8080 parallel bus)
+# ---------------------------------------------------------------------------
+display:
+  - platform: mipi_spi
+    model: WT32-SC01-PLUS
+    id: my_display
+    # GPIO0 is the panel's data/command pin per the WT32-SC01-PLUS model preset.
+    # It's a strapping pin, but the board ties it to the display; override the
+    # preset so we can suppress the strapping warning.
+    dc_pin:
+      number: 0
+      ignore_strapping_warning: true
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+lvgl:
+  id: main_lvgl
+  # Keep LVGL after WiFi and after the display driver.
+  setup_priority: 230
+  buffer_size: 25%
+  displays: my_display
+  # ST7796 native panel is portrait 320x480; +90 puts it in landscape (480x320).
+  rotation: 90
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 0
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 90
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 180
+                      else:
+                        - lvgl.display.set_rotation: 270
+
+select:
+  - platform: template
+    name: "Screen: Rotation"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "180"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - script.execute: apply_screen_rotation

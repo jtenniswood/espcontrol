@@ -427,6 +427,80 @@
           "wrapTallLabels": false
         }
       }
-    }
+    },
+    "wireless-tag-wt32-sc01-plus": {
+      "slots": 6,
+      "layout": {
+        "cols": 3,
+        "rows": 2,
+        "firmwareGrid": "3x2"
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ]
+      },
+      "web": {
+        "dragMode": "displace",
+        "dragAnimation": true,
+        "screen": {
+          "width": "55%",
+          "aspect": "480/320"
+        },
+        "topbar": {
+          "height": 7.5,
+          "padding": "0.83cqw",
+          "fontSize": 3.75
+        },
+        "grid": {
+          "top": 8.5,
+          "compactTop": 0.83,
+          "left": 1.04,
+          "right": 1.04,
+          "bottom": 0.83,
+          "gap": 2.08,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 1.67,
+          "padding": 2.92,
+          "iconSize": 9.58,
+          "labelSize": 3.96,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 1.67
+        },
+        "sensorBadge": {
+          "top": 2.08,
+          "right": 2.08,
+          "fontSize": 3.33
+        },
+        "subpageBadge": {
+          "bottom": 2.08,
+          "right": 2.08,
+          "fontSize": 4
+        }
+      },
+      "firmware": {
+        "fonts": {
+          "icon": "icon_font_sm",
+          "sensor": "statistics_font_sm",
+          "largeSensor": "statistics_font_sm_xl",
+          "mediaTitle": "media_title_font_sm",
+          "volumeNumber": "volume_modal_number_font",
+          "volumeLabel": "label_font_sm"
+        },
+        "display": {
+          "colorCorrection": false,
+          "wrapTallLabels": false
+        }
+      }
+    }    
   }
 }
