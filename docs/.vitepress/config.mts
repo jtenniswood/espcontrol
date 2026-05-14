@@ -440,6 +440,7 @@ export default defineConfig({
         text: 'Development',
         items: [
           { text: 'Project Organization', link: '/development/project-organization' },
+          { text: 'Release Versioning Improvements', link: '/development/release-versioning-improvements' },
           { text: 'Release Changelogs', link: '/development/release-changelogs' },
           { text: 'Display Sizing Notes', link: '/development/display-sizing' },
           { text: 'Climate Control Spec', link: '/development/climate-control' },
