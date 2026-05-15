@@ -1,0 +1,17 @@
+# =============================================================================
+# DEV CONFIG - Local development entry point (3.5" S3 landscape panel)
+# Flash with: esphome run dev.yaml
+# =============================================================================
+
+substitutions:
+  name: "wirelesstag-wt32-sc01-plus-dev"
+  friendly_name: "Wireless-Tag WT32 SC01 Plus Dev"
+  espcontrol_component_url: "../.."
+  espcontrol_component_ref: "HEAD"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+packages:
+  espcontrol: !include packages.yaml

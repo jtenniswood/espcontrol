@@ -1,0 +1,30 @@
+# =============================================================================
+# ESPHOME ENTRY POINT - Wireless-Tag WT32 SC01 Plus
+# =============================================================================
+# User-facing config file. Set your device name and WiFi credentials here.
+# The remote package reference pulls in the full device configuration from
+# GitHub so the device stays up-to-date automatically.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Device identity
+# ---------------------------------------------------------------------------
+substitutions:
+  name: "your-device-name"
+  friendly_name: "Your Device Name"
+
+# ---------------------------------------------------------------------------
+# WiFi credentials (stored in secrets.yaml)
+# ---------------------------------------------------------------------------
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# ---------------------------------------------------------------------------
+# Remote package (pulls full config from GitHub)
+# ---------------------------------------------------------------------------
+packages:
+  setup:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: devices/wireless-tag-wt32-sc01-plus/packages.yaml
+    refresh: 1d

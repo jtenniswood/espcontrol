@@ -1,0 +1,91 @@
+# =============================================================================
+# LVGL MAIN PAGE - Top-layer HUD and button grid
+# =============================================================================
+# Defines the primary UI: a top-layer overlay with temperature and clock
+# labels, and the main page containing a 3x3 grid of 9 button widgets.
+# Uses LVGL grid layout for sparse cell placement on the 480x480 display.
+# pad_top clears the top-layer clock bar (~36px). Buttons start hidden;
+# sensors.yaml unhides and places active ones at boot via grid cell coords.
+# =============================================================================
+
+lvgl:
+  # ---------------------------------------------------------------------------
+  # Top layer (always visible above all pages)
+  # ---------------------------------------------------------------------------
+  top_layer:
+    widgets:
+      # Indoor/outdoor temperature (top-left)
+      - label:
+          text: "-°C / -°C"
+          id: temperatures
+          text_font: clockbar_font_sm
+          align: top_left
+          x: 8
+          y: 6
+          text_color: 0xFFFFFF
+          hidden: true
+      # Clock (top-center, updated every minute by time.yaml)
+      - label:
+          text: "--:--"
+          id: display_time
+          text_font: clockbar_font_sm
+          align: top_mid
+          x: 0
+          y: 6
+          text_align: center
+          text_color: 0xFFFFFF
+          hidden: true
+      # Network status (tappable, right side of clock bar)
+      - obj:
+          id: network_status_button
+          align: top_right
+          x: -14
+          y: 1
+          width: 36
+          height: 32
+          bg_opa: 0%
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: true
+          hidden: true
+          widgets:
+            - label:
+                id: network_status_icon_label
+                text: "\U000F0928"
+                text_font: network_status_font_sm
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
+          on_press:
+            then:
+              - script.execute: network_status_open_info
+
+  # ---------------------------------------------------------------------------
+  # Main page (fixed 3x2 grid of button widgets)
+  # ---------------------------------------------------------------------------
+  pages:
+    - id: main_page
+      scrollbar_mode: "off"
+      layout:
+        type: grid
+        grid_columns: [FR(1), FR(1), FR(1)]
+        grid_rows: [FR(1), FR(1)]
+        pad_row: 10
+        pad_column: 10
+      width: 100%
+      bg_color: Black
+      bg_opa: cover
+      pad_top: ${main_page_pad_top}
+      pad_bottom: 4
+      pad_left: 5
+      pad_right: 5
+
+      widgets:
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "1" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "2" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "3" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "4" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "5" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "6" } }
