@@ -917,7 +917,7 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
   lv_obj_set_style_pad_row(box, kind == "hvac" ? 0 : 6, LV_PART_MAIN);
   lv_obj_set_layout(box, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(box, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
-  if (kind == "hvac") lv_obj_align(box, LV_ALIGN_TOP_RIGHT, -10, 64);
+  if (kind == "hvac") lv_obj_align(box, LV_ALIGN_TOP_RIGHT, -24, 78);
   else lv_obj_align(box, LV_ALIGN_CENTER, 0, 0);
   lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
 
