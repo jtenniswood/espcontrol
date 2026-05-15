@@ -612,6 +612,13 @@ function subpageOrderForSerialize(sp) {
   return order;
 }
 
+function subpageSerializedOrder(sp) {
+  if (!sp) return [];
+  if (sp.order && sp.order.length) return subpageOrderForSerialize(sp);
+  if (sp.grid && sp.grid.length) return serializeSubpageGrid(sp);
+  return [];
+}
+
 function parseSubpageConfig(str, raw) {
   if (str && str.charAt(0) === "~") return parseCompactSubpageConfig(str, raw);
   if (!str || !str.trim()) return { order: [], buttons: [], backLabel: "Back" };
@@ -750,6 +757,10 @@ function subpageConfigNeedsMigration(str) {
 }
 
 function serializeSubpageConfig(sp) {
+  var order = subpageSerializedOrder(sp);
+  if ((!sp || !sp.buttons || sp.buttons.length === 0) && order.length > 0) {
+    return order.join(",");
+  }
   var legacy = legacySubpageConfigSafe(sp) ? serializeLegacySubpageConfig(sp) : "";
   var compact = serializeCompactSubpageConfig(sp);
   if (!compact) return legacy;
@@ -797,8 +808,10 @@ function legacySubpageConfigSafe(sp) {
 }
 
 function serializeLegacySubpageConfig(sp) {
-  if (!sp || !sp.buttons || sp.buttons.length === 0) return "";
-  var out = subpageOrderForSerialize(sp).join(",");
+  if (!sp) return "";
+  var order = subpageSerializedOrder(sp);
+  if (!sp.buttons || sp.buttons.length === 0) return order.join(",");
+  var out = order.join(",");
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
     var type = isOptionSelectType(b.type) ? "action" : (b.type || "");
@@ -838,7 +851,7 @@ function serializeLegacySubpageConfig(sp) {
 
 function serializeCompactSubpageConfig(sp) {
   if (!sp || !sp.buttons || sp.buttons.length === 0) return "";
-  var out = "~" + subpageOrderForSerialize(sp).join(",");
+  var out = "~" + subpageSerializedOrder(sp).join(",");
   for (var i = 0; i < sp.buttons.length; i++) {
     var b = sp.buttons[i];
     var type = isOptionSelectType(b.type) ? "action" : (b.type || "");

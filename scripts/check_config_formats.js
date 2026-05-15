@@ -99,7 +99,6 @@ function firmwareParseSubpageConfig(str) {
   const compact = str[0] === "~";
   const body = compact ? str.slice(1) : str;
   const pipes = splitFields(body, "|");
-  if (pipes.length < 2) return { order: [], buttons: [] };
   const order = pipes[0] ? pipes[0].split(",").map((s) => {
     const token = s.trim();
     const eq = token.indexOf("=");
@@ -1258,6 +1257,25 @@ assertSubpageRoundTrip(hooks, "normal subpage", {
     buttonShape({ type: "calendar" }),
   ],
 }, true);
+
+const backOnlySubpageEncoded = assertSubpageRoundTrip(hooks, "back-only subpage", {
+  order: ["B"],
+  buttons: [],
+}, false);
+assert.strictEqual(backOnlySubpageEncoded, "B", "back-only subpage keeps a non-empty config");
+
+assertSubpageRoundTrip(hooks, "moved back-only subpage", {
+  order: ["", "", "", "B"],
+  buttons: [],
+}, false);
+
+const backOnlyFromGrid = hooks.serializeSubpageConfig({
+  order: [],
+  grid: [-2].concat(Array(19).fill(0)),
+  sizes: {},
+  buttons: [],
+});
+assert.strictEqual(backOnlyFromGrid, "B", "new back-only subpage serializes from its grid");
 
 assertSubpageRoundTrip(hooks, "date time large numbers subpage", {
   order: ["1", "B", "2"],

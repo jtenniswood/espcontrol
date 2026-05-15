@@ -880,7 +880,6 @@ inline void grid_phase2(
     if (sp_cfg.empty()) continue;
 
     auto sp_btns = parse_subpage_config(sp_cfg);
-    if (sp_btns.empty()) continue;
     std::string sp_order_str = get_subpage_order(sp_cfg);
     std::string sp_back_label = get_subpage_back_label(sp_order_str);
 
