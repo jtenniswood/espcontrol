@@ -81,6 +81,7 @@ packages:
   screen_ha_act:   !include ../../common/device/screen_ha_actions.yaml
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
+  screen_notification: !include ../../common/device/screen_notification_popup.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)
   # ---------------------------------------------------------------------------
