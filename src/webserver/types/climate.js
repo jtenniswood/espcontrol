@@ -12,6 +12,7 @@ registerButtonType("climate", {
     b.precision = "";
     b.icon = "Thermostat";
     b.icon_on = "Auto";
+    b.options = "";
   },
   renderSettings: function (panel, b, slot, helpers) {
     b.sensor = "";
@@ -41,13 +42,33 @@ registerButtonType("climate", {
     panel.appendChild(helpers.textField(
       "Label", helpers.idPrefix + "label", b.label, "e.g. Living Room", "label", true).field);
 
-    panel.appendChild(helpers.iconPickerField(
+    var offDisplayMode = climateOffDisplayMode(b);
+    var offDisplayField = helpers.segmentControl([
+      ["icon", "Icon"],
+      ["target", "Set Temp"],
+    ], offDisplayMode, function (value) {
+      offDisplayMode = value;
+      offIconBtn.classList.toggle("active", value === "icon");
+      offTargetBtn.classList.toggle("active", value === "target");
+      iconSection.classList.toggle("sp-visible", value === "icon");
+      setClimateOffDisplayMode(b, value);
+      helpers.saveField("options", b.options);
+      scheduleRender();
+    });
+    var offIconBtn = offDisplayField.buttons.icon;
+    var offTargetBtn = offDisplayField.buttons.target;
+    panel.appendChild(helpers.fieldWithControl("When Off", null, offDisplayField.segment));
+
+    var iconSection = condField();
+    iconSection.appendChild(helpers.iconPickerField(
       helpers.idPrefix + "climate-icon-picker", helpers.idPrefix + "climate-icon",
       b.icon || "Thermostat", function (opt) {
         b.icon = opt;
         helpers.saveField("icon", opt);
       }, "Icon"
     ));
+    if (offDisplayMode === "icon") iconSection.classList.add("sp-visible");
+    panel.appendChild(iconSection);
 
     var precisionField = helpers.selectField("Unit Precision", helpers.idPrefix + "climate-precision", [
       ["", "10"],
@@ -101,6 +122,21 @@ registerButtonType("climate", {
   },
   renderPreview: function (b, helpers) {
     var label = (b.label && b.label.trim()) || (b.entity && b.entity.trim()) || "Climate";
+    if (climateOffDisplayMode(b) === "target") {
+      var climateConfig = parseClimatePrecisionConfig(b.precision);
+      var prec = parseInt(climateConfig.precision || "0", 10) || 0;
+      var sampleVal = (20).toFixed(prec);
+      return {
+        iconHtml:
+          '<span class="sp-sensor-preview">' +
+            '<span class="sp-sensor-value">' + sampleVal + '</span>' +
+            '<span class="sp-sensor-unit">\u00B0</span>' +
+          '</span>',
+        labelHtml:
+          '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
+          helpers.escHtml(label) + '</span><span class="sp-type-badge mdi mdi-thermostat"></span></span>',
+      };
+    }
     var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "thermostat";
     return {
       iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',

@@ -14,10 +14,13 @@ A Climate card controls a Home Assistant `climate` entity, such as a thermostat,
 2. Enter the **Climate Entity**, for example `climate.living_room`.
 3. Set a **Label** if you want custom text. If left blank, the friendly name from Home Assistant is used.
 4. Choose an **Icon**.
-5. Choose **Unit Precision**:
+5. Choose **When Off**:
+   - **Icon** shows the chosen icon while the climate entity is off.
+   - **Set Temp** shows the saved target temperature while the climate entity is off.
+6. Choose **Unit Precision**:
    - **10** shows whole numbers.
    - **10.2** shows one decimal place.
-6. Use **Advanced** only if you want to override the minimum or maximum temperature range shown on the panel.
+7. Use **Advanced** only if you want to override the minimum or maximum temperature range shown on the panel.
 
 ## How It Works on the Panel
 

@@ -122,6 +122,18 @@ inline bool action_card_option_select(const ParsedCfg &p) {
   return p.type == "action" && action_card_option_select_action(p.sensor);
 }
 
+inline bool cfg_option_token_present(const std::string &options, const char *name) {
+  if (!name || !*name || options.empty()) return false;
+  size_t start = 0;
+  while (start <= options.length()) {
+    size_t end = options.find(',', start);
+    if (end == std::string::npos) end = options.length();
+    if (options.compare(start, end - start, name) == 0) return true;
+    start = end + 1;
+  }
+  return false;
+}
+
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
@@ -173,6 +185,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     p.icon_on.clear();
+    p.options = cfg_option_token_present(p.options, "off_target") ? "off_target" : "";
   }
   if (p.type == "garage") {
     if (p.sensor != "open" && p.sensor != "close") p.sensor.clear();
@@ -210,7 +223,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.icon_on.clear();
     if (p.icon.empty() || p.icon == "Auto" || p.icon == "Chevron Down") p.icon = "Flash";
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "climate" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   return p;
@@ -244,15 +257,7 @@ inline ParsedCfg parse_cfg(const std::string &cfg) {
 }
 
 inline bool cfg_option_enabled(const std::string &options, const char *name) {
-  if (!name || !*name || options.empty()) return false;
-  size_t start = 0;
-  while (start <= options.length()) {
-    size_t end = options.find(',', start);
-    if (end == std::string::npos) end = options.length();
-    if (options.compare(start, end - start, name) == 0) return true;
-    start = end + 1;
-  }
-  return false;
+  return cfg_option_token_present(options, name);
 }
 
 inline std::string cfg_option_value(const std::string &options, const char *name) {

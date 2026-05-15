@@ -46,6 +46,7 @@ struct ClimateControlCtx {
   bool custom_max = false;
   int step_tenths = CLIMATE_DEFAULT_STEP_TENTHS;
   int precision = 0;
+  bool show_target_when_off = false;
   int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
   bool pending_temp_send = false;
   lv_timer_t *debounce_timer = nullptr;
@@ -405,10 +406,12 @@ inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
 
 inline const char *climate_card_state_icon(ClimateControlCtx *ctx) {
   if (!ctx) return nullptr;
-  if (!ctx->available || ctx->hvac_mode == "off")
+  if (!ctx->available)
     return ctx->icon_off_glyph ? ctx->icon_off_glyph : find_icon("Thermostat");
-  return ctx->icon_on_glyph ? ctx->icon_on_glyph :
-         (ctx->icon_off_glyph ? ctx->icon_off_glyph : find_icon("Thermostat"));
+  if (ctx->hvac_mode == "off")
+    return ctx->show_target_when_off ? nullptr :
+      (ctx->icon_off_glyph ? ctx->icon_off_glyph : find_icon("Thermostat"));
+  return nullptr;
 }
 
 inline std::string climate_card_value(ClimateControlCtx *ctx) {
@@ -1448,6 +1451,7 @@ inline ClimateControlCtx *create_climate_control_context(
   ctx->configured_label = p.label;
   ctx->precision = parse_precision(p.precision);
   climate_apply_saved_range(ctx, p.precision);
+  ctx->show_target_when_off = cfg_option_enabled(p.options, "off_target");
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;

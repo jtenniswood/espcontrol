@@ -62,6 +62,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon) b.icon = "Thermostat";
     b.icon_on = "Auto";
     b.precision = normalizeClimatePrecisionConfig(b.precision);
+    b.options = normalizeClimateOptions(b.options);
   }
   if (b && b.type === "garage") {
     if (b.sensor !== "open" && b.sensor !== "close") b.sensor = "";
@@ -102,7 +103,7 @@ function normalizeButtonConfig(b) {
   }
   if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "climate" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -143,6 +144,7 @@ var SWITCH_CONFIRM_DEFAULT_NO = "No";
 var ALARM_PIN_ARM_OPTION = "pin_arm";
 var ALARM_PIN_DISARM_OPTION = "pin_disarm";
 var ALARM_ACTIONS_OPTION = "actions";
+var CLIMATE_OFF_TARGET_OPTION = "off_target";
 var ALARM_ACTIONS = [
   { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Security" },
   { value: "home", label: "Arm Home", service: "alarm_control_panel.alarm_arm_home", icon: "Home" },
@@ -276,6 +278,22 @@ function setSwitchConfirmationOptions(b, enabled, message, yesText, noText) {
     }
   }
   b.options = out;
+  return b.options;
+}
+
+function normalizeClimateOptions(options) {
+  return configOptionEnabled(options, CLIMATE_OFF_TARGET_OPTION)
+    ? setConfigOption("", CLIMATE_OFF_TARGET_OPTION, true)
+    : "";
+}
+
+function climateOffDisplayMode(b) {
+  return configOptionEnabled(b && b.options, CLIMATE_OFF_TARGET_OPTION) ? "target" : "icon";
+}
+
+function setClimateOffDisplayMode(b, mode) {
+  if (!b) return "";
+  b.options = setConfigOption("", CLIMATE_OFF_TARGET_OPTION, mode === "target");
   return b.options;
 }
 
@@ -450,6 +468,8 @@ function buttonConfigFields(b) {
     options = normalizeSwitchConfirmationOptions(options);
   } else if (type === "alarm") {
     options = normalizeAlarmOptions(options);
+  } else if (type === "climate") {
+    options = normalizeClimateOptions(options);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
   } else if (type !== "action" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
@@ -759,6 +779,8 @@ function legacySubpageConfigSafe(sp) {
       options = normalizeSwitchConfirmationOptions(options);
     } else if (type === "alarm") {
       options = normalizeAlarmOptions(options);
+    } else if (type === "climate") {
+      options = normalizeClimateOptions(options);
     } else if (isActionOptionSelect || isFanCardType(type)) {
       options = "";
     } else if (type !== "action" && !cardLargeNumbersSupported({ type: type || "", precision: precision })) {
@@ -797,6 +819,8 @@ function serializeLegacySubpageConfig(sp) {
       options = normalizeSwitchConfirmationOptions(options);
     } else if (type === "alarm") {
       options = normalizeAlarmOptions(options);
+    } else if (type === "climate") {
+      options = normalizeClimateOptions(options);
     } else if (isActionOptionSelect || isFanCardType(type)) {
       options = "";
     } else if (type !== "action" && !cardLargeNumbersSupported({ type: type || "", precision: precision })) {
@@ -835,6 +859,8 @@ function serializeCompactSubpageConfig(sp) {
       options = normalizeSwitchConfirmationOptions(options);
     } else if (type === "alarm") {
       options = normalizeAlarmOptions(options);
+    } else if (type === "climate") {
+      options = normalizeClimateOptions(options);
     } else if (isActionOptionSelect || isFanCardType(type)) {
       options = "";
     } else if (type !== "action" && !cardLargeNumbersSupported({ type: type || "", precision: precision })) {
