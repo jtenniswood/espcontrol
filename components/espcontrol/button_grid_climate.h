@@ -923,22 +923,22 @@ inline void climate_open_option_menu(ClimateControlCtx *ctx, const std::string &
     bool selected = climate_option_selected(ctx, kind, option);
     lv_obj_t *btn = lv_btn_create(box);
     lv_obj_set_width(btn, lv_pct(100));
-    lv_obj_set_height(btn, kind == "hvac" ? 52 : 42);
+    lv_obj_set_height(btn, kind == "hvac" ? 66 : 50);
     lv_obj_set_style_radius(btn, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_top(btn, kind == "hvac" ? 8 : 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(btn, kind == "hvac" ? 8 : 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(btn, kind == "hvac" ? 14 : 4, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(btn, kind == "hvac" ? 14 : 4, LV_PART_MAIN);
     lv_obj_set_style_pad_left(btn, kind == "hvac" ? 6 : 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_right(btn, kind == "hvac" ? 6 : 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(btn, 0, LV_PART_MAIN);
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, climate_option_label(option).c_str());
     lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(label, ctx->label_font, LV_PART_MAIN);
     if (kind == "hvac") {
-      lv_obj_set_width(label, lv_pct(78));
+      lv_obj_set_width(label, lv_pct(72));
       lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
       if (selected) {
         lv_obj_t *check_lbl = lv_label_create(btn);
