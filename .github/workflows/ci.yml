@@ -10,7 +10,7 @@ env:
 jobs:
   validate:
     name: Validate Generated Files
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
 
@@ -38,7 +38,7 @@ jobs:
 
   docs:
     name: Build Docs
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
 
@@ -61,7 +61,7 @@ jobs:
 
   compile:
     name: Compile Firmware (${{ matrix.slug }})
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:

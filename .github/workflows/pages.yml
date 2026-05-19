@@ -21,7 +21,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
 
@@ -54,7 +54,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       release_tag: ${{ steps.release-meta.outputs.release_tag }}
       device_slugs: ${{ steps.release-meta.outputs.device_slugs }}
@@ -149,7 +149,7 @@ jobs:
   deploy:
     name: Deploy to Pages
     needs: [build-docs, download-firmware]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
