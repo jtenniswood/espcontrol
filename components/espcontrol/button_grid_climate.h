@@ -1516,7 +1516,9 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         [ctx, refresh, field, has_field](esphome::StringRef value) {
           int tenths = 0;
           if (climate_parse_tenths(value, tenths)) {
-            ctx->*field = climate_clamp_tenths(ctx, tenths);
+            // Home Assistant can send temperatures before min/max attributes on boot.
+            // Store the real value and clamp only where the dial needs a bounded range.
+            ctx->*field = tenths;
             ctx->*has_field = true;
           } else {
             ctx->*has_field = false;
