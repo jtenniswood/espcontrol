@@ -31,7 +31,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
 
@@ -39,16 +39,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: Cache node_modules
-        id: node-modules-cache
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
       - name: Install dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: |
+          mkdir -p "${HOME}/.cache/espcontrol-actions/npm"
+          npm ci --prefer-offline --cache "${HOME}/.cache/espcontrol-actions/npm"
 
       - name: Build docs
         run: npm run docs:build
@@ -64,7 +58,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
         with:
@@ -147,7 +141,7 @@ jobs:
   deploy:
     name: Deploy to Pages
     needs: [build-docs, download-firmware]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

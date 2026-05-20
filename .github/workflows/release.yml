@@ -14,7 +14,7 @@ env:
 jobs:
   build-firmware:
     name: Build ${{ matrix.slug }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -37,13 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Cache ESPHome build
-        uses: actions/cache@v5
-        with:
-          path: builds/.esphome
-          key: esphome-${{ matrix.slug }}-${{ hashFiles('builds/*.yaml', 'common/**', 'devices/**') }}
-          restore-keys: |
-            esphome-${{ matrix.slug }}-
+      - name: Prepare local ESPHome cache
+        run: |
+          CACHE_DIR="${HOME}/.cache/espcontrol-actions/esphome/release/${{ matrix.slug }}"
+          mkdir -p "${CACHE_DIR}" builds
+          rm -rf builds/.esphome
+          ln -s "${CACHE_DIR}" builds/.esphome
 
       - name: Compile firmware
         env:
@@ -51,6 +50,7 @@ jobs:
         run: >-
           docker run --rm
           -v "${PWD}:/config"
+          -v "${HOME}/.cache/espcontrol-actions:${HOME}/.cache/espcontrol-actions"
           ghcr.io/esphome/esphome:2026.4.3
           -s firmware_version "${VERSION}"
           compile /config/builds/${{ matrix.slug }}.factory.yaml
@@ -103,7 +103,7 @@ jobs:
     name: Publish to Release
     if: github.event_name == 'release'
     needs: build-firmware
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Download all firmware artifacts
         uses: actions/download-artifact@v8

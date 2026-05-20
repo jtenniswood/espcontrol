@@ -33,7 +33,7 @@ env:
 jobs:
   validate:
     name: Validate Generated Files
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
 
@@ -41,16 +41,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: Cache node_modules
-        id: node-modules-cache
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
       - name: Install dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: |
+          mkdir -p "${HOME}/.cache/espcontrol-actions/npm"
+          npm ci --prefer-offline --cache "${HOME}/.cache/espcontrol-actions/npm"
 
       - run: python3 scripts/build.py --check
       - run: python3 scripts/generate_device_slots.py --check
@@ -59,7 +53,7 @@ jobs:
 
   docs:
     name: Build Docs
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
 
@@ -67,22 +61,16 @@ jobs:
         with:
           node-version: 24
 
-      - name: Cache node_modules
-        id: node-modules-cache
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
       - name: Install dependencies
-        if: steps.node-modules-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: |
+          mkdir -p "${HOME}/.cache/espcontrol-actions/npm"
+          npm ci --prefer-offline --cache "${HOME}/.cache/espcontrol-actions/npm"
 
       - run: npm run docs:build
 
   compile:
     name: Compile Firmware (${{ matrix.slug }})
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -95,16 +83,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Cache ESPHome build
-        uses: actions/cache@v5
-        with:
-          path: builds/.esphome
-          key: esphome-ci-${{ matrix.slug }}-${{ hashFiles('builds/*.yaml', 'common/**', 'devices/**', 'components/**') }}
-          restore-keys: |
-            esphome-ci-${{ matrix.slug }}-
+      - name: Prepare local ESPHome cache
+        run: |
+          CACHE_DIR="${HOME}/.cache/espcontrol-actions/esphome/ci/${{ matrix.slug }}"
+          mkdir -p "${CACHE_DIR}" builds
+          rm -rf builds/.esphome
+          ln -s "${CACHE_DIR}" builds/.esphome
 
       - name: Compile firmware
         run: >-
-          docker run --rm -v "${PWD}:/config"
+          docker run --rm
+          -v "${PWD}:/config"
+          -v "${HOME}/.cache/espcontrol-actions:${HOME}/.cache/espcontrol-actions"
           ghcr.io/esphome/esphome:2026.4.3
           compile /config/builds/${{ matrix.slug }}.factory.yaml
