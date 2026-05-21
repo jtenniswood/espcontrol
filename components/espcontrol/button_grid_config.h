@@ -4,7 +4,7 @@
 
 // RGB multipliers for display calibration; 100 leaves a channel unchanged.
 constexpr int COLOR_CORRECTION_RED_PERCENT = 130;
-constexpr int COLOR_CORRECTION_GREEN_PERCENT = 110;
+constexpr int COLOR_CORRECTION_GREEN_PERCENT = 105;
 constexpr int COLOR_CORRECTION_BLUE_PERCENT = 104;
 
 constexpr uint32_t clamp_color_channel(uint32_t value) {
