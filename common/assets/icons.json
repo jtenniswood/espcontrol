@@ -386,6 +386,11 @@
       "mdi": "tumble-dryer"
     },
     {
+      "name": "Dryer Off",
+      "codepoint": "F11BB",
+      "mdi": "tumble-dryer-off"
+    },
+    {
       "name": "EV Charger",
       "codepoint": "F05F1",
       "mdi": "ev-station"
