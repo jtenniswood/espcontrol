@@ -242,6 +242,7 @@ const ICON_GROUPS = {
   'Coffee Maker': 'Appliances',
   'Dishwasher': 'Appliances',
   'Dryer': 'Appliances',
+  'Dryer Off': 'Appliances',
   'Fridge': 'Appliances',
   'Iron': 'Appliances',
   'Kettle': 'Appliances',
