@@ -5,8 +5,11 @@
 // ── Alarm card controls ───────────────────────────────────────────────
 
 constexpr uint32_t ALARM_TRIGGERED_COLOR = 0xC62828;
+constexpr uint32_t ALARM_CARD_CTX_MAGIC = 0x414C4D43;    // ALMC
+constexpr uint32_t ALARM_ACTION_CTX_MAGIC = 0x414C4D41;  // ALMA
 
 struct AlarmCardCtx {
+  uint32_t magic = ALARM_CARD_CTX_MAGIC;
   std::string entity_id;
   std::string label;
   std::string options;
@@ -39,6 +42,7 @@ struct AlarmCardCtx {
 };
 
 struct AlarmActionCtx {
+  uint32_t magic = ALARM_ACTION_CTX_MAGIC;
   AlarmCardCtx *card = nullptr;
   std::string mode;
   bool requires_pin = true;
@@ -89,6 +93,15 @@ inline AlarmPinModalUi &alarm_pin_modal_ui() {
 inline AlarmToastUi &alarm_toast_ui() {
   static AlarmToastUi ui;
   return ui;
+}
+
+inline bool alarm_card_context_valid(AlarmCardCtx *ctx) {
+  return ctx != nullptr && ctx->magic == ALARM_CARD_CTX_MAGIC;
+}
+
+inline bool alarm_action_context_valid(AlarmActionCtx *action) {
+  return action != nullptr && action->magic == ALARM_ACTION_CTX_MAGIC &&
+         alarm_card_context_valid(action->card);
 }
 
 inline const char *alarm_card_icon(const ParsedCfg &p) {
@@ -632,7 +645,7 @@ inline std::string alarm_action_failure_message(const esphome::api::ActionRespon
 }
 
 inline void send_alarm_action(AlarmActionCtx *action, const std::string &code) {
-  if (!action || !action->card || action->card->entity_id.empty() ||
+  if (!alarm_action_context_valid(action) || action->card->entity_id.empty() ||
       !ha_api_available()) return;
   const char *service = alarm_action_service(action->mode);
   if (service == nullptr) return;
@@ -854,7 +867,7 @@ inline void alarm_pin_key_cb(lv_event_t *e) {
 }
 
 inline void alarm_pin_open_modal(AlarmActionCtx *action) {
-  if (!action || !action->card || !action->card->available) return;
+  if (!alarm_action_context_valid(action) || !action->card->available) return;
   const lv_font_t *label_font = action->card->btn
     ? lv_obj_get_style_text_font(action->card->btn, LV_PART_MAIN)
     : nullptr;
@@ -956,7 +969,7 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
 }
 
 inline void alarm_action_activate(AlarmActionCtx *action) {
-  if (!action || !action->card || !action->card->available) return;
+  if (!alarm_action_context_valid(action) || !action->card->available) return;
   if (action->requires_pin) {
     alarm_pin_open_modal(action);
     return;
@@ -1093,7 +1106,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
 }
 
 inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
-  if (!ctx || !ctx->available) return;
+  if (!alarm_card_context_valid(ctx) || !ctx->available) return;
   const lv_font_t *label_font = ctx->label_font
     ? ctx->label_font
     : ctx->btn ? lv_obj_get_style_text_font(ctx->btn, LV_PART_MAIN) : nullptr;
@@ -1295,5 +1308,6 @@ inline AlarmCardCtx *create_alarm_card_context(
 }
 
 inline void alarm_card_open_page(AlarmCardCtx *ctx) {
+  if (!alarm_card_context_valid(ctx)) return;
   alarm_control_open_modal(ctx);
 }

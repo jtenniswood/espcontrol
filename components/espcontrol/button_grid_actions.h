@@ -301,8 +301,10 @@ struct OptionSelectCtx;
 inline void option_select_open_modal(OptionSelectCtx *ctx);
 struct AlarmCardCtx;
 inline void alarm_card_open_page(AlarmCardCtx *ctx);
+inline bool alarm_card_context_valid(AlarmCardCtx *ctx);
 struct AlarmActionCtx;
 inline void alarm_action_activate(AlarmActionCtx *action);
+inline bool alarm_action_context_valid(AlarmActionCtx *action);
 struct FanCardCtx;
 inline bool fan_non_speed_card_type(const std::string &type);
 inline void fan_card_handle_click(FanCardCtx *ctx);
@@ -337,10 +339,10 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       lv_scr_load_anim(sub_scr, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
   } else if (p.type == "alarm") {
     AlarmCardCtx *ctx = (AlarmCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) alarm_card_open_page(ctx);
+    if (alarm_card_context_valid(ctx)) alarm_card_open_page(ctx);
   } else if (p.type == "alarm_action") {
     AlarmActionCtx *ctx = (AlarmActionCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) alarm_action_activate(ctx);
+    if (alarm_action_context_valid(ctx)) alarm_action_activate(ctx);
   } else if (fan_non_speed_card_type(p.type)) {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_card_handle_click(ctx);
