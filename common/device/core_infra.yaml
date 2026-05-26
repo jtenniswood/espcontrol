@@ -16,6 +16,17 @@ api:
   reboot_timeout: 0s
   homeassistant_states: true
   homeassistant_services: true
+  actions:
+    - action: navigate
+      variables:
+        target: string
+      then:
+        - script.execute: screensaver_wake
+        - script.wait: screensaver_wake
+        - lambda: |-
+            espcontrol_navigate(target, id(main_page)->obj);
+        - script.execute: screensaver_idle_check
+        - script.execute: home_screen_idle_check
   on_client_connected:
     - lambda: |-
         refresh_weather_forecast_cards();

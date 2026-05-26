@@ -604,6 +604,7 @@ inline void grid_phase2(
   memset(sensor_text_mode, 0, sizeof(sensor_text_mode));
   memset(has_icon_on, 0, sizeof(has_icon_on));
   clear_internal_relay_watchers();
+  navigation_clear_subpages();
 
   bool has_on, has_off, has_sensor_color;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
@@ -1032,6 +1033,14 @@ inline void grid_phase2(
     parse_subpage_order(sp_order_str, NS, sp_btns.size(), sp_ord);
 
     lv_obj_t *sub_scr = lv_obj_create(NULL);
+    int display_order = NS;
+    for (int pos = 0; pos < NS; pos++) {
+      if (parsed.positions[pos] == si + 1) {
+        display_order = pos;
+        break;
+      }
+    }
+    navigation_register_subpage(si + 1, display_order, p.label, sub_scr);
     lv_obj_set_style_bg_color(sub_scr, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(sub_scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_layout(sub_scr, LV_LAYOUT_GRID);
