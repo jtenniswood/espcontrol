@@ -6,10 +6,8 @@
 # it at startup. Main page (lvgl.yaml) is included after setup screens.
 # =============================================================================
 
-defaults:
-  provisioning_package_suffix: ""
-
 substitutions:
+  provisioning_package_suffix: ""
   device_slug: "guition-esp32-s3-4848s040"
   firmware_manifest_slug: "guition-esp32-s3-4848s040"
   screen_width: "480"
