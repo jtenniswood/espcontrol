@@ -548,6 +548,7 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
   MediaVolumeCtx *ctx = new MediaVolumeCtx();
   ctx->entity_id = p.entity;
   ctx->label = media_label(p);
+  ctx->max_pct = media_volume_max_percent(p);
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;

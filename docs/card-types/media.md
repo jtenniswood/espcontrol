@@ -33,6 +33,8 @@ For Play/Pause, you can choose whether the card shows its fixed label or the liv
 
 The Volume Button shows the current volume percentage. Tapping it opens a volume control popup on the panel, where you can adjust the volume without leaving the current page.
 
+Set **Maximum Volume** to cap the panel control below 100%. The popup dial rescales to that maximum, so a 40% cap makes 40% the end of the arc.
+
 The card watches the media player's `volume_level` attribute, so it also updates when volume changes elsewhere.
 
 ## Track Position

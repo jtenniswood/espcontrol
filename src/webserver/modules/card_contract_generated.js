@@ -713,6 +713,15 @@ var CARD_CONTRACT_CARDS = {
           "play_pause"
         ],
         "defaultValue": ""
+      },
+      {
+        "name": "volume_max",
+        "label": "Maximum Volume",
+        "kind": "number",
+        "min": 1,
+        "max": 100,
+        "step": 1,
+        "defaultValue": "100"
       }
     ],
     "behavior": {

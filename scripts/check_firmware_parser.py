@@ -89,6 +89,14 @@ int main() {
   assert(media.type == "media");
   assert(media.sensor == "play_pause");
   assert(media.icon == "Auto");
+  auto volume = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=40");
+  assert(volume.type == "media");
+  assert(volume.sensor == "volume");
+  assert(volume.options == "volume_max=40");
+  assert(media_volume_max_percent(volume) == 40);
+  auto volume_uncapped = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=150");
+  assert(volume_uncapped.options == "");
+  assert(media_volume_max_percent(volume_uncapped) == 100);
 
   auto confirm = parse_cfg("switch.printer;Printer;Printer 3D;Auto;;;;;confirm_off,confirm_message=Stop%20print%3F,confirm_yes=Power%20Down");
   assert(switch_confirmation_enabled(confirm));

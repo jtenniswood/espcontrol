@@ -354,6 +354,21 @@ assert.strictEqual(
 );
 assert.strictEqual(hooks.mediaStateDisplayModeSupported("position"), true, "media state display supports position mode");
 assert.strictEqual(hooks.mediaStateDisplayModeSupported("volume"), false, "media state display rejects volume mode");
+assert.strictEqual(
+  hooks.normalizeMediaOptions("volume_max=40", "volume"),
+  "volume_max=40",
+  "media volume max option is preserved for volume mode"
+);
+assert.strictEqual(
+  hooks.normalizeMediaOptions("volume_max=150", "volume"),
+  "",
+  "media volume max defaults back to no cap above 100"
+);
+assert.strictEqual(
+  hooks.normalizeMediaOptions("volume_max=40", "play_pause"),
+  "",
+  "media volume max option is removed outside volume mode"
+);
 assert.strictEqual(hooks.alarmControlPanelValue(), "control_panel", "alarm combined-control value is spec-backed");
 assert.deepStrictEqual(Array.from(hooks.alarmActionValues()), ["away", "home", "disarm"], "alarm default actions are spec-backed");
 assert.strictEqual(hooks.normalizeAlarmIconDisplayMode("static"), "static", "alarm static icon mode is spec-backed");
@@ -2011,7 +2026,7 @@ assertSubpageRoundTrip(hooks, "media subpage", {
     buttonShape({ entity: "media_player.living_room", label: "Play/Pause", icon: "Auto", sensor: "play_pause", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Previous", icon: "Auto", sensor: "previous", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Next", icon: "Auto", sensor: "next", type: "media" }),
-    buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Auto", sensor: "volume", type: "media" }),
+    buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Auto", sensor: "volume", type: "media", options: "volume_max=40" }),
     buttonShape({ entity: "media_player.office", label: "Office", icon: "Progress Clock", sensor: "position", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "", icon: "Auto", sensor: "now_playing", type: "media" }),
   ],

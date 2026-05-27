@@ -70,6 +70,7 @@ struct MediaVolumeCtx {
   std::string entity_id;
   std::string label;
   int current_pct = 0;
+  int max_pct = 100;
   int pending_pct = -1;
   uint32_t pending_until_ms = 0;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
@@ -768,6 +769,19 @@ inline int media_clamp_percent(int value) {
   return value;
 }
 
+inline int media_volume_max_pct(MediaVolumeCtx *ctx) {
+  if (!ctx) return 100;
+  if (ctx->max_pct < 1) return 1;
+  if (ctx->max_pct > 100) return 100;
+  return ctx->max_pct;
+}
+
+inline int media_volume_clamp_user_percent(MediaVolumeCtx *ctx, int value) {
+  value = media_clamp_percent(value);
+  int max_pct = media_volume_max_pct(ctx);
+  return value > max_pct ? max_pct : value;
+}
+
 inline bool media_volume_pending_active(MediaVolumeCtx *ctx) {
   return ctx && ctx->pending_until_ms != 0 &&
          (int32_t)(ctx->pending_until_ms - esphome::millis()) > 0;
@@ -787,7 +801,7 @@ inline void media_volume_set_card_value(MediaVolumeCtx *ctx, int pct) {
 inline void media_volume_apply_percent(MediaVolumeCtx *ctx, int pct,
                                        bool from_user, bool send_action) {
   if (!ctx || !ctx->available) return;
-  pct = media_clamp_percent(pct);
+  pct = media_volume_clamp_user_percent(ctx, pct);
   ctx->current_pct = pct;
   if (from_user) {
     ctx->pending_pct = pct;
@@ -878,7 +892,7 @@ inline void media_volume_set_modal_value(MediaVolumeCtx *ctx, int pct) {
   pct = media_clamp_percent(pct);
   if (ui.arc) {
     ui.updating_arc = true;
-    lv_arc_set_value(ui.arc, pct);
+    lv_arc_set_value(ui.arc, pct > media_volume_max_pct(ctx) ? media_volume_max_pct(ctx) : pct);
     ui.updating_arc = false;
   }
   if (ui.pct_lbl) {
@@ -904,8 +918,8 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
 
   ui.arc = lv_arc_create(ui.panel);
   lv_arc_set_bg_angles(ui.arc, 135, 45);
-  lv_arc_set_range(ui.arc, 0, 100);
-  lv_arc_set_value(ui.arc, ctx->current_pct);
+  lv_arc_set_range(ui.arc, 0, media_volume_max_pct(ctx));
+  lv_arc_set_value(ui.arc, media_volume_clamp_user_percent(ctx, ctx->current_pct));
   lv_obj_set_style_bg_opa(ui.arc, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arc, 0, LV_PART_MAIN);
   lv_obj_set_style_arc_color(ui.arc, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
@@ -963,11 +977,21 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
     ctx->icon_font, DARK_CONTROL_NEUTRAL, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
-    if (ui.active) media_volume_apply_percent(ui.active, ui.active->current_pct - 1, true, true);
+    if (ui.active) {
+      int current = ui.active->current_pct > media_volume_max_pct(ui.active)
+        ? media_volume_max_pct(ui.active)
+        : ui.active->current_pct;
+      media_volume_apply_percent(ui.active, current - 1, true, true);
+    }
   }, LV_EVENT_CLICKED, nullptr);
   lv_obj_add_event_cb(ui.plus_btn, [](lv_event_t *) {
     MediaVolumeModalUi &ui = media_volume_modal_ui();
-    if (ui.active) media_volume_apply_percent(ui.active, ui.active->current_pct + 1, true, true);
+    if (ui.active) {
+      int current = ui.active->current_pct > media_volume_max_pct(ui.active)
+        ? media_volume_max_pct(ui.active)
+        : ui.active->current_pct;
+      media_volume_apply_percent(ui.active, current + 1, true, true);
+    }
   }, LV_EVENT_CLICKED, nullptr);
 
   media_volume_layout_modal(ctx);

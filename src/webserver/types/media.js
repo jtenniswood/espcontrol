@@ -112,6 +112,7 @@ registerButtonType("media", {
     b.precision = (b.sensor === "play_pause" || b.sensor === "position") && b.precision === "state" ? "state" : "";
     b.icon = "Auto";
     b.icon_on = "Auto";
+    b.options = "";
   },
   renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     function validMode(value) {
@@ -181,6 +182,11 @@ registerButtonType("media", {
             b.icon = "Auto";
             helpers.saveField("icon", b.icon);
           }
+          var normalizedOptions = normalizeMediaOptions(b.options, b.sensor);
+          if (b.options !== normalizedOptions) {
+            b.options = normalizedOptions;
+            helpers.saveField("options", b.options);
+          }
           helpers.saveField("sensor", b.sensor);
           renderButtonSettings();
         },
@@ -198,6 +204,11 @@ registerButtonType("media", {
       ? mediaNowPlayingControls(b)
       : ((b.sensor === "play_pause" || b.sensor === "position") && b.precision === "state" ? "state" : "");
     b.icon_on = "Auto";
+    var normalizedOptions = normalizeMediaOptions(b.options, b.sensor);
+    if (b.options !== normalizedOptions) {
+      b.options = normalizedOptions;
+      helpers.saveField("options", b.options);
+    }
     if (b.sensor === "previous" && b.label === "Skip Previous") {
       b.label = "Previous";
       helpers.saveField("label", b.label);
@@ -290,6 +301,26 @@ registerButtonType("media", {
         field: "label",
         placeholder: b.sensor === "position" ? "Position" : "e.g. Living Room Speaker",
         rerender: true,
+      });
+    }
+
+    if (b.sensor === "volume") {
+      var maxField = helpers.renderCardNumberField(panel, b, helpers, {
+        label: "Maximum Volume",
+        idSuffix: "volume-max",
+        min: 1,
+        max: 100,
+        step: 1,
+        placeholder: "100",
+        value: function () {
+          var maxVolume = mediaVolumeMax(b);
+          return maxVolume === "100" ? "" : maxVolume;
+        },
+      });
+      maxField.input.addEventListener("change", function () {
+        setMediaVolumeMax(b, maxField.input.value);
+        maxField.input.value = mediaVolumeMax(b) === "100" ? "" : mediaVolumeMax(b);
+        helpers.saveField("options", b.options);
       });
     }
 

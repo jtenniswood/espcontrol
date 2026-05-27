@@ -53,6 +53,7 @@ constexpr int MAX_SUBPAGE_ITEMS = MAX_GRID_SLOTS * MAX_GRID_SLOTS;
 
 #include "button_grid_contract_generated.h"
 #include "button_grid_card_runtime.h"
+#include <cstdlib>
 
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
@@ -201,6 +202,24 @@ inline std::string cfg_option_value(const std::string &options, const char *name
     start = end + 1;
   }
   return "";
+}
+
+inline int normalize_media_volume_max_percent(const std::string &value) {
+  if (value.empty()) return 100;
+  char *end = nullptr;
+  long parsed = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) return 100;
+  if (parsed < 1) return 1;
+  if (parsed > 100) return 100;
+  return static_cast<int>(parsed);
+}
+
+inline std::string media_card_options_normalized(const std::string &options,
+                                                 const std::string &mode) {
+  if (mode != "volume") return "";
+  int max_pct = normalize_media_volume_max_percent(
+    cfg_option_value(options, "volume_max"));
+  return max_pct < 100 ? "volume_max=" + std::to_string(max_pct) : "";
 }
 
 inline std::string sensor_card_options_normalized(const std::string &options,
@@ -427,6 +446,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     } else {
       p.precision.clear();
     }
+    p.options = media_card_options_normalized(p.options, p.sensor);
   }
   if (p.type == "climate") {
     p.sensor.clear();
@@ -506,7 +526,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = door_window_open_icon_name(p.precision);
     p.options = door_window_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "media" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (p.type == "sensor") {
@@ -544,6 +564,12 @@ inline ParsedCfg parse_cfg(const std::string &cfg) {
 
 inline bool cfg_option_enabled(const std::string &options, const char *name) {
   return cfg_option_token_present(options, name);
+}
+
+inline int media_volume_max_percent(const ParsedCfg &p) {
+  return p.type == "media" && p.sensor == "volume"
+    ? normalize_media_volume_max_percent(cfg_option_value(p.options, "volume_max"))
+    : 100;
 }
 
 inline std::string action_card_state_entity(const ParsedCfg &p) {

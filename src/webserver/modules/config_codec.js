@@ -53,6 +53,7 @@ function normalizeButtonConfig(b) {
     } else {
       b.precision = "";
     }
+    b.options = normalizeMediaOptions(b.options, b.sensor);
   }
   if (b && b.type === "climate") {
     b.sensor = "";
@@ -128,7 +129,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = doorWindowClosedIcon(b.precision);
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = doorWindowOpenIcon(b.precision);
     b.options = normalizeDoorWindowOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "todo" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "todo" && b.type !== "media" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -173,6 +174,7 @@ var CLIMATE_NUMBER_DISPLAY_OPTION = "number_display";
 var TODO_COUNT_DISPLAY_OPTION = "count_display";
 var TODO_LABEL_DISPLAY_OPTION = "label_display";
 var TODO_COMPLETED_DISPLAY_OPTION = "completed_display";
+var MEDIA_VOLUME_MAX_OPTION = "volume_max";
 var ALARM_ACTIONS = [
   { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Shield Lock" },
   { value: "home", label: "Arm Home", service: "alarm_control_panel.alarm_arm_home", icon: "Shield Home" },
@@ -254,6 +256,38 @@ function setConfigOptionValue(options, name, value) {
   value = String(value || "").trim();
   if (value) out.push(prefix + encodeConfigField(value));
   return out.join(",");
+}
+
+function normalizeMediaVolumeMax(value) {
+  value = String(value || "").trim();
+  if (!value) return "100";
+  var parsed = parseInt(value, 10);
+  if (!isFinite(parsed)) return "100";
+  if (parsed < 1) parsed = 1;
+  if (parsed > 100) parsed = 100;
+  return String(parsed);
+}
+
+function normalizeMediaOptions(options, mode) {
+  if (mediaEditorMode(mode) !== "volume") return "";
+  var maxVolume = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
+  return maxVolume === "100" ? "" : setConfigOptionValue("", MEDIA_VOLUME_MAX_OPTION, maxVolume);
+}
+
+function mediaVolumeMax(b) {
+  return normalizeMediaVolumeMax(configOptionValue(b && b.options, MEDIA_VOLUME_MAX_OPTION));
+}
+
+function setMediaVolumeMax(b, value) {
+  if (!b) return "";
+  var normalized = normalizeMediaVolumeMax(value);
+  b.options = setConfigOptionValue(
+    b.options,
+    MEDIA_VOLUME_MAX_OPTION,
+    normalized === "100" ? "" : normalized
+  );
+  b.options = normalizeMediaOptions(b.options, b.sensor);
+  return b.options;
 }
 
 function cardContractOptionSpec(type, name) {
@@ -854,6 +888,8 @@ function buttonConfigFields(b) {
     options = normalizeGarageOptions(options, sensor);
   } else if (type === "climate") {
     options = normalizeClimateOptions(options);
+  } else if (type === "media") {
+    options = normalizeMediaOptions(options, sensor);
   } else if (type === "webhook" && typeof normalizeWebhookConfig === "function") {
     var webhookButton = EspControlModel.cloneCardConfig(b || {});
     normalizeWebhookConfig(webhookButton);
@@ -875,7 +911,7 @@ function buttonConfigFields(b) {
     options = normalizeDoorWindowOptions(options);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
-  } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
+  } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && type !== "media" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
   }
   if (type === "door_window") {
