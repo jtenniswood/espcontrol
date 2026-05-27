@@ -1,0 +1,22 @@
+# =============================================================================
+# TOUCHSCREEN - WiFi firmware variant
+# =============================================================================
+# GT911 capacitive touchscreen. WiFi builds can drive the hardware reset line.
+# =============================================================================
+
+i2c:
+  - id: bus_a
+    sda: GPIO07
+    scl: GPIO08
+    frequency: 400kHz
+    sda_pullup_enabled: False
+    scl_pullup_enabled: False
+
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    display: my_display
+    i2c_id: bus_a
+    reset_pin: GPIO28
+    on_touch:
+      - script.execute: screensaver_wake

@@ -261,26 +261,6 @@ button:
         - script.execute: relay_2_push
 
 # ---------------------------------------------------------------------------
-# I2C bus and touchscreen (GT911 capacitive, wakes screensaver on touch)
-# ---------------------------------------------------------------------------
-i2c:
-  - id: bus_a
-    sda: GPIO07
-    scl: GPIO08
-    frequency: 400kHz
-    sda_pullup_enabled: False
-    scl_pullup_enabled: False
-
-touchscreen:
-  - platform: gt911
-    id: my_touchscreen
-    display: my_display
-    i2c_id: bus_a
-    reset_pin: GPIO28
-    on_touch:
-      - script.execute: screensaver_wake
-
-# ---------------------------------------------------------------------------
 # Display (4" 720x720 MIPI DSI panel)
 # ---------------------------------------------------------------------------
 display:

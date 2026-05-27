@@ -510,6 +510,7 @@
             "clock_cy": "\"360\""
           },
           "deviceFontPackageKey": "fonts_device",
+          "touchscreenPackage": true,
           "networkCoprocessor": true,
           "ethernetSelectable": true,
           "backlightPwmFrequency": {

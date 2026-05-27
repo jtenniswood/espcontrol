@@ -1,0 +1,22 @@
+# =============================================================================
+# TOUCHSCREEN - Ethernet firmware variant
+# =============================================================================
+# GPIO28 is reserved by Ethernet RMII on ESP32-P4, so Ethernet builds must not
+# claim the GT911 reset line.
+# =============================================================================
+
+i2c:
+  - id: bus_a
+    sda: GPIO07
+    scl: GPIO08
+    frequency: 400kHz
+    sda_pullup_enabled: False
+    scl_pullup_enabled: False
+
+touchscreen:
+  - platform: gt911
+    id: my_touchscreen
+    display: my_display
+    i2c_id: bus_a
+    on_touch:
+      - script.execute: screensaver_wake

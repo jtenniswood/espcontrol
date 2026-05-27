@@ -100,6 +100,10 @@ def package_file_text(device: dict) -> str:
             include_line("device", "!include device/device.yaml"),
         ]
     )
+    if package.get("touchscreenPackage"):
+        lines.append(
+            include_line("touchscreen", f"!include device/touchscreen{network_suffix}.yaml")
+        )
     if package.get("networkCoprocessor"):
         lines.append(
             include_line(

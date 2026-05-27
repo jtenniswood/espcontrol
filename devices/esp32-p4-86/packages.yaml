@@ -44,6 +44,7 @@ packages:
   # ---------------------------------------------------------------------------
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
+  touchscreen:     !include device/touchscreen${network_package_suffix}.yaml
   network_coprocessor: !include device/network_coprocessor${network_package_suffix}.yaml
   fonts:           !include ../../common/assets/fonts.yaml
   icons:           !include ../../common/assets/icons.yaml
