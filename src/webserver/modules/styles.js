@@ -87,7 +87,7 @@ var CSS =
   "background:#212121;overflow:hidden;pointer-events:none}" +
   ".sp-media-h-slider span{display:block;width:62%;height:100%;background:#fff;border-radius:999px}" +
   ".sp-media-position-time{z-index:1}" +
-  ".sp-media-now-title{font-size:var(--btn-icon);line-height:1.08;color:#fff;font-weight:300;z-index:1;" +
+  ".sp-media-now-title{font-size:calc(var(--btn-label)*1.75);line-height:1.08;color:#fff;font-weight:300;z-index:1;" +
   "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
   ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff}" +
   ".sp-btn-double{grid-row:span 2}" +
