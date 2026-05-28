@@ -64,17 +64,24 @@ registerButtonType("todo", {
     normalizeTodoConfig(b);
     helpers.renderCardEntityField(panel, b, helpers, TODO_CARD_METADATA);
     helpers.renderCardTextField(panel, b, helpers, TODO_CARD_METADATA.labelField);
-    helpers.renderCardIconPicker(panel, b, helpers, TODO_CARD_METADATA.icon);
+    var iconField = condField();
+    helpers.renderCardIconPicker(iconField, b, helpers, TODO_CARD_METADATA.icon);
+    function syncIconField() {
+      iconField.classList.toggle("sp-visible", todoCardStatusMode(b) === "icon");
+    }
     helpers.renderCardSegmentControl(panel, b, helpers, {
       segment: Object.assign({}, TODO_CARD_METADATA.iconDisplay, {
         value: function () { return todoCardStatusMode(b); },
         onSelect: function (button, cardHelpers, value) {
           setTodoCardStatusMode(button, value);
           cardHelpers.saveField("options", button.options);
+          syncIconField();
           scheduleRender();
         },
       }),
     });
+    syncIconField();
+    panel.appendChild(iconField);
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Todo";
