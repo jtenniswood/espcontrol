@@ -82,6 +82,16 @@ for (const slug of Object.keys(manifest.devices || {})) {
     sandbox.__ESPCONTROL_TEST_HOOKS__.config,
     `${slug}: generated web UI must export the same test hooks used by local checks`
   );
+  const generatedHooks = sandbox.__ESPCONTROL_TEST_HOOKS__.config;
+  const generatedTimezones = Array.from(generatedHooks.defaultTimezoneOptions());
+  assert(
+    generatedTimezones.includes("UTC (GMT+0)") && generatedTimezones.includes("Europe/London (GMT+0)"),
+    `${slug}: generated web UI must include fallback timezone choices`
+  );
+  assert(
+    Array.from(generatedHooks.timezoneOptionsWithFallback([], "Custom/Zone (GMT+0)")).includes("Custom/Zone (GMT+0)"),
+    `${slug}: timezone fallback must preserve the selected value`
+  );
   assert(
     sandbox.__domEvents.some((event) => event.type === "DOMContentLoaded" && typeof event.listener === "function"),
     `${slug}: generated web UI must register DOMContentLoaded startup wiring`

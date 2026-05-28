@@ -222,11 +222,10 @@ function buildSettingsPage(parent) {
   var tzSelect = document.createElement("select");
   tzSelect.className = "sp-select";
   tzSelect.id = "sp-set-timezone";
-  if (state.timezoneOptions.length) {
-    state.timezoneOptions.forEach(function (opt) {
-      appendTimezoneOption(tzSelect, opt);
-    });
-  }
+  state.timezoneOptions = timezoneOptionsWithFallback(state.timezoneOptions, state.timezone);
+  state.timezoneOptions.forEach(function (opt) {
+    appendTimezoneOption(tzSelect, opt);
+  });
   tzSelect.value = state.timezone;
   tzSelect.addEventListener("change", function () {
     state.timezone = this.value;

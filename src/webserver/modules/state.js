@@ -6,6 +6,16 @@ var MONTH_NAME_DEFAULTS = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+function defaultTimezoneOptions() {
+  return (CFG && Array.isArray(CFG.timezoneOptions)) ? CFG.timezoneOptions.slice() : [];
+}
+
+function timezoneOptionsWithFallback(options, selected) {
+  var list = Array.isArray(options) && options.length ? options.slice() : defaultTimezoneOptions();
+  if (selected && list.indexOf(selected) === -1) list.unshift(selected);
+  return list;
+}
+
 var state = {
   grid: [],
   sizes: {},
@@ -57,7 +67,7 @@ var state = {
   scheduleDimmedBrightness: 10,
   scheduleClockBrightness: 10,
   timezone: "UTC (GMT+0)",
-  timezoneOptions: [],
+  timezoneOptions: defaultTimezoneOptions(),
   clockFormat: "24h",
   clockFormatOptions: ["12h", "24h"],
   customNtpServers: false,

@@ -1086,6 +1086,7 @@ WWW_OUTPUT_DIR = ROOT / "docs" / "public" / "webserver"
 WEB_MODULE_ORDER_PATH = ROOT / "scripts" / "web_modules.json"
 MODEL_ENTRY = ROOT / "src" / "webserver" / "model" / "index.ts"
 MODEL_GENERATED_JS = MODULES_DIR / "model_generated.js"
+TIME_YAML = ROOT / "common" / "addon" / "time.yaml"
 
 CONFIG_START = "__DEVICE_CONFIG_START__"
 CONFIG_END = "__DEVICE_CONFIG_END__"
@@ -1112,10 +1113,25 @@ def build_config_block(slug, cfg):
 
 
 def build_web_devices():
-    return {
+    timezone_options = load_timezone_options()
+    devices = {
         slug: web_config(profile)
         for slug, profile in load_device_profiles().items()
     }
+    for cfg in devices.values():
+        cfg["timezoneOptions"] = timezone_options
+    return devices
+
+
+def load_timezone_options():
+    options = []
+    for match in re.finditer(r'^\s+- "([^"]+)"$', TIME_YAML.read_text(), re.M):
+        option = match.group(1)
+        if " (GMT" in option and ("/" in option or option.startswith("UTC ")):
+            options.append(option)
+    if not options:
+        raise BuildError(f"No timezone options found in {TIME_YAML.relative_to(ROOT)}")
+    return options
 
 
 def load_button_types():

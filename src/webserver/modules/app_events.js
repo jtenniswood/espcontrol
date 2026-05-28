@@ -228,11 +228,11 @@ function connectEvents() {
     },
     "select-screen__timezone": function (val, d) {
       state.timezone = d.value || val || state.timezone;
-      if (d.option && Array.isArray(d.option)) {
-        state.timezoneOptions = d.option;
+      if (Array.isArray(d.option)) {
+        state.timezoneOptions = timezoneOptionsWithFallback(d.option, state.timezone);
         if (els.setTimezone) {
           els.setTimezone.innerHTML = "";
-          d.option.forEach(function (opt) {
+          state.timezoneOptions.forEach(function (opt) {
             appendTimezoneOption(els.setTimezone, opt);
           });
         }

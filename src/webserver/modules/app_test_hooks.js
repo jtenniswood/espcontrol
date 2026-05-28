@@ -154,6 +154,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     buttonConfigNeedsMigration: buttonConfigNeedsMigration,
     subpageConfigNeedsMigration: subpageConfigNeedsMigration,
     normalizeTemperatureUnit: normalizeTemperatureUnit,
+    defaultTimezoneOptions: defaultTimezoneOptions,
+    timezoneOptionsWithFallback: timezoneOptionsWithFallback,
     normalizeScreensaverAction: normalizeScreensaverAction,
     screensaverActionOption: screensaverActionOption,
     normalizeScreensaverDimmedBrightness: normalizeScreensaverDimmedBrightness,

@@ -67,11 +67,9 @@ registerButtonType("timezone", {
     tzSelect.className = "sp-select";
     tzSelect.id = helpers.idPrefix + "timezone";
 
-    var options = [];
-    if (typeof state !== "undefined" && state.timezoneOptions.length) {
-      options = state.timezoneOptions.slice();
-    }
-    if (options.indexOf(b.entity) === -1) options.unshift(b.entity);
+    var options = typeof state !== "undefined"
+      ? timezoneOptionsWithFallback(state.timezoneOptions, b.entity)
+      : [b.entity];
 
     options.forEach(function (opt) {
       appendTimezoneOption(tzSelect, opt);
