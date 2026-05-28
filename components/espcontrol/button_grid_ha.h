@@ -49,7 +49,7 @@ inline void ha_action_add_entity(esphome::api::HomeassistantActionRequest &req,
 }
 
 inline bool ha_action_send(esphome::api::HomeassistantActionRequest &req) {
-  if (!ha_api_connected()) return false;
+  if (!ha_api_state_connected()) return false;
   esphome::api::global_api_server->send_homeassistant_action(req);
   return true;
 }

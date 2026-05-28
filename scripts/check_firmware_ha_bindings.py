@@ -80,6 +80,15 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
 
     if "ha_cancel_action_response_callback" not in text or "handle_action_response" not in text:
         errors.append(f"{rel}: expose a helper to cancel stale HA action response callbacks")
+    action_send_match = re.search(
+        r"inline\s+bool\s+ha_action_send\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        text,
+        re.DOTALL,
+    )
+    if not action_send_match:
+        errors.append(f"{rel}: missing ha_action_send helper")
+    elif "ha_api_state_connected()" not in action_send_match.group("body"):
+        errors.append(f"{rel}: send Home Assistant actions only after state subscription is ready")
 
     return errors
 
@@ -425,9 +434,22 @@ def run_self_test() -> int:
             "button_grid_ha.h": (
                 "inline bool ha_subscribe_state() {\n  return true;\n}\n"
                 "inline bool ha_subscribe_attribute() {\n  return true;\n}\n"
+                "inline bool ha_action_send() {\n  return ha_api_state_connected();\n}\n"
             )
         },
         ("expose a helper to cancel stale HA action response callbacks",),
+    )
+    expect_ha_boundary_errors(
+        "action send only checks socket",
+        {
+            "button_grid_ha.h": (
+                "inline bool ha_subscribe_state() {\n  return true;\n}\n"
+                "inline bool ha_subscribe_attribute() {\n  return true;\n}\n"
+                "inline bool ha_cancel_action_response_callback() {\n  handle_action_response(); return true;\n}\n"
+                "inline bool ha_action_send() {\n  return ha_api_connected();\n}\n"
+            )
+        },
+        ("send Home Assistant actions only after state subscription is ready",),
     )
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
