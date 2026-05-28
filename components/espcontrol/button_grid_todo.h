@@ -660,9 +660,12 @@ inline void subscribe_todo_state(TodoCardCtx *ctx) {
       bool unavailable = ha_state_unavailable_ref(state);
       ctx->available = !unavailable;
       ctx->count_text = unavailable ? "--" : string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-      apply_control_availability(ctx->btn, ctx->btn, ctx->available);
+      apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);
       todo_apply_card_text(ctx);
-      if (todo_modal_ui().active == ctx && !ctx->available) todo_modal_set_status("Could not load");
+      if (todo_modal_ui().active == ctx && !ctx->available) {
+        todo_modal_ui().waiting_for_ha = true;
+        todo_modal_set_status("Waiting for Home Assistant");
+      }
     })
   );
 }

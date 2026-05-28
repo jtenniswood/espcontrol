@@ -139,6 +139,8 @@ def firmware_todo_disconnect_errors(firmware_dir: Path, core_infra_path: Path, r
         errors.append(f"{todo_rel}: retry open todo modals that are waiting for Home Assistant")
     if "ctx->available) return" in todo_text:
         errors.append(f"{todo_rel}: allow todo modals to open while waiting for Home Assistant availability")
+    if "apply_control_availability(ctx->btn, ctx->btn, ctx->available, false)" not in todo_text:
+        errors.append(f"{todo_rel}: keep todo cards tappable while Home Assistant availability is pending")
     if "on_client_disconnected:" not in core_text or "todo_cancel_pending_request" not in core_text:
         errors.append(f"{core_rel}: cancel pending todo requests when the HA API disconnects")
     if "on_client_connected:" not in core_text or "todo_reload_active_modal" not in core_text:
@@ -598,6 +600,28 @@ def run_self_test() -> int:
         "    then:\n"
         "      - lambda: todo_retry_waiting_modal();\n",
         ("allow todo modals to open while waiting",),
+    )
+    expect_todo_disconnect_errors(
+        "availability disables todo tap",
+        "inline void todo_cancel_pending_request(const char *reason) {}\n"
+        "inline void todo_reload_active_modal() {}\n"
+        "inline void todo_retry_waiting_modal() { waiting_for_ha = true; }\n"
+        "inline void todo_card_open_modal(TodoCardCtx *ctx) {\n"
+        "  if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;\n"
+        "}\n"
+        "inline void subscribe_todo_state(TodoCardCtx *ctx) {\n"
+        "  apply_control_availability(ctx->btn, ctx->btn, ctx->available);\n"
+        "}\n",
+        "api:\n"
+        "  on_client_connected:\n"
+        "    - lambda: todo_reload_active_modal();\n"
+        "  on_client_disconnected:\n"
+        "    - lambda: todo_cancel_pending_request(\"api disconnected\");\n"
+        "interval:\n"
+        "  - interval: 5s\n"
+        "    then:\n"
+        "      - lambda: todo_retry_waiting_modal();\n",
+        ("keep todo cards tappable",),
     )
     expect_weather_request_errors(
         "weather request during reconnect",
