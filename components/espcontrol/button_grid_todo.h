@@ -14,7 +14,6 @@ constexpr uint32_t TODO_COMPLETED_CHECK_COLOR = 0xC0C0C0;
 struct TodoItem {
   std::string key;
   std::string summary;
-  bool completed = false;
   bool more = false;
 };
 
@@ -173,16 +172,11 @@ inline std::vector<TodoItem> parse_todo_response_payload(const std::string &payl
     std::string line = payload.substr(start, end - start);
     if (!line.empty()) {
       size_t sep = line.find('|');
-      size_t sep2 = sep == std::string::npos ? std::string::npos : line.find('|', sep + 1);
       std::string key = sep == std::string::npos ? line : line.substr(0, sep);
-      std::string summary = sep == std::string::npos
-        ? line
-        : sep2 == std::string::npos ? line.substr(sep + 1) : line.substr(sep + 1, sep2 - sep - 1);
-      std::string status = sep2 == std::string::npos ? "" : line.substr(sep2 + 1);
+      std::string summary = sep == std::string::npos ? line : line.substr(sep + 1);
       TodoItem item;
       item.key = todo_percent_decode(key);
       item.summary = todo_percent_decode(summary);
-      item.completed = todo_percent_decode(status) == "completed";
       item.more = item.key == "__MORE__";
       items.push_back(item);
     }
@@ -196,7 +190,7 @@ inline void todo_set_top_task_from_items(TodoCardCtx *ctx, const std::vector<Tod
   if (!todo_card_context_valid(ctx) || !ctx->show_top_task) return;
   ctx->top_task_text = "All done";
   for (const auto &item : items) {
-    if (!item.more && !item.completed && !item.summary.empty()) {
+    if (!item.more && !item.summary.empty()) {
       ctx->top_task_text = item.summary;
       break;
     }
@@ -221,10 +215,6 @@ inline bool todo_completed_contains(const TodoModalUi &ui, const TodoItem &item)
   return false;
 }
 
-inline bool todo_item_completed(const TodoModalUi &ui, const TodoItem &item) {
-  return item.completed || todo_completed_contains(ui, item);
-}
-
 inline void todo_completed_remove(const TodoItem &item) {
   TodoModalUi &ui = todo_modal_ui();
   std::vector<TodoItem> kept;
@@ -241,20 +231,6 @@ inline void todo_completed_add(const TodoItem &item) {
   if (todo_completed_contains(ui, item)) return;
   ui.completed_items.push_back(item);
   while (ui.completed_items.size() > TODO_MAX_ITEMS) ui.completed_items.erase(ui.completed_items.begin());
-}
-
-inline bool todo_items_include_completed(const std::vector<TodoItem> &items) {
-  for (const auto &item : items) {
-    if (!item.more && item.completed) return true;
-  }
-  return false;
-}
-
-inline void todo_visible_item_set_completed(const TodoItem &item, bool completed) {
-  TodoModalUi &ui = todo_modal_ui();
-  for (auto &visible : ui.visible_items) {
-    if (todo_items_match(visible, item)) visible.completed = completed;
-  }
 }
 
 inline void todo_modal_cancel_loading_timer() {
@@ -324,7 +300,6 @@ inline void todo_modal_clear_items() {
 }
 
 inline void request_todo_items(TodoCardCtx *ctx);
-inline void request_todo_completed_items(TodoCardCtx *ctx);
 inline void todo_modal_render_items(TodoCardCtx *ctx, const std::vector<TodoItem> &items);
 
 inline void send_todo_status_action(TodoCardCtx *ctx, const TodoItem &item, const char *status) {
@@ -457,7 +432,7 @@ inline void todo_modal_render_items(TodoCardCtx *ctx, const std::vector<TodoItem
   if (ctx->show_top_task) {
     std::vector<TodoItem> top_items;
     for (const auto &item : items) {
-      if (item.more || todo_item_completed(ui, item)) continue;
+      if (item.more || todo_completed_contains(ui, item)) continue;
       top_items.push_back(item);
       break;
     }
@@ -466,12 +441,11 @@ inline void todo_modal_render_items(TodoCardCtx *ctx, const std::vector<TodoItem
 
   bool has_visible_item = false;
   for (const auto &item : items) {
-    if (item.more || !todo_item_completed(ui, item)) has_visible_item = true;
+    if (item.more || !todo_completed_contains(ui, item)) has_visible_item = true;
   }
 
   if (!has_visible_item &&
-      (!ctx->show_completed_items ||
-       (ui.completed_items.empty() && !todo_items_include_completed(items)))) {
+      (ui.completed_items.empty() || !ctx->show_completed_items)) {
     todo_modal_set_status("All done");
     return;
   }
@@ -493,7 +467,7 @@ inline void todo_modal_render_items(TodoCardCtx *ctx, const std::vector<TodoItem
   if (content_w <= 0) content_w = layout.panel_w - layout.inset * 2;
   int click_index = 0;
   for (const auto &item : items) {
-    if (!item.more && todo_item_completed(ui, item)) continue;
+    if (!item.more && todo_completed_contains(ui, item)) continue;
     if (item.more) {
       std::string label = item.summary.empty() ? "More items" : item.summary + " more";
       todo_modal_create_list_item_row(
@@ -521,29 +495,7 @@ inline void todo_modal_render_items(TodoCardCtx *ctx, const std::vector<TodoItem
     click_index++;
   }
 
-  if (ctx->show_completed_items &&
-      (!ui.completed_items.empty() || todo_items_include_completed(items))) {
-    for (const auto &item : items) {
-      if (item.more || !item.completed || todo_completed_contains(ui, item)) continue;
-      if (click_index >= TODO_MAX_ITEMS) break;
-      lv_obj_t *row = todo_modal_create_list_item_row(
-        ui.list, item.summary.empty() ? "(untitled)" : item.summary,
-        true, true, true, true, row_h, content_w, checkbox_size, item_gap,
-        ctx->accent_color, ctx->label_font, ctx->icon_font,
-        ctx->width_compensation_percent);
-      ui.item_clicks[click_index].ctx = ctx;
-      ui.item_clicks[click_index].item = item;
-      lv_obj_add_event_cb(row, [](lv_event_t *e) {
-        TodoItemClick *click = (TodoItemClick *)lv_event_get_user_data(e);
-        if (!click || !click->ctx) return;
-        TodoCardCtx *click_ctx = click->ctx;
-        TodoItem item = click->item;
-        todo_visible_item_set_completed(item, false);
-        todo_modal_render_items(click_ctx, todo_modal_ui().visible_items);
-        send_todo_restore_action(click_ctx, item);
-      }, LV_EVENT_CLICKED, &ui.item_clicks[click_index]);
-      click_index++;
-    }
+  if (ctx->show_completed_items && !ui.completed_items.empty()) {
     for (const auto &completed : ui.completed_items) {
       if (click_index >= TODO_MAX_ITEMS) break;
       lv_obj_t *row = todo_modal_create_list_item_row(
@@ -567,21 +519,17 @@ inline void todo_modal_render_items(TodoCardCtx *ctx, const std::vector<TodoItem
   }
 }
 
-inline std::string todo_items_response_template(const std::string &entity_id,
-                                                const char *status) {
-  std::string wanted_status = status ? status : "";
+inline std::string todo_items_response_template(const std::string &entity_id) {
   return std::string("{% set entity = '") + entity_id + "' %}"
-    "{% set wanted_status = '" + wanted_status + "' %}"
     "{% set items = response.get(entity, {}).get('items', []) %}"
     "{% set ns = namespace(count=0, out='') %}"
     "{% macro esc(v) -%}{{ (v|string)|replace('%','%25')|replace('|','%7C')|replace('\\n','%0A')|replace('\\r','%0D') }}{%- endmacro %}"
     "{% for item in items %}"
-    "{% set item_status = item.status if item.status is defined else 'needs_action' %}"
-    "{% if (not wanted_status and (item_status == 'needs_action' or item_status == 'completed')) or item_status == wanted_status %}"
+    "{% if item.status is not defined or item.status == 'needs_action' %}"
     "{% if ns.count < " + std::to_string(TODO_MAX_ITEMS) + " %}"
     "{% set summary = item.summary if item.summary is defined else '' %}"
     "{% set key = item.uid if item.uid is defined and item.uid else summary %}"
-    "{% set ns.out = ns.out ~ ('\\n' if ns.out else '') ~ esc(key) ~ '|' ~ esc(summary) ~ '|' ~ esc(item_status) %}"
+    "{% set ns.out = ns.out ~ ('\\n' if ns.out else '') ~ esc(key) ~ '|' ~ esc(summary) %}"
     "{% endif %}"
     "{% set ns.count = ns.count + 1 %}"
     "{% endif %}"
@@ -597,12 +545,11 @@ inline uint32_t next_todo_items_call_id() {
 
 inline bool todo_begin_get_items_request(esphome::api::HomeassistantActionRequest &req,
                                          TodoCardCtx *ctx,
-                                         const char *status,
                                          uint32_t call_id) {
   if (!todo_card_context_valid(ctx) || !todo_entity_id_safe(ctx->entity_id)) return false;
   if (!ha_action_begin(req, "todo.get_items", false, 1, call_id)) return false;
   req.wants_response = true;
-  std::string response_template = todo_items_response_template(ctx->entity_id, status);
+  std::string response_template = todo_items_response_template(ctx->entity_id);
   req.response_template = decltype(req.response_template)(response_template);
   ha_action_add_entity(req, ctx->entity_id);
   return true;
@@ -615,7 +562,7 @@ inline void request_todo_items(TodoCardCtx *ctx) {
 
   esphome::api::HomeassistantActionRequest req;
   uint32_t call_id = next_todo_items_call_id();
-  if (!todo_begin_get_items_request(req, ctx, "needs_action", call_id)) {
+  if (!todo_begin_get_items_request(req, ctx, call_id)) {
     todo_modal_set_status("Could not load");
     return;
   }
@@ -643,48 +590,11 @@ inline void request_todo_items(TodoCardCtx *ctx) {
       std::vector<TodoItem> items =
         parse_todo_response_payload(std::string(payload).substr(0, TODO_RESPONSE_TEXT_MAX_LEN));
       todo_modal_render_items(ctx, items);
-      if (ctx && ctx->show_completed_items) request_todo_completed_items(ctx);
     });
   if (!registered || !ha_action_send(req)) {
     todo_modal_cancel_loading_timer();
     todo_modal_set_status("Could not load");
   }
-}
-
-inline void request_todo_completed_items(TodoCardCtx *ctx) {
-  if (!todo_card_context_valid(ctx) || !ctx->show_completed_items ||
-      todo_modal_ui().active != ctx) return;
-
-  esphome::api::HomeassistantActionRequest req;
-  uint32_t call_id = next_todo_items_call_id();
-  if (!todo_begin_get_items_request(req, ctx, "completed", call_id)) return;
-
-  ha_register_action_response_callback(
-    req.call_id,
-    [ctx](const esphome::api::ActionResponse &response) {
-      TodoModalUi &ui = todo_modal_ui();
-      if (ui.active != ctx) return;
-      if (!response.is_success()) {
-        ESP_LOGW("todo", "Completed todo request failed for %s: %s",
-          ctx && !ctx->entity_id.empty() ? ctx->entity_id.c_str() : "todo",
-          response.get_error_message().c_str());
-        return;
-      }
-      auto json = response.get_json();
-      const char *payload = json["response"].as<const char *>();
-      if (payload == nullptr) return;
-      std::vector<TodoItem> completed_items =
-        parse_todo_response_payload(std::string(payload).substr(0, TODO_RESPONSE_TEXT_MAX_LEN));
-      std::vector<TodoItem> merged = ui.visible_items;
-      merged.reserve(merged.size() + completed_items.size());
-      for (auto item : completed_items) {
-        if (item.more) continue;
-        item.completed = true;
-        merged.push_back(item);
-      }
-      todo_modal_render_items(ctx, merged);
-    });
-  ha_action_send(req);
 }
 
 inline void request_todo_top_task(TodoCardCtx *ctx) {
@@ -693,7 +603,7 @@ inline void request_todo_top_task(TodoCardCtx *ctx) {
 
   esphome::api::HomeassistantActionRequest req;
   uint32_t call_id = next_todo_items_call_id();
-  if (!todo_begin_get_items_request(req, ctx, "needs_action", call_id)) return;
+  if (!todo_begin_get_items_request(req, ctx, call_id)) return;
 
   ha_register_action_response_callback(
     req.call_id,

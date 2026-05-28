@@ -15,7 +15,7 @@ Todo cards show a Home Assistant `todo.*` list on the panel. The card shows the 
 3. Set **Label** if you want a custom list name.
 4. Use **Card Label** to choose whether the card shows the list name or the incomplete item count.
 5. Use **Status** to choose whether the card shows the selected icon, the item counter, or the top task.
-6. Use **Show Completed Items** to choose whether checked-off items stay visible in a completed section.
+6. Use **Show Completed Items** to choose whether items checked off on the panel stay visible in a completed section.
 
 ## How It Works
 
@@ -32,7 +32,7 @@ Make sure the device is allowed to perform Home Assistant actions. See [Home Ass
 
 This first test version is intentionally small:
 
-- it shows incomplete items, with completed items optional
+- it shows incomplete items, with locally checked-off items optional
 - it can complete items
 - it can optionally show and restore completed items
 - it cannot add, delete, or rename items
