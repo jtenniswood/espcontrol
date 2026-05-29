@@ -123,7 +123,10 @@ inline bool large_number_square_card_layout(int row_span, int col_span) {
 }
 
 inline bool card_large_date_time_layout(const ParsedCfg &p, int row_span, int col_span) {
-  if (p.type == "clock") return row_span == 1 && col_span == 2;
+  if (p.type == "clock") {
+    return large_number_square_card_layout(row_span, col_span) ||
+           (row_span == 1 && col_span == 2);
+  }
   return large_number_square_card_layout(row_span, col_span);
 }
 

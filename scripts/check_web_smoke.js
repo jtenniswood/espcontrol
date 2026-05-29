@@ -308,9 +308,10 @@ const clockPreview = hooks.buttonTypePreviewFor("clock", {
   cardSize: 4,
   clockFormat: "24h",
 });
-assert(!clockPreview.iconHtml.includes("sp-sensor-preview-large"), "clock 2x2 preview does not support large numbers");
 assert(previewSensorValue(clockPreview).includes(":"), "clock preview renders a time value");
+assert(clockPreview.iconHtml.includes("sp-sensor-preview-large"), "clock 2x2 preview supports large numbers");
 assert.strictEqual(clockPreview.labelHtml, "", "clock preview does not render a date label");
+assert.strictEqual(clockPreview.buttonClass, undefined, "clock 2x2 preview uses the standard wrapper");
 
 const wideClockPreview = hooks.buttonTypePreviewFor("clock", {
   type: "clock",

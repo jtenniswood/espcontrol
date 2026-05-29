@@ -23,7 +23,7 @@ var DATE_TIME_CARD_METADATA = {
     idSuffix: "large-date-time-numbers",
     supportedCardSize: function (b, helpers) {
       var cardSize = (helpers && helpers.cardSize) || 1;
-      return dateTimeCardMode(b) === "clock" ? cardSize === 3 : cardSize === 4;
+      return dateTimeCardMode(b) === "clock" ? cardSize === 3 || cardSize === 4 : cardSize === 4;
     },
     hideLabelCardSizes: [3],
   },
