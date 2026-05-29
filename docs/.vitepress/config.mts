@@ -426,6 +426,7 @@ export default defineConfig({
           { text: 'Media', link: '/card-types/media' },
           { text: 'Climate', link: '/card-types/climate' },
           { text: 'Internal', link: '/card-types/internal-relays' },
+          { text: 'Local Action', link: '/card-types/local-actions' },
           { text: 'Subpage', link: '/features/subpages' },
         ],
       },

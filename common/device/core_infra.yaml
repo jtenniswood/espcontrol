@@ -20,6 +20,7 @@ api:
     - lambda: |-
         ESP_LOGI("api", "Home Assistant API client connected");
         if (ha_api_state_connected()) refresh_weather_forecast_cards();
+        register_local_action_endpoint();
     - delay: 2s
     - lambda: |-
         todo_reload_active_modal();

@@ -269,6 +269,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_internal_relay_card(s, p);
     return;
   }
+  if (p.type == "local") {
+    setup_local_action_card(s, p);
+    return;
+  }
   if (p.type == "action") {
     if (action_card_option_select(p)) {
       setup_option_select_card(s, p, palette.has_sensor_color, palette.sensor_val);
@@ -921,6 +925,9 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "local") {
+      continue;
+    }
     if (p.type == "media") {
       if (!p.entity.empty()) {
         std::string mode = media_card_mode(p.sensor);
@@ -1559,6 +1566,16 @@ inline void grid_phase2(
             ClimateControlCtx *ctx = (ClimateControlCtx *)lv_event_get_user_data(e);
             if (ctx) climate_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
+        }
+        continue;
+      }
+      if (sb_cfg.type == "local") {
+        if (!sb_cfg.entity.empty()) {
+          std::string *key = new std::string(sb_cfg.entity);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            std::string *k = (std::string *)lv_event_get_user_data(e);
+            if (k) send_local_action(*k);
+          }, LV_EVENT_CLICKED, key);
         }
         continue;
       }
