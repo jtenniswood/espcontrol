@@ -188,17 +188,14 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_switch", 
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_oscillate", true, true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("option_select", false, false), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("option_select", false, true), false);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", false, false), true);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, false), true);
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, true), true);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", false, false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, true), false);
 assert(
   hooks.buttonTypePickerKeysForExperimental(false, false, "fan_speed").includes("fan_speed"),
   "saved fan cards remain represented while hidden"
 );
-assert(
-  hooks.buttonTypePickerKeysForExperimental(false, false, "todo").includes("todo"),
-  "todo cards appear in the picker without the developer flag"
-);
+assert(!hooks.buttonTypeRuntimeSpec("todo"), "todo card type is not registered");
 
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "\u00b0F");
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "\u00b0C");
@@ -422,35 +419,6 @@ const sensorTextPreview = hooks.buttonTypePreviewFor("sensor", {
 });
 assert(sensorTextPreview.iconHtml.includes("mdi-washing-machine"), "sensor text preview uses the selected icon");
 assert(sensorTextPreview.labelHtml.includes("mdi-format-text"), "sensor text preview uses the text badge");
-
-const todoPreview = hooks.buttonTypePreviewFor("todo", {
-  entity: "todo.shopping",
-  label: "Shopping",
-  icon: "Check",
-  type: "todo",
-});
-assert(todoPreview.iconHtml.includes("sp-sensor-value"), "todo preview shows an item count");
-assert(!todoPreview.iconHtml.includes("sp-sensor-unit"), "todo preview does not show an item unit");
-assert(todoPreview.labelHtml.includes("Shopping"), "todo preview uses the configured label");
-assert(todoPreview.labelHtml.includes("mdi-check"), "todo preview uses the check badge");
-const todoLargePreview = hooks.buttonTypePreviewFor("todo", {
-  entity: "todo.shopping",
-  label: "Shopping",
-  icon: "Check",
-  type: "todo",
-  options: "large_numbers",
-}, { cardSize: 4 });
-assert(todoLargePreview.iconHtml.includes("sp-sensor-preview-large"), "todo counter preview supports large numbers");
-const todoIconPreview = hooks.buttonTypePreviewFor("todo", {
-  entity: "todo.shopping",
-  label: "Shopping",
-  icon: "Format List Checks",
-  type: "todo",
-  options: "count_display=icon",
-});
-assert(todoIconPreview.iconHtml.includes("mdi-format-list-checks"), "todo icon display preview uses the selected icon");
-assert(!todoIconPreview.iconHtml.includes("sp-sensor-value"), "todo icon display preview hides the counter");
-assert.deepStrictEqual(Array.from(hooks.buttonTypeRuntimeSpec("todo").domains), ["todo"], "todo entity field is limited to todo entities");
 
 const legacyForecastPreview = hooks.buttonTypePreviewFor("weather_forecast", {
   entity: "weather.forecast_home",

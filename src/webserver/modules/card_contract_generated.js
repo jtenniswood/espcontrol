@@ -898,41 +898,6 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
-  "todo": {
-    "label": "Todo",
-    "allowInSubpage": true,
-    "domains": [
-      "todo"
-    ],
-    "options": [
-      {
-        "name": "count_display",
-        "label": "Icon Display",
-        "kind": "choice",
-        "values": [
-          "icon",
-          "count"
-        ],
-        "defaultValue": "count"
-      },
-      {
-        "name": "large_numbers",
-        "label": "Large Todo Numbers",
-        "kind": "flag"
-      }
-    ],
-    "default": {
-      "entity": "",
-      "label": "",
-      "icon": "Check",
-      "icon_on": "Auto",
-      "sensor": "",
-      "unit": "",
-      "type": "todo",
-      "precision": "",
-      "options": ""
-    }
-  },
   "sensor": {
     "label": "Sensor",
     "allowInSubpage": true,
@@ -1214,7 +1179,6 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "climate": "H",
   "push": "P",
   "webhook": "WH",
-  "todo": "TD",
   "internal": "I",
   "subpage": "G"
 };
@@ -1247,7 +1211,6 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "H": "climate",
   "P": "push",
   "WH": "webhook",
-  "TD": "todo",
   "I": "internal",
   "G": "subpage"
 };
@@ -1269,7 +1232,6 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
   "clock": true,
   "climate": true,
   "media": true,
-  "todo": true,
   "subpage": true,
   "timezone": true
 };

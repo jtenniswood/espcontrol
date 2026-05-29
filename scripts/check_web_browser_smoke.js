@@ -58,7 +58,6 @@ const BUTTON_FIXTURES = [
   "sensor.energy;Energy;Gauge;Auto;sensor.energy;W;sensor;0",
   "climate.hall;Hall;Thermostat;Auto;;;climate;;",
   "media_player.living;Media;Auto;Auto;play_pause;;media;;",
-  "todo.shopping;Shopping;Check;Auto;;;todo;;",
 ];
 
 function htmlFor(slug) {

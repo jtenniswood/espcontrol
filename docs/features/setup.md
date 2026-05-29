@@ -34,7 +34,6 @@ The **Type** dropdown uses these card names on the device:
 | **[Lights](/card-types/lights)** | Controls a light as a switch, brightness slider, or colour temperature slider. | Yes, as a light entity |
 | **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, helper action, or Option Select picker. | Yes |
 | **[Webhook](/card-types/webhooks)** | Calls an HTTP URL directly from the panel for other automation platforms and webhook services. | URL |
-| **[Todo](/card-types/todo)** | Shows a Home Assistant todo list and lets you complete items. | Yes, as a `todo.*` entity |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
 | **[Sensor](/card-types/sensors)** | Shows a live numeric reading or text state. | Yes, as **Sensor Entity** |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |

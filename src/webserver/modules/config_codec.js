@@ -98,9 +98,6 @@ function normalizeButtonConfig(b) {
   if (b && b.type === "webhook") {
     if (typeof normalizeWebhookConfig === "function") normalizeWebhookConfig(b);
   }
-  if (b && b.type === "todo") {
-    if (typeof normalizeTodoConfig === "function") normalizeTodoConfig(b);
-  }
   if (b && b.type === "light_switch") {
     b.sensor = "";
     b.unit = "";
@@ -146,7 +143,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "todo" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -188,9 +185,6 @@ var ALARM_LABEL_DISPLAY_OPTION = "label_display";
 var GARAGE_LABEL_DISPLAY_OPTION = "label_display";
 var CLIMATE_LABEL_DISPLAY_OPTION = "label_display";
 var CLIMATE_NUMBER_DISPLAY_OPTION = "number_display";
-var TODO_COUNT_DISPLAY_OPTION = "count_display";
-var TODO_LABEL_DISPLAY_OPTION = "label_display";
-var TODO_COMPLETED_DISPLAY_OPTION = "completed_display";
 var MEDIA_VOLUME_MAX_OPTION = "volume_max";
 var SUBPAGE_KIND_OPTION = "subpage_kind";
 var ALARM_ACTIONS = [
@@ -422,86 +416,6 @@ function sensorLargeNumbersEnabled(b) {
 function setSensorLargeNumbersEnabled(b, enabled) {
   if (!b) return "";
   b.options = setConfigOption(b.options, SENSOR_LARGE_NUMBERS_OPTION, enabled);
-  return b.options;
-}
-
-function normalizeTodoCountDisplayMode(value) {
-  return value === "icon" ? "icon" : "count";
-}
-
-function normalizeTodoLabelDisplayMode(value) {
-  return "label";
-}
-
-function normalizeTodoCompletedDisplayMode(value) {
-  return "hide";
-}
-
-function normalizeTodoOptions(options) {
-  var countMode = normalizeTodoCountDisplayMode(
-    configOptionValue(options, TODO_COUNT_DISPLAY_OPTION));
-  var out = countMode === "icon"
-    ? setConfigOptionValue("", TODO_COUNT_DISPLAY_OPTION, countMode)
-    : "";
-  if (countMode === "count" && configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION)) {
-    out = setConfigOption(out, SENSOR_LARGE_NUMBERS_OPTION, true);
-  }
-  return out;
-}
-
-function todoCardShowCount(b) {
-  return todoCardStatusMode(b) === "count";
-}
-
-function todoCardStatusMode(b) {
-  return normalizeTodoCountDisplayMode(
-    configOptionValue(b && b.options, TODO_COUNT_DISPLAY_OPTION));
-}
-
-function todoCardShowsTopTask(b) {
-  return false;
-}
-
-function setTodoCardShowCount(b, enabled) {
-  if (!b) return "";
-  b.options = setConfigOptionValue(
-    b.options,
-    TODO_COUNT_DISPLAY_OPTION,
-    enabled ? "" : "icon"
-  );
-  b.options = normalizeTodoOptions(b.options);
-  return b.options;
-}
-
-function setTodoCardStatusMode(b, value) {
-  if (!b) return "";
-  var normalized = normalizeTodoCountDisplayMode(value);
-  b.options = setConfigOptionValue(
-    b.options,
-    TODO_COUNT_DISPLAY_OPTION,
-    normalized === "count" ? "" : normalized
-  );
-  b.options = normalizeTodoOptions(b.options);
-  return b.options;
-}
-
-function todoCardLabelShowsCount(b) {
-  return false;
-}
-
-function setTodoCardLabelShowsCount(b, enabled) {
-  if (!b) return "";
-  b.options = "";
-  return b.options;
-}
-
-function todoCardShowsCompletedItems(b) {
-  return false;
-}
-
-function setTodoCardShowsCompletedItems(b, enabled) {
-  if (!b) return "";
-  b.options = "";
   return b.options;
 }
 
@@ -1072,13 +986,6 @@ function buttonConfigFields(b) {
     iconOn = webhookButton.icon_on || "Auto";
     precision = webhookButton.precision || "";
     options = webhookButton.options || "";
-  } else if (type === "todo") {
-    sensor = "";
-    unit = "";
-    precision = "";
-    iconOn = "Auto";
-    if (!icon || icon === "Auto") icon = "Check";
-    options = normalizeTodoOptions(options);
   } else if (type === "sensor") {
     options = normalizeSensorOptions(options, precision);
   } else if (type === "door_window") {

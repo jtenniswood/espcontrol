@@ -271,7 +271,6 @@ assertButtonTypeSpecBacked("timezone", "timezone card");
 assertButtonTypeSpecBacked("weather", "weather card");
 assertButtonTypeSpecBacked("push", "push card");
 assertButtonTypeSpecBacked("webhook", "webhook card");
-assertButtonTypeSpecBacked("todo", "todo card");
 assertButtonTypeSpecBacked("internal", "internal relay card");
 assertButtonTypeSpecBacked("garage", "garage card");
 assertButtonTypeSpecBacked("lock", "lock card");
@@ -1557,59 +1556,10 @@ assert.strictEqual(
   hooks.buttonTypePickerKeysForExperimental(false, false, "fan_speed").indexOf("fan_speed") >= 0,
   true,
   "saved fan type remains selectable while hidden");
-
-assertButtonRoundTrip(hooks, "todo button", {
-  entity: "todo.shopping",
-  label: "Shopping",
-  icon: "Check",
-  icon_on: "Auto",
-  sensor: "",
-  unit: "",
-  type: "todo",
-  precision: "",
-  options: "",
-}, false);
-assert.deepStrictEqual(Array.from(hooks.cardContractDomains("todo")), ["todo"], "todo card only accepts todo entities");
-assert.deepStrictEqual(
-  Array.from(hooks.cardContractOptions("todo"), (option) => option.name),
-  ["count_display", "large_numbers"],
-  "todo card exposes the icon/counter display and large-number options"
-);
-assert.strictEqual(hooks.todoCardShowCount({ type: "todo", options: "" }), true, "todo shows item count by default");
-assert.strictEqual(hooks.todoCardShowCount({ type: "todo", options: "count_display=icon" }), false, "todo can show the configured icon instead of the counter");
-assert.strictEqual(
-  hooks.cardLargeNumbersEnabled({ type: "todo", options: "large_numbers" }),
-  true,
-  "todo count display supports large numbers"
-);
-assert.strictEqual(
-  hooks.parseButtonConfig("todo.shopping;Shopping;Check;Auto;;;todo;;large_numbers").options,
-  "large_numbers",
-  "todo count display preserves large number setting"
-);
-assert.strictEqual(
-  hooks.parseButtonConfig("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=icon,large_numbers").options,
-  "count_display=icon",
-  "todo icon display drops large number setting"
-);
-assert.strictEqual(hooks.todoCardStatusMode({ type: "todo", options: "count_display=top_task" }), "count", "todo falls back to counter for legacy top task options");
-assert.strictEqual(hooks.todoCardShowsTopTask({ type: "todo", options: "count_display=top_task" }), false, "todo does not use top task mode");
-assert.strictEqual(hooks.todoCardLabelShowsCount({ type: "todo", options: "" }), false, "todo label is static by default");
-assert.strictEqual(hooks.todoCardLabelShowsCount({ type: "todo", options: "label_display=count" }), false, "todo ignores legacy count label options");
-assert.strictEqual(hooks.todoCardShowsCompletedItems({ type: "todo", options: "" }), false, "todo hides completed items");
-assert.strictEqual(hooks.todoCardShowsCompletedItems({ type: "todo", options: "completed_display=hide" }), false, "todo can hide completed items");
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", false, false), true, "todo picker visible without developer flag");
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, false), true, "todo picker remains visible with developer flag");
-assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", true, true), true, "todo picker visible in subpages");
-assert.strictEqual(
-  loadHooks("?developer=experimental").buttonTypeVisibleInPickerForExperimental("todo", false, false),
-  true,
-  "todo picker remains visible with developer URL flag"
-);
-assert.strictEqual(
-  hooks.buttonTypePickerKeysForExperimental(false, false, "todo").indexOf("todo") >= 0,
-  true,
-  "saved todo type remains visible without developer flag");
+assert.strictEqual(hooks.buttonTypeRuntimeSpec("todo"), null, "todo card type is removed from the webserver");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("todo", false, false), false, "todo picker is removed");
+assert.deepStrictEqual(Array.from(hooks.cardContractDomains("todo")), [], "todo card has no webserver entity contract");
+assert.strictEqual(hooks.cardLargeNumbersEnabled({ type: "todo", options: "large_numbers" }), false, "todo no longer supports webserver large numbers");
 
 const subpageStateOff = buttonShape({
   label: "Windows",
@@ -2418,19 +2368,6 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|WH,https%3A//
     }),
   ],
 }, "compact webhook subpage parse");
-
-assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|TD,todo.shopping,Shopping,Check")), {
-  order: ["1", "B"],
-  buttons: [
-    buttonShape({
-      entity: "todo.shopping",
-      label: "Shopping",
-      icon: "Check",
-      icon_on: "Auto",
-      type: "todo",
-    }),
-  ],
-}, "compact todo subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|U,input_select.house_mode,House%20Mode,Chevron%20Down")), {
   order: ["1", "B"],

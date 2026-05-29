@@ -197,7 +197,6 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "option_select") return "Option Select";
   if (type == "push") return "Trigger";
   if (type == "webhook") return "Webhook";
-  if (type == "todo") return "Todo";
   if (type == "sensor") return "Sensor";
   if (type == "slider") return "Slider";
   if (type == "subpage") return "Subpage";
@@ -233,7 +232,6 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "option_select") return true;
   if (type == "push") return true;
   if (type == "webhook") return true;
-  if (type == "todo") return true;
   if (type == "sensor") return true;
   if (type == "slider") return true;
   if (type == "subpage") return false;
@@ -269,7 +267,6 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "option_select") return "Flash";
   if (type == "push") return "Gesture Tap";
   if (type == "webhook") return "Auto";
-  if (type == "todo") return "Check";
   if (type == "sensor") return "Auto";
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
@@ -305,7 +302,6 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "option_select") return "Auto";
   if (type == "push") return "Auto";
   if (type == "webhook") return "Auto";
-  if (type == "todo") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
@@ -341,8 +337,8 @@ inline bool card_contract_large_numbers_supported(const std::string &type, const
   if (type == "sensor") return precision != "text";
   if (type == "weather") return precision == "today" || precision == "tomorrow";
   return type == "" || type == "action" || type == "calendar" || type == "clock" ||
-         type == "climate" || type == "media" || type == "todo" ||
-         type == "subpage" || type == "timezone";
+         type == "climate" || type == "media" || type == "subpage" ||
+         type == "timezone";
 }
 
 inline const char *card_contract_subpage_type_code(const std::string &type) {
@@ -374,7 +370,6 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "climate") return "H";
   if (type == "push") return "P";
   if (type == "webhook") return "WH";
-  if (type == "todo") return "TD";
   if (type == "internal") return "I";
   if (type == "subpage") return "G";
   return type.c_str();
@@ -409,7 +404,6 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "H") return "climate";
   if (code == "P") return "push";
   if (code == "WH") return "webhook";
-  if (code == "TD") return "todo";
   if (code == "I") return "internal";
   if (code == "G") return "subpage";
   return code;

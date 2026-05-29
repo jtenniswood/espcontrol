@@ -30,9 +30,6 @@
         "rotateWidthCompensation": true
       },
       "web": {
-        "disabledCardTypes": [
-          "todo"
-        ],
         "dragMode": "swap",
         "dragAnimation": true,
         "screen": {
@@ -165,9 +162,6 @@
         "displayOffset": 180
       },
       "web": {
-        "disabledCardTypes": [
-          "todo"
-        ],
         "dragMode": "displace",
         "dragAnimation": true,
         "screen": {
@@ -292,9 +286,6 @@
         ]
       },
       "web": {
-        "disabledCardTypes": [
-          "todo"
-        ],
         "dragMode": "swap",
         "dragAnimation": true,
         "screen": {
@@ -427,9 +418,6 @@
         }
       ],
       "web": {
-        "disabledCardTypes": [
-          "todo"
-        ],
         "dragMode": "displace",
         "dragAnimation": true,
         "screen": {
@@ -572,9 +560,6 @@
         }
       ],
       "web": {
-        "disabledCardTypes": [
-          "todo"
-        ],
         "dragMode": "displace",
         "dragAnimation": true,
         "screen": {

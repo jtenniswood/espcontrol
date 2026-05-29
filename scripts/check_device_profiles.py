@@ -71,12 +71,6 @@ def test_generated_web(profile_slugs: list[str]) -> None:
         assert slug in text, f"{slug}: generated web bundle has wrong device id"
 
 
-def test_todo_card_disabled_for_all_devices(profiles: dict[str, dict]) -> None:
-    for slug, profile in profiles.items():
-        disabled = profile.get("web", {}).get("disabledCardTypes", [])
-        assert "todo" in disabled, f"{slug}: todo card must stay hidden on every device"
-
-
 def test_generated_yaml(profiles: dict[str, dict]) -> None:
     for slug, profile in profiles.items():
         package_path = ROOT / "devices" / slug / "packages.yaml"
@@ -116,7 +110,6 @@ def main() -> int:
     assert profile_slugs == compatibility_required_slugs(), "current compatibility device slug fixture is stale"
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profile_slugs)
-    test_todo_card_disabled_for_all_devices(profiles)
     test_generated_yaml(profiles)
     test_setup_icon_fonts(profile_slugs)
     test_firmware_matrices(profile_slugs)

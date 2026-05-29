@@ -755,36 +755,6 @@
         "options": ""
       }
     },
-    "todo": {
-      "label": "Todo",
-      "allowInSubpage": true,
-      "domains": ["todo"],
-      "options": [
-        {
-          "name": "count_display",
-          "label": "Icon Display",
-          "kind": "choice",
-          "values": ["icon", "count"],
-          "defaultValue": "count"
-        },
-        {
-          "name": "large_numbers",
-          "label": "Large Todo Numbers",
-          "kind": "flag"
-        }
-      ],
-      "default": {
-        "entity": "",
-        "label": "",
-        "icon": "Check",
-        "icon_on": "Auto",
-        "sensor": "",
-        "unit": "",
-        "type": "todo",
-        "precision": "",
-        "options": ""
-      }
-    },
     "sensor": {
       "label": "Sensor",
       "allowInSubpage": true,
@@ -1037,7 +1007,6 @@
     "clock": true,
     "climate": true,
     "media": true,
-    "todo": true,
     "subpage": true,
     "timezone": true
   },
@@ -1070,7 +1039,6 @@
     "climate": "H",
     "push": "P",
     "webhook": "WH",
-    "todo": "TD",
     "internal": "I",
     "subpage": "G"
   }

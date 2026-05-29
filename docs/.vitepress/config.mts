@@ -413,7 +413,6 @@ export default defineConfig({
           { text: 'Switch', link: '/card-types/switches' },
           { text: 'Lights', link: '/card-types/lights' },
           { text: 'Action', link: '/card-types/actions' },
-          { text: 'Todo', link: '/card-types/todo' },
           { text: 'Trigger', link: '/card-types/buttons' },
           { text: 'Sensor', link: '/card-types/sensors' },
           { text: 'Doors & Windows', link: '/card-types/doors-windows' },

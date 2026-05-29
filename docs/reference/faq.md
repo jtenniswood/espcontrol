@@ -65,7 +65,7 @@ The panel includes hundreds of icons from the Material Design Icons set. If the 
 
 ## What Card Types Are Available?
 
-The setup page currently includes Switch, Lights, Action, Todo, Trigger, Sensor, Doors & Windows, Slider, Cover, Garage Door, Lock, Date & Time, Clock, World Clock, Weather, Media, Climate, Internal Switches, and Subpage cards.
+The setup page currently includes Switch, Lights, Action, Trigger, Sensor, Doors & Windows, Slider, Cover, Garage Door, Lock, Date & Time, Clock, World Clock, Weather, Media, Climate, Internal Switches, and Subpage cards.
 
 ## How Many Cards Can I Have?
 
