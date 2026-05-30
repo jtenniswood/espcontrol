@@ -28,9 +28,15 @@ struct EpaperDashboardTile {
   std::string icon_on;
   std::string unit;
   std::string type;
-  std::string value;
-  bool subscribed = false;
-  bool unavailable = false;
+  std::string precision;
+  std::string options;
+  std::string state;
+  std::string sensor_value;
+  std::string action_state_entity;
+  bool state_subscribed = false;
+  bool sensor_subscribed = false;
+  bool state_unavailable = false;
+  bool sensor_unavailable = false;
 };
 
 inline std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> &epaper_dashboard_tiles() {
@@ -136,11 +142,46 @@ inline bool epaper_dashboard_state_active(const std::string &value) {
   s.reserve(value.size());
   for (char ch : value) s.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
   return s == "on" || s == "open" || s == "unlocked" || s == "detected" ||
-         s == "home" || s == "playing" || s == "heating" || s == "cooling";
+         s == "home" || s == "playing" || s == "heating" || s == "cooling" ||
+         s == "armed_home" || s == "armed_away" || s == "armed_night" ||
+         s == "triggered";
 }
 
 inline bool epaper_dashboard_state_unavailable(const std::string &value) {
   return value == "unavailable" || value == "unknown";
+}
+
+inline std::string epaper_dashboard_option_value(const std::string &options, const char *name) {
+  if (!name || !*name || options.empty()) return "";
+  std::string prefix = std::string(name) + "=";
+  size_t start = 0;
+  while (start <= options.length()) {
+    size_t end = options.find(',', start);
+    if (end == std::string::npos) end = options.length();
+    if (options.compare(start, prefix.length(), prefix) == 0) {
+      return epaper_dashboard_decode_field(options.substr(start + prefix.length(), end - start - prefix.length()));
+    }
+    start = end + 1;
+  }
+  return "";
+}
+
+inline std::string epaper_dashboard_pretty_state(const std::string &value) {
+  std::string text = value;
+  for (char &ch : text) {
+    if (ch == '_') ch = ' ';
+  }
+  bool cap = true;
+  for (char &ch : text) {
+    unsigned char uch = static_cast<unsigned char>(ch);
+    if (std::isspace(uch)) {
+      cap = true;
+      continue;
+    }
+    ch = cap ? static_cast<char>(std::toupper(uch)) : static_cast<char>(std::tolower(uch));
+    cap = false;
+  }
+  return text;
 }
 
 inline bool epaper_dashboard_api_available() {
@@ -183,10 +224,17 @@ inline void epaper_dashboard_bind_lvgl_slot(int slot, lv_obj_t *tile, lv_obj_t *
   }
 }
 
-inline bool epaper_dashboard_state_card_type(const EpaperDashboardTile &tile) {
+inline bool epaper_dashboard_command_only_type(const EpaperDashboardTile &tile) {
+  return (tile.type == "action" && tile.entity.empty() && tile.action_state_entity.empty()) ||
+         tile.type == "push" || tile.type == "webhook" || tile.type == "internal";
+}
+
+inline bool epaper_dashboard_sensor_card_type(const EpaperDashboardTile &tile) {
   return tile.type == "sensor" || tile.type == "weather" || tile.type == "weather_forecast" ||
          tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone" ||
-         !tile.sensor.empty();
+         tile.type == "door_window" || tile.type == "presence" ||
+         !tile.sensor.empty() || !tile.action_state_entity.empty() ||
+         (!tile.entity.empty() && !epaper_dashboard_command_only_type(tile));
 }
 
 inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool active) {
@@ -235,8 +283,10 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     int col = i % EPAPER_DASHBOARD_COLS;
     int row = i / EPAPER_DASHBOARD_COLS;
     bool configured = !tile.config.empty();
-    bool active = configured && epaper_dashboard_state_active(tile.value);
-    bool show_value = configured && epaper_dashboard_state_card_type(tile);
+    const std::string &active_value = !tile.state.empty() ? tile.state : tile.sensor_value;
+    bool active = configured && epaper_dashboard_state_active(active_value);
+    bool show_value = configured && !epaper_dashboard_command_only_type(tile) &&
+        epaper_dashboard_sensor_card_type(tile);
     epaper_dashboard_style_lvgl_tile(slot.tile, slot.icon, slot.label, slot.value, slot.unit, configured, active);
     lv_obj_set_grid_cell(slot.tile, LV_GRID_ALIGN_STRETCH, col, 1, LV_GRID_ALIGN_STRETCH, row, 1);
     if (slot.icon) {
@@ -272,17 +322,28 @@ inline void epaper_dashboard_subscribe(int index) {
   auto &tiles = epaper_dashboard_tiles();
   if (index < 0 || index >= EPAPER_DASHBOARD_TOTAL_SLOTS) return;
   auto &tile = tiles[index];
-  if (tile.subscribed) return;
-  std::string source = !tile.sensor.empty() ? tile.sensor : tile.entity;
-  if (!epaper_dashboard_api_available() || source.empty()) return;
-  tile.subscribed = true;
-  esphome::api::global_api_server->subscribe_home_assistant_state(
-      source, {}, [index](esphome::StringRef state) {
-        auto &tile = epaper_dashboard_tiles()[index];
-        tile.value = std::string(state.c_str(), state.size());
-        tile.unavailable = epaper_dashboard_state_unavailable(tile.value);
-        epaper_dashboard_mark_dirty();
-      });
+  if (!epaper_dashboard_api_available()) return;
+  if (!tile.entity.empty() && !tile.state_subscribed) {
+    tile.state_subscribed = true;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        tile.entity, {}, [index](esphome::StringRef state) {
+          auto &tile = epaper_dashboard_tiles()[index];
+          tile.state = std::string(state.c_str(), state.size());
+          tile.state_unavailable = epaper_dashboard_state_unavailable(tile.state);
+          epaper_dashboard_mark_dirty();
+        });
+  }
+  std::string sensor_source = !tile.action_state_entity.empty() ? tile.action_state_entity : tile.sensor;
+  if (!sensor_source.empty() && !tile.sensor_subscribed) {
+    tile.sensor_subscribed = true;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        sensor_source, {}, [index](esphome::StringRef state) {
+          auto &tile = epaper_dashboard_tiles()[index];
+          tile.sensor_value = std::string(state.c_str(), state.size());
+          tile.sensor_unavailable = epaper_dashboard_state_unavailable(tile.sensor_value);
+          epaper_dashboard_mark_dirty();
+        });
+  }
 }
 
 inline void epaper_dashboard_set_config(int index, const std::string &config) {
@@ -302,6 +363,13 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   if (fields.size() > 4) tile.sensor = fields[4];
   if (fields.size() > 5) tile.unit = fields[5];
   if (fields.size() > 6) tile.type = fields[6];
+  if (fields.size() > 7) tile.precision = fields[7];
+  if (fields.size() > 8) tile.options = fields[8];
+  if (tile.type == "action") {
+    tile.action_state_entity = epaper_dashboard_option_value(tile.options, "state_entity");
+    std::string action_unit = epaper_dashboard_option_value(tile.options, "state_unit");
+    if (!action_unit.empty()) tile.unit = action_unit;
+  }
   if (tile.label.empty()) tile.label = epaper_dashboard_title_from_entity(!tile.sensor.empty() ? tile.sensor : tile.entity);
   epaper_dashboard_subscribe(index);
   epaper_dashboard_mark_dirty();
@@ -309,9 +377,24 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
 
 inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &tile) {
   if (tile.config.empty()) return "";
-  if (tile.unavailable) return "--";
-  if (!tile.value.empty()) return tile.value;
-  if (!tile.entity.empty() || !tile.sensor.empty()) return "...";
+  bool use_sensor_value = tile.type == "sensor" || tile.type == "weather" ||
+      tile.type == "weather_forecast" || tile.type == "calendar" ||
+      tile.type == "clock" || tile.type == "timezone" ||
+      tile.type == "door_window" || tile.type == "presence" ||
+      !tile.sensor.empty() || !tile.action_state_entity.empty();
+  if (use_sensor_value) {
+    if (tile.sensor_unavailable) return "--";
+    if (!tile.sensor_value.empty()) {
+      if (tile.precision == "text" || tile.type == "door_window" || tile.type == "presence") {
+        return epaper_dashboard_pretty_state(tile.sensor_value);
+      }
+      return tile.sensor_value;
+    }
+    if (!tile.sensor.empty() || !tile.action_state_entity.empty()) return "...";
+  }
+  if (tile.state_unavailable) return "--";
+  if (!tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
+  if (!tile.entity.empty()) return "...";
   return "";
 }
 
