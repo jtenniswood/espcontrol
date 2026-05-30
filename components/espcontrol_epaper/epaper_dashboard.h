@@ -22,6 +22,7 @@ struct EpaperDashboardTile {
   std::string entity;
   std::string sensor;
   std::string label;
+  std::string unit;
   std::string type;
   std::string value;
   bool subscribed = false;
@@ -148,6 +149,7 @@ struct EpaperDashboardLvglSlot {
   lv_obj_t *tile = nullptr;
   lv_obj_t *label = nullptr;
   lv_obj_t *value = nullptr;
+  lv_obj_t *unit = nullptr;
 };
 
 inline std::array<EpaperDashboardLvglSlot, EPAPER_DASHBOARD_PAGE_SLOTS> &epaper_dashboard_lvgl_slots() {
@@ -164,9 +166,10 @@ inline void epaper_dashboard_bind_lvgl_page_label(lv_obj_t *label) {
   epaper_dashboard_lvgl_page_label() = label;
 }
 
-inline void epaper_dashboard_bind_lvgl_slot(int slot, lv_obj_t *tile, lv_obj_t *label, lv_obj_t *value) {
+inline void epaper_dashboard_bind_lvgl_slot(int slot, lv_obj_t *tile, lv_obj_t *label, lv_obj_t *value,
+                                           lv_obj_t *unit = nullptr) {
   if (slot < 0 || slot >= EPAPER_DASHBOARD_PAGE_SLOTS) return;
-  epaper_dashboard_lvgl_slots()[slot] = {tile, label, value};
+  epaper_dashboard_lvgl_slots()[slot] = {tile, label, value, unit};
   if (tile) {
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
@@ -221,6 +224,11 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       if (configured) lv_obj_clear_flag(slot.value, LV_OBJ_FLAG_HIDDEN);
       else lv_obj_add_flag(slot.value, LV_OBJ_FLAG_HIDDEN);
     }
+    if (slot.unit) {
+      lv_label_set_text(slot.unit, configured ? tile.unit.c_str() : "");
+      if (configured && !tile.unit.empty()) lv_obj_clear_flag(slot.unit, LV_OBJ_FLAG_HIDDEN);
+      else lv_obj_add_flag(slot.unit, LV_OBJ_FLAG_HIDDEN);
+    }
     lv_obj_invalidate(slot.tile);
   }
   epaper_dashboard_clear_dirty();
@@ -256,6 +264,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   if (fields.size() > 0) tile.entity = fields[0];
   if (fields.size() > 1) tile.label = fields[1];
   if (fields.size() > 4) tile.sensor = fields[4];
+  if (fields.size() > 5) tile.unit = fields[5];
   if (fields.size() > 6) tile.type = fields[6];
   if (tile.label.empty()) tile.label = epaper_dashboard_title_from_entity(!tile.sensor.empty() ? tile.sensor : tile.entity);
   epaper_dashboard_subscribe(index);

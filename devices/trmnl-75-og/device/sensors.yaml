@@ -8,26 +8,26 @@ script:
       - lambda: |-
           espcontrol::epaper_dashboard_bind_lvgl_page_label(id(trmnl_page_label));
           lv_label_set_text(id(trmnl_wifi_setup_ssid), wifi::global_wifi_component->get_ap().get_ssid().c_str());
-          espcontrol::epaper_dashboard_bind_lvgl_slot(0, id(trmnl_tile_1), id(trmnl_tile_1_label), id(trmnl_tile_1_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(1, id(trmnl_tile_2), id(trmnl_tile_2_label), id(trmnl_tile_2_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(2, id(trmnl_tile_3), id(trmnl_tile_3_label), id(trmnl_tile_3_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(3, id(trmnl_tile_4), id(trmnl_tile_4_label), id(trmnl_tile_4_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(4, id(trmnl_tile_5), id(trmnl_tile_5_label), id(trmnl_tile_5_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(5, id(trmnl_tile_6), id(trmnl_tile_6_label), id(trmnl_tile_6_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(6, id(trmnl_tile_7), id(trmnl_tile_7_label), id(trmnl_tile_7_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(7, id(trmnl_tile_8), id(trmnl_tile_8_label), id(trmnl_tile_8_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(8, id(trmnl_tile_9), id(trmnl_tile_9_label), id(trmnl_tile_9_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(9, id(trmnl_tile_10), id(trmnl_tile_10_label), id(trmnl_tile_10_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(10, id(trmnl_tile_11), id(trmnl_tile_11_label), id(trmnl_tile_11_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(11, id(trmnl_tile_12), id(trmnl_tile_12_label), id(trmnl_tile_12_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(12, id(trmnl_tile_13), id(trmnl_tile_13_label), id(trmnl_tile_13_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(13, id(trmnl_tile_14), id(trmnl_tile_14_label), id(trmnl_tile_14_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(14, id(trmnl_tile_15), id(trmnl_tile_15_label), id(trmnl_tile_15_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(15, id(trmnl_tile_16), id(trmnl_tile_16_label), id(trmnl_tile_16_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(16, id(trmnl_tile_17), id(trmnl_tile_17_label), id(trmnl_tile_17_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(17, id(trmnl_tile_18), id(trmnl_tile_18_label), id(trmnl_tile_18_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(18, id(trmnl_tile_19), id(trmnl_tile_19_label), id(trmnl_tile_19_value));
-          espcontrol::epaper_dashboard_bind_lvgl_slot(19, id(trmnl_tile_20), id(trmnl_tile_20_label), id(trmnl_tile_20_value));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(0, id(trmnl_tile_1), id(trmnl_tile_1_label), id(trmnl_tile_1_value), id(trmnl_tile_1_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(1, id(trmnl_tile_2), id(trmnl_tile_2_label), id(trmnl_tile_2_value), id(trmnl_tile_2_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(2, id(trmnl_tile_3), id(trmnl_tile_3_label), id(trmnl_tile_3_value), id(trmnl_tile_3_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(3, id(trmnl_tile_4), id(trmnl_tile_4_label), id(trmnl_tile_4_value), id(trmnl_tile_4_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(4, id(trmnl_tile_5), id(trmnl_tile_5_label), id(trmnl_tile_5_value), id(trmnl_tile_5_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(5, id(trmnl_tile_6), id(trmnl_tile_6_label), id(trmnl_tile_6_value), id(trmnl_tile_6_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(6, id(trmnl_tile_7), id(trmnl_tile_7_label), id(trmnl_tile_7_value), id(trmnl_tile_7_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(7, id(trmnl_tile_8), id(trmnl_tile_8_label), id(trmnl_tile_8_value), id(trmnl_tile_8_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(8, id(trmnl_tile_9), id(trmnl_tile_9_label), id(trmnl_tile_9_value), id(trmnl_tile_9_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(9, id(trmnl_tile_10), id(trmnl_tile_10_label), id(trmnl_tile_10_value), id(trmnl_tile_10_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(10, id(trmnl_tile_11), id(trmnl_tile_11_label), id(trmnl_tile_11_value), id(trmnl_tile_11_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(11, id(trmnl_tile_12), id(trmnl_tile_12_label), id(trmnl_tile_12_value), id(trmnl_tile_12_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(12, id(trmnl_tile_13), id(trmnl_tile_13_label), id(trmnl_tile_13_value), id(trmnl_tile_13_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(13, id(trmnl_tile_14), id(trmnl_tile_14_label), id(trmnl_tile_14_value), id(trmnl_tile_14_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(14, id(trmnl_tile_15), id(trmnl_tile_15_label), id(trmnl_tile_15_value), id(trmnl_tile_15_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(15, id(trmnl_tile_16), id(trmnl_tile_16_label), id(trmnl_tile_16_value), id(trmnl_tile_16_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(16, id(trmnl_tile_17), id(trmnl_tile_17_label), id(trmnl_tile_17_value), id(trmnl_tile_17_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(17, id(trmnl_tile_18), id(trmnl_tile_18_label), id(trmnl_tile_18_value), id(trmnl_tile_18_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(18, id(trmnl_tile_19), id(trmnl_tile_19_label), id(trmnl_tile_19_value), id(trmnl_tile_19_unit));
+          espcontrol::epaper_dashboard_bind_lvgl_slot(19, id(trmnl_tile_20), id(trmnl_tile_20_label), id(trmnl_tile_20_value), id(trmnl_tile_20_unit));
 
   - id: trmnl_refresh_display
     mode: restart
