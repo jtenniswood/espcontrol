@@ -161,6 +161,10 @@ ota:
       then:
         - script.execute: show_update_failed
 
+safe_mode:
+  id: s3_4848s040_safe_mode
+  boot_is_good_after: 10s
+
 # ---------------------------------------------------------------------------
 # Shared infrastructure (API, logging, web server, restart button)
 # ---------------------------------------------------------------------------
@@ -369,9 +373,9 @@ script:
   - id: post_ota_hardware_reset
     mode: single
     then:
-      # Safe Mode marks the new OTA image valid after 60s. Wait a little
+      # Safe Mode marks the new OTA image valid after 10s. Wait a little
       # longer, then perform the hardware-reset workaround for this S3 panel.
-      - delay: 75s
+      - delay: 15s
       - lambda: |-
           ESP_LOGI("s3_reset", "Performing delayed post-OTA deep-sleep reset");
           esp_sleep_enable_timer_wakeup(100000);
