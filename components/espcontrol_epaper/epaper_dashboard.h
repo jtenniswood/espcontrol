@@ -2419,7 +2419,11 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "internal") {
     return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Lightbulb Outline");
   }
-  if (tile.type == "slider") return find_icon("Lightbulb");
+  if (tile.type == "slider") {
+    size_t dot = tile.entity.find('.');
+    if (dot != std::string::npos) return domain_default_icon(tile.entity.substr(0, dot));
+    return find_icon("Auto");
+  }
   size_t dot = tile.entity.find('.');
   if (dot != std::string::npos) return domain_default_icon(tile.entity.substr(0, dot));
   return find_icon("Auto");
