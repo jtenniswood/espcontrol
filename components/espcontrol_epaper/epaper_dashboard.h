@@ -1380,7 +1380,7 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "lock") return find_icon("Lock");
   if (tile.type == "alarm" || tile.type == "alarm_action") return find_icon("Security");
   if (epaper_dashboard_option_select_card(tile)) {
-    return find_icon("Chevron Down");
+    return find_icon("Flash");
   }
   if (tile.type == "action") {
     std::string state_mode = epaper_dashboard_option_value(tile.options, "state_precision");
