@@ -1671,6 +1671,16 @@ inline std::string epaper_dashboard_media_mode_label(const std::string &mode) {
   return "Play/Pause";
 }
 
+inline std::string epaper_dashboard_media_status_text(const std::string &state) {
+  if (state == "playing") return "Playing";
+  if (state == "paused") return "Paused";
+  if (state == "idle") return "Idle";
+  if (state == "off") return "Off";
+  if (state == "unavailable") return "Unavailable";
+  if (state == "unknown" || state.empty()) return "Unknown";
+  return epaper_dashboard_pretty_state(state);
+}
+
 inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;
   if (epaper_dashboard_weather_forecast_card(tile)) return "";
@@ -1775,6 +1785,12 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       !tile.label_configured) {
     return tile.sensor == "unlock" ? "Unlock" : "Lock";
   }
+  if (tile.type == "media" &&
+      (tile.sensor == "play_pause" || tile.sensor == "position") &&
+      tile.precision == "state") {
+    if (tile.state_unavailable) return "Unavailable";
+    return epaper_dashboard_media_status_text(tile.state);
+  }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
   if (!tile.label_configured && !tile.friendly_name.empty() &&
       !epaper_dashboard_friendly_label_source(tile).empty()) {
@@ -1807,11 +1823,6 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "alarm_action" && !tile.label_configured) {
     return epaper_dashboard_alarm_action_label(tile.sensor);
-  }
-  if (tile.type == "media" &&
-      (tile.sensor == "play_pause" || tile.sensor == "position") &&
-      tile.precision == "state" && !tile.state.empty()) {
-    return epaper_dashboard_pretty_state(tile.state);
   }
   return tile.label;
 }
