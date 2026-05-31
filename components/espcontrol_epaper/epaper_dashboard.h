@@ -1290,8 +1290,17 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)) {
     return !tile.state_unavailable && epaper_dashboard_garage_state_active(tile.state);
   }
+  if (tile.type == "garage" && epaper_dashboard_garage_command_mode(tile.sensor)) {
+    return false;
+  }
   if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor)) {
     return !tile.state_unavailable && epaper_dashboard_lock_state_active(tile.state);
+  }
+  if (tile.type == "lock" && epaper_dashboard_lock_command_mode(tile.sensor)) {
+    return false;
+  }
+  if (tile.type == "cover" && epaper_dashboard_cover_command_mode(tile.sensor)) {
+    return false;
   }
   if (tile.type == "door_window") {
     return !tile.state_unavailable && epaper_dashboard_active_color_enabled(tile) &&
@@ -1456,7 +1465,10 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_default_icon_name(tile));
   if (tile.type == "garage") {
-    if (tile.sensor == "open" || epaper_dashboard_garage_state_uses_open_icon(tile.state)) {
+    if (epaper_dashboard_garage_command_mode(tile.sensor)) {
+      return find_icon(tile.sensor == "open" ? "Garage Open" : "Garage");
+    }
+    if (epaper_dashboard_garage_state_uses_open_icon(tile.state)) {
       return find_icon("Garage Open");
     }
     return find_icon("Garage");
