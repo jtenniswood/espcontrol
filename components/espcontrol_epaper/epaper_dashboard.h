@@ -995,6 +995,7 @@ inline bool epaper_dashboard_api_available() {
 }
 
 inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &tile);
+inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile);
 
 inline bool epaper_dashboard_parse_float(esphome::StringRef state, float &out) {
   std::string text(state.c_str(), state.size());
@@ -1842,7 +1843,11 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "climate") {
     std::string label_mode = epaper_dashboard_climate_label_mode(tile);
     if (label_mode == "status" && !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
-    if (label_mode == "actual" || label_mode == "target") return epaper_dashboard_display_value(tile);
+    if (label_mode == "actual" || label_mode == "target") {
+      std::string value = epaper_dashboard_display_value(tile);
+      if (value.empty() || value == "--") return "--";
+      return value + epaper_dashboard_display_unit(tile);
+    }
   }
   if (tile.type == "alarm" &&
       epaper_dashboard_option_value(tile.options, "label_display") != "name") {
