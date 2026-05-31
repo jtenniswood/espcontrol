@@ -344,6 +344,75 @@ inline std::string epaper_dashboard_sensor_state_display_text(const EpaperDashbo
   return epaper_dashboard_text_sensor_display_text(tile.sensor_value);
 }
 
+inline const char *epaper_dashboard_weather_icon_for_state(const std::string &state) {
+  if (state == "sunny") return find_icon("Weather Sunny");
+  if (state == "clear-night") return find_icon("Weather Night");
+  if (state == "partlycloudy") return find_icon("Weather Partly Cloudy");
+  if (state == "cloudy") return find_icon("Weather Cloudy");
+  if (state == "fog") return find_icon("Weather Fog");
+  if (state == "hail") return find_icon("Weather Hail");
+  if (state == "lightning") return find_icon("Weather Lightning");
+  if (state == "lightning-rainy") return find_icon("Weather Lightning Rainy");
+  if (state == "pouring") return find_icon("Weather Pouring");
+  if (state == "rainy") return find_icon("Weather Rainy");
+  if (state == "snowy") return find_icon("Weather Snowy");
+  if (state == "snowy-rainy") return find_icon("Weather Snowy Rainy");
+  if (state == "windy") return find_icon("Weather Windy");
+  if (state == "windy-variant") return find_icon("Weather Windy Variant");
+  if (state == "unavailable" || state.empty()) return find_icon("Weather Sunny Off");
+  return find_icon("Weather Cloudy Alert");
+}
+
+inline std::string epaper_dashboard_weather_label_for_state(const std::string &state) {
+  if (state == "sunny") return "Sunny";
+  if (state == "clear-night") return "Clear Night";
+  if (state == "partlycloudy") return "Partly Cloudy";
+  if (state == "cloudy") return "Cloudy";
+  if (state == "fog") return "Fog";
+  if (state == "hail") return "Hail";
+  if (state == "lightning") return "Lightning";
+  if (state == "lightning-rainy") return "Lightning And Rain";
+  if (state == "pouring") return "Pouring";
+  if (state == "rainy") return "Rainy";
+  if (state == "snowy") return "Snowy";
+  if (state == "snowy-rainy") return "Snowy And Rain";
+  if (state == "windy") return "Windy";
+  if (state == "windy-variant") return "Windy And Cloudy";
+  if (state == "exceptional") return "Exceptional";
+  if (state == "unknown") return "Unknown";
+  if (state == "unavailable" || state.empty()) return "Unavailable";
+  return epaper_dashboard_pretty_state(state);
+}
+
+inline bool epaper_dashboard_weather_forecast_card(const EpaperDashboardTile &tile) {
+  return tile.type == "weather_forecast" ||
+         (tile.type == "weather" && (tile.precision == "today" || tile.precision == "tomorrow"));
+}
+
+inline std::string epaper_dashboard_alarm_label_for_state(const std::string &state) {
+  if (state.empty()) return "Unavailable";
+  if (state == "disarmed") return "Disarmed";
+  if (state == "armed_away") return "Armed Away";
+  if (state == "armed_home") return "Armed Home";
+  if (state == "armed_night") return "Armed Night";
+  if (state == "armed_custom_bypass") return "Armed Custom";
+  if (state == "arming") return "Arming";
+  if (state == "pending") return "Pending";
+  if (state == "triggered") return "Triggered";
+  if (state == "unavailable") return "Unavailable";
+  if (state == "unknown") return "Unknown";
+  return epaper_dashboard_pretty_state(state);
+}
+
+inline const char *epaper_dashboard_alarm_icon_for_state(const std::string &state) {
+  if (state == "armed_home") return find_icon("Shield Home");
+  if (state == "armed_away" || state == "armed_custom_bypass") return find_icon("Shield Lock");
+  if (state == "armed_night") return find_icon("Weather Night");
+  if (state == "disarmed") return find_icon("Shield Off");
+  if (state == "triggered") return find_icon("Alarm Light");
+  return find_icon("Alarm");
+}
+
 inline bool epaper_dashboard_api_available() {
   return esphome::api::global_api_server != nullptr;
 }
@@ -576,7 +645,7 @@ inline bool epaper_dashboard_toggle_text_sensor_card(const EpaperDashboardTile &
 inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return false;
   if (tile.type == "sensor") return tile.precision != "icon";
-  if (tile.type == "weather" || tile.type == "weather_forecast" ||
+  if (epaper_dashboard_weather_forecast_card(tile) ||
       tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") return true;
   if (tile.type == "action") {
     std::string mode = epaper_dashboard_option_value(tile.options, "state_precision");
@@ -593,6 +662,13 @@ inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile
 
 inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool active) {
   std::string icon = active && !tile.icon_on.empty() && tile.icon_on != "Auto" ? tile.icon_on : tile.icon;
+  if (tile.type == "weather" && !epaper_dashboard_weather_forecast_card(tile)) {
+    return epaper_dashboard_weather_icon_for_state(tile.state);
+  }
+  if (tile.type == "alarm" &&
+      epaper_dashboard_option_value(tile.options, "icon_display") != "static") {
+    return epaper_dashboard_alarm_icon_for_state(tile.state);
+  }
   if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
   if (tile.type == "action") return find_icon("Flash");
   if (tile.type == "alarm" || tile.type == "alarm_action") return find_icon("Security");
@@ -690,6 +766,18 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (epaper_dashboard_toggle_text_sensor_card(tile) && !tile.sensor_value.empty()) {
     return epaper_dashboard_sensor_state_display_text(tile);
   }
+  if (tile.type == "weather") {
+    if (epaper_dashboard_weather_forecast_card(tile)) {
+      if (!tile.label.empty()) return tile.label;
+      return tile.precision == "today" ? "Today" : "Tomorrow";
+    }
+    if (!tile.state.empty()) return epaper_dashboard_weather_label_for_state(tile.state);
+    return "Weather";
+  }
+  if (tile.type == "weather_forecast") {
+    if (!tile.label.empty()) return tile.label;
+    return "Temperatures Tomorrow";
+  }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
   if (tile.type == "garage" && epaper_dashboard_option_value(tile.options, "label_display") == "status" &&
       !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
@@ -697,6 +785,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     std::string label_mode = epaper_dashboard_option_value(tile.options, "label_display");
     if (label_mode == "status" && !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
     if (label_mode == "actual" || label_mode == "target") return epaper_dashboard_display_value(tile);
+  }
+  if (tile.type == "alarm" &&
+      epaper_dashboard_option_value(tile.options, "label_display") != "name") {
+    return epaper_dashboard_alarm_label_for_state(tile.state);
   }
   if (tile.type == "media" &&
       (tile.sensor == "play_pause" || tile.sensor == "position") &&
@@ -776,6 +868,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
          epaper_dashboard_value_replaces_icon(tile));
     if (tile.type == "sensor" && tile.precision == "icon") show_value = false;
     if (epaper_dashboard_toggle_text_sensor_card(tile)) show_value = false;
+    if (tile.type == "weather" && !epaper_dashboard_weather_forecast_card(tile)) show_value = false;
     if (tile.type == "door_window" || tile.type == "presence") show_value = false;
     bool value_replaces_icon = show_value && epaper_dashboard_value_replaces_icon(tile);
     epaper_dashboard_style_lvgl_tile(slot.tile, slot.icon, slot.label, slot.badge,
