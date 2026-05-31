@@ -2175,12 +2175,6 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
     return find_icon("Chevron Down");
   }
   if (tile.type == "action") {
-    std::string state_mode = epaper_dashboard_option_value(tile.options, "state_precision");
-    if (epaper_dashboard_action_state_display_enabled(tile)) {
-      if (state_mode == "icon") return find_icon("Toggle Switch");
-      if (state_mode == "text") return find_icon("Format Text");
-      return find_icon("Gauge");
-    }
     return find_icon("Flash");
   }
   if (tile.type == "push") return find_icon("Gesture Tap");
