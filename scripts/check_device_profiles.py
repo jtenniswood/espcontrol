@@ -144,6 +144,15 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "row_span > 1 ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_DOT" in epaper, (
         "TRMNL tall cards must wrap labels like normal device cards"
     )
+    assert 'if (tile.type == "action") {\n    return epaper_dashboard_option_select_card(tile) ? tile.entity : "";' in epaper, (
+        "TRMNL action cards must not subscribe to their action target unless they are option-select cards"
+    )
+    assert 'if (tile.type == "push" || tile.type == "webhook") return "";' in epaper, (
+        "TRMNL push and webhook cards must stay static like normal command cards"
+    )
+    assert "std::string state_source = epaper_dashboard_state_source(tile);" in epaper, (
+        "TRMNL state subscriptions must use card-aware state sources"
+    )
     assert "espcontrol::epaper_dashboard_set_order(id(button_order).state);" in (
         ROOT / "devices" / "trmnl-75-og" / "device" / "sensors.yaml"
     ).read_text(encoding="utf-8"), (

@@ -2011,11 +2011,6 @@ inline void epaper_dashboard_bind_lvgl_slot(int slot, lv_obj_t *tile, lv_obj_t *
   }
 }
 
-inline bool epaper_dashboard_command_only_type(const EpaperDashboardTile &tile) {
-  return (tile.type == "action" && tile.entity.empty() && tile.action_state_entity.empty()) ||
-         tile.type == "push" || tile.type == "webhook" || tile.type == "internal";
-}
-
 inline bool epaper_dashboard_tile_configured(const EpaperDashboardTile &tile) {
   if (tile.config.empty()) return false;
   if (!tile.entity.empty() || !tile.sensor.empty() || !tile.action_state_entity.empty()) return true;
@@ -2185,6 +2180,16 @@ inline bool epaper_dashboard_action_option_select(const EpaperDashboardTile &til
 
 inline bool epaper_dashboard_option_select_card(const EpaperDashboardTile &tile) {
   return tile.type == "option_select" || epaper_dashboard_action_option_select(tile);
+}
+
+inline std::string epaper_dashboard_state_source(const EpaperDashboardTile &tile) {
+  if (tile.entity.empty()) return "";
+  if (tile.type == "action") {
+    return epaper_dashboard_option_select_card(tile) ? tile.entity : "";
+  }
+  if (tile.type == "push" || tile.type == "webhook") return "";
+  if (tile.type == "internal" && tile.sensor == "push") return "";
+  return tile.entity;
 }
 
 inline std::string epaper_dashboard_action_state_precision(const EpaperDashboardTile &tile) {
@@ -3083,10 +3088,11 @@ inline void epaper_dashboard_subscribe(int index) {
   if (index < 0 || index >= EPAPER_DASHBOARD_TOTAL_SLOTS) return;
   auto &tile = tiles[index];
   if (!epaper_dashboard_api_available()) return;
-  if (!tile.entity.empty() && !tile.state_subscribed) {
+  std::string state_source = epaper_dashboard_state_source(tile);
+  if (!state_source.empty() && !tile.state_subscribed) {
     tile.state_subscribed = true;
     esphome::api::global_api_server->subscribe_home_assistant_state(
-        tile.entity, {}, [index](esphome::StringRef state) {
+        state_source, {}, [index](esphome::StringRef state) {
           auto &tile = epaper_dashboard_tiles()[index];
           tile.state = std::string(state.c_str(), state.size());
           tile.state_unavailable = epaper_dashboard_state_unavailable(tile.state);
