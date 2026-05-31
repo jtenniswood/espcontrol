@@ -1058,6 +1058,10 @@ inline std::string epaper_dashboard_secondary_attribute_source(const EpaperDashb
     attribute = "media_artist";
     return tile.entity;
   }
+  if (tile.type == "media" && tile.sensor == "position") {
+    attribute = "media_duration";
+    return tile.entity;
+  }
   return "";
 }
 
@@ -1206,7 +1210,16 @@ inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) 
   if (tile.type == "light_temperature" && !tile.sensor_value.empty()) {
     return epaper_dashboard_light_temperature_percent(tile);
   }
-  if (tile.type == "media" && tile.sensor == "position" && !tile.sensor_value.empty()) return 50;
+  if (tile.type == "media" && tile.sensor == "position" && !tile.sensor_value.empty()) {
+    float position = 0.0f;
+    float duration = 0.0f;
+    if (epaper_dashboard_parse_float_value(tile.sensor_value, position) &&
+        epaper_dashboard_parse_float_value(tile.secondary_value, duration) &&
+        duration > 0.0f) {
+      return epaper_dashboard_clamp_percent(static_cast<int>((position * 100.0f / duration) + 0.5f));
+    }
+    return 0;
+  }
   if (tile.type == "media" && tile.sensor == "now_playing") return tile.precision == "play_pause" ? 100 : 50;
   if (tile.type == "cover" && tile.sensor == "tilt") return 35;
   if (tile.type == "light_temperature") return 65;
