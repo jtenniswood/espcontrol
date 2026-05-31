@@ -135,6 +135,17 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "bool show_track = configured && epaper_dashboard_slider_visual_card(tile);" in epaper, (
         "TRMNL media now-playing play/pause cards must keep their track/background visible"
     )
+    assert "inline void epaper_dashboard_set_order(const std::string &order_str)" in epaper, (
+        "TRMNL must read the normal web editor button order instead of using fixed slot order"
+    )
+    assert "LV_GRID_ALIGN_STRETCH, col, col_span," in epaper and "LV_GRID_ALIGN_STRETCH, row, row_span" in epaper, (
+        "TRMNL must apply normal wide/tall/large card spans on the physical e-paper grid"
+    )
+    assert "espcontrol::epaper_dashboard_set_order(id(button_order).state);" in (
+        ROOT / "devices" / "trmnl-75-og" / "device" / "sensors.yaml"
+    ).read_text(encoding="utf-8"), (
+        "TRMNL dashboard sync must pass the web editor button_order into the e-paper renderer"
+    )
     assert (
         'if (tile.type == "fan_switch" || tile.type == "fan_oscillate") return "";'
         in epaper

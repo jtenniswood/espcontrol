@@ -119,6 +119,7 @@ script:
       - script.execute: trmnl_bind_lvgl_widgets
       - script.execute: trmnl_sync_temperature_config
       - lambda: |-
+          espcontrol::epaper_dashboard_set_order(id(button_order).state);
           espcontrol::epaper_dashboard_set_month_names(id(calendar_month_names).state);
           // BEGIN GENERATED TRMNL DASHBOARD CONFIG
           // Generated from devices/manifest.json plan: 1 page x 12 slots.

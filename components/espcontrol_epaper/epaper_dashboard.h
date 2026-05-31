@@ -124,9 +124,20 @@ struct EpaperDashboardForecastRetryRequest {
   uint32_t due_ms = 0;
 };
 
+struct EpaperDashboardOrder {
+  std::array<int, EPAPER_DASHBOARD_PAGE_SLOTS> positions{};
+  std::array<int, EPAPER_DASHBOARD_TOTAL_SLOTS> row_span{};
+  std::array<int, EPAPER_DASHBOARD_TOTAL_SLOTS> col_span{};
+};
+
 inline std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> &epaper_dashboard_tiles() {
   static std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> tiles;
   return tiles;
+}
+
+inline EpaperDashboardOrder &epaper_dashboard_order() {
+  static EpaperDashboardOrder order;
+  return order;
 }
 
 inline std::array<std::string, 12> &epaper_dashboard_custom_month_names() {
@@ -218,6 +229,93 @@ inline std::vector<std::string> epaper_dashboard_split(const std::string &value,
     start = end + 1;
   }
   return out;
+}
+
+inline void epaper_dashboard_grid_token_spans(char suffix, int &row_span, int &col_span) {
+  row_span = 1;
+  col_span = 1;
+  if (suffix == 'd') row_span = 2;
+  else if (suffix == 'w') col_span = 2;
+  else if (suffix == 'b') {
+    row_span = 2;
+    col_span = 2;
+  } else if (suffix == 't') {
+    row_span = 3;
+  } else if (suffix == 'x') {
+    col_span = 3;
+  }
+}
+
+inline bool epaper_dashboard_grid_token_has_span_suffix(char suffix) {
+  return suffix == 'd' || suffix == 'w' || suffix == 'b' ||
+         suffix == 't' || suffix == 'x';
+}
+
+inline EpaperDashboardOrder epaper_dashboard_parse_order(const std::string &order_str) {
+  EpaperDashboardOrder order;
+  for (int i = 0; i < EPAPER_DASHBOARD_TOTAL_SLOTS; i++) {
+    order.row_span[i] = 1;
+    order.col_span[i] = 1;
+  }
+
+  if (order_str.empty()) {
+    for (int i = 0; i < EPAPER_DASHBOARD_PAGE_SLOTS; i++) order.positions[i] = i + 1;
+    return order;
+  }
+
+  size_t grid_pos = 0;
+  size_t start = 0;
+  while (start <= order_str.length() && grid_pos < EPAPER_DASHBOARD_PAGE_SLOTS) {
+    size_t comma = order_str.find(',', start);
+    if (comma == std::string::npos) comma = order_str.length();
+    if (comma > start) {
+      std::string token = order_str.substr(start, comma - start);
+      int row_span = 1;
+      int col_span = 1;
+      if (!token.empty() && epaper_dashboard_grid_token_has_span_suffix(token.back())) {
+        epaper_dashboard_grid_token_spans(token.back(), row_span, col_span);
+        token.pop_back();
+      }
+      int slot = std::atoi(token.c_str());
+      if (slot >= 1 && slot <= EPAPER_DASHBOARD_TOTAL_SLOTS) {
+        order.positions[grid_pos] = slot;
+        order.row_span[slot - 1] = row_span;
+        order.col_span[slot - 1] = col_span;
+      }
+    }
+    grid_pos++;
+    start = comma + 1;
+  }
+
+  for (int pos = 0; pos < EPAPER_DASHBOARD_PAGE_SLOTS; pos++) {
+    int slot = order.positions[pos];
+    if (slot <= 0) continue;
+    int idx = slot - 1;
+    int row_span = order.row_span[idx] > 0 ? order.row_span[idx] : 1;
+    int col_span = order.col_span[idx] > 0 ? order.col_span[idx] : 1;
+    int col = pos % EPAPER_DASHBOARD_COLS;
+    for (int r = 0; r < row_span; r++) {
+      for (int c = 0; c < col_span; c++) {
+        if (r == 0 && c == 0) continue;
+        if (col + c >= EPAPER_DASHBOARD_COLS) continue;
+        int covered = pos + r * EPAPER_DASHBOARD_COLS + c;
+        if (covered < EPAPER_DASHBOARD_PAGE_SLOTS) order.positions[covered] = 0;
+      }
+    }
+  }
+
+  return order;
+}
+
+inline void epaper_dashboard_set_order(const std::string &order_str) {
+  EpaperDashboardOrder next = epaper_dashboard_parse_order(order_str);
+  auto &current = epaper_dashboard_order();
+  if (current.positions != next.positions ||
+      current.row_span != next.row_span ||
+      current.col_span != next.col_span) {
+    epaper_dashboard_mark_dirty();
+  }
+  current = next;
 }
 
 inline std::string epaper_dashboard_trim(const std::string &value) {
@@ -2829,16 +2927,34 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
   page = epaper_dashboard_wrap_page(page);
   auto &tiles = epaper_dashboard_tiles();
   auto &slots = epaper_dashboard_lvgl_slots();
+  auto &order = epaper_dashboard_order();
   int start = page * EPAPER_DASHBOARD_PAGE_SLOTS;
 
   for (int i = 0; i < EPAPER_DASHBOARD_PAGE_SLOTS; i++) {
-    const auto &tile = tiles[start + i];
     auto &slot = slots[i];
     if (!slot.tile) continue;
-    int col = i % EPAPER_DASHBOARD_COLS;
-    int row = i / EPAPER_DASHBOARD_COLS;
+    lv_obj_add_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
+  }
+
+  for (int pos = 0; pos < EPAPER_DASHBOARD_PAGE_SLOTS; pos++) {
+    int slot_index = order.positions[pos];
+    if (slot_index < 1 || slot_index > EPAPER_DASHBOARD_PAGE_SLOTS) continue;
+    const auto &tile = tiles[start + slot_index - 1];
+    auto &slot = slots[slot_index - 1];
+    if (!slot.tile) continue;
+    int col = pos % EPAPER_DASHBOARD_COLS;
+    int row = pos / EPAPER_DASHBOARD_COLS;
+    int row_span = order.row_span[start + slot_index - 1] > 0
+      ? order.row_span[start + slot_index - 1]
+      : 1;
+    int col_span = order.col_span[start + slot_index - 1] > 0
+      ? order.col_span[start + slot_index - 1]
+      : 1;
     bool configured = epaper_dashboard_tile_configured(tile);
-    lv_obj_set_grid_cell(slot.tile, LV_GRID_ALIGN_STRETCH, col, 1, LV_GRID_ALIGN_STRETCH, row, 1);
+    lv_obj_set_grid_cell(
+        slot.tile,
+        LV_GRID_ALIGN_STRETCH, col, col_span,
+        LV_GRID_ALIGN_STRETCH, row, row_span);
     if (!configured) {
       if (slot.icon) lv_label_set_text(slot.icon, "");
       if (slot.label) lv_label_set_text(slot.label, "");
