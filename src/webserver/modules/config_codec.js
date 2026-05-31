@@ -129,6 +129,8 @@ function normalizeButtonConfig(b) {
   }
   if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
+  } else if (b && b.type === "weather") {
+    b.options = normalizeWeatherOptions(b.options, b.precision);
   } else if (b && b.type === "sensor") {
     b.options = normalizeSensorOptions(b.options, b.precision);
   } else if (b && b.type === "door_window") {
@@ -632,6 +634,13 @@ function normalizeSwitchConfirmationOptions(options) {
   return out;
 }
 
+function normalizeWeatherOptions(options, precision) {
+  return (precision === "today" || precision === "tomorrow") &&
+    configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION)
+    ? SENSOR_LARGE_NUMBERS_OPTION
+    : "";
+}
+
 function setSwitchConfirmationOptions(b, mode, message, yesText, noText) {
   if (!b) return "";
   mode = mode === true ? "off" : mode;
@@ -1000,6 +1009,8 @@ function buttonConfigFields(b) {
     options = normalizeClimateOptions(options);
   } else if (type === "media") {
     options = normalizeMediaOptions(options, sensor);
+  } else if (type === "weather") {
+    options = normalizeWeatherOptions(options, precision);
   } else if (type === "subpage") {
     options = normalizeSubpageOptions(options, sensor, precision);
   } else if (type === "webhook" && typeof normalizeWebhookConfig === "function") {

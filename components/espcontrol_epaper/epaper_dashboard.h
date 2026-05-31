@@ -404,6 +404,14 @@ inline std::string epaper_dashboard_normalize_sensor_options(const std::string &
   return out;
 }
 
+inline std::string epaper_dashboard_normalize_weather_options(const std::string &options,
+                                                              const std::string &precision) {
+  return (precision == "today" || precision == "tomorrow") &&
+         epaper_dashboard_option_present(options, "large_numbers")
+           ? std::string("large_numbers")
+           : std::string();
+}
+
 inline std::string epaper_dashboard_normalize_climate_options(const std::string &options) {
   std::string label_display = epaper_dashboard_option_value(options, "label_display");
   if (label_display != "status" && label_display != "actual" && label_display != "target") {
@@ -2682,6 +2690,9 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   }
   if (tile.type == "sensor") {
     tile.options = epaper_dashboard_normalize_sensor_options(tile.options, tile.precision);
+  }
+  if (tile.type == "weather") {
+    tile.options = epaper_dashboard_normalize_weather_options(tile.options, tile.precision);
   }
   if (tile.type == "media") {
     bool legacy_controls = tile.sensor == "controls";

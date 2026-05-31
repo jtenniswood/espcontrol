@@ -283,6 +283,14 @@ inline std::string sensor_card_options_normalized(const std::string &options,
   return out;
 }
 
+inline std::string weather_card_options_normalized(const std::string &options,
+                                                   const std::string &precision) {
+  return (precision == "today" || precision == "tomorrow") &&
+         cfg_option_token_present(options, "large_numbers")
+           ? std::string("large_numbers")
+           : std::string();
+}
+
 inline std::string normalize_subpage_kind(const std::string &value) {
   return value == "lights" || value == "media" ||
     value == "climate" || value == "presence" ? value : "";
@@ -681,6 +689,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   }
   if (p.type == "sensor") {
     p.options = sensor_card_options_normalized(p.options, p.precision);
+  }
+  if (p.type == "weather") {
+    p.options = weather_card_options_normalized(p.options, p.precision);
   }
   return p;
 }
