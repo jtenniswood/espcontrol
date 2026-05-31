@@ -2048,9 +2048,10 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     if (tile.type == "door_window" || tile.type == "presence") show_value = false;
     if (tile.type == "todo" && !epaper_dashboard_todo_card_show_count(tile)) show_value = false;
     bool value_replaces_icon = show_value && epaper_dashboard_value_replaces_icon(tile);
+    bool style_active = active && !show_track;
     epaper_dashboard_style_lvgl_tile(slot.tile, slot.icon, slot.label, slot.badge,
                                      slot.track, slot.track_fill,
-                                     slot.value, slot.unit, configured, active);
+                                     slot.value, slot.unit, configured, style_active);
     if (slot.icon) {
       lv_label_set_text(slot.icon, epaper_dashboard_icon(tile, icon_active));
       if (value_replaces_icon) lv_obj_add_flag(slot.icon, LV_OBJ_FLAG_HIDDEN);
