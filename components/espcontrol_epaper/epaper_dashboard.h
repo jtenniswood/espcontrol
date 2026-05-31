@@ -1804,7 +1804,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       !epaper_dashboard_friendly_label_source(tile).empty()) {
     return tile.friendly_name;
   }
-  if (tile.type == "option_select" && tile.label.empty()) {
+  if (epaper_dashboard_option_select_card(tile) && tile.label.empty()) {
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
     return "Option";
   }
