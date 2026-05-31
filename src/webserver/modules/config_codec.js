@@ -212,6 +212,13 @@ function normalizeButtonConfig(b) {
       b.icon_on = "Auto";
     }
   } else if (b && b.type === "sensor") {
+    if (b.precision === "text") {
+      b.label = "";
+      b.unit = "";
+      b.icon_on = "Auto";
+    } else if (b.precision !== "icon") {
+      b.icon_on = "Auto";
+    }
     b.options = normalizeSensorOptions(b.options, b.precision);
   } else if (b && b.type === "door_window") {
     b.entity = "";
@@ -1169,6 +1176,12 @@ function buttonConfigFields(b) {
   if (type === "door_window") precision = normalizeDoorWindowSubtype(precision);
   if (type === "cover") precision = "";
   if (type === "weather") precision = normalizeWeatherPrecision(precision);
+  if (type === "sensor" && precision === "text") {
+    unit = "";
+    iconOn = "Auto";
+  } else if (type === "sensor" && precision !== "icon") {
+    iconOn = "Auto";
+  }
   var options = b && b.options || "";
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options, sensor, precision);
@@ -1260,6 +1273,7 @@ function buttonConfigFields(b) {
   }
   var label = b && b.label || "";
   if (type === "calendar" || type === "clock" || type === "timezone") label = "";
+  if (type === "sensor" && precision === "text") label = "";
   if (!type && !sensor) {
     unit = "";
     precision = "";

@@ -830,6 +830,13 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options.clear();
   }
   if (p.type == "sensor") {
+    if (p.precision == "text") {
+      p.label.clear();
+      p.unit.clear();
+      p.icon_on.clear();
+    } else if (p.precision != "icon") {
+      p.icon_on.clear();
+    }
     p.options = sensor_card_options_normalized(p.options, p.precision);
   }
   if (p.type == "weather") {

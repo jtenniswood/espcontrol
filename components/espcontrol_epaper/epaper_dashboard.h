@@ -2787,6 +2787,14 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     if (tile.icon.empty()) tile.icon = "Auto";
   }
   if (tile.type == "sensor") {
+    if (tile.precision == "text") {
+      tile.label.clear();
+      tile.label_configured = false;
+      tile.unit.clear();
+      tile.icon_on.clear();
+    } else if (tile.precision != "icon") {
+      tile.icon_on.clear();
+    }
     tile.options = epaper_dashboard_normalize_sensor_options(tile.options, tile.precision);
   }
   if (tile.type == "weather") {
