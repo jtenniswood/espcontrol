@@ -2648,8 +2648,8 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return "--";
   }
   if (epaper_dashboard_action_state_text_card(tile)) {
-    if (tile.sensor_unavailable) return "Unavailable";
     if (!tile.sensor_value.empty()) return epaper_dashboard_text_sensor_display_text(tile.sensor_value);
+    if (tile.sensor_unavailable) return "";
   }
   if (epaper_dashboard_fan_non_speed_card(tile)) {
     std::string entity_label = tile.entity.empty() ? "" : epaper_dashboard_title_from_entity(tile.entity);

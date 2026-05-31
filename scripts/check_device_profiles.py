@@ -153,6 +153,15 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert garage_status in epaper, (
         "TRMNL garage status cards must show the status before falling back to the default label"
     )
+    action_text = (
+        'if (epaper_dashboard_action_state_text_card(tile)) {\n'
+        '    if (!tile.sensor_value.empty()) return epaper_dashboard_text_sensor_display_text(tile.sensor_value);\n'
+        '    if (tile.sensor_unavailable) return "";\n'
+        '  }'
+    )
+    assert action_text in epaper, (
+        "TRMNL action text-state cards must show the raw text state like normal LVGL action cards"
+    )
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
