@@ -47,6 +47,7 @@ struct EpaperDashboardTile {
   std::string climate_target_low_value;
   std::string climate_target_high_value;
   std::string climate_hvac_action;
+  std::vector<std::string> fan_preset_modes;
   std::string action_state_entity;
   std::string friendly_name;
   std::string forecast_unit;
@@ -65,6 +66,7 @@ struct EpaperDashboardTile {
   bool climate_target_low_subscribed = false;
   bool climate_target_high_subscribed = false;
   bool climate_hvac_action_subscribed = false;
+  bool fan_preset_modes_subscribed = false;
   bool state_unavailable = false;
   bool sensor_unavailable = false;
   bool secondary_unavailable = false;
@@ -1024,6 +1026,65 @@ inline std::string epaper_dashboard_fan_option_label(const std::string &value) {
   return epaper_dashboard_text_sensor_display_text(value);
 }
 
+inline bool epaper_dashboard_fan_token_is_header(const std::string &value) {
+  std::string state = epaper_dashboard_normalized_state_text(value);
+  return state == "presetmode" || state == "presetmodes" ||
+         state == "direction" || state == "oscillating";
+}
+
+inline std::vector<std::string> epaper_dashboard_fan_parse_options(esphome::StringRef value) {
+  std::string raw = epaper_dashboard_string_ref_limited(value, EPAPER_DASHBOARD_FRIENDLY_NAME_MAX_LEN * 4);
+  std::vector<std::string> out;
+  std::string cur;
+  bool quoted = false;
+  char quote_char = 0;
+  for (char ch : raw) {
+    if (ch == '\'' || ch == '"') {
+      if (quoted && ch == quote_char) {
+        quoted = false;
+        quote_char = 0;
+      } else if (!quoted) {
+        quoted = true;
+        quote_char = ch;
+      } else {
+        cur.push_back(ch);
+      }
+      continue;
+    }
+    if (!quoted && (ch == '[' || ch == ']')) continue;
+    if (!quoted && ch == ',') {
+      std::string item = epaper_dashboard_trim(cur);
+      if (!item.empty() && !epaper_dashboard_fan_token_is_header(item)) {
+        std::string normalized = epaper_dashboard_normalized_state_text(item);
+        bool duplicate = false;
+        for (const auto &existing : out) {
+          if (epaper_dashboard_normalized_state_text(existing) == normalized) {
+            duplicate = true;
+            break;
+          }
+        }
+        if (!duplicate) out.push_back(item);
+      }
+      cur.clear();
+      continue;
+    }
+    cur.push_back(ch);
+  }
+  std::string item = epaper_dashboard_trim(cur);
+  if (!item.empty() && !epaper_dashboard_fan_token_is_header(item)) {
+    std::string normalized = epaper_dashboard_normalized_state_text(item);
+    bool duplicate = false;
+    for (const auto &existing : out) {
+      if (epaper_dashboard_normalized_state_text(existing) == normalized) {
+        duplicate = true;
+        break;
+      }
+    }
+    if (!duplicate) out.push_back(item);
+  }
+  return out;
+}
+
 inline std::string epaper_dashboard_fan_default_label(const EpaperDashboardTile &tile) {
   if (tile.type == "fan_oscillate") return "Oscillation";
   if (tile.type == "fan_direction") return "Direction";
@@ -1060,7 +1121,7 @@ inline std::string epaper_dashboard_fan_status_text(const EpaperDashboardTile &t
     return epaper_dashboard_fan_option_label(direction);
   }
   if (tile.type == "fan_preset") {
-    if (!epaper_dashboard_fan_attribute_known(tile)) return "Unsupported";
+    if (tile.fan_preset_modes.empty()) return "Unsupported";
     return epaper_dashboard_fan_preset_active(tile.sensor_value)
       ? epaper_dashboard_fan_option_label(tile.sensor_value)
       : std::string("Preset");
@@ -1485,7 +1546,8 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
     return epaper_dashboard_normalized_state_text(tile.sensor_value) == "reverse";
   }
   if (tile.type == "fan_preset") {
-    return epaper_dashboard_fan_preset_active(tile.sensor_value);
+    return !tile.fan_preset_modes.empty() &&
+           epaper_dashboard_fan_preset_active(tile.sensor_value);
   }
   if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)) {
     return !tile.state_unavailable && epaper_dashboard_garage_state_active(tile.state);
@@ -1876,8 +1938,13 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (epaper_dashboard_fan_non_speed_card(tile)) {
     std::string entity_label = tile.entity.empty() ? "" : epaper_dashboard_title_from_entity(tile.entity);
-    if ((tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
-         tile.type == "fan_preset") && epaper_dashboard_fan_attribute_known(tile)) {
+    if (tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
+        tile.type == "fan_preset") {
+      if (!tile.state.empty() && !tile.state_unavailable) return epaper_dashboard_fan_status_text(tile);
+      if (epaper_dashboard_fan_attribute_known(tile)) return epaper_dashboard_fan_status_text(tile);
+      if (tile.type == "fan_preset" && !tile.fan_preset_modes.empty()) return epaper_dashboard_fan_status_text(tile);
+    }
+    if (tile.type == "fan_switch" && !tile.state.empty()) {
       return epaper_dashboard_fan_status_text(tile);
     }
     if (tile.label.empty() || tile.label == entity_label) {
@@ -2175,6 +2242,16 @@ inline void epaper_dashboard_subscribe(int index) {
           auto &tile = epaper_dashboard_tiles()[index];
           tile.sensor_value = std::string(state.c_str(), state.size());
           tile.sensor_unavailable = epaper_dashboard_state_unavailable(tile.sensor_value);
+          epaper_dashboard_mark_dirty();
+        });
+  }
+  if (tile.type == "fan_preset" && !tile.entity.empty() &&
+      !tile.fan_preset_modes_subscribed) {
+    tile.fan_preset_modes_subscribed = true;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        tile.entity, "preset_modes", [index](esphome::StringRef state) {
+          auto &tile = epaper_dashboard_tiles()[index];
+          tile.fan_preset_modes = epaper_dashboard_fan_parse_options(state);
           epaper_dashboard_mark_dirty();
         });
   }
