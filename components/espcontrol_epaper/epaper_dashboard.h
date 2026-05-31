@@ -848,6 +848,7 @@ inline bool epaper_dashboard_calendar_date(const EpaperDashboardTile &tile,
   if (!tile.state_unavailable && epaper_dashboard_parse_calendar_date(tile.state, day, month)) {
     return true;
   }
+  if (!tile.entity.empty()) return false;
   const auto &time = epaper_dashboard_time_state();
   if (!time.valid || time.day < 1 || time.day > 31 ||
       time.month < 1 || time.month > 12) return false;

@@ -217,6 +217,15 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert garage_icon in epaper, (
         "TRMNL garage state cards must choose open icons from open/opening state, not generic active styling"
     )
+    calendar_source = (
+        'if (!tile.state_unavailable && epaper_dashboard_parse_calendar_date(tile.state, day, month)) {\n'
+        '    return true;\n'
+        '  }\n'
+        '  if (!tile.entity.empty()) return false;'
+    )
+    assert calendar_source in epaper, (
+        "TRMNL calendar cards with a configured date source must not silently fall back to the local date"
+    )
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
