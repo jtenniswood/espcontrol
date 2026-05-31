@@ -2224,7 +2224,7 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
   if (tile.type == "cover" &&
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor))) {
-    return "";
+    return tile.entity;
   }
   if ((tile.type == "light_brightness" || tile.type == "light_temperature" ||
        tile.type == "slider" || tile.type == "fan_speed" || tile.type == "cover") &&
@@ -2329,6 +2329,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "cover" &&
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor)) &&
       !tile.label_configured) {
+    if (!tile.friendly_name.empty()) return tile.friendly_name;
     return !tile.label.empty() ? tile.label : "Cover";
   }
   if (tile.type == "garage" && epaper_dashboard_garage_command_mode(tile.sensor) &&
