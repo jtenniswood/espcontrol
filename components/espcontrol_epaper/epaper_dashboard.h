@@ -1289,7 +1289,12 @@ inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile)
 
 inline bool epaper_dashboard_media_now_playing_progress_card(const EpaperDashboardTile &tile) {
   return tile.type == "media" && tile.sensor == "now_playing" &&
-         (tile.precision == "progress" || tile.precision == "play_pause");
+         tile.precision == "progress";
+}
+
+inline bool epaper_dashboard_media_now_playing_play_pause_card(const EpaperDashboardTile &tile) {
+  return tile.type == "media" && tile.sensor == "now_playing" &&
+         tile.precision == "play_pause";
 }
 
 inline int epaper_dashboard_clamp_percent(int pct) {
@@ -1378,6 +1383,7 @@ inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) 
     }
     return 0;
   }
+  if (epaper_dashboard_media_now_playing_play_pause_card(tile)) return 0;
   if (tile.type == "cover" && tile.sensor == "tilt") return 35;
   if (tile.type == "light_temperature") return 65;
   if (tile.type == "fan_speed") return 40;
@@ -1744,7 +1750,12 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       if (show_track) {
         lv_obj_clear_flag(slot.track, LV_OBJ_FLAG_HIDDEN);
         if (slot.track_fill) {
-          lv_obj_set_width(slot.track_fill, lv_pct(epaper_dashboard_track_fill_percent(tile)));
+          if (epaper_dashboard_media_now_playing_play_pause_card(tile)) {
+            lv_obj_add_flag(slot.track_fill, LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_clear_flag(slot.track_fill, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_width(slot.track_fill, lv_pct(epaper_dashboard_track_fill_percent(tile)));
+          }
         }
       } else {
         lv_obj_add_flag(slot.track, LV_OBJ_FLAG_HIDDEN);
