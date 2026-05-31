@@ -1404,7 +1404,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "internal") {
     return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");
   }
-  if (tile.type == "slider") return find_icon("Gauge");
+  if (tile.type == "slider") return find_icon("Lightbulb");
   size_t dot = tile.entity.find('.');
   if (dot != std::string::npos) return domain_default_icon(tile.entity.substr(0, dot));
   return find_icon("Auto");
