@@ -4,7 +4,7 @@ obj:
   bg_opa: cover
   border_color: 0xFFFFFF
   border_width: 1
-  radius: 12
+  radius: 18
   shadow_width: 0
   pad_all: 8
   scrollable: false

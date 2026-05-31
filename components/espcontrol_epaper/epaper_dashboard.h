@@ -415,7 +415,7 @@ inline void epaper_dashboard_style_lvgl_tile(lv_obj_t *tile, lv_obj_t *icon, lv_
   lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_color(tile, lv_color_hex(border), LV_PART_MAIN);
   lv_obj_set_style_border_width(tile, configured ? 2 : 1, LV_PART_MAIN);
-  lv_obj_set_style_radius(tile, 12, LV_PART_MAIN);
+  lv_obj_set_style_radius(tile, 18, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(tile, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(tile, 8, LV_PART_MAIN);
   if (icon) lv_obj_set_style_text_color(icon, lv_color_hex(fg), LV_PART_MAIN);

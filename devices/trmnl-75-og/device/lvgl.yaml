@@ -59,7 +59,7 @@ lvgl:
             bg_opa: cover
             border_color: 0xFFFFFF
             border_width: 2
-            radius: 12
+            radius: 18
             pad_all: 24
             scrollable: false
             clickable: false
