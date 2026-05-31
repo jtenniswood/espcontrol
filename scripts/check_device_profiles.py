@@ -130,6 +130,17 @@ def test_trmnl_epaper_icon_literals() -> None:
     assert not missing_glyphs, f"TRMNL hard-coded icon glyphs missing from icon font: {', '.join(missing_glyphs)}"
 
 
+def test_trmnl_epaper_card_parity_guards() -> None:
+    epaper = (ROOT / "components" / "espcontrol_epaper" / "epaper_dashboard.h").read_text(encoding="utf-8")
+    assert "bool show_track = configured && epaper_dashboard_slider_visual_card(tile);" in epaper, (
+        "TRMNL media now-playing play/pause cards must keep their track/background visible"
+    )
+    assert (
+        'if (tile.type == "fan_switch" || tile.type == "fan_oscillate") return "";'
+        in epaper
+    ), "TRMNL fan switch/oscillation cards must keep normal default labels instead of HA friendly names"
+
+
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
     profiles = load_device_profiles()
     release = device_matrix.release_matrix(profiles)
@@ -153,6 +164,7 @@ def main() -> int:
     test_generated_yaml(profiles)
     test_setup_icon_glyphs()
     test_trmnl_epaper_icon_literals()
+    test_trmnl_epaper_card_parity_guards()
     test_firmware_matrices(profile_slugs)
     test_public_firmware_slugs(profile_slugs)
     print("Device profile cross-checks passed.")
