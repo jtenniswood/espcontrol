@@ -2216,6 +2216,7 @@ inline std::string epaper_dashboard_media_status_text(const std::string &state) 
 inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_option_select_card(tile)) return "";
   if (epaper_dashboard_weather_forecast_card(tile)) return "";
+  if (tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") return "";
   if (tile.type == "weather") return "";
   if (tile.type == "action") return "";
   if (tile.type == "media") return "";
@@ -2931,6 +2932,8 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.options.clear();
   }
   if (tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") {
+    tile.label.clear();
+    tile.label_configured = false;
     tile.sensor.clear();
     tile.unit.clear();
     if (tile.type == "clock") tile.entity.clear();

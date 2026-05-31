@@ -771,6 +771,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options.clear();
   }
   if (p.type == "calendar" || p.type == "clock" || p.type == "timezone") {
+    p.label.clear();
     p.sensor.clear();
     p.unit.clear();
     if (p.type == "clock") p.entity.clear();

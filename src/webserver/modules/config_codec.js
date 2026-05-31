@@ -159,6 +159,7 @@ function normalizeButtonConfig(b) {
     b.options = "";
   }
   if (b && (b.type === "calendar" || b.type === "clock" || b.type === "timezone")) {
+    b.label = "";
     b.sensor = "";
     b.unit = "";
     if (b.type === "clock") b.entity = "";
@@ -1245,13 +1246,15 @@ function buttonConfigFields(b) {
     if (!icon || icon === "Auto") icon = "Motion Sensor Off";
     if (!iconOn || iconOn === "Auto") iconOn = "Motion Sensor";
   }
+  var label = b && b.label || "";
+  if (type === "calendar" || type === "clock" || type === "timezone") label = "";
   if (!type && !sensor) {
     unit = "";
     precision = "";
   }
   return trimConfigFields([
     (type === "door_window" || type === "presence" || type === "clock" || type === "push") ? "" : (b && b.entity || ""),
-    b && b.label || "",
+    label,
     icon,
     iconOn,
     sensor,
