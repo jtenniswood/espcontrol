@@ -353,6 +353,11 @@
       "mdi": "coffee-maker"
     },
     {
+      "name": "Counter",
+      "codepoint": "F0199",
+      "mdi": "counter"
+    },
+    {
       "name": "Current AC",
       "codepoint": "F1480",
       "mdi": "current-ac"
@@ -513,6 +518,11 @@
       "mdi": "format-text"
     },
     {
+      "name": "Form Dropdown",
+      "codepoint": "F1400",
+      "mdi": "form-dropdown"
+    },
+    {
       "name": "Fountain",
       "codepoint": "F096B",
       "mdi": "fountain"
@@ -561,6 +571,11 @@
       "name": "Gesture Tap",
       "codepoint": "F0741",
       "mdi": "gesture-tap"
+    },
+    {
+      "name": "Gesture Tap Button",
+      "codepoint": "F12A8",
+      "mdi": "gesture-tap-button"
     },
     {
       "name": "Gauge",
@@ -616,6 +631,11 @@
       "name": "Home",
       "codepoint": "F02DC",
       "mdi": "home"
+    },
+    {
+      "name": "Home Automation",
+      "codepoint": "F07D1",
+      "mdi": "home-automation"
     },
     {
       "name": "Heat Pump",
@@ -878,6 +898,11 @@
       "mdi": "movie-roll"
     },
     {
+      "name": "Movie Open",
+      "codepoint": "F0FCE",
+      "mdi": "movie-open"
+    },
+    {
       "name": "Music",
       "codepoint": "F075A",
       "mdi": "music"
@@ -996,6 +1021,11 @@
       "name": "Security",
       "codepoint": "F068A",
       "mdi": "shield-home"
+    },
+    {
+      "name": "Script Text Play",
+      "codepoint": "F1727",
+      "mdi": "script-text-play"
     },
     {
       "name": "Shield Home",
@@ -1231,6 +1261,11 @@
       "name": "Toggle Switch",
       "codepoint": "F0521",
       "mdi": "toggle-switch"
+    },
+    {
+      "name": "Toggle Switch Variant",
+      "codepoint": "F1A25",
+      "mdi": "toggle-switch-variant"
     },
     {
       "name": "Toggle Switch Variant Off",
