@@ -9,13 +9,13 @@ font:
     glyphs: " !\"%()+,-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
 
   - file: "gfonts://Inter@600"
-    id: font_trmnl_label_14
-    size: 66
+    id: font_trmnl_label_72
+    size: 72
     glyphs: " !\"%()+,-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
 
   - file: "gfonts://Inter@700"
-    id: font_trmnl_value_24
-    size: 124
+    id: font_trmnl_value_136
+    size: 136
     glyphs: " !\"%()+,-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
 
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'

@@ -72,7 +72,7 @@ lvgl:
             widgets:
               - label:
                   text: "WiFi Setup"
-                  text_font: font_trmnl_value_24
+                  text_font: font_trmnl_label_72
                   text_color: 0xFFFFFF
                   text_align: center
               - label:
@@ -83,17 +83,17 @@ lvgl:
               - label:
                   text: "ESP setup hotspot"
                   id: trmnl_wifi_setup_ssid
-                  text_font: font_trmnl_label_14
+                  text_font: font_trmnl_label_72
                   text_color: 0xFFFFFF
                   text_align: center
               - label:
                   text: "Then open 192.168.4.1"
-                  text_font: font_trmnl_value_24
+                  text_font: font_trmnl_label_72
                   text_color: 0xFFFFFF
                   text_align: center
               - label:
                   text: "After WiFi setup, add this device in Home Assistant."
-                  text_font: font_trmnl_label_14
+                  text_font: font_trmnl_header_20
                   text_color: 0xFFFFFF
                   text_align: center
 
