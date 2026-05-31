@@ -332,6 +332,15 @@ inline bool epaper_dashboard_todo_card_show_count(const EpaperDashboardTile &til
          epaper_dashboard_option_value(tile.options, "count_display") != "icon";
 }
 
+inline std::string epaper_dashboard_normalize_todo_options(const std::string &options) {
+  bool show_count = epaper_dashboard_option_value(options, "count_display") != "icon";
+  std::string out = show_count ? "" : "count_display=icon";
+  if (show_count && epaper_dashboard_option_present(options, "large_numbers")) {
+    out = "large_numbers";
+  }
+  return out;
+}
+
 inline std::string epaper_dashboard_pretty_state(const std::string &value) {
   std::string text = value;
   for (char &ch : text) {
@@ -2586,6 +2595,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.precision.clear();
     tile.icon_on = "Auto";
     if (tile.icon.empty() || tile.icon == "Auto") tile.icon = "Check";
+    tile.options = epaper_dashboard_normalize_todo_options(tile.options);
   }
   if (tile.type == "light_switch") {
     tile.sensor.clear();
