@@ -674,7 +674,7 @@ inline int epaper_dashboard_parse_precision(const std::string &value) {
 inline std::string epaper_dashboard_format_number(const std::string &value, int precision) {
   char *end = nullptr;
   float parsed = std::strtof(value.c_str(), &end);
-  if (end == value.c_str() || std::isnan(parsed)) return epaper_dashboard_pretty_state(value);
+  if (end == value.c_str() || std::isnan(parsed)) return "";
   if (precision < 0) precision = 0;
   if (precision > 3) precision = 3;
   char buf[24];

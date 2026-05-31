@@ -162,6 +162,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert action_text in epaper, (
         "TRMNL action text-state cards must show the raw text state like normal LVGL action cards"
     )
+    assert 'if (end == value.c_str() || std::isnan(parsed)) return "";' in epaper, (
+        "TRMNL numeric cards must leave non-numeric values blank like normal LVGL numeric cards"
+    )
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
