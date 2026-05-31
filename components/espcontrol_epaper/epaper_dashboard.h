@@ -634,7 +634,7 @@ inline std::string epaper_dashboard_pretty_state(const std::string &value) {
 inline std::string epaper_dashboard_format_seconds(const std::string &value) {
   char *end = nullptr;
   float parsed = std::strtof(value.c_str(), &end);
-  if (end == value.c_str() || std::isnan(parsed) || parsed < 0) return epaper_dashboard_pretty_state(value);
+  if (end == value.c_str() || std::isnan(parsed) || parsed < 0) return "0:00";
   int total = static_cast<int>(parsed + 0.5f);
   int minutes = total / 60;
   int seconds = total % 60;
@@ -994,7 +994,7 @@ inline std::string epaper_dashboard_format_media_volume(const EpaperDashboardTil
   char *end = nullptr;
   float parsed = std::strtof(tile.sensor_value.c_str(), &end);
   if (end == tile.sensor_value.c_str() || std::isnan(parsed)) {
-    return epaper_dashboard_pretty_state(tile.sensor_value);
+    return "--";
   }
   if (parsed >= 0.0f && parsed <= 1.0f) parsed *= 100.0f;
   char buf[16];
