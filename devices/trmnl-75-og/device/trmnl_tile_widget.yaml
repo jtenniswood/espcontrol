@@ -36,13 +36,13 @@ obj:
           - label:
               id: trmnl_tile_${num}_value
               text: ""
-              text_font: font_trmnl_value_148
+              text_font: font_trmnl_value_164
               text_color: 0xFFFFFF
               long_mode: dot
           - label:
               id: trmnl_tile_${num}_unit
               text: ""
-              text_font: font_trmnl_label_80
+              text_font: font_trmnl_label_88
               text_color: 0xFFFFFF
               pad_bottom: 6
               hidden: true
@@ -91,7 +91,7 @@ obj:
           - label:
               id: trmnl_tile_${num}_label
               text: "Configure"
-              text_font: font_trmnl_label_80
+              text_font: font_trmnl_label_88
               text_color: 0xFFFFFF
               width: 80%
               long_mode: dot
