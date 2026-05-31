@@ -1118,6 +1118,11 @@
       "mdi": "swap-horizontal"
     },
     {
+      "name": "Sync",
+      "codepoint": "F04E6",
+      "mdi": "sync"
+    },
+    {
       "name": "Power Socket UK",
       "codepoint": "F07E8",
       "mdi": "power-socket-uk"

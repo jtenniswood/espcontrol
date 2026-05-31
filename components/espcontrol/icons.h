@@ -227,6 +227,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"String Lights Off",          "\U000F12BB"},
     {"Stove",                      "\U000F04DE"},
     {"Swap Horizontal",            "\U000F04E1"},
+    {"Sync",                       "\U000F04E6"},
     {"Power Socket UK",            "\U000F07E8"},
     {"Power Socket EU",            "\U000F07E7"},
     {"Power Socket US",            "\U000F07E9"},
