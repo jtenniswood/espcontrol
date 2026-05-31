@@ -1171,6 +1171,20 @@ inline bool epaper_dashboard_option_select_card(const EpaperDashboardTile &tile)
   return tile.type == "option_select" || epaper_dashboard_action_option_select(tile);
 }
 
+inline std::string epaper_dashboard_action_state_precision(const EpaperDashboardTile &tile) {
+  return tile.type == "action" ? epaper_dashboard_option_value(tile.options, "state_precision") : "";
+}
+
+inline bool epaper_dashboard_action_state_icon_card(const EpaperDashboardTile &tile) {
+  return !tile.action_state_entity.empty() &&
+         epaper_dashboard_action_state_precision(tile) == "icon";
+}
+
+inline bool epaper_dashboard_action_state_text_card(const EpaperDashboardTile &tile) {
+  return !tile.action_state_entity.empty() &&
+         epaper_dashboard_action_state_precision(tile) == "text";
+}
+
 inline bool epaper_dashboard_internal_push_mode(const EpaperDashboardTile &tile) {
   return tile.type == "internal" && tile.sensor == "push";
 }
@@ -1217,6 +1231,9 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   }
   if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor)) {
     return !tile.state_unavailable && epaper_dashboard_lock_state_active(tile.state);
+  }
+  if (tile.type == "action" && !tile.action_state_entity.empty()) {
+    return !tile.sensor_unavailable && epaper_dashboard_state_active(tile.sensor_value);
   }
   const std::string &active_value = !tile.state.empty() ? tile.state : tile.sensor_value;
   return epaper_dashboard_state_active(active_value);
@@ -1500,6 +1517,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     if (!tile.secondary_value.empty()) return tile.secondary_value;
     return "--";
   }
+  if (epaper_dashboard_action_state_text_card(tile)) {
+    if (tile.sensor_unavailable) return "Unavailable";
+    if (!tile.sensor_value.empty()) return epaper_dashboard_text_sensor_display_text(tile.sensor_value);
+  }
   if (epaper_dashboard_fan_non_speed_card(tile)) {
     std::string entity_label = tile.entity.empty() ? "" : epaper_dashboard_title_from_entity(tile.entity);
     if ((tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
@@ -1640,6 +1661,8 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
          epaper_dashboard_value_replaces_icon(tile));
     if (tile.type == "sensor" && tile.precision == "icon") show_value = false;
     if (epaper_dashboard_toggle_text_sensor_card(tile)) show_value = false;
+    if (epaper_dashboard_action_state_icon_card(tile) ||
+        epaper_dashboard_action_state_text_card(tile)) show_value = false;
     if (epaper_dashboard_slider_visual_card(tile) && tile.type != "media") show_value = false;
     if (tile.type == "weather" && !epaper_dashboard_weather_forecast_card(tile)) show_value = false;
     if (tile.type == "door_window" || tile.type == "presence") show_value = false;
