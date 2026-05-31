@@ -1955,7 +1955,7 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "webhook") return find_icon("Webhook");
   if (tile.type == "todo") return find_icon("Check");
   if (tile.type == "internal") {
-    return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");
+    return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Lightbulb Outline");
   }
   if (tile.type == "light_brightness" || tile.type == "slider") return find_icon("Tune Vertical Variant");
   if (tile.type == "light_switch" || tile.type == "light_temperature") return find_icon("Lightbulb");
@@ -2616,6 +2616,23 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.icon_on.clear();
     if (tile.icon.empty()) tile.icon = "Auto";
     tile.options = epaper_dashboard_normalize_webhook_options(tile.options);
+  }
+  if (tile.type == "internal") {
+    bool push_mode = epaper_dashboard_internal_push_mode(tile);
+    tile.sensor = push_mode ? "push" : "";
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.options.clear();
+    if (tile.icon.empty() || tile.icon == "Auto" || tile.icon == "Power" ||
+        (!push_mode && tile.icon == "Power Plug")) {
+      tile.icon = push_mode ? "Gesture Tap" : "Lightbulb Outline";
+    }
+    if (push_mode) {
+      tile.icon_on = "Auto";
+    } else if (tile.icon_on.empty() || tile.icon_on == "Auto" || tile.icon_on == "Power" ||
+               tile.icon_on == "Flash") {
+      tile.icon_on = "Lightbulb";
+    }
   }
   if (tile.type == "todo") {
     tile.sensor.clear();

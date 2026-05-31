@@ -585,6 +585,23 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon.empty()) p.icon = "Auto";
     p.options = webhook_card_options_normalized(p.options);
   }
+  if (p.type == "internal") {
+    bool push_mode = card_runtime_internal_push_mode(p.sensor);
+    p.sensor = push_mode ? "push" : "";
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    if (p.icon.empty() || p.icon == "Auto" || p.icon == "Power" ||
+        (!push_mode && p.icon == "Power Plug")) {
+      p.icon = push_mode ? "Gesture Tap" : "Lightbulb Outline";
+    }
+    if (push_mode) {
+      p.icon_on = "Auto";
+    } else if (p.icon_on.empty() || p.icon_on == "Auto" || p.icon_on == "Power" ||
+               p.icon_on == "Flash") {
+      p.icon_on = "Lightbulb";
+    }
+  }
   if (p.type == "todo") {
     p.sensor.clear();
     p.unit.clear();
@@ -1820,7 +1837,7 @@ inline std::string internal_relay_label(const ParsedCfg &p) {
 
 inline const char *internal_relay_icon(const ParsedCfg &p, bool push_mode) {
   if (!p.icon.empty() && p.icon != "Auto") return find_icon(p.icon.c_str());
-  return find_icon(push_mode ? "Gesture Tap" : "Power Plug");
+  return find_icon(push_mode ? "Gesture Tap" : "Lightbulb Outline");
 }
 
 inline void apply_internal_relay_state(lv_obj_t *btn, lv_obj_t *icon_lbl,

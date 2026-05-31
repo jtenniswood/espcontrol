@@ -258,7 +258,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "fan_speed") return "Fan Speed 2";
   if (type == "fan_switch") return "Fan Off";
   if (type == "garage") return "Garage";
-  if (type == "internal") return "Power";
+  if (type == "internal") return "Lightbulb Outline";
   if (type == "light_brightness") return "Lightbulb Outline";
   if (type == "light_switch") return "Lightbulb Outline";
   if (type == "light_temperature") return "Lightbulb";
@@ -293,7 +293,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "fan_speed") return "Auto";
   if (type == "fan_switch") return "Fan";
   if (type == "garage") return "Garage Open";
-  if (type == "internal") return "Flash";
+  if (type == "internal") return "Lightbulb";
   if (type == "light_brightness") return "Lightbulb";
   if (type == "light_switch") return "Lightbulb";
   if (type == "light_temperature") return "Auto";
