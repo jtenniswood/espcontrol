@@ -2693,6 +2693,11 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       !epaper_dashboard_friendly_label_source(tile).empty()) {
     return tile.friendly_name;
   }
+  if (tile.type == "garage" &&
+      epaper_dashboard_option_value(tile.options, "label_display") == "status") {
+    if (tile.state_unavailable || tile.state.empty()) return "--";
+    return epaper_dashboard_pretty_state(tile.state);
+  }
   if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor) &&
       !tile.label_configured && tile.label.empty()) {
     return "Garage Door";
@@ -2722,11 +2727,6 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "internal" && tile.label.empty()) {
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
     return "Relay";
-  }
-  if (tile.type == "garage" &&
-      epaper_dashboard_option_value(tile.options, "label_display") == "status") {
-    if (!tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
-    return "--";
   }
   if (tile.type == "climate") {
     std::string label_mode = epaper_dashboard_climate_label_mode(tile);

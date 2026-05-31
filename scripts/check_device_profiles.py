@@ -142,6 +142,17 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "return epaper_dashboard_trim(tile.unit);" in epaper, (
         "TRMNL card units must be trimmed the same way normal LVGL cards trim unit labels"
     )
+    garage_status = (
+        'if (tile.type == "garage" &&\n'
+        '      epaper_dashboard_option_value(tile.options, "label_display") == "status") {\n'
+        '    if (tile.state_unavailable || tile.state.empty()) return "--";\n'
+        '    return epaper_dashboard_pretty_state(tile.state);\n'
+        '  }\n'
+        '  if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)'
+    )
+    assert garage_status in epaper, (
+        "TRMNL garage status cards must show the status before falling back to the default label"
+    )
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
