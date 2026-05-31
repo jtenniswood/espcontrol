@@ -97,10 +97,10 @@ jobs:
       - name: Prepare local ESPHome cache
         working-directory: espcontrol-${{ matrix.slug }}
         run: |
-          CACHE_ROOT="${HOME}/.cache/espcontrol-actions/esphome"
+          CACHE_ROOT="${HOME}/.cache/espcontrol-actions/esphome/${{ matrix.slug }}"
           PLATFORMIO_CACHE="${CACHE_ROOT}/platformio-${ESPHOME_VERSION}"
           RUN_CACHE_ROOT="${CACHE_ROOT}/pr/${{ github.run_id }}-${{ github.run_attempt }}"
-          BUILD_CACHE="${RUN_CACHE_ROOT}/${{ matrix.slug }}"
+          BUILD_CACHE="${RUN_CACHE_ROOT}/build"
           mkdir -p "${PLATFORMIO_CACHE}" "${BUILD_CACHE}" builds
           rm -rf "${CACHE_ROOT}/shared"
           bash scripts/prune_actions_cache.sh "${CACHE_ROOT}" "${ESPCONTROL_ESPHOME_CACHE_MAX_MB}" --protect "${PLATFORMIO_CACHE}" --protect "${RUN_CACHE_ROOT}"
@@ -137,5 +137,5 @@ jobs:
           RUN_CACHE_ROOT="$(dirname "${BUILD_CACHE}")"
           bash scripts/prune_actions_cache.sh "${PLATFORMIO_CACHE}" "${ESPCONTROL_PLATFORMIO_CACHE_MAX_MB}" --strategy reset
           bash scripts/prune_actions_cache.sh "$(dirname "${RUN_CACHE_ROOT}")" "${ESPCONTROL_BUILD_CACHE_MAX_MB}" --protect "${RUN_CACHE_ROOT}"
-          bash scripts/prune_actions_cache.sh "${HOME}/.cache/espcontrol-actions/esphome" "${ESPCONTROL_ESPHOME_CACHE_MAX_MB}" --protect "${PLATFORMIO_CACHE}"
+          bash scripts/prune_actions_cache.sh "${HOME}/.cache/espcontrol-actions/esphome/${{ matrix.slug }}" "${ESPCONTROL_ESPHOME_CACHE_MAX_MB}" --protect "${PLATFORMIO_CACHE}"
           bash scripts/reclaim_actions_disk.sh
