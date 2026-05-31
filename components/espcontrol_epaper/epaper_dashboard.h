@@ -361,6 +361,47 @@ inline std::string epaper_dashboard_normalize_todo_options(const std::string &op
   return out;
 }
 
+inline std::string epaper_dashboard_normalize_sensor_options(const std::string &options,
+                                                             const std::string &precision) {
+  std::string out;
+  if (precision != "icon" && precision != "text" &&
+      epaper_dashboard_option_present(options, "large_numbers")) {
+    out = "large_numbers";
+  }
+  if (epaper_dashboard_option_present(options, "active_color")) {
+    if (!out.empty()) out += ",";
+    out += "active_color";
+  }
+  if (precision == "text" && epaper_dashboard_option_present(options, "state_labels")) {
+    if (!out.empty()) out += ",";
+    out += "state_labels";
+    std::string input = epaper_dashboard_option_value(options, "state_input");
+    std::string output = epaper_dashboard_option_value(options, "state_output");
+    if (input.empty() && !epaper_dashboard_option_value(options, "state_high_label").empty()) {
+      input = "high";
+      output = epaper_dashboard_option_value(options, "state_high_label");
+    } else if (input.empty() && !epaper_dashboard_option_value(options, "state_low_label").empty()) {
+      input = "low";
+      output = epaper_dashboard_option_value(options, "state_low_label");
+    }
+    if (!input.empty()) {
+      out += ",state_input=" + epaper_dashboard_encode_field(input);
+    }
+    if (!output.empty()) {
+      out += ",state_output=" + epaper_dashboard_encode_field(output);
+    }
+    std::string input_2 = epaper_dashboard_option_value(options, "state_input_2");
+    std::string output_2 = epaper_dashboard_option_value(options, "state_output_2");
+    if (!input_2.empty()) {
+      out += ",state_input_2=" + epaper_dashboard_encode_field(input_2);
+    }
+    if (!output_2.empty()) {
+      out += ",state_output_2=" + epaper_dashboard_encode_field(output_2);
+    }
+  }
+  return out;
+}
+
 inline std::string epaper_dashboard_pretty_state(const std::string &value) {
   std::string text = value;
   for (char &ch : text) {
@@ -2546,6 +2587,9 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.unit.clear();
     tile.icon_on = "Auto";
     if (tile.icon.empty()) tile.icon = "Auto";
+  }
+  if (tile.type == "sensor") {
+    tile.options = epaper_dashboard_normalize_sensor_options(tile.options, tile.precision);
   }
   if (tile.type == "media") {
     bool legacy_controls = tile.sensor == "controls";
