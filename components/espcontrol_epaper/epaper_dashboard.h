@@ -812,6 +812,14 @@ inline std::string epaper_dashboard_media_mode_label(const std::string &mode) {
   return "Play/Pause";
 }
 
+inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTile &tile) {
+  if (epaper_dashboard_action_option_select(tile) && !tile.entity.empty()) return tile.entity;
+  if (epaper_dashboard_weather_forecast_card(tile)) return "";
+  if (tile.type == "weather") return "";
+  if (!tile.sensor.empty()) return tile.sensor;
+  return tile.entity;
+}
+
 inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return epaper_dashboard_display_value(tile);
   if (epaper_dashboard_toggle_text_sensor_card(tile) && !tile.sensor_value.empty()) {
@@ -819,14 +827,14 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "weather") {
     if (epaper_dashboard_weather_forecast_card(tile)) {
-      if (!tile.label.empty()) return tile.label;
+      if (!tile.label.empty() && tile.label != epaper_dashboard_title_from_entity(tile.entity)) return tile.label;
       return tile.precision == "today" ? "Today" : "Tomorrow";
     }
     if (!tile.state.empty()) return epaper_dashboard_weather_label_for_state(tile.state);
     return "Weather";
   }
   if (tile.type == "weather_forecast") {
-    if (!tile.label.empty()) return tile.label;
+    if (!tile.label.empty() && tile.label != epaper_dashboard_title_from_entity(tile.entity)) return tile.label;
     return "Temperatures Tomorrow";
   }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
@@ -1062,14 +1070,21 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     epaper_dashboard_mark_dirty();
     return;
   }
-  if (tile.label.empty()) tile.label = epaper_dashboard_title_from_entity(!tile.sensor.empty() ? tile.sensor : tile.entity);
+  if (tile.label.empty()) {
+    std::string label_source = epaper_dashboard_default_label_source(tile);
+    if (!label_source.empty()) tile.label = epaper_dashboard_title_from_entity(label_source);
+  }
   epaper_dashboard_subscribe(index);
   epaper_dashboard_mark_dirty();
 }
 
 inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &tile) {
   if (tile.config.empty()) return "";
-  if (epaper_dashboard_action_option_select(tile)) return "Option";
+  if (epaper_dashboard_action_option_select(tile)) {
+    if (tile.state_unavailable) return "--";
+    if (!tile.state.empty()) return tile.state;
+    return "Option";
+  }
   bool use_sensor_value = tile.type == "sensor" || tile.type == "weather" ||
       tile.type == "weather_forecast" || tile.type == "calendar" ||
       tile.type == "clock" || tile.type == "timezone" ||
