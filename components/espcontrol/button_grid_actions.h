@@ -467,7 +467,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     std::string label = p.label;
     if (label.empty()) {
       char buf[16];
-      snprintf(buf, sizeof(buf), "Push %d", slot_num);
+      snprintf(buf, sizeof(buf), "Trigger %d", slot_num);
       label = buf;
     }
     esphome::api::HomeassistantActionRequest req;

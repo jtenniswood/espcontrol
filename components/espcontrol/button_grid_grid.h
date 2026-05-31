@@ -1402,7 +1402,7 @@ inline void grid_phase2(
         continue;
       }
       if (sb_cfg.type == "push") {
-        std::string push_label = sb_cfg.label.empty() ? "Push" : sb_cfg.label;
+        std::string push_label = sb_cfg.label.empty() ? "Trigger" : sb_cfg.label;
         std::string *label = new std::string(push_label);
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           std::string *label = (std::string *)lv_event_get_user_data(e);

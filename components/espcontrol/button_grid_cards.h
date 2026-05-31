@@ -555,7 +555,7 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
       apply_push_button_transition(s.btn);
     }
     if (p.type == "push" && p.label.empty()) {
-      lv_label_set_text(s.text_lbl, "Push");
+      lv_label_set_text(s.text_lbl, "Trigger");
     }
   }
 }
