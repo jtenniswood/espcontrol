@@ -109,6 +109,23 @@ function normalizeButtonConfig(b) {
     b.options = "";
     if (!b.icon || b.icon === "Auto") b.icon = "Gesture Tap";
   }
+  if (b && b.type === "internal") {
+    var internalPushMode = b.sensor === "push";
+    b.sensor = internalPushMode ? "push" : "";
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    if (!b.icon || b.icon === "Auto" || b.icon === "Power" ||
+        (!internalPushMode && b.icon === "Power Plug")) {
+      b.icon = internalPushMode ? "Gesture Tap" : "Lightbulb Outline";
+    }
+    if (internalPushMode) {
+      b.icon_on = "Auto";
+    } else if (!b.icon_on || b.icon_on === "Auto" || b.icon_on === "Power" ||
+               b.icon_on === "Flash") {
+      b.icon_on = "Lightbulb";
+    }
+  }
   if (b && b.type === "light_switch") {
     b.sensor = "";
     b.unit = "";
@@ -1068,11 +1085,12 @@ function buttonConfigFields(b) {
     (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" ||
       type === "calendar" || type === "clock" || type === "timezone" ||
       type === "push" || type === "alarm" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+  if (type === "internal" && sensor !== "push") sensor = "";
   if (type === "lock" && sensor !== "lock" && sensor !== "unlock") sensor = "";
   if (type === "light_temperature" && sensor === LIGHT_TEMPERATURE_LEGACY_SENSOR) sensor = "";
   var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" ||
     type === "lock" || type === "calendar" || type === "clock" || type === "timezone" ||
-    type === "push" ||
+    type === "push" || type === "internal" ||
     type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.unit || "");
   if (type === "light_temperature") unit = normalizeLightTemperatureRange(unit);
   var icon = b && b.icon || "Auto";
@@ -1083,7 +1101,7 @@ function buttonConfigFields(b) {
   var iconOn = (isActionOptionSelect || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
   var precision = (isActionOptionSelect || type === "light_switch" || type === "lock" ||
-    type === "clock" || type === "timezone" || type === "push" || type === "alarm" ||
+    type === "clock" || type === "timezone" || type === "push" || type === "internal" || type === "alarm" ||
     type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.precision || "");
   if (type === "calendar" && precision !== "datetime") precision = "";
   if (type === "media") {
@@ -1098,6 +1116,8 @@ function buttonConfigFields(b) {
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options);
   } else if (type === "push") {
+    options = "";
+  } else if (type === "internal") {
     options = "";
   } else if (type === "alarm" || type === "alarm_action") {
     options = normalizeAlarmOptions(options);
@@ -1141,6 +1161,18 @@ function buttonConfigFields(b) {
     b.entity = "";
     if (!icon || icon === "Auto") icon = "Gesture Tap";
     iconOn = "Auto";
+  }
+  if (type === "internal") {
+    var isInternalPush = sensor === "push";
+    if (!icon || icon === "Auto" || icon === "Power" ||
+        (!isInternalPush && icon === "Power Plug")) {
+      icon = isInternalPush ? "Gesture Tap" : "Lightbulb Outline";
+    }
+    if (isInternalPush) {
+      iconOn = "Auto";
+    } else if (!iconOn || iconOn === "Auto" || iconOn === "Power" || iconOn === "Flash") {
+      iconOn = "Lightbulb";
+    }
   }
   if (type === "door_window") {
     b = b || {};
