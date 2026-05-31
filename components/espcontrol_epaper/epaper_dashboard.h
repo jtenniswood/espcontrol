@@ -1320,6 +1320,12 @@ inline bool epaper_dashboard_action_state_text_card(const EpaperDashboardTile &t
          epaper_dashboard_action_state_precision(tile) == "text";
 }
 
+inline bool epaper_dashboard_action_state_numeric_card(const EpaperDashboardTile &tile) {
+  std::string precision = epaper_dashboard_action_state_precision(tile);
+  return !tile.action_state_entity.empty() &&
+         precision != "icon" && precision != "text";
+}
+
 inline bool epaper_dashboard_active_color_enabled(const EpaperDashboardTile &tile) {
   return epaper_dashboard_option_present(tile.options, "active_color");
 }
@@ -1762,6 +1768,7 @@ inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile
   if (epaper_dashboard_weather_forecast_card(tile) && tile.forecast_valid) {
     return display_temperature_unit_symbol();
   }
+  if (epaper_dashboard_action_state_numeric_card(tile) && tile.sensor_unavailable) return "";
   if (tile.type == "climate" && epaper_dashboard_value_replaces_icon(tile) && tile.unit.empty()) {
     return display_clock_bar_temperature_suffix();
   }
@@ -2236,6 +2243,7 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
       tile.type == "media" || tile.type == "climate";
   if (use_sensor_value) {
     if (epaper_dashboard_text_sensor_card(tile) && tile.sensor_unavailable) return "Unavailable";
+    if (epaper_dashboard_action_state_numeric_card(tile) && tile.sensor_unavailable) return "";
     if (tile.sensor_unavailable) return "--";
     if (!tile.sensor_value.empty()) {
       if (tile.type == "media" && tile.sensor == "volume") return epaper_dashboard_format_media_volume(tile);
@@ -2255,6 +2263,7 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
       }
       return tile.sensor_value;
     }
+    if (epaper_dashboard_action_state_numeric_card(tile)) return "--";
     if (!epaper_dashboard_sensor_source(tile).empty() || !tile.action_state_entity.empty() ||
         tile.type == "media" || tile.type == "climate") return "...";
   }
