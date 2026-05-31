@@ -1307,7 +1307,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "climate") return find_icon("Thermostat");
   if (tile.type == "cover") {
     if (tile.sensor == "open") return find_icon("Blinds Open");
-    return find_icon("Blinds Horizontal");
+    return find_icon(active ? "Blinds Open" : "Blinds");
   }
   if (tile.type == "door_window") {
     if (epaper_dashboard_window_card(tile)) return find_icon(active ? "Window Open" : "Window Closed");
