@@ -711,8 +711,8 @@
         "btn": {
           "radius": 0.2,
           "padding": 1.1,
-          "iconSize": 4,
-          "labelSize": 2.35,
+          "iconSize": 4.35,
+          "labelSize": 2.55,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
