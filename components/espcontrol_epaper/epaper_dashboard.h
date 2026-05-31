@@ -1739,7 +1739,9 @@ inline bool epaper_dashboard_media_adjusted_position_seconds(
 inline int epaper_dashboard_light_brightness_percent(const std::string &value) {
   float brightness = 0.0f;
   if (!epaper_dashboard_parse_float_value(value, brightness)) return 0;
-  return epaper_dashboard_clamp_percent(static_cast<int>((brightness * 100.0f + 127.0f) / 255.0f));
+  if (brightness <= 0.0f) return 0;
+  int pct = epaper_dashboard_clamp_percent(static_cast<int>((brightness * 100.0f + 127.0f) / 255.0f));
+  return pct < 1 ? 1 : pct;
 }
 
 inline int epaper_dashboard_percent_value(const std::string &value) {
