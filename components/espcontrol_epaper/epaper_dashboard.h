@@ -2763,6 +2763,11 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   if (fields.size() > 6) tile.type = fields[6];
   if (fields.size() > 7) tile.precision = fields[7];
   if (fields.size() > 8) tile.options = fields[8];
+  if (tile.type == "subpage") {
+    tile = EpaperDashboardTile{};
+    epaper_dashboard_mark_dirty();
+    return;
+  }
   if (tile.type.empty()) {
     if (tile.sensor.empty()) {
       tile.unit.clear();
