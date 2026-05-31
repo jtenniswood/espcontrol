@@ -121,6 +121,7 @@ script:
           espcontrol::epaper_dashboard_set_config(10, id(button_11_config).state);
           espcontrol::epaper_dashboard_set_config(11, id(button_12_config).state);
           // END GENERATED TRMNL DASHBOARD CONFIG
+          espcontrol::epaper_dashboard_refresh_weather_forecasts();
 
 switch:
   - platform: template
@@ -252,4 +253,6 @@ interval:
 
   - interval: 30min
     then:
+      - lambda: |-
+          espcontrol::epaper_dashboard_refresh_weather_forecasts();
       - script.execute: trmnl_refresh_display_full

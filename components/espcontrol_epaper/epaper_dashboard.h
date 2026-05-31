@@ -1,7 +1,9 @@
 #pragma once
 
 #include "esphome/components/api/api_server.h"
+#include "esphome/components/api/homeassistant_service.h"
 #include "lvgl.h"
+#include "../espcontrol/button_grid_ha.h"
 #include "../espcontrol/icons.h"
 #include "../espcontrol/sun_calc.h"
 #include "../espcontrol/temperature_unit.h"
@@ -38,12 +40,17 @@ struct EpaperDashboardTile {
   std::string sensor_value;
   std::string secondary_value;
   std::string action_state_entity;
+  std::string forecast_unit;
+  std::string forecast_status_label;
+  int forecast_high = 0;
+  int forecast_low = 0;
   bool state_subscribed = false;
   bool sensor_subscribed = false;
   bool secondary_subscribed = false;
   bool state_unavailable = false;
   bool sensor_unavailable = false;
   bool secondary_unavailable = false;
+  bool forecast_valid = false;
 };
 
 struct EpaperDashboardTimeState {
@@ -56,6 +63,16 @@ struct EpaperDashboardTimeState {
   time_t epoch = 0;
   bool use_12h = false;
   std::string active_timezone = "UTC (GMT+0)";
+};
+
+struct EpaperDashboardForecastPayload {
+  bool today_valid = false;
+  int today_high = 32767;
+  int today_low = 32767;
+  bool tomorrow_valid = false;
+  int tomorrow_high = 32767;
+  int tomorrow_low = 32767;
+  std::string unit;
 };
 
 inline std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> &epaper_dashboard_tiles() {
@@ -511,6 +528,166 @@ inline std::string epaper_dashboard_weather_label_for_state(const std::string &s
 inline bool epaper_dashboard_weather_forecast_card(const EpaperDashboardTile &tile) {
   return tile.type == "weather_forecast" ||
          (tile.type == "weather" && (tile.precision == "today" || tile.precision == "tomorrow"));
+}
+
+inline std::string epaper_dashboard_weather_forecast_day(const EpaperDashboardTile &tile) {
+  return tile.precision == "today" ? "today" : "tomorrow";
+}
+
+inline bool epaper_dashboard_forecast_entity_id_safe(const std::string &entity_id) {
+  if (entity_id.compare(0, 8, "weather.") != 0) return false;
+  for (char ch : entity_id) {
+    if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '.')) return false;
+  }
+  return true;
+}
+
+inline bool epaper_dashboard_parse_forecast_temp(const std::string &value, int &out) {
+  if (value.empty()) return false;
+  char *end = nullptr;
+  float parsed = std::strtof(value.c_str(), &end);
+  if (end == value.c_str()) return false;
+  out = static_cast<int>(parsed >= 0 ? parsed + 0.5f : parsed - 0.5f);
+  return true;
+}
+
+inline bool epaper_dashboard_parse_forecast_payload(const std::string &payload,
+                                                    EpaperDashboardForecastPayload &out) {
+  size_t p1 = payload.find('|');
+  if (p1 == std::string::npos) return false;
+  size_t p2 = payload.find('|', p1 + 1);
+  if (p2 == std::string::npos) return false;
+  size_t p3 = payload.find('|', p2 + 1);
+  if (p3 == std::string::npos) return false;
+  size_t p4 = payload.find('|', p3 + 1);
+  if (p4 == std::string::npos) return false;
+
+  bool today_has_high = epaper_dashboard_parse_forecast_temp(payload.substr(0, p1), out.today_high);
+  bool today_has_low = epaper_dashboard_parse_forecast_temp(payload.substr(p1 + 1, p2 - p1 - 1), out.today_low);
+  bool tomorrow_has_high = epaper_dashboard_parse_forecast_temp(payload.substr(p2 + 1, p3 - p2 - 1), out.tomorrow_high);
+  bool tomorrow_has_low = epaper_dashboard_parse_forecast_temp(payload.substr(p3 + 1, p4 - p3 - 1), out.tomorrow_low);
+  out.today_valid = today_has_high || today_has_low;
+  out.tomorrow_valid = tomorrow_has_high || tomorrow_has_low;
+  out.unit = payload.substr(p4 + 1);
+  return out.today_valid || out.tomorrow_valid;
+}
+
+inline std::string epaper_dashboard_forecast_response_template(const std::string &entity_id) {
+  return std::string("{% set entity = '") + entity_id + "' %}"
+    "{% set entity_response = response[entity] if entity in response else none %}"
+    "{% set forecasts = entity_response['forecast'] if entity_response is not none and 'forecast' in entity_response else [] %}"
+    "{% set today = forecasts[0] if forecasts|length > 0 else none %}"
+    "{% set tomorrow = forecasts[1] if forecasts|length > 1 else none %}"
+    "{% set today_high = today['temperature'] if today is not none and 'temperature' in today else (today['temperature_high'] if today is not none and 'temperature_high' in today else (today['high_temperature'] if today is not none and 'high_temperature' in today else (today['high'] if today is not none and 'high' in today else ''))) %}"
+    "{% set today_low = today['templow'] if today is not none and 'templow' in today else (today['temperature_low'] if today is not none and 'temperature_low' in today else (today['low_temperature'] if today is not none and 'low_temperature' in today else (today['low'] if today is not none and 'low' in today else ''))) %}"
+    "{% set tomorrow_high = tomorrow['temperature'] if tomorrow is not none and 'temperature' in tomorrow else (tomorrow['temperature_high'] if tomorrow is not none and 'temperature_high' in tomorrow else (tomorrow['high_temperature'] if tomorrow is not none and 'high_temperature' in tomorrow else (tomorrow['high'] if tomorrow is not none and 'high' in tomorrow else ''))) %}"
+    "{% set tomorrow_low = tomorrow['templow'] if tomorrow is not none and 'templow' in tomorrow else (tomorrow['temperature_low'] if tomorrow is not none and 'temperature_low' in tomorrow else (tomorrow['low_temperature'] if tomorrow is not none and 'low_temperature' in tomorrow else (tomorrow['low'] if tomorrow is not none and 'low' in tomorrow else ''))) %}"
+    "{{ today_high }}|{{ today_low }}|{{ tomorrow_high }}|{{ tomorrow_low }}|"
+    "{{ state_attr(entity, 'temperature_unit') or '' }}";
+}
+
+inline void epaper_dashboard_apply_forecast_to_entity(const std::string &entity_id,
+                                                      const EpaperDashboardForecastPayload &forecast) {
+  for (auto &tile : epaper_dashboard_tiles()) {
+    if (!epaper_dashboard_weather_forecast_card(tile) || tile.entity != entity_id) continue;
+    bool today = epaper_dashboard_weather_forecast_day(tile) == "today";
+    tile.forecast_valid = today ? forecast.today_valid : forecast.tomorrow_valid;
+    tile.forecast_high = today ? forecast.today_high : forecast.tomorrow_high;
+    tile.forecast_low = today ? forecast.today_low : forecast.tomorrow_low;
+    tile.forecast_unit = forecast.unit;
+    tile.forecast_status_label.clear();
+  }
+  epaper_dashboard_mark_dirty();
+}
+
+inline void epaper_dashboard_apply_forecast_unavailable(const std::string &entity_id,
+                                                        const std::string &status_label = "") {
+  for (auto &tile : epaper_dashboard_tiles()) {
+    if (!epaper_dashboard_weather_forecast_card(tile) || tile.entity != entity_id) continue;
+    tile.forecast_valid = false;
+    tile.forecast_high = 0;
+    tile.forecast_low = 0;
+    tile.forecast_unit.clear();
+    tile.forecast_status_label = status_label;
+  }
+  epaper_dashboard_mark_dirty();
+}
+
+inline uint32_t epaper_dashboard_next_forecast_call_id() {
+  static uint32_t call_id = 10000;
+  return call_id++;
+}
+
+inline void epaper_dashboard_request_forecast_entity(const std::string &entity_id) {
+  if (!epaper_dashboard_forecast_entity_id_safe(entity_id) || !ha_api_state_connected()) {
+    epaper_dashboard_apply_forecast_unavailable(entity_id);
+    return;
+  }
+  esphome::api::HomeassistantActionRequest req;
+  uint32_t call_id = epaper_dashboard_next_forecast_call_id();
+  if (!ha_action_begin(req, "weather.get_forecasts", false, 2, call_id)) {
+    epaper_dashboard_apply_forecast_unavailable(entity_id);
+    return;
+  }
+  req.wants_response = true;
+  std::string response_template = epaper_dashboard_forecast_response_template(entity_id);
+  req.response_template = decltype(req.response_template)(response_template);
+  ha_action_add_entity(req, entity_id);
+  ha_action_add_data(req, "type", "daily");
+  if (!ha_register_action_response_callback(
+      req.call_id,
+      [entity_id, call_id = req.call_id](const esphome::api::ActionResponse &response) {
+        if (!response.is_success()) {
+          std::string error = response.get_error_message();
+          epaper_dashboard_apply_forecast_unavailable(
+            entity_id, error == "timeout" ? "HA Actions" : "");
+          return;
+        }
+        const char *payload = response.get_json()["response"].as<const char *>();
+        EpaperDashboardForecastPayload forecast;
+        if (payload == nullptr || !epaper_dashboard_parse_forecast_payload(payload, forecast)) {
+          epaper_dashboard_apply_forecast_unavailable(entity_id);
+          return;
+        }
+        epaper_dashboard_apply_forecast_to_entity(entity_id, forecast);
+      })) {
+    epaper_dashboard_apply_forecast_unavailable(entity_id);
+    return;
+  }
+  if (!ha_action_send(req)) {
+    ha_cancel_action_response_callback(req.call_id, "send failed");
+    epaper_dashboard_apply_forecast_unavailable(entity_id);
+  }
+}
+
+inline void epaper_dashboard_refresh_weather_forecasts() {
+  std::vector<std::string> requested;
+  for (const auto &tile : epaper_dashboard_tiles()) {
+    if (!epaper_dashboard_weather_forecast_card(tile) || tile.entity.empty()) continue;
+    bool already_requested = false;
+    for (const auto &existing : requested) {
+      if (existing == tile.entity) {
+        already_requested = true;
+        break;
+      }
+    }
+    if (already_requested) continue;
+    requested.push_back(tile.entity);
+    epaper_dashboard_request_forecast_entity(tile.entity);
+  }
+}
+
+inline std::string epaper_dashboard_weather_forecast_value(const EpaperDashboardTile &tile) {
+  if (!tile.forecast_valid) return "--/--";
+  char buf[24];
+  char high_buf[12];
+  char low_buf[12];
+  if (tile.forecast_high == 32767) snprintf(high_buf, sizeof(high_buf), "--");
+  else snprintf(high_buf, sizeof(high_buf), "%d", tile.forecast_high);
+  if (tile.forecast_low == 32767) snprintf(low_buf, sizeof(low_buf), "--");
+  else snprintf(low_buf, sizeof(low_buf), "%d", tile.forecast_low);
+  snprintf(buf, sizeof(buf), "%s/%s", high_buf, low_buf);
+  return buf;
 }
 
 inline std::string epaper_dashboard_alarm_label_for_state(const std::string &state) {
@@ -1054,6 +1231,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "weather") {
     if (epaper_dashboard_weather_forecast_card(tile)) {
+      if (!tile.forecast_status_label.empty()) return tile.forecast_status_label;
       if (!tile.label.empty() && tile.label != epaper_dashboard_title_from_entity(tile.entity)) return tile.label;
       return tile.precision == "today" ? "Today" : "Tomorrow";
     }
@@ -1061,6 +1239,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return "Weather";
   }
   if (tile.type == "weather_forecast") {
+    if (!tile.forecast_status_label.empty()) return tile.forecast_status_label;
     if (!tile.label.empty() && tile.label != epaper_dashboard_title_from_entity(tile.entity)) return tile.label;
     return "Temperatures Tomorrow";
   }
@@ -1097,6 +1276,9 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
 
 inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile) {
   if (tile.type == "media" && tile.sensor == "volume") return "%";
+  if (epaper_dashboard_weather_forecast_card(tile) && tile.forecast_valid) {
+    return display_temperature_unit_symbol();
+  }
   if (tile.type == "climate" && epaper_dashboard_value_replaces_icon(tile) && tile.unit.empty()) {
     return display_clock_bar_temperature_suffix();
   }
@@ -1322,6 +1504,9 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     if (!label_source.empty()) tile.label = epaper_dashboard_title_from_entity(label_source);
   }
   epaper_dashboard_subscribe(index);
+  if (epaper_dashboard_weather_forecast_card(tile)) {
+    epaper_dashboard_request_forecast_entity(tile.entity);
+  }
   epaper_dashboard_mark_dirty();
 }
 
@@ -1330,6 +1515,7 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
   if (tile.type == "calendar") return epaper_dashboard_calendar_value(tile);
   if (tile.type == "clock") return epaper_dashboard_clock_value();
   if (tile.type == "timezone") return epaper_dashboard_timezone_value(tile);
+  if (epaper_dashboard_weather_forecast_card(tile)) return epaper_dashboard_weather_forecast_value(tile);
   if (epaper_dashboard_action_option_select(tile)) {
     if (tile.state_unavailable) return "--";
     if (!tile.state.empty()) return tile.state;

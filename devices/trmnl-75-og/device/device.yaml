@@ -28,6 +28,8 @@ esphome:
   platformio_options:
     build_flags:
       - "-DESPCONTROL_DISABLE_TODO=1"
+      - "-DUSE_API_HOMEASSISTANT_ACTION_RESPONSES"
+      - "-DUSE_API_HOMEASSISTANT_ACTION_RESPONSES_JSON"
   on_boot:
     - priority: 600
       then:
@@ -82,6 +84,7 @@ wifi:
 api:
   reboot_timeout: 0s
   homeassistant_states: true
+  homeassistant_services: true
   on_client_connected:
     - delay: 2s
     - script.execute: trmnl_sync_dashboard_config
