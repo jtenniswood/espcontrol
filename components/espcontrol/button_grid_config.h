@@ -291,6 +291,10 @@ inline std::string weather_card_options_normalized(const std::string &options,
            : std::string();
 }
 
+inline std::string weather_card_precision_normalized(const std::string &precision) {
+  return precision == "today" || precision == "tomorrow" ? precision : "";
+}
+
 inline std::string date_time_card_options_normalized(const std::string &options) {
   return cfg_option_token_present(options, "large_numbers")
            ? std::string("large_numbers")
@@ -786,6 +790,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options = sensor_card_options_normalized(p.options, p.precision);
   }
   if (p.type == "weather") {
+    p.precision = weather_card_precision_normalized(p.precision);
     p.options = weather_card_options_normalized(p.options, p.precision);
   }
   return p;

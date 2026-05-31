@@ -193,6 +193,7 @@ function normalizeButtonConfig(b) {
   if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
   } else if (b && b.type === "weather") {
+    b.precision = normalizeWeatherPrecision(b.precision);
     b.options = normalizeWeatherOptions(b.options, b.precision);
   } else if (b && b.type === "action") {
     b.options = normalizeActionOptions(b.options);
@@ -711,6 +712,11 @@ function normalizeWeatherOptions(options, precision) {
     : "";
 }
 
+function normalizeWeatherPrecision(value) {
+  value = String(value || "");
+  return value === "today" || value === "tomorrow" ? value : "";
+}
+
 function normalizeDateTimeOptions(options) {
   return configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION)
     ? SENSOR_LARGE_NUMBERS_OPTION
@@ -1145,6 +1151,7 @@ function buttonConfigFields(b) {
   if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
   if (type === "door_window") precision = normalizeDoorWindowSubtype(precision);
   if (type === "cover") precision = "";
+  if (type === "weather") precision = normalizeWeatherPrecision(precision);
   var options = b && b.options || "";
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options);

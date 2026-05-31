@@ -412,6 +412,10 @@ inline std::string epaper_dashboard_normalize_weather_options(const std::string 
            : std::string();
 }
 
+inline std::string epaper_dashboard_normalize_weather_precision(const std::string &precision) {
+  return precision == "today" || precision == "tomorrow" ? precision : "";
+}
+
 inline std::string epaper_dashboard_normalize_date_time_options(const std::string &options) {
   return epaper_dashboard_option_present(options, "large_numbers")
            ? std::string("large_numbers")
@@ -2747,6 +2751,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.options = epaper_dashboard_normalize_sensor_options(tile.options, tile.precision);
   }
   if (tile.type == "weather") {
+    tile.precision = epaper_dashboard_normalize_weather_precision(tile.precision);
     tile.options = epaper_dashboard_normalize_weather_options(tile.options, tile.precision);
   }
   if (tile.type == "media") {
