@@ -784,6 +784,12 @@ inline const char *epaper_dashboard_alarm_action_icon(const std::string &mode) {
   return find_icon("Shield Lock");
 }
 
+inline std::string epaper_dashboard_alarm_action_label(const std::string &mode) {
+  if (mode == "home") return "Arm Home";
+  if (mode == "disarm") return "Disarm";
+  return "Arm Away";
+}
+
 inline bool epaper_dashboard_fan_non_speed_card(const EpaperDashboardTile &tile) {
   return tile.type == "fan_switch" || tile.type == "fan_oscillate" ||
          tile.type == "fan_direction" || tile.type == "fan_preset";
@@ -1543,6 +1549,9 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "alarm" &&
       epaper_dashboard_option_value(tile.options, "label_display") != "name") {
     return epaper_dashboard_alarm_label_for_state(epaper_dashboard_alarm_effective_state(tile));
+  }
+  if (tile.type == "alarm_action" && !tile.label_configured) {
+    return epaper_dashboard_alarm_action_label(tile.sensor);
   }
   if (tile.type == "media" &&
       (tile.sensor == "play_pause" || tile.sensor == "position") &&
