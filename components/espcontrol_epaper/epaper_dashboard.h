@@ -2249,6 +2249,7 @@ inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardT
       tile.type == "alarm_action" || tile.type == "media") {
     return "";
   }
+  if (tile.type == "todo" && !tile.entity.empty()) return tile.entity;
   if (tile.type == "action" && !epaper_dashboard_option_select_card(tile)) return "";
   if (tile.type == "garage" && epaper_dashboard_garage_command_mode(tile.sensor)) return "";
   if (tile.type == "garage" &&
@@ -2375,6 +2376,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "push" && tile.label.empty()) return "Trigger";
   if (tile.type == "webhook" && tile.label.empty()) return "Webhook";
   if (tile.type == "todo" && tile.label.empty()) {
+    if (!tile.friendly_name.empty()) return tile.friendly_name;
     if (!tile.entity.empty()) return tile.entity;
     return "Todo";
   }
