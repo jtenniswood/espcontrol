@@ -25,16 +25,25 @@ script:
       - lambda: |-
           auto now = id(trmnl_time).now();
           if (now.is_valid()) {
+            bool use_12h = id(clock_format_select).current_option() == "12h";
+            int hour = now.hour;
             char time_text[6];
-            snprintf(time_text, sizeof(time_text), "%02d:%02d", now.hour, now.minute);
+            if (use_12h) {
+              hour = hour % 12;
+              if (hour == 0) hour = 12;
+              snprintf(time_text, sizeof(time_text), "%d:%02d", hour, now.minute);
+            } else {
+              snprintf(time_text, sizeof(time_text), "%02d:%02d", hour, now.minute);
+            }
             lv_label_set_text(id(display_time), time_text);
             espcontrol::epaper_dashboard_set_time(
               true, now.year, now.month, now.day_of_month,
-              now.hour, now.minute, now.timestamp, "UTC (GMT+0)", false);
+              now.hour, now.minute, now.timestamp, "UTC (GMT+0)", use_12h);
           } else {
             lv_label_set_text(id(display_time), "--:--");
             espcontrol::epaper_dashboard_set_time(
-              false, 0, 0, 0, 0, 0, 0, "UTC (GMT+0)", false);
+              false, 0, 0, 0, 0, 0, 0, "UTC (GMT+0)",
+              id(clock_format_select).current_option() == "12h");
           }
           lv_label_set_text(id(network_status_icon_label), "\U000F0928");
 
@@ -195,6 +204,25 @@ select:
     on_value:
       then:
         - script.execute: trmnl_sync_temperature_config
+        - script.execute: trmnl_refresh_display_partial
+
+  - platform: template
+    name: "${entity_screen_clock_format}"
+    internal: true
+    disabled_by_default: true
+    id: clock_format_select
+    entity_category: config
+    icon: "mdi:clock-outline"
+    optimistic: true
+    restore_value: true
+    initial_option: "24h"
+    options:
+      - "12h"
+      - "24h"
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
         - script.execute: trmnl_refresh_display_partial
 
 text:
