@@ -648,8 +648,18 @@ inline bool epaper_dashboard_toggle_text_sensor_card(const EpaperDashboardTile &
   return tile.type.empty() && tile.precision == "text" && !tile.sensor.empty();
 }
 
+inline bool epaper_dashboard_action_option_select(const EpaperDashboardTile &tile) {
+  return tile.type == "action" &&
+         (tile.sensor == "input_select.select_option" || tile.sensor == "select.select_option");
+}
+
+inline bool epaper_dashboard_internal_push_mode(const EpaperDashboardTile &tile) {
+  return tile.type == "internal" && tile.sensor == "push";
+}
+
 inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return false;
+  if (epaper_dashboard_action_option_select(tile)) return true;
   if (tile.type == "sensor") return tile.precision != "icon";
   if (epaper_dashboard_weather_forecast_card(tile) ||
       tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") return true;
@@ -727,7 +737,11 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
     return find_icon("Play Pause");
   }
   if (tile.type == "presence") return find_icon("Account");
-  if (tile.type == "push" || tile.type == "webhook") return find_icon("Gesture Tap");
+  if (tile.type == "push") return find_icon("Gesture Tap");
+  if (tile.type == "webhook") return find_icon("Flash");
+  if (tile.type == "internal") {
+    return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");
+  }
   if (tile.type == "slider") return find_icon("Gauge");
   size_t dot = tile.entity.find('.');
   if (dot != std::string::npos) return domain_default_icon(tile.entity.substr(0, dot));
@@ -763,8 +777,8 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "lock") return find_icon("Lock");
   if (tile.type == "alarm" || tile.type == "alarm_action") return find_icon("Security");
   if (tile.type == "action") {
-    if (tile.sensor == "input_select.select_option" || tile.sensor == "select.select_option") {
-      return find_icon("Table");
+    if (epaper_dashboard_action_option_select(tile)) {
+      return find_icon("Chevron Down");
     }
     std::string state_mode = epaper_dashboard_option_value(tile.options, "state_precision");
     if (!tile.action_state_entity.empty()) {
@@ -774,7 +788,11 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
     }
     return find_icon("Flash");
   }
-  if (tile.type == "push" || tile.type == "webhook") return find_icon("Gesture Tap");
+  if (tile.type == "push") return find_icon("Gesture Tap");
+  if (tile.type == "webhook") return find_icon("Flash");
+  if (tile.type == "internal") {
+    return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");
+  }
   if (tile.type == "light_brightness" || tile.type == "light_switch" ||
       tile.type == "light_temperature") return find_icon("Lightbulb");
   if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
@@ -812,6 +830,12 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return "Temperatures Tomorrow";
   }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
+  if (tile.type == "push" && tile.label.empty()) return "Trigger";
+  if (tile.type == "webhook" && tile.label.empty()) return "Webhook";
+  if (tile.type == "internal" && tile.label.empty()) {
+    if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
+    return "Relay";
+  }
   if (tile.type == "garage" && epaper_dashboard_option_value(tile.options, "label_display") == "status" &&
       !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
   if (tile.type == "climate") {
@@ -1045,6 +1069,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
 
 inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &tile) {
   if (tile.config.empty()) return "";
+  if (epaper_dashboard_action_option_select(tile)) return "Option";
   bool use_sensor_value = tile.type == "sensor" || tile.type == "weather" ||
       tile.type == "weather_forecast" || tile.type == "calendar" ||
       tile.type == "clock" || tile.type == "timezone" ||
