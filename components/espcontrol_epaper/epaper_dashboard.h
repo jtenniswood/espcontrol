@@ -42,6 +42,11 @@ struct EpaperDashboardTile {
   std::string secondary_value;
   std::string media_position_value;
   std::string media_duration_value;
+  std::string climate_current_value;
+  std::string climate_target_value;
+  std::string climate_target_low_value;
+  std::string climate_target_high_value;
+  std::string climate_hvac_action;
   std::string action_state_entity;
   std::string friendly_name;
   std::string forecast_unit;
@@ -55,11 +60,21 @@ struct EpaperDashboardTile {
   bool friendly_name_subscribed = false;
   bool media_position_subscribed = false;
   bool media_duration_subscribed = false;
+  bool climate_current_subscribed = false;
+  bool climate_target_subscribed = false;
+  bool climate_target_low_subscribed = false;
+  bool climate_target_high_subscribed = false;
+  bool climate_hvac_action_subscribed = false;
   bool state_unavailable = false;
   bool sensor_unavailable = false;
   bool secondary_unavailable = false;
   bool media_position_unavailable = false;
   bool media_duration_unavailable = false;
+  bool climate_current_unavailable = false;
+  bool climate_target_unavailable = false;
+  bool climate_target_low_unavailable = false;
+  bool climate_target_high_unavailable = false;
+  bool climate_hvac_action_unavailable = false;
   bool forecast_valid = false;
 };
 
@@ -276,6 +291,9 @@ inline bool epaper_dashboard_state_unavailable(const std::string &value) {
   return value == "unavailable" || value == "unknown";
 }
 
+inline std::string epaper_dashboard_normalized_state_text(const std::string &value);
+inline std::string epaper_dashboard_climate_number_mode(const EpaperDashboardTile &tile);
+
 inline std::string epaper_dashboard_option_value(const std::string &options, const char *name) {
   if (!name || !*name || options.empty()) return "";
   std::string prefix = std::string(name) + "=";
@@ -368,6 +386,79 @@ inline std::string epaper_dashboard_format_number(const std::string &value, int 
   else if (precision == 3) snprintf(buf, sizeof(buf), "%.3f", parsed);
   else snprintf(buf, sizeof(buf), "%.0f", parsed);
   return buf;
+}
+
+inline std::string epaper_dashboard_climate_option_label(const std::string &raw) {
+  std::string value = epaper_dashboard_normalized_state_text(raw);
+  if (value == "off") return "Off";
+  if (value == "heat") return "Heat";
+  if (value == "cool") return "Cool";
+  if (value == "heat_cool") return "Heat/Cool";
+  if (value == "auto") return "Auto";
+  if (value == "dry") return "Dry";
+  if (value == "fan_only") return "Fan";
+  return epaper_dashboard_pretty_state(value);
+}
+
+inline std::string epaper_dashboard_climate_action_label(const EpaperDashboardTile &tile) {
+  std::string mode = epaper_dashboard_normalized_state_text(tile.state);
+  std::string action = epaper_dashboard_normalized_state_text(tile.climate_hvac_action);
+  if (tile.state_unavailable || mode == "unknown" ||
+      mode == "unavailable") return "Unavailable";
+  if (mode.empty() || mode == "off") return "Off";
+  if (action.empty() || action == "unknown" || action == "unavailable") {
+    return epaper_dashboard_climate_option_label(mode);
+  }
+  if (action == "heating") return "Heating";
+  if (action == "cooling") return "Cooling";
+  if (action == "drying") return "Drying";
+  if (action == "fan") return "Fan";
+  if (action == "idle") return "Idle";
+  if (action == "off") return "Off";
+  return "Idle";
+}
+
+inline bool epaper_dashboard_climate_active(const EpaperDashboardTile &tile) {
+  std::string mode = epaper_dashboard_normalized_state_text(tile.state);
+  std::string action = epaper_dashboard_normalized_state_text(tile.climate_hvac_action);
+  if (tile.state_unavailable || mode.empty() || mode == "unknown" ||
+      mode == "unavailable" || mode == "off") return false;
+  if (action.empty() || action == "unknown" || action == "unavailable") return true;
+  return action != "idle" && action != "off";
+}
+
+inline std::string epaper_dashboard_climate_format_temperature(
+    const std::string &value, bool unavailable, const EpaperDashboardTile &tile) {
+  if (unavailable) return "";
+  if (value.empty()) return "";
+  return epaper_dashboard_format_number(value, epaper_dashboard_parse_precision(tile.precision));
+}
+
+inline std::string epaper_dashboard_climate_actual_value(const EpaperDashboardTile &tile) {
+  std::string value = epaper_dashboard_climate_format_temperature(
+      tile.climate_current_value, tile.climate_current_unavailable, tile);
+  return value.empty() ? "--" : value;
+}
+
+inline std::string epaper_dashboard_climate_target_value(const EpaperDashboardTile &tile) {
+  std::string low = epaper_dashboard_climate_format_temperature(
+      tile.climate_target_low_value, tile.climate_target_low_unavailable, tile);
+  std::string high = epaper_dashboard_climate_format_temperature(
+      tile.climate_target_high_value, tile.climate_target_high_unavailable, tile);
+  if (!low.empty() && !high.empty()) return low + "-" + high;
+
+  std::string target = epaper_dashboard_climate_format_temperature(
+      tile.climate_target_value, tile.climate_target_unavailable, tile);
+  if (!target.empty()) return target;
+  if (!low.empty()) return low;
+  if (!high.empty()) return high;
+  return "--";
+}
+
+inline std::string epaper_dashboard_climate_card_value(const EpaperDashboardTile &tile) {
+  return epaper_dashboard_climate_number_mode(tile) == "actual"
+    ? epaper_dashboard_climate_actual_value(tile)
+    : epaper_dashboard_climate_target_value(tile);
 }
 
 inline const char *epaper_dashboard_month_name(int month) {
@@ -1383,6 +1474,9 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   if (tile.type == "alarm_action") {
     return !tile.state_unavailable && epaper_dashboard_alarm_action_matches(tile);
   }
+  if (tile.type == "climate") {
+    return epaper_dashboard_climate_active(tile);
+  }
   if (tile.type == "fan_oscillate") {
     bool oscillating = false;
     return epaper_dashboard_bool_value(tile.sensor_value, oscillating) && oscillating;
@@ -1842,9 +1936,11 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
   if (tile.type == "climate") {
     std::string label_mode = epaper_dashboard_climate_label_mode(tile);
-    if (label_mode == "status" && !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
+    if (label_mode == "status") return epaper_dashboard_climate_action_label(tile);
     if (label_mode == "actual" || label_mode == "target") {
-      std::string value = epaper_dashboard_display_value(tile);
+      std::string value = label_mode == "actual"
+        ? epaper_dashboard_climate_actual_value(tile)
+        : epaper_dashboard_climate_target_value(tile);
       if (value.empty() || value == "--") return "--";
       return value + epaper_dashboard_display_unit(tile);
     }
@@ -2091,6 +2187,50 @@ inline void epaper_dashboard_subscribe(int index) {
           epaper_dashboard_mark_dirty();
         });
   }
+  if (tile.type == "climate" && !tile.entity.empty()) {
+    auto subscribe_climate_attribute =
+        [index](const std::string &entity, const char *attribute,
+                std::string EpaperDashboardTile::*value_field,
+                bool EpaperDashboardTile::*unavailable_field,
+                bool EpaperDashboardTile::*subscribed_field) {
+          auto &tile = epaper_dashboard_tiles()[index];
+          if (tile.*subscribed_field) return;
+          tile.*subscribed_field = true;
+          esphome::api::global_api_server->subscribe_home_assistant_state(
+              entity, attribute, [index, value_field, unavailable_field](esphome::StringRef state) {
+                auto &tile = epaper_dashboard_tiles()[index];
+                tile.*value_field = std::string(state.c_str(), state.size());
+                tile.*unavailable_field =
+                    epaper_dashboard_state_unavailable(tile.*value_field);
+                epaper_dashboard_mark_dirty();
+              });
+        };
+    subscribe_climate_attribute(
+        tile.entity, "current_temperature",
+        &EpaperDashboardTile::climate_current_value,
+        &EpaperDashboardTile::climate_current_unavailable,
+        &EpaperDashboardTile::climate_current_subscribed);
+    subscribe_climate_attribute(
+        tile.entity, "temperature",
+        &EpaperDashboardTile::climate_target_value,
+        &EpaperDashboardTile::climate_target_unavailable,
+        &EpaperDashboardTile::climate_target_subscribed);
+    subscribe_climate_attribute(
+        tile.entity, "target_temp_low",
+        &EpaperDashboardTile::climate_target_low_value,
+        &EpaperDashboardTile::climate_target_low_unavailable,
+        &EpaperDashboardTile::climate_target_low_subscribed);
+    subscribe_climate_attribute(
+        tile.entity, "target_temp_high",
+        &EpaperDashboardTile::climate_target_high_value,
+        &EpaperDashboardTile::climate_target_high_unavailable,
+        &EpaperDashboardTile::climate_target_high_subscribed);
+    subscribe_climate_attribute(
+        tile.entity, "hvac_action",
+        &EpaperDashboardTile::climate_hvac_action,
+        &EpaperDashboardTile::climate_hvac_action_unavailable,
+        &EpaperDashboardTile::climate_hvac_action_subscribed);
+  }
   if (epaper_dashboard_media_now_playing_progress_card(tile)) {
     if (!tile.media_position_subscribed) {
       tile.media_position_subscribed = true;
@@ -2334,11 +2474,14 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
     if (!tile.state.empty()) return epaper_dashboard_format_number(tile.state, 0);
     return "...";
   }
+  if (tile.type == "climate") {
+    return epaper_dashboard_climate_card_value(tile);
+  }
   bool use_sensor_value = tile.type == "sensor" || tile.type == "weather" ||
       tile.type == "weather_forecast" || tile.type == "calendar" ||
       tile.type == "clock" || tile.type == "timezone" ||
       !epaper_dashboard_sensor_source(tile).empty() || !tile.action_state_entity.empty() ||
-      tile.type == "media" || tile.type == "climate";
+      tile.type == "media";
   if (use_sensor_value) {
     if (epaper_dashboard_text_sensor_card(tile) && tile.sensor_unavailable) return "Unavailable";
     if (epaper_dashboard_action_state_numeric_card(tile) && tile.sensor_unavailable) return "";
