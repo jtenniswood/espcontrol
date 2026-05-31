@@ -39,6 +39,8 @@ struct EpaperDashboardTile {
   std::string state;
   std::string sensor_value;
   std::string secondary_value;
+  std::string media_position_value;
+  std::string media_duration_value;
   std::string action_state_entity;
   std::string forecast_unit;
   std::string forecast_status_label;
@@ -47,9 +49,13 @@ struct EpaperDashboardTile {
   bool state_subscribed = false;
   bool sensor_subscribed = false;
   bool secondary_subscribed = false;
+  bool media_position_subscribed = false;
+  bool media_duration_subscribed = false;
   bool state_unavailable = false;
   bool sensor_unavailable = false;
   bool secondary_unavailable = false;
+  bool media_position_unavailable = false;
+  bool media_duration_unavailable = false;
   bool forecast_valid = false;
 };
 
@@ -1189,6 +1195,11 @@ inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile)
   return false;
 }
 
+inline bool epaper_dashboard_media_now_playing_progress_card(const EpaperDashboardTile &tile) {
+  return tile.type == "media" && tile.sensor == "now_playing" &&
+         (tile.precision == "progress" || tile.precision == "play_pause");
+}
+
 inline int epaper_dashboard_clamp_percent(int pct) {
   if (pct < 0) return 0;
   if (pct > 100) return 100;
@@ -1264,7 +1275,17 @@ inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) 
     }
     return 0;
   }
-  if (tile.type == "media" && tile.sensor == "now_playing") return tile.precision == "play_pause" ? 100 : 50;
+  if (epaper_dashboard_media_now_playing_progress_card(tile)) {
+    if (tile.media_position_unavailable || tile.media_duration_unavailable) return 0;
+    float position = 0.0f;
+    float duration = 0.0f;
+    if (epaper_dashboard_parse_float_value(tile.media_position_value, position) &&
+        epaper_dashboard_parse_float_value(tile.media_duration_value, duration) &&
+        duration > 0.0f) {
+      return epaper_dashboard_clamp_percent(static_cast<int>((position * 100.0f / duration) + 0.5f));
+    }
+    return 0;
+  }
   if (tile.type == "cover" && tile.sensor == "tilt") return 35;
   if (tile.type == "light_temperature") return 65;
   if (tile.type == "fan_speed") return 40;
@@ -1663,6 +1684,30 @@ inline void epaper_dashboard_subscribe(int index) {
           tile.secondary_unavailable = epaper_dashboard_state_unavailable(tile.secondary_value);
           epaper_dashboard_mark_dirty();
         });
+  }
+  if (epaper_dashboard_media_now_playing_progress_card(tile)) {
+    if (!tile.media_position_subscribed) {
+      tile.media_position_subscribed = true;
+      esphome::api::global_api_server->subscribe_home_assistant_state(
+          tile.entity, "media_position", [index](esphome::StringRef state) {
+            auto &tile = epaper_dashboard_tiles()[index];
+            tile.media_position_value = std::string(state.c_str(), state.size());
+            tile.media_position_unavailable =
+                epaper_dashboard_state_unavailable(tile.media_position_value);
+            epaper_dashboard_mark_dirty();
+          });
+    }
+    if (!tile.media_duration_subscribed) {
+      tile.media_duration_subscribed = true;
+      esphome::api::global_api_server->subscribe_home_assistant_state(
+          tile.entity, "media_duration", [index](esphome::StringRef state) {
+            auto &tile = epaper_dashboard_tiles()[index];
+            tile.media_duration_value = std::string(state.c_str(), state.size());
+            tile.media_duration_unavailable =
+                epaper_dashboard_state_unavailable(tile.media_duration_value);
+            epaper_dashboard_mark_dirty();
+          });
+    }
   }
 }
 
