@@ -1322,19 +1322,26 @@ inline std::string epaper_dashboard_action_state_precision(const EpaperDashboard
   return tile.type == "action" ? epaper_dashboard_option_value(tile.options, "state_precision") : "";
 }
 
+inline bool epaper_dashboard_action_state_display_enabled(const EpaperDashboardTile &tile) {
+  if (tile.action_state_entity.empty()) return false;
+  std::string precision = epaper_dashboard_action_state_precision(tile);
+  return precision == "icon" || precision == "text" || precision == "0" ||
+         precision == "1" || precision == "2" || !tile.unit.empty();
+}
+
 inline bool epaper_dashboard_action_state_icon_card(const EpaperDashboardTile &tile) {
-  return !tile.action_state_entity.empty() &&
+  return epaper_dashboard_action_state_display_enabled(tile) &&
          epaper_dashboard_action_state_precision(tile) == "icon";
 }
 
 inline bool epaper_dashboard_action_state_text_card(const EpaperDashboardTile &tile) {
-  return !tile.action_state_entity.empty() &&
+  return epaper_dashboard_action_state_display_enabled(tile) &&
          epaper_dashboard_action_state_precision(tile) == "text";
 }
 
 inline bool epaper_dashboard_action_state_numeric_card(const EpaperDashboardTile &tile) {
   std::string precision = epaper_dashboard_action_state_precision(tile);
-  return !tile.action_state_entity.empty() &&
+  return epaper_dashboard_action_state_display_enabled(tile) &&
          precision != "icon" && precision != "text";
 }
 
