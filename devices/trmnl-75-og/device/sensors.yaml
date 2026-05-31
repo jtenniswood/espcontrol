@@ -119,6 +119,7 @@ script:
       - script.execute: trmnl_bind_lvgl_widgets
       - script.execute: trmnl_sync_temperature_config
       - lambda: |-
+          espcontrol::epaper_dashboard_set_month_names(id(calendar_month_names).state);
           // BEGIN GENERATED TRMNL DASHBOARD CONFIG
           // Generated from devices/manifest.json plan: 1 page x 12 slots.
           espcontrol::epaper_dashboard_set_config(0, id(button_1_config).state);
@@ -282,6 +283,27 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_display
+
+  - platform: template
+    name: "${entity_screen_month_names}"
+    internal: true
+    id: calendar_month_names
+    optimistic: true
+    restore_value: true
+    initial_value: "January,February,March,April,May,June,July,August,September,October,November,December"
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:calendar-text"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - lambda: |-
+            espcontrol::epaper_dashboard_set_month_names(x);
+        - script.execute: trmnl_refresh_display_partial
 
 interval:
   - interval: 1min

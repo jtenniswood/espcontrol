@@ -90,6 +90,11 @@ inline std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> &epaper_das
   return tiles;
 }
 
+inline std::array<std::string, 12> &epaper_dashboard_custom_month_names() {
+  static std::array<std::string, 12> names;
+  return names;
+}
+
 inline EpaperDashboardTimeState &epaper_dashboard_time_state() {
   static EpaperDashboardTimeState state;
   return state;
@@ -174,6 +179,30 @@ inline std::vector<std::string> epaper_dashboard_split(const std::string &value,
     start = end + 1;
   }
   return out;
+}
+
+inline std::string epaper_dashboard_trim(const std::string &value) {
+  size_t start = 0;
+  while (start < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[start]))) {
+    start++;
+  }
+  size_t end = value.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+    end--;
+  }
+  return value.substr(start, end - start);
+}
+
+inline void epaper_dashboard_set_month_names(const std::string &value) {
+  auto &names = epaper_dashboard_custom_month_names();
+  for (auto &name : names) name.clear();
+  std::vector<std::string> parts = epaper_dashboard_split(value, ',');
+  for (int i = 0; i < 12 && i < static_cast<int>(parts.size()); i++) {
+    names[i] = epaper_dashboard_trim(parts[i]);
+  }
+  epaper_dashboard_mark_dirty();
 }
 
 inline int epaper_dashboard_hex_digit(char c) {
@@ -347,6 +376,8 @@ inline const char *epaper_dashboard_month_name(int month) {
     "July", "August", "September", "October", "November", "December"
   };
   if (month < 1 || month > 12) return "Date";
+  const std::string &custom = epaper_dashboard_custom_month_names()[month - 1];
+  if (!custom.empty()) return custom.c_str();
   return months[month - 1];
 }
 
