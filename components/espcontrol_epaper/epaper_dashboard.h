@@ -1698,6 +1698,7 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   if (tile.type == "weather") return "";
   if (tile.type == "action") return "";
   if (tile.type == "media") return "";
+  if (tile.type == "todo") return "";
   if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
   if ((tile.type == "light_brightness" || tile.type == "light_temperature" ||
        tile.type == "slider" || tile.type == "fan_speed" || tile.type == "cover") &&
@@ -1829,7 +1830,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "push" && tile.label.empty()) return "Trigger";
   if (tile.type == "webhook" && tile.label.empty()) return "Webhook";
   if (tile.type == "todo" && tile.label.empty()) {
-    if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
+    if (!tile.entity.empty()) return tile.entity;
     return "Todo";
   }
   if (tile.type == "internal" && tile.label.empty()) {
