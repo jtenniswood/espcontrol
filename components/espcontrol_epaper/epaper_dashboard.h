@@ -1938,6 +1938,14 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   if (fields.size() > 6) tile.type = fields[6];
   if (fields.size() > 7) tile.precision = fields[7];
   if (fields.size() > 8) tile.options = fields[8];
+  if (tile.type == "weather_forecast") {
+    tile.type = "weather";
+    tile.precision = "tomorrow";
+    if (tile.label == "Weather") {
+      tile.label.clear();
+      tile.label_configured = false;
+    }
+  }
   if (tile.type == "action") {
     tile.action_state_entity = epaper_dashboard_option_value(tile.options, "state_entity");
     std::string action_unit = epaper_dashboard_option_value(tile.options, "state_unit");
