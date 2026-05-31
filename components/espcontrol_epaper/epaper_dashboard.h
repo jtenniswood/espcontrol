@@ -183,6 +183,18 @@ inline std::string epaper_dashboard_option_value(const std::string &options, con
   return "";
 }
 
+inline bool epaper_dashboard_option_present(const std::string &options, const char *name) {
+  if (!name || !*name || options.empty()) return false;
+  size_t start = 0;
+  while (start <= options.length()) {
+    size_t end = options.find(',', start);
+    if (end == std::string::npos) end = options.length();
+    if (options.compare(start, end - start, name) == 0) return true;
+    start = end + 1;
+  }
+  return false;
+}
+
 inline std::string epaper_dashboard_pretty_state(const std::string &value) {
   std::string text = value;
   for (char &ch : text) {
@@ -199,6 +211,28 @@ inline std::string epaper_dashboard_pretty_state(const std::string &value) {
     cap = false;
   }
   return text;
+}
+
+inline std::string epaper_dashboard_format_seconds(const std::string &value) {
+  char *end = nullptr;
+  float parsed = std::strtof(value.c_str(), &end);
+  if (end == value.c_str() || std::isnan(parsed) || parsed < 0) return epaper_dashboard_pretty_state(value);
+  int total = static_cast<int>(parsed + 0.5f);
+  int minutes = total / 60;
+  int seconds = total % 60;
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%d:%02d", minutes, seconds);
+  return buf;
+}
+
+inline std::string epaper_dashboard_format_percent(const std::string &value) {
+  char *end = nullptr;
+  float parsed = std::strtof(value.c_str(), &end);
+  if (end == value.c_str() || std::isnan(parsed)) return epaper_dashboard_pretty_state(value);
+  if (parsed >= 0.0f && parsed <= 1.0f) parsed *= 100.0f;
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%.0f", parsed);
+  return buf;
 }
 
 inline bool epaper_dashboard_api_available() {
@@ -321,6 +355,7 @@ struct EpaperDashboardLvglSlot {
   lv_obj_t *icon = nullptr;
   lv_obj_t *sensor_container = nullptr;
   lv_obj_t *label = nullptr;
+  lv_obj_t *badge = nullptr;
   lv_obj_t *value = nullptr;
   lv_obj_t *unit = nullptr;
 };
@@ -332,9 +367,10 @@ inline std::array<EpaperDashboardLvglSlot, EPAPER_DASHBOARD_PAGE_SLOTS> &epaper_
 
 inline void epaper_dashboard_bind_lvgl_slot(int slot, lv_obj_t *tile, lv_obj_t *icon,
                                            lv_obj_t *sensor_container, lv_obj_t *label,
-                                           lv_obj_t *value, lv_obj_t *unit = nullptr) {
+                                           lv_obj_t *value, lv_obj_t *unit = nullptr,
+                                           lv_obj_t *badge = nullptr) {
   if (slot < 0 || slot >= EPAPER_DASHBOARD_PAGE_SLOTS) return;
-  epaper_dashboard_lvgl_slots()[slot] = {tile, icon, sensor_container, label, value, unit};
+  epaper_dashboard_lvgl_slots()[slot] = {tile, icon, sensor_container, label, badge, value, unit};
   if (tile) {
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
@@ -349,20 +385,94 @@ inline bool epaper_dashboard_command_only_type(const EpaperDashboardTile &tile) 
 inline bool epaper_dashboard_tile_configured(const EpaperDashboardTile &tile) {
   if (tile.config.empty()) return false;
   if (!tile.entity.empty() || !tile.sensor.empty() || !tile.action_state_entity.empty()) return true;
-  return tile.type == "clock" || tile.type == "timezone";
+  return !tile.type.empty() && tile.type != "subpage";
 }
 
 inline bool epaper_dashboard_sensor_card_type(const EpaperDashboardTile &tile) {
   return tile.type == "sensor" || tile.type == "weather" || tile.type == "weather_forecast" ||
-         tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone" ||
-         tile.type == "door_window" || tile.type == "presence" ||
-         !tile.sensor.empty() || !tile.action_state_entity.empty() ||
-         (!tile.entity.empty() && !epaper_dashboard_command_only_type(tile));
+         tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone";
+}
+
+inline bool epaper_dashboard_sensor_field_is_entity(const EpaperDashboardTile &tile) {
+  if (tile.sensor.empty()) return false;
+  if (tile.type == "media" || tile.type == "garage" || tile.type == "lock" ||
+      tile.type == "cover" || tile.type == "climate" || tile.type == "alarm" ||
+      tile.type == "alarm_action" || tile.type == "light_temperature" ||
+      tile.type == "light_brightness" || tile.type == "slider" ||
+      tile.type == "fan_speed" || tile.type == "fan_switch" ||
+      tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
+      tile.type == "fan_preset" || tile.type == "internal") {
+    return false;
+  }
+  return true;
+}
+
+inline std::string epaper_dashboard_sensor_source(const EpaperDashboardTile &tile) {
+  if (!tile.action_state_entity.empty()) return tile.action_state_entity;
+  return epaper_dashboard_sensor_field_is_entity(tile) ? tile.sensor : "";
+}
+
+inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &tile,
+                                                     std::string &attribute) {
+  attribute.clear();
+  if (tile.entity.empty()) return "";
+  if (tile.type == "media") {
+    if (tile.sensor == "volume") {
+      attribute = "volume_level";
+      return tile.entity;
+    }
+    if (tile.sensor == "position") {
+      attribute = "media_position";
+      return tile.entity;
+    }
+    if (tile.sensor == "now_playing") {
+      attribute = "media_title";
+      return tile.entity;
+    }
+  }
+  if (tile.type == "climate") {
+    std::string mode = epaper_dashboard_option_value(tile.options, "number_display");
+    if (mode == "actual") {
+      attribute = "current_temperature";
+      return tile.entity;
+    }
+    if (mode == "target") {
+      attribute = "temperature";
+      return tile.entity;
+    }
+  }
+  return "";
+}
+
+inline bool epaper_dashboard_has_sensor_value(const EpaperDashboardTile &tile) {
+  return !epaper_dashboard_sensor_source(tile).empty() ||
+         tile.type == "clock" || tile.type == "timezone";
+}
+
+inline bool epaper_dashboard_card_large_numbers(const EpaperDashboardTile &tile) {
+  return epaper_dashboard_option_present(tile.options, "large_numbers");
+}
+
+inline bool epaper_dashboard_text_sensor_card(const EpaperDashboardTile &tile) {
+  return (tile.type == "sensor" && tile.precision == "text") || tile.type == "text_sensor";
 }
 
 inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile) {
-  return tile.type == "sensor" || tile.type == "weather" || tile.type == "weather_forecast" ||
-         tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone";
+  if (epaper_dashboard_text_sensor_card(tile)) return false;
+  if (tile.type == "sensor") return tile.precision != "icon";
+  if (tile.type == "weather" || tile.type == "weather_forecast" ||
+      tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") return true;
+  if (tile.type == "action") {
+    std::string mode = epaper_dashboard_option_value(tile.options, "state_precision");
+    return !tile.action_state_entity.empty() && mode != "icon" && mode != "text";
+  }
+  if (tile.type == "media") return tile.sensor == "volume" || tile.sensor == "position" ||
+                                    tile.sensor == "now_playing";
+  if (tile.type == "climate") {
+    std::string mode = epaper_dashboard_option_value(tile.options, "number_display");
+    return mode == "actual" || mode == "target";
+  }
+  return epaper_dashboard_card_large_numbers(tile) && epaper_dashboard_has_sensor_value(tile);
 }
 
 inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool active) {
@@ -399,7 +509,82 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   return find_icon("Auto");
 }
 
+inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) {
+  if (tile.type == "sensor") {
+    if (tile.precision == "icon") return find_icon("Light Switch");
+    if (tile.precision == "text") return find_icon("Application");
+    return find_icon("Gauge");
+  }
+  if (tile.type == "door_window") return find_icon(tile.precision == "window" ? "Window Closed" : "Door");
+  if (tile.type == "presence") return find_icon("Motion Sensor");
+  if (tile.type == "weather") {
+    if (tile.precision == "forecast" || tile.precision == "today" ||
+        tile.precision == "tomorrow") return find_icon("Weather Partly Cloudy");
+    return find_icon("Weather Cloudy");
+  }
+  if (tile.type == "weather_forecast") return find_icon("Weather Partly Cloudy");
+  if (tile.type == "calendar") return find_icon("Calendar");
+  if (tile.type == "clock") return find_icon("Clock");
+  if (tile.type == "timezone") return find_icon("Clock");
+  if (tile.type == "media") return find_icon("Speaker");
+  if (tile.type == "climate") return find_icon("Thermostat");
+  if (tile.type == "garage") return find_icon("Garage");
+  if (tile.type == "lock") return find_icon("Lock");
+  if (tile.type == "alarm" || tile.type == "alarm_action") return find_icon("Security");
+  if (tile.type == "action") {
+    if (tile.sensor == "input_select.select_option" || tile.sensor == "select.select_option") {
+      return find_icon("Table");
+    }
+    std::string state_mode = epaper_dashboard_option_value(tile.options, "state_precision");
+    if (!tile.action_state_entity.empty()) {
+      if (state_mode == "icon") return find_icon("Light Switch");
+      if (state_mode == "text") return find_icon("Application");
+      return find_icon("Gauge");
+    }
+    return find_icon("Flash");
+  }
+  if (tile.type == "push" || tile.type == "webhook") return find_icon("Gesture Tap");
+  if (tile.type == "light_brightness" || tile.type == "light_switch" ||
+      tile.type == "light_temperature") return find_icon("Lightbulb");
+  if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
+      tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
+      tile.type == "fan_preset") return find_icon("Fan");
+  if (tile.type == "slider") return find_icon("Gauge");
+  if (tile.type == "cover") return find_icon("Blinds Horizontal");
+  return nullptr;
+}
+
+inline std::string epaper_dashboard_media_mode_label(const std::string &mode) {
+  if (mode == "previous") return "Previous";
+  if (mode == "next") return "Next";
+  if (mode == "volume") return "Volume";
+  if (mode == "position") return "Position";
+  if (mode == "now_playing") return "Now Playing";
+  return "Play/Pause";
+}
+
+inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) {
+  if (epaper_dashboard_text_sensor_card(tile)) return epaper_dashboard_display_value(tile);
+  if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
+  if (tile.type == "garage" && epaper_dashboard_option_value(tile.options, "label_display") == "status" &&
+      !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
+  if (tile.type == "climate") {
+    std::string label_mode = epaper_dashboard_option_value(tile.options, "label_display");
+    if (label_mode == "status" && !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
+  }
+  return tile.label;
+}
+
+inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile) {
+  if (tile.type == "media" && tile.sensor == "volume") return "%";
+  if (tile.type == "climate" && epaper_dashboard_value_replaces_icon(tile) && tile.unit.empty()) {
+    return display_clock_bar_temperature_suffix();
+  }
+  return tile.unit;
+}
+
 inline void epaper_dashboard_style_lvgl_tile(lv_obj_t *tile, lv_obj_t *icon, lv_obj_t *label,
+                                            lv_obj_t *badge,
                                             lv_obj_t *value, lv_obj_t *unit,
                                             bool configured, bool active) {
   if (!tile) return;
@@ -420,6 +605,7 @@ inline void epaper_dashboard_style_lvgl_tile(lv_obj_t *tile, lv_obj_t *icon, lv_
   lv_obj_set_style_pad_all(tile, 8, LV_PART_MAIN);
   if (icon) lv_obj_set_style_text_color(icon, lv_color_hex(fg), LV_PART_MAIN);
   if (label) lv_obj_set_style_text_color(label, lv_color_hex(fg), LV_PART_MAIN);
+  if (badge) lv_obj_set_style_text_color(badge, lv_color_hex(fg), LV_PART_MAIN);
   if (value) lv_obj_set_style_text_color(value, lv_color_hex(fg), LV_PART_MAIN);
   if (unit) lv_obj_set_style_text_color(unit, lv_color_hex(fg), LV_PART_MAIN);
 }
@@ -441,6 +627,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     if (!configured) {
       if (slot.icon) lv_label_set_text(slot.icon, "");
       if (slot.label) lv_label_set_text(slot.label, "");
+      if (slot.badge) lv_label_set_text(slot.badge, "");
       if (slot.value) lv_label_set_text(slot.value, "");
       if (slot.unit) lv_label_set_text(slot.unit, "");
       lv_obj_add_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
@@ -452,10 +639,15 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     lv_obj_clear_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
     const std::string &active_value = !tile.state.empty() ? tile.state : tile.sensor_value;
     bool active = configured && epaper_dashboard_state_active(active_value);
-    bool show_value = configured && !epaper_dashboard_command_only_type(tile) &&
-        epaper_dashboard_sensor_card_type(tile);
+    bool has_sensor_value = epaper_dashboard_has_sensor_value(tile);
+    bool show_value = configured && !epaper_dashboard_text_sensor_card(tile) &&
+        (epaper_dashboard_sensor_card_type(tile) || has_sensor_value ||
+         epaper_dashboard_value_replaces_icon(tile));
+    if (tile.type == "sensor" && tile.precision == "icon") show_value = false;
+    if (tile.type == "door_window" || tile.type == "presence") show_value = false;
     bool value_replaces_icon = show_value && epaper_dashboard_value_replaces_icon(tile);
-    epaper_dashboard_style_lvgl_tile(slot.tile, slot.icon, slot.label, slot.value, slot.unit, configured, active);
+    epaper_dashboard_style_lvgl_tile(slot.tile, slot.icon, slot.label, slot.badge,
+                                     slot.value, slot.unit, configured, active);
     if (slot.icon) {
       lv_label_set_text(slot.icon, epaper_dashboard_icon(tile, active));
       if (value_replaces_icon) lv_obj_add_flag(slot.icon, LV_OBJ_FLAG_HIDDEN);
@@ -470,8 +662,19 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       }
     }
     if (slot.label) {
-      lv_label_set_text(slot.label, tile.label.c_str());
+      std::string label = epaper_dashboard_tile_label(tile);
+      lv_label_set_text(slot.label, label.c_str());
       lv_obj_clear_flag(slot.label, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (slot.badge) {
+      const char *badge = epaper_dashboard_badge_icon(tile);
+      if (badge) {
+        lv_label_set_text(slot.badge, badge);
+        lv_obj_clear_flag(slot.badge, LV_OBJ_FLAG_HIDDEN);
+      } else {
+        lv_label_set_text(slot.badge, "");
+        lv_obj_add_flag(slot.badge, LV_OBJ_FLAG_HIDDEN);
+      }
     }
     if (slot.value) {
       std::string value = epaper_dashboard_display_value(tile);
@@ -480,8 +683,9 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       else lv_obj_add_flag(slot.value, LV_OBJ_FLAG_HIDDEN);
     }
     if (slot.unit) {
-      lv_label_set_text(slot.unit, tile.unit.c_str());
-      if (show_value && !tile.unit.empty()) lv_obj_clear_flag(slot.unit, LV_OBJ_FLAG_HIDDEN);
+      std::string unit = epaper_dashboard_display_unit(tile);
+      lv_label_set_text(slot.unit, unit.c_str());
+      if (show_value && !unit.empty()) lv_obj_clear_flag(slot.unit, LV_OBJ_FLAG_HIDDEN);
       else lv_obj_add_flag(slot.unit, LV_OBJ_FLAG_HIDDEN);
     }
     lv_obj_invalidate(slot.tile);
@@ -504,11 +708,22 @@ inline void epaper_dashboard_subscribe(int index) {
           epaper_dashboard_mark_dirty();
         });
   }
-  std::string sensor_source = !tile.action_state_entity.empty() ? tile.action_state_entity : tile.sensor;
+  std::string sensor_source = epaper_dashboard_sensor_source(tile);
+  std::string attribute;
+  std::string attribute_entity = epaper_dashboard_attribute_source(tile, attribute);
   if (!sensor_source.empty() && !tile.sensor_subscribed) {
     tile.sensor_subscribed = true;
     esphome::api::global_api_server->subscribe_home_assistant_state(
         sensor_source, {}, [index](esphome::StringRef state) {
+          auto &tile = epaper_dashboard_tiles()[index];
+          tile.sensor_value = std::string(state.c_str(), state.size());
+          tile.sensor_unavailable = epaper_dashboard_state_unavailable(tile.sensor_value);
+          epaper_dashboard_mark_dirty();
+        });
+  } else if (!attribute_entity.empty() && !attribute.empty() && !tile.sensor_subscribed) {
+    tile.sensor_subscribed = true;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        attribute_entity, attribute, [index](esphome::StringRef state) {
           auto &tile = epaper_dashboard_tiles()[index];
           tile.sensor_value = std::string(state.c_str(), state.size());
           tile.sensor_unavailable = epaper_dashboard_state_unavailable(tile.sensor_value);
@@ -556,17 +771,20 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
   bool use_sensor_value = tile.type == "sensor" || tile.type == "weather" ||
       tile.type == "weather_forecast" || tile.type == "calendar" ||
       tile.type == "clock" || tile.type == "timezone" ||
-      tile.type == "door_window" || tile.type == "presence" ||
-      !tile.sensor.empty() || !tile.action_state_entity.empty();
+      !epaper_dashboard_sensor_source(tile).empty() || !tile.action_state_entity.empty() ||
+      tile.type == "media" || tile.type == "climate";
   if (use_sensor_value) {
     if (tile.sensor_unavailable) return "--";
     if (!tile.sensor_value.empty()) {
-      if (tile.precision == "text" || tile.type == "door_window" || tile.type == "presence") {
+      if (tile.type == "media" && tile.sensor == "volume") return epaper_dashboard_format_percent(tile.sensor_value);
+      if (tile.type == "media" && tile.sensor == "position") return epaper_dashboard_format_seconds(tile.sensor_value);
+      if (tile.precision == "text") {
         return epaper_dashboard_pretty_state(tile.sensor_value);
       }
       return tile.sensor_value;
     }
-    if (!tile.sensor.empty() || !tile.action_state_entity.empty()) return "...";
+    if (!epaper_dashboard_sensor_source(tile).empty() || !tile.action_state_entity.empty() ||
+        tile.type == "media" || tile.type == "climate") return "...";
   }
   if (tile.state_unavailable) return "--";
   if (!tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);

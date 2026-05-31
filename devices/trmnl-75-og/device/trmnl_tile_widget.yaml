@@ -46,11 +46,32 @@ obj:
               text_color: 0xFFFFFF
               pad_bottom: 6
               hidden: true
-    - label:
-        id: trmnl_tile_${num}_label
-        text: "Configure"
-        text_font: font_trmnl_label_14
-        text_color: 0xFFFFFF
+    - obj:
+        id: trmnl_tile_${num}_label_row
         align: bottom_left
         width: 100%
-        long_mode: wrap
+        height: SIZE_CONTENT
+        clickable: false
+        scrollable: false
+        bg_opa: TRANSP
+        border_width: 0
+        pad_all: 0
+        layout:
+          type: flex
+          flex_flow: row
+          flex_align_main: space_between
+          flex_align_cross: end
+        widgets:
+          - label:
+              id: trmnl_tile_${num}_label
+              text: "Configure"
+              text_font: font_trmnl_label_14
+              text_color: 0xFFFFFF
+              width: 80%
+              long_mode: dot
+          - label:
+              id: trmnl_tile_${num}_badge_label
+              text: ""
+              text_font: font_trmnl_mdi_header_icons
+              text_color: 0xFFFFFF
+              hidden: true
