@@ -1318,8 +1318,10 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_default_icon_name(tile));
   if (tile.type == "garage") return find_icon(active || tile.sensor == "open" ? "Garage Open" : "Garage");
-  if (tile.type == "light_brightness" || tile.type == "light_switch" ||
-      tile.type == "light_temperature") return find_icon("Lightbulb");
+  if (tile.type == "light_brightness" || tile.type == "light_switch") {
+    return find_icon(active ? "Lightbulb" : "Lightbulb Outline");
+  }
+  if (tile.type == "light_temperature") return find_icon("Lightbulb");
   if (tile.type == "lock") return find_icon(active || tile.sensor == "unlock" ? "Lock Open" : "Lock");
   if (tile.type == "media") {
     if (tile.sensor == "previous") return find_icon("Skip Previous");
