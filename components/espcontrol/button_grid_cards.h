@@ -553,9 +553,13 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
     } else if (p.type == "push") {
       lv_label_set_text(s.icon_lbl, "\U000F0741");
       apply_push_button_transition(s.btn);
+    } else if (p.type == "webhook") {
+      lv_label_set_text(s.icon_lbl, find_icon("Flash"));
     }
     if (p.type == "push" && p.label.empty()) {
       lv_label_set_text(s.text_lbl, "Trigger");
+    } else if (p.type == "webhook" && p.label.empty()) {
+      lv_label_set_text(s.text_lbl, p.entity.empty() ? "Webhook" : p.entity.c_str());
     }
   }
 }

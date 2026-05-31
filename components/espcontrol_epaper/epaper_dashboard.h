@@ -2375,7 +2375,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return "Action";
   }
   if (tile.type == "push" && tile.label.empty()) return "Trigger";
-  if (tile.type == "webhook" && tile.label.empty()) return "Webhook";
+  if (tile.type == "webhook" && tile.label.empty()) {
+    if (!tile.entity.empty()) return tile.entity;
+    return "Webhook";
+  }
   if (tile.type == "todo" && tile.label.empty()) {
     if (!tile.friendly_name.empty()) return tile.friendly_name;
     if (!tile.entity.empty()) return tile.entity;
