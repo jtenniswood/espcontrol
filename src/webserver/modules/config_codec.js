@@ -78,6 +78,17 @@ function normalizeButtonConfig(b) {
     if (b.sensor === "open" || b.sensor === "close") b.icon_on = "Auto";
     b.options = normalizeGarageOptions(b.options, b.sensor);
   }
+  if (b && b.type === "cover") {
+    b.sensor = normalizeCoverModeConfig(b.sensor);
+    b.precision = "";
+    b.options = "";
+    if (b.sensor === "set_position") {
+      b.unit = normalizeCoverPositionConfig(b.unit);
+    } else {
+      b.unit = "";
+    }
+    if (coverCommandModeConfig(b.sensor)) b.icon_on = "Auto";
+  }
   if (b && b.type === "alarm") {
     b.sensor = "";
     b.unit = "";
@@ -743,6 +754,25 @@ function normalizeLightTemperatureRange(value) {
   return min + "-" + max;
 }
 
+function normalizeCoverModeConfig(value) {
+  value = String(value || "");
+  return value === "" || value === "tilt" || value === "toggle" ||
+    value === "open" || value === "close" || value === "stop" ||
+    value === "set_position" ? value : "";
+}
+
+function coverCommandModeConfig(value) {
+  return value === "open" || value === "close" || value === "stop" || value === "set_position";
+}
+
+function normalizeCoverPositionConfig(value) {
+  var n = parseInt(value, 10);
+  if (!isFinite(n)) n = 50;
+  if (n < 0) n = 0;
+  if (n > 100) n = 100;
+  return String(n);
+}
+
 function setSwitchConfirmationOptions(b, mode, message, yesText, noText) {
   if (!b) return "";
   mode = mode === true ? "off" : mode;
@@ -1088,11 +1118,13 @@ function buttonConfigFields(b) {
   if (type === "internal" && sensor !== "push") sensor = "";
   if (type === "lock" && sensor !== "lock" && sensor !== "unlock") sensor = "";
   if (type === "light_temperature" && sensor === LIGHT_TEMPERATURE_LEGACY_SENSOR) sensor = "";
+  if (type === "cover") sensor = normalizeCoverModeConfig(sensor);
   var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" ||
     type === "lock" || type === "calendar" || type === "clock" || type === "timezone" ||
     type === "push" || type === "internal" ||
     type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.unit || "");
   if (type === "light_temperature") unit = normalizeLightTemperatureRange(unit);
+  if (type === "cover") unit = sensor === "set_position" ? normalizeCoverPositionConfig(unit) : "";
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
   if (type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
@@ -1112,6 +1144,7 @@ function buttonConfigFields(b) {
   }
   if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
   if (type === "door_window") precision = normalizeDoorWindowSubtype(precision);
+  if (type === "cover") precision = "";
   var options = b && b.options || "";
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options);
@@ -1123,6 +1156,8 @@ function buttonConfigFields(b) {
     options = normalizeAlarmOptions(options);
   } else if (type === "garage") {
     options = normalizeGarageOptions(options, sensor);
+  } else if (type === "cover") {
+    options = "";
   } else if (type === "climate") {
     options = normalizeClimateOptions(options);
   } else if (type === "media") {
@@ -1160,6 +1195,9 @@ function buttonConfigFields(b) {
     b = b || {};
     b.entity = "";
     if (!icon || icon === "Auto") icon = "Gesture Tap";
+    iconOn = "Auto";
+  }
+  if (type === "cover" && coverCommandModeConfig(sensor)) {
     iconOn = "Auto";
   }
   if (type === "internal") {
