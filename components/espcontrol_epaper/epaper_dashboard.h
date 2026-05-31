@@ -599,10 +599,33 @@ inline std::string epaper_dashboard_sensor_source(const EpaperDashboardTile &til
   return epaper_dashboard_sensor_field_is_entity(tile) ? tile.sensor : "";
 }
 
+inline bool epaper_dashboard_cover_command_mode(const std::string &mode) {
+  return mode == "open" || mode == "close" || mode == "stop" || mode == "set_position";
+}
+
 inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &tile,
                                                      std::string &attribute) {
   attribute.clear();
   if (tile.entity.empty()) return "";
+  if (tile.type == "light_brightness" || tile.type == "slider") {
+    attribute = "brightness";
+    return tile.entity;
+  }
+  if (tile.type == "fan_speed") {
+    attribute = "percentage";
+    return tile.entity;
+  }
+  if (tile.type == "cover" && epaper_dashboard_cover_command_mode(tile.sensor)) {
+    return "";
+  }
+  if (tile.type == "cover" && tile.sensor != "toggle") {
+    attribute = tile.sensor == "tilt" ? "current_tilt_position" : "current_position";
+    return tile.entity;
+  }
+  if (tile.type == "light_temperature") {
+    attribute = "color_temp_kelvin";
+    return tile.entity;
+  }
   if (tile.type == "media") {
     if (tile.sensor == "volume") {
       attribute = "volume_level";
@@ -690,10 +713,6 @@ inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile
   return epaper_dashboard_card_large_numbers(tile) && epaper_dashboard_has_sensor_value(tile);
 }
 
-inline bool epaper_dashboard_cover_command_mode(const std::string &mode) {
-  return mode == "open" || mode == "close" || mode == "stop" || mode == "set_position";
-}
-
 inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile) {
   if (tile.type == "light_brightness" || tile.type == "slider" ||
       tile.type == "light_temperature" || tile.type == "fan_speed") return true;
@@ -708,7 +727,71 @@ inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile)
   return false;
 }
 
+inline int epaper_dashboard_clamp_percent(int pct) {
+  if (pct < 0) return 0;
+  if (pct > 100) return 100;
+  return pct;
+}
+
+inline bool epaper_dashboard_parse_float_value(const std::string &value, float &out) {
+  if (value.empty() || epaper_dashboard_state_unavailable(value)) return false;
+  char *end = nullptr;
+  out = std::strtof(value.c_str(), &end);
+  return end != value.c_str() && std::isfinite(out);
+}
+
+inline int epaper_dashboard_light_brightness_percent(const std::string &value) {
+  float brightness = 0.0f;
+  if (!epaper_dashboard_parse_float_value(value, brightness)) return 0;
+  return epaper_dashboard_clamp_percent(static_cast<int>((brightness * 100.0f + 127.0f) / 255.0f));
+}
+
+inline int epaper_dashboard_percent_value(const std::string &value) {
+  float pct = 0.0f;
+  if (!epaper_dashboard_parse_float_value(value, pct)) return 0;
+  return epaper_dashboard_clamp_percent(static_cast<int>(pct + 0.5f));
+}
+
+inline void epaper_dashboard_parse_kelvin_range(const std::string &unit,
+                                                int &min_k, int &max_k) {
+  min_k = 2000;
+  max_k = 6500;
+  if (unit.empty()) return;
+  size_t dash = unit.find('-');
+  if (dash == std::string::npos || dash == 0) return;
+  int parsed_min = std::atoi(unit.substr(0, dash).c_str());
+  int parsed_max = std::atoi(unit.substr(dash + 1).c_str());
+  if (parsed_min >= 1000 && parsed_max > parsed_min) {
+    min_k = parsed_min;
+    max_k = parsed_max;
+  }
+}
+
+inline int epaper_dashboard_light_temperature_percent(const EpaperDashboardTile &tile) {
+  float kelvin = 0.0f;
+  if (!epaper_dashboard_parse_float_value(tile.sensor_value, kelvin)) return 0;
+  int min_k = 2000;
+  int max_k = 6500;
+  epaper_dashboard_parse_kelvin_range(tile.unit, min_k, max_k);
+  if (kelvin < min_k) kelvin = min_k;
+  if (kelvin > max_k) kelvin = max_k;
+  int range = max_k - min_k;
+  if (range <= 0) return 50;
+  return epaper_dashboard_clamp_percent(static_cast<int>(((kelvin - min_k) * 100.0f / range) + 0.5f));
+}
+
 inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) {
+  if (tile.state_unavailable) return 0;
+  if ((tile.type == "light_brightness" || tile.type == "slider" ||
+       tile.type == "fan_speed" || tile.type == "light_temperature") &&
+      !epaper_dashboard_state_active(tile.state)) return 0;
+  if ((tile.type == "light_brightness" || tile.type == "slider") &&
+      !tile.sensor_value.empty()) return epaper_dashboard_light_brightness_percent(tile.sensor_value);
+  if ((tile.type == "fan_speed" || tile.type == "cover") &&
+      !tile.sensor_value.empty()) return epaper_dashboard_percent_value(tile.sensor_value);
+  if (tile.type == "light_temperature" && !tile.sensor_value.empty()) {
+    return epaper_dashboard_light_temperature_percent(tile);
+  }
   if (tile.type == "media" && tile.sensor == "position" && !tile.sensor_value.empty()) return 50;
   if (tile.type == "media" && tile.sensor == "now_playing") return tile.precision == "play_pause" ? 100 : 50;
   if (tile.type == "cover" && tile.sensor == "tilt") return 35;
@@ -960,6 +1043,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
          epaper_dashboard_value_replaces_icon(tile));
     if (tile.type == "sensor" && tile.precision == "icon") show_value = false;
     if (epaper_dashboard_toggle_text_sensor_card(tile)) show_value = false;
+    if (epaper_dashboard_slider_visual_card(tile) && tile.type != "media") show_value = false;
     if (tile.type == "weather" && !epaper_dashboard_weather_forecast_card(tile)) show_value = false;
     if (tile.type == "door_window" || tile.type == "presence") show_value = false;
     bool value_replaces_icon = show_value && epaper_dashboard_value_replaces_icon(tile);
