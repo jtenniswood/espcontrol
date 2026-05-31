@@ -1198,6 +1198,10 @@ inline bool epaper_dashboard_action_state_text_card(const EpaperDashboardTile &t
          epaper_dashboard_action_state_precision(tile) == "text";
 }
 
+inline bool epaper_dashboard_active_color_enabled(const EpaperDashboardTile &tile) {
+  return epaper_dashboard_option_present(tile.options, "active_color");
+}
+
 inline bool epaper_dashboard_internal_push_mode(const EpaperDashboardTile &tile) {
   return tile.type == "internal" && tile.sensor == "push";
 }
@@ -1247,6 +1251,11 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   }
   if (tile.type == "action" && !tile.action_state_entity.empty()) {
     return !tile.sensor_unavailable && epaper_dashboard_state_active(tile.sensor_value);
+  }
+  if (tile.type == "sensor") {
+    if (tile.sensor_unavailable) return false;
+    return (tile.precision == "icon" || epaper_dashboard_active_color_enabled(tile)) &&
+           epaper_dashboard_state_active(tile.sensor_value);
   }
   const std::string &active_value = !tile.state.empty() ? tile.state : tile.sensor_value;
   return epaper_dashboard_state_active(active_value);
