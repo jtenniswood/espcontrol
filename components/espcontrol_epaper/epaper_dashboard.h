@@ -1343,14 +1343,14 @@ inline void epaper_dashboard_forecast_send_next_queued();
 
 inline void epaper_dashboard_forecast_cancel_pending_requests() {
   epaper_dashboard_forecast_action_ready_ms() = 0;
-  epaper_dashboard_forecast_clear_queue();
-  epaper_dashboard_forecast_clear_retries();
   EpaperDashboardForecastPendingRequest *requests = epaper_dashboard_forecast_pending_requests();
   for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
     uint32_t call_id = requests[i].call_id;
     if (call_id == 0) continue;
+    std::string entity_id = requests[i].entity_id;
     requests[i] = EpaperDashboardForecastPendingRequest();
     ha_cancel_action_response_callback(call_id, "api disconnected");
+    epaper_dashboard_forecast_schedule_retry(entity_id, "api disconnected");
   }
 }
 
