@@ -477,6 +477,22 @@ inline std::string epaper_dashboard_normalize_alarm_options(const std::string &o
   return out;
 }
 
+inline std::string epaper_dashboard_normalize_cover_mode(const std::string &value) {
+  return value == "tilt" || value == "toggle" || value == "open" ||
+         value == "close" || value == "stop" || value == "set_position"
+    ? value
+    : "";
+}
+
+inline std::string epaper_dashboard_normalize_cover_position(const std::string &value) {
+  char *end = nullptr;
+  long pos = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) pos = 50;
+  if (pos < 0) pos = 0;
+  if (pos > 100) pos = 100;
+  return std::to_string(static_cast<int>(pos));
+}
+
 inline std::string epaper_dashboard_pretty_state(const std::string &value) {
   std::string text = value;
   for (char &ch : text) {
@@ -2702,6 +2718,17 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     if (tile.icon.empty()) tile.icon = "Thermostat";
     if (tile.icon_on.empty()) tile.icon_on = "Auto";
     tile.options = epaper_dashboard_normalize_climate_options(tile.options);
+  }
+  if (tile.type == "cover") {
+    tile.sensor = epaper_dashboard_normalize_cover_mode(tile.sensor);
+    tile.precision.clear();
+    tile.options.clear();
+    if (tile.sensor == "set_position") {
+      tile.unit = epaper_dashboard_normalize_cover_position(tile.unit);
+    } else {
+      tile.unit.clear();
+    }
+    if (epaper_dashboard_cover_command_mode(tile.sensor)) tile.icon_on.clear();
   }
   if (tile.type == "garage") {
     if (!epaper_dashboard_garage_command_mode(tile.sensor)) tile.sensor.clear();

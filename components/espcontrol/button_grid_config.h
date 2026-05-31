@@ -302,6 +302,19 @@ inline std::string subpage_card_options_normalized(const std::string &options,
   return out;
 }
 
+inline std::string normalize_cover_mode(const std::string &value) {
+  return card_runtime_cover_mode_valid(value) ? value : "";
+}
+
+inline std::string normalize_cover_position(const std::string &value) {
+  char *end = nullptr;
+  long pos = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) pos = 50;
+  if (pos < 0) pos = 0;
+  if (pos > 100) pos = 100;
+  return std::to_string(static_cast<int>(pos));
+}
+
 inline std::string normalize_door_window_subtype(const std::string &value) {
   return value == "window" ? "window" : "door";
 }
@@ -558,6 +571,17 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.precision.clear();
     if (!p.sensor.empty()) p.icon_on.clear();
     p.options = garage_card_options_normalized(p.options, p.sensor);
+  }
+  if (p.type == "cover") {
+    p.sensor = normalize_cover_mode(p.sensor);
+    p.precision.clear();
+    p.options.clear();
+    if (p.sensor == "set_position") {
+      p.unit = normalize_cover_position(p.unit);
+    } else {
+      p.unit.clear();
+    }
+    if (card_runtime_cover_command_mode(p.sensor)) p.icon_on.clear();
   }
   if (p.type == "alarm") {
     p.sensor.clear();
