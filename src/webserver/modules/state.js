@@ -10,6 +10,10 @@ var THEME_PRESETS = {
   Dark: { on: "FF8C00", off: "313131", sensor: "212121" },
 };
 
+function defaultTheme() {
+  return (CFG.features && CFG.features.epaperDisplay) ? "Light" : "Dark";
+}
+
 function defaultTimezoneOptions() {
   return (CFG && Array.isArray(CFG.timezoneOptions)) ? CFG.timezoneOptions.slice() : [];
 }
@@ -24,11 +28,11 @@ var state = {
   grid: [],
   sizes: {},
   buttons: [],
-  theme: "Light",
+  theme: defaultTheme(),
   themeOptions: ["Light", "Dark"],
-  onColor: "0073FF",
-  offColor: "CECECE",
-  sensorColor: "DEDEDE",
+  onColor: THEME_PRESETS[defaultTheme()].on,
+  offColor: THEME_PRESETS[defaultTheme()].off,
+  sensorColor: THEME_PRESETS[defaultTheme()].sensor,
   selectedSlots: [],
   lastClickedSlot: -1,
   activeTab: "screen",
@@ -517,7 +521,7 @@ function syncMonthNameUi() {
 }
 
 function normalizeTheme(value) {
-  return THEME_PRESETS[value] ? value : "Light";
+  return THEME_PRESETS[value] ? value : defaultTheme();
 }
 
 function syncThemeUi() {

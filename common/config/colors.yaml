@@ -6,16 +6,16 @@
 # =============================================================================
 
 substitutions:
-  screen_theme_initial_option: "Light"
+  screen_theme_initial_option: "Dark"
   screen_theme_dark_button_on_color: "FF8C00"
   screen_theme_dark_button_off_color: "313131"
   screen_theme_dark_sensor_card_color: "212121"
   screen_theme_light_button_on_color: "0073FF"
   screen_theme_light_button_off_color: "CECECE"
   screen_theme_light_sensor_card_color: "DEDEDE"
-  button_on_color_initial: "${screen_theme_light_button_on_color}"
-  button_off_color_initial: "${screen_theme_light_button_off_color}"
-  sensor_card_color_initial: "${screen_theme_light_sensor_card_color}"
+  button_on_color_initial: "${screen_theme_dark_button_on_color}"
+  button_off_color_initial: "${screen_theme_dark_button_off_color}"
+  sensor_card_color_initial: "${screen_theme_dark_sensor_card_color}"
 
 select:
   - platform: template
