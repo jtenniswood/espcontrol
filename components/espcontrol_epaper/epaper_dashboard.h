@@ -1249,6 +1249,14 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor)) {
     return !tile.state_unavailable && epaper_dashboard_lock_state_active(tile.state);
   }
+  if (tile.type == "door_window") {
+    return !tile.state_unavailable && epaper_dashboard_active_color_enabled(tile) &&
+           epaper_dashboard_state_active(tile.state);
+  }
+  if (tile.type == "presence") {
+    return !tile.state_unavailable && epaper_dashboard_active_color_enabled(tile) &&
+           epaper_dashboard_state_active(tile.state);
+  }
   if (tile.type == "action" && !tile.action_state_entity.empty()) {
     return !tile.sensor_unavailable && epaper_dashboard_state_active(tile.sensor_value);
   }
