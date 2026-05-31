@@ -23,6 +23,8 @@ script:
   - id: trmnl_update_clock_bar
     then:
       - lambda: |-
+          const char *posix = apply_timezone(id(timezone_select).current_option());
+          id(trmnl_time).set_timezone(posix);
           auto now = id(trmnl_time).now();
           if (now.is_valid()) {
             bool use_12h = id(clock_format_select).current_option() == "12h";
@@ -38,11 +40,13 @@ script:
             lv_label_set_text(id(display_time), time_text);
             espcontrol::epaper_dashboard_set_time(
               true, now.year, now.month, now.day_of_month,
-              now.hour, now.minute, now.timestamp, "UTC (GMT+0)", use_12h);
+              now.hour, now.minute, now.timestamp,
+              id(timezone_select).current_option(), use_12h);
           } else {
             lv_label_set_text(id(display_time), "--:--");
             espcontrol::epaper_dashboard_set_time(
-              false, 0, 0, 0, 0, 0, 0, "UTC (GMT+0)",
+              false, 0, 0, 0, 0, 0, 0,
+              id(timezone_select).current_option(),
               id(clock_format_select).current_option() == "12h");
           }
           lv_label_set_text(id(network_status_icon_label), "\U000F0928");
@@ -57,7 +61,7 @@ script:
             id(indoor_temp_entity).state,
             id(outdoor_temp_entity).state,
             id(temperature_unit_select).current_option(),
-            "UTC (GMT+0)",
+            id(timezone_select).current_option(),
             id(temperature_degree_symbol_enabled).state,
             id(temperatures),
             id(main_page)->obj,
@@ -185,6 +189,27 @@ switch:
       - script.execute: trmnl_refresh_display_partial
 
 select:
+  - platform: template
+    name: "${entity_screen_timezone}"
+    internal: true
+    disabled_by_default: true
+    id: timezone_select
+    entity_category: config
+    icon: "mdi:map-clock"
+    optimistic: true
+    restore_value: true
+    initial_option: "UTC (GMT+0)"
+    options: !include ../../../common/config/timezone_options.yaml
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - lambda: |-
+            const char *posix = apply_timezone(id(timezone_select).current_option());
+            id(trmnl_time).set_timezone(posix);
+        - script.execute: trmnl_sync_temperature_config
+        - script.execute: trmnl_refresh_display_partial
+
   - platform: template
     name: "${entity_screen_temperature_unit}"
     internal: true
