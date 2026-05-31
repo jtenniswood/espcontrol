@@ -2307,14 +2307,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (epaper_dashboard_fan_non_speed_card(tile)) {
     std::string entity_label = tile.entity.empty() ? "" : epaper_dashboard_title_from_entity(tile.entity);
-    if (tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
-        tile.type == "fan_preset") {
+    if (tile.type == "fan_direction" || tile.type == "fan_preset") {
       if (!tile.state.empty() && !tile.state_unavailable) return epaper_dashboard_fan_status_text(tile);
       if (epaper_dashboard_fan_attribute_known(tile)) return epaper_dashboard_fan_status_text(tile);
       if (tile.type == "fan_preset" && !tile.fan_preset_modes.empty()) return epaper_dashboard_fan_status_text(tile);
-    }
-    if (tile.type == "fan_switch" && !tile.state.empty()) {
-      return epaper_dashboard_fan_status_text(tile);
     }
     if (tile.label.empty() || tile.label == entity_label) {
       return epaper_dashboard_fan_default_label(tile);
