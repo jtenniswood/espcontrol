@@ -1958,6 +1958,16 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
       tile.label_configured = false;
     }
   }
+  if (tile.type == "text_sensor") {
+    tile.type = "sensor";
+    tile.precision = "text";
+    tile.entity.clear();
+    tile.label.clear();
+    tile.label_configured = false;
+    tile.unit.clear();
+    tile.icon_on = "Auto";
+    if (tile.icon.empty()) tile.icon = "Auto";
+  }
   if (tile.type == "action") {
     tile.action_state_entity = epaper_dashboard_option_value(tile.options, "state_entity");
     std::string action_unit = epaper_dashboard_option_value(tile.options, "state_unit");
