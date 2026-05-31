@@ -1782,6 +1782,12 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       return epaper_dashboard_fan_default_label(tile);
     }
   }
+  if (tile.type == "door_window" && tile.label.empty() && tile.sensor.empty()) {
+    return epaper_dashboard_window_card(tile) ? "Window" : "Door";
+  }
+  if (tile.type == "presence" && tile.label.empty() && tile.sensor.empty()) {
+    return "Presence";
+  }
   if (tile.type == "cover" &&
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor)) &&
       !tile.label_configured) {
