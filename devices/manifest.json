@@ -712,7 +712,7 @@
           "radius": 0.2,
           "padding": 1.1,
           "iconSize": 4,
-          "labelSize": 2,
+          "labelSize": 2.35,
           "labelLines": 2,
           "labelLinesDouble": 3
         },
@@ -722,7 +722,7 @@
         "sensorBadge": {
           "top": 0.8,
           "right": 0.8,
-          "fontSize": 1.4
+          "fontSize": 1.75
         },
         "subpageBadge": {
           "bottom": 0.8,
