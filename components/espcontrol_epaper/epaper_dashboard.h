@@ -1362,7 +1362,8 @@ inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile
       tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") return true;
   if (tile.type == "action") {
     std::string mode = epaper_dashboard_option_value(tile.options, "state_precision");
-    return !tile.action_state_entity.empty() && mode != "icon" && mode != "text";
+    return epaper_dashboard_action_state_display_enabled(tile) &&
+           mode != "icon" && mode != "text";
   }
   if (tile.type == "media") return tile.sensor == "volume" || tile.sensor == "position" ||
                                     tile.sensor == "now_playing";
@@ -1645,7 +1646,7 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "action") {
     std::string state_mode = epaper_dashboard_option_value(tile.options, "state_precision");
-    if (!tile.action_state_entity.empty()) {
+    if (epaper_dashboard_action_state_display_enabled(tile)) {
       if (state_mode == "icon") return find_icon("Toggle Switch");
       if (state_mode == "text") return find_icon("Format Text");
       return find_icon("Gauge");
