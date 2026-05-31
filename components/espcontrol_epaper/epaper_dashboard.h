@@ -891,6 +891,14 @@ inline bool epaper_dashboard_garage_state_uses_open_icon(const std::string &stat
   return state == "open" || state == "opening";
 }
 
+inline bool epaper_dashboard_cover_toggle_mode(const std::string &mode) {
+  return mode == "toggle";
+}
+
+inline bool epaper_dashboard_cover_toggle_state_active(const std::string &state) {
+  return state == "closed" || state == "closing";
+}
+
 inline bool epaper_dashboard_lock_state_active(const std::string &state) {
   return state == "unlocked" || state == "unlocking" ||
          state == "open" || state == "opening" ||
@@ -1391,6 +1399,10 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   if (tile.type == "cover" && epaper_dashboard_cover_command_mode(tile.sensor)) {
     return false;
   }
+  if (tile.type == "cover" && epaper_dashboard_cover_toggle_mode(tile.sensor)) {
+    return !tile.state_unavailable &&
+           epaper_dashboard_cover_toggle_state_active(tile.state);
+  }
   if (tile.type == "door_window") {
     return !tile.state_unavailable && epaper_dashboard_active_color_enabled(tile) &&
            epaper_dashboard_state_active(tile.state);
@@ -1544,6 +1556,11 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "climate") return find_icon("Thermostat");
   if (tile.type == "cover") {
     if (tile.sensor == "open") return find_icon("Blinds Open");
+    if (epaper_dashboard_cover_toggle_mode(tile.sensor)) {
+      return find_icon(epaper_dashboard_garage_state_uses_open_icon(tile.state)
+                           ? "Blinds Open"
+                           : "Blinds");
+    }
     return find_icon(active ? "Blinds Open" : "Blinds");
   }
   if (tile.type == "door_window") {
