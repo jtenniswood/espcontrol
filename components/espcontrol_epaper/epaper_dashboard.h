@@ -2177,6 +2177,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       (tile.sensor == "play_pause" || tile.sensor == "position") &&
       tile.precision == "state") {
     if (tile.state_unavailable) return "Unavailable";
+    if (tile.state.empty()) return "Paused";
     return epaper_dashboard_media_status_text(tile.state);
   }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
