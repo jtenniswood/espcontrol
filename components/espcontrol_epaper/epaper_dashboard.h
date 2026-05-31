@@ -723,6 +723,40 @@ inline std::string epaper_dashboard_alarm_label_for_state(const std::string &sta
   return epaper_dashboard_pretty_state(state);
 }
 
+inline std::string epaper_dashboard_alarm_normalized_arm_mode(const std::string &arm_mode) {
+  if (arm_mode == "away") return "armed_away";
+  if (arm_mode == "home") return "armed_home";
+  if (arm_mode == "night") return "armed_night";
+  if (arm_mode == "armed_away" || arm_mode == "armed_home" ||
+      arm_mode == "armed_night" || arm_mode == "armed_custom_bypass") {
+    return arm_mode;
+  }
+  return "";
+}
+
+inline std::string epaper_dashboard_alarm_effective_state(const EpaperDashboardTile &tile) {
+  if (tile.state != "arming") return tile.state;
+  std::string normalized = epaper_dashboard_alarm_normalized_arm_mode(tile.secondary_value);
+  return normalized.empty() ? tile.state : normalized;
+}
+
+inline bool epaper_dashboard_alarm_state_active(const std::string &state) {
+  return state == "arming" || state == "pending" || state == "triggered" ||
+         state.compare(0, 5, "armed") == 0;
+}
+
+inline std::string epaper_dashboard_alarm_action_achieved_state(const std::string &mode) {
+  if (mode == "away") return "armed_away";
+  if (mode == "home") return "armed_home";
+  if (mode == "disarm") return "disarmed";
+  return "";
+}
+
+inline bool epaper_dashboard_alarm_action_matches(const EpaperDashboardTile &tile) {
+  std::string achieved = epaper_dashboard_alarm_action_achieved_state(tile.sensor);
+  return !achieved.empty() && epaper_dashboard_alarm_effective_state(tile) == achieved;
+}
+
 inline bool epaper_dashboard_fan_non_speed_card(const EpaperDashboardTile &tile) {
   return tile.type == "fan_switch" || tile.type == "fan_oscillate" ||
          tile.type == "fan_direction" || tile.type == "fan_preset";
@@ -1062,6 +1096,10 @@ inline std::string epaper_dashboard_secondary_attribute_source(const EpaperDashb
     attribute = "media_duration";
     return tile.entity;
   }
+  if (tile.type == "alarm" || tile.type == "alarm_action") {
+    attribute = "arm_mode";
+    return tile.entity;
+  }
   return "";
 }
 
@@ -1117,6 +1155,12 @@ inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile
 }
 
 inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
+  if (tile.type == "alarm") {
+    return epaper_dashboard_alarm_state_active(epaper_dashboard_alarm_effective_state(tile));
+  }
+  if (tile.type == "alarm_action") {
+    return !tile.state_unavailable && epaper_dashboard_alarm_action_matches(tile);
+  }
   if (tile.type == "fan_oscillate") {
     bool oscillating = false;
     return epaper_dashboard_bool_value(tile.sensor_value, oscillating) && oscillating;
@@ -1234,7 +1278,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   }
   if (tile.type == "alarm" &&
       epaper_dashboard_option_value(tile.options, "icon_display") != "static") {
-    return epaper_dashboard_alarm_icon_for_state(tile.state);
+    return epaper_dashboard_alarm_icon_for_state(epaper_dashboard_alarm_effective_state(tile));
   }
   if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
   if (tile.type == "action") return find_icon("Flash");
@@ -1416,7 +1460,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "alarm" &&
       epaper_dashboard_option_value(tile.options, "label_display") != "name") {
-    return epaper_dashboard_alarm_label_for_state(tile.state);
+    return epaper_dashboard_alarm_label_for_state(epaper_dashboard_alarm_effective_state(tile));
   }
   if (tile.type == "media" &&
       (tile.sensor == "play_pause" || tile.sensor == "position") &&
