@@ -3021,6 +3021,9 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     }
     if (slot.label) {
       std::string label = epaper_dashboard_tile_label(tile);
+      lv_label_set_long_mode(
+          slot.label, row_span > 1 ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_DOT);
+      lv_obj_set_width(slot.label, lv_pct(80));
       lv_label_set_text(slot.label, label.c_str());
       lv_obj_clear_flag(slot.label, LV_OBJ_FLAG_HIDDEN);
     }

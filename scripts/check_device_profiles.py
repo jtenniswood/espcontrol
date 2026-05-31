@@ -141,6 +141,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "LV_GRID_ALIGN_STRETCH, col, col_span," in epaper and "LV_GRID_ALIGN_STRETCH, row, row_span" in epaper, (
         "TRMNL must apply normal wide/tall/large card spans on the physical e-paper grid"
     )
+    assert "row_span > 1 ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_DOT" in epaper, (
+        "TRMNL tall cards must wrap labels like normal device cards"
+    )
     assert "espcontrol::epaper_dashboard_set_order(id(button_order).state);" in (
         ROOT / "devices" / "trmnl-75-og" / "device" / "sensors.yaml"
     ).read_text(encoding="utf-8"), (
