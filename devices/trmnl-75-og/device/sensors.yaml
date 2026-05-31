@@ -56,9 +56,12 @@ script:
       - script.execute: trmnl_update_clock_bar
       - lambda: |-
           bool dark = id(screen_theme).current_option() == "Dark";
-          espcontrol::epaper_dashboard_set_dark_theme(dark);
-          lv_color_t bg = lv_color_hex(dark ? 0x000000 : 0xFFFFFF);
-          lv_color_t fg = lv_color_hex(dark ? 0xFFFFFF : 0x000000);
+          // The TRMNL Waveshare panel renders LVGL black/white inverted, so send
+          // the opposite framebuffer theme while preserving the selected theme.
+          bool framebuffer_dark = !dark;
+          espcontrol::epaper_dashboard_set_dark_theme(framebuffer_dark);
+          lv_color_t bg = lv_color_hex(framebuffer_dark ? 0x000000 : 0xFFFFFF);
+          lv_color_t fg = lv_color_hex(framebuffer_dark ? 0xFFFFFF : 0x000000);
           lv_obj_set_style_bg_color(lv_scr_act(), bg, LV_PART_MAIN);
           lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(main_page)->obj, bg, LV_PART_MAIN);

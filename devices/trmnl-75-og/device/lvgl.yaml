@@ -12,7 +12,7 @@ lvgl:
           align: top_right
           x: -52
           y: 8
-          text_color: 0x000000
+          text_color: 0xFFFFFF
           hidden: true
       - label:
           text: "--:--"
@@ -21,7 +21,7 @@ lvgl:
           align: top_mid
           y: 8
           text_align: center
-          text_color: 0x000000
+          text_color: 0xFFFFFF
       - obj:
           id: network_status_button
           align: top_right
@@ -41,13 +41,13 @@ lvgl:
                 text_font: font_trmnl_mdi_header_icons
                 align: center
                 text_align: center
-                text_color: 0x000000
+                text_color: 0xFFFFFF
 
   pages:
     - id: trmnl_wifi_setup_page
       scrollbar_mode: "off"
       width: 100%
-      bg_color: 0xFFFFFF
+      bg_color: 0x000000
       bg_opa: cover
       pad_all: 0
       widgets:
@@ -55,11 +55,11 @@ lvgl:
             align: center
             width: 90%
             height: 72%
-            bg_color: 0xFFFFFF
+            bg_color: 0x000000
             bg_opa: cover
-            border_color: 0x000000
+            border_color: 0xFFFFFF
             border_width: 2
-            radius: 6
+            radius: 12
             pad_all: 24
             scrollable: false
             clickable: false
@@ -73,28 +73,28 @@ lvgl:
               - label:
                   text: "WiFi Setup"
                   text_font: font_trmnl_value_24
-                  text_color: 0x000000
+                  text_color: 0xFFFFFF
                   text_align: center
               - label:
                   text: "Connect to the setup hotspot"
                   text_font: font_trmnl_header_20
-                  text_color: 0x000000
+                  text_color: 0xFFFFFF
                   text_align: center
               - label:
                   text: "ESP setup hotspot"
                   id: trmnl_wifi_setup_ssid
                   text_font: font_trmnl_label_14
-                  text_color: 0x000000
+                  text_color: 0xFFFFFF
                   text_align: center
               - label:
                   text: "Then open 192.168.4.1"
                   text_font: font_trmnl_value_24
-                  text_color: 0x000000
+                  text_color: 0xFFFFFF
                   text_align: center
               - label:
                   text: "After WiFi setup, add this device in Home Assistant."
                   text_font: font_trmnl_label_14
-                  text_color: 0x000000
+                  text_color: 0xFFFFFF
                   text_align: center
 
     - id: main_page
@@ -106,7 +106,7 @@ lvgl:
         pad_row: 10
         pad_column: 10
       width: 100%
-      bg_color: 0xFFFFFF
+      bg_color: 0x000000
       bg_opa: cover
       pad_top: 42
       pad_bottom: 5
