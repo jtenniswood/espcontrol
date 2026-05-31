@@ -1283,6 +1283,11 @@
       "mdi": "water-alert"
     },
     {
+      "name": "Webhook",
+      "codepoint": "F062F",
+      "mdi": "webhook"
+    },
+    {
       "name": "Weather Cloudy",
       "codepoint": "F0590",
       "mdi": "weather-cloudy"
