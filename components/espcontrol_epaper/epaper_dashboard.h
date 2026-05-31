@@ -2917,6 +2917,8 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.unit.clear();
     tile.precision.clear();
     tile.options.clear();
+    if (tile.icon.empty() || tile.icon == "Auto") tile.icon = "Lightbulb Outline";
+    if (tile.icon_on.empty() || tile.icon_on == "Auto") tile.icon_on = "Lightbulb";
   }
   if (tile.type == "lock") {
     tile.sensor = epaper_dashboard_normalize_lock_mode(tile.sensor);

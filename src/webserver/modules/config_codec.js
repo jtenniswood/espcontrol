@@ -144,6 +144,8 @@ function normalizeButtonConfig(b) {
     b.unit = "";
     b.precision = "";
     b.options = "";
+    if (!b.icon || b.icon === "Auto") b.icon = "Lightbulb Outline";
+    if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Lightbulb";
   }
   if (b && b.type === "lock") {
     if (b.sensor !== "lock" && b.sensor !== "unlock") b.sensor = "";
@@ -1218,6 +1220,10 @@ function buttonConfigFields(b) {
   }
   if (type === "cover" && coverCommandModeConfig(sensor)) {
     iconOn = "Auto";
+  }
+  if (type === "light_switch") {
+    if (!icon || icon === "Auto") icon = "Lightbulb Outline";
+    if (!iconOn || iconOn === "Auto") iconOn = "Lightbulb";
   }
   if (type === "internal") {
     var isInternalPush = sensor === "push";

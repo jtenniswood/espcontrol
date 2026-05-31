@@ -756,6 +756,8 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.unit.clear();
     p.precision.clear();
     p.options.clear();
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Lightbulb Outline";
+    if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Lightbulb";
   }
   if (p.type == "lock") {
     p.sensor = normalize_lock_mode(p.sensor);
