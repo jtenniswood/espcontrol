@@ -2265,7 +2265,11 @@ inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardT
       epaper_dashboard_option_value(tile.options, "label_display") != "name") {
     return "";
   }
-  if (epaper_dashboard_fan_non_speed_card(tile)) return "";
+  if (tile.type == "fan_direction" || tile.type == "fan_preset") return "";
+  if ((tile.type == "fan_switch" || tile.type == "fan_oscillate") &&
+      !tile.entity.empty()) {
+    return tile.entity;
+  }
   if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;
   if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
   std::string sensor_source = epaper_dashboard_sensor_source(tile);
@@ -2317,6 +2321,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       if (!tile.state.empty() && !tile.state_unavailable) return epaper_dashboard_fan_status_text(tile);
       if (epaper_dashboard_fan_attribute_known(tile)) return epaper_dashboard_fan_status_text(tile);
       if (tile.type == "fan_preset" && !tile.fan_preset_modes.empty()) return epaper_dashboard_fan_status_text(tile);
+    }
+    if ((tile.type == "fan_switch" || tile.type == "fan_oscillate") &&
+        !tile.label_configured && !tile.friendly_name.empty()) {
+      return tile.friendly_name;
     }
     if (tile.label.empty() || tile.label == entity_label) {
       return epaper_dashboard_fan_default_label(tile);
