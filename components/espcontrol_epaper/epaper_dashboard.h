@@ -225,8 +225,11 @@ inline bool epaper_dashboard_state_active(const std::string &value) {
   std::string s;
   s.reserve(value.size());
   for (char ch : value) s.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
-  return s == "on" || s == "open" || s == "unlocked" || s == "detected" ||
-         s == "home" || s == "playing" || s == "heating" || s == "cooling" ||
+  return s == "on" || s == "true" || s == "1" ||
+         s == "open" || s == "opened" || s == "opening" || s == "closing" ||
+         s == "unlocked" || s == "unlocking" || s == "jammed" ||
+         s == "detected" || s == "home" || s == "playing" ||
+         s == "heating" || s == "cooling" ||
          s == "armed_home" || s == "armed_away" || s == "armed_night" ||
          s == "triggered";
 }
