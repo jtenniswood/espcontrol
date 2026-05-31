@@ -47,6 +47,32 @@ obj:
               pad_bottom: 6
               hidden: true
     - obj:
+        id: trmnl_tile_${num}_track
+        align: center
+        width: 74%
+        height: 8
+        clickable: false
+        scrollable: false
+        bg_color: 0xFFFFFF
+        bg_opa: 45%
+        border_color: 0xFFFFFF
+        border_width: 1
+        radius: 4
+        pad_all: 1
+        hidden: true
+        widgets:
+          - obj:
+              id: trmnl_tile_${num}_track_fill
+              align: left_mid
+              width: 50%
+              height: 100%
+              clickable: false
+              scrollable: false
+              bg_color: 0xFFFFFF
+              bg_opa: cover
+              border_width: 0
+              radius: 3
+    - obj:
         id: trmnl_tile_${num}_label_row
         align: bottom_left
         width: 100%

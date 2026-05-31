@@ -532,6 +532,8 @@ struct EpaperDashboardLvglSlot {
   lv_obj_t *tile = nullptr;
   lv_obj_t *icon = nullptr;
   lv_obj_t *sensor_container = nullptr;
+  lv_obj_t *track = nullptr;
+  lv_obj_t *track_fill = nullptr;
   lv_obj_t *label = nullptr;
   lv_obj_t *badge = nullptr;
   lv_obj_t *value = nullptr;
@@ -546,9 +548,13 @@ inline std::array<EpaperDashboardLvglSlot, EPAPER_DASHBOARD_PAGE_SLOTS> &epaper_
 inline void epaper_dashboard_bind_lvgl_slot(int slot, lv_obj_t *tile, lv_obj_t *icon,
                                            lv_obj_t *sensor_container, lv_obj_t *label,
                                            lv_obj_t *value, lv_obj_t *unit = nullptr,
-                                           lv_obj_t *badge = nullptr) {
+                                           lv_obj_t *badge = nullptr,
+                                           lv_obj_t *track = nullptr,
+                                           lv_obj_t *track_fill = nullptr) {
   if (slot < 0 || slot >= EPAPER_DASHBOARD_PAGE_SLOTS) return;
-  epaper_dashboard_lvgl_slots()[slot] = {tile, icon, sensor_container, label, badge, value, unit};
+  epaper_dashboard_lvgl_slots()[slot] = {
+    tile, icon, sensor_container, track, track_fill, label, badge, value, unit
+  };
   if (tile) {
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
@@ -658,6 +664,33 @@ inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile
     return mode == "actual" || mode == "target";
   }
   return epaper_dashboard_card_large_numbers(tile) && epaper_dashboard_has_sensor_value(tile);
+}
+
+inline bool epaper_dashboard_cover_command_mode(const std::string &mode) {
+  return mode == "open" || mode == "close" || mode == "stop" || mode == "set_position";
+}
+
+inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile) {
+  if (tile.type == "light_brightness" || tile.type == "slider" ||
+      tile.type == "light_temperature" || tile.type == "fan_speed") return true;
+  if (tile.type == "cover") {
+    return tile.sensor != "toggle" && !epaper_dashboard_cover_command_mode(tile.sensor);
+  }
+  if (tile.type == "media") {
+    return tile.sensor == "position" ||
+           (tile.sensor == "now_playing" && (tile.precision == "progress" ||
+                                             tile.precision == "play_pause"));
+  }
+  return false;
+}
+
+inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) {
+  if (tile.type == "media" && tile.sensor == "position" && !tile.sensor_value.empty()) return 50;
+  if (tile.type == "media" && tile.sensor == "now_playing") return tile.precision == "play_pause" ? 100 : 50;
+  if (tile.type == "cover" && tile.sensor == "tilt") return 35;
+  if (tile.type == "light_temperature") return 65;
+  if (tile.type == "fan_speed") return 40;
+  return 50;
 }
 
 inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool active) {
@@ -807,7 +840,8 @@ inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile
 }
 
 inline void epaper_dashboard_style_lvgl_tile(lv_obj_t *tile, lv_obj_t *icon, lv_obj_t *label,
-                                            lv_obj_t *badge,
+                                            lv_obj_t *badge, lv_obj_t *track,
+                                            lv_obj_t *track_fill,
                                             lv_obj_t *value, lv_obj_t *unit,
                                             bool configured, bool active) {
   if (!tile) return;
@@ -829,6 +863,11 @@ inline void epaper_dashboard_style_lvgl_tile(lv_obj_t *tile, lv_obj_t *icon, lv_
   if (icon) lv_obj_set_style_text_color(icon, lv_color_hex(fg), LV_PART_MAIN);
   if (label) lv_obj_set_style_text_color(label, lv_color_hex(fg), LV_PART_MAIN);
   if (badge) lv_obj_set_style_text_color(badge, lv_color_hex(fg), LV_PART_MAIN);
+  if (track) {
+    lv_obj_set_style_bg_color(track, lv_color_hex(fg), LV_PART_MAIN);
+    lv_obj_set_style_border_color(track, lv_color_hex(fg), LV_PART_MAIN);
+  }
+  if (track_fill) lv_obj_set_style_bg_color(track_fill, lv_color_hex(fg), LV_PART_MAIN);
   if (value) lv_obj_set_style_text_color(value, lv_color_hex(fg), LV_PART_MAIN);
   if (unit) lv_obj_set_style_text_color(unit, lv_color_hex(fg), LV_PART_MAIN);
 }
@@ -851,6 +890,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       if (slot.icon) lv_label_set_text(slot.icon, "");
       if (slot.label) lv_label_set_text(slot.label, "");
       if (slot.badge) lv_label_set_text(slot.badge, "");
+      if (slot.track) lv_obj_add_flag(slot.track, LV_OBJ_FLAG_HIDDEN);
       if (slot.value) lv_label_set_text(slot.value, "");
       if (slot.unit) lv_label_set_text(slot.unit, "");
       lv_obj_add_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
@@ -863,6 +903,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     const std::string &active_value = !tile.state.empty() ? tile.state : tile.sensor_value;
     bool active = configured && epaper_dashboard_state_active(active_value);
     bool has_sensor_value = epaper_dashboard_has_sensor_value(tile);
+    bool show_track = configured && epaper_dashboard_slider_visual_card(tile);
     bool show_value = configured && !epaper_dashboard_text_sensor_card(tile) &&
         (epaper_dashboard_sensor_card_type(tile) || has_sensor_value ||
          epaper_dashboard_value_replaces_icon(tile));
@@ -872,6 +913,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     if (tile.type == "door_window" || tile.type == "presence") show_value = false;
     bool value_replaces_icon = show_value && epaper_dashboard_value_replaces_icon(tile);
     epaper_dashboard_style_lvgl_tile(slot.tile, slot.icon, slot.label, slot.badge,
+                                     slot.track, slot.track_fill,
                                      slot.value, slot.unit, configured, active);
     if (slot.icon) {
       lv_label_set_text(slot.icon, epaper_dashboard_icon(tile, active));
@@ -899,6 +941,16 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       } else {
         lv_label_set_text(slot.badge, "");
         lv_obj_add_flag(slot.badge, LV_OBJ_FLAG_HIDDEN);
+      }
+    }
+    if (slot.track) {
+      if (show_track) {
+        lv_obj_clear_flag(slot.track, LV_OBJ_FLAG_HIDDEN);
+        if (slot.track_fill) {
+          lv_obj_set_width(slot.track_fill, lv_pct(epaper_dashboard_track_fill_percent(tile)));
+        }
+      } else {
+        lv_obj_add_flag(slot.track, LV_OBJ_FLAG_HIDDEN);
       }
     }
     if (slot.value) {
