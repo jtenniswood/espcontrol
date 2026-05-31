@@ -515,6 +515,10 @@ inline std::string epaper_dashboard_normalize_cover_mode(const std::string &valu
     : "";
 }
 
+inline std::string epaper_dashboard_normalize_lock_mode(const std::string &value) {
+  return value == "lock" || value == "unlock" ? value : "";
+}
+
 inline std::string epaper_dashboard_normalize_cover_position(const std::string &value) {
   char *end = nullptr;
   long pos = std::strtol(value.c_str(), &end, 10);
@@ -2830,6 +2834,14 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.unit.clear();
     tile.precision.clear();
     tile.options.clear();
+  }
+  if (tile.type == "lock") {
+    tile.sensor = epaper_dashboard_normalize_lock_mode(tile.sensor);
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.options.clear();
+    if (tile.icon.empty() || tile.icon == "Auto") tile.icon = "Lock";
+    if (tile.icon_on.empty() || tile.icon_on == "Auto") tile.icon_on = "Lock Open";
   }
   if (tile.type == "light_temperature") {
     if (tile.sensor == "kelvin") tile.sensor.clear();

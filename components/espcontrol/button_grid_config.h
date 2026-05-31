@@ -314,6 +314,10 @@ inline std::string normalize_cover_mode(const std::string &value) {
   return card_runtime_cover_mode_valid(value) ? value : "";
 }
 
+inline std::string normalize_lock_mode(const std::string &value) {
+  return card_runtime_lock_mode_valid(value) ? value : "";
+}
+
 inline std::string normalize_cover_position(const std::string &value) {
   char *end = nullptr;
   long pos = std::strtol(value.c_str(), &end, 10);
@@ -672,6 +676,14 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.unit.clear();
     p.precision.clear();
     p.options.clear();
+  }
+  if (p.type == "lock") {
+    p.sensor = normalize_lock_mode(p.sensor);
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Lock";
+    if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Lock Open";
   }
   if (p.type == "light_temperature") {
     if (p.sensor == "kelvin") p.sensor.clear();

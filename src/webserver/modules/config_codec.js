@@ -106,6 +106,14 @@ function normalizeButtonConfig(b) {
     b.precision = "";
     b.options = "";
   }
+  if (b && b.type === "lock") {
+    if (b.sensor !== "lock" && b.sensor !== "unlock") b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    if (!b.icon || b.icon === "Auto") b.icon = "Lock";
+    if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Lock Open";
+  }
   if (b && b.type === "light_temperature") {
     if (b.sensor === LIGHT_TEMPERATURE_LEGACY_SENSOR) b.sensor = "";
     b.unit = normalizeLightTemperatureRange(b.unit);
@@ -1004,8 +1012,9 @@ function buttonConfigFields(b) {
   if (isActionOptionSelect) type = "action";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
     (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "alarm" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+  if (type === "lock" && sensor !== "lock" && sensor !== "unlock") sensor = "";
   if (type === "light_temperature" && sensor === LIGHT_TEMPERATURE_LEGACY_SENSOR) sensor = "";
-  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.unit || "");
+  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "lock" || type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.unit || "");
   if (type === "light_temperature") unit = normalizeLightTemperatureRange(unit);
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
@@ -1014,7 +1023,7 @@ function buttonConfigFields(b) {
   if (isFanCardType(type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(type);
   var iconOn = (isActionOptionSelect || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
-  var precision = (isActionOptionSelect || type === "light_switch" || type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  var precision = (isActionOptionSelect || type === "light_switch" || type === "lock" || type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.precision || "");
   if (type === "media") {
     sensor = mediaEditorMode(sensor);
     precision = sensor === "now_playing"
@@ -1052,6 +1061,8 @@ function buttonConfigFields(b) {
     options = normalizeDoorWindowOptions(options);
   } else if (type === "presence") {
     options = normalizePresenceOptions(options);
+  } else if (type === "lock") {
+    options = "";
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
   } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && type !== "media" && type !== "presence" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
