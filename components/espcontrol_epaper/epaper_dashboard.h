@@ -1184,12 +1184,14 @@ inline bool epaper_dashboard_lock_command_mode(const std::string &mode) {
 
 inline std::string epaper_dashboard_climate_label_mode(const EpaperDashboardTile &tile) {
   std::string mode = epaper_dashboard_option_value(tile.options, "label_display");
-  return mode.empty() ? "label" : mode;
+  if (mode == "status" || mode == "actual" || mode == "target") return mode;
+  return "label";
 }
 
 inline std::string epaper_dashboard_climate_number_mode(const EpaperDashboardTile &tile) {
   std::string mode = epaper_dashboard_option_value(tile.options, "number_display");
-  return mode.empty() ? "target" : mode;
+  if (mode == "icon" || mode == "actual") return mode;
+  return "target";
 }
 
 inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &tile,
