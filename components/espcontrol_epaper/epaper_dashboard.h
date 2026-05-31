@@ -352,6 +352,8 @@ inline bool epaper_dashboard_todo_card_show_count(const EpaperDashboardTile &til
          epaper_dashboard_option_value(tile.options, "count_display") != "icon";
 }
 
+inline bool epaper_dashboard_alarm_action_mode_valid(const std::string &mode);
+
 inline std::string epaper_dashboard_normalize_todo_options(const std::string &options) {
   bool show_count = epaper_dashboard_option_value(options, "count_display") != "icon";
   std::string out = show_count ? "" : "count_display=icon";
@@ -420,6 +422,57 @@ inline std::string epaper_dashboard_normalize_climate_options(const std::string 
   if (number_display != "icon" && epaper_dashboard_option_present(options, "large_numbers")) {
     if (!out.empty()) out += ",";
     out += "large_numbers";
+  }
+  return out;
+}
+
+inline std::string epaper_dashboard_normalize_garage_options(const std::string &options,
+                                                             const std::string &mode) {
+  if (mode == "open" || mode == "close") return "";
+  return epaper_dashboard_option_value(options, "label_display") == "status"
+    ? "label_display=status"
+    : "";
+}
+
+inline std::string epaper_dashboard_normalize_alarm_options(const std::string &options) {
+  std::string out;
+  if (epaper_dashboard_option_value(options, "pin_arm") == "0") out = "pin_arm=0";
+  if (epaper_dashboard_option_value(options, "pin_disarm") == "0") {
+    if (!out.empty()) out += ",";
+    out += "pin_disarm=0";
+  }
+  std::string actions = epaper_dashboard_option_value(options, "actions");
+  if (!actions.empty()) {
+    std::string filtered;
+    bool saw_valid = false;
+    size_t start = 0;
+    while (start <= actions.length()) {
+      size_t end = actions.find('|', start);
+      if (end == std::string::npos) end = actions.length();
+      std::string action = actions.substr(start, end - start);
+      if (epaper_dashboard_alarm_action_mode_valid(action)) {
+        if (!filtered.empty()) filtered += "|";
+        filtered += action;
+        saw_valid = true;
+      }
+      start = end + 1;
+    }
+    if (saw_valid && filtered != "away|home|disarm") {
+      if (!out.empty()) out += ",";
+      out += "actions=" + filtered;
+    }
+  }
+  std::string icon_display = epaper_dashboard_option_value(options, "icon_display");
+  if (icon_display != "status" && icon_display != "static") icon_display = "status";
+  if (icon_display != "status") {
+    if (!out.empty()) out += ",";
+    out += "icon_display=" + icon_display;
+  }
+  std::string label_display = epaper_dashboard_option_value(options, "label_display");
+  if (label_display != "status" && label_display != "name") label_display = "status";
+  if (label_display != "status") {
+    if (!out.empty()) out += ",";
+    out += "label_display=" + label_display;
   }
   return out;
 }
@@ -2655,6 +2708,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.unit.clear();
     tile.precision.clear();
     if (!tile.sensor.empty()) tile.icon_on.clear();
+    tile.options = epaper_dashboard_normalize_garage_options(tile.options, tile.sensor);
   }
   if (tile.type == "alarm") {
     tile.sensor.clear();
@@ -2662,6 +2716,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.precision.clear();
     tile.icon_on.clear();
     if (tile.icon.empty() || tile.icon == "Auto") tile.icon = "Security";
+    tile.options = epaper_dashboard_normalize_alarm_options(tile.options);
   }
   if (tile.type == "alarm_action") {
     if (!epaper_dashboard_alarm_action_mode_valid(tile.sensor)) tile.sensor = "away";
@@ -2674,6 +2729,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
       else if (tile.sensor == "disarm") tile.icon = "Shield Off";
       else tile.icon = "Shield Lock";
     }
+    tile.options = epaper_dashboard_normalize_alarm_options(tile.options);
   }
   if (tile.type == "webhook") {
     tile.sensor = epaper_dashboard_webhook_method(tile.sensor);
