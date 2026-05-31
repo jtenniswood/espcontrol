@@ -461,6 +461,48 @@ inline int epaper_dashboard_media_volume_max(const EpaperDashboardTile &tile) {
   return max_value;
 }
 
+inline int epaper_dashboard_normalize_media_volume_max(const std::string &value) {
+  if (value.empty()) return 100;
+  char *end = nullptr;
+  long parsed = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) return 100;
+  if (parsed < 1) return 1;
+  if (parsed > 100) return 100;
+  return static_cast<int>(parsed);
+}
+
+inline std::string epaper_dashboard_media_mode(const std::string &mode) {
+  if (mode == "previous" || mode == "next" || mode == "volume" ||
+      mode == "position" || mode == "now_playing") {
+    return mode;
+  }
+  return "play_pause";
+}
+
+inline bool epaper_dashboard_media_state_display_mode(const std::string &mode) {
+  return mode == "play_pause" || mode == "position";
+}
+
+inline bool epaper_dashboard_media_now_playing_control(const std::string &precision) {
+  return precision.empty() || precision == "progress" || precision == "play_pause";
+}
+
+inline std::string epaper_dashboard_normalize_media_options(const std::string &options,
+                                                            const std::string &mode) {
+  if (mode != "volume" && mode != "position") return "";
+  std::string out;
+  int max_pct = epaper_dashboard_normalize_media_volume_max(
+    epaper_dashboard_option_value(options, "volume_max"));
+  if (mode == "volume" && max_pct < 100) {
+    out = "volume_max=" + std::to_string(max_pct);
+  }
+  if (epaper_dashboard_option_present(options, "large_numbers")) {
+    if (!out.empty()) out += ",";
+    out += "large_numbers";
+  }
+  return out;
+}
+
 inline std::string epaper_dashboard_format_media_volume(const EpaperDashboardTile &tile) {
   char *end = nullptr;
   float parsed = std::strtof(tile.sensor_value.c_str(), &end);
@@ -1967,6 +2009,35 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.unit.clear();
     tile.icon_on = "Auto";
     if (tile.icon.empty()) tile.icon = "Auto";
+  }
+  if (tile.type == "media") {
+    bool legacy_controls = tile.sensor == "controls";
+    tile.sensor = epaper_dashboard_media_mode(tile.sensor);
+    tile.unit.clear();
+    if (legacy_controls && (tile.icon.empty() || tile.icon == "Speaker")) {
+      tile.icon = "Auto";
+    }
+    if (tile.sensor == "previous" && tile.label == "Skip Previous") tile.label = "Previous";
+    if (tile.sensor == "next" && tile.label == "Skip Next") tile.label = "Next";
+    if (tile.sensor == "volume") {
+      if (tile.label.empty() || tile.label == "Media") {
+        tile.label = "Volume";
+        tile.label_configured = true;
+      }
+      tile.icon = "Auto";
+    }
+    if (tile.sensor == "position" && (tile.label.empty() || tile.label == "Track")) {
+      tile.label = "Position";
+      tile.label_configured = true;
+    }
+    if (tile.sensor == "now_playing") {
+      if (!epaper_dashboard_media_now_playing_control(tile.precision)) tile.precision.clear();
+    } else if (epaper_dashboard_media_state_display_mode(tile.sensor) && tile.precision == "state") {
+      tile.precision = "state";
+    } else {
+      tile.precision.clear();
+    }
+    tile.options = epaper_dashboard_normalize_media_options(tile.options, tile.sensor);
   }
   if (tile.type == "option_select") {
     tile.type = "action";
