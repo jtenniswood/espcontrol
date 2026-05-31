@@ -171,6 +171,25 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (end == tile.sensor_value.c_str() || std::isnan(parsed)) {\n    return "--";' in epaper, (
         "TRMNL media volume cards must not show arbitrary non-numeric text in the volume value"
     )
+    fan_active = (
+        'if (tile.type == "fan_oscillate") {\n'
+        '    bool oscillating = false;\n'
+        '    return !tile.state_unavailable &&\n'
+        '           epaper_dashboard_bool_value(tile.sensor_value, oscillating) && oscillating;\n'
+        '  }\n'
+        '  if (tile.type == "fan_direction") {\n'
+        '    return !tile.state_unavailable &&\n'
+        '           epaper_dashboard_normalized_state_text(tile.sensor_value) == "reverse";\n'
+        '  }\n'
+        '  if (tile.type == "fan_preset") {\n'
+        '    return !tile.state_unavailable &&\n'
+        '           !tile.fan_preset_modes.empty() &&\n'
+        '           epaper_dashboard_fan_preset_active(tile.sensor_value);\n'
+        '  }'
+    )
+    assert fan_active in epaper, (
+        "TRMNL fan attribute cards must not show active styling from stale attributes when the fan is unavailable"
+    )
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:

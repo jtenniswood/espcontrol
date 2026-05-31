@@ -2155,13 +2155,16 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   }
   if (tile.type == "fan_oscillate") {
     bool oscillating = false;
-    return epaper_dashboard_bool_value(tile.sensor_value, oscillating) && oscillating;
+    return !tile.state_unavailable &&
+           epaper_dashboard_bool_value(tile.sensor_value, oscillating) && oscillating;
   }
   if (tile.type == "fan_direction") {
-    return epaper_dashboard_normalized_state_text(tile.sensor_value) == "reverse";
+    return !tile.state_unavailable &&
+           epaper_dashboard_normalized_state_text(tile.sensor_value) == "reverse";
   }
   if (tile.type == "fan_preset") {
-    return !tile.fan_preset_modes.empty() &&
+    return !tile.state_unavailable &&
+           !tile.fan_preset_modes.empty() &&
            epaper_dashboard_fan_preset_active(tile.sensor_value);
   }
   if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)) {
