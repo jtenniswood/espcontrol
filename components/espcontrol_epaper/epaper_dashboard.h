@@ -1695,6 +1695,7 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   if (tile.type == "weather") return "";
   if (tile.type == "action") return "";
   if (tile.type == "media") return "";
+  if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
   if ((tile.type == "light_brightness" || tile.type == "light_temperature" ||
        tile.type == "slider" || tile.type == "fan_speed" || tile.type == "cover") &&
       !tile.entity.empty()) {
@@ -1730,6 +1731,7 @@ inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardT
   }
   if (epaper_dashboard_fan_non_speed_card(tile)) return "";
   if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;
+  if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
   std::string sensor_source = epaper_dashboard_sensor_source(tile);
   if (!sensor_source.empty()) return sensor_source;
   return tile.entity;
@@ -1737,7 +1739,8 @@ inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardT
 
 inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return epaper_dashboard_display_value(tile);
-  if (epaper_dashboard_toggle_text_sensor_card(tile) && !tile.sensor_value.empty()) {
+  if (epaper_dashboard_toggle_text_sensor_card(tile) &&
+      epaper_dashboard_state_active(tile.state) && !tile.sensor_value.empty()) {
     return epaper_dashboard_sensor_state_display_text(tile);
   }
   if (tile.type == "calendar") return epaper_dashboard_calendar_label(tile);
