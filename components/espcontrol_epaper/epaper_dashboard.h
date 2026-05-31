@@ -2323,9 +2323,11 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     }
   }
   if (tile.type == "door_window" && !tile.label_configured) {
+    if (!tile.friendly_name.empty()) return tile.friendly_name;
     return epaper_dashboard_window_card(tile) ? "Window" : "Door";
   }
   if (tile.type == "presence" && !tile.label_configured) {
+    if (!tile.friendly_name.empty()) return tile.friendly_name;
     return "Presence";
   }
   if (tile.type == "cover" &&
