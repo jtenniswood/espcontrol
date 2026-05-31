@@ -325,10 +325,7 @@ inline bool epaper_dashboard_state_active(const std::string &value) {
   return s == "on" || s == "true" || s == "1" ||
          s == "open" || s == "opened" || s == "opening" || s == "closing" ||
          s == "unlocked" || s == "unlocking" || s == "jammed" ||
-         s == "detected" || s == "home" || s == "playing" ||
-         s == "heating" || s == "cooling" ||
-         s == "armed_home" || s == "armed_away" || s == "armed_night" ||
-         s == "triggered";
+         s == "home" || s == "playing";
 }
 
 inline bool epaper_dashboard_state_unavailable(const std::string &value) {
@@ -2138,7 +2135,8 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   }
   if (tile.type == "presence") {
     return !tile.state_unavailable && epaper_dashboard_active_color_enabled(tile) &&
-           epaper_dashboard_state_active(tile.state);
+           (epaper_dashboard_normalized_state_text(tile.state) == "detected" ||
+            epaper_dashboard_state_active(tile.state));
   }
   if (tile.type == "action" && !tile.action_state_entity.empty()) {
     return !tile.sensor_unavailable && epaper_dashboard_state_active(tile.sensor_value);
