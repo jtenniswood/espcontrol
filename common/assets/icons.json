@@ -1228,6 +1228,11 @@
       "mdi": "trash-can-outline"
     },
     {
+      "name": "Tune Vertical Variant",
+      "codepoint": "F1543",
+      "mdi": "tune-vertical-variant"
+    },
+    {
       "name": "Volume High",
       "codepoint": "F057E",
       "mdi": "volume-high"

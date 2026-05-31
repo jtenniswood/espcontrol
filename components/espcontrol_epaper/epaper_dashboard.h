@@ -1436,12 +1436,11 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "internal") {
     return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");
   }
-  if (tile.type == "light_brightness" || tile.type == "light_switch" ||
-      tile.type == "light_temperature") return find_icon("Lightbulb");
+  if (tile.type == "light_brightness" || tile.type == "slider") return find_icon("Tune Vertical Variant");
+  if (tile.type == "light_switch" || tile.type == "light_temperature") return find_icon("Lightbulb");
   if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset") return find_icon("Fan");
-  if (tile.type == "slider") return find_icon("Gauge");
   if (tile.type == "cover") return find_icon("Blinds Horizontal");
   return nullptr;
 }
