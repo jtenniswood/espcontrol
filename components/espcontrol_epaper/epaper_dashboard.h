@@ -1031,6 +1031,14 @@ inline bool epaper_dashboard_cover_command_mode(const std::string &mode) {
   return mode == "open" || mode == "close" || mode == "stop" || mode == "set_position";
 }
 
+inline bool epaper_dashboard_garage_command_mode(const std::string &mode) {
+  return mode == "open" || mode == "close";
+}
+
+inline bool epaper_dashboard_lock_command_mode(const std::string &mode) {
+  return mode == "lock" || mode == "unlock";
+}
+
 inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &tile,
                                                      std::string &attribute) {
   attribute.clear();
@@ -1471,6 +1479,14 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor)) &&
       !tile.label_configured) {
     return "Cover";
+  }
+  if (tile.type == "garage" && epaper_dashboard_garage_command_mode(tile.sensor) &&
+      !tile.label_configured) {
+    return tile.sensor == "open" ? "Open" : "Close";
+  }
+  if (tile.type == "lock" && epaper_dashboard_lock_command_mode(tile.sensor) &&
+      !tile.label_configured) {
+    return tile.sensor == "unlock" ? "Unlock" : "Lock";
   }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
   if (tile.type == "option_select" && tile.label.empty()) {
