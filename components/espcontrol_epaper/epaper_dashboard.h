@@ -1297,6 +1297,10 @@ inline bool epaper_dashboard_toggle_text_sensor_card(const EpaperDashboardTile &
   return tile.type.empty() && tile.precision == "text" && !tile.sensor.empty();
 }
 
+inline bool epaper_dashboard_toggle_numeric_sensor_card(const EpaperDashboardTile &tile) {
+  return tile.type.empty() && tile.precision != "text" && !tile.sensor.empty();
+}
+
 inline bool epaper_dashboard_action_option_select(const EpaperDashboardTile &tile) {
   return tile.type == "action" &&
          (tile.sensor == "input_select.select_option" || tile.sensor == "select.select_option");
@@ -1337,6 +1341,7 @@ inline bool epaper_dashboard_internal_push_mode(const EpaperDashboardTile &tile)
 inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return false;
   if (epaper_dashboard_option_select_card(tile)) return true;
+  if (epaper_dashboard_toggle_numeric_sensor_card(tile)) return true;
   if (tile.type == "sensor") return tile.precision != "icon";
   if (epaper_dashboard_weather_forecast_card(tile) ||
       tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") return true;
@@ -1879,6 +1884,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
          epaper_dashboard_value_replaces_icon(tile));
     if (tile.type == "sensor" && tile.precision == "icon") show_value = false;
     if (epaper_dashboard_toggle_text_sensor_card(tile)) show_value = false;
+    if (epaper_dashboard_toggle_numeric_sensor_card(tile) && !active) show_value = false;
     if (epaper_dashboard_action_state_icon_card(tile) ||
         epaper_dashboard_action_state_text_card(tile)) show_value = false;
     if (epaper_dashboard_slider_visual_card(tile) && tile.type != "media") show_value = false;
