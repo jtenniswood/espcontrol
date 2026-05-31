@@ -208,6 +208,9 @@ function normalizeButtonConfig(b) {
     b.options = normalizeWeatherOptions(b.options, b.precision);
   } else if (b && b.type === "action") {
     b.options = normalizeActionOptions(b.options);
+    if (configOptionValue(b.options, ACTION_STATE_PRECISION_OPTION) !== "icon") {
+      b.icon_on = "Auto";
+    }
   } else if (b && b.type === "sensor") {
     b.options = normalizeSensorOptions(b.options, b.precision);
   } else if (b && b.type === "door_window") {
@@ -1185,6 +1188,9 @@ function buttonConfigFields(b) {
     options = normalizeMediaOptions(options, sensor);
   } else if (type === "action") {
     options = normalizeActionOptions(options);
+    if (configOptionValue(options, ACTION_STATE_PRECISION_OPTION) !== "icon") {
+      iconOn = "Auto";
+    }
   } else if (type === "weather") {
     options = normalizeWeatherOptions(options, precision);
   } else if (type === "calendar" || type === "clock" || type === "timezone") {

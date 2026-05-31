@@ -2995,6 +2995,9 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   }
   if (tile.type == "action") {
     tile.options = epaper_dashboard_normalize_action_options(tile.options);
+    if (epaper_dashboard_option_value(tile.options, "state_precision") != "icon") {
+      tile.icon_on.clear();
+    }
     tile.action_state_entity = epaper_dashboard_option_value(tile.options, "state_entity");
     std::string action_unit = epaper_dashboard_option_value(tile.options, "state_unit");
     if (!action_unit.empty()) tile.unit = action_unit;

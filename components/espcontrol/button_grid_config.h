@@ -808,6 +808,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   }
   if (p.type == "action") {
     p.options = action_card_options_normalized(p.options);
+    if (cfg_option_value(p.options, "state_precision") != "icon") p.icon_on.clear();
   }
   if (p.type == "door_window") {
     p.entity.clear();
