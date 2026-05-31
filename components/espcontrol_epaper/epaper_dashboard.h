@@ -1447,7 +1447,7 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "climate") return find_icon("Thermostat");
   if (tile.type == "garage") return find_icon("Garage");
   if (tile.type == "lock") return find_icon("Lock");
-  if (tile.type == "alarm" || tile.type == "alarm_action") return find_icon("Security");
+  if (tile.type == "alarm" || tile.type == "alarm_action") return nullptr;
   if (epaper_dashboard_option_select_card(tile)) {
     return find_icon("Chevron Down");
   }
