@@ -255,6 +255,11 @@ inline bool epaper_dashboard_option_present(const std::string &options, const ch
   return false;
 }
 
+inline bool epaper_dashboard_todo_card_show_count(const EpaperDashboardTile &tile) {
+  return tile.type == "todo" &&
+         epaper_dashboard_option_value(tile.options, "count_display") != "icon";
+}
+
 inline std::string epaper_dashboard_pretty_state(const std::string &value) {
   std::string text = value;
   for (char &ch : text) {
@@ -887,7 +892,7 @@ inline bool epaper_dashboard_sensor_field_is_entity(const EpaperDashboardTile &t
       tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset" || tile.type == "option_select" ||
-      tile.type == "internal") {
+      tile.type == "todo" || tile.type == "internal") {
     return false;
   }
   return true;
@@ -969,7 +974,8 @@ inline std::string epaper_dashboard_secondary_attribute_source(const EpaperDashb
 
 inline bool epaper_dashboard_has_sensor_value(const EpaperDashboardTile &tile) {
   return !epaper_dashboard_sensor_source(tile).empty() ||
-         tile.type == "clock" || tile.type == "timezone";
+         tile.type == "clock" || tile.type == "timezone" ||
+         epaper_dashboard_todo_card_show_count(tile);
 }
 
 inline bool epaper_dashboard_card_large_numbers(const EpaperDashboardTile &tile) {
@@ -1013,6 +1019,7 @@ inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile
     std::string mode = epaper_dashboard_option_value(tile.options, "number_display");
     return mode == "actual" || mode == "target";
   }
+  if (epaper_dashboard_todo_card_show_count(tile)) return true;
   return epaper_dashboard_card_large_numbers(tile) && epaper_dashboard_has_sensor_value(tile);
 }
 
@@ -1139,6 +1146,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "presence") return find_icon("Account");
   if (tile.type == "push") return find_icon("Gesture Tap");
   if (tile.type == "webhook") return find_icon("Flash");
+  if (tile.type == "todo") return find_icon("Check");
   if (tile.type == "internal") {
     return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");
   }
@@ -1190,6 +1198,7 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "push") return find_icon("Gesture Tap");
   if (tile.type == "webhook") return find_icon("Flash");
+  if (tile.type == "todo") return find_icon("Check");
   if (tile.type == "internal") {
     return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");
   }
@@ -1260,6 +1269,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "push" && tile.label.empty()) return "Trigger";
   if (tile.type == "webhook" && tile.label.empty()) return "Webhook";
+  if (tile.type == "todo" && tile.label.empty()) {
+    if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
+    return "Todo";
+  }
   if (tile.type == "internal" && tile.label.empty()) {
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
     return "Relay";
@@ -1367,6 +1380,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     if (epaper_dashboard_slider_visual_card(tile) && tile.type != "media") show_value = false;
     if (tile.type == "weather" && !epaper_dashboard_weather_forecast_card(tile)) show_value = false;
     if (tile.type == "door_window" || tile.type == "presence") show_value = false;
+    if (tile.type == "todo" && !epaper_dashboard_todo_card_show_count(tile)) show_value = false;
     bool value_replaces_icon = show_value && epaper_dashboard_value_replaces_icon(tile);
     epaper_dashboard_style_lvgl_tile(slot.tile, slot.icon, slot.label, slot.badge,
                                      slot.track, slot.track_fill,
@@ -1529,6 +1543,11 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
     if (tile.state_unavailable) return "--";
     if (!tile.state.empty()) return tile.state;
     return "Option";
+  }
+  if (tile.type == "todo") {
+    if (tile.state_unavailable) return "--";
+    if (!tile.state.empty()) return epaper_dashboard_format_number(tile.state, 0);
+    return "...";
   }
   bool use_sensor_value = tile.type == "sensor" || tile.type == "weather" ||
       tile.type == "weather_forecast" || tile.type == "calendar" ||
