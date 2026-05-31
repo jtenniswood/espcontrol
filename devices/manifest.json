@@ -700,12 +700,12 @@
           "fontSize": 2.1
         },
         "grid": {
-          "top": 8.5,
-          "compactTop": 8.5,
-          "left": 1.2,
-          "right": 1.2,
-          "bottom": 1.2,
-          "gap": 0.75,
+          "top": 5.25,
+          "compactTop": 5.25,
+          "left": 0.625,
+          "right": 0.625,
+          "bottom": 0.625,
+          "gap": 1.25,
           "fr": "1fr"
         },
         "btn": {
