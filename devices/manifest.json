@@ -712,7 +712,8 @@
           "radius": 2.25,
           "padding": 1.1,
           "iconSize": 4.35,
-          "labelSize": 2.55,
+          "valueSize": 6,
+          "labelSize": 3,
           "labelLines": 2,
           "labelLinesDouble": 3
         },

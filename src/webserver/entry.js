@@ -98,6 +98,7 @@
     r.setProperty("--btn-pad", scaledCqw(btn.padding, scale));
     r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
     r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
+    r.setProperty("--sensor-value", scaledCqw(btn.valueSize || btn.iconSize, scale));
     r.setProperty("--btn-lines", String(btn.labelLines || 1));
     r.setProperty("--btn-lines-dbl", String(btn.labelLinesDouble || btn.labelLines || 1));
 

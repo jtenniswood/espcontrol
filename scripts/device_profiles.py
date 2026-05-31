@@ -398,6 +398,8 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
         for key in ("radius", "padding", "iconSize", "labelSize"):
             if not is_number(btn.get(key)):
                 errors.append(device_error(slug, f"web.btn.{key} must be a number"))
+        if "valueSize" in btn and not is_number(btn.get("valueSize")):
+            errors.append(device_error(slug, "web.btn.valueSize must be a number"))
         for key in ("labelLines", "labelLinesDouble"):
             if not is_positive_int(btn.get(key)):
                 errors.append(device_error(slug, f"web.btn.{key} must be a positive integer"))
