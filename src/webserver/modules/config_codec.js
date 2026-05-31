@@ -191,7 +191,13 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto" || b.icon === "Chevron Down") b.icon = "Flash";
   }
   if (b && !b.type) {
-    b.options = normalizeSwitchConfirmationOptions(b.options);
+    if (!b.sensor) {
+      b.unit = "";
+      b.precision = "";
+    } else if (b.precision === "text") {
+      b.unit = "";
+    }
+    b.options = normalizeSwitchConfirmationOptions(b.options, b.sensor, b.precision);
   } else if (b && b.type === "weather") {
     b.precision = normalizeWeatherPrecision(b.precision);
     b.options = normalizeWeatherOptions(b.options, b.precision);
@@ -680,10 +686,10 @@ function switchConfirmationNoText(b) {
     cardContractOptionDefaultValue("", SWITCH_CONFIRM_NO_OPTION, SWITCH_CONFIRM_DEFAULT_NO);
 }
 
-function normalizeSwitchConfirmationOptions(options) {
+function normalizeSwitchConfirmationOptions(options, sensor, precision) {
   var mode = switchConfirmationMode({ options: options });
   var out = "";
-  if (configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION)) {
+  if (sensor && precision !== "text" && configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION)) {
     out = setConfigOption(out, SENSOR_LARGE_NUMBERS_OPTION, true);
   }
   if (!mode) return out;
@@ -1141,6 +1147,8 @@ function buttonConfigFields(b) {
   var precision = (isActionOptionSelect || type === "light_switch" || type === "lock" ||
     type === "clock" || type === "timezone" || type === "push" || type === "internal" || type === "alarm" ||
     type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  if (type === "" && !sensor) precision = "";
+  if (type === "" && (!sensor || precision === "text")) unit = "";
   if (type === "calendar" && precision !== "datetime") precision = "";
   if (type === "media") {
     sensor = mediaEditorMode(sensor);
@@ -1154,7 +1162,7 @@ function buttonConfigFields(b) {
   if (type === "weather") precision = normalizeWeatherPrecision(precision);
   var options = b && b.options || "";
   if (type === "") {
-    options = normalizeSwitchConfirmationOptions(options);
+    options = normalizeSwitchConfirmationOptions(options, sensor, precision);
   } else if (type === "push") {
     options = "";
   } else if (type === "internal") {

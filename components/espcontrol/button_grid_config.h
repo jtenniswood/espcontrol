@@ -239,6 +239,38 @@ inline std::string media_card_options_normalized(const std::string &options,
   return out;
 }
 
+inline std::string switch_card_options_normalized(const std::string &options,
+                                                  const std::string &sensor,
+                                                  const std::string &precision) {
+  std::string out;
+  if (!sensor.empty() && precision != "text" && cfg_option_token_present(options, "large_numbers")) {
+    out = "large_numbers";
+  }
+  bool confirm_off = cfg_option_token_present(options, "confirm_off");
+  bool confirm_on = cfg_option_token_present(options, "confirm_on");
+  if (!confirm_off && !confirm_on) return out;
+  if (confirm_off) {
+    if (!out.empty()) out += ",";
+    out += "confirm_off";
+  }
+  if (confirm_on) {
+    if (!out.empty()) out += ",";
+    out += "confirm_on";
+  }
+  std::string mode = confirm_off && confirm_on ? "both" : (confirm_on ? "on" : "off");
+  std::string message = cfg_option_value(options, "confirm_message");
+  std::string default_message = mode == "both" ? "Toggle this device?"
+    : (mode == "on" ? "Turn on this device?" : "Turn off this device?");
+  if (!message.empty() && message != default_message) {
+    out += ",confirm_message=" + encode_compact_field(message);
+  }
+  std::string yes = cfg_option_value(options, "confirm_yes");
+  if (!yes.empty() && yes != "Yes") out += ",confirm_yes=" + encode_compact_field(yes);
+  std::string no = cfg_option_value(options, "confirm_no");
+  if (!no.empty() && no != "No") out += ",confirm_no=" + encode_compact_field(no);
+  return out;
+}
+
 inline std::string sensor_card_options_normalized(const std::string &options,
                                                   const std::string &precision) {
   std::string out;
@@ -579,6 +611,15 @@ inline std::string webhook_card_options_normalized(const std::string &options) {
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
+  if (p.type.empty()) {
+    if (p.sensor.empty()) {
+      p.unit.clear();
+      p.precision.clear();
+    } else if (p.precision == "text") {
+      p.unit.clear();
+    }
+    p.options = switch_card_options_normalized(p.options, p.sensor, p.precision);
+  }
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
   if (brightness_slider_type(p.type) && !p.sensor.empty()) p.sensor.clear();

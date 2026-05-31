@@ -363,6 +363,39 @@ inline std::string epaper_dashboard_normalize_todo_options(const std::string &op
   return out;
 }
 
+inline std::string epaper_dashboard_normalize_switch_options(const std::string &options,
+                                                             const std::string &sensor,
+                                                             const std::string &precision) {
+  std::string out;
+  if (!sensor.empty() && precision != "text" &&
+      epaper_dashboard_option_present(options, "large_numbers")) {
+    out = "large_numbers";
+  }
+  bool confirm_off = epaper_dashboard_option_present(options, "confirm_off");
+  bool confirm_on = epaper_dashboard_option_present(options, "confirm_on");
+  if (!confirm_off && !confirm_on) return out;
+  if (confirm_off) {
+    if (!out.empty()) out += ",";
+    out += "confirm_off";
+  }
+  if (confirm_on) {
+    if (!out.empty()) out += ",";
+    out += "confirm_on";
+  }
+  std::string mode = confirm_off && confirm_on ? "both" : (confirm_on ? "on" : "off");
+  std::string message = epaper_dashboard_option_value(options, "confirm_message");
+  std::string default_message = mode == "both" ? "Toggle this device?"
+    : (mode == "on" ? "Turn on this device?" : "Turn off this device?");
+  if (!message.empty() && message != default_message) {
+    out += ",confirm_message=" + epaper_dashboard_encode_field(message);
+  }
+  std::string yes = epaper_dashboard_option_value(options, "confirm_yes");
+  if (!yes.empty() && yes != "Yes") out += ",confirm_yes=" + epaper_dashboard_encode_field(yes);
+  std::string no = epaper_dashboard_option_value(options, "confirm_no");
+  if (!no.empty() && no != "No") out += ",confirm_no=" + epaper_dashboard_encode_field(no);
+  return out;
+}
+
 inline std::string epaper_dashboard_normalize_sensor_options(const std::string &options,
                                                              const std::string &precision) {
   std::string out;
@@ -2708,6 +2741,15 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   if (fields.size() > 6) tile.type = fields[6];
   if (fields.size() > 7) tile.precision = fields[7];
   if (fields.size() > 8) tile.options = fields[8];
+  if (tile.type.empty()) {
+    if (tile.sensor.empty()) {
+      tile.unit.clear();
+      tile.precision.clear();
+    } else if (tile.precision == "text") {
+      tile.unit.clear();
+    }
+    tile.options = epaper_dashboard_normalize_switch_options(tile.options, tile.sensor, tile.precision);
+  }
   if (epaper_dashboard_brightness_slider_type(tile.type) && !tile.sensor.empty()) {
     tile.sensor.clear();
   }
