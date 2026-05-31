@@ -35,11 +35,14 @@ struct EpaperDashboardTile {
   std::string options;
   std::string state;
   std::string sensor_value;
+  std::string secondary_value;
   std::string action_state_entity;
   bool state_subscribed = false;
   bool sensor_subscribed = false;
+  bool secondary_subscribed = false;
   bool state_unavailable = false;
   bool sensor_unavailable = false;
+  bool secondary_unavailable = false;
 };
 
 inline std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> &epaper_dashboard_tiles() {
@@ -631,6 +634,17 @@ inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &
   return "";
 }
 
+inline std::string epaper_dashboard_secondary_attribute_source(const EpaperDashboardTile &tile,
+                                                              std::string &attribute) {
+  attribute.clear();
+  if (tile.entity.empty()) return "";
+  if (tile.type == "media" && tile.sensor == "now_playing") {
+    attribute = "media_artist";
+    return tile.entity;
+  }
+  return "";
+}
+
 inline bool epaper_dashboard_has_sensor_value(const EpaperDashboardTile &tile) {
   return !epaper_dashboard_sensor_source(tile).empty() ||
          tile.type == "clock" || tile.type == "timezone";
@@ -837,6 +851,11 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     if (!tile.label.empty() && tile.label != epaper_dashboard_title_from_entity(tile.entity)) return tile.label;
     return "Temperatures Tomorrow";
   }
+  if (tile.type == "media" && tile.sensor == "now_playing") {
+    if (tile.secondary_unavailable) return "--";
+    if (!tile.secondary_value.empty()) return tile.secondary_value;
+    return "--";
+  }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
   if (tile.type == "push" && tile.label.empty()) return "Trigger";
   if (tile.type == "webhook" && tile.label.empty()) return "Webhook";
@@ -1020,6 +1039,9 @@ inline void epaper_dashboard_subscribe(int index) {
   std::string sensor_source = epaper_dashboard_sensor_source(tile);
   std::string attribute;
   std::string attribute_entity = epaper_dashboard_attribute_source(tile, attribute);
+  std::string secondary_attribute;
+  std::string secondary_attribute_entity =
+      epaper_dashboard_secondary_attribute_source(tile, secondary_attribute);
   if (!sensor_source.empty() && !tile.sensor_subscribed) {
     tile.sensor_subscribed = true;
     esphome::api::global_api_server->subscribe_home_assistant_state(
@@ -1036,6 +1058,17 @@ inline void epaper_dashboard_subscribe(int index) {
           auto &tile = epaper_dashboard_tiles()[index];
           tile.sensor_value = std::string(state.c_str(), state.size());
           tile.sensor_unavailable = epaper_dashboard_state_unavailable(tile.sensor_value);
+          epaper_dashboard_mark_dirty();
+        });
+  }
+  if (!secondary_attribute_entity.empty() && !secondary_attribute.empty() &&
+      !tile.secondary_subscribed) {
+    tile.secondary_subscribed = true;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        secondary_attribute_entity, secondary_attribute, [index](esphome::StringRef state) {
+          auto &tile = epaper_dashboard_tiles()[index];
+          tile.secondary_value = std::string(state.c_str(), state.size());
+          tile.secondary_unavailable = epaper_dashboard_state_unavailable(tile.secondary_value);
           epaper_dashboard_mark_dirty();
         });
   }
