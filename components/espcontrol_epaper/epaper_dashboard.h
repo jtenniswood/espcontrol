@@ -2419,6 +2419,35 @@ inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) 
 
 inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool active) {
   std::string icon = active && !tile.icon_on.empty() && tile.icon_on != "Auto" ? tile.icon_on : tile.icon;
+  if (tile.type == "cover") {
+    if (epaper_dashboard_cover_command_mode(tile.sensor)) {
+      if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());
+      return find_icon("Blinds");
+    }
+    float cover_position = 0.0f;
+    bool open_icon = epaper_dashboard_cover_toggle_mode(tile.sensor)
+      ? epaper_dashboard_garage_state_uses_open_icon(tile.state)
+      : (epaper_dashboard_parse_float_value(tile.sensor_value, cover_position)
+           ? epaper_dashboard_clamp_percent(static_cast<int>(cover_position + 0.5f)) > 0
+           : (!tile.state_unavailable && epaper_dashboard_state_active(tile.state)));
+    std::string cover_icon = open_icon && !tile.icon_on.empty() && tile.icon_on != "Auto"
+      ? tile.icon_on
+      : tile.icon;
+    if (!cover_icon.empty() && cover_icon != "Auto") return find_icon(cover_icon.c_str());
+    return find_icon(open_icon ? "Blinds Open" : "Blinds");
+  }
+  if (tile.type == "garage") {
+    if (epaper_dashboard_garage_command_mode(tile.sensor)) {
+      if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());
+      return find_icon(tile.sensor == "open" ? "Garage Open" : "Garage");
+    }
+    bool open_icon = epaper_dashboard_garage_state_uses_open_icon(tile.state);
+    std::string garage_icon = open_icon && !tile.icon_on.empty() && tile.icon_on != "Auto"
+      ? tile.icon_on
+      : tile.icon;
+    if (!garage_icon.empty() && garage_icon != "Auto") return find_icon(garage_icon.c_str());
+    return find_icon(open_icon ? "Garage Open" : "Garage");
+  }
   if (tile.type == "weather" && !epaper_dashboard_weather_forecast_card(tile)) {
     return epaper_dashboard_weather_icon_for_state(tile.state);
   }
@@ -2431,15 +2460,6 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "alarm") return find_icon("Security");
   if (tile.type == "alarm_action") return epaper_dashboard_alarm_action_icon(tile.sensor);
   if (tile.type == "climate") return find_icon("Thermostat");
-  if (tile.type == "cover") {
-    if (tile.sensor == "open") return find_icon("Blinds Open");
-    if (epaper_dashboard_cover_toggle_mode(tile.sensor)) {
-      return find_icon(epaper_dashboard_garage_state_uses_open_icon(tile.state)
-                           ? "Blinds Open"
-                           : "Blinds");
-    }
-    return find_icon(active ? "Blinds Open" : "Blinds");
-  }
   if (tile.type == "door_window") {
     if (epaper_dashboard_window_card(tile)) return find_icon(active ? "Window Open" : "Window Closed");
     return find_icon(active ? "Door Open" : "Door");
@@ -2447,15 +2467,6 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_default_icon_name(tile));
-  if (tile.type == "garage") {
-    if (epaper_dashboard_garage_command_mode(tile.sensor)) {
-      return find_icon(tile.sensor == "open" ? "Garage Open" : "Garage");
-    }
-    if (epaper_dashboard_garage_state_uses_open_icon(tile.state)) {
-      return find_icon("Garage Open");
-    }
-    return find_icon("Garage");
-  }
   if (tile.type == "light_brightness" || tile.type == "light_switch") {
     return find_icon(active ? "Lightbulb" : "Lightbulb Outline");
   }

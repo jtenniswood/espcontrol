@@ -190,6 +190,33 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert fan_active in epaper, (
         "TRMNL fan attribute cards must not show active styling from stale attributes when the fan is unavailable"
     )
+    assert (
+        'if (epaper_dashboard_cover_command_mode(tile.sensor)) {\n'
+        '      if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());\n'
+        '      return find_icon("Blinds");\n'
+        '    }'
+        in epaper
+    ), "TRMNL cover command cards must use the same default/off icon as normal cover command cards"
+    cover_icon = (
+        'float cover_position = 0.0f;\n'
+        '    bool open_icon = epaper_dashboard_cover_toggle_mode(tile.sensor)\n'
+        '      ? epaper_dashboard_garage_state_uses_open_icon(tile.state)\n'
+        '      : (epaper_dashboard_parse_float_value(tile.sensor_value, cover_position)\n'
+        '           ? epaper_dashboard_clamp_percent(static_cast<int>(cover_position + 0.5f)) > 0\n'
+        '           : (!tile.state_unavailable && epaper_dashboard_state_active(tile.state)));'
+    )
+    assert cover_icon in epaper, (
+        "TRMNL cover icons must follow normal cover state/position icon selection"
+    )
+    garage_icon = (
+        'bool open_icon = epaper_dashboard_garage_state_uses_open_icon(tile.state);\n'
+        '    std::string garage_icon = open_icon && !tile.icon_on.empty() && tile.icon_on != "Auto"\n'
+        '      ? tile.icon_on\n'
+        '      : tile.icon;'
+    )
+    assert garage_icon in epaper, (
+        "TRMNL garage state cards must choose open icons from open/opening state, not generic active styling"
+    )
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
