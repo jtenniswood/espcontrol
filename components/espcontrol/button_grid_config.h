@@ -245,10 +245,6 @@ inline std::string sensor_card_options_normalized(const std::string &options,
   if (precision != "icon" && precision != "text" && cfg_option_token_present(options, "large_numbers")) {
     out = "large_numbers";
   }
-  if (cfg_option_token_present(options, "active_color")) {
-    if (!out.empty()) out += ",";
-    out += "active_color";
-  }
   if (precision == "text" && cfg_option_token_present(options, SENSOR_STATE_LABELS_OPTION)) {
     if (!out.empty()) out += ",";
     out += SENSOR_STATE_LABELS_OPTION;

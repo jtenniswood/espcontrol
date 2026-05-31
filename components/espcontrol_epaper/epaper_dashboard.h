@@ -370,10 +370,6 @@ inline std::string epaper_dashboard_normalize_sensor_options(const std::string &
       epaper_dashboard_option_present(options, "large_numbers")) {
     out = "large_numbers";
   }
-  if (epaper_dashboard_option_present(options, "active_color")) {
-    if (!out.empty()) out += ",";
-    out += "active_color";
-  }
   if (precision == "text" && epaper_dashboard_option_present(options, "state_labels")) {
     if (!out.empty()) out += ",";
     out += "state_labels";
