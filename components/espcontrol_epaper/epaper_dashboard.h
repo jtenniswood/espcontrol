@@ -2832,6 +2832,15 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     if (tile.icon.empty()) tile.icon = "Auto";
     tile.options = epaper_dashboard_normalize_webhook_options(tile.options);
   }
+  if (tile.type == "push") {
+    tile.entity.clear();
+    tile.sensor.clear();
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.icon_on = "Auto";
+    tile.options.clear();
+    if (tile.icon.empty() || tile.icon == "Auto") tile.icon = "Gesture Tap";
+  }
   if (tile.type == "internal") {
     bool push_mode = epaper_dashboard_internal_push_mode(tile);
     tile.sensor = push_mode ? "push" : "";

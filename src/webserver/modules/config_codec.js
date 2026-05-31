@@ -100,6 +100,15 @@ function normalizeButtonConfig(b) {
   if (b && b.type === "webhook") {
     if (typeof normalizeWebhookConfig === "function") normalizeWebhookConfig(b);
   }
+  if (b && b.type === "push") {
+    b.entity = "";
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.icon_on = "Auto";
+    b.options = "";
+    if (!b.icon || b.icon === "Auto") b.icon = "Gesture Tap";
+  }
   if (b && b.type === "light_switch") {
     b.sensor = "";
     b.unit = "";
@@ -1058,11 +1067,12 @@ function buttonConfigFields(b) {
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
     (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" ||
       type === "calendar" || type === "clock" || type === "timezone" ||
-      type === "alarm" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+      type === "push" || type === "alarm" || isFanCardType(type)) ? "" : (b && b.sensor || "");
   if (type === "lock" && sensor !== "lock" && sensor !== "unlock") sensor = "";
   if (type === "light_temperature" && sensor === LIGHT_TEMPERATURE_LEGACY_SENSOR) sensor = "";
   var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" ||
     type === "lock" || type === "calendar" || type === "clock" || type === "timezone" ||
+    type === "push" ||
     type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.unit || "");
   if (type === "light_temperature") unit = normalizeLightTemperatureRange(unit);
   var icon = b && b.icon || "Auto";
@@ -1073,7 +1083,7 @@ function buttonConfigFields(b) {
   var iconOn = (isActionOptionSelect || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
   var precision = (isActionOptionSelect || type === "light_switch" || type === "lock" ||
-    type === "clock" || type === "timezone" || type === "alarm" ||
+    type === "clock" || type === "timezone" || type === "push" || type === "alarm" ||
     type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.precision || "");
   if (type === "calendar" && precision !== "datetime") precision = "";
   if (type === "media") {
@@ -1087,6 +1097,8 @@ function buttonConfigFields(b) {
   var options = b && b.options || "";
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options);
+  } else if (type === "push") {
+    options = "";
   } else if (type === "alarm" || type === "alarm_action") {
     options = normalizeAlarmOptions(options);
   } else if (type === "garage") {
@@ -1124,6 +1136,12 @@ function buttonConfigFields(b) {
   } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && type !== "media" && type !== "presence" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
   }
+  if (type === "push") {
+    b = b || {};
+    b.entity = "";
+    if (!icon || icon === "Auto") icon = "Gesture Tap";
+    iconOn = "Auto";
+  }
   if (type === "door_window") {
     b = b || {};
     b.entity = "";
@@ -1144,7 +1162,7 @@ function buttonConfigFields(b) {
     precision = "";
   }
   return trimConfigFields([
-    (type === "door_window" || type === "presence" || type === "clock") ? "" : (b && b.entity || ""),
+    (type === "door_window" || type === "presence" || type === "clock" || type === "push") ? "" : (b && b.entity || ""),
     b && b.label || "",
     icon,
     iconOn,

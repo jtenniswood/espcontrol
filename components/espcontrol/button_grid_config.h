@@ -674,6 +674,15 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon.empty()) p.icon = "Auto";
     p.options = webhook_card_options_normalized(p.options);
   }
+  if (p.type == "push") {
+    p.entity.clear();
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.icon_on = "Auto";
+    p.options.clear();
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Gesture Tap";
+  }
   if (p.type == "internal") {
     bool push_mode = card_runtime_internal_push_mode(p.sensor);
     p.sensor = push_mode ? "push" : "";
