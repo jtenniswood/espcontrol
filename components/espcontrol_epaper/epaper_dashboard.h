@@ -700,6 +700,12 @@ inline bool epaper_dashboard_climate_active(const EpaperDashboardTile &tile) {
   return action != "idle" && action != "off";
 }
 
+inline bool epaper_dashboard_climate_controls_enabled(const EpaperDashboardTile &tile) {
+  std::string mode = epaper_dashboard_normalized_state_text(tile.state);
+  return !tile.state_unavailable && !mode.empty() &&
+         mode != "unknown" && mode != "unavailable" && mode != "off";
+}
+
 inline std::string epaper_dashboard_climate_format_temperature(
     const std::string &value, bool unavailable, const EpaperDashboardTile &tile) {
   if (unavailable) return "";
@@ -2469,6 +2475,9 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     bool icon_active = active;
     if (tile.type == "door_window" || tile.type == "presence") {
       icon_active = !tile.state_unavailable && epaper_dashboard_state_active(tile.state);
+    }
+    if (tile.type == "climate") {
+      icon_active = epaper_dashboard_climate_controls_enabled(tile);
     }
     bool has_sensor_value = epaper_dashboard_has_sensor_value(tile);
     bool show_track = configured && epaper_dashboard_slider_visual_card(tile) &&
