@@ -235,6 +235,115 @@ inline std::string epaper_dashboard_format_percent(const std::string &value) {
   return buf;
 }
 
+inline int epaper_dashboard_parse_precision(const std::string &value) {
+  if (value.empty()) return 0;
+  int precision = atoi(value.c_str());
+  if (precision < 0) return 0;
+  if (precision > 3) return 3;
+  return precision;
+}
+
+inline std::string epaper_dashboard_format_number(const std::string &value, int precision) {
+  char *end = nullptr;
+  float parsed = std::strtof(value.c_str(), &end);
+  if (end == value.c_str() || std::isnan(parsed)) return epaper_dashboard_pretty_state(value);
+  if (precision < 0) precision = 0;
+  if (precision > 3) precision = 3;
+  char buf[24];
+  if (precision == 1) snprintf(buf, sizeof(buf), "%.1f", parsed);
+  else if (precision == 2) snprintf(buf, sizeof(buf), "%.2f", parsed);
+  else if (precision == 3) snprintf(buf, sizeof(buf), "%.3f", parsed);
+  else snprintf(buf, sizeof(buf), "%.0f", parsed);
+  return buf;
+}
+
+inline int epaper_dashboard_media_volume_max(const EpaperDashboardTile &tile) {
+  std::string max_text = epaper_dashboard_option_value(tile.options, "volume_max");
+  int max_value = max_text.empty() ? 100 : atoi(max_text.c_str());
+  if (max_value < 1) return 100;
+  if (max_value > 100) return 100;
+  return max_value;
+}
+
+inline std::string epaper_dashboard_format_media_volume(const EpaperDashboardTile &tile) {
+  char *end = nullptr;
+  float parsed = std::strtof(tile.sensor_value.c_str(), &end);
+  if (end == tile.sensor_value.c_str() || std::isnan(parsed)) {
+    return epaper_dashboard_pretty_state(tile.sensor_value);
+  }
+  if (parsed >= 0.0f && parsed <= 1.0f) parsed *= epaper_dashboard_media_volume_max(tile);
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%.0f", parsed);
+  return buf;
+}
+
+inline std::string epaper_dashboard_normalized_state_text(const std::string &value) {
+  std::string text = value;
+  size_t start = 0;
+  while (start < text.size() && std::isspace(static_cast<unsigned char>(text[start]))) start++;
+  size_t end = text.size();
+  while (end > start && std::isspace(static_cast<unsigned char>(text[end - 1]))) end--;
+  text = text.substr(start, end - start);
+  for (char &ch : text) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  return text;
+}
+
+inline std::string epaper_dashboard_text_sensor_display_text(const std::string &value) {
+  std::string out;
+  out.reserve(value.size());
+  bool cap_next = true;
+  bool last_space = false;
+  for (char ch : value) {
+    unsigned char c = static_cast<unsigned char>(ch);
+    if (ch == '\r' || ch == '\n') {
+      if (!out.empty() && out.back() == ' ') out.pop_back();
+      if (!out.empty() && out.back() != '\n') out.push_back('\n');
+      cap_next = true;
+      last_space = false;
+      continue;
+    }
+    if (ch == '_' || ch == '-' || std::isspace(c)) {
+      if (!out.empty() && !last_space && out.back() != '\n') {
+        out.push_back(' ');
+        last_space = true;
+      }
+      cap_next = true;
+      continue;
+    }
+    if (std::isalpha(c)) {
+      out.push_back(static_cast<char>(cap_next ? std::toupper(c) : std::tolower(c)));
+      cap_next = false;
+    } else {
+      out.push_back(ch);
+    }
+    last_space = false;
+  }
+  while (!out.empty() && (out.back() == ' ' || out.back() == '\n')) out.pop_back();
+  return out;
+}
+
+inline std::string epaper_dashboard_sensor_state_display_text(const EpaperDashboardTile &tile) {
+  if (epaper_dashboard_option_present(tile.options, "state_labels")) {
+    std::string state = epaper_dashboard_normalized_state_text(tile.sensor_value);
+    std::string input = epaper_dashboard_option_value(tile.options, "state_input");
+    std::string output = epaper_dashboard_option_value(tile.options, "state_output");
+    if (input.empty() && !epaper_dashboard_option_value(tile.options, "state_high_label").empty()) {
+      input = "high";
+      output = epaper_dashboard_option_value(tile.options, "state_high_label");
+    } else if (input.empty() && !epaper_dashboard_option_value(tile.options, "state_low_label").empty()) {
+      input = "low";
+      output = epaper_dashboard_option_value(tile.options, "state_low_label");
+    }
+    if (!input.empty() && state == epaper_dashboard_normalized_state_text(input)) return output;
+    input = epaper_dashboard_option_value(tile.options, "state_input_2");
+    output = epaper_dashboard_option_value(tile.options, "state_output_2");
+    if (!input.empty() && state == epaper_dashboard_normalized_state_text(input)) return output;
+  }
+  return epaper_dashboard_text_sensor_display_text(tile.sensor_value);
+}
+
 inline bool epaper_dashboard_api_available() {
   return esphome::api::global_api_server != nullptr;
 }
@@ -432,6 +541,9 @@ inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &
   }
   if (tile.type == "climate") {
     std::string mode = epaper_dashboard_option_value(tile.options, "number_display");
+    if (mode != "actual" && mode != "target") {
+      mode = epaper_dashboard_option_value(tile.options, "label_display");
+    }
     if (mode == "actual") {
       attribute = "current_temperature";
       return tile.entity;
@@ -455,6 +567,10 @@ inline bool epaper_dashboard_card_large_numbers(const EpaperDashboardTile &tile)
 
 inline bool epaper_dashboard_text_sensor_card(const EpaperDashboardTile &tile) {
   return (tile.type == "sensor" && tile.precision == "text") || tile.type == "text_sensor";
+}
+
+inline bool epaper_dashboard_toggle_text_sensor_card(const EpaperDashboardTile &tile) {
+  return tile.type.empty() && tile.precision == "text" && !tile.sensor.empty();
 }
 
 inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile) {
@@ -510,6 +626,12 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
 }
 
 inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) {
+  if (tile.type.empty()) {
+    if (!tile.sensor.empty()) {
+      return tile.precision == "text" ? find_icon("Application") : find_icon("Gauge");
+    }
+    return find_icon("Light Switch");
+  }
   if (tile.type == "sensor") {
     if (tile.precision == "icon") return find_icon("Light Switch");
     if (tile.precision == "text") return find_icon("Application");
@@ -565,12 +687,21 @@ inline std::string epaper_dashboard_media_mode_label(const std::string &mode) {
 
 inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return epaper_dashboard_display_value(tile);
+  if (epaper_dashboard_toggle_text_sensor_card(tile) && !tile.sensor_value.empty()) {
+    return epaper_dashboard_sensor_state_display_text(tile);
+  }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
   if (tile.type == "garage" && epaper_dashboard_option_value(tile.options, "label_display") == "status" &&
       !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
   if (tile.type == "climate") {
     std::string label_mode = epaper_dashboard_option_value(tile.options, "label_display");
     if (label_mode == "status" && !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
+    if (label_mode == "actual" || label_mode == "target") return epaper_dashboard_display_value(tile);
+  }
+  if (tile.type == "media" &&
+      (tile.sensor == "play_pause" || tile.sensor == "position") &&
+      tile.precision == "state" && !tile.state.empty()) {
+    return epaper_dashboard_pretty_state(tile.state);
   }
   return tile.label;
 }
@@ -644,6 +775,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
         (epaper_dashboard_sensor_card_type(tile) || has_sensor_value ||
          epaper_dashboard_value_replaces_icon(tile));
     if (tile.type == "sensor" && tile.precision == "icon") show_value = false;
+    if (epaper_dashboard_toggle_text_sensor_card(tile)) show_value = false;
     if (tile.type == "door_window" || tile.type == "presence") show_value = false;
     bool value_replaces_icon = show_value && epaper_dashboard_value_replaces_icon(tile);
     epaper_dashboard_style_lvgl_tile(slot.tile, slot.icon, slot.label, slot.badge,
@@ -776,10 +908,20 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
   if (use_sensor_value) {
     if (tile.sensor_unavailable) return "--";
     if (!tile.sensor_value.empty()) {
-      if (tile.type == "media" && tile.sensor == "volume") return epaper_dashboard_format_percent(tile.sensor_value);
+      if (tile.type == "media" && tile.sensor == "volume") return epaper_dashboard_format_media_volume(tile);
       if (tile.type == "media" && tile.sensor == "position") return epaper_dashboard_format_seconds(tile.sensor_value);
       if (tile.precision == "text") {
-        return epaper_dashboard_pretty_state(tile.sensor_value);
+        return epaper_dashboard_sensor_state_display_text(tile);
+      }
+      if (tile.type == "sensor" || tile.type.empty() || tile.type == "action" ||
+          tile.type == "climate") {
+        std::string precision = tile.type == "action"
+          ? epaper_dashboard_option_value(tile.options, "state_precision")
+          : tile.precision;
+        if (precision != "icon" && precision != "text") {
+          return epaper_dashboard_format_number(tile.sensor_value,
+                                                epaper_dashboard_parse_precision(precision));
+        }
       }
       return tile.sensor_value;
     }
