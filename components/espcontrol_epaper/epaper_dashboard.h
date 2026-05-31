@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <functional>
 #include <string>
 #include <vector>
@@ -42,6 +43,7 @@ struct EpaperDashboardTile {
   std::string secondary_value;
   std::string media_position_value;
   std::string media_duration_value;
+  std::string media_position_updated_at_value;
   std::string climate_current_value;
   std::string climate_target_value;
   std::string climate_target_low_value;
@@ -61,6 +63,7 @@ struct EpaperDashboardTile {
   bool friendly_name_subscribed = false;
   bool media_position_subscribed = false;
   bool media_duration_subscribed = false;
+  bool media_position_updated_at_subscribed = false;
   bool climate_current_subscribed = false;
   bool climate_target_subscribed = false;
   bool climate_target_low_subscribed = false;
@@ -72,6 +75,7 @@ struct EpaperDashboardTile {
   bool secondary_unavailable = false;
   bool media_position_unavailable = false;
   bool media_duration_unavailable = false;
+  bool media_position_updated_at_unavailable = false;
   bool climate_current_unavailable = false;
   bool climate_target_unavailable = false;
   bool climate_target_low_unavailable = false;
@@ -351,6 +355,16 @@ inline std::string epaper_dashboard_format_seconds(const std::string &value) {
   float parsed = std::strtof(value.c_str(), &end);
   if (end == value.c_str() || std::isnan(parsed) || parsed < 0) return epaper_dashboard_pretty_state(value);
   int total = static_cast<int>(parsed + 0.5f);
+  int minutes = total / 60;
+  int seconds = total % 60;
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%d:%02d", minutes, seconds);
+  return buf;
+}
+
+inline std::string epaper_dashboard_format_seconds_value(float value) {
+  if (!std::isfinite(value) || value < 0) return "--";
+  int total = static_cast<int>(value + 0.5f);
   int minutes = total / 60;
   int seconds = total % 60;
   char buf[16];
@@ -1625,6 +1639,94 @@ inline bool epaper_dashboard_parse_float_value(const std::string &value, float &
   return end != value.c_str() && std::isfinite(out);
 }
 
+inline bool epaper_dashboard_parse_fixed_int(const char *text, size_t len,
+                                             size_t pos, size_t digits,
+                                             int &out) {
+  if (!text || pos + digits > len) return false;
+  int value = 0;
+  for (size_t i = 0; i < digits; i++) {
+    char c = text[pos + i];
+    if (c < '0' || c > '9') return false;
+    value = value * 10 + (c - '0');
+  }
+  out = value;
+  return true;
+}
+
+inline int64_t epaper_dashboard_days_from_civil(int year, unsigned month, unsigned day) {
+  year -= month <= 2;
+  const int era = (year >= 0 ? year : year - 399) / 400;
+  const unsigned yoe = static_cast<unsigned>(year - era * 400);
+  const unsigned doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+  const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return static_cast<int64_t>(era) * 146097 + static_cast<int64_t>(doe) - 719468;
+}
+
+inline bool epaper_dashboard_parse_ha_timestamp(const std::string &value, time_t &epoch) {
+  const char *s = value.c_str();
+  size_t len = value.size();
+  if (len < 19 || s[4] != '-' || s[7] != '-' ||
+      (s[10] != 'T' && s[10] != ' ')) return false;
+  int year, month, day, hour, minute, second;
+  if (!epaper_dashboard_parse_fixed_int(s, len, 0, 4, year) ||
+      !epaper_dashboard_parse_fixed_int(s, len, 5, 2, month) ||
+      !epaper_dashboard_parse_fixed_int(s, len, 8, 2, day) ||
+      !epaper_dashboard_parse_fixed_int(s, len, 11, 2, hour) ||
+      !epaper_dashboard_parse_fixed_int(s, len, 14, 2, minute) ||
+      !epaper_dashboard_parse_fixed_int(s, len, 17, 2, second)) {
+    return false;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31 ||
+      hour < 0 || hour > 23 || minute < 0 || minute > 59 ||
+      second < 0 || second > 60) {
+    return false;
+  }
+
+  size_t tz_pos = 19;
+  while (tz_pos < len && s[tz_pos] != 'Z' && s[tz_pos] != '+' && s[tz_pos] != '-') tz_pos++;
+  int offset_seconds = 0;
+  if (tz_pos < len && (s[tz_pos] == '+' || s[tz_pos] == '-')) {
+    int offset_hour, offset_minute;
+    if (!epaper_dashboard_parse_fixed_int(s, len, tz_pos + 1, 2, offset_hour) ||
+        tz_pos + 3 >= len || s[tz_pos + 3] != ':' ||
+        !epaper_dashboard_parse_fixed_int(s, len, tz_pos + 4, 2, offset_minute) ||
+        offset_hour > 23 || offset_minute > 59) {
+      return false;
+    }
+    offset_seconds = (offset_hour * 60 + offset_minute) * 60;
+    if (s[tz_pos] == '-') offset_seconds = -offset_seconds;
+  }
+
+  int64_t days = epaper_dashboard_days_from_civil(
+      year, static_cast<unsigned>(month), static_cast<unsigned>(day));
+  int64_t seconds_since_epoch = days * 86400 + hour * 3600 + minute * 60 + second;
+  seconds_since_epoch -= offset_seconds;
+  if (seconds_since_epoch < 0) return false;
+  epoch = static_cast<time_t>(seconds_since_epoch);
+  return true;
+}
+
+inline bool epaper_dashboard_media_adjusted_position_seconds(
+    const EpaperDashboardTile &tile, const std::string &position_value,
+    float duration, float &out) {
+  float position = 0.0f;
+  if (!epaper_dashboard_parse_float_value(position_value, position)) return false;
+  if (position < 0.0f) position = 0.0f;
+  if (tile.state == "playing" && !tile.media_position_updated_at_unavailable &&
+      !tile.media_position_updated_at_value.empty()) {
+    time_t updated_epoch = 0;
+    time_t now_epoch = std::time(nullptr);
+    if (now_epoch > 0 &&
+        epaper_dashboard_parse_ha_timestamp(tile.media_position_updated_at_value, updated_epoch) &&
+        updated_epoch > 0 && updated_epoch <= now_epoch) {
+      position += static_cast<float>(now_epoch - updated_epoch);
+    }
+  }
+  if (duration > 0.0f && position > duration) position = duration;
+  out = position;
+  return true;
+}
+
 inline int epaper_dashboard_light_brightness_percent(const std::string &value) {
   float brightness = 0.0f;
   if (!epaper_dashboard_parse_float_value(value, brightness)) return 0;
@@ -1681,22 +1783,22 @@ inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) 
     return epaper_dashboard_light_temperature_percent(tile);
   }
   if (tile.type == "media" && tile.sensor == "position" && !tile.sensor_value.empty()) {
-    float position = 0.0f;
     float duration = 0.0f;
-    if (epaper_dashboard_parse_float_value(tile.sensor_value, position) &&
-        epaper_dashboard_parse_float_value(tile.secondary_value, duration) &&
-        duration > 0.0f) {
+    float position = 0.0f;
+    if (epaper_dashboard_parse_float_value(tile.secondary_value, duration) &&
+        duration > 0.0f &&
+        epaper_dashboard_media_adjusted_position_seconds(tile, tile.sensor_value, duration, position)) {
       return epaper_dashboard_clamp_percent(static_cast<int>((position * 100.0f / duration) + 0.5f));
     }
     return 0;
   }
   if (epaper_dashboard_media_now_playing_progress_card(tile)) {
     if (tile.media_position_unavailable || tile.media_duration_unavailable) return 0;
-    float position = 0.0f;
     float duration = 0.0f;
-    if (epaper_dashboard_parse_float_value(tile.media_position_value, position) &&
-        epaper_dashboard_parse_float_value(tile.media_duration_value, duration) &&
-        duration > 0.0f) {
+    float position = 0.0f;
+    if (epaper_dashboard_parse_float_value(tile.media_duration_value, duration) &&
+        duration > 0.0f &&
+        epaper_dashboard_media_adjusted_position_seconds(tile, tile.media_position_value, duration, position)) {
       return epaper_dashboard_clamp_percent(static_cast<int>((position * 100.0f / duration) + 0.5f));
     }
     return 0;
@@ -2334,6 +2436,19 @@ inline void epaper_dashboard_subscribe(int index) {
           });
     }
   }
+  if (tile.type == "media" &&
+      (tile.sensor == "position" || epaper_dashboard_media_now_playing_progress_card(tile)) &&
+      !tile.entity.empty() && !tile.media_position_updated_at_subscribed) {
+    tile.media_position_updated_at_subscribed = true;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        tile.entity, "media_position_updated_at", [index](esphome::StringRef state) {
+          auto &tile = epaper_dashboard_tiles()[index];
+          tile.media_position_updated_at_value = std::string(state.c_str(), state.size());
+          tile.media_position_updated_at_unavailable =
+              epaper_dashboard_state_unavailable(tile.media_position_updated_at_value);
+          epaper_dashboard_mark_dirty();
+        });
+  }
 }
 
 inline void epaper_dashboard_set_config(int index, const std::string &config) {
@@ -2567,7 +2682,15 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
     if (tile.sensor_unavailable) return "--";
     if (!tile.sensor_value.empty()) {
       if (tile.type == "media" && tile.sensor == "volume") return epaper_dashboard_format_media_volume(tile);
-      if (tile.type == "media" && tile.sensor == "position") return epaper_dashboard_format_seconds(tile.sensor_value);
+      if (tile.type == "media" && tile.sensor == "position") {
+        float duration = 0.0f;
+        float position = 0.0f;
+        if (epaper_dashboard_parse_float_value(tile.secondary_value, duration) &&
+            epaper_dashboard_media_adjusted_position_seconds(tile, tile.sensor_value, duration, position)) {
+          return epaper_dashboard_format_seconds_value(position);
+        }
+        return epaper_dashboard_format_seconds(tile.sensor_value);
+      }
       if (tile.precision == "text") {
         return epaper_dashboard_sensor_state_display_text(tile);
       }
