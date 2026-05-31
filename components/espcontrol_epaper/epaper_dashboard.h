@@ -2762,7 +2762,7 @@ inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile
   if (tile.type == "climate" && epaper_dashboard_value_replaces_icon(tile) && tile.unit.empty()) {
     return display_clock_bar_temperature_suffix();
   }
-  return tile.unit;
+  return epaper_dashboard_trim(tile.unit);
 }
 
 inline bool epaper_dashboard_value_uses_numeric_font(const std::string &value) {

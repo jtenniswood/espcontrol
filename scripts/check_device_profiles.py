@@ -139,6 +139,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         'if (tile.type == "fan_switch" || tile.type == "fan_oscillate") return "";'
         in epaper
     ), "TRMNL fan switch/oscillation cards must keep normal default labels instead of HA friendly names"
+    assert "return epaper_dashboard_trim(tile.unit);" in epaper, (
+        "TRMNL card units must be trimmed the same way normal LVGL cards trim unit labels"
+    )
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
