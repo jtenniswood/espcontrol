@@ -2101,8 +2101,11 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
     return "Relay";
   }
-  if (tile.type == "garage" && epaper_dashboard_option_value(tile.options, "label_display") == "status" &&
-      !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
+  if (tile.type == "garage" &&
+      epaper_dashboard_option_value(tile.options, "label_display") == "status") {
+    if (!tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
+    return "--";
+  }
   if (tile.type == "climate") {
     std::string label_mode = epaper_dashboard_climate_label_mode(tile);
     if (label_mode == "status") return epaper_dashboard_climate_action_label(tile);
