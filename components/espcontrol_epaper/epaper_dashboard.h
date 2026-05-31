@@ -2799,6 +2799,10 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   }
   if (tile.type == "weather") {
     tile.precision = epaper_dashboard_normalize_weather_precision(tile.precision);
+    if (tile.precision.empty()) {
+      tile.label.clear();
+      tile.label_configured = false;
+    }
     tile.options = epaper_dashboard_normalize_weather_options(tile.options, tile.precision);
   }
   if (tile.type == "media") {

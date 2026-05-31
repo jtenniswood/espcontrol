@@ -205,6 +205,7 @@ function normalizeButtonConfig(b) {
     b.options = normalizeSwitchConfirmationOptions(b.options, b.sensor, b.precision);
   } else if (b && b.type === "weather") {
     b.precision = normalizeWeatherPrecision(b.precision);
+    if (!b.precision) b.label = "";
     b.options = normalizeWeatherOptions(b.options, b.precision);
   } else if (b && b.type === "action") {
     b.options = normalizeActionOptions(b.options);
@@ -1274,6 +1275,7 @@ function buttonConfigFields(b) {
   var label = b && b.label || "";
   if (type === "calendar" || type === "clock" || type === "timezone") label = "";
   if (type === "sensor" && precision === "text") label = "";
+  if (type === "weather" && !precision) label = "";
   if (!type && !sensor) {
     unit = "";
     precision = "";

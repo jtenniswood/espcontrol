@@ -841,6 +841,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   }
   if (p.type == "weather") {
     p.precision = weather_card_precision_normalized(p.precision);
+    if (p.precision.empty()) p.label.clear();
     p.options = weather_card_options_normalized(p.options, p.precision);
   }
   return p;
