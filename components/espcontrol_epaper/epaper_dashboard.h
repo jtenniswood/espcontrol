@@ -764,6 +764,12 @@ inline bool epaper_dashboard_alarm_action_matches(const EpaperDashboardTile &til
   return !achieved.empty() && epaper_dashboard_alarm_effective_state(tile) == achieved;
 }
 
+inline const char *epaper_dashboard_alarm_action_icon(const std::string &mode) {
+  if (mode == "home") return find_icon("Shield Home");
+  if (mode == "disarm") return find_icon("Shield Off");
+  return find_icon("Shield Lock");
+}
+
 inline bool epaper_dashboard_fan_non_speed_card(const EpaperDashboardTile &tile) {
   return tile.type == "fan_switch" || tile.type == "fan_oscillate" ||
          tile.type == "fan_direction" || tile.type == "fan_preset";
@@ -1304,7 +1310,8 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   }
   if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
   if (tile.type == "action") return find_icon("Flash");
-  if (tile.type == "alarm" || tile.type == "alarm_action") return find_icon("Security");
+  if (tile.type == "alarm") return find_icon("Security");
+  if (tile.type == "alarm_action") return epaper_dashboard_alarm_action_icon(tile.sensor);
   if (tile.type == "climate") return find_icon("Thermostat");
   if (tile.type == "cover") {
     if (tile.sensor == "open") return find_icon("Blinds Open");
