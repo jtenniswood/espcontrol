@@ -106,6 +106,11 @@ function normalizeButtonConfig(b) {
     b.precision = "";
     b.options = "";
   }
+  if (b && b.type === "light_temperature") {
+    if (b.sensor === LIGHT_TEMPERATURE_LEGACY_SENSOR) b.sensor = "";
+    b.unit = normalizeLightTemperatureRange(b.unit);
+    b.options = "";
+  }
   if (b && b.type === "subpage") {
     applySubpagePresetConfig(b);
     b.options = normalizeSubpageOptions(b.options, b.sensor, b.precision);
@@ -176,6 +181,8 @@ var SWITCH_CONFIRM_ON_OPTION = "confirm_on";
 var SWITCH_CONFIRM_MESSAGE_OPTION = "confirm_message";
 var SWITCH_CONFIRM_YES_OPTION = "confirm_yes";
 var SWITCH_CONFIRM_NO_OPTION = "confirm_no";
+var LIGHT_TEMPERATURE_DEFAULT_RANGE = "2000-6500";
+var LIGHT_TEMPERATURE_LEGACY_SENSOR = "kelvin";
 var SWITCH_CONFIRM_DEFAULT_MESSAGE = "Turn off this device?";
 var SWITCH_CONFIRM_ON_DEFAULT_MESSAGE = "Turn on this device?";
 var SWITCH_CONFIRM_BOTH_DEFAULT_MESSAGE = "Toggle this device?";
@@ -641,6 +648,22 @@ function normalizeWeatherOptions(options, precision) {
     : "";
 }
 
+function normalizeLightTemperatureRange(value) {
+  var text = String(value || "").trim();
+  if (!text) return LIGHT_TEMPERATURE_DEFAULT_RANGE;
+  var parts = text.split("-");
+  if (parts.length !== 2) return LIGHT_TEMPERATURE_DEFAULT_RANGE;
+  var min = parseInt(parts[0], 10);
+  var max = parseInt(parts[1], 10);
+  if (!isFinite(min) || !isFinite(max)) return LIGHT_TEMPERATURE_DEFAULT_RANGE;
+  min = Math.round(min / 100) * 100;
+  max = Math.round(max / 100) * 100;
+  if (min < 1000) min = 1000;
+  if (max > 10000) max = 10000;
+  if (max <= min) return LIGHT_TEMPERATURE_DEFAULT_RANGE;
+  return min + "-" + max;
+}
+
 function setSwitchConfirmationOptions(b, mode, message, yesText, noText) {
   if (!b) return "";
   mode = mode === true ? "off" : mode;
@@ -981,7 +1004,9 @@ function buttonConfigFields(b) {
   if (isActionOptionSelect) type = "action";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
     (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "alarm" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+  if (type === "light_temperature" && sensor === LIGHT_TEMPERATURE_LEGACY_SENSOR) sensor = "";
   var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.unit || "");
+  if (type === "light_temperature") unit = normalizeLightTemperatureRange(unit);
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
   if (type === "alarm" && (!icon || icon === "Auto")) icon = "Security";

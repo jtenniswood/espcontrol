@@ -412,6 +412,29 @@ inline std::string epaper_dashboard_normalize_weather_options(const std::string 
            : std::string();
 }
 
+inline int epaper_dashboard_normalize_light_temperature_bound(int value) {
+  int rounded = ((value + 50) / 100) * 100;
+  if (rounded < 1000) rounded = 1000;
+  if (rounded > 10000) rounded = 10000;
+  return rounded;
+}
+
+inline std::string epaper_dashboard_normalize_light_temperature_range(const std::string &value) {
+  size_t dash = value.find('-');
+  if (dash == std::string::npos || dash == 0) return "2000-6500";
+  std::string min_text = value.substr(0, dash);
+  std::string max_text = value.substr(dash + 1);
+  char *end_min = nullptr;
+  char *end_max = nullptr;
+  long min_k = std::strtol(min_text.c_str(), &end_min, 10);
+  long max_k = std::strtol(max_text.c_str(), &end_max, 10);
+  if (end_min == min_text.c_str() || end_max == max_text.c_str()) return "2000-6500";
+  int min_bound = epaper_dashboard_normalize_light_temperature_bound(static_cast<int>(min_k));
+  int max_bound = epaper_dashboard_normalize_light_temperature_bound(static_cast<int>(max_k));
+  if (max_bound <= min_bound) return "2000-6500";
+  return std::to_string(min_bound) + "-" + std::to_string(max_bound);
+}
+
 inline std::string epaper_dashboard_normalize_climate_options(const std::string &options) {
   std::string label_display = epaper_dashboard_option_value(options, "label_display");
   if (label_display != "status" && label_display != "actual" && label_display != "target") {
@@ -2806,6 +2829,11 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.sensor.clear();
     tile.unit.clear();
     tile.precision.clear();
+    tile.options.clear();
+  }
+  if (tile.type == "light_temperature") {
+    if (tile.sensor == "kelvin") tile.sensor.clear();
+    tile.unit = epaper_dashboard_normalize_light_temperature_range(tile.unit);
     tile.options.clear();
   }
   if (tile.type == "door_window") {

@@ -323,6 +323,31 @@ inline std::string normalize_cover_position(const std::string &value) {
   return std::to_string(static_cast<int>(pos));
 }
 
+inline int normalize_light_temperature_bound(int value) {
+  int rounded = ((value + 50) / 100) * 100;
+  if (rounded < 1000) rounded = 1000;
+  if (rounded > 10000) rounded = 10000;
+  return rounded;
+}
+
+inline std::string normalize_light_temperature_range(const std::string &value) {
+  size_t dash = value.find('-');
+  if (dash == std::string::npos || dash == 0) return "2000-6500";
+  std::string min_text = value.substr(0, dash);
+  std::string max_text = value.substr(dash + 1);
+  char *end_min = nullptr;
+  char *end_max = nullptr;
+  long min_k = std::strtol(min_text.c_str(), &end_min, 10);
+  long max_k = std::strtol(max_text.c_str(), &end_max, 10);
+  if (end_min == min_text.c_str() || end_max == max_text.c_str()) {
+    return "2000-6500";
+  }
+  int min_bound = normalize_light_temperature_bound(static_cast<int>(min_k));
+  int max_bound = normalize_light_temperature_bound(static_cast<int>(max_k));
+  if (max_bound <= min_bound) return "2000-6500";
+  return std::to_string(min_bound) + "-" + std::to_string(max_bound);
+}
+
 inline std::string normalize_door_window_subtype(const std::string &value) {
   return value == "window" ? "window" : "door";
 }
@@ -646,6 +671,11 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
+    p.options.clear();
+  }
+  if (p.type == "light_temperature") {
+    if (p.sensor == "kelvin") p.sensor.clear();
+    p.unit = normalize_light_temperature_range(p.unit);
     p.options.clear();
   }
   if (p.type == "subpage") {
