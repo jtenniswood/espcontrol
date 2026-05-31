@@ -233,6 +233,26 @@ inline int epaper_dashboard_hex_digit(char c) {
   return -1;
 }
 
+inline char epaper_dashboard_compact_hex_char(uint8_t value) {
+  return value < 10 ? static_cast<char>('0' + value)
+                    : static_cast<char>('A' + value - 10);
+}
+
+inline std::string epaper_dashboard_encode_field(const std::string &value) {
+  std::string out;
+  out.reserve(value.size());
+  for (unsigned char ch : value) {
+    if (ch == '%' || ch == ',' || ch == ';' || ch == '|' || ch == ':') {
+      out.push_back('%');
+      out.push_back(epaper_dashboard_compact_hex_char((ch >> 4) & 0x0F));
+      out.push_back(epaper_dashboard_compact_hex_char(ch & 0x0F));
+    } else {
+      out.push_back(static_cast<char>(ch));
+    }
+  }
+  return out;
+}
+
 inline std::string epaper_dashboard_decode_field(const std::string &value) {
   std::string out;
   out.reserve(value.size());
@@ -640,6 +660,11 @@ inline std::string epaper_dashboard_webhook_method(const std::string &value) {
     return method;
   }
   return "GET";
+}
+
+inline std::string epaper_dashboard_normalize_webhook_options(const std::string &options) {
+  std::string headers = epaper_dashboard_option_value(options, "webhook_headers");
+  return headers.empty() ? std::string() : "webhook_headers=" + epaper_dashboard_encode_field(headers);
 }
 
 inline bool epaper_dashboard_alarm_action_mode_valid(const std::string &mode) {
@@ -2590,6 +2615,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.precision.clear();
     tile.icon_on.clear();
     if (tile.icon.empty()) tile.icon = "Auto";
+    tile.options = epaper_dashboard_normalize_webhook_options(tile.options);
   }
   if (tile.type == "todo") {
     tile.sensor.clear();
