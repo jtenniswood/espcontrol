@@ -608,20 +608,29 @@ inline std::string epaper_dashboard_normalize_cover_position(const std::string &
 }
 
 inline std::string epaper_dashboard_pretty_state(const std::string &value) {
-  std::string text = value;
-  for (char &ch : text) {
-    if (ch == '_') ch = ' ';
-  }
+  std::string text;
+  text.reserve(value.size());
   bool cap = true;
-  for (char &ch : text) {
+  bool last_space = false;
+  for (char ch : value) {
     unsigned char uch = static_cast<unsigned char>(ch);
-    if (std::isspace(uch)) {
+    if (ch == '_' || ch == '-' || std::isspace(uch)) {
+      if (!text.empty() && !last_space) {
+        text.push_back(' ');
+        last_space = true;
+      }
       cap = true;
       continue;
     }
-    ch = cap ? static_cast<char>(std::toupper(uch)) : static_cast<char>(std::tolower(uch));
-    cap = false;
+    if (std::isalpha(uch)) {
+      text.push_back(cap ? static_cast<char>(std::toupper(uch)) : static_cast<char>(std::tolower(uch)));
+      cap = false;
+    } else {
+      text.push_back(ch);
+    }
+    last_space = false;
   }
+  if (!text.empty() && text.back() == ' ') text.pop_back();
   return text;
 }
 
