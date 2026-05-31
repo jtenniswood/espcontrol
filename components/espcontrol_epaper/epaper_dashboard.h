@@ -436,6 +436,19 @@ inline std::string epaper_dashboard_normalized_state_text(const std::string &val
   return text;
 }
 
+inline bool epaper_dashboard_bool_value(const std::string &value, bool &out) {
+  std::string text = epaper_dashboard_normalized_state_text(value);
+  if (text == "true" || text == "on" || text == "yes" || text == "1") {
+    out = true;
+    return true;
+  }
+  if (text == "false" || text == "off" || text == "no" || text == "0") {
+    out = false;
+    return true;
+  }
+  return false;
+}
+
 inline std::string epaper_dashboard_text_sensor_display_text(const std::string &value) {
   std::string out;
   out.reserve(value.size());
@@ -710,6 +723,66 @@ inline std::string epaper_dashboard_alarm_label_for_state(const std::string &sta
   return epaper_dashboard_pretty_state(state);
 }
 
+inline bool epaper_dashboard_fan_non_speed_card(const EpaperDashboardTile &tile) {
+  return tile.type == "fan_switch" || tile.type == "fan_oscillate" ||
+         tile.type == "fan_direction" || tile.type == "fan_preset";
+}
+
+inline bool epaper_dashboard_fan_preset_active(const std::string &value) {
+  std::string state = epaper_dashboard_normalized_state_text(value);
+  return !state.empty() && state != "none" && state != "off" &&
+         !epaper_dashboard_state_unavailable(state);
+}
+
+inline std::string epaper_dashboard_fan_option_label(const std::string &value) {
+  if (value.empty()) return "None";
+  return epaper_dashboard_text_sensor_display_text(value);
+}
+
+inline std::string epaper_dashboard_fan_default_label(const EpaperDashboardTile &tile) {
+  if (tile.type == "fan_oscillate") return "Oscillation";
+  if (tile.type == "fan_direction") return "Direction";
+  if (tile.type == "fan_preset") return "Preset";
+  return "Fan";
+}
+
+inline const char *epaper_dashboard_fan_default_icon_name(const EpaperDashboardTile &tile) {
+  if (tile.type == "fan_switch") return "Fan Off";
+  if (tile.type == "fan_speed") return "Fan Speed 2";
+  if (tile.type == "fan_direction") return "Swap Horizontal";
+  if (tile.type == "fan_preset") return "Fan Auto";
+  return "Fan";
+}
+
+inline bool epaper_dashboard_fan_attribute_known(const EpaperDashboardTile &tile) {
+  return !tile.sensor_value.empty() && !tile.sensor_unavailable;
+}
+
+inline std::string epaper_dashboard_fan_status_text(const EpaperDashboardTile &tile) {
+  if (tile.state_unavailable) return "Unavailable";
+  if (tile.type == "fan_switch") {
+    if (!tile.state.empty()) return epaper_dashboard_state_active(tile.state) ? "On" : "Off";
+    return "...";
+  }
+  if (tile.type == "fan_oscillate") {
+    bool oscillating = false;
+    if (!epaper_dashboard_bool_value(tile.sensor_value, oscillating)) return "Unsupported";
+    return oscillating ? "Oscillating" : "Still";
+  }
+  if (tile.type == "fan_direction") {
+    std::string direction = epaper_dashboard_normalized_state_text(tile.sensor_value);
+    if (direction != "forward" && direction != "reverse") return "Unsupported";
+    return epaper_dashboard_fan_option_label(direction);
+  }
+  if (tile.type == "fan_preset") {
+    if (!epaper_dashboard_fan_attribute_known(tile)) return "Unsupported";
+    return epaper_dashboard_fan_preset_active(tile.sensor_value)
+      ? epaper_dashboard_fan_option_label(tile.sensor_value)
+      : std::string("Preset");
+  }
+  return "Fan";
+}
+
 inline const char *epaper_dashboard_alarm_icon_for_state(const std::string &state) {
   if (state == "armed_home") return find_icon("Shield Home");
   if (state == "armed_away" || state == "armed_custom_bypass") return find_icon("Shield Lock");
@@ -919,6 +992,18 @@ inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &
     attribute = "percentage";
     return tile.entity;
   }
+  if (tile.type == "fan_oscillate") {
+    attribute = "oscillating";
+    return tile.entity;
+  }
+  if (tile.type == "fan_direction") {
+    attribute = "direction";
+    return tile.entity;
+  }
+  if (tile.type == "fan_preset") {
+    attribute = "preset_mode";
+    return tile.entity;
+  }
   if (tile.type == "cover" && epaper_dashboard_cover_command_mode(tile.sensor)) {
     return "";
   }
@@ -1021,6 +1106,21 @@ inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile
   }
   if (epaper_dashboard_todo_card_show_count(tile)) return true;
   return epaper_dashboard_card_large_numbers(tile) && epaper_dashboard_has_sensor_value(tile);
+}
+
+inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
+  if (tile.type == "fan_oscillate") {
+    bool oscillating = false;
+    return epaper_dashboard_bool_value(tile.sensor_value, oscillating) && oscillating;
+  }
+  if (tile.type == "fan_direction") {
+    return epaper_dashboard_normalized_state_text(tile.sensor_value) == "reverse";
+  }
+  if (tile.type == "fan_preset") {
+    return epaper_dashboard_fan_preset_active(tile.sensor_value);
+  }
+  const std::string &active_value = !tile.state.empty() ? tile.state : tile.sensor_value;
+  return epaper_dashboard_state_active(active_value);
 }
 
 inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile) {
@@ -1130,7 +1230,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "door_window") return find_icon(active ? "Door Open" : "Door");
   if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
-      tile.type == "fan_preset") return find_icon("Fan");
+      tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_default_icon_name(tile));
   if (tile.type == "garage") return find_icon(active || tile.sensor == "open" ? "Garage Open" : "Garage");
   if (tile.type == "light_brightness" || tile.type == "light_switch" ||
       tile.type == "light_temperature") return find_icon("Lightbulb");
@@ -1262,6 +1362,16 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     if (!tile.secondary_value.empty()) return tile.secondary_value;
     return "--";
   }
+  if (epaper_dashboard_fan_non_speed_card(tile)) {
+    std::string entity_label = tile.entity.empty() ? "" : epaper_dashboard_title_from_entity(tile.entity);
+    if ((tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
+         tile.type == "fan_preset") && epaper_dashboard_fan_attribute_known(tile)) {
+      return epaper_dashboard_fan_status_text(tile);
+    }
+    if (tile.label.empty() || tile.label == entity_label) {
+      return epaper_dashboard_fan_default_label(tile);
+    }
+  }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
   if (tile.type == "option_select" && tile.label.empty()) {
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
@@ -1368,8 +1478,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       continue;
     }
     lv_obj_clear_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
-    const std::string &active_value = !tile.state.empty() ? tile.state : tile.sensor_value;
-    bool active = configured && epaper_dashboard_state_active(active_value);
+    bool active = configured && epaper_dashboard_tile_active(tile);
     bool has_sensor_value = epaper_dashboard_has_sensor_value(tile);
     bool show_track = configured && epaper_dashboard_slider_visual_card(tile);
     bool show_value = configured && !epaper_dashboard_text_sensor_card(tile) &&
