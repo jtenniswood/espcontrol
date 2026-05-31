@@ -1968,6 +1968,27 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.icon_on = "Auto";
     if (tile.icon.empty()) tile.icon = "Auto";
   }
+  if (tile.type == "option_select") {
+    tile.type = "action";
+    tile.sensor = "input_select.select_option";
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.options.clear();
+    tile.icon_on.clear();
+    if (tile.icon.empty() || tile.icon == "Auto" || tile.icon == "Chevron Down") {
+      tile.icon = "Flash";
+    }
+  }
+  if (epaper_dashboard_action_option_select(tile)) {
+    tile.sensor = "input_select.select_option";
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.options.clear();
+    tile.icon_on.clear();
+    if (tile.icon.empty() || tile.icon == "Auto" || tile.icon == "Chevron Down") {
+      tile.icon = "Flash";
+    }
+  }
   if (tile.type == "action") {
     tile.action_state_entity = epaper_dashboard_option_value(tile.options, "state_entity");
     std::string action_unit = epaper_dashboard_option_value(tile.options, "state_unit");
