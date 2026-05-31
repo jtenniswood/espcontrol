@@ -2227,6 +2227,7 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   if (tile.type == "action") return "";
   if (tile.type == "media") return "";
   if (tile.type == "todo") return "";
+  if (tile.type == "climate") return "";
   if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
   if (tile.type == "cover" &&
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor))) {
@@ -2399,6 +2400,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       if (value.empty() || value == "--") return "--";
       return value + epaper_dashboard_display_unit(tile);
     }
+    if (tile.label.empty()) return "Climate";
   }
   if (tile.type == "alarm" &&
       epaper_dashboard_option_value(tile.options, "label_display") != "name") {
