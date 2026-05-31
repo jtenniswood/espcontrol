@@ -124,7 +124,8 @@ inline const char *alarm_card_icon(const ParsedCfg &p) {
 
 inline void setup_alarm_card(BtnSlot &s, const ParsedCfg &p) {
   lv_label_set_text(s.icon_lbl, alarm_card_icon(p));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? "Alarm" : p.label.c_str());
+  lv_label_set_text(s.text_lbl,
+    p.label.empty() ? (p.entity.empty() ? "Alarm" : p.entity.c_str()) : p.label.c_str());
 }
 
 inline bool alarm_pin_arm_required(const std::string &options) {
@@ -1223,7 +1224,7 @@ inline AlarmCardCtx *create_alarm_card_context(
     bool build_default_page = false) {
   AlarmCardCtx *ctx = new AlarmCardCtx();
   ctx->entity_id = p.entity;
-  ctx->label = p.label.empty() ? "Alarm" : p.label;
+  ctx->label = p.label.empty() ? (p.entity.empty() ? "Alarm" : p.entity) : p.label;
   ctx->options = p.options;
   ctx->btn = slot.btn;
   ctx->icon_lbl = slot.icon_lbl;
