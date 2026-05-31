@@ -886,7 +886,8 @@ inline bool epaper_dashboard_sensor_field_is_entity(const EpaperDashboardTile &t
       tile.type == "light_brightness" || tile.type == "slider" ||
       tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
-      tile.type == "fan_preset" || tile.type == "internal") {
+      tile.type == "fan_preset" || tile.type == "option_select" ||
+      tile.type == "internal") {
     return false;
   }
   return true;
@@ -988,13 +989,17 @@ inline bool epaper_dashboard_action_option_select(const EpaperDashboardTile &til
          (tile.sensor == "input_select.select_option" || tile.sensor == "select.select_option");
 }
 
+inline bool epaper_dashboard_option_select_card(const EpaperDashboardTile &tile) {
+  return tile.type == "option_select" || epaper_dashboard_action_option_select(tile);
+}
+
 inline bool epaper_dashboard_internal_push_mode(const EpaperDashboardTile &tile) {
   return tile.type == "internal" && tile.sensor == "push";
 }
 
 inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return false;
-  if (epaper_dashboard_action_option_select(tile)) return true;
+  if (epaper_dashboard_option_select_card(tile)) return true;
   if (tile.type == "sensor") return tile.precision != "icon";
   if (epaper_dashboard_weather_forecast_card(tile) ||
       tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") return true;
@@ -1163,7 +1168,7 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
     return find_icon("Weather Cloudy");
   }
   if (tile.type == "weather_forecast") return find_icon("Weather Partly Cloudy");
-  if (tile.type == "calendar") return find_icon("Calendar");
+  if (tile.type == "calendar") return find_icon("Clock");
   if (tile.type == "clock") return find_icon("Clock");
   if (tile.type == "timezone") return find_icon("Clock");
   if (tile.type == "media") return find_icon("Speaker");
@@ -1171,10 +1176,10 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "garage") return find_icon("Garage");
   if (tile.type == "lock") return find_icon("Lock");
   if (tile.type == "alarm" || tile.type == "alarm_action") return find_icon("Security");
+  if (epaper_dashboard_option_select_card(tile)) {
+    return find_icon("Chevron Down");
+  }
   if (tile.type == "action") {
-    if (epaper_dashboard_action_option_select(tile)) {
-      return find_icon("Chevron Down");
-    }
     std::string state_mode = epaper_dashboard_option_value(tile.options, "state_precision");
     if (!tile.action_state_entity.empty()) {
       if (state_mode == "icon") return find_icon("Light Switch");
@@ -1208,7 +1213,7 @@ inline std::string epaper_dashboard_media_mode_label(const std::string &mode) {
 }
 
 inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTile &tile) {
-  if (epaper_dashboard_action_option_select(tile) && !tile.entity.empty()) return tile.entity;
+  if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;
   if (epaper_dashboard_weather_forecast_card(tile)) return "";
   if (tile.type == "weather") return "";
   if (!tile.sensor.empty()) return tile.sensor;
@@ -1249,6 +1254,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return "--";
   }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
+  if (tile.type == "option_select" && tile.label.empty()) {
+    if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
+    return "Option";
+  }
   if (tile.type == "push" && tile.label.empty()) return "Trigger";
   if (tile.type == "webhook" && tile.label.empty()) return "Webhook";
   if (tile.type == "internal" && tile.label.empty()) {
@@ -1516,7 +1525,7 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
   if (tile.type == "clock") return epaper_dashboard_clock_value();
   if (tile.type == "timezone") return epaper_dashboard_timezone_value(tile);
   if (epaper_dashboard_weather_forecast_card(tile)) return epaper_dashboard_weather_forecast_value(tile);
-  if (epaper_dashboard_action_option_select(tile)) {
+  if (epaper_dashboard_option_select_card(tile)) {
     if (tile.state_unavailable) return "--";
     if (!tile.state.empty()) return tile.state;
     return "Option";
