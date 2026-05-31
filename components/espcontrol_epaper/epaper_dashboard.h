@@ -479,6 +479,16 @@ inline std::string epaper_dashboard_media_mode(const std::string &mode) {
   return "play_pause";
 }
 
+inline bool epaper_dashboard_brightness_slider_type(const std::string &type) {
+  return type == "slider" || type == "light_brightness" || type == "fan_speed";
+}
+
+inline bool epaper_dashboard_fan_card_type(const std::string &type) {
+  return type == "fan_switch" || type == "fan_speed" ||
+         type == "fan_oscillate" || type == "fan_direction" ||
+         type == "fan_preset";
+}
+
 inline bool epaper_dashboard_media_state_display_mode(const std::string &mode) {
   return mode == "play_pause" || mode == "position";
 }
@@ -501,6 +511,30 @@ inline std::string epaper_dashboard_normalize_media_options(const std::string &o
     out += "large_numbers";
   }
   return out;
+}
+
+inline std::string epaper_dashboard_webhook_method(const std::string &value) {
+  std::string method;
+  method.reserve(value.size());
+  for (char ch : value) {
+    method.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(ch))));
+  }
+  if (method == "POST" || method == "PUT" || method == "PATCH" ||
+      method == "DELETE") {
+    return method;
+  }
+  return "GET";
+}
+
+inline bool epaper_dashboard_alarm_action_mode_valid(const std::string &mode) {
+  return mode == "away" || mode == "home" || mode == "disarm";
+}
+
+inline bool epaper_dashboard_alarm_action_legacy_icon(const std::string &mode,
+                                                      const std::string &icon) {
+  return (mode == "away" && icon == "Security") ||
+         (mode == "home" && icon == "Home") ||
+         (mode == "disarm" && icon == "Lock Open");
 }
 
 inline std::string epaper_dashboard_format_media_volume(const EpaperDashboardTile &tile) {
@@ -1992,6 +2026,23 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   if (fields.size() > 6) tile.type = fields[6];
   if (fields.size() > 7) tile.precision = fields[7];
   if (fields.size() > 8) tile.options = fields[8];
+  if (epaper_dashboard_brightness_slider_type(tile.type) && !tile.sensor.empty()) {
+    tile.sensor.clear();
+  }
+  if (epaper_dashboard_fan_card_type(tile.type)) {
+    tile.sensor.clear();
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.options.clear();
+    if (tile.icon.empty() || tile.icon == "Auto") {
+      tile.icon = epaper_dashboard_fan_default_icon_name(tile);
+    }
+    if (tile.type == "fan_switch") {
+      if (tile.icon_on.empty() || tile.icon_on == "Auto") tile.icon_on = "Fan";
+    } else {
+      tile.icon_on.clear();
+    }
+  }
   if (tile.type == "weather_forecast") {
     tile.type = "weather";
     tile.precision = "tomorrow";
@@ -2038,6 +2089,81 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
       tile.precision.clear();
     }
     tile.options = epaper_dashboard_normalize_media_options(tile.options, tile.sensor);
+  }
+  if (tile.type == "climate") {
+    tile.sensor.clear();
+    tile.unit.clear();
+    if (tile.icon.empty()) tile.icon = "Thermostat";
+    if (tile.icon_on.empty()) tile.icon_on = "Auto";
+  }
+  if (tile.type == "garage") {
+    if (!epaper_dashboard_garage_command_mode(tile.sensor)) tile.sensor.clear();
+    tile.unit.clear();
+    tile.precision.clear();
+    if (!tile.sensor.empty()) tile.icon_on.clear();
+  }
+  if (tile.type == "alarm") {
+    tile.sensor.clear();
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.icon_on.clear();
+    if (tile.icon.empty() || tile.icon == "Auto") tile.icon = "Security";
+  }
+  if (tile.type == "alarm_action") {
+    if (!epaper_dashboard_alarm_action_mode_valid(tile.sensor)) tile.sensor = "away";
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.icon_on.clear();
+    if (tile.icon.empty() || tile.icon == "Auto" ||
+        epaper_dashboard_alarm_action_legacy_icon(tile.sensor, tile.icon)) {
+      if (tile.sensor == "home") tile.icon = "Shield Home";
+      else if (tile.sensor == "disarm") tile.icon = "Shield Off";
+      else tile.icon = "Shield Lock";
+    }
+  }
+  if (tile.type == "webhook") {
+    tile.sensor = epaper_dashboard_webhook_method(tile.sensor);
+    if (tile.sensor == "GET" || tile.sensor == "DELETE") tile.unit.clear();
+    tile.precision.clear();
+    tile.icon_on.clear();
+    if (tile.icon.empty()) tile.icon = "Auto";
+  }
+  if (tile.type == "todo") {
+    tile.sensor.clear();
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.icon_on = "Auto";
+    if (tile.icon.empty() || tile.icon == "Auto") tile.icon = "Check";
+  }
+  if (tile.type == "light_switch") {
+    tile.sensor.clear();
+    tile.unit.clear();
+    tile.precision.clear();
+    tile.options.clear();
+  }
+  if (tile.type == "door_window") {
+    tile.entity.clear();
+    tile.unit.clear();
+    tile.precision = tile.precision == "window" ? "window" : "door";
+    if (tile.icon.empty() || tile.icon == "Auto") {
+      tile.icon = tile.precision == "window" ? "Window Closed" : "Door";
+    }
+    if (tile.icon_on.empty() || tile.icon_on == "Auto") {
+      tile.icon_on = tile.precision == "window" ? "Window Open" : "Door Open";
+    }
+    tile.options = epaper_dashboard_option_present(tile.options, "active_color")
+      ? "active_color"
+      : "";
+  }
+  if (tile.type == "presence") {
+    tile.entity.clear();
+    tile.unit.clear();
+    tile.precision.clear();
+    if (tile.icon.empty() || tile.icon == "Auto") tile.icon = "Motion Sensor Off";
+    if (tile.icon_on.empty() || tile.icon_on == "Auto") tile.icon_on = "Motion Sensor";
+    tile.options = epaper_dashboard_option_present(tile.options, "active_color")
+      ? "active_color"
+      : "";
   }
   if (tile.type == "option_select") {
     tile.type = "action";
