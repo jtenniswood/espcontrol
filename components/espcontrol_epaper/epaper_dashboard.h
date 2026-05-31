@@ -2714,6 +2714,18 @@ inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile
   return tile.unit;
 }
 
+inline bool epaper_dashboard_value_uses_numeric_font(const std::string &value) {
+  for (char c : value) {
+    if (std::isdigit(static_cast<unsigned char>(c))) continue;
+    if (c == ' ' || c == '!' || c == '"' || c == '%' || c == '(' || c == ')' ||
+        c == '+' || c == ',' || c == '-' || c == '.' || c == '/' || c == ':') {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 inline void epaper_dashboard_style_lvgl_tile(lv_obj_t *tile, lv_obj_t *icon, lv_obj_t *label,
                                             lv_obj_t *badge, lv_obj_t *track,
                                             lv_obj_t *track_fill,
@@ -2777,8 +2789,13 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     lv_obj_clear_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
     bool active = configured && epaper_dashboard_tile_active(tile);
     bool icon_active = active;
-    if (tile.type == "door_window" || tile.type == "presence") {
+    if (tile.type == "door_window") {
       icon_active = !tile.state_unavailable && epaper_dashboard_state_active(tile.state);
+    }
+    if (tile.type == "presence") {
+      icon_active = !tile.state_unavailable &&
+                    (epaper_dashboard_normalized_state_text(tile.state) == "detected" ||
+                     epaper_dashboard_state_active(tile.state));
     }
     if (tile.type == "climate") {
       icon_active = epaper_dashboard_climate_controls_enabled(tile);
@@ -2857,7 +2874,8 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       if (slot.value_font) {
         lv_obj_set_style_text_font(
             slot.value,
-            media_title && slot.label_font ? slot.label_font : slot.value_font,
+            ((media_title || !epaper_dashboard_value_uses_numeric_font(value)) && slot.label_font)
+              ? slot.label_font : slot.value_font,
             LV_PART_MAIN);
       }
       lv_obj_set_width(slot.value, media_title ? lv_pct(100) : LV_SIZE_CONTENT);
