@@ -312,6 +312,8 @@ interval:
 
   - interval: 45s
     then:
+      - lambda: |-
+          espcontrol::epaper_dashboard_weather_forecast_tick();
       - if:
           condition:
             lambda: "return espcontrol::epaper_dashboard_is_dirty();"

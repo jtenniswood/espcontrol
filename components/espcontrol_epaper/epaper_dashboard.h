@@ -26,6 +26,9 @@ constexpr int EPAPER_DASHBOARD_COLS = 4;
 constexpr int EPAPER_DASHBOARD_TOTAL_SLOTS =
     EPAPER_DASHBOARD_PAGE_SLOTS * EPAPER_DASHBOARD_PAGES;
 constexpr size_t EPAPER_DASHBOARD_FRIENDLY_NAME_MAX_LEN = 64;
+constexpr int EPAPER_DASHBOARD_FORECAST_PENDING_MAX = 8;
+constexpr uint32_t EPAPER_DASHBOARD_FORECAST_REQUEST_TIMEOUT_MS = 60000;
+constexpr uint32_t EPAPER_DASHBOARD_FORECAST_RETRY_DELAY_MS = 300000;
 
 struct EpaperDashboardTile {
   std::string config;
@@ -104,6 +107,21 @@ struct EpaperDashboardForecastPayload {
   int tomorrow_high = 32767;
   int tomorrow_low = 32767;
   std::string unit;
+};
+
+struct EpaperDashboardForecastPendingRequest {
+  uint32_t call_id = 0;
+  uint32_t started_ms = 0;
+  std::string entity_id;
+};
+
+struct EpaperDashboardForecastQueuedRequest {
+  std::string entity_id;
+};
+
+struct EpaperDashboardForecastRetryRequest {
+  std::string entity_id;
+  uint32_t due_ms = 0;
 };
 
 inline std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> &epaper_dashboard_tiles() {
@@ -1137,8 +1155,226 @@ inline uint32_t epaper_dashboard_next_forecast_call_id() {
   return call_id++;
 }
 
+inline EpaperDashboardForecastPendingRequest *epaper_dashboard_forecast_pending_requests() {
+  static EpaperDashboardForecastPendingRequest requests[EPAPER_DASHBOARD_FORECAST_PENDING_MAX];
+  return requests;
+}
+
+inline EpaperDashboardForecastQueuedRequest *epaper_dashboard_forecast_queued_requests() {
+  static EpaperDashboardForecastQueuedRequest requests[EPAPER_DASHBOARD_FORECAST_PENDING_MAX];
+  return requests;
+}
+
+inline EpaperDashboardForecastRetryRequest *epaper_dashboard_forecast_retry_requests() {
+  static EpaperDashboardForecastRetryRequest requests[EPAPER_DASHBOARD_FORECAST_PENDING_MAX];
+  return requests;
+}
+
+inline uint32_t &epaper_dashboard_forecast_action_ready_ms() {
+  static uint32_t due_ms = 0;
+  return due_ms;
+}
+
+inline bool epaper_dashboard_forecast_actions_ready() {
+  if (!ha_api_state_connected()) {
+    epaper_dashboard_forecast_action_ready_ms() = 0;
+    return false;
+  }
+  uint32_t &due_ms = epaper_dashboard_forecast_action_ready_ms();
+  uint32_t now = esphome::millis();
+  if (due_ms == 0) {
+    due_ms = now + 10000;
+    ESP_LOGI("epaper_forecast",
+      "Waiting 10 seconds for Home Assistant action subscription before requesting forecasts");
+    return false;
+  }
+  return (int32_t) (now - due_ms) >= 0;
+}
+
+inline bool epaper_dashboard_forecast_pending_key(const std::string &entity_id) {
+  EpaperDashboardForecastPendingRequest *requests = epaper_dashboard_forecast_pending_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].call_id != 0 && requests[i].entity_id == entity_id) return true;
+  }
+  return false;
+}
+
+inline bool epaper_dashboard_forecast_queue_key(const std::string &entity_id) {
+  EpaperDashboardForecastQueuedRequest *requests = epaper_dashboard_forecast_queued_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].entity_id == entity_id) return true;
+  }
+  return false;
+}
+
+inline bool epaper_dashboard_forecast_retry_key(const std::string &entity_id) {
+  EpaperDashboardForecastRetryRequest *requests = epaper_dashboard_forecast_retry_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].entity_id == entity_id) return true;
+  }
+  return false;
+}
+
+inline bool epaper_dashboard_forecast_any_pending() {
+  EpaperDashboardForecastPendingRequest *requests = epaper_dashboard_forecast_pending_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].call_id != 0) return true;
+  }
+  return false;
+}
+
+inline void epaper_dashboard_forecast_clear_pending(uint32_t call_id) {
+  if (call_id == 0) return;
+  EpaperDashboardForecastPendingRequest *requests = epaper_dashboard_forecast_pending_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].call_id == call_id) requests[i] = EpaperDashboardForecastPendingRequest();
+  }
+}
+
+inline bool epaper_dashboard_forecast_track_pending(uint32_t call_id,
+                                                    const std::string &entity_id) {
+  if (call_id == 0) return false;
+  EpaperDashboardForecastPendingRequest *requests = epaper_dashboard_forecast_pending_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].call_id == call_id) return true;
+  }
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].call_id == 0) {
+      requests[i].call_id = call_id;
+      requests[i].started_ms = esphome::millis();
+      requests[i].entity_id = entity_id;
+      return true;
+    }
+  }
+  return false;
+}
+
+inline void epaper_dashboard_forecast_clear_queue() {
+  EpaperDashboardForecastQueuedRequest *requests = epaper_dashboard_forecast_queued_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    requests[i] = EpaperDashboardForecastQueuedRequest();
+  }
+}
+
+inline void epaper_dashboard_forecast_clear_retry(const std::string &entity_id) {
+  EpaperDashboardForecastRetryRequest *requests = epaper_dashboard_forecast_retry_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].entity_id == entity_id) requests[i] = EpaperDashboardForecastRetryRequest();
+  }
+}
+
+inline void epaper_dashboard_forecast_clear_retries() {
+  EpaperDashboardForecastRetryRequest *requests = epaper_dashboard_forecast_retry_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    requests[i] = EpaperDashboardForecastRetryRequest();
+  }
+}
+
+inline bool epaper_dashboard_forecast_schedule_retry(const std::string &entity_id,
+                                                     const char *reason) {
+  if (!epaper_dashboard_forecast_entity_id_safe(entity_id)) return false;
+  if (epaper_dashboard_forecast_pending_key(entity_id) ||
+      epaper_dashboard_forecast_queue_key(entity_id) ||
+      epaper_dashboard_forecast_retry_key(entity_id)) {
+    return true;
+  }
+  EpaperDashboardForecastRetryRequest *requests = epaper_dashboard_forecast_retry_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].entity_id.empty()) {
+      requests[i].entity_id = entity_id;
+      requests[i].due_ms = esphome::millis() + EPAPER_DASHBOARD_FORECAST_RETRY_DELAY_MS;
+      ESP_LOGW("epaper_forecast", "Retrying forecast request for %s in %u seconds: %s",
+        entity_id.c_str(), (unsigned) (EPAPER_DASHBOARD_FORECAST_RETRY_DELAY_MS / 1000),
+        reason ? reason : "failed");
+      return true;
+    }
+  }
+  ESP_LOGW("epaper_forecast", "Too many delayed forecast retries; skipping %s",
+    entity_id.c_str());
+  return false;
+}
+
+inline bool epaper_dashboard_forecast_enqueue(const std::string &entity_id) {
+  if (!epaper_dashboard_forecast_entity_id_safe(entity_id)) return false;
+  epaper_dashboard_forecast_clear_retry(entity_id);
+  if (epaper_dashboard_forecast_pending_key(entity_id) ||
+      epaper_dashboard_forecast_queue_key(entity_id)) {
+    return true;
+  }
+  EpaperDashboardForecastQueuedRequest *requests = epaper_dashboard_forecast_queued_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].entity_id.empty()) {
+      requests[i].entity_id = entity_id;
+      return true;
+    }
+  }
+  ESP_LOGW("epaper_forecast", "Too many queued forecast requests; skipping %s",
+    entity_id.c_str());
+  return false;
+}
+
+inline bool epaper_dashboard_forecast_dequeue(std::string &entity_id) {
+  EpaperDashboardForecastQueuedRequest *requests = epaper_dashboard_forecast_queued_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].entity_id.empty()) continue;
+    entity_id = requests[i].entity_id;
+    requests[i] = EpaperDashboardForecastQueuedRequest();
+    return true;
+  }
+  return false;
+}
+
+inline bool epaper_dashboard_forecast_enqueue_due_retries() {
+  if (!ha_api_state_connected()) return false;
+  EpaperDashboardForecastRetryRequest *requests = epaper_dashboard_forecast_retry_requests();
+  uint32_t now = esphome::millis();
+  bool queued = false;
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    if (requests[i].entity_id.empty()) continue;
+    if ((int32_t) (now - requests[i].due_ms) < 0) continue;
+    std::string entity_id = requests[i].entity_id;
+    requests[i] = EpaperDashboardForecastRetryRequest();
+    queued = epaper_dashboard_forecast_enqueue(entity_id) || queued;
+  }
+  return queued;
+}
+
+inline void epaper_dashboard_forecast_send_next_queued();
+
+inline void epaper_dashboard_forecast_cancel_pending_requests() {
+  epaper_dashboard_forecast_action_ready_ms() = 0;
+  epaper_dashboard_forecast_clear_queue();
+  epaper_dashboard_forecast_clear_retries();
+  EpaperDashboardForecastPendingRequest *requests = epaper_dashboard_forecast_pending_requests();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    uint32_t call_id = requests[i].call_id;
+    if (call_id == 0) continue;
+    requests[i] = EpaperDashboardForecastPendingRequest();
+    ha_cancel_action_response_callback(call_id, "api disconnected");
+  }
+}
+
+inline bool epaper_dashboard_forecast_cancel_stale_requests() {
+  EpaperDashboardForecastPendingRequest *requests = epaper_dashboard_forecast_pending_requests();
+  uint32_t now = esphome::millis();
+  for (int i = 0; i < EPAPER_DASHBOARD_FORECAST_PENDING_MAX; i++) {
+    uint32_t call_id = requests[i].call_id;
+    if (call_id == 0) continue;
+    if (now - requests[i].started_ms < EPAPER_DASHBOARD_FORECAST_REQUEST_TIMEOUT_MS) continue;
+    std::string entity_id = requests[i].entity_id;
+    requests[i] = EpaperDashboardForecastPendingRequest();
+    ESP_LOGW("epaper_forecast", "Cancelling forecast request %u for %s: timeout",
+      (unsigned) call_id, entity_id.c_str());
+    ha_cancel_action_response_callback(call_id, "timeout");
+    return true;
+  }
+  return false;
+}
+
 inline void epaper_dashboard_request_forecast_entity(const std::string &entity_id) {
-  if (!epaper_dashboard_forecast_entity_id_safe(entity_id) || !ha_api_state_connected()) {
+  if (!epaper_dashboard_forecast_entity_id_safe(entity_id) ||
+      !ha_api_state_connected() ||
+      !epaper_dashboard_forecast_actions_ready()) {
     epaper_dashboard_apply_forecast_unavailable(entity_id);
     return;
   }
@@ -1146,6 +1382,7 @@ inline void epaper_dashboard_request_forecast_entity(const std::string &entity_i
   uint32_t call_id = epaper_dashboard_next_forecast_call_id();
   if (!ha_action_begin(req, "weather.get_forecasts", false, 2, call_id)) {
     epaper_dashboard_apply_forecast_unavailable(entity_id);
+    epaper_dashboard_forecast_schedule_retry(entity_id, "request setup failed");
     return;
   }
   req.wants_response = true;
@@ -1156,27 +1393,54 @@ inline void epaper_dashboard_request_forecast_entity(const std::string &entity_i
   if (!ha_register_action_response_callback(
       req.call_id,
       [entity_id, call_id = req.call_id](const esphome::api::ActionResponse &response) {
+        epaper_dashboard_forecast_clear_pending(call_id);
         if (!response.is_success()) {
           std::string error = response.get_error_message();
           epaper_dashboard_apply_forecast_unavailable(
             entity_id, error == "timeout" ? "HA Actions" : "");
+          epaper_dashboard_forecast_schedule_retry(entity_id, error.c_str());
+          epaper_dashboard_forecast_send_next_queued();
           return;
         }
         const char *payload = response.get_json()["response"].as<const char *>();
         EpaperDashboardForecastPayload forecast;
         if (payload == nullptr || !epaper_dashboard_parse_forecast_payload(payload, forecast)) {
           epaper_dashboard_apply_forecast_unavailable(entity_id);
+          epaper_dashboard_forecast_schedule_retry(entity_id, payload == nullptr ? "empty response" : "invalid response");
+          epaper_dashboard_forecast_send_next_queued();
           return;
         }
         epaper_dashboard_apply_forecast_to_entity(entity_id, forecast);
+        epaper_dashboard_forecast_send_next_queued();
       })) {
+    epaper_dashboard_apply_forecast_unavailable(entity_id);
+    epaper_dashboard_forecast_schedule_retry(entity_id, "callback setup failed");
+    return;
+  }
+  if (!epaper_dashboard_forecast_track_pending(req.call_id, entity_id)) {
+    ha_cancel_action_response_callback(req.call_id, "too many pending forecasts");
     epaper_dashboard_apply_forecast_unavailable(entity_id);
     return;
   }
+  ESP_LOGI("epaper_forecast", "Requesting daily forecast for %s", entity_id.c_str());
   if (!ha_action_send(req)) {
+    epaper_dashboard_forecast_clear_pending(req.call_id);
     ha_cancel_action_response_callback(req.call_id, "send failed");
     epaper_dashboard_apply_forecast_unavailable(entity_id);
+    epaper_dashboard_forecast_schedule_retry(entity_id, "send failed");
+    epaper_dashboard_forecast_send_next_queued();
   }
+}
+
+inline void epaper_dashboard_forecast_send_next_queued() {
+  if (!epaper_dashboard_forecast_actions_ready() ||
+      epaper_dashboard_forecast_any_pending()) {
+    return;
+  }
+  epaper_dashboard_forecast_enqueue_due_retries();
+  std::string entity_id;
+  if (!epaper_dashboard_forecast_dequeue(entity_id)) return;
+  epaper_dashboard_request_forecast_entity(entity_id);
 }
 
 inline void epaper_dashboard_refresh_weather_forecasts() {
@@ -1192,8 +1456,19 @@ inline void epaper_dashboard_refresh_weather_forecasts() {
     }
     if (already_requested) continue;
     requested.push_back(tile.entity);
-    epaper_dashboard_request_forecast_entity(tile.entity);
+    epaper_dashboard_forecast_enqueue(tile.entity);
   }
+  epaper_dashboard_forecast_send_next_queued();
+}
+
+inline void epaper_dashboard_weather_forecast_tick() {
+  if (!ha_api_state_connected()) {
+    epaper_dashboard_forecast_cancel_pending_requests();
+    return;
+  }
+  bool cancelled = epaper_dashboard_forecast_cancel_stale_requests();
+  if (cancelled) epaper_dashboard_forecast_send_next_queued();
+  else epaper_dashboard_forecast_send_next_queued();
 }
 
 inline std::string epaper_dashboard_weather_forecast_value(const EpaperDashboardTile &tile) {
@@ -3044,7 +3319,8 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   }
   epaper_dashboard_subscribe(index);
   if (epaper_dashboard_weather_forecast_card(tile)) {
-    epaper_dashboard_request_forecast_entity(tile.entity);
+    epaper_dashboard_forecast_enqueue(tile.entity);
+    epaper_dashboard_forecast_send_next_queued();
   }
   epaper_dashboard_mark_dirty();
 }
