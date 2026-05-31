@@ -402,6 +402,28 @@ inline std::string epaper_dashboard_normalize_sensor_options(const std::string &
   return out;
 }
 
+inline std::string epaper_dashboard_normalize_climate_options(const std::string &options) {
+  std::string label_display = epaper_dashboard_option_value(options, "label_display");
+  if (label_display != "status" && label_display != "actual" && label_display != "target") {
+    label_display = "label";
+  }
+  std::string number_display = epaper_dashboard_option_value(options, "number_display");
+  if (number_display != "icon" && number_display != "actual") {
+    number_display = "target";
+  }
+  std::string out;
+  if (label_display != "label") out = "label_display=" + label_display;
+  if (number_display != "target") {
+    if (!out.empty()) out += ",";
+    out += "number_display=" + number_display;
+  }
+  if (number_display != "icon" && epaper_dashboard_option_present(options, "large_numbers")) {
+    if (!out.empty()) out += ",";
+    out += "large_numbers";
+  }
+  return out;
+}
+
 inline std::string epaper_dashboard_pretty_state(const std::string &value) {
   std::string text = value;
   for (char &ch : text) {
@@ -2625,6 +2647,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.unit.clear();
     if (tile.icon.empty()) tile.icon = "Thermostat";
     if (tile.icon_on.empty()) tile.icon_on = "Auto";
+    tile.options = epaper_dashboard_normalize_climate_options(tile.options);
   }
   if (tile.type == "garage") {
     if (!epaper_dashboard_garage_command_mode(tile.sensor)) tile.sensor.clear();
