@@ -1694,7 +1694,7 @@ inline std::string epaper_dashboard_media_status_text(const std::string &state) 
 }
 
 inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTile &tile) {
-  if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;
+  if (epaper_dashboard_option_select_card(tile)) return "";
   if (epaper_dashboard_weather_forecast_card(tile)) return "";
   if (tile.type == "weather") return "";
   if (tile.type == "action") return "";
@@ -1821,7 +1821,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return tile.friendly_name;
   }
   if (epaper_dashboard_option_select_card(tile) && tile.label.empty()) {
-    if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
+    if (!tile.entity.empty()) return tile.entity;
     return "Option";
   }
   if (tile.type == "action" && tile.label.empty()) {
