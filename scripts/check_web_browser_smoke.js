@@ -271,7 +271,7 @@ async function assertSettingsPage(page, label, options = {}) {
   await page.waitForSelector("#sp-screen.sp-page.active");
 }
 
-async function assertMonochromeThemePreview(page, label) {
+async function assertEpaperThemePreview(page, label) {
   await page.getByRole("tab", { name: "Settings" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
   if (!(await page.locator("#sp-set-theme").isVisible())) {
@@ -293,10 +293,9 @@ async function assertMonochromeThemePreview(page, label) {
     };
   });
   assert.strictEqual(dark.theme, "dark", `${label}: dark theme should be reflected on the preview root`);
-  assert.strictEqual(dark.screenBg, "rgb(0, 0, 0)", `${label}: dark e-paper preview should use a black screen`);
-  assert.strictEqual(dark.cardBg, "rgb(0, 0, 0)", `${label}: dark e-paper cards should use a black background`);
-  assert.strictEqual(dark.cardBorder, "rgb(255, 255, 255)", `${label}: dark e-paper cards should use a white outline`);
-  assert.strictEqual(dark.cardText, "rgb(255, 255, 255)", `${label}: dark e-paper card text should be white`);
+  assert.strictEqual(dark.screenBg, "rgb(0, 0, 0)", `${label}: dark preview should use the normal dark screen`);
+  assert.strictEqual(dark.cardBg, "rgb(49, 49, 49)", `${label}: dark preview cards should use the normal dark card colour`);
+  assert.strictEqual(dark.cardText, "rgb(255, 255, 255)", `${label}: dark preview card text should use the normal dark text colour`);
 
   await page.getByRole("tab", { name: "Settings" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
@@ -319,10 +318,9 @@ async function assertMonochromeThemePreview(page, label) {
     };
   });
   assert.strictEqual(light.theme, "light", `${label}: light theme should be reflected on the preview root`);
-  assert.strictEqual(light.screenBg, "rgb(255, 255, 255)", `${label}: light e-paper preview should use a white screen`);
-  assert.strictEqual(light.cardBg, "rgb(255, 255, 255)", `${label}: light e-paper cards should use a white background`);
-  assert.strictEqual(light.cardBorder, "rgb(0, 0, 0)", `${label}: light e-paper cards should use a black outline`);
-  assert.strictEqual(light.cardText, "rgb(0, 0, 0)", `${label}: light e-paper card text should be black`);
+  assert.strictEqual(light.screenBg, "rgb(255, 255, 255)", `${label}: light preview should use the normal light screen`);
+  assert.strictEqual(light.cardBg, "rgb(206, 206, 206)", `${label}: light preview cards should use the normal light card colour`);
+  assert.strictEqual(light.cardText, "rgb(0, 0, 0)", `${label}: light preview card text should use the normal light text colour`);
 }
 
 async function assertEmptyCellSettings(page, label) {
@@ -627,7 +625,7 @@ async function runCase(browser, testCase) {
     assert.deepStrictEqual(errors, [], `${testCase.name}: browser errors were reported`);
     assertNoLayoutBreaks(await measureCoreLayout(page), testCase.name);
     await assertSettingsPage(page, testCase.name, testCase);
-    if (testCase.monochromeDisplay) await assertMonochromeThemePreview(page, testCase.name);
+    if (testCase.monochromeDisplay) await assertEpaperThemePreview(page, testCase.name);
     assertNoLayoutBreaks(await measureCoreLayout(page), `${testCase.name} after settings`);
     await assertEmptyCellSettings(page, testCase.name);
     if (testCase.exerciseInteractions) {

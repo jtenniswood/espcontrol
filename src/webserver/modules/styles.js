@@ -137,30 +137,9 @@ var CSS =
   "#sp-app[data-screen-theme='light'] .sp-add-icon{color:rgba(0,0,0,.82)}" +
   "#sp-app[data-screen-theme='dark'] .sp-add-icon{color:rgba(255,255,255,.82)}" +
   (CFG.features && CFG.features.monochromeDisplay ?
-  "#sp-app[data-screen-theme='light'] .sp-screen{background:#fff;border-color:#111;box-shadow:none}" +
-  "#sp-app[data-screen-theme='dark'] .sp-screen{background:#000;border-color:#fff;box-shadow:none}" +
-  "#sp-app[data-screen-theme='light'] .sp-screen,#sp-app[data-screen-theme='dark'] .sp-screen{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
-  "#sp-app[data-screen-theme='light'] .sp-topbar{background:#fff;color:#000;border-bottom:1px solid #000}" +
-  "#sp-app[data-screen-theme='dark'] .sp-topbar{background:#000;color:#fff;border-bottom:1px solid #fff}" +
-  "#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='light'] .sp-clock,#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-clock,#sp-app[data-screen-theme='dark'] .sp-network-preview{font-weight:700}" +
   "#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-temp{order:2;margin-left:auto;margin-right:1.1cqw}" +
   "#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-network-preview{order:3;margin-left:0}" +
-  "#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-network-preview{font-size:calc(var(--topbar-fs)*.75)}" +
-  "#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='light'] .sp-clock,#sp-app[data-screen-theme='light'] .sp-network-preview{color:#000}" +
-  "#sp-app[data-screen-theme='dark'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-clock,#sp-app[data-screen-theme='dark'] .sp-network-preview{color:#fff}" +
-  "#sp-app[data-screen-theme='light'] .sp-btn{background:#fff!important;border:2px solid #000;color:#000;box-shadow:none}" +
-  "#sp-app[data-screen-theme='dark'] .sp-btn{background:#000!important;border:2px solid #fff;color:#fff;box-shadow:none}" +
-  "#sp-app[data-screen-theme='light'] .sp-btn-label,#sp-app[data-screen-theme='dark'] .sp-btn-label{font-weight:600}" +
-  "#sp-app[data-screen-theme='light'] .sp-sensor-value,#sp-app[data-screen-theme='dark'] .sp-sensor-value{font-weight:700}" +
-  "#sp-app[data-screen-theme='light'] .sp-sensor-unit,#sp-app[data-screen-theme='dark'] .sp-sensor-unit{font-weight:600}" +
-  "#sp-app[data-screen-theme='light'] .sp-btn-icon,#sp-app[data-screen-theme='light'] .sp-btn-label,#sp-app[data-screen-theme='light'] .sp-sensor-preview,#sp-app[data-screen-theme='light'] .sp-sensor-unit,#sp-app[data-screen-theme='light'] .sp-media-now-title,#sp-app[data-screen-theme='light'] .sp-media-now-artist{color:#000}" +
-  "#sp-app[data-screen-theme='dark'] .sp-btn-icon,#sp-app[data-screen-theme='dark'] .sp-btn-label,#sp-app[data-screen-theme='dark'] .sp-sensor-preview,#sp-app[data-screen-theme='dark'] .sp-sensor-unit,#sp-app[data-screen-theme='dark'] .sp-media-now-title,#sp-app[data-screen-theme='dark'] .sp-media-now-artist{color:#fff}" +
-  "#sp-app[data-screen-theme='light'] .sp-empty-cell{border-color:rgba(0,0,0,.28);background:transparent}" +
-  "#sp-app[data-screen-theme='dark'] .sp-empty-cell{border-color:rgba(255,255,255,.42);background:transparent}" +
-  "#sp-app[data-screen-theme='light'] .sp-add-pill{border-color:rgba(0,0,0,.32);background:#fff;box-shadow:none}" +
-  "#sp-app[data-screen-theme='dark'] .sp-add-pill{border-color:rgba(255,255,255,.55);background:#000;box-shadow:none}" +
-  "#sp-app[data-screen-theme='light'] .sp-add-icon{color:#000}" +
-  "#sp-app[data-screen-theme='dark'] .sp-add-icon{color:#fff}" : "") +
+  "#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-network-preview{font-size:calc(var(--topbar-fs)*.75)}" : "") +
   (CFG.dragAnimation ? ".sp-btn.sp-dragging{opacity:.4;transform:scale(.95)}" +
   ".sp-empty-cell.sp-drop-placeholder{border-color:rgba(92,156,245,.5)}" : "") +
 

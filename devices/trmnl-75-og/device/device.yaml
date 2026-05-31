@@ -138,6 +138,10 @@ globals:
     type: bool
     restore_value: false
     initial_value: "false"
+  - id: trmnl_rendered_dark_theme
+    type: bool
+    restore_value: false
+    initial_value: "true"
   - id: indoor_temp
     type: float
     restore_value: false
