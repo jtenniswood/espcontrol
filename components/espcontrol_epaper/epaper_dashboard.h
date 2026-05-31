@@ -2799,8 +2799,10 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     if (legacy_controls && (tile.icon.empty() || tile.icon == "Speaker")) {
       tile.icon = "Auto";
     }
+    tile.icon_on.clear();
     if (tile.sensor == "previous" && tile.label == "Skip Previous") tile.label = "Previous";
     if (tile.sensor == "next" && tile.label == "Skip Next") tile.label = "Next";
+    if (tile.sensor == "play_pause") tile.icon = "Auto";
     if (tile.sensor == "volume") {
       if (tile.label.empty() || tile.label == "Media") {
         tile.label = "Volume";

@@ -47,8 +47,10 @@ function normalizeButtonConfig(b) {
       if (!b.icon || b.icon === "Speaker") b.icon = "Auto";
     }
     b.sensor = mediaEditorMode(b.sensor);
+    b.icon_on = "Auto";
     if (b.sensor === "previous" && b.label === "Skip Previous") b.label = "Previous";
     if (b.sensor === "next" && b.label === "Skip Next") b.label = "Next";
+    if (b.sensor === "play_pause") b.icon = "Auto";
     if (b.sensor === "volume") {
       if (!b.label || b.label === "Media") b.label = "Volume";
       b.icon = "Auto";
@@ -1142,7 +1144,7 @@ function buttonConfigFields(b) {
   if (type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
   if (type === "alarm_action" && (!icon || icon === "Auto")) icon = (alarmActionInfo(sensor) || alarmActionSpecs()[0]).icon;
   if (isFanCardType(type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(type);
-  var iconOn = (isActionOptionSelect || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
+  var iconOn = (isActionOptionSelect || type === "media" || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
   var precision = (isActionOptionSelect || type === "light_switch" || type === "lock" ||
     type === "clock" || type === "timezone" || type === "push" || type === "internal" || type === "alarm" ||
@@ -1152,6 +1154,7 @@ function buttonConfigFields(b) {
   if (type === "calendar" && precision !== "datetime") precision = "";
   if (type === "media") {
     sensor = mediaEditorMode(sensor);
+    if (sensor === "play_pause" || sensor === "volume") icon = "Auto";
     precision = sensor === "now_playing"
       ? mediaNowPlayingControls({ sensor: sensor, precision: precision })
       : (mediaStateDisplayModeSupported(sensor) && precision === "state" ? "state" : "");

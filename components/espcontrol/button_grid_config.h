@@ -649,8 +649,10 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     } else {
       p.sensor = card_runtime_media_mode(p.sensor);
     }
+    p.icon_on.clear();
     if (p.sensor == "previous" && p.label == "Skip Previous") p.label = "Previous";
     if (p.sensor == "next" && p.label == "Skip Next") p.label = "Next";
+    if (p.sensor == "play_pause") p.icon = "Auto";
     if (p.sensor == "volume") {
       if (p.label.empty() || p.label == "Media") p.label = "Volume";
       p.icon = "Auto";
