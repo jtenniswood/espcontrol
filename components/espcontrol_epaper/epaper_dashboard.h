@@ -991,6 +991,8 @@ struct EpaperDashboardLvglSlot {
   lv_obj_t *badge = nullptr;
   lv_obj_t *value = nullptr;
   lv_obj_t *unit = nullptr;
+  const lv_font_t *label_font = nullptr;
+  const lv_font_t *value_font = nullptr;
 };
 
 inline std::array<EpaperDashboardLvglSlot, EPAPER_DASHBOARD_PAGE_SLOTS> &epaper_dashboard_lvgl_slots() {
@@ -1006,7 +1008,9 @@ inline void epaper_dashboard_bind_lvgl_slot(int slot, lv_obj_t *tile, lv_obj_t *
                                            lv_obj_t *track_fill = nullptr) {
   if (slot < 0 || slot >= EPAPER_DASHBOARD_PAGE_SLOTS) return;
   epaper_dashboard_lvgl_slots()[slot] = {
-    tile, icon, sensor_container, track, track_fill, label, badge, value, unit
+    tile, icon, sensor_container, track, track_fill, label, badge, value, unit,
+    label ? lv_obj_get_style_text_font(label, LV_PART_MAIN) : nullptr,
+    value ? lv_obj_get_style_text_font(value, LV_PART_MAIN) : nullptr
   };
   if (tile) {
     lv_obj_clear_flag(tile, LV_OBJ_FLAG_CLICKABLE);
@@ -1711,6 +1715,11 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     if (slot.sensor_container) {
       if (show_value) {
         lv_obj_clear_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
+        if (tile.type == "media" && tile.sensor == "now_playing") {
+          lv_obj_set_width(slot.sensor_container, lv_pct(100));
+        } else {
+          lv_obj_set_width(slot.sensor_container, LV_SIZE_CONTENT);
+        }
         lv_obj_align(slot.sensor_container, value_replaces_icon ? LV_ALIGN_TOP_LEFT : LV_ALIGN_TOP_RIGHT, 0, 0);
       } else {
         lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
@@ -1743,6 +1752,14 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     }
     if (slot.value) {
       std::string value = epaper_dashboard_display_value(tile);
+      bool media_title = tile.type == "media" && tile.sensor == "now_playing";
+      if (slot.value_font) {
+        lv_obj_set_style_text_font(
+            slot.value,
+            media_title && slot.label_font ? slot.label_font : slot.value_font,
+            LV_PART_MAIN);
+      }
+      lv_obj_set_width(slot.value, media_title ? lv_pct(100) : LV_SIZE_CONTENT);
       lv_label_set_text(slot.value, value.c_str());
       if (show_value) lv_obj_clear_flag(slot.value, LV_OBJ_FLAG_HIDDEN);
       else lv_obj_add_flag(slot.value, LV_OBJ_FLAG_HIDDEN);
