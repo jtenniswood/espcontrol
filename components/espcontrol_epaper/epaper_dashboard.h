@@ -783,6 +783,10 @@ inline std::string epaper_dashboard_fan_status_text(const EpaperDashboardTile &t
   return "Fan";
 }
 
+inline bool epaper_dashboard_window_card(const EpaperDashboardTile &tile) {
+  return tile.type == "door_window" && tile.precision == "window";
+}
+
 inline const char *epaper_dashboard_alarm_icon_for_state(const std::string &state) {
   if (state == "armed_home") return find_icon("Shield Home");
   if (state == "armed_away" || state == "armed_custom_bypass") return find_icon("Shield Lock");
@@ -1227,7 +1231,10 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
     if (tile.sensor == "open") return find_icon("Blinds Open");
     return find_icon("Blinds Horizontal");
   }
-  if (tile.type == "door_window") return find_icon(active ? "Door Open" : "Door");
+  if (tile.type == "door_window") {
+    if (epaper_dashboard_window_card(tile)) return find_icon(active ? "Window Open" : "Window Closed");
+    return find_icon(active ? "Door Open" : "Door");
+  }
   if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_default_icon_name(tile));
@@ -1243,7 +1250,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
     if (tile.sensor == "now_playing") return find_icon("Music");
     return find_icon("Play Pause");
   }
-  if (tile.type == "presence") return find_icon("Account");
+  if (tile.type == "presence") return find_icon(active ? "Motion Sensor" : "Motion Sensor Off");
   if (tile.type == "push") return find_icon("Gesture Tap");
   if (tile.type == "webhook") return find_icon("Flash");
   if (tile.type == "todo") return find_icon("Check");
