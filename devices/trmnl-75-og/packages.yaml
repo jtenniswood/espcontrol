@@ -16,6 +16,7 @@ substitutions:
 packages:
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
+  api_navigate:    !include device/api_navigate.yaml
   fonts_device:    !include device/fonts.yaml
   colors:          !include ../../common/config/colors.yaml
   button_order:    !include ../../common/config/button_order.yaml

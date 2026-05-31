@@ -127,6 +127,9 @@ var CSS =
   "#sp-app[data-screen-theme='light'] .sp-topbar{background:#fff;color:#000;border-bottom:1px solid #000}" +
   "#sp-app[data-screen-theme='dark'] .sp-topbar{background:#000;color:#fff;border-bottom:1px solid #fff}" +
   "#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='light'] .sp-clock,#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-clock,#sp-app[data-screen-theme='dark'] .sp-network-preview{font-weight:700}" +
+  "#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-temp{order:2;margin-left:auto;margin-right:1.1cqw}" +
+  "#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-network-preview{order:3;margin-left:0}" +
+  "#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-network-preview{font-size:calc(var(--topbar-fs)*.75)}" +
   "#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='light'] .sp-clock,#sp-app[data-screen-theme='light'] .sp-network-preview{color:#000}" +
   "#sp-app[data-screen-theme='dark'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-clock,#sp-app[data-screen-theme='dark'] .sp-network-preview{color:#fff}" +
   "#sp-app[data-screen-theme='light'] .sp-btn{background:#fff!important;border:2px solid #000;color:#000;box-shadow:none}" +

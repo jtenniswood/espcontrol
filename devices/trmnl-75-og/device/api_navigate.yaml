@@ -1,0 +1,18 @@
+# =============================================================================
+# API NAVIGATE ACTION - TRMNL e-paper page navigation
+# =============================================================================
+# TRMNL has no touch subpages. Keep the shared Home Assistant navigate action
+# available for consistency, mapping any request back to the dashboard page.
+# =============================================================================
+
+api:
+  actions:
+    - action: navigate
+      variables:
+        target: string
+      then:
+        - lambda: |-
+            id(trmnl_current_page) = 0;
+            espcontrol::epaper_dashboard_mark_dirty();
+        - lvgl.page.show: main_page
+        - script.execute: trmnl_refresh_display_full

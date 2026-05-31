@@ -3,10 +3,13 @@
 #include "esphome/components/api/api_server.h"
 #include "lvgl.h"
 #include "../espcontrol/icons.h"
+#include "../espcontrol/temperature_unit.h"
 
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <string>
 #include <vector>
@@ -203,6 +206,115 @@ inline bool epaper_dashboard_api_available() {
 }
 
 inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &tile);
+
+inline bool epaper_dashboard_parse_float(esphome::StringRef state, float &out) {
+  std::string text(state.c_str(), state.size());
+  char *end = nullptr;
+  float value = std::strtof(text.c_str(), &end);
+  if (end == text.c_str()) return false;
+  out = value;
+  return true;
+}
+
+inline std::string &epaper_dashboard_indoor_temperature_entity() {
+  static std::string entity;
+  return entity;
+}
+
+inline std::string &epaper_dashboard_outdoor_temperature_entity() {
+  static std::string entity;
+  return entity;
+}
+
+inline void epaper_dashboard_format_temperature(char *buf, size_t size, float value) {
+  if (!buf || size == 0) return;
+  if (std::isnan(value)) {
+    snprintf(buf, size, "-");
+    return;
+  }
+  snprintf(buf, size, "%.0f", value);
+}
+
+inline void epaper_dashboard_set_temperature_label(lv_obj_t *label,
+                                                   bool indoor_on, bool outdoor_on,
+                                                   float indoor, float outdoor) {
+  if (!label) return;
+  if (!indoor_on && !outdoor_on) {
+    lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+  lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+
+  char indoor_text[16];
+  char outdoor_text[16];
+  char text[40];
+  const char *suffix = display_clock_bar_temperature_suffix();
+  epaper_dashboard_format_temperature(indoor_text, sizeof(indoor_text), indoor);
+  epaper_dashboard_format_temperature(outdoor_text, sizeof(outdoor_text), outdoor);
+  if (indoor_on && outdoor_on) {
+    snprintf(text, sizeof(text), "%s%s / %s%s", outdoor_text, suffix, indoor_text, suffix);
+  } else if (outdoor_on) {
+    snprintf(text, sizeof(text), "%s%s", outdoor_text, suffix);
+  } else {
+    snprintf(text, sizeof(text), "%s%s", indoor_text, suffix);
+  }
+  lv_label_set_text(label, text);
+}
+
+inline void epaper_dashboard_refresh_temperature_label(lv_obj_t *label, lv_obj_t *main_page_obj,
+                                                       bool indoor_on, bool outdoor_on,
+                                                       float indoor, float outdoor) {
+  if (!label || !main_page_obj) return;
+  epaper_dashboard_set_temperature_label(label, indoor_on, outdoor_on, indoor, outdoor);
+  if (lv_scr_act() != main_page_obj) lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+  epaper_dashboard_mark_dirty();
+}
+
+inline void epaper_dashboard_configure_temperatures(bool indoor_on, bool outdoor_on,
+                                                    const std::string &indoor_entity,
+                                                    const std::string &outdoor_entity,
+                                                    const std::string &temperature_unit,
+                                                    const std::string &timezone,
+                                                    bool degree_symbol,
+                                                    lv_obj_t *label,
+                                                    lv_obj_t *main_page_obj,
+                                                    float *indoor_temp,
+                                                    float *outdoor_temp) {
+  set_display_temperature_unit(temperature_unit, timezone);
+  set_display_temperature_degree_symbol(degree_symbol);
+  float indoor = indoor_temp ? *indoor_temp : NAN;
+  float outdoor = outdoor_temp ? *outdoor_temp : NAN;
+  epaper_dashboard_refresh_temperature_label(label, main_page_obj, indoor_on, outdoor_on, indoor, outdoor);
+  if (!epaper_dashboard_api_available()) return;
+
+  if (indoor_on && !indoor_entity.empty() &&
+      epaper_dashboard_indoor_temperature_entity() != indoor_entity) {
+    epaper_dashboard_indoor_temperature_entity() = indoor_entity;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        indoor_entity, {}, [label, main_page_obj, indoor_on, outdoor_on, indoor_temp, outdoor_temp](esphome::StringRef state) {
+          if (!indoor_temp) return;
+          float parsed = NAN;
+          if (!epaper_dashboard_parse_float(state, parsed)) return;
+          *indoor_temp = parsed;
+          float outdoor = outdoor_temp ? *outdoor_temp : NAN;
+          epaper_dashboard_refresh_temperature_label(label, main_page_obj, indoor_on, outdoor_on, *indoor_temp, outdoor);
+        });
+  }
+
+  if (outdoor_on && !outdoor_entity.empty() &&
+      epaper_dashboard_outdoor_temperature_entity() != outdoor_entity) {
+    epaper_dashboard_outdoor_temperature_entity() = outdoor_entity;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        outdoor_entity, {}, [label, main_page_obj, indoor_on, outdoor_on, indoor_temp, outdoor_temp](esphome::StringRef state) {
+          if (!outdoor_temp) return;
+          float parsed = NAN;
+          if (!epaper_dashboard_parse_float(state, parsed)) return;
+          *outdoor_temp = parsed;
+          float indoor = indoor_temp ? *indoor_temp : NAN;
+          epaper_dashboard_refresh_temperature_label(label, main_page_obj, indoor_on, outdoor_on, indoor, *outdoor_temp);
+        });
+  }
+}
 
 struct EpaperDashboardLvglSlot {
   lv_obj_t *tile = nullptr;

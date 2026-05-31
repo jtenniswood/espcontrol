@@ -138,6 +138,14 @@ globals:
     type: bool
     restore_value: false
     initial_value: "false"
+  - id: indoor_temp
+    type: float
+    restore_value: false
+    initial_value: "NAN"
+  - id: outdoor_temp
+    type: float
+    restore_value: false
+    initial_value: "NAN"
 
 binary_sensor:
   - platform: gpio

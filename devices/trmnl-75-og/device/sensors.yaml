@@ -33,6 +33,23 @@ script:
           }
           lv_label_set_text(id(network_status_icon_label), "\U000F0928");
 
+  - id: trmnl_sync_temperature_config
+    mode: restart
+    then:
+      - lambda: |-
+          espcontrol::epaper_dashboard_configure_temperatures(
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp_entity).state,
+            id(outdoor_temp_entity).state,
+            id(temperature_unit_select).current_option(),
+            "UTC (GMT+0)",
+            id(temperature_degree_symbol_enabled).state,
+            id(temperatures),
+            id(main_page)->obj,
+            &id(indoor_temp),
+            &id(outdoor_temp));
+
   - id: trmnl_refresh_display
     mode: restart
     then:
@@ -76,6 +93,7 @@ script:
   - id: trmnl_sync_dashboard_config
     then:
       - script.execute: trmnl_bind_lvgl_widgets
+      - script.execute: trmnl_sync_temperature_config
       - lambda: |-
           // BEGIN GENERATED TRMNL DASHBOARD CONFIG
           // Generated from devices/manifest.json plan: 1 page x 12 slots.
@@ -92,6 +110,113 @@ script:
           espcontrol::epaper_dashboard_set_config(10, id(button_11_config).state);
           espcontrol::epaper_dashboard_set_config(11, id(button_12_config).state);
           // END GENERATED TRMNL DASHBOARD CONFIG
+
+switch:
+  - platform: template
+    name: "${entity_indoor_temp_enable}"
+    internal: true
+    id: indoor_temp_enable
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:home-thermometer"
+    web_server:
+      sorting_group_id: sg_display
+    on_turn_on:
+      - script.execute: trmnl_sync_temperature_config
+      - script.execute: trmnl_refresh_display_partial
+    on_turn_off:
+      - script.execute: trmnl_sync_temperature_config
+      - script.execute: trmnl_refresh_display_partial
+
+  - platform: template
+    name: "${entity_outdoor_temp_enable}"
+    internal: true
+    id: outdoor_temp_enable
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:sun-thermometer"
+    web_server:
+      sorting_group_id: sg_display
+    on_turn_on:
+      - script.execute: trmnl_sync_temperature_config
+      - script.execute: trmnl_refresh_display_partial
+    on_turn_off:
+      - script.execute: trmnl_sync_temperature_config
+      - script.execute: trmnl_refresh_display_partial
+
+  - platform: template
+    name: "${entity_screen_temperature_degree_symbol}"
+    internal: true
+    id: temperature_degree_symbol_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    icon: "mdi:temperature-celsius"
+    web_server:
+      sorting_group_id: sg_display
+    on_turn_on:
+      - script.execute: trmnl_sync_temperature_config
+      - script.execute: trmnl_refresh_display_partial
+    on_turn_off:
+      - script.execute: trmnl_sync_temperature_config
+      - script.execute: trmnl_refresh_display_partial
+
+select:
+  - platform: template
+    name: "${entity_screen_temperature_unit}"
+    internal: true
+    disabled_by_default: true
+    id: temperature_unit_select
+    entity_category: config
+    icon: "mdi:temperature-celsius"
+    optimistic: true
+    restore_value: true
+    initial_option: "Auto"
+    options:
+      - "Auto"
+      - "°C"
+      - "°F"
+    web_server:
+      sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: trmnl_sync_temperature_config
+        - script.execute: trmnl_refresh_display_partial
+
+text:
+  - platform: template
+    name: "${entity_indoor_temp_entity}"
+    internal: true
+    id: indoor_temp_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:home-thermometer"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
+
+  - platform: template
+    name: "${entity_outdoor_temp_entity}"
+    internal: true
+    id: outdoor_temp_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:sun-thermometer"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_display
 
 interval:
   - interval: 1min

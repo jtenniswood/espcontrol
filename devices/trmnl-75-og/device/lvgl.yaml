@@ -9,8 +9,8 @@ lvgl:
           text: "-°C / -°C"
           id: temperatures
           text_font: font_trmnl_header_20
-          align: top_left
-          x: 12
+          align: top_right
+          x: -52
           y: 8
           text_color: 0x000000
           hidden: true
@@ -38,7 +38,7 @@ lvgl:
             - label:
                 id: network_status_icon_label
                 text: "\U000F0928"
-                text_font: font_trmnl_mdi_26_icons
+                text_font: font_trmnl_mdi_header_icons
                 align: center
                 text_align: center
                 text_color: 0x000000

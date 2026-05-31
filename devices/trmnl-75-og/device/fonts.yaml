@@ -5,7 +5,7 @@
 font:
   - file: "gfonts://Inter@700"
     id: font_trmnl_header_20
-    size: 20
+    size: 18
     glyphs: " !\"%()+,-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
 
   - file: "gfonts://Inter@600"
@@ -21,4 +21,9 @@ font:
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: font_trmnl_mdi_26_icons
     size: 32
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml
+
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_trmnl_mdi_header_icons
+    size: 24
     glyphs: !include ../../../common/assets/icon_glyphs.yaml

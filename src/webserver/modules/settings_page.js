@@ -463,7 +463,7 @@ function buildSettingsPage(parent) {
   els.setClockBarBadge = clockBarBadge;
   syncClockBarUi();
   syncTemperatureUi();
-  if (!epaperDisplay) {
+  if (!epaperDisplay || (CFG.features && CFG.features.monochromeDisplay)) {
     config.appendChild(makeCollapsibleCard("Clock Bar", clockBarBody, true, clockBarBadge));
   }
 
