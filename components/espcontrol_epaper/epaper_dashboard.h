@@ -1453,6 +1453,11 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;
   if (epaper_dashboard_weather_forecast_card(tile)) return "";
   if (tile.type == "weather") return "";
+  if ((tile.type == "light_brightness" || tile.type == "light_temperature" ||
+       tile.type == "slider" || tile.type == "fan_speed" || tile.type == "cover") &&
+      !tile.entity.empty()) {
+    return tile.entity;
+  }
   if (!tile.sensor.empty()) return tile.sensor;
   return tile.entity;
 }
