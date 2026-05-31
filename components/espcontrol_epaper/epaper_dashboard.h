@@ -2187,7 +2187,7 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "webhook") return find_icon("Webhook");
   if (tile.type == "todo") return find_icon("Check");
   if (tile.type == "internal") {
-    return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Lightbulb Outline");
+    return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");
   }
   if (tile.type == "light_brightness" || tile.type == "slider") return find_icon("Tune Vertical Variant");
   if (tile.type == "light_switch" || tile.type == "light_temperature") return find_icon("Lightbulb");
