@@ -9,6 +9,7 @@ obj:
   pad_all: 8
   scrollable: false
   clickable: false
+  hidden: true
   widgets:
     - label:
         id: trmnl_tile_${num}_icon_label

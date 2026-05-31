@@ -439,8 +439,14 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     bool configured = epaper_dashboard_tile_configured(tile);
     lv_obj_set_grid_cell(slot.tile, LV_GRID_ALIGN_STRETCH, col, 1, LV_GRID_ALIGN_STRETCH, row, 1);
     if (!configured) {
+      if (slot.icon) lv_label_set_text(slot.icon, "");
+      if (slot.label) lv_label_set_text(slot.label, "");
+      if (slot.value) lv_label_set_text(slot.value, "");
+      if (slot.unit) lv_label_set_text(slot.unit, "");
       lv_obj_add_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
       lv_obj_invalidate(slot.tile);
+      lv_obj_t *parent = lv_obj_get_parent(slot.tile);
+      if (parent) lv_obj_invalidate(parent);
       continue;
     }
     lv_obj_clear_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
