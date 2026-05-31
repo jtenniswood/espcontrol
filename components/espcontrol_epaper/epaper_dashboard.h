@@ -1430,9 +1430,9 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
     return find_icon("Weather Cloudy");
   }
   if (tile.type == "weather_forecast") return find_icon("Weather Partly Cloudy");
-  if (tile.type == "calendar") return find_icon("Clock");
+  if (tile.type == "calendar") return find_icon("Calendar Month");
   if (tile.type == "clock") return find_icon("Clock");
-  if (tile.type == "timezone") return find_icon("Clock");
+  if (tile.type == "timezone") return find_icon("Map Clock");
   if (tile.type == "media") return find_icon("Speaker");
   if (tile.type == "climate") return find_icon("Thermostat");
   if (tile.type == "garage") return find_icon("Garage");

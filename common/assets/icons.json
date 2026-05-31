@@ -273,6 +273,11 @@
       "mdi": "broom"
     },
     {
+      "name": "Calendar Month",
+      "codepoint": "F0E17",
+      "mdi": "calendar-month"
+    },
+    {
       "name": "Camera",
       "codepoint": "F0100",
       "mdi": "camera"
@@ -806,6 +811,11 @@
       "name": "Mailbox",
       "codepoint": "F06EE",
       "mdi": "mailbox"
+    },
+    {
+      "name": "Map Clock",
+      "codepoint": "F0D1E",
+      "mdi": "map-clock"
     },
     {
       "name": "Message Video",
