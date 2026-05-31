@@ -2034,7 +2034,8 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       icon_active = !tile.state_unavailable && epaper_dashboard_state_active(tile.state);
     }
     bool has_sensor_value = epaper_dashboard_has_sensor_value(tile);
-    bool show_track = configured && epaper_dashboard_slider_visual_card(tile);
+    bool show_track = configured && epaper_dashboard_slider_visual_card(tile) &&
+                      !epaper_dashboard_media_now_playing_play_pause_card(tile);
     bool show_value = configured && !epaper_dashboard_text_sensor_card(tile) &&
         (epaper_dashboard_sensor_card_type(tile) || has_sensor_value ||
          epaper_dashboard_value_replaces_icon(tile));
