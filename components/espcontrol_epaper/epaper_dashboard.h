@@ -3074,6 +3074,10 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
   if (use_sensor_value) {
     if (epaper_dashboard_text_sensor_card(tile) && tile.sensor_unavailable) return "Unavailable";
     if (epaper_dashboard_action_state_numeric_card(tile) && tile.sensor_unavailable) return "";
+    if ((tile.type == "sensor" || epaper_dashboard_toggle_numeric_sensor_card(tile)) &&
+        tile.precision != "text" && tile.sensor_unavailable) {
+      return "";
+    }
     if (tile.sensor_unavailable) return "--";
     if (!tile.sensor_value.empty()) {
       if (tile.type == "media" && tile.sensor == "volume") return epaper_dashboard_format_media_volume(tile);
