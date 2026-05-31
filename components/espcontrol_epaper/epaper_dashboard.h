@@ -3377,8 +3377,8 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
   }
   if (tile.type == "todo") {
     if (tile.state_unavailable) return "--";
-    if (!tile.state.empty()) return epaper_dashboard_format_number(tile.state, 0);
-    return "...";
+    if (!tile.state.empty()) return tile.state;
+    return "--";
   }
   if (tile.type == "climate") {
     return epaper_dashboard_climate_card_value(tile);
