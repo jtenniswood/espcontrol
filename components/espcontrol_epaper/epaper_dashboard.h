@@ -1413,13 +1413,13 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
 inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) {
   if (tile.type.empty()) {
     if (!tile.sensor.empty()) {
-      return tile.precision == "text" ? find_icon("Application") : find_icon("Gauge");
+      return tile.precision == "text" ? find_icon("Format Text") : find_icon("Gauge");
     }
-    return find_icon("Light Switch");
+    return find_icon("Toggle Switch Variant Off");
   }
   if (tile.type == "sensor") {
-    if (tile.precision == "icon") return find_icon("Light Switch");
-    if (tile.precision == "text") return find_icon("Application");
+    if (tile.precision == "icon") return find_icon("Toggle Switch");
+    if (tile.precision == "text") return find_icon("Format Text");
     return find_icon("Gauge");
   }
   if (tile.type == "door_window") return find_icon(tile.precision == "window" ? "Window Closed" : "Door");
@@ -1444,8 +1444,8 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "action") {
     std::string state_mode = epaper_dashboard_option_value(tile.options, "state_precision");
     if (!tile.action_state_entity.empty()) {
-      if (state_mode == "icon") return find_icon("Light Switch");
-      if (state_mode == "text") return find_icon("Application");
+      if (state_mode == "icon") return find_icon("Toggle Switch");
+      if (state_mode == "text") return find_icon("Format Text");
       return find_icon("Gauge");
     }
     return find_icon("Flash");
