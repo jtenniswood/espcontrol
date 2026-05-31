@@ -1782,10 +1782,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       return epaper_dashboard_fan_default_label(tile);
     }
   }
-  if (tile.type == "door_window" && tile.label.empty() && tile.sensor.empty()) {
+  if (tile.type == "door_window" && !tile.label_configured) {
     return epaper_dashboard_window_card(tile) ? "Window" : "Door";
   }
-  if (tile.type == "presence" && tile.label.empty() && tile.sensor.empty()) {
+  if (tile.type == "presence" && !tile.label_configured) {
     return "Presence";
   }
   if (tile.type == "cover" &&
