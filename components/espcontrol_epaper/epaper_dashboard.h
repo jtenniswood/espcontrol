@@ -24,6 +24,7 @@ constexpr int EPAPER_DASHBOARD_PAGES = 1;
 constexpr int EPAPER_DASHBOARD_COLS = 4;
 constexpr int EPAPER_DASHBOARD_TOTAL_SLOTS =
     EPAPER_DASHBOARD_PAGE_SLOTS * EPAPER_DASHBOARD_PAGES;
+constexpr size_t EPAPER_DASHBOARD_FRIENDLY_NAME_MAX_LEN = 64;
 
 struct EpaperDashboardTile {
   std::string config;
@@ -42,6 +43,7 @@ struct EpaperDashboardTile {
   std::string media_position_value;
   std::string media_duration_value;
   std::string action_state_entity;
+  std::string friendly_name;
   std::string forecast_unit;
   std::string forecast_status_label;
   int forecast_high = 0;
@@ -50,6 +52,7 @@ struct EpaperDashboardTile {
   bool state_subscribed = false;
   bool sensor_subscribed = false;
   bool secondary_subscribed = false;
+  bool friendly_name_subscribed = false;
   bool media_position_subscribed = false;
   bool media_duration_subscribed = false;
   bool state_unavailable = false;
@@ -143,6 +146,12 @@ inline void epaper_dashboard_set_time(bool valid, int year, int month, int day,
   state.epoch = epoch;
   state.active_timezone = active_timezone.empty() ? std::string("UTC (GMT+0)") : active_timezone;
   state.use_12h = use_12h;
+}
+
+inline std::string epaper_dashboard_string_ref_limited(esphome::StringRef value, size_t max_len) {
+  size_t len = value.size();
+  if (len > max_len) len = max_len;
+  return std::string(value.c_str(), len);
 }
 
 inline int epaper_dashboard_page_count() {
@@ -1587,6 +1596,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return tile.sensor == "unlock" ? "Unlock" : "Lock";
   }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
+  if (epaper_dashboard_option_select_card(tile) && !tile.label_configured &&
+      !tile.friendly_name.empty()) {
+    return tile.friendly_name;
+  }
   if (tile.type == "option_select" && tile.label.empty()) {
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
     return "Option";
@@ -1798,6 +1811,17 @@ inline void epaper_dashboard_subscribe(int index) {
           auto &tile = epaper_dashboard_tiles()[index];
           tile.state = std::string(state.c_str(), state.size());
           tile.state_unavailable = epaper_dashboard_state_unavailable(tile.state);
+          epaper_dashboard_mark_dirty();
+        });
+  }
+  if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty() &&
+      !tile.label_configured && !tile.friendly_name_subscribed) {
+    tile.friendly_name_subscribed = true;
+    esphome::api::global_api_server->subscribe_home_assistant_state(
+        tile.entity, "friendly_name", [index](esphome::StringRef name) {
+          auto &tile = epaper_dashboard_tiles()[index];
+          tile.friendly_name = epaper_dashboard_string_ref_limited(
+              name, EPAPER_DASHBOARD_FRIENDLY_NAME_MAX_LEN);
           epaper_dashboard_mark_dirty();
         });
   }
