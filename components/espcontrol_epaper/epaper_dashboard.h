@@ -764,6 +764,20 @@ inline bool epaper_dashboard_alarm_action_matches(const EpaperDashboardTile &til
   return !achieved.empty() && epaper_dashboard_alarm_effective_state(tile) == achieved;
 }
 
+inline bool epaper_dashboard_garage_state_active(const std::string &state) {
+  return state == "open" || state == "opening" || state == "closing";
+}
+
+inline bool epaper_dashboard_garage_state_uses_open_icon(const std::string &state) {
+  return state == "open" || state == "opening";
+}
+
+inline bool epaper_dashboard_lock_state_active(const std::string &state) {
+  return state == "unlocked" || state == "unlocking" ||
+         state == "open" || state == "opening" ||
+         state == "jammed";
+}
+
 inline const char *epaper_dashboard_alarm_action_icon(const std::string &mode) {
   if (mode == "home") return find_icon("Shield Home");
   if (mode == "disarm") return find_icon("Shield Off");
@@ -1192,6 +1206,12 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   if (tile.type == "fan_preset") {
     return epaper_dashboard_fan_preset_active(tile.sensor_value);
   }
+  if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)) {
+    return !tile.state_unavailable && epaper_dashboard_garage_state_active(tile.state);
+  }
+  if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor)) {
+    return !tile.state_unavailable && epaper_dashboard_lock_state_active(tile.state);
+  }
   const std::string &active_value = !tile.state.empty() ? tile.state : tile.sensor_value;
   return epaper_dashboard_state_active(active_value);
 }
@@ -1332,7 +1352,12 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_default_icon_name(tile));
-  if (tile.type == "garage") return find_icon(active || tile.sensor == "open" ? "Garage Open" : "Garage");
+  if (tile.type == "garage") {
+    if (tile.sensor == "open" || epaper_dashboard_garage_state_uses_open_icon(tile.state)) {
+      return find_icon("Garage Open");
+    }
+    return find_icon("Garage");
+  }
   if (tile.type == "light_brightness" || tile.type == "light_switch") {
     return find_icon(active ? "Lightbulb" : "Lightbulb Outline");
   }
