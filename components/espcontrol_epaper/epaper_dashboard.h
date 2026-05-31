@@ -918,7 +918,7 @@ inline std::string epaper_dashboard_format_media_volume(const EpaperDashboardTil
   if (end == tile.sensor_value.c_str() || std::isnan(parsed)) {
     return epaper_dashboard_pretty_state(tile.sensor_value);
   }
-  if (parsed >= 0.0f && parsed <= 1.0f) parsed *= epaper_dashboard_media_volume_max(tile);
+  if (parsed >= 0.0f && parsed <= 1.0f) parsed *= 100.0f;
   char buf[16];
   snprintf(buf, sizeof(buf), "%.0f", parsed);
   return buf;
@@ -2409,7 +2409,6 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
 }
 
 inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile) {
-  if (tile.type == "media" && tile.sensor == "volume") return "%";
   if (epaper_dashboard_weather_forecast_card(tile) && tile.forecast_valid) {
     return display_temperature_unit_symbol();
   }
