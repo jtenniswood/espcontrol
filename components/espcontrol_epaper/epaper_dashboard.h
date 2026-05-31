@@ -1830,6 +1830,10 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     }
     lv_obj_clear_flag(slot.tile, LV_OBJ_FLAG_HIDDEN);
     bool active = configured && epaper_dashboard_tile_active(tile);
+    bool icon_active = active;
+    if (tile.type == "door_window" || tile.type == "presence") {
+      icon_active = !tile.state_unavailable && epaper_dashboard_state_active(tile.state);
+    }
     bool has_sensor_value = epaper_dashboard_has_sensor_value(tile);
     bool show_track = configured && epaper_dashboard_slider_visual_card(tile);
     bool show_value = configured && !epaper_dashboard_text_sensor_card(tile) &&
@@ -1848,7 +1852,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
                                      slot.track, slot.track_fill,
                                      slot.value, slot.unit, configured, active);
     if (slot.icon) {
-      lv_label_set_text(slot.icon, epaper_dashboard_icon(tile, active));
+      lv_label_set_text(slot.icon, epaper_dashboard_icon(tile, icon_active));
       if (value_replaces_icon) lv_obj_add_flag(slot.icon, LV_OBJ_FLAG_HIDDEN);
       else lv_obj_clear_flag(slot.icon, LV_OBJ_FLAG_HIDDEN);
     }
