@@ -1662,6 +1662,37 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   return tile.entity;
 }
 
+inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardTile &tile) {
+  if (tile.label_configured) return "";
+  if (tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone" ||
+      tile.type == "weather" || tile.type == "weather_forecast" ||
+      tile.type == "push" || tile.type == "webhook" || tile.type == "internal" ||
+      tile.type == "alarm_action" || tile.type == "media") {
+    return "";
+  }
+  if (tile.type == "action" && !epaper_dashboard_option_select_card(tile)) return "";
+  if (tile.type == "garage" && epaper_dashboard_garage_command_mode(tile.sensor)) return "";
+  if (tile.type == "garage" &&
+      epaper_dashboard_option_value(tile.options, "label_display") == "status") {
+    return "";
+  }
+  if (tile.type == "lock" && epaper_dashboard_lock_command_mode(tile.sensor)) return "";
+  if (tile.type == "cover" &&
+      (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor))) {
+    return "";
+  }
+  if (tile.type == "climate" && epaper_dashboard_climate_label_mode(tile) != "label") return "";
+  if (tile.type == "alarm" &&
+      epaper_dashboard_option_value(tile.options, "label_display") != "name") {
+    return "";
+  }
+  if (epaper_dashboard_fan_non_speed_card(tile)) return "";
+  if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;
+  std::string sensor_source = epaper_dashboard_sensor_source(tile);
+  if (!sensor_source.empty()) return sensor_source;
+  return tile.entity;
+}
+
 inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return epaper_dashboard_display_value(tile);
   if (epaper_dashboard_toggle_text_sensor_card(tile) && !tile.sensor_value.empty()) {
@@ -1723,8 +1754,8 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return tile.sensor == "unlock" ? "Unlock" : "Lock";
   }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
-  if (epaper_dashboard_option_select_card(tile) && !tile.label_configured &&
-      !tile.friendly_name.empty()) {
+  if (!tile.label_configured && !tile.friendly_name.empty() &&
+      !epaper_dashboard_friendly_label_source(tile).empty()) {
     return tile.friendly_name;
   }
   if (tile.type == "option_select" && tile.label.empty()) {
@@ -1946,11 +1977,12 @@ inline void epaper_dashboard_subscribe(int index) {
           epaper_dashboard_mark_dirty();
         });
   }
-  if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty() &&
+  std::string friendly_source = epaper_dashboard_friendly_label_source(tile);
+  if (!friendly_source.empty() &&
       !tile.label_configured && !tile.friendly_name_subscribed) {
     tile.friendly_name_subscribed = true;
     esphome::api::global_api_server->subscribe_home_assistant_state(
-        tile.entity, "friendly_name", [index](esphome::StringRef name) {
+        friendly_source, "friendly_name", [index](esphome::StringRef name) {
           auto &tile = epaper_dashboard_tiles()[index];
           tile.friendly_name = epaper_dashboard_string_ref_limited(
               name, EPAPER_DASHBOARD_FRIENDLY_NAME_MAX_LEN);
