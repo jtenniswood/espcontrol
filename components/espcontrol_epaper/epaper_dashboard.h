@@ -465,6 +465,28 @@ inline std::string epaper_dashboard_normalize_garage_options(const std::string &
     : "";
 }
 
+inline std::string epaper_dashboard_normalize_action_options(const std::string &options) {
+  std::string state_entity = epaper_dashboard_option_value(options, "state_entity");
+  if (state_entity.empty()) return "";
+  std::string state_precision = epaper_dashboard_option_value(options, "state_precision");
+  if (state_precision != "icon" && state_precision != "text" &&
+      state_precision != "0" && state_precision != "1" && state_precision != "2") {
+    state_precision.clear();
+  }
+  std::string state_unit = (state_precision == "icon" || state_precision == "text")
+    ? std::string()
+    : epaper_dashboard_option_value(options, "state_unit");
+  std::string out = "state_entity=" + epaper_dashboard_encode_field(state_entity);
+  if (!state_unit.empty()) out += ",state_unit=" + epaper_dashboard_encode_field(state_unit);
+  if (!state_precision.empty()) out += ",state_precision=" + state_precision;
+  if ((state_precision == "0" || state_precision == "1" ||
+       state_precision == "2" || !state_unit.empty()) &&
+      epaper_dashboard_option_present(options, "large_numbers")) {
+    out += ",large_numbers";
+  }
+  return out;
+}
+
 inline std::string epaper_dashboard_normalize_alarm_options(const std::string &options) {
   std::string out;
   if (epaper_dashboard_option_value(options, "pin_arm") == "0") out = "pin_arm=0";
@@ -2894,6 +2916,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     }
   }
   if (tile.type == "action") {
+    tile.options = epaper_dashboard_normalize_action_options(tile.options);
     tile.action_state_entity = epaper_dashboard_option_value(tile.options, "state_entity");
     std::string action_unit = epaper_dashboard_option_value(tile.options, "state_unit");
     if (!action_unit.empty()) tile.unit = action_unit;

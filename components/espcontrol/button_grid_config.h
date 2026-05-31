@@ -414,6 +414,28 @@ inline bool todo_card_shows_completed_items(const ParsedCfg &p) {
   return false;
 }
 
+inline std::string action_card_options_normalized(const std::string &options) {
+  std::string state_entity = cfg_option_value(options, "state_entity");
+  if (state_entity.empty()) return "";
+  std::string state_precision = cfg_option_value(options, "state_precision");
+  if (state_precision != "icon" && state_precision != "text" &&
+      state_precision != "0" && state_precision != "1" && state_precision != "2") {
+    state_precision.clear();
+  }
+  std::string state_unit = (state_precision == "icon" || state_precision == "text")
+    ? std::string()
+    : cfg_option_value(options, "state_unit");
+  std::string out = "state_entity=" + encode_compact_field(state_entity);
+  if (!state_unit.empty()) out += ",state_unit=" + encode_compact_field(state_unit);
+  if (!state_precision.empty()) out += ",state_precision=" + state_precision;
+  if ((state_precision == "0" || state_precision == "1" ||
+       state_precision == "2" || !state_unit.empty()) &&
+      cfg_option_token_present(options, "large_numbers")) {
+    out += ",large_numbers";
+  }
+  return out;
+}
+
 inline std::string normalize_climate_label_display(const std::string &value) {
   return card_runtime_climate_label_display(value);
 }
@@ -709,6 +731,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options.clear();
     p.icon_on.clear();
     if (p.icon.empty() || p.icon == "Auto" || p.icon == "Chevron Down") p.icon = "Flash";
+  }
+  if (p.type == "action") {
+    p.options = action_card_options_normalized(p.options);
   }
   if (p.type == "door_window") {
     p.entity.clear();

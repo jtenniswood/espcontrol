@@ -144,6 +144,8 @@ function normalizeButtonConfig(b) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
   } else if (b && b.type === "weather") {
     b.options = normalizeWeatherOptions(b.options, b.precision);
+  } else if (b && b.type === "action") {
+    b.options = normalizeActionOptions(b.options);
   } else if (b && b.type === "sensor") {
     b.options = normalizeSensorOptions(b.options, b.precision);
   } else if (b && b.type === "door_window") {
@@ -191,6 +193,9 @@ var SWITCH_CONFIRM_YES_OPTION = "confirm_yes";
 var SWITCH_CONFIRM_NO_OPTION = "confirm_no";
 var LIGHT_TEMPERATURE_DEFAULT_RANGE = "2000-6500";
 var LIGHT_TEMPERATURE_LEGACY_SENSOR = "kelvin";
+var ACTION_STATE_ENTITY_OPTION = "state_entity";
+var ACTION_STATE_UNIT_OPTION = "state_unit";
+var ACTION_STATE_PRECISION_OPTION = "state_precision";
 var SWITCH_CONFIRM_DEFAULT_MESSAGE = "Turn off this device?";
 var SWITCH_CONFIRM_ON_DEFAULT_MESSAGE = "Turn on this device?";
 var SWITCH_CONFIRM_BOTH_DEFAULT_MESSAGE = "Toggle this device?";
@@ -656,6 +661,27 @@ function normalizeWeatherOptions(options, precision) {
     : "";
 }
 
+function normalizeActionOptions(options) {
+  var stateEntity = configOptionValue(options, ACTION_STATE_ENTITY_OPTION);
+  if (!stateEntity) return "";
+  var statePrecision = configOptionValue(options, ACTION_STATE_PRECISION_OPTION);
+  statePrecision = statePrecision === "icon" || statePrecision === "text" ||
+    statePrecision === "0" || statePrecision === "1" || statePrecision === "2"
+    ? statePrecision
+    : "";
+  var stateUnit = (statePrecision === "icon" || statePrecision === "text")
+    ? ""
+    : configOptionValue(options, ACTION_STATE_UNIT_OPTION);
+  var out = setConfigOptionValue("", ACTION_STATE_ENTITY_OPTION, stateEntity);
+  if (stateUnit) out = setConfigOptionValue(out, ACTION_STATE_UNIT_OPTION, stateUnit);
+  if (statePrecision) out = setConfigOptionValue(out, ACTION_STATE_PRECISION_OPTION, statePrecision);
+  if ((statePrecision === "0" || statePrecision === "1" || statePrecision === "2" || stateUnit) &&
+      configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION)) {
+    out = setConfigOption(out, SENSOR_LARGE_NUMBERS_OPTION, true);
+  }
+  return out;
+}
+
 function normalizeLightTemperatureRange(value) {
   var text = String(value || "").trim();
   if (!text) return LIGHT_TEMPERATURE_DEFAULT_RANGE;
@@ -1043,6 +1069,8 @@ function buttonConfigFields(b) {
     options = normalizeClimateOptions(options);
   } else if (type === "media") {
     options = normalizeMediaOptions(options, sensor);
+  } else if (type === "action") {
+    options = normalizeActionOptions(options);
   } else if (type === "weather") {
     options = normalizeWeatherOptions(options, precision);
   } else if (type === "subpage") {
