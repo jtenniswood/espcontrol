@@ -1959,6 +1959,10 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   if (tile.type == "media") return "";
   if (tile.type == "todo") return "";
   if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
+  if (tile.type == "cover" &&
+      (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor))) {
+    return "";
+  }
   if ((tile.type == "light_brightness" || tile.type == "light_temperature" ||
        tile.type == "slider" || tile.type == "fan_speed" || tile.type == "cover") &&
       !tile.entity.empty()) {
