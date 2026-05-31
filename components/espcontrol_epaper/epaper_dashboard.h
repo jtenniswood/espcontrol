@@ -46,6 +46,7 @@ struct EpaperDashboardTile {
   std::string forecast_status_label;
   int forecast_high = 0;
   int forecast_low = 0;
+  bool label_configured = false;
   bool state_subscribed = false;
   bool sensor_subscribed = false;
   bool secondary_subscribed = false;
@@ -1457,6 +1458,11 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       return epaper_dashboard_fan_default_label(tile);
     }
   }
+  if (tile.type == "cover" &&
+      (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor)) &&
+      !tile.label_configured) {
+    return "Cover";
+  }
   if (tile.type == "media" && tile.label.empty()) return epaper_dashboard_media_mode_label(tile.sensor);
   if (tile.type == "option_select" && tile.label.empty()) {
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
@@ -1723,6 +1729,7 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   auto fields = epaper_dashboard_config_fields(config);
   if (fields.size() > 0) tile.entity = fields[0];
   if (fields.size() > 1) tile.label = fields[1];
+  tile.label_configured = !tile.label.empty();
   if (fields.size() > 2) tile.icon = fields[2];
   if (fields.size() > 3) tile.icon_on = fields[3];
   if (fields.size() > 4) tile.sensor = fields[4];
