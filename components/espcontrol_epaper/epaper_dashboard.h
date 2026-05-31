@@ -1062,6 +1062,16 @@ inline bool epaper_dashboard_lock_command_mode(const std::string &mode) {
   return mode == "lock" || mode == "unlock";
 }
 
+inline std::string epaper_dashboard_climate_label_mode(const EpaperDashboardTile &tile) {
+  std::string mode = epaper_dashboard_option_value(tile.options, "label_display");
+  return mode.empty() ? "label" : mode;
+}
+
+inline std::string epaper_dashboard_climate_number_mode(const EpaperDashboardTile &tile) {
+  std::string mode = epaper_dashboard_option_value(tile.options, "number_display");
+  return mode.empty() ? "target" : mode;
+}
+
 inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &tile,
                                                      std::string &attribute) {
   attribute.clear();
@@ -1112,9 +1122,9 @@ inline std::string epaper_dashboard_attribute_source(const EpaperDashboardTile &
     }
   }
   if (tile.type == "climate") {
-    std::string mode = epaper_dashboard_option_value(tile.options, "number_display");
+    std::string mode = epaper_dashboard_climate_number_mode(tile);
     if (mode != "actual" && mode != "target") {
-      mode = epaper_dashboard_option_value(tile.options, "label_display");
+      mode = epaper_dashboard_climate_label_mode(tile);
     }
     if (mode == "actual") {
       attribute = "current_temperature";
@@ -1205,7 +1215,7 @@ inline bool epaper_dashboard_value_replaces_icon(const EpaperDashboardTile &tile
   if (tile.type == "media") return tile.sensor == "volume" || tile.sensor == "position" ||
                                     tile.sensor == "now_playing";
   if (tile.type == "climate") {
-    std::string mode = epaper_dashboard_option_value(tile.options, "number_display");
+    std::string mode = epaper_dashboard_climate_number_mode(tile);
     return mode == "actual" || mode == "target";
   }
   if (epaper_dashboard_todo_card_show_count(tile)) return true;
@@ -1567,7 +1577,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "garage" && epaper_dashboard_option_value(tile.options, "label_display") == "status" &&
       !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
   if (tile.type == "climate") {
-    std::string label_mode = epaper_dashboard_option_value(tile.options, "label_display");
+    std::string label_mode = epaper_dashboard_climate_label_mode(tile);
     if (label_mode == "status" && !tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
     if (label_mode == "actual" || label_mode == "target") return epaper_dashboard_display_value(tile);
   }
