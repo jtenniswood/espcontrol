@@ -3,6 +3,7 @@
 #include "esphome/components/api/api_server.h"
 #include "lvgl.h"
 #include "../espcontrol/icons.h"
+#include "../espcontrol/sun_calc.h"
 #include "../espcontrol/temperature_unit.h"
 
 #include <array>
@@ -45,9 +46,26 @@ struct EpaperDashboardTile {
   bool secondary_unavailable = false;
 };
 
+struct EpaperDashboardTimeState {
+  bool valid = false;
+  int year = 0;
+  int month = 0;
+  int day = 0;
+  int hour = 0;
+  int minute = 0;
+  time_t epoch = 0;
+  bool use_12h = false;
+  std::string active_timezone = "UTC (GMT+0)";
+};
+
 inline std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> &epaper_dashboard_tiles() {
   static std::array<EpaperDashboardTile, EPAPER_DASHBOARD_TOTAL_SLOTS> tiles;
   return tiles;
+}
+
+inline EpaperDashboardTimeState &epaper_dashboard_time_state() {
+  static EpaperDashboardTimeState state;
+  return state;
 }
 
 inline bool &epaper_dashboard_dirty_flag() {
@@ -79,6 +97,28 @@ inline bool epaper_dashboard_is_dirty() {
 
 inline void epaper_dashboard_clear_dirty() {
   epaper_dashboard_dirty_flag() = false;
+}
+
+inline void epaper_dashboard_set_time(bool valid, int year, int month, int day,
+                                      int hour, int minute, time_t epoch,
+                                      const std::string &active_timezone,
+                                      bool use_12h) {
+  auto &state = epaper_dashboard_time_state();
+  if (state.valid != valid || state.year != year || state.month != month ||
+      state.day != day || state.hour != hour || state.minute != minute ||
+      state.epoch != epoch || state.active_timezone != active_timezone ||
+      state.use_12h != use_12h) {
+    epaper_dashboard_mark_dirty();
+  }
+  state.valid = valid;
+  state.year = year;
+  state.month = month;
+  state.day = day;
+  state.hour = hour;
+  state.minute = minute;
+  state.epoch = epoch;
+  state.active_timezone = active_timezone.empty() ? std::string("UTC (GMT+0)") : active_timezone;
+  state.use_12h = use_12h;
 }
 
 inline int epaper_dashboard_page_count() {
@@ -258,6 +298,87 @@ inline std::string epaper_dashboard_format_number(const std::string &value, int 
   else if (precision == 3) snprintf(buf, sizeof(buf), "%.3f", parsed);
   else snprintf(buf, sizeof(buf), "%.0f", parsed);
   return buf;
+}
+
+inline const char *epaper_dashboard_month_name(int month) {
+  static const char *months[] = {
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  };
+  if (month < 1 || month > 12) return "Date";
+  return months[month - 1];
+}
+
+inline std::string epaper_dashboard_format_time(int hour, int minute, bool use_12h) {
+  char buf[8];
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "--:--";
+  if (use_12h) {
+    int hour12 = hour % 12;
+    if (hour12 == 0) hour12 = 12;
+    snprintf(buf, sizeof(buf), "%d:%02d", hour12, minute);
+  } else {
+    snprintf(buf, sizeof(buf), "%02d:%02d", hour, minute);
+  }
+  return buf;
+}
+
+inline bool epaper_dashboard_timezone_localtime(const std::string &timezone,
+                                                time_t epoch, struct tm &out) {
+  int offset_minutes = 0;
+  if (!::timezone_offset_minutes_at_utc(timezone, epoch, offset_minutes)) return false;
+  time_t local_epoch = epoch + static_cast<time_t>(offset_minutes) * 60;
+  return gmtime_r(&local_epoch, &out) != nullptr;
+}
+
+inline std::string epaper_dashboard_timezone_city_label(const std::string &timezone) {
+  std::string tz_id = ::timezone_id_from_option(timezone);
+  if (tz_id.empty()) return "World Clock";
+  if (tz_id == "UTC") return "UTC";
+  size_t slash = tz_id.rfind('/');
+  std::string city = slash == std::string::npos ? tz_id : tz_id.substr(slash + 1);
+  for (char &ch : city) {
+    if (ch == '_') ch = ' ';
+  }
+  return city.empty() ? std::string("World Clock") : city;
+}
+
+inline std::string epaper_dashboard_calendar_value(const EpaperDashboardTile &tile) {
+  const auto &time = epaper_dashboard_time_state();
+  if (!time.valid || time.day < 1 || time.day > 31 ||
+      time.month < 1 || time.month > 12) return "--";
+  if (tile.precision == "datetime") {
+    return epaper_dashboard_format_time(time.hour, time.minute, time.use_12h);
+  }
+  char buf[8];
+  snprintf(buf, sizeof(buf), "%d", time.day);
+  return buf;
+}
+
+inline std::string epaper_dashboard_calendar_label(const EpaperDashboardTile &tile) {
+  const auto &time = epaper_dashboard_time_state();
+  if (!time.valid || time.day < 1 || time.day > 31 ||
+      time.month < 1 || time.month > 12) return "Date";
+  if (tile.precision == "datetime") {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d %s", time.day, epaper_dashboard_month_name(time.month));
+    return buf;
+  }
+  return epaper_dashboard_month_name(time.month);
+}
+
+inline std::string epaper_dashboard_clock_value() {
+  const auto &time = epaper_dashboard_time_state();
+  if (!time.valid) return "--:--";
+  return epaper_dashboard_format_time(time.hour, time.minute, time.use_12h);
+}
+
+inline std::string epaper_dashboard_timezone_value(const EpaperDashboardTile &tile) {
+  const auto &time = epaper_dashboard_time_state();
+  if (!time.valid) return "--:--";
+  std::string timezone = tile.entity.empty() ? time.active_timezone : tile.entity;
+  struct tm local_tm;
+  if (!epaper_dashboard_timezone_localtime(timezone, time.epoch, local_tm)) return "--:--";
+  return epaper_dashboard_format_time(local_tm.tm_hour, local_tm.tm_min, time.use_12h);
 }
 
 inline int epaper_dashboard_media_volume_max(const EpaperDashboardTile &tile) {
@@ -922,6 +1043,15 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (epaper_dashboard_toggle_text_sensor_card(tile) && !tile.sensor_value.empty()) {
     return epaper_dashboard_sensor_state_display_text(tile);
   }
+  if (tile.type == "calendar") return epaper_dashboard_calendar_label(tile);
+  if (tile.type == "clock") return "";
+  if (tile.type == "timezone") {
+    if (!tile.label.empty()) return tile.label;
+    std::string timezone = tile.entity.empty()
+      ? epaper_dashboard_time_state().active_timezone
+      : tile.entity;
+    return epaper_dashboard_timezone_city_label(timezone);
+  }
   if (tile.type == "weather") {
     if (epaper_dashboard_weather_forecast_card(tile)) {
       if (!tile.label.empty() && tile.label != epaper_dashboard_title_from_entity(tile.entity)) return tile.label;
@@ -1197,6 +1327,9 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
 
 inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &tile) {
   if (tile.config.empty()) return "";
+  if (tile.type == "calendar") return epaper_dashboard_calendar_value(tile);
+  if (tile.type == "clock") return epaper_dashboard_clock_value();
+  if (tile.type == "timezone") return epaper_dashboard_timezone_value(tile);
   if (epaper_dashboard_action_option_select(tile)) {
     if (tile.state_unavailable) return "--";
     if (!tile.state.empty()) return tile.state;

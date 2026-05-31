@@ -28,8 +28,13 @@ script:
             char time_text[6];
             snprintf(time_text, sizeof(time_text), "%02d:%02d", now.hour, now.minute);
             lv_label_set_text(id(display_time), time_text);
+            espcontrol::epaper_dashboard_set_time(
+              true, now.year, now.month, now.day_of_month,
+              now.hour, now.minute, now.timestamp, "UTC (GMT+0)", false);
           } else {
             lv_label_set_text(id(display_time), "--:--");
+            espcontrol::epaper_dashboard_set_time(
+              false, 0, 0, 0, 0, 0, 0, "UTC (GMT+0)", false);
           }
           lv_label_set_text(id(network_status_icon_label), "\U000F0928");
 

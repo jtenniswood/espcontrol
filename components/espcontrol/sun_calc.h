@@ -541,8 +541,8 @@ inline float utc_offset_hours_for_date(
 // Writes sunrise and sunset as local hours and minutes.
 // Returns false for polar day/night (no rise or set).
 
-static constexpr float DEG_TO_RAD = M_PI / 180.0f;
-static constexpr float RAD_TO_DEG = 180.0f / M_PI;
+static constexpr float TZ_DEG_TO_RAD = M_PI / 180.0f;
+static constexpr float TZ_RAD_TO_DEG = 180.0f / M_PI;
 
 inline bool calc_sunrise_sunset(int year, int month, int day,
                                 float lat, float lon, float tz_offset,
@@ -562,13 +562,13 @@ inline bool calc_sunrise_sunset(int year, int month, int day,
 
     float mean_anomaly = (0.9856f * t) - 3.289f;
     float sun_lon = mean_anomaly
-      + (1.916f * sinf(mean_anomaly * DEG_TO_RAD))
-      + (0.020f * sinf(2.0f * mean_anomaly * DEG_TO_RAD))
+      + (1.916f * sinf(mean_anomaly * TZ_DEG_TO_RAD))
+      + (0.020f * sinf(2.0f * mean_anomaly * TZ_DEG_TO_RAD))
       + 282.634f;
     while (sun_lon < 0) sun_lon += 360.0f;
     while (sun_lon >= 360.0f) sun_lon -= 360.0f;
 
-    float ra = RAD_TO_DEG * atanf(0.91764f * tanf(sun_lon * DEG_TO_RAD));
+    float ra = TZ_RAD_TO_DEG * atanf(0.91764f * tanf(sun_lon * TZ_DEG_TO_RAD));
     while (ra < 0) ra += 360.0f;
     while (ra >= 360.0f) ra -= 360.0f;
 
@@ -577,20 +577,20 @@ inline bool calc_sunrise_sunset(int year, int month, int day,
     ra += (l_quad - ra_quad);
     ra /= 15.0f;
 
-    float sin_dec = 0.39782f * sinf(sun_lon * DEG_TO_RAD);
+    float sin_dec = 0.39782f * sinf(sun_lon * TZ_DEG_TO_RAD);
     float cos_dec = cosf(asinf(sin_dec));
 
     float zenith = 90.833f;
-    float cos_h = (cosf(zenith * DEG_TO_RAD) - (sin_dec * sinf(lat * DEG_TO_RAD)))
-                  / (cos_dec * cosf(lat * DEG_TO_RAD));
+    float cos_h = (cosf(zenith * TZ_DEG_TO_RAD) - (sin_dec * sinf(lat * TZ_DEG_TO_RAD)))
+                  / (cos_dec * cosf(lat * TZ_DEG_TO_RAD));
 
     if (cos_h > 1.0f || cos_h < -1.0f) return false;
 
     float h;
     if (is_sunrise)
-      h = 360.0f - RAD_TO_DEG * acosf(cos_h);
+      h = 360.0f - TZ_RAD_TO_DEG * acosf(cos_h);
     else
-      h = RAD_TO_DEG * acosf(cos_h);
+      h = TZ_RAD_TO_DEG * acosf(cos_h);
     h /= 15.0f;
 
     float local_t = h + ra - (0.06571f * t) - 6.622f;
