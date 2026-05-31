@@ -412,6 +412,12 @@ inline std::string epaper_dashboard_normalize_weather_options(const std::string 
            : std::string();
 }
 
+inline std::string epaper_dashboard_normalize_date_time_options(const std::string &options) {
+  return epaper_dashboard_option_present(options, "large_numbers")
+           ? std::string("large_numbers")
+           : std::string();
+}
+
 inline int epaper_dashboard_normalize_light_temperature_bound(int value) {
   int rounded = ((value + 50) / 100) * 100;
   if (rounded < 1000) rounded = 1000;
@@ -2869,6 +2875,19 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     if (tile.sensor == "kelvin") tile.sensor.clear();
     tile.unit = epaper_dashboard_normalize_light_temperature_range(tile.unit);
     tile.options.clear();
+  }
+  if (tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone") {
+    tile.sensor.clear();
+    tile.unit.clear();
+    if (tile.type == "clock") tile.entity.clear();
+    if (tile.type == "calendar") {
+      if (tile.precision != "datetime") tile.precision.clear();
+    } else {
+      tile.precision.clear();
+    }
+    if (tile.icon.empty()) tile.icon = "Auto";
+    if (tile.icon_on.empty()) tile.icon_on = "Auto";
+    tile.options = epaper_dashboard_normalize_date_time_options(tile.options);
   }
   if (tile.type == "door_window") {
     tile.entity.clear();

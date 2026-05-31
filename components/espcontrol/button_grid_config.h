@@ -291,6 +291,12 @@ inline std::string weather_card_options_normalized(const std::string &options,
            : std::string();
 }
 
+inline std::string date_time_card_options_normalized(const std::string &options) {
+  return cfg_option_token_present(options, "large_numbers")
+           ? std::string("large_numbers")
+           : std::string();
+}
+
 inline std::string normalize_subpage_kind(const std::string &value) {
   return value == "lights" || value == "media" ||
     value == "climate" || value == "presence" ? value : "";
@@ -711,6 +717,19 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.sensor == "kelvin") p.sensor.clear();
     p.unit = normalize_light_temperature_range(p.unit);
     p.options.clear();
+  }
+  if (p.type == "calendar" || p.type == "clock" || p.type == "timezone") {
+    p.sensor.clear();
+    p.unit.clear();
+    if (p.type == "clock") p.entity.clear();
+    if (p.type == "calendar") {
+      if (p.precision != "datetime") p.precision.clear();
+    } else {
+      p.precision.clear();
+    }
+    if (p.icon.empty()) p.icon = "Auto";
+    if (p.icon_on.empty()) p.icon_on = "Auto";
+    p.options = date_time_card_options_normalized(p.options);
   }
   if (p.type == "subpage") {
     p.options = subpage_card_options_normalized(p.options, p.sensor, p.precision);

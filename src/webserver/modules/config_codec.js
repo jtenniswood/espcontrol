@@ -119,6 +119,19 @@ function normalizeButtonConfig(b) {
     b.unit = normalizeLightTemperatureRange(b.unit);
     b.options = "";
   }
+  if (b && (b.type === "calendar" || b.type === "clock" || b.type === "timezone")) {
+    b.sensor = "";
+    b.unit = "";
+    if (b.type === "clock") b.entity = "";
+    if (b.type === "calendar") {
+      if (b.precision !== "datetime") b.precision = "";
+    } else {
+      b.precision = "";
+    }
+    if (!b.icon) b.icon = "Auto";
+    if (!b.icon_on) b.icon_on = "Auto";
+    b.options = normalizeDateTimeOptions(b.options);
+  }
   if (b && b.type === "subpage") {
     applySubpagePresetConfig(b);
     b.options = normalizeSubpageOptions(b.options, b.sensor, b.precision);
@@ -661,6 +674,12 @@ function normalizeWeatherOptions(options, precision) {
     : "";
 }
 
+function normalizeDateTimeOptions(options) {
+  return configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION)
+    ? SENSOR_LARGE_NUMBERS_OPTION
+    : "";
+}
+
 function normalizeActionOptions(options) {
   var stateEntity = configOptionValue(options, ACTION_STATE_ENTITY_OPTION);
   if (!stateEntity) return "";
@@ -1037,10 +1056,14 @@ function buttonConfigFields(b) {
   var isActionOptionSelect = !!(b && (actionCardIsOptionSelect(b) || isOptionSelectType(type)));
   if (isActionOptionSelect) type = "action";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
-    (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "alarm" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+    (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" ||
+      type === "calendar" || type === "clock" || type === "timezone" ||
+      type === "alarm" || isFanCardType(type)) ? "" : (b && b.sensor || "");
   if (type === "lock" && sensor !== "lock" && sensor !== "unlock") sensor = "";
   if (type === "light_temperature" && sensor === LIGHT_TEMPERATURE_LEGACY_SENSOR) sensor = "";
-  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "lock" || type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.unit || "");
+  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" ||
+    type === "lock" || type === "calendar" || type === "clock" || type === "timezone" ||
+    type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.unit || "");
   if (type === "light_temperature") unit = normalizeLightTemperatureRange(unit);
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
@@ -1049,7 +1072,10 @@ function buttonConfigFields(b) {
   if (isFanCardType(type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(type);
   var iconOn = (isActionOptionSelect || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
-  var precision = (isActionOptionSelect || type === "light_switch" || type === "lock" || type === "alarm" || type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  var precision = (isActionOptionSelect || type === "light_switch" || type === "lock" ||
+    type === "clock" || type === "timezone" || type === "alarm" ||
+    type === "alarm_action" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  if (type === "calendar" && precision !== "datetime") precision = "";
   if (type === "media") {
     sensor = mediaEditorMode(sensor);
     precision = sensor === "now_playing"
@@ -1073,6 +1099,8 @@ function buttonConfigFields(b) {
     options = normalizeActionOptions(options);
   } else if (type === "weather") {
     options = normalizeWeatherOptions(options, precision);
+  } else if (type === "calendar" || type === "clock" || type === "timezone") {
+    options = normalizeDateTimeOptions(options);
   } else if (type === "subpage") {
     options = normalizeSubpageOptions(options, sensor, precision);
   } else if (type === "webhook" && typeof normalizeWebhookConfig === "function") {
@@ -1116,7 +1144,7 @@ function buttonConfigFields(b) {
     precision = "";
   }
   return trimConfigFields([
-    (type === "door_window" || type === "presence") ? "" : (b && b.entity || ""),
+    (type === "door_window" || type === "presence" || type === "clock") ? "" : (b && b.entity || ""),
     b && b.label || "",
     icon,
     iconOn,
