@@ -1539,7 +1539,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "cover" &&
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor)) &&
       !tile.label_configured) {
-    return "Cover";
+    return !tile.label.empty() ? tile.label : "Cover";
   }
   if (tile.type == "garage" && epaper_dashboard_garage_command_mode(tile.sensor) &&
       !tile.label_configured) {
