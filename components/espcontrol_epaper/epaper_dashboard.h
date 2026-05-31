@@ -1493,7 +1493,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
     return "Option";
   }
-  if (tile.type == "push" && tile.label.empty()) return "Trigger";
+  if (tile.type == "push" && tile.label.empty()) return "Push";
   if (tile.type == "webhook" && tile.label.empty()) return "Webhook";
   if (tile.type == "todo" && tile.label.empty()) {
     if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
