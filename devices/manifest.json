@@ -709,7 +709,7 @@
           "fr": "1fr"
         },
         "btn": {
-          "radius": 0.2,
+          "radius": 2.25,
           "padding": 1.1,
           "iconSize": 4.35,
           "labelSize": 2.55,
@@ -717,7 +717,7 @@
           "labelLinesDouble": 3
         },
         "emptyCell": {
-          "radius": 0.2
+          "radius": 2.25
         },
         "sensorBadge": {
           "top": 0.8,
