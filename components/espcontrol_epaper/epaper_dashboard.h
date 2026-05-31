@@ -808,28 +808,82 @@ inline std::string epaper_dashboard_timezone_city_label(const std::string &timez
   return city.empty() ? std::string("World Clock") : city;
 }
 
-inline std::string epaper_dashboard_calendar_value(const EpaperDashboardTile &tile) {
+inline bool epaper_dashboard_parse_calendar_date(const std::string &value,
+                                                 int &day, int &month) {
+  if (value.length() >= 10 &&
+      std::isdigit(static_cast<unsigned char>(value[0])) &&
+      std::isdigit(static_cast<unsigned char>(value[1])) &&
+      std::isdigit(static_cast<unsigned char>(value[2])) &&
+      std::isdigit(static_cast<unsigned char>(value[3])) &&
+      value[4] == '-' &&
+      std::isdigit(static_cast<unsigned char>(value[5])) &&
+      std::isdigit(static_cast<unsigned char>(value[6])) &&
+      value[7] == '-' &&
+      std::isdigit(static_cast<unsigned char>(value[8])) &&
+      std::isdigit(static_cast<unsigned char>(value[9]))) {
+    month = (value[5] - '0') * 10 + (value[6] - '0');
+    day = (value[8] - '0') * 10 + (value[9] - '0');
+    return day >= 1 && day <= 31 && month >= 1 && month <= 12;
+  }
+  if (value.length() >= 10 &&
+      std::isdigit(static_cast<unsigned char>(value[0])) &&
+      std::isdigit(static_cast<unsigned char>(value[1])) &&
+      (value[2] == '/' || value[2] == '-') &&
+      std::isdigit(static_cast<unsigned char>(value[3])) &&
+      std::isdigit(static_cast<unsigned char>(value[4])) &&
+      (value[5] == '/' || value[5] == '-') &&
+      std::isdigit(static_cast<unsigned char>(value[6])) &&
+      std::isdigit(static_cast<unsigned char>(value[7])) &&
+      std::isdigit(static_cast<unsigned char>(value[8])) &&
+      std::isdigit(static_cast<unsigned char>(value[9]))) {
+    day = (value[0] - '0') * 10 + (value[1] - '0');
+    month = (value[3] - '0') * 10 + (value[4] - '0');
+    return day >= 1 && day <= 31 && month >= 1 && month <= 12;
+  }
+  return false;
+}
+
+inline bool epaper_dashboard_calendar_date(const EpaperDashboardTile &tile,
+                                           int &day, int &month) {
+  if (!tile.state_unavailable && epaper_dashboard_parse_calendar_date(tile.state, day, month)) {
+    return true;
+  }
   const auto &time = epaper_dashboard_time_state();
   if (!time.valid || time.day < 1 || time.day > 31 ||
-      time.month < 1 || time.month > 12) return "--";
+      time.month < 1 || time.month > 12) return false;
+  day = time.day;
+  month = time.month;
+  return true;
+}
+
+inline std::string epaper_dashboard_calendar_value(const EpaperDashboardTile &tile) {
+  const auto &time = epaper_dashboard_time_state();
   if (tile.precision == "datetime") {
+    if (!time.valid || time.day < 1 || time.day > 31 ||
+        time.month < 1 || time.month > 12) return "--";
     return epaper_dashboard_format_time(time.hour, time.minute, time.use_12h);
   }
+  int day = 0;
+  int month = 0;
+  if (!epaper_dashboard_calendar_date(tile, day, month)) return "--";
   char buf[8];
-  snprintf(buf, sizeof(buf), "%d", time.day);
+  snprintf(buf, sizeof(buf), "%d", day);
   return buf;
 }
 
 inline std::string epaper_dashboard_calendar_label(const EpaperDashboardTile &tile) {
   const auto &time = epaper_dashboard_time_state();
-  if (!time.valid || time.day < 1 || time.day > 31 ||
-      time.month < 1 || time.month > 12) return "Date";
   if (tile.precision == "datetime") {
+    if (!time.valid || time.day < 1 || time.day > 31 ||
+        time.month < 1 || time.month > 12) return "Date";
     char buf[32];
     snprintf(buf, sizeof(buf), "%d %s", time.day, epaper_dashboard_month_name(time.month));
     return buf;
   }
-  return epaper_dashboard_month_name(time.month);
+  int day = 0;
+  int month = 0;
+  if (!epaper_dashboard_calendar_date(tile, day, month)) return "Date";
+  return epaper_dashboard_month_name(month);
 }
 
 inline std::string epaper_dashboard_clock_value() {
