@@ -2505,6 +2505,8 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   if (tile.type == "todo") return "";
   if (tile.type == "climate") return "";
   if (tile.type == "alarm") return "";
+  if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)) return "";
+  if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor)) return "";
   if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
   if (tile.type == "cover" &&
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor))) {
@@ -2635,6 +2637,14 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (!tile.label_configured && !tile.friendly_name.empty() &&
       !epaper_dashboard_friendly_label_source(tile).empty()) {
     return tile.friendly_name;
+  }
+  if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor) &&
+      !tile.label_configured && tile.label.empty()) {
+    return "Garage Door";
+  }
+  if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor) &&
+      !tile.label_configured && tile.label.empty()) {
+    return "Lock";
   }
   if (epaper_dashboard_option_select_card(tile) && tile.label.empty()) {
     if (!tile.entity.empty()) return tile.entity;
