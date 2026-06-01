@@ -227,9 +227,10 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     ), "TRMNL text sensor cards must use the normal text sensor display limit"
     assert (
         "constexpr size_t EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN = 32;" in epaper and
+        "inline size_t epaper_dashboard_state_text_max_len(const EpaperDashboardTile &tile)" in epaper and
         "tile.state = epaper_dashboard_string_ref_limited(\n"
-        "              state, EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN);" in epaper
-    ), "TRMNL entity state cards must use the normal short state display limit"
+        "              state, epaper_dashboard_state_text_max_len(tile));" in epaper
+    ), "TRMNL entity state cards must use card-aware normal state display limits"
     assert epaper.count(
         "? epaper_dashboard_string_ref_limited(state, EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN)"
     ) >= 2, "TRMNL media now-playing title and artist must use the normal metadata text limit"
@@ -343,6 +344,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  }'
         in epaper
     ), "TRMNL option-select cards must put the selected option in the value area like normal cards"
+    assert (
+        'return epaper_dashboard_option_select_card(tile)\n'
+        '           ? EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN\n'
+        '           : EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN;'
+        in epaper
+    ), "TRMNL option-select values must use the normal full state text limit"
     assert (
         'if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;'
         in epaper

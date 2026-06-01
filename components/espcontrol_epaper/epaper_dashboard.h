@@ -2233,6 +2233,12 @@ inline std::string epaper_dashboard_state_source(const EpaperDashboardTile &tile
   return tile.entity;
 }
 
+inline size_t epaper_dashboard_state_text_max_len(const EpaperDashboardTile &tile) {
+  return epaper_dashboard_option_select_card(tile)
+           ? EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN
+           : EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN;
+}
+
 inline std::string epaper_dashboard_action_state_precision(const EpaperDashboardTile &tile) {
   return tile.type == "action" ? epaper_dashboard_option_value(tile.options, "state_precision") : "";
 }
@@ -3161,7 +3167,7 @@ inline void epaper_dashboard_subscribe(int index) {
         state_source, {}, [index](esphome::StringRef state) {
           auto &tile = epaper_dashboard_tiles()[index];
           tile.state = epaper_dashboard_string_ref_limited(
-              state, EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN);
+              state, epaper_dashboard_state_text_max_len(tile));
           tile.state_unavailable = epaper_dashboard_state_unavailable(tile.state);
           epaper_dashboard_mark_dirty();
         });
