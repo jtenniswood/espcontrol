@@ -354,6 +354,14 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  }'
         in epaper
     ), "TRMNL must run the same final unsupported-options cleanup as normal cards"
+    assert (
+        'return tile.type == "clock" && epaper_dashboard_card_large_numbers(tile) &&\n'
+        '         row_span == 1 && col_span == 2;'
+        in epaper and
+        'lv_align_t value_align = epaper_dashboard_wide_large_clock_card(tile, row_span, col_span)\n'
+        '          ? LV_ALIGN_LEFT_MID'
+        in epaper
+    ), "TRMNL wide large-number clock cards must use the normal left-middle value placement"
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:

@@ -2359,6 +2359,12 @@ inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile)
   return false;
 }
 
+inline bool epaper_dashboard_wide_large_clock_card(const EpaperDashboardTile &tile,
+                                                   int row_span, int col_span) {
+  return tile.type == "clock" && epaper_dashboard_card_large_numbers(tile) &&
+         row_span == 1 && col_span == 2;
+}
+
 inline bool epaper_dashboard_media_now_playing_progress_card(const EpaperDashboardTile &tile) {
   return tile.type == "media" && tile.sensor == "now_playing" &&
          tile.precision == "progress";
@@ -3061,7 +3067,10 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
         } else {
           lv_obj_set_width(slot.sensor_container, LV_SIZE_CONTENT);
         }
-        lv_obj_align(slot.sensor_container, value_replaces_icon ? LV_ALIGN_TOP_LEFT : LV_ALIGN_TOP_RIGHT, 0, 0);
+        lv_align_t value_align = epaper_dashboard_wide_large_clock_card(tile, row_span, col_span)
+          ? LV_ALIGN_LEFT_MID
+          : (value_replaces_icon ? LV_ALIGN_TOP_LEFT : LV_ALIGN_TOP_RIGHT);
+        lv_obj_align(slot.sensor_container, value_align, 0, 0);
       } else {
         lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN);
       }
