@@ -2546,7 +2546,9 @@ inline int epaper_dashboard_light_temperature_percent(const EpaperDashboardTile 
 inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) {
   if (tile.state_unavailable) return 0;
   if ((tile.type == "light_brightness" || tile.type == "slider" ||
-       tile.type == "fan_speed" || tile.type == "light_temperature") &&
+       tile.type == "fan_speed") &&
+      !tile.state.empty() && !epaper_dashboard_state_active(tile.state)) return 0;
+  if (tile.type == "light_temperature" &&
       !epaper_dashboard_state_active(tile.state)) return 0;
   if ((tile.type == "light_brightness" || tile.type == "slider") &&
       !tile.sensor_value.empty()) return epaper_dashboard_light_brightness_percent(tile.sensor_value);

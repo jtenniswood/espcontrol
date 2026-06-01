@@ -392,6 +392,17 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL brightness and slider cards must discard unsupported saved options like normal cards"
     assert (
+        'if ((tile.type == "light_brightness" || tile.type == "slider" ||\n'
+        '       tile.type == "fan_speed") &&\n'
+        '      !tile.state.empty() && !epaper_dashboard_state_active(tile.state)) return 0;'
+        in epaper
+    ), "TRMNL brightness and fan tracks must accept attribute values before the on/off state arrives"
+    assert (
+        'if (tile.type == "light_temperature" &&\n'
+        '      !epaper_dashboard_state_active(tile.state)) return 0;'
+        in epaper
+    ), "TRMNL light-temperature tracks must still wait for an active light state like normal cards"
+    assert (
         'if (!tile.type.empty() && tile.type != "action" && tile.type != "alarm" &&\n'
         '      tile.type != "alarm_action" && tile.type != "climate" &&\n'
         '      tile.type != "garage" && tile.type != "webhook" && tile.type != "todo" &&\n'
