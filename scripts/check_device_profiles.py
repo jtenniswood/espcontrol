@@ -380,6 +380,18 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL unavailable-state detection must match normal cards for blank, unknown, and unavailable states"
     assert (
+        'inline bool epaper_dashboard_entity_accepts_unknown_state(const std::string &entity_id) {\n'
+        '  return (entity_id.size() > 7 && entity_id.compare(0, 7, "button.") == 0) ||\n'
+        '         (entity_id.size() > 13 && entity_id.compare(0, 13, "input_button.") == 0);\n'
+        '}'
+        in epaper and
+        'tile.sensor_unavailable = !tile.action_state_entity.empty()\n'
+        '              ? epaper_dashboard_entity_state_unavailable(\n'
+        '                    tile.action_state_entity, tile.sensor_value)\n'
+        '              : epaper_dashboard_state_unavailable(tile.sensor_value);'
+        in epaper
+    ), "TRMNL action state cards must allow unknown button/input_button states like normal cards"
+    assert (
         'inline bool epaper_dashboard_state_active(const std::string &value) {\n'
         '  std::string state = epaper_dashboard_normalized_state_text(value);\n'
         '  return state == "on" || state == "true" || state == "1" ||'

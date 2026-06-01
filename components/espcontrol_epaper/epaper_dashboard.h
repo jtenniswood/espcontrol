@@ -462,6 +462,19 @@ inline bool epaper_dashboard_state_unavailable(const std::string &value) {
   return state.empty() || state == "unavailable" || state == "unknown";
 }
 
+inline bool epaper_dashboard_entity_accepts_unknown_state(const std::string &entity_id) {
+  return (entity_id.size() > 7 && entity_id.compare(0, 7, "button.") == 0) ||
+         (entity_id.size() > 13 && entity_id.compare(0, 13, "input_button.") == 0);
+}
+
+inline bool epaper_dashboard_entity_state_unavailable(const std::string &entity_id,
+                                                      const std::string &value) {
+  std::string state = epaper_dashboard_normalized_state_text(value);
+  if (state.empty() || state == "unavailable") return true;
+  if (state == "unknown") return !epaper_dashboard_entity_accepts_unknown_state(entity_id);
+  return false;
+}
+
 inline std::string epaper_dashboard_option_value(const std::string &options, const char *name) {
   if (!name || !*name || options.empty()) return "";
   std::string prefix = std::string(name) + "=";
@@ -3212,7 +3225,10 @@ inline void epaper_dashboard_subscribe(int index) {
         sensor_source, {}, [index](esphome::StringRef state) {
           auto &tile = epaper_dashboard_tiles()[index];
           tile.sensor_value = std::string(state.c_str(), state.size());
-          tile.sensor_unavailable = epaper_dashboard_state_unavailable(tile.sensor_value);
+          tile.sensor_unavailable = !tile.action_state_entity.empty()
+              ? epaper_dashboard_entity_state_unavailable(
+                    tile.action_state_entity, tile.sensor_value)
+              : epaper_dashboard_state_unavailable(tile.sensor_value);
           epaper_dashboard_mark_dirty();
         });
   } else if (!attribute_entity.empty() && !attribute.empty() && !tile.sensor_subscribed) {
