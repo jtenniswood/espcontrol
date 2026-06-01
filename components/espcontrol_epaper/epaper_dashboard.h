@@ -2750,6 +2750,7 @@ inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardT
       epaper_dashboard_option_value(tile.options, "label_display") != "name") {
     return "";
   }
+  if (tile.type == "alarm" && !tile.entity.empty()) return tile.entity;
   if (tile.type == "fan_direction" || tile.type == "fan_preset") return "";
   if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;
   if (tile.type.empty() && !tile.entity.empty()) return tile.entity;

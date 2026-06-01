@@ -165,6 +165,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (tile.type == "cover" &&\n      (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor)) &&\n      !tile.label_configured) {\n    if (!tile.friendly_name.empty()) return tile.friendly_name;' in epaper, (
         "TRMNL cover command/toggle cards must use HA friendly names like normal cards when no custom label is set"
     )
+    assert 'if (tile.type == "alarm" && !tile.entity.empty()) return tile.entity;' in epaper, (
+        "TRMNL alarm name-label cards must use HA friendly names like normal cards when no custom label is set"
+    )
     assert "espcontrol::epaper_dashboard_set_order(id(button_order).state);" in (
         ROOT / "devices" / "trmnl-75-og" / "device" / "sensors.yaml"
     ).read_text(encoding="utf-8"), (
