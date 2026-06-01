@@ -102,6 +102,25 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
 
 
+def test_trmnl_epaper_card_text_sizing() -> None:
+    """Keep the TRMNL physical card text and generated preview sizing in step."""
+    manifest = read_json(ROOT / "devices" / "manifest.json")
+    trmnl = manifest["devices"]["trmnl-75-og"]
+    btn = trmnl["web"]["layout"]["btn"]
+    assert btn["valueSize"] >= 13.8, "TRMNL web preview sensor values regressed to smaller text"
+    assert btn["labelSize"] >= 7.6, "TRMNL web preview card labels regressed to smaller text"
+
+    tile = (ROOT / "devices" / "trmnl-75-og" / "device" / "trmnl_tile_widget.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "id: trmnl_tile_${num}_value" in tile and "transform_scale: 2.3" in tile, (
+        "TRMNL physical sensor value text regressed to a smaller scale"
+    )
+    assert "id: trmnl_tile_${num}_label" in tile and "transform_scale: 2.55" in tile, (
+        "TRMNL physical card label text regressed to a smaller scale"
+    )
+
+
 def test_setup_icon_glyphs() -> None:
     glyphs = (ROOT / "common" / "assets" / "icon_glyphs.yaml").read_text(encoding="utf-8")
     for glyph, icon_name in REQUIRED_SETUP_ICON_GLYPHS.items():
