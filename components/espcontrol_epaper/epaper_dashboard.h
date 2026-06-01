@@ -504,8 +504,13 @@ inline bool epaper_dashboard_option_present(const std::string &options, const ch
 }
 
 inline bool epaper_dashboard_todo_card_show_count(const EpaperDashboardTile &tile) {
+#if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO
+  (void) tile;
+  return false;
+#else
   return tile.type == "todo" &&
          epaper_dashboard_option_value(tile.options, "count_display") != "icon";
+#endif
 }
 
 inline bool epaper_dashboard_alarm_action_mode_valid(const std::string &mode);
@@ -2276,6 +2281,9 @@ inline std::string epaper_dashboard_state_source(const EpaperDashboardTile &tile
   }
   if (tile.type == "push" || tile.type == "webhook") return "";
   if (tile.type == "internal") return "";
+#if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO
+  if (tile.type == "todo") return "";
+#endif
   return tile.entity;
 }
 
@@ -2864,7 +2872,11 @@ inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardT
       tile.type == "alarm_action" || tile.type == "media") {
     return "";
   }
+#if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO
+  if (tile.type == "todo") return "";
+#else
   if (tile.type == "todo" && !tile.entity.empty()) return tile.entity;
+#endif
   if (tile.type == "action" && !epaper_dashboard_option_select_card(tile)) return "";
   if (tile.type == "garage" && epaper_dashboard_garage_command_mode(tile.sensor)) return "";
   if (tile.type == "garage" &&
@@ -3022,9 +3034,13 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return "Webhook";
   }
   if (tile.type == "todo" && tile.label.empty()) {
+#if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO
+    return "Todo";
+#else
     if (!tile.friendly_name.empty()) return tile.friendly_name;
     if (!tile.entity.empty()) return tile.entity;
     return "Todo";
+#endif
   }
   if (tile.type == "internal" && tile.label.empty()) {
     if (!tile.entity.empty()) return epaper_dashboard_sentence_cap_text(tile.entity);

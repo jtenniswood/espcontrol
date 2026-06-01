@@ -619,6 +619,28 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL todo counts must not invert the card when the count is 1"
     assert (
+        "#if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO\n"
+        "  (void) tile;\n"
+        "  return false;\n"
+        "#else\n"
+        '  return tile.type == "todo" &&' in epaper
+    ), "TRMNL must not render disabled Todo cards as live count cards"
+    assert (
+        "#if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO\n"
+        '  if (tile.type == "todo") return "";\n'
+        "#endif\n"
+        "  return tile.entity;" in epaper
+    ), "TRMNL disabled Todo cards must not subscribe to Todo entity state"
+    assert (
+        "#if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO\n"
+        '  if (tile.type == "todo") return "";\n'
+        "#else\n"
+        '  if (tile.type == "todo" && !tile.entity.empty()) return tile.entity;' in epaper and
+        'if (tile.type == "todo" && tile.label.empty()) {\n'
+        '#if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO\n'
+        '    return "Todo";' in epaper
+    ), "TRMNL disabled Todo cards must keep the static normal-device label behavior"
+    assert (
         'if (epaper_dashboard_option_select_card(tile)) {\n'
         '    return find_icon("Chevron Down");\n'
         '  }'
