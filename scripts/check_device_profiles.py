@@ -380,6 +380,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (tile.type == "cover") return find_icon("Blinds Horizontal");' in epaper, (
         "TRMNL cover cards must use the same preview badge as the web editor"
     )
+    assert (
+        'if (tile.type == "cover" && epaper_dashboard_cover_toggle_mode(tile.sensor) &&\n'
+        '      (tile.state == "opening" || tile.state == "closing")) {\n'
+        '    return epaper_dashboard_pretty_state(tile.state);\n'
+        '  }' in epaper
+    ), "TRMNL cover toggle cards must show movement statuses like normal cards"
     assert 'if (tile.type == "media" &&\n      (tile.sensor == "play_pause" || tile.sensor == "position") &&\n      tile.precision == "state") {' in epaper, (
         "TRMNL media state-display cards must put the playback state in the label like normal cards"
     )

@@ -2387,7 +2387,7 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   if (tile.type == "media") {
     return !tile.state_unavailable &&
            (tile.sensor == "play_pause" ||
-            epaper_dashboard_media_now_playing_play_pause_card(tile)) &&
+            (tile.sensor == "now_playing" && tile.precision == "play_pause")) &&
            epaper_dashboard_normalized_state_text(tile.state) == "playing";
   }
   if (tile.type == "sensor") {
@@ -2899,6 +2899,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "presence" && !tile.label_configured) {
     if (!tile.friendly_name.empty()) return tile.friendly_name;
     return "Presence";
+  }
+  if (tile.type == "cover" && epaper_dashboard_cover_toggle_mode(tile.sensor) &&
+      (tile.state == "opening" || tile.state == "closing")) {
+    return epaper_dashboard_pretty_state(tile.state);
   }
   if (tile.type == "cover" &&
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor)) &&
