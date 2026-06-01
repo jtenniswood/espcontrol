@@ -628,6 +628,16 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (epaper_dashboard_action_state_icon_card(tile) ||\n        epaper_dashboard_action_state_text_card(tile)) show_value = false;' in epaper, (
         "TRMNL action icon/text state cards must keep the icon/label presentation used by normal cards"
     )
+    assert (
+        'return precision == "text" ||\n'
+        '         (precision.empty() && epaper_dashboard_option_value(tile.options, "state_unit").empty());'
+        in epaper
+    ), "TRMNL action text-state cards must ignore the action value field and only use state_unit like normal cards"
+    assert (
+        'return precision == "0" || precision == "1" || precision == "2" ||\n'
+        '         !epaper_dashboard_option_value(tile.options, "state_unit").empty();'
+        in epaper
+    ), "TRMNL action numeric-state cards must use the configured state_unit, not the action value field"
     assert 'if (epaper_dashboard_action_state_numeric_card(tile)) return "--";' in epaper, (
         "TRMNL action numeric state cards must use the normal numeric placeholder while waiting for values"
     )

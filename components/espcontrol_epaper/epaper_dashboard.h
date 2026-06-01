@@ -2309,13 +2309,15 @@ inline bool epaper_dashboard_action_state_icon_card(const EpaperDashboardTile &t
 inline bool epaper_dashboard_action_state_text_card(const EpaperDashboardTile &tile) {
   if (!epaper_dashboard_action_state_display_enabled(tile)) return false;
   std::string precision = epaper_dashboard_action_state_precision(tile);
-  return precision == "text" || (precision.empty() && tile.unit.empty());
+  return precision == "text" ||
+         (precision.empty() && epaper_dashboard_option_value(tile.options, "state_unit").empty());
 }
 
 inline bool epaper_dashboard_action_state_numeric_card(const EpaperDashboardTile &tile) {
   if (!epaper_dashboard_action_state_display_enabled(tile)) return false;
   std::string precision = epaper_dashboard_action_state_precision(tile);
-  return precision == "0" || precision == "1" || precision == "2" || !tile.unit.empty();
+  return precision == "0" || precision == "1" || precision == "2" ||
+         !epaper_dashboard_option_value(tile.options, "state_unit").empty();
 }
 
 inline bool epaper_dashboard_active_color_enabled(const EpaperDashboardTile &tile) {
