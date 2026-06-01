@@ -211,11 +211,29 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '    if (tile.state.empty()) return "--";\n'
         '    return epaper_dashboard_pretty_state(tile.state);\n'
         '  }\n'
+        '  if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor) &&\n'
+        '      !tile.state.empty() && !epaper_dashboard_garage_state_releases_label(tile.state)) {\n'
+        '    return epaper_dashboard_pretty_state(tile.state);\n'
+        '  }\n'
         '  if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)'
     )
     assert garage_status in epaper, (
-        "TRMNL garage status cards must show unavailable/unknown statuses like normal cards"
+        "TRMNL garage status cards must show transition/error statuses like normal cards"
     )
+    assert (
+        'inline bool epaper_dashboard_lock_state_releases_label(const std::string &state) {\n'
+        '  return state == "locked" || state == "unlocked" || state == "open";\n'
+        '}' in epaper and
+        'if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor) &&\n'
+        '      !tile.state.empty() && !epaper_dashboard_lock_state_releases_label(tile.state)) {\n'
+        '    return epaper_dashboard_pretty_state(tile.state);\n'
+        '  }' in epaper
+    ), "TRMNL lock status cards must show transition/error statuses like normal cards"
+    assert (
+        'inline bool epaper_dashboard_garage_state_releases_label(const std::string &state) {\n'
+        '  return state == "open" || state == "closed";\n'
+        '}' in epaper
+    ), "TRMNL garage label release states must match normal cards"
     action_text = (
         'if (epaper_dashboard_action_state_text_card(tile)) {\n'
         '    if (!tile.sensor_value.empty()) {\n'

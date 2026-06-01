@@ -1750,6 +1750,10 @@ inline bool epaper_dashboard_garage_state_uses_open_icon(const std::string &stat
   return state == "open" || state == "opening";
 }
 
+inline bool epaper_dashboard_garage_state_releases_label(const std::string &state) {
+  return state == "open" || state == "closed";
+}
+
 inline bool epaper_dashboard_cover_toggle_mode(const std::string &mode) {
   return mode == "toggle";
 }
@@ -1762,6 +1766,10 @@ inline bool epaper_dashboard_lock_state_active(const std::string &state) {
   return state == "unlocked" || state == "unlocking" ||
          state == "open" || state == "opening" ||
          state == "jammed";
+}
+
+inline bool epaper_dashboard_lock_state_releases_label(const std::string &state) {
+  return state == "locked" || state == "unlocked" || state == "open";
 }
 
 inline const char *epaper_dashboard_alarm_action_icon(const std::string &mode) {
@@ -2918,8 +2926,16 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return epaper_dashboard_pretty_state(tile.state);
   }
   if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor) &&
+      !tile.state.empty() && !epaper_dashboard_garage_state_releases_label(tile.state)) {
+    return epaper_dashboard_pretty_state(tile.state);
+  }
+  if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor) &&
       !tile.label_configured && tile.label.empty()) {
     return "Garage Door";
+  }
+  if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor) &&
+      !tile.state.empty() && !epaper_dashboard_lock_state_releases_label(tile.state)) {
+    return epaper_dashboard_pretty_state(tile.state);
   }
   if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor) &&
       !tile.label_configured && tile.label.empty()) {
