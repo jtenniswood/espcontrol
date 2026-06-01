@@ -307,6 +307,11 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (epaper_dashboard_action_state_numeric_card(tile)) return "--";' in epaper, (
         "TRMNL action numeric state cards must use the normal numeric placeholder while waiting for values"
     )
+    assert (
+        'std::string state = epaper_dashboard_normalized_state_text(value);\n'
+        '  return state.empty() || state == "unavailable" || state == "unknown";'
+        in epaper
+    ), "TRMNL unavailable-state detection must match normal cards for blank, unknown, and unavailable states"
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:

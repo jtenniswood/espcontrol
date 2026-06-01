@@ -453,12 +453,13 @@ inline bool epaper_dashboard_state_active(const std::string &value) {
          s == "home" || s == "playing";
 }
 
-inline bool epaper_dashboard_state_unavailable(const std::string &value) {
-  return value == "unavailable" || value == "unknown";
-}
-
 inline std::string epaper_dashboard_normalized_state_text(const std::string &value);
 inline std::string epaper_dashboard_climate_number_mode(const EpaperDashboardTile &tile);
+
+inline bool epaper_dashboard_state_unavailable(const std::string &value) {
+  std::string state = epaper_dashboard_normalized_state_text(value);
+  return state.empty() || state == "unavailable" || state == "unknown";
+}
 
 inline std::string epaper_dashboard_option_value(const std::string &options, const char *name) {
   if (!name || !*name || options.empty()) return "";
