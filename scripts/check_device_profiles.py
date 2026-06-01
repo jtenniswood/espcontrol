@@ -138,6 +138,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "inline void epaper_dashboard_set_order(const std::string &order_str)" in epaper, (
         "TRMNL must read the normal web editor button order instead of using fixed slot order"
     )
+    assert "constexpr int EPAPER_DASHBOARD_PAGE_SLOTS = 12;" in epaper, (
+        "TRMNL physical dashboard must match the normal 4x3 web editor slot count"
+    )
+    assert "constexpr int EPAPER_DASHBOARD_PAGES = 1;" in epaper, (
+        "TRMNL must use the normal single dashboard instead of hidden e-paper-only pages"
+    )
     assert "LV_GRID_ALIGN_STRETCH, col, col_span," in epaper and "LV_GRID_ALIGN_STRETCH, row, row_span" in epaper, (
         "TRMNL must apply normal wide/tall/large card spans on the physical e-paper grid"
     )
