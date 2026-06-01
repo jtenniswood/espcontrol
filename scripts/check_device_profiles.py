@@ -321,6 +321,13 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL climate temperature cards must use the normal full temperature unit only when a value is shown"
     assert (
+        'std::string unit = tile.unit.empty()\n'
+        '        ? std::string(display_temperature_unit_symbol())\n'
+        '        : epaper_dashboard_trim(tile.unit);\n'
+        '      return value + unit;'
+        in epaper
+    ), "TRMNL climate actual/target labels must include the temperature unit like normal cards and the web preview"
+    assert (
         'inline std::string epaper_dashboard_climate_actual_value(const EpaperDashboardTile &tile) {\n'
         '  if (tile.state_unavailable) return "--";' in epaper and
         'inline std::string epaper_dashboard_climate_target_value(const EpaperDashboardTile &tile) {\n'

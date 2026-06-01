@@ -3036,7 +3036,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
         ? epaper_dashboard_climate_actual_value(tile)
         : epaper_dashboard_climate_target_value(tile);
       if (value.empty() || value == "--") return "--";
-      return value + epaper_dashboard_display_unit(tile);
+      std::string unit = tile.unit.empty()
+        ? std::string(display_temperature_unit_symbol())
+        : epaper_dashboard_trim(tile.unit);
+      return value + unit;
     }
     if (tile.label.empty()) return "Climate";
   }
