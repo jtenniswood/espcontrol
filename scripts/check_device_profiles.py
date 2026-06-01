@@ -355,6 +355,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL fan cards must honor configured icons and fan-switch on icons like normal cards"
     assert (
+        'std::string icon = active && !tile.icon_on.empty() && tile.icon_on != "Auto" ? tile.icon_on : tile.icon;'
+        in epaper and
+        'if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());'
+        in epaper
+    ), "TRMNL icon-style cards must honor configured off/on icons before using default icons"
+    assert (
         'if (epaper_dashboard_cover_command_mode(tile.sensor)) {\n'
         '      if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());\n'
         '      return find_icon("Blinds");\n'
