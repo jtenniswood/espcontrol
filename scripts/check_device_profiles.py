@@ -223,7 +223,8 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     )
     assert (
         "constexpr size_t EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN = 256;" in epaper and
-        "size_t max_len = EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN" in epaper
+        "size_t max_len = EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN" in epaper and
+        "if (ch == '\\r' && i + 1 < len && value[i + 1] == '\\n') continue;" in epaper
     ), "TRMNL text sensor cards must use the normal text sensor display limit"
     assert (
         "constexpr size_t EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN = 32;" in epaper and

@@ -1168,6 +1168,7 @@ inline std::string epaper_dashboard_text_sensor_display_text(
     char ch = value[i];
     unsigned char c = static_cast<unsigned char>(ch);
     if (ch == '\r' || ch == '\n') {
+      if (ch == '\r' && i + 1 < len && value[i + 1] == '\n') continue;
       if (!out.empty() && out.back() == ' ') out.pop_back();
       if (!out.empty() && out.back() != '\n') out.push_back('\n');
       cap_next = true;
