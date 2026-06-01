@@ -168,9 +168,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         "TRMNL dashboard sync must pass the web editor button_order into the e-paper renderer"
     )
     assert (
-        'if (tile.type == "fan_switch" || tile.type == "fan_oscillate") return "";'
+        'if ((tile.type == "fan_switch" || tile.type == "fan_oscillate") &&\n'
+        '        !tile.label_configured && !tile.friendly_name.empty()) {\n'
+        '      return tile.friendly_name;\n'
+        '    }'
         in epaper
-    ), "TRMNL fan switch/oscillation cards must keep normal default labels instead of HA friendly names"
+    ), "TRMNL fan switch/oscillation cards must use HA friendly names like normal cards when no custom label is set"
     assert "return epaper_dashboard_trim(tile.unit);" in epaper, (
         "TRMNL card units must be trimmed the same way normal LVGL cards trim unit labels"
     )
