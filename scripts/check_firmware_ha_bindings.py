@@ -256,6 +256,15 @@ def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]
         or "native_temperature_unit" not in text
     ):
         errors.append(f"{rel}: accept native Home Assistant forecast temperature fields and units")
+    if (
+        "max_temperature" not in text
+        or "temperature_max" not in text
+        or "max_temp" not in text
+        or "min_temperature" not in text
+        or "temperature_min" not in text
+        or "min_temp" not in text
+    ):
+        errors.append(f"{rel}: accept max/min weather forecast temperature field aliases")
     if "item_unit" not in text or "today['temperature_unit']" not in text or "tomorrow['native_temperature_unit']" not in text:
         errors.append(f"{rel}: preserve forecast temperature units from individual forecast items")
     if "parse_weather_forecast_temp" in text and "std::isfinite(parsed)" not in text:
