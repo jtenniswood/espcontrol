@@ -107,16 +107,16 @@ def test_trmnl_epaper_card_text_sizing() -> None:
     manifest = read_json(ROOT / "devices" / "manifest.json")
     trmnl = manifest["devices"]["trmnl-75-og"]
     btn = trmnl["web"]["layout"]["btn"]
-    assert btn["valueSize"] >= 13.8, "TRMNL web preview sensor values regressed to smaller text"
-    assert btn["labelSize"] >= 7.6, "TRMNL web preview card labels regressed to smaller text"
+    assert btn["valueSize"] >= 15, "TRMNL web preview sensor values regressed to smaller text"
+    assert btn["labelSize"] >= 8.2, "TRMNL web preview card labels regressed to smaller text"
 
     tile = (ROOT / "devices" / "trmnl-75-og" / "device" / "trmnl_tile_widget.yaml").read_text(
         encoding="utf-8"
     )
-    assert "id: trmnl_tile_${num}_value" in tile and "transform_scale: 2.3" in tile, (
+    assert "id: trmnl_tile_${num}_value" in tile and "transform_scale: 2.5" in tile, (
         "TRMNL physical sensor value text regressed to a smaller scale"
     )
-    assert "id: trmnl_tile_${num}_label" in tile and "transform_scale: 2.55" in tile, (
+    assert "id: trmnl_tile_${num}_label" in tile and "transform_scale: 2.75" in tile, (
         "TRMNL physical card label text regressed to a smaller scale"
     )
 
