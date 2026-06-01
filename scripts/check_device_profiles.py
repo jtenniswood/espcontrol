@@ -132,6 +132,7 @@ def test_trmnl_epaper_icon_literals() -> None:
 
 def test_trmnl_epaper_card_parity_guards() -> None:
     epaper = (ROOT / "components" / "espcontrol_epaper" / "epaper_dashboard.h").read_text(encoding="utf-8")
+    normal_config = (ROOT / "components" / "espcontrol" / "button_grid_config.h").read_text(encoding="utf-8")
     web_card_types = sorted({
         match.group(1)
         for path in (ROOT / "src" / "webserver" / "types").glob("*.js")
@@ -604,6 +605,39 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  }'
         in epaper
     ), "TRMNL must run the same final unsupported-options cleanup as normal cards"
+    shared_normalization_guards = {
+        "media options only keep volume_max for volume cards": (
+            'if (mode != "volume" && mode != "position") return "";',
+            'if (mode != "volume" && mode != "position") return "";',
+        ),
+        "switch large numbers require a numeric active-display sensor": (
+            'if (!sensor.empty() && precision != "text" && cfg_option_token_present(options, "large_numbers"))',
+            'if (!sensor.empty() && precision != "text" &&\n      epaper_dashboard_option_present(options, "large_numbers"))',
+        ),
+        "sensor text mode keeps state label translations": (
+            'if (precision == "text" && cfg_option_token_present(options, SENSOR_STATE_LABELS_OPTION))',
+            'if (precision == "text" && epaper_dashboard_option_present(options, "state_labels"))',
+        ),
+        "weather large numbers only apply to forecast modes": (
+            'return (precision == "today" || precision == "tomorrow") &&\n         cfg_option_token_present(options, "large_numbers")',
+            'return (precision == "today" || precision == "tomorrow") &&\n         epaper_dashboard_option_present(options, "large_numbers")',
+        ),
+        "todo large numbers require count display": (
+            'if (show_count && cfg_option_token_present(options, "large_numbers"))',
+            'if (show_count && epaper_dashboard_option_present(options, "large_numbers"))',
+        ),
+        "action state options are dropped without a state entity": (
+            'std::string state_entity = cfg_option_value(options, "state_entity");\n  if (state_entity.empty()) return "";',
+            'std::string state_entity = epaper_dashboard_option_value(options, "state_entity");\n  if (state_entity.empty()) return "";',
+        ),
+        "climate large numbers are removed in icon mode": (
+            'if (number_display != "icon" && cfg_option_token_present(options, "large_numbers"))',
+            'if (number_display != "icon" && epaper_dashboard_option_present(options, "large_numbers"))',
+        ),
+    }
+    for rule, (normal_snippet, epaper_snippet) in shared_normalization_guards.items():
+        assert normal_snippet in normal_config, f"normal device card normalisation guard missing: {rule}"
+        assert epaper_snippet in epaper, f"TRMNL card normalisation guard missing: {rule}"
     assert (
         'if (tile.type.empty()) return !tile.sensor.empty() && tile.precision != "text";\n'
         '  if (tile.type == "action") {\n'
