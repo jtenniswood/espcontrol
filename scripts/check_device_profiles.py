@@ -149,6 +149,10 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
                 assert "cfg.label_lines = 2;" in sensors and "cfg.label_lines_tall = 3;" in sensors, (
                     f"{slug}: TRMNL card labels must clamp to the generated web preview line counts"
                 )
+                grid_header = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+                assert "lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);" in grid_header, (
+                    f"{slug}: clamped card labels must stay bottom-aligned like the web preview"
+                )
                 assert "id(font_trmnl_value_32)->get_lv_font()" in sensors, (
                     f"{slug}: normal weather cards must use the TRMNL web preview value font"
                 )
