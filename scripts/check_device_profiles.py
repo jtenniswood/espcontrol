@@ -260,8 +260,16 @@ def test_weather_card_visual_matches_preview() -> None:
         ("dust", "Weather Dust", "Dust"),
         ("hazy", "Weather Hazy", "Hazy"),
         ("hurricane", "Weather Hurricane", "Hurricane"),
+        ("night-partly-cloudy", "Weather Night Cloudy", "Partly Cloudy Night"),
+        ("partly-lightning", "Weather Partly Lightning", "Partly Lightning"),
+        ("partly-rainy", "Weather Partly Rainy", "Partly Rainy"),
+        ("partly-snowy", "Weather Partly Snowy", "Partly Snowy"),
+        ("partly-snowy-rainy", "Weather Partly Snowy Rainy", "Partly Snow And Rain"),
         ("snowy-heavy", "Weather Snowy Heavy", "Heavy Snow"),
         ("sunny-alert", "Weather Sunny Alert", "Sunny Alert"),
+        ("sunset", "Weather Sunset", "Sunset"),
+        ("sunset-down", "Weather Sunset Down", "Sunset Down"),
+        ("sunset-up", "Weather Sunset Up", "Sunset Up"),
         ("tornado", "Weather Tornado", "Tornado"),
     ):
         assert f'if (state == "{state}") return find_icon("{icon_name}");' in config, (
