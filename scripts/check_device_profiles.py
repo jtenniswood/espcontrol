@@ -132,6 +132,24 @@ def test_trmnl_epaper_icon_literals() -> None:
 
 def test_trmnl_epaper_card_parity_guards() -> None:
     epaper = (ROOT / "components" / "espcontrol_epaper" / "epaper_dashboard.h").read_text(encoding="utf-8")
+    web_card_types = sorted({
+        match.group(1)
+        for path in (ROOT / "src" / "webserver" / "types").glob("*.js")
+        for match in re.finditer(r'registerButtonType\("([^"]*)"', path.read_text(encoding="utf-8"))
+    })
+    epaper_card_type_markers = {
+        "": "tile.type.empty()",
+        "option_select": 'tile.type == "option_select"',
+    }
+    missing_epaper_card_types = [
+        card_type
+        for card_type in web_card_types
+        if epaper_card_type_markers.get(card_type, f'tile.type == "{card_type}"') not in epaper
+    ]
+    assert not missing_epaper_card_types, (
+        "TRMNL e-paper renderer lacks explicit handling for web card types: "
+        + ", ".join(missing_epaper_card_types)
+    )
     assert "bool show_track = configured && epaper_dashboard_slider_visual_card(tile);" in epaper, (
         "TRMNL media now-playing play/pause cards must keep their track/background visible"
     )
