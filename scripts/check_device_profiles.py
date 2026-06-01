@@ -256,6 +256,20 @@ def test_weather_card_visual_matches_preview() -> None:
     assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in config, (
         "forecast weather unavailable state should keep showing the configured unit"
     )
+    for state, icon_name, label in (
+        ("dust", "Weather Dust", "Dust"),
+        ("hazy", "Weather Hazy", "Hazy"),
+        ("hurricane", "Weather Hurricane", "Hurricane"),
+        ("snowy-heavy", "Weather Snowy Heavy", "Heavy Snow"),
+        ("sunny-alert", "Weather Sunny Alert", "Sunny Alert"),
+        ("tornado", "Weather Tornado", "Tornado"),
+    ):
+        assert f'if (state == "{state}") return find_icon("{icon_name}");' in config, (
+            f"current weather device card should map {state} to the matching web weather icon"
+        )
+        assert f'if (state == "{state}") return "{label}";' in config, (
+            f"current weather device card should label {state} like the web preview"
+        )
 
 
 def test_weather_card_mode_visibility_reset() -> None:
