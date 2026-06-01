@@ -466,6 +466,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL option-select cards must not use selected text as an active/on state"
     assert (
+        'if (tile.type == "todo") {\n'
+        '    return false;\n'
+        '  }'
+        in epaper
+    ), "TRMNL todo counts must not invert the card when the count is 1"
+    assert (
         'if (epaper_dashboard_option_select_card(tile)) {\n'
         '    return find_icon("Chevron Down");\n'
         '  }'

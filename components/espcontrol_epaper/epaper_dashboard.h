@@ -2397,6 +2397,9 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_option_select_card(tile)) {
     return false;
   }
+  if (tile.type == "todo") {
+    return false;
+  }
   if (tile.type == "media") {
     return !tile.state_unavailable &&
            (tile.sensor == "play_pause" ||
