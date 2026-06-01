@@ -420,6 +420,17 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL icon-style cards must honor configured off/on icons before using default icons"
     assert (
+        'if (tile.type == "light_brightness" || tile.type == "light_switch") {\n'
+        '    if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());\n'
+        '    return find_icon(active ? "Lightbulb" : "Lightbulb Outline");\n'
+        '  }\n'
+        '  if (tile.type == "light_temperature") {\n'
+        '    if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());\n'
+        '    return find_icon("Lightbulb");\n'
+        '  }'
+        in epaper
+    ), "TRMNL light cards must honor configured icons like normal light cards"
+    assert (
         'if (epaper_dashboard_cover_command_mode(tile.sensor)) {\n'
         '      if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());\n'
         '      return find_icon("Blinds");\n'

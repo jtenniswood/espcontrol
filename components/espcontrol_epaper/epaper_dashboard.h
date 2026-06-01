@@ -2726,9 +2726,13 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_icon_name(tile, active));
   if (tile.type == "light_brightness" || tile.type == "light_switch") {
+    if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
     return find_icon(active ? "Lightbulb" : "Lightbulb Outline");
   }
-  if (tile.type == "light_temperature") return find_icon("Lightbulb");
+  if (tile.type == "light_temperature") {
+    if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());
+    return find_icon("Lightbulb");
+  }
   if (tile.type == "lock") {
     if (epaper_dashboard_lock_command_mode(tile.sensor)) {
       if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());
