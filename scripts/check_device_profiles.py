@@ -427,6 +427,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL door/window and presence cards must render from their sensor-backed state"
     assert (
+        'if (tile.type == "sensor" || tile.type == "door_window" || tile.type == "presence") {\n'
+        '    return !tile.sensor.empty();\n'
+        '  }'
+        in epaper
+    ), "TRMNL sensor-style cards must stay hidden until their required sensor entity is configured"
+    assert (
         'if (tile.type == "door_window" && !tile.label_configured) {\n'
         '    if (!tile.friendly_name.empty()) return tile.friendly_name;\n'
         '    return epaper_dashboard_window_card(tile) ? "Window" : "Door";\n'

@@ -2081,6 +2081,9 @@ inline void epaper_dashboard_bind_lvgl_slot(int slot, lv_obj_t *tile, lv_obj_t *
 
 inline bool epaper_dashboard_tile_configured(const EpaperDashboardTile &tile) {
   if (tile.config.empty()) return false;
+  if (tile.type == "sensor" || tile.type == "door_window" || tile.type == "presence") {
+    return !tile.sensor.empty();
+  }
   if (!tile.entity.empty() || !tile.sensor.empty() || !tile.action_state_entity.empty()) return true;
   return !tile.type.empty() && tile.type != "subpage";
 }
