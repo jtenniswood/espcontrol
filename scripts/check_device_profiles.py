@@ -201,13 +201,13 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     garage_status = (
         'if (tile.type == "garage" &&\n'
         '      epaper_dashboard_option_value(tile.options, "label_display") == "status") {\n'
-        '    if (tile.state_unavailable || tile.state.empty()) return "--";\n'
+        '    if (tile.state.empty()) return "--";\n'
         '    return epaper_dashboard_pretty_state(tile.state);\n'
         '  }\n'
         '  if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)'
     )
     assert garage_status in epaper, (
-        "TRMNL garage status cards must show the status before falling back to the default label"
+        "TRMNL garage status cards must show unavailable/unknown statuses like normal cards"
     )
     action_text = (
         'if (epaper_dashboard_action_state_text_card(tile)) {\n'

@@ -2871,7 +2871,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "garage" &&
       epaper_dashboard_option_value(tile.options, "label_display") == "status") {
-    if (tile.state_unavailable || tile.state.empty()) return "--";
+    if (tile.state.empty()) return "--";
     return epaper_dashboard_pretty_state(tile.state);
   }
   if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor) &&
