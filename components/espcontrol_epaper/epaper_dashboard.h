@@ -2855,8 +2855,11 @@ inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardT
 inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) {
   if (epaper_dashboard_text_sensor_card(tile)) return epaper_dashboard_display_value(tile);
   if (epaper_dashboard_toggle_text_sensor_card(tile) &&
-      epaper_dashboard_state_active(tile.state) && !tile.sensor_value.empty()) {
-    return epaper_dashboard_text_sensor_display_text(tile.sensor_value);
+      epaper_dashboard_state_active(tile.state)) {
+    if (!tile.sensor_value.empty()) {
+      return epaper_dashboard_text_sensor_display_text(tile.sensor_value);
+    }
+    return "--";
   }
   if (tile.type == "calendar") return epaper_dashboard_calendar_label(tile);
   if (tile.type == "clock") return "";

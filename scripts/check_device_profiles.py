@@ -270,6 +270,16 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         "if (ch == '\\r' && i + 1 < len && value[i + 1] == '\\n') continue;" in epaper
     ), "TRMNL text sensor cards must use the normal text sensor display limit"
     assert (
+        'if (epaper_dashboard_toggle_text_sensor_card(tile) &&\n'
+        '      epaper_dashboard_state_active(tile.state)) {\n'
+        '    if (!tile.sensor_value.empty()) {\n'
+        '      return epaper_dashboard_text_sensor_display_text(tile.sensor_value);\n'
+        '    }\n'
+        '    return "--";\n'
+        '  }'
+        in epaper
+    ), "TRMNL switch text-state cards must show the normal -- placeholder while waiting for the text sensor"
+    assert (
         "constexpr size_t EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN = 32;" in epaper and
         "inline size_t epaper_dashboard_state_text_max_len(const EpaperDashboardTile &tile)" in epaper and
         "tile.state = epaper_dashboard_string_ref_limited(\n"
