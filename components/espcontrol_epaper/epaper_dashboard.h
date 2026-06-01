@@ -2692,6 +2692,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
     return find_icon(open_icon ? "Garage Open" : "Garage");
   }
   if (tile.type == "weather" && !epaper_dashboard_weather_forecast_card(tile)) {
+    if (tile.state.empty()) return find_icon("Weather Cloudy");
     return epaper_dashboard_weather_icon_for_state(tile.state);
   }
   if (tile.type == "alarm" &&

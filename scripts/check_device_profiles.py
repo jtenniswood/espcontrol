@@ -235,6 +235,13 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  }'
         in epaper
     ), "TRMNL alarm status labels must use the normal initial placeholder and raw state labels"
+    assert (
+        'if (tile.type == "weather" && !epaper_dashboard_weather_forecast_card(tile)) {\n'
+        '    if (tile.state.empty()) return find_icon("Weather Cloudy");\n'
+        '    return epaper_dashboard_weather_icon_for_state(tile.state);\n'
+        '  }'
+        in epaper
+    ), "TRMNL current weather cards must use the normal/web cloudy startup icon before state arrives"
     assert "return epaper_dashboard_trim(tile.unit);" in epaper, (
         "TRMNL card units must be trimmed the same way normal LVGL cards trim unit labels"
     )
