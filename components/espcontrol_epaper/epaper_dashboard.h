@@ -2745,7 +2745,7 @@ inline std::string epaper_dashboard_friendly_label_source(const EpaperDashboardT
       (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor))) {
     return tile.entity;
   }
-  if (tile.type == "climate" && epaper_dashboard_climate_label_mode(tile) != "label") return "";
+  if (tile.type == "climate") return "";
   if (tile.type == "alarm" &&
       epaper_dashboard_option_value(tile.options, "label_display") != "name") {
     return "";
