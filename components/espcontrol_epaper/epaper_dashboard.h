@@ -3079,7 +3079,8 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       std::string label = epaper_dashboard_tile_label(tile);
       lv_label_set_long_mode(
           slot.label, row_span > 1 ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_DOT);
-      lv_obj_set_width(slot.label, lv_pct(80));
+      const char *badge = epaper_dashboard_badge_icon(tile);
+      lv_obj_set_width(slot.label, badge ? lv_pct(80) : lv_pct(100));
       lv_label_set_text(slot.label, label.c_str());
       lv_obj_clear_flag(slot.label, LV_OBJ_FLAG_HIDDEN);
     }

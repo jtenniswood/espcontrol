@@ -362,6 +362,11 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '          ? LV_ALIGN_LEFT_MID'
         in epaper
     ), "TRMNL wide large-number clock cards must use the normal left-middle value placement"
+    assert (
+        'const char *badge = epaper_dashboard_badge_icon(tile);\n'
+        '      lv_obj_set_width(slot.label, badge ? lv_pct(80) : lv_pct(100));'
+        in epaper
+    ), "TRMNL cards without badges must allow full-width labels like normal cards"
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
