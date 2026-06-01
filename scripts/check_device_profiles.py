@@ -308,6 +308,24 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         "TRMNL action numeric state cards must use the normal numeric placeholder while waiting for values"
     )
     assert (
+        'if (epaper_dashboard_option_select_card(tile)) {\n'
+        '    if (tile.state_unavailable) return "--";\n'
+        '    if (!tile.state.empty()) return tile.state;\n'
+        '    return "--";\n'
+        '  }'
+        in epaper
+    ), "TRMNL option-select cards must put the selected option in the value area like normal cards"
+    assert (
+        'if (epaper_dashboard_option_select_card(tile) && !tile.entity.empty()) return tile.entity;'
+        in epaper
+    ), "TRMNL option-select cards must use HA friendly names like normal cards when no custom label is set"
+    assert (
+        'if (epaper_dashboard_option_select_card(tile)) {\n'
+        '    return find_icon("Chevron Down");\n'
+        '  }'
+        in epaper
+    ), "TRMNL option-select cards must keep the web preview chevron badge"
+    assert (
         'std::string state = epaper_dashboard_normalized_state_text(value);\n'
         '  return state.empty() || state == "unavailable" || state == "unknown";'
         in epaper
