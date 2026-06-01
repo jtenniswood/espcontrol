@@ -308,6 +308,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert cover_icon in epaper, (
         "TRMNL cover icons must follow normal cover state/position icon selection"
     )
+    assert "return 100 - epaper_dashboard_percent_value(tile.sensor_value);" in epaper, (
+        "TRMNL cover position tracks must invert fill direction like normal cover sliders"
+    )
     assert (
         'inline const std::string &epaper_dashboard_binary_card_state(const EpaperDashboardTile &tile) {\n'
         '  return !tile.state.empty() ? tile.state : tile.sensor_value;\n'

@@ -2573,7 +2573,7 @@ inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) 
   if ((tile.type == "light_brightness" || tile.type == "slider") &&
       !tile.sensor_value.empty()) return epaper_dashboard_light_brightness_percent(tile.sensor_value);
   if (tile.type == "cover" && !tile.sensor_value.empty()) {
-    return epaper_dashboard_percent_value(tile.sensor_value);
+    return 100 - epaper_dashboard_percent_value(tile.sensor_value);
   }
   if (tile.type == "fan_speed" &&
       !tile.sensor_value.empty()) return epaper_dashboard_percent_value(tile.sensor_value);
