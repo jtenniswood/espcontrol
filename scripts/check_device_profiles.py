@@ -499,6 +499,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         'if (tile.type == "presence") return find_icon("Motion Sensor");': (
             "TRMNL presence cards must use the same badge as the web editor"
         ),
+        'if (tile.type == "weather") {\n    if (epaper_dashboard_weather_forecast_card(tile)) return find_icon("Weather Partly Cloudy");\n    return find_icon("Weather Cloudy");\n  }': (
+            "TRMNL current and forecast weather cards must use the same badges as the web editor"
+        ),
         'if (tile.type == "weather_forecast") return find_icon("Weather Partly Cloudy");': (
             "TRMNL weather forecast cards must use the same badge as the web editor"
         ),

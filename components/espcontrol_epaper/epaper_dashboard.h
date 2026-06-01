@@ -2767,8 +2767,7 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
   if (tile.type == "door_window") return find_icon(tile.precision == "window" ? "Window Closed" : "Door");
   if (tile.type == "presence") return find_icon("Motion Sensor");
   if (tile.type == "weather") {
-    if (tile.precision == "forecast" || tile.precision == "today" ||
-        tile.precision == "tomorrow") return find_icon("Weather Partly Cloudy");
+    if (epaper_dashboard_weather_forecast_card(tile)) return find_icon("Weather Partly Cloudy");
     return find_icon("Weather Cloudy");
   }
   if (tile.type == "weather_forecast") return find_icon("Weather Partly Cloudy");
