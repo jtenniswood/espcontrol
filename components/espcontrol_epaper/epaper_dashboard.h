@@ -1874,6 +1874,16 @@ inline const char *epaper_dashboard_fan_default_icon_name(const EpaperDashboardT
   return "Fan";
 }
 
+inline const char *epaper_dashboard_fan_icon_name(const EpaperDashboardTile &tile,
+                                                  bool active) {
+  if (tile.type == "fan_switch" && active) {
+    if (!tile.icon_on.empty() && tile.icon_on != "Auto") return tile.icon_on.c_str();
+    return "Fan";
+  }
+  if (!tile.icon.empty() && tile.icon != "Auto") return tile.icon.c_str();
+  return epaper_dashboard_fan_default_icon_name(tile);
+}
+
 inline bool epaper_dashboard_fan_attribute_known(const EpaperDashboardTile &tile) {
   return !tile.sensor_value.empty() && !tile.sensor_unavailable;
 }
@@ -2677,7 +2687,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
   }
   if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
-      tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_default_icon_name(tile));
+      tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_icon_name(tile, active));
   if (tile.type == "light_brightness" || tile.type == "light_switch") {
     return find_icon(active ? "Lightbulb" : "Lightbulb Outline");
   }

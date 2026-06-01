@@ -341,6 +341,20 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         "TRMNL fan attribute cards must match normal active styling from state and preset attributes"
     )
     assert (
+        'inline const char *epaper_dashboard_fan_icon_name(const EpaperDashboardTile &tile,\n'
+        '                                                  bool active) {\n'
+        '  if (tile.type == "fan_switch" && active) {\n'
+        '    if (!tile.icon_on.empty() && tile.icon_on != "Auto") return tile.icon_on.c_str();\n'
+        '    return "Fan";\n'
+        '  }\n'
+        '  if (!tile.icon.empty() && tile.icon != "Auto") return tile.icon.c_str();\n'
+        '  return epaper_dashboard_fan_default_icon_name(tile);\n'
+        '}'
+        in epaper and
+        'tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_icon_name(tile, active));'
+        in epaper
+    ), "TRMNL fan cards must honor configured icons and fan-switch on icons like normal cards"
+    assert (
         'if (epaper_dashboard_cover_command_mode(tile.sensor)) {\n'
         '      if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());\n'
         '      return find_icon("Blinds");\n'
