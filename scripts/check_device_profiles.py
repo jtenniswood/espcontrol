@@ -181,11 +181,11 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "std::string state_source = epaper_dashboard_state_source(tile);" in epaper, (
         "TRMNL state subscriptions must use card-aware state sources"
     )
-    assert 'if (tile.type == "door_window" && !tile.label_configured) {\n    return epaper_dashboard_window_card(tile) ? "Window" : "Door";' in epaper, (
-        "TRMNL door/window cards must keep the normal/web default label until a label is configured"
+    assert 'if (tile.type == "door_window" && !tile.label_configured) {\n    if (!tile.friendly_name.empty()) return tile.friendly_name;\n    return epaper_dashboard_window_card(tile) ? "Window" : "Door";' in epaper, (
+        "TRMNL door/window cards must use HA friendly names before falling back to the normal/web default label"
     )
-    assert 'if (tile.type == "presence" && !tile.label_configured) {\n    return "Presence";' in epaper, (
-        "TRMNL presence cards must keep the normal/web default label until a label is configured"
+    assert 'if (tile.type == "presence" && !tile.label_configured) {\n    if (!tile.friendly_name.empty()) return tile.friendly_name;\n    return "Presence";' in epaper, (
+        "TRMNL presence cards must use HA friendly names before falling back to the normal/web default label"
     )
     assert 'if (tile.type == "cover" &&\n      (tile.sensor == "toggle" || epaper_dashboard_cover_command_mode(tile.sensor)) &&\n      !tile.label_configured) {\n    if (!tile.friendly_name.empty()) return tile.friendly_name;' in epaper, (
         "TRMNL cover command/toggle cards must use HA friendly names like normal cards when no custom label is set"
@@ -405,6 +405,17 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '                    (epaper_dashboard_normalized_state_text(state) == "detected" ||'
         in epaper
     ), "TRMNL door/window and presence cards must render from their sensor-backed state"
+    assert (
+        'if (tile.type == "door_window" && !tile.label_configured) {\n'
+        '    if (!tile.friendly_name.empty()) return tile.friendly_name;\n'
+        '    return epaper_dashboard_window_card(tile) ? "Window" : "Door";\n'
+        '  }\n'
+        '  if (tile.type == "presence" && !tile.label_configured) {\n'
+        '    if (!tile.friendly_name.empty()) return tile.friendly_name;\n'
+        '    return "Presence";\n'
+        '  }'
+        in epaper
+    ), "TRMNL door/window and presence labels must use HA friendly names like normal cards"
     garage_icon = (
         'bool open_icon = epaper_dashboard_garage_state_uses_open_icon(tile.state);\n'
         '    std::string garage_icon = open_icon && !tile.icon_on.empty() && tile.icon_on != "Auto"\n'
