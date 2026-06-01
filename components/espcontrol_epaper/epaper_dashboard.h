@@ -26,6 +26,7 @@ constexpr int EPAPER_DASHBOARD_COLS = 4;
 constexpr int EPAPER_DASHBOARD_TOTAL_SLOTS =
     EPAPER_DASHBOARD_PAGE_SLOTS * EPAPER_DASHBOARD_PAGES;
 constexpr size_t EPAPER_DASHBOARD_FRIENDLY_NAME_MAX_LEN = 64;
+constexpr size_t EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN = 32;
 constexpr size_t EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN = 96;
 constexpr size_t EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN = 256;
 constexpr int EPAPER_DASHBOARD_FORECAST_PENDING_MAX = 8;
@@ -3155,7 +3156,8 @@ inline void epaper_dashboard_subscribe(int index) {
     esphome::api::global_api_server->subscribe_home_assistant_state(
         state_source, {}, [index](esphome::StringRef state) {
           auto &tile = epaper_dashboard_tiles()[index];
-          tile.state = std::string(state.c_str(), state.size());
+          tile.state = epaper_dashboard_string_ref_limited(
+              state, EPAPER_DASHBOARD_SHORT_STATE_MAX_LEN);
           tile.state_unavailable = epaper_dashboard_state_unavailable(tile.state);
           epaper_dashboard_mark_dirty();
         });
