@@ -2397,9 +2397,10 @@ inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile)
   return false;
 }
 
-inline bool epaper_dashboard_wide_large_clock_card(const EpaperDashboardTile &tile,
-                                                   int row_span, int col_span) {
-  return tile.type == "clock" && epaper_dashboard_card_large_numbers(tile) &&
+inline bool epaper_dashboard_wide_large_date_time_card(const EpaperDashboardTile &tile,
+                                                       int row_span, int col_span) {
+  return (tile.type == "clock" || (tile.type == "calendar" && tile.precision == "datetime")) &&
+         epaper_dashboard_card_large_numbers(tile) &&
          row_span == 1 && col_span == 2;
 }
 
@@ -3123,7 +3124,7 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
         } else {
           lv_obj_set_width(slot.sensor_container, LV_SIZE_CONTENT);
         }
-        lv_align_t value_align = epaper_dashboard_wide_large_clock_card(tile, row_span, col_span)
+        lv_align_t value_align = epaper_dashboard_wide_large_date_time_card(tile, row_span, col_span)
           ? LV_ALIGN_LEFT_MID
           : (value_replaces_icon ? LV_ALIGN_TOP_LEFT : LV_ALIGN_TOP_RIGHT);
         lv_obj_align(slot.sensor_container, value_align, 0, 0);
@@ -3138,7 +3139,11 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
       const char *badge = epaper_dashboard_badge_icon(tile);
       lv_obj_set_width(slot.label, badge ? lv_pct(80) : lv_pct(100));
       lv_label_set_text(slot.label, label.c_str());
-      lv_obj_clear_flag(slot.label, LV_OBJ_FLAG_HIDDEN);
+      if (epaper_dashboard_wide_large_date_time_card(tile, row_span, col_span)) {
+        lv_obj_add_flag(slot.label, LV_OBJ_FLAG_HIDDEN);
+      } else {
+        lv_obj_clear_flag(slot.label, LV_OBJ_FLAG_HIDDEN);
+      }
     }
     if (slot.badge) {
       const char *badge = epaper_dashboard_badge_icon(tile);

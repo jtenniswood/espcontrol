@@ -435,13 +435,16 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL must run the same final unsupported-options cleanup as normal cards"
     assert (
-        'return tile.type == "clock" && epaper_dashboard_card_large_numbers(tile) &&\n'
+        'return (tile.type == "clock" || (tile.type == "calendar" && tile.precision == "datetime")) &&\n'
+        '         epaper_dashboard_card_large_numbers(tile) &&\n'
         '         row_span == 1 && col_span == 2;'
         in epaper and
-        'lv_align_t value_align = epaper_dashboard_wide_large_clock_card(tile, row_span, col_span)\n'
-        '          ? LV_ALIGN_LEFT_MID'
+        'lv_align_t value_align = epaper_dashboard_wide_large_date_time_card(tile, row_span, col_span)\n'
+        '          ? LV_ALIGN_LEFT_MID' in epaper and
+        'if (epaper_dashboard_wide_large_date_time_card(tile, row_span, col_span)) {\n'
+        '        lv_obj_add_flag(slot.label, LV_OBJ_FLAG_HIDDEN);'
         in epaper
-    ), "TRMNL wide large-number clock cards must use the normal left-middle value placement"
+    ), "TRMNL wide large-number date/time cards must use the normal hidden-label left-middle layout"
     assert (
         "if (tile.label_configured && !tile.label.empty()) return tile.label;" in epaper
     ), "TRMNL weather forecast cards must honor explicitly configured labels like normal cards"
