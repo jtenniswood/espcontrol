@@ -2837,7 +2837,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (tile.type == "weather") {
     if (epaper_dashboard_weather_forecast_card(tile)) {
       if (!tile.forecast_status_label.empty()) return tile.forecast_status_label;
-      if (!tile.label.empty() && tile.label != epaper_dashboard_title_from_entity(tile.entity)) return tile.label;
+      if (tile.label_configured && !tile.label.empty()) return tile.label;
       return tile.precision == "today" ? "Today" : "Tomorrow";
     }
     if (!tile.state.empty()) return epaper_dashboard_weather_label_for_state(tile.state);
@@ -2845,7 +2845,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "weather_forecast") {
     if (!tile.forecast_status_label.empty()) return tile.forecast_status_label;
-    if (!tile.label.empty() && tile.label != epaper_dashboard_title_from_entity(tile.entity)) return tile.label;
+    if (tile.label_configured && !tile.label.empty()) return tile.label;
     return "Temperatures Tomorrow";
   }
   if (tile.type == "media" && tile.sensor == "now_playing") {

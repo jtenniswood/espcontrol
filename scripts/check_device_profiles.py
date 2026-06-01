@@ -443,6 +443,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL wide large-number clock cards must use the normal left-middle value placement"
     assert (
+        "if (tile.label_configured && !tile.label.empty()) return tile.label;" in epaper
+    ), "TRMNL weather forecast cards must honor explicitly configured labels like normal cards"
+    assert (
         'const char *badge = epaper_dashboard_badge_icon(tile);\n'
         '      lv_obj_set_width(slot.label, badge ? lv_pct(80) : lv_pct(100));'
         in epaper
