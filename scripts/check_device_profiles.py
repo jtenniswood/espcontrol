@@ -422,12 +422,76 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert calendar_source in epaper, (
         "TRMNL calendar cards with a configured date source must not silently fall back to the local date"
     )
-    assert 'if (tile.type == "light_brightness" || tile.type == "slider") return find_icon("Tune Vertical Variant");' in epaper, (
-        "TRMNL light brightness and slider cards must use the same preview badge as the web editor"
-    )
-    assert 'if (tile.type == "cover") return find_icon("Blinds Horizontal");' in epaper, (
-        "TRMNL cover cards must use the same preview badge as the web editor"
-    )
+    epaper_badge_guards = {
+        'if (tile.type.empty()) {\n    if (!tile.sensor.empty()) {\n      return tile.precision == "text" ? find_icon("Format Text") : find_icon("Gauge");\n    }\n    return find_icon("Toggle Switch Variant Off");\n  }': (
+            "TRMNL switch cards must use the same toggle/numeric/text badges as the web editor"
+        ),
+        'if (tile.type == "sensor") {\n    if (tile.precision == "icon") return find_icon("Toggle Switch");\n    if (tile.precision == "text") return find_icon("Format Text");\n    return find_icon("Gauge");\n  }': (
+            "TRMNL sensor cards must use the same icon/numeric/text badges as the web editor"
+        ),
+        'if (tile.type == "door_window") return find_icon(tile.precision == "window" ? "Window Closed" : "Door");': (
+            "TRMNL door/window cards must use the same subtype badges as the web editor"
+        ),
+        'if (tile.type == "presence") return find_icon("Motion Sensor");': (
+            "TRMNL presence cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "weather_forecast") return find_icon("Weather Partly Cloudy");': (
+            "TRMNL weather forecast cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "calendar") return find_icon("Calendar Month");': (
+            "TRMNL calendar cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "timezone") return find_icon("Map Clock");': (
+            "TRMNL timezone cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "media") return find_icon("Speaker");': (
+            "TRMNL media cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "climate") return find_icon("Thermostat");': (
+            "TRMNL climate cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "garage") return find_icon("Garage");': (
+            "TRMNL garage cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "lock") return find_icon("Lock");': (
+            "TRMNL lock cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "push") return find_icon("Gesture Tap");': (
+            "TRMNL push cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "webhook") return find_icon("Webhook");': (
+            "TRMNL webhook cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "internal") {\n    return find_icon(epaper_dashboard_internal_push_mode(tile) ? "Gesture Tap" : "Power Plug");\n  }': (
+            "TRMNL internal cards must use the same switch/push badges as the web editor"
+        ),
+        'if (tile.type == "light_brightness" || tile.type == "slider") return find_icon("Tune Vertical Variant");': (
+            "TRMNL light brightness and slider cards must use the same preview badge as the web editor"
+        ),
+        'if (tile.type == "light_switch" || tile.type == "light_temperature") return find_icon("Lightbulb");': (
+            "TRMNL light switch and temperature cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "fan_speed") return find_icon("Fan Speed 2");': (
+            "TRMNL fan speed cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "fan_switch") return find_icon("Fan");': (
+            "TRMNL fan switch cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "fan_oscillate") return find_icon("Sync");': (
+            "TRMNL fan oscillation cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "fan_direction") return find_icon("Swap Horizontal");': (
+            "TRMNL fan direction cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "fan_preset") return find_icon("Fan Auto");': (
+            "TRMNL fan preset cards must use the same badge as the web editor"
+        ),
+        'if (tile.type == "cover") return find_icon("Blinds Horizontal");': (
+            "TRMNL cover cards must use the same preview badge as the web editor"
+        ),
+    }
+    for snippet, message in epaper_badge_guards.items():
+        assert snippet in epaper, message
     assert (
         'if (tile.type == "cover" && epaper_dashboard_cover_toggle_mode(tile.sensor) &&\n'
         '      (tile.state == "opening" || tile.state == "closing")) {\n'
