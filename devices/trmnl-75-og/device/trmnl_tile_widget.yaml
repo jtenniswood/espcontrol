@@ -37,7 +37,7 @@ obj:
               id: trmnl_tile_${num}_value
               text: ""
               text_font: font_trmnl_value_200
-              transform_scale: 1.9
+              transform_scale: 2.1
               text_color: 0xFFFFFF
               long_mode: dot
           - label:
@@ -94,7 +94,7 @@ obj:
               id: trmnl_tile_${num}_label
               text: "Configure"
               text_font: font_trmnl_label_108
-              transform_scale: 2.1
+              transform_scale: 2.35
               text_color: 0xFFFFFF
               width: 80%
               long_mode: dot
