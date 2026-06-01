@@ -487,7 +487,7 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         "TRMNL Time & Date cards must not use Clock-only wide large-number handling"
     )
     epaper_badge_guards = {
-        'if (tile.type.empty()) {\n    if (!tile.sensor.empty()) {\n      return tile.precision == "text" ? find_icon("Format Text") : find_icon("Gauge");\n    }\n    return find_icon("Swap Horizontal");\n  }': (
+        'if (tile.type.empty()) {\n    if (!tile.sensor.empty()) {\n      return tile.precision == "text" ? find_icon("Format Text") : find_icon("Gauge");\n    }\n    return find_icon("Toggle Switch Variant Off");\n  }': (
             "TRMNL switch cards must use the same switch/numeric/text badges as the web editor"
         ),
         'if (tile.type == "sensor") {\n    if (tile.precision == "icon") return find_icon("Toggle Switch");\n    if (tile.precision == "text") return find_icon("Format Text");\n    return find_icon("Gauge");\n  }': (
