@@ -336,6 +336,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  return state == "on" || state == "true" || state == "1" ||'
         in epaper
     ), "TRMNL active-state detection must normalize state text like normal cards"
+    assert (
+        'if (epaper_dashboard_brightness_slider_type(tile.type)) {\n'
+        '    tile.options.clear();\n'
+        '  }'
+        in epaper
+    ), "TRMNL brightness and slider cards must discard unsupported saved options like normal cards"
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:

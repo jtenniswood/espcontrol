@@ -3311,6 +3311,9 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
   if (epaper_dashboard_brightness_slider_type(tile.type) && !tile.sensor.empty()) {
     tile.sensor.clear();
   }
+  if (epaper_dashboard_brightness_slider_type(tile.type)) {
+    tile.options.clear();
+  }
   if (epaper_dashboard_fan_card_type(tile.type)) {
     tile.sensor.clear();
     tile.unit.clear();
