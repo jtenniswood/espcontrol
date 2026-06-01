@@ -420,7 +420,8 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         'if (tile.type == "light_temperature" &&\n'
         '      !epaper_dashboard_state_active(tile.state)) return 0;'
         in epaper
-    ), "TRMNL light-temperature tracks must still wait for an active light state like normal cards"
+        and 'if (tile.type == "light_temperature") return 0;' in epaper
+    ), "TRMNL light-temperature tracks must wait for active state and a kelvin attribute like normal cards"
     assert (
         'if (!tile.type.empty() && tile.type != "action" && tile.type != "alarm" &&\n'
         '      tile.type != "alarm_action" && tile.type != "climate" &&\n'

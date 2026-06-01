@@ -2603,7 +2603,7 @@ inline int epaper_dashboard_track_fill_percent(const EpaperDashboardTile &tile) 
   }
   if (epaper_dashboard_media_now_playing_play_pause_card(tile)) return 0;
   if (tile.type == "cover" && tile.sensor == "tilt") return 35;
-  if (tile.type == "light_temperature") return 65;
+  if (tile.type == "light_temperature") return 0;
   if (tile.type == "fan_speed") return 40;
   return 50;
 }
