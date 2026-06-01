@@ -2734,7 +2734,9 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
     if (!tile.sensor.empty()) {
       return tile.precision == "text" ? find_icon("Format Text") : find_icon("Gauge");
     }
-    return find_icon("Toggle Switch Variant Off");
+    return (!tile.icon_on.empty() && tile.icon_on != "Auto")
+      ? find_icon("Swap Horizontal")
+      : nullptr;
   }
   if (tile.type == "sensor") {
     if (tile.precision == "icon") return find_icon("Toggle Switch");

@@ -424,8 +424,8 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         "TRMNL calendar cards with a configured date source must not silently fall back to the local date"
     )
     epaper_badge_guards = {
-        'if (tile.type.empty()) {\n    if (!tile.sensor.empty()) {\n      return tile.precision == "text" ? find_icon("Format Text") : find_icon("Gauge");\n    }\n    return find_icon("Toggle Switch Variant Off");\n  }': (
-            "TRMNL switch cards must use the same toggle/numeric/text badges as the web editor"
+        'if (tile.type.empty()) {\n    if (!tile.sensor.empty()) {\n      return tile.precision == "text" ? find_icon("Format Text") : find_icon("Gauge");\n    }\n    return (!tile.icon_on.empty() && tile.icon_on != "Auto")\n      ? find_icon("Swap Horizontal")\n      : nullptr;\n  }': (
+            "TRMNL switch cards must use the same alternate-icon/numeric/text badges as the web editor"
         ),
         'if (tile.type == "sensor") {\n    if (tile.precision == "icon") return find_icon("Toggle Switch");\n    if (tile.precision == "text") return find_icon("Format Text");\n    return find_icon("Gauge");\n  }': (
             "TRMNL sensor cards must use the same icon/numeric/text badges as the web editor"
