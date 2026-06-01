@@ -2384,6 +2384,12 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   if (tile.type == "action" && !tile.action_state_entity.empty()) {
     return !tile.sensor_unavailable && epaper_dashboard_state_active(tile.sensor_value);
   }
+  if (tile.type == "media") {
+    return !tile.state_unavailable &&
+           (tile.sensor == "play_pause" ||
+            epaper_dashboard_media_now_playing_play_pause_card(tile)) &&
+           epaper_dashboard_normalized_state_text(tile.state) == "playing";
+  }
   if (tile.type == "sensor") {
     if (tile.sensor_unavailable) return false;
     return (tile.precision == "icon" || epaper_dashboard_active_color_enabled(tile)) &&
