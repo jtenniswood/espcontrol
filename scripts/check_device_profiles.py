@@ -284,12 +284,11 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  }\n'
         '  if (tile.type == "fan_preset") {\n'
         '    return !tile.state_unavailable &&\n'
-        '           !tile.fan_preset_modes.empty() &&\n'
         '           epaper_dashboard_fan_preset_active(tile.sensor_value);\n'
         '  }'
     )
     assert fan_active in epaper, (
-        "TRMNL fan attribute cards must not show active styling from stale attributes when the fan is unavailable"
+        "TRMNL fan attribute cards must match normal active styling from state and preset attributes"
     )
     assert (
         'if (epaper_dashboard_cover_command_mode(tile.sensor)) {\n'

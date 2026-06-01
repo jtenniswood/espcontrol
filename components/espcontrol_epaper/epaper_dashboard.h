@@ -2338,7 +2338,6 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
   }
   if (tile.type == "fan_preset") {
     return !tile.state_unavailable &&
-           !tile.fan_preset_modes.empty() &&
            epaper_dashboard_fan_preset_active(tile.sensor_value);
   }
   if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)) {
