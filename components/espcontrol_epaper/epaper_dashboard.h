@@ -2834,7 +2834,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   if (epaper_dashboard_text_sensor_card(tile)) return epaper_dashboard_display_value(tile);
   if (epaper_dashboard_toggle_text_sensor_card(tile) &&
       epaper_dashboard_state_active(tile.state) && !tile.sensor_value.empty()) {
-    return epaper_dashboard_sensor_state_display_text(tile);
+    return epaper_dashboard_text_sensor_display_text(tile.sensor_value);
   }
   if (tile.type == "calendar") return epaper_dashboard_calendar_label(tile);
   if (tile.type == "clock") return "";
