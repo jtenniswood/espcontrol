@@ -230,10 +230,11 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert (
         'if (tile.type == "alarm" &&\n'
         '      epaper_dashboard_option_value(tile.options, "label_display") != "name") {\n'
+        '    if (tile.state.empty()) return "--";\n'
         '    return epaper_dashboard_alarm_label_for_state(tile.state);\n'
         '  }'
         in epaper
-    ), "TRMNL alarm status labels must use the raw state like normal alarm cards"
+    ), "TRMNL alarm status labels must use the normal initial placeholder and raw state labels"
     assert "return epaper_dashboard_trim(tile.unit);" in epaper, (
         "TRMNL card units must be trimmed the same way normal LVGL cards trim unit labels"
     )
