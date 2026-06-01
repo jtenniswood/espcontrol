@@ -416,6 +416,33 @@ inline std::string epaper_dashboard_title_from_entity(const std::string &entity)
   return text;
 }
 
+inline std::string epaper_dashboard_sentence_cap_text(const std::string &state) {
+  std::string out;
+  out.reserve(state.size());
+  bool cap_next = true;
+  bool last_space = false;
+  for (char ch : state) {
+    unsigned char c = static_cast<unsigned char>(ch);
+    if (ch == '_' || ch == '-' || std::isspace(c)) {
+      if (!out.empty() && !last_space) {
+        out.push_back(' ');
+        last_space = true;
+      }
+      cap_next = true;
+      continue;
+    }
+    if (std::isalpha(c)) {
+      out.push_back(static_cast<char>(cap_next ? std::toupper(c) : std::tolower(c)));
+      cap_next = false;
+    } else {
+      out.push_back(ch);
+    }
+    last_space = false;
+  }
+  if (!out.empty() && out.back() == ' ') out.pop_back();
+  return out;
+}
+
 inline bool epaper_dashboard_state_active(const std::string &value) {
   std::string s;
   s.reserve(value.size());
@@ -2681,6 +2708,7 @@ inline std::string epaper_dashboard_default_label_source(const EpaperDashboardTi
   if (tile.type == "todo") return "";
   if (tile.type == "climate") return "";
   if (tile.type == "alarm") return "";
+  if (tile.type == "internal") return "";
   if (tile.type == "garage" && !epaper_dashboard_garage_command_mode(tile.sensor)) return "";
   if (tile.type == "lock" && !epaper_dashboard_lock_command_mode(tile.sensor)) return "";
   if (tile.type.empty() && !tile.entity.empty()) return tile.entity;
@@ -2846,7 +2874,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return "Todo";
   }
   if (tile.type == "internal" && tile.label.empty()) {
-    if (!tile.entity.empty()) return epaper_dashboard_title_from_entity(tile.entity);
+    if (!tile.entity.empty()) return epaper_dashboard_sentence_cap_text(tile.entity);
     return "Relay";
   }
   if (tile.type == "climate") {

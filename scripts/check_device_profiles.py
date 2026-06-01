@@ -174,6 +174,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "return epaper_dashboard_trim(tile.unit);" in epaper, (
         "TRMNL card units must be trimmed the same way normal LVGL cards trim unit labels"
     )
+    assert 'if (tile.type == "internal") return "";' in epaper, (
+        "TRMNL internal relay cards must not derive their label from the push/toggle mode"
+    )
+    assert 'if (!tile.entity.empty()) return epaper_dashboard_sentence_cap_text(tile.entity);' in epaper, (
+        "TRMNL internal relay fallback labels must match normal internal relay cards"
+    )
     garage_status = (
         'if (tile.type == "garage" &&\n'
         '      epaper_dashboard_option_value(tile.options, "label_display") == "status") {\n'
