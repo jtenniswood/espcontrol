@@ -2388,7 +2388,7 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
     return !tile.state_unavailable &&
            (tile.sensor == "play_pause" ||
             (tile.sensor == "now_playing" && tile.precision == "play_pause")) &&
-           epaper_dashboard_normalized_state_text(tile.state) == "playing";
+           tile.state == "playing";
   }
   if (tile.type == "sensor") {
     if (tile.sensor_unavailable) return false;
