@@ -211,13 +211,20 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     )
     action_text = (
         'if (epaper_dashboard_action_state_text_card(tile)) {\n'
-        '    if (!tile.sensor_value.empty()) return epaper_dashboard_text_sensor_display_text(tile.sensor_value);\n'
+        '    if (!tile.sensor_value.empty()) {\n'
+        '      return epaper_dashboard_text_sensor_display_text(\n'
+        '          tile.sensor_value, EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN);\n'
+        '    }\n'
         '    if (tile.sensor_unavailable) return "";\n'
         '  }'
     )
     assert action_text in epaper, (
-        "TRMNL action text-state cards must show the raw text state like normal LVGL action cards"
+        "TRMNL action text-state cards must use the normal action text display limit"
     )
+    assert (
+        "constexpr size_t EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN = 256;" in epaper and
+        "size_t max_len = EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN" in epaper
+    ), "TRMNL text sensor cards must use the normal text sensor display limit"
     assert 'if (end == value.c_str() || std::isnan(parsed)) return "";' in epaper, (
         "TRMNL numeric cards must leave non-numeric values blank like normal LVGL numeric cards"
     )

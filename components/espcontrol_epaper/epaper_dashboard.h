@@ -26,6 +26,8 @@ constexpr int EPAPER_DASHBOARD_COLS = 4;
 constexpr int EPAPER_DASHBOARD_TOTAL_SLOTS =
     EPAPER_DASHBOARD_PAGE_SLOTS * EPAPER_DASHBOARD_PAGES;
 constexpr size_t EPAPER_DASHBOARD_FRIENDLY_NAME_MAX_LEN = 64;
+constexpr size_t EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN = 96;
+constexpr size_t EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN = 256;
 constexpr int EPAPER_DASHBOARD_FORECAST_PENDING_MAX = 8;
 constexpr uint32_t EPAPER_DASHBOARD_FORECAST_REQUEST_TIMEOUT_MS = 60000;
 constexpr uint32_t EPAPER_DASHBOARD_FORECAST_RETRY_DELAY_MS = 300000;
@@ -1153,12 +1155,16 @@ inline bool epaper_dashboard_bool_value(const std::string &value, bool &out) {
   return false;
 }
 
-inline std::string epaper_dashboard_text_sensor_display_text(const std::string &value) {
+inline std::string epaper_dashboard_text_sensor_display_text(
+    const std::string &value,
+    size_t max_len = EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN) {
   std::string out;
-  out.reserve(value.size());
+  size_t len = value.size() > max_len ? max_len : value.size();
+  out.reserve(len);
   bool cap_next = true;
   bool last_space = false;
-  for (char ch : value) {
+  for (size_t i = 0; i < len; i++) {
+    char ch = value[i];
     unsigned char c = static_cast<unsigned char>(ch);
     if (ch == '\r' || ch == '\n') {
       if (!out.empty() && out.back() == ' ') out.pop_back();
@@ -2807,7 +2813,10 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
     return "--";
   }
   if (epaper_dashboard_action_state_text_card(tile)) {
-    if (!tile.sensor_value.empty()) return epaper_dashboard_text_sensor_display_text(tile.sensor_value);
+    if (!tile.sensor_value.empty()) {
+      return epaper_dashboard_text_sensor_display_text(
+          tile.sensor_value, EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN);
+    }
     if (tile.sensor_unavailable) return "";
   }
   if (epaper_dashboard_fan_non_speed_card(tile)) {
