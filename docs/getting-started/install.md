@@ -20,6 +20,7 @@ If you want to compile and install the firmware yourself, use the [manual ESPHom
   - **[JC4880P443](/screens/jc4880p443)** — 4.3-inch, 480x800, portrait
   - **[ESP32-P4 86 Panel](/screens/p4-86)** — 4-inch, 720x720, square
   - **[4848S040](/screens/4848s040)** — 4-inch, 480x480, square
+  - **[ESP32-S3 Smart 86 Box](/screens/s3-smart-86-box)** — 4-inch, 480x480, square
 - **USB-C cable** — must be a data cable, not a charge-only cable
 - **A computer** running Chrome or Edge (desktop). Safari and Firefox are not supported for flashing.
 - **Home Assistant** running on your network

@@ -1,0 +1,75 @@
+# =============================================================================
+# FONTS (DEVICE OVERRIDE) - Smaller fonts for the 480x480 square display
+# =============================================================================
+# Supplements the common fonts with smaller variants for the main UI. Font
+# sizes that match the common set are reused instead of being declared again.
+# Hebrew glyphs are pulled from gfonts://Heebo via `extras`, since Roboto
+# does not include the Hebrew block.
+# =============================================================================
+
+font:
+  # Button icons (44px, proportional to 66px on the 720x720 square panel)
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_44_icons
+    size: 44
+    bpp: 4
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml
+
+  # Climate card icons (25% smaller than main page icons)
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_33_icons
+    size: 33
+    bpp: 4
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml
+
+  # Climate modal mode/value text (smaller than normal button labels)
+  - file: "gfonts://Roboto"
+    id: font_roboto_regular_18_text
+    size: 18
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Sensor value large number (44px, proportional to 66px on the 720x720 square panel)
+  - file: "gfonts://Roboto@Light"
+    id: font_roboto_light_44_digits
+    size: 44
+    bpp: 4
+    glyphs:
+      - "0123456789.-°/%"
+      - ":"
+
+  # Large-card sensor values (2.5x the regular sensor value font)
+  - file: "gfonts://Roboto@Thin"
+    id: font_roboto_thin_110_digits
+    size: 110
+    bpp: 4
+    glyphs:
+      - "0123456789.-°/%"
+      - ":"
+
+  # Media now-playing titles (sensor value size, full text glyph coverage)
+  - file: "gfonts://Roboto@Light"
+    id: font_roboto_light_34_text
+    size: 34
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Top bar network status icon
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_19_network
+    size: 19
+    bpp: 4
+    glyphs: !include ../../../common/assets/network_status_glyphs.yaml
+
+  # Subpage chevron marker
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_mdi_23_subpage
+    size: 23
+    bpp: 4
+    glyphs: !include ../../../common/assets/network_status_glyphs.yaml

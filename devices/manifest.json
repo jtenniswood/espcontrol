@@ -533,6 +533,127 @@
         }
       }
     },
+    "waveshare-esp32-s3-smart-86-box": {
+      "slots": 9,
+      "public": {
+        "name": "Waveshare ESP32-S3 Smart 86 Box",
+        "docsPath": "/screens/s3-smart-86-box",
+        "screenSize": "4 inches",
+        "resolution": "480 x 480",
+        "orientation": "Square"
+      },
+      "layout": {
+        "cols": 3,
+        "rows": 3,
+        "firmwareGrid": "3x3"
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ]
+      },
+      "web": {
+        "dragMode": "displace",
+        "dragAnimation": true,
+        "screen": {
+          "width": "55%",
+          "aspect": "1/1"
+        },
+        "topbar": {
+          "height": 7.5,
+          "padding": "0.83cqw",
+          "fontSize": 3.75
+        },
+        "grid": {
+          "top": 8.5,
+          "compactTop": 0.83,
+          "left": 1.04,
+          "right": 1.04,
+          "bottom": 0.83,
+          "gap": 2.08,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 1.67,
+          "padding": 2.92,
+          "iconSize": 9.58,
+          "labelSize": 3.96,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 1.67
+        },
+        "sensorBadge": {
+          "top": 2.08,
+          "right": 2.08,
+          "fontSize": 3.33
+        },
+        "subpageBadge": {
+          "bottom": 2.08,
+          "right": 2.08,
+          "fontSize": 4
+        }
+      },
+      "firmware": {
+        "build": {
+          "chip": "ESP32-S3"
+        },
+        "fonts": {
+          "icon": "font_mdi_44_icons",
+          "sensor": "font_roboto_light_44_digits",
+          "largeSensor": "font_roboto_thin_110_digits",
+          "mediaTitle": "font_roboto_light_34_text",
+          "volumeNumber": "font_roboto_thin_96_text",
+          "volumeLabel": "font_roboto_regular_22_text",
+          "climateCardIcon": "font_mdi_33_icons",
+          "subpageChevron": "font_mdi_23_subpage",
+          "climateOptionTitle": "font_roboto_regular_20_text",
+          "climateOptionValue": "font_roboto_regular_18_text"
+        },
+        "display": {
+          "wrapTallLabels": false,
+          "subpageChevronX": 3,
+          "subpageChevronY": -2,
+          "subpageChevronTextWidthPercent": 96
+        },
+        "package": {
+          "subpageConfigChunks": 4,
+          "substitutions": {
+            "screen_width": "\"480\"",
+            "screen_height": "\"480\"",
+            "content_width": "\"380\"",
+            "setup_icon_font_id": "font_mdi_44_icons",
+            "setup_title_font_id": "font_roboto_light_34_text",
+            "setup_body_font_id": "font_roboto_regular_22_text",
+            "setup_pad_row": "\"20\"",
+            "setup_loading_pad_row": "\"40\"",
+            "setup_action_button_width": "\"200\"",
+            "setup_action_button_height": "\"56\"",
+            "setup_action_button_radius": "\"12\"",
+            "icon_font": "font_mdi_44_icons",
+            "subpage_chevron_font": "font_mdi_23_subpage",
+            "label_font": "font_roboto_regular_22_text",
+            "media_title_font": "font_roboto_light_34_text",
+            "unit_font": "font_roboto_regular_22_text",
+            "sensor_value_font": "font_roboto_light_44_digits",
+            "padding": "14px",
+            "radius": "8px",
+            "main_page_pad_top": "\"38\"",
+            "main_page_compact_pad_top": "\"4\"",
+            "clock_font_size": "\"160\"",
+            "clock_cx": "\"240\"",
+            "clock_cy": "\"240\""
+          },
+          "deviceFontPackageKey": "fonts_device",
+          "apiNavigateAction": false
+        }
+      }
+    },
     "guition-esp32-s3-4848s040": {
       "slots": 9,
       "public": {

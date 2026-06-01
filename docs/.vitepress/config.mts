@@ -15,6 +15,12 @@ const pageImages: Record<string, typeof defaultImage> = {
     height: '999',
     type: 'image/jpeg',
   },
+  'screens/s3-smart-86-box.md': {
+    url: `${hostname}images/home_screen_hero.jpg`,
+    width: '1024',
+    height: '798',
+    type: 'image/jpeg',
+  },
   'screens/jc1060p470.md': {
     url: `${hostname}images/jc1060p470-hero.jpg`,
     width: '1024',
@@ -75,6 +81,14 @@ const screenProducts: Record<string, Record<string, string>> = {
   'screens/4848s040.md': {
     name: 'Guition 4848S040',
     model: '4848S040',
+    size: '4 inches',
+    resolution: '480 x 480',
+    processor: 'ESP32-S3',
+  },
+  'screens/s3-smart-86-box.md': {
+    name: 'Waveshare ESP32-S3 Smart 86 Box',
+    brand: 'Waveshare',
+    model: 'ESP32-S3 Smart 86 Box',
     size: '4 inches',
     resolution: '480 x 480',
     processor: 'ESP32-S3',
@@ -155,7 +169,7 @@ const faqItems = [
   {
     question: 'How Many Cards Can I Have?',
     answer:
-      'The home screen supports 20 cards on JC8012P4A1, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040 or the ESP32-P4 86 Panel, with more available through subpages.',
+      'The home screen supports 20 cards on JC8012P4A1, 15 on JC1060P470, 6 on JC4880P443, and 9 on 4848S040, ESP32-P4 86 Panel, or ESP32-S3 Smart 86 Box, with more available through subpages.',
   },
   {
     question: 'What Is a Subpage?',
@@ -170,7 +184,7 @@ const faqItems = [
   {
     question: 'Which Panels Are Supported?',
     answer:
-      'EspControl supports the Guition JC8012P4A1, JC1060P470, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
+      'EspControl supports the Guition JC8012P4A1, JC1060P470, JC4880P443, 4848S040, ESP32-P4 86 Panel, and Waveshare ESP32-S3 Smart 86 Box touchscreens.',
   },
   {
     question: 'Does the Panel Work with Other Smart Home Platforms?',
@@ -388,6 +402,7 @@ export default defineConfig({
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
           { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
+          { text: '4-inch ESP32-S3 Smart 86 Box', link: '/screens/s3-smart-86-box' },
         ],
       },
       {

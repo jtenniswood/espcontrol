@@ -1,0 +1,36 @@
+# =============================================================================
+# FACTORY BUILD - Waveshare ESP32-S3 Smart 86 Box (4" square)
+# =============================================================================
+# Factory image: www.js bundled inline for first-boot web UI access.
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-s3-smart86"
+  friendly_name: "Waveshare ESP32-S3 Smart 86 Box"
+  firmware_version: "0.0.0"
+  espcontrol_component_url: "file:///config"
+  espcontrol_component_ref: "HEAD"
+
+packages:
+  core: !include ../devices/waveshare-esp32-s3-smart-86-box/packages.yaml
+
+esphome:
+  name_add_mac_suffix: true
+  project:
+    name: jtenniswood.espcontrol
+    version: "${firmware_version}"
+
+dashboard_import:
+  package_import_url: github://jtenniswood/espcontrol/devices/waveshare-esp32-s3-smart-86-box/esphome.yaml@main
+
+web_server:
+  port: 80
+  version: 3
+  js_url: ""
+  js_include: "../docs/public/webserver/waveshare-esp32-s3-smart-86-box/www.js"
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:
