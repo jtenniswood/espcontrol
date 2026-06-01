@@ -31,6 +31,4 @@ wifi:
   ap:
     ssid: "${friendly_name}"
 
-improv_serial:
-
 captive_portal:
