@@ -2961,7 +2961,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
   }
   if (tile.type == "alarm" &&
       epaper_dashboard_option_value(tile.options, "label_display") != "name") {
-    return epaper_dashboard_alarm_label_for_state(epaper_dashboard_alarm_effective_state(tile));
+    return epaper_dashboard_alarm_label_for_state(tile.state);
   }
   if (tile.type == "alarm" && tile.label.empty()) {
     if (!tile.entity.empty()) return tile.entity;
