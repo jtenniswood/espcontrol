@@ -225,6 +225,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         "constexpr size_t EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN = 256;" in epaper and
         "size_t max_len = EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN" in epaper
     ), "TRMNL text sensor cards must use the normal text sensor display limit"
+    assert epaper.count(
+        "? epaper_dashboard_string_ref_limited(state, EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN)"
+    ) >= 2, "TRMNL media now-playing title and artist must use the normal metadata text limit"
     assert 'if (end == value.c_str() || std::isnan(parsed)) return "";' in epaper, (
         "TRMNL numeric cards must leave non-numeric values blank like normal LVGL numeric cards"
     )

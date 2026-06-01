@@ -3192,7 +3192,9 @@ inline void epaper_dashboard_subscribe(int index) {
     esphome::api::global_api_server->subscribe_home_assistant_state(
         attribute_entity, attribute, [index](esphome::StringRef state) {
           auto &tile = epaper_dashboard_tiles()[index];
-          tile.sensor_value = std::string(state.c_str(), state.size());
+          tile.sensor_value = tile.type == "media" && tile.sensor == "now_playing"
+            ? epaper_dashboard_string_ref_limited(state, EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN)
+            : std::string(state.c_str(), state.size());
           tile.sensor_unavailable = epaper_dashboard_state_unavailable(tile.sensor_value);
           epaper_dashboard_mark_dirty();
         });
@@ -3213,7 +3215,9 @@ inline void epaper_dashboard_subscribe(int index) {
     esphome::api::global_api_server->subscribe_home_assistant_state(
         secondary_attribute_entity, secondary_attribute, [index](esphome::StringRef state) {
           auto &tile = epaper_dashboard_tiles()[index];
-          tile.secondary_value = std::string(state.c_str(), state.size());
+          tile.secondary_value = tile.type == "media" && tile.sensor == "now_playing"
+            ? epaper_dashboard_string_ref_limited(state, EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN)
+            : std::string(state.c_str(), state.size());
           tile.secondary_unavailable = epaper_dashboard_state_unavailable(tile.secondary_value);
           epaper_dashboard_mark_dirty();
         });
