@@ -423,6 +423,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     ), "TRMNL option-select cards must use HA friendly names like normal cards when no custom label is set"
     assert (
         'if (epaper_dashboard_option_select_card(tile)) {\n'
+        '    return false;\n'
+        '  }'
+        in epaper
+    ), "TRMNL option-select cards must not use selected text as an active/on state"
+    assert (
+        'if (epaper_dashboard_option_select_card(tile)) {\n'
         '    return find_icon("Chevron Down");\n'
         '  }'
         in epaper
