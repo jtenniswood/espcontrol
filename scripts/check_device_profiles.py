@@ -389,6 +389,14 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (tile.type == "media" &&\n      (tile.sensor == "play_pause" || tile.sensor == "position") &&\n      tile.precision == "state") {' in epaper, (
         "TRMNL media state-display cards must put the playback state in the label like normal cards"
     )
+    assert (
+        'if (tile.type == "media") {\n'
+        '    return !tile.state_unavailable &&\n'
+        '           (tile.sensor == "play_pause" ||\n'
+        '            (tile.sensor == "now_playing" && tile.precision == "play_pause")) &&\n'
+        '           tile.state == "playing";\n'
+        '  }' in epaper
+    ), "TRMNL media cards must only use active styling for play/pause modes when the state is exactly playing"
     assert 'if (epaper_dashboard_action_state_icon_card(tile) ||\n        epaper_dashboard_action_state_text_card(tile)) show_value = false;' in epaper, (
         "TRMNL action icon/text state cards must keep the icon/label presentation used by normal cards"
     )
