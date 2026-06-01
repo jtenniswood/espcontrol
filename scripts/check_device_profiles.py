@@ -249,6 +249,20 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  }' in epaper
     ), "TRMNL lock status cards must show transition/error statuses like normal cards"
     assert (
+        'if (tile.type == "lock") {\n'
+        '    if (epaper_dashboard_lock_command_mode(tile.sensor)) {\n'
+        '      if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());\n'
+        '      return find_icon(tile.sensor == "unlock" ? "Lock Open" : "Lock");\n'
+        '    }\n'
+        '    std::string lock_icon = active && !tile.icon_on.empty() && tile.icon_on != "Auto"\n'
+        '      ? tile.icon_on\n'
+        '      : tile.icon;\n'
+        '    if (!lock_icon.empty() && lock_icon != "Auto") return find_icon(lock_icon.c_str());\n'
+        '    return find_icon(active ? "Lock Open" : "Lock");\n'
+        '  }'
+        in epaper
+    ), "TRMNL lock cards must use configured command and locked/unlocked icons like normal cards"
+    assert (
         'inline bool epaper_dashboard_garage_state_releases_label(const std::string &state) {\n'
         '  return state == "open" || state == "closed";\n'
         '}' in epaper

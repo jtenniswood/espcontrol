@@ -2703,7 +2703,17 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
     return find_icon(active ? "Lightbulb" : "Lightbulb Outline");
   }
   if (tile.type == "light_temperature") return find_icon("Lightbulb");
-  if (tile.type == "lock") return find_icon(active || tile.sensor == "unlock" ? "Lock Open" : "Lock");
+  if (tile.type == "lock") {
+    if (epaper_dashboard_lock_command_mode(tile.sensor)) {
+      if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());
+      return find_icon(tile.sensor == "unlock" ? "Lock Open" : "Lock");
+    }
+    std::string lock_icon = active && !tile.icon_on.empty() && tile.icon_on != "Auto"
+      ? tile.icon_on
+      : tile.icon;
+    if (!lock_icon.empty() && lock_icon != "Auto") return find_icon(lock_icon.c_str());
+    return find_icon(active ? "Lock Open" : "Lock");
+  }
   if (tile.type == "media") {
     if (tile.sensor == "previous") return find_icon("Skip Previous");
     if (tile.sensor == "next") return find_icon("Skip Next");
