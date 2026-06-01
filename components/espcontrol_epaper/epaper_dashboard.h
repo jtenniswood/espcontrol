@@ -2232,9 +2232,17 @@ inline bool epaper_dashboard_card_large_numbers(const EpaperDashboardTile &tile)
 inline bool epaper_dashboard_card_large_numbers_supported(const EpaperDashboardTile &tile) {
   if (tile.type == "sensor") return tile.precision != "icon" && tile.precision != "text";
   if (epaper_dashboard_weather_forecast_card(tile)) return true;
-  return tile.type.empty() || tile.type == "action" || tile.type == "calendar" ||
-         tile.type == "clock" || tile.type == "climate" || tile.type == "media" ||
-         tile.type == "timezone";
+  if (tile.type.empty()) return !tile.sensor.empty() && tile.precision != "text";
+  if (tile.type == "action") {
+    if (epaper_dashboard_option_value(tile.options, "state_entity").empty()) return false;
+    std::string precision = epaper_dashboard_option_value(tile.options, "state_precision");
+    return precision == "0" || precision == "1" || precision == "2" ||
+           !epaper_dashboard_option_value(tile.options, "state_unit").empty();
+  }
+  if (tile.type == "media") return tile.sensor == "volume" || tile.sensor == "position";
+  if (tile.type == "climate") return epaper_dashboard_climate_number_mode(tile) != "icon";
+  if (tile.type == "todo") return epaper_dashboard_todo_card_show_count(tile);
+  return tile.type == "calendar" || tile.type == "clock" || tile.type == "timezone";
 }
 
 inline bool epaper_dashboard_text_sensor_card(const EpaperDashboardTile &tile) {

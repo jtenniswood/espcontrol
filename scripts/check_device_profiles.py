@@ -605,6 +605,19 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL must run the same final unsupported-options cleanup as normal cards"
     assert (
+        'if (tile.type.empty()) return !tile.sensor.empty() && tile.precision != "text";\n'
+        '  if (tile.type == "action") {\n'
+        '    if (epaper_dashboard_option_value(tile.options, "state_entity").empty()) return false;\n'
+        '    std::string precision = epaper_dashboard_option_value(tile.options, "state_precision");\n'
+        '    return precision == "0" || precision == "1" || precision == "2" ||\n'
+        '           !epaper_dashboard_option_value(tile.options, "state_unit").empty();\n'
+        '  }\n'
+        '  if (tile.type == "media") return tile.sensor == "volume" || tile.sensor == "position";\n'
+        '  if (tile.type == "climate") return epaper_dashboard_climate_number_mode(tile) != "icon";\n'
+        '  if (tile.type == "todo") return epaper_dashboard_todo_card_show_count(tile);'
+        in epaper
+    ), "TRMNL large-number support rules must match normal device cards"
+    assert (
         'return (tile.type == "clock" || (tile.type == "calendar" && tile.precision == "datetime")) &&\n'
         '         epaper_dashboard_card_large_numbers(tile) &&\n'
         '         row_span == 1 && col_span == 2;'
