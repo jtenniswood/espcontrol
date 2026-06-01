@@ -236,6 +236,13 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (end == value.c_str() || std::isnan(parsed)) return "";' in epaper, (
         "TRMNL numeric cards must leave non-numeric values blank like normal LVGL numeric cards"
     )
+    assert (
+        'if ((tile.type == "sensor" || epaper_dashboard_toggle_numeric_sensor_card(tile)) &&\n'
+        '      tile.precision != "text" && tile.sensor_unavailable) {\n'
+        '    return "";\n'
+        '  }'
+        in epaper
+    ), "TRMNL unavailable numeric sensor cards must hide units like normal LVGL cards"
     assert 'if (end == value.c_str() || std::isnan(parsed) || parsed < 0) return "0:00";' in epaper, (
         "TRMNL media position cards must fall back to 0:00 for invalid positions like normal LVGL media cards"
     )

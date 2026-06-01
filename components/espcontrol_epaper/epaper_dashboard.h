@@ -2935,6 +2935,10 @@ inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile
     return display_temperature_unit_symbol();
   }
   if (epaper_dashboard_action_state_numeric_card(tile) && tile.sensor_unavailable) return "";
+  if ((tile.type == "sensor" || epaper_dashboard_toggle_numeric_sensor_card(tile)) &&
+      tile.precision != "text" && tile.sensor_unavailable) {
+    return "";
+  }
   if (tile.type == "climate" && epaper_dashboard_value_replaces_icon(tile) && tile.unit.empty()) {
     return display_clock_bar_temperature_suffix();
   }
