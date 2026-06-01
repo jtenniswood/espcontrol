@@ -2268,6 +2268,14 @@ inline bool epaper_dashboard_active_color_enabled(const EpaperDashboardTile &til
   return epaper_dashboard_option_present(tile.options, "active_color");
 }
 
+inline const std::string &epaper_dashboard_binary_card_state(const EpaperDashboardTile &tile) {
+  return !tile.state.empty() ? tile.state : tile.sensor_value;
+}
+
+inline bool epaper_dashboard_binary_card_unavailable(const EpaperDashboardTile &tile) {
+  return !tile.state.empty() ? tile.state_unavailable : tile.sensor_unavailable;
+}
+
 inline bool epaper_dashboard_internal_push_mode(const EpaperDashboardTile &tile) {
   return tile.type == "internal" && tile.sensor == "push";
 }
@@ -2338,13 +2346,16 @@ inline bool epaper_dashboard_tile_active(const EpaperDashboardTile &tile) {
            epaper_dashboard_cover_toggle_state_active(tile.state);
   }
   if (tile.type == "door_window") {
-    return !tile.state_unavailable && epaper_dashboard_active_color_enabled(tile) &&
-           epaper_dashboard_state_active(tile.state);
+    return !epaper_dashboard_binary_card_unavailable(tile) &&
+           epaper_dashboard_active_color_enabled(tile) &&
+           epaper_dashboard_state_active(epaper_dashboard_binary_card_state(tile));
   }
   if (tile.type == "presence") {
-    return !tile.state_unavailable && epaper_dashboard_active_color_enabled(tile) &&
-           (epaper_dashboard_normalized_state_text(tile.state) == "detected" ||
-            epaper_dashboard_state_active(tile.state));
+    const std::string &state = epaper_dashboard_binary_card_state(tile);
+    return !epaper_dashboard_binary_card_unavailable(tile) &&
+           epaper_dashboard_active_color_enabled(tile) &&
+           (epaper_dashboard_normalized_state_text(state) == "detected" ||
+            epaper_dashboard_state_active(state));
   }
   if (tile.type == "action" && !tile.action_state_entity.empty()) {
     return !tile.sensor_unavailable && epaper_dashboard_state_active(tile.sensor_value);
@@ -3045,12 +3056,14 @@ inline void epaper_dashboard_update_lvgl_page(int page) {
     bool active = configured && epaper_dashboard_tile_active(tile);
     bool icon_active = active;
     if (tile.type == "door_window") {
-      icon_active = !tile.state_unavailable && epaper_dashboard_state_active(tile.state);
+      icon_active = !epaper_dashboard_binary_card_unavailable(tile) &&
+                    epaper_dashboard_state_active(epaper_dashboard_binary_card_state(tile));
     }
     if (tile.type == "presence") {
-      icon_active = !tile.state_unavailable &&
-                    (epaper_dashboard_normalized_state_text(tile.state) == "detected" ||
-                     epaper_dashboard_state_active(tile.state));
+      const std::string &state = epaper_dashboard_binary_card_state(tile);
+      icon_active = !epaper_dashboard_binary_card_unavailable(tile) &&
+                    (epaper_dashboard_normalized_state_text(state) == "detected" ||
+                     epaper_dashboard_state_active(state));
     }
     if (tile.type == "climate") {
       icon_active = epaper_dashboard_climate_controls_enabled(tile);

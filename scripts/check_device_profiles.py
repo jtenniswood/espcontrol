@@ -303,6 +303,19 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert cover_icon in epaper, (
         "TRMNL cover icons must follow normal cover state/position icon selection"
     )
+    assert (
+        'inline const std::string &epaper_dashboard_binary_card_state(const EpaperDashboardTile &tile) {\n'
+        '  return !tile.state.empty() ? tile.state : tile.sensor_value;\n'
+        '}'
+        in epaper and
+        'icon_active = !epaper_dashboard_binary_card_unavailable(tile) &&\n'
+        '                    epaper_dashboard_state_active(epaper_dashboard_binary_card_state(tile));'
+        in epaper and
+        'const std::string &state = epaper_dashboard_binary_card_state(tile);\n'
+        '      icon_active = !epaper_dashboard_binary_card_unavailable(tile) &&\n'
+        '                    (epaper_dashboard_normalized_state_text(state) == "detected" ||'
+        in epaper
+    ), "TRMNL door/window and presence cards must render from their sensor-backed state"
     garage_icon = (
         'bool open_icon = epaper_dashboard_garage_state_uses_open_icon(tile.state);\n'
         '    std::string garage_icon = open_icon && !tile.icon_on.empty() && tile.icon_on != "Auto"\n'
