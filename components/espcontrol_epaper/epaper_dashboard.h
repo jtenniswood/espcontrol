@@ -2439,7 +2439,7 @@ inline bool epaper_dashboard_slider_visual_card(const EpaperDashboardTile &tile)
 
 inline bool epaper_dashboard_wide_large_date_time_card(const EpaperDashboardTile &tile,
                                                        int row_span, int col_span) {
-  return (tile.type == "clock" || (tile.type == "calendar" && tile.precision == "datetime")) &&
+  return tile.type == "clock" &&
          epaper_dashboard_card_large_numbers(tile) &&
          row_span == 1 && col_span == 2;
 }

@@ -470,6 +470,15 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert calendar_source in epaper, (
         "TRMNL calendar cards with a configured date source must not silently fall back to the local date"
     )
+    assert (
+        'return tile.type == "clock" &&\n'
+        '         epaper_dashboard_card_large_numbers(tile) &&\n'
+        '         row_span == 1 && col_span == 2;'
+        in epaper
+    ), "TRMNL wide large-number date/time layout must only apply to Clock cards like the web editor and normal devices"
+    assert '(tile.type == "calendar" && tile.precision == "datetime")' not in epaper, (
+        "TRMNL Time & Date cards must not use Clock-only wide large-number handling"
+    )
     epaper_badge_guards = {
         'if (tile.type.empty()) {\n    if (!tile.sensor.empty()) {\n      return tile.precision == "text" ? find_icon("Format Text") : find_icon("Gauge");\n    }\n    return find_icon("Swap Horizontal");\n  }': (
             "TRMNL switch cards must use the same switch/numeric/text badges as the web editor"
@@ -710,7 +719,7 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL large-number support rules must match normal device cards"
     assert (
-        'return (tile.type == "clock" || (tile.type == "calendar" && tile.precision == "datetime")) &&\n'
+        'return tile.type == "clock" &&\n'
         '         epaper_dashboard_card_large_numbers(tile) &&\n'
         '         row_span == 1 && col_span == 2;'
         in epaper and
@@ -719,7 +728,7 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         'if (epaper_dashboard_wide_large_date_time_card(tile, row_span, col_span)) {\n'
         '        lv_obj_add_flag(slot.label, LV_OBJ_FLAG_HIDDEN);'
         in epaper
-    ), "TRMNL wide large-number date/time cards must use the normal hidden-label left-middle layout"
+    ), "TRMNL wide large-number Clock cards must use the normal hidden-label left-middle layout"
     assert (
         "if (tile.label_configured && !tile.label.empty()) return tile.label;" in epaper
     ), "TRMNL weather forecast cards must honor explicitly configured labels like normal cards"
