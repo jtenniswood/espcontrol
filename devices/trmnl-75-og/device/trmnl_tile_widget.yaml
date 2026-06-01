@@ -44,7 +44,7 @@ obj:
               text: ""
               text_font: font_trmnl_label_108
               text_color: 0xFFFFFF
-              pad_bottom: 6
+              pad_bottom: 8
               hidden: true
     - obj:
         id: trmnl_tile_${num}_track
