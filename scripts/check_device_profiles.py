@@ -730,6 +730,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '      !tile.state.empty() && !epaper_dashboard_state_active(tile.state)) return 0;'
         in epaper
     ), "TRMNL brightness and fan tracks must accept attribute values before the on/off state arrives"
+    assert 'if (tile.type == "fan_speed") return 0;' in epaper, (
+        "TRMNL fan speed cards must not show a made-up percentage before Home Assistant sends the fan percentage"
+    )
     assert (
         'if (tile.type == "light_temperature" &&\n'
         '      !epaper_dashboard_state_active(tile.state)) return 0;'
