@@ -10,7 +10,7 @@ font:
 
   - file: "gfonts://Inter@600"
     id: font_trmnl_label_108
-    size: 319
+    size: 320
     glyphs: " ,-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
   - file: "gfonts://Inter@600"
