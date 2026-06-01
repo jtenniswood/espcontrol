@@ -600,6 +600,17 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         in epaper
     ), "TRMNL option-select cards must keep the web preview chevron badge"
     assert (
+        'if (tile.type == "action") {\n'
+        '    if (epaper_dashboard_action_state_display_enabled(tile)) {\n'
+        '      if (epaper_dashboard_action_state_icon_card(tile)) return find_icon("Toggle Switch");\n'
+        '      if (epaper_dashboard_action_state_text_card(tile)) return find_icon("Format Text");\n'
+        '      return find_icon("Gauge");\n'
+        '    }\n'
+        '    return find_icon("Flash");\n'
+        '  }'
+        in epaper
+    ), "TRMNL action state-display cards must show the same state-mode badge as the web preview"
+    assert (
         'std::string state = epaper_dashboard_normalized_state_text(value);\n'
         '  return state.empty() || state == "unavailable" || state == "unknown";'
         in epaper

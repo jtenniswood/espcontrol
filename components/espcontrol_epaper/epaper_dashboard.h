@@ -2784,6 +2784,11 @@ inline const char *epaper_dashboard_badge_icon(const EpaperDashboardTile &tile) 
     return find_icon("Chevron Down");
   }
   if (tile.type == "action") {
+    if (epaper_dashboard_action_state_display_enabled(tile)) {
+      if (epaper_dashboard_action_state_icon_card(tile)) return find_icon("Toggle Switch");
+      if (epaper_dashboard_action_state_text_card(tile)) return find_icon("Format Text");
+      return find_icon("Gauge");
+    }
     return find_icon("Flash");
   }
   if (tile.type == "push") return find_icon("Gesture Tap");
