@@ -10,17 +10,17 @@ font:
 
   - file: "gfonts://Inter@600"
     id: font_trmnl_label_108
-    size: 293
+    size: 294
     glyphs: " !\"%()+,-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
 
   - file: "gfonts://Inter@600"
     id: font_trmnl_label_72
-    size: 36
+    size: 28
     glyphs: " !\"%()+,-./0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
 
   - file: "gfonts://Inter@700"
     id: font_trmnl_value_200
-    size: 511
+    size: 512
     glyphs: " !\"%()+,-./0123456789:"
 
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
