@@ -153,6 +153,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "std::string state_source = epaper_dashboard_state_source(tile);" in epaper, (
         "TRMNL state subscriptions must use card-aware state sources"
     )
+    assert 'if (tile.type == "door_window" && !tile.label_configured) {\n    if (!tile.friendly_name.empty()) return tile.friendly_name;' in epaper, (
+        "TRMNL door/window cards must use HA friendly names like normal cards when no custom label is set"
+    )
+    assert 'if (tile.type == "presence" && !tile.label_configured) {\n    if (!tile.friendly_name.empty()) return tile.friendly_name;' in epaper, (
+        "TRMNL presence cards must use HA friendly names like normal cards when no custom label is set"
+    )
     assert "espcontrol::epaper_dashboard_set_order(id(button_order).state);" in (
         ROOT / "devices" / "trmnl-75-og" / "device" / "sensors.yaml"
     ).read_text(encoding="utf-8"), (
