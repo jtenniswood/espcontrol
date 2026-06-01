@@ -280,6 +280,21 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert calendar_source in epaper, (
         "TRMNL calendar cards with a configured date source must not silently fall back to the local date"
     )
+    assert 'if (tile.type == "light_brightness" || tile.type == "slider") return find_icon("Tune Vertical Variant");' in epaper, (
+        "TRMNL light brightness and slider cards must use the same preview badge as the web editor"
+    )
+    assert 'if (tile.type == "cover") return find_icon("Blinds Horizontal");' in epaper, (
+        "TRMNL cover cards must use the same preview badge as the web editor"
+    )
+    assert 'if (tile.type == "media" &&\n      (tile.sensor == "play_pause" || tile.sensor == "position") &&\n      tile.precision == "state") {' in epaper, (
+        "TRMNL media state-display cards must put the playback state in the label like normal cards"
+    )
+    assert 'if (epaper_dashboard_action_state_icon_card(tile) ||\n        epaper_dashboard_action_state_text_card(tile)) show_value = false;' in epaper, (
+        "TRMNL action icon/text state cards must keep the icon/label presentation used by normal cards"
+    )
+    assert 'if (epaper_dashboard_action_state_numeric_card(tile)) return "--";' in epaper, (
+        "TRMNL action numeric state cards must use the normal numeric placeholder while waiting for values"
+    )
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:
