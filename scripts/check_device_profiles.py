@@ -614,6 +614,11 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     )
     assert (
         'if (tile.type == "media") {\n'
+        '    if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());\n'
+        '    if (tile.sensor == "previous") return find_icon("Skip Previous");' in epaper
+    ), "TRMNL media cards must honor configured icons like normal cards and the web preview"
+    assert (
+        'if (tile.type == "media") {\n'
         '    return !tile.state_unavailable &&\n'
         '           (tile.sensor == "play_pause" ||\n'
         '            (tile.sensor == "now_playing" && tile.precision == "play_pause")) &&\n'

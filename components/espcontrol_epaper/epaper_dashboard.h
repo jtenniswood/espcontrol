@@ -2745,6 +2745,7 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
     return find_icon(active ? "Lock Open" : "Lock");
   }
   if (tile.type == "media") {
+    if (!tile.icon.empty() && tile.icon != "Auto") return find_icon(tile.icon.c_str());
     if (tile.sensor == "previous") return find_icon("Skip Previous");
     if (tile.sensor == "next") return find_icon("Skip Next");
     if (tile.sensor == "volume") return find_icon("Volume High");
