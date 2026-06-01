@@ -879,12 +879,14 @@ inline std::string epaper_dashboard_climate_format_temperature(
 }
 
 inline std::string epaper_dashboard_climate_actual_value(const EpaperDashboardTile &tile) {
+  if (tile.state_unavailable) return "--";
   std::string value = epaper_dashboard_climate_format_temperature(
       tile.climate_current_value, tile.climate_current_unavailable, tile);
   return value.empty() ? "--" : value;
 }
 
 inline std::string epaper_dashboard_climate_target_value(const EpaperDashboardTile &tile) {
+  if (tile.state_unavailable) return "--";
   std::string low = epaper_dashboard_climate_format_temperature(
       tile.climate_target_low_value, tile.climate_target_low_unavailable, tile);
   std::string high = epaper_dashboard_climate_format_temperature(
@@ -2981,6 +2983,7 @@ inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile
     return "";
   }
   if (tile.type == "climate" && epaper_dashboard_value_replaces_icon(tile) && tile.unit.empty()) {
+    if (epaper_dashboard_climate_card_value(tile) == "--") return "";
     return display_temperature_unit_symbol();
   }
   return epaper_dashboard_trim(tile.unit);
