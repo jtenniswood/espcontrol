@@ -430,6 +430,28 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  }'
         in epaper
     ), "TRMNL door/window and presence labels must use HA friendly names like normal cards"
+    assert (
+        'if (tile.type == "door_window") {\n'
+        '    std::string closed_icon = !tile.icon.empty() && tile.icon != "Auto"\n'
+        '      ? tile.icon\n'
+        '      : (epaper_dashboard_window_card(tile) ? "Window Closed" : "Door");\n'
+        '    std::string open_icon = !tile.icon_on.empty() && tile.icon_on != "Auto"\n'
+        '      ? tile.icon_on\n'
+        '      : (epaper_dashboard_window_card(tile) ? "Window Open" : "Door Open");\n'
+        '    return find_icon((active ? open_icon : closed_icon).c_str());\n'
+        '  }\n'
+        '  if (tile.type == "presence") {\n'
+        '    std::string clear_icon = !tile.icon.empty() && tile.icon != "Auto"\n'
+        '      ? tile.icon\n'
+        '      : "Motion Sensor Off";\n'
+        '    std::string detected_icon = !tile.icon_on.empty() && tile.icon_on != "Auto"\n'
+        '      ? tile.icon_on\n'
+        '      : "Motion Sensor";\n'
+        '    return find_icon((active ? detected_icon : clear_icon).c_str());\n'
+        '  }\n'
+        '  if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());'
+        in epaper
+    ), "TRMNL door/window and presence icons must use configured inactive/active icon pairs before generic icons"
     garage_icon = (
         'bool open_icon = epaper_dashboard_garage_state_uses_open_icon(tile.state);\n'
         '    std::string garage_icon = open_icon && !tile.icon_on.empty() && tile.icon_on != "Auto"\n'

@@ -2687,15 +2687,29 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
       epaper_dashboard_option_value(tile.options, "icon_display") != "static") {
     return epaper_dashboard_alarm_icon_for_state(epaper_dashboard_alarm_effective_state(tile));
   }
+  if (tile.type == "door_window") {
+    std::string closed_icon = !tile.icon.empty() && tile.icon != "Auto"
+      ? tile.icon
+      : (epaper_dashboard_window_card(tile) ? "Window Closed" : "Door");
+    std::string open_icon = !tile.icon_on.empty() && tile.icon_on != "Auto"
+      ? tile.icon_on
+      : (epaper_dashboard_window_card(tile) ? "Window Open" : "Door Open");
+    return find_icon((active ? open_icon : closed_icon).c_str());
+  }
+  if (tile.type == "presence") {
+    std::string clear_icon = !tile.icon.empty() && tile.icon != "Auto"
+      ? tile.icon
+      : "Motion Sensor Off";
+    std::string detected_icon = !tile.icon_on.empty() && tile.icon_on != "Auto"
+      ? tile.icon_on
+      : "Motion Sensor";
+    return find_icon((active ? detected_icon : clear_icon).c_str());
+  }
   if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
   if (tile.type == "action") return find_icon("Flash");
   if (tile.type == "alarm") return find_icon("Security");
   if (tile.type == "alarm_action") return epaper_dashboard_alarm_action_icon(tile.sensor);
   if (tile.type == "climate") return find_icon("Thermostat");
-  if (tile.type == "door_window") {
-    if (epaper_dashboard_window_card(tile)) return find_icon(active ? "Window Open" : "Window Closed");
-    return find_icon(active ? "Door Open" : "Door");
-  }
   if (tile.type == "fan_speed" || tile.type == "fan_switch" ||
       tile.type == "fan_oscillate" || tile.type == "fan_direction" ||
       tile.type == "fan_preset") return find_icon(epaper_dashboard_fan_icon_name(tile, active));
@@ -2722,7 +2736,6 @@ inline const char *epaper_dashboard_icon(const EpaperDashboardTile &tile, bool a
     if (tile.sensor == "now_playing") return find_icon("Music");
     return find_icon("Play Pause");
   }
-  if (tile.type == "presence") return find_icon(active ? "Motion Sensor" : "Motion Sensor Off");
   if (tile.type == "push") return find_icon("Gesture Tap");
   if (tile.type == "webhook") return find_icon("Flash");
   if (tile.type == "todo") return find_icon("Check");
