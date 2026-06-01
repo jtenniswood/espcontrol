@@ -2187,6 +2187,14 @@ inline bool epaper_dashboard_card_large_numbers(const EpaperDashboardTile &tile)
   return epaper_dashboard_option_present(tile.options, "large_numbers");
 }
 
+inline bool epaper_dashboard_card_large_numbers_supported(const EpaperDashboardTile &tile) {
+  if (tile.type == "sensor") return tile.precision != "icon" && tile.precision != "text";
+  if (epaper_dashboard_weather_forecast_card(tile)) return true;
+  return tile.type.empty() || tile.type == "action" || tile.type == "calendar" ||
+         tile.type == "clock" || tile.type == "climate" || tile.type == "media" ||
+         tile.type == "timezone";
+}
+
 inline bool epaper_dashboard_text_sensor_card(const EpaperDashboardTile &tile) {
   return (tile.type == "sensor" && tile.precision == "text") || tile.type == "text_sensor";
 }
@@ -3573,6 +3581,15 @@ inline void epaper_dashboard_set_config(int index, const std::string &config) {
     tile.action_state_entity = epaper_dashboard_option_value(tile.options, "state_entity");
     std::string action_unit = epaper_dashboard_option_value(tile.options, "state_unit");
     if (!action_unit.empty()) tile.unit = action_unit;
+  }
+  if (!tile.type.empty() && tile.type != "action" && tile.type != "alarm" &&
+      tile.type != "alarm_action" && tile.type != "climate" &&
+      tile.type != "garage" && tile.type != "webhook" && tile.type != "todo" &&
+      tile.type != "sensor" && tile.type != "door_window" &&
+      tile.type != "presence" && tile.type != "media" &&
+      !epaper_dashboard_fan_card_type(tile.type) &&
+      !epaper_dashboard_card_large_numbers_supported(tile)) {
+    tile.options.clear();
   }
   if (!epaper_dashboard_tile_configured(tile)) {
     tile = EpaperDashboardTile{};
