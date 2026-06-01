@@ -150,6 +150,9 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (tile.type == "push" || tile.type == "webhook") return "";' in epaper, (
         "TRMNL push and webhook cards must stay static like normal command cards"
     )
+    assert 'if (tile.type == "internal") return "";' in epaper, (
+        "TRMNL internal relay cards must not subscribe to their relay key as a Home Assistant entity"
+    )
     assert "std::string state_source = epaper_dashboard_state_source(tile);" in epaper, (
         "TRMNL state subscriptions must use card-aware state sources"
     )
@@ -177,8 +180,8 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert "return epaper_dashboard_trim(tile.unit);" in epaper, (
         "TRMNL card units must be trimmed the same way normal LVGL cards trim unit labels"
     )
-    assert 'if (tile.type == "internal") return "";' in epaper, (
-        "TRMNL internal relay cards must not derive their label from the push/toggle mode"
+    assert epaper.count('if (tile.type == "internal") return "";') >= 2, (
+        "TRMNL internal relay cards must not derive labels from the mode or subscribe to the relay key"
     )
     assert 'if (!tile.entity.empty()) return epaper_dashboard_sentence_cap_text(tile.entity);' in epaper, (
         "TRMNL internal relay fallback labels must match normal internal relay cards"

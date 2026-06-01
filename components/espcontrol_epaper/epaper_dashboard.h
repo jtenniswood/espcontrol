@@ -2215,7 +2215,7 @@ inline std::string epaper_dashboard_state_source(const EpaperDashboardTile &tile
     return epaper_dashboard_option_select_card(tile) ? tile.entity : "";
   }
   if (tile.type == "push" || tile.type == "webhook") return "";
-  if (tile.type == "internal" && tile.sensor == "push") return "";
+  if (tile.type == "internal") return "";
   return tile.entity;
 }
 
