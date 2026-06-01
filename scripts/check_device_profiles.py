@@ -312,6 +312,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  return state.empty() || state == "unavailable" || state == "unknown";'
         in epaper
     ), "TRMNL unavailable-state detection must match normal cards for blank, unknown, and unavailable states"
+    assert (
+        'inline bool epaper_dashboard_state_active(const std::string &value) {\n'
+        '  std::string state = epaper_dashboard_normalized_state_text(value);\n'
+        '  return state == "on" || state == "true" || state == "1" ||'
+        in epaper
+    ), "TRMNL active-state detection must normalize state text like normal cards"
 
 
 def test_firmware_matrices(profile_slugs: list[str]) -> None:

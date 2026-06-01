@@ -443,18 +443,16 @@ inline std::string epaper_dashboard_sentence_cap_text(const std::string &state) 
   return out;
 }
 
-inline bool epaper_dashboard_state_active(const std::string &value) {
-  std::string s;
-  s.reserve(value.size());
-  for (char ch : value) s.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
-  return s == "on" || s == "true" || s == "1" ||
-         s == "open" || s == "opened" || s == "opening" || s == "closing" ||
-         s == "unlocked" || s == "unlocking" || s == "jammed" ||
-         s == "home" || s == "playing";
-}
-
 inline std::string epaper_dashboard_normalized_state_text(const std::string &value);
 inline std::string epaper_dashboard_climate_number_mode(const EpaperDashboardTile &tile);
+
+inline bool epaper_dashboard_state_active(const std::string &value) {
+  std::string state = epaper_dashboard_normalized_state_text(value);
+  return state == "on" || state == "true" || state == "1" ||
+         state == "open" || state == "opened" || state == "opening" || state == "closing" ||
+         state == "unlocked" || state == "unlocking" || state == "jammed" ||
+         state == "home" || state == "playing";
+}
 
 inline bool epaper_dashboard_state_unavailable(const std::string &value) {
   std::string state = epaper_dashboard_normalized_state_text(value);
