@@ -300,11 +300,11 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '      return epaper_dashboard_text_sensor_display_text(\n'
         '          tile.sensor_value, EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN);\n'
         '    }\n'
-        '    if (tile.sensor_unavailable) return "";\n'
+        '    if (tile.sensor_unavailable) return "Unavailable";\n'
         '  }'
     )
     assert action_text in epaper, (
-        "TRMNL action text-state cards must use the normal action text display limit"
+        "TRMNL action text-state cards must use the normal action text display limit and avoid blank unavailable labels"
     )
     assert (
         "constexpr size_t EPAPER_DASHBOARD_TEXT_SENSOR_STATE_MAX_LEN = 256;" in epaper and

@@ -2945,7 +2945,7 @@ inline std::string epaper_dashboard_tile_label(const EpaperDashboardTile &tile) 
       return epaper_dashboard_text_sensor_display_text(
           tile.sensor_value, EPAPER_DASHBOARD_STATE_TEXT_MAX_LEN);
     }
-    if (tile.sensor_unavailable) return "";
+    if (tile.sensor_unavailable) return "Unavailable";
   }
   if (epaper_dashboard_fan_non_speed_card(tile)) {
     std::string entity_label = tile.entity.empty() ? "" : epaper_dashboard_title_from_entity(tile.entity);
