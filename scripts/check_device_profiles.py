@@ -261,6 +261,11 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         "TRMNL media cards must use the same empty placeholders as normal media cards"
     )
     assert (
+        "uint32_t media_position_received_ms = 0;" in epaper and
+        "position += (esphome::millis() - tile.media_position_received_ms) / 1000.0f;" in epaper and
+        "tile.media_position_received_ms = esphome::millis();" in epaper
+    ), "TRMNL media progress cards must advance from receive time when HA omits media_position_updated_at"
+    assert (
         'if (tile.type == "sensor" || epaper_dashboard_toggle_numeric_sensor_card(tile) ||\n'
         '        !epaper_dashboard_sensor_source(tile).empty()) {\n'
         '      return "--";\n'

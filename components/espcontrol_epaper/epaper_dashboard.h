@@ -60,6 +60,7 @@ struct EpaperDashboardTile {
   std::string friendly_name;
   std::string forecast_unit;
   std::string forecast_status_label;
+  uint32_t media_position_received_ms = 0;
   int forecast_high = 0;
   int forecast_low = 0;
   bool label_configured = false;
@@ -2499,14 +2500,21 @@ inline bool epaper_dashboard_media_adjusted_position_seconds(
   float position = 0.0f;
   if (!epaper_dashboard_parse_float_value(position_value, position)) return false;
   if (position < 0.0f) position = 0.0f;
-  if (tile.state == "playing" && !tile.media_position_updated_at_unavailable &&
-      !tile.media_position_updated_at_value.empty()) {
-    time_t updated_epoch = 0;
-    time_t now_epoch = std::time(nullptr);
-    if (now_epoch > 0 &&
-        epaper_dashboard_parse_ha_timestamp(tile.media_position_updated_at_value, updated_epoch) &&
-        updated_epoch > 0 && updated_epoch <= now_epoch) {
-      position += static_cast<float>(now_epoch - updated_epoch);
+  if (tile.state == "playing") {
+    bool adjusted = false;
+    if (!tile.media_position_updated_at_unavailable &&
+        !tile.media_position_updated_at_value.empty()) {
+      time_t updated_epoch = 0;
+      time_t now_epoch = std::time(nullptr);
+      if (now_epoch > 0 &&
+          epaper_dashboard_parse_ha_timestamp(tile.media_position_updated_at_value, updated_epoch) &&
+          updated_epoch > 0 && updated_epoch <= now_epoch) {
+        position += static_cast<float>(now_epoch - updated_epoch);
+        adjusted = true;
+      }
+    }
+    if (!adjusted && tile.media_position_received_ms > 0) {
+      position += (esphome::millis() - tile.media_position_received_ms) / 1000.0f;
     }
   }
   if (duration > 0.0f && position > duration) position = duration;
@@ -3317,6 +3325,7 @@ inline void epaper_dashboard_subscribe(int index) {
           tile.entity, "media_position", [index](esphome::StringRef state) {
             auto &tile = epaper_dashboard_tiles()[index];
             tile.media_position_value = std::string(state.c_str(), state.size());
+            tile.media_position_received_ms = esphome::millis();
             tile.media_position_unavailable =
                 epaper_dashboard_state_unavailable(tile.media_position_value);
             epaper_dashboard_mark_dirty();
