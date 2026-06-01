@@ -215,6 +215,16 @@ def test_trmnl_epaper_card_parity_guards() -> None:
     assert 'if (end == tile.sensor_value.c_str() || std::isnan(parsed)) {\n    return "--";' in epaper, (
         "TRMNL media volume cards must not show arbitrary non-numeric text in the volume value"
     )
+    assert 'return tile.sensor == "position" ? "0:00" : "--";' in epaper, (
+        "TRMNL media cards must use the same empty placeholders as normal media cards"
+    )
+    assert (
+        'if (tile.type == "sensor" || epaper_dashboard_toggle_numeric_sensor_card(tile) ||\n'
+        '        !epaper_dashboard_sensor_source(tile).empty()) {\n'
+        '      return "--";\n'
+        '    }'
+        in epaper
+    ), "TRMNL sensor cards must use normal -- placeholders while waiting for values"
     fan_active = (
         'if (tile.type == "fan_oscillate") {\n'
         '    bool oscillating = false;\n'

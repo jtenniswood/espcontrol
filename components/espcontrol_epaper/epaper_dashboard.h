@@ -3647,8 +3647,14 @@ inline std::string epaper_dashboard_display_value(const EpaperDashboardTile &til
       return tile.sensor_value;
     }
     if (epaper_dashboard_action_state_numeric_card(tile)) return "--";
-    if (!epaper_dashboard_sensor_source(tile).empty() || !tile.action_state_entity.empty() ||
-        tile.type == "media" || tile.type == "climate") return "...";
+    if (tile.type == "media") {
+      return tile.sensor == "position" ? "0:00" : "--";
+    }
+    if (tile.type == "sensor" || epaper_dashboard_toggle_numeric_sensor_card(tile) ||
+        !epaper_dashboard_sensor_source(tile).empty()) {
+      return "--";
+    }
+    if (!tile.action_state_entity.empty() || tile.type == "climate") return "--";
   }
   if (tile.state_unavailable) return "--";
   if (!tile.state.empty()) return epaper_dashboard_pretty_state(tile.state);
