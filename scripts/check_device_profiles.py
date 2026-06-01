@@ -120,10 +120,26 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
                     f"{slug}: TRMNL theme must paint the full e-paper screen background"
                 )
                 assert (
+                    'std::string theme = id(screen_theme).current_option();' in sensors
+                    and 'bool dark_theme = theme == "Dark";' in sensors
+                    and 'lv_color_t page_bg = lv_color_hex(dark_theme ? 0x000000 : 0xFFFFFF);' in sensors
+                    and 'lv_color_t bg = lv_color_hex(dark_theme || active ? 0x000000 : 0xFFFFFF);' in sensors
+                    and 'lv_color_t fg = lv_color_hex(dark_theme || active ? 0xFFFFFF : 0x000000);' in sensors
+                ), f"{slug}: TRMNL e-paper theme must follow the web preview Light/Dark theme"
+                colors = (ROOT / "common" / "config" / "colors.yaml").read_text(encoding="utf-8")
+                refresh_script_match = re.search(
+                    r"- id: refresh_button_grid\n    then:\n      - script.execute: trmnl_dashboard_config_changed",
+                    sensors,
+                )
+                assert (
+                    "- script.execute: refresh_button_grid" in colors
+                    and refresh_script_match
+                ), f"{slug}: web theme changes must schedule a TRMNL e-paper refresh"
+                assert (
                     "id: trmnl_topbar_separator" in lvgl
                     and "y: 60" in lvgl
                     and "height: 1" in lvgl
-                    and "lv_obj_set_style_bg_color(id(trmnl_topbar_separator), lv_color_hex(0x000000), LV_PART_MAIN)" in sensors
+                    and "lv_obj_set_style_bg_color(id(trmnl_topbar_separator), topbar_fg, LV_PART_MAIN)" in sensors
                 ), f"{slug}: TRMNL top bar must match the web preview divider"
                 assert (
                     "align: top_left\n      x: 10\n      y: 68" in lvgl

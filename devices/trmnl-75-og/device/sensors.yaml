@@ -9,7 +9,7 @@
 script:
   - id: refresh_button_grid
     then:
-      - script.execute: trmnl_sync_dashboard_config
+      - script.execute: trmnl_dashboard_config_changed
 
   - id: trmnl_update_clock_bar
     then:
@@ -128,8 +128,10 @@ script:
             BTN_SLOT(9), BTN_SLOT(10), BTN_SLOT(11), BTN_SLOT(12),
           };
           #undef BTN_SLOT
-          lv_color_t page_bg = lv_color_hex(0xFFFFFF);
-          lv_color_t border = lv_color_hex(0x000000);
+          std::string theme = id(screen_theme).current_option();
+          bool dark_theme = theme == "Dark";
+          lv_color_t page_bg = lv_color_hex(dark_theme ? 0x000000 : 0xFFFFFF);
+          lv_color_t border = lv_color_hex(dark_theme ? 0xFFFFFF : 0x000000);
           lv_obj_set_style_bg_color(lv_scr_act(), page_bg, LV_PART_MAIN);
           lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, LV_PART_MAIN);
           lv_obj_set_style_bg_color(id(main_page)->obj, page_bg, LV_PART_MAIN);
@@ -137,8 +139,8 @@ script:
           for (auto &slot : slots) {
             if (!slot.btn) continue;
             bool active = lv_obj_has_state(slot.btn, LV_STATE_CHECKED);
-            lv_color_t bg = lv_color_hex(active ? 0x000000 : 0xFFFFFF);
-            lv_color_t fg = lv_color_hex(active ? 0xFFFFFF : 0x000000);
+            lv_color_t bg = lv_color_hex(dark_theme || active ? 0x000000 : 0xFFFFFF);
+            lv_color_t fg = lv_color_hex(dark_theme || active ? 0xFFFFFF : 0x000000);
             lv_obj_set_style_bg_color(slot.btn, bg, LV_PART_MAIN);
             lv_obj_set_style_bg_opa(slot.btn, LV_OPA_COVER, LV_PART_MAIN);
             lv_obj_set_style_border_color(slot.btn, border, LV_PART_MAIN);
@@ -154,10 +156,11 @@ script:
             lv_obj_clear_flag(slot.btn, LV_OBJ_FLAG_CLICKABLE);
             lv_obj_invalidate(slot.btn);
           }
-          lv_obj_set_style_text_color(id(temperatures), lv_color_hex(0x000000), LV_PART_MAIN);
-          lv_obj_set_style_text_color(id(display_time), lv_color_hex(0x000000), LV_PART_MAIN);
-          lv_obj_set_style_text_color(id(network_status_icon_label), lv_color_hex(0x000000), LV_PART_MAIN);
-          lv_obj_set_style_bg_color(id(trmnl_topbar_separator), lv_color_hex(0x000000), LV_PART_MAIN);
+          lv_color_t topbar_fg = lv_color_hex(dark_theme ? 0xFFFFFF : 0x000000);
+          lv_obj_set_style_text_color(id(temperatures), topbar_fg, LV_PART_MAIN);
+          lv_obj_set_style_text_color(id(display_time), topbar_fg, LV_PART_MAIN);
+          lv_obj_set_style_text_color(id(network_status_icon_label), topbar_fg, LV_PART_MAIN);
+          lv_obj_set_style_bg_color(id(trmnl_topbar_separator), topbar_fg, LV_PART_MAIN);
           lv_obj_set_style_bg_opa(id(trmnl_topbar_separator), LV_OPA_COVER, LV_PART_MAIN);
           lv_obj_set_style_bg_opa(id(network_status_button), LV_OPA_TRANSP, LV_PART_MAIN);
           lv_obj_set_style_border_width(id(network_status_button), 0, LV_PART_MAIN);
