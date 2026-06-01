@@ -2940,7 +2940,7 @@ inline std::string epaper_dashboard_display_unit(const EpaperDashboardTile &tile
     return "";
   }
   if (tile.type == "climate" && epaper_dashboard_value_replaces_icon(tile) && tile.unit.empty()) {
-    return display_clock_bar_temperature_suffix();
+    return display_temperature_unit_symbol();
   }
   return epaper_dashboard_trim(tile.unit);
 }

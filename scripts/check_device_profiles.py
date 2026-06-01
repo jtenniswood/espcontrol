@@ -243,6 +243,12 @@ def test_trmnl_epaper_card_parity_guards() -> None:
         '  }'
         in epaper
     ), "TRMNL unavailable numeric sensor cards must hide units like normal LVGL cards"
+    assert (
+        'if (tile.type == "climate" && epaper_dashboard_value_replaces_icon(tile) && tile.unit.empty()) {\n'
+        '    return display_temperature_unit_symbol();\n'
+        '  }'
+        in epaper
+    ), "TRMNL climate temperature cards must use the same full temperature unit as normal cards"
     assert 'if (end == value.c_str() || std::isnan(parsed) || parsed < 0) return "0:00";' in epaper, (
         "TRMNL media position cards must fall back to 0:00 for invalid positions like normal LVGL media cards"
     )
