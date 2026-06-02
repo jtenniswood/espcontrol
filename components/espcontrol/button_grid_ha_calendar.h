@@ -320,3 +320,486 @@ inline void subscribe_ha_calendar_attributes(HaCalendarCardCtx *ctx) {
       }));
   }
 }
+
+// ── Modal: status helpers ────────────────────────────────────────────────────
+
+inline void ha_calendar_modal_set_status(const char *text) {
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  bool wants = text && text[0];
+  if (!wants && !ui.status_lbl) return;
+  if (!ui.status_lbl && ui.list) {
+    ui.status_lbl = lv_label_create(ui.list);
+    lv_label_set_long_mode(ui.status_lbl, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(ui.status_lbl, lv_pct(100));
+    lv_obj_set_style_text_color(ui.status_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.status_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (ui.active && ui.active->label_font)
+      lv_obj_set_style_text_font(ui.status_lbl, ui.active->label_font, LV_PART_MAIN);
+  }
+  if (!ui.status_lbl) return;
+  lv_label_set_text(ui.status_lbl, text ? text : "");
+  if (wants) lv_obj_clear_flag(ui.status_lbl, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_add_flag(ui.status_lbl, LV_OBJ_FLAG_HIDDEN);
+}
+
+inline void ha_calendar_modal_hide() {
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  ui.active = nullptr;
+  control_modal_delete_overlay(ControlModalKind::HA_CALENDAR, ui.overlay);
+  ui = HaCalendarModalUi();
+}
+
+// ── Modal: event parsing ─────────────────────────────────────────────────────
+
+// Parse "H:MM|H:MM|title\n" lines, convert to epochs relative to today's midnight.
+inline void ha_calendar_parse_and_merge(const char *payload, time_t midnight) {
+  if (!payload || !payload[0]) return;
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  const char *p = payload;
+  while (*p) {
+    while (*p == '\n' || *p == '\r') p++;
+    if (!*p) break;
+    const char *line_end = p;
+    while (*line_end && *line_end != '\n' && *line_end != '\r') line_end++;
+    size_t line_len = static_cast<size_t>(line_end - p);
+    if (line_len < 5) { p = line_end; continue; }
+
+    const char *sep1 = static_cast<const char *>(std::memchr(p, '|', line_len));
+    if (!sep1) { p = line_end; continue; }
+    const char *sep2 = static_cast<const char *>(
+      std::memchr(sep1 + 1, '|', line_len - static_cast<size_t>(sep1 + 1 - p)));
+    if (!sep2) { p = line_end; continue; }
+
+    int sh = 0, sm = 0, eh = 0, em = 0;
+    if (std::sscanf(p, "%d:%d", &sh, &sm) != 2 ||
+        std::sscanf(sep1 + 1, "%d:%d", &eh, &em) != 2) {
+      p = line_end; continue;
+    }
+    if (ui.event_count >= HA_CALENDAR_MAX_EVENTS) break;
+
+    HaCalendarEventRow &row = ui.events[ui.event_count++];
+    std::snprintf(row.start_display, sizeof(row.start_display), "%d:%02d", sh, sm);
+    std::snprintf(row.end_display, sizeof(row.end_display), "%d:%02d", eh, em);
+    row.start_epoch = midnight + static_cast<time_t>(sh * 3600 + sm * 60);
+    row.end_epoch   = midnight + static_cast<time_t>(eh * 3600 + em * 60);
+    if (row.end_epoch <= row.start_epoch) row.end_epoch += 86400;
+
+    size_t title_len = static_cast<size_t>(line_end - (sep2 + 1));
+    if (title_len > HA_CALENDAR_TITLE_MAX_LEN) title_len = HA_CALENDAR_TITLE_MAX_LEN;
+    std::strncpy(row.title, sep2 + 1, title_len);
+    row.title[title_len] = '\0';
+
+    p = line_end;
+  }
+}
+
+// Insertion sort by start_epoch (small N).
+inline void ha_calendar_sort_events() {
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  for (int i = 1; i < ui.event_count; i++) {
+    HaCalendarEventRow key = ui.events[i];
+    int j = i - 1;
+    while (j >= 0 && ui.events[j].start_epoch > key.start_epoch) {
+      ui.events[j + 1] = ui.events[j];
+      j--;
+    }
+    ui.events[j + 1] = key;
+  }
+}
+
+// ── Modal: rendering ─────────────────────────────────────────────────────────
+
+inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t content_w) {
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  if (!ui.list) return;
+  lv_obj_clean(ui.list);
+  ui.status_lbl = nullptr;
+  time_t now = std::time(nullptr);
+
+  for (int i = 0; i < ui.event_count; i++) {
+    HaCalendarEventRow &ev = ui.events[i];
+    bool is_active = ev.start_epoch <= now && ev.end_epoch > now;
+    bool is_urgent = !is_active && ev.start_epoch > now &&
+                     (ev.start_epoch - now) <= HA_CALENDAR_URGENT_SECS;
+
+    uint32_t title_col = is_active || is_urgent ? ctx->accent_color : DARK_TEXT_PRIMARY;
+    uint32_t time_col  = is_active ? ctx->accent_color : DARK_TEXT_MUTED;
+
+    lv_obj_t *row = lv_obj_create(ui.list);
+    lv_obj_set_width(row, lv_pct(100));
+    lv_obj_set_height(row, LV_SIZE_CONTENT);
+    lv_obj_set_style_radius(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(row, 6, LV_PART_MAIN);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    if (is_active) {
+      lv_obj_set_style_bg_opa(row, LV_OPA_20, LV_PART_MAIN);
+      lv_obj_set_style_bg_color(row, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
+    } else {
+      lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
+    }
+
+    // Countdown text
+    char cd[24] = {};
+    if (is_active) {
+      std::strncpy(cd, "Now", sizeof(cd) - 1);
+    } else if (ev.start_epoch > now) {
+      int64_t secs = static_cast<int64_t>(ev.start_epoch - now);
+      char num[12] = {}, unit[8] = {};
+      ha_calendar_format_countdown(secs, num, sizeof(num), unit, sizeof(unit));
+      std::snprintf(cd, sizeof(cd), "In %s %s", num, unit);
+    }
+
+    // Top line: title (flex-grow) + countdown
+    lv_obj_t *top = lv_obj_create(row);
+    lv_obj_set_size(top, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(top, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(top, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(top, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(top, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(top, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_layout(top, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(top, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(top, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t *title_lbl = lv_label_create(top);
+    lv_label_set_text(title_lbl, ev.title[0] ? ev.title : "(untitled)");
+    lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
+    lv_obj_set_flex_grow(title_lbl, 1);
+    lv_obj_set_style_text_color(title_lbl, lv_color_hex(title_col), LV_PART_MAIN);
+    if (ctx->list_font) lv_obj_set_style_text_font(title_lbl, ctx->list_font, LV_PART_MAIN);
+    apply_width_compensation(title_lbl, ctx->width_compensation_percent);
+
+    lv_obj_t *cd_lbl = lv_label_create(top);
+    lv_label_set_text(cd_lbl, cd);
+    lv_obj_set_style_text_color(cd_lbl, lv_color_hex(title_col), LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(cd_lbl, ctx->label_font, LV_PART_MAIN);
+
+    // Time range line
+    char time_range[20] = {};
+    std::snprintf(time_range, sizeof(time_range), "%s \xe2\x80\x93 %s",
+      ev.start_display, ev.end_display);
+    lv_obj_t *time_lbl = lv_label_create(row);
+    lv_label_set_text(time_lbl, time_range);
+    lv_obj_set_style_text_color(time_lbl, lv_color_hex(time_col), LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(time_lbl, ctx->label_font, LV_PART_MAIN);
+
+    // Divider
+    if (i + 1 < ui.event_count) {
+      lv_obj_t *div = lv_obj_create(ui.list);
+      lv_obj_set_size(div, lv_pct(90), 1);
+      lv_obj_set_style_bg_color(div, lv_color_hex(DARK_BORDER), LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(div, LV_OPA_COVER, LV_PART_MAIN);
+      lv_obj_set_style_border_width(div, 0, LV_PART_MAIN);
+      lv_obj_set_style_shadow_width(div, 0, LV_PART_MAIN);
+    }
+  }
+
+  if (ui.event_count == 0) ha_calendar_modal_set_status("No more events today");
+}
+
+inline void ha_calendar_render_column(HaCalendarCardCtx *ctx, lv_coord_t content_w) {
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  if (!ui.list) return;
+  lv_obj_clean(ui.list);
+  ui.status_lbl = nullptr;
+  time_t now = std::time(nullptr);
+
+  for (int i = 0; i < ui.event_count; i++) {
+    HaCalendarEventRow &ev = ui.events[i];
+    bool is_active = ev.start_epoch <= now && ev.end_epoch > now;
+    bool is_urgent = !is_active && ev.start_epoch > now &&
+                     (ev.start_epoch - now) <= HA_CALENDAR_URGENT_SECS;
+
+    uint32_t accent = (is_active || is_urgent) ? ctx->accent_color : DARK_BORDER;
+    uint32_t title_col = (is_active || is_urgent) ? ctx->accent_color : DARK_TEXT_PRIMARY;
+    uint32_t time_col  = is_active ? ctx->accent_color : DARK_TEXT_MUTED;
+
+    lv_obj_t *row = lv_obj_create(ui.list);
+    lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_radius(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_hor(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_ver(row, 6, LV_PART_MAIN);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_layout(row, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_STRETCH, LV_FLEX_ALIGN_START);
+    if (is_active) {
+      lv_obj_set_style_bg_opa(row, LV_OPA_20, LV_PART_MAIN);
+      lv_obj_set_style_bg_color(row, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
+    } else {
+      lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
+    }
+
+    // Time column (start + end stacked)
+    lv_obj_t *tcol = lv_obj_create(row);
+    lv_obj_set_size(tcol, 48, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(tcol, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(tcol, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(tcol, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(tcol, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(tcol, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *sl = lv_label_create(tcol);
+    lv_label_set_text(sl, ev.start_display);
+    lv_obj_set_style_text_color(sl, lv_color_hex(time_col), LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(sl, ctx->label_font, LV_PART_MAIN);
+
+    lv_obj_t *el = lv_label_create(tcol);
+    lv_label_set_text(el, ev.end_display);
+    lv_obj_set_style_text_color(el, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(el, ctx->label_font, LV_PART_MAIN);
+
+    // Accent bar
+    lv_obj_t *bar = lv_obj_create(row);
+    lv_obj_set_size(bar, 2, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_color(bar, lv_color_hex(accent), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(bar, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(bar, 0, LV_PART_MAIN);
+    lv_obj_set_style_margin_hor(bar, 6, LV_PART_MAIN);
+
+    // Info column: title + countdown
+    lv_obj_t *info = lv_obj_create(row);
+    lv_obj_set_flex_grow(info, 1);
+    lv_obj_set_height(info, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(info, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(info, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(info, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(info, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(info, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title_lbl = lv_label_create(info);
+    lv_label_set_text(title_lbl, ev.title[0] ? ev.title : "(untitled)");
+    lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(title_lbl, lv_pct(100));
+    lv_obj_set_style_text_color(title_lbl, lv_color_hex(title_col), LV_PART_MAIN);
+    if (ctx->list_font) lv_obj_set_style_text_font(title_lbl, ctx->list_font, LV_PART_MAIN);
+    apply_width_compensation(title_lbl, ctx->width_compensation_percent);
+
+    char cd[24] = {};
+    if (is_active) {
+      std::strncpy(cd, "Now", sizeof(cd) - 1);
+    } else if (ev.start_epoch > now) {
+      int64_t secs = static_cast<int64_t>(ev.start_epoch - now);
+      char num[12] = {}, unit[8] = {};
+      ha_calendar_format_countdown(secs, num, sizeof(num), unit, sizeof(unit));
+      std::snprintf(cd, sizeof(cd), "In %s %s", num, unit);
+    }
+    lv_obj_t *cd_lbl = lv_label_create(info);
+    lv_label_set_text(cd_lbl, cd);
+    lv_obj_set_style_text_color(cd_lbl, lv_color_hex(title_col), LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(cd_lbl, ctx->label_font, LV_PART_MAIN);
+
+    if (i + 1 < ui.event_count) {
+      lv_obj_t *div = lv_obj_create(ui.list);
+      lv_obj_set_size(div, lv_pct(90), 1);
+      lv_obj_set_style_bg_color(div, lv_color_hex(DARK_BORDER), LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(div, LV_OPA_COVER, LV_PART_MAIN);
+      lv_obj_set_style_border_width(div, 0, LV_PART_MAIN);
+      lv_obj_set_style_shadow_width(div, 0, LV_PART_MAIN);
+    }
+  }
+
+  if (ui.event_count == 0) ha_calendar_modal_set_status("No more events today");
+}
+
+inline void ha_calendar_render_modal(HaCalendarCardCtx *ctx) {
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  if (!ha_calendar_ctx_valid(ctx) || ui.active != ctx || !ui.list) return;
+
+  ha_calendar_sort_events();
+
+  ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
+  lv_coord_t content_w = lv_obj_get_width(ui.list);
+  if (content_w <= 0) content_w = layout.panel_w - layout.inset * 2;
+
+  if (ctx->modal_layout == "column") {
+    ha_calendar_render_column(ctx, content_w);
+  } else {
+    ha_calendar_render_compact(ctx, content_w);
+  }
+}
+
+// ── Modal: service call ──────────────────────────────────────────────────────
+
+inline uint32_t next_ha_calendar_call_id() {
+  static uint32_t call_id = 430000;
+  return call_id++;
+}
+
+inline std::string ha_calendar_today_end_str() {
+  time_t now = std::time(nullptr);
+  struct tm *local = std::localtime(&now);
+  char buf[25] = {};
+  if (local) {
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT23:59:59",
+      local->tm_year + 1900, local->tm_mon + 1, local->tm_mday);
+  }
+  return std::string(buf);
+}
+
+inline time_t ha_calendar_today_midnight_epoch() {
+  time_t now = std::time(nullptr);
+  struct tm *local = std::localtime(&now);
+  if (!local) return 0;
+  struct tm midnight = *local;
+  midnight.tm_hour = 0;
+  midnight.tm_min = 0;
+  midnight.tm_sec = 0;
+  midnight.tm_isdst = -1;
+  return std::mktime(&midnight);
+}
+
+// Response template for one entity: emits "H:MM|H:MM|title\n" for remaining events today.
+inline std::string ha_calendar_response_template(const std::string &entity_id) {
+  std::string max_t = std::to_string(HA_CALENDAR_TITLE_MAX_LEN);
+  std::string max_r = std::to_string(HA_CALENDAR_RESPONSE_MAX_LEN - 10);
+  return
+    "{% set e='" + entity_id + "' %}"
+    "{% set evts=response.get(e,{}).get('events',[]) %}"
+    "{% set now_dt=now() %}"
+    "{% set ns=namespace(out='') %}"
+    "{% for ev in evts %}"
+    "{% set end_dt=ev.end|as_datetime|as_local %}"
+    "{% if end_dt>now_dt %}"
+    "{% set start_dt=ev.start|as_datetime|as_local %}"
+    "{% set title=(ev.summary|default('')|string)[:" + max_t + "] %}"
+    "{% set line=start_dt.strftime('%H:%M')+'|'+end_dt.strftime('%H:%M')+'|'+title %}"
+    "{% if ns.out|length+line|length+1<=" + max_r + " %}"
+    "{% set ns.out=ns.out+('\\n' if ns.out else '')+line %}"
+    "{% endif %}"
+    "{% endif %}"
+    "{% endfor %}"
+    "{{ ns.out }}";
+}
+
+inline void ha_calendar_request_events_for_entity(HaCalendarCardCtx *ctx,
+                                                    const std::string &entity_id) {
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  if (!ha_api_state_connected()) {
+    if (ui.active == ctx) {
+      ui.waiting_for_ha = true;
+      ha_calendar_modal_set_status("Waiting for Home Assistant");
+    }
+    return;
+  }
+
+  esphome::api::HomeassistantActionRequest req;
+  uint32_t call_id = next_ha_calendar_call_id();
+  std::string tmpl = ha_calendar_response_template(entity_id);
+  std::string end_dt = ha_calendar_today_end_str();
+  time_t midnight = ha_calendar_today_midnight_epoch();
+
+  if (!ha_action_begin(req, "calendar.get_events", false, 2, call_id)) {
+    if (ui.active == ctx) {
+      ui.pending_entity_count--;
+      if (ui.pending_entity_count <= 0) ha_calendar_modal_set_status("Could not load");
+    }
+    return;
+  }
+  req.wants_response = true;
+  req.response_template = decltype(req.response_template)(tmpl);
+  ha_action_add_entity(req, entity_id);
+  ha_action_add_data(req, "end_date_time", end_dt.c_str());
+
+  if (!ha_register_action_response_callback(req.call_id,
+    [ctx, call_id, midnight](const esphome::api::ActionResponse &response) {
+      (void) call_id;
+      HaCalendarModalUi &ui = ha_calendar_modal_ui();
+      if (ui.active != ctx) return;
+      ui.pending_entity_count--;
+      if (!response.is_success()) {
+        if (ui.pending_entity_count <= 0)
+          ha_calendar_modal_set_status("Could not load");
+        return;
+      }
+      JsonVariantConst rv = response.get_json()["response"];
+      const char *payload = rv.as<const char *>();
+      if (payload) ha_calendar_parse_and_merge(payload, midnight);
+      if (ui.pending_entity_count <= 0) {
+        ui.waiting_for_ha = false;
+        ha_calendar_render_modal(ctx);
+      }
+    })) {
+    ui.pending_entity_count--;
+    if (ui.pending_entity_count <= 0) ha_calendar_modal_set_status("Could not load");
+    return;
+  }
+
+  if (!ha_action_send(req)) {
+    ha_cancel_action_response_callback(call_id, "send failed");
+    ui.pending_entity_count--;
+    if (ui.pending_entity_count <= 0) {
+      if (!ha_api_state_connected()) {
+        ui.waiting_for_ha = true;
+        ha_calendar_modal_set_status("Waiting for Home Assistant");
+      } else {
+        ha_calendar_modal_set_status("Could not load");
+      }
+    }
+  }
+}
+
+// ── Modal: open ──────────────────────────────────────────────────────────────
+
+inline void ha_calendar_open_modal(HaCalendarCardCtx *ctx) {
+  if (!ha_calendar_ctx_valid(ctx) || ctx->entities.empty()) return;
+
+  ControlModalShell shell = control_modal_open_shell(
+    ControlModalKind::HA_CALENDAR, ctx->btn, ctx->width_compensation_percent,
+    ctx->icon_font, "\U000F0152", false, ha_calendar_modal_hide);
+
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  ui.active = ctx;
+  ui.overlay = shell.overlay;
+  ui.panel = shell.panel;
+  ui.close_btn = shell.close_btn;
+  ui.event_count = 0;
+  ui.waiting_for_ha = false;
+  std::memset(ui.events, 0, sizeof(ui.events));
+
+  ControlModalLayout &layout = shell.layout;
+  lv_coord_t content_w = shell.content_w;
+  lv_coord_t gap = control_modal_scaled_px(18, layout.short_side);
+  if (gap < 10) gap = 10;
+  lv_coord_t title_y = layout.inset + layout.back_size / 2;
+  lv_coord_t list_y = layout.inset + layout.back_size + gap;
+  lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
+  if (list_h < 60) list_h = 60;
+  lv_coord_t list_pad = control_modal_scaled_px(14, layout.short_side);
+  if (list_pad < 6) list_pad = 6;
+  lv_coord_t list_w = content_w - list_pad * 2;
+  if (list_w < 80) { list_w = content_w; list_pad = 0; }
+
+  std::string title_text = (ctx->entities.size() == 1)
+    ? ha_calendar_card_label(ctx) + " \xc2\xb7 Today"
+    : std::string("Today");
+  ui.title_lbl = control_modal_create_title(
+    ui.panel, title_text, content_w - layout.back_size - gap,
+    ctx->list_font, ctx->width_compensation_percent);
+  lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+  lv_obj_update_layout(ui.title_lbl);
+  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0,
+    title_y - lv_obj_get_height(ui.title_lbl) / 2);
+
+  lv_coord_t row_gap = control_modal_scaled_px(6, layout.short_side);
+  if (row_gap < 4) row_gap = 4;
+  ui.list = control_modal_create_scroll_list(ui.panel, list_w, list_h, row_gap);
+  lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset + list_pad, list_y);
+
+  lv_obj_move_foreground(ui.overlay);
+
+  // Kick off one request per entity
+  ui.pending_entity_count = static_cast<int>(ctx->entities.size());
+  ui.started_ms = esphome::millis();
+  ha_calendar_modal_set_status("Loading");
+  for (const auto &estate : ctx->entities) {
+    ha_calendar_request_events_for_entity(ctx, estate.entity_id);
+  }
+}
