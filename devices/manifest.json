@@ -685,6 +685,7 @@
         "firmwareGrid": "3x4"
       },
       "web": {
+        "previewTheme": "epaper",
         "dragMode": "swap",
         "dragAnimation": false,
         "disabledCardTypes": [

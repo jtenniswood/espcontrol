@@ -359,6 +359,9 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
         errors.append(device_error(slug, "web.dragMode must be swap or displace"))
     if not isinstance(web.get("dragAnimation"), bool):
         errors.append(device_error(slug, "web.dragAnimation must be true or false"))
+    preview_theme = web.get("previewTheme", "default")
+    if preview_theme not in ("default", "epaper"):
+        errors.append(device_error(slug, "web.previewTheme must be default or epaper"))
     disabled_card_types = web.get("disabledCardTypes", [])
     if not isinstance(disabled_card_types, list) or not all(
         isinstance(value, str) and value for value in disabled_card_types

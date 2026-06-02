@@ -136,6 +136,20 @@ var CSS =
   "#sp-app[data-screen-theme='dark'] .sp-add-pill{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.06)}" +
   "#sp-app[data-screen-theme='light'] .sp-add-icon{color:rgba(0,0,0,.82)}" +
   "#sp-app[data-screen-theme='dark'] .sp-add-icon{color:rgba(255,255,255,.82)}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-screen{box-shadow:none;border:1px solid #111;border-radius:.8cqw}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-btn{border:1px solid #000;box-shadow:none;filter:none}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-btn:hover{filter:none}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-btn.sp-selected{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-empty-cell{border:1px solid rgba(0,0,0,.85);border-radius:var(--empty-r);background:transparent}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-empty-cell:hover{border-color:#000;background:rgba(0,0,0,.035)}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-drag-active .sp-empty-cell:hover{border-color:rgba(0,0,0,.85)}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-add-pill{min-width:auto;height:auto;padding:0;border:0;background:transparent;box-shadow:none;border-radius:0}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-empty-cell:hover .sp-add-pill{border:0;background:transparent}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-add-icon{font-size:3cqw;color:#000}" +
+  "#sp-app[data-preview-theme='epaper'][data-screen-theme='dark'] .sp-empty-cell{border-color:rgba(255,255,255,.9)}" +
+  "#sp-app[data-preview-theme='epaper'][data-screen-theme='dark'] .sp-empty-cell:hover{border-color:#fff;background:rgba(255,255,255,.06)}" +
+  "#sp-app[data-preview-theme='epaper'][data-screen-theme='dark'] .sp-drag-active .sp-empty-cell:hover{border-color:rgba(255,255,255,.9)}" +
+  "#sp-app[data-preview-theme='epaper'][data-screen-theme='dark'] .sp-add-icon{color:#fff}" +
   (CFG.dragAnimation ? ".sp-btn.sp-dragging{opacity:.4;transform:scale(.95)}" +
   ".sp-empty-cell.sp-drop-placeholder{border-color:rgba(92,156,245,.5)}" : "") +
 
