@@ -48,6 +48,7 @@
 #include "button_grid_confirm.h"
 #include "button_grid_option_select.h"
 #include "button_grid_todo.h"
+#include "button_grid_ha_calendar.h"
 #include "network_status.h"
 #include "button_grid_media.h"
 #include "button_grid_subpages.h"
