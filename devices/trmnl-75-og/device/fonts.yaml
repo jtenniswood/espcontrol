@@ -22,3 +22,8 @@ font:
     id: font_icon_main
     size: 32
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
+
+  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+    id: font_icon_status
+    size: 22
+    glyphs: !include ../../../common/assets/icon_glyphs.yaml

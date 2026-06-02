@@ -11,7 +11,7 @@ lvgl:
           text_font: font_text_title
           align: top_left
           x: 12
-          y: 8
+          y: 6
           text_color: 0x000000
           hidden: true
       - label:
@@ -19,16 +19,16 @@ lvgl:
           id: display_time
           text_font: font_text_title
           align: top_mid
-          y: 8
+          y: 6
           text_align: center
           text_color: 0x000000
       - obj:
           id: network_status_button
           align: top_right
-          x: -8
+          x: -10
           y: 0
-          width: 32
-          height: 60
+          width: 24
+          height: 32
           bg_opa: transp
           border_width: 0
           pad_all: 0
@@ -38,22 +38,10 @@ lvgl:
             - label:
                 id: network_status_icon_label
                 text: "\U000F092E"
-                text_font: font_icon_main
+                text_font: font_icon_status
                 align: center
                 text_align: center
                 text_color: 0x000000
-      - obj:
-          id: trmnl_topbar_separator
-          align: top_left
-          y: 60
-          width: 100%
-          height: 1
-          bg_color: 0x000000
-          bg_opa: cover
-          border_width: 0
-          pad_all: 0
-          scrollable: false
-          clickable: false
       - slider:
           hidden: true
           width: 0
@@ -68,7 +56,7 @@ lvgl:
       scrollbar_mode: "off"
       align: top_left
       x: 10
-      y: 68
+      y: 42
       layout:
         type: grid
         grid_columns: [FR(1), FR(1), FR(1), FR(1)]
@@ -76,7 +64,7 @@ lvgl:
         pad_row: 6
         pad_column: 6
       width: 780
-      height: 402
+      height: 428
       bg_color: 0xFFFFFF
       bg_opa: cover
       pad_all: 0
