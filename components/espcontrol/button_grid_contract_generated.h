@@ -204,6 +204,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "weather") return "Weather";
   if (type == "image") return "Image";
   if (type == "weather_forecast") return "Weather Forecast";
+  if (type == "ha_calendar") return "Calendar";
   return type.empty() ? "Switch" : type.c_str();
 }
 
@@ -240,6 +241,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "weather") return true;
   if (type == "image") return true;
   if (type == "weather_forecast") return true;
+  if (type == "ha_calendar") return true;
   return false;
 }
 
@@ -276,6 +278,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "ha_calendar") return "Auto";
   return "Auto";
 }
 
@@ -312,6 +315,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "ha_calendar") return "Auto";
   return "Auto";
 }
 
