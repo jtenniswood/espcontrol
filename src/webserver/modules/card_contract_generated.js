@@ -1391,6 +1391,46 @@ var CARD_CONTRACT_CARDS = {
       "precision": "tomorrow",
       "options": ""
     }
+  },
+  "ha_calendar": {
+    "label": "Calendar",
+    "allowInSubpage": true,
+    "domains": [
+      "calendar"
+    ],
+    "options": [
+      {
+        "name": "display_mode",
+        "label": "Display Mode",
+        "kind": "choice",
+        "values": [
+          "",
+          "current"
+        ],
+        "defaultValue": ""
+      },
+      {
+        "name": "modal_layout",
+        "label": "Modal Layout",
+        "kind": "choice",
+        "values": [
+          "",
+          "column"
+        ],
+        "defaultValue": ""
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "ha_calendar",
+      "precision": "",
+      "options": ""
+    }
   }
 };
 var CARD_CONTRACT_MIGRATION_ALIASES = {
