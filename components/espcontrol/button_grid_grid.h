@@ -412,6 +412,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     return;
   }
+  if (p.type == "ha_calendar") {
+    setup_ha_calendar_card(s, p, palette.off_val);
+    return;
+  }
   if (p.type == "media") {
     setup_media_card(s, p,
       palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
@@ -1104,8 +1108,30 @@ inline void grid_phase2(
         display_sensor_font(display),
         lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
         display_climate_card_icon_font(display),
-        display_main_width_percent(display));
+        display_main_width_percent(display),
+        display_climate_option_value_font(display));
       (void)ctx;
+      continue;
+    }
+    if (p.type == "ha_calendar") {
+      if (!p.entity.empty()) {
+        HaCalendarCardCtx *ctx = create_ha_calendar_card_context(
+          s, p,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          has_off ? off_val : DEFAULT_OFF_COLOR,
+          display_sensor_font(display),
+          lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+          display_media_title_font_or(
+            display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
+          display_icon_font(display),
+          display_main_width_percent(display));
+        subscribe_ha_calendar_state(ctx);
+        subscribe_ha_calendar_attributes(ctx);
+        lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
+          HaCalendarCardCtx *ctx = (HaCalendarCardCtx *)lv_event_get_user_data(e);
+          if (ha_calendar_ctx_valid(ctx)) ha_calendar_open_modal(ctx);
+        }, LV_EVENT_CLICKED, ctx);
+      }
       continue;
     }
     if (p.type == "media") {
@@ -1670,8 +1696,30 @@ inline void grid_phase2(
           display_sensor_font(display),
           lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
           display_climate_card_icon_font(display),
-          display_main_width_percent(display));
+          display_main_width_percent(display),
+          display_climate_option_value_font(display));
         (void)ctx;
+        continue;
+      }
+      if (sb_cfg.type == "ha_calendar") {
+        if (!sb_cfg.entity.empty()) {
+          HaCalendarCardCtx *ctx = create_ha_calendar_card_context(
+            sub_slot, sb_cfg,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            has_off ? off_val : DEFAULT_OFF_COLOR,
+            display_sensor_font(display),
+            lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_media_title_font_or(
+              display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
+            display_icon_font(display),
+            display_main_width_percent(display));
+          subscribe_ha_calendar_state(ctx);
+          subscribe_ha_calendar_attributes(ctx);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            HaCalendarCardCtx *ctx = (HaCalendarCardCtx *)lv_event_get_user_data(e);
+            if (ha_calendar_ctx_valid(ctx)) ha_calendar_open_modal(ctx);
+          }, LV_EVENT_CLICKED, ctx);
+        }
         continue;
       }
       if (sb_cfg.type == "option_select") {
