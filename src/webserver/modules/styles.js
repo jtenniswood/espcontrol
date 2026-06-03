@@ -219,6 +219,14 @@ var CSS =
   ".sp-card-badge-dot{width:7px;height:7px;border-radius:999px;background:#30a46c;flex-shrink:0}" +
   ".card:not(.collapsed) .sp-card-badge{display:none}" +
   ".sp-card-badge.sp-hidden{display:none}" +
+  ".sp-settings-group{display:grid;gap:28px}" +
+  ".sp-settings-section{border-top:1px solid var(--border);padding-top:24px}" +
+  ".sp-settings-section:first-child{border-top:0;padding-top:0}" +
+  ".sp-settings-section-header{display:flex;align-items:center;justify-content:space-between;" +
+  "gap:12px;margin-bottom:16px}" +
+  ".sp-settings-section-header h4{margin:0;color:var(--text);font-size:.82rem;" +
+  "font-weight:600;letter-spacing:0}" +
+  ".card:not(.collapsed) .sp-settings-section .sp-card-badge{display:inline-flex}" +
 
   ".sp-panel{background:var(--surface);border-radius:var(--radius);padding:24px;" +
   "margin-bottom:var(--gap);border:1px solid var(--border)}" +

@@ -255,10 +255,13 @@ async function assertSettingsPage(page, label, options = {}) {
   await page.getByRole("tab", { name: "Settings" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
   const settingsVisible = await page.locator("#sp-settings").isVisible();
-  const appearanceVisible = await page.locator("text=Appearance").first().isVisible();
+  await page.getByText("Display", { exact: true }).waitFor({ state: "visible" });
+  await page.getByText("Sleep & Schedule", { exact: true }).waitFor({ state: "visible" });
+  await page.getByText("System", { exact: true }).waitFor({ state: "visible" });
   if (!(await page.locator("#sp-set-on-color").isVisible())) {
-    await page.getByText("Appearance", { exact: true }).click();
+    await page.getByText("Display", { exact: true }).click();
   }
+  const appearanceVisible = await page.locator("text=Appearance").first().isVisible();
   const themeVisible = await page.locator("#sp-set-theme").isVisible();
   const onColorVisible = await page.locator("#sp-set-on-color").isVisible();
   assert(settingsVisible, `${label}: settings page should be visible`);
@@ -409,7 +412,7 @@ async function openBackupControls(page) {
   await page.getByRole("tab", { name: "Settings" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
   if (!(await page.getByRole("button", { name: "Import" }).isVisible())) {
-    await page.getByText("Backup", { exact: true }).click();
+    await page.getByText("System", { exact: true }).click();
   }
   await page.getByRole("button", { name: "Import" }).waitFor({ state: "visible" });
 }
