@@ -39,6 +39,7 @@ struct GridConfig {
   const lv_font_t *climate_option_title_font = nullptr;
   const lv_font_t *climate_option_value_font = nullptr;
   const lv_font_t *volume_icon_font = nullptr;
+  const lv_font_t *tiny_font = nullptr;
   const lv_font_t *subpage_chevron_font = nullptr;
   int subpage_chevron_x = 0;
   int subpage_chevron_y = 2;
@@ -80,6 +81,7 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.climate_option_title = cfg.climate_option_title_font;
   profile.fonts.climate_option_value = cfg.climate_option_value_font;
   profile.fonts.volume_icon = cfg.volume_icon_font;
+  profile.fonts.tiny = cfg.tiny_font;
   profile.width.vertical_axis = cfg.width_compensation_vertical;
   profile.width.main_percent = cfg.width_compensation_percent;
   profile.width.volume_percent = cfg.volume_width_compensation_percent;
@@ -1395,6 +1397,8 @@ inline void grid_phase2(
             display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
           display_icon_font(display),
           display_climate_option_value_font(display),
+          display_tiny_font(display),
+          display_climate_card_icon_font(display),
           display_main_width_percent(display));
         subscribe_ha_calendar_state(ctx);
         subscribe_ha_calendar_attributes(ctx);
@@ -2093,6 +2097,8 @@ inline void grid_phase2(
               display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
             display_icon_font(display),
             display_climate_option_value_font(display),
+            display_tiny_font(display),
+            display_climate_card_icon_font(display),
             display_main_width_percent(display));
           subscribe_ha_calendar_state(ctx);
           subscribe_ha_calendar_attributes(ctx);

@@ -75,7 +75,7 @@ font:
     glyphs: " 0123456789:/-"
 
   # Normal sensor values
-  - file: "gfonts://Roboto@Light"
+  - file: "gfonts://Roboto@Medium"
     id: font_number_value
     size: 44
     bpp: 4
