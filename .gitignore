@@ -6,6 +6,10 @@ docs/.vitepress/dist/
 __pycache__/
 builds/.esphome/
 
+# Superpowers working artifacts — never committed.
+.superpowers/
+docs/superpowers/
+
 # Local ESPHome/Wi-Fi credentials must never be committed.
 secrets.yaml
 secrets.yml

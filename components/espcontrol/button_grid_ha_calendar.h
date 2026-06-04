@@ -48,8 +48,10 @@ struct HaCalendarCardCtx {
   const lv_font_t *label_font = nullptr;
   const lv_font_t *list_font = nullptr;
   const lv_font_t *icon_font = nullptr;
+  const lv_font_t *chrome_icon_font = nullptr;  // smaller icon font for the modal back button
   const lv_font_t *unit_font = nullptr;   // original unit-label font (for restore)
   const lv_font_t *small_font = nullptr;  // smaller font for long event titles
+  const lv_font_t *tiny_font = nullptr;   // smallest font for modal secondary text
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
   uint32_t off_color = DEFAULT_OFF_COLOR;
   int width_compensation_percent = 100;
@@ -82,6 +84,7 @@ struct HaCalendarModalUi {
   int pending_entity_count = 0;  // decrements as responses arrive; render when 0
   uint32_t started_ms = 0;
   bool waiting_for_ha = false;
+  lv_timer_t *refresh_timer = nullptr;  // re-renders countdowns while the modal is open
 };
 
 inline HaCalendarModalUi &ha_calendar_modal_ui() {
@@ -175,6 +178,8 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
   auto set_bg = [&](uint32_t color) {
     lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(color),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ctx->btn, LV_GRAD_DIR_NONE,
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DEFAULT);
   };
 
   // Reset label styling to defaults (white text, original unit font); specific
@@ -224,46 +229,50 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
       set_bg(ctx->off_color);
       return;
     }
-    // Active meeting: show the phase. The event title is shown in every phase.
+    // Active meeting: the tile is a vertical progress split — bright primary
+    // "remaining" on the left, darkened primary "elapsed" growing in from the
+    // right. The divider sits at "% of meeting left". Drawn as a hard-stop
+    // horizontal background gradient so it covers the full tile.
     int64_t secs_remaining = (event_end > now) ? (int64_t)(event_end - now) : 0;
     int64_t secs_into = (now > event_start) ? (int64_t)(now - event_start) : 0;
+    int64_t total = (event_end > event_start) ? (int64_t)(event_end - event_start) : 0;
+    int pct_left = (total > 0) ? (int)((secs_remaining * 100) / total) : 0;
+    if (pct_left < 0) pct_left = 0;
+    if (pct_left > 100) pct_left = 100;
+
+    lv_style_selector_t sel = static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DEFAULT;
+    uint8_t stop = static_cast<uint8_t>(pct_left * 255 / 100);
+    lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(ctx->accent_color), sel);
+    lv_obj_set_style_bg_grad_color(ctx->btn, lv_color_hex(darken_color(ctx->accent_color, 62)), sel);
+    lv_obj_set_style_bg_grad_dir(ctx->btn, LV_GRAD_DIR_HOR, sel);
+    lv_obj_set_style_bg_main_stop(ctx->btn, stop, sel);
+    lv_obj_set_style_bg_grad_stop(ctx->btn, stop, sel);
+
     ha_calendar_set_title(ctx, best->title.c_str());
-
-    // Helper to put a word-phase ("Just started"/"In progress") in the upper-left
-    // text slot, with an optional accent color. Hides the number slot so the word
-    // sits on the top line rather than dropping to the value baseline.
-    auto show_phase_word = [&](const char *word, bool accent) {
-      lv_obj_add_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
-      if (ctx->unit_lbl) {
-        lv_label_set_text(ctx->unit_lbl, word);
-        if (ctx->label_font)
-          lv_obj_set_style_text_font(ctx->unit_lbl, ctx->label_font, LV_PART_MAIN);
-        lv_obj_set_style_text_color(ctx->unit_lbl,
-          lv_color_hex(accent ? ctx->accent_color : DARK_TEXT_PRIMARY), LV_PART_MAIN);
-      }
-    };
-
     if (secs_remaining <= HA_CALENDAR_URGENT_SECS) {
-      // About to end: the one phase with a number (time left), loud accent card.
+      // About to end: show the minutes-left number.
       char num_buf[16] = {}, unit_buf[8] = {};
       ha_calendar_format_countdown(secs_remaining, num_buf, sizeof(num_buf),
                                     unit_buf, sizeof(unit_buf));
+      lv_obj_clear_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
       lv_label_set_text(ctx->value_lbl, num_buf);
-      if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, unit_buf);
-      uint32_t on_accent = 0x1A1A1A;  // dark text for contrast on the accent fill
-      lv_obj_set_style_text_color(ctx->value_lbl, lv_color_hex(on_accent), LV_PART_MAIN);
-      if (ctx->unit_lbl) lv_obj_set_style_text_color(ctx->unit_lbl, lv_color_hex(on_accent), LV_PART_MAIN);
-      if (ctx->label_lbl) lv_obj_set_style_text_color(ctx->label_lbl, lv_color_hex(on_accent), LV_PART_MAIN);
-      set_bg(ctx->accent_color);
-    } else if (secs_into < HA_CALENDAR_URGENT_SECS) {
-      // Just began: accent word on a warm accent-tinted background.
-      show_phase_word("Just started", true);
-      set_bg(darken_color(ctx->accent_color, 62));  // darkened-primary fill, primary text
+      if (ctx->unit_lbl) {
+        lv_label_set_text(ctx->unit_lbl, unit_buf);
+        if (ctx->unit_font) lv_obj_set_style_text_font(ctx->unit_lbl, ctx->unit_font, LV_PART_MAIN);
+      }
     } else {
-      // In progress: word in the primary (accent) color on the standard surface.
-      show_phase_word("In progress", true);
-      set_bg(ctx->off_color);
+      // Word phase: "Just started" early, "In progress" otherwise.
+      lv_obj_add_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (ctx->unit_lbl) {
+        lv_label_set_text(ctx->unit_lbl,
+          secs_into < HA_CALENDAR_URGENT_SECS ? "Just started" : "In progress");
+        if (ctx->label_font) lv_obj_set_style_text_font(ctx->unit_lbl, ctx->label_font, LV_PART_MAIN);
+      }
     }
+    // White text so it reads across both the bright and darkened halves.
+    lv_obj_set_style_text_color(ctx->value_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    if (ctx->unit_lbl) lv_obj_set_style_text_color(ctx->unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    if (ctx->label_lbl) lv_obj_set_style_text_color(ctx->label_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     return;
   }
 
@@ -381,6 +390,8 @@ inline HaCalendarCardCtx *create_ha_calendar_card_context(
     const lv_font_t *list_font,
     const lv_font_t *icon_font,
     const lv_font_t *small_font,
+    const lv_font_t *tiny_font,
+    const lv_font_t *chrome_icon_font,
     int width_compensation_percent) {
   HaCalendarCardCtx *ctx = new HaCalendarCardCtx();
   ctx->configured_label = p.label;
@@ -400,7 +411,9 @@ inline HaCalendarCardCtx *create_ha_calendar_card_context(
   ctx->label_font = label_font;
   ctx->list_font = list_font ? list_font : label_font;
   ctx->icon_font = icon_font;
+  ctx->chrome_icon_font = chrome_icon_font;
   ctx->small_font = small_font;
+  ctx->tiny_font = tiny_font;
   ctx->width_compensation_percent = width_compensation_percent;
   lv_obj_set_user_data(s.btn, ctx);
 
@@ -498,6 +511,14 @@ inline void subscribe_ha_calendar_state(HaCalendarCardCtx *ctx) {
         bool any = false;
         for (const auto &e : ctx->entities) if (e.available) { any = true; break; }
         apply_control_availability(ctx->btn, ctx->btn, any, false);
+        // Next mode: kick the first get_events poll as soon as state arrives
+        // (API is connected), instead of waiting for the 30s tick — otherwise
+        // the tile briefly shows the active event ("Now") before it learns the
+        // next upcoming one.
+        if (ctx->display_mode != "current" && !ctx->fetch_done &&
+            ctx->fetch_pending <= 0 && ha_api_state_connected()) {
+          ha_calendar_card_fetch(ctx);
+        }
         ha_calendar_apply_card_face(ctx);
       }));
   }
@@ -552,6 +573,7 @@ inline void ha_calendar_modal_set_status(const char *text) {
 
 inline void ha_calendar_modal_hide() {
   HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  if (ui.refresh_timer) { lv_timer_del(ui.refresh_timer); ui.refresh_timer = nullptr; }
   ui.active = nullptr;
   control_modal_delete_overlay(ControlModalKind::HA_CALENDAR, ui.overlay);
   ui = HaCalendarModalUi();
@@ -560,6 +582,25 @@ inline void ha_calendar_modal_hide() {
 // ── Modal: event parsing ─────────────────────────────────────────────────────
 
 // Parse "H:MM|H:MM|title\n" lines, convert to epochs relative to today's midnight.
+// Device 12h/24h clock format. The time tick (time.yaml) publishes the device's
+// "Screen: Clock Format" here so the modal can format event times to match.
+inline bool &ha_calendar_use_12h_flag() {
+  static bool v = false;
+  return v;
+}
+inline void ha_calendar_set_use_12h(bool v) { ha_calendar_use_12h_flag() = v; }
+
+// Format "H:MM" honoring the device clock format (24h: 14:00 / 12h: 2:00).
+inline void ha_calendar_format_hm(char *buf, size_t len, int hour, int minute) {
+  if (ha_calendar_use_12h_flag()) {
+    int h12 = hour % 12;
+    if (h12 == 0) h12 = 12;
+    std::snprintf(buf, len, "%d:%02d", h12, minute);
+  } else {
+    std::snprintf(buf, len, "%d:%02d", hour, minute);
+  }
+}
+
 inline void ha_calendar_parse_and_merge(const char *payload, time_t midnight) {
   if (!payload || !payload[0]) return;
   HaCalendarModalUi &ui = ha_calendar_modal_ui();
@@ -586,8 +627,8 @@ inline void ha_calendar_parse_and_merge(const char *payload, time_t midnight) {
     if (ui.event_count >= HA_CALENDAR_MAX_EVENTS) break;
 
     HaCalendarEventRow &row = ui.events[ui.event_count++];
-    std::snprintf(row.start_display, sizeof(row.start_display), "%d:%02d", sh, sm);
-    std::snprintf(row.end_display, sizeof(row.end_display), "%d:%02d", eh, em);
+    ha_calendar_format_hm(row.start_display, sizeof(row.start_display), sh, sm);
+    ha_calendar_format_hm(row.end_display, sizeof(row.end_display), eh, em);
     row.start_epoch = midnight + static_cast<time_t>(sh * 3600 + sm * 60);
     row.end_epoch   = midnight + static_cast<time_t>(eh * 3600 + em * 60);
     if (row.end_epoch <= row.start_epoch) row.end_epoch += 86400;
@@ -652,6 +693,9 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
       lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
     }
 
+    const lv_font_t *small_f = ctx->small_font ? ctx->small_font : ctx->label_font;
+    const lv_font_t *tiny_f = ctx->tiny_font ? ctx->tiny_font : small_f;
+
     // Countdown text
     char cd[24] = {};
     if (is_active) {
@@ -663,40 +707,42 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
       std::snprintf(cd, sizeof(cd), "In %s %s", num, unit);
     }
 
-    // Top line: title (flex-grow) + countdown
-    lv_obj_t *top = lv_obj_create(row);
-    lv_obj_set_size(top, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_opa(top, LV_OPA_TRANSP, LV_PART_MAIN);
-    lv_obj_set_style_border_width(top, 0, LV_PART_MAIN);
-    lv_obj_set_style_shadow_width(top, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(top, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(top, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_layout(top, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(top, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(top, LV_FLEX_ALIGN_SPACE_BETWEEN,
-                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-    lv_obj_t *title_lbl = lv_label_create(top);
+    // Line 1: meeting name on its own, full width (so it isn't squeezed by the
+    // countdown and the scrollbar can't sit on top of the countdown).
+    lv_obj_t *title_lbl = lv_label_create(row);
     lv_label_set_text(title_lbl, ev.title[0] ? ev.title : "(untitled)");
     lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
-    lv_obj_set_flex_grow(title_lbl, 1);
+    lv_obj_set_width(title_lbl, lv_pct(100));
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(title_col), LV_PART_MAIN);
-    if (ctx->list_font) lv_obj_set_style_text_font(title_lbl, ctx->list_font, LV_PART_MAIN);
+    if (small_f) lv_obj_set_style_text_font(title_lbl, small_f, LV_PART_MAIN);
     apply_width_compensation(title_lbl, ctx->width_compensation_percent);
 
-    lv_obj_t *cd_lbl = lv_label_create(top);
-    lv_label_set_text(cd_lbl, cd);
-    lv_obj_set_style_text_color(cd_lbl, lv_color_hex(title_col), LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(cd_lbl, ctx->label_font, LV_PART_MAIN);
+    // Line 2: time range (left) + countdown (right), on the same baseline.
+    lv_obj_t *bottom = lv_obj_create(row);
+    lv_obj_set_size(bottom, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(bottom, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(bottom, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(bottom, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(bottom, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(bottom, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_layout(bottom, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(bottom, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(bottom, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    // Time range line
     char time_range[20] = {};
     std::snprintf(time_range, sizeof(time_range), "%s \xe2\x80\x93 %s",
       ev.start_display, ev.end_display);
-    lv_obj_t *time_lbl = lv_label_create(row);
+    lv_obj_t *time_lbl = lv_label_create(bottom);
     lv_label_set_text(time_lbl, time_range);
     lv_obj_set_style_text_color(time_lbl, lv_color_hex(time_col), LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(time_lbl, ctx->label_font, LV_PART_MAIN);
+    if (tiny_f) lv_obj_set_style_text_font(time_lbl, tiny_f, LV_PART_MAIN);
+
+    lv_obj_t *cd_lbl = lv_label_create(bottom);
+    lv_label_set_text(cd_lbl, cd);
+    lv_obj_set_style_text_color(cd_lbl, lv_color_hex(title_col), LV_PART_MAIN);
+    if (tiny_f) lv_obj_set_style_text_font(cd_lbl, tiny_f, LV_PART_MAIN);
+    lv_obj_set_style_margin_right(cd_lbl, 5, LV_PART_MAIN);  // nudge countdown left
 
     // Divider
     if (i + 1 < ui.event_count) {
@@ -758,19 +804,26 @@ inline void ha_calendar_render_column(HaCalendarCardCtx *ctx, lv_coord_t content
     lv_obj_set_layout(tcol, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(tcol, LV_FLEX_FLOW_COLUMN);
 
+    const lv_font_t *small_f = ctx->small_font ? ctx->small_font : ctx->label_font;
+    const lv_font_t *tiny_f = ctx->tiny_font ? ctx->tiny_font : small_f;
+    // Start time: prominent (white, or accent when active). End time: smaller, muted.
     lv_obj_t *sl = lv_label_create(tcol);
     lv_label_set_text(sl, ev.start_display);
-    lv_obj_set_style_text_color(sl, lv_color_hex(time_col), LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(sl, ctx->label_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(sl, lv_color_hex(is_active ? ctx->accent_color : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    if (small_f) lv_obj_set_style_text_font(sl, small_f, LV_PART_MAIN);
 
     lv_obj_t *el = lv_label_create(tcol);
     lv_label_set_text(el, ev.end_display);
     lv_obj_set_style_text_color(el, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(el, ctx->label_font, LV_PART_MAIN);
+    if (tiny_f) lv_obj_set_style_text_font(el, tiny_f, LV_PART_MAIN);
 
-    // Accent bar
+    // Accent bar — spans the full height of the two text lines.
+    lv_coord_t bar_h = 0;
+    if (small_f && small_f->line_height > 0) bar_h += small_f->line_height;
+    if (tiny_f && tiny_f->line_height > 0) bar_h += tiny_f->line_height;
+    if (bar_h <= 0) bar_h = 34;
     lv_obj_t *bar = lv_obj_create(row);
-    lv_obj_set_size(bar, 2, LV_SIZE_CONTENT);
+    lv_obj_set_size(bar, 3, bar_h);
     lv_obj_set_style_bg_color(bar, lv_color_hex(accent), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(bar, 0, LV_PART_MAIN);
@@ -794,7 +847,7 @@ inline void ha_calendar_render_column(HaCalendarCardCtx *ctx, lv_coord_t content
     lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
     lv_obj_set_width(title_lbl, lv_pct(100));
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(title_col), LV_PART_MAIN);
-    if (ctx->list_font) lv_obj_set_style_text_font(title_lbl, ctx->list_font, LV_PART_MAIN);
+    if (small_f) lv_obj_set_style_text_font(title_lbl, small_f, LV_PART_MAIN);
     apply_width_compensation(title_lbl, ctx->width_compensation_percent);
 
     char cd[24] = {};
@@ -809,7 +862,7 @@ inline void ha_calendar_render_column(HaCalendarCardCtx *ctx, lv_coord_t content
     lv_obj_t *cd_lbl = lv_label_create(info);
     lv_label_set_text(cd_lbl, cd);
     lv_obj_set_style_text_color(cd_lbl, lv_color_hex(title_col), LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(cd_lbl, ctx->label_font, LV_PART_MAIN);
+    if (tiny_f) lv_obj_set_style_text_font(cd_lbl, tiny_f, LV_PART_MAIN);
 
     if (i + 1 < ui.event_count) {
       lv_obj_t *div = lv_obj_create(ui.list);
@@ -1060,12 +1113,22 @@ inline void ha_calendar_card_fetch(HaCalendarCardCtx *ctx) {
 
 // ── Modal: open ──────────────────────────────────────────────────────────────
 
+// Re-render the open modal so countdowns ("In 3 min", "Now") advance over time
+// (events are cached; this only recomputes against the current clock).
+inline void ha_calendar_modal_refresh_cb(lv_timer_t *) {
+  HaCalendarModalUi &ui = ha_calendar_modal_ui();
+  if (ui.active && ui.list && ha_calendar_ctx_valid(ui.active) && ui.event_count > 0) {
+    ha_calendar_render_modal(ui.active);
+  }
+}
+
 inline void ha_calendar_open_modal(HaCalendarCardCtx *ctx) {
   if (!ha_calendar_ctx_valid(ctx) || ctx->entities.empty()) return;
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::HA_CALENDAR, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0141", false, ha_calendar_modal_hide);
+    ctx->chrome_icon_font ? ctx->chrome_icon_font : ctx->icon_font,
+    "\U000F0141", false, ha_calendar_modal_hide);
 
   HaCalendarModalUi &ui = ha_calendar_modal_ui();
   ui.active = ctx;
@@ -1084,8 +1147,8 @@ inline void ha_calendar_open_modal(HaCalendarCardCtx *ctx) {
   lv_coord_t list_y = layout.inset + layout.back_size + gap;
   lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
   if (list_h < 60) list_h = 60;
-  lv_coord_t list_pad = control_modal_scaled_px(14, layout.short_side);
-  if (list_pad < 6) list_pad = 6;
+  lv_coord_t list_pad = control_modal_scaled_px(4, layout.short_side);
+  if (list_pad < 2) list_pad = 2;
   lv_coord_t list_w = content_w - list_pad * 2;
   if (list_w < 80) { list_w = content_w; list_pad = 0; }
 
@@ -1094,18 +1157,26 @@ inline void ha_calendar_open_modal(HaCalendarCardCtx *ctx) {
     : std::string("Today");
   ui.title_lbl = control_modal_create_title(
     ui.panel, title_text, content_w - layout.back_size - gap,
-    ctx->list_font, ctx->width_compensation_percent);
-  lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+    ctx->label_font, ctx->width_compensation_percent);
+  lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_update_layout(ui.title_lbl);
-  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0,
+  lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_RIGHT, 0,
     title_y - lv_obj_get_height(ui.title_lbl) / 2);
 
   lv_coord_t row_gap = control_modal_scaled_px(6, layout.short_side);
   if (row_gap < 4) row_gap = 4;
   ui.list = control_modal_create_scroll_list(ui.panel, list_w, list_h, row_gap);
+  // Right gutter so the scrollbar sits beside the rows instead of over the
+  // right-most content (countdowns).
+  lv_coord_t sb_gutter = control_modal_scaled_px(10, layout.short_side);
+  if (sb_gutter < 6) sb_gutter = 6;
+  lv_obj_set_style_pad_right(ui.list, sb_gutter, LV_PART_MAIN);
   lv_obj_align(ui.list, LV_ALIGN_TOP_LEFT, layout.inset + list_pad, list_y);
 
   lv_obj_move_foreground(ui.overlay);
+
+  // Keep the countdowns ticking while the modal stays open.
+  ui.refresh_timer = lv_timer_create(ha_calendar_modal_refresh_cb, 30000, nullptr);
 
   // Kick off one request per entity
   ui.pending_entity_count = static_cast<int>(ctx->entities.size());
