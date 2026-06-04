@@ -171,7 +171,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "solar" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "solar" && b.type !== "ha_calendar" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -1367,6 +1367,8 @@ function buttonConfigFields(b) {
     options = normalizePresenceOptions(options);
   } else if (type === "image") {
     options = normalizeImageOptions(options);
+  } else if (type === "ha_calendar") {
+    options = normalizeHaCalendarOptions(options);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
   } else if (type === "solar") {

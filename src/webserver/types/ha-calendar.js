@@ -37,6 +37,17 @@ registerButtonType("ha_calendar", {
   labelPlaceholder: "e.g. Calendar",
   defaultConfig: function () { return cardContractDefaultConfig("ha_calendar"); },
   cardMetadata: HA_CALENDAR_CARD_METADATA,
+  renderPreview: function (b, helpers) {
+    // Current mode headlines the ongoing event ("Now"); Next mode counts down
+    // to the upcoming event ("47 min"). Give each a distinct preview snapshot.
+    var current = haCalendarDisplayMode(b) === "current";
+    return {
+      iconHtml: current
+        ? cardSensorPreviewHtml(b, helpers, "Now", null)
+        : cardSensorPreviewHtml(b, helpers, "47", "min"),
+      labelHtml: cardBadgeLabelHtml(helpers, b.label || "Calendar", HA_CALENDAR_CARD_METADATA.preview.badge),
+    };
+  },
   onSelect: function (b) {
     b.entity = "";
     b.label = "";
