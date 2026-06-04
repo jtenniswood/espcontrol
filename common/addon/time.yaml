@@ -231,6 +231,7 @@ select:
     options:
       - "en"
       - "it"
+      - "nl"
     web_server:
       sorting_group_id: sg_brightness
     on_value:
