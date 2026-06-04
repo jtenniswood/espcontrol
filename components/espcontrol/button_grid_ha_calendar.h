@@ -230,20 +230,21 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
       return;
     }
     // Active meeting: the tile is a vertical progress split — bright primary
-    // "remaining" on the left, darkened primary "elapsed" growing in from the
-    // right. The divider sits at "% of meeting left". Drawn as a hard-stop
-    // horizontal background gradient so it covers the full tile.
+    // darkened primary "elapsed" growing in from the left, bright primary
+    // "remaining" on the right — so the bright portion shrinks toward the right
+    // edge as the meeting progresses. Drawn as a hard-stop horizontal background
+    // gradient so it covers the full tile.
     int64_t secs_remaining = (event_end > now) ? (int64_t)(event_end - now) : 0;
     int64_t secs_into = (now > event_start) ? (int64_t)(now - event_start) : 0;
     int64_t total = (event_end > event_start) ? (int64_t)(event_end - event_start) : 0;
-    int pct_left = (total > 0) ? (int)((secs_remaining * 100) / total) : 0;
-    if (pct_left < 0) pct_left = 0;
-    if (pct_left > 100) pct_left = 100;
+    int pct_elapsed = (total > 0) ? (int)((secs_into * 100) / total) : 0;
+    if (pct_elapsed < 0) pct_elapsed = 0;
+    if (pct_elapsed > 100) pct_elapsed = 100;
 
     lv_style_selector_t sel = static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DEFAULT;
-    uint8_t stop = static_cast<uint8_t>(pct_left * 255 / 100);
-    lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(ctx->accent_color), sel);
-    lv_obj_set_style_bg_grad_color(ctx->btn, lv_color_hex(darken_color(ctx->accent_color, 62)), sel);
+    uint8_t stop = static_cast<uint8_t>(pct_elapsed * 255 / 100);
+    lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(darken_color(ctx->accent_color, 62)), sel);
+    lv_obj_set_style_bg_grad_color(ctx->btn, lv_color_hex(ctx->accent_color), sel);
     lv_obj_set_style_bg_grad_dir(ctx->btn, LV_GRAD_DIR_HOR, sel);
     lv_obj_set_style_bg_main_stop(ctx->btn, stop, sel);
     lv_obj_set_style_bg_grad_stop(ctx->btn, stop, sel);
