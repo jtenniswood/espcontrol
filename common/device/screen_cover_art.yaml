@@ -18,6 +18,18 @@ globals:
   - id: cover_art_url
     type: std::string
     initial_value: '""'
+  - id: cover_art_pending_remote_url
+    type: std::string
+    initial_value: '""'
+  - id: cover_art_pending_local_url
+    type: std::string
+    initial_value: '""'
+  - id: cover_art_request_id
+    type: int
+    initial_value: '0'
+  - id: cover_art_artwork_pending_count
+    type: int
+    initial_value: '0'
   - id: cover_art_loaded_url
     type: std::string
     initial_value: '""'
@@ -522,6 +534,10 @@ script:
           value: 'false'
       - lambda: |-
           id(cover_art_url).clear();
+          id(cover_art_pending_remote_url).clear();
+          id(cover_art_pending_local_url).clear();
+          id(cover_art_artwork_pending_count) = 0;
+          id(cover_art_request_id)++;
           id(cover_art_loaded_url).clear();
           id(cover_art_retry_url).clear();
           id(cover_art_retry_count) = 0;
@@ -893,18 +909,51 @@ script:
           }
           const std::string cover_entity = id(cover_art_media_player_entity).state;
           if (cover_entity.empty()) return;
+          const int request_id = ++id(cover_art_request_id);
+          id(cover_art_artwork_pending_count) = 2;
+          id(cover_art_pending_remote_url).clear();
+          id(cover_art_pending_local_url).clear();
 
-          auto handle_picture = [cover_entity](esphome::StringRef picture, bool local) {
+          auto normalize_picture_url = [](esphome::StringRef picture) -> std::string {
+            constexpr size_t COVER_ART_URL_MAX_LEN = 1024;
+            std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
+            if (path.empty() || path == "unknown" || path == "unavailable") return "";
+            if (path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0) return path;
+            std::string base = id(cover_art_home_assistant_url).state;
+            if (base.empty()) base = id(cover_art_home_assistant_base_url);
+            if (base.empty()) base = "http://192.168.1.31:8123";
+            while (!base.empty() && base.back() == '/') base.pop_back();
+            return base + path;
+          };
+
+          auto handle_picture = [cover_entity, request_id, normalize_picture_url](esphome::StringRef picture, bool local) {
             if (!id(cover_art_screensaver_enabled).state ||
                 !id(cover_art_screensaver_active) ||
-                cover_entity != id(cover_art_media_player_entity).state) {
+                cover_entity != id(cover_art_media_player_entity).state ||
+                request_id != id(cover_art_request_id)) {
               return;
             }
             constexpr size_t COVER_ART_URL_MAX_LEN = 1024;
             std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
-            if (path.empty() || path == "unknown" || path == "unavailable") {
-              if (!local) {
-                ESP_LOGI("cover_art", "Artwork entity_picture unavailable");
+            std::string url = normalize_picture_url(picture);
+            if (local) {
+              id(cover_art_pending_local_url) = url;
+            } else {
+              id(cover_art_pending_remote_url) = url;
+            }
+            if (id(cover_art_artwork_pending_count) > 0) {
+              id(cover_art_artwork_pending_count)--;
+            }
+
+            std::string chosen = id(cover_art_pending_local_url);
+            const bool waiting_for_pair = id(cover_art_artwork_pending_count) > 0;
+            if (chosen.empty() && !waiting_for_pair) {
+              chosen = id(cover_art_pending_remote_url);
+            }
+
+            if (chosen.empty()) {
+              if (!waiting_for_pair) {
+                ESP_LOGI("cover_art", "Artwork attributes unavailable");
                 id(cover_art_url).clear();
                 id(cover_art_loaded_url).clear();
                 id(cover_art_retry_url).clear();
@@ -915,18 +964,15 @@ script:
               }
               return;
             }
-            std::string url = path;
-            if (!(path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0)) {
-              std::string base = id(cover_art_home_assistant_url).state;
-              if (base.empty()) base = id(cover_art_home_assistant_base_url);
-              if (base.empty()) base = "http://192.168.1.31:8123";
-              while (!base.empty() && base.back() == '/') base.pop_back();
-              url = base + path;
+
+            if (chosen == id(cover_art_url)) {
+              if (!id(cover_art_image_available)) id(cover_art_deferred_download).execute();
+              id(cover_art_show_track_overlay).execute();
+              return;
             }
-            if (url == id(cover_art_url)) return;
             ESP_LOGI("cover_art", "Artwork %s received (%u chars, url %u chars)",
                      local ? "entity_picture_local" : "entity_picture",
-                     (unsigned) path.size(), (unsigned) url.size());
+                     (unsigned) path.size(), (unsigned) chosen.size());
             if (picture.size() > COVER_ART_URL_MAX_LEN) {
               ESP_LOGW("cover_art", "Artwork %s URL exceeded %u chars and was truncated",
                        local ? "local" : "", (unsigned) COVER_ART_URL_MAX_LEN);
@@ -934,7 +980,7 @@ script:
             if (!local && path.size() >= HA_TEXT_SENSOR_STATE_MAX_LEN) {
               ESP_LOGI("cover_art", "Artwork URL is longer than the normal text-sensor limit");
             }
-            id(cover_art_url) = url;
+            id(cover_art_url) = chosen;
             id(cover_art_deferred_download).execute();
             id(cover_art_show_track_overlay).execute();
           };
