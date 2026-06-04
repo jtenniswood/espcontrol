@@ -512,11 +512,11 @@ inline void subscribe_ha_calendar_state(HaCalendarCardCtx *ctx) {
         bool any = false;
         for (const auto &e : ctx->entities) if (e.available) { any = true; break; }
         apply_control_availability(ctx->btn, ctx->btn, any, false);
-        // Next mode: kick the first get_events poll as soon as state arrives
-        // (API is connected), instead of waiting for the 30s tick — otherwise
-        // the tile briefly shows the active event ("Now") before it learns the
-        // next upcoming one.
-        if (ctx->display_mode != "current" && !ctx->fetch_done &&
+        // Next mode: re-poll get_events whenever the state changes — both on the
+        // first state after boot and at every event boundary (an event starting
+        // or ending flips this state). Otherwise the tile lingers on "Now" with
+        // a just-started/just-ended event until the next periodic poll.
+        if (ctx->display_mode != "current" &&
             ctx->fetch_pending <= 0 && ha_api_state_connected()) {
           ha_calendar_card_fetch(ctx);
         }
