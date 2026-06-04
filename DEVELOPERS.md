@@ -510,6 +510,7 @@ edits there will be reported as "stale" by `python3 scripts/generate_device_slot
 4. Run `python3 scripts/generate_device_slots.py` to rewrite every `sensors.yaml`,
    and add the field to the C++ `GridConfig`/`DisplayProfile` so the card can read it.
 
+
 **Icons** are MDI (Material Design Icons) glyphs from the MDI webfont, built into
 the icon fonts via `common/assets/icon_glyphs.yaml`. In firmware, resolve an icon
 name to its glyph string with `find_icon("Some Name")` (see
