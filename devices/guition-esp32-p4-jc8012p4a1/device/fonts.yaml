@@ -37,6 +37,16 @@ font:
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
+  # Tiny secondary text (calendar modal rows)
+  - file: "gfonts://Roboto"
+    id: font_text_tiny
+    size: 16
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
   # Headings and media titles
   - file: "gfonts://Roboto@Light"
     id: font_text_title
@@ -82,7 +92,7 @@ font:
     glyphs: !include ../../../common/assets/text_glyphs.yaml
 
   # Normal sensor values
-  - file: "gfonts://Roboto@Light"
+  - file: "gfonts://Roboto@Medium"
     id: font_number_value
     size: 52
     bpp: 4
