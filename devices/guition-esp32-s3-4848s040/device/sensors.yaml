@@ -51,6 +51,7 @@ script:
           cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
           cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
           cfg.climate_option_value_font = id(font_text_small)->get_lv_font();
+          cfg.tiny_font = id(font_text_tiny)->get_lv_font();
           cfg.temperature_unit = id(temperature_unit_select).current_option();
           cfg.timezone = id(timezone_select).current_option();
           cfg.pause_home_idle = []() {
@@ -143,6 +144,7 @@ esphome:
             cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
             cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
             cfg.climate_option_value_font = id(font_text_small)->get_lv_font();
+            cfg.tiny_font = id(font_text_tiny)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
             cfg.pause_home_idle = []() {
@@ -264,6 +266,7 @@ esphome:
             cfg.subpage_chevron_font = id(font_icon_status)->get_lv_font();
             cfg.climate_option_title_font = id(font_text_body)->get_lv_font();
             cfg.climate_option_value_font = id(font_text_small)->get_lv_font();
+            cfg.tiny_font = id(font_text_tiny)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
             cfg.pause_home_idle = []() {
