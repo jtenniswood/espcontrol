@@ -1084,6 +1084,7 @@ inline void grid_phase2(
           display_media_title_font_or(
             display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
           display_icon_font(display),
+          display_climate_option_value_font(display),
           display_main_width_percent(display));
         subscribe_ha_calendar_state(ctx);
         subscribe_ha_calendar_attributes(ctx);
@@ -1647,6 +1648,7 @@ inline void grid_phase2(
             display_media_title_font_or(
               display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
             display_icon_font(display),
+            display_climate_option_value_font(display),
             display_main_width_percent(display));
           subscribe_ha_calendar_state(ctx);
           subscribe_ha_calendar_attributes(ctx);
