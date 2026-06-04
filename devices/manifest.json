@@ -114,9 +114,6 @@
             "setup_action_button_width": "\"200\"",
             "setup_action_button_height": "\"56\"",
             "setup_action_button_radius": "\"12\"",
-            "button_on_color_initial": "\"000000\"",
-            "button_off_color_initial": "\"FFFFFF\"",
-            "sensor_card_color_initial": "\"FFFFFF\"",
             "icon_font": "font_icon_main",
             "subpage_chevron_font": "font_icon_status",
             "label_font": "font_text_body",
@@ -666,124 +663,6 @@
             "main_page_compact_pad_top": "\"4\"",
             "clock_font_size": "\"160\"",
             "clock_cx": "\"240\"",
-            "clock_cy": "\"240\""
-          },
-          "deviceFontPackageKey": "fonts_device",
-          "apiNavigateAction": false
-        }
-      }
-    },
-    "trmnl-75-og": {
-      "slots": 12,
-      "public": {
-        "name": "TRMNL 7.5 OG",
-        "docsPath": "/screens/trmnl-75-og",
-        "screenSize": "7.5 inches",
-        "resolution": "800 x 480",
-        "orientation": "Landscape"
-      },
-      "layout": {
-        "cols": 4,
-        "rows": 3,
-        "firmwareGrid": "3x4"
-      },
-      "web": {
-        "infoOnly": true,
-        "previewTheme": "epaper",
-        "dragMode": "swap",
-        "dragAnimation": false,
-        "disabledCardTypes": [
-          "subpage"
-        ],
-        "screen": {
-          "width": "100%",
-          "aspect": "800/480"
-        },
-        "topbar": {
-          "height": 7.5,
-          "padding": "1.1cqw 1.4cqw",
-          "fontSize": 2.5
-        },
-        "grid": {
-          "top": 7.8,
-          "compactTop": 7.8,
-          "left": 1.5,
-          "right": 1.5,
-          "bottom": 2.5,
-          "gap": 1.2,
-          "fr": "1fr"
-        },
-        "btn": {
-          "radius": 1,
-          "padding": 1.1,
-          "borderWidth": 2,
-          "iconSize": 4,
-          "labelSize": 2,
-          "labelWeight": 700,
-          "labelLines": 2,
-          "labelLinesDouble": 3
-        },
-        "emptyCell": {
-          "radius": 1
-        },
-        "sensorBadge": {
-          "top": 0.8,
-          "right": 0.8,
-          "fontSize": 1.4
-        },
-        "subpageBadge": {
-          "bottom": 0.8,
-          "right": 0.8,
-          "fontSize": 1.6
-        }
-      },
-      "firmware": {
-        "build": {
-          "chip": "ESP32-S3"
-        },
-        "fonts": {
-          "icon": "font_icon_main",
-          "sensor": "font_number_value",
-          "largeSensor": "font_number_value",
-          "mediaTitle": "font_text_body",
-          "volumeNumber": "font_number_value",
-          "volumeLabel": "font_text_body",
-          "climateCardIcon": "font_icon_main",
-          "subpageChevron": "font_text_body",
-          "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_body"
-        },
-        "display": {
-          "mode": "monochrome",
-          "infoOnly": true,
-          "wrapTallLabels": true
-        },
-        "package": {
-          "firmwareVersion": "dev-trmnl-75-og-20260602",
-          "substitutions": {
-            "screen_width": "\"800\"",
-            "screen_height": "\"480\"",
-            "content_width": "\"760\"",
-            "setup_icon_font_id": "font_icon_main",
-            "setup_title_font_id": "font_text_title",
-            "setup_body_font_id": "font_text_body",
-            "setup_pad_row": "\"20\"",
-            "setup_loading_pad_row": "\"40\"",
-            "setup_action_button_width": "\"200\"",
-            "setup_action_button_height": "\"56\"",
-            "setup_action_button_radius": "\"12\"",
-            "icon_font": "font_icon_main",
-            "subpage_chevron_font": "font_text_body",
-            "label_font": "font_text_body",
-            "media_title_font": "font_text_body",
-            "unit_font": "font_text_body",
-            "sensor_value_font": "font_number_value",
-            "padding": "9px",
-            "radius": "8px",
-            "main_page_pad_top": "\"68\"",
-            "main_page_compact_pad_top": "\"68\"",
-            "clock_font_size": "\"160\"",
-            "clock_cx": "\"400\"",
             "clock_cy": "\"240\""
           },
           "deviceFontPackageKey": "fonts_device",
