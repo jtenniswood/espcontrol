@@ -471,6 +471,10 @@ def cfg_lines(device: dict) -> list[str]:
         lines.append(
             f"            cfg.climate_option_value_font = id({device['climate_option_value_font']})->get_lv_font();"
         )
+    if device.get("tiny_font"):
+        lines.append(
+            f"            cfg.tiny_font = id({device['tiny_font']})->get_lv_font();"
+        )
     lines.append("            cfg.temperature_unit = id(temperature_unit_select).current_option();")
     lines.append("            cfg.timezone = id(timezone_select).current_option();")
     lines.append("            cfg.pause_home_idle = []() {")
