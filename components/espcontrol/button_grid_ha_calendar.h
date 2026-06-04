@@ -12,6 +12,10 @@ constexpr size_t   HA_CALENDAR_RESPONSE_MAX_LEN = 2048;
 constexpr uint32_t HA_CALENDAR_REQUEST_TIMEOUT_MS = 15000;
 constexpr int      HA_CALENDAR_URGENT_SECS = 300;  // 5 minutes
 constexpr size_t   HA_CALENDAR_TITLE_SMALL_LEN = 18;  // titles longer than this use the smaller font
+// Spacing for the dual "1h 51m" countdown: negative pulls each tiny unit tight
+// against its number; the group gap is the breathing room between "1h" and "51m".
+constexpr int      HA_CALENDAR_HM_UNIT_GAP = -6;
+constexpr int      HA_CALENDAR_HM_GROUP_GAP = 2;
 
 // ── Structs ──────────────────────────────────────────────────────────────────
 
@@ -42,7 +46,9 @@ struct HaCalendarCardCtx {
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;    // repurposed: "In" / "Now" / "" text label
   lv_obj_t *value_lbl = nullptr;   // sensor_lbl: countdown number or "Now"
-  lv_obj_t *unit_lbl = nullptr;    // "min" / "hr" / "days"
+  lv_obj_t *unit_lbl = nullptr;    // "min" / "hr" / "days" (or "h" in dual h+m)
+  lv_obj_t *value2_lbl = nullptr;  // second number for the "1h 51m" dual format
+  lv_obj_t *unit2_lbl = nullptr;   // "m" suffix for the "1h 51m" dual format
   lv_obj_t *label_lbl = nullptr;   // text_lbl: event title or card label
   const lv_font_t *value_font = nullptr;
   const lv_font_t *label_font = nullptr;
@@ -140,6 +146,68 @@ inline void ha_calendar_format_countdown(int64_t secs,
   unit_buf[unit_len - 1] = '\0';
 }
 
+// Compact countdown as a single string for the modal rows: "1h 51m", "42 min",
+// "3 days". Mirrors the tile's dual h+m format in the 1h–48h range.
+inline void ha_calendar_countdown_text(int64_t secs, char *buf, size_t len) {
+  if (secs >= 3600 && secs < 48LL * 3600) {
+    int hrs = (int)(secs / 3600);
+    int mins = (int)((secs % 3600) / 60);
+    if (mins > 0) std::snprintf(buf, len, "%dh %dm", hrs, mins);
+    else std::snprintf(buf, len, "%dh", hrs);
+    return;
+  }
+  char num_buf[16] = {}, unit_buf[8] = {};
+  ha_calendar_format_countdown(secs, num_buf, sizeof(num_buf), unit_buf, sizeof(unit_buf));
+  std::snprintf(buf, len, "%s %s", num_buf, unit_buf);
+}
+
+// Populate the value flex-row for a countdown. For the 1h–48h range it renders
+// the dual "1h 51m" format across the four row labels ([big h][tiny "h"]
+// [big m][tiny "m"]); every other range uses a single big number + unit and the
+// two extra labels stay hidden. Colors are left to the caller.
+inline void ha_calendar_set_countdown_labels(HaCalendarCardCtx *ctx, int64_t secs) {
+  if (ctx->value2_lbl) lv_obj_add_flag(ctx->value2_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (ctx->unit2_lbl) lv_obj_add_flag(ctx->unit2_lbl, LV_OBJ_FLAG_HIDDEN);
+
+  if (secs >= 3600 && secs < 48LL * 3600 && ctx->value2_lbl && ctx->unit2_lbl) {
+    int hrs = (int)(secs / 3600);
+    int mins = (int)((secs % 3600) / 60);
+    char hbuf[8] = {};
+    std::snprintf(hbuf, sizeof(hbuf), "%d", hrs);
+    const lv_font_t *hm_unit_font = ctx->tiny_font ? ctx->tiny_font
+                                    : (ctx->small_font ? ctx->small_font : ctx->unit_font);
+    lv_obj_clear_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ctx->value_lbl, hbuf);
+    if (ctx->unit_lbl) {
+      lv_label_set_text(ctx->unit_lbl, "h");
+      if (hm_unit_font) lv_obj_set_style_text_font(ctx->unit_lbl, hm_unit_font, LV_PART_MAIN);
+      // Pull the "h" tight against the hours digit (cancel its glyph side bearing).
+      lv_obj_set_style_margin_left(ctx->unit_lbl, HA_CALENDAR_HM_UNIT_GAP, LV_PART_MAIN);
+    }
+    // Omit the minutes group on a clean hour boundary ("2h" rather than "2h 0m").
+    if (mins > 0) {
+      char mbuf[8] = {};
+      std::snprintf(mbuf, sizeof(mbuf), "%d", mins);
+      lv_obj_clear_flag(ctx->value2_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_label_set_text(ctx->value2_lbl, mbuf);
+      lv_obj_set_style_margin_left(ctx->value2_lbl, HA_CALENDAR_HM_GROUP_GAP, LV_PART_MAIN);
+      lv_obj_clear_flag(ctx->unit2_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_label_set_text(ctx->unit2_lbl, "m");
+      lv_obj_set_style_margin_left(ctx->unit2_lbl, HA_CALENDAR_HM_UNIT_GAP, LV_PART_MAIN);
+    }
+    return;
+  }
+
+  char num_buf[16] = {}, unit_buf[8] = {};
+  ha_calendar_format_countdown(secs, num_buf, sizeof(num_buf), unit_buf, sizeof(unit_buf));
+  lv_obj_clear_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_label_set_text(ctx->value_lbl, num_buf);
+  if (ctx->unit_lbl) {
+    lv_label_set_text(ctx->unit_lbl, unit_buf);
+    lv_obj_set_style_margin_left(ctx->unit_lbl, 0, LV_PART_MAIN);  // single mode: normal spacing
+  }
+}
+
 // Set the bottom event title, choosing a smaller font for long names so they
 // fit better before ellipsizing. Re-applies the 2-line clamp for the chosen font.
 inline void ha_calendar_set_title(HaCalendarCardCtx *ctx, const char *text) {
@@ -190,6 +258,9 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
   }
   lv_obj_set_style_text_color(ctx->value_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_clear_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);  // shown by default; phase words hide it
+  // Dual "1h 51m" extras stay hidden unless the countdown helper turns them on.
+  if (ctx->value2_lbl) lv_obj_add_flag(ctx->value2_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (ctx->unit2_lbl) lv_obj_add_flag(ctx->unit2_lbl, LV_OBJ_FLAG_HIDDEN);
   if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);  // only shown for "Done for the day"
   if (ctx->label_lbl)
     lv_obj_set_style_text_color(ctx->label_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -283,10 +354,7 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
   // Show a countdown (number + unit) to `title`, escalating to a loud accent
   // card with dark text when the event is imminent (≤ 5 min away).
   auto show_countdown = [&](int64_t secs_until, const char *title) {
-    char num_buf[16] = {}, unit_buf[8] = {};
-    ha_calendar_format_countdown(secs_until, num_buf, sizeof(num_buf), unit_buf, sizeof(unit_buf));
-    lv_label_set_text(ctx->value_lbl, num_buf);
-    if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, unit_buf);
+    ha_calendar_set_countdown_labels(ctx, secs_until);
     ha_calendar_set_title(ctx, title);
     if (secs_until <= HA_CALENDAR_URGENT_SECS) {
       uint32_t on_accent = 0x1A1A1A;  // dark text for contrast on the accent fill
@@ -408,6 +476,27 @@ inline HaCalendarCardCtx *create_ha_calendar_card_context(
   ctx->unit_lbl = s.unit_lbl;
   ctx->label_lbl = s.text_lbl;
   ctx->unit_font = s.unit_lbl ? lv_obj_get_style_text_font(s.unit_lbl, LV_PART_MAIN) : nullptr;
+
+  // Two extra labels appended to the value flex-row so the "1h 51m" dual format
+  // renders as [big "1"][tiny "h"][big "51"][tiny "m"]. Hidden unless that format
+  // is active. The minutes group gets a small left margin so "1h" and "51m" hug
+  // their own units but keep a gap between the two groups.
+  if (s.sensor_container) {
+    const lv_font_t *hm_unit_font = tiny_font ? tiny_font : (small_font ? small_font : ctx->unit_font);
+    ctx->value2_lbl = lv_label_create(s.sensor_container);
+    if (value_font) lv_obj_set_style_text_font(ctx->value2_lbl, value_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ctx->value2_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_margin_left(ctx->value2_lbl, HA_CALENDAR_HM_GROUP_GAP, LV_PART_MAIN);
+    lv_label_set_text(ctx->value2_lbl, "");
+    lv_obj_add_flag(ctx->value2_lbl, LV_OBJ_FLAG_HIDDEN);
+
+    ctx->unit2_lbl = lv_label_create(s.sensor_container);
+    if (hm_unit_font) lv_obj_set_style_text_font(ctx->unit2_lbl, hm_unit_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ctx->unit2_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(ctx->unit2_lbl, 6, LV_PART_MAIN);
+    lv_label_set_text(ctx->unit2_lbl, "");
+    lv_obj_add_flag(ctx->unit2_lbl, LV_OBJ_FLAG_HIDDEN);
+  }
   ctx->value_font = value_font;
   ctx->label_font = label_font;
   ctx->list_font = list_font ? list_font : label_font;
@@ -703,9 +792,9 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
       std::strncpy(cd, "Now", sizeof(cd) - 1);
     } else if (ev.start_epoch > now) {
       int64_t secs = static_cast<int64_t>(ev.start_epoch - now);
-      char num[12] = {}, unit[8] = {};
-      ha_calendar_format_countdown(secs, num, sizeof(num), unit, sizeof(unit));
-      std::snprintf(cd, sizeof(cd), "In %s %s", num, unit);
+      char cdbuf[20] = {};
+      ha_calendar_countdown_text(secs, cdbuf, sizeof(cdbuf));
+      std::snprintf(cd, sizeof(cd), "In %s", cdbuf);
     }
 
     // Line 1: meeting name on its own, full width (so it isn't squeezed by the
@@ -856,9 +945,9 @@ inline void ha_calendar_render_column(HaCalendarCardCtx *ctx, lv_coord_t content
       std::strncpy(cd, "Now", sizeof(cd) - 1);
     } else if (ev.start_epoch > now) {
       int64_t secs = static_cast<int64_t>(ev.start_epoch - now);
-      char num[12] = {}, unit[8] = {};
-      ha_calendar_format_countdown(secs, num, sizeof(num), unit, sizeof(unit));
-      std::snprintf(cd, sizeof(cd), "In %s %s", num, unit);
+      char cdbuf[20] = {};
+      ha_calendar_countdown_text(secs, cdbuf, sizeof(cdbuf));
+      std::snprintf(cd, sizeof(cd), "In %s", cdbuf);
     }
     lv_obj_t *cd_lbl = lv_label_create(info);
     lv_label_set_text(cd_lbl, cd);
