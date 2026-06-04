@@ -64,3 +64,6 @@ countdowns tick on their own while the view is open. Two layouts:
 - The tile updates about every 30 seconds; the agenda refreshes its event list in
   the background so it stays current.
 - Long event names shrink and truncate with "…" so they fit the tile and rows.
+- Developed and tested on the **Guition ESP32-S3-4848S040** (4-inch, 480×480),
+  at the **normal**, **wide**, **tall**, and **large** tile sizes. Other panels
+  use the same layout, scaled to their fonts.
