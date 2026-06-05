@@ -210,7 +210,8 @@ inline bool info_only_hidden_card_type(const ParsedCfg &p) {
   if (p.type == "sensor" || p.type == "text_sensor" ||
       p.type == "door_window" || p.type == "presence" ||
       p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||
-      p.type == "weather" || p.type == "weather_forecast" || p.type == "image") {
+      p.type == "weather" || p.type == "weather_forecast" || p.type == "image" ||
+      p.type == "solar") {
     return false;
   }
   return true;
@@ -395,6 +396,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       apply_large_sensor_number_style(
         s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
     }
+    return;
+  }
+  if (p.type == "solar") {
+    setup_todo_card(s, p, palette.off_val);
+    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     return;
   }
   if (p.type == "media") {
@@ -1069,6 +1075,18 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "solar") {
+      SolarCardCtx *ctx = create_solar_card_context(
+        s, p,
+        has_on ? on_val : DEFAULT_SLIDER_COLOR,
+        has_off ? off_val : DEFAULT_OFF_COLOR,
+        display_sensor_font(display),
+        lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+        display_climate_card_icon_font(display),
+        display_main_width_percent(display));
+      (void)ctx;
+      continue;
+    }
     if (p.type == "media") {
       if (!p.entity.empty()) {
         std::string mode = media_card_mode(p.sensor);
@@ -1609,6 +1627,18 @@ inline void grid_phase2(
             if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
         }
+        continue;
+      }
+      if (sb_cfg.type == "solar") {
+        SolarCardCtx *ctx = create_solar_card_context(
+          sub_slot, sb_cfg,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          has_off ? off_val : DEFAULT_OFF_COLOR,
+          display_sensor_font(display),
+          lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+          display_climate_card_icon_font(display),
+          display_main_width_percent(display));
+        (void)ctx;
         continue;
       }
       if (sb_cfg.type == "option_select") {
