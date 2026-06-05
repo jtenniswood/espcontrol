@@ -1036,6 +1036,66 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "solar": {
+    "label": "Solar",
+    "allowInSubpage": true,
+    "domains": [
+      "sensor"
+    ],
+    "options": [
+      {
+        "name": "mode",
+        "label": "Mode",
+        "kind": "choice",
+        "values": [
+          "live",
+          "today"
+        ],
+        "defaultValue": "live"
+      },
+      {
+        "name": "production",
+        "label": "Production",
+        "kind": "text"
+      },
+      {
+        "name": "consumption",
+        "label": "Consumption",
+        "kind": "text"
+      },
+      {
+        "name": "net",
+        "label": "Net Production",
+        "kind": "text"
+      },
+      {
+        "name": "battery",
+        "label": "Battery",
+        "kind": "text"
+      },
+      {
+        "name": "from_grid",
+        "label": "From Grid",
+        "kind": "text"
+      },
+      {
+        "name": "to_grid",
+        "label": "To Grid",
+        "kind": "text"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "Solar",
+      "icon": "Solar Power",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "solar",
+      "precision": "",
+      "options": "mode=live"
+    }
+  },
   "subpage": {
     "label": "Subpage",
     "allowInSubpage": false,
