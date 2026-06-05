@@ -86,7 +86,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
       h.sign = (c->net.value.find('-') == std::string::npos) ? 1 : -1;
     }
     h.unit = c->net.unit;
-    h.label = "Net · Solar";
+    h.label = "Net";
     h.has = true;
     return h;
   }
@@ -100,7 +100,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
     double d = prod_v - cons;
     h.text = solar_format_value(d, true);
     h.unit = c->production.unit;
-    h.label = "Net · Solar";
+    h.label = "Net";
     h.sign = d >= 0 ? 1 : -1;
     h.has = true;
     return h;
@@ -218,7 +218,20 @@ inline void solar_open_modal(SolarCardCtx *ctx);
 inline void solar_subscribe_field(SolarField &field, SolarCardCtx *ctx) {
   if (field.entity_id.empty()) return;
 
-  // Subscribe to state
+  // Subscribe to unit_of_measurement FIRST so it arrives before the state
+  // callback fires — minimising the window where the tile renders without a unit.
+  ha_subscribe_attribute(
+    field.entity_id,
+    std::string("unit_of_measurement"),
+    std::function<void(esphome::StringRef)>(
+      [ctx, &field](esphome::StringRef unit) {
+        field.unit = string_ref_limited(unit, SOLAR_FIELD_UNIT_MAX_LEN);
+        solar_apply_card_face(ctx);
+      }
+    )
+  );
+
+  // Subscribe to state — by now the unit callback may have already fired.
   ha_subscribe_state(
     field.entity_id,
     std::function<void(esphome::StringRef)>(
@@ -227,20 +240,8 @@ inline void solar_subscribe_field(SolarField &field, SolarCardCtx *ctx) {
         field.available = !unavailable;
         field.value = unavailable ? "" : string_ref_limited(state, SOLAR_FIELD_VALUE_MAX_LEN);
         solar_apply_card_face(ctx);
-        // If the solar modal is open, re-render it with the updated values.
         if (control_modal_active().kind == ControlModalKind::SOLAR)
           solar_open_modal(ctx);
-      }
-    )
-  );
-
-  // Subscribe to unit_of_measurement attribute
-  ha_subscribe_attribute(
-    field.entity_id,
-    std::string("unit_of_measurement"),
-    std::function<void(esphome::StringRef)>(
-      [&field](esphome::StringRef unit) {
-        field.unit = string_ref_limited(unit, SOLAR_FIELD_UNIT_MAX_LEN);
       }
     )
   );
@@ -485,6 +486,14 @@ inline SolarCardCtx *create_solar_card_context(
   solar_subscribe_field(ctx->to_grid,     ctx);
 
   solar_apply_card_face(ctx);
+
+  // One-shot timer: re-render ~300ms after setup to catch any unit attributes
+  // that arrive after the initial state (attribute subscriptions can lag).
+  lv_timer_create([](lv_timer_t *t) {
+    auto *c = static_cast<SolarCardCtx *>(t->user_data);
+    if (solar_ctx_valid(c)) solar_apply_card_face(c);
+    lv_timer_del(t);
+  }, 300, ctx);
 
   // Tap handler: open the breakdown-list modal
   lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
