@@ -203,7 +203,7 @@ order:
 
 3. **`src/webserver/modules/config_codec.js`** — if the card stores **options**,
    add the option get/set/normalize helpers, and **add the type to the
-   option-preservation exclusions** (see the gotcha in §10 — this is the most
+   option-preservation exclusions** (see the gotcha in §11 — this is the most
    common reason a new card's settings silently fail to save).
 
 4. **`components/espcontrol/button_grid_<card>.h`** — the firmware: card-face
@@ -220,7 +220,7 @@ order:
 
 7. **`components/espcontrol/button_grid_config.h`** — `parse_cfg` ALSO normalizes
    options and has the same wipe-unknown-options clause; if your card uses
-   options, exclude the type there too (again, see §10).
+   options, exclude the type there too (again, see §11).
 
 8. **Modal?** If the card opens a full-screen modal, add a `ControlModalKind`
    enum value and use the shared `control_modal_open_shell(...)` helper.
@@ -278,7 +278,7 @@ function setHelloName(b, name) {
 ```
 
 **Critical:** add `"hello"` to the two "keep options for this type" exclusions in
-the same file, or the setting will silently fail to save (see §10):
+the same file, or the setting will silently fail to save (see §11):
 
 ```js
 // in normalizeButtonConfig(...)  — the catch-all that clears unknown options:
@@ -467,7 +467,7 @@ cd devices/<slug> && esphome run dev.yaml --device <ip>
 ```
 
 Then in the configurator: add a **Hello** card, type a name, Save, and confirm the
-tile reads "Hello &lt;name&gt;" and the setting survives a reload (§10). Read it
+tile reads "Hello &lt;name&gt;" and the setting survives a reload (§11). Read it
 back over REST to be sure: `curl "http://<ip>/text/Button%20N%20Config?detail=all"`.
 
 ---
@@ -529,7 +529,55 @@ and scales with the font system.
 
 ---
 
-## 10. Other gotchas worth knowing
+## 10. Localization (i18n)
+
+On-screen firmware text is translated at runtime through `espcontrol_i18n()`.
+There are **two separate things** you must do — wrapping the string in code is
+what translates it; the catalogs are what supply the translations.
+
+**1. Wrap display strings in code.** Pass user-facing literals through
+`espcontrol_i18n("English text")`, which returns the translation for the current
+device language (falling back to English):
+
+```cpp
+lv_label_set_text(lbl, espcontrol_i18n("Free"));
+// works with std::string too:
+std::string s = espcontrol_i18n(std::string("Today"));
+```
+
+Lookup is **by the English value**, not a key. Don't wrap format strings with
+`%` or values that aren't display text (entity ids, units like `min`/`hr` — the
+inventory below deliberately ignores lowercase code-like tokens).
+
+**2. Catalogs live in `common/config/strings.<lang>.txt`** (`key=value`, one per
+language; `strings.en.txt` is the English source). The generator
+(`scripts/generate_strings_inventory.py`) scans the headers and writes
+`strings.en.txt` — but it is **partially hand-curated** (e.g. `none=None` is kept
+even though the scanner ignores it), so do **not** blindly run it and commit the
+result; it will churn unrelated keys. For a focused change, add keys by hand.
+
+**To add a new translatable term:**
+
+1. Wrap the literal in `espcontrol_i18n(...)` (step 1).
+2. Add the key to **every** `strings.*.txt` — `build.py i18n` errors if any
+   language file's key set differs from `strings.en.txt`. The key is the
+   slugified English value (`"Done for the day"` → `done_for_the_day`). Put the
+   English value in `strings.en.txt`; the real translation in the languages you
+   know; and the **English value as a fallback** in the rest (the generator skips
+   entries where the translation equals the English source).
+3. `python3 scripts/build.py i18n` regenerates
+   `components/espcontrol/i18n_generated.h`. Commit the regenerated header.
+4. `python3 scripts/build.py --check` confirms it's in sync.
+
+**Switching language (for testing or use):** the `select.screen_language` entity
+(`language_select`, options `en cs da de es fr it nb nl pl pt pt-br sk sv`) sets
+the active language; changing it calls `set_espcontrol_language(...)` and
+refreshes the screen. Set it from the device web configurator's settings, then
+the wrapped strings render in that language immediately.
+
+---
+
+## 11. Other gotchas worth knowing
 
 **Option persistence has THREE wipe points.** For robustness, several places
 clear the `options` field for card types they don't recognize. A card that stores
@@ -559,7 +607,7 @@ labels.
 
 ---
 
-## 11. Pre-commit checks
+## 12. Pre-commit checks
 
 Run before committing — these validate the contract, generated outputs, web
 bundle, and firmware parsers:
