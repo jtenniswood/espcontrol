@@ -1084,6 +1084,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Dimmed") == 0) return "Tamisé";
   if (std::strcmp(text, "Disarm") == 0) return "Désarmer";
   if (std::strcmp(text, "Disarmed") == 0) return "Désarmé";
+  if (std::strcmp(text, "Done for the day") == 0) return "Terminé";
   if (std::strcmp(text, "Door") == 0) return "Porte";
   if (std::strcmp(text, "Door Open") == 0) return "Porte ouverte";
   if (std::strcmp(text, "Dock") == 0) return "Station";
@@ -1096,6 +1097,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Exceptionnel";
   if (std::strcmp(text, "Fan") == 0) return "Ventilateur";
   if (std::strcmp(text, "Fog") == 0) return "Brouillard";
+  if (std::strcmp(text, "Free") == 0) return "Libre";
   if (std::strcmp(text, "Garage Door") == 0) return "Porte de garage";
   if (std::strcmp(text, "Hail") == 0) return "Grêle";
   if (std::strcmp(text, "Hazy") == 0) return "Brumeux";
@@ -1109,6 +1111,9 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Hourly") == 0) return "Toutes les heures";
   if (std::strcmp(text, "Hurricane") == 0) return "Ouragan";
   if (std::strcmp(text, "Idle") == 0) return "Inactif";
+  if (std::strcmp(text, "In") == 0) return "Dans";
+  if (std::strcmp(text, "In progress") == 0) return "En cours";
+  if (std::strcmp(text, "Just started") == 0) return "Commencé";
   if (std::strcmp(text, "Lightning") == 0) return "Orage";
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Orage et pluie";
   if (std::strcmp(text, "Light") == 0) return "Lumière";
@@ -1131,6 +1136,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "June") == 0) return "juin";
   if (std::strcmp(text, "July") == 0) return "juillet";
   if (std::strcmp(text, "August") == 0) return "août";
+  if (std::strcmp(text, "Now") == 0) return "Maintenant";
   if (std::strcmp(text, "September") == 0) return "septembre";
   if (std::strcmp(text, "October") == 0) return "octobre";
   if (std::strcmp(text, "November") == 0) return "novembre";
