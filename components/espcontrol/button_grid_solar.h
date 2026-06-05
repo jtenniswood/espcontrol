@@ -30,6 +30,7 @@ struct SolarCardCtx {
   const lv_font_t *icon_font = nullptr;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
   uint32_t off_color = DEFAULT_OFF_COLOR;
+  int width_compensation_percent = 100;
   std::string mode;  // "live" or "today"
   SolarField production, consumption, net, battery, from_grid, to_grid;
   bool available = false;
@@ -212,6 +213,195 @@ inline void solar_subscribe_field(SolarField &field, lv_obj_t *btn, SolarCardCtx
   );
 }
 
+// ---------------------------------------------------------------------------
+// Breakdown-list modal
+// ---------------------------------------------------------------------------
+
+inline void solar_open_modal(SolarCardCtx *ctx) {
+  if (!solar_ctx_valid(ctx)) return;
+
+  // Delete any existing SOLAR modal first
+  lv_obj_t *existing_overlay = nullptr;
+  control_modal_delete_overlay(ControlModalKind::SOLAR, existing_overlay);
+
+  // Open the shared shell (back-arrow button, top-left, closes on click)
+  ControlModalShell shell = control_modal_open_shell(
+    ControlModalKind::SOLAR,
+    ctx->btn,
+    ctx->width_compensation_percent,
+    ctx->icon_font,
+    "\U000F0141",   // mdi:arrow-left, same chevron used by todo/climate
+    false,          // button_top_right = false → top-left
+    []() {          // close_callback: delete the active overlay
+      ControlModalActive &a = control_modal_active();
+      if (a.overlay) {
+        lv_obj_t *o = a.overlay;
+        a.overlay = nullptr;
+        lv_obj_del(o);
+      }
+      control_modal_reset_active();
+    }
+  );
+  if (!shell.panel) return;
+
+  ControlModalLayout &layout = shell.layout;
+  lv_coord_t content_w = shell.content_w;
+
+  // --- Title ---
+  lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
+  if (gap < 8) gap = 8;
+  lv_coord_t title_y = layout.inset + layout.back_size / 2;
+
+  std::string title = (ctx->mode == "today") ? "Solar Today" : "Solar Now";
+  lv_obj_t *title_lbl = control_modal_create_title(
+    shell.panel, title,
+    content_w - layout.back_size - gap,
+    ctx->label_font,
+    ctx->width_compensation_percent);
+  lv_obj_set_style_text_color(title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+  lv_obj_update_layout(title_lbl);
+  lv_obj_align(title_lbl, LV_ALIGN_TOP_MID, 0, title_y - lv_obj_get_height(title_lbl) / 2);
+
+  // --- Hero row ---
+  SolarHero hero = solar_compute_hero(ctx);
+  lv_coord_t hero_h = 0;
+  lv_coord_t after_title_y = layout.inset + layout.back_size + gap;
+
+  if (hero.has) {
+    uint32_t hero_color = (hero.sign >= 0) ? 0x5BD17A : 0xFF6B6B;
+
+    // Hero container row (transparent, sized to content)
+    lv_obj_t *hero_row = lv_obj_create(shell.panel);
+    lv_obj_set_width(hero_row, content_w);
+    lv_obj_set_height(hero_row, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(hero_row, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(hero_row, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(hero_row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(hero_row, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(hero_row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(hero_row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_layout(hero_row, LV_LAYOUT_FLEX);
+    lv_obj_set_style_flex_flow(hero_row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+    lv_obj_set_style_flex_main_place(hero_row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_flex_cross_place(hero_row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(hero_row, 4, LV_PART_MAIN);
+
+    lv_obj_t *hero_val = lv_label_create(hero_row);
+    lv_label_set_text(hero_val, hero.text.c_str());
+    lv_obj_set_style_text_color(hero_val, lv_color_hex(hero_color), LV_PART_MAIN);
+    if (ctx->value_font) lv_obj_set_style_text_font(hero_val, ctx->value_font, LV_PART_MAIN);
+    apply_width_compensation(hero_val, ctx->width_compensation_percent);
+
+    if (!hero.unit.empty()) {
+      lv_obj_t *hero_unit = lv_label_create(hero_row);
+      lv_label_set_text(hero_unit, hero.unit.c_str());
+      lv_obj_set_style_text_color(hero_unit, lv_color_hex(hero_color), LV_PART_MAIN);
+      if (ctx->label_font) lv_obj_set_style_text_font(hero_unit, ctx->label_font, LV_PART_MAIN);
+      apply_width_compensation(hero_unit, ctx->width_compensation_percent);
+    }
+
+    lv_obj_align(hero_row, LV_ALIGN_TOP_MID, 0, after_title_y);
+    lv_obj_update_layout(hero_row);
+    hero_h = lv_obj_get_height(hero_row);
+  }
+
+  // --- Scroll list of field rows ---
+  lv_coord_t row_gap = control_modal_scaled_px(10, layout.short_side);
+  if (row_gap < 6) row_gap = 6;
+  lv_coord_t list_y = after_title_y + hero_h + (hero.has ? gap : 0);
+  lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
+  if (list_h < 40) list_h = 40;
+
+  lv_coord_t list_pad = control_modal_scaled_px(10, layout.short_side);
+  if (list_pad < 4) list_pad = 4;
+  lv_coord_t list_w = content_w - list_pad * 2;
+  if (list_w < 80) { list_w = content_w; list_pad = 0; }
+
+  lv_obj_t *list = control_modal_create_scroll_list(shell.panel, list_w, list_h, row_gap);
+  lv_obj_align(list, LV_ALIGN_TOP_LEFT, layout.inset + list_pad, list_y);
+
+  // Row height based on label font
+  lv_coord_t row_h = ctx->label_font && ctx->label_font->line_height > 0
+    ? ctx->label_font->line_height + control_modal_scaled_px(8, layout.short_side)
+    : control_modal_scaled_px(28, layout.short_side);
+  if (row_h < 24) row_h = 24;
+
+  // Icon column width
+  lv_coord_t icon_w = ctx->icon_font && ctx->icon_font->line_height > 0
+    ? ctx->icon_font->line_height + 4
+    : control_modal_scaled_px(22, layout.short_side);
+  if (icon_w < 18) icon_w = 18;
+
+  // Per-field row builder
+  struct RowSpec { const char *icon_name; const char *row_label; const SolarField *field; };
+  RowSpec rows[] = {
+    { "Solar Power",         "Production",     &ctx->production  },
+    { "Home Lightning Bolt", "Consumption",    &ctx->consumption },
+    { "Solar Power",         "Net",            &ctx->net         },
+    { "Arrow Up",            "To Grid",        &ctx->to_grid     },
+    { "Arrow Down",          "From Grid",      &ctx->from_grid   },
+    { "Battery",             "Battery",        &ctx->battery     },
+  };
+
+  for (auto &rs : rows) {
+    if (rs.field->entity_id.empty()) continue;
+
+    // Row container
+    lv_obj_t *row = lv_obj_create(list);
+    lv_obj_set_width(row, lv_pct(100));
+    lv_obj_set_height(row, row_h);
+    lv_obj_set_style_radius(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_CLICKABLE);
+
+    // Icon
+    lv_obj_t *icon = lv_label_create(row);
+    lv_label_set_text(icon, find_icon(rs.icon_name));
+    lv_obj_set_style_text_color(icon, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+    if (ctx->icon_font) lv_obj_set_style_text_font(icon, ctx->icon_font, LV_PART_MAIN);
+    lv_obj_set_width(icon, icon_w);
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    lv_obj_align(icon, LV_ALIGN_LEFT_MID, 0, 0);
+
+    // Field label (e.g. "Production")
+    lv_coord_t label_x = icon_w + 4;
+    lv_coord_t value_w = list_w / 3;
+    lv_coord_t label_w = list_w - label_x - value_w;
+    if (label_w < 30) label_w = 30;
+
+    lv_obj_t *name_lbl = lv_label_create(row);
+    lv_label_set_text(name_lbl, rs.row_label);
+    lv_label_set_long_mode(name_lbl, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(name_lbl, label_w);
+    lv_obj_set_style_text_color(name_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
+    lv_obj_set_style_text_align(name_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(name_lbl, ctx->label_font, LV_PART_MAIN);
+    apply_width_compensation(name_lbl, ctx->width_compensation_percent);
+    lv_obj_align(name_lbl, LV_ALIGN_LEFT_MID, label_x, 0);
+
+    // Value + unit (right-aligned)
+    std::string val_str = rs.field->available ? rs.field->value : "--";
+    std::string unit_str = (rs.field->available && !rs.field->unit.empty()) ? rs.field->unit : "";
+    std::string val_with_unit = unit_str.empty() ? val_str : (val_str + " " + unit_str);
+
+    lv_obj_t *val_lbl = lv_label_create(row);
+    lv_label_set_text(val_lbl, val_with_unit.c_str());
+    lv_label_set_long_mode(val_lbl, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(val_lbl, value_w);
+    lv_obj_set_style_text_color(val_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(val_lbl, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(val_lbl, ctx->label_font, LV_PART_MAIN);
+    apply_width_compensation(val_lbl, ctx->width_compensation_percent);
+    lv_obj_align(val_lbl, LV_ALIGN_RIGHT_MID, 0, 0);
+  }
+
+  lv_obj_move_foreground(shell.overlay);
+}
+
 inline SolarCardCtx *create_solar_card_context(
     BtnSlot &s,
     const ParsedCfg &p,
@@ -259,5 +449,12 @@ inline SolarCardCtx *create_solar_card_context(
   solar_subscribe_field(ctx->to_grid,     s.btn, ctx);
 
   solar_apply_card_face(ctx);
+
+  // Tap handler: open the breakdown-list modal
+  lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
+    SolarCardCtx *ctx = static_cast<SolarCardCtx *>(lv_event_get_user_data(e));
+    solar_open_modal(ctx);
+  }, LV_EVENT_CLICKED, ctx);
+
   return ctx;
 }
