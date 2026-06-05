@@ -119,10 +119,10 @@ registerButtonType("solar", {
     }
   },
   renderPreview: function (b, helpers) {
-    // Hero Net face: large signed net value, coloured by sign, with a
-    // "Net · Solar" badge and an optional battery % corner.
-    var netSample = "+2.1";
-    var unit = "kW";
+    var isToday = getSolarMode(b) === "today";
+    var netSample = isToday ? "18.4" : "+2.1";
+    var unit = isToday ? "kWh" : "kW";
+    var label = isToday ? "Today" : "Net";
     var positive = netSample.charAt(0) !== "-";
     var valueClass = positive ? "sp-solar-net-pos" : "sp-solar-net-neg";
     var iconHtml = cardSensorPreviewHtml(b, helpers, netSample, unit, "sp-solar-hero", valueClass);
@@ -134,7 +134,7 @@ registerButtonType("solar", {
     return {
       buttonClass: "sp-solar-card",
       iconHtml: iconHtml,
-      labelHtml: cardBadgeLabelHtml(helpers, "Net · Solar", SOLAR_CARD_METADATA.preview.badge),
+      labelHtml: cardBadgeLabelHtml(helpers, label, SOLAR_CARD_METADATA.preview.badge),
     };
   },
 });
