@@ -86,7 +86,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
       h.sign = (c->net.value.find('-') == std::string::npos) ? 1 : -1;
     }
     h.unit = c->net.unit;
-    h.label = "Net";
+    h.label = "Net · Solar";
     h.has = true;
     return h;
   }
@@ -100,7 +100,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
     double d = prod_v - cons;
     h.text = solar_format_value(d, true);
     h.unit = c->production.unit;
-    h.label = "Net";
+    h.label = "Net · Solar";
     h.sign = d >= 0 ? 1 : -1;
     h.has = true;
     return h;
@@ -181,7 +181,11 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
     if (ctx->icon_font)
       lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->icon_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
-    lv_obj_align(ctx->icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_align(ctx->icon_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+    // Rotate 180° so the glyph faces inward; pivot at its own center.
+    lv_obj_set_style_transform_angle(ctx->icon_lbl, 1800, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_x(ctx->icon_lbl, lv_pct(50), LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(ctx->icon_lbl, lv_pct(50), LV_PART_MAIN);
   }
 
   // Battery % corner (top-right)
