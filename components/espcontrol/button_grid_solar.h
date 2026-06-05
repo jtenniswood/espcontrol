@@ -54,13 +54,12 @@ struct SolarHero {
 };
 
 // Format a numeric value for display: 1 decimal when |v| < 10, 0 decimals otherwise.
-// Adds "+" prefix for positive net values.
-inline std::string solar_format_value(double v, bool show_sign = false) {
+// Never uses "+" prefix — the green/red color already communicates the sign,
+// and "+" is not in the number font's glyph set (it would render as a rectangle).
+inline std::string solar_format_value(double v) {
   char buf[32];
   double abs_v = v < 0 ? -v : v;
-  const char *fmt = abs_v < 10.0
-    ? (show_sign ? "%+.1f" : "%.1f")
-    : (show_sign ? "%+.0f" : "%.0f");
+  const char *fmt = abs_v < 10.0 ? "%.1f" : "%.0f";
   std::snprintf(buf, sizeof(buf), fmt, v);
   return std::string(buf);
 }
@@ -79,7 +78,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
     char *en = nullptr;
     double nv = std::strtod(c->net.value.c_str(), &en);
     if (en != c->net.value.c_str()) {
-      h.text = solar_format_value(nv, true);
+      h.text = solar_format_value(nv);
       h.sign = nv >= 0 ? 1 : -1;
     } else {
       h.text = c->net.value;  // not numeric — show verbatim
@@ -98,7 +97,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
       prod_parsed && ec != c->consumption.value.c_str() &&
       c->production.unit == c->consumption.unit) {
     double d = prod_v - cons;
-    h.text = solar_format_value(d, true);
+    h.text = solar_format_value(d);
     h.unit = c->production.unit;
     h.label = c->mode == "today" ? "Today" : "Live";
     h.sign = d >= 0 ? 1 : -1;
@@ -108,7 +107,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
 
   // 3. production alone — apply smart precision
   if (c->production.available && prod_parsed) {
-    h.text = solar_format_value(prod_v, false);
+    h.text = solar_format_value(prod_v);
     h.unit = c->production.unit;
     h.label = c->mode == "today" ? "Today" : "Live";
     h.sign = prod_v >= 0 ? 1 : -1;
@@ -184,6 +183,12 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
     if (ctx->icon_font) lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->icon_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
     lv_obj_align(ctx->icon_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+    // Rotate 180° around the glyph's own centre (pixel pivot, not lv_pct which
+    // had rendering issues on this LVGL version).
+    lv_coord_t half = ctx->icon_font ? (ctx->icon_font->line_height / 2) : 16;
+    lv_obj_set_style_transform_angle(ctx->icon_lbl, 1800, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_x(ctx->icon_lbl, half, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(ctx->icon_lbl, half, LV_PART_MAIN);
     lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
   }
 
@@ -372,7 +377,7 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
   RowSpec rows[] = {
     { "Solar Power",         "Production",     &ctx->production  },
     { "Home Lightning Bolt", "Consumption",    &ctx->consumption },
-    // Net is already shown as the big hero header — omit its row here.
+    { "Transmission Tower",  "Net",            &ctx->net         },
     { "Arrow Up",            "To Grid",        &ctx->to_grid     },
     { "Arrow Down",          "From Grid",      &ctx->from_grid   },
     { "Battery",             "Battery",        &ctx->battery     },
