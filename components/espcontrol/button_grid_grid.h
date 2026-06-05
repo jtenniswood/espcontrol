@@ -406,6 +406,9 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
   if (p.type == "solar") {
     setup_todo_card(s, p, palette.off_val);
+    // Hide the setup-phase icon immediately — solar_apply_card_face repositions
+    // it to BOTTOM_RIGHT and re-shows it once subscriptions fire.
+    lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     return;
   }
