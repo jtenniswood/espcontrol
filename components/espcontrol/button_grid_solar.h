@@ -74,12 +74,19 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
   bool prod_parsed = (ep2 != c->production.value.c_str());
   if (prod_parsed && c->invert_production) prod_v = -prod_v;
 
-  // 1. Net entity — use it directly (verbatim, no reformatting)
+  // 1. Net entity — parse and apply smart precision (same rule as computed net)
   if (c->net.available && !c->net.value.empty()) {
-    h.text = c->net.value;
+    char *en = nullptr;
+    double nv = std::strtod(c->net.value.c_str(), &en);
+    if (en != c->net.value.c_str()) {
+      h.text = solar_format_value(nv, true);
+      h.sign = nv >= 0 ? 1 : -1;
+    } else {
+      h.text = c->net.value;  // not numeric — show verbatim
+      h.sign = (c->net.value.find('-') == std::string::npos) ? 1 : -1;
+    }
     h.unit = c->net.unit;
     h.label = "Net";
-    h.sign = (c->net.value.find('-') == std::string::npos) ? 1 : -1;
     h.has = true;
     return h;
   }
