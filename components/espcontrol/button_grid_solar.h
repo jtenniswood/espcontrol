@@ -436,6 +436,12 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
   lv_obj_move_foreground(shell.overlay);
 }
 
+inline void solar_initial_render_timer_cb(lv_timer_t *t) {
+  SolarCardCtx *ctx = static_cast<SolarCardCtx *>(t->user_data);
+  if (solar_ctx_valid(ctx)) solar_apply_card_face(ctx);
+  lv_timer_del(t);
+}
+
 inline SolarCardCtx *create_solar_card_context(
     BtnSlot &s,
     const ParsedCfg &p,
@@ -489,11 +495,7 @@ inline SolarCardCtx *create_solar_card_context(
 
   // One-shot timer: re-render ~300ms after setup to catch any unit attributes
   // that arrive after the initial state (attribute subscriptions can lag).
-  lv_timer_create([](lv_timer_t *t) {
-    auto *c = static_cast<SolarCardCtx *>(t->user_data);
-    if (solar_ctx_valid(c)) solar_apply_card_face(c);
-    lv_timer_del(t);
-  }, 300, ctx);
+  lv_timer_create(solar_initial_render_timer_cb, 300, ctx);
 
   // Tap handler: open the breakdown-list modal
   lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
