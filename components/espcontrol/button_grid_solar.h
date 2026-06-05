@@ -165,7 +165,8 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
   // Battery % corner (top-right)
   if (ctx->corner_lbl) {
     if (ctx->battery.available && !ctx->battery.value.empty()) {
-      std::string batt_text = ctx->battery.value + "%";
+      std::string batt_text = ctx->battery.value;
+      if (!ctx->battery.unit.empty()) batt_text += ctx->battery.unit;
       lv_label_set_text(ctx->corner_lbl, batt_text.c_str());
       lv_obj_set_style_text_color(ctx->corner_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
       lv_obj_align(ctx->corner_lbl, LV_ALIGN_TOP_RIGHT, 0, 0);
@@ -185,7 +186,7 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
 // for the entity state and ha_subscribe_attribute() for unit_of_measurement,
 // exactly as the todo card subscribes to state and friendly_name.
 
-inline void solar_subscribe_field(SolarField &field, lv_obj_t *btn, SolarCardCtx *ctx) {
+inline void solar_subscribe_field(SolarField &field, SolarCardCtx *ctx) {
   if (field.entity_id.empty()) return;
 
   // Subscribe to state
@@ -409,7 +410,8 @@ inline SolarCardCtx *create_solar_card_context(
     uint32_t off_color,
     const lv_font_t *value_font,
     const lv_font_t *label_font,
-    const lv_font_t *icon_font) {
+    const lv_font_t *icon_font,
+    int width_compensation_percent) {
 
   SolarCardCtx *ctx = new SolarCardCtx();
   ctx->mode = cfg_option_value(p.options, "mode");
@@ -424,6 +426,7 @@ inline SolarCardCtx *create_solar_card_context(
   ctx->value_font = value_font;
   ctx->label_font = label_font;
   ctx->icon_font = icon_font;
+  ctx->width_compensation_percent = width_compensation_percent;
   lv_obj_set_user_data(s.btn, ctx);
 
   // Create corner label for battery %
@@ -441,12 +444,12 @@ inline SolarCardCtx *create_solar_card_context(
   ctx->to_grid.entity_id     = cfg_option_value(p.options, "to_grid");
 
   // Subscribe to each configured field
-  solar_subscribe_field(ctx->production,  s.btn, ctx);
-  solar_subscribe_field(ctx->consumption, s.btn, ctx);
-  solar_subscribe_field(ctx->net,         s.btn, ctx);
-  solar_subscribe_field(ctx->battery,     s.btn, ctx);
-  solar_subscribe_field(ctx->from_grid,   s.btn, ctx);
-  solar_subscribe_field(ctx->to_grid,     s.btn, ctx);
+  solar_subscribe_field(ctx->production,  ctx);
+  solar_subscribe_field(ctx->consumption, ctx);
+  solar_subscribe_field(ctx->net,         ctx);
+  solar_subscribe_field(ctx->battery,     ctx);
+  solar_subscribe_field(ctx->from_grid,   ctx);
+  solar_subscribe_field(ctx->to_grid,     ctx);
 
   solar_apply_card_face(ctx);
 
