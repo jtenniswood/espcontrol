@@ -162,9 +162,13 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
     }
   }
 
-  // Unit label
-  if (ctx->unit_lbl)
+  // Unit label — explicitly use label_font (text font) so "kWh"/"W" etc.
+  // always render as letters, not as missing-glyph boxes from the icon font.
+  if (ctx->unit_lbl) {
+    if (ctx->label_font) lv_obj_set_style_text_font(ctx->unit_lbl, ctx->label_font, LV_PART_MAIN);
     lv_label_set_text(ctx->unit_lbl, hero.has ? hero.unit.c_str() : "");
+    lv_obj_set_style_text_color(ctx->unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  }
 
   // Bottom label: hero type name
   if (ctx->label_lbl) {
@@ -174,9 +178,14 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
     lv_obj_set_style_text_color(ctx->label_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   }
 
-  // Solar glyph top-left
-  // No glyph on the tile — the hero value + label carry enough identity.
-  if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  // Solar glyph at bottom-right (always shown, accent colored).
+  if (ctx->icon_lbl) {
+    lv_label_set_text(ctx->icon_lbl, find_icon("Solar Power"));
+    if (ctx->icon_font) lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ctx->icon_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
+    lv_obj_align(ctx->icon_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+    lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  }
 
   // Battery % corner (top-right)
   if (ctx->corner_lbl) {
