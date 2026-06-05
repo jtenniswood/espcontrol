@@ -15,6 +15,9 @@ constexpr size_t   HA_CALENDAR_TITLE_SMALL_LEN = 18;  // titles longer than this
 // Spacing for the dual "1h 51m" countdown: negative pulls each tiny unit tight
 // against its number; the group gap is the breathing room between "1h" and "51m".
 constexpr int      HA_CALENDAR_HM_UNIT_GAP = -6;
+// "1" in the bold number font carries a wide right side bearing, so a unit that
+// follows a digit ending in 1 needs an extra pull to look as tight as the rest.
+constexpr int      HA_CALENDAR_HM_UNIT_GAP_ONE = -13;
 constexpr int      HA_CALENDAR_HM_GROUP_GAP = 2;
 
 // ── Structs ──────────────────────────────────────────────────────────────────
@@ -161,6 +164,14 @@ inline void ha_calendar_countdown_text(int64_t secs, char *buf, size_t len) {
   std::snprintf(buf, len, "%s %s", num_buf, unit_buf);
 }
 
+// Left margin to pull a tiny "h"/"m" tight against the number it follows. A
+// number ending in "1" leaves extra whitespace, so it gets a stronger pull.
+inline int ha_calendar_unit_gap(const char *num) {
+  size_t n = num ? std::strlen(num) : 0;
+  bool ends_in_one = (n > 0 && num[n - 1] == '1');
+  return ends_in_one ? HA_CALENDAR_HM_UNIT_GAP_ONE : HA_CALENDAR_HM_UNIT_GAP;
+}
+
 // Populate the value flex-row for a countdown. For the 1h–48h range it renders
 // the dual "1h 51m" format across the four row labels ([big h][tiny "h"]
 // [big m][tiny "m"]); every other range uses a single big number + unit and the
@@ -182,7 +193,7 @@ inline void ha_calendar_set_countdown_labels(HaCalendarCardCtx *ctx, int64_t sec
       lv_label_set_text(ctx->unit_lbl, "h");
       if (hm_unit_font) lv_obj_set_style_text_font(ctx->unit_lbl, hm_unit_font, LV_PART_MAIN);
       // Pull the "h" tight against the hours digit (cancel its glyph side bearing).
-      lv_obj_set_style_margin_left(ctx->unit_lbl, HA_CALENDAR_HM_UNIT_GAP, LV_PART_MAIN);
+      lv_obj_set_style_margin_left(ctx->unit_lbl, ha_calendar_unit_gap(hbuf), LV_PART_MAIN);
     }
     // Omit the minutes group on a clean hour boundary ("2h" rather than "2h 0m").
     if (mins > 0) {
@@ -193,7 +204,7 @@ inline void ha_calendar_set_countdown_labels(HaCalendarCardCtx *ctx, int64_t sec
       lv_obj_set_style_margin_left(ctx->value2_lbl, HA_CALENDAR_HM_GROUP_GAP, LV_PART_MAIN);
       lv_obj_clear_flag(ctx->unit2_lbl, LV_OBJ_FLAG_HIDDEN);
       lv_label_set_text(ctx->unit2_lbl, "m");
-      lv_obj_set_style_margin_left(ctx->unit2_lbl, HA_CALENDAR_HM_UNIT_GAP, LV_PART_MAIN);
+      lv_obj_set_style_margin_left(ctx->unit2_lbl, ha_calendar_unit_gap(mbuf), LV_PART_MAIN);
     }
     return;
   }
@@ -261,9 +272,12 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
   // Dual "1h 51m" extras stay hidden unless the countdown helper turns them on.
   if (ctx->value2_lbl) lv_obj_add_flag(ctx->value2_lbl, LV_OBJ_FLAG_HIDDEN);
   if (ctx->unit2_lbl) lv_obj_add_flag(ctx->unit2_lbl, LV_OBJ_FLAG_HIDDEN);
-  if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);  // only shown for "Done for the day"
-  if (ctx->label_lbl)
+  if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);  // only shown for "Done"/"Free"
+  if (ctx->label_lbl) {
     lv_obj_set_style_text_color(ctx->label_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    // Default to left-aligned titles; the centered "Free" state overrides this.
+    lv_obj_set_style_text_align(ctx->label_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+  }
 
   if (!any_available || now <= 0) {
     lv_label_set_text(ctx->value_lbl, "--");
@@ -287,15 +301,25 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
 
   if (is_current_mode) {
     if (!event_active) {
-      // Free: no event running. Hide the title and the number slot, and show a
-      // bold, accent-colored "Free" on the top line.
+      // Free: no event running. Show a centered calendar glyph with an
+      // accent-colored "Free" centered just below it.
       lv_obj_add_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
-      lv_label_set_text(ctx->label_lbl, "");
-      if (ctx->unit_lbl) {
-        lv_label_set_text(ctx->unit_lbl, "Free");
-        if (ctx->label_font)
-          lv_obj_set_style_text_font(ctx->unit_lbl, ctx->label_font, LV_PART_MAIN);
-        lv_obj_set_style_text_color(ctx->unit_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
+      if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+      if (ctx->icon_lbl) {
+        lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(ctx->icon_lbl, find_icon("Calendar Check"));
+        if (ctx->icon_font) lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
+        lv_obj_set_style_text_color(ctx->icon_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
+        lv_obj_align(ctx->icon_lbl, LV_ALIGN_CENTER, 0, -14);
+      }
+      if (ctx->label_lbl) {
+        lv_label_set_long_mode(ctx->label_lbl, LV_LABEL_LONG_CLIP);
+        lv_obj_set_width(ctx->label_lbl, lv_pct(100));
+        lv_obj_set_style_text_align(ctx->label_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        if (ctx->label_font) lv_obj_set_style_text_font(ctx->label_lbl, ctx->label_font, LV_PART_MAIN);
+        lv_obj_set_style_text_color(ctx->label_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
+        lv_label_set_text(ctx->label_lbl, espcontrol_i18n("Free"));
+        lv_obj_align(ctx->label_lbl, LV_ALIGN_CENTER, 0, 33);  // ~0.7em below the prior 18px
       }
       set_bg(ctx->off_color);
       return;
@@ -337,7 +361,7 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
       lv_obj_add_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
       if (ctx->unit_lbl) {
         lv_label_set_text(ctx->unit_lbl,
-          secs_into < HA_CALENDAR_URGENT_SECS ? "Just started" : "In progress");
+          espcontrol_i18n(secs_into < HA_CALENDAR_URGENT_SECS ? "Just started" : "In progress"));
         if (ctx->label_font) lv_obj_set_style_text_font(ctx->unit_lbl, ctx->label_font, LV_PART_MAIN);
       }
     }
@@ -381,7 +405,7 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
     bool just_started = secs_into < HA_CALENDAR_URGENT_SECS;
     lv_obj_add_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
     if (ctx->unit_lbl) {
-      lv_label_set_text(ctx->unit_lbl, "Now");
+      lv_label_set_text(ctx->unit_lbl, espcontrol_i18n("Now"));
       if (ctx->label_font) lv_obj_set_style_text_font(ctx->unit_lbl, ctx->label_font, LV_PART_MAIN);
       lv_obj_set_style_text_color(ctx->unit_lbl,
         lv_color_hex(just_started ? ctx->accent_color : DARK_TEXT_MUTED), LV_PART_MAIN);
@@ -403,7 +427,7 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
       lv_obj_set_style_text_color(ctx->icon_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
       lv_obj_align(ctx->icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     }
-    ha_calendar_set_title(ctx, "Done for the day");
+    ha_calendar_set_title(ctx, espcontrol_i18n("Done for the day"));
     set_bg(ctx->off_color);
     return;
   }
@@ -789,18 +813,18 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
     // Countdown text
     char cd[24] = {};
     if (is_active) {
-      std::strncpy(cd, "Now", sizeof(cd) - 1);
+      std::strncpy(cd, espcontrol_i18n("Now"), sizeof(cd) - 1);
     } else if (ev.start_epoch > now) {
       int64_t secs = static_cast<int64_t>(ev.start_epoch - now);
       char cdbuf[20] = {};
       ha_calendar_countdown_text(secs, cdbuf, sizeof(cdbuf));
-      std::snprintf(cd, sizeof(cd), "In %s", cdbuf);
+      std::snprintf(cd, sizeof(cd), "%s %s", espcontrol_i18n("In"), cdbuf);
     }
 
     // Line 1: meeting name on its own, full width (so it isn't squeezed by the
     // countdown and the scrollbar can't sit on top of the countdown).
     lv_obj_t *title_lbl = lv_label_create(row);
-    lv_label_set_text(title_lbl, ev.title[0] ? ev.title : "(untitled)");
+    lv_label_set_text(title_lbl, ev.title[0] ? ev.title : espcontrol_i18n("(untitled)"));
     lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
     lv_obj_set_width(title_lbl, lv_pct(100));
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(title_col), LV_PART_MAIN);
@@ -933,7 +957,7 @@ inline void ha_calendar_render_column(HaCalendarCardCtx *ctx, lv_coord_t content
     lv_obj_set_flex_flow(info, LV_FLEX_FLOW_COLUMN);
 
     lv_obj_t *title_lbl = lv_label_create(info);
-    lv_label_set_text(title_lbl, ev.title[0] ? ev.title : "(untitled)");
+    lv_label_set_text(title_lbl, ev.title[0] ? ev.title : espcontrol_i18n("(untitled)"));
     lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
     lv_obj_set_width(title_lbl, lv_pct(100));
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(title_col), LV_PART_MAIN);
@@ -942,12 +966,12 @@ inline void ha_calendar_render_column(HaCalendarCardCtx *ctx, lv_coord_t content
 
     char cd[24] = {};
     if (is_active) {
-      std::strncpy(cd, "Now", sizeof(cd) - 1);
+      std::strncpy(cd, espcontrol_i18n("Now"), sizeof(cd) - 1);
     } else if (ev.start_epoch > now) {
       int64_t secs = static_cast<int64_t>(ev.start_epoch - now);
       char cdbuf[20] = {};
       ha_calendar_countdown_text(secs, cdbuf, sizeof(cdbuf));
-      std::snprintf(cd, sizeof(cd), "In %s", cdbuf);
+      std::snprintf(cd, sizeof(cd), "%s %s", espcontrol_i18n("In"), cdbuf);
     }
     lv_obj_t *cd_lbl = lv_label_create(info);
     lv_label_set_text(cd_lbl, cd);
@@ -1242,9 +1266,10 @@ inline void ha_calendar_open_modal(HaCalendarCardCtx *ctx) {
   lv_coord_t list_w = content_w - list_pad * 2;
   if (list_w < 80) { list_w = content_w; list_pad = 0; }
 
+  std::string today = espcontrol_i18n("Today");
   std::string title_text = (ctx->entities.size() == 1)
-    ? ha_calendar_card_label(ctx) + " \xc2\xb7 Today"
-    : std::string("Today");
+    ? ha_calendar_card_label(ctx) + " \xc2\xb7 " + today
+    : today;
   ui.title_lbl = control_modal_create_title(
     ui.panel, title_text, content_w - layout.back_size - gap,
     ctx->label_font, ctx->width_compensation_percent);
