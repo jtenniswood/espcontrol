@@ -717,6 +717,12 @@ script:
     then:
       - lambda: 'id(is_clock_showing) = false;'
       - lvgl.widget.hide: clock_screensaver
+      - lambda: |-
+          lv_obj_set_style_pad_top(
+            id(main_page)->obj,
+            id(clock_bar_enabled).state ? ${main_page_pad_top} : ${main_page_compact_pad_top},
+            LV_PART_MAIN);
+          lv_obj_update_layout(id(main_page)->obj);
       - if:
           condition:
             switch.is_on: clock_bar_enabled
