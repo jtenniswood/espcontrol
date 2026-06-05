@@ -201,6 +201,9 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
 // for the entity state and ha_subscribe_attribute() for unit_of_measurement,
 // exactly as the todo card subscribes to state and friendly_name.
 
+// Forward declaration — defined after solar_subscribe_field.
+inline void solar_open_modal(SolarCardCtx *ctx);
+
 inline void solar_subscribe_field(SolarField &field, SolarCardCtx *ctx) {
   if (field.entity_id.empty()) return;
 
