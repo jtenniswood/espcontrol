@@ -437,7 +437,7 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
 }
 
 inline void solar_initial_render_timer_cb(lv_timer_t *t) {
-  SolarCardCtx *ctx = static_cast<SolarCardCtx *>(t->user_data);
+  SolarCardCtx *ctx = static_cast<SolarCardCtx *>(lv_timer_get_user_data(t));
   if (solar_ctx_valid(ctx)) solar_apply_card_face(ctx);
   lv_timer_del(t);
 }
