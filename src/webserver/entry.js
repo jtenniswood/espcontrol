@@ -215,7 +215,7 @@
     "Stove", "Swap Horizontal", "Power Socket UK", "Power Socket EU", "Power Socket US", "Sun",
     "Table", "Table Chair", "Television", "Television Off", "Thermometer", "Thermometer Alert",
     "Thermometer High", "Thermometer Low", "Thermometer Off", "Thermostat", "Thermostat Box", "Home-Thermostat",
-    "Thermostat Auto", "Thermometer Water", "Timer", "Toilet", "Transmission Tower", "Trash Can",
+    "Home Lightning Bolt", "Thermostat Auto", "Thermometer Water", "Timer", "Toilet", "Transmission Tower", "Trash Can",
     "Trash Can Outline", "Volume High", "Wall Outlet", "Wall Sconce", "Washing Machine", "Washing Machine Off",
     "Water", "Water Boiler", "Water Boiler Off", "Water Percent", "Water Alert", "Weather Cloudy",
     "Weather Cloudy Alert", "Weather Dust", "Weather Fog", "Weather Hail", "Weather Hazy", "Weather Hurricane",

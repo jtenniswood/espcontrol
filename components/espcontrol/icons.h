@@ -245,6 +245,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Thermostat",                 "\U000F0393"},
     {"Thermostat Box",             "\U000F0891"},
     {"Home-Thermostat",            "\U000F0F54"},
+    {"Home Lightning Bolt",        "\U000F1903"},
     {"Thermostat Auto",            "\U000F1B17"},
     {"Thermometer Water",          "\U000F1A80"},
     {"Timer",                      "\U000F051B"},
