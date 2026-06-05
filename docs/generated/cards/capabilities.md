@@ -36,7 +36,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Webhook | webhook | None | Yes | Own picker item | Headers | Visible |
 | Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Large Sensor Numbers; Active Color; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
 | Slider | slider | light, fan | Yes | Own picker item | None | Visible |
-| Solar | solar | sensor | Yes | Own picker item | Mode: live, today; Production; Consumption; Net Production; Battery; From Grid; To Grid | Visible |
+| Solar | solar | sensor | Yes | Own picker item | Mode: live, today; Production; Invert Production; Consumption; Net Production; Battery; From Grid; To Grid | Visible |
 | Subpage | subpage | None | No | Own picker item | Subpage Type: default, lights, climate, presence, media; Large State Numbers | Visible |
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
 | Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
