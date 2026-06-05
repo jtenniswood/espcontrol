@@ -325,13 +325,15 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
     }
 
     lv_obj_align(hero_row, LV_ALIGN_TOP_MID, 0, after_title_y);
-    lv_obj_update_layout(hero_row);
-    hero_h = lv_obj_get_height(hero_row);
+    // Use font metrics for hero height — lv_obj_get_height returns 0 before
+    // the panel layout pass, which would cause the list to overlap the hero.
+    lv_coord_t val_lh = ctx->value_font ? ctx->value_font->line_height : 40;
+    hero_h = val_lh + gap;
   }
 
   // --- Scroll list of field rows ---
-  lv_coord_t row_gap = control_modal_scaled_px(10, layout.short_side);
-  if (row_gap < 6) row_gap = 6;
+  lv_coord_t row_gap = control_modal_scaled_px(6, layout.short_side);
+  if (row_gap < 4) row_gap = 4;
   lv_coord_t list_y = after_title_y + hero_h + (hero.has ? gap : 0);
   lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
   if (list_h < 40) list_h = 40;
@@ -370,7 +372,7 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
   for (auto &rs : rows) {
     if (rs.field->entity_id.empty()) continue;
 
-    // Row container
+    // Row container — FLEX row so icon/label/value never overlap
     lv_obj_t *row = lv_obj_create(list);
     lv_obj_set_width(row, lv_pct(100));
     lv_obj_set_height(row, row_h);
@@ -379,22 +381,24 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
     lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(row, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(row, 6, LV_PART_MAIN);
     lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_layout(row, LV_LAYOUT_FLEX);
+    lv_obj_set_style_flex_flow(row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+    lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
 
-    // Icon
+    // Icon (fixed width)
     lv_obj_t *icon = lv_label_create(row);
     lv_label_set_text(icon, find_icon(rs.icon_name));
     lv_obj_set_style_text_color(icon, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
     if (ctx->icon_font) lv_obj_set_style_text_font(icon, ctx->icon_font, LV_PART_MAIN);
     lv_obj_set_width(icon, icon_w);
     lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-    lv_obj_align(icon, LV_ALIGN_LEFT_MID, 0, 0);
 
-    // Field label (e.g. "Production")
-    lv_coord_t label_x = icon_w + 4;
-    lv_coord_t value_w = list_w / 3;
-    lv_coord_t label_w = list_w - label_x - value_w;
+    // Field label — grows to fill remaining space
+    lv_coord_t value_w = list_w * 2 / 5;
+    lv_coord_t label_w = list_w - icon_w - 6 - value_w - 6;
     if (label_w < 30) label_w = 30;
 
     lv_obj_t *name_lbl = lv_label_create(row);
@@ -402,12 +406,9 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
     lv_label_set_long_mode(name_lbl, LV_LABEL_LONG_DOT);
     lv_obj_set_width(name_lbl, label_w);
     lv_obj_set_style_text_color(name_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
-    lv_obj_set_style_text_align(name_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(name_lbl, ctx->label_font, LV_PART_MAIN);
-    apply_width_compensation(name_lbl, ctx->width_compensation_percent);
-    lv_obj_align(name_lbl, LV_ALIGN_LEFT_MID, label_x, 0);
 
-    // Value + unit (right-aligned)
+    // Value + unit — right-aligned, fixed width
     std::string val_str = rs.field->available ? rs.field->value : "--";
     std::string unit_str = (rs.field->available && !rs.field->unit.empty()) ? rs.field->unit : "";
     std::string val_with_unit = unit_str.empty() ? val_str : (val_str + " " + unit_str);
@@ -419,8 +420,6 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
     lv_obj_set_style_text_color(val_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(val_lbl, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(val_lbl, ctx->label_font, LV_PART_MAIN);
-    apply_width_compensation(val_lbl, ctx->width_compensation_percent);
-    lv_obj_align(val_lbl, LV_ALIGN_RIGHT_MID, 0, 0);
   }
 
   lv_obj_move_foreground(shell.overlay);
