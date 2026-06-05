@@ -1300,6 +1300,11 @@
       "mdi": "home-thermometer"
     },
     {
+      "name": "Home Lightning Bolt",
+      "codepoint": "F1903",
+      "mdi": "home-lightning-bolt"
+    },
+    {
       "name": "Thermostat Auto",
       "codepoint": "F1B17",
       "mdi": "thermostat-auto"
