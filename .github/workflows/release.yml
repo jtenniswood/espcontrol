@@ -121,15 +121,19 @@ jobs:
           import shutil
           from pathlib import Path
 
-          packages = Path(os.environ["PLATFORMIO_CACHE"]) / "packages"
-          for metadata in packages.glob("*/.piopm"):
-              try:
-                  with metadata.open(encoding="utf-8") as handle:
-                      json.load(handle)
-              except Exception as exc:
-                  package_dir = metadata.parent
-                  print(f"Removing corrupted PlatformIO package cache: {package_dir} ({exc})")
-                  shutil.rmtree(package_dir, ignore_errors=True)
+          cache_root = Path(os.environ["PLATFORMIO_CACHE"])
+          package_roots = [cache_root / "platformio" / "packages", cache_root / "packages"]
+          for packages in package_roots:
+              if not packages.is_dir():
+                  continue
+              for metadata in packages.glob("*/.piopm"):
+                  try:
+                      with metadata.open(encoding="utf-8") as handle:
+                          json.load(handle)
+                  except Exception as exc:
+                      package_dir = metadata.parent
+                      print(f"Removing corrupted PlatformIO package cache: {package_dir} ({exc})")
+                      shutil.rmtree(package_dir, ignore_errors=True)
           PY
           rm -rf .esphome
           rm -rf builds/.esphome
