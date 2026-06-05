@@ -122,7 +122,7 @@ registerButtonType("solar", {
     var isToday = getSolarMode(b) === "today";
     var netSample = isToday ? "18.4" : "+2.1";
     var unit = isToday ? "kWh" : "kW";
-    var label = isToday ? "Today" : "Net";
+    var label = isToday ? "Today" : "Live";
     var positive = netSample.charAt(0) !== "-";
     var valueClass = positive ? "sp-solar-net-pos" : "sp-solar-net-neg";
     var iconHtml = cardSensorPreviewHtml(b, helpers, netSample, unit, "sp-solar-hero", valueClass);

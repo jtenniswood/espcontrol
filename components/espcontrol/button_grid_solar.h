@@ -86,7 +86,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
       h.sign = (c->net.value.find('-') == std::string::npos) ? 1 : -1;
     }
     h.unit = c->net.unit;
-    h.label = "Net";
+    h.label = c->mode == "today" ? "Today" : "Live";
     h.has = true;
     return h;
   }
@@ -100,7 +100,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
     double d = prod_v - cons;
     h.text = solar_format_value(d, true);
     h.unit = c->production.unit;
-    h.label = "Net";
+    h.label = c->mode == "today" ? "Today" : "Live";
     h.sign = d >= 0 ? 1 : -1;
     h.has = true;
     return h;
@@ -110,7 +110,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
   if (c->production.available && prod_parsed) {
     h.text = solar_format_value(prod_v, false);
     h.unit = c->production.unit;
-    h.label = c->mode == "today" ? "Today" : "Production";
+    h.label = c->mode == "today" ? "Today" : "Live";
     h.sign = prod_v >= 0 ? 1 : -1;
     h.has = true;
     return h;
@@ -121,7 +121,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
     if (f->available && !f->value.empty()) {
       h.text = f->value;
       h.unit = f->unit;
-      h.label = c->mode == "today" ? "Today" : "Solar";
+      h.label = c->mode == "today" ? "Today" : "Live";
       h.sign = 1;
       h.has = true;
       return h;
