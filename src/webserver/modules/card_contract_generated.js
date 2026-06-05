@@ -1059,6 +1059,11 @@ var CARD_CONTRACT_CARDS = {
         "kind": "text"
       },
       {
+        "name": "invert_production",
+        "label": "Invert Production",
+        "kind": "flag"
+      },
+      {
         "name": "consumption",
         "label": "Consumption",
         "kind": "text"
