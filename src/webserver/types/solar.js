@@ -9,6 +9,16 @@ var SOLAR_CARD_METADATA = {
       ["today", "Today"],
     ],
   },
+  invertProduction: {
+    label: "Invert Production",
+    idSuffix: "solar-invert-production",
+    checked: function (b) { return configOptionEnabled(b.options, "invert_production"); },
+    onChange: function (b, helpers, checked) {
+      b.options = setConfigOption(b.options, "invert_production", checked);
+      helpers.saveField("options", b.options);
+      scheduleRender();
+    },
+  },
   // Each entry maps an option key to its labelled entity field.
   entityFields: [
     { key: "production", label: "Production" },
@@ -102,6 +112,11 @@ registerButtonType("solar", {
       });
       panel.appendChild(field);
     });
+
+    // Invert Production toggle — shown only when a production entity is set.
+    if (getSolarOption(b, "production")) {
+      helpers.renderCardOptionToggle(panel, b, helpers, SOLAR_CARD_METADATA.invertProduction);
+    }
   },
   renderPreview: function (b, helpers) {
     // Hero Net face: large signed net value, coloured by sign, with a

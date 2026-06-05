@@ -32,6 +32,7 @@ struct SolarCardCtx {
   uint32_t off_color = DEFAULT_OFF_COLOR;
   int width_compensation_percent = 100;
   std::string mode;  // "live" or "today"
+  bool invert_production = false;
   SolarField production, consumption, net, battery, from_grid, to_grid;
   bool available = false;
 };
@@ -52,10 +53,28 @@ struct SolarHero {
   int sign = 1;   // 1 = green (surplus), -1 = red (importing)
 };
 
+// Format a numeric value for display: 1 decimal when |v| < 10, 0 decimals otherwise.
+// Adds "+" prefix for positive net values.
+inline std::string solar_format_value(double v, bool show_sign = false) {
+  char buf[32];
+  double abs_v = v < 0 ? -v : v;
+  const char *fmt = abs_v < 10.0
+    ? (show_sign ? "%+.1f" : "%.1f")
+    : (show_sign ? "%+.0f" : "%.0f");
+  std::snprintf(buf, sizeof(buf), fmt, v);
+  return std::string(buf);
+}
+
 inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
   SolarHero h;
 
-  // 1. Net entity has its own entity — use it directly
+  // Helper: parse and optionally invert the production value
+  char *ep2 = nullptr;
+  double prod_v = std::strtod(c->production.value.c_str(), &ep2);
+  bool prod_parsed = (ep2 != c->production.value.c_str());
+  if (prod_parsed && c->invert_production) prod_v = -prod_v;
+
+  // 1. Net entity — use it directly (verbatim, no reformatting)
   if (c->net.available && !c->net.value.empty()) {
     h.text = c->net.value;
     h.unit = c->net.unit;
@@ -66,17 +85,13 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
   }
 
   // 2. production − consumption (only when both available AND same unit)
-  char *ep = nullptr;
   char *ec = nullptr;
-  double p = std::strtod(c->production.value.c_str(), &ep);
   double cons = std::strtod(c->consumption.value.c_str(), &ec);
   if (c->production.available && c->consumption.available &&
-      ep != c->production.value.c_str() && ec != c->consumption.value.c_str() &&
+      prod_parsed && ec != c->consumption.value.c_str() &&
       c->production.unit == c->consumption.unit) {
-    double d = p - cons;
-    char buf[24];
-    std::snprintf(buf, sizeof(buf), d >= 0 ? "+%.1f" : "%.1f", d);
-    h.text = buf;
+    double d = prod_v - cons;
+    h.text = solar_format_value(d, true);
     h.unit = c->production.unit;
     h.label = "Net";
     h.sign = d >= 0 ? 1 : -1;
@@ -84,12 +99,12 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
     return h;
   }
 
-  // 3. production alone
-  if (c->production.available && !c->production.value.empty()) {
-    h.text = c->production.value;
+  // 3. production alone — apply smart precision
+  if (c->production.available && prod_parsed) {
+    h.text = solar_format_value(prod_v, false);
     h.unit = c->production.unit;
     h.label = "Production";
-    h.sign = 1;
+    h.sign = prod_v >= 0 ? 1 : -1;
     h.has = true;
     return h;
   }
@@ -198,6 +213,9 @@ inline void solar_subscribe_field(SolarField &field, SolarCardCtx *ctx) {
         field.available = !unavailable;
         field.value = unavailable ? "" : string_ref_limited(state, SOLAR_FIELD_VALUE_MAX_LEN);
         solar_apply_card_face(ctx);
+        // If the solar modal is open, re-render it with the updated values.
+        if (control_modal_active().kind == ControlModalKind::SOLAR)
+          solar_open_modal(ctx);
       }
     )
   );
@@ -338,7 +356,7 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
   RowSpec rows[] = {
     { "Solar Power",         "Production",     &ctx->production  },
     { "Home Lightning Bolt", "Consumption",    &ctx->consumption },
-    { "Solar Power",         "Net",            &ctx->net         },
+    // Net is already shown as the big hero header — omit its row here.
     { "Arrow Up",            "To Grid",        &ctx->to_grid     },
     { "Arrow Down",          "From Grid",      &ctx->from_grid   },
     { "Battery",             "Battery",        &ctx->battery     },
@@ -416,6 +434,7 @@ inline SolarCardCtx *create_solar_card_context(
   SolarCardCtx *ctx = new SolarCardCtx();
   ctx->mode = cfg_option_value(p.options, "mode");
   if (ctx->mode.empty()) ctx->mode = "live";
+  ctx->invert_production = cfg_option_enabled(p.options, "invert_production");
   ctx->accent_color = accent_color;
   ctx->off_color = off_color;
   ctx->btn = s.btn;
