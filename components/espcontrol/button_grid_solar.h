@@ -110,7 +110,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
   if (c->production.available && prod_parsed) {
     h.text = solar_format_value(prod_v, false);
     h.unit = c->production.unit;
-    h.label = "Production";
+    h.label = c->mode == "today" ? "Today" : "Production";
     h.sign = prod_v >= 0 ? 1 : -1;
     h.has = true;
     return h;
@@ -121,7 +121,7 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
     if (f->available && !f->value.empty()) {
       h.text = f->value;
       h.unit = f->unit;
-      h.label = "Solar";
+      h.label = c->mode == "today" ? "Today" : "Solar";
       h.sign = 1;
       h.has = true;
       return h;
@@ -175,18 +175,8 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
   }
 
   // Solar glyph top-left
-  if (ctx->icon_lbl) {
-    lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(ctx->icon_lbl, find_icon("Solar Power"));
-    if (ctx->icon_font)
-      lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
-    lv_obj_set_style_text_color(ctx->icon_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
-    lv_obj_align(ctx->icon_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
-    // Rotate 180° so the glyph faces inward; pivot at its own center.
-    lv_obj_set_style_transform_angle(ctx->icon_lbl, 1800, LV_PART_MAIN);
-    lv_obj_set_style_transform_pivot_x(ctx->icon_lbl, lv_pct(50), LV_PART_MAIN);
-    lv_obj_set_style_transform_pivot_y(ctx->icon_lbl, lv_pct(50), LV_PART_MAIN);
-  }
+  // No glyph on the tile — the hero value + label carry enough identity.
+  if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
 
   // Battery % corner (top-right)
   if (ctx->corner_lbl) {
