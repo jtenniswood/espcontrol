@@ -53,6 +53,25 @@ struct SolarHero {
   int sign = 1;   // 1 = green (surplus), -1 = red (importing)
 };
 
+// Format a raw entity value for modal rows: cap at 2 decimal places, strip
+// trailing zeros (e.g. "16.823" → "16.82", "53.000" → "53", "3.5" → "3.5").
+// Returns the raw string unchanged if it doesn't parse as a number.
+inline std::string solar_format_modal_value(const std::string &raw) {
+  char *ep = nullptr;
+  double v = std::strtod(raw.c_str(), &ep);
+  if (ep == raw.c_str()) return raw;  // non-numeric — show verbatim
+  char buf[32];
+  std::snprintf(buf, sizeof(buf), "%.2f", v);
+  std::string s(buf);
+  size_t dot = s.find('.');
+  if (dot != std::string::npos) {
+    size_t last = s.find_last_not_of('0');
+    if (last == dot) s = s.substr(0, dot);       // all zeros → integer
+    else if (last != std::string::npos) s = s.substr(0, last + 1);
+  }
+  return s;
+}
+
 // Format a numeric value for display: 1 decimal when |v| < 10, 0 decimals otherwise.
 // Never uses "+" prefix — the green/red color already communicates the sign,
 // and "+" is not in the number font's glyph set (it would render as a rectangle).
@@ -431,9 +450,11 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
       if (rs.invert) {
         char *ep = nullptr;
         double v = std::strtod(rs.field->value.c_str(), &ep);
-        val_str = (ep != rs.field->value.c_str()) ? solar_format_value(-v) : rs.field->value;
+        val_str = (ep != rs.field->value.c_str())
+          ? solar_format_modal_value(solar_format_value(-v))
+          : rs.field->value;
       } else {
-        val_str = rs.field->value;
+        val_str = solar_format_modal_value(rs.field->value);
       }
     }
     std::string val_with_unit = unit_str.empty() ? val_str : (val_str + " " + unit_str);
