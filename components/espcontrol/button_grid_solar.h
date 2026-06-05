@@ -375,9 +375,9 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
   // Per-field row builder
   struct RowSpec { const char *icon_name; const char *row_label; const SolarField *field; };
   RowSpec rows[] = {
+    { "Transmission Tower",  "Net",            &ctx->net         },
     { "Solar Power",         "Production",     &ctx->production  },
     { "Home Lightning Bolt", "Consumption",    &ctx->consumption },
-    { "Transmission Tower",  "Net",            &ctx->net         },
     { "Arrow Up",            "To Grid",        &ctx->to_grid     },
     { "Arrow Down",          "From Grid",      &ctx->from_grid   },
     { "Battery",             "Battery",        &ctx->battery     },
