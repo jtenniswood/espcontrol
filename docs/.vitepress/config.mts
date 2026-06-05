@@ -413,6 +413,7 @@ export default defineConfig({
           { text: 'Presence', link: '/card-types/presence' },
           { text: 'Sensor', link: '/card-types/sensors' },
           { text: 'Slider', link: '/card-types/sliders' },
+          { text: 'Solar', link: '/card-types/solar' },
           { text: 'Subpage', link: '/features/subpages' },
           { text: 'Switch', link: '/card-types/switches' },
           { text: 'Trigger', link: '/card-types/buttons' },
