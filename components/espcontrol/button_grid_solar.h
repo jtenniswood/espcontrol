@@ -372,15 +372,15 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
     : control_modal_scaled_px(22, layout.short_side);
   if (icon_w < 18) icon_w = 18;
 
-  // Per-field row builder
-  struct RowSpec { const char *icon_name; const char *row_label; const SolarField *field; };
+  // Per-field row builder.  invert=true negates the numeric value before display.
+  struct RowSpec { const char *icon_name; const char *row_label; const SolarField *field; bool invert; };
   RowSpec rows[] = {
-    { "Transmission Tower",  "Net",            &ctx->net         },
-    { "Solar Power",         "Production",     &ctx->production  },
-    { "Home Lightning Bolt", "Consumption",    &ctx->consumption },
-    { "Arrow Up",            "To Grid",        &ctx->to_grid     },
-    { "Arrow Down",          "From Grid",      &ctx->from_grid   },
-    { "Battery",             "Battery",        &ctx->battery     },
+    { "Transmission Tower",  "Net",            &ctx->net,         false                    },
+    { "Solar Power",         "Production",     &ctx->production,  ctx->invert_production   },
+    { "Home Lightning Bolt", "Consumption",    &ctx->consumption, false                    },
+    { "Arrow Up",            "To Grid",        &ctx->to_grid,     false                    },
+    { "Arrow Down",          "From Grid",      &ctx->from_grid,   false                    },
+    { "Battery",             "Battery",        &ctx->battery,     false                    },
   };
 
   for (auto &rs : rows) {
@@ -422,9 +422,20 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
     lv_obj_set_style_text_color(name_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(name_lbl, ctx->label_font, LV_PART_MAIN);
 
-    // Value + unit — right-aligned, fixed width
-    std::string val_str = rs.field->available ? rs.field->value : "--";
-    std::string unit_str = (rs.field->available && !rs.field->unit.empty()) ? rs.field->unit : "";
+    // Value + unit — right-aligned, fixed width.
+    // Apply inversion to the production field when invert_production is set.
+    std::string val_str = "--";
+    std::string unit_str = "";
+    if (rs.field->available) {
+      unit_str = rs.field->unit;
+      if (rs.invert) {
+        char *ep = nullptr;
+        double v = std::strtod(rs.field->value.c_str(), &ep);
+        val_str = (ep != rs.field->value.c_str()) ? solar_format_value(-v) : rs.field->value;
+      } else {
+        val_str = rs.field->value;
+      }
+    }
     std::string val_with_unit = unit_str.empty() ? val_str : (val_str + " " + unit_str);
 
     lv_obj_t *val_lbl = lv_label_create(row);
