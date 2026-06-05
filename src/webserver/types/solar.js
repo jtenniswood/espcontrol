@@ -55,9 +55,10 @@ registerButtonType("solar", {
     b.sensor = "";
     b.unit = "";
     b.precision = "";
+    b.options = "";
     if (!b.icon || b.icon === "Auto") b.icon = "Solar Power";
     b.icon_on = "Auto";
-    if (!getSolarMode(b)) setSolarOption(b, "mode", "live");
+    if (!configOptionValue(b.options, "mode")) setSolarOption(b, "mode", "live");
   },
   renderSettings: function (panel, b, slot, helpers) {
     b.sensor = "";
