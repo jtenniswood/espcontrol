@@ -494,7 +494,7 @@ function installPublicFirmwareViaWebOta() {
     var form = new FormData();
     form.append("file", blob, filename);
     uploadStarted = true;
-    return fetch("/update", { method: "POST", body: form });
+    return fetch("/update", { method: "POST", body: form, credentials: "include" });
   }).then(function (response) {
     uploadResponseReceived = true;
     return response.text().catch(function () {
