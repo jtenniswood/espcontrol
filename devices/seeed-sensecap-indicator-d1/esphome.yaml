@@ -1,0 +1,27 @@
+# =============================================================================
+# ESPHOME ENTRY POINT - Seeed SenseCAP Indicator D1
+# =============================================================================
+# User-facing config file. Set your device name and WiFi credentials here.
+# Use this after copying devices/seeed-sensecap-indicator-d1 into a local clone
+# or fork of jtenniswood/espcontrol.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Device identity
+# ---------------------------------------------------------------------------
+substitutions:
+  name: "your-device-name"
+  friendly_name: "Your Device Name"
+
+# ---------------------------------------------------------------------------
+# WiFi credentials (stored in secrets.yaml)
+# ---------------------------------------------------------------------------
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# ---------------------------------------------------------------------------
+# Local package
+# ---------------------------------------------------------------------------
+packages:
+  setup: !include packages.yaml
