@@ -1,0 +1,27 @@
+# =============================================================================
+# BUILD PROFILE - Seeed SenseCAP Indicator D1 (4" square)
+# =============================================================================
+# CI/local build entry point for the 480x480 square ESP32-S3 SenseCAP panel.
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-sensecap-d1"
+  friendly_name: "Seeed SenseCAP Indicator D1"
+  espcontrol_component_url: "file:///config"
+  espcontrol_component_ref: "HEAD"
+
+esphome:
+  name_add_mac_suffix: true
+
+packages:
+  espcontrol: !include ../devices/seeed-sensecap-indicator-d1/packages.yaml
+
+wifi:
+  # Compile-only station credentials for CI/local builds. User-imported
+  # deployed configs supply their real WiFi credentials in device YAML.
+  ssid: "ESPControl"
+  password: "espcontrol"
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:
