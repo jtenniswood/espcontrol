@@ -475,6 +475,133 @@ inline void apply_action_card_display_value(ActionCardStateCtx *ctx,
   }
 }
 
+inline void subscribe_action_card_target_availability(ActionCardStateCtx *ctx,
+                                                      const std::string &entity_id) {
+  if (!ctx || entity_id.empty()) return;
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    entity_id, {},
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
+      ctx->state_available = !ha_state_unavailable_ref(state);
+      apply_action_card_availability(ctx);
+    })
+  );
+}
+
+// ── Sensor chart subscription ──────────────────────────────────────────────────
+// Subscribes to a HA sensor entity, updates the live value label, and
+// accumulates samples over a configurable interval. At each interval boundary,
+// computes a single aggregated value (avg/max/min/last) and pushes it to the
+// lv_chart sparkline, then auto-scales the Y axis to the current data range.
+
+struct SensorChartAcc {
+  lv_obj_t *chart;
+  lv_chart_series_t *series;
+  float acc_sum;
+  int acc_count;
+  float acc_min;
+  float acc_max;
+  float acc_last;
+  uint32_t last_push_ms;
+  uint32_t interval_ms;
+  uint8_t mode; // 0=avg 1=max 2=min 3=last
+  bool seeded; // true once chart has been pre-filled with the first received value
+};
+
+inline void sensor_chart_push(SensorChartAcc *acc, float val) {
+  lv_coord_t chart_val = (lv_coord_t)roundf(val * 10.0f);
+  lv_chart_set_next_value(acc->chart, acc->series, chart_val);
+
+  // Recompute Y range from the full data buffer
+  lv_coord_t *y_arr = lv_chart_get_y_array(acc->chart, acc->series);
+  uint16_t cnt = lv_chart_get_point_count(acc->chart);
+  lv_coord_t y_min = chart_val, y_max = chart_val;
+  for (uint16_t i = 0; i < cnt; i++) {
+    if (y_arr[i] != LV_CHART_POINT_NONE) {
+      if (y_arr[i] < y_min) y_min = y_arr[i];
+      if (y_arr[i] > y_max) y_max = y_arr[i];
+    }
+  }
+  lv_coord_t pad = (y_max - y_min) / 4;
+  if (pad < 2) pad = 2;
+  lv_chart_set_range(acc->chart, LV_CHART_AXIS_PRIMARY_Y, y_min - pad, y_max + pad);
+  lv_chart_refresh(acc->chart);
+}
+
+inline void sensor_chart_flush_interval(SensorChartAcc *acc) {
+  if (acc->acc_count == 0) return;
+  float val;
+  switch (acc->mode) {
+    case 1: val = acc->acc_max; break;
+    case 2: val = acc->acc_min; break;
+    case 3: val = acc->acc_last; break;
+    default: val = acc->acc_sum / (float)acc->acc_count; break;
+  }
+  sensor_chart_push(acc, val);
+  acc->acc_sum = 0.0f;
+  acc->acc_count = 0;
+  acc->acc_min = 1e30f;
+  acc->acc_max = -1e30f;
+}
+
+inline void subscribe_sensor_chart(lv_obj_t *sensor_lbl, lv_obj_t *chart,
+                                   lv_chart_series_t *series,
+                                   const std::string &sensor_id,
+                                   int precision, lv_obj_t *unit_lbl,
+                                   const std::string &unit,
+                                   uint32_t interval_ms, uint8_t mode) {
+  std::string display_unit = trim_display_unit(unit);
+  SensorChartAcc *acc = new SensorChartAcc{};
+  acc->chart = chart;
+  acc->series = series;
+  acc->acc_sum = 0.0f;
+  acc->acc_count = 0;
+  acc->acc_min = 1e30f;
+  acc->acc_max = -1e30f;
+  acc->acc_last = 0.0f;
+  acc->last_push_ms = esphome::millis();
+  acc->interval_ms = interval_ms;
+  acc->mode = mode;
+  acc->seeded = false;
+
+  esphome::api::global_api_server->subscribe_home_assistant_state(
+    sensor_id, {},
+    std::function<void(esphome::StringRef)>(
+      [sensor_lbl, precision, unit_lbl, display_unit, acc](esphome::StringRef state) {
+        bool unavailable = ha_state_unavailable_ref(state);
+        float val = 0.0f;
+        if (!unavailable && parse_float_ref(state, val) && std::isfinite(val)) {
+          char buf[16];
+          format_fixed_decimal(buf, sizeof(buf), val, precision);
+          lv_label_set_text(sensor_lbl, buf);
+          if (unit_lbl) lv_label_set_text(unit_lbl, display_unit.c_str());
+
+          acc->acc_sum += val;
+          acc->acc_count++;
+          if (val < acc->acc_min) acc->acc_min = val;
+          if (val > acc->acc_max) acc->acc_max = val;
+          acc->acc_last = val;
+
+          uint32_t now = esphome::millis();
+          if (!acc->seeded) {
+            // First value ever: pre-fill all points so a flat line is immediately visible.
+            lv_coord_t cv = (lv_coord_t)roundf(val * 10.0f);
+            lv_chart_set_all_value(acc->chart, acc->series, cv);
+            lv_chart_set_range(acc->chart, LV_CHART_AXIS_PRIMARY_Y, cv - 2, cv + 2);
+            lv_chart_refresh(acc->chart);
+            acc->last_push_ms = now;
+            acc->seeded = true;
+          } else if ((now - acc->last_push_ms) >= acc->interval_ms) {
+            sensor_chart_flush_interval(acc);
+            acc->last_push_ms = now;
+          }
+        } else {
+          lv_label_set_text(sensor_lbl, "");
+          if (unit_lbl) lv_label_set_text(unit_lbl, "");
+        }
+      })
+  );
+}
+
 inline void subscribe_action_card_display_state(ActionCardStateCtx *ctx,
                                                 const std::string &entity_id) {
   if (!ctx || entity_id.empty()) return;

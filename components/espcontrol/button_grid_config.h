@@ -51,6 +51,7 @@ static_assert(correct_display_color(0xF0F0F0, 200, 200, 200) == 0xFFFFFF,
               "colour correction must clamp channels at 255");
 
 constexpr uint32_t DEFAULT_SLIDER_COLOR = correct_display_color(0xFF8C00);
+constexpr uint32_t DEFAULT_CHART_COLOR = correct_display_color(0xFF8C00);
 constexpr uint32_t DEFAULT_OFF_COLOR = correct_display_color(0x313131);
 constexpr uint32_t DEFAULT_TERTIARY_COLOR = correct_display_color(0x212121);
 constexpr uint32_t DARK_BACKGROUND_SECONDARY = DEFAULT_OFF_COLOR;
@@ -96,6 +97,8 @@ struct BtnSlot {
   lv_obj_t *sensor_lbl;             // numeric sensor value
   lv_obj_t *unit_lbl;               // unit suffix (°C, %, etc.)
   lv_obj_t *subpage_lbl = nullptr;  // small chevron marker for subpage cards
+  lv_obj_t *chart = nullptr;          // sparkline chart widget (sensor_chart cards only)
+  lv_chart_series_t *chart_series = nullptr; // chart data series (sensor_chart cards only)
 };
 
 inline void set_card_checked_state(lv_obj_t *btn, bool checked);
@@ -394,6 +397,17 @@ inline bool todo_card_label_shows_count(const ParsedCfg &p) {
 inline bool todo_card_shows_completed_items(const ParsedCfg &p) {
   (void) p;
   return false;
+}
+
+inline std::string sensor_chart_normalize_options(const std::string &options) {
+  std::string out;
+  std::string interval = cfg_option_value(options, "interval");
+  std::string mode     = cfg_option_value(options, "mode");
+  std::string points   = cfg_option_value(options, "points");
+  if (!interval.empty()) out += "interval=" + interval;
+  if (!mode.empty())     { if (!out.empty()) out += ","; out += "mode=" + mode; }
+  if (!points.empty())   { if (!out.empty()) out += ","; out += "points=" + points; }
+  return out;
 }
 
 inline std::string normalize_climate_label_display(const std::string &value) {
@@ -723,11 +737,14 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "todo" && p.type != "sensor" && p.type != "sensor_chart" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (p.type == "sensor") {
     p.options = sensor_card_options_normalized(p.options, p.precision);
+  }
+  if (p.type == "sensor_chart") {
+    p.options = sensor_chart_normalize_options(p.options);
   }
   return p;
 }
@@ -2321,4 +2338,29 @@ inline void transient_status_label_show_if_changed(TransientStatusLabel *ctx,
       lv_timer_pause(ctx->revert_timer);
     }
   }
+}
+
+// ── sensor_chart card config helpers ──────────────────────────────────────────
+
+inline uint8_t sensor_chart_mode_index(const ParsedCfg &p) {
+  std::string val = cfg_option_value(p.options, "mode");
+  if (val == "max") return 1;
+  if (val == "min") return 2;
+  if (val == "last") return 3;
+  return 0; // avg (default)
+}
+
+inline uint32_t sensor_chart_interval_ms(const ParsedCfg &p) {
+  std::string val = cfg_option_value(p.options, "interval");
+  uint32_t seconds = val.empty() ? 3600u : (uint32_t)atoi(val.c_str());
+  if (seconds == 0u) seconds = 3600u;
+  return seconds * 1000u;
+}
+
+inline int sensor_chart_point_count(const ParsedCfg &p) {
+  std::string val = cfg_option_value(p.options, "points");
+  int count = val.empty() ? 24 : atoi(val.c_str());
+  if (count < 2) count = 2;
+  if (count > 60) count = 60;
+  return count;
 }
