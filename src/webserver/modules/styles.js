@@ -101,6 +101,8 @@ var CSS =
   ".sp-forecast-preview{white-space:nowrap;gap:0}" +
   ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
   ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:#fff}" +
+  ".sp-chart-sparkline{position:absolute;bottom:calc(var(--btn-pad) + 1.4em);" +
+  "left:var(--btn-pad);right:var(--btn-pad);height:32%;pointer-events:none}" +
   ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +
   ".sp-slider-track{width:100%;height:100%;position:relative}" +
   ".sp-slider-fill{position:absolute;left:0;bottom:0;width:100%;height:80%;background:var(--accent);" +

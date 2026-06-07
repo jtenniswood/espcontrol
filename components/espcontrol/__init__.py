@@ -10,6 +10,16 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 import os
 
+# Enable LV_USE_CHART in the generated lv_conf.h so that sensor_chart cards
+# can create lv_chart sparkline widgets at runtime.  This must run at import
+# time (before any to_code() is called) so that the LVGL component sees the
+# flag when it writes lv_conf.h.
+try:
+    from esphome.components.lvgl.helpers import add_lv_use
+    add_lv_use("CHART")
+except Exception:
+    pass
+
 CODEOWNERS = ["@jtenniswood"]
 
 CONF_ACTION_RESPONSES = "action_responses"

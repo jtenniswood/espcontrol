@@ -678,3 +678,62 @@ inline void setup_subpage_parent_state_card(BtnSlot &s, const ParsedCfg &p,
     s, subpage_chevron_enabled, subpage_chevron_x, subpage_chevron_y,
     subpage_chevron_text_width_percent);
 }
+
+// ── Sensor chart card ──────────────────────────────────────────────────────────
+// Like sensor card, but adds an lv_chart sparkline at the bottom of the button.
+// Chart height and bottom margin are fixed in pixels; the value + label use the
+// same positions as a regular sensor card.
+
+constexpr int SENSOR_CHART_HEIGHT_PX = 40;
+constexpr int SENSOR_CHART_BOTTOM_MARGIN_PX = 16; // gap for text_lbl
+
+inline void setup_sensor_chart_card(BtnSlot &s, const ParsedCfg &p,
+                                    bool has_sensor_color, uint32_t sensor_val) {
+  if (has_sensor_color) {
+    lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  }
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+
+  if (!p.unit.empty())
+    lv_label_set_text(s.unit_lbl, trim_display_unit(p.unit).c_str());
+  if (!p.label.empty())
+    lv_label_set_text(s.text_lbl, p.label.c_str());
+
+  // Sparkline chart
+  lv_obj_t *chart = lv_chart_create(s.btn);
+  lv_obj_set_size(chart, lv_pct(100), SENSOR_CHART_HEIGHT_PX);
+  lv_obj_align(chart, LV_ALIGN_BOTTOM_LEFT, 0, -SENSOR_CHART_BOTTOM_MARGIN_PX);
+  lv_obj_clear_flag(chart, LV_OBJ_FLAG_CLICKABLE);
+
+  lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
+  lv_chart_set_update_mode(chart, LV_CHART_UPDATE_MODE_SHIFT);
+  lv_chart_set_point_count(chart, sensor_chart_point_count(p));
+  lv_chart_set_div_line_count(chart, 0, 0);
+  lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 100);
+
+  // Transparent background, no border, no padding
+  lv_obj_set_style_bg_opa(chart, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(chart, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(chart, 0, LV_PART_MAIN);
+
+  // Line: 2 px wide, always DEFAULT_CHART_COLOR (sensor_val is the button background,
+  // not the chart line — using it here made the line match the bg and become invisible).
+  lv_color_t chart_color = lv_color_hex(DEFAULT_CHART_COLOR);
+  lv_obj_set_style_line_color(chart, chart_color, LV_PART_ITEMS);
+  lv_obj_set_style_line_width(chart, 2, LV_PART_ITEMS);
+  lv_obj_set_style_size(chart, 0, 0, LV_PART_INDICATOR);
+
+  lv_chart_series_t *series = lv_chart_add_series(
+    chart, chart_color, LV_CHART_AXIS_PRIMARY_Y);
+  lv_chart_set_all_value(chart, series, LV_CHART_POINT_NONE);
+
+  // Z-order: ensure chart is drawn above sibling widgets (text label, sensor container).
+  // Without this, LVGL may layer them above the chart after layout/reflow.
+  lv_obj_move_foreground(chart);
+
+  s.chart = chart;
+  s.chart_series = series;
+}

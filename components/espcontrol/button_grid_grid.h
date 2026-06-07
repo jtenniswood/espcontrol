@@ -84,6 +84,16 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   return profile;
 }
 
+inline lv_obj_t *find_chart_in_btn(lv_obj_t *btn) {
+  if (!btn) return nullptr;
+  uint32_t cnt = lv_obj_get_child_cnt(btn);
+  for (uint32_t i = 0; i < cnt; i++) {
+    lv_obj_t *child = lv_obj_get_child(btn, i);
+    if (lv_obj_check_type(child, &lv_chart_class)) return child;
+  }
+  return nullptr;
+}
+
 inline void configure_grid_layout(lv_obj_t *page, int num_slots, int cols) {
   if (!page) return;
   int slot_count = bounded_grid_slots(num_slots);
@@ -248,6 +258,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       apply_large_sensor_number_style(
         s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
     }
+    return;
+  }
+  if (p.type == "sensor_chart") {
+    if (p.sensor.empty()) return;
+    setup_sensor_chart_card(s, p, palette.has_sensor_color, palette.sensor_val);
     return;
   }
   if (p.type == "door_window") {
@@ -828,6 +843,18 @@ inline void grid_phase2(
     bool is_1x1_card = row_span == 1 && col_span == 1;
     if (cfg.info_only && info_only_hidden_card_type(p)) continue;
     if (p.type == "push") continue;
+    if (p.type == "sensor_chart") {
+      if (p.sensor.empty()) continue;
+      lv_obj_t *sc_chart = find_chart_in_btn(s.btn);
+      lv_chart_series_t *sc_series = sc_chart ? lv_chart_get_series_next(sc_chart, NULL) : nullptr;
+      if (!sc_chart || !sc_series) continue;
+      subscribe_sensor_chart(s.sensor_lbl, sc_chart, sc_series, p.sensor,
+        parse_precision(p.precision), s.unit_lbl, p.unit,
+        sensor_chart_interval_ms(p), sensor_chart_mode_index(p));
+      if (p.label.empty())
+        subscribe_friendly_name(s.text_lbl, p.sensor);
+      continue;
+    }
     if (bind_basic_sensor_card(s, p, palette)) continue;
     if (bind_passive_card_sources(s, p)) continue;
     if (p.type == "garage") {
@@ -1351,6 +1378,18 @@ inline void grid_phase2(
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, cfg, palette, rs, cs);
 
+      if (sb_cfg.type == "sensor_chart") {
+        if (sb_cfg.sensor.empty()) continue;
+        lv_obj_t *sc_chart = find_chart_in_btn(sub_slot.btn);
+        lv_chart_series_t *sc_series = sc_chart ? lv_chart_get_series_next(sc_chart, NULL) : nullptr;
+        if (!sc_chart || !sc_series) continue;
+        subscribe_sensor_chart(sub_slot.sensor_lbl, sc_chart, sc_series,
+          sb_cfg.sensor, parse_precision(sb_cfg.precision), sub_slot.unit_lbl, sb_cfg.unit,
+          sensor_chart_interval_ms(sb_cfg), sensor_chart_mode_index(sb_cfg));
+        if (sb_cfg.label.empty())
+          subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.sensor);
+        continue;
+      }
       if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;
       if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;
       if (sb_cfg.type == "cover" && cover_command_mode(sb_cfg.sensor)) {
