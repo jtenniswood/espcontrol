@@ -320,6 +320,11 @@
       "mdi": "broom"
     },
     {
+      "name": "Calendar Check",
+      "codepoint": "F00EF",
+      "mdi": "calendar-check"
+    },
+    {
       "name": "Camera",
       "codepoint": "F0100",
       "mdi": "camera"

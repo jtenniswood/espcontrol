@@ -72,6 +72,12 @@ function normalizeButtonConfig(b) {
     b.precision = normalizeClimatePrecisionConfig(b.precision);
     b.options = normalizeClimateOptions(b.options);
   }
+  if (b && b.type === "ha_calendar") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = normalizeHaCalendarOptions(b.options);
+  }
   if (b && b.type === "garage") {
     if (b.sensor !== "open" && b.sensor !== "close") b.sensor = "";
     b.unit = "";
@@ -155,7 +161,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "ha_calendar" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -198,6 +204,8 @@ var ALARM_LABEL_DISPLAY_OPTION = "label_display";
 var GARAGE_LABEL_DISPLAY_OPTION = "label_display";
 var CLIMATE_LABEL_DISPLAY_OPTION = "label_display";
 var CLIMATE_NUMBER_DISPLAY_OPTION = "number_display";
+var HA_CALENDAR_DISPLAY_MODE_OPTION = "display_mode";
+var HA_CALENDAR_MODAL_LAYOUT_OPTION = "modal_layout";
 var MEDIA_VOLUME_MAX_OPTION = "volume_max";
 var SUBPAGE_KIND_OPTION = "subpage_kind";
 var IMAGE_LABEL_OPTION = "image_label";
@@ -1012,6 +1020,61 @@ function setClimateNumberDisplayMode(b, mode) {
   return b.options;
 }
 
+// ── ha_calendar option helpers ──────────────────────────────────────────────
+
+function normalizeHaCalendarDisplayMode(value) {
+  value = String(value || "").trim();
+  var spec = cardContractOptionSpec("ha_calendar", HA_CALENDAR_DISPLAY_MODE_OPTION);
+  var values = spec && spec.values ? spec.values : ["", "current"];
+  return values.indexOf(value) >= 0 ? value : "";
+}
+
+function normalizeHaCalendarModalLayout(value) {
+  value = String(value || "").trim();
+  var spec = cardContractOptionSpec("ha_calendar", HA_CALENDAR_MODAL_LAYOUT_OPTION);
+  var values = spec && spec.values ? spec.values : ["", "column"];
+  return values.indexOf(value) >= 0 ? value : "";
+}
+
+function normalizeHaCalendarOptions(options) {
+  var mode = normalizeHaCalendarDisplayMode(
+    configOptionValue(options, HA_CALENDAR_DISPLAY_MODE_OPTION));
+  var layout = normalizeHaCalendarModalLayout(
+    configOptionValue(options, HA_CALENDAR_MODAL_LAYOUT_OPTION));
+  var out = "";
+  if (mode) out = setConfigOptionValue(out, HA_CALENDAR_DISPLAY_MODE_OPTION, mode);
+  if (layout) out = setConfigOptionValue(out, HA_CALENDAR_MODAL_LAYOUT_OPTION, layout);
+  return out;
+}
+
+function haCalendarDisplayMode(b) {
+  return normalizeHaCalendarDisplayMode(
+    configOptionValue(b && b.options, HA_CALENDAR_DISPLAY_MODE_OPTION));
+}
+
+function setHaCalendarDisplayMode(b, mode) {
+  if (!b) return "";
+  var normalized = normalizeHaCalendarDisplayMode(mode);
+  b.options = setConfigOptionValue(b.options || "", HA_CALENDAR_DISPLAY_MODE_OPTION,
+    normalized || "");
+  b.options = normalizeHaCalendarOptions(b.options);
+  return b.options;
+}
+
+function haCalendarModalLayout(b) {
+  return normalizeHaCalendarModalLayout(
+    configOptionValue(b && b.options, HA_CALENDAR_MODAL_LAYOUT_OPTION));
+}
+
+function setHaCalendarModalLayout(b, layout) {
+  if (!b) return "";
+  var normalized = normalizeHaCalendarModalLayout(layout);
+  b.options = setConfigOptionValue(b.options || "", HA_CALENDAR_MODAL_LAYOUT_OPTION,
+    normalized || "");
+  b.options = normalizeHaCalendarOptions(b.options);
+  return b.options;
+}
+
 function alarmActionInfo(value) {
   var actions = alarmActionSpecs();
   for (var i = 0; i < actions.length; i++) {
@@ -1282,6 +1345,8 @@ function buttonConfigFields(b) {
     options = normalizePresenceOptions(options);
   } else if (type === "image") {
     options = normalizeImageOptions(options);
+  } else if (type === "ha_calendar") {
+    options = normalizeHaCalendarOptions(options);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
   } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && type !== "media" && type !== "presence" && !cardLargeNumbersSupported({ type: type, precision: precision })) {

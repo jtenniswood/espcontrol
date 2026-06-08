@@ -548,6 +548,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "subpage_chevron_font": fonts.get("subpageChevron"),
         "climate_option_title_font": fonts.get("climateOptionTitle"),
         "climate_option_value_font": fonts.get("climateOptionValue"),
+        "tiny_font": fonts.get("tiny"),
         "wrap_tall_labels": display["wrapTallLabels"],
         "info_only": bool(display.get("infoOnly")),
         "display_mode": display.get("mode", "color"),

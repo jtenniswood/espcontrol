@@ -401,6 +401,7 @@ export default defineConfig({
         text: 'Card Types',
         items: [
           { text: 'Action', link: '/card-types/actions' },
+          { text: 'Calendar', link: '/card-types/meeting-calendar' },
           { text: 'Climate', link: '/card-types/climate' },
           { text: 'Cover', link: '/card-types/covers' },
           { text: 'Date & Time', link: '/card-types/calendar' },

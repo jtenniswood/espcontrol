@@ -39,6 +39,7 @@ struct GridConfig {
   const lv_font_t *climate_option_title_font = nullptr;
   const lv_font_t *climate_option_value_font = nullptr;
   const lv_font_t *volume_icon_font = nullptr;
+  const lv_font_t *tiny_font = nullptr;
   const lv_font_t *subpage_chevron_font = nullptr;
   int subpage_chevron_x = 0;
   int subpage_chevron_y = 2;
@@ -79,6 +80,7 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.climate_option_title = cfg.climate_option_title_font;
   profile.fonts.climate_option_value = cfg.climate_option_value_font;
   profile.fonts.volume_icon = cfg.volume_icon_font;
+  profile.fonts.tiny = cfg.tiny_font;
   profile.width.vertical_axis = cfg.width_compensation_vertical;
   profile.width.main_percent = cfg.width_compensation_percent;
   profile.width.volume_percent = cfg.volume_width_compensation_percent;
@@ -395,6 +397,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       apply_large_sensor_number_style(
         s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
     }
+    return;
+  }
+  if (p.type == "ha_calendar") {
+    setup_ha_calendar_card(s, p, palette.off_val);
     return;
   }
   if (p.type == "media") {
@@ -1069,6 +1075,30 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "ha_calendar") {
+      if (!p.entity.empty()) {
+        HaCalendarCardCtx *ctx = create_ha_calendar_card_context(
+          s, p,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          has_off ? off_val : DEFAULT_OFF_COLOR,
+          display_sensor_font(display),
+          lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+          display_media_title_font_or(
+            display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
+          display_icon_font(display),
+          display_climate_option_value_font(display),
+          display_tiny_font(display),
+          display_climate_card_icon_font(display),
+          display_main_width_percent(display));
+        subscribe_ha_calendar_state(ctx);
+        subscribe_ha_calendar_attributes(ctx);
+        lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
+          HaCalendarCardCtx *ctx = (HaCalendarCardCtx *)lv_event_get_user_data(e);
+          if (ha_calendar_ctx_valid(ctx)) ha_calendar_open_modal(ctx);
+        }, LV_EVENT_CLICKED, ctx);
+      }
+      continue;
+    }
     if (p.type == "media") {
       if (!p.entity.empty()) {
         std::string mode = media_card_mode(p.sensor);
@@ -1607,6 +1637,30 @@ inline void grid_phase2(
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             TodoCardCtx *ctx = (TodoCardCtx *)lv_event_get_user_data(e);
             if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
+          }, LV_EVENT_CLICKED, ctx);
+        }
+        continue;
+      }
+      if (sb_cfg.type == "ha_calendar") {
+        if (!sb_cfg.entity.empty()) {
+          HaCalendarCardCtx *ctx = create_ha_calendar_card_context(
+            sub_slot, sb_cfg,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            has_off ? off_val : DEFAULT_OFF_COLOR,
+            display_sensor_font(display),
+            lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_media_title_font_or(
+              display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
+            display_icon_font(display),
+            display_climate_option_value_font(display),
+            display_tiny_font(display),
+            display_climate_card_icon_font(display),
+            display_main_width_percent(display));
+          subscribe_ha_calendar_state(ctx);
+          subscribe_ha_calendar_attributes(ctx);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            HaCalendarCardCtx *ctx = (HaCalendarCardCtx *)lv_event_get_user_data(e);
+            if (ha_calendar_ctx_valid(ctx)) ha_calendar_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
         }
         continue;

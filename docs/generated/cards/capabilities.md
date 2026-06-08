@@ -41,3 +41,4 @@ This generated reference lists stable setup facts from the shared card contract.
 | Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
 | Image | image | camera, image | Yes | Own picker item | Show Label; Expanded Image: fill, fit; Refresh Interval: off, 10, 30, 60, 300; Refresh Mode: changes_timer, timer | Experimental |
 | Weather Forecast | weather_forecast | weather | Yes | Own picker item | None | Hidden |
+| Calendar | ha_calendar | calendar | Yes | Own picker item | Display Mode: default, current; Modal Layout: default, column | Visible |
