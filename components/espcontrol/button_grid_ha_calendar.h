@@ -476,11 +476,11 @@ inline void ha_calendar_refresh_timer_cb(lv_timer_t *timer) {
   // context), this timer is stale — stop it so it can't write to a reused widget.
   if (ctx->btn && lv_obj_get_user_data(ctx->btn) != ctx) { lv_timer_del(timer); return; }
   ctx->refresh_ticks++;
-  // Poll calendar.get_events shortly after startup and then every ~5 minutes so
-  // Next mode always knows the next upcoming event, even during an active one.
-  // Current mode counts down the active event's end and needs no poll.
-  if (ctx->display_mode != "current" &&
-      (ctx->refresh_ticks == 1 || ctx->refresh_ticks % 10 == 0)) {
+  // Poll calendar.get_events shortly after startup and then every ~5 minutes.
+  // Both modes need this: Next mode for the upcoming event, Current mode for
+  // correct UTC epochs (entity-attribute times have no TZ offset and parse
+  // incorrectly on non-local-timezone devices).
+  if (ctx->refresh_ticks == 1 || ctx->refresh_ticks % 10 == 0) {
     ha_calendar_card_fetch(ctx);
   }
   ha_calendar_apply_card_face(ctx);
@@ -655,8 +655,7 @@ inline void subscribe_ha_calendar_state(HaCalendarCardCtx *ctx) {
         // first state after boot and at every event boundary (an event starting
         // or ending flips this state). Otherwise the tile lingers on "Now" with
         // a just-started/just-ended event until the next periodic poll.
-        if (ctx->display_mode != "current" &&
-            ctx->fetch_pending <= 0 && ha_api_state_connected()) {
+        if (ctx->fetch_pending <= 0 && ha_api_state_connected()) {
           ha_calendar_card_fetch(ctx);
         }
         ha_calendar_apply_card_face(ctx);
