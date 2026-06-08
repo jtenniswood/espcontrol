@@ -4,7 +4,7 @@
 # Per-button config stored as a single semicolon-delimited string:
 #   entity_id;label;icon;icon_on;sensor;sensor_unit;type;precision;options
 # Subpage config kept separate; split across text entities because ESPHome caps
-# each text max_length at 384.
+# each text max_length at 255.
 # Included once per button slot from packages.yaml with vars: { num: "N" }.
 # =============================================================================
 
@@ -17,7 +17,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:cog"
@@ -33,7 +33,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"
@@ -49,7 +49,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"
@@ -65,7 +65,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"
@@ -81,7 +81,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"
@@ -97,7 +97,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"
@@ -113,7 +113,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"
@@ -129,7 +129,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"
@@ -145,7 +145,7 @@ text:
     restore_value: true
     initial_value: ""
     min_length: 0
-    max_length: 384
+    max_length: 255
     mode: text
     entity_category: config
     icon: "mdi:file-tree"
