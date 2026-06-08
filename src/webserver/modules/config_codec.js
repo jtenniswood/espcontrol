@@ -155,6 +155,8 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
+  } else if (b && b.type === "solar") {
+    // pass options through unchanged
   } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
@@ -1284,6 +1286,8 @@ function buttonConfigFields(b) {
     options = normalizeImageOptions(options);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
+  } else if (type === "solar") {
+    options = b && b.options || "";
   } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && type !== "media" && type !== "presence" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
   }

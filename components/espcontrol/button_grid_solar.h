@@ -1,0 +1,571 @@
+#pragma once
+
+// Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
+
+// Solar card: context struct, Net-cascade hero helper, and card-face render.
+// No modal and no grid wiring (those are Tasks 7 and 8).
+
+constexpr uint32_t SOLAR_CTX_MAGIC = 0x504C5253;  // "PLRS"
+
+constexpr size_t SOLAR_FIELD_VALUE_MAX_LEN = 32;
+constexpr size_t SOLAR_FIELD_UNIT_MAX_LEN = 16;
+
+struct SolarField {
+  std::string entity_id;
+  std::string value;    // raw state string from HA
+  std::string unit;     // unit_of_measurement
+  bool available = false;
+};
+
+struct SolarCardCtx {
+  uint32_t magic = SOLAR_CTX_MAGIC;
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *value_lbl = nullptr;   // sensor_lbl: hero value
+  lv_obj_t *unit_lbl = nullptr;    // hero unit
+  lv_obj_t *label_lbl = nullptr;   // bottom label: hero type name
+  lv_obj_t *icon_lbl = nullptr;    // solar glyph top-left
+  lv_obj_t *corner_lbl = nullptr;  // battery % top-right
+  const lv_font_t *value_font = nullptr;
+  const lv_font_t *label_font = nullptr;
+  const lv_font_t *icon_font = nullptr;
+  uint32_t accent_color = DEFAULT_SLIDER_COLOR;
+  uint32_t off_color = DEFAULT_OFF_COLOR;
+  int width_compensation_percent = 100;
+  std::string mode;  // "live" or "today"
+  bool invert_production = false;
+  SolarField production, consumption, net, battery, from_grid, to_grid;
+  bool available = false;
+};
+
+inline bool solar_ctx_valid(SolarCardCtx *c) {
+  return c && c->magic == SOLAR_CTX_MAGIC;
+}
+
+// ---------------------------------------------------------------------------
+// Net-cascade hero computation
+// ---------------------------------------------------------------------------
+
+struct SolarHero {
+  std::string text;
+  std::string unit;
+  std::string label;
+  bool has = false;
+  int sign = 1;   // 1 = green (surplus), -1 = red (importing)
+};
+
+// Format a solar quantity for modal rows and "today" cards.
+//   - W/Wh with |v| >= 1000  → convert to kW/kWh, exactly one decimal
+//       (16823 W → "16.8" kW, 1500 Wh → "1.5" kWh, 1000 W → "1.0" kW)
+//   - otherwise              → keep the unit, at most one decimal with trailing
+//       zeros stripped (950 W → "950" W, 16.82 kWh → "16.8", 0.834 kW → "0.8")
+// Sets out_unit to the (possibly converted) unit.
+inline std::string solar_format_qty(double v, const std::string &unit,
+                                    std::string &out_unit) {
+  out_unit = unit;
+  char buf[32];
+  if ((unit == "W" || unit == "Wh") && (v >= 1000.0 || v <= -1000.0)) {
+    out_unit = (unit == "W") ? "kW" : "kWh";
+    std::snprintf(buf, sizeof(buf), "%.1f", v / 1000.0);  // exactly one decimal
+    return std::string(buf);
+  }
+  std::snprintf(buf, sizeof(buf), "%.1f", v);              // at most one decimal
+  std::string s(buf);
+  size_t dot = s.find('.');
+  if (dot != std::string::npos) {
+    size_t last = s.find_last_not_of('0');
+    if (last == dot) s = s.substr(0, dot);       // all zeros → integer
+    else if (last != std::string::npos) s = s.substr(0, last + 1);
+  }
+  return s;
+}
+
+// Format a numeric value for display: 1 decimal when |v| < 10, 0 decimals otherwise.
+// Never uses "+" prefix — the green/red color already communicates the sign,
+// and "+" is not in the number font's glyph set (it would render as a rectangle).
+inline std::string solar_format_value(double v) {
+  char buf[32];
+  double abs_v = v < 0 ? -v : v;
+  const char *fmt = abs_v < 10.0 ? "%.1f" : "%.0f";
+  std::snprintf(buf, sizeof(buf), fmt, v);
+  return std::string(buf);
+}
+
+// Set hero text/unit/sign for a numeric value. When scale_units is true, apply
+// the kW/kWh conversion + decimal rule used by modals and "today" cards;
+// otherwise keep live-card "smart precision" with the raw unit.
+inline void solar_hero_set_value(SolarHero &h, double v, const std::string &unit,
+                                 bool scale_units) {
+  if (scale_units) {
+    std::string out_unit;
+    h.text = solar_format_qty(v, unit, out_unit);
+    h.unit = out_unit;
+  } else {
+    h.text = solar_format_value(v);
+    h.unit = unit;
+  }
+  h.sign = v >= 0 ? 1 : -1;
+}
+
+inline SolarHero solar_compute_hero(const SolarCardCtx *c, bool scale_units) {
+  SolarHero h;
+
+  // Helper: parse and optionally invert the production value
+  char *ep2 = nullptr;
+  double prod_v = std::strtod(c->production.value.c_str(), &ep2);
+  bool prod_parsed = (ep2 != c->production.value.c_str());
+  if (prod_parsed && c->invert_production) prod_v = -prod_v;
+
+  // 1. Net entity — parse and apply smart precision (same rule as computed net)
+  if (c->net.available && !c->net.value.empty()) {
+    char *en = nullptr;
+    double nv = std::strtod(c->net.value.c_str(), &en);
+    if (en != c->net.value.c_str()) {
+      solar_hero_set_value(h, nv, c->net.unit, scale_units);
+    } else {
+      h.text = c->net.value;  // not numeric — show verbatim
+      h.unit = c->net.unit;
+      h.sign = (c->net.value.find('-') == std::string::npos) ? 1 : -1;
+    }
+    h.label = c->mode == "today" ? "Today" : "Live";
+    h.has = true;
+    return h;
+  }
+
+  // 2. production − consumption (only when both available AND same unit)
+  char *ec = nullptr;
+  double cons = std::strtod(c->consumption.value.c_str(), &ec);
+  if (c->production.available && c->consumption.available &&
+      prod_parsed && ec != c->consumption.value.c_str() &&
+      c->production.unit == c->consumption.unit) {
+    double d = prod_v - cons;
+    solar_hero_set_value(h, d, c->production.unit, scale_units);
+    h.label = c->mode == "today" ? "Today" : "Live";
+    h.has = true;
+    return h;
+  }
+
+  // 3. production alone — apply smart precision
+  if (c->production.available && prod_parsed) {
+    solar_hero_set_value(h, prod_v, c->production.unit, scale_units);
+    h.label = c->mode == "today" ? "Today" : "Live";
+    h.has = true;
+    return h;
+  }
+
+  // 4. first available field among the remaining
+  for (const SolarField *f : {&c->consumption, &c->battery, &c->from_grid, &c->to_grid}) {
+    if (f->available && !f->value.empty()) {
+      char *ef = nullptr;
+      double fv = std::strtod(f->value.c_str(), &ef);
+      if (ef != f->value.c_str()) {
+        solar_hero_set_value(h, fv, f->unit, scale_units);
+      } else {
+        h.text = f->value;  // not numeric — show verbatim
+        h.unit = f->unit;
+        h.sign = 1;
+      }
+      h.label = c->mode == "today" ? "Today" : "Live";
+      h.has = true;
+      return h;
+    }
+  }
+
+  return h;  // has=false → show placeholder
+}
+
+// ---------------------------------------------------------------------------
+// Card-face render
+// ---------------------------------------------------------------------------
+
+inline void solar_apply_card_face(SolarCardCtx *ctx) {
+  if (!ctx || !ctx->btn) return;
+
+  // Reset background
+  lv_style_selector_t sel =
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DEFAULT;
+  lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(ctx->off_color), sel);
+  lv_obj_set_style_bg_grad_dir(ctx->btn, LV_GRAD_DIR_NONE, sel);
+
+  // Live cards keep "smart precision"; "today" cards use the kW/kWh + decimal
+  // rule (same as the modal).
+  SolarHero hero = solar_compute_hero(ctx, ctx->mode == "today");
+
+  uint32_t hero_color = (hero.sign >= 0) ? 0x5BD17A : 0xFF6B6B;
+
+  // Hero value label
+  if (ctx->value_lbl) {
+    if (hero.has) {
+      lv_label_set_text(ctx->value_lbl, hero.text.c_str());
+      if (ctx->value_font)
+        lv_obj_set_style_text_font(ctx->value_lbl, ctx->value_font, LV_PART_MAIN);
+      lv_obj_set_style_text_color(ctx->value_lbl, lv_color_hex(hero_color), LV_PART_MAIN);
+      lv_obj_clear_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_label_set_text(ctx->value_lbl, "--");
+      lv_obj_set_style_text_color(ctx->value_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    }
+  }
+
+  // Unit label — explicitly use label_font (text font) so "kWh"/"W" etc.
+  // always render as letters, not as missing-glyph boxes from the icon font.
+  if (ctx->unit_lbl) {
+    if (ctx->label_font) lv_obj_set_style_text_font(ctx->unit_lbl, ctx->label_font, LV_PART_MAIN);
+    lv_label_set_text(ctx->unit_lbl, hero.has ? hero.unit.c_str() : "");
+    lv_obj_set_style_text_color(ctx->unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  }
+
+  // Bottom label: hero type name
+  if (ctx->label_lbl) {
+    lv_label_set_text(ctx->label_lbl,
+      hero.has ? hero.label.c_str()
+               : (ctx->mode == "today" ? "Solar Today" : "Solar"));
+    lv_obj_set_style_text_color(ctx->label_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  }
+
+  // Solar glyph at bottom-right (always shown, accent colored).
+  if (ctx->icon_lbl) {
+    lv_label_set_text(ctx->icon_lbl, find_icon("Solar Power"));
+    if (ctx->icon_font) lv_obj_set_style_text_font(ctx->icon_lbl, ctx->icon_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ctx->icon_lbl, lv_color_hex(ctx->accent_color), LV_PART_MAIN);
+    lv_obj_align(ctx->icon_lbl, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+    // Rotate 180° around the glyph's own centre (pixel pivot, not lv_pct which
+    // had rendering issues on this LVGL version).
+    lv_coord_t half = ctx->icon_font ? (ctx->icon_font->line_height / 2) : 16;
+    lv_obj_set_style_transform_angle(ctx->icon_lbl, 1800, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_x(ctx->icon_lbl, half, LV_PART_MAIN);
+    lv_obj_set_style_transform_pivot_y(ctx->icon_lbl, half, LV_PART_MAIN);
+    lv_obj_clear_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  }
+
+  // Battery % corner (top-right)
+  if (ctx->corner_lbl) {
+    if (ctx->battery.available && !ctx->battery.value.empty()) {
+      std::string batt_text = ctx->battery.value;
+      if (!ctx->battery.unit.empty()) batt_text += ctx->battery.unit;
+      lv_label_set_text(ctx->corner_lbl, batt_text.c_str());
+      lv_obj_set_style_text_color(ctx->corner_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      lv_obj_align(ctx->corner_lbl, LV_ALIGN_TOP_RIGHT, 0, 0);
+      lv_obj_clear_flag(ctx->corner_lbl, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(ctx->corner_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Context creation and subscriptions
+// ---------------------------------------------------------------------------
+
+// subscribe_sensor_value() only updates LVGL labels directly and has no
+// generic-callback overload.  For the solar card we use ha_subscribe_state()
+// for the entity state and ha_subscribe_attribute() for unit_of_measurement,
+// exactly as the todo card subscribes to state and friendly_name.
+
+// Forward declaration — defined after solar_subscribe_field.
+inline void solar_open_modal(SolarCardCtx *ctx);
+
+inline void solar_subscribe_field(SolarField &field, SolarCardCtx *ctx) {
+  if (field.entity_id.empty()) return;
+
+  // Subscribe to unit_of_measurement FIRST so it arrives before the state
+  // callback fires — minimising the window where the tile renders without a unit.
+  ha_subscribe_attribute(
+    field.entity_id,
+    std::string("unit_of_measurement"),
+    std::function<void(esphome::StringRef)>(
+      [ctx, &field](esphome::StringRef unit) {
+        field.unit = string_ref_limited(unit, SOLAR_FIELD_UNIT_MAX_LEN);
+        solar_apply_card_face(ctx);
+      }
+    )
+  );
+
+  // Subscribe to state — by now the unit callback may have already fired.
+  ha_subscribe_state(
+    field.entity_id,
+    std::function<void(esphome::StringRef)>(
+      [ctx, &field](esphome::StringRef state) {
+        bool unavailable = ha_state_unavailable_ref(state);
+        field.available = !unavailable;
+        field.value = unavailable ? "" : string_ref_limited(state, SOLAR_FIELD_VALUE_MAX_LEN);
+        solar_apply_card_face(ctx);
+        if (control_modal_active().kind == ControlModalKind::SOLAR)
+          solar_open_modal(ctx);
+      }
+    )
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Breakdown-list modal
+// ---------------------------------------------------------------------------
+
+inline void solar_open_modal(SolarCardCtx *ctx) {
+  if (!solar_ctx_valid(ctx)) return;
+
+  // Any existing SOLAR overlay is torn down by control_modal_open_shell()
+  // below, which calls control_modal_close_active() before building the new
+  // shell. Do NOT delete it manually here: this function re-opens the modal on
+  // every entity state update (live refresh), and a manual delete that clears
+  // the active bookkeeping would defeat that teardown and leave the previous
+  // overlay stacked underneath the new one (back arrow then only peels one
+  // layer per tap and appears to stop working).
+
+  // Open the shared shell (back-arrow button, top-left, closes on click)
+  ControlModalShell shell = control_modal_open_shell(
+    ControlModalKind::SOLAR,
+    ctx->btn,
+    ctx->width_compensation_percent,
+    ctx->icon_font,
+    "\U000F0141",   // mdi:arrow-left, same chevron used by todo/climate
+    false,          // button_top_right = false → top-left
+    []() {          // close_callback: delete the active overlay
+      ControlModalActive &a = control_modal_active();
+      if (a.overlay) {
+        lv_obj_t *o = a.overlay;
+        a.overlay = nullptr;
+        lv_obj_del(o);
+      }
+      control_modal_reset_active();
+    }
+  );
+  if (!shell.panel) return;
+
+  ControlModalLayout &layout = shell.layout;
+  lv_coord_t content_w = shell.content_w;
+
+  // --- Title ---
+  lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
+  if (gap < 8) gap = 8;
+  lv_coord_t title_y = layout.inset + layout.back_size / 2;
+
+  std::string title = (ctx->mode == "today") ? "Solar Today" : "Solar Now";
+  lv_obj_t *title_lbl = control_modal_create_title(
+    shell.panel, title,
+    content_w - layout.back_size - gap,
+    ctx->label_font,
+    ctx->width_compensation_percent);
+  lv_obj_set_style_text_color(title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+  lv_obj_update_layout(title_lbl);
+  lv_obj_align(title_lbl, LV_ALIGN_TOP_MID, 0, title_y - lv_obj_get_height(title_lbl) / 2);
+
+  // --- Hero row --- (modal always applies the kW/kWh + decimal rule)
+  SolarHero hero = solar_compute_hero(ctx, true);
+  lv_coord_t hero_h = 0;
+  lv_coord_t after_title_y = layout.inset + layout.back_size + gap;
+
+  if (hero.has) {
+    uint32_t hero_color = (hero.sign >= 0) ? 0x5BD17A : 0xFF6B6B;
+
+    // Hero container row (transparent, sized to content)
+    lv_obj_t *hero_row = lv_obj_create(shell.panel);
+    lv_obj_set_width(hero_row, content_w);
+    lv_obj_set_height(hero_row, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(hero_row, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(hero_row, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(hero_row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(hero_row, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(hero_row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(hero_row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_layout(hero_row, LV_LAYOUT_FLEX);
+    lv_obj_set_style_flex_flow(hero_row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+    lv_obj_set_style_flex_main_place(hero_row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_flex_cross_place(hero_row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(hero_row, 4, LV_PART_MAIN);
+
+    lv_obj_t *hero_val = lv_label_create(hero_row);
+    lv_label_set_text(hero_val, hero.text.c_str());
+    lv_obj_set_style_text_color(hero_val, lv_color_hex(hero_color), LV_PART_MAIN);
+    if (ctx->value_font) lv_obj_set_style_text_font(hero_val, ctx->value_font, LV_PART_MAIN);
+    apply_width_compensation(hero_val, ctx->width_compensation_percent);
+
+    if (!hero.unit.empty()) {
+      lv_obj_t *hero_unit = lv_label_create(hero_row);
+      lv_label_set_text(hero_unit, hero.unit.c_str());
+      lv_obj_set_style_text_color(hero_unit, lv_color_hex(hero_color), LV_PART_MAIN);
+      if (ctx->label_font) lv_obj_set_style_text_font(hero_unit, ctx->label_font, LV_PART_MAIN);
+      apply_width_compensation(hero_unit, ctx->width_compensation_percent);
+    }
+
+    lv_obj_align(hero_row, LV_ALIGN_TOP_MID, 0, after_title_y);
+    // Use font metrics for hero height — lv_obj_get_height returns 0 before
+    // the panel layout pass, which would cause the list to overlap the hero.
+    lv_coord_t val_lh = ctx->value_font ? ctx->value_font->line_height : 40;
+    hero_h = val_lh + gap;
+  }
+
+  // --- Scroll list of field rows ---
+  lv_coord_t row_gap = control_modal_scaled_px(6, layout.short_side);
+  if (row_gap < 4) row_gap = 4;
+  lv_coord_t list_y = after_title_y + hero_h + (hero.has ? gap : 0);
+  lv_coord_t list_h = layout.panel_h - list_y - layout.inset;
+  if (list_h < 40) list_h = 40;
+
+  lv_coord_t list_pad = control_modal_scaled_px(10, layout.short_side);
+  if (list_pad < 4) list_pad = 4;
+  lv_coord_t list_w = content_w - list_pad * 2;
+  if (list_w < 80) { list_w = content_w; list_pad = 0; }
+
+  lv_obj_t *list = control_modal_create_scroll_list(shell.panel, list_w, list_h, row_gap);
+  lv_obj_align(list, LV_ALIGN_TOP_LEFT, layout.inset + list_pad, list_y);
+
+  // Row height based on label font
+  lv_coord_t row_h = ctx->label_font && ctx->label_font->line_height > 0
+    ? ctx->label_font->line_height + control_modal_scaled_px(8, layout.short_side)
+    : control_modal_scaled_px(28, layout.short_side);
+  if (row_h < 24) row_h = 24;
+
+  // Icon column width
+  lv_coord_t icon_w = ctx->icon_font && ctx->icon_font->line_height > 0
+    ? ctx->icon_font->line_height + 4
+    : control_modal_scaled_px(22, layout.short_side);
+  if (icon_w < 18) icon_w = 18;
+
+  // Per-field row builder.  invert=true negates the numeric value before display.
+  struct RowSpec { const char *icon_name; const char *row_label; const SolarField *field; bool invert; };
+  RowSpec rows[] = {
+    { "Transmission Tower",  "Net",            &ctx->net,         false                    },
+    { "Solar Power",         "Production",     &ctx->production,  ctx->invert_production   },
+    { "Home Lightning Bolt", "Consumption",    &ctx->consumption, false                    },
+    { "Arrow Up",            "To Grid",        &ctx->to_grid,     false                    },
+    { "Arrow Down",          "From Grid",      &ctx->from_grid,   false                    },
+    { "Battery",             "Battery",        &ctx->battery,     false                    },
+  };
+
+  for (auto &rs : rows) {
+    if (rs.field->entity_id.empty()) continue;
+
+    // Row container — FLEX row so icon/label/value never overlap
+    lv_obj_t *row = lv_obj_create(list);
+    lv_obj_set_width(row, lv_pct(100));
+    lv_obj_set_height(row, row_h);
+    lv_obj_set_style_radius(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(row, 6, LV_PART_MAIN);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_layout(row, LV_LAYOUT_FLEX);
+    lv_obj_set_style_flex_flow(row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+    lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+
+    // Icon (fixed width)
+    lv_obj_t *icon = lv_label_create(row);
+    lv_label_set_text(icon, find_icon(rs.icon_name));
+    lv_obj_set_style_text_color(icon, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+    if (ctx->icon_font) lv_obj_set_style_text_font(icon, ctx->icon_font, LV_PART_MAIN);
+    lv_obj_set_width(icon, icon_w);
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+
+    // Field label — grows to fill remaining space
+    lv_coord_t value_w = list_w * 2 / 5;
+    lv_coord_t label_w = list_w - icon_w - 6 - value_w - 6;
+    if (label_w < 30) label_w = 30;
+
+    lv_obj_t *name_lbl = lv_label_create(row);
+    lv_label_set_text(name_lbl, rs.row_label);
+    lv_label_set_long_mode(name_lbl, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(name_lbl, label_w);
+    lv_obj_set_style_text_color(name_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(name_lbl, ctx->label_font, LV_PART_MAIN);
+
+    // Value + unit — right-aligned, fixed width. Applies the kW/kWh + decimal
+    // rule; inverts the production field when invert_production is set.
+    std::string val_str = "--";
+    std::string unit_str = "";
+    if (rs.field->available) {
+      unit_str = rs.field->unit;
+      char *ep = nullptr;
+      double v = std::strtod(rs.field->value.c_str(), &ep);
+      if (ep != rs.field->value.c_str()) {
+        if (rs.invert) v = -v;
+        val_str = solar_format_qty(v, rs.field->unit, unit_str);
+      } else {
+        val_str = rs.field->value;  // non-numeric — show verbatim
+      }
+    }
+    std::string val_with_unit = unit_str.empty() ? val_str : (val_str + " " + unit_str);
+
+    lv_obj_t *val_lbl = lv_label_create(row);
+    lv_label_set_text(val_lbl, val_with_unit.c_str());
+    lv_label_set_long_mode(val_lbl, LV_LABEL_LONG_DOT);
+    lv_obj_set_width(val_lbl, value_w);
+    lv_obj_set_style_text_color(val_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(val_lbl, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(val_lbl, ctx->label_font, LV_PART_MAIN);
+  }
+
+  lv_obj_move_foreground(shell.overlay);
+}
+
+inline void solar_initial_render_timer_cb(lv_timer_t *t) {
+  SolarCardCtx *ctx = static_cast<SolarCardCtx *>(lv_timer_get_user_data(t));
+  if (solar_ctx_valid(ctx)) solar_apply_card_face(ctx);
+  lv_timer_del(t);
+}
+
+inline SolarCardCtx *create_solar_card_context(
+    BtnSlot &s,
+    const ParsedCfg &p,
+    uint32_t accent_color,
+    uint32_t off_color,
+    const lv_font_t *value_font,
+    const lv_font_t *label_font,
+    const lv_font_t *icon_font,
+    int width_compensation_percent) {
+
+  SolarCardCtx *ctx = new SolarCardCtx();
+  ctx->mode = cfg_option_value(p.options, "mode");
+  if (ctx->mode.empty()) ctx->mode = "live";
+  ctx->invert_production = cfg_option_enabled(p.options, "invert_production");
+  ctx->accent_color = accent_color;
+  ctx->off_color = off_color;
+  ctx->btn = s.btn;
+  ctx->value_lbl = s.sensor_lbl;
+  ctx->unit_lbl = s.unit_lbl;
+  ctx->label_lbl = s.text_lbl;
+  ctx->icon_lbl = s.icon_lbl;
+  ctx->value_font = value_font;
+  ctx->label_font = label_font;
+  ctx->icon_font = icon_font;
+  ctx->width_compensation_percent = width_compensation_percent;
+  lv_obj_set_user_data(s.btn, ctx);
+
+  // Create corner label for battery %
+  ctx->corner_lbl = lv_label_create(s.btn);
+  if (label_font) lv_obj_set_style_text_font(ctx->corner_lbl, label_font, LV_PART_MAIN);
+  lv_label_set_text(ctx->corner_lbl, "");
+  lv_obj_add_flag(ctx->corner_lbl, LV_OBJ_FLAG_HIDDEN);
+
+  // Populate entity IDs from config options
+  ctx->production.entity_id  = cfg_option_value(p.options, "production");
+  ctx->consumption.entity_id = cfg_option_value(p.options, "consumption");
+  ctx->net.entity_id         = cfg_option_value(p.options, "net");
+  ctx->battery.entity_id     = cfg_option_value(p.options, "battery");
+  ctx->from_grid.entity_id   = cfg_option_value(p.options, "from_grid");
+  ctx->to_grid.entity_id     = cfg_option_value(p.options, "to_grid");
+
+  // Subscribe to each configured field
+  solar_subscribe_field(ctx->production,  ctx);
+  solar_subscribe_field(ctx->consumption, ctx);
+  solar_subscribe_field(ctx->net,         ctx);
+  solar_subscribe_field(ctx->battery,     ctx);
+  solar_subscribe_field(ctx->from_grid,   ctx);
+  solar_subscribe_field(ctx->to_grid,     ctx);
+
+  solar_apply_card_face(ctx);
+
+  // One-shot timer: re-render ~300ms after setup to catch any unit attributes
+  // that arrive after the initial state (attribute subscriptions can lag).
+  lv_timer_create(solar_initial_render_timer_cb, 300, ctx);
+
+  // Tap handler: open the breakdown-list modal
+  lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
+    SolarCardCtx *ctx = static_cast<SolarCardCtx *>(lv_event_get_user_data(e));
+    solar_open_modal(ctx);
+  }, LV_EVENT_CLICKED, ctx);
+
+  return ctx;
+}

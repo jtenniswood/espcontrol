@@ -93,6 +93,12 @@ var CSS =
   ".sp-sensor-preview{display:flex;align-items:baseline;gap:.18em;color:#fff}" +
   ".sp-climate-temp-card .sp-sensor-preview{position:absolute;left:var(--btn-pad);top:var(--btn-pad)}" +
   ".sp-climate-temp-card .sp-btn-label-row{margin-top:auto}" +
+  ".sp-solar-card .sp-solar-hero{position:absolute;left:var(--btn-pad);top:var(--btn-pad)}" +
+  ".sp-solar-card .sp-btn-label-row{margin-top:auto}" +
+  ".sp-solar-net-pos{color:var(--success)}" +
+  ".sp-solar-net-neg{color:var(--danger)}" +
+  ".sp-solar-battery-corner{position:absolute;top:var(--btn-pad);right:var(--btn-pad);" +
+  "font-size:var(--sensor-fs);color:var(--text2);opacity:.85}" +
   ".sp-btn-big .sp-sensor-preview-large .sp-sensor-value,.sp-btn-wide .sp-sensor-preview-large .sp-sensor-value{font-size:calc(var(--btn-icon)*2.5);font-weight:100}" +
   ".sp-btn-big .sp-sensor-preview-large .sp-sensor-unit,.sp-btn-wide .sp-sensor-preview-large .sp-sensor-unit{transform:translateY(var(--large-sensor-unit-offset-y,-20px))}" +
   ".sp-date-time-wide-large{justify-content:center;align-items:center}" +
