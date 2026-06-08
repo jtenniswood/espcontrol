@@ -960,6 +960,13 @@
           "kind": "flag"
         },
         {
+          "name": "image_modal_mode",
+          "label": "Modal Image Size",
+          "kind": "choice",
+          "values": ["fill", "fit"],
+          "defaultValue": "fill"
+        },
+        {
           "name": "image_refresh",
           "label": "Refresh Interval",
           "kind": "choice",

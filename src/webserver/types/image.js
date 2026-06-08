@@ -28,6 +28,13 @@ function imageRefreshModeOptions() {
   ];
 }
 
+function imageModalModeOptions() {
+  return [
+    ["fill", "Fill (cropped)"],
+    ["fit", "Fit (borders)"],
+  ];
+}
+
 function renderImageLabelSettings(panel, b, helpers) {
   var toggle = helpers.toggleRow(
     "Show Label",
@@ -58,6 +65,20 @@ function renderImageLabelSettings(panel, b, helpers) {
     renderPreview();
   });
   syncLabelField();
+}
+
+function renderImageModalSettings(panel, b, helpers) {
+  var modeField = helpers.selectField(
+    "Modal Image Size",
+    helpers.idPrefix + "image-modal-mode",
+    imageModalModeOptions(),
+    imageModalMode(b)
+  );
+  panel.appendChild(modeField.field);
+  modeField.select.addEventListener("change", function () {
+    setImageModalMode(b, this.value);
+    helpers.saveField("options", b.options);
+  });
 }
 
 function renderImageRefreshSettings(panel, b, helpers) {
@@ -122,6 +143,7 @@ registerButtonType("image", {
     if (!imageLabelEnabled(b)) b.label = "";
     helpers.renderCardEntityField(panel, b, helpers, IMAGE_CARD_METADATA);
     renderImageLabelSettings(panel, b, helpers);
+    renderImageModalSettings(panel, b, helpers);
     renderImageRefreshSettings(panel, b, helpers);
   },
   renderPreview: function (b, helpers) {

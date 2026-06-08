@@ -146,6 +146,7 @@ int main() {
   assert(image_default.options == "");
   assert(image_card_refresh_interval_ms(image_default) == 0);
   assert(!image_card_timer_only_refresh(image_default));
+  assert(!image_card_modal_fit_enabled(image_default));
   auto image_label = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;image_label");
   assert(image_label.type == "image");
   assert(image_label.label == "Front Door");
@@ -156,6 +157,15 @@ int main() {
   assert(image_label_refresh.options == "image_label,image_refresh=30,image_refresh_mode=timer");
   assert(image_card_refresh_interval_ms(image_label_refresh) == 30000);
   assert(image_card_timer_only_refresh(image_label_refresh));
+  auto image_fit_refresh = parse_cfg("~camera.front_door,,Auto,Auto,,,image,,image_modal_mode=fit%2Cimage_refresh=30%2Cimage_refresh_mode=timer");
+  assert(image_fit_refresh.options == "image_modal_mode=fit,image_refresh=30,image_refresh_mode=timer");
+  assert(image_card_modal_fit_enabled(image_fit_refresh));
+  auto image_fill_default = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_modal_mode=fill,image_refresh=30");
+  assert(image_fill_default.options == "image_refresh=30");
+  assert(!image_card_modal_fit_enabled(image_fill_default));
+  auto image_bad_modal = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_modal_mode=stretch,image_refresh=30");
+  assert(image_bad_modal.options == "image_refresh=30");
+  assert(!image_card_modal_fit_enabled(image_bad_modal));
   auto image_ignored_label = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;");
   assert(image_ignored_label.label == "");
   assert(!image_card_label_enabled(image_ignored_label));

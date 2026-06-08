@@ -39,5 +39,5 @@ This generated reference lists stable setup facts from the shared card contract.
 | Subpage | subpage | None | No | Own picker item | Subpage Type: default, lights, climate, presence, media; Large State Numbers | Visible |
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
 | Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
-| Image | image | camera | Yes | Own picker item | Show Label; Refresh Interval: off, 10, 30, 60, 300; Refresh Mode: changes_timer, timer | Experimental |
+| Image | image | camera | Yes | Own picker item | Show Label; Modal Image Size: fill, fit; Refresh Interval: off, 10, 30, 60, 300; Refresh Mode: changes_timer, timer | Experimental |
 | Weather Forecast | weather_forecast | weather | Yes | Own picker item | None | Hidden |

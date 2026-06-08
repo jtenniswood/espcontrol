@@ -19,6 +19,7 @@ struct ImageCardCtx {
   bool callbacks_bound = false;
   bool requested_once = false;
   bool timer_only = false;
+  bool modal_fit = false;
 };
 
 struct ImageCardModalUi {
@@ -122,6 +123,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].width_compensation_percent = 100;
     contexts[i].requested_once = false;
     contexts[i].timer_only = false;
+    contexts[i].modal_fit = false;
     contexts[i].image = cfg.image_card_images ? cfg.image_card_images[i] : nullptr;
     if (contexts[i].image) contexts[i].image->release();
   }
@@ -183,7 +185,9 @@ inline bool image_card_apply_modal_geometry(ImageCardCtx *ctx,
     ui.image_widget, lv_obj_get_style_radius(ui.panel, LV_PART_MAIN), LV_PART_MAIN);
   lv_obj_set_style_clip_corner(ui.image_widget, true, LV_PART_MAIN);
   ctx->image->set_target_size(width, height);
-  ctx->image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
+  ctx->image->set_resize_mode(ctx->modal_fit
+    ? esphome::artwork_image::ImageResizeMode::FIT
+    : esphome::artwork_image::ImageResizeMode::COVER);
   if (target_width) *target_width = width;
   if (target_height) *target_height = height;
   return true;
@@ -400,6 +404,7 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
   ctx->entity_id = p.entity;
   ctx->refresh_interval_ms = image_card_refresh_interval_ms(p);
   ctx->timer_only = image_card_timer_only_refresh(p);
+  ctx->modal_fit = image_card_modal_fit_enabled(p);
   ctx->width_compensation_percent = cfg.width_compensation_percent;
   image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
   lv_obj_set_user_data(s.btn, ctx);

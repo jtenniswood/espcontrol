@@ -1573,10 +1573,14 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("fan_speed", t
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("image", false, false), false, "image picker hidden without experimental flag");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("image", true, false), true, "image picker visible with experimental flag");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("image", true, true), true, "image picker visible in subpages with experimental flag");
+assert.deepStrictEqual(Array.from(hooks.imageModalModeValues()), ["fill", "fit"], "image modal mode values are contract-backed");
 assert.deepStrictEqual(Array.from(hooks.imageRefreshIntervalValues()), ["off", "10", "30", "60", "300"], "image refresh interval values are contract-backed");
 assert.deepStrictEqual(Array.from(hooks.imageRefreshModeValues()), ["changes_timer", "timer"], "image refresh mode values are contract-backed");
 assert.strictEqual(hooks.normalizeImageOptions("image_refresh=30,image_refresh_mode=timer,unknown=1"), "image_refresh=30,image_refresh_mode=timer", "image refresh options keep valid values");
 assert.strictEqual(hooks.normalizeImageOptions("image_label,image_refresh=30,image_refresh_mode=timer,unknown=1"), "image_label,image_refresh=30,image_refresh_mode=timer", "image label option is preserved with refresh values");
+assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fit,image_refresh=30,image_refresh_mode=timer,unknown=1"), "image_modal_mode=fit,image_refresh=30,image_refresh_mode=timer", "image modal fit option is preserved with refresh values");
+assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fill,image_refresh=30"), "image_refresh=30", "image modal fill is the default and is omitted");
+assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=bad,image_refresh=30"), "image_refresh=30", "invalid image modal mode falls back to fill");
 assert.strictEqual(hooks.normalizeImageOptions("image_refresh=5,image_refresh_mode=bad"), "", "image refresh options drop invalid values");
 assert.strictEqual(hooks.normalizeImageOptions("image_label,image_refresh=5,image_refresh_mode=bad"), "image_label", "image label option survives invalid refresh values");
 assertButtonRoundTrip(hooks, "image card default options", {

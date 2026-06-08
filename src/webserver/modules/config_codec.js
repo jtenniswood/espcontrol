@@ -201,6 +201,7 @@ var CLIMATE_NUMBER_DISPLAY_OPTION = "number_display";
 var MEDIA_VOLUME_MAX_OPTION = "volume_max";
 var SUBPAGE_KIND_OPTION = "subpage_kind";
 var IMAGE_LABEL_OPTION = "image_label";
+var IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
 var IMAGE_REFRESH_OPTION = "image_refresh";
 var IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
 var ALARM_ACTIONS = [
@@ -332,6 +333,11 @@ function imageRefreshModeValues() {
   return spec && spec.values ? spec.values.slice() : ["changes_timer", "timer"];
 }
 
+function imageModalModeValues() {
+  var spec = cardContractOptionSpec("image", IMAGE_MODAL_MODE_OPTION);
+  return spec && spec.values ? spec.values.slice() : ["fill", "fit"];
+}
+
 function normalizeImageRefreshInterval(value) {
   value = String(value || "").trim();
   return imageRefreshIntervalValues().indexOf(value) >= 0 ? value : "off";
@@ -342,12 +348,21 @@ function normalizeImageRefreshMode(value) {
   return imageRefreshModeValues().indexOf(value) >= 0 ? value : "changes_timer";
 }
 
+function normalizeImageModalMode(value) {
+  value = String(value || "").trim();
+  return imageModalModeValues().indexOf(value) >= 0 ? value : "fill";
+}
+
 function imageRefreshInterval(b) {
   return normalizeImageRefreshInterval(configOptionValue(b && b.options, IMAGE_REFRESH_OPTION));
 }
 
 function imageRefreshMode(b) {
   return normalizeImageRefreshMode(configOptionValue(b && b.options, IMAGE_REFRESH_MODE_OPTION));
+}
+
+function imageModalMode(b) {
+  return normalizeImageModalMode(configOptionValue(b && b.options, IMAGE_MODAL_MODE_OPTION));
 }
 
 function imageLabelEnabled(b) {
@@ -358,6 +373,10 @@ function normalizeImageOptions(options) {
   var out = "";
   if (configOptionEnabled(options, IMAGE_LABEL_OPTION)) {
     out = setConfigOption(out, IMAGE_LABEL_OPTION, true);
+  }
+  var modalMode = normalizeImageModalMode(configOptionValue(options, IMAGE_MODAL_MODE_OPTION));
+  if (modalMode !== "fill") {
+    out = setConfigOptionValue(out, IMAGE_MODAL_MODE_OPTION, modalMode);
   }
   var interval = normalizeImageRefreshInterval(configOptionValue(options, IMAGE_REFRESH_OPTION));
   if (interval === "off") return out;
@@ -373,6 +392,14 @@ function setImageLabelEnabled(b, enabled) {
   if (!b) return "";
   b.options = setConfigOption(b.options, IMAGE_LABEL_OPTION, !!enabled);
   if (!enabled) b.label = "";
+  b.options = normalizeImageOptions(b.options);
+  return b.options;
+}
+
+function setImageModalMode(b, value) {
+  if (!b) return "";
+  var mode = normalizeImageModalMode(value);
+  b.options = setConfigOptionValue(b.options, IMAGE_MODAL_MODE_OPTION, mode === "fill" ? "" : mode);
   b.options = normalizeImageOptions(b.options);
   return b.options;
 }
