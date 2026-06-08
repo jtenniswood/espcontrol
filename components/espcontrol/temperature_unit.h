@@ -1,3 +1,6 @@
+#ifndef ESPCONTROL_TEMPERATURE_UNIT_H
+#define ESPCONTROL_TEMPERATURE_UNIT_H
+
 #pragma once
 
 #include <string>
@@ -110,3 +113,5 @@ inline const char *display_clock_bar_temperature_suffix() {
   if (display_temperature_degree_symbol_enabled()) return "\u00B0";
   return "";
 }
+
+#endif  // ESPCONTROL_TEMPERATURE_UNIT_H

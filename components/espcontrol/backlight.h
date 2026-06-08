@@ -1,3 +1,6 @@
+#ifndef ESPCONTROL_BACKLIGHT_H
+#define ESPCONTROL_BACKLIGHT_H
+
 // =============================================================================
 // BACKLIGHT - Brightness scheduling, sunrise/sunset, and UI helpers
 // =============================================================================
@@ -802,3 +805,5 @@ inline bool should_check_update(int counter, const std::string &freq) {
   else if (freq == "Monthly") threshold = 720;
   return counter % threshold == 0;
 }
+
+#endif  // ESPCONTROL_BACKLIGHT_H

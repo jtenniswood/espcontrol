@@ -1,3 +1,6 @@
+#ifndef ESPCONTROL_SUN_CALC_H
+#define ESPCONTROL_SUN_CALC_H
+
 #pragma once
 #include <string>
 #include <cstdint>
@@ -637,3 +640,5 @@ inline bool calc_sunrise_sunset(int year, int month, int day,
 
   return ok_rise && ok_set;
 }
+
+#endif  // ESPCONTROL_SUN_CALC_H
