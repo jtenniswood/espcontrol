@@ -225,12 +225,9 @@ export interface BackupPanelSettingsState {
   mediaPlayerSleepPreventionEntity: string;
   coverArtScreensaver: boolean;
   coverArtMediaPlayerEntity: string;
-  coverArtHomeAssistantUrl: string;
   coverArtDelay: unknown;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
-  coverArtOpenMediaSubpage: boolean;
-  coverArtMediaSubpageTarget: string;
   screensaverAction: string;
   clockScreensaver: boolean;
   clockBrightnessDay: number;
@@ -331,14 +328,11 @@ export function normalizeBackupPanelSettings(
     mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || ""),
     coverArtScreensaver: !!settings.cover_art_screensaver,
     coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
-    coverArtHomeAssistantUrl: String(settings.cover_art_home_assistant_url || ""),
     coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
     coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
-    coverArtOpenMediaSubpage: !!settings.cover_art_open_media_subpage,
-    coverArtMediaSubpageTarget: String(settings.cover_art_media_subpage_target || ""),
     screensaverAction,
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,

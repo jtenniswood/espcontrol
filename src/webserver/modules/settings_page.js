@@ -977,7 +977,6 @@ function syncMediaPlayerSleepPreventionUi() {
 }
 
 function syncCoverArtScreensaverUi() {
-  syncCoverArtSubpageOptions();
   if (els.setCoverArtToggle) {
     els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
   }
@@ -1006,35 +1005,6 @@ function syncCoverArtScreensaverUi() {
   }
 }
 
-function syncCoverArtSubpageOptions() {
-  if (!els.setCoverArtMediaSubpage) return;
-
-  var select = els.setCoverArtMediaSubpage;
-  var current = state.coverArtMediaSubpageTarget || "";
-  select.innerHTML = "";
-
-  var foundCurrent = current === "";
-  for (var i = 0; i < state.buttons.length; i++) {
-    var b = state.buttons[i] || {};
-    if (b.type !== "subpage") continue;
-    var slot = i + 1;
-    var label = (b.label || "").trim() || ("Subpage " + slot);
-    var opt = document.createElement("option");
-    opt.value = "slot:" + slot;
-    opt.textContent = label;
-    if (opt.value === current) foundCurrent = true;
-    select.appendChild(opt);
-  }
-
-  if (current && !foundCurrent) {
-    var saved = document.createElement("option");
-    saved.value = current;
-    saved.textContent = current + " (saved)";
-    select.appendChild(saved);
-  }
-
-  select.value = current && foundCurrent ? current : "";
-}
 
 function syncOptionalClockBrightness(field, previousField, display) {
   if (field) field.style.display = display;

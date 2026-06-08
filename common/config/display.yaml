@@ -377,17 +377,6 @@ switch:
       - script.execute: cover_art_disable
 
   - platform: template
-    name: "${entity_screen_saver_open_media_subpage}"
-    internal: true
-    id: cover_art_open_media_subpage_enabled
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
-    icon: "mdi:page-next-outline"
-    entity_category: config
-    web_server:
-      sorting_group_id: sg_screensaver
-
-  - platform: template
     name: "${entity_screen_saver_hide_cover_art_external_input}"
     internal: true
     id: cover_art_hide_external_input_enabled
@@ -669,38 +658,6 @@ text:
             value: '""'
         - script.execute: cover_art_playback_stopped
         - script.execute: cover_art_resubscribe
-
-  - platform: template
-    name: "${entity_screen_saver_cover_art_ha_url}"
-    internal: true
-    id: cover_art_home_assistant_url
-    optimistic: true
-    restore_value: true
-    initial_value: ""
-    min_length: 0
-    max_length: 120
-    mode: text
-    entity_category: config
-    icon: "mdi:home-assistant"
-    update_interval: never
-    web_server:
-      sorting_group_id: sg_screensaver
-
-  - platform: template
-    name: "${entity_screen_saver_media_subpage}"
-    internal: true
-    id: cover_art_media_subpage_target
-    optimistic: true
-    restore_value: true
-    initial_value: ""
-    min_length: 0
-    max_length: 100
-    mode: text
-    entity_category: config
-    icon: "mdi:view-dashboard-outline"
-    update_interval: never
-    web_server:
-      sorting_group_id: sg_screensaver
 
 number:
   - platform: template

@@ -204,15 +204,6 @@ var ENTITY_CATALOG = {
         "cover_art_media_player_entity"
       ]
     },
-    "screen_saver_cover_art_ha_url": {
-      "domain": "text",
-      "name": "Screen Saver: Cover Art Fallback Server",
-      "objectIds": [
-        "screen_saver__home_assistant_url",
-        "screen_saver_cover_art_ha_url",
-        "cover_art_home_assistant_url"
-      ]
-    },
     "screen_saver_cover_art_delay": {
       "domain": "number",
       "name": "Screen Saver: Cover Art Delay",
@@ -239,26 +230,6 @@ var ENTITY_CATALOG = {
         "screen_saver_hide_cover_art_on_external_input",
         "hide_cover_art_on_external_input",
         "cover_art_hide_external_input"
-      ]
-    },
-    "screen_saver_open_media_subpage": {
-      "domain": "switch",
-      "name": "Screen Saver: Open Media Subpage While Playing",
-      "objectIds": [
-        "screen_saver__open_media_subpage_while_playing",
-        "screen_saver_open_media_subpage_while_playing",
-        "screen_saver__open_media_subpage",
-        "screen_saver_open_media_subpage",
-        "open_media_subpage_while_playing"
-      ]
-    },
-    "screen_saver_media_subpage": {
-      "domain": "text",
-      "name": "Screen Saver: Media Subpage",
-      "objectIds": [
-        "screen_saver__media_subpage",
-        "screen_saver_media_subpage",
-        "cover_art_media_subpage"
       ]
     },
     "screen_saver_daytime_clock_brightness": {
@@ -534,12 +505,9 @@ var ENTITY_CATALOG = {
       "media_player_sleep_prevention_entity",
       "screen_saver_cover_art",
       "screen_saver_cover_art_entity",
-      "screen_saver_cover_art_ha_url",
       "screen_saver_cover_art_delay",
       "screen_saver_track_overlay_duration",
       "screen_saver_hide_cover_art_external_input",
-      "screen_saver_open_media_subpage",
-      "screen_saver_media_subpage",
       "screen_saver_daytime_clock_brightness",
       "screen_saver_nighttime_clock_brightness",
       "screen_saver_clock_brightness",

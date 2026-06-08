@@ -9,12 +9,6 @@ globals:
   - id: cover_art_media_playing
     type: bool
     initial_value: 'false'
-  - id: cover_art_media_subpage_opened
-    type: bool
-    initial_value: 'false'
-  - id: cover_art_media_subpage_pending_on_hide
-    type: bool
-    initial_value: 'false'
   - id: cover_art_url
     type: std::string
     initial_value: '""'
@@ -628,12 +622,6 @@ script:
           id: cover_art_media_playing
           value: 'false'
       - globals.set:
-          id: cover_art_media_subpage_opened
-          value: 'false'
-      - globals.set:
-          id: cover_art_media_subpage_pending_on_hide
-          value: 'false'
-      - globals.set:
           id: cover_art_image_available
           value: 'false'
       - lambda: |-
@@ -962,9 +950,6 @@ script:
           id: cover_art_screensaver_active
           value: 'true'
       - globals.set:
-          id: cover_art_media_subpage_pending_on_hide
-          value: 'true'
-      - globals.set:
           id: screensaver_display_off_active
           value: 'false'
       - globals.set:
@@ -1015,25 +1000,6 @@ script:
       - lvgl.widget.hide: cover_art_accent_overlay
       - lvgl.widget.hide: cover_art_track_panel
       - script.execute: clock_bar_apply
-      - if:
-          condition:
-            lambda: |-
-              return id(cover_art_media_subpage_pending_on_hide) &&
-                     id(cover_art_media_playing) &&
-                     id(cover_art_open_media_subpage_enabled).state &&
-                     !id(cover_art_media_subpage_opened);
-          then:
-            - lambda: |-
-                std::string target = id(cover_art_media_subpage_target).state;
-                bool opened = target.empty()
-                  ? navigation_open_first_kind("media", id(main_page)->obj)
-                  : espcontrol_navigate(target, id(main_page)->obj);
-                if (opened) {
-                  id(cover_art_media_subpage_opened) = true;
-                }
-      - globals.set:
-          id: cover_art_media_subpage_pending_on_hide
-          value: 'false'
 
   - id: cover_art_delay_timer
     mode: restart
@@ -1118,8 +1084,7 @@ script:
             std::string path = string_ref_limited(picture, COVER_ART_URL_MAX_LEN);
             if (path.empty() || path == "unknown" || path == "unavailable") return "";
             if (path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0) return path;
-            std::string base = id(cover_art_home_assistant_url).state;
-            if (base.empty()) base = id(cover_art_home_assistant_base_url);
+            std::string base = id(cover_art_home_assistant_base_url);
             if (base.empty()) return "";
             while (!base.empty() && base.back() == '/') base.pop_back();
             return base + path;
@@ -1399,8 +1364,7 @@ script:
                 if (path.rfind("http://", 0) == 0 || path.rfind("https://", 0) == 0) {
                   url = path;
                 } else {
-                  std::string base = id(cover_art_home_assistant_url).state;
-                  if (base.empty()) base = id(cover_art_home_assistant_base_url);
+                  std::string base = id(cover_art_home_assistant_base_url);
                   if (!base.empty()) {
                     while (!base.empty() && base.back() == '/') base.pop_back();
                     url = base + path;
@@ -1555,12 +1519,6 @@ script:
     then:
       - globals.set:
           id: cover_art_media_playing
-          value: 'false'
-      - globals.set:
-          id: cover_art_media_subpage_opened
-          value: 'false'
-      - globals.set:
-          id: cover_art_media_subpage_pending_on_hide
           value: 'false'
       - lambda: |-
           id(cover_art_media_position) = 0.0f;
