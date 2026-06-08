@@ -329,7 +329,26 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
     // "remaining" on the right — so the bright portion shrinks toward the right
     // edge as the meeting progresses. Drawn as a hard-stop horizontal background
     // gradient so it covers the full tile.
-    int64_t secs_remaining = (event_end > now) ? (int64_t)(event_end - now) : 0;
+    //
+    // Guard: entity-attribute times arrive as local strings with no TZ offset,
+    // so on a UTC device they parse 4+ hours early. If HA reports the event as
+    // active (best->active) but our event_end is already in the past, the
+    // epoch values are unreliable — show "In progress" until the background
+    // poll delivers correct epoch data.
+    bool epochs_reliable = (event_end > now) || (!best->active && event_end > 0);
+    if (!epochs_reliable) {
+      ha_calendar_set_title(ctx, best->title.c_str());
+      lv_obj_add_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (ctx->unit_lbl) {
+        lv_label_set_text(ctx->unit_lbl, espcontrol_i18n("In progress"));
+        if (ctx->label_font) lv_obj_set_style_text_font(ctx->unit_lbl, ctx->label_font, LV_PART_MAIN);
+        lv_obj_set_style_text_color(ctx->unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      }
+      if (ctx->label_lbl) lv_obj_set_style_text_color(ctx->label_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      set_bg(ctx->accent_color);
+      return;
+    }
+    int64_t secs_remaining = (int64_t)(event_end - now);
     int64_t secs_into = (now > event_start) ? (int64_t)(now - event_start) : 0;
     int64_t total = (event_end > event_start) ? (int64_t)(event_end - event_start) : 0;
     int pct_elapsed = (total > 0) ? (int)((secs_into * 100) / total) : 0;
