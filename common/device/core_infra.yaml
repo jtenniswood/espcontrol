@@ -5,6 +5,12 @@
 # identical across all hardware targets.
 # =============================================================================
 
+substitutions:
+  # Base URL the web_server UI loads www.js from. Defaults to the published
+  # jsDelivr CDN; override (e.g. via `esphome -s web_ui_base_url ...`)
+  # to point a device at a locally hosted bundle during development.
+  web_ui_base_url: https://cdn.jsdelivr.net/gh/jtenniswood/espcontrol@main/docs/public
+
 esphome:
   # Enable LVGL's bidirectional text algorithm so right-to-left scripts
   # (Hebrew, Arabic) render in visual order.

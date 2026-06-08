@@ -53,15 +53,22 @@ struct SolarHero {
   int sign = 1;   // 1 = green (surplus), -1 = red (importing)
 };
 
-// Format a raw entity value for modal rows: cap at 2 decimal places, strip
-// trailing zeros (e.g. "16.823" → "16.82", "53.000" → "53", "3.5" → "3.5").
-// Returns the raw string unchanged if it doesn't parse as a number.
-inline std::string solar_format_modal_value(const std::string &raw) {
-  char *ep = nullptr;
-  double v = std::strtod(raw.c_str(), &ep);
-  if (ep == raw.c_str()) return raw;  // non-numeric — show verbatim
+// Format a solar quantity for modal rows and "today" cards.
+//   - W/Wh with |v| >= 1000  → convert to kW/kWh, exactly one decimal
+//       (16823 W → "16.8" kW, 1500 Wh → "1.5" kWh, 1000 W → "1.0" kW)
+//   - otherwise              → keep the unit, at most one decimal with trailing
+//       zeros stripped (950 W → "950" W, 16.82 kWh → "16.8", 0.834 kW → "0.8")
+// Sets out_unit to the (possibly converted) unit.
+inline std::string solar_format_qty(double v, const std::string &unit,
+                                    std::string &out_unit) {
+  out_unit = unit;
   char buf[32];
-  std::snprintf(buf, sizeof(buf), "%.2f", v);
+  if ((unit == "W" || unit == "Wh") && (v >= 1000.0 || v <= -1000.0)) {
+    out_unit = (unit == "W") ? "kW" : "kWh";
+    std::snprintf(buf, sizeof(buf), "%.1f", v / 1000.0);  // exactly one decimal
+    return std::string(buf);
+  }
+  std::snprintf(buf, sizeof(buf), "%.1f", v);              // at most one decimal
   std::string s(buf);
   size_t dot = s.find('.');
   if (dot != std::string::npos) {
@@ -83,7 +90,23 @@ inline std::string solar_format_value(double v) {
   return std::string(buf);
 }
 
-inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
+// Set hero text/unit/sign for a numeric value. When scale_units is true, apply
+// the kW/kWh conversion + decimal rule used by modals and "today" cards;
+// otherwise keep live-card "smart precision" with the raw unit.
+inline void solar_hero_set_value(SolarHero &h, double v, const std::string &unit,
+                                 bool scale_units) {
+  if (scale_units) {
+    std::string out_unit;
+    h.text = solar_format_qty(v, unit, out_unit);
+    h.unit = out_unit;
+  } else {
+    h.text = solar_format_value(v);
+    h.unit = unit;
+  }
+  h.sign = v >= 0 ? 1 : -1;
+}
+
+inline SolarHero solar_compute_hero(const SolarCardCtx *c, bool scale_units) {
   SolarHero h;
 
   // Helper: parse and optionally invert the production value
@@ -97,13 +120,12 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
     char *en = nullptr;
     double nv = std::strtod(c->net.value.c_str(), &en);
     if (en != c->net.value.c_str()) {
-      h.text = solar_format_value(nv);
-      h.sign = nv >= 0 ? 1 : -1;
+      solar_hero_set_value(h, nv, c->net.unit, scale_units);
     } else {
       h.text = c->net.value;  // not numeric — show verbatim
+      h.unit = c->net.unit;
       h.sign = (c->net.value.find('-') == std::string::npos) ? 1 : -1;
     }
-    h.unit = c->net.unit;
     h.label = c->mode == "today" ? "Today" : "Live";
     h.has = true;
     return h;
@@ -116,20 +138,16 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
       prod_parsed && ec != c->consumption.value.c_str() &&
       c->production.unit == c->consumption.unit) {
     double d = prod_v - cons;
-    h.text = solar_format_value(d);
-    h.unit = c->production.unit;
+    solar_hero_set_value(h, d, c->production.unit, scale_units);
     h.label = c->mode == "today" ? "Today" : "Live";
-    h.sign = d >= 0 ? 1 : -1;
     h.has = true;
     return h;
   }
 
   // 3. production alone — apply smart precision
   if (c->production.available && prod_parsed) {
-    h.text = solar_format_value(prod_v);
-    h.unit = c->production.unit;
+    solar_hero_set_value(h, prod_v, c->production.unit, scale_units);
     h.label = c->mode == "today" ? "Today" : "Live";
-    h.sign = prod_v >= 0 ? 1 : -1;
     h.has = true;
     return h;
   }
@@ -137,10 +155,16 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c) {
   // 4. first available field among the remaining
   for (const SolarField *f : {&c->consumption, &c->battery, &c->from_grid, &c->to_grid}) {
     if (f->available && !f->value.empty()) {
-      h.text = f->value;
-      h.unit = f->unit;
+      char *ef = nullptr;
+      double fv = std::strtod(f->value.c_str(), &ef);
+      if (ef != f->value.c_str()) {
+        solar_hero_set_value(h, fv, f->unit, scale_units);
+      } else {
+        h.text = f->value;  // not numeric — show verbatim
+        h.unit = f->unit;
+        h.sign = 1;
+      }
       h.label = c->mode == "today" ? "Today" : "Live";
-      h.sign = 1;
       h.has = true;
       return h;
     }
@@ -162,7 +186,9 @@ inline void solar_apply_card_face(SolarCardCtx *ctx) {
   lv_obj_set_style_bg_color(ctx->btn, lv_color_hex(ctx->off_color), sel);
   lv_obj_set_style_bg_grad_dir(ctx->btn, LV_GRAD_DIR_NONE, sel);
 
-  SolarHero hero = solar_compute_hero(ctx);
+  // Live cards keep "smart precision"; "today" cards use the kW/kWh + decimal
+  // rule (same as the modal).
+  SolarHero hero = solar_compute_hero(ctx, ctx->mode == "today");
 
   uint32_t hero_color = (hero.sign >= 0) ? 0x5BD17A : 0xFF6B6B;
 
@@ -277,9 +303,13 @@ inline void solar_subscribe_field(SolarField &field, SolarCardCtx *ctx) {
 inline void solar_open_modal(SolarCardCtx *ctx) {
   if (!solar_ctx_valid(ctx)) return;
 
-  // Delete any existing SOLAR modal first
-  lv_obj_t *existing_overlay = nullptr;
-  control_modal_delete_overlay(ControlModalKind::SOLAR, existing_overlay);
+  // Any existing SOLAR overlay is torn down by control_modal_open_shell()
+  // below, which calls control_modal_close_active() before building the new
+  // shell. Do NOT delete it manually here: this function re-opens the modal on
+  // every entity state update (live refresh), and a manual delete that clears
+  // the active bookkeeping would defeat that teardown and leave the previous
+  // overlay stacked underneath the new one (back arrow then only peels one
+  // layer per tap and appears to stop working).
 
   // Open the shared shell (back-arrow button, top-left, closes on click)
   ControlModalShell shell = control_modal_open_shell(
@@ -319,8 +349,8 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
   lv_obj_update_layout(title_lbl);
   lv_obj_align(title_lbl, LV_ALIGN_TOP_MID, 0, title_y - lv_obj_get_height(title_lbl) / 2);
 
-  // --- Hero row ---
-  SolarHero hero = solar_compute_hero(ctx);
+  // --- Hero row --- (modal always applies the kW/kWh + decimal rule)
+  SolarHero hero = solar_compute_hero(ctx, true);
   lv_coord_t hero_h = 0;
   lv_coord_t after_title_y = layout.inset + layout.back_size + gap;
 
@@ -441,20 +471,19 @@ inline void solar_open_modal(SolarCardCtx *ctx) {
     lv_obj_set_style_text_color(name_lbl, lv_color_hex(DARK_TEXT_SOFT), LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(name_lbl, ctx->label_font, LV_PART_MAIN);
 
-    // Value + unit — right-aligned, fixed width.
-    // Apply inversion to the production field when invert_production is set.
+    // Value + unit — right-aligned, fixed width. Applies the kW/kWh + decimal
+    // rule; inverts the production field when invert_production is set.
     std::string val_str = "--";
     std::string unit_str = "";
     if (rs.field->available) {
       unit_str = rs.field->unit;
-      if (rs.invert) {
-        char *ep = nullptr;
-        double v = std::strtod(rs.field->value.c_str(), &ep);
-        val_str = (ep != rs.field->value.c_str())
-          ? solar_format_modal_value(solar_format_value(-v))
-          : rs.field->value;
+      char *ep = nullptr;
+      double v = std::strtod(rs.field->value.c_str(), &ep);
+      if (ep != rs.field->value.c_str()) {
+        if (rs.invert) v = -v;
+        val_str = solar_format_qty(v, rs.field->unit, unit_str);
       } else {
-        val_str = solar_format_modal_value(rs.field->value);
+        val_str = rs.field->value;  // non-numeric — show verbatim
       }
     }
     std::string val_with_unit = unit_str.empty() ? val_str : (val_str + " " + unit_str);
