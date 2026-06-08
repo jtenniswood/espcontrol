@@ -5,6 +5,7 @@
 // Solar card: context struct, Net-cascade hero helper, and card-face render.
 // No modal and no grid wiring (those are Tasks 7 and 8).
 
+
 constexpr uint32_t SOLAR_CTX_MAGIC = 0x504C5253;  // "PLRS"
 
 constexpr size_t SOLAR_FIELD_VALUE_MAX_LEN = 32;
@@ -180,8 +181,17 @@ inline SolarHero solar_compute_hero(const SolarCardCtx *c, bool scale_units) {
 // Card-face render
 // ---------------------------------------------------------------------------
 
+// Forward declaration — defined in button_grid_solar_flow.h (included at bottom)
+inline void solar_flow_apply_card_face(SolarCardCtx *ctx);
+
 inline void solar_apply_card_face(SolarCardCtx *ctx) {
   if (!ctx || !ctx->btn) return;
+
+  // Flow mode: delegate entirely to the flow renderer
+  if (ctx->mode == "flow") {
+    solar_flow_apply_card_face(ctx);
+    return;
+  }
 
   // Reset background
   lv_style_selector_t sel =
@@ -571,6 +581,7 @@ inline SolarCardCtx *create_solar_card_context(
   lv_timer_create(solar_initial_render_timer_cb, 300, ctx);
 
   // Tap handler: open the breakdown-list modal
+  // Tap handler: open the breakdown-list modal (not for flow mode)
   lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
     SolarCardCtx *ctx = static_cast<SolarCardCtx *>(lv_event_get_user_data(e));
     solar_open_modal(ctx);
@@ -578,3 +589,6 @@ inline SolarCardCtx *create_solar_card_context(
 
   return ctx;
 }
+
+// Flow renderer implementation (includes this file via pragma once, no circularity)
+#include "button_grid_solar_flow.h"

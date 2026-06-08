@@ -217,7 +217,7 @@ display:
 lvgl:
   id: main_lvgl
   setup_priority: 230
-  buffer_size: 12%
+  buffer_size: 100%
   displays: my_display
   rotation: 0
   touchscreens:
