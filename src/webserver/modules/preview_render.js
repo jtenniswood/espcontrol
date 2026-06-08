@@ -55,6 +55,8 @@ var CARD_TYPE_PICKER_DETAILS = {
   subpage: { icon: "view-grid-plus", description: "Open a nested page of cards." },
   webhook: { icon: "webhook", description: "Send a direct HTTP request." },
   weather: { icon: "weather-partly-cloudy", description: "Show weather or forecast data." },
+  solar: { icon: "solar-power", description: "Show solar production, consumption, or net energy data." },
+  ha_calendar: { icon: "calendar-heart", description: "Show upcoming or in-progress calendar events." },
 };
 
 function buttonTypePickerDetails(key, label) {

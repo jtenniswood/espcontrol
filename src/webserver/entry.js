@@ -184,7 +184,7 @@
     "Battery Charging 70", "Battery High", "Battery Low", "Battery Medium", "Battery Off", "Battery Outline",
     "Battery Unknown", "Bathtub", "Bed", "Bed King", "Bed Queen", "Bell",
     "Blinds", "Blinds Horizontal", "Blinds Horizontal Closed", "Blinds Open", "Bluetooth", "Broom",
-    "Calendar Check", "Camera", "Car Electric", "Cast", "Cat", "CCTV", "Ceiling Fan",
+    "Calendar Check", "Calendar Heart", "Camera", "Car Electric", "Cast", "Cat", "CCTV", "Ceiling Fan",
     "Ceiling Light", "Ceiling Lights Multiple", "Chandelier", "Check", "Chair Rolling", "Chevron Down",
     "Chevron Up", "Clock", "Coffee Maker", "Current AC", "Current DC", "Curtains",
     "Curtains Closed", "Delete", "Delete Empty", "Delete Outline", "Desk", "Desk Lamp",
