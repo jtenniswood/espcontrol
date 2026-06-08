@@ -715,7 +715,7 @@ inline void ha_calendar_format_hm(char *buf, size_t len, int hour, int minute) {
   }
 }
 
-inline void ha_calendar_parse_and_merge(const char *payload, time_t midnight) {
+inline void ha_calendar_parse_and_merge(const char *payload, time_t /*midnight_unused*/) {
   if (!payload || !payload[0]) return;
   HaCalendarModalUi &ui = ha_calendar_modal_ui();
   const char *p = payload;
@@ -725,7 +725,7 @@ inline void ha_calendar_parse_and_merge(const char *payload, time_t midnight) {
     const char *line_end = p;
     while (*line_end && *line_end != '\n' && *line_end != '\r') line_end++;
     size_t line_len = static_cast<size_t>(line_end - p);
-    if (line_len < 5) { p = line_end; continue; }
+    if (line_len < 3) { p = line_end; continue; }
 
     const char *sep1 = static_cast<const char *>(std::memchr(p, '|', line_len));
     if (!sep1) { p = line_end; continue; }
@@ -733,19 +733,22 @@ inline void ha_calendar_parse_and_merge(const char *payload, time_t midnight) {
       std::memchr(sep1 + 1, '|', line_len - static_cast<size_t>(sep1 + 1 - p)));
     if (!sep2) { p = line_end; continue; }
 
-    int sh = 0, sm = 0, eh = 0, em = 0;
-    if (std::sscanf(p, "%d:%d", &sh, &sm) != 2 ||
-        std::sscanf(sep1 + 1, "%d:%d", &eh, &em) != 2) {
+    long long start_sec = 0, end_sec = 0;
+    if (std::sscanf(p, "%lld", &start_sec) != 1 ||
+        std::sscanf(sep1 + 1, "%lld", &end_sec) != 1) {
       p = line_end; continue;
     }
     if (ui.event_count >= HA_CALENDAR_MAX_EVENTS) break;
 
     HaCalendarEventRow &row = ui.events[ui.event_count++];
-    ha_calendar_format_hm(row.start_display, sizeof(row.start_display), sh, sm);
-    ha_calendar_format_hm(row.end_display, sizeof(row.end_display), eh, em);
-    row.start_epoch = midnight + static_cast<time_t>(sh * 3600 + sm * 60);
-    row.end_epoch   = midnight + static_cast<time_t>(eh * 3600 + em * 60);
-    if (row.end_epoch <= row.start_epoch) row.end_epoch += 86400;
+    row.start_epoch = static_cast<time_t>(start_sec);
+    row.end_epoch   = static_cast<time_t>(end_sec);
+
+    // Format local display times from epoch
+    struct tm *lt = std::localtime(&row.start_epoch);
+    if (lt) ha_calendar_format_hm(row.start_display, sizeof(row.start_display), lt->tm_hour, lt->tm_min);
+    lt = std::localtime(&row.end_epoch);
+    if (lt) ha_calendar_format_hm(row.end_display, sizeof(row.end_display), lt->tm_hour, lt->tm_min);
 
     size_t title_len = static_cast<size_t>(line_end - (sep2 + 1));
     if (title_len > HA_CALENDAR_TITLE_MAX_LEN) title_len = HA_CALENDAR_TITLE_MAX_LEN;
@@ -1038,21 +1041,22 @@ inline time_t ha_calendar_today_midnight_epoch() {
   return std::mktime(&midnight);
 }
 
-// Response template for one entity: emits "H:MM|H:MM|title\n" for remaining events today.
+// Response template for one entity: emits "start_epoch|end_epoch|title\n" for
+// events that have not yet ended. Epoch seconds are timezone-independent.
 inline std::string ha_calendar_response_template(const std::string &entity_id) {
   std::string max_t = std::to_string(HA_CALENDAR_TITLE_MAX_LEN);
   std::string max_r = std::to_string(HA_CALENDAR_RESPONSE_MAX_LEN - 10);
   return
     "{% set e='" + entity_id + "' %}"
     "{% set evts=response.get(e,{}).get('events',[]) %}"
-    "{% set now_dt=utcnow() %}"
+    "{% set now_ts=utcnow()|as_timestamp|int %}"
     "{% set ns=namespace(out='') %}"
     "{% for ev in evts %}"
-    "{% set end_dt=ev.end|as_datetime %}"
-    "{% if end_dt>now_dt %}"
-    "{% set start_dt=ev.start|as_datetime %}"
+    "{% set end_ts=ev.end|as_datetime|as_timestamp|int %}"
+    "{% if end_ts>now_ts %}"
+    "{% set start_ts=ev.start|as_datetime|as_timestamp|int %}"
     "{% set title=(ev.summary|default('')|string)[:" + max_t + "] %}"
-    "{% set line=start_dt.strftime('%H:%M')+'|'+end_dt.strftime('%H:%M')+'|'+title %}"
+    "{% set line=start_ts|string+'|'+end_ts|string+'|'+title %}"
     "{% if ns.out|length+line|length+1<=" + max_r + " %}"
     "{% set ns.out=ns.out+('\\n' if ns.out else '')+line %}"
     "{% endif %}"
@@ -1133,7 +1137,7 @@ inline void ha_calendar_request_events_for_entity(HaCalendarCardCtx *ctx,
 // Scan a "H:MM|H:MM|title" payload for the earliest event that STARTS after now
 // and fold it into the card's in-flight candidate (ctx->fetch_best_*).
 inline void ha_calendar_card_scan_payload(HaCalendarCardCtx *ctx,
-                                          const char *payload, time_t midnight) {
+                                          const char *payload, time_t /*midnight_unused*/) {
   if (!payload || !payload[0]) return;
   time_t now = std::time(nullptr);
   const char *p = payload;
@@ -1145,9 +1149,9 @@ inline void ha_calendar_card_scan_payload(HaCalendarCardCtx *ctx,
     size_t line_len = static_cast<size_t>(line_end - p);
     const char *sep1 = static_cast<const char *>(std::memchr(p, '|', line_len));
     if (sep1) {
-      int sh = 0, sm = 0;
-      if (std::sscanf(p, "%d:%d", &sh, &sm) == 2) {
-        time_t start = midnight + static_cast<time_t>(sh * 3600 + sm * 60);
+      long long start_sec = 0;
+      if (std::sscanf(p, "%lld", &start_sec) == 1) {
+        time_t start = static_cast<time_t>(start_sec);
         if (start > now &&
             (ctx->fetch_best_start == 0 || start < ctx->fetch_best_start)) {
           ctx->fetch_best_start = start;
