@@ -59,6 +59,8 @@ var CARD_TYPE_PICKER_DETAILS = {
   webhook: { icon: "webhook", description: "Send a direct HTTP request." },
   vacuum: { icon: "robot-vacuum", description: "Show or control a vacuum cleaner." },
   weather: { icon: "weather-partly-cloudy", description: "Show weather or forecast data." },
+  solar: { icon: "solar-power", description: "Show solar production, consumption, or net energy data." },
+  ha_calendar: { icon: "calendar-heart", description: "Show upcoming or in-progress calendar events." },
 };
 
 var CARD_TYPE_PICKER_DEFAULTS = {
