@@ -461,7 +461,7 @@ function renderButtonSettings(forceOpen) {
 
   function validateConfigSize() {
     if (c.isSub) return true;
-    if (serializeButtonConfig(b).length <= 384) return true;
+    if (serializeButtonConfig(b).length <= 255) return true;
     showBanner("Card settings are too large to save. Shorten confirmation text, labels, or entity IDs.", "error");
     return false;
   }

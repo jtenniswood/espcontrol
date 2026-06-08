@@ -539,13 +539,19 @@ inline SolarCardCtx *create_solar_card_context(
   lv_label_set_text(ctx->corner_lbl, "");
   lv_obj_add_flag(ctx->corner_lbl, LV_OBJ_FLAG_HIDDEN);
 
-  // Populate entity IDs from config options
-  ctx->production.entity_id  = cfg_option_value(p.options, "production");
-  ctx->consumption.entity_id = cfg_option_value(p.options, "consumption");
-  ctx->net.entity_id         = cfg_option_value(p.options, "net");
-  ctx->battery.entity_id     = cfg_option_value(p.options, "battery");
-  ctx->from_grid.entity_id   = cfg_option_value(p.options, "from_grid");
-  ctx->to_grid.entity_id     = cfg_option_value(p.options, "to_grid");
+  // Populate entity IDs from config options.
+  // Entity IDs may be stored without the "sensor." prefix to save config space;
+  // restore it when the value contains no domain separator.
+  auto expand_entity = [](const std::string &v) -> std::string {
+    if (v.empty() || v.find('.') != std::string::npos) return v;
+    return "sensor." + v;
+  };
+  ctx->production.entity_id  = expand_entity(cfg_option_value(p.options, "production"));
+  ctx->consumption.entity_id = expand_entity(cfg_option_value(p.options, "consumption"));
+  ctx->net.entity_id         = expand_entity(cfg_option_value(p.options, "net"));
+  ctx->battery.entity_id     = expand_entity(cfg_option_value(p.options, "battery"));
+  ctx->from_grid.entity_id   = expand_entity(cfg_option_value(p.options, "from_grid"));
+  ctx->to_grid.entity_id     = expand_entity(cfg_option_value(p.options, "to_grid"));
 
   // Subscribe to each configured field
   solar_subscribe_field(ctx->production,  ctx);
