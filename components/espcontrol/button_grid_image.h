@@ -89,6 +89,17 @@ inline void image_card_set_widget_source(lv_obj_t *widget,
   lv_obj_invalidate(widget);
 }
 
+inline void image_card_clear_widget_source(lv_obj_t *widget) {
+  if (!widget) return;
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+  lv_image_set_src(widget, nullptr);
+#else
+  lv_img_set_src(widget, nullptr);
+#endif
+  lv_obj_add_flag(widget, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_invalidate(widget);
+}
+
 inline lv_style_selector_t image_card_pressed_selector() {
   return static_cast<lv_style_selector_t>(LV_PART_MAIN) |
          static_cast<lv_style_selector_t>(LV_STATE_PRESSED);
@@ -576,26 +587,19 @@ inline void image_card_schedule_next_refresh(ImageCardCtx *ctx, uint32_t now = e
 inline void image_card_request_source_url(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->image || ctx->source_url.empty()) return;
   uint32_t now = esphome::millis();
+  if (image_card_modal_active_for(ctx)) {
+    ctx->next_download_retry_ms = now + IMAGE_CARD_MODAL_REFRESH_DELAY_MS;
+    ESP_LOGD("image_card", "Deferring image refresh while modal is open for %s", ctx->entity_id.c_str());
+    return;
+  }
   lv_coord_t width = 0;
   lv_coord_t height = 0;
   esphome::artwork_image::ImageResizeMode resize_mode =
     esphome::artwork_image::ImageResizeMode::COVER;
-  if (image_card_modal_active_for(ctx)) {
-    if (!image_card_apply_modal_geometry(ctx, &width, &height)) return;
-    int target_width = 0;
-    int target_height = 0;
-    image_card_limit_target_size(width, height, &target_width, &target_height);
-    width = target_width;
-    height = target_height;
-    resize_mode = ctx->modal_fit
-      ? esphome::artwork_image::ImageResizeMode::FIT
-      : esphome::artwork_image::ImageResizeMode::COVER;
-  } else {
-    if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
-    lv_obj_t *loading = image_card_loading_widget(ctx->widget);
-    image_card_position_widget(ctx->btn, loading);
-    image_card_refresh_loading_layout(loading);
-  }
+  if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
+  lv_obj_t *loading = image_card_loading_widget(ctx->widget);
+  image_card_position_widget(ctx->btn, loading);
+  image_card_refresh_loading_layout(loading);
   ctx->url = image_card_cache_bust_url(image_card_sized_url(ctx->source_url, width, height));
   ctx->requested_once = true;
   ctx->next_download_retry_ms = 0;
@@ -618,6 +622,7 @@ inline void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay
 inline void image_card_hide_modal() {
   ImageCardModalUi &ui = image_card_modal_ui();
   ImageCardCtx *ctx = ui.active;
+  image_card_clear_widget_source(ui.image_widget);
   control_modal_delete_overlay(ControlModalKind::IMAGE_CARD, ui.overlay);
   ui = ImageCardModalUi();
   if (ctx && ctx->active && ctx->image) {
@@ -632,6 +637,8 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
     return;
   }
   ESP_LOGI("image_card", "Opening image modal for %s", ctx->entity_id.c_str());
+  ctx->next_download_retry_ms = 0;
+  ctx->image->cancel_update();
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::IMAGE_CARD, ctx->btn, ctx->width_compensation_percent,
@@ -663,7 +670,6 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   lv_obj_move_background(ui.image_widget);
   lv_obj_move_foreground(ui.back_btn);
   lv_obj_move_foreground(ui.overlay);
-  if (!ctx->source_url.empty()) image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, "modal");
 }
 
 inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef picture) {
@@ -684,6 +690,10 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
   }
   ctx->next_picture_retry_ms = 0;
   ctx->source_url = url;
+  if (image_card_modal_active_for(ctx)) {
+    image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, "deferred");
+    return;
+  }
   if (!ctx->requested_once || !ctx->timer_only || ctx->refresh_interval_ms == 0) {
     image_card_request_source_url(ctx);
   } else if (ctx->next_refresh_ms == 0) {

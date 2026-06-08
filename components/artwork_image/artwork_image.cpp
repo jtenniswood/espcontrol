@@ -259,6 +259,15 @@ void ArtworkImage::request_update_url(const std::string &url) {
   this->update();
 }
 
+void ArtworkImage::cancel_update() {
+  this->update_pending_ = false;
+  this->pending_url_.clear();
+  if (this->is_busy_()) {
+    ESP_LOGW(TAG, "Cancelling in-flight artwork update");
+    this->end_connection_();
+  }
+}
+
 void ArtworkImage::update() {
   if (this->is_busy_()) {
     this->queue_pending_update_(this->url_);

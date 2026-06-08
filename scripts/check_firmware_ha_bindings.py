@@ -660,8 +660,12 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: cap high-resolution image card modal downloads")
     if "image_card_limit_target_size" not in text:
         errors.append(f"{rel}: scale image card modal downloads to a display-appropriate size")
-    if "image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, \"modal\")" not in text:
-        errors.append(f"{rel}: queue a modal-sized image refresh when opening image cards")
+    if "ctx->image->cancel_update();" not in text:
+        errors.append(f"{rel}: cancel in-flight image downloads before opening image card modals")
+    if "Deferring image refresh while modal is open" not in text:
+        errors.append(f"{rel}: defer image downloads while image card modals are open")
+    if "image_card_clear_widget_source(ui.image_widget)" not in text:
+        errors.append(f"{rel}: detach image sources before deleting image card modals")
     if "ctx->image->set_target_size(width, height)" not in text:
         errors.append(f"{rel}: set image card download target size before requesting images")
     if "lv_obj_set_style_clip_corner(ui.panel, true, LV_PART_MAIN)" not in text:
@@ -2166,7 +2170,9 @@ def run_self_test() -> int:
         (
             "cap high-resolution image card modal downloads",
             "scale image card modal downloads to a display-appropriate size",
-            "queue a modal-sized image refresh when opening image cards",
+            "cancel in-flight image downloads before opening image card modals",
+            "defer image downloads while image card modals are open",
+            "detach image sources before deleting image card modals",
             "set image card download target size before requesting images",
             "clip image card modal content to rounded panel corners",
             "preserve image card rounded corners while pressed",
@@ -2185,7 +2191,11 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_open_modal(ImageCardCtx *ctx) {\n"
         "  lv_obj_set_style_clip_corner(ui.panel, true, LV_PART_MAIN);\n"
-        "  image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, \"modal\");\n"
+        "  image_card_clear_widget_source(ui.image_widget);\n"
+        "  if (image_card_modal_active_for(ctx)) {\n"
+        "    ESP_LOGD(\"image_card\", \"Deferring image refresh while modal is open for %s\", ctx->entity_id.c_str());\n"
+        "  }\n"
+        "  ctx->image->cancel_update();\n"
         "}\n",
         (),
     )
