@@ -456,6 +456,16 @@ assert(weatherForecastPreview.iconHtml.includes("sp-sensor-preview-large"), "wea
 assert(weatherForecastPreview.iconHtml.includes("\u00b0F"), "weather forecast preview uses the selected temperature unit");
 assert(weatherForecastPreview.labelHtml.includes("Garden"), "weather forecast preview uses the custom label");
 
+const imagePreview = hooks.buttonTypePreviewFor("image", {
+  entity: "camera.seaside",
+  label: "Seaside",
+  type: "image",
+  options: "image_label",
+});
+assert(imagePreview.iconHtml.includes("sp-image-preview-icon mdi mdi-image"), "image preview uses a top-left image icon");
+assert(!imagePreview.iconHtml.includes("sp-image-preview-text"), "image preview does not show centered placeholder text");
+assert(imagePreview.labelHtml.includes("Seaside"), "image preview keeps the configured label");
+
 const sensorNumericPreview = hooks.buttonTypePreviewFor("sensor", {
   sensor: "sensor.office_temperature",
   label: "Office",

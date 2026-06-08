@@ -153,7 +153,7 @@ registerButtonType("image", {
       buttonClass: "sp-image-card",
       iconHtml:
         '<span class="sp-image-preview" style="background:#' + helpers.escHtml(tertiaryColor) + '">' +
-        '<span class="sp-image-preview-text">Image</span>' +
+        '<span class="sp-image-preview-icon mdi mdi-image"></span>' +
         '</span>',
       labelHtml: label
         ? '<span class="sp-image-label"><span class="sp-image-label-stack">' +

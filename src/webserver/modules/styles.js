@@ -108,8 +108,8 @@ var CSS =
   ".sp-image-card{padding:0}" +
   ".sp-image-preview{position:absolute;inset:0;display:block;overflow:hidden;border-radius:var(--btn-r);" +
   "background:#212121}" +
-  ".sp-image-preview-text{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);" +
-  "font-size:var(--btn-label);line-height:1;color:#fff;font-weight:400}" +
+  ".sp-image-preview-icon{position:absolute;left:var(--btn-pad);top:var(--btn-pad);" +
+  "font-size:var(--btn-icon);line-height:1;color:#fff}" +
   ".sp-image-label{position:absolute;left:0;right:0;bottom:0;box-sizing:border-box;" +
   "padding:var(--btn-pad);z-index:1;pointer-events:none}" +
   ".sp-image-label-stack{position:relative;display:block}" +
