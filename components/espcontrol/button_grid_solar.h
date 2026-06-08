@@ -17,6 +17,8 @@ struct SolarField {
   bool available = false;
 };
 
+struct SolarFlowWidgets;  // defined in button_grid_solar_flow.h
+
 struct SolarCardCtx {
   uint32_t magic = SOLAR_CTX_MAGIC;
   lv_obj_t *btn = nullptr;
@@ -25,6 +27,7 @@ struct SolarCardCtx {
   lv_obj_t *label_lbl = nullptr;   // bottom label: hero type name
   lv_obj_t *icon_lbl = nullptr;    // solar glyph top-left
   lv_obj_t *corner_lbl = nullptr;  // battery % top-right
+  SolarFlowWidgets *flow_widgets = nullptr;  // flow mode LVGL widgets
   const lv_font_t *value_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
