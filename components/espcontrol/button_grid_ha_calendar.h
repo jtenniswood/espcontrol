@@ -1017,11 +1017,11 @@ inline uint32_t next_ha_calendar_call_id() {
 
 inline std::string ha_calendar_today_end_str() {
   time_t now = std::time(nullptr);
-  struct tm *local = std::localtime(&now);
+  struct tm *utc = std::gmtime(&now);
   char buf[25] = {};
-  if (local) {
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT23:59:59",
-      local->tm_year + 1900, local->tm_mon + 1, local->tm_mday);
+  if (utc) {
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT23:59:59Z",
+      utc->tm_year + 1900, utc->tm_mon + 1, utc->tm_mday);
   }
   return std::string(buf);
 }
@@ -1045,12 +1045,12 @@ inline std::string ha_calendar_response_template(const std::string &entity_id) {
   return
     "{% set e='" + entity_id + "' %}"
     "{% set evts=response.get(e,{}).get('events',[]) %}"
-    "{% set now_dt=now() %}"
+    "{% set now_dt=utcnow() %}"
     "{% set ns=namespace(out='') %}"
     "{% for ev in evts %}"
-    "{% set end_dt=ev.end|as_datetime|as_local %}"
+    "{% set end_dt=ev.end|as_datetime %}"
     "{% if end_dt>now_dt %}"
-    "{% set start_dt=ev.start|as_datetime|as_local %}"
+    "{% set start_dt=ev.start|as_datetime %}"
     "{% set title=(ev.summary|default('')|string)[:" + max_t + "] %}"
     "{% set line=start_dt.strftime('%H:%M')+'|'+end_dt.strftime('%H:%M')+'|'+title %}"
     "{% if ns.out|length+line|length+1<=" + max_r + " %}"
