@@ -7,6 +7,7 @@ var SOLAR_CARD_METADATA = {
     options: [
       ["live", "Live"],
       ["today", "Today"],
+      ["flow", "Flow"],
     ],
   },
   invertProduction: {
@@ -49,7 +50,9 @@ function solarEntityFromStorage(v) {
 
 function getSolarMode(b) {
   var mode = configOptionValue(b && b.options, "mode");
-  return mode === "today" ? "today" : "live";
+  if (mode === "today") return "today";
+  if (mode === "flow")  return "flow";
+  return "live";
 }
 
 function getSolarEntityOption(b, key) {
@@ -103,8 +106,10 @@ registerButtonType("solar", {
       segment: Object.assign({}, SOLAR_CARD_METADATA.modeSegment, {
         value: function () { return getSolarMode(b); },
         onSelect: function (button, cardHelpers, value) {
-          setSolarOption(button, "mode", value === "today" ? "today" : "live");
+          var newMode = (value === "today") ? "today" : (value === "flow") ? "flow" : "live";
+          setSolarOption(button, "mode", newMode);
           cardHelpers.saveField("options", button.options);
+          if (newMode === "flow") cardHelpers.requestCardSize(4);
           scheduleRender();
         },
       }),
@@ -142,6 +147,23 @@ registerButtonType("solar", {
     }
   },
   renderPreview: function (b, helpers) {
+    if (getSolarMode(b) === "flow") {
+      return {
+        buttonClass: "sp-solar-card",
+        iconHtml: (
+          '<svg viewBox="0 0 60 60" width="36" height="36" style="overflow:visible">' +
+          '<circle cx="30" cy="10" r="9" fill="none" stroke="#f59e0b" stroke-width="2.5"/>' +
+          '<circle cx="50" cy="30" r="9" fill="none" stroke="#3b82f6" stroke-width="2.5"/>' +
+          '<circle cx="30" cy="50" r="9" fill="none" stroke="#22c55e" stroke-width="2.5"/>' +
+          '<circle cx="10" cy="30" r="9" fill="none" stroke="#8b5cf6" stroke-width="2.5"/>' +
+          '<line x1="30" y1="19" x2="30" y2="41" stroke="#f59e0b" stroke-width="1.5" opacity="0.5"/>' +
+          '<line x1="19" y1="30" x2="41" y2="30" stroke="#f59e0b" stroke-width="1.5" opacity="0.5"/>' +
+          '<circle cx="30" cy="30" r="3" fill="#444"/>' +
+          '</svg>'
+        ),
+        labelHtml: cardBadgeLabelHtml(helpers, "Flow", SOLAR_CARD_METADATA.preview.badge),
+      };
+    }
     var isToday = getSolarMode(b) === "today";
     var netSample = isToday ? "18.4" : "+2.1";
     var unit = isToday ? "kWh" : "kW";
