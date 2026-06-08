@@ -1,0 +1,18 @@
+# =============================================================================
+# DEV CONFIG - Local development entry point (CrowPanel 5" landscape)
+# =============================================================================
+# Flash with: esphome run dev.yaml
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-crowpanel5"
+  friendly_name: "EspControl CrowPanel 5inch"
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+packages:
+  espcontrol: !include packages.yaml
