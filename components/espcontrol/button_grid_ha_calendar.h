@@ -74,10 +74,15 @@ struct HaCalendarCardCtx {
   bool next_valid = false;           // a polled next-upcoming event is known
   time_t next_start_epoch = 0;       // committed next event start (after now)
   std::string next_title;            // committed next event title
+  bool poll_active_valid = false;    // poll found a currently-active event
+  time_t poll_active_start = 0;     // correct start epoch for active event
+  time_t poll_active_end = 0;       // correct end epoch for active event
   int fetch_pending = 0;             // entity responses still outstanding
   bool fetch_done = false;           // a poll has completed at least once
   time_t fetch_best_start = 0;       // candidate during an in-flight poll
   std::string fetch_best_title;
+  time_t fetch_active_start = 0;    // candidate active event start (in-flight)
+  time_t fetch_active_end = 0;      // candidate active event end (in-flight)
 };
 
 struct HaCalendarModalUi {
@@ -330,13 +335,15 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
     // edge as the meeting progresses. Drawn as a hard-stop horizontal background
     // gradient so it covers the full tile.
     //
-    // Guard: entity-attribute times arrive as local strings with no TZ offset,
-    // so on a UTC device they parse 4+ hours early. If HA reports the event as
-    // active (best->active) but our event_end is already in the past, the
-    // epoch values are unreliable — show "In progress" until the background
-    // poll delivers correct epoch data.
-    bool epochs_reliable = (event_end > now) || (!best->active && event_end > 0);
-    if (!epochs_reliable) {
+    // Entity-attribute times arrive as local strings without TZ offset, so on a
+    // UTC device they parse hours early. Prefer poll-supplied epochs (correct
+    // UTC values from get_events) when available; fall back to "In progress"
+    // until the first poll completes if entity-attribute epochs are stale.
+    if (ctx->poll_active_valid) {
+      event_start = ctx->poll_active_start;
+      event_end   = ctx->poll_active_end;
+    } else if (event_end <= now) {
+      // Epochs unreliable — show "In progress" until poll lands
       ha_calendar_set_title(ctx, best->title.c_str());
       lv_obj_add_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
       if (ctx->unit_lbl) {
@@ -348,7 +355,7 @@ inline void ha_calendar_apply_card_face(HaCalendarCardCtx *ctx) {
       set_bg(ctx->accent_color);
       return;
     }
-    int64_t secs_remaining = (int64_t)(event_end - now);
+    int64_t secs_remaining = (event_end > now) ? (int64_t)(event_end - now) : 0;
     int64_t secs_into = (now > event_start) ? (int64_t)(now - event_start) : 0;
     int64_t total = (event_end > event_start) ? (int64_t)(event_end - event_start) : 0;
     int pct_elapsed = (total > 0) ? (int)((secs_into * 100) / total) : 0;
@@ -1168,20 +1175,30 @@ inline void ha_calendar_card_scan_payload(HaCalendarCardCtx *ctx,
     size_t line_len = static_cast<size_t>(line_end - p);
     const char *sep1 = static_cast<const char *>(std::memchr(p, '|', line_len));
     if (sep1) {
-      long long start_sec = 0;
-      if (std::sscanf(p, "%lld", &start_sec) == 1) {
+      long long start_sec = 0, end_sec = 0;
+      if (std::sscanf(p, "%lld", &start_sec) == 1 &&
+          std::sscanf(sep1 + 1, "%lld", &end_sec) == 1) {
         time_t start = static_cast<time_t>(start_sec);
-        if (start > now &&
-            (ctx->fetch_best_start == 0 || start < ctx->fetch_best_start)) {
-          ctx->fetch_best_start = start;
-          const char *sep2 = static_cast<const char *>(
-            std::memchr(sep1 + 1, '|', line_len - static_cast<size_t>(sep1 + 1 - p)));
-          if (sep2) {
-            size_t tlen = static_cast<size_t>(line_end - (sep2 + 1));
-            if (tlen > HA_CALENDAR_TITLE_MAX_LEN) tlen = HA_CALENDAR_TITLE_MAX_LEN;
-            ctx->fetch_best_title.assign(sep2 + 1, tlen);
-          } else {
-            ctx->fetch_best_title.clear();
+        time_t end   = static_cast<time_t>(end_sec);
+        if (start > now) {
+          // Future event: candidate for next-upcoming
+          if (ctx->fetch_best_start == 0 || start < ctx->fetch_best_start) {
+            ctx->fetch_best_start = start;
+            const char *sep2 = static_cast<const char *>(
+              std::memchr(sep1 + 1, '|', line_len - static_cast<size_t>(sep1 + 1 - p)));
+            if (sep2) {
+              size_t tlen = static_cast<size_t>(line_end - (sep2 + 1));
+              if (tlen > HA_CALENDAR_TITLE_MAX_LEN) tlen = HA_CALENDAR_TITLE_MAX_LEN;
+              ctx->fetch_best_title.assign(sep2 + 1, tlen);
+            } else {
+              ctx->fetch_best_title.clear();
+            }
+          }
+        } else if (end > now) {
+          // Currently active event: capture correct epochs for Current mode
+          if (ctx->fetch_active_end == 0 || end > ctx->fetch_active_end) {
+            ctx->fetch_active_start = start;
+            ctx->fetch_active_end   = end;
           }
         }
       }
@@ -1199,6 +1216,8 @@ inline void ha_calendar_card_fetch(HaCalendarCardCtx *ctx) {
 
   ctx->fetch_best_start = 0;
   ctx->fetch_best_title.clear();
+  ctx->fetch_active_start = 0;
+  ctx->fetch_active_end = 0;
   ctx->fetch_pending = static_cast<int>(ctx->entities.size());
   std::string end_dt = ha_calendar_today_end_str();
   time_t midnight = ha_calendar_today_midnight_epoch();
@@ -1209,7 +1228,15 @@ inline void ha_calendar_card_fetch(HaCalendarCardCtx *ctx) {
       c->next_start_epoch = c->fetch_best_start;
       c->next_title = c->fetch_best_title;
       c->next_valid = (c->fetch_best_start != 0);
-      c->fetch_done = true;  // a poll has now completed → "Done for the day" is meaningful
+      // Commit correct active-event epochs for Current mode progress bar
+      if (c->fetch_active_end != 0) {
+        c->poll_active_start = c->fetch_active_start;
+        c->poll_active_end   = c->fetch_active_end;
+        c->poll_active_valid = true;
+      } else {
+        c->poll_active_valid = false;
+      }
+      c->fetch_done = true;
       ha_calendar_apply_card_face(c);
     }
   };
