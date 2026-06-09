@@ -213,7 +213,7 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
     // All lines are horizontal or vertical.
 
     int solar_y = (int)(H * 0.18f);           // same height as solo-solar layout
-    int solar_x = (cx + grid_x) / 2;          // midpoint X between centre and grid
+    int solar_x = (cx + grid_x) / 2 + 15;    // midpoint X + 15px right
     int junc_x  = solar_x;                    // junction same column as solar
     int bat_x   = home_x;                     // battery above home
     int bat_y   = solar_y;                    // same row as solar (user requirement)
