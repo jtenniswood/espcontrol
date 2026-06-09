@@ -519,10 +519,18 @@ inline SolarCardCtx *create_solar_card_context(
     const lv_font_t *icon_font,
     int width_compensation_percent) {
 
+  // Helper: read option by short key, fall back to long key (migration)
+  auto solar_opt = [&](const char *short_key, const char *long_key) -> std::string {
+    auto v = cfg_option_value(p.options, short_key);
+    return v.empty() ? cfg_option_value(p.options, long_key) : v;
+  };
+
   SolarCardCtx *ctx = new SolarCardCtx();
-  ctx->mode = cfg_option_value(p.options, "mode");
+  ctx->mode = solar_opt("m", "mode");
   if (ctx->mode.empty()) ctx->mode = "live";
-  ctx->invert_production = cfg_option_enabled(p.options, "invert_production");
+  bool inv = cfg_option_enabled(p.options, "inv");
+  if (!inv) inv = cfg_option_enabled(p.options, "invert_production");
+  ctx->invert_production = inv;
   ctx->accent_color = accent_color;
   ctx->off_color = off_color;
   ctx->btn = s.btn;
@@ -549,12 +557,12 @@ inline SolarCardCtx *create_solar_card_context(
     if (v.empty() || v.find('.') != std::string::npos) return v;
     return "sensor." + v;
   };
-  ctx->production.entity_id  = expand_entity(cfg_option_value(p.options, "production"));
-  ctx->consumption.entity_id = expand_entity(cfg_option_value(p.options, "consumption"));
-  ctx->net.entity_id         = expand_entity(cfg_option_value(p.options, "net"));
-  ctx->battery.entity_id     = expand_entity(cfg_option_value(p.options, "battery"));
-  ctx->from_grid.entity_id   = expand_entity(cfg_option_value(p.options, "from_grid"));
-  ctx->to_grid.entity_id     = expand_entity(cfg_option_value(p.options, "to_grid"));
+  ctx->production.entity_id  = expand_entity(solar_opt("p",  "production"));
+  ctx->consumption.entity_id = expand_entity(solar_opt("c",  "consumption"));
+  ctx->net.entity_id         = expand_entity(solar_opt("n",  "net"));
+  ctx->battery.entity_id     = expand_entity(solar_opt("b",  "battery"));
+  ctx->from_grid.entity_id   = expand_entity(solar_opt("fg", "from_grid"));
+  ctx->to_grid.entity_id     = expand_entity(solar_opt("tg", "to_grid"));
 
   // Subscribe to each configured field
   solar_subscribe_field(ctx->production,  ctx);
