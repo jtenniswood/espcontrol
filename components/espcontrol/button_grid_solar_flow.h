@@ -232,15 +232,25 @@ inline void solar_flow_apply_card_face(SolarCardCtx *ctx) {
 
   bool want_2x2 = layout_2x2 && need_4node;
   if (!fw->initialized || fw->layout_2x2 != want_2x2) {
-    // Delete any non-standard children from a previous init
-    uint32_t n = lv_obj_get_child_cnt(ctx->btn);
-    for (int i = (int)n - 1; i >= 0; i--) {
-      lv_obj_t *child = lv_obj_get_child(ctx->btn, i);
-      if (child == ctx->value_lbl  || child == ctx->unit_lbl  ||
-          child == ctx->label_lbl  || child == ctx->icon_lbl  ||
-          child == ctx->corner_lbl) continue;
-      lv_obj_del(child);
-    }
+    // Delete only the specific flow widgets we created previously.
+    // Never iterate all btn children — sensor_container (not in ctx fields)
+    // contains ctx->value_lbl as a grandchild; deleting it makes value_lbl
+    // a dangling pointer and crashes lv_obj_add_flag on the next render.
+    auto del_if = [](lv_obj_t *&o) { if (o) { lv_obj_del(o); o = nullptr; } };
+    auto del_node = [&](SolarFlowNode &n) {
+      // Deleting the ring recursively deletes its label children
+      del_if(n.ring); n.val_lbl = nullptr; n.sub_lbl = nullptr;
+    };
+    del_node(fw->solar_node);
+    del_node(fw->home_node);
+    del_node(fw->battery_node);
+    del_node(fw->grid_node);
+    del_if(fw->line_v);
+    del_if(fw->line_h);
+    del_if(fw->dot_solar);
+    del_if(fw->dot_bat);
+    del_if(fw->dot_grid);
+    del_if(fw->center);
     *fw = SolarFlowWidgets{};
     solar_flow_init_widgets(ctx, want_2x2, ctx->label_font);
   }
