@@ -307,6 +307,16 @@ function setConfigOptionValue(options, name, value) {
   return out.join(",");
 }
 
+function deleteConfigOptionValue(options, name) {
+  var prefix = name + "=";
+  var parts = String(options || "").split(",");
+  var out = [];
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] && parts[i].indexOf(prefix) !== 0) out.push(parts[i]);
+  }
+  return out.join(",");
+}
+
 function largeNumbersExplicitlyDisabled(options) {
   return configOptionValue(options, SENSOR_LARGE_NUMBERS_OPTION) === SENSOR_LARGE_NUMBERS_OFF_VALUE;
 }
