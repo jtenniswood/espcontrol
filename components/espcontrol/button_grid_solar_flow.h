@@ -293,7 +293,7 @@ inline void solar_flow_update_node(SolarFlowNode &n, const std::string &val,
   lv_arc_set_value(n.arc, arc_pct < 0 ? 0 : (arc_pct > 100 ? 100 : arc_pct));
   if (n.val_lbl) {
     lv_label_set_text(n.val_lbl, val.c_str());
-    lv_obj_align(n.val_lbl, LV_ALIGN_CENTER, 0, n.sub_lbl ? -4 : 0);
+    lv_obj_align(n.val_lbl, LV_ALIGN_CENTER, 0, n.sub_lbl ? -1 : 3);
   }
 }
 
