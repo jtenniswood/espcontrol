@@ -12,9 +12,10 @@
 // ── Widget containers ─────────────────────────────────────────────────────────
 
 struct SolarFlowNode {
-  lv_obj_t *ring    = nullptr;  // circle container (border = ring effect)
-  lv_obj_t *val_lbl = nullptr;  // primary value text
-  lv_obj_t *sub_lbl = nullptr;  // secondary value (grid node: second line)
+  lv_obj_t *ring     = nullptr;  // circle container (border = ring effect)
+  lv_obj_t *val_lbl  = nullptr;  // primary value text inside ring
+  lv_obj_t *sub_lbl  = nullptr;  // secondary value (grid: second line)
+  lv_obj_t *name_lbl = nullptr;  // node name below the ring ("Solar", etc.)
 };
 
 struct SolarFlowWidgets {
@@ -23,11 +24,10 @@ struct SolarFlowWidgets {
   SolarFlowNode battery_node;
   SolarFlowNode grid_node;
 
-  lv_obj_t *line_v    = nullptr;  // vertical line   (solar <-> battery)
-  lv_obj_t *line_h    = nullptr;  // horizontal line (grid <-> home)
-  lv_obj_t *dot_solar = nullptr;  // midpoint dot on top arm (solar side)
-  lv_obj_t *dot_bat   = nullptr;  // midpoint dot on bottom arm (battery)
-  lv_obj_t *dot_grid  = nullptr;  // midpoint dot on left arm (grid)
+  lv_obj_t *line_top  = nullptr;  // solar → center
+  lv_obj_t *line_bot  = nullptr;  // center → battery (hidden when no battery)
+  lv_obj_t *line_left = nullptr;  // grid → center   (hidden when no grid)
+  lv_obj_t *line_right= nullptr;  // center → home
   lv_obj_t *center    = nullptr;  // small center junction circle
 
   bool layout_2x2  = false;  // true when tile is wide enough for full cross
@@ -50,7 +50,8 @@ inline SolarFlowNode solar_flow_make_node(lv_obj_t *parent,
                                           int x, int y,
                                           int size,
                                           uint32_t ring_color,
-                                          const lv_font_t *font) {
+                                          const lv_font_t *font,
+                                          const char *name) {
   SolarFlowNode n;
   n.ring = lv_obj_create(parent);
   lv_obj_set_size(n.ring, size, size);
@@ -75,6 +76,15 @@ inline SolarFlowNode solar_flow_make_node(lv_obj_t *parent,
   lv_label_set_text(n.sub_lbl, "");
   lv_obj_align(n.sub_lbl, LV_ALIGN_CENTER, 0, 12);
   lv_obj_add_flag(n.sub_lbl, LV_OBJ_FLAG_HIDDEN);
+
+  // Name label placed below the ring
+  if (name) {
+    n.name_lbl = lv_label_create(parent);
+    lv_obj_set_style_text_color(n.name_lbl, lv_color_hex(0xAAAAAA), LV_PART_MAIN);
+    if (font) lv_obj_set_style_text_font(n.name_lbl, font, LV_PART_MAIN);
+    lv_label_set_text(n.name_lbl, name);
+    lv_obj_align_to(n.name_lbl, n.ring, LV_ALIGN_OUT_BOTTOM_MID, 0, 3);
+  }
 
   return n;
 }
@@ -128,18 +138,20 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
   lv_coord_t H     = lv_obj_get_height(btn);
   SolarFlowWidgets *fw = ctx->flow_widgets;
 
-  // Node size scales with the tile dimensions
-  int node_sz = layout_2x2 ? (int)(W * 0.22f) : (int)(W * 0.36f);
-  if (node_sz < 38) node_sz = 38;
-  if (node_sz > 78) node_sz = 78;
+  // Node size: 20% larger than original, shifted left by 5% of width
+  int offset_x = -(int)(W * 0.05f);
+  int node_sz = layout_2x2 ? (int)(W * 0.264f) : (int)(W * 0.432f);
+  if (node_sz < 44) node_sz = 44;
+  if (node_sz > 90) node_sz = 90;
 
-  int cx = W / 2, cy = H / 2;
+  // Center of tile (offset left)
+  int cx = W / 2 + offset_x, cy = H / 2;
 
   // Compass positions for 2x2; vertical stack for 1x1
-  int solar_x   = cx,               solar_y   = (int)(H * 0.18f);
-  int home_x    = (int)(W * 0.82f), home_y    = cy;
-  int battery_x = cx,               battery_y = (int)(H * 0.82f);
-  int grid_x    = (int)(W * 0.18f), grid_y    = cy;
+  int solar_x   = cx,                       solar_y   = (int)(H * 0.18f);
+  int home_x    = (int)(W * 0.82f) + offset_x, home_y = cy;
+  int battery_x = cx,                       battery_y = (int)(H * 0.82f);
+  int grid_x    = (int)(W * 0.18f) + offset_x, grid_y = cy;
 
   if (!layout_2x2) {
     solar_y = (int)(H * 0.22f);
@@ -147,34 +159,28 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
     home_y  = (int)(H * 0.75f);
   }
 
-  // Lines first (rendered behind nodes in LVGL child order)
   int r = node_sz / 2;
+
+  // Split lines: each arm goes from node edge to center separately
+  // so we can hide individual arms (e.g. battery arm when no battery)
   if (layout_2x2) {
-    fw->line_v = solar_flow_make_line(btn, cx, solar_y + r, cx, battery_y - r, FLOW_COLOR_SOLAR);
-    fw->line_h = solar_flow_make_line(btn, grid_x + r, cy, home_x - r, cy, FLOW_COLOR_SOLAR);
-    fw->center = solar_flow_make_dot(btn, cx, cy, 0x444444);
+    fw->line_top  = solar_flow_make_line(btn, cx, solar_y + r,    cx,      cy,            FLOW_COLOR_SOLAR);
+    fw->line_bot  = solar_flow_make_line(btn, cx, cy,             cx,      battery_y - r, FLOW_COLOR_BATTERY);
+    fw->line_left = solar_flow_make_line(btn, grid_x + r, cy,     cx,      cy,            FLOW_COLOR_GRID);
+    fw->line_right= solar_flow_make_line(btn, cx,         cy,     home_x - r, cy,         FLOW_COLOR_SOLAR);
+    fw->center    = solar_flow_make_dot(btn, cx, cy, 0x555555);
   } else {
-    fw->line_v = solar_flow_make_line(btn, cx, solar_y + r, cx, home_y - r, FLOW_COLOR_SOLAR);
+    fw->line_top  = solar_flow_make_line(btn, cx, solar_y + r, cx, home_y - r, FLOW_COLOR_SOLAR);
   }
 
-  // Direction dots (midpoint of each arm)
+  // Nodes (created after lines so they render on top)
+  fw->solar_node = solar_flow_make_node(btn, solar_x, solar_y, node_sz, FLOW_COLOR_SOLAR,   font, "Solar");
+  fw->home_node  = solar_flow_make_node(btn, home_x,  home_y,  node_sz, FLOW_COLOR_HOME,    font, "Home");
   if (layout_2x2) {
-    fw->dot_solar = solar_flow_make_dot(btn, cx, (solar_y + r + cy) / 2, FLOW_COLOR_SOLAR);
-    fw->dot_bat   = solar_flow_make_dot(btn, cx, (battery_y - r + cy) / 2, FLOW_COLOR_BATTERY);
-    fw->dot_grid  = solar_flow_make_dot(btn, (grid_x + r + cx) / 2, cy, FLOW_COLOR_GRID);
-  } else {
-    fw->dot_solar = solar_flow_make_dot(btn, cx, (solar_y + r + home_y - r) / 2, FLOW_COLOR_SOLAR);
+    fw->battery_node = solar_flow_make_node(btn, battery_x, battery_y, node_sz, FLOW_COLOR_BATTERY, font, "Battery");
+    fw->grid_node    = solar_flow_make_node(btn, grid_x,    grid_y,    node_sz, FLOW_COLOR_GRID,    font, "Grid");
   }
 
-  // Nodes (rendered on top of lines)
-  fw->solar_node = solar_flow_make_node(btn, solar_x, solar_y, node_sz, FLOW_COLOR_SOLAR, font);
-  fw->home_node  = solar_flow_make_node(btn, home_x,  home_y,  node_sz, FLOW_COLOR_HOME,  font);
-  if (layout_2x2) {
-    fw->battery_node = solar_flow_make_node(btn, battery_x, battery_y, node_sz, FLOW_COLOR_BATTERY, font);
-    fw->grid_node    = solar_flow_make_node(btn, grid_x,    grid_y,    node_sz, FLOW_COLOR_GRID,    font);
-  }
-
-  // Bring center dot above lines but below nodes
   if (layout_2x2 && fw->center) lv_obj_move_foreground(fw->center);
 
   fw->layout_2x2  = layout_2x2;
@@ -238,18 +244,18 @@ inline void solar_flow_apply_card_face(SolarCardCtx *ctx) {
     // a dangling pointer and crashes lv_obj_add_flag on the next render.
     auto del_if = [](lv_obj_t *&o) { if (o) { lv_obj_del(o); o = nullptr; } };
     auto del_node = [&](SolarFlowNode &n) {
-      // Deleting the ring recursively deletes its label children
+      // ring deletion recursively removes val_lbl/sub_lbl children
       del_if(n.ring); n.val_lbl = nullptr; n.sub_lbl = nullptr;
+      del_if(n.name_lbl);
     };
     del_node(fw->solar_node);
     del_node(fw->home_node);
     del_node(fw->battery_node);
     del_node(fw->grid_node);
-    del_if(fw->line_v);
-    del_if(fw->line_h);
-    del_if(fw->dot_solar);
-    del_if(fw->dot_bat);
-    del_if(fw->dot_grid);
+    del_if(fw->line_top);
+    del_if(fw->line_bot);
+    del_if(fw->line_left);
+    del_if(fw->line_right);
     del_if(fw->center);
     *fw = SolarFlowWidgets{};
     solar_flow_init_widgets(ctx, want_2x2, ctx->label_font);
@@ -265,21 +271,27 @@ inline void solar_flow_apply_card_face(SolarCardCtx *ctx) {
   solar_flow_update_node(fw->home_node,  solar_flow_fmt(ctx->consumption, false));
 
   if (fw->layout_2x2) {
-    // Battery node
+    // Helper: show or hide an obj
+    auto show = [](lv_obj_t *o, bool visible) {
+      if (!o) return;
+      if (visible) lv_obj_clear_flag(o, LV_OBJ_FLAG_HIDDEN);
+      else         lv_obj_add_flag(o,   LV_OBJ_FLAG_HIDDEN);
+    };
+
+    // Battery node + bottom arm
     if (has_battery && fw->battery_node.ring) {
       solar_flow_update_node(fw->battery_node, solar_flow_fmt(ctx->battery, ctx->invert_production));
-      lv_obj_clear_flag(fw->battery_node.ring, LV_OBJ_FLAG_HIDDEN);
-    } else if (fw->battery_node.ring) {
-      lv_obj_add_flag(fw->battery_node.ring, LV_OBJ_FLAG_HIDDEN);
     }
+    show(fw->battery_node.ring,  has_battery);
+    show(fw->battery_node.name_lbl, has_battery);
+    show(fw->line_bot, has_battery);
 
-    // Grid node: +to_grid on first line, -from_grid on second line
+    // Grid node + left arm
     if (has_grid && fw->grid_node.ring) {
       std::string to_str   = ctx->to_grid.available   && !ctx->to_grid.value.empty()
         ? solar_flow_fmt(ctx->to_grid,   false) : "--";
       std::string from_str = ctx->from_grid.available && !ctx->from_grid.value.empty()
         ? solar_flow_fmt(ctx->from_grid, false) : "--";
-
       if (fw->grid_node.val_lbl) {
         char buf[48];
         std::snprintf(buf, sizeof(buf), "+%s", to_str.c_str());
@@ -294,37 +306,9 @@ inline void solar_flow_apply_card_face(SolarCardCtx *ctx) {
         lv_obj_set_style_text_color(fw->grid_node.sub_lbl, lv_color_hex(FLOW_COLOR_IMPORT), LV_PART_MAIN);
         lv_obj_clear_flag(fw->grid_node.sub_lbl, LV_OBJ_FLAG_HIDDEN);
       }
-      lv_obj_clear_flag(fw->grid_node.ring, LV_OBJ_FLAG_HIDDEN);
-    } else if (fw->grid_node.ring) {
-      lv_obj_add_flag(fw->grid_node.ring, LV_OBJ_FLAG_HIDDEN);
     }
-
-    // Battery dot: amber = charging (solar→battery), green = discharging
-    if (fw->dot_bat) {
-      bool charging = true;
-      if (ctx->battery.available && !ctx->battery.value.empty()) {
-        char *ep = nullptr;
-        double v = std::strtod(ctx->battery.value.c_str(), &ep);
-        charging = (ep != ctx->battery.value.c_str()) ? (v >= 0.0) : true;
-      }
-      lv_obj_set_style_bg_color(fw->dot_bat,
-        lv_color_hex(charging ? FLOW_COLOR_SOLAR : FLOW_COLOR_BATTERY), LV_PART_MAIN);
-      if (has_battery) lv_obj_clear_flag(fw->dot_bat, LV_OBJ_FLAG_HIDDEN);
-      else             lv_obj_add_flag(fw->dot_bat,   LV_OBJ_FLAG_HIDDEN);
-    }
-
-    // Grid dot: yellow = exporting, red = importing
-    if (fw->dot_grid) {
-      bool exporting = true;
-      if (ctx->from_grid.available && !ctx->from_grid.value.empty()) {
-        char *ep = nullptr;
-        double v = std::strtod(ctx->from_grid.value.c_str(), &ep);
-        exporting = (ep == ctx->from_grid.value.c_str()) || (v < 0.1);
-      }
-      lv_obj_set_style_bg_color(fw->dot_grid,
-        lv_color_hex(exporting ? FLOW_COLOR_EXPORT : FLOW_COLOR_IMPORT), LV_PART_MAIN);
-      if (has_grid) lv_obj_clear_flag(fw->dot_grid, LV_OBJ_FLAG_HIDDEN);
-      else          lv_obj_add_flag(fw->dot_grid,   LV_OBJ_FLAG_HIDDEN);
-    }
+    show(fw->grid_node.ring,     has_grid);
+    show(fw->grid_node.name_lbl, has_grid);
+    show(fw->line_left, has_grid);
   }
 }
