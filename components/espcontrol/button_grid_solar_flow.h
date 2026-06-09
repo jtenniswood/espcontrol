@@ -190,7 +190,7 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
   if (layout_2x2) {
     fw->line_top  = solar_flow_make_line(btn, cx, solar_y   + r, cx,        cy,            FLOW_COLOR_SOLAR);
     fw->line_bot  = solar_flow_make_line(btn, cx, cy,            cx,        battery_y - r, FLOW_COLOR_BATTERY);
-    fw->line_left = solar_flow_make_line(btn, grid_x + r,  cy,   cx,        cy,            FLOW_COLOR_GRID);
+    fw->line_left = solar_flow_make_line(btn, grid_x + r,  cy,   cx,        cy,            ctx->accent_color);
     fw->line_right= solar_flow_make_line(btn, cx,          cy,   home_x - r, cy,           FLOW_COLOR_SOLAR);
     fw->center    = solar_flow_make_dot(btn, cx, cy, 0x555555);
   } else {
