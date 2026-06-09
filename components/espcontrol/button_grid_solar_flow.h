@@ -146,10 +146,13 @@ inline lv_obj_t *solar_flow_make_line(lv_obj_t *parent,
 
 // ── Center dot ────────────────────────────────────────────────────────────────
 
+static constexpr int FLOW_CENTER_R = 7;  // center dot radius
+
 inline lv_obj_t *solar_flow_make_dot(lv_obj_t *parent, int x, int y, uint32_t color) {
+  int sz = FLOW_CENTER_R * 2;
   lv_obj_t *dot = lv_obj_create(parent);
-  lv_obj_set_size(dot, 7, 7);
-  lv_obj_set_pos(dot, x - 3, y - 3);
+  lv_obj_set_size(dot, sz, sz);
+  lv_obj_set_pos(dot, x - FLOW_CENTER_R, y - FLOW_CENTER_R);
   lv_obj_set_style_radius(dot, LV_PCT(50), LV_PART_MAIN);
   lv_obj_set_style_bg_color(dot, lv_color_hex(color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_PART_MAIN);
@@ -187,12 +190,13 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
   int r = node_sz / 2;
 
   // Lines first (rendered behind nodes)
+  int cd = FLOW_CENTER_R * 2;  // one center-dot diameter gap at junction
   if (layout_2x2) {
-    fw->line_top  = solar_flow_make_line(btn, cx, solar_y   + r, cx,        cy,            FLOW_COLOR_SOLAR);
-    fw->line_bot  = solar_flow_make_line(btn, cx, cy,            cx,        battery_y - r, FLOW_COLOR_BATTERY);
-    fw->line_left = solar_flow_make_line(btn, grid_x + r,  cy,   cx,        cy,            ctx->accent_color);
-    fw->line_right= solar_flow_make_line(btn, cx,          cy,   home_x - r, cy,           FLOW_COLOR_SOLAR);
-    fw->center    = solar_flow_make_dot(btn, cx, cy, 0x555555);
+    fw->line_top  = solar_flow_make_line(btn, cx,          solar_y + r,    cx,             cy - cd,        FLOW_COLOR_SOLAR);
+    fw->line_bot  = solar_flow_make_line(btn, cx,          cy + cd,        cx,             battery_y - r,  FLOW_COLOR_BATTERY);
+    fw->line_left = solar_flow_make_line(btn, grid_x + r,  cy,             cx - cd,        cy,             ctx->accent_color);
+    fw->line_right= solar_flow_make_line(btn, cx + cd,     cy,             home_x - r,     cy,             FLOW_COLOR_SOLAR);
+    fw->center    = solar_flow_make_dot(btn, cx, cy, 0x666666);
   } else {
     fw->line_top  = solar_flow_make_line(btn, cx, solar_y + r, cx, home_y - r, FLOW_COLOR_SOLAR);
   }
