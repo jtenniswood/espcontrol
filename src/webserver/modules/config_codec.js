@@ -165,6 +165,8 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
+  } else if (b && b.type === "solar") {
+    b.options = normalizeSolarOptions(b.options);
   } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "solar" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
@@ -297,6 +299,23 @@ function setConfigOptionValue(options, name, value) {
   value = String(value || "").trim();
   if (value) out.push(prefix + encodeConfigField(value));
   return out.join(",");
+}
+
+var SOLAR_KEY_LONG_TO_SHORT = {
+  mode: "m", production: "p", consumption: "c", net: "n",
+  battery: "b", from_grid: "fg", to_grid: "tg", invert_production: "inv"
+};
+
+function normalizeSolarOptions(opts) {
+  var result = opts || "";
+  for (var longKey in SOLAR_KEY_LONG_TO_SHORT) {
+    var val = configOptionValue(result, longKey);
+    if (val) {
+      result = deleteConfigOptionValue(result, longKey);
+      result = setConfigOptionValue(result, SOLAR_KEY_LONG_TO_SHORT[longKey], val);
+    }
+  }
+  return result;
 }
 
 function deleteConfigOptionValue(options, name) {
