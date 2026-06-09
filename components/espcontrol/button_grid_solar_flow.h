@@ -36,13 +36,12 @@ struct SolarFlowWidgets {
 
 // ── Color constants ───────────────────────────────────────────────────────────
 
-static constexpr uint32_t FLOW_COLOR_SOLAR   = 0xF59E0B;  // amber
-static constexpr uint32_t FLOW_COLOR_HOME    = 0x3B82F6;  // blue
+static constexpr uint32_t FLOW_COLOR_SOLAR   = 0x50C878;  // mint green
+static constexpr uint32_t FLOW_COLOR_HOME    = 0x6699BB;  // steel blue
 static constexpr uint32_t FLOW_COLOR_BATTERY = 0x22C55E;  // green
-static constexpr uint32_t FLOW_COLOR_GRID    = 0x8B5CF6;  // purple
+// Grid color comes from ctx->accent_color (primary)
 static constexpr uint32_t FLOW_COLOR_EXPORT  = 0xFCD34D;  // yellow (to-grid)
 static constexpr uint32_t FLOW_COLOR_IMPORT  = 0xF87171;  // red (from-grid)
-static constexpr uint32_t FLOW_TRACK_OPA     = 25;        // track bg opacity %
 
 // Darken a color by mixing with black (factor 0-100, 100 = full black)
 static inline uint32_t flow_darken(uint32_t c, int factor) {
@@ -58,7 +57,8 @@ inline SolarFlowNode solar_flow_make_node(lv_obj_t *parent,
                                           int x, int y, int size,
                                           uint32_t color,
                                           const lv_font_t *font,
-                                          const char *name) {
+                                          const char *name,
+                                          bool label_right = false) {
   SolarFlowNode n;
 
   // ── lv_arc ring (270° sweep, 135° start, 45° end) ──
@@ -71,16 +71,16 @@ inline SolarFlowNode solar_flow_make_node(lv_obj_t *parent,
   lv_obj_clear_flag(n.arc, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_clear_flag(n.arc, LV_OBJ_FLAG_SCROLLABLE);
 
-  // Arc background (track)
+  // Arc background (track) — darker tint of the highlighted color
   lv_obj_set_style_bg_opa(n.arc, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(n.arc, 0, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(n.arc, lv_color_hex(flow_darken(color, 65)), LV_PART_MAIN);
-  lv_obj_set_style_arc_width(n.arc, 5, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(n.arc, lv_color_hex(flow_darken(color, 55)), LV_PART_MAIN);
+  lv_obj_set_style_arc_width(n.arc, 7, LV_PART_MAIN);  // 30% thicker than base 5
   lv_obj_set_style_arc_rounded(n.arc, true, LV_PART_MAIN);
 
   // Arc indicator (filled portion)
   lv_obj_set_style_arc_color(n.arc, lv_color_hex(color), LV_PART_INDICATOR);
-  lv_obj_set_style_arc_width(n.arc, 5, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_width(n.arc, 7, LV_PART_INDICATOR);
   lv_obj_set_style_arc_rounded(n.arc, true, LV_PART_INDICATOR);
 
   // Remove knob completely
@@ -104,13 +104,16 @@ inline SolarFlowNode solar_flow_make_node(lv_obj_t *parent,
   lv_obj_align(n.sub_lbl, LV_ALIGN_CENTER, 0, 10);
   lv_obj_add_flag(n.sub_lbl, LV_OBJ_FLAG_HIDDEN);
 
-  // ── Name label below arc ──
+  // ── Name label — below arc normally, right of arc for solar ──
   if (name) {
     n.name_lbl = lv_label_create(parent);
-    lv_obj_set_style_text_color(n.name_lbl, lv_color_hex(flow_darken(color, 20)), LV_PART_MAIN);
+    lv_obj_set_style_text_color(n.name_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(n.name_lbl, font, LV_PART_MAIN);
     lv_label_set_text(n.name_lbl, name);
-    lv_obj_align_to(n.name_lbl, n.arc, LV_ALIGN_OUT_BOTTOM_MID, 0, 2);
+    if (label_right)
+      lv_obj_align_to(n.name_lbl, n.arc, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
+    else
+      lv_obj_align_to(n.name_lbl, n.arc, LV_ALIGN_OUT_BOTTOM_MID, 0, 2);
   }
 
   return n;
@@ -124,7 +127,7 @@ inline lv_obj_t *solar_flow_make_line(lv_obj_t *parent,
                                       uint32_t color) {
   lv_obj_t *line = lv_obj_create(parent);
   bool vertical = (x1 == x2);
-  lv_coord_t lw = 2;
+  lv_coord_t lw = 6;  // 3× original 2px
   if (vertical) {
     lv_obj_set_pos(line, x1 - lw / 2, y1);
     lv_obj_set_size(line, lw, y2 - y1);
@@ -133,9 +136,9 @@ inline lv_obj_t *solar_flow_make_line(lv_obj_t *parent,
     lv_obj_set_size(line, x2 - x1, lw);
   }
   lv_obj_set_style_bg_color(line, lv_color_hex(color), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(line, LV_OPA_40, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(line, LV_OPA_50, LV_PART_MAIN);
   lv_obj_set_style_border_width(line, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(line, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(line, 1, LV_PART_MAIN);
   lv_obj_set_style_pad_all(line, 0, LV_PART_MAIN);
   lv_obj_clear_flag(line, LV_OBJ_FLAG_SCROLLABLE);
   return line;
@@ -195,11 +198,14 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
   }
 
   // Nodes (rendered on top of lines)
-  fw->solar_node = solar_flow_make_node(btn, solar_x, solar_y, node_sz, FLOW_COLOR_SOLAR,   font, "Solar");
-  fw->home_node  = solar_flow_make_node(btn, home_x,  home_y,  node_sz, FLOW_COLOR_HOME,    font, "Home");
+  // Solar label to the right; others below. Grid uses accent_color (primary).
+  const lv_font_t *sf  = ctx->small_font;
+  uint32_t grid_color  = ctx->accent_color;
+  fw->solar_node = solar_flow_make_node(btn, solar_x, solar_y, node_sz, FLOW_COLOR_SOLAR,   sf, "Solar", true);
+  fw->home_node  = solar_flow_make_node(btn, home_x,  home_y,  node_sz, FLOW_COLOR_HOME,    sf, "Home");
   if (layout_2x2) {
-    fw->battery_node = solar_flow_make_node(btn, battery_x, battery_y, node_sz, FLOW_COLOR_BATTERY, font, "Battery");
-    fw->grid_node    = solar_flow_make_node(btn, grid_x,    grid_y,    node_sz, FLOW_COLOR_GRID,    font, "Grid");
+    fw->battery_node = solar_flow_make_node(btn, battery_x, battery_y, node_sz, FLOW_COLOR_BATTERY, sf, "Battery");
+    fw->grid_node    = solar_flow_make_node(btn, grid_x,    grid_y,    node_sz, grid_color,          sf, "Grid");
   }
 
   if (layout_2x2 && fw->center) lv_obj_move_foreground(fw->center);
