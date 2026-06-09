@@ -116,7 +116,7 @@ inline SolarFlowNode solar_flow_make_node(lv_obj_t *parent,
     else if (label_side == -1)
       lv_obj_align_to(n.name_lbl, n.arc, LV_ALIGN_OUT_LEFT_MID, -4, 0);
     else if (label_side == 2)
-      lv_obj_align_to(n.name_lbl, n.arc, LV_ALIGN_OUT_TOP_MID, 0, -2);
+      lv_obj_align_to(n.name_lbl, n.arc, LV_ALIGN_OUT_TOP_MID, 0, -7);
     else
       lv_obj_align_to(n.name_lbl, n.arc, LV_ALIGN_OUT_BOTTOM_MID, 0, 2);
   }
