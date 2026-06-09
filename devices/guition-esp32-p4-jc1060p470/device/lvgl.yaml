@@ -87,7 +87,7 @@ lvgl:
       - label:
           text: "\U000F0590"
           id: clock_bar_weather_icon_label
-          text_font: font_icon_clock_bar
+          text_font: font_icon_status
           align: top_right
           x: -4
           y: 1
@@ -114,7 +114,7 @@ lvgl:
             - label:
                 id: network_status_icon_label
                 text: "\U000F0928"
-                text_font: font_icon_clock_bar
+                text_font: font_icon_status
                 align: center
                 text_align: center
                 text_color: 0xFFFFFF

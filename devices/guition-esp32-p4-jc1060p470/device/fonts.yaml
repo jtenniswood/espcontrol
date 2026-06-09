@@ -23,13 +23,6 @@ font:
   # Status, network, and subpage icons
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
     id: font_icon_status
-    size: 19
-    bpp: 4
-    glyphs: !include ../../../common/assets/network_status_glyphs.yaml
-
-  # Larger clock-bar network and weather icons
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
-    id: font_icon_clock_bar
     size: 25
     bpp: 4
     glyphs: !include ../../../common/assets/network_status_glyphs.yaml
