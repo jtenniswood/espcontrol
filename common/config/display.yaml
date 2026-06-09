@@ -120,12 +120,6 @@ script:
                                     id(indoor_temp_enable).state,
                                     id(outdoor_temp_enable).state,
                                     id(indoor_temp), id(outdoor_temp));
-      - if:
-          condition:
-            lambda: 'return id(screen_rotation_ready);'
-          then:
-            - delay: 100ms
-            - script.execute: refresh_button_grid
 
 switch:
   - platform: template

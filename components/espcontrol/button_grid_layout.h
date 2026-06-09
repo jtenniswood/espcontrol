@@ -226,31 +226,13 @@ inline void set_grid_card_cell(lv_obj_t *btn,
                                int cols,
                                int rows) {
   if (!btn) return;
+  (void) grid;
+  (void) cols;
+  (void) rows;
   if (col_span < 1) col_span = 1;
   if (row_span < 1) row_span = 1;
-  lv_grid_align_t col_align = col_span > 1 ? LV_GRID_ALIGN_START : LV_GRID_ALIGN_STRETCH;
-  lv_grid_align_t row_align = row_span > 1 ? LV_GRID_ALIGN_START : LV_GRID_ALIGN_STRETCH;
-  lv_obj_set_grid_cell(btn, col_align, col, col_span, row_align, row, row_span);
-
-  if (!grid || card_span_is_single(row_span, col_span)) return;
-  lv_coord_t width = grid_track_span_size(
-    lv_obj_get_width(grid),
-    lv_obj_get_style_pad_left(grid, LV_PART_MAIN),
-    lv_obj_get_style_pad_right(grid, LV_PART_MAIN),
-    lv_obj_get_style_pad_column(grid, LV_PART_MAIN),
-    cols,
-    col,
-    col_span);
-  lv_coord_t height = grid_track_span_size(
-    lv_obj_get_height(grid),
-    lv_obj_get_style_pad_top(grid, LV_PART_MAIN),
-    lv_obj_get_style_pad_bottom(grid, LV_PART_MAIN),
-    lv_obj_get_style_pad_row(grid, LV_PART_MAIN),
-    rows,
-    row,
-    row_span);
-  if (col_span > 1 && width > 0) lv_obj_set_width(btn, width);
-  if (row_span > 1 && height > 0) lv_obj_set_height(btn, height);
+  lv_obj_set_grid_cell(
+    btn, LV_GRID_ALIGN_STRETCH, col, col_span, LV_GRID_ALIGN_STRETCH, row, row_span);
 }
 
 // ── Button visuals ────────────────────────────────────────────────────
