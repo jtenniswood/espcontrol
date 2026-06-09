@@ -213,9 +213,13 @@ inline void solar_flow_apply_card_face(SolarCardCtx *ctx) {
   if (ctx->icon_lbl)   lv_obj_add_flag(ctx->icon_lbl,   LV_OBJ_FLAG_HIDDEN);
   if (ctx->corner_lbl) lv_obj_add_flag(ctx->corner_lbl, LV_OBJ_FLAG_HIDDEN);
 
-  // Determine layout from physical tile dimensions
+  // Determine layout from physical tile dimensions.
+  // Skip if the button hasn't been laid out yet (LVGL defers layout until
+  // lv_timer_handler runs; creating flow widgets with W=H=0 produces negative
+  // rectangle sizes that corrupt LVGL's internal state).
   lv_coord_t W = lv_obj_get_width(ctx->btn);
   lv_coord_t H = lv_obj_get_height(ctx->btn);
+  if (W < 20 || H < 20) return;
   bool layout_2x2 = (W >= 180 && H >= 180);
 
   bool has_battery = !ctx->battery.entity_id.empty();
