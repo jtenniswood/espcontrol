@@ -7,8 +7,8 @@
 substitutions:
   name: "espcontrol-crowpanel5"
   friendly_name: "EspControl CrowPanel 5inch"
-  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
-  espcontrol_component_ref: "main"
+  espcontrol_component_url: "https://github.com/edasque/espcontrol"
+  espcontrol_component_ref: "combined-dev"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -16,3 +16,9 @@ wifi:
 
 packages:
   espcontrol: !include packages.yaml
+
+# Local web UI bundle with solar + calendar card types.
+# Run: python3 scripts/build.py www
+# Serve: python3 -m http.server 8080 --directory docs/public/webserver/guition-esp32-p4-jc1060p470
+web_server:
+  js_url: "http://192.168.7.154:8080/www.js"
