@@ -36,42 +36,59 @@ var SOLAR_CARD_METADATA = {
 
 // ── Option string helpers (k=v,k=v format, shared codec) ────────────────────
 
-// Solar cards store entity IDs without the "sensor." domain prefix to stay
-// within the 255-char config limit. All solar entities are sensors, so we can
-// strip on save and restore on read without ambiguity.
+// Abbreviated option keys to stay within the 255-char config limit.
+// Long keys are accepted on read for migration of existing configs.
+var SOLAR_KEY_SHORT = {
+  mode: "m", production: "p", consumption: "c", net: "n",
+  battery: "b", from_grid: "fg", to_grid: "tg", invert_production: "inv"
+};
+
+// Solar cards store entity IDs without the "sensor." domain prefix.
 function solarEntityToStorage(v) {
   return (v || "").replace(/^sensor\./, "");
 }
 function solarEntityFromStorage(v) {
   if (!v) return "";
-  // Already fully-qualified (contains a dot) → leave as-is
   return v.indexOf(".") === -1 ? "sensor." + v : v;
 }
 
+// Read a solar option, trying short key first then long key (migration).
+function solarRead(opts, key) {
+  var sk = SOLAR_KEY_SHORT[key] || key;
+  var v = configOptionValue(opts, sk);
+  if (!v) v = configOptionValue(opts, key);  // fallback for old configs
+  return v;
+}
+
 function getSolarMode(b) {
-  var mode = configOptionValue(b && b.options, "mode");
+  var mode = solarRead(b && b.options, "mode");
   if (mode === "today") return "today";
   if (mode === "flow")  return "flow";
   return "live";
 }
 
 function getSolarEntityOption(b, key) {
-  return solarEntityFromStorage(configOptionValue(b && b.options, key));
+  return solarEntityFromStorage(solarRead(b && b.options, key));
 }
 
 function setSolarEntityOption(b, key, value) {
   if (!b) return "";
-  b.options = setConfigOptionValue(b.options, key, solarEntityToStorage(value));
+  var sk = SOLAR_KEY_SHORT[key] || key;
+  // Remove any legacy long-key entry, then write short key
+  b.options = deleteConfigOptionValue(b.options, key);
+  b.options = setConfigOptionValue(b.options, sk, solarEntityToStorage(value));
   return b.options;
 }
 
 function getSolarOption(b, key) {
-  return configOptionValue(b && b.options, key);
+  return solarRead(b && b.options, key);
 }
 
 function setSolarOption(b, key, value) {
   if (!b) return "";
-  b.options = setConfigOptionValue(b.options, key, value);
+  var sk = SOLAR_KEY_SHORT[key] || key;
+  b.options = deleteConfigOptionValue(b.options, key);  // remove legacy long key
+  b.options = setConfigOptionValue(b.options, sk, value);
   return b.options;
 }
 
