@@ -30,9 +30,6 @@ struct SolarFlowWidgets {
   lv_obj_t *dot_grid  = nullptr;  // midpoint dot on left arm (grid)
   lv_obj_t *center    = nullptr;  // small center junction circle
 
-  lv_point_t pts_v[2];
-  lv_point_t pts_h[2];
-
   bool layout_2x2  = false;  // true when tile is wide enough for full cross
   bool initialized = false;
 };
@@ -96,14 +93,29 @@ inline lv_obj_t *solar_flow_make_dot(lv_obj_t *parent, int x, int y, uint32_t co
   return dot;
 }
 
-// ── Create a connecting line ──────────────────────────────────────────────────
+// ── Create a connecting line (thin rectangle, H or V only) ───────────────────
+// x1,y1 = start; x2,y2 = end. Draws a 2px-wide rectangle along the axis.
 
-inline lv_obj_t *solar_flow_make_line(lv_obj_t *parent, lv_point_t *pts, uint32_t color) {
-  lv_obj_t *line = lv_line_create(parent);
-  lv_line_set_points(line, pts, 2);
-  lv_obj_set_style_line_width(line, 2, LV_PART_MAIN);
-  lv_obj_set_style_line_color(line, lv_color_hex(color), LV_PART_MAIN);
-  lv_obj_set_style_line_opa(line, LV_OPA_50, LV_PART_MAIN);
+inline lv_obj_t *solar_flow_make_line(lv_obj_t *parent,
+                                      lv_coord_t x1, lv_coord_t y1,
+                                      lv_coord_t x2, lv_coord_t y2,
+                                      uint32_t color) {
+  lv_obj_t *line = lv_obj_create(parent);
+  bool vertical = (x1 == x2);
+  lv_coord_t lw = 2;
+  if (vertical) {
+    lv_obj_set_pos(line, x1 - lw / 2, y1);
+    lv_obj_set_size(line, lw, y2 - y1);
+  } else {
+    lv_obj_set_pos(line, x1, y1 - lw / 2);
+    lv_obj_set_size(line, x2 - x1, lw);
+  }
+  lv_obj_set_style_bg_color(line, lv_color_hex(color), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(line, LV_OPA_50, LV_PART_MAIN);
+  lv_obj_set_style_border_width(line, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(line, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(line, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(line, LV_OBJ_FLAG_SCROLLABLE);
   return line;
 }
 
@@ -138,19 +150,11 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
   // Lines first (rendered behind nodes in LVGL child order)
   int r = node_sz / 2;
   if (layout_2x2) {
-    fw->pts_v[0] = {(lv_coord_t)cx, (lv_coord_t)(solar_y + r)};
-    fw->pts_v[1] = {(lv_coord_t)cx, (lv_coord_t)(battery_y - r)};
-    fw->line_v = solar_flow_make_line(btn, fw->pts_v, FLOW_COLOR_SOLAR);
-
-    fw->pts_h[0] = {(lv_coord_t)(grid_x + r), (lv_coord_t)cy};
-    fw->pts_h[1] = {(lv_coord_t)(home_x - r), (lv_coord_t)cy};
-    fw->line_h = solar_flow_make_line(btn, fw->pts_h, FLOW_COLOR_SOLAR);
-
+    fw->line_v = solar_flow_make_line(btn, cx, solar_y + r, cx, battery_y - r, FLOW_COLOR_SOLAR);
+    fw->line_h = solar_flow_make_line(btn, grid_x + r, cy, home_x - r, cy, FLOW_COLOR_SOLAR);
     fw->center = solar_flow_make_dot(btn, cx, cy, 0x444444);
   } else {
-    fw->pts_v[0] = {(lv_coord_t)cx, (lv_coord_t)(solar_y + r)};
-    fw->pts_v[1] = {(lv_coord_t)cx, (lv_coord_t)(home_y - r)};
-    fw->line_v = solar_flow_make_line(btn, fw->pts_v, FLOW_COLOR_SOLAR);
+    fw->line_v = solar_flow_make_line(btn, cx, solar_y + r, cx, home_y - r, FLOW_COLOR_SOLAR);
   }
 
   // Direction dots (midpoint of each arm)
