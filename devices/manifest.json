@@ -3,6 +3,137 @@
     "largeSensorUnitOffsetPercent": -10
   },
   "devices": {
+    "crowpanel-5inch": {
+      "slots": 15,
+      "public": {
+        "name": "CrowPanel 5 inch",
+        "docsPath": "/screens/crowpanel-5inch",
+        "screenSize": "5 inches",
+        "resolution": "800 x 480",
+        "orientation": "Landscape"
+      },
+      "layout": {
+        "cols": 5,
+        "rows": 3,
+        "firmwareGrid": "5x3",
+        "portraitCols": 3
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ],
+        "displayOffset": 0
+      },
+      "web": {
+        "dragMode": "swap",
+        "dragAnimation": true,
+        "screen": {
+          "width": "100%",
+          "aspect": "800/480"
+        },
+        "portrait": {
+          "cols": 3,
+          "rows": 5,
+          "screen": {
+            "width": "60%",
+            "aspect": "480/800"
+          }
+        },
+        "topbar": {
+          "height": 3.2,
+          "padding": "0.39cqw",
+          "fontSize": 1.95
+        },
+        "grid": {
+          "top": 4.4,
+          "compactTop": 0.49,
+          "left": 0.49,
+          "right": 0.49,
+          "bottom": 0.49,
+          "gap": 0.98,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 0.78,
+          "padding": 1.37,
+          "iconSize": 4.69,
+          "labelSize": 1.8,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 0.78
+        },
+        "sensorBadge": {
+          "top": 1,
+          "right": 1,
+          "fontSize": 1.6
+        },
+        "subpageBadge": {
+          "bottom": 1,
+          "right": 1,
+          "fontSize": 2
+        }
+      },
+      "firmware": {
+        "build": {
+          "chip": "ESP32-S3"
+        },
+        "fonts": {
+          "icon": "font_icon_main",
+          "sensor": "font_number_value",
+          "largeSensor": "font_number_value_large",
+          "mediaTitle": "font_text_title",
+          "volumeNumber": "font_number_modal",
+          "volumeLabel": "font_text_body",
+          "climateCardIcon": "font_icon_card",
+          "subpageChevron": "font_icon_status",
+          "climateOptionTitle": "font_text_body",
+          "climateOptionValue": "font_text_small"
+        },
+        "display": {
+          "wrapTallLabels": false,
+          "subpageChevronX": 3,
+          "subpageChevronY": -2,
+          "subpageChevronTextWidthPercent": 96,
+          "volumeWidthCompensationPercent": 95
+        },
+        "package": {
+          "subpageConfigChunks": 4,
+          "substitutions": {
+            "screen_width": "\"800\"",
+            "screen_height": "\"480\"",
+            "content_width": "\"680\"",
+            "setup_icon_font_id": "font_icon_main",
+            "setup_title_font_id": "font_text_title",
+            "setup_body_font_id": "font_text_body",
+            "setup_pad_row": "\"20\"",
+            "setup_loading_pad_row": "\"40\"",
+            "setup_action_button_width": "\"200\"",
+            "setup_action_button_height": "\"56\"",
+            "setup_action_button_radius": "\"12\"",
+            "icon_font": "font_icon_main",
+            "subpage_chevron_font": "font_icon_status",
+            "label_font": "font_text_body",
+            "media_title_font": "font_text_title",
+            "unit_font": "font_text_body",
+            "sensor_value_font": "font_number_value",
+            "padding": "14px",
+            "radius": "10px",
+            "main_page_pad_top": "\"42\"",
+            "main_page_compact_pad_top": "\"5\"",
+            "clock_font_size": "\"160\"",
+            "clock_cx": "\"400\"",
+            "clock_cy": "\"240\""
+          },
+          "deviceFontPackageKey": "fonts_device"
+        }
+      }
+    },
     "guition-esp32-p4-jc1060p470": {
       "slots": 15,
       "public": {
@@ -98,7 +229,6 @@
         },
         "display": {
           "wrapTallLabels": true,
-          "imageCardDownloaders": 6,
           "volumeWidthCompensationPercent": 95
         },
         "package": {
@@ -123,10 +253,8 @@
             "sensor_value_font": "font_number_value",
             "padding": "16px",
             "radius": "10px",
-            "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"42\"",
             "main_page_compact_pad_top": "\"5\"",
-            "clock_bar_item_gap": "\"80\"",
             "clock_font_size": "\"200\"",
             "clock_cx": "\"512\"",
             "clock_cy": "\"300\""
@@ -236,7 +364,6 @@
         },
         "display": {
           "wrapTallLabels": false,
-          "imageCardDownloaders": 6,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
           "subpageChevronTextWidthPercent": 96
@@ -263,10 +390,8 @@
             "sensor_value_font": "font_number_value",
             "padding": "21px",
             "radius": "10px",
-            "main_page_card_gap": "\"14\"",
             "main_page_pad_top": "\"62\"",
             "main_page_compact_pad_top": "\"5\"",
-            "clock_bar_item_gap": "\"96\"",
             "clock_font_size": "\"160\"",
             "clock_cx": "\"240\"",
             "clock_cy": "\"400\""
@@ -368,7 +493,6 @@
         },
         "display": {
           "wrapTallLabels": true,
-          "imageCardDownloaders": 6,
           "subpageChevronX": 4,
           "subpageChevronY": -2
         },
@@ -393,10 +517,8 @@
             "sensor_value_font": "font_number_value",
             "padding": "18px",
             "radius": "11px",
-            "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"46\"",
             "main_page_compact_pad_top": "\"5\"",
-            "clock_bar_item_gap": "\"78\"",
             "clock_font_size": "\"220\"",
             "clock_cx": "\"640\"",
             "clock_cy": "\"400\""
@@ -504,7 +626,6 @@
             "greenPercent": 100,
             "bluePercent": 104
           },
-          "imageCardDownloaders": 6,
           "wrapTallLabels": false
         },
         "package": {
@@ -528,10 +649,8 @@
             "sensor_value_font": "font_number_value",
             "padding": "21px",
             "radius": "12px",
-            "main_page_card_gap": "\"15\"",
             "main_page_pad_top": "\"60\"",
             "main_page_compact_pad_top": "\"6\"",
-            "clock_bar_item_gap": "\"96\"",
             "clock_font_size": "\"224\"",
             "clock_cx": "\"360\"",
             "clock_cy": "\"360\""
@@ -599,7 +718,7 @@
           "fontSize": 3.75
         },
         "grid": {
-          "top": 8.33,
+          "top": 9.33,
           "compactTop": 0.83,
           "left": 1.04,
           "right": 1.04,
@@ -673,10 +792,8 @@
             "sensor_value_font": "font_number_value",
             "padding": "14px",
             "radius": "8px",
-            "main_page_card_gap": "\"10\"",
-            "main_page_pad_top": "\"40\"",
+            "main_page_pad_top": "\"42\"",
             "main_page_compact_pad_top": "\"4\"",
-            "clock_bar_item_gap": "\"60\"",
             "clock_font_size": "\"160\"",
             "clock_cx": "\"240\"",
             "clock_cy": "\"240\""

@@ -200,11 +200,13 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "webhook") return "Webhook";
   if (type == "sensor") return "Sensor";
   if (type == "slider") return "Slider";
+  if (type == "solar") return "Solar";
   if (type == "subpage") return "Subpage";
   if (type == "timezone") return "Date & Time";
   if (type == "weather") return "Weather";
   if (type == "image") return "Camera Card";
   if (type == "weather_forecast") return "Weather Forecast";
+  if (type == "ha_calendar") return "Calendar";
   return type.empty() ? "Switch" : type.c_str();
 }
 
@@ -237,11 +239,13 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "webhook") return true;
   if (type == "sensor") return true;
   if (type == "slider") return true;
+  if (type == "solar") return true;
   if (type == "subpage") return false;
   if (type == "timezone") return true;
   if (type == "weather") return true;
   if (type == "image") return true;
   if (type == "weather_forecast") return true;
+  if (type == "ha_calendar") return true;
   return false;
 }
 
@@ -274,11 +278,13 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "slider") return "Auto";
+  if (type == "solar") return "Solar Power";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "ha_calendar") return "Auto";
   return "Auto";
 }
 
@@ -311,11 +317,13 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "slider") return "Auto";
+  if (type == "solar") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "ha_calendar") return "Auto";
   return "Auto";
 }
 

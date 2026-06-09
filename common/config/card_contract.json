@@ -14,7 +14,12 @@
     "": {
       "label": "Switch",
       "allowInSubpage": true,
-      "domains": ["light", "switch", "input_boolean", "fan"],
+      "domains": [
+        "light",
+        "switch",
+        "input_boolean",
+        "fan"
+      ],
       "options": [
         {
           "name": "large_numbers",
@@ -25,15 +30,26 @@
           "name": "confirmation_mode",
           "label": "Confirmation Required",
           "kind": "choice",
-          "values": ["", "off", "on", "both"],
+          "values": [
+            "",
+            "off",
+            "on",
+            "both"
+          ],
           "defaultValue": "",
-          "storage": ["confirm_off", "confirm_on"]
+          "storage": [
+            "confirm_off",
+            "confirm_on"
+          ]
         },
         {
           "name": "on_pattern",
           "label": "On State Pattern",
           "kind": "choice",
-          "values": ["", "stripes"],
+          "values": [
+            "",
+            "stripes"
+          ],
           "defaultValue": ""
         },
         {
@@ -75,7 +91,18 @@
     "action": {
       "label": "Action",
       "allowInSubpage": true,
-      "domains": ["scene", "script", "automation", "button", "vacuum", "input_button", "input_boolean", "input_number", "input_select", "select"],
+      "domains": [
+        "scene",
+        "script",
+        "automation",
+        "button",
+        "vacuum",
+        "input_button",
+        "input_boolean",
+        "input_number",
+        "input_select",
+        "select"
+      ],
       "options": [
         {
           "name": "large_numbers",
@@ -98,13 +125,20 @@
     "alarm": {
       "label": "Alarm",
       "allowInSubpage": true,
-      "domains": ["alarm_control_panel"],
+      "domains": [
+        "alarm_control_panel"
+      ],
       "options": [
         {
           "name": "alarm_card_type",
           "label": "Type",
           "kind": "choice",
-          "values": ["control_panel", "away", "home", "disarm"],
+          "values": [
+            "control_panel",
+            "away",
+            "home",
+            "disarm"
+          ],
           "defaultValue": "control_panel"
         },
         {
@@ -123,28 +157,42 @@
           "name": "actions",
           "label": "Visible Actions",
           "kind": "choice",
-          "values": ["away", "home", "disarm"],
+          "values": [
+            "away",
+            "home",
+            "disarm"
+          ],
           "defaultValue": "away|home|disarm"
         },
         {
           "name": "icon_display",
           "label": "Icon Display",
           "kind": "choice",
-          "values": ["static", "status"],
+          "values": [
+            "static",
+            "status"
+          ],
           "defaultValue": "status"
         },
         {
           "name": "label_display",
           "label": "Label Display",
           "kind": "choice",
-          "values": ["name", "status"],
+          "values": [
+            "name",
+            "status"
+          ],
           "defaultValue": "status"
         }
       ],
       "behavior": {
         "alarm": {
           "controlPanelValue": "control_panel",
-          "defaultActions": ["away", "home", "disarm"],
+          "defaultActions": [
+            "away",
+            "home",
+            "disarm"
+          ],
           "actions": [
             {
               "value": "away",
@@ -186,7 +234,9 @@
       "label": "Alarm",
       "allowInSubpage": true,
       "pickerKey": "alarm",
-      "domains": ["alarm_control_panel"],
+      "domains": [
+        "alarm_control_panel"
+      ],
       "default": {
         "entity": "",
         "label": "Arm Away",
@@ -202,13 +252,20 @@
     "calendar": {
       "label": "Date & Time",
       "allowInSubpage": true,
-      "domains": ["sensor"],
+      "domains": [
+        "sensor"
+      ],
       "options": [
         {
           "name": "date_time_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["clock", "datetime", "", "timezone"],
+          "values": [
+            "clock",
+            "datetime",
+            "",
+            "timezone"
+          ],
           "defaultValue": ""
         },
         {
@@ -239,7 +296,12 @@
           "name": "date_time_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["clock", "datetime", "", "timezone"],
+          "values": [
+            "clock",
+            "datetime",
+            "",
+            "timezone"
+          ],
           "defaultValue": "clock"
         },
         {
@@ -263,20 +325,31 @@
     "climate": {
       "label": "Climate",
       "allowInSubpage": true,
-      "domains": ["climate"],
+      "domains": [
+        "climate"
+      ],
       "options": [
         {
           "name": "label_display",
           "label": "Label Display",
           "kind": "choice",
-          "values": ["label", "status", "actual", "target"],
+          "values": [
+            "label",
+            "status",
+            "actual",
+            "target"
+          ],
           "defaultValue": "label"
         },
         {
           "name": "number_display",
           "label": "Icon & Temperatures",
           "kind": "choice",
-          "values": ["icon", "actual", "target"],
+          "values": [
+            "icon",
+            "actual",
+            "target"
+          ],
           "defaultValue": "target"
         },
         {
@@ -289,7 +362,12 @@
         "climate": {
           "defaultLabelDisplay": "label",
           "defaultNumberDisplay": "target",
-          "precisionValues": ["", "1", "2", "3"]
+          "precisionValues": [
+            "",
+            "1",
+            "2",
+            "3"
+          ]
         }
       },
       "default": {
@@ -307,13 +385,23 @@
     "cover": {
       "label": "Cover",
       "allowInSubpage": true,
-      "domains": ["cover"],
+      "domains": [
+        "cover"
+      ],
       "options": [
         {
           "name": "cover_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "tilt", "toggle", "open", "close", "stop", "set_position"],
+          "values": [
+            "",
+            "tilt",
+            "toggle",
+            "open",
+            "close",
+            "stop",
+            "set_position"
+          ],
           "defaultValue": ""
         },
         {
@@ -351,7 +439,10 @@
     "door_window": {
       "label": "Doors & Windows",
       "allowInSubpage": true,
-      "domains": ["binary_sensor", "sensor"],
+      "domains": [
+        "binary_sensor",
+        "sensor"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -367,7 +458,11 @@
     "presence": {
       "label": "Presence",
       "allowInSubpage": true,
-      "domains": ["binary_sensor", "sensor", "text_sensor"],
+      "domains": [
+        "binary_sensor",
+        "sensor",
+        "text_sensor"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -385,7 +480,9 @@
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
       "experimental": "developer",
-      "domains": ["fan"],
+      "domains": [
+        "fan"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -403,7 +500,9 @@
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
       "experimental": "developer",
-      "domains": ["fan"],
+      "domains": [
+        "fan"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -421,7 +520,9 @@
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
       "experimental": "developer",
-      "domains": ["fan"],
+      "domains": [
+        "fan"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -438,7 +539,9 @@
       "label": "Fans",
       "allowInSubpage": true,
       "experimental": "developer",
-      "domains": ["fan"],
+      "domains": [
+        "fan"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -456,7 +559,9 @@
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
       "experimental": "developer",
-      "domains": ["fan"],
+      "domains": [
+        "fan"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -472,20 +577,29 @@
     "garage": {
       "label": "Garage Door",
       "allowInSubpage": true,
-      "domains": ["cover"],
+      "domains": [
+        "cover"
+      ],
       "options": [
         {
           "name": "garage_mode",
           "label": "Interaction",
           "kind": "choice",
-          "values": ["", "open", "close"],
+          "values": [
+            "",
+            "open",
+            "close"
+          ],
           "defaultValue": ""
         },
         {
           "name": "label_display",
           "label": "Display",
           "kind": "choice",
-          "values": ["label", "status"],
+          "values": [
+            "label",
+            "status"
+          ],
           "defaultValue": "label"
         }
       ],
@@ -510,7 +624,10 @@
           "name": "internal_mode",
           "label": "Mode",
           "kind": "choice",
-          "values": ["switch", "push"],
+          "values": [
+            "switch",
+            "push"
+          ],
           "defaultValue": "switch"
         }
       ],
@@ -538,7 +655,9 @@
     "light_brightness": {
       "label": "Lights",
       "allowInSubpage": true,
-      "domains": ["light"],
+      "domains": [
+        "light"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -555,7 +674,9 @@
       "label": "Lights",
       "allowInSubpage": true,
       "pickerKey": "light_brightness",
-      "domains": ["light"],
+      "domains": [
+        "light"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -572,7 +693,9 @@
       "label": "Lights",
       "allowInSubpage": true,
       "pickerKey": "light_brightness",
-      "domains": ["light"],
+      "domains": [
+        "light"
+      ],
       "behavior": {
         "lightTemperature": {
           "defaultRange": "2000-6500",
@@ -580,7 +703,9 @@
           "max": 10000,
           "minMax": 9900,
           "step": 100,
-          "legacySensorValues": ["kelvin"]
+          "legacySensorValues": [
+            "kelvin"
+          ]
         }
       },
       "default": {
@@ -598,13 +723,19 @@
     "lock": {
       "label": "Lock",
       "allowInSubpage": true,
-      "domains": ["lock"],
+      "domains": [
+        "lock"
+      ],
       "options": [
         {
           "name": "lock_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "lock", "unlock"],
+          "values": [
+            "",
+            "lock",
+            "unlock"
+          ],
           "defaultValue": ""
         }
       ],
@@ -635,27 +766,43 @@
     "media": {
       "label": "Media",
       "allowInSubpage": true,
-      "domains": ["media_player"],
+      "domains": [
+        "media_player"
+      ],
       "options": [
         {
           "name": "media_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["play_pause", "previous", "next", "volume", "position", "now_playing"],
+          "values": [
+            "play_pause",
+            "previous",
+            "next",
+            "volume",
+            "position",
+            "now_playing"
+          ],
           "defaultValue": "play_pause"
         },
         {
           "name": "media_display",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "state"],
+          "values": [
+            "",
+            "state"
+          ],
           "defaultValue": ""
         },
         {
           "name": "media_now_playing_controls",
           "label": "Controls",
           "kind": "choice",
-          "values": ["", "progress", "play_pause"],
+          "values": [
+            "",
+            "progress",
+            "play_pause"
+          ],
           "defaultValue": ""
         },
         {
@@ -679,7 +826,10 @@
           "legacyModes": {
             "controls": "play_pause"
           },
-          "stateDisplayModes": ["play_pause", "position"],
+          "stateDisplayModes": [
+            "play_pause",
+            "position"
+          ],
           "playbackServices": {
             "play_pause": "media_player.media_play_pause",
             "previous": "media_player.media_previous_track",
@@ -703,7 +853,10 @@
       "label": "Option Select",
       "allowInSubpage": true,
       "hidden": true,
-      "domains": ["select", "input_select"],
+      "domains": [
+        "select",
+        "input_select"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -781,14 +934,21 @@
     "sensor": {
       "label": "Sensor",
       "allowInSubpage": true,
-      "domains": ["sensor", "binary_sensor", "text_sensor"],
+      "domains": [
+        "sensor",
+        "binary_sensor",
+        "text_sensor"
+      ],
       "options": [
         {
           "name": "large_numbers",
           "label": "Large Sensor Numbers",
           "kind": "flag",
           "supportedWhen": {
-            "precisionNot": ["icon", "text"]
+            "precisionNot": [
+              "icon",
+              "text"
+            ]
           }
         },
         {
@@ -806,7 +966,9 @@
           "label": "Status Translation",
           "kind": "flag",
           "supportedWhen": {
-            "precision": ["text"]
+            "precision": [
+              "text"
+            ]
           }
         },
         {
@@ -814,7 +976,9 @@
           "label": "Input Status",
           "kind": "text",
           "supportedWhen": {
-            "precision": ["text"]
+            "precision": [
+              "text"
+            ]
           }
         },
         {
@@ -822,7 +986,9 @@
           "label": "Display Text",
           "kind": "text",
           "supportedWhen": {
-            "precision": ["text"]
+            "precision": [
+              "text"
+            ]
           }
         },
         {
@@ -830,7 +996,9 @@
           "label": "Input Status 2",
           "kind": "text",
           "supportedWhen": {
-            "precision": ["text"]
+            "precision": [
+              "text"
+            ]
           }
         },
         {
@@ -838,7 +1006,9 @@
           "label": "Display Text 2",
           "kind": "text",
           "supportedWhen": {
-            "precision": ["text"]
+            "precision": [
+              "text"
+            ]
           }
         }
       ],
@@ -857,7 +1027,10 @@
     "slider": {
       "label": "Slider",
       "allowInSubpage": true,
-      "domains": ["light", "fan"],
+      "domains": [
+        "light",
+        "fan"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -870,6 +1043,71 @@
         "options": ""
       }
     },
+    "solar": {
+      "label": "Solar",
+      "allowInSubpage": true,
+      "domains": [
+        "sensor"
+      ],
+      "options": [
+        {
+          "name": "mode",
+          "label": "Mode",
+          "kind": "choice",
+          "values": [
+            "live",
+            "today"
+          ],
+          "defaultValue": "live"
+        },
+        {
+          "name": "production",
+          "label": "Production",
+          "kind": "text"
+        },
+        {
+          "name": "invert_production",
+          "label": "Invert Production",
+          "kind": "flag"
+        },
+        {
+          "name": "consumption",
+          "label": "Consumption",
+          "kind": "text"
+        },
+        {
+          "name": "net",
+          "label": "Net Production",
+          "kind": "text"
+        },
+        {
+          "name": "battery",
+          "label": "Battery",
+          "kind": "text"
+        },
+        {
+          "name": "from_grid",
+          "label": "From Grid",
+          "kind": "text"
+        },
+        {
+          "name": "to_grid",
+          "label": "To Grid",
+          "kind": "text"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "Solar",
+        "icon": "Solar Power",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "solar",
+        "precision": "",
+        "options": "mode=live"
+      }
+    },
     "subpage": {
       "label": "Subpage",
       "allowInSubpage": false,
@@ -879,7 +1117,13 @@
           "name": "subpage_kind",
           "label": "Subpage Type",
           "kind": "choice",
-          "values": ["", "lights", "climate", "presence", "media"],
+          "values": [
+            "",
+            "lights",
+            "climate",
+            "presence",
+            "media"
+          ],
           "defaultValue": ""
         },
         {
@@ -910,7 +1154,12 @@
           "name": "date_time_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["clock", "datetime", "", "timezone"],
+          "values": [
+            "clock",
+            "datetime",
+            "",
+            "timezone"
+          ],
           "defaultValue": "timezone"
         },
         {
@@ -934,13 +1183,19 @@
     "weather": {
       "label": "Weather",
       "allowInSubpage": true,
-      "domains": ["weather"],
+      "domains": [
+        "weather"
+      ],
       "options": [
         {
           "name": "weather_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "today", "tomorrow"],
+          "values": [
+            "",
+            "today",
+            "tomorrow"
+          ],
           "defaultValue": ""
         },
         {
@@ -948,7 +1203,10 @@
           "label": "Large Temperature Numbers",
           "kind": "flag",
           "supportedWhen": {
-            "precision": ["today", "tomorrow"]
+            "precision": [
+              "today",
+              "tomorrow"
+            ]
           }
         }
       ],
@@ -1004,7 +1262,9 @@
       "label": "Weather Forecast",
       "allowInSubpage": true,
       "hidden": true,
-      "domains": ["weather"],
+      "domains": [
+        "weather"
+      ],
       "default": {
         "entity": "",
         "label": "",
@@ -1014,6 +1274,38 @@
         "unit": "",
         "type": "weather",
         "precision": "tomorrow",
+        "options": ""
+      }
+    },
+    "ha_calendar": {
+      "label": "Calendar",
+      "allowInSubpage": true,
+      "domains": ["calendar"],
+      "options": [
+        {
+          "name": "display_mode",
+          "label": "Display Mode",
+          "kind": "choice",
+          "values": ["", "current"],
+          "defaultValue": ""
+        },
+        {
+          "name": "modal_layout",
+          "label": "Modal Layout",
+          "kind": "choice",
+          "values": ["", "column"],
+          "defaultValue": ""
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "ha_calendar",
+        "precision": "",
         "options": ""
       }
     }

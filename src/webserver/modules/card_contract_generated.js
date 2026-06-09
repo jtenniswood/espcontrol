@@ -1036,6 +1036,71 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "solar": {
+    "label": "Solar",
+    "allowInSubpage": true,
+    "domains": [
+      "sensor"
+    ],
+    "options": [
+      {
+        "name": "mode",
+        "label": "Mode",
+        "kind": "choice",
+        "values": [
+          "live",
+          "today"
+        ],
+        "defaultValue": "live"
+      },
+      {
+        "name": "production",
+        "label": "Production",
+        "kind": "text"
+      },
+      {
+        "name": "invert_production",
+        "label": "Invert Production",
+        "kind": "flag"
+      },
+      {
+        "name": "consumption",
+        "label": "Consumption",
+        "kind": "text"
+      },
+      {
+        "name": "net",
+        "label": "Net Production",
+        "kind": "text"
+      },
+      {
+        "name": "battery",
+        "label": "Battery",
+        "kind": "text"
+      },
+      {
+        "name": "from_grid",
+        "label": "From Grid",
+        "kind": "text"
+      },
+      {
+        "name": "to_grid",
+        "label": "To Grid",
+        "kind": "text"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "Solar",
+      "icon": "Solar Power",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "solar",
+      "precision": "",
+      "options": "mode=live"
+    }
+  },
   "subpage": {
     "label": "Subpage",
     "allowInSubpage": false,
@@ -1208,6 +1273,46 @@ var CARD_CONTRACT_CARDS = {
       "unit": "",
       "type": "weather",
       "precision": "tomorrow",
+      "options": ""
+    }
+  },
+  "ha_calendar": {
+    "label": "Calendar",
+    "allowInSubpage": true,
+    "domains": [
+      "calendar"
+    ],
+    "options": [
+      {
+        "name": "display_mode",
+        "label": "Display Mode",
+        "kind": "choice",
+        "values": [
+          "",
+          "current"
+        ],
+        "defaultValue": ""
+      },
+      {
+        "name": "modal_layout",
+        "label": "Modal Layout",
+        "kind": "choice",
+        "values": [
+          "",
+          "column"
+        ],
+        "defaultValue": ""
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "ha_calendar",
+      "precision": "",
       "options": ""
     }
   }

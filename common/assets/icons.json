@@ -320,6 +320,11 @@
       "mdi": "broom"
     },
     {
+      "name": "Calendar Check",
+      "codepoint": "F00EF",
+      "mdi": "calendar-check"
+    },
+    {
       "name": "Camera",
       "codepoint": "F0100",
       "mdi": "camera"
@@ -1248,6 +1253,11 @@
       "name": "Home-Thermostat",
       "codepoint": "F0F54",
       "mdi": "home-thermometer"
+    },
+    {
+      "name": "Home Lightning Bolt",
+      "codepoint": "F1903",
+      "mdi": "home-lightning-bolt"
     },
     {
       "name": "Thermostat Auto",
