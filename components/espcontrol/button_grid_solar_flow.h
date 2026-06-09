@@ -225,7 +225,7 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
 
     // Lines (behind nodes)
     fw->line_top  = solar_flow_make_line(btn, solar_x, solar_y + r, solar_x, bus_y - cd, FLOW_COLOR_SOLAR);
-    fw->line_bot  = solar_flow_make_line(btn, bat_x,   bat_y + r,   bat_x,   bus_y - r,  FLOW_COLOR_BATTERY);
+    fw->line_bot  = solar_flow_make_line(btn, bat_x,   bat_y + r,   bat_x,   bus_y - r - cd, FLOW_COLOR_BATTERY);
     fw->line_left = solar_flow_make_line(btn, grid_x + r, bus_y, junc_x - cd, bus_y,     grid_color);
     fw->line_right= solar_flow_make_line(btn, junc_x + cd, bus_y, home_x - r, bus_y,     FLOW_COLOR_SOLAR);
     fw->center    = solar_flow_make_dot(btn, junc_x, bus_y, 0x666666);
