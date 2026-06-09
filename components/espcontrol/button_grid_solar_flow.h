@@ -198,7 +198,7 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
     int solar_y = (int)(H * 0.22f);
     int home_y  = (int)(H * 0.75f);
     fw->line_top = solar_flow_make_line(btn, cx, solar_y + r, cx, home_y - r, FLOW_COLOR_SOLAR);
-    fw->solar_node = solar_flow_make_node(btn, cx, solar_y, node_sz, FLOW_COLOR_SOLAR, sf, "Solar", 1);
+    fw->solar_node = solar_flow_make_node(btn, cx, solar_y, node_sz, FLOW_COLOR_SOLAR, sf, "Solar", 2);
     fw->home_node  = solar_flow_make_node(btn, cx, home_y,  node_sz, FLOW_COLOR_HOME,  sf, "Home");
 
   } else if (has_battery) {
@@ -249,7 +249,7 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
     fw->line_right= solar_flow_make_line(btn, cx + cd,    bus_y, home_x - r,  bus_y,       FLOW_COLOR_SOLAR);
     fw->center    = solar_flow_make_dot(btn, cx, bus_y, 0x666666);
 
-    fw->solar_node = solar_flow_make_node(btn, cx,      solar_y, node_sz, FLOW_COLOR_SOLAR, sf, "Solar", 1);
+    fw->solar_node = solar_flow_make_node(btn, cx,      solar_y, node_sz, FLOW_COLOR_SOLAR, sf, "Solar", 2);
     fw->home_node  = solar_flow_make_node(btn, home_x,  bus_y,   node_sz, FLOW_COLOR_HOME,  sf, "Home");
     fw->grid_node  = solar_flow_make_node(btn, grid_x,  bus_y,   node_sz, grid_color,        sf, "Grid");
 
