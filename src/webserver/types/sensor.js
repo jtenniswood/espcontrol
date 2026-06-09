@@ -68,16 +68,18 @@ registerButtonType("sensor", {
     var numericBtn = mode.buttons.numeric;
     var textBtn = mode.buttons.text;
 
-    var numericSection = condField();
+    var labelSection = condField();
 
-    var labelField = helpers.renderCardTextField(numericSection, b, helpers, {
+    helpers.renderCardTextField(labelSection, b, helpers, {
       label: "Label",
       idSuffix: "label",
       field: "label",
       placeholder: "e.g. Living Room",
       rerender: true,
     });
-    var labelInp = labelField.input;
+    panel.appendChild(labelSection);
+
+    var numericSection = condField();
 
     var unitField = helpers.renderCardTextField(numericSection, b, helpers, {
       label: "Unit",
@@ -226,6 +228,7 @@ registerButtonType("sensor", {
       iconBtn.classList.toggle("active", displayMode === "icon");
       numericBtn.classList.toggle("active", displayMode === "numeric");
       textBtn.classList.toggle("active", isTextMode);
+      labelSection.classList.toggle("sp-visible", displayMode === "numeric" || isTextMode);
       numericSection.classList.toggle("sp-visible", displayMode === "numeric");
       textSection.classList.toggle("sp-visible", isTextMode);
       iconSection.classList.toggle("sp-visible", displayMode === "icon");
@@ -233,14 +236,11 @@ registerButtonType("sensor", {
       if (!persist) return;
       if (isTextMode) {
         b.precision = "text";
-        b.label = "";
         b.unit = "";
         b.icon_on = "Auto";
         b.options = normalizeSensorOptions(b.options, "text");
-        labelInp.value = "";
         unitInp.value = "";
         helpers.saveField("precision", "text");
-        helpers.saveField("label", "");
         helpers.saveField("unit", "");
         helpers.saveField("icon_on", "Auto");
         helpers.saveField("options", b.options);
