@@ -218,18 +218,21 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
     int bat_x   = home_x;                     // battery above home
     int bat_y   = solar_y;                    // same row as solar (user requirement)
 
+    // Horizontal bus for Grid/Home sits 25px below centre
+    int bus_y = cy + 25;
+
     // Lines (behind nodes)
-    fw->line_top  = solar_flow_make_line(btn, solar_x, solar_y + r, solar_x, cy - cd,  FLOW_COLOR_SOLAR);
-    fw->line_bot  = solar_flow_make_line(btn, bat_x,   bat_y + r,   bat_x,   cy - r,   FLOW_COLOR_BATTERY);
-    fw->line_left = solar_flow_make_line(btn, grid_x + r, cy, junc_x - cd,   cy,       grid_color);
-    fw->line_right= solar_flow_make_line(btn, junc_x + cd, cy, home_x - r,   cy,       FLOW_COLOR_SOLAR);
-    fw->center    = solar_flow_make_dot(btn, junc_x, cy, 0x666666);
+    fw->line_top  = solar_flow_make_line(btn, solar_x, solar_y + r, solar_x, bus_y - cd, FLOW_COLOR_SOLAR);
+    fw->line_bot  = solar_flow_make_line(btn, bat_x,   bat_y + r,   bat_x,   bus_y - r,  FLOW_COLOR_BATTERY);
+    fw->line_left = solar_flow_make_line(btn, grid_x + r, bus_y, junc_x - cd, bus_y,     grid_color);
+    fw->line_right= solar_flow_make_line(btn, junc_x + cd, bus_y, home_x - r, bus_y,     FLOW_COLOR_SOLAR);
+    fw->center    = solar_flow_make_dot(btn, junc_x, bus_y, 0x666666);
 
     // Solar label LEFT (-1); others below (0)
     fw->solar_node   = solar_flow_make_node(btn, solar_x, solar_y, node_sz, FLOW_COLOR_SOLAR,   sf, "Solar", -1);
-    fw->home_node    = solar_flow_make_node(btn, home_x,  cy,      node_sz, FLOW_COLOR_HOME,    sf, "Home");
+    fw->home_node    = solar_flow_make_node(btn, home_x,  bus_y,   node_sz, FLOW_COLOR_HOME,    sf, "Home");
     fw->battery_node = solar_flow_make_node(btn, bat_x,   bat_y,   node_sz, FLOW_COLOR_BATTERY, sf, "Battery");
-    fw->grid_node    = solar_flow_make_node(btn, grid_x,  cy,      node_sz, grid_color,          sf, "Grid");
+    fw->grid_node    = solar_flow_make_node(btn, grid_x,  bus_y,   node_sz, grid_color,          sf, "Grid");
 
     lv_obj_move_foreground(fw->center);
 
@@ -237,15 +240,16 @@ inline void solar_flow_init_widgets(SolarCardCtx *ctx, bool layout_2x2,
     // ── No-battery cross layout ──────────────────────────────────────────────
     // Solar top-centre, Home right, Grid left. No battery arm.
     int solar_y = (int)(H * 0.18f);
+    int bus_y   = cy + 25;  // Grid/Home bus 25px below centre
 
-    fw->line_top  = solar_flow_make_line(btn, cx, solar_y + r, cx,            cy - cd,    FLOW_COLOR_SOLAR);
-    fw->line_left = solar_flow_make_line(btn, grid_x + r, cy, cx - cd,        cy,          grid_color);
-    fw->line_right= solar_flow_make_line(btn, cx + cd,    cy, home_x - r,     cy,          FLOW_COLOR_SOLAR);
-    fw->center    = solar_flow_make_dot(btn, cx, cy, 0x666666);
+    fw->line_top  = solar_flow_make_line(btn, cx, solar_y + r, cx,            bus_y - cd,  FLOW_COLOR_SOLAR);
+    fw->line_left = solar_flow_make_line(btn, grid_x + r, bus_y, cx - cd,     bus_y,       grid_color);
+    fw->line_right= solar_flow_make_line(btn, cx + cd,    bus_y, home_x - r,  bus_y,       FLOW_COLOR_SOLAR);
+    fw->center    = solar_flow_make_dot(btn, cx, bus_y, 0x666666);
 
     fw->solar_node = solar_flow_make_node(btn, cx,      solar_y, node_sz, FLOW_COLOR_SOLAR, sf, "Solar", 1);
-    fw->home_node  = solar_flow_make_node(btn, home_x,  cy,      node_sz, FLOW_COLOR_HOME,  sf, "Home");
-    fw->grid_node  = solar_flow_make_node(btn, grid_x,  cy,      node_sz, grid_color,        sf, "Grid");
+    fw->home_node  = solar_flow_make_node(btn, home_x,  bus_y,   node_sz, FLOW_COLOR_HOME,  sf, "Home");
+    fw->grid_node  = solar_flow_make_node(btn, grid_x,  bus_y,   node_sz, grid_color,        sf, "Grid");
 
     lv_obj_move_foreground(fw->center);
   }
