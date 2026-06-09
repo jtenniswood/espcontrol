@@ -525,7 +525,7 @@ inline bool clock_bar_item_is_temperature(int item) {
 
 inline int clock_bar_row_gap(int item_gap) {
   int gap = item_gap / 8;
-  if (gap < 10) gap = 10;
+  if (gap < 8) gap = 8;
   if (gap > 14) gap = 14;
   return gap;
 }
@@ -533,18 +533,18 @@ inline int clock_bar_row_gap(int item_gap) {
 inline int clock_bar_item_width(int item, int item_gap) {
   if (clock_bar_item_is_temperature(item)) {
     int width = item_gap - 40;
-    if (width < 44) width = 44;
+    if (width < 36) width = 36;
     if (width > 56) width = 56;
     return width;
   }
   if (item == CLOCK_BAR_ITEM_TIME) {
     int width = item_gap - 18;
-    if (width < 62) width = 62;
+    if (width < 54) width = 54;
     if (width > 78) width = 78;
     return width;
   }
   int width = item_gap - 54;
-  if (width < 32) width = 32;
+  if (width < 28) width = 28;
   if (width > 40) width = 40;
   return width;
 }

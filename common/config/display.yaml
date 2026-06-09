@@ -60,9 +60,7 @@ script:
           bool show_network = visible && id(network_status_enabled).state;
           bool show_weather = visible && id(clock_bar_weather_icon_enabled).state;
           int clock_bar_label_y = ${main_page_pad_top} / 5;
-          int clock_bar_gap = ${screen_width} / 8;
-          if (clock_bar_gap < 72) clock_bar_gap = 72;
-          if (clock_bar_gap > 92) clock_bar_gap = 92;
+          int clock_bar_gap = ${clock_bar_item_gap};
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
             id(temperature_2),

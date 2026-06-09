@@ -31,6 +31,7 @@ substitutions:
   main_page_card_gap: "15"
   main_page_pad_top: "60"
   main_page_compact_pad_top: "6"
+  clock_bar_item_gap: "90"
   clock_font_size: "224"
   clock_cx: "360"
   clock_cy: "360"
