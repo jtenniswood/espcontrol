@@ -29,6 +29,7 @@ struct SolarCardCtx {
   lv_obj_t *icon_lbl = nullptr;    // solar glyph top-left
   lv_obj_t *corner_lbl = nullptr;  // battery % top-right
   SolarFlowWidgets *flow_widgets = nullptr;  // flow mode LVGL widgets
+  const lv_font_t *small_font  = nullptr;   // smallest available font for flow labels
   const lv_font_t *value_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
@@ -527,7 +528,8 @@ inline SolarCardCtx *create_solar_card_context(
     const lv_font_t *value_font,
     const lv_font_t *label_font,
     const lv_font_t *icon_font,
-    int width_compensation_percent) {
+    int width_compensation_percent,
+    const lv_font_t *small_font = nullptr) {
 
   SolarCardCtx *ctx = new SolarCardCtx();
   ctx->mode = cfg_option_value(p.options, "mode");
@@ -535,6 +537,7 @@ inline SolarCardCtx *create_solar_card_context(
   ctx->invert_production = cfg_option_enabled(p.options, "invert_production");
   ctx->accent_color = accent_color;
   ctx->off_color = off_color;
+  ctx->small_font = small_font ? small_font : label_font;
   ctx->btn = s.btn;
   ctx->value_lbl = s.sensor_lbl;
   ctx->unit_lbl = s.unit_lbl;
