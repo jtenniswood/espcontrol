@@ -235,7 +235,7 @@ function importConfig() {
         postText(entityName("screen_saver_cover_art_entity"), importedSettings.coverArtMediaPlayerEntity);
         postNumber(entityName("screen_saver_cover_art_delay"), importedSettings.coverArtDelay);
         postNumber(entityName("screen_saver_track_overlay_duration"), importedSettings.coverArtTrackOverlayDuration);
-        postSwitch(entityName("screen_saver_hide_cover_art_external_input"), importedSettings.coverArtHideExternalInput);
+        postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
         var importedScreensaverAction = importedSettings.screensaverAction;
         var importedScreensaverDimmedBrightness = importedSettings.screensaverDimmedBrightness;
         var importedClockBrightnessDay = importedSettings.clockBrightnessDay;

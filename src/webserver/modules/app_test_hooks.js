@@ -313,6 +313,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     entityDetailPaths: entityDetailPaths,
     entityInitialDetail: entityInitialDetail,
     entityLookupNames: entityLookupNames,
+    coverArtHideExternalInputPostUrls: coverArtHideExternalInputPostUrls,
     firmwareUpdateControlsVisibleFor: function (transport, supported) {
       var oldTransport = state.networkTransport;
       var oldSupported = state.firmwareUpdateControlsSupported;

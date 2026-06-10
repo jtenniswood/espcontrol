@@ -676,7 +676,7 @@ function buildSettingsPage(parent) {
     coverArtOptions.appendChild(coverArtHideExternalInputToggle.row);
     coverArtHideExternalInputToggle.input.addEventListener("change", function () {
       state.coverArtHideExternalInputOn = this.checked;
-      postSwitch(entityName("screen_saver_hide_cover_art_external_input"), state.coverArtHideExternalInputOn);
+      postCoverArtHideExternalInput(state.coverArtHideExternalInputOn);
     });
     els.setCoverArtHideExternalInputToggle = coverArtHideExternalInputToggle.input;
 

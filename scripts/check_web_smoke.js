@@ -106,6 +106,14 @@ assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_for_external_sources"),
   "cover art external-input post aliases include the legacy external-sources object id"
 );
+assert.deepStrictEqual(Array.from(hooks.coverArtHideExternalInputPostUrls(false)), [
+  "/switch/screen_saver__hide_cover_art_on_external_input/turn_off",
+  "/switch/screen_saver_hide_cover_art_on_external_input/turn_off",
+  "/switch/hide_cover_art_on_external_input/turn_off",
+  "/switch/cover_art_hide_external_input/turn_off",
+  "/switch/screen_saver__hide_for_external_sources/turn_off",
+  "/switch/Screen%20Saver%3A%20Hide%20for%20external%20sources/turn_off",
+], "cover art external-input posts include all firmware object id aliases");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_track_overlay_duration")).includes("screen_saver__show_track_overlay"),
   "cover art track-overlay post aliases include the legacy show-track-overlay object id"

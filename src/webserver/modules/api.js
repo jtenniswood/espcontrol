@@ -522,6 +522,19 @@ function postSwitch(name, on) {
   return post(entityPostUrls("switch", name, [], on ? "turn_on" : "turn_off"));
 }
 
+function coverArtHideExternalInputPostUrls(on) {
+  return entityPostUrls(
+    "switch",
+    entityName("screen_saver_hide_cover_art_external_input"),
+    entityObjectIds("screen_saver_hide_cover_art_external_input"),
+    on ? "turn_on" : "turn_off"
+  );
+}
+
+function postCoverArtHideExternalInput(on) {
+  return post(coverArtHideExternalInputPostUrls(on));
+}
+
 function postDeveloperExperimentalFeatures(on) {
   postSwitchWithObjectIds(entityName("developer_experimental_features"), entityObjectIds("developer_experimental_features"), on);
 }
