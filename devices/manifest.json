@@ -102,7 +102,7 @@
           "volumeWidthCompensationPercent": 95
         },
         "package": {
-          "firmwareVersion": "dev-jc1060p470-20260526-alarmfix2",
+          "firmwareVersion": "dev-jc1060p470-20260611-livecheck",
           "substitutions": {
             "screen_width": "\"1024\"",
             "screen_height": "\"600\"",
@@ -130,7 +130,11 @@
             "clock_bar_visual_gap": "\"10\"",
             "clock_font_size": "\"200\"",
             "clock_cx": "\"512\"",
-            "clock_cy": "\"300\""
+            "clock_cy": "\"300\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "networkCoprocessor": true,
@@ -243,7 +247,7 @@
           "subpageChevronTextWidthPercent": 96
         },
         "package": {
-          "firmwareVersion": "dev-jc4880p443-20260522-otawdt",
+          "firmwareVersion": "dev-jc4880p443-20260611-livecheck",
           "substitutions": {
             "screen_width": "\"480\"",
             "screen_height": "\"800\"",
@@ -271,7 +275,11 @@
             "clock_bar_visual_gap": "\"12\"",
             "clock_font_size": "\"160\"",
             "clock_cx": "\"240\"",
-            "clock_cy": "\"400\""
+            "clock_cy": "\"400\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_lg"
         }
@@ -375,6 +383,7 @@
           "subpageChevronY": -2
         },
         "package": {
+          "firmwareVersion": "dev-jc8012p4a1-20260611-livecheck",
           "substitutions": {
             "screen_width": "\"1280\"",
             "screen_height": "\"800\"",
@@ -402,7 +411,11 @@
             "clock_bar_visual_gap": "\"10\"",
             "clock_font_size": "\"220\"",
             "clock_cx": "\"640\"",
-            "clock_cy": "\"400\""
+            "clock_cy": "\"400\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device"
         }
@@ -511,6 +524,7 @@
           "wrapTallLabels": false
         },
         "package": {
+          "firmwareVersion": "dev-esp32-p4-86-20260611-livecheck",
           "substitutions": {
             "screen_width": "\"720\"",
             "screen_height": "\"720\"",
@@ -538,7 +552,11 @@
             "clock_bar_visual_gap": "\"12\"",
             "clock_font_size": "\"224\"",
             "clock_cx": "\"360\"",
-            "clock_cy": "\"360\""
+            "clock_cy": "\"360\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,
@@ -657,6 +675,7 @@
           "subpageChevronTextWidthPercent": 96
         },
         "package": {
+          "firmwareVersion": "dev-4848s040-20260611-livecheck",
           "subpageConfigChunks": 4,
           "substitutions": {
             "screen_width": "\"480\"",
@@ -685,7 +704,11 @@
             "clock_bar_visual_gap": "\"8\"",
             "clock_font_size": "\"160\"",
             "clock_cx": "\"240\"",
-            "clock_cy": "\"240\""
+            "clock_cy": "\"240\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "apiNavigateAction": false
