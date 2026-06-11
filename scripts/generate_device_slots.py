@@ -11,6 +11,7 @@ from pathlib import Path
 from product_schema import slot_devices
 
 ROOT = Path(__file__).resolve().parents[1]
+PANEL_DEVICE_SETTINGS_RESET_VERSION = 20260611
 
 
 PACKAGE_HEADER = """# =============================================================================
@@ -641,8 +642,59 @@ def script_block(device: dict) -> str:
             "            id(main_page)->obj);",
             *after_refresh,
             "",
+            reset_existing_panel_settings_script(device),
+            "",
         ]
     )
+
+
+def reset_existing_panel_settings_script(device: dict) -> str:
+    package = device.get("package") or {}
+    subpage_chunks = int(package.get("subpageConfigChunks") or 8)
+    lines = [
+        "  - id: reset_existing_panel_settings_once",
+        "    then:",
+        "      - lambda: |-",
+        f"          const int reset_version = {PANEL_DEVICE_SETTINGS_RESET_VERSION};",
+        "          if (id(panel_device_settings_reset_version) >= reset_version) return;",
+        '          ESP_LOGI("config", "Resetting stored panel settings to current defaults");',
+        '          id(button_order).publish_state("");',
+    ]
+    for num in range(1, device["slots"] + 1):
+        lines.append(f'          id(button_{num}_config).publish_state("");')
+        lines.append(f'          id(subpage_{num}_config).publish_state("");')
+        lines.append(f'          id(subpage_{num}_config_ext).publish_state("");')
+        lines.append(f'          id(subpage_{num}_config_ext_2).publish_state("");')
+        lines.append(f'          id(subpage_{num}_config_ext_3).publish_state("");')
+        if subpage_chunks >= 8:
+            lines.append(f'          id(subpage_{num}_config_ext_4).publish_state("");')
+            lines.append(f'          id(subpage_{num}_config_ext_5).publish_state("");')
+            lines.append(f'          id(subpage_{num}_config_ext_6).publish_state("");')
+            lines.append(f'          id(subpage_{num}_config_ext_7).publish_state("");')
+    lines.extend(
+        [
+            '          id(button_on_color).publish_state("${button_on_color_initial}");',
+            '          id(button_off_color).publish_state("${button_off_color_initial}");',
+            '          id(sensor_card_color).publish_state("${sensor_card_color_initial}");',
+            "          id(clock_bar_enabled).turn_off();",
+            "          id(clock_bar_time_enabled).turn_on();",
+            "          id(network_status_enabled).turn_on();",
+            "          id(temperature_degree_symbol_enabled).turn_on();",
+            "          id(subpage_chevrons_enabled).turn_on();",
+            '          id(clock_bar_layout).publish_state("left:temperature|middle:time|right:network");',
+            '          id(clock_bar_temperature_entities).publish_state("");',
+            "          id(outdoor_temp_enable).turn_off();",
+            "          id(indoor_temp_enable).turn_off();",
+            '          id(outdoor_temp_entity).publish_state("");',
+            '          id(indoor_temp_entity).publish_state("");',
+            "          auto temperature_unit_call = id(temperature_unit_select).make_call();",
+            '          temperature_unit_call.set_option("Auto");',
+            "          temperature_unit_call.perform();",
+            "          id(panel_device_settings_reset_version) = reset_version;",
+            "          global_preferences->sync();",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def replace_phase(text: str, phase: int, block: str, call: str, slug: str) -> str:
@@ -664,21 +716,9 @@ def replace_phase(text: str, phase: int, block: str, call: str, slug: str) -> st
 
 def replace_script_block(text: str, device: dict) -> str:
     block = script_block(device)
-    marker = re.compile(
-        r"(?ms)^script:\n"
-        r"  - id: refresh_button_grid\n"
-        r".*?^          grid_(?:phase1|refresh_layout)\(slots, cfg,\n"
-        r"^            id\(button_order\)\.state,\n"
-        r"(?:(?:^            id\(button_on_color\)\.state,\n"
-        r"^            id\(button_off_color\)\.state,\n"
-        r"^            id\(sensor_card_color\)\.state,\n"
-        r"))?"
-        r"^            id\(main_page\)->obj\);\n"
-        r"(?:^      - script\.execute: clock_bar_apply\n)*"
-        r"^\n?"
-    )
+    marker = re.compile(r"(?ms)^script:\n.*?(?=^esphome:)")
     if marker.search(text):
-        return marker.sub(block, text, count=1)
+        return marker.sub(block + "\n", text, count=1)
     insert_at = text.find("\nesphome:")
     if insert_at < 0:
         raise ValueError(f"Could not find esphome block for {device['slug']}")

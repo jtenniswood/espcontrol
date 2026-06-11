@@ -114,6 +114,115 @@ script:
             id(button_order).state,
             id(main_page)->obj);
       - script.execute: clock_bar_apply
+
+  - id: reset_existing_panel_settings_once
+    then:
+      - lambda: |-
+          const int reset_version = 20260611;
+          if (id(panel_device_settings_reset_version) >= reset_version) return;
+          ESP_LOGI("config", "Resetting stored panel settings to current defaults");
+          id(button_order).publish_state("");
+          id(button_1_config).publish_state("");
+          id(subpage_1_config).publish_state("");
+          id(subpage_1_config_ext).publish_state("");
+          id(subpage_1_config_ext_2).publish_state("");
+          id(subpage_1_config_ext_3).publish_state("");
+          id(subpage_1_config_ext_4).publish_state("");
+          id(subpage_1_config_ext_5).publish_state("");
+          id(subpage_1_config_ext_6).publish_state("");
+          id(subpage_1_config_ext_7).publish_state("");
+          id(button_2_config).publish_state("");
+          id(subpage_2_config).publish_state("");
+          id(subpage_2_config_ext).publish_state("");
+          id(subpage_2_config_ext_2).publish_state("");
+          id(subpage_2_config_ext_3).publish_state("");
+          id(subpage_2_config_ext_4).publish_state("");
+          id(subpage_2_config_ext_5).publish_state("");
+          id(subpage_2_config_ext_6).publish_state("");
+          id(subpage_2_config_ext_7).publish_state("");
+          id(button_3_config).publish_state("");
+          id(subpage_3_config).publish_state("");
+          id(subpage_3_config_ext).publish_state("");
+          id(subpage_3_config_ext_2).publish_state("");
+          id(subpage_3_config_ext_3).publish_state("");
+          id(subpage_3_config_ext_4).publish_state("");
+          id(subpage_3_config_ext_5).publish_state("");
+          id(subpage_3_config_ext_6).publish_state("");
+          id(subpage_3_config_ext_7).publish_state("");
+          id(button_4_config).publish_state("");
+          id(subpage_4_config).publish_state("");
+          id(subpage_4_config_ext).publish_state("");
+          id(subpage_4_config_ext_2).publish_state("");
+          id(subpage_4_config_ext_3).publish_state("");
+          id(subpage_4_config_ext_4).publish_state("");
+          id(subpage_4_config_ext_5).publish_state("");
+          id(subpage_4_config_ext_6).publish_state("");
+          id(subpage_4_config_ext_7).publish_state("");
+          id(button_5_config).publish_state("");
+          id(subpage_5_config).publish_state("");
+          id(subpage_5_config_ext).publish_state("");
+          id(subpage_5_config_ext_2).publish_state("");
+          id(subpage_5_config_ext_3).publish_state("");
+          id(subpage_5_config_ext_4).publish_state("");
+          id(subpage_5_config_ext_5).publish_state("");
+          id(subpage_5_config_ext_6).publish_state("");
+          id(subpage_5_config_ext_7).publish_state("");
+          id(button_6_config).publish_state("");
+          id(subpage_6_config).publish_state("");
+          id(subpage_6_config_ext).publish_state("");
+          id(subpage_6_config_ext_2).publish_state("");
+          id(subpage_6_config_ext_3).publish_state("");
+          id(subpage_6_config_ext_4).publish_state("");
+          id(subpage_6_config_ext_5).publish_state("");
+          id(subpage_6_config_ext_6).publish_state("");
+          id(subpage_6_config_ext_7).publish_state("");
+          id(button_7_config).publish_state("");
+          id(subpage_7_config).publish_state("");
+          id(subpage_7_config_ext).publish_state("");
+          id(subpage_7_config_ext_2).publish_state("");
+          id(subpage_7_config_ext_3).publish_state("");
+          id(subpage_7_config_ext_4).publish_state("");
+          id(subpage_7_config_ext_5).publish_state("");
+          id(subpage_7_config_ext_6).publish_state("");
+          id(subpage_7_config_ext_7).publish_state("");
+          id(button_8_config).publish_state("");
+          id(subpage_8_config).publish_state("");
+          id(subpage_8_config_ext).publish_state("");
+          id(subpage_8_config_ext_2).publish_state("");
+          id(subpage_8_config_ext_3).publish_state("");
+          id(subpage_8_config_ext_4).publish_state("");
+          id(subpage_8_config_ext_5).publish_state("");
+          id(subpage_8_config_ext_6).publish_state("");
+          id(subpage_8_config_ext_7).publish_state("");
+          id(button_9_config).publish_state("");
+          id(subpage_9_config).publish_state("");
+          id(subpage_9_config_ext).publish_state("");
+          id(subpage_9_config_ext_2).publish_state("");
+          id(subpage_9_config_ext_3).publish_state("");
+          id(subpage_9_config_ext_4).publish_state("");
+          id(subpage_9_config_ext_5).publish_state("");
+          id(subpage_9_config_ext_6).publish_state("");
+          id(subpage_9_config_ext_7).publish_state("");
+          id(button_on_color).publish_state("${button_on_color_initial}");
+          id(button_off_color).publish_state("${button_off_color_initial}");
+          id(sensor_card_color).publish_state("${sensor_card_color_initial}");
+          id(clock_bar_enabled).turn_off();
+          id(clock_bar_time_enabled).turn_on();
+          id(network_status_enabled).turn_on();
+          id(temperature_degree_symbol_enabled).turn_on();
+          id(subpage_chevrons_enabled).turn_on();
+          id(clock_bar_layout).publish_state("left:temperature|middle:time|right:network");
+          id(clock_bar_temperature_entities).publish_state("");
+          id(outdoor_temp_enable).turn_off();
+          id(indoor_temp_enable).turn_off();
+          id(outdoor_temp_entity).publish_state("");
+          id(indoor_temp_entity).publish_state("");
+          auto temperature_unit_call = id(temperature_unit_select).make_call();
+          temperature_unit_call.set_option("Auto");
+          temperature_unit_call.perform();
+          id(panel_device_settings_reset_version) = reset_version;
+          global_preferences->sync();
+
 esphome:
   on_boot:
     - priority: -100

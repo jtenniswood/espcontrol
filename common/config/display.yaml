@@ -10,37 +10,46 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
+  - id: panel_device_settings_reset_version
+    type: int
+    restore_value: true
+    initial_value: '0'
 
 esphome:
   on_boot:
+    # One-time reset for existing panels after the clock bar was simplified.
+    - priority: -75
+      then:
+        - script.execute: reset_existing_panel_settings_once
+
     # Apply restored clock-bar layout before subpages copy main-page padding.
-    priority: -150
-    then:
-      - lambda: |-
-          std::vector<std::string> clock_bar_temperature_entities =
-              parse_clock_bar_temperature_entities(id(clock_bar_temperature_entities).state);
-          std::string clock_bar_temperature_entity =
-              clock_bar_temperature_entities.empty() ? "" : clock_bar_temperature_entities[0];
-          if (clock_bar_temperature_entity.empty()) {
-            if (id(outdoor_temp_enable).state && !id(outdoor_temp_entity).state.empty()) {
-              clock_bar_temperature_entity = id(outdoor_temp_entity).state;
-            } else if (id(indoor_temp_enable).state && !id(indoor_temp_entity).state.empty()) {
-              clock_bar_temperature_entity = id(indoor_temp_entity).state;
+    - priority: -150
+      then:
+        - lambda: |-
+            std::vector<std::string> clock_bar_temperature_entities =
+                parse_clock_bar_temperature_entities(id(clock_bar_temperature_entities).state);
+            std::string clock_bar_temperature_entity =
+                clock_bar_temperature_entities.empty() ? "" : clock_bar_temperature_entities[0];
+            if (clock_bar_temperature_entity.empty()) {
+              if (id(outdoor_temp_enable).state && !id(outdoor_temp_entity).state.empty()) {
+                clock_bar_temperature_entity = id(outdoor_temp_entity).state;
+              } else if (id(indoor_temp_enable).state && !id(indoor_temp_entity).state.empty()) {
+                clock_bar_temperature_entity = id(indoor_temp_entity).state;
+              }
             }
-          }
-          id(clock_bar_temperature_entities).publish_state(clock_bar_temperature_entity);
-          id(outdoor_temp_enable).turn_off();
-          id(indoor_temp_enable).turn_off();
-          id(outdoor_temp_entity).publish_state(clock_bar_temperature_entity);
-          id(indoor_temp_entity).publish_state("");
-          id(clock_bar_layout).publish_state("left:temperature|middle:time|right:network");
-          id(clock_bar_time_enabled).turn_on();
-          id(network_status_enabled).turn_on();
-          set_display_temperature_unit(id(temperature_unit_select).current_option(),
-                                       id(timezone_select).current_option());
-          set_display_temperature_degree_symbol(id(temperature_degree_symbol_enabled).state);
-      - script.execute: clock_bar_hide
-      - script.execute: clock_bar_apply
+            id(clock_bar_temperature_entities).publish_state(clock_bar_temperature_entity);
+            id(outdoor_temp_enable).turn_off();
+            id(indoor_temp_enable).turn_off();
+            id(outdoor_temp_entity).publish_state(clock_bar_temperature_entity);
+            id(indoor_temp_entity).publish_state("");
+            id(clock_bar_layout).publish_state("left:temperature|middle:time|right:network");
+            id(clock_bar_time_enabled).turn_on();
+            id(network_status_enabled).turn_on();
+            set_display_temperature_unit(id(temperature_unit_select).current_option(),
+                                         id(timezone_select).current_option());
+            set_display_temperature_degree_symbol(id(temperature_degree_symbol_enabled).state);
+        - script.execute: clock_bar_hide
+        - script.execute: clock_bar_apply
 
 script:
   - id: clock_bar_hide
