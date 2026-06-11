@@ -758,7 +758,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (id(display_asleep)) return;
+          if (id(display_asleep) && !id(cover_art_screensaver_active)) return;
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (id(screen_schedule_asleep)) {
             if (screen_schedule_clock_mode(id(schedule_mode).current_option())) return;
