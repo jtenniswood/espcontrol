@@ -815,6 +815,19 @@ script:
     then:
       - lambda: |-
           if (!id(is_clock_showing)) return;
+          lv_obj_t *temperature_labels[] = {
+            id(temperatures),
+            id(temperature_2),
+            id(temperature_3),
+            id(temperature_4),
+            id(temperature_5),
+            id(temperature_6),
+          };
+          hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                                           id(display_time),
+                                           id(network_status_button),
+                                           id(clock_bar_weather_icon_container));
+          network_status_hide_modal();
           refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));
           lv_obj_move_foreground(id(clock_screensaver));
 

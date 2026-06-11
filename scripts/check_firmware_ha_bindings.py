@@ -874,11 +874,12 @@ def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) 
     else:
         required_keep_on_top_tokens = (
             "if (!id(is_clock_showing)) return;",
+            "hide_clock_bar_top_layer_widgets(",
             "refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));",
             "lv_obj_move_foreground(id(clock_screensaver));",
         )
         if any(token not in keep_on_top_body for token in required_keep_on_top_tokens):
-            errors.append(f"{rel}: keep re-raising the active clock screensaver above overlays")
+            errors.append(f"{rel}: keep hiding clock-bar widgets and re-raising the active clock screensaver above overlays")
         if "lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN)" in keep_on_top_body:
             errors.append(
                 f"{rel}: do not un-hide the clock screensaver in keep-on-top; "
@@ -2666,9 +2667,12 @@ def run_self_test() -> int:
         "    then:\n"
         "      - lambda: |-\n"
         "          if (!id(is_clock_showing)) return;\n"
+        "          hide_clock_bar_top_layer_widgets(nullptr, 0, nullptr, nullptr, nullptr);\n"
         "          refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));\n"
-        "          lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);\n"
         "          lv_obj_move_foreground(id(clock_screensaver));\n"
+        "  - id: show_dimmed_view\n"
+        "    then:\n"
+        "      - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'\n"
         "interval:\n"
         "  - interval: 1s\n"
         "    then:\n"
@@ -2697,9 +2701,12 @@ def run_self_test() -> int:
         "    then:\n"
         "      - lambda: |-\n"
         "          if (!id(is_clock_showing)) return;\n"
+        "          hide_clock_bar_top_layer_widgets(nullptr, 0, nullptr, nullptr, nullptr);\n"
         "          refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));\n"
-        "          lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);\n"
         "          lv_obj_move_foreground(id(clock_screensaver));\n"
+        "  - id: show_dimmed_view\n"
+        "    then:\n"
+        "      - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'\n"
         "interval:\n"
         "  - interval: 1s\n"
         "    then:\n"

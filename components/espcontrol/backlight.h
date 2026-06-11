@@ -297,6 +297,20 @@ inline void set_clock_bar_temperature_labels(lv_obj_t **labels, size_t count) {
   }
 }
 
+inline void hide_clock_bar_top_layer_widgets(lv_obj_t **temperature_labels,
+                                             size_t temperature_label_count,
+                                             lv_obj_t *display_time,
+                                             lv_obj_t *network_status_button,
+                                             lv_obj_t *weather_icon_container) {
+  set_clock_bar_temperature_labels(temperature_labels, temperature_label_count);
+  for (size_t i = 0; temperature_labels && i < temperature_label_count; i++) {
+    if (temperature_labels[i]) lv_obj_add_flag(temperature_labels[i], LV_OBJ_FLAG_HIDDEN);
+  }
+  if (display_time) lv_obj_add_flag(display_time, LV_OBJ_FLAG_HIDDEN);
+  if (network_status_button) lv_obj_add_flag(network_status_button, LV_OBJ_FLAG_HIDDEN);
+  if (weather_icon_container) lv_obj_add_flag(weather_icon_container, LV_OBJ_FLAG_HIDDEN);
+}
+
 inline void set_clock_bar_temperature_value_count(size_t count) {
   clock_bar_temperature_values().assign(count, NAN);
 }

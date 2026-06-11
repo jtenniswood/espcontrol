@@ -36,13 +36,10 @@ script:
             id(temperature_5),
             id(temperature_6),
           };
-          set_clock_bar_temperature_labels(temperature_labels, 6);
-          for (lv_obj_t *label : temperature_labels) {
-            lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
-          }
-          lv_obj_add_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(clock_bar_weather_icon_container), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
+          hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                                           id(display_time),
+                                           id(network_status_button),
+                                           id(clock_bar_weather_icon_container));
           network_status_hide_modal();
 
   - id: clock_bar_apply
@@ -87,12 +84,10 @@ script:
             reserve_clock_bar_space ? ${main_page_pad_top} : ${main_page_compact_pad_top});
 
           if (!visible) {
-            for (lv_obj_t *label : temperature_labels) {
-              lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
-            }
-            lv_obj_add_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(clock_bar_weather_icon_container), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
+            hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                                             id(display_time),
+                                             id(network_status_button),
+                                             id(clock_bar_weather_icon_container));
             network_status_hide_modal();
             return;
           }
