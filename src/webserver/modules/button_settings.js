@@ -57,6 +57,18 @@ function renderClockBarSelectionBar() {
   });
   actions.appendChild(hideBtn);
 
+  var menuBtn = document.createElement("button");
+  menuBtn.type = "button";
+  menuBtn.className = "sp-selection-btn";
+  menuBtn.setAttribute("aria-label", "Clock bar actions");
+  menuBtn.innerHTML = '<span class="mdi mdi-dots-horizontal"></span>';
+  menuBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    showClockBarContextMenu(e, state.clockBarSelectedItem);
+  });
+  actions.appendChild(menuBtn);
+
   els.selectionBar.appendChild(actions);
   return true;
 }
@@ -210,7 +222,20 @@ function openClockBarTemperatureSettings() {
   panel.appendChild(degreeToggle.row);
 
   var saveRow = document.createElement("div");
-  saveRow.className = "sp-btn-row sp-btn-row--save";
+  saveRow.className = "sp-btn-row sp-btn-row--save sp-has-secondary";
+
+  var visible = clockBarItemActive("temperature");
+  var hideBtn = document.createElement("button");
+  hideBtn.type = "button";
+  hideBtn.className = "sp-action-btn sp-hide-btn";
+  hideBtn.innerHTML = '<span class="mdi mdi-' + (visible ? "eye-off-outline" : "eye-outline") + '"></span>' +
+    (visible ? "Hide" : "Show");
+  hideBtn.addEventListener("click", function () {
+    setClockBarItemVisible("temperature", !visible);
+    closeSettings();
+  });
+  saveRow.appendChild(hideBtn);
+
   var saveBtn = document.createElement("button");
   saveBtn.type = "button";
   saveBtn.className = "sp-action-btn sp-save-btn";

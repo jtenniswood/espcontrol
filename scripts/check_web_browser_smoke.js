@@ -800,6 +800,15 @@ async function assertClockBarEditorSmoke(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
 
+  async function openClockBarContextMenu(item, expectedAction) {
+    await page.locator(`[data-clockbar-item="${item}"]`).click({ button: "right", force: true });
+    await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
+    assert(
+      await page.locator(".sp-ctx-menu").getByText(expectedAction, { exact: true }).isVisible(),
+      `${label}: right click menu for ${item} shows ${expectedAction}`
+    );
+  }
+
   const fixedItems = [
     { selector: '[data-clockbar-item="temperature"]', section: "left" },
     { selector: '[data-clockbar-item="time"]', section: "middle" },
@@ -828,16 +837,42 @@ async function assertClockBarEditorSmoke(page, posts, label) {
   assert.strictEqual(await page.locator(".sp-selection-bar.sp-visible").count(), 1, `${label}: clicking clock bar selects an item`);
   assert((await page.locator(".sp-selection-bar").textContent()).includes("Clock selected"), `${label}: clock selection is labelled`);
   assert.strictEqual(await page.getByRole("button", { name: "Edit", exact: true }).isDisabled(), true, `${label}: clock edit button is disabled`);
-  await page.getByRole("button", { name: "Hide", exact: true }).click();
+  assert.strictEqual(await page.getByRole("button", { name: "Clock bar actions", exact: true }).count(), 1, `${label}: clock selection exposes actions menu button`);
+  const selectedClockItem = page.locator('[data-clockbar-item="time"]');
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(250);
+  const selectedClockStyle = await selectedClockItem.evaluate((el) => {
+    var style = getComputedStyle(el);
+    return { borderColor: style.borderTopColor, backgroundColor: style.backgroundColor };
+  });
+  await selectedClockItem.hover();
+  await page.waitForTimeout(250);
+  const hoveredSelectedClockStyle = await selectedClockItem.evaluate((el) => {
+    var style = getComputedStyle(el);
+    return { borderColor: style.borderTopColor, backgroundColor: style.backgroundColor };
+  });
+  assert.notStrictEqual(
+    selectedClockStyle.borderColor,
+    "rgba(0, 0, 0, 0)",
+    `${label}: selected clock bar item has a visible border`
+  );
+  assert.deepStrictEqual(
+    hoveredSelectedClockStyle,
+    selectedClockStyle,
+    `${label}: selected clock bar item keeps its selected styling while hovered`
+  );
+  await openClockBarContextMenu("time", "Hide Clock");
+  await page.locator(".sp-ctx-menu").getByText("Hide Clock", { exact: true }).click();
   await waitForPost(posts, { domain: "switch", name: "screen__clock_bar_time", action: "turn_off" }, `${label}: hiding clock posts clock switch`, before);
   assert((await page.locator('[data-clockbar-item="time"]').getAttribute("class")).includes("sp-clockbar-hidden"), `${label}: hidden clock is greyed in preview`);
-  await page.getByRole("button", { name: "Show", exact: true }).click();
+  await openClockBarContextMenu("time", "Show Clock");
+  await page.locator(".sp-ctx-menu").getByText("Show Clock", { exact: true }).click();
   await waitForPost(posts, { domain: "switch", name: "screen__clock_bar_time", action: "turn_on" }, `${label}: showing clock posts clock switch`, before);
 
-  await page.locator('[data-clockbar-item="network"]').click({ force: true });
+  await openClockBarContextMenu("network", "Hide Connectivity");
   assert((await page.locator(".sp-selection-bar").textContent()).includes("Connectivity selected"), `${label}: connectivity selection is labelled`);
   assert.strictEqual(await page.getByRole("button", { name: "Edit", exact: true }).isDisabled(), true, `${label}: connectivity edit button is disabled`);
-  await page.getByRole("button", { name: "Hide", exact: true }).click();
+  await page.locator(".sp-ctx-menu").getByText("Hide Connectivity", { exact: true }).click();
   await waitForPost(posts, { domain: "switch", name: "screen__network_status_icon", action: "turn_off" }, `${label}: hiding connectivity posts network switch`, before);
   assert((await page.locator('[data-clockbar-item="network"]').getAttribute("class")).includes("sp-clockbar-hidden"), `${label}: hidden connectivity is greyed in preview`);
   const hiddenNetworkPreview = await page.locator('[data-clockbar-item="network"] .sp-network-preview').evaluate((el) => {
@@ -853,7 +888,8 @@ async function assertClockBarEditorSmoke(page, posts, label) {
   assert(hiddenNetworkPreview.className.includes("sp-visible"), `${label}: hidden connectivity keeps the preview icon visible`);
   assert.strictEqual(hiddenNetworkPreview.opacity, "1", `${label}: hidden connectivity icon is not faded out by its own style`);
   assert(hiddenNetworkPreview.width > 0 && hiddenNetworkPreview.height > 0, `${label}: hidden connectivity icon remains measurable`);
-  await page.getByRole("button", { name: "Show", exact: true }).click();
+  await openClockBarContextMenu("network", "Show Connectivity");
+  await page.locator(".sp-ctx-menu").getByText("Show Connectivity", { exact: true }).click();
   await waitForPost(posts, { domain: "switch", name: "screen__network_status_icon", action: "turn_on" }, `${label}: showing connectivity posts network switch`, before);
 
   await page.locator('[data-clockbar-item="temperature"]').click({ force: true });
@@ -869,11 +905,33 @@ async function assertClockBarEditorSmoke(page, posts, label) {
     { domain: "text", name: "clock_bar__temperature_entities", action: "set", value: "sensor.porch_temperature" },
   ], `${label}: saving temperature posts entity`, before);
   await waitForPost(posts, { domain: "switch", name: "screen__temperature_degree_symbol", action: "turn_off" }, `${label}: saving temperature posts degree symbol`, before);
+
   await page.locator('[data-clockbar-item="temperature"]').click({ force: true });
-  await page.getByRole("button", { name: "Hide", exact: true }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  const modalHideButton = page.locator(".sp-settings-modal .sp-hide-btn");
+  assert.strictEqual(await modalHideButton.count(), 1, `${label}: temperature modal shows one hide button`);
+  assert.strictEqual((await modalHideButton.innerText()).trim(), "Hide", `${label}: temperature modal hide button is labelled`);
+  const hideIconClass = await modalHideButton.locator(".mdi").getAttribute("class");
+  assert(hideIconClass.includes("mdi-eye-off-outline"), `${label}: temperature modal hide button uses the eye-off icon`);
+  assert(!hideIconClass.includes("trash"), `${label}: temperature modal hide button does not use a trash icon`);
+  await modalHideButton.click();
   await waitForPost(posts, { domain: "switch", name: "outdoor_temp_enable", action: "turn_off" }, `${label}: hiding temperature posts visibility switch`, before);
   assert((await page.locator('[data-clockbar-item="temperature"]').getAttribute("class")).includes("sp-clockbar-hidden"), `${label}: hidden temperature is greyed in preview`);
+  await page.locator('[data-clockbar-item="temperature"]').click({ force: true });
   await page.getByRole("button", { name: "Show", exact: true }).click();
+  await waitForPost(posts, { domain: "switch", name: "outdoor_temp_enable", action: "turn_on" }, `${label}: showing temperature posts visibility switch`, before);
+
+  await openClockBarContextMenu("temperature", "Edit Temperature");
+  assert(
+    await page.locator(".sp-ctx-menu").getByText("Hide Temperature", { exact: true }).isVisible(),
+    `${label}: right click menu for temperature includes visibility action`
+  );
+  await page.locator(".sp-ctx-menu").getByText("Hide Temperature", { exact: true }).click();
+  await waitForPost(posts, { domain: "switch", name: "outdoor_temp_enable", action: "turn_off" }, `${label}: hiding temperature posts visibility switch`, before);
+  assert((await page.locator('[data-clockbar-item="temperature"]').getAttribute("class")).includes("sp-clockbar-hidden"), `${label}: hidden temperature is greyed in preview`);
+  await openClockBarContextMenu("temperature", "Show Temperature");
+  await page.locator(".sp-ctx-menu").getByText("Show Temperature", { exact: true }).click();
   await waitForPost(posts, { domain: "switch", name: "outdoor_temp_enable", action: "turn_on" }, `${label}: showing temperature posts visibility switch`, before);
   assert.strictEqual(await page.locator(".sp-settings-overlay.sp-visible").count(), 0, `${label}: clock bar temperature dialog closes after save`);
 

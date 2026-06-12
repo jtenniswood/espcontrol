@@ -23,9 +23,6 @@ constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;
 constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;
 constexpr lv_coord_t IMAGE_CARD_JC4880P443_MODAL_BACK_BUTTON_REF_PX = 58;
 constexpr const char *IMAGE_CARD_LOADING_ICON = "\U000F02E9";
-constexpr lv_coord_t IMAGE_CARD_MODAL_LOADING_MIN_W = 132;
-constexpr lv_coord_t IMAGE_CARD_MODAL_LOADING_MAX_W = 220;
-constexpr lv_coord_t IMAGE_CARD_MODAL_LOADING_H = 48;
 
 struct ImageCardCtx {
   lv_obj_t *widget = nullptr;
@@ -352,28 +349,19 @@ inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {
   lv_coord_t width = lv_obj_get_width(ui.panel);
   lv_coord_t height = lv_obj_get_height(ui.panel);
   if (width <= 0 || height <= 0) return;
-  lv_coord_t margin = width < 260 ? 8 : 12;
-  lv_coord_t available_w = width - margin * 2;
-  if (available_w <= 0) return;
-  lv_coord_t indicator_w = width / 2;
-  if (indicator_w < IMAGE_CARD_MODAL_LOADING_MIN_W) indicator_w = IMAGE_CARD_MODAL_LOADING_MIN_W;
-  if (indicator_w > IMAGE_CARD_MODAL_LOADING_MAX_W) indicator_w = IMAGE_CARD_MODAL_LOADING_MAX_W;
-  if (indicator_w > available_w) indicator_w = available_w;
-  lv_coord_t indicator_h = IMAGE_CARD_MODAL_LOADING_H;
-  if (height < 180) indicator_h = 40;
-  lv_obj_set_size(ui.loading_widget, indicator_w, indicator_h);
-  lv_obj_align(ui.loading_widget, LV_ALIGN_TOP_RIGHT, -margin, margin);
-  lv_obj_set_style_radius(ui.loading_widget, indicator_h / 2, LV_PART_MAIN);
+  lv_obj_set_pos(ui.loading_widget, 0, 0);
+  lv_obj_set_size(ui.loading_widget, width, height);
+  lv_obj_set_style_radius(
+    ui.loading_widget, lv_obj_get_style_radius(ui.panel, LV_PART_MAIN), LV_PART_MAIN);
   lv_obj_set_style_clip_corner(ui.loading_widget, true, LV_PART_MAIN);
   if (lv_obj_get_child_cnt(ui.loading_widget) < 2) return;
   lv_obj_t *icon = lv_obj_get_child(ui.loading_widget, 0);
   lv_obj_t *label = lv_obj_get_child(ui.loading_widget, 1);
-  lv_coord_t inner_pad = 14;
-  lv_coord_t label_x = 44;
-  lv_obj_align(icon, LV_ALIGN_LEFT_MID, inner_pad, 0);
-  lv_obj_set_width(label, indicator_w - label_x - inner_pad);
-  lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
-  lv_obj_align(label, LV_ALIGN_LEFT_MID, label_x, 0);
+  lv_obj_set_width(label, width);
+  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_align(icon, LV_ALIGN_CENTER, 0, -18);
+  lv_obj_align_to(label, icon, LV_ALIGN_OUT_BOTTOM_MID, 0, 8);
 }
 
 inline void image_card_show_modal_loading(ImageCardCtx *ctx, const char *text) {

@@ -758,8 +758,12 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: log image-card modal close events")
     if "image_card_abort_modal_open" not in text or "modal shell setup failed" not in text:
         errors.append(f"{rel}: clean up partially-created image card modals")
-    if "IMAGE_CARD_MODAL_LOADING_MAX_W" not in text or "LV_ALIGN_TOP_RIGHT" not in text:
-        errors.append(f"{rel}: keep image-card modal loading indicator compact")
+    if (
+        "lv_obj_set_size(ui.loading_widget, width, height)" not in text
+        or "lv_obj_align(icon, LV_ALIGN_CENTER" not in text
+        or "LV_ALIGN_OUT_BOTTOM_MID" not in text
+    ):
+        errors.append(f"{rel}: keep image-card modal loading overlay centered")
     if (
         "image_card_show_modal_image(ctx, ctx->image)" not in text
         or "image_card_queue_modal_source_request(ctx)" not in text
@@ -2561,7 +2565,7 @@ def run_self_test() -> int:
             "keep 4.3-inch P4 tile downloads sized to the tile before modal open",
             "log image-card modal close events",
             "clean up partially-created image card modals",
-            "keep image-card modal loading indicator compact",
+            "keep image-card modal loading overlay centered",
             "show the cached image-card tile while modal-quality image loads",
             "clip image card modal content to rounded panel corners",
             "preserve image card rounded corners while pressed",
@@ -2575,7 +2579,6 @@ def run_self_test() -> int:
         "constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;\n"
         "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;\n"
         "constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;\n"
-        "constexpr lv_coord_t IMAGE_CARD_MODAL_LOADING_MAX_W = 220;\n"
         "inline lv_style_selector_t image_card_pressed_selector() { return LV_STATE_PRESSED; }\n"
         "inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {}\n"
         "inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,\n"
@@ -2593,7 +2596,9 @@ def run_self_test() -> int:
         "inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,\n"
         "                                         int *target_width, int *target_height) {}\n"
         "inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {\n"
-        "  lv_obj_align(ui.loading_widget, LV_ALIGN_TOP_RIGHT, -margin, margin);\n"
+        "  lv_obj_set_size(ui.loading_widget, width, height);\n"
+        "  lv_obj_align(icon, LV_ALIGN_CENTER, 0, -18);\n"
+        "  lv_obj_align_to(label, icon, LV_ALIGN_OUT_BOTTOM_MID, 0, 8);\n"
         "}\n"
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->image->set_target_size(width, height);\n"
