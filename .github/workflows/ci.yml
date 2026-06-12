@@ -3,19 +3,6 @@ name: CI
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/nightly-firmware.yml'
-      - '.github/workflows/release.yml'
-      - 'common/**'
-      - 'components/**'
-      - 'devices/**'
-      - 'builds/**'
-      - 'src/**'
-      - 'scripts/**'
-      - 'docs/**'
-      - 'package.json'
-      - 'package-lock.json'
   push:
     branches: [main]
     paths:
@@ -147,3 +134,19 @@ jobs:
           bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
       - run: npm run docs:build
+
+  ci-gate:
+    name: CI Gate
+    needs: [validate, docs]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required CI jobs passed
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ] ||
+             [ "${{ needs.docs.result }}" != "success" ]; then
+            echo "::error::Required CI jobs did not pass."
+            echo "Validate Generated Files: ${{ needs.validate.result }}"
+            echo "Build Docs: ${{ needs.docs.result }}"
+            exit 1
+          fi

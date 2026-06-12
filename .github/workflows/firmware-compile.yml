@@ -3,22 +3,6 @@ name: Firmware Compile
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - '.github/workflows/firmware-compile.yml'
-      - '.github/workflows/nightly-firmware.yml'
-      - '.github/workflows/release.yml'
-      - 'common/**'
-      - 'components/**'
-      - 'devices/**'
-      - 'builds/**'
-      - 'src/webserver/**'
-      - 'docs/public/webserver/**'
-      - 'scripts/build.py'
-      - 'scripts/device_matrix.py'
-      - 'scripts/device_profiles.py'
-      - 'scripts/generate_device_slots.py'
-      - 'package.json'
-      - 'package-lock.json'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -36,8 +20,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-changes:
+    name: Detect Firmware Changes
+    runs-on: ubuntu-latest
+    outputs:
+      compile_required: ${{ steps.filter.outputs.compile_required }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/firmware_compile_required.py
+          sparse-checkout-cone-mode: false
+
+      - name: Check changed files
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "compile_required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          gh api \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate \
+            --jq '.[].filename' > changed-files.txt
+
+          python3 scripts/firmware_compile_required.py --path-file changed-files.txt --github-output >> "$GITHUB_OUTPUT"
+
   device-matrix:
     name: Prepare Device Matrix
+    needs: detect-changes
+    if: needs.detect-changes.outputs.compile_required == 'true'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -60,7 +75,8 @@ jobs:
 
   compile:
     name: Compile Firmware (${{ matrix.slug }})
-    needs: device-matrix
+    needs: [detect-changes, device-matrix]
+    if: needs.detect-changes.outputs.compile_required == 'true'
     runs-on: self-hosted
     strategy:
       fail-fast: false
@@ -138,3 +154,29 @@ jobs:
           bash scripts/prune_actions_cache.sh "$(dirname "${RUN_CACHE_ROOT}")" "${ESPCONTROL_BUILD_CACHE_MAX_MB}" --protect "${RUN_CACHE_ROOT}"
           bash scripts/prune_actions_cache.sh "${HOME}/.cache/espcontrol-actions/esphome/${{ matrix.slug }}" "${ESPCONTROL_ESPHOME_CACHE_MAX_MB}" --protect "${PLATFORMIO_CACHE}"
           bash scripts/reclaim_actions_disk.sh
+
+  firmware-compile-gate:
+    name: Firmware Compile Gate
+    needs: [detect-changes, device-matrix, compile]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify firmware compile result
+        run: |
+          if [ "${{ needs.detect-changes.result }}" != "success" ]; then
+            echo "::error::Could not determine whether firmware compile is required."
+            exit 1
+          fi
+
+          if [ "${{ needs.detect-changes.outputs.compile_required }}" != "true" ]; then
+            echo "No firmware compile required for this change."
+            exit 0
+          fi
+
+          if [ "${{ needs.device-matrix.result }}" != "success" ] ||
+             [ "${{ needs.compile.result }}" != "success" ]; then
+            echo "::error::Required firmware compile jobs did not pass."
+            echo "Prepare Device Matrix: ${{ needs.device-matrix.result }}"
+            echo "Compile Firmware: ${{ needs.compile.result }}"
+            exit 1
+          fi

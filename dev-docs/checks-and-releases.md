@@ -103,6 +103,13 @@ npm run docs:build
 For firmware changes, also compile the affected device with ESPHome before
 publishing.
 
+Pull requests use the `Firmware Compile Gate` check. It runs firmware compiles
+only when the changed files can affect firmware output, such as device YAML,
+shared firmware components, generated web bundles, build YAML, firmware-facing
+assets/config, package dependencies, or the firmware build workflows. Docs-only
+changes, device README changes, and PR template changes skip the compile and
+still report a passing gate.
+
 If generated inputs changed, make sure the regenerated outputs are committed too.
 `python3 scripts/build.py --check` is the command that catches stale or missing
 generated files before CI does.
