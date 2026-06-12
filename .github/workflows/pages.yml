@@ -66,6 +66,8 @@ jobs:
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    outputs:
+      has_stable_firmware: ${{ steps.stable.outputs.has_stable_firmware }}
     steps:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
@@ -81,9 +83,11 @@ jobs:
           echo "DEVICE_SLUGS=${DEVICE_SLUGS}" >> "$GITHUB_ENV"
 
       - name: Download firmware from stable releases
+        id: stable
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          mkdir -p firmware
           RELEASES_JSON=$(curl -fsSL \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
@@ -93,6 +97,8 @@ jobs:
 
           if [ "${RELEASE_COUNT}" -eq 0 ]; then
             echo "::warning::No stable firmware releases found"
+            touch firmware/.no-stable-releases
+            echo "has_stable_firmware=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -187,6 +193,14 @@ jobs:
             fi
           done
 
+          if find firmware -mindepth 2 -maxdepth 2 -name manifest.json -print -quit | grep -q .; then
+            echo "has_stable_firmware=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No stable firmware manifests were downloaded from release assets"
+            touch firmware/.no-stable-manifests
+            echo "has_stable_firmware=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download firmware from latest pre-release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -224,6 +238,7 @@ jobs:
           fi
 
       - name: Verify firmware assets
+        if: steps.stable.outputs.has_stable_firmware == 'true'
         run: |
           MISSING=false
           OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 esp32-p4-86"
@@ -284,6 +299,7 @@ jobs:
         uses: actions/deploy-pages@v5
 
       - name: Verify public firmware assets
+        if: needs.download-firmware.outputs.has_stable_firmware == 'true'
         run: >-
           python3 scripts/check_public_firmware.py
           --base-url "${{ steps.deployment.outputs.page_url }}"
