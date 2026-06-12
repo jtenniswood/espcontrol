@@ -652,6 +652,18 @@ inline int clock_bar_visual_gap_px(int gap) {
   return gap;
 }
 
+inline lv_coord_t clock_bar_current_screen_width(lv_coord_t fallback) {
+  lv_disp_t *disp = lv_disp_get_default();
+  lv_coord_t width = disp ? lv_disp_get_hor_res(disp) : 0;
+  return width > 0 ? width : fallback;
+}
+
+inline lv_coord_t clock_bar_current_screen_height(lv_coord_t fallback) {
+  lv_disp_t *disp = lv_disp_get_default();
+  lv_coord_t height = disp ? lv_disp_get_ver_res(disp) : 0;
+  return height > 0 ? height : fallback;
+}
+
 inline int clock_bar_icon_fallback_width(int item_gap) {
   int width = item_gap / 2;
   if (width < 38) width = 38;

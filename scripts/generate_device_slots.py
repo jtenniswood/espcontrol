@@ -644,9 +644,7 @@ def phase2_block(device: dict) -> str:
 
 
 def script_block(device: dict) -> str:
-    after_refresh = []
-    if device["slug"] in {"esp32-p4-86", "guition-esp32-s3-4848s040"}:
-        after_refresh.append("      - script.execute: clock_bar_apply")
+    after_refresh = ["      - script.execute: clock_bar_apply"]
     return "\n".join(
         [
             "script:",

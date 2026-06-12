@@ -77,15 +77,19 @@ script:
           bool visible = visibility.visible;
           bool show_time = visible;
           bool show_network = visible;
+          int clock_bar_screen_width = clock_bar_current_screen_width(${screen_width});
+          int clock_bar_screen_height = clock_bar_current_screen_height(${screen_height});
+          bool clock_bar_480_square =
+              clock_bar_screen_width == 480 && clock_bar_screen_height == 480;
+          bool clock_bar_device_480_square =
+              ${screen_width} == 480 && ${screen_height} == 480;
           int clock_bar_label_y = ${main_page_pad_top} / 5;
           int clock_bar_icon_y =
-              (${screen_width} == 1024 ||
-               (${screen_width} == 480 && ${screen_height} == 480)) ? 1 : clock_bar_label_y;
+              (${screen_width} == 1024 || clock_bar_device_480_square) ? 1 : clock_bar_label_y;
           int clock_bar_item_width = ${clock_bar_item_gap};
           int clock_bar_visual_gap = ${clock_bar_visual_gap};
           int clock_bar_right_x =
-              (${screen_width} == 480 && ${screen_height} == 480) ? 8 :
-              (${screen_width} >= 700 ? 20 : 16);
+              clock_bar_480_square ? 8 : (clock_bar_screen_width >= 700 ? 20 : 16);
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
             id(temperature_2),
@@ -116,8 +120,8 @@ script:
                                  show_network,
                                  visible && id(indoor_temp_enable).state,
                                  visible && id(outdoor_temp_enable).state,
-                                 ${screen_width},
-                                 ${screen_width} >= 700 ? 12 : 8,
+                                 clock_bar_screen_width,
+                                 clock_bar_screen_width >= 700 ? 12 : 8,
                                  clock_bar_label_y,
                                  clock_bar_right_x,
                                  clock_bar_icon_y,
