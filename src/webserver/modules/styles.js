@@ -151,7 +151,7 @@ var CSS =
   "#sp-app[data-screen-theme='dark'] .sp-screen{background:#000}" +
   "#sp-app[data-screen-theme='light'] .sp-clockbar-item,#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='light'] .sp-clock,#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='light'] .sp-btn-icon,#sp-app[data-screen-theme='light'] .sp-btn-label,#sp-app[data-screen-theme='light'] .sp-sensor-preview,#sp-app[data-screen-theme='light'] .sp-sensor-unit,#sp-app[data-screen-theme='light'] .sp-media-now-title,#sp-app[data-screen-theme='light'] .sp-media-now-artist{color:#000}" +
   "#sp-app[data-screen-theme='dark'] .sp-clockbar-item,#sp-app[data-screen-theme='dark'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-clock,#sp-app[data-screen-theme='dark'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-btn-icon,#sp-app[data-screen-theme='dark'] .sp-btn-label,#sp-app[data-screen-theme='dark'] .sp-sensor-preview,#sp-app[data-screen-theme='dark'] .sp-sensor-unit,#sp-app[data-screen-theme='dark'] .sp-media-now-title,#sp-app[data-screen-theme='dark'] .sp-media-now-artist{color:#fff}" +
-  "#sp-app[data-screen-theme='light'] .sp-clockbar-item:hover,#sp-app[data-screen-theme='dark'] .sp-clockbar-item:hover{background:transparent;border-color:transparent}" +
+  "#sp-app[data-screen-theme='light'] .sp-clockbar-item:not(.sp-selected):hover,#sp-app[data-screen-theme='dark'] .sp-clockbar-item:not(.sp-selected):hover{background:transparent;border-color:transparent}" +
   "#sp-app[data-screen-theme='light'] .sp-media-h-slider{background:#cecece}" +
   "#sp-app[data-screen-theme='light'] .sp-media-h-slider span{background:#000}" +
   "#sp-app[data-screen-theme='dark'] .sp-media-h-slider{background:#212121}" +
@@ -165,7 +165,7 @@ var CSS =
   "#sp-app[data-screen-theme='light'] .sp-add-icon{color:rgba(0,0,0,.82)}" +
   "#sp-app[data-screen-theme='dark'] .sp-add-icon{color:rgba(255,255,255,.82)}" +
   "#sp-app[data-preview-theme='epaper'] .sp-screen{box-shadow:none;border:1px solid #111;border-radius:.8cqw}" +
-  "#sp-app[data-preview-theme='epaper'] .sp-clockbar-item:hover,#sp-app[data-preview-theme='epaper'][data-screen-theme='dark'] .sp-clockbar-item:hover{background:transparent;border-color:transparent}" +
+  "#sp-app[data-preview-theme='epaper'] .sp-clockbar-item:not(.sp-selected):hover,#sp-app[data-preview-theme='epaper'][data-screen-theme='dark'] .sp-clockbar-item:not(.sp-selected):hover{background:transparent;border-color:transparent}" +
   "#sp-app[data-preview-theme='epaper'] .sp-btn{border:var(--btn-border,1px) solid #000;box-shadow:none;filter:none}" +
   "#sp-app[data-preview-theme='epaper'][data-screen-theme='dark'] .sp-btn{border-color:#fff}" +
   "#sp-app[data-preview-theme='epaper'] .sp-btn:hover{filter:none}" +

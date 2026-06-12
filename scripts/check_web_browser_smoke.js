@@ -828,6 +828,29 @@ async function assertClockBarEditorSmoke(page, posts, label) {
   assert.strictEqual(await page.locator(".sp-selection-bar.sp-visible").count(), 1, `${label}: clicking clock bar selects an item`);
   assert((await page.locator(".sp-selection-bar").textContent()).includes("Clock selected"), `${label}: clock selection is labelled`);
   assert.strictEqual(await page.getByRole("button", { name: "Edit", exact: true }).isDisabled(), true, `${label}: clock edit button is disabled`);
+  const selectedClockItem = page.locator('[data-clockbar-item="time"]');
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(250);
+  const selectedClockStyle = await selectedClockItem.evaluate((el) => {
+    var style = getComputedStyle(el);
+    return { borderColor: style.borderTopColor, backgroundColor: style.backgroundColor };
+  });
+  await selectedClockItem.hover();
+  await page.waitForTimeout(250);
+  const hoveredSelectedClockStyle = await selectedClockItem.evaluate((el) => {
+    var style = getComputedStyle(el);
+    return { borderColor: style.borderTopColor, backgroundColor: style.backgroundColor };
+  });
+  assert.notStrictEqual(
+    selectedClockStyle.borderColor,
+    "rgba(0, 0, 0, 0)",
+    `${label}: selected clock bar item has a visible border`
+  );
+  assert.deepStrictEqual(
+    hoveredSelectedClockStyle,
+    selectedClockStyle,
+    `${label}: selected clock bar item keeps its selected styling while hovered`
+  );
   await page.getByRole("button", { name: "Hide", exact: true }).click();
   await waitForPost(posts, { domain: "switch", name: "screen__clock_bar_time", action: "turn_off" }, `${label}: hiding clock posts clock switch`, before);
   assert((await page.locator('[data-clockbar-item="time"]').getAttribute("class")).includes("sp-clockbar-hidden"), `${label}: hidden clock is greyed in preview`);
