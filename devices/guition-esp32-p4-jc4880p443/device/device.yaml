@@ -293,6 +293,7 @@ script:
                         - lvgl.display.set_rotation: 90
                       else:
                         - lvgl.display.set_rotation: 180
+      - script.execute: cover_art_apply_responsive_layout
 
 select:
   - platform: template

@@ -347,42 +347,75 @@ script:
           int screen_h = lv_obj_get_height(id(cover_art_screensaver));
           if (screen_w <= 0) screen_w = ${screen_width};
           if (screen_h <= 0) screen_h = ${screen_height};
-
-          const int art_x = ${cover_art_x};
-          const int art_y = ${cover_art_y};
           const int art_size = ${cover_art_size};
-          const int accent_x = ${cover_art_accent_x};
-          const int accent_y = ${cover_art_accent_y};
-          const int accent_w = ${cover_art_accent_width};
-          const int accent_h = ${cover_art_accent_height};
-          const int panel_x = ${cover_art_panel_x};
-          const int panel_y = ${cover_art_panel_y};
-          const int panel_w = ${cover_art_panel_width};
-          const int panel_h = ${cover_art_panel_height};
 
-          const bool configured_layout_fits =
-              art_x + art_size <= screen_w &&
-              art_y + art_size <= screen_h &&
-              accent_x + accent_w <= screen_w &&
-              accent_y + accent_h <= screen_h &&
-              panel_x + panel_w <= screen_w &&
-              panel_y + panel_h <= screen_h;
+          auto set_fullscreen_size = [](int width, int height) {
+            lv_obj_set_pos(id(cover_art_screensaver), 0, 0);
+            lv_obj_set_size(id(cover_art_screensaver), width, height);
+            lv_obj_set_pos(id(cover_art_wake_touch_guard), 0, 0);
+            lv_obj_set_size(id(cover_art_wake_touch_guard), width, height);
+          };
 
-          if (configured_layout_fits) {
+          auto apply_split_layout = [](int screen_w, int screen_h,
+                                       int art_x, int art_y, int art_size,
+                                       int accent_x, int accent_y, int accent_w, int accent_h,
+                                       int panel_x, int panel_y, int panel_w, int panel_h,
+                                       int title_max_height) {
+            lv_obj_set_pos(id(cover_art_screensaver), 0, 0);
+            lv_obj_set_size(id(cover_art_screensaver), screen_w, screen_h);
+            lv_obj_set_pos(id(cover_art_wake_touch_guard), 0, 0);
+            lv_obj_set_size(id(cover_art_wake_touch_guard), screen_w, screen_h);
             lv_obj_set_pos(id(cover_art_backdrop), art_x, art_y);
             lv_obj_set_size(id(cover_art_backdrop), art_size, art_size);
             lv_obj_set_pos(id(cover_art_image_widget), art_x, art_y);
             lv_obj_set_size(id(cover_art_image_widget), art_size, art_size);
             lv_obj_set_pos(id(cover_art_accent_overlay), accent_x, accent_y);
             lv_obj_set_size(id(cover_art_accent_overlay), accent_w, accent_h);
+            lv_obj_set_style_bg_opa(id(cover_art_accent_overlay), LV_OPA_COVER, LV_PART_MAIN);
+            lv_obj_set_style_opa(id(cover_art_accent_overlay), LV_OPA_COVER, LV_PART_MAIN);
             lv_obj_set_pos(id(cover_art_track_panel), panel_x, panel_y);
             lv_obj_set_size(id(cover_art_track_panel), panel_w, panel_h);
-            lv_obj_set_style_pad_top(id(cover_art_track_panel), ${cover_art_panel_pad_top}, LV_PART_MAIN);
-            lv_obj_set_style_pad_bottom(id(cover_art_track_panel), ${cover_art_panel_pad_bottom}, LV_PART_MAIN);
-            lv_obj_set_style_pad_left(id(cover_art_track_panel), ${cover_art_panel_pad_left}, LV_PART_MAIN);
-            lv_obj_set_style_pad_right(id(cover_art_track_panel), ${cover_art_panel_pad_right}, LV_PART_MAIN);
+            lv_obj_set_style_pad_top(id(cover_art_track_panel), 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_bottom(id(cover_art_track_panel), 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_left(id(cover_art_track_panel), 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_right(id(cover_art_track_panel), 0, LV_PART_MAIN);
+            lv_obj_set_style_max_height(id(cover_art_title_label), title_max_height, LV_PART_MAIN);
+          };
+
+          const std::string slug = "${device_slug}";
+          const std::string rotation = id(screen_rotation_select).current_option();
+
+          if (slug == "guition-esp32-p4-jc1060p470") {
+            const bool landscape = rotation == "0" || rotation == "180";
+            if (landscape) {
+              apply_split_layout(1024, 600, 0, 0, 600, 585, 0, 439, 600, 615, 34, 377, 430, 260);
+            } else {
+              apply_split_layout(600, 1024, 0, 0, 600, 0, 600, 600, 424, 30, 634, 540, 360, 162);
+            }
             return;
           }
+
+          if (slug == "guition-esp32-p4-jc4880p443") {
+            const bool landscape = rotation == "90" || rotation == "270";
+            if (landscape) {
+              apply_split_layout(800, 480, 0, 0, 480, 480, 0, 320, 480, 504, 34, 272, 330, 220);
+            } else {
+              apply_split_layout(480, 800, 0, 0, 480, 0, 480, 480, 320, 24, 514, 324, 262, 130);
+            }
+            return;
+          }
+
+          if (slug == "guition-esp32-p4-jc8012p4a1") {
+            const bool landscape = rotation == "0" || rotation == "180";
+            if (landscape) {
+              apply_split_layout(1280, 800, 0, 0, 800, 800, 0, 480, 800, 840, 40, 400, 720, 506);
+            } else {
+              apply_split_layout(800, 1280, 0, 0, 800, 0, 800, 800, 480, 40, 834, 720, 422, 216);
+            }
+            return;
+          }
+
+          set_fullscreen_size(screen_w, screen_h);
 
           int fallback_size = art_size;
           if (fallback_size > screen_w) fallback_size = screen_w;
@@ -408,6 +441,7 @@ script:
           lv_obj_set_style_pad_bottom(id(cover_art_track_panel), pad, LV_PART_MAIN);
           lv_obj_set_style_pad_left(id(cover_art_track_panel), pad, LV_PART_MAIN);
           lv_obj_set_style_pad_right(id(cover_art_track_panel), pad, LV_PART_MAIN);
+          lv_obj_set_style_max_height(id(cover_art_title_label), ${cover_art_title_max_height}, LV_PART_MAIN);
 
   - id: cover_art_apply_downloaded_image
     mode: restart
