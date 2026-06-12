@@ -170,6 +170,7 @@ done=Fatto
 ethernet_setup=Configurazione Ethernet
 home_assistant=Home Assistant
 installing_update=Installazione aggiornamento
+update_firmware=Aggiorna firmware
 no_saved_wifi_connection_reinstall_by_usb_to_reconfigure=Nessuna connessione WiFi salvata\nReinstalla via USB per riconfigurare
 open_192_168_4_1=Apri 192.168.4.1
 open_your_browser_and_configure_your_display=Apri il browser e\nconfigura il display

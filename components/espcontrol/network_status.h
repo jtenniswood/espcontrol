@@ -17,7 +17,6 @@ constexpr const char *NETWORK_ICON_WIFI_3 = "\U000F0925";
 constexpr const char *NETWORK_ICON_WIFI_4 = "\U000F0928";
 constexpr const char *NETWORK_ICON_WIFI_OFF_OUTLINE = "\U000F092E";
 constexpr const char *NETWORK_ICON_ETHERNET = "\U000F0200";
-constexpr const char *NETWORK_ICON_UPDATE = "\U000F06B0";
 
 using NetworkStatusUpdateCallback = void (*)();
 
@@ -194,12 +193,19 @@ inline void network_status_open_modal(const std::string &device_name,
 
   ui.update_callback = network_status_update_callback_ref();
   if (ui.update_callback) {
-    lv_coord_t update_size = control_modal_scaled_px(54, layout.short_side);
-    if (update_size < 40) update_size = 40;
-    if (update_size > 64) update_size = 64;
-    ui.update_btn = control_modal_create_round_button(
-      ui.content, update_size, NETWORK_ICON_UPDATE, icon_font,
-      DEFAULT_SLIDER_COLOR, DARK_BACKGROUND_SECONDARY);
+    lv_coord_t update_h = control_modal_scaled_px(52, layout.short_side);
+    if (update_h < 38) update_h = 38;
+    if (update_h > 62) update_h = 62;
+    lv_coord_t update_max_w = content_w;
+    lv_coord_t preferred_max_w = control_modal_scaled_px(280, layout.short_side);
+    if (preferred_max_w > 0 && update_max_w > preferred_max_w) update_max_w = preferred_max_w;
+    lv_coord_t update_min_w = control_modal_scaled_px(180, layout.short_side);
+    if (update_min_w < 128) update_min_w = 128;
+    if (update_min_w > update_max_w) update_min_w = update_max_w;
+    ui.update_btn = control_modal_create_text_button(
+      ui.content, espcontrol_i18n(std::string("Update firmware")),
+      update_max_w, update_min_w, update_h, update_h / 2,
+      DEFAULT_SLIDER_COLOR, text_font);
     if (ui.update_btn) {
       lv_obj_add_event_cb(ui.update_btn, [](lv_event_t *) {
         NetworkStatusModalUi &ui = network_status_modal_ui();

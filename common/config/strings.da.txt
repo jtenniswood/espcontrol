@@ -170,6 +170,7 @@ done=Færdig
 ethernet_setup=Ethernet-opsætning
 home_assistant=Home Assistant
 installing_update=Installerer opdatering
+update_firmware=Opdater firmware
 no_saved_wifi_connection_reinstall_by_usb_to_reconfigure=Ingen gemt WiFi-forbindelse\nGeninstaller via USB for at konfigurere igen
 open_192_168_4_1=Åbn 192.168.4.1
 open_your_browser_and_configure_your_display=Åbn din browser og\nkonfigurer din skærm
