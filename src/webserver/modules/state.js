@@ -132,6 +132,8 @@ var state = {
   screenRotation: (CFG.features && CFG.features.screenRotationDefault) || "0",
   screenRotationOptions: (CFG.features && CFG.features.screenRotationOptions) || ["0", "90", "180", "270"],
   screenRotationDeviceOptions: null,
+  screenRotationInitialReady: !(CFG.features && CFG.features.screenRotation),
+  pendingButtonOrderRaw: null,
   sunrise: "",
   sunset: "",
   firmwareVersion: "",
@@ -835,6 +837,7 @@ var firmwareWebOtaFallbackTimer = null;
 var FIRMWARE_VERSION_METADATA_PATH = "/espcontrol/version";
 var FIRMWARE_PUBLIC_MANIFEST_BASE = "https://jtenniswood.github.io/espcontrol/firmware/";
 var FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS = 12000;
+var SCREEN_ROTATION_STARTUP_FALLBACK_MS = 1200;
 var FIRMWARE_CHECKING_VERSION_LABEL = "Checking version...";
 var FIRMWARE_DEV_VERSION_LABEL = "Dev build";
 var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unknown";
@@ -844,6 +847,40 @@ var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unknown";
 function escHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function screenRotationStartupRequired() {
+  return !!(CFG.features && CFG.features.screenRotation);
+}
+
+function gridPreviewBlockedByRotationStartup() {
+  return screenRotationStartupRequired() && !state.screenRotationInitialReady;
+}
+
+function clearInitialScreenRotationTimer() {
+  if (!state.screenRotationInitialTimer) return;
+  clearTimeout(state.screenRotationInitialTimer);
+  state.screenRotationInitialTimer = null;
+}
+
+function startInitialScreenRotationCheck() {
+  clearInitialScreenRotationTimer();
+  state.pendingButtonOrderRaw = null;
+  state.screenRotationInitialReady = !screenRotationStartupRequired();
+  if (!state.screenRotationInitialReady) {
+    state.screenRotationInitialTimer = setTimeout(resolveInitialScreenRotationCheck, SCREEN_ROTATION_STARTUP_FALLBACK_MS);
+  }
+}
+
+function resolveInitialScreenRotationCheck() {
+  if (state.screenRotationInitialReady) return;
+  clearInitialScreenRotationTimer();
+  state.screenRotationInitialReady = true;
+  if (state.pendingButtonOrderRaw !== null) {
+    applyButtonOrderValue(state.pendingButtonOrderRaw, true);
+    state.pendingButtonOrderRaw = null;
+  }
+  if (els.previewMain) renderPreview();
 }
 
 function renderFirmwareVersion() {

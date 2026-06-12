@@ -150,6 +150,12 @@ function renderPreview() {
   var main = els.previewMain;
   main.innerHTML = "";
   main.className = "sp-main" + (state.subpageChevronsOn ? "" : " sp-hide-subpage-chevrons");
+  if (gridPreviewBlockedByRotationStartup()) {
+    main.className += " sp-grid-loading";
+    main.setAttribute("aria-busy", "true");
+    return;
+  }
+  main.removeAttribute("aria-busy");
   var c = ctx();
 
   updatePreviewHint(c);

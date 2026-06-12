@@ -186,6 +186,21 @@ function seededEvents() {
   return events;
 }
 
+function rotationStartupBaseEvents(includeRotation = true) {
+  const events = [
+    { id: "text-button_on_color", state: "0073FF" },
+    { id: "text-button_off_color", state: "CECECE" },
+    { id: "text-sensor_card_color", state: "DEDEDE" },
+  ];
+  if (includeRotation) {
+    events.push({ id: "select-screen__rotation", state: "90", value: "90", option: ["0", "90", "180", "270"] });
+  }
+  BUTTON_FIXTURES.forEach((state, index) => {
+    events.push({ id: `text-button_${index + 1}_config`, state });
+  });
+  return events;
+}
+
 function assertNoLayoutBreaks(result, label, options = {}) {
   const minVisibleCards = options.minVisibleCards || BUTTON_FIXTURES.length;
   assert(result.appVisible, `${label}: #sp-app should be visible`);
@@ -265,6 +280,114 @@ async function measureCoreLayout(page) {
       windowWidth: window.innerWidth,
     };
   });
+}
+
+async function measureRotationStartupLayout(page) {
+  return page.evaluate(() => {
+    var screen = document.querySelector(".sp-screen");
+    var main = document.querySelector(".sp-main");
+    var screenRect = screen ? screen.getBoundingClientRect() : null;
+    var style = main ? getComputedStyle(main) : null;
+    return {
+      loading: !!main && main.classList.contains("sp-grid-loading"),
+      busy: main ? main.getAttribute("aria-busy") : null,
+      gridHidden: !!style && style.visibility === "hidden",
+      visibleCards: document.querySelectorAll(".sp-main > .sp-btn").length,
+      screenWidth: screenRect ? screenRect.width : 0,
+      screenHeight: screenRect ? screenRect.height : 0,
+      gridTemplateColumns: style ? style.gridTemplateColumns : "",
+      gridTemplateRows: style ? style.gridTemplateRows : "",
+    };
+  });
+}
+
+function gridTrackCount(value) {
+  value = String(value || "").trim();
+  if (!value) return 0;
+  return value.split(/\s+/).length;
+}
+
+function assertPortraitGridLayout(result, label) {
+  assert(!result.loading, `${label}: grid should no longer be waiting for startup rotation`);
+  assert.strictEqual(result.busy, null, `${label}: grid should not remain aria-busy`);
+  assert.strictEqual(result.gridHidden, false, `${label}: grid should be visible after startup rotation is known`);
+  assert(result.visibleCards >= BUTTON_FIXTURES.length, `${label}: saved cards should render`);
+  assert(result.screenHeight > result.screenWidth, `${label}: preview should end in portrait orientation`);
+  assert.strictEqual(gridTrackCount(result.gridTemplateColumns), 3, `${label}: portrait grid should use 3 columns`);
+  assert.strictEqual(gridTrackCount(result.gridTemplateRows), 5, `${label}: portrait grid should use 5 rows`);
+}
+
+async function assertRotationStartupOrdering(browser) {
+  const slug = "guition-esp32-p4-jc1060p470";
+  const context = await browser.newContext({ viewport: { width: 1100, height: 1000 } });
+  await installRoutes(context, slug);
+  const page = await context.newPage();
+  await installFakeEventSource(page);
+  try {
+    await page.goto(`http://espcontrol.test/${slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#sp-app");
+    await page.waitForFunction(() => window.__eventSources && window.__eventSources.length > 0);
+
+    await page.evaluate((events) => window.__seedEspState(events), [
+      { id: "text-button_order", state: "1,2,3w,4,5" },
+    ].concat(rotationStartupBaseEvents(false)));
+    let layout = await measureRotationStartupLayout(page);
+    assert(layout.loading, "button_order before rotation: grid should stay in startup loading state");
+    assert.strictEqual(layout.busy, "true", "button_order before rotation: grid should be marked busy");
+    assert(layout.gridHidden, "button_order before rotation: grid should be hidden until rotation arrives");
+    assert.strictEqual(layout.visibleCards, 0, "button_order before rotation: cards should not render in the default layout first");
+
+    await page.evaluate(() => window.__seedEspState([
+      { id: "select-screen__rotation", state: "90", value: "90", option: ["0", "90", "180", "270"] },
+    ]));
+    await page.waitForSelector(".sp-main > .sp-btn");
+    layout = await measureRotationStartupLayout(page);
+    assertPortraitGridLayout(layout, "button_order before rotation");
+  } finally {
+    await context.close();
+  }
+
+  const reverseContext = await browser.newContext({ viewport: { width: 1100, height: 1000 } });
+  await installRoutes(reverseContext, slug);
+  const reversePage = await reverseContext.newPage();
+  await installFakeEventSource(reversePage);
+  try {
+    await reversePage.goto(`http://espcontrol.test/${slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await reversePage.waitForSelector("#sp-app");
+    await reversePage.waitForFunction(() => window.__eventSources && window.__eventSources.length > 0);
+    await reversePage.evaluate((events) => window.__seedEspState(events), rotationStartupBaseEvents(true).concat([
+      { id: "text-button_order", state: "1,2,3w,4,5" },
+    ]));
+    await reversePage.waitForSelector(".sp-main > .sp-btn");
+    assertPortraitGridLayout(await measureRotationStartupLayout(reversePage), "rotation before button_order");
+  } finally {
+    await reverseContext.close();
+  }
+
+  const fallbackContext = await browser.newContext({ viewport: { width: 1100, height: 1000 } });
+  await installRoutes(fallbackContext, slug);
+  const fallbackPage = await fallbackContext.newPage();
+  await installFakeEventSource(fallbackPage);
+  try {
+    await fallbackPage.goto(`http://espcontrol.test/${slug}?events=1`, { waitUntil: "domcontentloaded" });
+    await fallbackPage.waitForSelector("#sp-app");
+    await fallbackPage.waitForFunction(() => window.__eventSources && window.__eventSources.length > 0);
+    await fallbackPage.evaluate((events) => window.__seedEspState(events), [
+      { id: "text-button_order", state: "1,2,3w,4,5" },
+    ].concat(rotationStartupBaseEvents(false)));
+    let layout = await measureRotationStartupLayout(fallbackPage);
+    assert(layout.loading, "rotation fallback: grid should wait briefly when rotation support exists but no value has arrived");
+    await fallbackPage.waitForFunction(() => {
+      var main = document.querySelector(".sp-main");
+      return main && !main.classList.contains("sp-grid-loading") && document.querySelectorAll(".sp-main > .sp-btn").length >= 4;
+    }, null, { timeout: 3000 });
+    layout = await measureRotationStartupLayout(fallbackPage);
+    assert(!layout.loading, "rotation fallback: grid should appear after fallback timeout");
+    assert.strictEqual(layout.gridHidden, false, "rotation fallback: grid should be visible after fallback timeout");
+    assert(layout.visibleCards >= BUTTON_FIXTURES.length, "rotation fallback: saved cards should render after fallback timeout");
+  } finally {
+    await fallbackContext.close();
+  }
 }
 
 async function assertSettingsPage(page, label, options = {}) {
@@ -959,6 +1082,7 @@ async function runCase(browser, testCase) {
 (async function main() {
   const browser = await chromium.launch();
   try {
+    await assertRotationStartupOrdering(browser);
     for (const testCase of CASES) {
       await runCase(browser, testCase);
       await assertMobileDeviceViewport(browser, testCase);

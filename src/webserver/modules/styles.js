@@ -65,6 +65,7 @@ var CSS =
   ".sp-network-preview.sp-visible{opacity:1}" +
   ".sp-main{position:absolute;top:var(--grid-top);left:var(--grid-left);right:var(--grid-right);bottom:var(--grid-bottom);" +
   "display:grid;grid-template-columns:var(--grid-cols);grid-template-rows:var(--grid-rows);gap:var(--grid-gap);overflow:hidden}" +
+  ".sp-main.sp-grid-loading{visibility:hidden;pointer-events:none}" +
 
   ".sp-btn{border-radius:var(--btn-r);padding:var(--btn-pad);" +
   "display:flex;flex-direction:column;justify-content:space-between;" +

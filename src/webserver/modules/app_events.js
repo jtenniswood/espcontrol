@@ -91,13 +91,12 @@ function connectEvents() {
 
   var sseHandlers = {
     "text-button_order": function (val) {
-      orderReceived = !!(val && val.trim());
-      state.sizes = {};
-      state.grid = parseOrder(val);
-      state.selectedSlots = state.selectedSlots.filter(function (s) {
-        return state.grid.indexOf(s) !== -1;
-      });
-      scheduleRender();
+      if (gridPreviewBlockedByRotationStartup()) {
+        orderReceived = !!(val && val.trim());
+        state.pendingButtonOrderRaw = val;
+        return;
+      }
+      applyButtonOrderValue(val);
     },
     "select-screen__theme": function (val, d) {
       syncThemeFromDevice(d.value || val, d.option);
@@ -403,6 +402,7 @@ function connectEvents() {
       }
       syncScreenRotationSelect();
       syncPreviewOrientation();
+      resolveInitialScreenRotationCheck();
       renderPreview();
     },
     "text_sensor-screen__sunrise": function (val) {

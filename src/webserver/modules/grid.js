@@ -76,6 +76,16 @@ function parseOrder(str) {
   return parsed.grid;
 }
 
+function applyButtonOrderValue(val, skipRender) {
+  orderReceived = !!(val && val.trim());
+  state.sizes = {};
+  state.grid = parseOrder(val);
+  state.selectedSlots = state.selectedSlots.filter(function (s) {
+    return state.grid.indexOf(s) !== -1;
+  });
+  if (!skipRender) scheduleRender();
+}
+
 function applySpans(grid, sizes, maxSlots) {
   EspControlModel.applySpans(grid, sizes, maxSlots, GRID_COLS);
 }

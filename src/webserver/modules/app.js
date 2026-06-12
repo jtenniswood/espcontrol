@@ -35,6 +35,7 @@ function init() {
 
   // Set CSS custom properties from the active device orientation.
   syncPreviewOrientation();
+  startInitialScreenRotationCheck();
 
   var style = document.createElement("style");
   style.textContent = CSS;
