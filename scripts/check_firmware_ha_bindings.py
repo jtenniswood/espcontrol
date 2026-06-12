@@ -337,6 +337,16 @@ def firmware_time_reconnect_errors(time_path: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: wait for Home Assistant state readiness before reconnect time sync")
     if "on_client_connected:" in text and "delay: 2s" not in text:
         errors.append(f"{rel}: defer Home Assistant time sync after API reconnect")
+    api_connect_match = re.search(
+        r"(?ms)^api:\n\s+on_client_connected:\n(?P<body>.*?)(?:^#|^select:|^text:|^text_sensor:|^time:|^script:|\Z)",
+        text,
+    )
+    if api_connect_match:
+        api_connect_body = api_connect_match.group("body")
+        if "script.execute: backlight_recalc_sunrise_sunset" not in api_connect_body:
+            errors.append(f"{rel}: recalculate sunrise and sunset after reconnect time sync")
+        if "script.execute: screen_schedule_check" not in api_connect_body:
+            errors.append(f"{rel}: recheck the screen schedule after reconnect time sync")
     return errors
 
 
@@ -2001,7 +2011,13 @@ def run_self_test() -> int:
         "  on_client_connected:\n"
         "    - lambda: |-\n"
         "        id(homeassistant_time).update();\n",
-        ("guard Home Assistant time updates", "wait for Home Assistant state readiness", "defer Home Assistant time sync"),
+        (
+            "guard Home Assistant time updates",
+            "wait for Home Assistant state readiness",
+            "defer Home Assistant time sync",
+            "recalculate sunrise and sunset",
+            "recheck the screen schedule",
+        ),
     )
     expect_time_reconnect_errors(
         "home assistant time sync waits for state readiness",
@@ -2010,6 +2026,10 @@ def run_self_test() -> int:
         "    - delay: 2s\n"
         "    - lambda: |-\n"
         "        if (ha_api_state_connected()) id(homeassistant_time).update();\n"
+        "    - delay: 1s\n"
+        "    - script.execute: time_update\n"
+        "    - script.execute: backlight_recalc_sunrise_sunset\n"
+        "    - script.execute: screen_schedule_check\n"
         "script:\n"
         "  - id: time_update\n"
         "    then:\n"
