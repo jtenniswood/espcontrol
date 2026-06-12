@@ -69,13 +69,14 @@ wifi:
   password: "Your WiFi Password"
 ```
 
-For the community SenseCAP Indicator D1 build, use the fork branch explicitly:
+For the community SenseCAP Indicator D1 build, use the fork and pin the latest
+`d1-v*` release tag (bump `ref` to upgrade):
 
 ```yaml
 packages:
   setup:
     url: https://github.com/davidmerrique/espcontrol/
-    ref: community/seeed-sensecap-indicator-d1
+    ref: d1-v1.0.0
     file: devices/seeed-sensecap-indicator-d1/packages.yaml
     refresh: 1sec
 ```

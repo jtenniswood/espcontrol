@@ -60,10 +60,12 @@ wifi:
 packages:
   setup:
     url: https://github.com/davidmerrique/espcontrol/
-    ref: community/seeed-sensecap-indicator-d1
+    ref: d1-v1.0.0
     file: devices/seeed-sensecap-indicator-d1/packages.yaml
     refresh: 1sec
 ```
+
+Pin the latest `d1-v*` release tag and bump `ref` to upgrade.
 
 ## Where to Buy
 

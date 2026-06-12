@@ -5,6 +5,9 @@
 # identical across all hardware targets.
 # =============================================================================
 
+substitutions:
+  web_asset_base_url: "https://jtenniswood.github.io/espcontrol"
+
 esphome:
   # Enable LVGL's bidirectional text algorithm so right-to-left scripts
   # (Hebrew, Arabic) render in visual order.
@@ -110,7 +113,7 @@ web_server:
   port: 80
   version: 3
   include_internal: true
-  js_url: https://jtenniswood.github.io/espcontrol/webserver/${device_slug}/www.js?v=${firmware_version}&ui=20260611-livecheck
+  js_url: ${web_asset_base_url}/webserver/${device_slug}/www.js?v=${firmware_version}&ui=20260611-livecheck
   sorting_groups:
     - id: sg_button
       name: "Button Configuration"

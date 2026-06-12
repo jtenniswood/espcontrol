@@ -22,10 +22,12 @@ wifi:
 
 # ---------------------------------------------------------------------------
 # Remote package (pulls full config from GitHub)
+# Pinned to a community release tag. To upgrade, bump `ref` to the latest
+# d1-v* tag (or use the on-device firmware update card).
 # ---------------------------------------------------------------------------
 packages:
   setup:
     url: https://github.com/davidmerrique/espcontrol/
-    ref: community/seeed-sensecap-indicator-d1
+    ref: d1-v1.0.0
     file: devices/seeed-sensecap-indicator-d1/packages.yaml
     refresh: 1s

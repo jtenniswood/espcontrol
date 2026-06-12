@@ -14,6 +14,11 @@ You do not need to write code, edit YAML, or build your own ESPHome setup. Insta
 
 This fork carries a community-maintained build for the Seeed SenseCAP Indicator D1 on the `community/seeed-sensecap-indicator-d1` branch. It is not officially supported by upstream EspControl; firmware, testing, and support for this device are community-provided.
 
+- **Install and docs:** [davidmerrique.github.io/espcontrol](https://davidmerrique.github.io/espcontrol/screens/sensecap-indicator-d1) - the D1 web configurator and firmware updates are served from this fork's GitHub Pages, not upstream's.
+- **Releases:** tagged `d1-vX.Y.Z` on this fork. Manual ESPHome setups should pin the latest tag.
+- **Issues:** report D1 problems on [this fork's issue tracker](https://github.com/davidmerrique/espcontrol/issues), never on the upstream EspControl repository.
+- **Other devices:** use [upstream EspControl](https://github.com/jtenniswood/espcontrol) directly; this fork only adds the D1.
+
 ## What It Unlocks
 
 - **A real control panel for your home** - give family and guests simple buttons instead of asking them to use the Home Assistant app.

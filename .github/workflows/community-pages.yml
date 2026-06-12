@@ -1,0 +1,280 @@
+# =============================================================================
+# COMMUNITY PAGES - fork GitHub Pages deploy (fork-only workflow)
+# =============================================================================
+# Builds the docs site (which carries docs/public/webserver/<slug>/www.js, the
+# web configurator bundle the device loads at runtime) and publishes D1
+# firmware manifests/binaries from this fork's releases to GitHub Pages.
+# Adapted from upstream pages.yml: GitHub-hosted runners only, single device.
+# The device points at this site via the web_asset_base_url and
+# firmware_manifest_base_url substitutions in the D1 packages.yaml.
+# =============================================================================
+
+name: Community Pages
+
+on:
+  push:
+    branches: [community/seeed-sensecap-indicator-d1]
+  workflow_run:
+    workflows: ["Community Release"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  SLUG: seeed-sensecap-indicator-d1
+
+jobs:
+  build-docs:
+    name: Build Docs
+    if: >-
+      github.repository_owner != 'jtenniswood' &&
+      (github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build docs
+        run: npm run docs:build
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs-dist
+          path: docs/.vitepress/dist
+
+  download-firmware:
+    name: Download Firmware
+    if: >-
+      github.repository_owner != 'jtenniswood' &&
+      (github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    outputs:
+      has_stable_firmware: ${{ steps.stable.outputs.has_stable_firmware }}
+    steps:
+      - name: Download firmware from stable releases
+        id: stable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p firmware
+          RELEASES_JSON=$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=30")
+          STABLE_RELEASES_JSON=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and (.prerelease | not))][0:3]')
+          RELEASE_COUNT=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq 'length')
+
+          if [ "${RELEASE_COUNT}" -eq 0 ]; then
+            echo "::warning::No stable firmware releases found"
+            touch firmware/.no-stable-releases
+            echo "has_stable_firmware=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          download_asset() {
+            RELEASE_JSON="$1"
+            ASSET_NAME="$2"
+            OUTPUT_PATH="$3"
+            ASSET_URL=$(printf '%s' "${RELEASE_JSON}" | jq -r --arg name "${ASSET_NAME}" \
+              '.assets[]? | select(.name == $name) | .url' | head -n 1)
+            if [ -z "${ASSET_URL}" ]; then
+              return 1
+            fi
+            mkdir -p "$(dirname "${OUTPUT_PATH}")"
+            curl -fsSL \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/octet-stream" \
+              "${ASSET_URL}" \
+              -o "${OUTPUT_PATH}"
+          }
+
+          ota_md5() {
+            MANIFEST_PATH="$1"
+            jq -r --arg path "$2" \
+              'first((.builds // [])[]?.ota | select((.path // "") == $path) | (.md5 // "")) // ""' \
+              "${MANIFEST_PATH}"
+          }
+
+          ota_release_url() {
+            MANIFEST_PATH="$1"
+            jq -r --arg path "$2" \
+              'first((.builds // [])[]?.ota | select((.path // "") == $path) | (.release_url // "")) // ""' \
+              "${MANIFEST_PATH}"
+          }
+
+          mkdir -p "firmware/${SLUG}"
+          INDEX_ENTRIES=$(mktemp)
+          : > "${INDEX_ENTRIES}"
+
+          for IDX in $(seq 0 $((RELEASE_COUNT - 1))); do
+            RELEASE_JSON=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq -c ".[$IDX]")
+            RELEASE_TAG=$(printf '%s' "${RELEASE_JSON}" | jq -r '.tag_name')
+            RELEASE_HTML_URL=$(printf '%s' "${RELEASE_JSON}" | jq -r '.html_url')
+            MANIFEST_TMP=$(mktemp)
+
+            if ! download_asset "${RELEASE_JSON}" "${SLUG}.manifest.json" "${MANIFEST_TMP}"; then
+              continue
+            fi
+
+            VERSION=$(jq -r '.version // ""' "${MANIFEST_TMP}")
+            if [ -z "${VERSION}" ] || [ "${VERSION}" = "null" ]; then
+              VERSION="${RELEASE_TAG}"
+            fi
+            VERSION_PATH=$(printf '%s' "${VERSION}" | sed 's/[^A-Za-z0-9._-]/_/g')
+
+            if [ "${IDX}" -eq 0 ]; then
+              cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
+              OTA_OUTPUT="firmware/${SLUG}/${SLUG}.ota.bin"
+              OTA_INDEX_PATH="${SLUG}.ota.bin"
+              download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
+            else
+              OTA_OUTPUT="firmware/${SLUG}/versions/${VERSION_PATH}/${SLUG}.ota.bin"
+              OTA_INDEX_PATH="versions/${VERSION_PATH}/${SLUG}.ota.bin"
+            fi
+
+            if ! download_asset "${RELEASE_JSON}" "${SLUG}.ota.bin" "${OTA_OUTPUT}"; then
+              continue
+            fi
+
+            OTA_MD5=$(ota_md5 "${MANIFEST_TMP}" "${SLUG}.ota.bin")
+            if [ -z "${OTA_MD5}" ]; then
+              echo "::warning::${SLUG} ${VERSION} manifest does not include an OTA md5"
+              continue
+            fi
+            ENTRY_RELEASE_URL=$(ota_release_url "${MANIFEST_TMP}" "${SLUG}.ota.bin")
+            if [ -z "${ENTRY_RELEASE_URL}" ]; then
+              ENTRY_RELEASE_URL="${RELEASE_HTML_URL}"
+            fi
+
+            jq -n \
+              --arg version "${VERSION}" \
+              --arg release_url "${ENTRY_RELEASE_URL}" \
+              --arg ota_path "${OTA_INDEX_PATH}" \
+              --arg ota_md5 "${OTA_MD5}" \
+              '{version:$version, release_url:$release_url, ota:{path:$ota_path, md5:$ota_md5}}' \
+              >> "${INDEX_ENTRIES}"
+          done
+
+          if [ -s "${INDEX_ENTRIES}" ]; then
+            jq -s --arg device "${SLUG}" '{device:$device, versions:.}' \
+              "${INDEX_ENTRIES}" > "firmware/${SLUG}/versions.json"
+          fi
+
+          if [ -f "firmware/${SLUG}/manifest.json" ]; then
+            echo "has_stable_firmware=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No stable firmware manifests were downloaded from release assets"
+            touch firmware/.no-stable-manifests
+            echo "has_stable_firmware=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download firmware from latest pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASES_JSON=$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=20")
+          BETA_ASSETS=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select(.prerelease)][0].assets // []')
+
+          if [ "${BETA_ASSETS}" != "[]" ]; then
+            download_beta_asset() {
+              ASSET_NAME="$1"
+              OUTPUT_PATH="$2"
+              ASSET_URL=$(printf '%s' "${BETA_ASSETS}" | jq -r --arg name "${ASSET_NAME}" \
+                '.[] | select(.name == $name) | .url' | head -n 1)
+              if [ -z "${ASSET_URL}" ]; then
+                return 0
+              fi
+              curl -fsSL \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/octet-stream" \
+                "${ASSET_URL}" \
+                -o "${OUTPUT_PATH}"
+            }
+
+            mkdir -p "firmware/${SLUG}/beta"
+            download_beta_asset "${SLUG}.manifest.json" "firmware/${SLUG}/beta/manifest.json"
+            download_beta_asset "${SLUG}.ota.bin" "firmware/${SLUG}/beta/${SLUG}.ota.bin"
+          fi
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: firmware
+          path: firmware/
+
+  deploy:
+    name: Deploy to Pages
+    needs: [build-docs, download-firmware]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download docs artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: docs-dist
+          path: dist
+
+      - name: Download firmware artifact
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: firmware
+          path: dist/firmware
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Verify public community assets
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          HAS_STABLE_FIRMWARE: ${{ needs.download-firmware.outputs.has_stable_firmware }}
+        run: |
+          check_url() {
+            URL="$1"
+            for ATTEMPT in $(seq 1 5); do
+              if curl -fsSL -o /dev/null "${URL}"; then
+                echo "OK: ${URL}"
+                return 0
+              fi
+              echo "Attempt ${ATTEMPT}/5 failed for ${URL}; retrying in 20s"
+              sleep 20
+            done
+            echo "::error::Unreachable after deploy: ${URL}"
+            return 1
+          }
+
+          check_url "${PAGE_URL%/}/webserver/${SLUG}/www.js"
+          if [ "${HAS_STABLE_FIRMWARE}" = "true" ]; then
+            check_url "${PAGE_URL%/}/firmware/${SLUG}/manifest.json"
+          else
+            echo "No stable firmware release yet; skipping firmware manifest check"
+          fi

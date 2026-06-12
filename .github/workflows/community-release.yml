@@ -1,0 +1,86 @@
+# =============================================================================
+# COMMUNITY RELEASE - Seeed SenseCAP Indicator D1 (fork-only workflow)
+# =============================================================================
+# Builds the community-maintained D1 firmware on GitHub-hosted runners and
+# uploads factory/OTA binaries plus the manifest to the GitHub release.
+# Upstream's release.yml requires self-hosted runners and builds every device;
+# this fork workflow builds only the D1. Tag releases as d1-vX.Y.Z.
+# =============================================================================
+
+name: Community Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to build and upload assets for
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ESPHOME_VERSION: 2026.5.3
+  SLUG: seeed-sensecap-indicator-d1
+  CHIP: ESP32-S3
+
+jobs:
+  build-firmware:
+    name: Build seeed-sensecap-indicator-d1
+    # Fork-only: never run if this workflow ever lands upstream.
+    if: github.repository_owner != 'jtenniswood'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compile firmware
+        env:
+          VERSION: ${{ inputs.release_tag || github.event.release.tag_name }}
+        run: >-
+          docker run --rm
+          --user "$(id -u):$(id -g)"
+          -e HOME=/config
+          -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false
+          -v "${PWD}:/config"
+          ghcr.io/esphome/esphome:${ESPHOME_VERSION}
+          -s firmware_version "${VERSION}"
+          compile /config/builds/${SLUG}.factory.yaml
+
+      - name: Collect firmware files and generate manifest
+        env:
+          VERSION: ${{ inputs.release_tag || github.event.release.tag_name }}
+        run: |
+          FIRMWARE_FACTORY=$(find builds/.esphome/build -name firmware.factory.bin -print -quit 2>/dev/null || true)
+          if [ -z "${FIRMWARE_FACTORY}" ] || [ ! -f "${FIRMWARE_FACTORY}" ]; then
+            echo "::error::Firmware compilation failed — factory binary not found"
+            exit 1
+          fi
+
+          BUILD_DIR=$(dirname "${FIRMWARE_FACTORY}")
+          mkdir -p output
+          cp "${BUILD_DIR}/firmware.factory.bin" "output/${SLUG}.factory.bin"
+          cp "${BUILD_DIR}/firmware.bin" "output/${SLUG}.ota.bin"
+
+          python3 scripts/firmware_release.py manifest \
+            --slug "${SLUG}" \
+            --chip "${CHIP}" \
+            --version "${VERSION}" \
+            --factory "output/${SLUG}.factory.bin" \
+            --ota "output/${SLUG}.ota.bin" \
+            --out "output/${SLUG}.manifest.json"
+          python3 scripts/firmware_release.py verify-files \
+            --slug "${SLUG}" \
+            --version "${VERSION}" \
+            --manifest "output/${SLUG}.manifest.json" \
+            --factory "output/${SLUG}.factory.bin" \
+            --ota "output/${SLUG}.ota.bin"
+
+      - name: Upload firmware to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name }}
+        run: gh release upload "${RELEASE_TAG}" output/* --clobber --repo "${GITHUB_REPOSITORY}"
