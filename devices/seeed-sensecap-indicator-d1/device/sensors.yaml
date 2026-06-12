@@ -56,10 +56,32 @@ script:
           cfg.pause_home_idle = []() {
             id(home_screen_idle_suspended) = true;
             id(home_screen_idle_check).stop();
+            id(screensaver_idle_check).stop();
+            id(screensaver_sleep_timer).stop();
+            id(screensaver_sleep_sensor).stop();
+            id(screensaver_sleep_display_off).stop();
+            id(backlight_sleep_display_off).stop();
+            id(backlight_fade_current_ui_to_black).stop();
+            id(backlight_schedule_display_off).stop();
+            id(show_clock_view).stop();
+            id(show_dimmed_view).stop();
+            id(clock_screensaver_refresh_brightness).stop();
+            id(screensaver_dimmed_refresh_brightness).stop();
+            id(display_asleep) = false;
+            id(screensaver_display_off_active) = false;
+            id(screensaver_dimmed_active) = false;
+            lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
+            id(backlight_apply_brightness).execute();
           };
           cfg.resume_home_idle = []() {
             id(home_screen_idle_suspended) = false;
             id(home_screen_idle_check).execute();
+            id(screensaver_idle_check).execute();
+          };
+          cfg.home_assistant_base_url = []() {
+            std::string base = id(cover_art_home_assistant_base_url);
+            while (!base.empty() && base.back() == '/') base.pop_back();
+            return base;
           };
           register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::vector<esphome::http_request::Header> &headers) {
             auto response = id(http_req).start(url, method, body, headers);
@@ -79,11 +101,26 @@ script:
           set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
           apply_width_compensation(id(display_time), cfg.width_compensation_percent);
           apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
+          apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
+          apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
+          apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
+          apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
+          apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
           apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
           // END GENERATED REFRESH GRID WIRING
           grid_refresh_layout(slots, cfg,
             id(button_order).state,
             id(main_page)->obj);
+
+  - id: reset_existing_panel_settings_once
+    then:
+      - lambda: |-
+          const int reset_version = 20260611;
+          if (id(panel_device_settings_reset_version) >= reset_version) return;
+          ESP_LOGI("config", "Preserving stored panel settings across firmware update");
+          id(panel_device_settings_reset_version) = reset_version;
+          global_preferences->sync();
+
 esphome:
   on_boot:
     - priority: -100
@@ -128,10 +165,32 @@ esphome:
             cfg.pause_home_idle = []() {
               id(home_screen_idle_suspended) = true;
               id(home_screen_idle_check).stop();
+              id(screensaver_idle_check).stop();
+              id(screensaver_sleep_timer).stop();
+              id(screensaver_sleep_sensor).stop();
+              id(screensaver_sleep_display_off).stop();
+              id(backlight_sleep_display_off).stop();
+              id(backlight_fade_current_ui_to_black).stop();
+              id(backlight_schedule_display_off).stop();
+              id(show_clock_view).stop();
+              id(show_dimmed_view).stop();
+              id(clock_screensaver_refresh_brightness).stop();
+              id(screensaver_dimmed_refresh_brightness).stop();
+              id(display_asleep) = false;
+              id(screensaver_display_off_active) = false;
+              id(screensaver_dimmed_active) = false;
+              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
+              id(backlight_apply_brightness).execute();
             };
             cfg.resume_home_idle = []() {
               id(home_screen_idle_suspended) = false;
               id(home_screen_idle_check).execute();
+              id(screensaver_idle_check).execute();
+            };
+            cfg.home_assistant_base_url = []() {
+              std::string base = id(cover_art_home_assistant_base_url);
+              while (!base.empty() && base.back() == '/') base.pop_back();
+              return base;
             };
             register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::vector<esphome::http_request::Header> &headers) {
               auto response = id(http_req).start(url, method, body, headers);
@@ -151,6 +210,11 @@ esphome:
             set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
             // END GENERATED PHASE 1 GRID WIRING
             grid_phase1(slots, cfg,
@@ -229,10 +293,32 @@ esphome:
             cfg.pause_home_idle = []() {
               id(home_screen_idle_suspended) = true;
               id(home_screen_idle_check).stop();
+              id(screensaver_idle_check).stop();
+              id(screensaver_sleep_timer).stop();
+              id(screensaver_sleep_sensor).stop();
+              id(screensaver_sleep_display_off).stop();
+              id(backlight_sleep_display_off).stop();
+              id(backlight_fade_current_ui_to_black).stop();
+              id(backlight_schedule_display_off).stop();
+              id(show_clock_view).stop();
+              id(show_dimmed_view).stop();
+              id(clock_screensaver_refresh_brightness).stop();
+              id(screensaver_dimmed_refresh_brightness).stop();
+              id(display_asleep) = false;
+              id(screensaver_display_off_active) = false;
+              id(screensaver_dimmed_active) = false;
+              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
+              id(backlight_apply_brightness).execute();
             };
             cfg.resume_home_idle = []() {
               id(home_screen_idle_suspended) = false;
               id(home_screen_idle_check).execute();
+              id(screensaver_idle_check).execute();
+            };
+            cfg.home_assistant_base_url = []() {
+              std::string base = id(cover_art_home_assistant_base_url);
+              while (!base.empty() && base.back() == '/') base.pop_back();
+              return base;
             };
             register_webhook_sender([](const std::string &url, const std::string &method, const std::string &body, const std::vector<esphome::http_request::Header> &headers) {
               auto response = id(http_req).start(url, method, body, headers);
@@ -252,6 +338,11 @@ esphome:
             set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
+            apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
             // END GENERATED PHASE 2 GRID WIRING
             grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,

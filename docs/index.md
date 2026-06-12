@@ -14,6 +14,10 @@ EspControl is free, open-source firmware that turns supported **ESP32 touchscree
 
 **Source code and issues:** [github.com/jtenniswood/espcontrol](https://github.com/jtenniswood/espcontrol).
 
+::: warning Community device in this fork
+The Seeed SenseCAP Indicator D1 build in this branch is community-maintained at [github.com/davidmerrique/espcontrol](https://github.com/davidmerrique/espcontrol) on `community/seeed-sensecap-indicator-d1`. It is not officially supported by upstream EspControl.
+:::
+
 ## Features
 
 - **Grid layout** — a fixed grid sized to each screen so you can place cards exactly where you want them
@@ -32,7 +36,7 @@ EspControl is free, open-source firmware that turns supported **ESP32 touchscree
 | 4.3-inch JC4880P443 | [AliExpress ~£24](https://s.click.aliexpress.com/e/_c32jr3eN) | - |
 | 4-inch ESP32-P4 86 Panel | [AliExpress ~£45](https://s.click.aliexpress.com/e/_c3O6ndAX) | [MakerWorld](https://makerworld.com/en/models/2720366-waveshare-esp32-p4-smart-86-box-screen-desk-stand#profileId-3013481) |
 | 4-inch 4848S040 | [AliExpress ~£16](https://s.click.aliexpress.com/e/_c3sIhvBv) | [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301) |
-| Seeed SenseCAP Indicator D1 | [Seeed Studio](https://www.seeedstudio.com/SenseCAP-Indicator-D1-p-5643.html) | - |
+| Seeed SenseCAP Indicator D1 (community) | [Seeed Studio](https://www.seeedstudio.com/SenseCAP-Indicator-D1-p-5643.html) | - |
 
 ## Support This Project
 

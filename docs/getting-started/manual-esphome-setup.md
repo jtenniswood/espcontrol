@@ -30,7 +30,11 @@ Each screen uses a different ESPHome package file. Pick the one that matches you
 | 4.3-inch JC4880P443 | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |
 | 4-inch ESP32-P4 86 Panel | `devices/esp32-p4-86/packages.yaml` |
 | 4-inch 4848S040 | `devices/guition-esp32-s3-4848s040/packages.yaml` |
-| Seeed SenseCAP Indicator D1 | `devices/seeed-sensecap-indicator-d1/packages.yaml` |
+| Seeed SenseCAP Indicator D1 (community) | `devices/seeed-sensecap-indicator-d1/packages.yaml` |
+
+::: warning SenseCAP Indicator D1 support
+The SenseCAP Indicator D1 package is community-maintained in the `davidmerrique/espcontrol` fork on the `community/seeed-sensecap-indicator-d1` branch. It is not officially supported by upstream EspControl.
+:::
 
 ## ESPHome Device Builder
 
@@ -63,6 +67,17 @@ If you do not use ESPHome secrets, replace the two `!secret` lines with your WiF
 wifi:
   ssid: "Your WiFi Name"
   password: "Your WiFi Password"
+```
+
+For the community SenseCAP Indicator D1 build, use the fork branch explicitly:
+
+```yaml
+packages:
+  setup:
+    url: https://github.com/davidmerrique/espcontrol/
+    ref: community/seeed-sensecap-indicator-d1
+    file: devices/seeed-sensecap-indicator-d1/packages.yaml
+    refresh: 1sec
 ```
 
 ## Advanced: Password-Protect the Web Page

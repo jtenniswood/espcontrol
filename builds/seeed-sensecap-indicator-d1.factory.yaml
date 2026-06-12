@@ -1,7 +1,8 @@
 # =============================================================================
 # FACTORY BUILD - Seeed SenseCAP Indicator D1 (4" square)
 # =============================================================================
-# Factory image: www.js bundled inline for first-boot web UI access.
+# Community-maintained factory image: www.js bundled inline for first-boot web
+# UI access. This build is not officially supported by upstream EspControl.
 # =============================================================================
 
 substitutions:
@@ -17,11 +18,11 @@ packages:
 esphome:
   name_add_mac_suffix: true
   project:
-    name: jtenniswood.espcontrol
+    name: davidmerrique.espcontrol-community
     version: "${firmware_version}"
 
 dashboard_import:
-  package_import_url: github://jtenniswood/espcontrol/devices/seeed-sensecap-indicator-d1/esphome.yaml@main
+  package_import_url: github://davidmerrique/espcontrol/devices/seeed-sensecap-indicator-d1/esphome.yaml@community/seeed-sensecap-indicator-d1
 
 web_server:
   port: 80

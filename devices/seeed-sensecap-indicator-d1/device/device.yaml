@@ -7,8 +7,8 @@
 # =============================================================================
 
 substitutions:
-  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
-  espcontrol_component_ref: "main"
+  espcontrol_component_url: "https://github.com/davidmerrique/espcontrol"
+  espcontrol_component_ref: "community/seeed-sensecap-indicator-d1"
 
 # ---------------------------------------------------------------------------
 # ESP32-S3 platform (8MB flash, ESP-IDF framework)

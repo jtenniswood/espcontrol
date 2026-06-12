@@ -6,6 +6,10 @@ description:
 
 # Seeed SenseCAP Indicator D1
 
+::: warning Community-maintained device
+This SenseCAP Indicator D1 firmware is maintained by the `davidmerrique/espcontrol` fork on the `community/seeed-sensecap-indicator-d1` branch. It is not officially supported by upstream EspControl; firmware, testing, and user support are community-provided.
+:::
+
 The **Seeed SenseCAP Indicator D1** is a 4-inch square touchscreen powered by an **ESP32-S3** processor. EspControl uses its 480 x 480 display for **9 cards** on the home screen.
 
 ## Specifications
@@ -55,7 +59,8 @@ wifi:
 
 packages:
   setup:
-    url: https://github.com/jtenniswood/espcontrol/
+    url: https://github.com/davidmerrique/espcontrol/
+    ref: community/seeed-sensecap-indicator-d1
     file: devices/seeed-sensecap-indicator-d1/packages.yaml
     refresh: 1sec
 ```

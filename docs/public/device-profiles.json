@@ -99,7 +99,7 @@
     {
       "slug": "seeed-sensecap-indicator-d1",
       "installSlug": "seeed-sensecap-indicator-d1",
-      "name": "Seeed SenseCAP Indicator D1",
+      "name": "Seeed SenseCAP Indicator D1 (Community)",
       "docsPath": "/screens/sensecap-indicator-d1",
       "screenSize": "4 inches",
       "resolution": "480 x 480",

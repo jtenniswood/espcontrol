@@ -2,8 +2,8 @@
 # ESPHOME ENTRY POINT - Seeed SenseCAP Indicator D1
 # =============================================================================
 # User-facing config file. Set your device name and WiFi credentials here.
-# The remote package reference pulls in the full device configuration from
-# GitHub so the device stays up-to-date automatically.
+# Community-maintained build. This device is not officially supported by the
+# upstream EspControl project; packages are pulled from davidmerrique/espcontrol.
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -25,6 +25,7 @@ wifi:
 # ---------------------------------------------------------------------------
 packages:
   setup:
-    url: https://github.com/jtenniswood/espcontrol/
+    url: https://github.com/davidmerrique/espcontrol/
+    ref: community/seeed-sensecap-indicator-d1
     file: devices/seeed-sensecap-indicator-d1/packages.yaml
     refresh: 1s
