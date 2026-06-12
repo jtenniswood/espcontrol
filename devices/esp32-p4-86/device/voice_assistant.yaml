@@ -47,30 +47,39 @@ speaker:
     dac_type: external
     sample_rate: 48000
     bits_per_sample: 16bit
-    channel: mono
+    channel: stereo
     audio_dac: voice_dac
-    buffer_duration: 100ms
+    buffer_duration: 500ms
+    timeout: 500ms
 
   - platform: mixer
     id: voice_mixing_speaker
     output_speaker: voice_speaker
+    num_channels: 2
+    task_stack_in_psram: true
     source_speakers:
       - id: voice_announcement_mixing_input
         timeout: never
+        buffer_duration: 500ms
       - id: voice_media_mixing_input
         timeout: never
+        buffer_duration: 500ms
 
   - platform: resampler
     id: voice_announcement_resampling_speaker
     output_speaker: voice_announcement_mixing_input
     sample_rate: 48000
     bits_per_sample: 16
+    buffer_duration: 500ms
+    task_stack_in_psram: true
 
   - platform: resampler
     id: voice_media_resampling_speaker
     output_speaker: voice_media_mixing_input
     sample_rate: 48000
     bits_per_sample: 16
+    buffer_duration: 500ms
+    task_stack_in_psram: true
 
 media_player:
   - platform: speaker
@@ -78,6 +87,11 @@ media_player:
     name: Voice Media Player
     icon: mdi:speaker
     codec_support_enabled: true
+    buffer_size: 4000000
+    task_stack_in_psram: true
+    files:
+      - id: voice_wake_chime
+        file: device/voice_wake_chime.wav
     volume_min: 0.0
     volume_max: 0.85
     volume_increment: 0.05
@@ -86,12 +100,12 @@ media_player:
       speaker: voice_announcement_resampling_speaker
       format: FLAC
       sample_rate: 48000
-      num_channels: 1
+      num_channels: 2
     media_pipeline:
       speaker: voice_media_resampling_speaker
       format: FLAC
       sample_rate: 48000
-      num_channels: 1
+      num_channels: 2
     on_announcement:
       - mixer_speaker.apply_ducking:
           id: voice_media_mixing_input
@@ -105,6 +119,10 @@ media_player:
       - micro_wake_word.stop:
     on_pause:
       - switch.turn_off: speaker_amplifier_enable
+      - media_player.stop:
+          id: voice_media_player
+          announcement: false
+      - delay: 500ms
       - if:
           condition:
             not:
@@ -233,10 +251,26 @@ micro_wake_word:
         tag: voice
         format: "Micro wake word detected: %s"
         args: [wake_word.c_str()]
+    - script.execute: play_voice_wake_chime
+    - delay: 150ms
     - voice_assistant.start:
         wake_word: !lambda return wake_word;
 
 script:
+  - id: play_voice_wake_chime
+    mode: restart
+    then:
+      - if:
+          condition:
+            switch.is_on: voice_assistant_chimes
+          then:
+            - switch.turn_on: speaker_amplifier_enable
+            - media_player.speaker.play_on_device_media_file:
+                id: voice_media_player
+                media_file: voice_wake_chime
+                announcement: true
+            - delay: 250ms
+
   - id: release_voice_after_response
     mode: restart
     then:
@@ -244,7 +278,7 @@ script:
           level: INFO
           tag: voice
           format: "Voice response watchdog armed"
-      - delay: 20s
+      - delay: 90s
       - if:
           condition:
             or:
@@ -513,7 +547,7 @@ voice_assistant:
                 media_player.is_announcing:
             - not:
                 media_player.is_playing:
-        timeout: 20s
+        timeout: 90s
     - if:
         condition:
           or:
@@ -532,6 +566,14 @@ voice_assistant:
     - script.execute: apply_restored_voice_wake_word
 
 switch:
+  - platform: template
+    id: voice_assistant_chimes
+    name: Voice Assistant Chimes
+    icon: mdi:bell-ring
+    entity_category: config
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+
   - platform: gpio
     id: speaker_amplifier_enable
     name: Voice Speaker Amplifier
