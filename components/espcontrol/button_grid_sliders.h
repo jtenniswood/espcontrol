@@ -236,8 +236,17 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   if (ui.slider) {
     lv_obj_set_size(ui.slider, slider_w, slider_h);
     lv_obj_align(ui.slider, LV_ALIGN_CENTER, 0, layout.back_size / 4);
-    lv_obj_set_style_radius(ui.slider, slider_w / 2, LV_PART_MAIN);
-    lv_obj_set_style_radius(ui.slider, slider_w / 2, LV_PART_INDICATOR);
+    lv_coord_t slider_radius = slider_w / 8;
+    if (slider_radius < 10) slider_radius = 10;
+    if (slider_radius > 18) slider_radius = 18;
+    lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_MAIN);
+    lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_INDICATOR);
+    lv_coord_t knob_w = slider_w / 2;
+    if (knob_w < 48) knob_w = 48;
+    if (knob_w > 76) knob_w = 76;
+    lv_obj_set_style_width(ui.slider, knob_w, LV_PART_KNOB);
+    lv_obj_set_style_height(ui.slider, 8, LV_PART_KNOB);
+    lv_obj_set_style_radius(ui.slider, 4, LV_PART_KNOB);
   }
   if (ui.pct_lbl) {
     lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, layout.back_size / 4);
@@ -288,6 +297,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_border_width(ui.slider, 0, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.slider, 0, LV_PART_KNOB);
   lv_obj_set_style_shadow_width(ui.slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_pad_all(ui.slider, 0, LV_PART_KNOB);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
     if (!ui.active || ui.active->updating_slider) return;
