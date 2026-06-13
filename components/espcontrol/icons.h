@@ -182,6 +182,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Nintendo Switch",            "\U000F07E1"},
     {"Outdoor Lamp",               "\U000F1054"},
     {"Oven",                       "\U000F04DE"},
+    {"Palette",                    "\U000F03D8"},
     {"Package",                    "\U000F03D6"},
     {"Package Closed",             "\U000F03D7"},
     {"Pill",                       "\U000F0402"},

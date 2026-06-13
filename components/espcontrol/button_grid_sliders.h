@@ -164,9 +164,13 @@ struct LightControlModalUi {
   lv_obj_t *temperature_tab = nullptr;
   lv_obj_t *color_tab = nullptr;
   lv_obj_t *slider = nullptr;
+  lv_obj_t *pct_row = nullptr;
   lv_obj_t *pct_lbl = nullptr;
+  lv_obj_t *pct_unit_lbl = nullptr;
   lv_obj_t *temp_slider = nullptr;
+  lv_obj_t *temp_row = nullptr;
   lv_obj_t *temp_lbl = nullptr;
+  lv_obj_t *temp_unit_lbl = nullptr;
   lv_obj_t *color_grid = nullptr;
   LightControlCtx *active = nullptr;
   LightControlTab tab = LightControlTab::BRIGHTNESS;
@@ -219,9 +223,10 @@ inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
   }
   if (ui.pct_lbl) {
     char buf[8];
-    snprintf(buf, sizeof(buf), "%d%%", pct);
+    snprintf(buf, sizeof(buf), "%d", pct);
     lv_label_set_text(ui.pct_lbl, buf);
   }
+  if (ui.pct_unit_lbl) lv_label_set_text(ui.pct_unit_lbl, "%");
 }
 
 inline void light_control_apply_modal_power(LightControlCtx *ctx) {
@@ -253,17 +258,18 @@ inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin)
   }
   if (ui.temp_lbl) {
     char buf[12];
-    snprintf(buf, sizeof(buf), "%dK", kelvin);
+    snprintf(buf, sizeof(buf), "%d", kelvin);
     lv_label_set_text(ui.temp_lbl, buf);
   }
+  if (ui.temp_unit_lbl) lv_label_set_text(ui.temp_unit_lbl, "K");
 }
 
 inline void light_control_style_tab(lv_obj_t *btn, bool active, uint32_t accent_color) {
   if (!btn) return;
-  lv_obj_set_style_bg_color(
-    btn, lv_color_hex(active ? accent_color : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
-  lv_obj_set_style_border_color(
-    btn, lv_color_hex(active ? accent_color : DARK_BORDER), LV_PART_MAIN);
+  (void) accent_color;
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
 }
 
 inline void light_control_apply_tab_visibility() {
@@ -277,17 +283,17 @@ inline void light_control_apply_tab_visibility() {
     if (show_brightness) lv_obj_clear_flag(ui.slider, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.slider, LV_OBJ_FLAG_HIDDEN);
   }
-  if (ui.pct_lbl) {
-    if (show_brightness) lv_obj_clear_flag(ui.pct_lbl, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(ui.pct_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (ui.pct_row) {
+    if (show_brightness) lv_obj_clear_flag(ui.pct_row, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.pct_row, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.temp_slider) {
     if (show_temperature) lv_obj_clear_flag(ui.temp_slider, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.temp_slider, LV_OBJ_FLAG_HIDDEN);
   }
-  if (ui.temp_lbl) {
-    if (show_temperature) lv_obj_clear_flag(ui.temp_lbl, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(ui.temp_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (ui.temp_row) {
+    if (show_temperature) lv_obj_clear_flag(ui.temp_row, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.temp_row, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.color_grid) {
     if (show_color) lv_obj_clear_flag(ui.color_grid, LV_OBJ_FLAG_HIDDEN);
@@ -305,9 +311,11 @@ inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *i
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
   apply_width_compensation(btn, width_compensation_percent);
-  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn, 2, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
   control_modal_apply_pressed_fill(btn);
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
@@ -335,58 +343,61 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
 
   lv_coord_t tab_size = layout.back_size * 7 / 10;
-  if (tab_size < 40) tab_size = 40;
-  if (tab_size > 62) tab_size = 62;
-  lv_coord_t tab_gap = 10;
+  if (tab_size < 48) tab_size = 48;
+  if (tab_size > 68) tab_size = 68;
+  lv_coord_t control_w = layout.panel_w * 62 / 100;
+  if (control_w < 190) control_w = 190;
+  if (control_w > 300) control_w = 300;
   if (ui.tab_row) {
-    lv_obj_set_size(ui.tab_row, tab_size * 3 + tab_gap * 2, tab_size);
+    lv_obj_set_size(ui.tab_row, control_w, tab_size);
+    lv_obj_set_style_radius(ui.tab_row, tab_size / 2, LV_PART_MAIN);
     lv_obj_align(ui.tab_row, LV_ALIGN_TOP_MID, 0, layout.inset + 2);
   }
   lv_obj_t *tabs[3] = {ui.brightness_tab, ui.temperature_tab, ui.color_tab};
+  lv_coord_t tab_section_w = control_w / 3;
   for (int i = 0; i < 3; i++) {
     if (!tabs[i]) continue;
     lv_obj_set_size(tabs[i], tab_size, tab_size);
     lv_obj_set_style_radius(tabs[i], tab_size / 2, LV_PART_MAIN);
-    lv_obj_align(tabs[i], LV_ALIGN_LEFT_MID, i * (tab_size + tab_gap), 0);
+    lv_coord_t tab_x = i * tab_section_w + (tab_section_w - tab_size) / 2;
+    lv_obj_align(tabs[i], LV_ALIGN_LEFT_MID, tab_x, 0);
   }
 
   lv_coord_t content_center_y = tab_size / 2 + 22;
   lv_coord_t slider_h = layout.panel_h - layout.inset * 4 - tab_size - 28;
   if (slider_h < 160) slider_h = layout.panel_h / 2;
-  lv_coord_t slider_w = layout.panel_w * 45 / 100;
-  if (slider_w < 126) slider_w = 126;
-  if (slider_w > 240) slider_w = 240;
+  lv_coord_t slider_w = control_w;
   if (ui.slider) {
     lv_obj_set_size(ui.slider, slider_w, slider_h);
     lv_obj_align(ui.slider, LV_ALIGN_CENTER, 0, content_center_y);
     lv_coord_t slider_radius = slider_w / 4;
-    if (slider_radius < 18) slider_radius = 18;
-    if (slider_radius > 34) slider_radius = 34;
+    if (slider_radius < 34) slider_radius = 34;
+    if (slider_radius > 64) slider_radius = 64;
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_INDICATOR);
     lv_obj_set_style_width(ui.slider, 0, LV_PART_KNOB);
     lv_obj_set_style_height(ui.slider, 0, LV_PART_KNOB);
   }
-  if (ui.pct_lbl) {
-    lv_obj_set_width(ui.pct_lbl, slider_w);
-    lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, content_center_y);
-    lv_obj_move_foreground(ui.pct_lbl);
+  if (ui.pct_row) {
+    lv_obj_set_size(ui.pct_row, slider_w, LV_SIZE_CONTENT);
+    lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, content_center_y);
+    lv_obj_move_foreground(ui.pct_row);
   }
   if (ui.temp_slider) {
     lv_obj_set_size(ui.temp_slider, slider_w, slider_h);
     lv_obj_align(ui.temp_slider, LV_ALIGN_CENTER, 0, content_center_y);
     lv_coord_t slider_radius = slider_w / 4;
-    if (slider_radius < 18) slider_radius = 18;
-    if (slider_radius > 34) slider_radius = 34;
+    if (slider_radius < 34) slider_radius = 34;
+    if (slider_radius > 64) slider_radius = 64;
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_INDICATOR);
     lv_obj_set_style_width(ui.temp_slider, 0, LV_PART_KNOB);
     lv_obj_set_style_height(ui.temp_slider, 0, LV_PART_KNOB);
   }
-  if (ui.temp_lbl) {
-    lv_obj_set_width(ui.temp_lbl, slider_w);
-    lv_obj_align(ui.temp_lbl, LV_ALIGN_CENTER, 0, content_center_y);
-    lv_obj_move_foreground(ui.temp_lbl);
+  if (ui.temp_row) {
+    lv_obj_set_size(ui.temp_row, slider_w, LV_SIZE_CONTENT);
+    lv_obj_align(ui.temp_row, LV_ALIGN_CENTER, 0, content_center_y);
+    lv_obj_move_foreground(ui.temp_row);
   }
   if (ui.color_grid) {
     lv_coord_t grid_side = layout.panel_w - layout.inset * 3;
@@ -429,7 +440,8 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   if (!ui.panel) return;
 
   ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
@@ -441,7 +453,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     ui.tab_row, find_icon("Thermometer"), ctx->icon_font,
     LightControlTab::TEMPERATURE, ctx->width_compensation_percent);
   ui.color_tab = light_control_create_tab_button(
-    ui.tab_row, find_icon("Water"), ctx->icon_font,
+    ui.tab_row, find_icon("Palette"), ctx->icon_font,
     LightControlTab::COLOR, ctx->width_compensation_percent);
 
   ui.slider = lv_slider_create(ui.panel);
@@ -466,7 +478,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     int pct = lv_slider_get_value(slider);
     if (ui.pct_lbl) {
       char buf[8];
-      snprintf(buf, sizeof(buf), "%d%%", pct);
+      snprintf(buf, sizeof(buf), "%d", pct);
       lv_label_set_text(ui.pct_lbl, buf);
     }
   }, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -479,11 +491,30 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     send_slider_action(ui.active->entity_id, pct);
   }, LV_EVENT_RELEASED, nullptr);
 
-  ui.pct_lbl = lv_label_create(ui.panel);
+  ui.pct_row = lv_obj_create(ui.panel);
+  lv_obj_set_style_bg_opa(ui.pct_row, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.pct_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.pct_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.pct_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(ui.pct_row, 6, LV_PART_MAIN);
+  lv_obj_set_layout(ui.pct_row, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(ui.pct_row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(ui.pct_row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(ui.pct_row, LV_FLEX_ALIGN_END, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.pct_row, LV_OBJ_FLAG_SCROLLABLE);
+  apply_width_compensation(ui.pct_row, ctx->width_compensation_percent);
+
+  ui.pct_lbl = lv_label_create(ui.pct_row);
   lv_obj_set_style_text_color(ui.pct_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->label_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.pct_lbl, ctx->width_compensation_percent);
+  if (ctx->number_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->number_font, LV_PART_MAIN);
+
+  ui.pct_unit_lbl = lv_label_create(ui.pct_row);
+  lv_label_set_text(ui.pct_unit_lbl, "%");
+  lv_obj_set_style_text_color(ui.pct_unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(ui.pct_unit_lbl, ctx->label_font, LV_PART_MAIN);
+  lv_obj_set_style_translate_y(ui.pct_unit_lbl, -8, LV_PART_MAIN);
 
   ui.temp_slider = lv_slider_create(ui.panel);
   lv_slider_set_range(ui.temp_slider, 0, 100);
@@ -511,9 +542,10 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
       LV_PART_INDICATOR);
     if (ui.temp_lbl) {
       char buf[12];
-      snprintf(buf, sizeof(buf), "%dK", kelvin);
+      snprintf(buf, sizeof(buf), "%d", kelvin);
       lv_label_set_text(ui.temp_lbl, buf);
     }
+    if (ui.temp_unit_lbl) lv_label_set_text(ui.temp_unit_lbl, "K");
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
@@ -524,11 +556,30 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
       ui.active->kelvin_min, ui.active->kelvin_max);
   }, LV_EVENT_RELEASED, nullptr);
 
-  ui.temp_lbl = lv_label_create(ui.panel);
+  ui.temp_row = lv_obj_create(ui.panel);
+  lv_obj_set_style_bg_opa(ui.temp_row, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.temp_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.temp_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.temp_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(ui.temp_row, 6, LV_PART_MAIN);
+  lv_obj_set_layout(ui.temp_row, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(ui.temp_row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(ui.temp_row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(ui.temp_row, LV_FLEX_ALIGN_END, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.temp_row, LV_OBJ_FLAG_SCROLLABLE);
+  apply_width_compensation(ui.temp_row, ctx->width_compensation_percent);
+
+  ui.temp_lbl = lv_label_create(ui.temp_row);
   lv_obj_set_style_text_color(ui.temp_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.temp_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->label_font) lv_obj_set_style_text_font(ui.temp_lbl, ctx->label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.temp_lbl, ctx->width_compensation_percent);
+  if (ctx->number_font) lv_obj_set_style_text_font(ui.temp_lbl, ctx->number_font, LV_PART_MAIN);
+
+  ui.temp_unit_lbl = lv_label_create(ui.temp_row);
+  lv_label_set_text(ui.temp_unit_lbl, "K");
+  lv_obj_set_style_text_color(ui.temp_unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.temp_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(ui.temp_unit_lbl, ctx->label_font, LV_PART_MAIN);
+  lv_obj_set_style_translate_y(ui.temp_unit_lbl, -8, LV_PART_MAIN);
 
   static constexpr LightColorPreset COLOR_PRESETS[16] = {
     {0xFF2600, "red"}, {0xFF7A00, "orange"}, {0xFFD400, "yellow"}, {0xFFF4D6, "white"},
