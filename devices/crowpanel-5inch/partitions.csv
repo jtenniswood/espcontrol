@@ -1,0 +1,5 @@
+# Custom partition table for 4MB flash with 3.3MB+ firmware.
+# Single factory app partition — no OTA swap, USB flash only.
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+app0,     app,  factory, 0x10000,  0x3E0000,

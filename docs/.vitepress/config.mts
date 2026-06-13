@@ -72,6 +72,14 @@ const pageImages: Record<string, typeof defaultImage> = {
 }
 
 const screenProducts: Record<string, Record<string, string>> = {
+  'screens/crowpanel-5inch.md': {
+    name: 'Elecrow CrowPanel Advance 5.0',
+    brand: 'Elecrow',
+    model: 'CrowPanel Advance 5.0',
+    size: '5 inches',
+    resolution: '800 x 480',
+    processor: 'ESP32-S3',
+  },
   'screens/4848s040.md': {
     name: 'Guition 4848S040',
     model: '4848S040',
@@ -170,7 +178,7 @@ const faqItems = [
   {
     question: 'Which Panels Are Supported?',
     answer:
-      'EspControl supports the Guition JC8012P4A1, JC1060P470, JC4880P443, 4848S040, and ESP32-P4 86 Panel touchscreens.',
+      'EspControl supports the Guition JC8012P4A1, JC1060P470, JC4880P443, 4848S040, ESP32-P4 86 Panel, and Elecrow CrowPanel Advance 5.0 touchscreens.',
   },
   {
     question: 'Does the Panel Work with Other Smart Home Platforms?',
@@ -386,6 +394,7 @@ export default defineConfig({
         items: [
           { text: '10.1-inch JC8012P4A1', link: '/screens/jc8012p4a1' },
           { text: '7-inch JC1060P470', link: '/screens/jc1060p470' },
+          { text: '5-inch CrowPanel', link: '/screens/crowpanel-5inch' },
           { text: '4.3-inch JC4880P443', link: '/screens/jc4880p443' },
           { text: '4-inch ESP32-P4 86 Panel', link: '/screens/p4-86' },
           { text: '4-inch 4848S040', link: '/screens/4848s040' },
