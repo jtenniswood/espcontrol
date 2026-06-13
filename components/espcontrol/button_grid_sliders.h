@@ -378,6 +378,8 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     lv_obj_set_style_radius(tabs[i], tab_btn_size / 2, LV_PART_MAIN);
     lv_coord_t tab_x = first_tab_x + i * (tab_size + tab_gap);
     lv_obj_align(tabs[i], LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
+    lv_obj_t *label = lv_obj_get_child(tabs[i], 0);
+    if (label) lv_obj_center(label);
   }
 
   lv_coord_t content_center_y = tab_frame_h / 2 + 12;
