@@ -158,8 +158,10 @@ struct LightControlModalUi {
   lv_obj_t *temperature_tab = nullptr;
   lv_obj_t *color_tab = nullptr;
   lv_obj_t *slider = nullptr;
+  lv_obj_t *slider_knob = nullptr;
   lv_obj_t *pct_lbl = nullptr;
   lv_obj_t *temp_slider = nullptr;
+  lv_obj_t *temp_slider_knob = nullptr;
   lv_obj_t *temp_lbl = nullptr;
   lv_obj_t *color_grid = nullptr;
   LightControlCtx *active = nullptr;
@@ -202,6 +204,16 @@ inline void light_control_apply_card_visual(LightControlCtx *ctx) {
   }
 }
 
+inline void light_control_position_knob(lv_obj_t *slider, lv_obj_t *knob, int pct) {
+  if (!slider || !knob) return;
+  pct = slider_clamp_pct(pct);
+  lv_coord_t slider_h = lv_obj_get_height(slider);
+  lv_coord_t knob_h = lv_obj_get_height(knob);
+  if (slider_h <= 0 || knob_h <= 0) return;
+  lv_coord_t y = static_cast<lv_coord_t>((100 - pct) * (slider_h - knob_h) / 100);
+  lv_obj_align(knob, LV_ALIGN_TOP_MID, 0, y);
+}
+
 inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
   LightControlModalUi &ui = light_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
@@ -211,6 +223,7 @@ inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
     lv_slider_set_value(ui.slider, pct, LV_ANIM_OFF);
     ctx->updating_slider = false;
   }
+  light_control_position_knob(ui.slider, ui.slider_knob, pct);
   if (ui.pct_lbl) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d%%", pct);
@@ -245,6 +258,8 @@ inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin)
     lv_slider_set_value(ui.temp_slider, light_control_kelvin_to_pct(ctx, kelvin), LV_ANIM_OFF);
     ctx->updating_temp_slider = false;
   }
+  light_control_position_knob(
+    ui.temp_slider, ui.temp_slider_knob, light_control_kelvin_to_pct(ctx, kelvin));
   if (ui.temp_lbl) {
     char buf[12];
     snprintf(buf, sizeof(buf), "%dK", kelvin);
@@ -358,14 +373,19 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     if (slider_radius > 18) slider_radius = 18;
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_INDICATOR);
-    lv_coord_t knob_w = slider_w / 4;
-    if (knob_w < 24) knob_w = 24;
-    if (knob_w > 38) knob_w = 38;
-    lv_obj_set_style_width(ui.slider, knob_w, LV_PART_KNOB);
-    lv_obj_set_style_height(ui.slider, 6, LV_PART_KNOB);
-    lv_obj_set_style_radius(ui.slider, 3, LV_PART_KNOB);
+    lv_obj_set_style_width(ui.slider, 0, LV_PART_KNOB);
+    lv_obj_set_style_height(ui.slider, 0, LV_PART_KNOB);
+    if (ui.slider_knob) {
+      lv_coord_t knob_w = slider_w / 3;
+      if (knob_w < 30) knob_w = 30;
+      if (knob_w > 44) knob_w = 44;
+      lv_obj_set_size(ui.slider_knob, knob_w, 4);
+      lv_obj_set_style_radius(ui.slider_knob, 2, LV_PART_MAIN);
+      light_control_position_knob(ui.slider, ui.slider_knob, lv_slider_get_value(ui.slider));
+    }
   }
   if (ui.pct_lbl) {
+    lv_obj_set_width(ui.pct_lbl, layout.panel_w);
     lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, content_center_y);
   }
   if (ui.temp_slider) {
@@ -376,14 +396,20 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     if (slider_radius > 18) slider_radius = 18;
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_INDICATOR);
-    lv_coord_t knob_w = slider_w / 4;
-    if (knob_w < 24) knob_w = 24;
-    if (knob_w > 38) knob_w = 38;
-    lv_obj_set_style_width(ui.temp_slider, knob_w, LV_PART_KNOB);
-    lv_obj_set_style_height(ui.temp_slider, 6, LV_PART_KNOB);
-    lv_obj_set_style_radius(ui.temp_slider, 3, LV_PART_KNOB);
+    lv_obj_set_style_width(ui.temp_slider, 0, LV_PART_KNOB);
+    lv_obj_set_style_height(ui.temp_slider, 0, LV_PART_KNOB);
+    if (ui.temp_slider_knob) {
+      lv_coord_t knob_w = slider_w / 3;
+      if (knob_w < 30) knob_w = 30;
+      if (knob_w > 44) knob_w = 44;
+      lv_obj_set_size(ui.temp_slider_knob, knob_w, 4);
+      lv_obj_set_style_radius(ui.temp_slider_knob, 2, LV_PART_MAIN);
+      light_control_position_knob(
+        ui.temp_slider, ui.temp_slider_knob, lv_slider_get_value(ui.temp_slider));
+    }
   }
   if (ui.temp_lbl) {
+    lv_obj_set_width(ui.temp_lbl, layout.panel_w);
     lv_obj_align(ui.temp_lbl, LV_ALIGN_CENTER, 0, content_center_y);
   }
   if (ui.color_grid) {
@@ -402,7 +428,7 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
       lv_obj_align(btn, LV_ALIGN_TOP_LEFT,
         static_cast<lv_coord_t>((i % 4) * (swatch + gap)),
         static_cast<lv_coord_t>((i / 4) * (swatch + gap)));
-      lv_obj_set_style_radius(btn, swatch / 5, LV_PART_MAIN);
+      lv_obj_set_style_radius(btn, swatch / 2, LV_PART_MAIN);
     }
   }
 }
@@ -439,7 +465,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     ui.tab_row, find_icon("Thermometer"), ctx->icon_font,
     LightControlTab::TEMPERATURE, ctx->width_compensation_percent);
   ui.color_tab = light_control_create_tab_button(
-    ui.tab_row, "\U000F03D8", ctx->icon_font,
+    ui.tab_row, find_icon("Water"), ctx->icon_font,
     LightControlTab::COLOR, ctx->width_compensation_percent);
 
   ui.slider = lv_slider_create(ui.panel);
@@ -449,16 +475,30 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_bg_opa(ui.slider, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_bg_color(ui.slider, lv_color_hex(ctx->accent_color), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(ui.slider, LV_OPA_COVER, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(ui.slider, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_KNOB);
+  lv_obj_set_style_bg_opa(ui.slider, LV_OPA_TRANSP, LV_PART_KNOB);
   lv_obj_set_style_border_width(ui.slider, 0, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.slider, 0, LV_PART_KNOB);
   lv_obj_set_style_shadow_width(ui.slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_outline_width(ui.slider, 0, LV_PART_KNOB);
   lv_obj_set_style_pad_all(ui.slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_width(ui.slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_height(ui.slider, 0, LV_PART_KNOB);
+  ui.slider_knob = lv_obj_create(ui.slider);
+  if (ui.slider_knob) {
+    lv_obj_set_style_bg_color(ui.slider_knob, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui.slider_knob, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui.slider_knob, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(ui.slider_knob, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(ui.slider_knob, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(ui.slider_knob, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(ui.slider_knob, LV_OBJ_FLAG_SCROLLABLE);
+  }
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
     if (!ui.active || ui.active->updating_slider) return;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int pct = lv_slider_get_value(slider);
+    light_control_position_knob(slider, ui.slider_knob, pct);
     if (ui.pct_lbl) {
       char buf[8];
       snprintf(buf, sizeof(buf), "%d%%", pct);
@@ -487,17 +527,31 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_bg_opa(ui.temp_slider, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_bg_color(ui.temp_slider, kelvin_to_fill_color(ctx->current_kelvin, ctx->kelvin_min, ctx->kelvin_max), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(ui.temp_slider, LV_OPA_COVER, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(ui.temp_slider, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_KNOB);
+  lv_obj_set_style_bg_opa(ui.temp_slider, LV_OPA_TRANSP, LV_PART_KNOB);
   lv_obj_set_style_border_width(ui.temp_slider, 0, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.temp_slider, 0, LV_PART_KNOB);
   lv_obj_set_style_shadow_width(ui.temp_slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_outline_width(ui.temp_slider, 0, LV_PART_KNOB);
   lv_obj_set_style_pad_all(ui.temp_slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_width(ui.temp_slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_height(ui.temp_slider, 0, LV_PART_KNOB);
+  ui.temp_slider_knob = lv_obj_create(ui.temp_slider);
+  if (ui.temp_slider_knob) {
+    lv_obj_set_style_bg_color(ui.temp_slider_knob, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ui.temp_slider_knob, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(ui.temp_slider_knob, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(ui.temp_slider_knob, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(ui.temp_slider_knob, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(ui.temp_slider_knob, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(ui.temp_slider_knob, LV_OBJ_FLAG_SCROLLABLE);
+  }
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
     if (!ui.active || ui.active->updating_temp_slider) return;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int kelvin = light_control_pct_to_kelvin(ui.active, lv_slider_get_value(slider));
     ui.active->current_kelvin = kelvin;
+    light_control_position_knob(slider, ui.temp_slider_knob, lv_slider_get_value(slider));
     lv_obj_set_style_bg_color(
       slider, kelvin_to_fill_color(kelvin, ui.active->kelvin_min, ui.active->kelvin_max),
       LV_PART_INDICATOR);
@@ -539,8 +593,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     if (!swatch) continue;
     lv_obj_set_style_bg_color(swatch, lv_color_hex(COLOR_PRESETS[i]), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(swatch, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_color(swatch, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_style_border_width(swatch, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_width(swatch, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(swatch, 0, LV_PART_MAIN);
     control_modal_apply_pressed_fill(swatch);
     lv_obj_clear_flag(swatch, LV_OBJ_FLAG_SCROLLABLE);
