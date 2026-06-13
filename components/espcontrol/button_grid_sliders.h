@@ -267,7 +267,7 @@ inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin)
 inline void light_control_style_tab(lv_obj_t *btn, bool active, uint32_t accent_color) {
   if (!btn) return;
   (void) accent_color;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
 }
@@ -311,7 +311,7 @@ inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *i
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
   apply_width_compensation(btn, width_compensation_percent);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -345,28 +345,33 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   lv_coord_t tab_size = layout.back_size * 7 / 10;
   if (tab_size < 48) tab_size = 48;
   if (tab_size > 68) tab_size = 68;
-  lv_coord_t control_w = layout.panel_w * 62 / 100;
-  if (control_w < 190) control_w = 190;
-  if (control_w > 300) control_w = 300;
+  lv_coord_t tab_frame_w = tab_size * 3 + tab_size / 2;
+  lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
+  if (tab_frame_w > max_tab_frame_w) tab_frame_w = max_tab_frame_w;
+  lv_coord_t slider_w = layout.panel_w * 45 / 100;
+  if (slider_w < 150) slider_w = 150;
+  if (slider_w > tab_frame_w) slider_w = tab_frame_w;
   if (ui.tab_row) {
-    lv_obj_set_size(ui.tab_row, control_w, tab_size);
+    lv_obj_set_size(ui.tab_row, tab_frame_w, tab_size);
     lv_obj_set_style_radius(ui.tab_row, tab_size / 2, LV_PART_MAIN);
     lv_obj_align(ui.tab_row, LV_ALIGN_TOP_MID, 0, layout.inset + 2);
   }
   lv_obj_t *tabs[3] = {ui.brightness_tab, ui.temperature_tab, ui.color_tab};
-  lv_coord_t tab_section_w = control_w / 3;
+  lv_coord_t tab_gap = tab_size / 4;
+  lv_coord_t tabs_total_w = tab_size * 3 + tab_gap * 2;
+  lv_coord_t first_tab_x = (tab_frame_w - tabs_total_w) / 2;
   for (int i = 0; i < 3; i++) {
     if (!tabs[i]) continue;
     lv_obj_set_size(tabs[i], tab_size, tab_size);
     lv_obj_set_style_radius(tabs[i], tab_size / 2, LV_PART_MAIN);
-    lv_coord_t tab_x = i * tab_section_w + (tab_section_w - tab_size) / 2;
+    lv_coord_t tab_x = first_tab_x + i * (tab_size + tab_gap);
     lv_obj_align(tabs[i], LV_ALIGN_LEFT_MID, tab_x, 0);
   }
 
   lv_coord_t content_center_y = tab_size / 2 + 22;
   lv_coord_t slider_h = layout.panel_h - layout.inset * 4 - tab_size - 28;
   if (slider_h < 160) slider_h = layout.panel_h / 2;
-  lv_coord_t slider_w = control_w;
+  if (slider_w >= slider_h) slider_w = slider_h * 3 / 4;
   if (ui.slider) {
     lv_obj_set_size(ui.slider, slider_w, slider_h);
     lv_obj_align(ui.slider, LV_ALIGN_CENTER, 0, content_center_y);
@@ -440,7 +445,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   if (!ui.panel) return;
 
   ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
@@ -514,7 +519,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_text_color(ui.pct_unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(ui.pct_unit_lbl, ctx->label_font, LV_PART_MAIN);
-  lv_obj_set_style_translate_y(ui.pct_unit_lbl, -8, LV_PART_MAIN);
+  lv_obj_set_style_translate_y(ui.pct_unit_lbl, -38, LV_PART_MAIN);
 
   ui.temp_slider = lv_slider_create(ui.panel);
   lv_slider_set_range(ui.temp_slider, 0, 100);
@@ -579,7 +584,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_text_color(ui.temp_unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.temp_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (ctx->label_font) lv_obj_set_style_text_font(ui.temp_unit_lbl, ctx->label_font, LV_PART_MAIN);
-  lv_obj_set_style_translate_y(ui.temp_unit_lbl, -8, LV_PART_MAIN);
+  lv_obj_set_style_translate_y(ui.temp_unit_lbl, -38, LV_PART_MAIN);
 
   static constexpr LightColorPreset COLOR_PRESETS[16] = {
     {0xFF2600, "red"}, {0xFF7A00, "orange"}, {0xFFD400, "yellow"}, {0xFFF4D6, "white"},
