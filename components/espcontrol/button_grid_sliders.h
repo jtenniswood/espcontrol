@@ -318,6 +318,10 @@ inline const char *slider_icon_on(const std::string &type, const std::string &en
   return find_icon(icon_on.c_str());
 }
 
+inline int slider_clamp_pct(int pct);
+inline bool slider_parse_pct(esphome::StringRef val, int &pct);
+inline bool slider_attribute_missing_ref(esphome::StringRef val);
+
 enum class CoverControlTab : uint8_t {
   CONTROLS = 0,
   POSITION = 1,
