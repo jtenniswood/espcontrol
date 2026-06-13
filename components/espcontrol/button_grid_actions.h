@@ -482,6 +482,8 @@ inline bool alarm_action_context_valid(AlarmActionCtx *action);
 struct FanCardCtx;
 inline bool fan_non_speed_card_type(const std::string &type);
 inline void fan_card_handle_click(FanCardCtx *ctx);
+struct LightControlCtx;
+inline void light_control_open_modal(LightControlCtx *ctx);
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
@@ -524,6 +526,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (fan_non_speed_card_type(p.type)) {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_card_handle_click(ctx);
+  } else if (p.type == "light_control") {
+    LightControlCtx *ctx = (LightControlCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) light_control_open_modal(ctx);
   } else if (p.type == "garage") {
     if (garage_card_show_status(p)) {
       return;

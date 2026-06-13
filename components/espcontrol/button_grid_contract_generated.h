@@ -192,6 +192,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "light_brightness") return "Lights";
   if (type == "light_switch") return "Lights";
   if (type == "light_temperature") return "Lights";
+  if (type == "light_control") return "Lights";
   if (type == "lock") return "Lock";
   if (type == "media") return "Media";
   if (type == "option_select") return "Option Select";
@@ -229,6 +230,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "light_brightness") return true;
   if (type == "light_switch") return true;
   if (type == "light_temperature") return true;
+  if (type == "light_control") return true;
   if (type == "lock") return true;
   if (type == "media") return true;
   if (type == "option_select") return true;
@@ -266,6 +268,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "light_brightness") return "Lightbulb Outline";
   if (type == "light_switch") return "Lightbulb Outline";
   if (type == "light_temperature") return "Lightbulb";
+  if (type == "light_control") return "Lightbulb Outline";
   if (type == "lock") return "Lock";
   if (type == "media") return "Auto";
   if (type == "option_select") return "Flash";
@@ -303,6 +306,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "light_brightness") return "Lightbulb";
   if (type == "light_switch") return "Lightbulb";
   if (type == "light_temperature") return "Auto";
+  if (type == "light_control") return "Lightbulb";
   if (type == "lock") return "Lock Open";
   if (type == "media") return "Auto";
   if (type == "option_select") return "Auto";
@@ -367,6 +371,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "fan_preset") return "Z";
   if (type == "light_brightness") return "V";
   if (type == "light_switch") return "Q";
+  if (type == "light_control") return "LC";
   if (type == "alarm") return "Y";
   if (type == "alarm_action") return "AA";
   if (type == "slider") return "L";
@@ -402,6 +407,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "Z") return "fan_preset";
   if (code == "V") return "light_brightness";
   if (code == "Q") return "light_switch";
+  if (code == "LC") return "light_control";
   if (code == "Y") return "alarm";
   if (code == "AA") return "alarm_action";
   if (code == "L") return "slider";

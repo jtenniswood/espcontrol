@@ -112,6 +112,279 @@ inline MediaVolumeModalUi &media_volume_modal_ui() {
   return ui;
 }
 
+struct LightControlCtx {
+  std::string entity_id;
+  std::string label;
+  std::string friendly_name;
+  int current_pct = 0;
+  uint32_t accent_color = DEFAULT_SLIDER_COLOR;
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *label_lbl = nullptr;
+  const char *icon_off_glyph = nullptr;
+  const char *icon_on_glyph = nullptr;
+  const lv_font_t *label_font = nullptr;
+  const lv_font_t *number_font = nullptr;
+  const lv_font_t *icon_font = nullptr;
+  int width_compensation_percent = 100;
+  bool available = true;
+  bool on = false;
+  bool updating_slider = false;
+};
+
+struct LightControlModalUi {
+  lv_obj_t *overlay = nullptr;
+  lv_obj_t *panel = nullptr;
+  lv_obj_t *back_btn = nullptr;
+  lv_obj_t *power_btn = nullptr;
+  lv_obj_t *title_lbl = nullptr;
+  lv_obj_t *slider = nullptr;
+  lv_obj_t *pct_lbl = nullptr;
+  LightControlCtx *active = nullptr;
+};
+
+inline LightControlModalUi &light_control_modal_ui() {
+  static LightControlModalUi ui;
+  return ui;
+}
+
+inline std::string light_control_title(LightControlCtx *ctx) {
+  if (!ctx) return espcontrol_i18n(std::string("Light"));
+  if (!ctx->label.empty()) return ctx->label;
+  if (!ctx->friendly_name.empty()) return ctx->friendly_name;
+  return espcontrol_i18n(std::string("Light"));
+}
+
+inline const char *light_control_icon_off(const ParsedCfg &p) {
+  if (!p.icon.empty() && p.icon != "Auto") return find_icon(p.icon.c_str());
+  return find_icon("Lightbulb Outline");
+}
+
+inline const char *light_control_icon_on(const ParsedCfg &p) {
+  if (!p.icon_on.empty() && p.icon_on != "Auto") return find_icon(p.icon_on.c_str());
+  return find_icon("Lightbulb");
+}
+
+inline void light_control_apply_card_visual(LightControlCtx *ctx) {
+  if (!ctx || !ctx->btn) return;
+  apply_control_availability(ctx->btn, ctx->btn, ctx->available);
+  set_card_checked_state(ctx->btn, ctx->on);
+  if (ctx->icon_lbl) {
+    const char *glyph = ctx->on && ctx->icon_on_glyph ? ctx->icon_on_glyph : ctx->icon_off_glyph;
+    if (glyph) lv_label_set_text(ctx->icon_lbl, glyph);
+  }
+  if (ctx->label_lbl) {
+    std::string title = light_control_title(ctx);
+    lv_label_set_text(ctx->label_lbl, title.c_str());
+  }
+}
+
+inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
+  LightControlModalUi &ui = light_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  pct = slider_clamp_pct(pct);
+  if (ui.slider) {
+    ctx->updating_slider = true;
+    lv_slider_set_value(ui.slider, pct, LV_ANIM_OFF);
+    ctx->updating_slider = false;
+  }
+  if (ui.pct_lbl) {
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%d%%", pct);
+    lv_label_set_text(ui.pct_lbl, buf);
+  }
+}
+
+inline void light_control_apply_modal_power(LightControlCtx *ctx) {
+  LightControlModalUi &ui = light_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.power_btn) return;
+  lv_obj_set_style_bg_color(
+    ui.power_btn,
+    lv_color_hex(ctx->on ? ctx->accent_color : DARK_BACKGROUND_TERTIARY),
+    LV_PART_MAIN);
+  lv_obj_set_style_border_color(
+    ui.power_btn,
+    lv_color_hex(ctx->on ? ctx->accent_color : DARK_BORDER),
+    LV_PART_MAIN);
+}
+
+inline void light_control_layout_modal(LightControlCtx *ctx) {
+  LightControlModalUi &ui = light_control_modal_ui();
+  if (!ctx || !ui.panel) return;
+  ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
+
+  lv_coord_t title_w = layout.panel_w - (layout.inset + layout.back_size) * 2 - 12;
+  if (title_w < 96) title_w = layout.panel_w - layout.inset * 2;
+  if (ui.title_lbl) {
+    lv_obj_set_width(ui.title_lbl, title_w);
+    lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, layout.inset + layout.back_size / 4);
+  }
+  if (ui.power_btn) {
+    lv_obj_set_size(ui.power_btn, layout.back_size, layout.back_size);
+    lv_obj_set_style_radius(ui.power_btn, layout.back_size / 2, LV_PART_MAIN);
+    lv_obj_align(ui.power_btn, LV_ALIGN_TOP_RIGHT, -layout.inset, layout.inset);
+  }
+
+  lv_coord_t slider_h = layout.panel_h - layout.inset * 4 - layout.back_size - 32;
+  if (slider_h < 160) slider_h = layout.panel_h / 2;
+  lv_coord_t slider_w = layout.panel_w / 3;
+  if (slider_w < 96) slider_w = 96;
+  if (slider_w > 180) slider_w = 180;
+  if (ui.slider) {
+    lv_obj_set_size(ui.slider, slider_w, slider_h);
+    lv_obj_align(ui.slider, LV_ALIGN_CENTER, 0, layout.back_size / 4);
+    lv_obj_set_style_radius(ui.slider, slider_w / 2, LV_PART_MAIN);
+    lv_obj_set_style_radius(ui.slider, slider_w / 2, LV_PART_INDICATOR);
+  }
+  if (ui.pct_lbl) {
+    lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, layout.back_size / 4);
+  }
+}
+
+inline void light_control_hide_modal() {
+  LightControlModalUi &ui = light_control_modal_ui();
+  lv_obj_t *overlay = ui.overlay;
+  ui = LightControlModalUi();
+  control_modal_delete_overlay(ControlModalKind::LIGHT_CONTROL, overlay);
+}
+
+inline void light_control_open_modal(LightControlCtx *ctx) {
+  if (!ctx || !ctx->available) return;
+  ControlModalShell shell = control_modal_open_shell(
+    ControlModalKind::LIGHT_CONTROL, ctx->btn, ctx->width_compensation_percent,
+    ctx->icon_font, "\U000F0141", false, light_control_hide_modal);
+  LightControlModalUi &ui = light_control_modal_ui();
+  ui.active = ctx;
+  ui.overlay = shell.overlay;
+  ui.panel = shell.panel;
+  ui.back_btn = shell.close_btn;
+  if (!ui.panel) return;
+
+  ui.power_btn = control_modal_create_round_button(
+    ui.panel, shell.layout.back_size, find_icon("Power"), ctx->icon_font,
+    DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+  lv_obj_add_event_cb(ui.power_btn, [](lv_event_t *) {
+    LightControlModalUi &ui = light_control_modal_ui();
+    if (!ui.active || !ui.active->available) return;
+    if (ui.active->on) send_turn_off_action(ui.active->entity_id);
+    else send_turn_on_action(ui.active->entity_id);
+  }, LV_EVENT_CLICKED, nullptr);
+
+  ui.title_lbl = control_modal_create_title(
+    ui.panel, light_control_title(ctx), shell.content_w,
+    ctx->label_font, ctx->width_compensation_percent);
+
+  ui.slider = lv_slider_create(ui.panel);
+  lv_slider_set_range(ui.slider, 0, 100);
+  lv_slider_set_value(ui.slider, slider_clamp_pct(ctx->current_pct), LV_ANIM_OFF);
+  lv_obj_set_style_bg_color(ui.slider, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.slider, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.slider, lv_color_hex(ctx->accent_color), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_opa(ui.slider, LV_OPA_COVER, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(ui.slider, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_KNOB);
+  lv_obj_set_style_border_width(ui.slider, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_shadow_width(ui.slider, 0, LV_PART_KNOB);
+  lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
+    LightControlModalUi &ui = light_control_modal_ui();
+    if (!ui.active || ui.active->updating_slider) return;
+    lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    int pct = lv_slider_get_value(slider);
+    if (ui.pct_lbl) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%d%%", pct);
+      lv_label_set_text(ui.pct_lbl, buf);
+    }
+  }, LV_EVENT_VALUE_CHANGED, nullptr);
+  lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
+    LightControlModalUi &ui = light_control_modal_ui();
+    if (!ui.active || !ui.active->available) return;
+    lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    int pct = lv_slider_get_value(slider);
+    ui.active->current_pct = pct;
+    send_slider_action(ui.active->entity_id, pct);
+  }, LV_EVENT_RELEASED, nullptr);
+
+  ui.pct_lbl = lv_label_create(ui.panel);
+  lv_obj_set_style_text_color(ui.pct_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ui.pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  if (ctx->number_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->number_font, LV_PART_MAIN);
+  apply_width_compensation(ui.pct_lbl, ctx->width_compensation_percent);
+
+  light_control_layout_modal(ctx);
+  light_control_set_modal_value(ctx, ctx->current_pct);
+  light_control_apply_modal_power(ctx);
+  lv_obj_move_foreground(ui.overlay);
+}
+
+inline void setup_light_control_card(BtnSlot &s, const ParsedCfg &p) {
+  lv_label_set_text(s.icon_lbl, light_control_icon_off(p));
+  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Light") : p.label.c_str());
+  apply_push_button_transition(s.btn);
+}
+
+inline LightControlCtx *create_light_control_context(
+    const BtnSlot &s,
+    const ParsedCfg &p,
+    uint32_t accent_color,
+    const lv_font_t *number_font,
+    const lv_font_t *label_font,
+    const lv_font_t *icon_font,
+    int width_compensation_percent) {
+  LightControlCtx *ctx = new LightControlCtx();
+  ctx->entity_id = p.entity;
+  ctx->label = p.label;
+  ctx->accent_color = accent_color;
+  ctx->btn = s.btn;
+  ctx->icon_lbl = s.icon_lbl;
+  ctx->label_lbl = s.text_lbl;
+  ctx->icon_off_glyph = light_control_icon_off(p);
+  ctx->icon_on_glyph = light_control_icon_on(p);
+  ctx->label_font = label_font;
+  ctx->number_font = number_font;
+  ctx->icon_font = icon_font;
+  ctx->width_compensation_percent = width_compensation_percent;
+  lv_obj_set_user_data(s.btn, ctx);
+  return ctx;
+}
+
+inline void subscribe_light_control_state(LightControlCtx *ctx) {
+  if (!ctx || ctx->entity_id.empty()) return;
+  register_ha_control_availability(ctx->btn, ctx->btn);
+  ha_subscribe_state(
+    ctx->entity_id,
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef state) {
+        ctx->available = !ha_state_unavailable_ref(state);
+        ctx->on = is_entity_on_ref(state);
+        light_control_apply_card_visual(ctx);
+        light_control_apply_modal_power(ctx);
+      })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("brightness"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef value) {
+        int pct = 0;
+        if (!slider_parse_light_brightness_pct(value, pct)) return;
+        ctx->current_pct = pct;
+        light_control_set_modal_value(ctx, pct);
+      })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("friendly_name"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef value) {
+        ctx->friendly_name = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+        light_control_apply_card_visual(ctx);
+        LightControlModalUi &ui = light_control_modal_ui();
+        if (ui.active == ctx && ui.title_lbl) {
+          lv_label_set_text(ui.title_lbl, light_control_title(ctx).c_str());
+        }
+      })
+  );
+}
+
 inline lv_coord_t media_volume_card_radius(MediaVolumeCtx *ctx) {
   return control_modal_card_radius(ctx ? ctx->btn : nullptr);
 }

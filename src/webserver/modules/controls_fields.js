@@ -172,7 +172,7 @@ function renderCardModeSelector(panel, b, helpers, metadata) {
   var field = helpers.selectField(
     mode.label || "Type",
     helpers.idPrefix + (mode.idSuffix || "mode"),
-    mode.options || [],
+    cardMetadataValue(mode.options, b, helpers) || [],
     cardMetadataValue(mode.value, b, helpers) || "",
     function () {
       if (mode.onChange) mode.onChange.call(this, b, helpers);
