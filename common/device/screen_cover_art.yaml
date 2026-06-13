@@ -688,6 +688,7 @@ script:
   - id: cover_art_disable
     mode: restart
     then:
+      - switch.turn_off: media_player_sleep_prevention_enabled
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
       - script.stop: cover_art_download

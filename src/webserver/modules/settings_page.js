@@ -620,6 +620,11 @@ function buildSettingsPage(parent) {
     coverArtBody.appendChild(coverArtToggle.row);
     coverArtToggle.input.addEventListener("change", function () {
       state.coverArtScreensaverOn = this.checked;
+      if (!state.coverArtScreensaverOn && state.mediaPlayerSleepPreventionOn) {
+        state.mediaPlayerSleepPreventionOn = false;
+        syncMediaPlayerSleepPreventionUi();
+        postSwitch(entityName("screen_saver_media_player_sleep_prevention"), false);
+      }
       syncCoverArtScreensaverUi();
       postSwitch(entityName("screen_saver_cover_art"), state.coverArtScreensaverOn);
     });

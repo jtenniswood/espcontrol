@@ -678,6 +678,20 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     return errors
 
 
+def firmware_cover_art_disable_errors(path: Path, root: Path) -> list[str]:
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    body = yaml_script_body(text, "cover_art_disable")
+    if not body:
+        errors.append(f"{rel}: missing cover_art_disable script")
+    elif "switch.turn_off: media_player_sleep_prevention_enabled" not in body:
+        errors.append(f"{rel}: turn off media sleep prevention when cover art is disabled")
+    return errors
+
+
 def firmware_image_card_entity_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_image.h"
     if not path.exists():
@@ -1191,6 +1205,7 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_external_input_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_stale_image_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_refresh_errors(COVER_ART_PATH, ROOT))
+    errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
@@ -1472,6 +1487,20 @@ def expect_cover_art_refresh_errors(name: str, text: str, expected: tuple[str, .
         path.write_text(text, encoding="utf-8")
 
         errors = firmware_cover_art_refresh_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_art_disable_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "device" / "screen_cover_art.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_cover_art_disable_errors(path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -2519,6 +2548,22 @@ def run_self_test() -> int:
         "          mark_artwork_refresh_needed();\n"
         "          ha_subscribe_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n"
         "          ha_get_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n",
+        (),
+    )
+    expect_cover_art_disable_errors(
+        "missing sleep prevention reset when cover art is disabled",
+        "script:\n"
+        "  - id: cover_art_disable\n"
+        "    then:\n"
+        "      - script.stop: cover_art_delay_timer\n",
+        ("turn off media sleep prevention",),
+    )
+    expect_cover_art_disable_errors(
+        "sleep prevention reset when cover art is disabled",
+        "script:\n"
+        "  - id: cover_art_disable\n"
+        "    then:\n"
+        "      - switch.turn_off: media_player_sleep_prevention_enabled\n",
         (),
     )
     expect_image_card_entity_errors(
