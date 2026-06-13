@@ -153,8 +153,6 @@ struct LightControlModalUi {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
-  lv_obj_t *power_btn = nullptr;
-  lv_obj_t *title_lbl = nullptr;
   lv_obj_t *tab_row = nullptr;
   lv_obj_t *brightness_tab = nullptr;
   lv_obj_t *temperature_tab = nullptr;
@@ -221,16 +219,7 @@ inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
 }
 
 inline void light_control_apply_modal_power(LightControlCtx *ctx) {
-  LightControlModalUi &ui = light_control_modal_ui();
-  if (!ctx || ui.active != ctx || !ui.power_btn) return;
-  lv_obj_set_style_bg_color(
-    ui.power_btn,
-    lv_color_hex(ctx->on ? ctx->accent_color : DARK_BACKGROUND_TERTIARY),
-    LV_PART_MAIN);
-  lv_obj_set_style_border_color(
-    ui.power_btn,
-    lv_color_hex(ctx->on ? ctx->accent_color : DARK_BORDER),
-    LV_PART_MAIN);
+  (void) ctx;
 }
 
 inline int light_control_kelvin_to_pct(LightControlCtx *ctx, int kelvin) {
@@ -339,25 +328,13 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   if (!ctx || !ui.panel) return;
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
 
-  lv_coord_t title_w = layout.panel_w - (layout.inset + layout.back_size) * 2 - 12;
-  if (title_w < 96) title_w = layout.panel_w - layout.inset * 2;
-  if (ui.title_lbl) {
-    lv_obj_set_width(ui.title_lbl, title_w);
-    lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, layout.inset + layout.back_size / 4);
-  }
-  if (ui.power_btn) {
-    lv_obj_set_size(ui.power_btn, layout.back_size, layout.back_size);
-    lv_obj_set_style_radius(ui.power_btn, layout.back_size / 2, LV_PART_MAIN);
-    lv_obj_align(ui.power_btn, LV_ALIGN_TOP_RIGHT, -layout.inset, layout.inset);
-  }
-
   lv_coord_t tab_size = layout.back_size * 7 / 10;
   if (tab_size < 40) tab_size = 40;
   if (tab_size > 62) tab_size = 62;
   lv_coord_t tab_gap = 10;
   if (ui.tab_row) {
     lv_obj_set_size(ui.tab_row, tab_size * 3 + tab_gap * 2, tab_size);
-    lv_obj_align(ui.tab_row, LV_ALIGN_TOP_MID, 0, layout.inset + layout.back_size + 12);
+    lv_obj_align(ui.tab_row, LV_ALIGN_TOP_MID, 0, layout.inset + 2);
   }
   lv_obj_t *tabs[3] = {ui.brightness_tab, ui.temperature_tab, ui.color_tab};
   for (int i = 0; i < 3; i++) {
@@ -367,8 +344,8 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     lv_obj_align(tabs[i], LV_ALIGN_LEFT_MID, i * (tab_size + tab_gap), 0);
   }
 
-  lv_coord_t content_center_y = layout.back_size / 4 + tab_size / 2 + 18;
-  lv_coord_t slider_h = layout.panel_h - layout.inset * 4 - layout.back_size - tab_size - 52;
+  lv_coord_t content_center_y = tab_size / 2 + 22;
+  lv_coord_t slider_h = layout.panel_h - layout.inset * 4 - tab_size - 28;
   if (slider_h < 160) slider_h = layout.panel_h / 2;
   lv_coord_t slider_w = layout.panel_w / 3;
   if (slider_w < 96) slider_w = 96;
@@ -381,12 +358,12 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     if (slider_radius > 18) slider_radius = 18;
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_INDICATOR);
-    lv_coord_t knob_w = slider_w / 2;
-    if (knob_w < 48) knob_w = 48;
-    if (knob_w > 76) knob_w = 76;
+    lv_coord_t knob_w = slider_w / 4;
+    if (knob_w < 24) knob_w = 24;
+    if (knob_w > 38) knob_w = 38;
     lv_obj_set_style_width(ui.slider, knob_w, LV_PART_KNOB);
-    lv_obj_set_style_height(ui.slider, 8, LV_PART_KNOB);
-    lv_obj_set_style_radius(ui.slider, 4, LV_PART_KNOB);
+    lv_obj_set_style_height(ui.slider, 6, LV_PART_KNOB);
+    lv_obj_set_style_radius(ui.slider, 3, LV_PART_KNOB);
   }
   if (ui.pct_lbl) {
     lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, content_center_y);
@@ -399,19 +376,19 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     if (slider_radius > 18) slider_radius = 18;
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_INDICATOR);
-    lv_coord_t knob_w = slider_w / 2;
-    if (knob_w < 48) knob_w = 48;
-    if (knob_w > 76) knob_w = 76;
+    lv_coord_t knob_w = slider_w / 4;
+    if (knob_w < 24) knob_w = 24;
+    if (knob_w > 38) knob_w = 38;
     lv_obj_set_style_width(ui.temp_slider, knob_w, LV_PART_KNOB);
-    lv_obj_set_style_height(ui.temp_slider, 8, LV_PART_KNOB);
-    lv_obj_set_style_radius(ui.temp_slider, 4, LV_PART_KNOB);
+    lv_obj_set_style_height(ui.temp_slider, 6, LV_PART_KNOB);
+    lv_obj_set_style_radius(ui.temp_slider, 3, LV_PART_KNOB);
   }
   if (ui.temp_lbl) {
     lv_obj_align(ui.temp_lbl, LV_ALIGN_CENTER, 0, content_center_y);
   }
   if (ui.color_grid) {
     lv_coord_t grid_side = layout.panel_w - layout.inset * 3;
-    lv_coord_t max_grid_h = layout.panel_h - layout.inset * 4 - layout.back_size - tab_size - 24;
+    lv_coord_t max_grid_h = layout.panel_h - layout.inset * 4 - tab_size - 24;
     if (grid_side > max_grid_h) grid_side = max_grid_h;
     if (grid_side < 180) grid_side = 180;
     lv_obj_set_size(ui.color_grid, grid_side, grid_side);
@@ -448,20 +425,6 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
   if (!ui.panel) return;
-
-  ui.power_btn = control_modal_create_round_button(
-    ui.panel, shell.layout.back_size, find_icon("Power"), ctx->icon_font,
-    DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
-  lv_obj_add_event_cb(ui.power_btn, [](lv_event_t *) {
-    LightControlModalUi &ui = light_control_modal_ui();
-    if (!ui.active || !ui.active->available) return;
-    if (ui.active->on) send_turn_off_action(ui.active->entity_id);
-    else send_turn_on_action(ui.active->entity_id);
-  }, LV_EVENT_CLICKED, nullptr);
-
-  ui.title_lbl = control_modal_create_title(
-    ui.panel, light_control_title(ctx), shell.content_w,
-    ctx->label_font, ctx->width_compensation_percent);
 
   ui.tab_row = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -678,10 +641,6 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
       [ctx](esphome::StringRef value) {
         ctx->friendly_name = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
         light_control_apply_card_visual(ctx);
-        LightControlModalUi &ui = light_control_modal_ui();
-        if (ui.active == ctx && ui.title_lbl) {
-          lv_label_set_text(ui.title_lbl, light_control_title(ctx).c_str());
-        }
       })
   );
 }

@@ -382,7 +382,7 @@ inline void send_light_rgb_color_action(const std::string &entity_id, uint32_t c
   if (entity_id.empty()) return;
   ha_action_add_entity(req, entity_id);
   char buf[32];
-  snprintf(buf, sizeof(buf), "%u,%u,%u",
+  snprintf(buf, sizeof(buf), "[%u,%u,%u]",
     static_cast<unsigned>((color >> 16) & 0xFF),
     static_cast<unsigned>((color >> 8) & 0xFF),
     static_cast<unsigned>(color & 0xFF));
