@@ -137,6 +137,8 @@ struct LightControlCtx {
   bool on = false;
   bool updating_slider = false;
   bool updating_temp_slider = false;
+  bool dragging_slider = false;
+  bool dragging_temp_slider = false;
 };
 
 enum class LightControlTab : uint8_t {
@@ -210,6 +212,7 @@ inline void light_control_apply_card_visual(LightControlCtx *ctx) {
 inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
   LightControlModalUi &ui = light_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
+  if (ctx->dragging_slider) return;
   pct = slider_clamp_pct(pct);
   if (ui.slider) {
     ctx->updating_slider = true;
@@ -244,6 +247,7 @@ inline int light_control_pct_to_kelvin(LightControlCtx *ctx, int pct) {
 inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin) {
   LightControlModalUi &ui = light_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
+  if (ctx->dragging_temp_slider) return;
   if (kelvin < ctx->kelvin_min) kelvin = ctx->kelvin_min;
   if (kelvin > ctx->kelvin_max) kelvin = ctx->kelvin_max;
   if (ui.temp_slider) {
@@ -473,9 +477,16 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_height(ui.slider, 0, LV_PART_KNOB);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (ui.active) ui.active->dragging_slider = true;
+  }, LV_EVENT_PRESSED, nullptr);
+  lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
+    LightControlModalUi &ui = light_control_modal_ui();
     if (!ui.active || ui.active->updating_slider) return;
+    ui.active->dragging_slider = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int pct = lv_slider_get_value(slider);
+    if (ui.active->current_pct == pct) return;
+    ui.active->current_pct = pct;
     if (ui.pct_lbl) {
       char buf[8];
       snprintf(buf, sizeof(buf), "%d", pct);
@@ -484,12 +495,18 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
-    if (!ui.active || !ui.active->available) return;
+    if (!ui.active) return;
+    ui.active->dragging_slider = false;
+    if (!ui.active->available) return;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int pct = lv_slider_get_value(slider);
     ui.active->current_pct = pct;
     send_slider_action(ui.active->entity_id, pct);
   }, LV_EVENT_RELEASED, nullptr);
+  lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
+    LightControlModalUi &ui = light_control_modal_ui();
+    if (ui.active) ui.active->dragging_slider = false;
+  }, LV_EVENT_PRESS_LOST, nullptr);
 
   ui.pct_row = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.pct_row, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -536,9 +553,15 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   lv_obj_set_style_height(ui.temp_slider, 0, LV_PART_KNOB);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
+    if (ui.active) ui.active->dragging_temp_slider = true;
+  }, LV_EVENT_PRESSED, nullptr);
+  lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
+    LightControlModalUi &ui = light_control_modal_ui();
     if (!ui.active || ui.active->updating_temp_slider) return;
+    ui.active->dragging_temp_slider = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int kelvin = light_control_pct_to_kelvin(ui.active, lv_slider_get_value(slider));
+    if (ui.active->current_kelvin == kelvin) return;
     ui.active->current_kelvin = kelvin;
     lv_obj_set_style_bg_color(
       slider, kelvin_to_fill_color(kelvin, ui.active->kelvin_min, ui.active->kelvin_max),
@@ -546,12 +569,18 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
-    if (!ui.active || !ui.active->available) return;
+    if (!ui.active) return;
+    ui.active->dragging_temp_slider = false;
+    if (!ui.active->available) return;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     send_light_temp_action(
       ui.active->entity_id, lv_slider_get_value(slider),
       ui.active->kelvin_min, ui.active->kelvin_max);
   }, LV_EVENT_RELEASED, nullptr);
+  lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
+    LightControlModalUi &ui = light_control_modal_ui();
+    if (ui.active) ui.active->dragging_temp_slider = false;
+  }, LV_EVENT_PRESS_LOST, nullptr);
 
   static constexpr LightColorPreset COLOR_PRESETS[16] = {
     {0xFFF4D6}, {0xFFD400}, {0xFF7A00}, {0xFF2600},
