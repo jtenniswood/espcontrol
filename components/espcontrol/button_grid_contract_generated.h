@@ -8,7 +8,7 @@
 constexpr const char *CARD_CONTRACT_OPTION_SELECT_ACTION = "input_select.select_option";
 inline const char *const CARD_CONTRACT_OPTION_SELECT_ACTIONS[] = {"input_select.select_option", "select.select_option"};
 inline const char *const CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES[] = {"slider", "light_brightness", "fan_speed"};
-inline const char *const CARD_CONTRACT_COVER_MODES[] = {"", "tilt", "toggle", "open", "close", "stop", "set_position"};
+inline const char *const CARD_CONTRACT_COVER_MODES[] = {"modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"};
 inline const char *const CARD_CONTRACT_GARAGE_MODES[] = {"", "open", "close"};
 inline const char *const CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES[] = {"label", "status"};
 inline const char *const CARD_CONTRACT_INTERNAL_MODES[] = {"switch", "push"};

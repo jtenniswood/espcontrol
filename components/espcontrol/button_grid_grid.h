@@ -364,6 +364,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_fan_card(s, p);
     return;
   }
+  if (p.type == "cover" && cover_modal_mode(p.sensor)) {
+    setup_cover_modal_card(s, p);
+    return;
+  }
   if (p.type == "cover" && cover_command_mode(p.sensor)) {
     setup_cover_command_card(s, p);
     return;
@@ -1164,6 +1168,16 @@ inline void grid_phase2(
 
     if (p.entity.empty()) continue;
 
+    if (p.type == "cover" && cover_modal_mode(p.sensor)) {
+      CoverControlCtx *ctx = create_cover_control_context(
+        s, p,
+        has_on ? on_val : DEFAULT_SLIDER_COLOR,
+        display_icon_font(display),
+        display_main_width_percent(display));
+      subscribe_cover_control_state(ctx);
+      continue;
+    }
+
     if (brightness_slider_type(p.type) || p.type == "cover") {
       lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
       bool sl_has_icon_on = slider_has_alt_icon(p.type, p.icon_on);
@@ -1417,6 +1431,24 @@ inline void grid_phase2(
       if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;
       if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;
+      if (sb_cfg.type == "cover" && cover_modal_mode(sb_cfg.sensor)) {
+        if (!sb_cfg.entity.empty()) {
+          CoverControlCtx *ctx = create_cover_control_context(
+            sub_slot, sb_cfg,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            display_icon_font(display),
+            display_main_width_percent(display));
+          subscribe_cover_control_state(ctx);
+          add_parent_indicator(sb_cfg.entity);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
+            if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
+            CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(target);
+            if (ctx) cover_control_open_modal(ctx);
+          }, LV_EVENT_CLICKED, nullptr);
+        }
+        continue;
+      }
       if (sb_cfg.type == "cover" && cover_command_mode(sb_cfg.sensor)) {
         if (!sb_cfg.entity.empty()) {
           if (sb_cfg.label.empty())

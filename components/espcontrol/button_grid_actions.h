@@ -203,6 +203,10 @@ inline bool cover_tilt_mode(const std::string &sensor) {
   return card_runtime_cover_tilt_mode(sensor);
 }
 
+inline bool cover_modal_mode(const std::string &sensor) {
+  return card_runtime_cover_modal_mode(sensor);
+}
+
 inline bool cover_command_mode(const std::string &sensor) {
   return card_runtime_cover_command_mode(sensor);
 }
@@ -288,6 +292,14 @@ inline void send_cover_command_action(const ParsedCfg &p) {
     cover_stop_clear_pending(req.call_id);
     ha_cancel_action_response_callback(req.call_id, "send failed");
   }
+}
+
+inline void send_cover_command_action(const std::string &entity_id,
+                                      const std::string &mode) {
+  ParsedCfg p;
+  p.entity = entity_id;
+  p.sensor = mode;
+  send_cover_command_action(p);
 }
 
 // Send HA action for a slider change: toggle (value<0), brightness, or cover position/tilt
@@ -482,6 +494,8 @@ inline bool alarm_action_context_valid(AlarmActionCtx *action);
 struct FanCardCtx;
 inline bool fan_non_speed_card_type(const std::string &type);
 inline void fan_card_handle_click(FanCardCtx *ctx);
+struct CoverControlCtx;
+inline void cover_control_open_modal(CoverControlCtx *ctx);
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
@@ -524,6 +538,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (fan_non_speed_card_type(p.type)) {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_card_handle_click(ctx);
+  } else if (p.type == "cover" && cover_modal_mode(p.sensor)) {
+    CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) cover_control_open_modal(ctx);
   } else if (p.type == "garage") {
     if (garage_card_show_status(p)) {
       return;

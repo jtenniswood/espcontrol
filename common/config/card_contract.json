@@ -313,8 +313,8 @@
           "name": "cover_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "tilt", "toggle", "open", "close", "stop", "set_position"],
-          "defaultValue": ""
+          "values": ["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"],
+          "defaultValue": "modal"
         },
         {
           "name": "cover_position",
@@ -341,7 +341,7 @@
         "label": "",
         "icon": "Blinds",
         "icon_on": "Blinds Open",
-        "sensor": "",
+        "sensor": "modal",
         "unit": "",
         "type": "cover",
         "precision": "",
