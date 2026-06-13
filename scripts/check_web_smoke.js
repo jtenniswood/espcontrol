@@ -750,6 +750,18 @@ const coverSliderPreview = hooks.buttonTypePreviewFor("cover", {
 assert(coverSliderPreview.iconHtml.includes("sp-slider-preview"), "cover slider preview uses the slider track");
 assert(coverSliderPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover slider preview uses the cover badge");
 
+const coverModalPreview = hooks.buttonTypePreviewFor("cover", {
+  entity: "cover.office_blind",
+  label: "Office Blind",
+  icon: "Blinds",
+  icon_on: "Blinds Open",
+  sensor: "modal",
+  type: "cover",
+});
+assert(!coverModalPreview.iconHtml.includes("sp-slider-preview"), "cover modal preview uses icon-only layout");
+assert(coverModalPreview.iconHtml.includes("mdi-blinds"), "cover modal preview uses the cover icon");
+assert(coverModalPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover modal preview uses the cover badge");
+
 const coverCommandPreview = hooks.buttonTypePreviewFor("cover", {
   entity: "cover.office_blind",
   label: "Open",

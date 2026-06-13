@@ -6,7 +6,7 @@ description:
 
 # Cover
 
-A cover card lets you control a Home Assistant cover entity — blinds, shutters, roller shades, gates, or garage doors — as a slider, a toggle, or a one-tap command.
+A cover card lets you control a Home Assistant cover entity — blinds, shutters, roller shades, gates, or garage doors — from one modal control card, as a direct slider, as a toggle, or as a one-tap command.
 
 ![Cover card showing a blinds icon with a position fill bar](/images/card-cover.png)
 
@@ -14,6 +14,7 @@ A cover card lets you control a Home Assistant cover entity — blinds, shutters
 
 1. Select a card and change its type to **Cover**.
 2. Choose the interaction:
+   - **Modal** opens a full-screen control with tabs for simple controls, position, and tilt.
    - **Slider: Position** lets you drag to a precise cover position.
    - **Slider: Tilt** lets you drag to a precise cover tilt position.
    - **Toggle** opens or closes the cover with a tap.
@@ -27,6 +28,14 @@ A cover card lets you control a Home Assistant cover entity — blinds, shutters
    - Open, Close, Stop, and Set Position use one **Icon**.
 
 ## How It Works on the Panel
+
+### Modal Interaction
+
+- **Tap** the card to open the full-screen cover controls.
+- The **Simple Controls** tab has three actions: **Up**, **Stop**, and **Down**.
+- The **Position** tab lets you drag the cover position from 0 to 100 percent.
+- The **Tilt** tab lets you drag the cover tilt from 0 to 100 percent.
+- Position and tilt update when Home Assistant reports `current_position` and `current_tilt_position`.
 
 ### Slider Interaction
 

@@ -393,19 +393,20 @@ const coverOptionSpecs = hooks.cardContractOptions("cover");
 const coverOptionByName = Object.fromEntries(coverOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(coverOptionByName.cover_mode.values),
-  ["", "tilt", "toggle", "open", "close", "stop", "set_position"],
-  "cover mode spec exposes slider, tilt, toggle, and command modes"
+  ["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"],
+  "cover mode spec exposes modal, slider, tilt, toggle, and command modes"
 );
 assert.deepStrictEqual(
   Array.from(hooks.coverModeOptionValues(false)),
-  ["", "tilt", "toggle"],
+  ["modal", "", "tilt", "toggle"],
   "cover mode helper hides command modes when commands are not allowed"
 );
 assert.deepStrictEqual(
   Array.from(hooks.coverModeOptionValues(true)),
-  ["", "tilt", "toggle", "open", "close", "stop", "set_position"],
+  ["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"],
   "cover mode helper exposes command modes when commands are allowed"
 );
+assert.strictEqual(hooks.normalizeCoverMode("modal", true), "modal", "cover modal mode normalizes from spec");
 assert.strictEqual(hooks.normalizeCoverMode("set_position", true), "set_position", "cover command mode normalizes from spec");
 assert.strictEqual(hooks.normalizeCoverMode("set_position", false), "", "cover command mode is rejected when commands are disabled");
 assert.strictEqual(hooks.normalizeCoverPosition("-1"), "0", "cover position spec clamps minimum");

@@ -1,14 +1,14 @@
 // Slider and cover button types: draggable brightness/position control.
 // Factory creates both "slider" (light.turn_on w/ brightness) and "cover"
 // variants. Slider cards are always vertical. For covers, b.sensor stores
-// "", "tilt", "toggle", or a one-tap cover command.
+// "modal", "", "tilt", "toggle", or a one-tap cover command.
 function coverCommandMode(mode) {
   return mode === "open" || mode === "close" || mode === "stop" || mode === "set_position";
 }
 
 function coverModeOptionValues(allowCommands) {
   var spec = cardContractOptionSpec("cover", "cover_mode");
-  var values = spec && spec.values ? spec.values : ["", "tilt", "toggle", "open", "close", "stop", "set_position"];
+  var values = spec && spec.values ? spec.values : ["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"];
   return values.filter(function (value) {
     return allowCommands || !coverCommandMode(value);
   });
@@ -55,6 +55,7 @@ function sliderCardMetadata(opts) {
         label: "Type",
         idSuffix: "cover-interaction",
         options: [
+          ["modal", "Modal"],
           ["", "Slider: Position"],
           ["tilt", "Slider: Tilt"],
           ["toggle", "Toggle"],
@@ -323,7 +324,7 @@ function sliderTypeFactory(opts) {
     renderPreview: function (b, helpers) {
       var label = b.label || b.entity || opts.fallbackLabel;
       var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : opts.fallbackIcon;
-      if (opts.interactionMode && (b.sensor === "toggle" || coverCommandMode(b.sensor))) {
+      if (opts.interactionMode && (b.sensor === "modal" || b.sensor === "toggle" || coverCommandMode(b.sensor))) {
         return {
           iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
           labelHtml: cardBadgeLabelHtml(helpers, label, metadata.preview.badge),
