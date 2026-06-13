@@ -164,9 +164,6 @@ struct LightControlModalUi {
   lv_obj_t *temperature_tab = nullptr;
   lv_obj_t *color_tab = nullptr;
   lv_obj_t *slider = nullptr;
-  lv_obj_t *pct_row = nullptr;
-  lv_obj_t *pct_lbl = nullptr;
-  lv_obj_t *pct_unit_lbl = nullptr;
   lv_obj_t *temp_slider = nullptr;
   lv_obj_t *color_grid = nullptr;
   LightControlCtx *active = nullptr;
@@ -219,12 +216,6 @@ inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
     lv_slider_set_value(ui.slider, pct, LV_ANIM_OFF);
     ctx->updating_slider = false;
   }
-  if (ui.pct_lbl) {
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d", pct);
-    lv_label_set_text(ui.pct_lbl, buf);
-  }
-  if (ui.pct_unit_lbl) lv_label_set_text(ui.pct_unit_lbl, "%");
 }
 
 inline void light_control_apply_modal_power(LightControlCtx *ctx) {
@@ -279,10 +270,6 @@ inline void light_control_apply_tab_visibility() {
   if (ui.slider) {
     if (show_brightness) lv_obj_clear_flag(ui.slider, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.slider, LV_OBJ_FLAG_HIDDEN);
-  }
-  if (ui.pct_row) {
-    if (show_brightness) lv_obj_clear_flag(ui.pct_row, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(ui.pct_row, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.temp_slider) {
     if (show_temperature) lv_obj_clear_flag(ui.temp_slider, LV_OBJ_FLAG_HIDDEN);
@@ -387,11 +374,6 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     lv_obj_set_style_width(ui.slider, 0, LV_PART_KNOB);
     lv_obj_set_style_height(ui.slider, 0, LV_PART_KNOB);
   }
-  if (ui.pct_row) {
-    lv_obj_set_size(ui.pct_row, slider_w, LV_SIZE_CONTENT);
-    lv_obj_align(ui.pct_row, LV_ALIGN_CENTER, 0, content_center_y);
-    lv_obj_move_foreground(ui.pct_row);
-  }
   if (ui.temp_slider) {
     lv_obj_set_size(ui.temp_slider, slider_w, slider_h);
     lv_obj_align(ui.temp_slider, LV_ALIGN_CENTER, 0, content_center_y);
@@ -487,11 +469,6 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     int pct = lv_slider_get_value(slider);
     if (ui.active->current_pct == pct) return;
     ui.active->current_pct = pct;
-    if (ui.pct_lbl) {
-      char buf[8];
-      snprintf(buf, sizeof(buf), "%d", pct);
-      lv_label_set_text(ui.pct_lbl, buf);
-    }
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
@@ -507,34 +484,6 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     LightControlModalUi &ui = light_control_modal_ui();
     if (ui.active) ui.active->dragging_slider = false;
   }, LV_EVENT_PRESS_LOST, nullptr);
-
-  ui.pct_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_opa(ui.pct_row, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.pct_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_shadow_width(ui.pct_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.pct_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_column(ui.pct_row, 6, LV_PART_MAIN);
-  lv_obj_set_layout(ui.pct_row, LV_LAYOUT_FLEX);
-  lv_obj_set_style_flex_flow(ui.pct_row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-  lv_obj_set_style_flex_main_place(ui.pct_row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
-  lv_obj_set_style_flex_cross_place(ui.pct_row, LV_FLEX_ALIGN_END, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.pct_row, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_clear_flag(ui.pct_row, LV_OBJ_FLAG_CLICKABLE);
-  apply_width_compensation(ui.pct_row, ctx->width_compensation_percent);
-
-  ui.pct_lbl = lv_label_create(ui.pct_row);
-  lv_obj_set_style_text_color(ui.pct_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->number_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->number_font, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.pct_lbl, LV_OBJ_FLAG_CLICKABLE);
-
-  ui.pct_unit_lbl = lv_label_create(ui.pct_row);
-  lv_label_set_text(ui.pct_unit_lbl, "%");
-  lv_obj_set_style_text_color(ui.pct_unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->label_font) lv_obj_set_style_text_font(ui.pct_unit_lbl, ctx->label_font, LV_PART_MAIN);
-  lv_obj_set_style_translate_y(ui.pct_unit_lbl, -38, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.pct_unit_lbl, LV_OBJ_FLAG_CLICKABLE);
 
   ui.temp_slider = lv_slider_create(ui.panel);
   lv_slider_set_range(ui.temp_slider, 0, 100);
