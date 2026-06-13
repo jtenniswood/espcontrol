@@ -478,7 +478,7 @@ inline lv_obj_t *cover_control_create_wide_icon_button(lv_obj_t *parent, const c
                                                        const lv_font_t *font) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -580,12 +580,12 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
     lv_coord_t box_h = content_h;
     lv_obj_set_size(ui.controls_box, box_w, box_h);
     lv_obj_align(ui.controls_box, LV_ALIGN_CENTER, 0, content_center_y);
-    lv_coord_t btn_w = tab_frame_w;
-    if (btn_w > box_w) btn_w = box_w;
-    lv_coord_t btn_h = tab_size;
+    lv_coord_t btn_w = box_w;
+    lv_coord_t gap = box_h / 18;
+    if (gap < 10) gap = 10;
+    if (gap > 18) gap = 18;
+    lv_coord_t btn_h = (box_h - gap * 2) / 3;
     if (btn_h < 56) btn_h = 56;
-    if (btn_h > 76) btn_h = 76;
-    lv_coord_t gap = btn_h / 4;
     lv_coord_t total_h = btn_h * 3 + gap * 2;
     lv_coord_t start_y = (box_h - total_h) / 2;
     if (start_y < 0) start_y = 0;
