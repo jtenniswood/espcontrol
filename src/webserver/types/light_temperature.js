@@ -76,7 +76,7 @@ var LIGHT_CONTROL_TYPE_OPTIONS = [
   ["light_switch", "Switch"],
   ["light_brightness", "Brightness"],
   ["light_temperature", "Colour Temperature"],
-  ["light_control", "Full Light Control"],
+  ["light_control", "All Controls"],
 ];
 
 var LIGHT_CONTROL_TYPE_METADATA = {
