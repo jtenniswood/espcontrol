@@ -376,17 +376,12 @@ inline void send_light_temp_action(const std::string &entity_id, int pct, int mi
   ha_action_send(req);
 }
 
-inline void send_light_rgb_color_action(const std::string &entity_id, uint32_t color) {
+inline void send_light_color_name_action(const std::string &entity_id, const char *color_name) {
   esphome::api::HomeassistantActionRequest req;
   if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
-  if (entity_id.empty()) return;
+  if (entity_id.empty() || !color_name || color_name[0] == '\0') return;
   ha_action_add_entity(req, entity_id);
-  char buf[32];
-  snprintf(buf, sizeof(buf), "[%u,%u,%u]",
-    static_cast<unsigned>((color >> 16) & 0xFF),
-    static_cast<unsigned>((color >> 8) & 0xFF),
-    static_cast<unsigned>(color & 0xFF));
-  ha_action_add_data(req, "rgb_color", buf);
+  ha_action_add_data(req, "color_name", color_name);
   ha_action_send(req);
 }
 

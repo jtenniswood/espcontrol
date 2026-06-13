@@ -147,6 +147,12 @@ enum class LightControlTab : uint8_t {
 
 struct LightColorPresetClick {
   uint32_t color = 0;
+  const char *color_name = nullptr;
+};
+
+struct LightColorPreset {
+  uint32_t color;
+  const char *name;
 };
 
 struct LightControlModalUi {
@@ -576,11 +582,11 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   if (ctx->number_font) lv_obj_set_style_text_font(ui.temp_lbl, ctx->number_font, LV_PART_MAIN);
   apply_width_compensation(ui.temp_lbl, ctx->width_compensation_percent);
 
-  static constexpr uint32_t COLOR_PRESETS[16] = {
-    0xFF2600, 0xFF7A00, 0xFFD400, 0xFFF4D6,
-    0x7ED321, 0x00C853, 0x00B8D4, 0x00E5FF,
-    0x2979FF, 0x3D5AFE, 0x7C4DFF, 0xD500F9,
-    0xFF4081, 0xFF1744, 0xFFFFFF, 0xB0BEC5,
+  static constexpr LightColorPreset COLOR_PRESETS[16] = {
+    {0xFF2600, "red"}, {0xFF7A00, "orange"}, {0xFFD400, "yellow"}, {0xFFF4D6, "white"},
+    {0x7ED321, "lime"}, {0x00C853, "green"}, {0x00B8D4, "cyan"}, {0x00E5FF, "turquoise"},
+    {0x2979FF, "blue"}, {0x3D5AFE, "indigo"}, {0x7C4DFF, "purple"}, {0xD500F9, "magenta"},
+    {0xFF4081, "pink"}, {0xFF1744, "crimson"}, {0xFFFFFF, "white"}, {0xB0BEC5, "gray"},
   };
   ui.color_grid = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.color_grid, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -591,19 +597,20 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   for (uint32_t i = 0; i < 16; i++) {
     lv_obj_t *swatch = lv_btn_create(ui.color_grid);
     if (!swatch) continue;
-    lv_obj_set_style_bg_color(swatch, lv_color_hex(COLOR_PRESETS[i]), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(swatch, lv_color_hex(COLOR_PRESETS[i].color), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(swatch, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(swatch, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(swatch, 0, LV_PART_MAIN);
     control_modal_apply_pressed_fill(swatch);
     lv_obj_clear_flag(swatch, LV_OBJ_FLAG_SCROLLABLE);
     LightColorPresetClick *click = new LightColorPresetClick();
-    click->color = COLOR_PRESETS[i];
+    click->color = COLOR_PRESETS[i].color;
+    click->color_name = COLOR_PRESETS[i].name;
     lv_obj_add_event_cb(swatch, [](lv_event_t *e) {
       LightColorPresetClick *click = static_cast<LightColorPresetClick *>(lv_event_get_user_data(e));
       LightControlModalUi &ui = light_control_modal_ui();
       if (!click || !ui.active || !ui.active->available) return;
-      send_light_rgb_color_action(ui.active->entity_id, click->color);
+      send_light_color_name_action(ui.active->entity_id, click->color_name);
     }, LV_EVENT_CLICKED, click);
   }
 
