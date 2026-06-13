@@ -363,6 +363,7 @@ struct CoverControlModalUi {
   lv_obj_t *stop_btn = nullptr;
   lv_obj_t *down_btn = nullptr;
   lv_obj_t *position_slider = nullptr;
+  lv_obj_t *position_fill = nullptr;
   lv_obj_t *tilt_slider = nullptr;
   CoverControlCtx *active = nullptr;
   CoverControlTab tab = CoverControlTab::CONTROLS;
@@ -509,6 +510,21 @@ inline void cover_control_layout_slider(lv_obj_t *slider, lv_coord_t width,
   lv_obj_set_style_height(slider, 0, LV_PART_KNOB);
 }
 
+inline void cover_control_update_position_fill(int position_pct) {
+  CoverControlModalUi &ui = cover_control_modal_ui();
+  if (!ui.position_slider || !ui.position_fill) return;
+  int fill_pct = 100 - slider_clamp_pct(position_pct);
+  lv_coord_t width = lv_obj_get_width(ui.position_slider);
+  lv_coord_t height = lv_obj_get_height(ui.position_slider);
+  if (width <= 0 || height <= 0) return;
+  lv_coord_t fill_h = (lv_coord_t)((int32_t) height * fill_pct / 100);
+  lv_obj_set_size(ui.position_fill, width, fill_h);
+  lv_obj_set_style_radius(
+    ui.position_fill, lv_obj_get_style_radius(ui.position_slider, LV_PART_MAIN), LV_PART_MAIN);
+  lv_obj_align(ui.position_fill, LV_ALIGN_TOP_MID, 0, 0);
+  lv_obj_move_foreground(ui.position_fill);
+}
+
 inline void cover_control_layout_modal(CoverControlCtx *ctx) {
   CoverControlModalUi &ui = cover_control_modal_ui();
   if (!ctx || !ui.panel) return;
@@ -556,6 +572,7 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
   lv_coord_t content_w = tab_frame_w;
   if (content_w >= content_h) content_w = content_h * 3 / 4;
   cover_control_layout_slider(ui.position_slider, content_w, content_h, content_center_y);
+  cover_control_update_position_fill(ctx->current_position);
   cover_control_layout_slider(ui.tilt_slider, content_w, content_h, content_center_y);
 
   if (ui.controls_box) {
@@ -602,8 +619,10 @@ inline void cover_control_set_slider_value(lv_obj_t *slider, bool &updating,
 inline void cover_control_set_position_value(CoverControlCtx *ctx, int pct) {
   CoverControlModalUi &ui = cover_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
+  if (ctx->dragging_position) return;
   cover_control_set_slider_value(
     ui.position_slider, ctx->updating_position, ctx->dragging_position, pct);
+  cover_control_update_position_fill(pct);
 }
 
 inline void cover_control_set_tilt_value(CoverControlCtx *ctx, int pct) {
@@ -648,6 +667,22 @@ inline void cover_control_style_slider(lv_obj_t *slider, uint32_t accent_color) 
   lv_obj_set_style_pad_all(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_width(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_height(slider, 0, LV_PART_KNOB);
+}
+
+inline lv_obj_t *cover_control_create_position_fill(lv_obj_t *slider, uint32_t accent_color) {
+  if (!slider) return nullptr;
+  lv_obj_set_style_bg_opa(slider, LV_OPA_TRANSP, LV_PART_INDICATOR);
+  lv_obj_t *fill = lv_obj_create(slider);
+  if (!fill) return nullptr;
+  lv_obj_set_size(fill, 0, 0);
+  lv_obj_set_style_bg_color(fill, lv_color_hex(accent_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(fill, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(fill, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(fill, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(fill, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(fill, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(fill, LV_OBJ_FLAG_SCROLLABLE);
+  return fill;
 }
 
 inline void cover_control_open_modal(CoverControlCtx *ctx) {
@@ -716,6 +751,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
 
   ui.position_slider = lv_slider_create(ui.panel);
   cover_control_style_slider(ui.position_slider, ctx->accent_color);
+  ui.position_fill = cover_control_create_position_fill(ui.position_slider, ctx->accent_color);
   lv_slider_set_value(ui.position_slider, slider_clamp_pct(ctx->current_position), LV_ANIM_OFF);
   lv_obj_add_event_cb(ui.position_slider, [](lv_event_t *e) {
     CoverControlModalUi &ui = cover_control_modal_ui();
@@ -727,6 +763,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
     ui.active->dragging_position = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     ui.active->current_position = lv_slider_get_value(slider);
+    cover_control_update_position_fill(ui.active->current_position);
     cover_control_apply_card_visual(ui.active);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.position_slider, [](lv_event_t *e) {
