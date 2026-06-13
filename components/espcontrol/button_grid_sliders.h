@@ -255,14 +255,13 @@ inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin)
 
 inline void light_control_style_tab(lv_obj_t *btn, bool active, uint32_t accent_color) {
   if (!btn) return;
-  (void) accent_color;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(active ? 0xFFFFFF : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(
+    btn, lv_color_hex(active ? accent_color : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
-    lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? 0x000000 : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   }
 }
 
