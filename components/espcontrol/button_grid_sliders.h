@@ -353,9 +353,9 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   lv_coord_t content_center_y = tab_size / 2 + 22;
   lv_coord_t slider_h = layout.panel_h - layout.inset * 4 - tab_size - 28;
   if (slider_h < 160) slider_h = layout.panel_h / 2;
-  lv_coord_t slider_w = layout.panel_w / 3;
-  if (slider_w < 96) slider_w = 96;
-  if (slider_w > 180) slider_w = 180;
+  lv_coord_t slider_w = layout.panel_w * 45 / 100;
+  if (slider_w < 126) slider_w = 126;
+  if (slider_w > 240) slider_w = 240;
   if (ui.slider) {
     lv_obj_set_size(ui.slider, slider_w, slider_h);
     lv_obj_align(ui.slider, LV_ALIGN_CENTER, 0, content_center_y);
@@ -368,8 +368,9 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     lv_obj_set_style_height(ui.slider, 0, LV_PART_KNOB);
   }
   if (ui.pct_lbl) {
-    lv_obj_set_width(ui.pct_lbl, layout.panel_w);
+    lv_obj_set_width(ui.pct_lbl, slider_w);
     lv_obj_align(ui.pct_lbl, LV_ALIGN_CENTER, 0, content_center_y);
+    lv_obj_move_foreground(ui.pct_lbl);
   }
   if (ui.temp_slider) {
     lv_obj_set_size(ui.temp_slider, slider_w, slider_h);
@@ -383,8 +384,9 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     lv_obj_set_style_height(ui.temp_slider, 0, LV_PART_KNOB);
   }
   if (ui.temp_lbl) {
-    lv_obj_set_width(ui.temp_lbl, layout.panel_w);
+    lv_obj_set_width(ui.temp_lbl, slider_w);
     lv_obj_align(ui.temp_lbl, LV_ALIGN_CENTER, 0, content_center_y);
+    lv_obj_move_foreground(ui.temp_lbl);
   }
   if (ui.color_grid) {
     lv_coord_t grid_side = layout.panel_w - layout.inset * 3;
@@ -480,7 +482,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.pct_lbl = lv_label_create(ui.panel);
   lv_obj_set_style_text_color(ui.pct_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->number_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->number_font, LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(ui.pct_lbl, ctx->label_font, LV_PART_MAIN);
   apply_width_compensation(ui.pct_lbl, ctx->width_compensation_percent);
 
   ui.temp_slider = lv_slider_create(ui.panel);
@@ -525,7 +527,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.temp_lbl = lv_label_create(ui.panel);
   lv_obj_set_style_text_color(ui.temp_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.temp_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->number_font) lv_obj_set_style_text_font(ui.temp_lbl, ctx->number_font, LV_PART_MAIN);
+  if (ctx->label_font) lv_obj_set_style_text_font(ui.temp_lbl, ctx->label_font, LV_PART_MAIN);
   apply_width_compensation(ui.temp_lbl, ctx->width_compensation_percent);
 
   static constexpr LightColorPreset COLOR_PRESETS[16] = {
