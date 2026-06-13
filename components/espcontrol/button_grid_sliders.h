@@ -332,7 +332,7 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   lv_coord_t selected_tab_size = tab_size + tab_size / 8;
   lv_coord_t tab_frame_pad = tab_size / 5;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
-  lv_coord_t tab_gap = tab_size / 3;
+  lv_coord_t tab_gap = tab_size / 4;
   lv_coord_t tabs_total_w = tab_size * 3 + tab_gap * 2;
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
   lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
