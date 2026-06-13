@@ -463,7 +463,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.slider = lv_slider_create(ui.panel);
   lv_slider_set_range(ui.slider, 0, 100);
   lv_slider_set_value(ui.slider, slider_clamp_pct(ctx->current_pct), LV_ANIM_OFF);
-  lv_obj_set_style_bg_color(ui.slider, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.slider, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.slider, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_bg_color(ui.slider, lv_color_hex(ctx->accent_color), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(ui.slider, LV_OPA_COVER, LV_PART_INDICATOR);
@@ -539,7 +539,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.temp_slider = lv_slider_create(ui.panel);
   lv_slider_set_range(ui.temp_slider, 0, 100);
   lv_slider_set_value(ui.temp_slider, light_control_kelvin_to_pct(ctx, ctx->current_kelvin), LV_ANIM_OFF);
-  lv_obj_set_style_bg_color(ui.temp_slider, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.temp_slider, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.temp_slider, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_bg_color(ui.temp_slider, kelvin_to_fill_color(ctx->current_kelvin, ctx->kelvin_min, ctx->kelvin_max), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(ui.temp_slider, LV_OPA_COVER, LV_PART_INDICATOR);
