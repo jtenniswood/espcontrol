@@ -473,6 +473,28 @@ inline lv_obj_t *cover_control_create_tab_button(lv_obj_t *parent, const char *i
   return btn;
 }
 
+inline lv_obj_t *cover_control_create_wide_icon_button(lv_obj_t *parent, const char *icon,
+                                                       const lv_font_t *font) {
+  lv_obj_t *btn = lv_btn_create(parent);
+  if (!btn) return nullptr;
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
+  control_modal_apply_pressed_fill(btn);
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_t *label = lv_label_create(btn);
+  if (label) {
+    lv_label_set_text(label, icon);
+    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_obj_center(label);
+  }
+  return btn;
+}
+
 inline void cover_control_layout_slider(lv_obj_t *slider, lv_coord_t width,
                                         lv_coord_t height, lv_coord_t center_y) {
   if (!slider) return;
@@ -541,19 +563,23 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
     lv_coord_t box_h = content_h;
     lv_obj_set_size(ui.controls_box, box_w, box_h);
     lv_obj_align(ui.controls_box, LV_ALIGN_CENTER, 0, content_center_y);
-    lv_coord_t btn_size = layout.btn_size;
-    if (btn_size < 72) btn_size = 72;
-    if (btn_size > 118) btn_size = 118;
-    lv_coord_t gap = btn_size / 4;
-    lv_coord_t total_h = btn_size * 3 + gap * 2;
+    lv_coord_t btn_w = tab_frame_w;
+    if (btn_w > box_w) btn_w = box_w;
+    lv_coord_t btn_h = tab_size;
+    if (btn_h < 56) btn_h = 56;
+    if (btn_h > 76) btn_h = 76;
+    lv_coord_t gap = btn_h / 4;
+    lv_coord_t total_h = btn_h * 3 + gap * 2;
     lv_coord_t start_y = (box_h - total_h) / 2;
     if (start_y < 0) start_y = 0;
     lv_obj_t *buttons[3] = {ui.up_btn, ui.stop_btn, ui.down_btn};
     for (int i = 0; i < 3; i++) {
       if (!buttons[i]) continue;
-      lv_obj_set_size(buttons[i], btn_size, btn_size);
-      lv_obj_set_style_radius(buttons[i], btn_size / 2, LV_PART_MAIN);
-      lv_obj_align(buttons[i], LV_ALIGN_TOP_MID, 0, start_y + i * (btn_size + gap));
+      lv_obj_set_size(buttons[i], btn_w, btn_h);
+      lv_obj_set_style_radius(buttons[i], btn_h / 2, LV_PART_MAIN);
+      lv_obj_align(buttons[i], LV_ALIGN_TOP_MID, 0, start_y + i * (btn_h + gap));
+      lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
+      if (label) lv_obj_center(label);
     }
   }
 }
@@ -660,15 +686,12 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   lv_obj_set_style_shadow_width(ui.controls_box, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.controls_box, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.controls_box, LV_OBJ_FLAG_SCROLLABLE);
-  ui.up_btn = control_modal_create_round_button(
-    ui.controls_box, 96, find_icon("Arrow Up"), ctx->icon_font,
-    ctx->accent_color, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
-  ui.stop_btn = control_modal_create_round_button(
-    ui.controls_box, 96, find_icon("Stop"), ctx->icon_font,
-    ctx->accent_color, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
-  ui.down_btn = control_modal_create_round_button(
-    ui.controls_box, 96, find_icon("Arrow Down"), ctx->icon_font,
-    ctx->accent_color, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+  ui.up_btn = cover_control_create_wide_icon_button(
+    ui.controls_box, find_icon("Arrow Up"), ctx->icon_font);
+  ui.stop_btn = cover_control_create_wide_icon_button(
+    ui.controls_box, find_icon("Stop"), ctx->icon_font);
+  ui.down_btn = cover_control_create_wide_icon_button(
+    ui.controls_box, find_icon("Arrow Down"), ctx->icon_font);
   if (ui.up_btn) {
     lv_obj_add_event_cb(ui.up_btn, [](lv_event_t *e) {
       (void) e;
