@@ -41,6 +41,8 @@ substitutions:
   screen_saver_clock_default_brightness: "35"
   screen_schedule_clock_min_brightness: "1"
   screen_schedule_clock_default_brightness: "10"
+  voice_microphone_channel: "0"
+  voice_wake_chime_file: "device/voice_wake_chime.wav"
   network_transport: "wifi"
   disable_updates: "false"
   network_package_suffix: ${ "_ethernet" if network_transport == "ethernet" else "" }
@@ -119,6 +121,7 @@ packages:
   network:         !include ../../common/addon/network${network_package_suffix}.yaml
   memory_diag:     !include ../../common/addon/memory_diagnostics.yaml
   fw_update:       !include ../../common/addon/firmware_update${firmware_update_package_suffix}.yaml
+  voice_assistant: !include device/voice_assistant.yaml
 
   # ---------------------------------------------------------------------------
   # Screens (loading must be first page for LVGL startup)

@@ -326,6 +326,11 @@ def package_file_text(device: dict) -> str:
                 "fw_update",
                 f"!include ../../common/addon/firmware_update{firmware_update_suffix}.yaml",
             ),
+            *(
+                [include_line("voice_assistant", "!include device/voice_assistant.yaml")]
+                if package.get("voiceAssistantPackage")
+                else []
+            ),
             "",
             "  # ---------------------------------------------------------------------------",
             "  # Screens (loading must be first page for LVGL startup)",
