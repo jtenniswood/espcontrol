@@ -717,7 +717,6 @@ var CARD_CONTRACT_CARDS = {
     "label": "Lights",
     "allowInSubpage": true,
     "pickerKey": "light_brightness",
-    "experimental": "developer",
     "hidden": true,
     "domains": [
       "light"

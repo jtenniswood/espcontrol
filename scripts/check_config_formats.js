@@ -1525,7 +1525,7 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("light_switch"
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("light_temperature", false, false), false, "light temperature subtype hidden from top-level picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("light_temperature", false, true), false, "light temperature subtype hidden from subpage picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerForExperimental("light_control", false, false), false, "full light control subtype hidden from top-level picker");
-assert.strictEqual(hooks.buttonTypeRuntimeSpec("light_control").experimental, "developer", "full light control is behind developer features");
+assert.strictEqual(hooks.buttonTypeRuntimeSpec("light_control").experimental, "", "full light control is available without developer features");
 assert.strictEqual(hooks.buttonTypeRuntimeSpec("light_control").hidden, true, "full light control is grouped under Lights");
 assert.strictEqual(
   hooks.buttonTypePickerKeysForExperimental(false, false, "light_brightness").indexOf("light_brightness") >= 0,

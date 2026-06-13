@@ -599,7 +599,6 @@
       "label": "Lights",
       "allowInSubpage": true,
       "pickerKey": "light_brightness",
-      "experimental": "developer",
       "hidden": true,
       "domains": ["light"],
       "default": {
