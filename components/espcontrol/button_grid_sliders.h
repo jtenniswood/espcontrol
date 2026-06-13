@@ -265,9 +265,14 @@ inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin)
 inline void light_control_style_tab(lv_obj_t *btn, bool active, uint32_t accent_color) {
   if (!btn) return;
   (void) accent_color;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(active ? 0xFFFFFF : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_t *label = lv_obj_get_child(btn, 0);
+  if (label) {
+    lv_obj_set_style_text_color(
+      label, lv_color_hex(active ? 0x000000 : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  }
 }
 
 inline void light_control_apply_tab_visibility() {
@@ -302,6 +307,8 @@ inline void light_control_apply_tab_visibility() {
   light_control_style_tab(ui.color_tab, show_color, ctx->accent_color);
 }
 
+inline void light_control_layout_modal(LightControlCtx *ctx);
+
 inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                  const lv_font_t *font,
                                                  LightControlTab tab,
@@ -322,6 +329,7 @@ inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *i
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_obj_set_style_transform_zoom(label, 210, LV_PART_MAIN);
     lv_obj_center(label);
   }
   LightControlTab *tab_data = new LightControlTab(tab);
@@ -331,6 +339,7 @@ inline lv_obj_t *light_control_create_tab_button(lv_obj_t *parent, const char *i
     LightControlModalUi &ui = light_control_modal_ui();
     ui.tab = *tab;
     light_control_apply_tab_visibility();
+    light_control_layout_modal(ui.active);
   }, LV_EVENT_CLICKED, tab_data);
   return btn;
 }
@@ -343,6 +352,7 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   lv_coord_t tab_size = layout.back_size * 7 / 10;
   if (tab_size < 48) tab_size = 48;
   if (tab_size > 68) tab_size = 68;
+  lv_coord_t selected_tab_size = tab_size + tab_size / 8;
   lv_coord_t tab_frame_pad = tab_size / 5;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
   lv_coord_t tab_gap = tab_size / 4;
@@ -362,22 +372,24 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   lv_coord_t first_tab_x = (tab_frame_w - tabs_total_w) / 2;
   for (int i = 0; i < 3; i++) {
     if (!tabs[i]) continue;
-    lv_obj_set_size(tabs[i], tab_size, tab_size);
-    lv_obj_set_style_radius(tabs[i], tab_size / 2, LV_PART_MAIN);
+    bool active = (i == static_cast<int>(ui.tab));
+    lv_coord_t tab_btn_size = active ? selected_tab_size : tab_size;
+    lv_obj_set_size(tabs[i], tab_btn_size, tab_btn_size);
+    lv_obj_set_style_radius(tabs[i], tab_btn_size / 2, LV_PART_MAIN);
     lv_coord_t tab_x = first_tab_x + i * (tab_size + tab_gap);
-    lv_obj_align(tabs[i], LV_ALIGN_LEFT_MID, tab_x, 0);
+    lv_obj_align(tabs[i], LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
   }
 
-  lv_coord_t content_center_y = tab_frame_h / 2 + 22;
-  lv_coord_t slider_h = layout.panel_h - layout.inset * 4 - tab_frame_h - 28;
+  lv_coord_t content_center_y = tab_frame_h / 2 + 12;
+  lv_coord_t slider_h = layout.panel_h - layout.inset * 3 - tab_frame_h - 16;
   if (slider_h < 160) slider_h = layout.panel_h / 2;
   if (slider_w >= slider_h) slider_w = slider_h * 3 / 4;
   if (ui.slider) {
     lv_obj_set_size(ui.slider, slider_w, slider_h);
     lv_obj_align(ui.slider, LV_ALIGN_CENTER, 0, content_center_y);
     lv_coord_t slider_radius = slider_w / 4;
-    if (slider_radius < 34) slider_radius = 34;
-    if (slider_radius > 64) slider_radius = 64;
+    if (slider_radius < 22) slider_radius = 22;
+    if (slider_radius > 42) slider_radius = 42;
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_INDICATOR);
     lv_obj_set_style_width(ui.slider, 0, LV_PART_KNOB);
@@ -392,8 +404,8 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     lv_obj_set_size(ui.temp_slider, slider_w, slider_h);
     lv_obj_align(ui.temp_slider, LV_ALIGN_CENTER, 0, content_center_y);
     lv_coord_t slider_radius = slider_w / 4;
-    if (slider_radius < 34) slider_radius = 34;
-    if (slider_radius > 64) slider_radius = 64;
+    if (slider_radius < 22) slider_radius = 22;
+    if (slider_radius > 42) slider_radius = 42;
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_INDICATOR);
     lv_obj_set_style_width(ui.temp_slider, 0, LV_PART_KNOB);
