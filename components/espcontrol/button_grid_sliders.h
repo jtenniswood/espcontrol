@@ -411,7 +411,7 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     if (grid_side < 180) grid_side = 180;
     lv_obj_set_size(ui.color_grid, grid_side, grid_side);
     lv_obj_align(ui.color_grid, LV_ALIGN_CENTER, 0, content_center_y);
-    lv_coord_t gap = 8;
+    lv_coord_t gap = 14;
     lv_coord_t swatch = (grid_side - gap * 3) / 4;
     for (uint32_t i = 0; i < 16; i++) {
       lv_obj_t *btn = lv_obj_get_child(ui.color_grid, i);
