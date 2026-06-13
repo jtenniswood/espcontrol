@@ -240,6 +240,22 @@ inline void ha_action_add_data(esphome::api::HomeassistantActionRequest &req,
   kv.value = decltype(kv.value)(value ? value : "");
 }
 
+inline void ha_action_add_data_template(esphome::api::HomeassistantActionRequest &req,
+                                        const char *key,
+                                        const char *value) {
+  auto &kv = req.data_template.emplace_back();
+  kv.key = decltype(kv.key)(key ? key : "");
+  kv.value = decltype(kv.value)(value ? value : "");
+}
+
+inline void ha_action_add_variable(esphome::api::HomeassistantActionRequest &req,
+                                   const char *key,
+                                   const char *value) {
+  auto &kv = req.variables.emplace_back();
+  kv.key = decltype(kv.key)(key ? key : "");
+  kv.value = decltype(kv.value)(value ? value : "");
+}
+
 inline void ha_action_add_entity(esphome::api::HomeassistantActionRequest &req,
                                  const std::string &entity_id) {
   ha_action_add_data(req, "entity_id", entity_id.c_str());

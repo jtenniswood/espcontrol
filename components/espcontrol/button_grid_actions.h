@@ -385,6 +385,26 @@ inline void send_light_color_name_action(const std::string &entity_id, const cha
   ha_action_send(req);
 }
 
+inline void send_light_rgb_action(const std::string &entity_id, uint32_t color) {
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, "light.turn_on", false, 1)) return;
+  if (entity_id.empty()) return;
+  req.data_template.init(1);
+  req.variables.init(3);
+  ha_action_add_entity(req, entity_id);
+  ha_action_add_data_template(req, "rgb_color", "{{ [red | int, green | int, blue | int] }}");
+  char red[4];
+  char green[4];
+  char blue[4];
+  snprintf(red, sizeof(red), "%u", static_cast<unsigned>((color >> 16) & 0xFF));
+  snprintf(green, sizeof(green), "%u", static_cast<unsigned>((color >> 8) & 0xFF));
+  snprintf(blue, sizeof(blue), "%u", static_cast<unsigned>(color & 0xFF));
+  ha_action_add_variable(req, "red", red);
+  ha_action_add_variable(req, "green", green);
+  ha_action_add_variable(req, "blue", blue);
+  ha_action_send(req);
+}
+
 inline const char *light_temp_icon(const std::string &icon) {
   return (!icon.empty() && icon != "Auto") ? find_icon(icon.c_str()) : find_icon("Lightbulb");
 }
