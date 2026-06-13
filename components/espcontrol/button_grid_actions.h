@@ -376,6 +376,20 @@ inline void send_light_temp_action(const std::string &entity_id, int pct, int mi
   ha_action_send(req);
 }
 
+inline void send_light_rgb_color_action(const std::string &entity_id, uint32_t color) {
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
+  if (entity_id.empty()) return;
+  ha_action_add_entity(req, entity_id);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%u,%u,%u",
+    static_cast<unsigned>((color >> 16) & 0xFF),
+    static_cast<unsigned>((color >> 8) & 0xFF),
+    static_cast<unsigned>(color & 0xFF));
+  ha_action_add_data(req, "rgb_color", buf);
+  ha_action_send(req);
+}
+
 inline const char *light_temp_icon(const std::string &icon) {
   return (!icon.empty() && icon != "Auto") ? find_icon(icon.c_str()) : find_icon("Lightbulb");
 }
