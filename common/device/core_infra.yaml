@@ -30,7 +30,9 @@ api:
             } else if (host.find(':') != std::string::npos && host.front() != '[') {
               host = "[" + host + "]";
             }
-            id(cover_art_home_assistant_base_url) = "http://" + host + ":8123";
+            int port = static_cast<int>(id(cover_art_home_assistant_artwork_port).state);
+            id(cover_art_home_assistant_base_url) =
+              id(cover_art_home_assistant_artwork_protocol).state + "://" + host + ":" + std::to_string(port);
             ESP_LOGI("api", "Using Home Assistant base URL: %s",
                      id(cover_art_home_assistant_base_url).c_str());
           } else {
@@ -160,3 +162,42 @@ switch:
     icon: "mdi:flask-outline"
     web_server:
       sorting_group_id: sg_developer
+
+select:
+  - platform: template
+    name: "Home Assistant Artwork Protocol"
+    internal: true
+    id: cover_art_home_assistant_artwork_protocol
+    entity_category: config
+    icon: "mdi:protocol"
+    optimistic: true
+    restore_value: true
+    initial_option: "http"
+    options:
+      - "http"
+      - "https"
+    web_server:
+      sorting_group_id: sg_connectivity
+    set_action:
+      - lambda: |-
+          refresh_image_cards();
+
+number:
+  - platform: template
+    name: "Home Assistant Artwork Port"
+    internal: true
+    id: cover_art_home_assistant_artwork_port
+    entity_category: config
+    icon: "mdi:lan-connect"
+    optimistic: true
+    restore_value: true
+    initial_value: 8123
+    min_value: 1
+    max_value: 65535
+    step: 1
+    mode: box
+    web_server:
+      sorting_group_id: sg_connectivity
+    set_action:
+      - lambda: |-
+          refresh_image_cards();

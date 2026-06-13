@@ -69,6 +69,9 @@ globals:
   - id: cover_art_external_input_active
     type: bool
     initial_value: 'false'
+  - id: cover_art_attribute_conditions_match
+    type: bool
+    initial_value: 'true'
   - id: cover_art_subscribed_entity
     type: std::string
     initial_value: '""'
@@ -133,7 +136,9 @@ api:
         } else if (host.find(':') != std::string::npos && host.front() != '[') {
           host = "[" + host + "]";
         }
-        id(cover_art_home_assistant_base_url) = "http://" + host + ":8123";
+        int port = static_cast<int>(id(cover_art_home_assistant_artwork_port).state);
+        id(cover_art_home_assistant_base_url) =
+          id(cover_art_home_assistant_artwork_protocol).state + "://" + host + ":" + std::to_string(port);
         id(cover_art_api_wait_logged) = false;
         ESP_LOGI("cover_art", "Using Home Assistant artwork base URL: %s",
                  id(cover_art_home_assistant_base_url).c_str());
@@ -741,6 +746,7 @@ script:
           condition:
             lambda: |-
               return id(cover_art_screensaver_enabled).state &&
+                     id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
                      !id(cover_art_url).empty();
@@ -790,6 +796,7 @@ script:
             lambda: |-
               return id(cover_art_screensaver_active) &&
                      id(cover_art_screensaver_enabled).state &&
+                     id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
                      !id(cover_art_url).empty() &&
@@ -809,6 +816,7 @@ script:
               return id(cover_art_screensaver_active) &&
                      id(cover_art_screensaver_enabled).state &&
                      id(cover_art_media_playing) &&
+                     id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
                      (id(cover_art_url).empty() ||
@@ -826,6 +834,7 @@ script:
             lambda: |-
               return id(cover_art_screensaver_active) &&
                      id(cover_art_screensaver_enabled).state &&
+                     id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active));
           then:
@@ -890,6 +899,7 @@ script:
             lambda: |-
               return !id(cover_art_url).empty() &&
                      id(cover_art_screensaver_enabled).state &&
+                     id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
                      (!id(cover_art_image_available) ||
@@ -928,6 +938,7 @@ script:
             lambda: |-
               return !id(cover_art_url).empty() &&
                      id(cover_art_screensaver_enabled).state &&
+                     id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
                      id(cover_art_url) == id(cover_art_retry_url) &&
@@ -944,6 +955,7 @@ script:
                   lambda: |-
                     return !id(cover_art_url).empty() &&
                            id(cover_art_screensaver_enabled).state &&
+                           id(cover_art_attribute_conditions_match) &&
                            !(id(cover_art_hide_external_input_enabled).state &&
                              id(cover_art_external_input_active)) &&
                            id(cover_art_url) == id(cover_art_retry_url) &&
@@ -1175,6 +1187,7 @@ script:
             lambda: |-
               return id(cover_art_screensaver_enabled).state &&
                      id(cover_art_media_playing) &&
+                     id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
                      !id(cover_art_media_player_entity).state.empty();
@@ -1201,8 +1214,9 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(cover_art_hide_external_input_enabled).state &&
-                     id(cover_art_external_input_active);
+              return (id(cover_art_hide_external_input_enabled).state &&
+                      id(cover_art_external_input_active)) ||
+                     !id(cover_art_attribute_conditions_match);
           then:
             - script.stop: cover_art_delay_timer
             - script.stop: cover_art_show_track_overlay
@@ -1219,6 +1233,7 @@ script:
                   lambda: |-
                     return id(cover_art_screensaver_enabled).state &&
                            id(cover_art_media_playing) &&
+                           id(cover_art_attribute_conditions_match) &&
                            !id(cover_art_media_player_entity).state.empty();
                 then:
                   - script.execute: cover_art_playback_started
@@ -1229,6 +1244,7 @@ script:
       - lambda: |-
           if (!id(cover_art_screensaver_enabled).state ||
               !id(cover_art_screensaver_active) ||
+              !id(cover_art_attribute_conditions_match) ||
               (id(cover_art_hide_external_input_enabled).state &&
                id(cover_art_external_input_active))) {
             return;
@@ -1551,6 +1567,7 @@ script:
                        cover_entity.c_str(), next.c_str(), external ? "true" : "false");
               id(cover_art_apply_external_input_policy).execute();
               if (id(cover_art_screensaver_active) &&
+                  id(cover_art_attribute_conditions_match) &&
                   !(id(cover_art_hide_external_input_enabled).state &&
                     id(cover_art_external_input_active))) {
                 id(cover_art_request_artwork).execute();
@@ -1562,6 +1579,112 @@ script:
           }
           bool source_requested = ha_get_attribute(cover_entity, std::string("source"), handle_media_source);
           ESP_LOGI("cover_art", "Source refresh %s", source_requested ? "requested" : "failed");
+
+          auto parse_cover_art_conditions = []() {
+            std::vector<std::pair<std::string, std::string>> conditions;
+            std::string text = id(cover_art_attribute_conditions).state;
+            auto trim = [](std::string value) {
+              while (!value.empty() && value.front() <= ' ') value.erase(value.begin());
+              while (!value.empty() && value.back() <= ' ') value.pop_back();
+              if (value.size() >= 2 &&
+                  ((value.front() == '"' && value.back() == '"') ||
+                   (value.front() == '\'' && value.back() == '\''))) {
+                value = value.substr(1, value.size() - 2);
+              }
+              return value;
+            };
+            size_t start = 0;
+            while (start <= text.size() && conditions.size() < 8) {
+              size_t end = text.find_first_of("\n;", start);
+              std::string line = end == std::string::npos
+                  ? text.substr(start)
+                  : text.substr(start, end - start);
+              line = trim(line);
+              if (!line.empty()) {
+                size_t op = line.find("==");
+                size_t op_len = 2;
+                if (op == std::string::npos) {
+                  op = line.find('=');
+                  op_len = 1;
+                }
+                if (op == std::string::npos) {
+                  op = line.find(':');
+                  op_len = 1;
+                }
+                if (op != std::string::npos) {
+                  std::string attr = trim(line.substr(0, op));
+                  std::string expected = trim(line.substr(op + op_len));
+                  if (!attr.empty() && !expected.empty()) {
+                    conditions.push_back({attr, expected});
+                  }
+                }
+              }
+              if (end == std::string::npos) break;
+              start = end + 1;
+            }
+            return conditions;
+          };
+
+          auto cover_art_conditions = std::make_shared<std::vector<std::pair<std::string, std::string>>>(
+              parse_cover_art_conditions());
+          auto cover_art_condition_matches = std::make_shared<std::vector<bool>>(cover_art_conditions->size(), false);
+          id(cover_art_attribute_conditions_match) = cover_art_conditions->empty();
+          if (cover_art_conditions->empty()) {
+            ESP_LOGI("cover_art", "No cover art attribute conditions configured");
+          } else {
+            ESP_LOGI("cover_art", "Watching %u cover art attribute condition(s)",
+                     (unsigned) cover_art_conditions->size());
+          }
+
+          std::function<void()> apply_cover_art_condition_policy =
+            [cover_art_conditions, cover_art_condition_matches]() {
+              bool all_match = true;
+              for (size_t i = 0; i < cover_art_conditions->size(); i++) {
+                if (!(*cover_art_condition_matches)[i]) {
+                  all_match = false;
+                  break;
+                }
+              }
+              if (all_match == id(cover_art_attribute_conditions_match)) return;
+              id(cover_art_attribute_conditions_match) = all_match;
+              ESP_LOGI("cover_art", "Cover art attribute conditions %s",
+                       all_match ? "matched" : "not matched");
+              id(cover_art_apply_external_input_policy).execute();
+            };
+
+          for (size_t condition_index = 0; condition_index < cover_art_conditions->size(); condition_index++) {
+            const std::string attribute_name = (*cover_art_conditions)[condition_index].first;
+            std::function<void(esphome::StringRef)> handle_condition =
+              [cover_entity, subscription_generation, cover_art_conditions, cover_art_condition_matches,
+               apply_cover_art_condition_policy, condition_index](esphome::StringRef value) {
+                if (!id(cover_art_screensaver_enabled).state ||
+                    subscription_generation != id(cover_art_subscription_generation) ||
+                    cover_entity != id(cover_art_media_player_entity).state) return;
+                std::string actual = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+                if (actual == "unknown" || actual == "unavailable") actual.clear();
+                const std::string &attribute = (*cover_art_conditions)[condition_index].first;
+                const std::string &expected = (*cover_art_conditions)[condition_index].second;
+                bool matched = actual == expected;
+                if ((*cover_art_condition_matches)[condition_index] == matched) return;
+                (*cover_art_condition_matches)[condition_index] = matched;
+                ESP_LOGI("cover_art", "Attribute condition %s == %s is %s (actual '%s')",
+                         attribute.c_str(), expected.c_str(), matched ? "true" : "false",
+                         actual.c_str());
+                apply_cover_art_condition_policy();
+              };
+            if (!already_subscribed) {
+              bool condition_subscribed = ha_subscribe_attribute(
+                cover_entity,
+                attribute_name,
+                handle_condition
+              );
+              ESP_LOGI("cover_art", "Attribute condition subscription %s for %s",
+                       condition_subscribed ? "ready" : "failed", attribute_name.c_str());
+            }
+            bool condition_requested = ha_get_attribute(cover_entity, attribute_name, handle_condition);
+            ESP_LOGI("cover_art", "Attribute condition refresh %s for %s",
+                     condition_requested ? "requested" : "failed", attribute_name.c_str());
+          }
 
           auto handle_picture_change =
             [cover_entity, subscription_generation](esphome::StringRef picture, bool local) {
@@ -1723,6 +1846,7 @@ script:
           condition:
             lambda: |-
               return id(cover_art_screensaver_enabled).state &&
+                     id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active)) &&
                      !id(cover_art_media_player_entity).state.empty();

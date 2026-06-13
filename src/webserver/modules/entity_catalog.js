@@ -188,6 +188,15 @@ var ENTITY_CATALOG = {
         "cover_art_media_player_entity"
       ]
     },
+    "screen_saver_cover_art_conditions": {
+      "domain": "text",
+      "name": "Screen Saver: Cover Art Conditions",
+      "objectIds": [
+        "screen_saver__cover_art_conditions",
+        "screen_saver_cover_art_conditions",
+        "cover_art_attribute_conditions"
+      ]
+    },
     "screen_saver_cover_art_delay": {
       "domain": "number",
       "name": "Screen Saver: Cover Art Delay",
@@ -516,6 +525,7 @@ var ENTITY_CATALOG = {
       "media_player_sleep_prevention_entity",
       "screen_saver_cover_art",
       "screen_saver_cover_art_entity",
+      "screen_saver_cover_art_conditions",
       "screen_saver_cover_art_delay",
       "screen_saver_track_overlay_duration",
       "screen_saver_hide_cover_art_external_input",

@@ -59,6 +59,7 @@ function exportConfig() {
       media_player_sleep_prevention_entity: state.coverArtMediaPlayerEntity,
       cover_art_screensaver: state.coverArtScreensaverOn,
       cover_art_media_player_entity: state.coverArtMediaPlayerEntity,
+      cover_art_attribute_conditions: state.coverArtAttributeConditions,
       cover_art_delay: state.coverArtDelay,
       cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
       cover_art_hide_external_input: state.coverArtHideExternalInputOn,
@@ -239,6 +240,7 @@ function importConfig() {
         postSwitch(entityName("screen_saver_media_player_sleep_prevention"), importedSettings.mediaPlayerSleepPrevention);
         postSwitch(entityName("screen_saver_cover_art"), importedSettings.coverArtScreensaver);
         postText(entityName("screen_saver_cover_art_entity"), importedSettings.coverArtMediaPlayerEntity);
+        postText(entityName("screen_saver_cover_art_conditions"), importedSettings.coverArtAttributeConditions);
         postNumber(entityName("screen_saver_cover_art_delay"), importedSettings.coverArtDelay);
         postNumber(entityName("screen_saver_track_overlay_duration"), importedSettings.coverArtTrackOverlayDuration);
         postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
@@ -285,6 +287,7 @@ function importConfig() {
         state.mediaPlayerSleepPreventionEntity = importedSettings.coverArtMediaPlayerEntity;
         state.coverArtScreensaverOn = importedSettings.coverArtScreensaver;
         state.coverArtMediaPlayerEntity = importedSettings.coverArtMediaPlayerEntity;
+        state.coverArtAttributeConditions = importedSettings.coverArtAttributeConditions;
         state.coverArtDelay = importedSettings.coverArtDelay;
         state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
         state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
@@ -307,6 +310,7 @@ function importConfig() {
         syncInput(els.setPresence, state.presenceEntity);
         syncMediaPlayerSleepPreventionUi();
         syncInput(els.setCoverArtMediaPlayer, state.coverArtMediaPlayerEntity);
+        syncInput(els.setCoverArtConditions, state.coverArtAttributeConditions);
         syncCoverArtScreensaverUi();
         syncThemeUi();
         if (els.setTimezone) els.setTimezone.value = state.timezone;

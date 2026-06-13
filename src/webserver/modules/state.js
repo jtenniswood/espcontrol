@@ -86,6 +86,7 @@ var state = {
   mediaPlayerSleepPreventionEntity: "",
   coverArtScreensaverOn: false,
   coverArtMediaPlayerEntity: "",
+  coverArtAttributeConditions: "",
   coverArtDelay: 10,
   coverArtTrackOverlayDuration: 5,
   coverArtHideExternalInputOn: true,
