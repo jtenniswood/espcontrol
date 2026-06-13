@@ -634,7 +634,8 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   } else if (p.type == "media") {
     refresh_media_card_layout(s, p, cfg, row_span);
   } else if (brightness_slider_type(p.type) || p.type == "light_temperature" ||
-             (p.type == "cover" && !cover_command_mode(p.sensor) && !cover_toggle_mode(p.sensor))) {
+             (p.type == "cover" && !cover_modal_mode(p.sensor) &&
+              !cover_command_mode(p.sensor) && !cover_toggle_mode(p.sensor))) {
     refresh_slider_card_layout(s);
   }
 }
