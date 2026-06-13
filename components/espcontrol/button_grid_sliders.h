@@ -337,9 +337,7 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
   lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
   if (tab_frame_w > max_tab_frame_w) tab_frame_w = max_tab_frame_w;
-  lv_coord_t slider_w = layout.panel_w * 45 / 100;
-  if (slider_w < 150) slider_w = 150;
-  if (slider_w > tab_frame_w) slider_w = tab_frame_w;
+  lv_coord_t slider_w = tab_frame_w;
   if (ui.tab_row) {
     lv_obj_set_size(ui.tab_row, tab_frame_w, tab_frame_h);
     lv_obj_set_style_radius(ui.tab_row, tab_frame_h / 2, LV_PART_MAIN);
