@@ -112,6 +112,9 @@ inline MediaVolumeModalUi &media_volume_modal_ui() {
   return ui;
 }
 
+inline int slider_clamp_pct(int pct);
+inline bool slider_parse_light_brightness_pct(esphome::StringRef val, int &pct);
+
 struct LightControlCtx {
   std::string entity_id;
   std::string label;
