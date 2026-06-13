@@ -595,6 +595,24 @@
         "options": ""
       }
     },
+    "light_control": {
+      "label": "Lights",
+      "allowInSubpage": true,
+      "pickerKey": "light_brightness",
+      "hidden": true,
+      "domains": ["light"],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Lightbulb Outline",
+        "icon_on": "Lightbulb",
+        "sensor": "",
+        "unit": "",
+        "type": "light_control",
+        "precision": "",
+        "options": ""
+      }
+    },
     "lock": {
       "label": "Lock",
       "allowInSubpage": true,
@@ -1103,6 +1121,7 @@
     "fan_preset": "Z",
     "light_brightness": "V",
     "light_switch": "Q",
+    "light_control": "LC",
     "alarm": "Y",
     "alarm_action": "AA",
     "slider": "L",

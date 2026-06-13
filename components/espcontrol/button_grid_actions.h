@@ -376,6 +376,35 @@ inline void send_light_temp_action(const std::string &entity_id, int pct, int mi
   ha_action_send(req);
 }
 
+inline void send_light_color_name_action(const std::string &entity_id, const char *color_name) {
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
+  if (entity_id.empty() || !color_name || color_name[0] == '\0') return;
+  ha_action_add_entity(req, entity_id);
+  ha_action_add_data(req, "color_name", color_name);
+  ha_action_send(req);
+}
+
+inline void send_light_rgb_action(const std::string &entity_id, uint32_t color) {
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, "light.turn_on", false, 1)) return;
+  if (entity_id.empty()) return;
+  req.data_template.init(1);
+  req.variables.init(3);
+  ha_action_add_entity(req, entity_id);
+  ha_action_add_data_template(req, "rgb_color", "{{ [red | int, green | int, blue | int] }}");
+  char red[4];
+  char green[4];
+  char blue[4];
+  snprintf(red, sizeof(red), "%u", static_cast<unsigned>((color >> 16) & 0xFF));
+  snprintf(green, sizeof(green), "%u", static_cast<unsigned>((color >> 8) & 0xFF));
+  snprintf(blue, sizeof(blue), "%u", static_cast<unsigned>(color & 0xFF));
+  ha_action_add_variable(req, "red", red);
+  ha_action_add_variable(req, "green", green);
+  ha_action_add_variable(req, "blue", blue);
+  ha_action_send(req);
+}
+
 inline const char *light_temp_icon(const std::string &icon) {
   return (!icon.empty() && icon != "Auto") ? find_icon(icon.c_str()) : find_icon("Lightbulb");
 }
@@ -482,6 +511,8 @@ inline bool alarm_action_context_valid(AlarmActionCtx *action);
 struct FanCardCtx;
 inline bool fan_non_speed_card_type(const std::string &type);
 inline void fan_card_handle_click(FanCardCtx *ctx);
+struct LightControlCtx;
+inline void light_control_open_modal(LightControlCtx *ctx);
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
@@ -524,6 +555,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (fan_non_speed_card_type(p.type)) {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_card_handle_click(ctx);
+  } else if (p.type == "light_control") {
+    LightControlCtx *ctx = (LightControlCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) light_control_open_modal(ctx);
   } else if (p.type == "garage") {
     if (garage_card_show_status(p)) {
       return;

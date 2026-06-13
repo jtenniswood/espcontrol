@@ -421,6 +421,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s.text_lbl, p, display_icon_font(display));
     return;
   }
+  if (p.type == "light_control") {
+    setup_light_control_card(s, p);
+    return;
+  }
   if (brightness_slider_type(p.type) || p.type == "cover") {
     setup_slider_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
     return;
@@ -1161,6 +1165,21 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "light_control") {
+      if (!p.entity.empty()) {
+        LightControlCtx *ctx = create_light_control_context(
+          s, p,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          display_volume_number_font(display),
+          display_volume_label_font(display)
+            ? display_volume_label_font(display)
+            : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+          display_icon_font(display),
+          display_volume_width_percent(display));
+        subscribe_light_control_state(ctx);
+      }
+      continue;
+    }
 
     if (p.entity.empty()) continue;
 
@@ -1757,6 +1776,21 @@ inline void grid_phase2(
             ClimateControlCtx *ctx = (ClimateControlCtx *)lv_event_get_user_data(e);
             if (ctx) climate_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
+        }
+        continue;
+      }
+      if (sb_cfg.type == "light_control") {
+        if (!sb_cfg.entity.empty()) {
+          LightControlCtx *ctx = create_light_control_context(
+            sub_slot, sb_cfg,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            display_volume_number_font(display),
+            display_volume_label_font(display)
+              ? display_volume_label_font(display)
+              : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_icon_font(display),
+            display_volume_width_percent(display));
+          subscribe_light_control_state(ctx);
         }
         continue;
       }

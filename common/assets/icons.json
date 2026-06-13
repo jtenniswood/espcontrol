@@ -935,6 +935,11 @@
       "mdi": "stove"
     },
     {
+      "name": "Palette",
+      "codepoint": "F03D8",
+      "mdi": "palette"
+    },
+    {
       "name": "Package",
       "codepoint": "F03D6",
       "mdi": "package-variant"
