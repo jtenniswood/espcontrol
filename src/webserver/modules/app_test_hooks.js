@@ -145,6 +145,13 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         return option.value;
       });
     },
+    coverModeOptionLabelsForExperimental: function (enabled, currentMode) {
+      var oldExperimental = state.developerExperimentalFeatures;
+      state.developerExperimentalFeatures = !!enabled;
+      var options = coverModeOptionsForSettings(currentMode || "");
+      state.developerExperimentalFeatures = oldExperimental;
+      return options.map(function (option) { return option[0] + ":" + option[1]; });
+    },
     normalizeAlarmOptions: normalizeAlarmOptions,
     buttonTypePickerKeysForExperimental: function (enabled, isSub, selectedTypeKey) {
       var oldExperimental = state.developerExperimentalFeatures;

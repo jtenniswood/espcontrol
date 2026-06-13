@@ -19,6 +19,26 @@ function normalizeCoverMode(mode, allowCommands) {
   return coverModeOptionValues(allowCommands).indexOf(mode) >= 0 ? mode : "";
 }
 
+function coverModalModeEnabled() {
+  return typeof isExperimentalEnabled === "function" && isExperimentalEnabled("developer");
+}
+
+function coverModeOptionsForSettings(currentMode) {
+  var showModal = coverModalModeEnabled() || currentMode === "modal";
+  return [
+    ["modal", showModal && !coverModalModeEnabled() ? "Modal (experimental)" : "Modal"],
+    ["", "Slider: Position"],
+    ["tilt", "Slider: Tilt"],
+    ["toggle", "Toggle"],
+    ["open", "Open"],
+    ["close", "Close"],
+    ["stop", "Stop"],
+    ["set_position", "Set Position"],
+  ].filter(function (option) {
+    return option[0] !== "modal" || showModal;
+  });
+}
+
 function normalizeCoverPosition(value) {
   var n = parseInt(value, 10);
   var spec = cardContractOptionSpec("cover", "cover_position") || {};
@@ -54,16 +74,7 @@ function sliderCardMetadata(opts) {
       mode: {
         label: "Type",
         idSuffix: "cover-interaction",
-        options: [
-          ["modal", "Modal"],
-          ["", "Slider: Position"],
-          ["tilt", "Slider: Tilt"],
-          ["toggle", "Toggle"],
-          ["open", "Open"],
-          ["close", "Close"],
-          ["stop", "Stop"],
-          ["set_position", "Set Position"],
-        ],
+        options: function (b) { return coverModeOptionsForSettings(normalizeCoverMode(b && b.sensor, true)); },
         value: function (b) {
           return normalizeCoverMode(b.sensor, true);
         },
@@ -99,7 +110,8 @@ function sliderTypeFactory(opts) {
     defaultConfig: function () { return cardContractDefaultConfig(opts.type); },
     cardMetadata: metadata,
     onSelect: function (b) {
-      b.sensor = ""; b.unit = "";
+      b.sensor = opts.type === "cover" && coverModalModeEnabled() ? "modal" : "";
+      b.unit = "";
       b.icon = opts.defaultIcon;
       b.icon_on = opts.defaultIconOn;
     },

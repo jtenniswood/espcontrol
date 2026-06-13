@@ -408,6 +408,21 @@ assert.deepStrictEqual(
 );
 assert.strictEqual(hooks.normalizeCoverMode("modal", true), "modal", "cover modal mode normalizes from spec");
 assert.strictEqual(hooks.normalizeCoverMode("set_position", true), "set_position", "cover command mode normalizes from spec");
+assert.deepStrictEqual(
+  Array.from(hooks.coverModeOptionLabelsForExperimental(false, "")),
+  [":Slider: Position", "tilt:Slider: Tilt", "toggle:Toggle", "open:Open", "close:Close", "stop:Stop", "set_position:Set Position"],
+  "cover modal option is hidden when developer features are off"
+);
+assert.deepStrictEqual(
+  Array.from(hooks.coverModeOptionLabelsForExperimental(true, "")),
+  ["modal:Modal", ":Slider: Position", "tilt:Slider: Tilt", "toggle:Toggle", "open:Open", "close:Close", "stop:Stop", "set_position:Set Position"],
+  "cover modal option is visible when developer features are on"
+);
+assert.deepStrictEqual(
+  Array.from(hooks.coverModeOptionLabelsForExperimental(false, "modal")),
+  ["modal:Modal (experimental)", ":Slider: Position", "tilt:Slider: Tilt", "toggle:Toggle", "open:Open", "close:Close", "stop:Stop", "set_position:Set Position"],
+  "saved cover modal cards remain represented when developer features are off"
+);
 assert.strictEqual(hooks.normalizeCoverMode("set_position", false), "", "cover command mode is rejected when commands are disabled");
 assert.strictEqual(hooks.normalizeCoverPosition("-1"), "0", "cover position spec clamps minimum");
 assert.strictEqual(hooks.normalizeCoverPosition("101"), "100", "cover position spec clamps maximum");

@@ -396,7 +396,7 @@ var CARD_CONTRACT_CARDS = {
           "stop",
           "set_position"
         ],
-        "defaultValue": "modal"
+        "defaultValue": ""
       },
       {
         "name": "cover_position",
@@ -423,7 +423,7 @@ var CARD_CONTRACT_CARDS = {
       "label": "",
       "icon": "Blinds",
       "icon_on": "Blinds Open",
-      "sensor": "modal",
+      "sensor": "",
       "unit": "",
       "type": "cover",
       "precision": "",
