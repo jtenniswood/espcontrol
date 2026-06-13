@@ -366,9 +366,9 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   if (ui.slider) {
     lv_obj_set_size(ui.slider, slider_w, slider_h);
     lv_obj_align(ui.slider, LV_ALIGN_CENTER, 0, content_center_y);
-    lv_coord_t slider_radius = slider_w / 4;
-    if (slider_radius < 22) slider_radius = 22;
-    if (slider_radius > 42) slider_radius = 42;
+    lv_coord_t slider_radius = slider_w / 5;
+    if (slider_radius < 18) slider_radius = 18;
+    if (slider_radius > 34) slider_radius = 34;
     lv_obj_set_style_radius(ui.slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.slider, 0, LV_PART_INDICATOR);
     lv_obj_set_style_width(ui.slider, 0, LV_PART_KNOB);
@@ -377,9 +377,9 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   if (ui.temp_slider) {
     lv_obj_set_size(ui.temp_slider, slider_w, slider_h);
     lv_obj_align(ui.temp_slider, LV_ALIGN_CENTER, 0, content_center_y);
-    lv_coord_t slider_radius = slider_w / 4;
-    if (slider_radius < 22) slider_radius = 22;
-    if (slider_radius > 42) slider_radius = 42;
+    lv_coord_t slider_radius = slider_w / 5;
+    if (slider_radius < 18) slider_radius = 18;
+    if (slider_radius > 34) slider_radius = 34;
     lv_obj_set_style_radius(ui.temp_slider, slider_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.temp_slider, 0, LV_PART_INDICATOR);
     lv_obj_set_style_width(ui.temp_slider, 0, LV_PART_KNOB);
