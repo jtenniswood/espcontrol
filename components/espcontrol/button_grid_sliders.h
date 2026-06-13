@@ -593,7 +593,10 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
     for (int i = 0; i < 3; i++) {
       if (!buttons[i]) continue;
       lv_obj_set_size(buttons[i], btn_w, btn_h);
-      lv_obj_set_style_radius(buttons[i], btn_h / 2, LV_PART_MAIN);
+      lv_coord_t btn_radius = btn_h / 5;
+      if (btn_radius < 8) btn_radius = 8;
+      if (btn_radius > 14) btn_radius = 14;
+      lv_obj_set_style_radius(buttons[i], btn_radius, LV_PART_MAIN);
       lv_obj_align(buttons[i], LV_ALIGN_TOP_MID, 0, start_y + i * (btn_h + gap));
       lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
       if (label) lv_obj_center(label);
