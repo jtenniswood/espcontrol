@@ -532,10 +532,10 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   }, LV_EVENT_PRESS_LOST, nullptr);
 
   static constexpr LightColorPreset COLOR_PRESETS[16] = {
-    {0xFFF4D6}, {0xFFD400}, {0xFF7A00}, {0xFF2600},
-    {0xFFFFFF}, {0x7ED321}, {0x00C853}, {0x00B8D4},
-    {0xB0BEC5}, {0x00E5FF}, {0x2979FF}, {0x3D5AFE},
-    {0xFF4081}, {0xD500F9}, {0x7C4DFF}, {0xFF1744},
+    {0xFFE6B3}, {0xFFFFFF}, {0xDCEBFF}, {0xFFD400},
+    {0xFF7A00}, {0xFF2600}, {0xFF1744}, {0xFF4081},
+    {0xD500F9}, {0x7C4DFF}, {0x2979FF}, {0x00E5FF},
+    {0x00B8D4}, {0x00C853}, {0x7ED321}, {0xAEEA00},
   };
   ui.color_grid = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.color_grid, LV_OPA_TRANSP, LV_PART_MAIN);
