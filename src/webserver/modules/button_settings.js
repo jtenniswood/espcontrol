@@ -769,6 +769,7 @@ function renderButtonSettings(forceOpen) {
     renderCardOptionToggle: renderCardOptionToggle,
     renderCardActiveColorToggle: renderCardActiveColorToggle,
     renderBasicCardFields: renderBasicCardFields,
+    renderCameraAttachmentSettings: renderCameraAttachmentSettings,
     renderCardSegmentControl: renderCardSegmentControl,
     requireField: requireField,
     clearFieldError: clearFieldError,

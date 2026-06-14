@@ -339,6 +339,75 @@ function renderBasicCardFields(panel, b, helpers, metadata, options) {
   }
 }
 
+function cameraAttachmentModalModeOptions() {
+  return [
+    ["fill", "Crop to fit"],
+    ["fit", "Show full image"],
+  ];
+}
+
+function cameraAttachmentTapModeOptions() {
+  return [
+    ["action", "Run card action"],
+    ["modal", "Open camera"],
+  ];
+}
+
+function renderCameraAttachmentSettings(panel, b, helpers, metadata) {
+  metadata = metadata || {};
+  var domains = cardMetadataValue(metadata.domains, b, helpers) || ["camera", "image"];
+  var entityField = helpers.entityField(
+    metadata.label || "Camera Entity",
+    helpers.idPrefix + (metadata.idSuffix || "camera-entity"),
+    cameraAttachmentEntity(b),
+    metadata.placeholder || "e.g. camera.front_door",
+    domains,
+    "",
+    true,
+    metadata.requiredMessage || ""
+  );
+  panel.appendChild(entityField.field);
+  entityField.input.addEventListener("input", function () {
+    setCameraAttachmentEntity(b, this.value);
+    helpers.saveField("options", b.options);
+    if (metadata.rerender !== false) renderPreview();
+  });
+
+  var modeField = helpers.selectField(
+    metadata.modalLabel || "Expanded Image",
+    helpers.idPrefix + (metadata.modalIdSuffix || "camera-modal-mode"),
+    cameraAttachmentModalModeOptions(),
+    cameraAttachmentModalMode(b)
+  );
+  panel.appendChild(modeField.field);
+  modeField.select.addEventListener("change", function () {
+    setCameraAttachmentModalMode(b, this.value);
+    helpers.saveField("options", b.options);
+  });
+
+  if (metadata.allowTapMode) {
+    var tapField = helpers.selectField(
+      metadata.tapLabel || "Tap",
+      helpers.idPrefix + (metadata.tapIdSuffix || "camera-tap-mode"),
+      cameraAttachmentTapModeOptions(),
+      cameraAttachmentTapMode(b)
+    );
+    panel.appendChild(tapField.field);
+    tapField.select.addEventListener("change", function () {
+      setCameraAttachmentTapMode(b, this.value);
+      helpers.saveField("options", b.options);
+    });
+  }
+}
+
+function cameraAttachmentPreviewHtml(helpers, iconName) {
+  var tertiaryColor = (typeof state !== "undefined" && state.sensorColor) ? state.sensorColor : "212121";
+  var iconSlugName = iconSlug(iconName || "camera");
+  return '<span class="sp-image-preview sp-camera-attachment-preview" style="background:#' +
+    helpers.escHtml(tertiaryColor) + '"><span class="sp-image-preview-icon mdi mdi-' +
+    helpers.escHtml(iconSlugName) + '"></span></span>';
+}
+
 function renderCardSegmentControl(panel, b, helpers, metadata) {
   metadata = metadata || {};
   var segment = metadata.segment || metadata;

@@ -692,8 +692,13 @@ def firmware_cover_art_disable_errors(path: Path, root: Path) -> list[str]:
     return errors
 
 
+def image_card_engine_path(firmware_dir: Path) -> Path:
+    camera_path = firmware_dir / "button_grid_camera.h"
+    return camera_path if camera_path.exists() else firmware_dir / "button_grid_image.h"
+
+
 def firmware_image_card_entity_errors(firmware_dir: Path, root: Path) -> list[str]:
-    path = firmware_dir / "button_grid_image.h"
+    path = image_card_engine_path(firmware_dir)
     if not path.exists():
         return []
     rel = path.relative_to(root)
@@ -713,7 +718,7 @@ def firmware_image_card_entity_errors(firmware_dir: Path, root: Path) -> list[st
 
 
 def firmware_image_card_base_url_errors(firmware_dir: Path, root: Path) -> list[str]:
-    path = firmware_dir / "button_grid_image.h"
+    path = image_card_engine_path(firmware_dir)
     if not path.exists():
         return []
     rel = path.relative_to(root)
@@ -732,7 +737,7 @@ def firmware_image_card_base_url_errors(firmware_dir: Path, root: Path) -> list[
 
 
 def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[str]:
-    path = firmware_dir / "button_grid_image.h"
+    path = image_card_engine_path(firmware_dir)
     if not path.exists():
         return []
     rel = path.relative_to(root)
@@ -824,7 +829,7 @@ def firmware_image_card_startup_errors(
     core_infra_path: Path,
     root: Path,
 ) -> list[str]:
-    path = firmware_dir / "button_grid_image.h"
+    path = image_card_engine_path(firmware_dir)
     if not path.exists():
         return []
     rel = path.relative_to(root)

@@ -68,6 +68,7 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
     navigation_path = firmware_dir / "button_grid_navigation.h"
     grid_path = firmware_dir / "button_grid_grid.h"
     image_path = firmware_dir / "button_grid_image.h"
+    camera_path = firmware_dir / "button_grid_camera.h"
     backlight_path = root / "common" / "addon" / "backlight.yaml"
     schedule_path = root / "common" / "addon" / "backlight_schedule.yaml"
     generator_path = root / "scripts" / "generate_device_slots.py"
@@ -122,13 +123,15 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
                 "components/espcontrol/button_grid_navigation.h: close modals through a display-takeover helper"
             )
 
-    if not image_path.exists():
-        errors.append("components/espcontrol/button_grid_image.h: wire image modals to display-takeover guards")
+    image_engine_path = camera_path if camera_path.exists() else image_path
+    if not image_engine_path.exists():
+        errors.append("components/espcontrol/button_grid_camera.h: wire image modals to display-takeover guards")
     else:
-        text = image_path.read_text(encoding="utf-8")
+        text = image_engine_path.read_text(encoding="utf-8")
+        rel = image_engine_path.relative_to(root)
         if "pause_home_idle" in text or "resume_home_idle" in text:
             errors.append(
-                "components/espcontrol/button_grid_image.h: name image modal guards after display takeover, not home idle"
+                f"{rel}: name image modal guards after display takeover, not home idle"
             )
         if (
             "suspend_display_takeover" not in text
@@ -137,7 +140,7 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
             or "ctx->resume_display_takeover" not in text
         ):
             errors.append(
-                "components/espcontrol/button_grid_image.h: keep image modal display-takeover suspend/resume hooks"
+                f"{rel}: keep image modal display-takeover suspend/resume hooks"
             )
 
     if not grid_path.exists():
