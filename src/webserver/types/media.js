@@ -7,7 +7,7 @@ function mediaBehaviorSpec() {
 function mediaModeOptionValues() {
   var spec = cardContractOptionSpec("media", "media_mode");
   return spec && spec.values ? spec.values.slice() :
-    ["play_pause", "previous", "next", "volume", "position", "now_playing"];
+    ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"];
 }
 
 function mediaDefaultMode() {
@@ -48,11 +48,30 @@ function mediaNowPlayingPlayPauseEnabled(b) {
   return mediaNowPlayingControls(b) === "play_pause";
 }
 
+function mediaLabelIsGenerated(label) {
+  label = String(label || "").trim();
+  return !label || [
+    "Media",
+    "Play/Pause",
+    "Previous",
+    "Skip Previous",
+    "Next",
+    "Skip Next",
+    "Volume",
+    "Position",
+    "Now Playing",
+    "Media Control",
+    "Media Control Modal",
+    "All Controls",
+  ].indexOf(label) >= 0;
+}
+
 var MEDIA_CARD_METADATA = {
   mode: {
     label: "Type",
     idSuffix: "media-mode",
     options: [
+      ["control_modal", "All Controls"],
       ["play_pause", "Play/Pause Button"],
       ["previous", "Previous Button"],
       ["next", "Next Button"],
@@ -89,6 +108,22 @@ var MEDIA_CARD_METADATA = {
       ["", "None"],
       ["progress", "Track Position"],
       ["play_pause", "Play/Pause"],
+    ],
+  },
+  controlLabelDisplay: {
+    label: "Label",
+    inputId: "media-control-label-display",
+    options: [
+      ["label", "Label"],
+      ["status", "State"],
+    ],
+  },
+  controlNumberDisplay: {
+    label: "Top Left",
+    inputId: "media-control-number-display",
+    options: [
+      ["icon", "Icon"],
+      ["volume", "Volume"],
     ],
   },
   largeNumbers: {
@@ -161,6 +196,7 @@ registerButtonType("media", {
       if (mode === "volume") return "Volume High";
       if (mode === "position") return "Progress Clock";
       if (mode === "now_playing") return "Music";
+      if (mode === "control_modal") return "Play Pause";
       if (mode === "playlist") return "Music";
       return "Play Pause";
     }
@@ -177,6 +213,7 @@ registerButtonType("media", {
       if (mode === "next") return "Next";
       if (mode === "volume") return "Volume";
       if (mode === "play_pause") return "Play/Pause";
+      if (mode === "control_modal") return "All Controls";
       if (mode === "playlist") return "Playlist";
       return "";
     }
@@ -228,6 +265,14 @@ registerButtonType("media", {
             b.icon = "Auto";
             helpers.saveField("icon", b.icon);
           }
+          if (b.sensor === "control_modal" && mediaLabelIsGenerated(b.label)) {
+            b.label = mediaActionLabel(b.sensor);
+            helpers.saveField("label", b.label);
+          }
+          if (b.sensor === "control_modal") {
+            b.icon = "Auto";
+            helpers.saveField("icon", b.icon);
+          }
           var normalizedOptions = normalizeMediaOptions(b.options, b.sensor);
           if (b.options !== normalizedOptions) {
             b.options = normalizedOptions;
@@ -274,6 +319,14 @@ registerButtonType("media", {
       }
     }
     if (b.sensor === "play_pause" && b.icon !== "Auto") {
+      b.icon = "Auto";
+      helpers.saveField("icon", b.icon);
+    }
+    if (b.sensor === "control_modal" && mediaLabelIsGenerated(b.label)) {
+      b.label = "All Controls";
+      helpers.saveField("label", b.label);
+    }
+    if (b.sensor === "control_modal" && b.icon !== "Auto") {
       b.icon = "Auto";
       helpers.saveField("icon", b.icon);
     }
@@ -356,7 +409,36 @@ registerButtonType("media", {
       }
     }
 
+    if (b.sensor === "control_modal") {
+      var labelDisplay = helpers.renderCardSegmentControl(panel, b, helpers, {
+        segment: Object.assign({}, MEDIA_CARD_METADATA.controlLabelDisplay, {
+          inputId: helpers.idPrefix + "media-control-label-display",
+          value: function () { return mediaLabelDisplayMode(b); },
+          onSelect: function (button, cardHelpers, value) {
+            setMediaLabelDisplayMode(button, value);
+            cardHelpers.saveField("options", button.options);
+            renderButtonSettings();
+          },
+        }),
+      });
+      labelDisplay.segment.classList.add("sp-segment-scroll");
+
+      var numberDisplay = helpers.renderCardSegmentControl(panel, b, helpers, {
+        segment: Object.assign({}, MEDIA_CARD_METADATA.controlNumberDisplay, {
+          inputId: helpers.idPrefix + "media-control-number-display",
+          value: function () { return mediaNumberDisplayMode(b); },
+          onSelect: function (button, cardHelpers, value) {
+            setMediaNumberDisplayMode(button, value);
+            cardHelpers.saveField("options", button.options);
+            renderButtonSettings();
+          },
+        }),
+      });
+      numberDisplay.segment.classList.add("sp-segment-scroll");
+    }
+
     if (b.sensor !== "now_playing" &&
+        b.sensor !== "control_modal" &&
         b.sensor !== "playlist" &&
         (b.sensor !== "play_pause" || b.precision !== "state") &&
         (b.sensor !== "position" || b.precision !== "state")) {
@@ -473,7 +555,8 @@ registerButtonType("media", {
     }
 
     if (b.sensor !== "play_pause" && b.sensor !== "now_playing" &&
-        b.sensor !== "position" && b.sensor !== "volume") {
+        b.sensor !== "position" && b.sensor !== "volume" &&
+        b.sensor !== "control_modal") {
       helpers.renderCardIconPicker(panel, b, helpers, {
         pickerIdSuffix: "icon-picker",
         idSuffix: "icon",
@@ -490,12 +573,22 @@ registerButtonType("media", {
       if (value === "volume") return { mode: "volume", label: "Volume", icon: "volume-high" };
       if (value === "position") return { mode: "position", label: "Position", icon: "progress-clock" };
       if (value === "now_playing") return { mode: "now_playing", label: "Now Playing", icon: "music" };
+      if (value === "control_modal") return { mode: "control_modal", label: "All Controls", icon: "play-pause" };
       if (value === "playlist") return { mode: "playlist", label: "Playlist", icon: "music" };
       return { mode: "play_pause", label: "Play/Pause", icon: "play-pause" };
     }
     var info = modeInfo(mediaEditorValidMode(b.sensor));
     var mode = info.mode;
     var label = (b.label && b.label.trim()) || info.label;
+    if (mode === "control_modal") {
+      return {
+        iconHtml: mediaNumberDisplayMode(b) === "volume"
+          ? cardSensorPreviewHtml(b, helpers, "42", null)
+          : '<span class="sp-btn-icon mdi mdi-' + info.icon + '"></span>',
+        labelHtml: cardBadgeLabelHtml(helpers, mediaLabelDisplayMode(b) === "status" ? "Playing" : label,
+          MEDIA_CARD_METADATA.preview.badge),
+      };
+    }
     if (mode === "volume") {
       return {
         iconHtml: cardSensorPreviewHtml(b, helpers, "42", null),

@@ -803,7 +803,7 @@
           "name": "media_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
+          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
           "defaultValue": "play_pause"
         },
         {
@@ -828,6 +828,20 @@
           "max": 100,
           "step": 1,
           "defaultValue": "100"
+        },
+        {
+          "name": "label_display",
+          "label": "Label Display",
+          "kind": "choice",
+          "values": ["label", "status"],
+          "defaultValue": "label"
+        },
+        {
+          "name": "number_display",
+          "label": "Top Left Display",
+          "kind": "choice",
+          "values": ["icon", "volume"],
+          "defaultValue": "icon"
         },
         {
           "name": "playlist_content_id",
