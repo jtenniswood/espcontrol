@@ -13,7 +13,7 @@ name: Community Pages
 
 on:
   push:
-    branches: [community/seeed-sensecap-indicator-d1]
+    branches: [add-sensecap-indicator-d1]
   workflow_run:
     workflows: ["Community Release"]
     types: [completed]

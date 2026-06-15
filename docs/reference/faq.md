@@ -96,7 +96,7 @@ EspControl currently supports these touchscreen panels:
 
 All officially supported panels use the same firmware features, card configuration, and web UI. The grid layout automatically matches each panel's screen size and orientation.
 
-This fork also includes a community-maintained **SenseCAP Indicator D1** build on the `community/seeed-sensecap-indicator-d1` branch. That hardware is not officially supported by upstream EspControl, so firmware, testing, and user support are community-provided.
+This fork also includes a community-maintained **SenseCAP Indicator D1** build on the `add-sensecap-indicator-d1` branch. That hardware is not officially supported by upstream EspControl, so firmware, testing, and user support are community-provided.
 
 ## Does the Panel Work with Other Smart Home Platforms?
 

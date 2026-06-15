@@ -17,7 +17,7 @@ Start here: **[Install EspControl](/getting-started/install)**.
 **Source code and issues:** [github.com/jtenniswood/espcontrol](https://github.com/jtenniswood/espcontrol).
 
 ::: warning Community device in this fork
-The Seeed SenseCAP Indicator D1 build in this branch is community-maintained at [github.com/davidmerrique/espcontrol](https://github.com/davidmerrique/espcontrol) on `community/seeed-sensecap-indicator-d1`. It is not officially supported by upstream EspControl.
+The Seeed SenseCAP Indicator D1 build in this branch is community-maintained at [github.com/davidmerrique/espcontrol](https://github.com/davidmerrique/espcontrol) on `add-sensecap-indicator-d1`. It is not officially supported by upstream EspControl.
 :::
 
 ## What You Can Build

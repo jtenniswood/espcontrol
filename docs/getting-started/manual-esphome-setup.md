@@ -33,7 +33,7 @@ Each screen uses a different ESPHome package file. Pick the one that matches you
 | Seeed SenseCAP Indicator D1 (community) | `devices/seeed-sensecap-indicator-d1/packages.yaml` |
 
 ::: warning SenseCAP Indicator D1 support
-The SenseCAP Indicator D1 package is community-maintained in the `davidmerrique/espcontrol` fork on the `community/seeed-sensecap-indicator-d1` branch. It is not officially supported by upstream EspControl.
+The SenseCAP Indicator D1 package is community-maintained in the `davidmerrique/espcontrol` fork on the `add-sensecap-indicator-d1` branch. It is not officially supported by upstream EspControl.
 :::
 
 ## ESPHome Device Builder

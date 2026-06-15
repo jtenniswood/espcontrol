@@ -12,7 +12,7 @@
 # shorthand accepts a directory path or github://owner/repo@ref; a relative
 # `type: git` URL is rejected since ESPHome 2026.5.
 substitutions:
-  espcontrol_component_source: "github://davidmerrique/espcontrol@community/seeed-sensecap-indicator-d1"
+  espcontrol_component_source: "github://davidmerrique/espcontrol@add-sensecap-indicator-d1"
 
 # ---------------------------------------------------------------------------
 # ESP32-S3 platform (8MB flash, ESP-IDF framework)

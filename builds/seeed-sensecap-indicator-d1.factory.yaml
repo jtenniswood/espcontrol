@@ -21,7 +21,7 @@ esphome:
     version: "${firmware_version}"
 
 dashboard_import:
-  package_import_url: github://davidmerrique/espcontrol/devices/seeed-sensecap-indicator-d1/esphome.yaml@community/seeed-sensecap-indicator-d1
+  package_import_url: github://davidmerrique/espcontrol/devices/seeed-sensecap-indicator-d1/esphome.yaml@add-sensecap-indicator-d1
 
 web_server:
   port: 80

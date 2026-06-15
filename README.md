@@ -12,7 +12,7 @@ You do not need to write code, edit YAML, or build your own ESPHome setup. Insta
 
 ## Community SenseCAP Indicator D1 Build
 
-This fork carries a community-maintained build for the Seeed SenseCAP Indicator D1 on the `community/seeed-sensecap-indicator-d1` branch. It is not officially supported by upstream EspControl; firmware, testing, and support for this device are community-provided.
+This fork carries a community-maintained build for the Seeed SenseCAP Indicator D1 on the `add-sensecap-indicator-d1` branch. It is not officially supported by upstream EspControl; firmware, testing, and support for this device are community-provided.
 
 - **Install and docs:** [davidmerrique.github.io/espcontrol](https://davidmerrique.github.io/espcontrol/screens/sensecap-indicator-d1) - the D1 web configurator and firmware updates are served from this fork's GitHub Pages, not upstream's.
 - **Releases:** tagged `d1-vX.Y.Z` on this fork. Manual ESPHome setups should pin the latest tag.
