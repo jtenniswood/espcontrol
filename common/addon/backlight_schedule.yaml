@@ -823,9 +823,6 @@ script:
     mode: single
     then:
       - lambda: |-
-          const char *posix = apply_timezone(id(timezone_select).current_option());
-          id(panel_time).set_timezone(posix);
-          id(homeassistant_time).set_timezone(posix);
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (!now.is_valid()) return;
           bool use_12h = id(clock_format_select).current_option() == "12h";

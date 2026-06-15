@@ -22,8 +22,8 @@
 // Timezone coordinate and POSIX TZ lookup table
 // ============================================================================
 // Representative city lat/lon for sunrise/sunset calculation, plus POSIX TZ
-// strings for DST-aware local time via setenv("TZ")/tzset(). Keep the POSIX
-// names alphabetic and DST offsets explicit for embedded C library compatibility.
+// strings for DST-aware local time. Keep the POSIX names alphabetic and DST
+// offsets explicit for embedded parser compatibility.
 
 struct TzCoord { const char* tz; float lat; float lon; const char* posix_tz; };
 struct TzUtcPoint { int year; int month; int day; int hour; int minute; };
@@ -517,46 +517,22 @@ inline void apply_ntp_servers(const std::string &server_1,
 #endif
 }
 
-inline float utc_offset_hours_at(time_t t) {
-  struct tm utc_tm, local_tm;
-  gmtime_r(&t, &utc_tm);
-  localtime_r(&t, &local_tm);
-  int diff_min = (local_tm.tm_hour - utc_tm.tm_hour) * 60
-               + (local_tm.tm_min - utc_tm.tm_min);
-  int day_diff = local_tm.tm_mday - utc_tm.tm_mday;
-  if (day_diff > 1) day_diff = -1;
-  else if (day_diff < -1) day_diff = 1;
-  diff_min += day_diff * 1440;
-  return diff_min / 60.0f;
-}
-
-inline float current_utc_offset_hours() {
-  return utc_offset_hours_at(time(nullptr));
-}
-
 inline float utc_offset_hours_for_date(
     int year, int month, int day, const std::string &tz_option) {
-  std::string tz_id = timezone_id_from_option(tz_option);
-  setenv("TZ", lookup_posix_tz(tz_id), 1);
-  tzset();
-
-  struct tm local_noon = {};
-  local_noon.tm_year = year - 1900;
-  local_noon.tm_mon = month - 1;
-  local_noon.tm_mday = day;
-  local_noon.tm_hour = 12;
-  local_noon.tm_isdst = -1;
-  time_t noon_epoch = mktime(&local_noon);
-  float offset = utc_offset_hours_at(noon_epoch);
-
-  if (tz_id == "Africa/Casablanca") {
-    struct tm utc_tm;
-    gmtime_r(&noon_epoch, &utc_tm);
-    offset = casablanca_pause_at_utc(utc_point_from_tm(utc_tm)) ? 0.0f : 1.0f;
+  int64_t local_noon = tz_epoch_utc(year, month, day, 12 * 3600);
+  int offset_minutes = 0;
+  if (!timezone_offset_minutes_at_utc(
+          tz_option, static_cast<time_t>(local_noon), offset_minutes)) {
+    return 0.0f;
   }
 
-  apply_timezone(tz_option);
-  return offset;
+  time_t utc_noon = static_cast<time_t>(
+      local_noon - static_cast<int64_t>(offset_minutes) * 60);
+  int refined_offset_minutes = offset_minutes;
+  if (timezone_offset_minutes_at_utc(tz_option, utc_noon, refined_offset_minutes)) {
+    offset_minutes = refined_offset_minutes;
+  }
+  return offset_minutes / 60.0f;
 }
 
 // ============================================================================
