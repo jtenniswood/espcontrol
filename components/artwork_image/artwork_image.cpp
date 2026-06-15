@@ -20,6 +20,8 @@ static const char *const TAG = "artwork_image";
 static const char *const CONTENT_TYPE_HEADER_NAME = "content-type";
 static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 3000;
 static constexpr size_t MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
+static constexpr size_t LOOP_READ_BUDGET_BYTES = 4096;
+static constexpr size_t LOOP_DECODE_BUDGET_BYTES = 4096;
 static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 
 #include "image_decoder.h"
@@ -516,7 +518,11 @@ void ArtworkImage::loop() {
       return;
     }
 
-    size_t available = std::min(this->download_buffer_.free_capacity(), this->download_buffer_initial_size_);
+    size_t available = std::min({
+      this->download_buffer_.free_capacity(),
+      this->download_buffer_initial_size_,
+      LOOP_READ_BUDGET_BYTES,
+    });
     auto len = this->downloader_->read(this->download_buffer_.append(), available);
     bool transfer_complete = false;
     if (len > 0) {
@@ -564,7 +570,7 @@ void ArtworkImage::loop() {
     ESP_LOGI(TAG, "Downloading image (Size: %zu)", total_size);
 
     // Feed already-buffered data to the newly created decoder
-    if (!this->decode_buffered_data_()) {
+    if (!this->decode_buffered_data_(LOOP_DECODE_BUDGET_BYTES)) {
       this->fail_download_();
       return;
     }
@@ -588,12 +594,16 @@ void ArtworkImage::loop() {
     return;
   }
 
-  size_t available = std::min(this->download_buffer_.free_capacity(), this->download_buffer_initial_size_);
+  size_t available = std::min({
+    this->download_buffer_.free_capacity(),
+    this->download_buffer_initial_size_,
+    LOOP_READ_BUDGET_BYTES,
+  });
   auto len = this->downloader_->read(this->download_buffer_.append(), available);
   if (len > 0) {
     this->download_buffer_.write(len);
     this->last_data_millis_ = millis();
-    if (!this->decode_buffered_data_()) {
+    if (!this->decode_buffered_data_(LOOP_DECODE_BUDGET_BYTES)) {
       this->fail_download_();
       return;
     }
@@ -957,19 +967,23 @@ bool ArtworkImage::ensure_download_buffer_capacity_() {
   return this->download_buffer_.resize(target_size) == target_size;
 }
 
-bool ArtworkImage::decode_buffered_data_() {
+bool ArtworkImage::decode_buffered_data_(size_t max_bytes) {
   if (!this->decoder_ || this->download_buffer_.unread() == 0) {
     return true;
   }
 
   size_t unread = this->download_buffer_.unread();
-  auto fed = this->decoder_->decode(this->download_buffer_.data(), unread);
+  size_t decode_size = unread;
+  if (max_bytes > 0 && decode_size > max_bytes) {
+    decode_size = max_bytes;
+  }
+  auto fed = this->decoder_->decode(this->download_buffer_.data(), decode_size);
   if (fed < 0) {
     ESP_LOGE(TAG, "Error when decoding image.");
     return false;
   }
-  if (static_cast<size_t>(fed) > unread) {
-    ESP_LOGE(TAG, "Decoder consumed %d bytes, but only %zu were buffered", fed, unread);
+  if (static_cast<size_t>(fed) > decode_size) {
+    ESP_LOGE(TAG, "Decoder consumed %d bytes, but only %zu were offered", fed, decode_size);
     return false;
   }
   this->download_buffer_.read(fed);

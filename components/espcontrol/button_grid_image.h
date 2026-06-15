@@ -22,7 +22,7 @@ constexpr uint32_t IMAGE_CARD_MODAL_CLEANUP_DELAY_MS = 100;
 constexpr uint32_t IMAGE_CARD_MODAL_CLOSE_GUARD_MS = 350;
 constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;
-constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;
+constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 640;
 constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;
 constexpr lv_coord_t IMAGE_CARD_JC4880P443_MODAL_BACK_BUTTON_REF_PX = 58;
 constexpr const char *IMAGE_CARD_LOADING_ICON = "\U000F02E9";
@@ -42,6 +42,7 @@ struct ImageCardCtx {
   std::string source_url;
   std::string url;
   std::string modal_url;
+  std::string modal_open_source_url;
   std::string access_token;
   std::function<void()> suspend_display_takeover;
   std::function<void()> resume_display_takeover;
@@ -630,6 +631,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].base_url_provider = nullptr;
     contexts[i].source_url.clear();
     contexts[i].url.clear();
+    contexts[i].modal_open_source_url.clear();
     contexts[i].access_token.clear();
     contexts[i].suspend_display_takeover = nullptr;
     contexts[i].resume_display_takeover = nullptr;
@@ -1426,8 +1428,26 @@ inline void image_card_finish_modal_cleanup(ImageCardCtx *ctx) {
   }
   image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
   if (!ctx->source_url.empty()) {
-    image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, "tile");
+    uint32_t now = esphome::millis();
+    bool source_changed = !ctx->modal_open_source_url.empty() &&
+                          ctx->source_url != ctx->modal_open_source_url;
+    bool tile_missing = !ctx->image_ready || !ctx->requested_once;
+    bool refresh_due = ctx->refresh_interval_ms > 0 &&
+                       ctx->last_download_completed_ms != 0 &&
+                       (uint32_t)(now - ctx->last_download_completed_ms) >= ctx->refresh_interval_ms;
+    if (source_changed || tile_missing || refresh_due) {
+      const char *reason = source_changed
+        ? "tile source changed"
+        : (tile_missing ? "tile unavailable" : "stale tile");
+      image_card_log_diagnostics(ctx, "modal-close-refresh-scheduled");
+      image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, reason);
+    } else {
+      ctx->next_download_retry_ms = 0;
+      image_card_log_diagnostics(ctx, "modal-close-refresh-skipped");
+      ESP_LOGD("image_card", "Skipping tile refresh after modal close for %s", ctx->entity_id.c_str());
+    }
   }
+  ctx->modal_open_source_url.clear();
 }
 
 inline void image_card_modal_cleanup_timer_cb(lv_timer_t *timer) {
@@ -1502,12 +1522,14 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
     return;
   }
   control_modal_block_close_for(IMAGE_CARD_MODAL_CLOSE_GUARD_MS);
+  image_card_log_diagnostics(ctx, "modal-shell-created");
 
   ImageCardModalUi &ui = image_card_modal_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
+  ctx->modal_open_source_url = ctx->source_url;
   if (ctx->suspend_display_takeover) ctx->suspend_display_takeover();
   image_card_log_diagnostics(ctx, "modal-display-takeover-suspended");
   image_card_style_modal_back_button(ui.back_btn, shell.layout);

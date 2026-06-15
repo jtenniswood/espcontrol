@@ -176,7 +176,7 @@ class ArtworkImage : public PollingComponent,
   void retire_active_buffer_();
   void cleanup_retired_buffers_(bool force);
   bool ensure_download_buffer_capacity_();
-  bool decode_buffered_data_();
+  bool decode_buffered_data_(size_t max_bytes = 0);
   void finish_download_();
   void fail_download_();
 
