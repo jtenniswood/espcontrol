@@ -66,11 +66,10 @@ Use `dev.yaml` by default. If the user names another YAML file, use that file in
 
 ## Commands
 
-`dev.yaml` already builds from the local repository checkout (it sets
-`espcontrol_component_source: "../../components"`), so no extra flags are needed:
+Use this substitution so ESPHome builds from the local repository checkout:
 
 ```bash
-esphome run <yaml-file> --device <target> --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run <yaml-file> --device <target> --no-logs
 ```
 
 Run from the appropriate config directory:
@@ -78,43 +77,43 @@ Run from the appropriate config directory:
 ```bash
 # 7-inch P4 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc1060p470
-esphome run dev.yaml --device 192.168.6.102 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.102 --no-logs
 
 # 7-inch P4 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc1060p470
-esphome run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
 
 # 10-inch P4 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc8012p4a1
-esphome run dev.yaml --device 192.168.6.103 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.103 --no-logs
 
 # 10-inch P4 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc8012p4a1
-esphome run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
 
 # 4-inch P4 / P4-86 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/esp32-p4-86
-esphome run dev.yaml --device 192.168.10.52 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.10.52 --no-logs
 
 # 4-inch P4 / P4-86 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/esp32-p4-86
-esphome run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
 
 # 4.3-inch P4 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc4880p443
-esphome run dev.yaml --device 192.168.6.101 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.101 --no-logs
 
 # 4.3-inch P4 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc4880p443
-esphome run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
 
 # 4-inch S3 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
-esphome run dev.yaml --device 192.168.10.226 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.10.226 --no-logs
 
 # 4-inch S3 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-s3-4848s040
-esphome run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
+esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
 ```
 
 ## Reporting

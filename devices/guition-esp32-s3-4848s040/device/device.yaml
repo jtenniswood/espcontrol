@@ -6,13 +6,9 @@
 # capacitive touchscreen, and backlight PWM.
 # =============================================================================
 
-# The component source is a single substitution so entry points can swap it
-# wholesale: dev.yaml points at the local checkout (`../../components`) and
-# builds/*.yaml at the CI checkout (`/config/components`). ESPHome's source
-# shorthand accepts a directory path or github://owner/repo@ref; a relative
-# `type: git` URL is rejected since ESPHome 2026.5.
 substitutions:
-  espcontrol_component_source: "github://jtenniswood/espcontrol@main"
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
 
 # ---------------------------------------------------------------------------
 # ESP32-S3 platform (16MB flash, ESP-IDF framework)
@@ -41,7 +37,11 @@ esp32:
 # External component
 # ---------------------------------------------------------------------------
 external_components:
-  - source: ${espcontrol_component_source}
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
     components: [espcontrol, web_server_idf, artwork_image, mipi_rgb]
     refresh: 1s
 

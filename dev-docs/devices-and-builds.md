@@ -46,20 +46,16 @@ install.
 Use `dev.yaml` for local work. It points ESPHome at local component sources under
 `components/`, so firmware changes can be compiled before they are published.
 
-`dev.yaml` does that by overriding the component-source substitution that
-`device/device.yaml` feeds into `external_components`:
+`dev.yaml` does that with a local `external_components` override:
 
 ```yaml
-substitutions:
-  espcontrol_component_source: "../../components"
+external_components:
+  - source:
+      type: local
+      path: ../../components
+    components: [espcontrol, web_server_idf]
+    refresh: 1s
 ```
-
-The same substitution selects the source for every entry point: end-user
-installs use the GitHub shorthand default from `device/device.yaml`
-(`github://<owner>/espcontrol@<ref>`), and CI builds use the repo checkout
-mounted at `/config` (`/config/components` in `builds/*.yaml`). Relative
-`type: git` URLs are rejected by ESPHome 2026.5 and newer, so the source must
-be either a directory path or a real URL.
 
 Build and upload local firmware from the device folder:
 

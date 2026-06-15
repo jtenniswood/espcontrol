@@ -7,7 +7,8 @@
 substitutions:
   name: "espcontrol-p4-86"
   friendly_name: "EspControl P4 86 Panel"
-  espcontrol_component_source: "/config/components"
+  espcontrol_component_url: "file:///config"
+  espcontrol_component_ref: "HEAD"
 
 esphome:
   name_add_mac_suffix: true

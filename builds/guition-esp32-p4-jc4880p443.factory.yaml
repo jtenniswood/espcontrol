@@ -6,7 +6,8 @@
 
 substitutions:
   firmware_version: "0.0.0"
-  espcontrol_component_source: "/config/components"
+  espcontrol_component_url: "file:///config"
+  espcontrol_component_ref: "HEAD"
 
 packages:
   core: !include guition-esp32-p4-jc4880p443.yaml
