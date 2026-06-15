@@ -519,10 +519,10 @@ function monthNameForIndex(index) {
   var monthIndex = parseInt(index, 10);
   if (!isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return "Date";
   try {
-    return new Intl.DateTimeFormat(normalizeLanguage(state.language), { month: "long" })
+    return new Intl.DateTimeFormat(normalizeLanguage(state.language), { month: "long", timeZone: "UTC" })
       .format(new Date(Date.UTC(2000, monthIndex, 1)));
   } catch (_) {
-    return new Intl.DateTimeFormat("en", { month: "long" })
+    return new Intl.DateTimeFormat("en", { month: "long", timeZone: "UTC" })
       .format(new Date(Date.UTC(2000, monthIndex, 1)));
   }
 }

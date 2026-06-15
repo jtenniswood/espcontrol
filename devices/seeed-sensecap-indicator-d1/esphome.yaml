@@ -1,0 +1,33 @@
+# =============================================================================
+# ESPHOME ENTRY POINT - Seeed SenseCAP Indicator D1
+# =============================================================================
+# User-facing config file. Set your device name and WiFi credentials here.
+# Community-maintained build. This device is not officially supported by the
+# upstream EspControl project; packages are pulled from davidmerrique/espcontrol.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Device identity
+# ---------------------------------------------------------------------------
+substitutions:
+  name: "your-device-name"
+  friendly_name: "Your Device Name"
+
+# ---------------------------------------------------------------------------
+# WiFi credentials (stored in secrets.yaml)
+# ---------------------------------------------------------------------------
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# ---------------------------------------------------------------------------
+# Remote package (pulls full config from GitHub)
+# Pinned to a community release tag. To upgrade, bump `ref` to the latest
+# d1-v* tag (or use the on-device firmware update card).
+# ---------------------------------------------------------------------------
+packages:
+  setup:
+    url: https://github.com/davidmerrique/espcontrol/
+    ref: d1-v1.0.0
+    file: devices/seeed-sensecap-indicator-d1/packages.yaml
+    refresh: 1s

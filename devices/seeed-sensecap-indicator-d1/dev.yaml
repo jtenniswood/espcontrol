@@ -1,0 +1,17 @@
+# =============================================================================
+# DEV CONFIG - Local development entry point (SenseCAP Indicator D1)
+# =============================================================================
+# Flash with: esphome run dev.yaml
+# =============================================================================
+
+substitutions:
+  name: "sensecap-indicator"
+  friendly_name: "SenseCAP Indicator"
+  espcontrol_component_source: "../../components"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+packages:
+  espcontrol: !include packages.yaml

@@ -16,6 +16,10 @@ Start here: **[Install EspControl](/getting-started/install)**.
 
 **Source code and issues:** [github.com/jtenniswood/espcontrol](https://github.com/jtenniswood/espcontrol).
 
+::: warning Community device in this fork
+The Seeed SenseCAP Indicator D1 build in this branch is community-maintained at [github.com/davidmerrique/espcontrol](https://github.com/davidmerrique/espcontrol) on `add-sensecap-indicator-d1`. It is not officially supported by upstream EspControl.
+:::
+
 ## What You Can Build
 
 - **Room control panels** for kitchens, hallways, bedrooms, offices, garages, and utility rooms
@@ -63,6 +67,7 @@ See [Card Types](/card-types/) for examples and setup notes.
 | 4.3-inch JC4880P443 | [AliExpress ~£24](https://s.click.aliexpress.com/e/_c32jr3eN) | - |
 | 4-inch ESP32-P4 86 Panel | [AliExpress ~£45](https://s.click.aliexpress.com/e/_c3O6ndAX) | [Stand page](/reference/3d-printable-stands) |
 | 4-inch 4848S040 | [AliExpress ~£16](https://s.click.aliexpress.com/e/_c3sIhvBv) | [Stand page](/reference/3d-printable-stands) |
+| Seeed SenseCAP Indicator D1 (community) | [Seeed Studio](https://www.seeedstudio.com/SenseCAP-Indicator-D1-p-5643.html) | - |
 
 ## Support This Project
 

@@ -10,6 +10,15 @@ You do not need to write code, edit YAML, or build your own ESPHome setup. Insta
 
 **Documentation and install guide:** [jtenniswood.github.io/espcontrol](https://jtenniswood.github.io/espcontrol/)
 
+## Community SenseCAP Indicator D1 Build
+
+This fork carries a community-maintained build for the Seeed SenseCAP Indicator D1 on the `add-sensecap-indicator-d1` branch. It is not officially supported by upstream EspControl; firmware, testing, and support for this device are community-provided.
+
+- **Install and docs:** [davidmerrique.github.io/espcontrol](https://davidmerrique.github.io/espcontrol/screens/sensecap-indicator-d1) - the D1 web configurator and firmware updates are served from this fork's GitHub Pages, not upstream's.
+- **Releases:** tagged `d1-vX.Y.Z` on this fork. Manual ESPHome setups should pin the latest tag.
+- **Issues:** report D1 problems on [this fork's issue tracker](https://github.com/davidmerrique/espcontrol/issues), never on the upstream EspControl repository.
+- **Other devices:** use [upstream EspControl](https://github.com/jtenniswood/espcontrol) directly; this fork only adds the D1.
+
 ## What It Unlocks
 
 - **A real control panel for your home** - give family and guests simple buttons instead of asking them to use the Home Assistant app.
@@ -63,6 +72,8 @@ EspControl supports several low-cost ESP32 touchscreens. Larger screens give you
 | 3D mount | [MakerWorld](https://makerworld.com/en/models/2490049-guition-p4-10inch-screen-stand#profileId-2736046) | [MakerWorld](https://makerworld.com/en/models/2387421-guition-esp32p4-jc1060p470-7inch-screen-desk-mount#profileId-2614995) | - | [MakerWorld](https://makerworld.com/en/models/2720366-waveshare-esp32-p4-smart-86-box-screen-desk-stand#profileId-3013481) | [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301) |
 
 See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started/install) for full details on each model.
+
+Community-maintained in this fork: [Seeed SenseCAP Indicator D1](docs/screens/sensecap-indicator-d1.md).
 
 ## Built for Everyday Use
 

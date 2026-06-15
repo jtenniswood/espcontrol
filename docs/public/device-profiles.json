@@ -95,6 +95,25 @@
       "rotation": true,
       "ethernetManualInstall": false,
       "subpages": true
+    },
+    {
+      "slug": "seeed-sensecap-indicator-d1",
+      "installSlug": "seeed-sensecap-indicator-d1",
+      "name": "Seeed SenseCAP Indicator D1 (Community)",
+      "docsPath": "/screens/sensecap-indicator-d1",
+      "screenSize": "4 inches",
+      "resolution": "480 x 480",
+      "orientation": "Square",
+      "slots": 9,
+      "grid": {
+        "rows": 3,
+        "cols": 3
+      },
+      "chipFamily": "ESP32-S3",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": false,
+      "subpages": true
     }
   ]
 }
