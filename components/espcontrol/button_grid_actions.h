@@ -732,6 +732,8 @@ inline void handle_button_press(const std::string &cfg, int slot_num,
 
 struct MediaVolumeCtx;
 inline void media_volume_open_modal(MediaVolumeCtx *ctx);
+struct MediaControlCtx;
+inline void media_control_open_modal(MediaControlCtx *ctx);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
 struct ImageCardCtx;
@@ -874,7 +876,10 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
   } else if (p.type == "media") {
     std::string mode = media_card_mode(p.sensor);
-    if (mode == "volume") {
+    if (mode == "control_modal") {
+      MediaControlCtx *ctx = (MediaControlCtx *)lv_obj_get_user_data(btn_obj);
+      if (ctx) media_control_open_modal(ctx);
+    } else if (mode == "volume") {
       MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_obj_get_user_data(btn_obj);
       if (ctx) media_volume_open_modal(ctx);
     } else if (mode == "playlist") {

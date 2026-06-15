@@ -345,6 +345,8 @@ var CLIMATE_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
 var CLIMATE_NUMBER_DISPLAY_OPTION = cardContractOptionName("number_display");
 var CLIMATE_TEMPERATURE_STEP_OPTION = cardContractOptionName("temperature_step");
 var MEDIA_VOLUME_MAX_OPTION = cardContractOptionName("volume_max");
+var MEDIA_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
+var MEDIA_NUMBER_DISPLAY_OPTION = cardContractOptionName("number_display");
 var MEDIA_PLAYLIST_CONTENT_ID_OPTION = cardContractOptionName("playlist_content_id");
 var MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = cardContractOptionName("playlist_content_type");
 var SUBPAGE_KIND_OPTION = cardContractOptionName("subpage_kind");
@@ -467,6 +469,20 @@ function normalizeMediaVolumeMax(value) {
 
 function normalizeMediaOptions(options, mode) {
   mode = mediaEditorMode(mode);
+  if (mode === "control_modal") {
+    var controlOut = "";
+    var labelMode = normalizeMediaLabelDisplayMode(
+      configOptionValue(options, MEDIA_LABEL_DISPLAY_OPTION));
+    var numberMode = normalizeMediaNumberDisplayMode(
+      configOptionValue(options, MEDIA_NUMBER_DISPLAY_OPTION));
+    if (labelMode !== "label") {
+      controlOut = setConfigOptionValue(controlOut, MEDIA_LABEL_DISPLAY_OPTION, labelMode);
+    }
+    if (numberMode !== "icon") {
+      controlOut = setConfigOptionValue(controlOut, MEDIA_NUMBER_DISPLAY_OPTION, numberMode);
+    }
+    return controlOut;
+  }
   if (mode === "playlist") {
     var playlistOut = "";
     var contentId = configOptionValue(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
@@ -486,6 +502,20 @@ function normalizeMediaOptions(options, mode) {
   }
   out = copyLargeNumbersOption(out, options);
   return out;
+}
+
+function normalizeMediaLabelDisplayMode(value) {
+  value = String(value || "").trim();
+  var spec = cardContractOptionSpec("media", MEDIA_LABEL_DISPLAY_OPTION);
+  var values = spec && spec.values ? spec.values : ["label", "status"];
+  return values.indexOf(value) >= 0 ? value : "label";
+}
+
+function normalizeMediaNumberDisplayMode(value) {
+  value = String(value || "").trim();
+  var spec = cardContractOptionSpec("media", MEDIA_NUMBER_DISPLAY_OPTION);
+  var values = spec && spec.values ? spec.values : ["icon", "volume"];
+  return values.indexOf(value) >= 0 ? value : "icon";
 }
 
 function imageRefreshIntervalValues() {
@@ -1177,6 +1207,40 @@ function setMediaVolumeMax(b, value) {
     b.options,
     MEDIA_VOLUME_MAX_OPTION,
     normalized === "100" ? "" : normalized
+  );
+  b.options = normalizeMediaOptions(b.options, b.sensor);
+  return b.options;
+}
+
+function mediaLabelDisplayMode(b) {
+  return normalizeMediaLabelDisplayMode(
+    configOptionValue(b && b.options, MEDIA_LABEL_DISPLAY_OPTION));
+}
+
+function setMediaLabelDisplayMode(b, mode) {
+  if (!b) return "";
+  var normalized = normalizeMediaLabelDisplayMode(mode);
+  b.options = setConfigOptionValue(
+    b.options,
+    MEDIA_LABEL_DISPLAY_OPTION,
+    normalized === "label" ? "" : normalized
+  );
+  b.options = normalizeMediaOptions(b.options, b.sensor);
+  return b.options;
+}
+
+function mediaNumberDisplayMode(b) {
+  return normalizeMediaNumberDisplayMode(
+    configOptionValue(b && b.options, MEDIA_NUMBER_DISPLAY_OPTION));
+}
+
+function setMediaNumberDisplayMode(b, mode) {
+  if (!b) return "";
+  var normalized = normalizeMediaNumberDisplayMode(mode);
+  b.options = setConfigOptionValue(
+    b.options,
+    MEDIA_NUMBER_DISPLAY_OPTION,
+    normalized === "icon" ? "" : normalized
   );
   b.options = normalizeMediaOptions(b.options, b.sensor);
   return b.options;

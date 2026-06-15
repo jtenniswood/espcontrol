@@ -1042,6 +1042,7 @@ var CARD_CONTRACT_CARDS = {
         "label": "Type",
         "kind": "choice",
         "values": [
+          "control_modal",
           "play_pause",
           "previous",
           "next",
@@ -1081,6 +1082,26 @@ var CARD_CONTRACT_CARDS = {
         "max": 100,
         "step": 1,
         "defaultValue": "100"
+      },
+      {
+        "name": "label_display",
+        "label": "Label Display",
+        "kind": "choice",
+        "values": [
+          "label",
+          "status"
+        ],
+        "defaultValue": "label"
+      },
+      {
+        "name": "number_display",
+        "label": "Top Left Display",
+        "kind": "choice",
+        "values": [
+          "icon",
+          "volume"
+        ],
+        "defaultValue": "icon"
       },
       {
         "name": "playlist_content_id",

@@ -71,7 +71,8 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.sensor = "play_pause";
     } else if (b.sensor != "play_pause" && b.sensor != "previous" &&
                b.sensor != "next" && b.sensor != "volume" &&
-               b.sensor != "position" && b.sensor != "now_playing") {
+               b.sensor != "position" && b.sensor != "now_playing" &&
+               b.sensor != "control_modal") {
       b.sensor = "play_pause";
     }
     if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";

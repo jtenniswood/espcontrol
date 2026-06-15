@@ -1402,6 +1402,20 @@ inline void grid_phase2(
           subscribe_media_playlist_state(ctx);
         } else if (media_playback_button_mode(mode)) {
           // Previous/next are momentary actions and do not reflect player state.
+        } else if (mode == "control_modal") {
+          MediaControlCtx *ctx = create_media_control_context(
+            s, p,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            has_off ? off_val : DEFAULT_OFF_COLOR,
+            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            display_media_title_font(display),
+            display_volume_label_font(display)
+              ? display_volume_label_font(display)
+              : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+            display_volume_number_font(display),
+            display_icon_font(display),
+            display_volume_width_percent(display));
+          subscribe_media_control_state(ctx);
         } else if (mode == "volume") {
           MediaVolumeCtx *ctx = create_media_volume_context(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
@@ -2118,6 +2132,26 @@ inline void grid_phase2(
               subscribe_media_state(sub_slot.btn,
                 media_play_pause_show_state(sb_cfg) ? sub_slot.text_lbl : nullptr,
                 sb_cfg.entity);
+            else
+              subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+          } else if (mode == "control_modal") {
+            MediaControlCtx *ctx = create_media_control_context(
+              sub_slot, sb_cfg,
+              has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              has_off ? off_val : DEFAULT_OFF_COLOR,
+              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+              display_media_title_font(display),
+              display_volume_label_font(display)
+                ? display_volume_label_font(display)
+                : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+              display_volume_number_font(display),
+              display_icon_font(display),
+              display_volume_width_percent(display));
+            subscribe_media_control_state(ctx);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              MediaControlCtx *ctx = (MediaControlCtx *)lv_event_get_user_data(e);
+              if (ctx) media_control_open_modal(ctx);
+            }, LV_EVENT_CLICKED, ctx);
           } else if (mode == "volume") {
             MediaVolumeCtx *ctx = create_media_volume_context(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
