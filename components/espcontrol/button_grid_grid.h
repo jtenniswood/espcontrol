@@ -1180,7 +1180,7 @@ inline void grid_phase2(
             ? display_volume_label_font(display)
             : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           display_icon_font(display),
-          display_volume_width_percent(display));
+          display_main_width_percent(display));
         subscribe_light_control_state(ctx);
       }
       continue;
@@ -1828,7 +1828,7 @@ inline void grid_phase2(
               ? display_volume_label_font(display)
               : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             display_icon_font(display),
-            display_volume_width_percent(display));
+            display_main_width_percent(display));
           subscribe_light_control_state(ctx);
         }
         continue;
