@@ -27,6 +27,10 @@ env:
   ESPHOME_VERSION: 2026.5.3
   SLUG: seeed-sensecap-indicator-d1
   CHIP: ESP32-S3
+  # Fork firmware identity: the binary is stamped with this project name and the
+  # manifest release URL points at this fork. firmware_release.py reads these.
+  FIRMWARE_PROJECT_NAME: davidmerrique.espcontrol-community
+  FIRMWARE_RELEASE_URL_BASE: https://github.com/davidmerrique/espcontrol/releases/tag/
 
 jobs:
   build-firmware:

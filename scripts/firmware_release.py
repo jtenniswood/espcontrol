@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -22,8 +23,14 @@ from urllib.parse import urljoin
 ROOT = Path(__file__).resolve().parent.parent
 FIRMWARE_VERSION_PLACEHOLDER = '  firmware_version: "0.0.0"'
 PLACEHOLDER_STRINGS = {"dev", "0.0.0"}
-RELEASE_URL_BASE = "https://github.com/jtenniswood/espcontrol/releases/tag/"
-PROJECT_NAME = "jtenniswood.espcontrol"
+# Defaults match upstream EspControl. Forks that self-host firmware (e.g. the
+# community SenseCAP D1 build) override these via env so the binary's embedded
+# project name and the manifest release URL point at the fork, not upstream.
+RELEASE_URL_BASE = os.environ.get(
+    "FIRMWARE_RELEASE_URL_BASE",
+    "https://github.com/jtenniswood/espcontrol/releases/tag/",
+)
+PROJECT_NAME = os.environ.get("FIRMWARE_PROJECT_NAME", "jtenniswood.espcontrol")
 
 
 class FirmwareReleaseError(RuntimeError):
