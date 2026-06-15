@@ -1,10 +1,10 @@
 ---
-title: Manual ESPHome Setup
+title: Manual Setup
 description:
   How to add EspControl to ESPHome manually, compile the firmware, and install it by USB or OTA.
 ---
 
-# Manual ESPHome Setup
+# Manual Setup
 
 The normal [browser install](/getting-started/install) is the easiest route. Use this page if you prefer to manage EspControl from ESPHome, want to compile the firmware yourself, or need to install from the ESPHome Device Builder dashboard.
 

@@ -80,4 +80,4 @@ A useful issue usually includes:
 - A short description of the problem.
 - The USB log from startup through the problem happening.
 
-Next: [Troubleshooting](/getting-started/troubleshooting)
+Related: [Troubleshooting](/getting-started/troubleshooting)
