@@ -263,7 +263,7 @@ display:
 # ---------------------------------------------------------------------------
 lvgl:
   id: main_lvgl
-  buffer_size: 100%
+  buffer_size: 26%
   displays: my_display
   rotation: 180
   byte_order: little_endian
