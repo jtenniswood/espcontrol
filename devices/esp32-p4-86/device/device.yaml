@@ -194,7 +194,7 @@ light:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
                 return (id(screen_schedule_asleep) &&
-                        !screen_schedule_clock_mode(id(schedule_mode).current_option())) ||
+                        !id(schedule_mode_clock)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,

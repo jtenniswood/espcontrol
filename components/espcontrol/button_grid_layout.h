@@ -119,6 +119,19 @@ inline bool grid_token_has_span_suffix(char suffix) {
     suffix == CARD_SIZE_EXTRA_WIDE_TOKEN;
 }
 
+inline int parse_positive_int_span(const std::string &value, size_t start, size_t end) {
+  while (start < end && std::isspace(static_cast<unsigned char>(value[start]))) start++;
+  int result = 0;
+  bool has_digit = false;
+  for (size_t i = start; i < end; i++) {
+    char ch = value[i];
+    if (ch < '0' || ch > '9') break;
+    has_digit = true;
+    result = result * 10 + (ch - '0');
+  }
+  return has_digit ? result : 0;
+}
+
 // Parse "1,2d,3w,4b,5t,6x,..." into positions + row/column spans
 inline void parse_order_string(const std::string &order_str, int num_slots, OrderResult &result) {
   memset(result.positions, 0, sizeof(result.positions));
@@ -133,13 +146,16 @@ inline void parse_order_string(const std::string &order_str, int num_slots, Orde
     size_t comma = order_str.find(',', start);
     if (comma == std::string::npos) comma = order_str.length();
     if (comma > start) {
-      std::string token = order_str.substr(start, comma - start);
+      size_t token_end = comma;
       int row_span = 1, col_span = 1;
-      if (!token.empty() && grid_token_has_span_suffix(token.back())) {
-        grid_token_spans(token.back(), row_span, col_span);
-        token.pop_back();
+      while (token_end > start && std::isspace(static_cast<unsigned char>(order_str[token_end - 1]))) {
+        token_end--;
       }
-      int v = atoi(token.c_str());
+      if (token_end > start && grid_token_has_span_suffix(order_str[token_end - 1])) {
+        grid_token_spans(order_str[token_end - 1], row_span, col_span);
+        token_end--;
+      }
+      int v = parse_positive_int_span(order_str, start, token_end);
       if (v >= 1 && v <= slot_limit) {
         result.positions[gpos] = v;
         result.row_span[v - 1] = row_span;

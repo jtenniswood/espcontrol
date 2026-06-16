@@ -1102,14 +1102,19 @@ inline std::string image_card_cache_bust_url(const std::string &url) {
 inline bool image_card_query_has_param(const std::string &url, const std::string &param) {
   size_t query = url.find('?');
   if (query == std::string::npos) return false;
-  std::string token = param + "=";
-  size_t pos = url.find(token, query + 1);
-  while (pos != std::string::npos) {
-    if ((pos == query + 1 || url[pos - 1] == '&') &&
-        (url.find('#') == std::string::npos || pos < url.find('#'))) {
+  size_t fragment = url.find('#', query + 1);
+  if (fragment == std::string::npos) fragment = url.size();
+  size_t pos = query + 1;
+  while (pos < fragment) {
+    size_t next = url.find('&', pos);
+    if (next == std::string::npos || next > fragment) next = fragment;
+    size_t eq = url.find('=', pos);
+    if (eq != std::string::npos && eq < next &&
+        eq - pos == param.size() &&
+        url.compare(pos, param.size(), param) == 0) {
       return true;
     }
-    pos = url.find(token, pos + 1);
+    pos = next + 1;
   }
   return false;
 }

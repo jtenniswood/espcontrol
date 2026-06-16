@@ -1194,9 +1194,10 @@ inline void alarm_configure_page_grid(lv_obj_t *page, int num_slots, int cols) {
   if (col_count > MAX_GRID_SLOTS) col_count = MAX_GRID_SLOTS;
   int row_count = (slot_count + col_count - 1) / col_count;
   if (row_count < 1) row_count = 1;
+  if (row_count > MAX_GRID_SLOTS) row_count = MAX_GRID_SLOTS;
 
-  lv_coord_t *col_dsc = new lv_coord_t[col_count + 1];
-  lv_coord_t *row_dsc = new lv_coord_t[row_count + 1];
+  static lv_coord_t col_dsc[MAX_GRID_SLOTS + 1];
+  static lv_coord_t row_dsc[MAX_GRID_SLOTS + 1];
   for (int i = 0; i < col_count; i++) col_dsc[i] = LV_GRID_FR(1);
   col_dsc[col_count] = LV_GRID_TEMPLATE_LAST;
   for (int i = 0; i < row_count; i++) row_dsc[i] = LV_GRID_FR(1);

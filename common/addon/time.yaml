@@ -6,11 +6,17 @@
 # lat/lon for on-device sunrise/sunset calculation (sun_calc.h).
 # =============================================================================
 
+globals:
+  - id: clock_format_12h
+    type: bool
+    initial_value: 'false'
+
 esphome:
   on_boot:
     priority: -100
     then:
       - lambda: |-
+          id(clock_format_12h) = id(clock_format_select).current_option() == "12h";
           const char *posix = apply_timezone(id(timezone_select).current_option());
           set_espcontrol_language(id(language_select).current_option());
           id(panel_time).set_timezone(posix);
@@ -226,6 +232,7 @@ select:
       sorting_group_id: sg_brightness
     on_value:
       then:
+        - lambda: 'id(clock_format_12h) = id(clock_format_select).current_option() == "12h";'
         - script.execute: time_update
         - script.execute: backlight_recalc_sunrise_sunset
 
@@ -420,16 +427,14 @@ script:
             auto now = panel_time_or_fallback(id(panel_time).now(),
                                               id(homeassistant_time).now());
             if (!now.is_valid()) return "--:--";
-            bool use_12h =
-                id(clock_format_select).current_option() == "12h";
+            bool use_12h = id(clock_format_12h);
             format_clock_time_without_suffix(time_buf, sizeof(time_buf),
                                              now.hour, now.minute, use_12h);
             return time_buf;
       - lambda: |-
           auto now = panel_time_or_fallback(id(panel_time).now(),
                                             id(homeassistant_time).now());
-          bool use_12h =
-              id(clock_format_select).current_option() == "12h";
+          bool use_12h = id(clock_format_12h);
           if (now.is_valid()) {
             static char date_buf[11];
             snprintf(date_buf, sizeof(date_buf), "%04d-%02d-%02d",

@@ -713,6 +713,7 @@ inline void grid_phase1(
   display_set_width_axis(display);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
+  if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
   for (int i = 0; i < NS; i++)
     lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
   configure_grid_layout(main_page_obj, NS, COLS);
@@ -1271,11 +1272,10 @@ inline void grid_phase2(
   if (cfg.info_only) return;
 
   // --- Subpage creation ---
-  // Heap-allocated grid descriptors (never freed -- display lifetime)
-  lv_coord_t *sp_col_dsc = new lv_coord_t[COLS + 1];
+  static lv_coord_t sp_col_dsc[MAX_GRID_SLOTS + 1];
   for (int i = 0; i < COLS; i++) sp_col_dsc[i] = LV_GRID_FR(1);
   sp_col_dsc[COLS] = LV_GRID_TEMPLATE_LAST;
-  lv_coord_t *sp_row_dsc = new lv_coord_t[ROWS + 1];
+  static lv_coord_t sp_row_dsc[MAX_GRID_SLOTS + 1];
   for (int i = 0; i < ROWS; i++) sp_row_dsc[i] = LV_GRID_FR(1);
   sp_row_dsc[ROWS] = LV_GRID_TEMPLATE_LAST;
 
