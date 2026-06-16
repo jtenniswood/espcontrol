@@ -95,9 +95,7 @@ interval:
           refresh_weather_forecast_cards();
 
 logger:
-  logs:
-    light: WARN
-    script: INFO
+  level: WARN
 
 http_request:
   id: http_req
