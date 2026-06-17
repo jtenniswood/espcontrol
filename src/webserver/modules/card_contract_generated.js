@@ -1117,6 +1117,11 @@ var CARD_CONTRACT_CARDS = {
         "defaultValue": ""
       },
       {
+        "name": "media_cover_art",
+        "label": "Show Cover Art",
+        "kind": "flag"
+      },
+      {
         "name": "volume_max",
         "label": "Maximum Volume",
         "kind": "number",

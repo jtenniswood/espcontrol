@@ -51,10 +51,13 @@ struct MediaNowPlayingCtx {
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
+  ImageCardCtx *cover_art = nullptr;
+  lv_obj_t *cover_overlay = nullptr;
   lv_obj_t *btn = nullptr;
   char artist[HA_STATE_TEXT_MAX_LEN + 1] = {};
   bool external_source = false;
   bool play_pause_background = false;
+  bool cover_art_enabled = false;
 };
 
 struct MediaPlaylistCtx {

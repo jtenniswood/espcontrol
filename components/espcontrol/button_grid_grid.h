@@ -221,6 +221,114 @@ inline bool info_only_hidden_card_type(const ParsedCfg &p) {
   return true;
 }
 
+inline void media_cover_art_refresh_geometry(MediaNowPlayingCtx *ctx) {
+  if (!ctx || !ctx->cover_art) return;
+  image_card_apply_widget_geometry(ctx->cover_art->btn, ctx->cover_art->widget, ctx->cover_art->image);
+  if (ctx->cover_overlay) image_card_position_widget(ctx->cover_art->btn, ctx->cover_overlay);
+  if (ctx->cover_art->widget) lv_obj_move_background(ctx->cover_art->widget);
+  if (ctx->cover_overlay) lv_obj_move_foreground(ctx->cover_overlay);
+  if (ctx->progress_slider) lv_obj_move_foreground(ctx->progress_slider);
+  if (ctx->title_lbl) lv_obj_move_foreground(ctx->title_lbl);
+  if (ctx->artist_lbl) lv_obj_move_foreground(ctx->artist_lbl);
+}
+
+inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
+                                  const GridConfig &cfg) {
+  if (!media_cover_art_enabled(p) || p.entity.empty() || !s.sensor_container) return;
+  MediaNowPlayingCtx *media_ctx =
+    static_cast<MediaNowPlayingCtx *>(lv_obj_get_user_data(s.sensor_container));
+  if (!media_ctx || !media_ctx->btn) return;
+  ImageCardCtx *art = acquire_image_card_context(cfg);
+  if (!art) {
+    ESP_LOGW("media_card", "No image downloader available for media cover art: %s",
+             p.entity.c_str());
+    return;
+  }
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+  lv_obj_t *img = lv_image_create(media_ctx->btn);
+#else
+  lv_obj_t *img = lv_img_create(media_ctx->btn);
+#endif
+  lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(img, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_pad_all(img, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(img, 0, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, LV_PART_MAIN);
+  image_card_apply_tile_image_align(img);
+
+  lv_obj_t *overlay = lv_obj_create(media_ctx->btn);
+  lv_obj_remove_style_all(overlay);
+  lv_obj_clear_flag(overlay, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_color(overlay, lv_color_black(), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(overlay, LV_OPA_50, LV_PART_MAIN);
+  lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN);
+
+  art->widget = img;
+  art->btn = media_ctx->btn;
+  art->loading_widget = nullptr;
+  art->loading_label = nullptr;
+  art->icon_font = nullptr;
+  art->label_font = nullptr;
+  art->entity_id = p.entity;
+  art->base_url = cfg.home_assistant_base_url ? cfg.home_assistant_base_url() : "";
+  art->base_url_provider = cfg.home_assistant_base_url;
+  art->suspend_display_takeover = cfg.suspend_display_takeover;
+  art->resume_display_takeover = cfg.resume_display_takeover;
+  art->refresh_interval_ms = 0;
+  art->timer_only = false;
+  art->modal_fit = false;
+  art->media_artwork = true;
+  art->pending_fallback_picture.clear();
+  art->diagnostics_enabled = cfg.image_card_diagnostics;
+  art->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
+  art->width_compensation_percent = cfg.width_compensation_percent;
+  media_ctx->cover_art = art;
+  media_ctx->cover_overlay = overlay;
+  media_cover_art_refresh_geometry(media_ctx);
+  image_card_log_diagnostics(art, "bind-media-artwork");
+}
+
+inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
+                                      const std::string &entity_id) {
+  if (!ctx || !ctx->cover_art || entity_id.empty()) return;
+  ImageCardCtx *art = ctx->cover_art;
+  const uint32_t generation = ha_subscription_generation();
+  ha_subscribe_attribute(
+    entity_id,
+    std::string("entity_picture"),
+    std::function<void(esphome::StringRef)>(
+      [art, entity_id, generation](esphome::StringRef picture) {
+        if (!image_card_context_current(art, entity_id, generation)) return;
+        art->pending_fallback_picture = string_ref_limited(picture, 4096);
+        image_card_request_picture(art);
+      })
+  );
+  ha_subscribe_attribute(
+    entity_id,
+    std::string("entity_picture_local"),
+    std::function<void(esphome::StringRef)>(
+      [art, entity_id, generation](esphome::StringRef picture) {
+        if (!image_card_context_current(art, entity_id, generation)) return;
+        std::string local = string_ref_limited(picture, 4096);
+        if (!local.empty() && local != "unknown" && local != "unavailable") {
+          image_card_handle_picture(art, picture);
+          return;
+        }
+        if (!art->pending_fallback_picture.empty()) {
+          std::string fallback = art->pending_fallback_picture;
+          art->pending_fallback_picture.clear();
+          image_card_handle_picture(art, esphome::StringRef(fallback));
+          return;
+        }
+        image_card_handle_picture(art, picture);
+      })
+  );
+  subscribe_image_card_entity_state(art, entity_id);
+  image_card_request_picture(art);
+}
+
 inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               const GridConfig &cfg,
                               const CardPalette &palette,
@@ -451,6 +559,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       display_media_title_font(display),
       display_main_width_percent(display),
       row_span, col_span);
+    setup_media_cover_art(s, p, cfg);
     return;
   }
   if (climate_card_type(p.type)) {
@@ -608,6 +717,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       display_media_title_font(display), pad,
       row_span == 1, ctx->play_pause_background,
       ctx->progress_slider ? pad : 0, false);
+    media_cover_art_refresh_geometry(ctx);
     if (ctx->progress_slider) slider_refresh_geometry(ctx->progress_slider);
     return;
   }
@@ -1528,6 +1638,7 @@ inline void grid_phase2(
         } else if (mode == "now_playing") {
           MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
           subscribe_media_now_playing_state(ctx, p.entity);
+          subscribe_media_cover_art(ctx, p.entity);
         } else {
           lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
           if (slider) subscribe_media_slider_state(s.btn, slider, p.entity);
@@ -2293,6 +2404,7 @@ inline void grid_phase2(
           } else if (mode == "now_playing") {
             MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(sub_slot.sensor_container);
             subscribe_media_now_playing_state(ctx, sb_cfg.entity);
+            subscribe_media_cover_art(ctx, sb_cfg.entity);
             if (media_now_playing_play_pause_enabled(sb_cfg)) {
               ParsedCfg *click_ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
               lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {

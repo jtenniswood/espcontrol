@@ -66,6 +66,8 @@ struct ImageCardCtx {
   bool modal_fit = false;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
+  bool media_artwork = false;
+  std::string pending_fallback_picture;
   lv_timer_t *modal_cleanup_timer = nullptr;
   uint8_t startup_download_errors = 0;
 };
@@ -657,6 +659,8 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].modal_fit = false;
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
+    contexts[i].media_artwork = false;
+    contexts[i].pending_fallback_picture.clear();
     contexts[i].startup_download_errors = 0;
     contexts[i].image = (i < count && cfg.image_card_images) ? cfg.image_card_images[i] : nullptr;
     contexts[i].modal_image = (i < count && cfg.image_card_modal_images) ? cfg.image_card_modal_images[i] : nullptr;
@@ -1081,6 +1085,10 @@ inline std::string image_card_entity_proxy_path(const std::string &entity_id) {
   return "";
 }
 
+inline bool image_card_prefer_local_picture(ImageCardCtx *ctx) {
+  return ctx && ctx->media_artwork;
+}
+
 inline std::string image_card_entity_proxy_url(ImageCardCtx *ctx) {
   if (!ctx) return "";
   return image_card_join_url(image_card_base_url(ctx), image_card_entity_proxy_path(ctx->entity_id));
@@ -1238,6 +1246,39 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
     }
     return;
   }
+  if (image_card_prefer_local_picture(ctx)) {
+    const uint32_t generation = ha_subscription_generation();
+    bool requested_local = ha_get_attribute(
+      entity_id,
+      std::string("entity_picture_local"),
+      std::function<void(esphome::StringRef)>(
+        [ctx, entity_id, generation](esphome::StringRef picture) {
+          if (!image_card_context_current(ctx, entity_id, generation)) return;
+          std::string local = string_ref_limited(picture, 4096);
+          if (!local.empty() && local != "unknown" && local != "unavailable") {
+            image_card_handle_picture(ctx, picture);
+            return;
+          }
+          if (!ctx->pending_fallback_picture.empty()) {
+            std::string fallback = ctx->pending_fallback_picture;
+            ctx->pending_fallback_picture.clear();
+            image_card_handle_picture(ctx, esphome::StringRef(fallback));
+            return;
+          }
+          bool fallback_requested = ha_get_attribute(
+            entity_id,
+            std::string("entity_picture"),
+            std::function<void(esphome::StringRef)>(
+              [ctx, entity_id, generation](esphome::StringRef fallback_picture) {
+                if (!image_card_context_current(ctx, entity_id, generation)) return;
+                image_card_handle_picture(ctx, fallback_picture);
+              })
+          );
+          if (!fallback_requested) image_card_handle_picture(ctx, picture);
+        })
+    );
+    if (requested_local) return;
+  }
   const uint32_t generation = ha_subscription_generation();
   bool requested = ha_get_attribute(
     entity_id,
@@ -1245,6 +1286,11 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
     std::function<void(esphome::StringRef)>(
       [ctx, entity_id, generation](esphome::StringRef picture) {
         if (!image_card_context_current(ctx, entity_id, generation)) return;
+        if (image_card_prefer_local_picture(ctx)) {
+          ctx->pending_fallback_picture = string_ref_limited(picture, 4096);
+          image_card_request_picture(ctx);
+          return;
+        }
         image_card_handle_picture(ctx, picture);
       })
   );
@@ -1784,6 +1830,8 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
   ctx->refresh_interval_ms = image_card_refresh_interval_ms(p);
   ctx->timer_only = image_card_timer_only_refresh(p);
   ctx->modal_fit = image_card_modal_fit_enabled(p);
+  ctx->media_artwork = false;
+  ctx->pending_fallback_picture.clear();
   ctx->diagnostics_enabled = cfg.image_card_diagnostics;
   ctx->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
   ctx->width_compensation_percent = cfg.width_compensation_percent;

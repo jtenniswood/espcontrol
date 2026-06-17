@@ -472,6 +472,17 @@ registerButtonType("media", {
         b.precision = controlsMode;
         helpers.saveField("precision", b.precision);
       }
+      var coverArtToggle = helpers.toggleRow(
+        "Show Cover Art",
+        helpers.idPrefix + "media-cover-art-toggle",
+        mediaCoverArtEnabled(b)
+      );
+      panel.appendChild(coverArtToggle.row);
+      coverArtToggle.input.addEventListener("change", function () {
+        setMediaCoverArtEnabled(b, this.checked);
+        helpers.saveField("options", b.options);
+        renderPreview();
+      });
     }
 
     if (b.sensor === "control_modal") {

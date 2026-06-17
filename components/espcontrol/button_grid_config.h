@@ -58,6 +58,7 @@ constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
 constexpr const char *IMAGE_REFRESH_OPTION = card_runtime_option_name_image_refresh();
 constexpr const char *IMAGE_REFRESH_MODE_OPTION = card_runtime_option_name_image_refresh_mode();
+constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
@@ -303,6 +304,11 @@ inline std::string media_card_options_normalized(const std::string &options,
     }
     return out;
   }
+  if (mode == "now_playing") {
+    return cfg_option_token_present(options, MEDIA_COVER_ART_OPTION)
+      ? std::string(MEDIA_COVER_ART_OPTION)
+      : "";
+  }
   if (mode != "volume" && mode != "position") return "";
   std::string out;
   int max_pct = normalize_media_volume_max_percent(
@@ -492,6 +498,10 @@ inline bool image_card_icon_enabled(const ParsedCfg &p) {
 inline bool image_card_modal_fit_enabled(const ParsedCfg &p) {
   return normalize_image_modal_mode(
     cfg_option_value(p.options, IMAGE_MODAL_MODE_OPTION)) == "fit";
+}
+
+inline bool media_cover_art_enabled(const ParsedCfg &p) {
+  return cfg_option_token_present(p.options, MEDIA_COVER_ART_OPTION);
 }
 
 inline std::string sensor_card_options_normalized(const std::string &options,
