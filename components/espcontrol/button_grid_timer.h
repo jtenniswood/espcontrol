@@ -352,9 +352,10 @@ inline lv_obj_t *timer_create_picker_button(lv_obj_t *parent,
                                             const char *icon,
                                             const lv_font_t *icon_font,
                                             uint32_t color,
+                                            lv_coord_t size,
                                             int width_compensation_percent) {
   return control_modal_create_round_button(
-    parent, 60, icon, icon_font, DARK_BORDER, color, width_compensation_percent);
+    parent, size, icon, icon_font, DARK_BORDER, color, width_compensation_percent);
 }
 
 inline void timer_control_hide_modal() {
@@ -386,7 +387,6 @@ inline void timer_card_open_modal(TimerCardCtx *ctx) {
   if (gap < 10) gap = 10;
   lv_coord_t column_w = (content_w - gap) / 2;
   lv_coord_t button_size = shell.layout.btn_size;
-  if (button_size < 46) button_size = 46;
   lv_coord_t value_h = ctx->number_font && ctx->number_font->line_height > 0
     ? ctx->number_font->line_height + shell.layout.inset / 2
     : button_size;
@@ -410,13 +410,17 @@ inline void timer_card_open_modal(TimerCardCtx *ctx) {
   lv_obj_align(minutes_col, LV_ALIGN_CENTER, (column_w + gap) / 2, -shell.layout.inset / 2);
 
   lv_obj_t *hours_up = timer_create_picker_button(
-    hours_col, find_icon("Chevron Up"), ctx->icon_font, ctx->tertiary_color, ctx->width_compensation_percent);
+    hours_col, find_icon("Chevron Up"), ctx->icon_font, ctx->tertiary_color,
+    button_size, ctx->width_compensation_percent);
   lv_obj_t *hours_down = timer_create_picker_button(
-    hours_col, find_icon("Chevron Down"), ctx->icon_font, ctx->tertiary_color, ctx->width_compensation_percent);
+    hours_col, find_icon("Chevron Down"), ctx->icon_font, ctx->tertiary_color,
+    button_size, ctx->width_compensation_percent);
   lv_obj_t *minutes_up = timer_create_picker_button(
-    minutes_col, find_icon("Chevron Up"), ctx->icon_font, ctx->tertiary_color, ctx->width_compensation_percent);
+    minutes_col, find_icon("Chevron Up"), ctx->icon_font, ctx->tertiary_color,
+    button_size, ctx->width_compensation_percent);
   lv_obj_t *minutes_down = timer_create_picker_button(
-    minutes_col, find_icon("Chevron Down"), ctx->icon_font, ctx->tertiary_color, ctx->width_compensation_percent);
+    minutes_col, find_icon("Chevron Down"), ctx->icon_font, ctx->tertiary_color,
+    button_size, ctx->width_compensation_percent);
 
   ui.hours_lbl = lv_label_create(hours_col);
   ui.minutes_lbl = lv_label_create(minutes_col);
