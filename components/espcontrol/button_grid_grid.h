@@ -1433,9 +1433,10 @@ inline void grid_phase2(
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
             has_off ? off_val : DEFAULT_OFF_COLOR,
             has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-            display_media_control_title_font(display),
-            display_media_control_artist_font(
-              display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
+            display_media_title_font(display),
+            display_volume_label_font(display)
+              ? display_volume_label_font(display)
+              : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
             display_volume_number_font(display),
             display_icon_font(display),
             display_volume_width_percent(display));
@@ -2178,9 +2179,10 @@ inline void grid_phase2(
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
               has_off ? off_val : DEFAULT_OFF_COLOR,
               has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-              display_media_control_title_font(display),
-              display_media_control_artist_font(
-                display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
+              display_media_title_font(display),
+              display_volume_label_font(display)
+                ? display_volume_label_font(display)
+                : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
               display_volume_number_font(display),
               display_icon_font(display),
               display_volume_width_percent(display));
