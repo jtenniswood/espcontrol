@@ -32,7 +32,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Arm, disarm, or show an alarm panel | [Alarm](/card-types/alarms) | `alarm_control_panel` |
 | Show local date, time, or date and time | [Date & Time](/card-types/calendar) | No entity required for clock modes |
 | Show another city or timezone | [World Clock](/card-types/timezones) | No entity required |
-| Show current weather or daily high/low temperatures | [Weather](/card-types/weather) | `weather` |
+| Show current weather, daily high/low temperatures, or a 3-day forecast | [Weather](/card-types/weather) | `weather` |
 | Show a still image from Home Assistant | [Camera](/card-types/cameras) | `camera` or `image` |
 | Control media playback, volume, progress, or now-playing display | [Media](/card-types/media) | `media_player` |
 | Control a thermostat or HVAC entity | [Climate](/card-types/climate) | `climate` |

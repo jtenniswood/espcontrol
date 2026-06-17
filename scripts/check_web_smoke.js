@@ -553,6 +553,22 @@ assert(weatherForecastPreview.iconHtml.includes("sp-sensor-preview-large"), "wea
 assert(weatherForecastPreview.iconHtml.includes("\u00b0F"), "weather forecast preview uses the selected temperature unit");
 assert(weatherForecastPreview.labelHtml.includes("Garden"), "weather forecast preview uses the custom label");
 
+const weatherThreeDayPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "3day",
+  options: "large_numbers",
+}, {
+  cardSize: 4,
+  temperatureUnit: "\u00b0F",
+});
+assert(weatherThreeDayPreview.iconHtml.includes("sp-forecast-multiday"), "weather 3-day preview uses the multi-day layout");
+assert(weatherThreeDayPreview.iconHtml.includes("Mon") &&
+  weatherThreeDayPreview.iconHtml.includes("Tue") &&
+  weatherThreeDayPreview.iconHtml.includes("Wed"), "weather 3-day preview includes multiple day rows");
+assert(weatherThreeDayPreview.labelHtml.includes("3-Day Forecast"), "weather 3-day preview uses the default label");
+assert(!weatherThreeDayPreview.iconHtml.includes("sp-sensor-preview-large"), "weather 3-day preview does not use large-number styling");
+
 const imagePreview = hooks.buttonTypePreviewFor("image", {
   entity: "camera.seaside",
   label: "Seaside",

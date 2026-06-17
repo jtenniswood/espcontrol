@@ -41,6 +41,6 @@ This generated reference lists stable setup facts from the shared card contract.
 | Slider | slider | light, fan | Yes | Own picker item | None | Visible |
 | Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, lock, vacuum, weather, sensor, image; Large State Numbers | Visible |
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
-| Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow; Large Temperature Numbers | Visible |
+| Weather | weather | weather | Yes | Own picker item | Type: default, today, tomorrow, 3day; Large Temperature Numbers | Visible |
 | Camera Card | image | camera, image | Yes | Own picker item | Show Label; Show Icon; Expanded Image: fill, fit | Visible |
 | Weather Forecast | weather_forecast | weather | Yes | Own picker item | None | Hidden |
