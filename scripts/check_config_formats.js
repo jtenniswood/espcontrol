@@ -380,6 +380,12 @@ assert.strictEqual(
   "",
   "media now-playing invalid precision is cleared"
 );
+const mediaOptionSpecs = hooks.cardContractOptions("media");
+assert.deepStrictEqual(
+  Array.from(mediaOptionSpecs).map((option) => option.name),
+  ["media_mode", "media_display", "media_now_playing_controls", "media_cover_art", "volume_max", "large_numbers"],
+  "media options include cover art flag"
+);
 assert.strictEqual(hooks.mediaStateDisplayModeSupported("position"), true, "media state display supports position mode");
 assert.strictEqual(hooks.mediaStateDisplayModeSupported("volume"), false, "media state display rejects volume mode");
 assert.strictEqual(
@@ -396,6 +402,21 @@ assert.strictEqual(
   hooks.normalizeMediaOptions("volume_max=40", "play_pause"),
   "",
   "media volume max option is removed outside volume mode"
+);
+assert.strictEqual(
+  hooks.normalizeMediaOptions("media_cover_art", "now_playing"),
+  "media_cover_art",
+  "media cover art option is preserved for now-playing mode"
+);
+assert.strictEqual(
+  hooks.mediaCoverArtEnabled({ sensor: "now_playing", options: "media_cover_art" }),
+  true,
+  "media cover art helper detects enabled now-playing cards"
+);
+assert.strictEqual(
+  hooks.normalizeMediaOptions("media_cover_art", "volume"),
+  "",
+  "media cover art option is removed outside now-playing mode"
 );
 assert.strictEqual(hooks.alarmControlPanelValue(), "control_panel", "alarm combined-control value is spec-backed");
 assert.deepStrictEqual(Array.from(hooks.alarmActionValues()), ["away", "home", "disarm"], "alarm default actions are spec-backed");
@@ -1474,6 +1495,30 @@ assertButtonRoundTrip(hooks, "media now playing play pause control", {
   type: "media",
   precision: "play_pause",
 }, false);
+
+assertButtonRoundTrip(hooks, "media now playing cover art card", {
+  entity: "media_player.office",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "now_playing",
+  unit: "",
+  type: "media",
+  precision: "progress",
+  options: "media_cover_art",
+}, false);
+
+assertButtonMigration(hooks, "media cover art strips outside now playing", "media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;media_cover_art,volume_max=40", {
+  entity: "media_player.kitchen",
+  label: "Kitchen",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "volume",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "volume_max=40",
+});
 
 assertButtonRoundTrip(hooks, "climate card", {
   entity: "climate.living_room",

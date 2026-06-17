@@ -34,6 +34,16 @@ inline void media_refresh_artist_text(lv_obj_t *artist_lbl,
   );
 }
 
+inline void media_cover_art_configure_text(lv_obj_t *label) {
+  if (!label) return;
+  lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+  lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_shadow_color(label, lv_color_black(), LV_PART_MAIN);
+  lv_obj_set_style_shadow_opa(label, LV_OPA_70, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(label, 4, LV_PART_MAIN);
+  lv_obj_set_style_shadow_ofs_y(label, 1, LV_PART_MAIN);
+}
+
 inline bool media_seek_pending_active(SliderCtx *ctx) {
   return ctx && ctx->media_seek_pending &&
          (esphome::millis() - ctx->media_seek_pending_ms) < MEDIA_SEEK_PENDING_TIMEOUT_MS;
@@ -469,6 +479,11 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     s.sensor_lbl = title_lbl;
     ctx->title_lbl = title_lbl;
     ctx->artist_lbl = s.text_lbl;
+    ctx->cover_art_enabled = media_cover_art_enabled(p);
+    if (ctx->cover_art_enabled) {
+      media_cover_art_configure_text(title_lbl);
+      media_cover_art_configure_text(s.text_lbl);
+    }
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad,

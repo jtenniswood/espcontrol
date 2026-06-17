@@ -90,6 +90,16 @@ var MEDIA_CARD_METADATA = {
       ["play_pause", "Play/Pause"],
     ],
   },
+  coverArt: {
+    label: "Show Cover Art",
+    idSuffix: "media-cover-art",
+    checked: function (b) { return mediaCoverArtEnabled(b); },
+    onChange: function (button, cardHelpers, checked) {
+      setMediaCoverArtEnabled(button, checked);
+      cardHelpers.saveField("options", button.options);
+      renderButtonSettings();
+    },
+  },
   largeNumbers: {
     label: "Large Media Numbers",
     idSuffix: "large-media-numbers",
@@ -293,6 +303,7 @@ registerButtonType("media", {
         }),
       });
       controls.segment.classList.add("sp-segment-scroll");
+      helpers.renderCardOptionToggle(panel, b, helpers, MEDIA_CARD_METADATA.coverArt);
     }
 
     if (b.sensor === "now_playing") {
@@ -395,11 +406,15 @@ registerButtonType("media", {
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(playBgColor) + '">' +
           '</span>';
       }
+      var coverArt = mediaCoverArtEnabled(b)
+        ? '<span class="sp-media-cover-preview"></span><span class="sp-media-cover-overlay"></span>'
+        : "";
+      var textClass = mediaCoverArtEnabled(b) ? " sp-media-now-on-art" : "";
       return {
         iconHtml:
-          progressBg + '<span class="sp-media-now-title">Midnight City</span>',
+          coverArt + progressBg + '<span class="sp-media-now-title' + textClass + '">Midnight City</span>',
         labelHtml:
-          '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">M83</span>' +
+          '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist' + textClass + '">M83</span>' +
           '<span class="sp-type-badge mdi mdi-' + MEDIA_CARD_METADATA.preview.badge + '"></span></span>',
       };
     }

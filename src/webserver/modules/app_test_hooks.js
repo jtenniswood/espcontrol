@@ -78,6 +78,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     mediaNowPlayingControls: mediaNowPlayingControls,
     mediaStateDisplayModeSupported: mediaStateDisplayModeSupported,
     normalizeMediaOptions: normalizeMediaOptions,
+    mediaCoverArtEnabled: mediaCoverArtEnabled,
+    setMediaCoverArtEnabled: setMediaCoverArtEnabled,
     mediaVolumeMax: mediaVolumeMax,
     setMediaVolumeMax: setMediaVolumeMax,
     imageRefreshIntervalValues: imageRefreshIntervalValues,
