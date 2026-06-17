@@ -318,6 +318,9 @@ registerButtonType("media", {
         helpers.saveField("icon", b.icon);
       }
     }
+    if (b.sensor === "control_modal" && !b.label) {
+      b.label = "Media Control";
+    }
     if (b.sensor === "play_pause" && b.icon !== "Auto") {
       b.icon = "Auto";
       helpers.saveField("icon", b.icon);
