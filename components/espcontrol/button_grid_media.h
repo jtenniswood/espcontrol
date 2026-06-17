@@ -62,8 +62,8 @@ struct MediaControlModalUi {
   lv_obj_t *play_btn = nullptr;
   lv_obj_t *play_icon_lbl = nullptr;
   lv_obj_t *next_btn = nullptr;
-  lv_obj_t *volume_title_lbl = nullptr;
-  lv_obj_t *volume_value_lbl = nullptr;
+  lv_obj_t *volume_track = nullptr;
+  lv_obj_t *volume_fill = nullptr;
   lv_obj_t *volume_slider = nullptr;
   MediaControlCtx *active = nullptr;
   MediaControlTab tab = MediaControlTab::CONTROLS;
@@ -750,17 +750,32 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
   }
 }
 
+inline int media_control_volume_fill_pct(MediaControlCtx *ctx, int pct) {
+  int max_pct = media_control_volume_max_pct(ctx);
+  if (max_pct <= 0) return 0;
+  pct = media_control_clamp_volume(ctx, pct);
+  int fill_pct = (pct * 100 + max_pct / 2) / max_pct;
+  return media_clamp_percent(fill_pct);
+}
+
+inline void media_control_update_volume_fill(MediaControlCtx *ctx, int pct) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.volume_fill || !ui.volume_track) return;
+  lv_coord_t radius = lv_obj_get_style_radius(ui.volume_track, LV_PART_MAIN);
+  slider_update_fill(
+    ui.volume_fill, ui.volume_track, media_control_volume_fill_pct(ctx, pct),
+    false, false, radius);
+}
+
 inline void media_control_refresh_volume(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
   int pct = media_control_clamp_volume(ctx, ctx->current_pct);
-  char buf[8];
-  media_format_percent(pct, buf, sizeof(buf));
-  if (ui.volume_value_lbl) lv_label_set_text(ui.volume_value_lbl, buf);
   if (ui.volume_slider && !ctx->dragging_volume) {
     ui.updating_volume = true;
     lv_slider_set_range(ui.volume_slider, 0, media_control_volume_max_pct(ctx));
     lv_slider_set_value(ui.volume_slider, pct, LV_ANIM_OFF);
+    media_control_update_volume_fill(ctx, pct);
     ui.updating_volume = false;
   }
 }
@@ -772,7 +787,6 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   std::string artist = media_control_artist_text(ctx);
   if (ui.title_lbl) lv_label_set_text(ui.title_lbl, title.c_str());
   if (ui.artist_lbl) lv_label_set_text(ui.artist_lbl, artist.c_str());
-  if (ui.volume_title_lbl) lv_label_set_text(ui.volume_title_lbl, espcontrol_i18n("Volume"));
   apply_control_availability(ui.panel, ui.panel, ctx->available, false);
   media_control_refresh_play_icon(ctx);
   media_control_refresh_progress(ctx);
@@ -1024,23 +1038,21 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (label) lv_obj_center(label);
   }
 
-  if (ui.volume_title_lbl) {
-    lv_obj_set_width(ui.volume_title_lbl, content_w);
-    lv_obj_align(ui.volume_title_lbl, LV_ALIGN_TOP_MID, 0, control_modal_scaled_px(18, layout.short_side));
-  }
-  if (ui.volume_value_lbl) {
-    lv_obj_set_width(ui.volume_value_lbl, content_w);
-    lv_obj_align(ui.volume_value_lbl, LV_ALIGN_CENTER, 0, -control_modal_scaled_px(48, layout.short_side));
-  }
-  lv_coord_t volume_slider_h = control_modal_scaled_px(30, layout.short_side);
-  if (volume_slider_h < 20) volume_slider_h = 20;
-  if (ui.volume_slider) {
-    lv_obj_set_size(ui.volume_slider, slider_w, volume_slider_h);
-    lv_obj_set_style_radius(ui.volume_slider, volume_slider_h / 2, LV_PART_MAIN);
-    lv_obj_set_style_radius(ui.volume_slider, volume_slider_h / 2, LV_PART_INDICATOR);
-    lv_obj_set_style_width(ui.volume_slider, volume_slider_h + 10, LV_PART_KNOB);
-    lv_obj_set_style_height(ui.volume_slider, volume_slider_h + 10, LV_PART_KNOB);
-    lv_obj_align(ui.volume_slider, LV_ALIGN_CENTER, 0, control_modal_scaled_px(36, layout.short_side));
+  lv_coord_t volume_track_w = content_w * 42 / 100;
+  lv_coord_t volume_track_min_w = control_modal_scaled_px(92, layout.short_side);
+  lv_coord_t volume_track_max_w = control_modal_scaled_px(160, layout.short_side);
+  if (volume_track_w < volume_track_min_w) volume_track_w = volume_track_min_w;
+  if (volume_track_w > volume_track_max_w) volume_track_w = volume_track_max_w;
+  if (volume_track_w > content_w) volume_track_w = content_w;
+  lv_coord_t volume_track_h = content_h - control_modal_scaled_px(12, layout.short_side);
+  if (volume_track_h < volume_track_w * 2) volume_track_h = content_h;
+  if (ui.volume_track) {
+    lv_coord_t volume_radius = volume_track_w / 2;
+    lv_obj_set_size(ui.volume_track, volume_track_w, volume_track_h);
+    lv_obj_set_style_radius(ui.volume_track, volume_radius, LV_PART_MAIN);
+    lv_obj_align(ui.volume_track, LV_ALIGN_CENTER, 0, 0);
+    if (ui.volume_slider) slider_fit_to_button(ui.volume_slider, ui.volume_track, false);
+    media_control_update_volume_fill(ctx, ctx->current_pct);
   }
 
   media_control_apply_tab_visibility();
@@ -1202,28 +1214,20 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
     if (ui.active && ui.active->available) send_media_playback_action(ui.active->entity_id, "next");
   }, LV_EVENT_CLICKED, nullptr);
 
-  ui.volume_title_lbl = lv_label_create(ui.volume_box);
-  lv_obj_set_style_text_color(ui.volume_title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.volume_title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->label_font) lv_obj_set_style_text_font(ui.volume_title_lbl, ctx->label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.volume_title_lbl, ctx->width_compensation_percent);
+  ui.volume_track = lv_obj_create(ui.volume_box);
+  lv_obj_set_style_bg_color(ui.volume_track, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.volume_track, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.volume_track, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.volume_track, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.volume_track, LV_OBJ_FLAG_SCROLLABLE);
 
-  ui.volume_value_lbl = lv_label_create(ui.volume_box);
-  lv_obj_set_style_text_color(ui.volume_value_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.volume_value_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->number_font) lv_obj_set_style_text_font(ui.volume_value_lbl, ctx->number_font, LV_PART_MAIN);
-  apply_width_compensation(ui.volume_value_lbl, ctx->width_compensation_percent);
-
-  ui.volume_slider = lv_slider_create(ui.volume_box);
-  media_control_style_slider(ui.volume_slider, ctx->accent_color);
+  ui.volume_slider = setup_slider_widget(ui.volume_track, ctx->accent_color, false);
+  ui.volume_fill = ui.volume_track ? lv_obj_get_child(ui.volume_track, 0) : nullptr;
   lv_obj_add_event_cb(ui.volume_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_volume) return;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    int value = lv_slider_get_value(slider);
-    char buf[8];
-    media_format_percent(value, buf, sizeof(buf));
-    if (ui.volume_value_lbl) lv_label_set_text(ui.volume_value_lbl, buf);
+    media_control_update_volume_fill(ui.active, lv_slider_get_value(slider));
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.volume_slider, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
