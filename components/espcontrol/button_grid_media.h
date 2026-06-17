@@ -32,6 +32,9 @@ struct MediaControlCtx {
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *label_lbl = nullptr;
+  lv_obj_t *volume_value_lbl = nullptr;
+  lv_obj_t *volume_unit_lbl = nullptr;
+  lv_obj_t *volume_container = nullptr;
   const lv_font_t *title_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *number_font = nullptr;
@@ -40,6 +43,8 @@ struct MediaControlCtx {
   lv_timer_t *position_timer = nullptr;
   bool available = true;
   bool playing = false;
+  bool label_shows_status = false;
+  bool top_shows_volume = false;
   bool dragging_progress = false;
   bool dragging_volume = false;
 };
@@ -120,6 +125,23 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx);
 inline void media_control_refresh_progress(MediaControlCtx *ctx);
 inline void media_control_refresh_volume(MediaControlCtx *ctx);
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct);
+inline int media_control_clamp_volume(MediaControlCtx *ctx, int pct);
+
+inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
+  if (!ctx) return;
+  if (ctx->label_lbl) {
+    std::string label = ctx->label_shows_status
+      ? media_status_text(ctx->state_text)
+      : ctx->label;
+    lv_label_set_text(ctx->label_lbl, label.c_str());
+  }
+  if (ctx->top_shows_volume && ctx->volume_value_lbl) {
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%d", media_control_clamp_volume(ctx, ctx->current_pct));
+    lv_label_set_text(ctx->volume_value_lbl, buf);
+    if (ctx->volume_unit_lbl) lv_label_set_text(ctx->volume_unit_lbl, "");
+  }
+}
 
 inline void subscribe_media_control_state(MediaControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
@@ -133,6 +155,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         ctx->playing = ctx->state_text == "playing";
         apply_control_availability(ctx->btn, ctx->btn, ctx->available);
         set_card_checked_state(ctx->btn, ctx->available && ctx->playing);
+        media_control_refresh_parent_card(ctx);
         if (ctx->position_timer) {
           if (ctx->playing) lv_timer_resume(ctx->position_timer);
           else lv_timer_pause(ctx->position_timer);
@@ -238,6 +261,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
           ctx->pending_until_ms = 0;
         }
         media_control_set_volume_value(ctx, pct);
+        media_control_refresh_parent_card(ctx);
       })
   );
   if (ctx->label.empty() || ctx->label == espcontrol_i18n(std::string("Media Control"))) {
@@ -656,15 +680,32 @@ inline std::string media_control_card_label(const ParsedCfg &p) {
 }
 
 inline void setup_media_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
+                                       lv_obj_t *sensor_container,
+                                       lv_obj_t *sensor_lbl,
+                                       lv_obj_t *unit_lbl,
                                        lv_obj_t *text_lbl,
                                        const ParsedCfg &p) {
-  if (icon_lbl) {
+  bool show_volume = media_control_card_show_volume_number(p);
+  if (show_volume) {
+    if (icon_lbl) lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (sensor_container) {
+      lv_obj_clear_flag(sensor_container, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_align(sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
+      lv_obj_move_foreground(sensor_container);
+    }
+    if (sensor_lbl) lv_label_set_text(sensor_lbl, "--");
+    if (unit_lbl) lv_label_set_text(unit_lbl, "");
+  } else if (icon_lbl) {
     lv_obj_clear_flag(icon_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(icon_lbl, media_default_icon("control_modal", p.icon));
     lv_obj_align(icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+    if (sensor_container) lv_obj_add_flag(sensor_container, LV_OBJ_FLAG_HIDDEN);
   }
   if (text_lbl) {
-    lv_label_set_text(text_lbl, media_control_card_label(p).c_str());
+    std::string label = media_control_card_show_status_label(p)
+      ? media_status_text("unknown")
+      : media_control_card_label(p);
+    lv_label_set_text(text_lbl, label.c_str());
     lv_obj_align(text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     configure_button_label_wrap(text_lbl);
   }
@@ -1099,11 +1140,16 @@ inline MediaControlCtx *create_media_control_context(
   ctx->btn = s.btn;
   ctx->icon_lbl = s.icon_lbl;
   ctx->label_lbl = s.text_lbl;
+  ctx->volume_value_lbl = s.sensor_lbl;
+  ctx->volume_unit_lbl = s.unit_lbl;
+  ctx->volume_container = s.sensor_container;
   ctx->title_font = title_font;
   ctx->label_font = label_font;
   ctx->number_font = number_font;
   ctx->icon_font = icon_font;
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);
+  ctx->label_shows_status = media_control_card_show_status_label(p);
+  ctx->top_shows_volume = media_control_card_show_volume_number(p);
   ctx->position_timer = lv_timer_create(media_control_position_timer_cb, 1000, ctx);
   if (ctx->position_timer) lv_timer_pause(ctx->position_timer);
   lv_obj_set_user_data(s.btn, ctx);
@@ -1283,7 +1329,8 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     return;
   }
   if (media_control_modal_mode(mode)) {
-    setup_media_control_button(s.btn, s.icon_lbl, s.text_lbl, p);
+    setup_media_control_button(
+      s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);
     return;
   }
   if (mode == "volume") {

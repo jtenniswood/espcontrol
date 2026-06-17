@@ -408,6 +408,17 @@ inline int normalize_media_volume_max_percent(const std::string &value) {
 
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
+  if (mode == "control_modal") {
+    std::string out;
+    if (cfg_option_value(options, "label_display") == "status") {
+      out = "label_display=status";
+    }
+    if (cfg_option_value(options, "number_display") == "volume") {
+      if (!out.empty()) out += ",";
+      out += "number_display=volume";
+    }
+    return out;
+  }
   if (mode == "playlist") {
     std::string out;
     std::string content_id = cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
@@ -1361,6 +1372,16 @@ inline int media_volume_max_percent(const ParsedCfg &p) {
   return p.type == "media" && p.sensor == "volume"
     ? normalize_media_volume_max_percent(cfg_option_value(p.options, VOLUME_MAX_OPTION))
     : card_runtime_media_volume_max_default();
+}
+
+inline bool media_control_card_show_status_label(const ParsedCfg &p) {
+  return p.type == "media" && p.sensor == "control_modal" &&
+         cfg_option_value(p.options, "label_display") == "status";
+}
+
+inline bool media_control_card_show_volume_number(const ParsedCfg &p) {
+  return p.type == "media" && p.sensor == "control_modal" &&
+         cfg_option_value(p.options, "number_display") == "volume";
 }
 
 inline std::string action_card_state_entity(const ParsedCfg &p) {

@@ -386,6 +386,33 @@ assert(
   Array.from(hooks.mediaModeOptionValues()).includes("control_modal"),
   "media mode options include the media control modal subtype"
 );
+const mediaControlConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
+  entity: "media_player.living_room",
+  label: "Speaker",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=status,number_display=volume",
+}));
+assert.strictEqual(
+  mediaControlConfig.options,
+  "label_display=status,number_display=volume",
+  "media control parent card display options survive normalization"
+);
+assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlConfig), "status");
+assert.strictEqual(hooks.mediaNumberDisplayMode(mediaControlConfig), "volume");
+const mediaControlPreview = hooks.buttonTypePreviewFor("media", mediaControlConfig);
+assert(
+  mediaControlPreview.iconHtml.includes("sp-sensor-preview"),
+  "media control volume display previews as a top-left number"
+);
+assert(
+  mediaControlPreview.labelHtml.includes("Playing"),
+  "media control status label preview uses player state text"
+);
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Alarm", type: "alarm", options: "icon_display=static" }).iconHtml.includes("mdi-bell-ring"),
   "alarm preview uses the selected Alarm icon"

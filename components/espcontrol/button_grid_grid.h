@@ -611,6 +611,13 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
     if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     return;
   }
+  if (mode == "control_modal") {
+    setup_media_control_button(
+      s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);
+    MediaControlCtx *ctx = (MediaControlCtx *)lv_obj_get_user_data(s.btn);
+    if (ctx) media_control_refresh_parent_card(ctx);
+    return;
+  }
   if (mode == "volume") return;
 
   lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
