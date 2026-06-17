@@ -32,6 +32,8 @@ struct GridConfig {
   const lv_font_t *sp_large_sensor_font = nullptr;
   int large_sensor_unit_offset_percent = -10;
   const lv_font_t *media_title_font;
+  const lv_font_t *media_control_title_font = nullptr;
+  const lv_font_t *media_control_artist_font = nullptr;
   const lv_font_t *option_select_value_font = nullptr;
   const lv_font_t *volume_number_font;
   const lv_font_t *volume_label_font = nullptr;
@@ -73,6 +75,8 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.sensor = cfg.sp_sensor_font;
   profile.fonts.large_sensor = cfg.sp_large_sensor_font;
   profile.fonts.media_title = cfg.media_title_font;
+  profile.fonts.media_control_title = cfg.media_control_title_font;
+  profile.fonts.media_control_artist = cfg.media_control_artist_font;
   profile.fonts.option_select_value = cfg.option_select_value_font;
   profile.fonts.volume_number = cfg.volume_number_font;
   profile.fonts.volume_label = cfg.volume_label_font;
@@ -1415,10 +1419,9 @@ inline void grid_phase2(
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
             has_off ? off_val : DEFAULT_OFF_COLOR,
             has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-            display_media_title_font(display),
-            display_volume_label_font(display)
-              ? display_volume_label_font(display)
-              : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+            display_media_control_title_font(display),
+            display_media_control_artist_font(
+              display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
             display_volume_number_font(display),
             display_icon_font(display),
             display_volume_width_percent(display));
@@ -2147,10 +2150,9 @@ inline void grid_phase2(
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
               has_off ? off_val : DEFAULT_OFF_COLOR,
               has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
-              display_media_title_font(display),
-              display_volume_label_font(display)
-                ? display_volume_label_font(display)
-                : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+              display_media_control_title_font(display),
+              display_media_control_artist_font(
+                display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
               display_volume_number_font(display),
               display_icon_font(display),
               display_volume_width_percent(display));
