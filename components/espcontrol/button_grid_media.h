@@ -61,8 +61,6 @@ struct MediaControlModalUi {
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
-  lv_obj_t *elapsed_lbl = nullptr;
-  lv_obj_t *duration_lbl = nullptr;
   lv_obj_t *previous_btn = nullptr;
   lv_obj_t *play_btn = nullptr;
   lv_obj_t *play_icon_lbl = nullptr;
@@ -779,12 +777,6 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
     lv_slider_set_value(ui.progress_slider, pct, LV_ANIM_OFF);
     ui.updating_progress = false;
   }
-  char elapsed[16];
-  char duration[16];
-  media_format_time(seconds, elapsed, sizeof(elapsed));
-  media_format_time(ctx->duration, duration, sizeof(duration));
-  if (ui.elapsed_lbl) lv_label_set_text(ui.elapsed_lbl, elapsed);
-  if (ui.duration_lbl) lv_label_set_text(ui.duration_lbl, ctx->duration > 0.0f ? duration : "--:--");
   if (ui.progress_slider) {
     bool has_duration = ctx->duration > 0.0f && ctx->available;
     apply_control_availability(ui.progress_slider, ui.progress_slider, has_duration);
@@ -1057,25 +1049,18 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (slider_w < 160) slider_w = content_w;
   lv_coord_t slider_h = control_modal_scaled_px(22, layout.short_side);
   if (slider_h < 16) slider_h = 16;
+  lv_coord_t progress_center_y = content_h / 12;
   if (ui.progress_slider) {
     lv_obj_set_size(ui.progress_slider, slider_w, slider_h);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_INDICATOR);
-    lv_obj_align(ui.progress_slider, LV_ALIGN_CENTER, 0, content_h / 12);
-  }
-  lv_coord_t time_y = content_h / 2 + control_modal_scaled_px(8, layout.short_side);
-  if (ui.elapsed_lbl) {
-    lv_obj_set_width(ui.elapsed_lbl, slider_w / 2);
-    lv_obj_align(ui.elapsed_lbl, LV_ALIGN_TOP_LEFT, (content_w - slider_w) / 2, time_y);
-  }
-  if (ui.duration_lbl) {
-    lv_obj_set_width(ui.duration_lbl, slider_w / 2);
-    lv_obj_align(ui.duration_lbl, LV_ALIGN_TOP_RIGHT, -(content_w - slider_w) / 2, time_y);
+    lv_obj_align(ui.progress_slider, LV_ALIGN_CENTER, 0, progress_center_y);
   }
   lv_coord_t btn_gap = cover_control_home_grid_row_gap(layout);
   lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
   lv_coord_t max_btn = control_modal_scaled_px(112, layout.short_side);
-  lv_coord_t available_btn_h = content_h - time_y - control_modal_scaled_px(28, layout.short_side);
+  lv_coord_t progress_bottom_y = content_h / 2 + progress_center_y + slider_h / 2;
+  lv_coord_t available_btn_h = content_h - progress_bottom_y - control_modal_scaled_px(24, layout.short_side);
   if (max_btn > available_btn_h) max_btn = available_btn_h;
   if (btn_size > max_btn) btn_size = max_btn;
   if (btn_size < 64) btn_size = 64;
@@ -1202,13 +1187,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_progress) return;
-    lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    int value = lv_slider_get_value(slider);
-    if (ui.active->duration > 0.0f && ui.elapsed_lbl) {
-      char buf[16];
-      media_format_time(ui.active->duration * value / 100.0f, buf, sizeof(buf));
-      lv_label_set_text(ui.elapsed_lbl, buf);
-    }
+    if (ui.active) ui.active->dragging_progress = true;
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
@@ -1236,16 +1215,6 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
       media_control_refresh_progress(ui.active);
     }
   }, LV_EVENT_PRESS_LOST, nullptr);
-
-  ui.elapsed_lbl = lv_label_create(ui.controls_box);
-  ui.duration_lbl = lv_label_create(ui.controls_box);
-  lv_obj_t *time_labels[2] = {ui.elapsed_lbl, ui.duration_lbl};
-  for (int i = 0; i < 2; i++) {
-    lv_obj_set_style_text_color(time_labels[i], lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
-    lv_obj_set_style_text_align(time_labels[i], i == 0 ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(time_labels[i], ctx->label_font, LV_PART_MAIN);
-    apply_width_compensation(time_labels[i], ctx->width_compensation_percent);
-  }
 
   ui.previous_btn = media_control_create_icon_button(
     ui.controls_box, find_icon("Skip Previous"), ctx->icon_font);
