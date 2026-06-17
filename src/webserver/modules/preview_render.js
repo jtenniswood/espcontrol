@@ -52,6 +52,7 @@ var CARD_TYPE_PICKER_DETAILS = {
   local_sensor: { icon: "gauge", description: "Show a sensor value from this device." },
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
+  media_control: { icon: "music", description: "Open playback controls and volume in a modal." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
@@ -63,6 +64,7 @@ var CARD_TYPE_PICKER_DETAILS = {
 
 var CARD_TYPE_PICKER_DEFAULTS = {
   light_brightness: "light_control",
+  media_control: "media",
 };
 
 function defaultButtonTypeForPicker(key) {
@@ -103,6 +105,13 @@ function buttonTypePickerOptionList(isSub, selectedTypeKey) {
       label: label,
       disabled: false,
     }, buttonTypePickerDetails(td.key, label)));
+    if (td.key === "media") {
+      typeOpts.push(Object.assign({
+        key: "media_control",
+        label: "Media Control",
+        disabled: false,
+      }, buttonTypePickerDetails("media_control", "Media Control")));
+    }
   }
   if (selectedUnsupported) {
     var unsupportedLabel = selectedUnsupported.label + " (not available)";
