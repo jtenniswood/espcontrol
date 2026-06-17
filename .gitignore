@@ -1,5 +1,6 @@
 .DS_Store
 .cache/
+.worktrees/
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
@@ -14,3 +15,6 @@ secrets.yml
 *.secrets.yml
 wifi_secrets*.yaml
 wifi-secrets*.yaml
+
+# Temporary local ESPHome entry points used when flashing PR builds.
+devices/*/dev-pr*.yaml
