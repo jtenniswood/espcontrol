@@ -916,19 +916,21 @@ inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *
   return btn;
 }
 
-inline void media_control_style_slider(lv_obj_t *slider, uint32_t accent_color) {
+inline void media_control_style_progress_slider(lv_obj_t *slider, uint32_t background_color) {
   if (!slider) return;
   lv_slider_set_range(slider, 0, 100);
-  lv_obj_set_style_bg_color(slider, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(slider, lv_color_hex(background_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(slider, lv_color_hex(accent_color), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(slider, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(slider, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_KNOB);
-  lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_KNOB);
+  lv_obj_set_style_bg_opa(slider, LV_OPA_TRANSP, LV_PART_KNOB);
   lv_obj_set_style_border_width(slider, 0, LV_PART_MAIN);
   lv_obj_set_style_border_width(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_shadow_width(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_outline_width(slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_pad_all(slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_width(slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_height(slider, 0, LV_PART_KNOB);
 }
 
 inline void media_control_layout_modal(MediaControlCtx *ctx) {
@@ -989,15 +991,25 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_align(ui.volume_box, LV_ALIGN_TOP_MID, 0, content_top);
   }
 
-  lv_coord_t title_h = control_modal_scaled_px(72, layout.short_side);
-  lv_coord_t artist_h = control_modal_scaled_px(26, layout.short_side);
+  const lv_font_t *title_font = ctx->title_font
+    ? ctx->title_font
+    : (ui.title_lbl ? lv_obj_get_style_text_font(ui.title_lbl, LV_PART_MAIN) : nullptr);
+  const lv_font_t *artist_font = ctx->label_font
+    ? ctx->label_font
+    : (ui.artist_lbl ? lv_obj_get_style_text_font(ui.artist_lbl, LV_PART_MAIN) : nullptr);
+  lv_coord_t title_line_h = title_font && title_font->line_height > 0
+    ? title_font->line_height : control_modal_scaled_px(28, layout.short_side);
+  lv_coord_t artist_h = artist_font && artist_font->line_height > 0
+    ? artist_font->line_height : control_modal_scaled_px(24, layout.short_side);
+  lv_coord_t title_h = title_line_h * 2 + 2;
+  lv_coord_t text_w = content_w * 92 / 100;
   if (ui.title_lbl) {
-    lv_obj_set_size(ui.title_lbl, content_w, title_h);
+    lv_obj_set_size(ui.title_lbl, text_w, title_h);
     lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, 0);
   }
   if (ui.artist_lbl) {
-    lv_obj_set_size(ui.artist_lbl, content_w, artist_h);
-    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h + 2);
+    lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
+    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h);
   }
   lv_coord_t slider_w = content_w * 86 / 100;
   if (slider_w < 160) slider_w = content_w;
@@ -1007,8 +1019,6 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_size(ui.progress_slider, slider_w, slider_h);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_INDICATOR);
-    lv_obj_set_style_width(ui.progress_slider, slider_h + 8, LV_PART_KNOB);
-    lv_obj_set_style_height(ui.progress_slider, slider_h + 8, LV_PART_KNOB);
     lv_obj_align(ui.progress_slider, LV_ALIGN_CENTER, 0, content_h / 12);
   }
   lv_coord_t time_y = content_h / 2 + control_modal_scaled_px(8, layout.short_side);
@@ -1020,7 +1030,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_width(ui.duration_lbl, slider_w / 2);
     lv_obj_align(ui.duration_lbl, LV_ALIGN_TOP_RIGHT, -(content_w - slider_w) / 2, time_y);
   }
-  lv_coord_t btn_gap = control_modal_scaled_px(18, layout.short_side);
+  lv_coord_t btn_gap = cover_control_home_grid_row_gap(layout);
   lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
   lv_coord_t max_btn = control_modal_scaled_px(86, layout.short_side);
   if (btn_size > max_btn) btn_size = max_btn;
@@ -1028,11 +1038,12 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
   lv_coord_t button_y = content_h - btn_size - control_modal_scaled_px(8, layout.short_side);
+  lv_coord_t btn_radius = control_modal_card_radius(ctx->btn);
   lv_obj_t *buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
   for (int i = 0; i < 3; i++) {
     if (!buttons[i]) continue;
     lv_obj_set_size(buttons[i], btn_size, btn_size);
-    lv_obj_set_style_radius(buttons[i], btn_size / 2, LV_PART_MAIN);
+    lv_obj_set_style_radius(buttons[i], btn_radius, LV_PART_MAIN);
     lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT, button_start_x + i * (btn_size + btn_gap), button_y);
     lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
     if (label) lv_obj_center(label);
@@ -1132,9 +1143,9 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.title_lbl = lv_label_create(ui.controls_box);
   lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  lv_obj_set_style_text_line_space(ui.title_lbl, -1, LV_PART_MAIN);
+  lv_obj_set_style_text_line_space(ui.title_lbl, 0, LV_PART_MAIN);
   if (ctx->title_font) lv_obj_set_style_text_font(ui.title_lbl, ctx->title_font, LV_PART_MAIN);
-  lv_label_set_long_mode(ui.title_lbl, LV_LABEL_LONG_DOT);
+  lv_label_set_long_mode(ui.title_lbl, LV_LABEL_LONG_WRAP);
   apply_width_compensation(ui.title_lbl, ctx->width_compensation_percent);
 
   ui.artist_lbl = lv_label_create(ui.controls_box);
@@ -1145,7 +1156,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   apply_width_compensation(ui.artist_lbl, ctx->width_compensation_percent);
 
   ui.progress_slider = lv_slider_create(ui.controls_box);
-  media_control_style_slider(ui.progress_slider, ctx->accent_color);
+  media_control_style_progress_slider(ui.progress_slider, ctx->secondary_color);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_progress) return;
