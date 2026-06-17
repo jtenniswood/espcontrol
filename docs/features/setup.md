@@ -62,6 +62,12 @@ For the generated list of current card domains, subpage support, grouping, and o
 
 Most cards also let you choose an icon and set a label. If the label is left blank, the panel uses the friendly name from Home Assistant when it can.
 
+### Card Background Images
+
+Useful button-style cards, including Switch, Action, Trigger, Media, Internal Switch, Subpage, Garage Door, and Vacuum cards, can use a custom background image. In the card settings, use **Background Image** to upload a picture, choose one already stored on the panel, clear the image from that card, or delete it from the panel's small image library.
+
+The setup page resizes uploads in the browser before sending them to the panel, and each card only stores a compact image reference plus an optional dim overlay value. The preview shows the image and dim overlay so you can keep the icon and label readable before applying the configuration.
+
 ### Active Switch Display
 
 Each [Switch](/card-types/switches) card has separate **Off Icon** and **On Icon** settings. The on icon is used while the entity is active.

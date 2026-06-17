@@ -5,6 +5,10 @@
 #include <cstring>
 #include <cctype>
 #include <cinttypes>
+#include <cstdio>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
@@ -41,6 +45,9 @@ namespace esphome::web_server_idf {
 #define CRLF_LEN (sizeof(CRLF_STR) - 1)
 
 static const char *const TAG = "web_server_idf";
+static constexpr const char *CARD_IMAGE_DIR = "/config/espcontrol/card-images";
+static constexpr size_t CARD_IMAGE_MAX_BYTES = 80 * 1024;
+static constexpr size_t CARD_IMAGE_MAX_COUNT = 8;
 
 // Global instance to avoid guard variable (saves 8 bytes)
 // This is initialized at program startup before any threads
@@ -117,6 +124,206 @@ bool handle_firmware_version_request(AsyncWebServerRequest *request) {
   std::string body = firmware_version_json();
   request->send(200, "application/json", body.c_str());
   return true;
+}
+
+bool card_image_id_valid(const std::string &id) {
+  if (id.empty() || id.size() > 40) return false;
+  for (char ch : id) {
+    if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-')) return false;
+  }
+  return true;
+}
+
+std::string card_image_path(const std::string &id) {
+  return std::string(CARD_IMAGE_DIR) + "/" + id + ".jpg";
+}
+
+bool ensure_card_image_dir() {
+  mkdir("/config/espcontrol", 0755);
+  if (mkdir(CARD_IMAGE_DIR, 0755) == 0 || errno == EEXIST) return true;
+  return false;
+}
+
+std::string card_image_id_from_url(const std::string &url, const char *prefix) {
+  std::string rest = url.substr(strlen(prefix));
+  if (rest.size() > 4 && rest.compare(rest.size() - 4, 4, ".jpg") == 0) {
+    rest.resize(rest.size() - 4);
+  }
+  return card_image_id_valid(rest) ? rest : "";
+}
+
+std::string card_image_list_json() {
+  std::string out = "{\"max_count\":";
+  out += std::to_string(CARD_IMAGE_MAX_COUNT);
+  out += ",\"max_bytes\":";
+  out += std::to_string(CARD_IMAGE_MAX_BYTES);
+  out += ",\"images\":[";
+  DIR *dir = opendir(CARD_IMAGE_DIR);
+  bool first = true;
+  size_t count = 0;
+  if (dir) {
+    while (dirent *entry = readdir(dir)) {
+      std::string name = entry->d_name;
+      if (name.size() <= 4 || name.compare(name.size() - 4, 4, ".jpg") != 0) continue;
+      std::string id = name.substr(0, name.size() - 4);
+      if (!card_image_id_valid(id)) continue;
+      struct stat st {};
+      std::string path = card_image_path(id);
+      if (stat(path.c_str(), &st) != 0) continue;
+      if (!first) out += ",";
+      first = false;
+      count++;
+      out += "{\"id\":";
+      append_json_string(out, id.c_str());
+      out += ",\"name\":";
+      append_json_string(out, id.c_str());
+      out += ",\"size\":";
+      out += std::to_string(static_cast<unsigned long>(st.st_size));
+      out += ",\"url\":\"/card-images/";
+      out += id;
+      out += ".jpg\"}";
+      if (count >= CARD_IMAGE_MAX_COUNT) break;
+    }
+    closedir(dir);
+  }
+  out += "]}";
+  return out;
+}
+
+size_t card_image_count() {
+  size_t count = 0;
+  DIR *dir = opendir(CARD_IMAGE_DIR);
+  if (!dir) return 0;
+  while (dirent *entry = readdir(dir)) {
+    std::string name = entry->d_name;
+    if (name.size() > 4 && name.compare(name.size() - 4, 4, ".jpg") == 0) count++;
+  }
+  closedir(dir);
+  return count;
+}
+
+std::string next_card_image_id() {
+  uint32_t now = esphome::millis();
+  for (int i = 0; i < 100; i++) {
+    std::string id = "img-" + std::to_string(now) + "-" + std::to_string(i);
+    struct stat st {};
+    if (stat(card_image_path(id).c_str(), &st) != 0) return id;
+  }
+  return "";
+}
+
+bool handle_card_image_get(AsyncWebServerRequest *request) {
+  if (request->method() != HTTP_GET) return false;
+  char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+  std::string url(request->url_to(url_buf));
+  if (url == "/api/card-images") {
+    ensure_card_image_dir();
+    std::string body = card_image_list_json();
+    request->send(200, "application/json", body.c_str());
+    return true;
+  }
+  if (url.rfind("/card-images/", 0) != 0) return false;
+  std::string id = card_image_id_from_url(url, "/card-images/");
+  if (id.empty()) {
+    request->send(404, "text/plain", "Not found");
+    return true;
+  }
+  std::string path = card_image_path(id);
+  FILE *file = fopen(path.c_str(), "rb");
+  if (!file) {
+    request->send(404, "text/plain", "Not found");
+    return true;
+  }
+  fseek(file, 0, SEEK_END);
+  long size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+  if (size < 0 || static_cast<size_t>(size) > CARD_IMAGE_MAX_BYTES) {
+    fclose(file);
+    request->send(404, "text/plain", "Not found");
+    return true;
+  }
+  std::string body;
+  body.resize(static_cast<size_t>(size));
+  if (size > 0) fread(&body[0], 1, static_cast<size_t>(size), file);
+  fclose(file);
+  auto *response = request->beginResponse(200, "image/jpeg", body);
+  response->addHeader("Cache-Control", "public, max-age=31536000");
+  request->send(response);
+  return true;
+}
+
+bool handle_card_image_delete(AsyncWebServerRequest *request) {
+  if (request->method() != HTTP_DELETE) return false;
+  char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+  std::string url(request->url_to(url_buf));
+  if (url.rfind("/api/card-images/", 0) != 0) return false;
+  std::string id = card_image_id_from_url(url, "/api/card-images/");
+  if (id.empty()) {
+    request->send(404, "text/plain", "Not found");
+    return true;
+  }
+  unlink(card_image_path(id).c_str());
+  request->send(200, "application/json", "{\"ok\":true}");
+  return true;
+}
+
+esp_err_t handle_card_image_upload(httpd_req_t *r) {
+  if (strcmp(r->uri, "/api/card-images") != 0) return ESP_ERR_NOT_FOUND;
+  auto content_type = request_get_header(r, "Content-Type");
+  if (!content_type.has_value() || strcasestr_n(content_type.value().c_str(), content_type.value().size(), "image/jpeg") == nullptr) {
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, "JPEG required");
+    return ESP_OK;
+  }
+  if (r->content_len == 0 || r->content_len > CARD_IMAGE_MAX_BYTES) {
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, "Image too large");
+    return ESP_OK;
+  }
+  if (!ensure_card_image_dir()) {
+    httpd_resp_send_err(r, HTTPD_500_INTERNAL_SERVER_ERROR, "Storage unavailable");
+    return ESP_OK;
+  }
+  if (card_image_count() >= CARD_IMAGE_MAX_COUNT) {
+    httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, "Image library full");
+    return ESP_OK;
+  }
+  std::string id = next_card_image_id();
+  if (id.empty()) {
+    httpd_resp_send_err(r, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not allocate image id");
+    return ESP_OK;
+  }
+  std::string path = card_image_path(id);
+  FILE *file = fopen(path.c_str(), "wb");
+  if (!file) {
+    httpd_resp_send_err(r, HTTPD_500_INTERNAL_SERVER_ERROR, "Could not write image");
+    return ESP_OK;
+  }
+  std::unique_ptr<char[]> buffer(new char[1024]);
+  size_t remaining = r->content_len;
+  while (remaining > 0) {
+    size_t want = remaining > 1024 ? 1024 : remaining;
+    int ret = httpd_req_recv(r, buffer.get(), want);
+    if (ret <= 0) {
+      fclose(file);
+      unlink(path.c_str());
+      httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, "Upload failed");
+      return ESP_OK;
+    }
+    fwrite(buffer.get(), 1, static_cast<size_t>(ret), file);
+    remaining -= static_cast<size_t>(ret);
+  }
+  fclose(file);
+  std::string body = "{\"id\":";
+  append_json_string(body, id.c_str());
+  body += ",\"name\":";
+  append_json_string(body, id.c_str());
+  body += ",\"size\":";
+  body += std::to_string(r->content_len);
+  body += ",\"url\":\"/card-images/";
+  body += id;
+  body += ".jpg\"}";
+  httpd_resp_set_type(r, "application/json");
+  httpd_resp_sendstr(r, body.c_str());
+  return ESP_OK;
 }
 
 // Non-blocking send function to prevent watchdog timeouts when TCP buffers are full
@@ -231,11 +438,22 @@ void AsyncWebServer::begin() {
         .user_ctx = this,
     };
     httpd_register_uri_handler(this->server_, &handler_options);
+
+    const httpd_uri_t handler_delete = {
+        .uri = "",
+        .method = HTTP_DELETE,
+        .handler = AsyncWebServer::request_handler,
+        .user_ctx = this,
+    };
+    httpd_register_uri_handler(this->server_, &handler_delete);
   }
 }
 
 esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_post_handler. uri=%s", r->uri);
+  if (strcmp(r->uri, "/api/card-images") == 0) {
+    return handle_card_image_upload(r);
+  }
   auto content_type = request_get_header(r, "Content-Type");
 
   if (!request_has_header(r, "Content-Length")) {
@@ -295,6 +513,9 @@ esp_err_t AsyncWebServer::request_handler(httpd_req_t *r) {
 }
 
 esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const {
+  if (handle_card_image_get(request) || handle_card_image_delete(request)) {
+    return ESP_OK;
+  }
   if (handle_firmware_version_request(request)) {
     return ESP_OK;
   }

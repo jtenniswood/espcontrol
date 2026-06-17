@@ -81,9 +81,12 @@ constexpr const char *IMAGE_ICON_OPTION = "image_icon";
 constexpr const char *IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
 constexpr const char *IMAGE_REFRESH_OPTION = "image_refresh";
 constexpr const char *IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
+constexpr const char *CARD_BACKGROUND_IMAGE_OPTION = "bg_image";
+constexpr const char *CARD_BACKGROUND_DIM_OPTION = "bg_dim";
 
 #include "button_grid_contract_generated.h"
 #include "button_grid_card_runtime.h"
+#include <algorithm>
 #include <cstdlib>
 
 inline int bounded_grid_slots(int num_slots) {
@@ -355,6 +358,47 @@ inline std::string cfg_option_value(const std::string &options, const char *name
 
 inline bool large_numbers_explicitly_disabled(const std::string &options) {
   return cfg_option_value(options, "large_numbers") == "off";
+}
+
+inline bool card_background_image_id_valid(const std::string &value) {
+  if (value.empty() || value.size() > 40) return false;
+  for (char ch : value) {
+    if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-')) return false;
+  }
+  return true;
+}
+
+inline int card_background_dim_percent(const std::string &options) {
+  std::string value = cfg_option_value(options, CARD_BACKGROUND_DIM_OPTION);
+  if (value.empty()) return 45;
+  char *end = nullptr;
+  long parsed = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) return 45;
+  if (parsed < 0) return 0;
+  if (parsed > 90) return 90;
+  return static_cast<int>(parsed);
+}
+
+inline std::string card_background_options_normalized(const std::string &options) {
+  std::string image = cfg_option_value(options, CARD_BACKGROUND_IMAGE_OPTION);
+  if (!card_background_image_id_valid(image)) return "";
+  std::string out = std::string(CARD_BACKGROUND_IMAGE_OPTION) + "=" + image;
+  int dim = card_background_dim_percent(options);
+  if (dim != 45) out += std::string(",") + CARD_BACKGROUND_DIM_OPTION + "=" + std::to_string(dim);
+  return out;
+}
+
+inline bool card_background_supported_type(const std::string &type) {
+  return type.empty() || type == "action" || type == "push" || type == "media" ||
+         type == "light_switch" || type == "internal" || type == "subpage" ||
+         type == "garage" || type == "vacuum";
+}
+
+inline void append_card_background_options(std::string &out, const std::string &options) {
+  std::string bg = card_background_options_normalized(options);
+  if (bg.empty() || out == bg) return;
+  if (!out.empty()) out += ",";
+  out += bg;
 }
 
 inline void append_large_numbers_option(std::string &out, const std::string &options) {
@@ -812,6 +856,7 @@ inline std::string action_card_options_normalized(const std::string &options,
 }
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
+  std::string original_options = p.options;
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
   if (brightness_slider_type(p.type) && !p.sensor.empty()) p.sensor.clear();
@@ -932,7 +977,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
-    p.options.clear();
+    p.options = card_background_options_normalized(p.options);
   }
   if (p.type == "subpage") {
     p.options = subpage_card_options_normalized(p.options, p.sensor, p.precision);
@@ -1004,11 +1049,12 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options = presence_card_options_normalized(p.options);
   }
   if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "vacuum" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
-    p.options.clear();
+    p.options = card_background_options_normalized(p.options);
   }
   if (p.type == "sensor") {
     p.options = sensor_card_options_normalized(p.options, p.precision);
   }
+  if (card_background_supported_type(p.type)) append_card_background_options(p.options, original_options);
   return p;
 }
 

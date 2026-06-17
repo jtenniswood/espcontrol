@@ -74,6 +74,9 @@ var CSS =
   ".sp-btn:hover{filter:brightness(1.15)}" +
   ".sp-drag-active .sp-btn:hover{filter:none}" +
   ".sp-btn.sp-selected{border-color:var(--accent)}" +
+  ".sp-btn-has-bg{background-repeat:no-repeat}" +
+  ".sp-btn-bg-dim{position:absolute;inset:0;z-index:0;pointer-events:none}" +
+  ".sp-btn-icon,.sp-btn-label,.sp-sensor-badge,.sp-sensor-preview,.sp-media-now-title,.sp-media-now-artist,.sp-media-h-slider,.sp-media-position-time{position:relative;z-index:1}" +
   ".sp-btn-icon{font-size:var(--btn-icon);line-height:1;color:#fff}" +
   ".sp-btn-label{font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400);" +
   "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--btn-lines);" +
@@ -318,6 +321,17 @@ var CSS =
   "cursor:pointer;box-sizing:border-box}" +
   ".sp-entity-option:hover,.sp-entity-option:focus{background:var(--accent-soft);outline:none}" +
   ".sp-field-error{font-size:.75rem;color:#f66f81;margin-top:6px;line-height:1.35}" +
+  ".sp-card-bg-field{display:grid;gap:10px}" +
+  ".sp-card-bg-preview{height:96px;border:1px solid var(--border);border-radius:8px;" +
+  "background:#111 center/cover no-repeat;box-sizing:border-box}" +
+  ".sp-card-bg-preview-empty{background:linear-gradient(135deg,var(--surface2),var(--surface));}" +
+  ".sp-card-bg-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}" +
+  ".sp-card-bg-file{display:none}" +
+  ".sp-card-bg-actions .sp-action-btn{padding:8px 12px;display:inline-flex;align-items:center;gap:6px}" +
+  ".sp-card-bg-actions .sp-action-btn:disabled{opacity:.45;cursor:not-allowed}" +
+  ".sp-card-bg-dim{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;" +
+  "font-size:.8rem;color:var(--text2)}" +
+  ".sp-card-bg-dim input{width:100%;accent-color:var(--accent)}" +
 
   ".sp-icon-picker{position:relative}" +
   ".sp-icon-picker-input{width:100%;padding:10px 12px;padding-left:36px;background:var(--surface2);" +
