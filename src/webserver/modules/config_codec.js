@@ -1015,7 +1015,7 @@ function copyActionCardStateOptions(out, options) {
   }
   var statePrecision = rawPrecision === "1" || rawPrecision === "2" ? rawPrecision : "0";
   if (stateUnit) out = setConfigOptionValue(out, ACTION_CARD_STATE_UNIT_OPTION, stateUnit);
-  if (statePrecision && statePrecision !== "0") {
+  if (rawPrecision === "0" || statePrecision !== "0") {
     out = setConfigOptionValue(out, ACTION_CARD_STATE_PRECISION_OPTION, statePrecision);
   }
   out = copyLargeNumbersOption(out, options);

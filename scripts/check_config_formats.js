@@ -2036,6 +2036,22 @@ assert.strictEqual(hooks.actionCardStateDisplayMode(parsedActionNumericState), "
 assert.strictEqual(hooks.actionCardStateUnit(parsedActionNumericState), "W", "action card numeric state unit");
 assert.strictEqual(hooks.actionCardStatePrecision(parsedActionNumericState), "1", "action card numeric state precision");
 
+const scriptActionZeroPrecisionStateCard = {
+  entity: "script.kitchen_lights",
+  label: "Kitchen Lights",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "script.turn_on",
+  unit: "",
+  type: "action",
+  precision: "",
+  options: "state_entity=sensor.kitchen_power,state_precision=0",
+};
+assertButtonRoundTrip(hooks, "script action card with zero-precision numeric state display", scriptActionZeroPrecisionStateCard, false);
+const parsedActionZeroPrecisionState = hooks.parseButtonConfig(hooks.serializeButtonConfig(scriptActionZeroPrecisionStateCard));
+assert.strictEqual(hooks.actionCardStateDisplayMode(parsedActionZeroPrecisionState), "numeric", "action card zero-precision numeric state mode");
+assert.strictEqual(hooks.actionCardStatePrecision(parsedActionZeroPrecisionState), "0", "action card zero-precision numeric state precision");
+
 const scriptActionTextStateCard = {
   entity: "script.washer",
   label: "Washer",
