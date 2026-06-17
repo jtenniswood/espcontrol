@@ -76,7 +76,7 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 - **Display scheduling** - use idle timers, night schedules, brightness controls, and optional presence sensors so the screen behaves well in real rooms.
 - **Appearance controls** - choose icons, labels, status text, colours, clock display, rotation, and temperature units from the setup page.
 - **Screensaver and brightness controls** - dim or sleep the display when it is not in use.
-- **Automatic updates** - keep firmware current over WiFi after the first install.
+- **Automatic updates** - keep standard firmware current after the first install.
 - **Backup and restore** - save your layout and copy it to another panel.
 - **Language support** - choose the panel language, with translation files available for contributors.
 

@@ -14,7 +14,7 @@ A cover card lets you control a Home Assistant cover entity — blinds, shutters
 
 1. Select a card and change its type to **Cover**.
 2. Choose the interaction:
-   - **Modal** opens a full-screen control with tabs for simple controls, position, and tilt. This option is currently available only with Developer/Experimental Features enabled.
+   - **Modal** opens a full-screen control with tabs for simple controls, position, and tilt.
    - **Slider: Position** lets you drag to a precise cover position.
    - **Slider: Tilt** lets you drag to a precise cover tilt position.
    - **Toggle** opens or closes the cover with a tap.

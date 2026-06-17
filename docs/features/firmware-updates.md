@@ -18,6 +18,8 @@ These are configured from the **Settings** tab in the [Setup](/features/setup) u
 - **Install Version** — choose the latest stable firmware or one of up to four previous stable versions when more than one version is available.
 - **Check for Update** — press this button to check for a new version right now, regardless of the automatic schedule.
 
+Manual Ethernet builds can be different. If you used the advanced Ethernet setup with `disable_updates: "true"`, these built-in GitHub update controls are removed from the panel firmware. Use ESPHome OTA or USB from your ESPHome setup to update that display instead.
+
 ## What Happens During an Update
 
 1. The panel checks the update server for a newer version.
@@ -46,3 +48,5 @@ Some features, especially new card types, need both the web setup page and the p
 You can also manage updates from Home Assistant. The **Auto Update** toggle, **Update Frequency** selector, and **Check for Update** button all appear as entities that you can control from the Home Assistant dashboard or use in automations.
 
 The standard Home Assistant **Update** entity may also appear, depending on your Home Assistant version.
+
+Displays built with `disable_updates: "true"` do not expose EspControl's built-in GitHub update controls. They can still be updated manually through ESPHome.

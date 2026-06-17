@@ -140,7 +140,7 @@ const faqItems = [
   {
     question: 'How Do I Update the Firmware?',
     answer:
-      'Leave Auto Update enabled for automatic updates, or use Check for Update in the Firmware section of the setup page.',
+      'Leave Auto Update enabled for automatic updates, or use Check for Update in the Firmware section of the setup page. Advanced Ethernet-only builds may need to be updated through ESPHome.',
   },
   {
     question: "What If the Icon I Need Isn't Listed?",
@@ -150,7 +150,7 @@ const faqItems = [
   {
     question: 'What Card Types Are Available?',
     answer:
-      'The setup page includes Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage cards.',
+      'The setup page includes Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage cards.',
   },
   {
     question: 'How Many Cards Can I Have?',

@@ -15,7 +15,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Goal | Use this card | Entity or target |
 |---|---|---|
 | Toggle a light, switch, fan, helper, or button-style entity | [Switch](/card-types/switches) | `light`, `switch`, `input_boolean`, `fan`, or `button` |
-| Control a light as on/off, brightness, or colour temperature | [Lights](/card-types/lights) | `light` |
+| Control a light as on/off, brightness, colour temperature, or colour presets | [Lights](/card-types/lights) | `light` |
 | Run a scene, script, automation, helper action, or button press | [Action](/card-types/actions) | Depends on the selected action |
 | Show or control a robot vacuum | [Vacuum](/card-types/vacuum) | `vacuum` |
 | Pick from a Home Assistant select list | [Option Select](/card-types/option-select) | `select` or `input_select` |
@@ -26,7 +26,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Show presence, motion, person, or tracker state | [Presence](/card-types/presence) | `binary_sensor`, `sensor`, `text_sensor`, `person`, or tracker helpers |
 | Drag to set light brightness or fan speed | [Slider](/card-types/sliders) | `light` or `fan` |
 | Use grouped fan controls | [Fans](/card-types/fans) | `fan` |
-| Control blinds, shutters, shades, gates, or tilt | [Cover](/card-types/covers) | `cover` |
+| Control blinds, shutters, shades, gates, position, or tilt | [Cover](/card-types/covers) | `cover` |
 | Open or close a garage door | [Garage Door](/card-types/garage-doors) | `cover` |
 | Lock or unlock a door lock | [Lock](/card-types/locks) | `lock` |
 | Arm, disarm, or show an alarm panel | [Alarm](/card-types/alarms) | `alarm_control_panel` |
@@ -57,14 +57,14 @@ Some names in the setup page group several related modes:
 
 | Setup page name | Modes |
 |---|---|
-| **Lights** | Switch, Brightness, Colour Temperature |
+| **Lights** | All Controls, Switch, Brightness, Colour Temperature |
 | **Fans** | Switch, Speed, Oscillation, Direction, Preset |
 | **Action** | Scene, Script, Automation, Button, Helper, Option Select |
 | **Vacuum** | Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, Clean Area |
-| **Alarm** | Combined Control, Arm Away, Arm Home, Disarm |
+| **Alarm** | Combined Control, Arm Away, Arm Home, Arm Night, Arm Vacation, Disarm |
 | **Date & Time** | Clock, Date, Time & Date, World Clock |
 | **Media** | Play/Pause, Previous, Next, Volume, Track Position, Now Playing |
-| **Cover** | Position, Tilt, Toggle, Open, Close, Stop, Set Position |
+| **Cover** | Modal, Position, Tilt, Toggle, Open, Close, Stop, Set Position |
 | **Subpage** | Generic, Lights, Climate, Presence, Media |
 
 ## Permissions
