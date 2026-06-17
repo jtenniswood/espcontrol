@@ -1045,8 +1045,10 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
     lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h);
   }
-  lv_coord_t slider_w = content_w * 86 / 100;
-  if (slider_w < 160) slider_w = content_w;
+  lv_coord_t slider_w = content_w * 64 / 100;
+  lv_coord_t slider_min_w = control_modal_scaled_px(120, layout.short_side);
+  if (slider_w < slider_min_w) slider_w = slider_min_w;
+  if (slider_w > content_w) slider_w = content_w;
   lv_coord_t slider_h = control_modal_scaled_px(22, layout.short_side);
   if (slider_h < 16) slider_h = 16;
   lv_coord_t progress_center_y = content_h / 12;
