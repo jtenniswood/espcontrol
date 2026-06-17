@@ -91,6 +91,7 @@ var state = {
   coverArtDelay: 10,
   coverArtTrackOverlayDuration: 5,
   coverArtHideExternalInputOn: true,
+  primaryView: "controls",
   screensaverMode: "disabled",
   _screensaverModeReceived: false,
   screensaverAction: "off",
@@ -493,6 +494,14 @@ function normalizeScheduleTrigger(value, scheduleEnabled) {
 
 function normalizeScreensaverAction(value) {
   return EspControlModel.normalizeScreensaverAction(value);
+}
+
+function normalizePrimaryView(value) {
+  return EspControlModel.normalizePrimaryView(value);
+}
+
+function primaryViewOption(value) {
+  return EspControlModel.primaryViewOption(value);
 }
 
 function screensaverActionOption(value) {

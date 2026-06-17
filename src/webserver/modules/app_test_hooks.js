@@ -231,6 +231,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     defaultTimezoneOptions: defaultTimezoneOptions,
     timezoneOptionsWithFallback: timezoneOptionsWithFallback,
     normalizeScreensaverAction: normalizeScreensaverAction,
+    normalizePrimaryView: normalizePrimaryView,
+    primaryViewOption: primaryViewOption,
     screensaverActionOption: screensaverActionOption,
     clockBarVisibleInPreviewFor: function (clockBarOn, screensaverAction) {
       var oldClockBarOn = state.clockBarOn;

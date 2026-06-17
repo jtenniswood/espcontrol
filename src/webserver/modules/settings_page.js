@@ -668,6 +668,35 @@ function buildSettingsPage(parent) {
     });
     els.setCoverArtMediaPlayer = coverArtEntityInp;
 
+    var primaryViewField = document.createElement("div");
+    primaryViewField.className = "sp-field";
+    primaryViewField.appendChild(fieldLabel("Primary View", "sp-set-primary-view"));
+    var primaryViewSelect = document.createElement("select");
+    primaryViewSelect.className = "sp-select";
+    primaryViewSelect.id = "sp-set-primary-view";
+    [
+      { label: "Controls", value: "controls" },
+      { label: "Media", value: "media" },
+    ].forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      primaryViewSelect.appendChild(o);
+    });
+    primaryViewSelect.value = normalizePrimaryView(state.primaryView);
+    primaryViewSelect.addEventListener("change", function () {
+      state.primaryView = normalizePrimaryView(this.value);
+      postPrimaryView(state.primaryView);
+      syncPrimaryViewUi();
+    });
+    primaryViewField.appendChild(primaryViewSelect);
+    var primaryViewHelp = document.createElement("div");
+    primaryViewHelp.className = "sp-help";
+    primaryViewHelp.textContent = "Controls keeps today's home screen; Media shows media artwork first and swipe up reveals controls.";
+    primaryViewField.appendChild(primaryViewHelp);
+    coverArtOptions.appendChild(primaryViewField);
+    els.setPrimaryView = primaryViewSelect;
+
     var coverArtDelayField = document.createElement("div");
     coverArtDelayField.className = "sp-field";
     coverArtDelayField.appendChild(fieldLabel("Show After", "sp-set-ss-cover-art-delay"));
@@ -819,6 +848,7 @@ function buildSettingsPage(parent) {
   syncClockScreensaverControls();
   syncMediaPlayerSleepPreventionUi();
   syncCoverArtScreensaverUi();
+  syncPrimaryViewUi();
 
   var ssBadge = document.createElement("span");
   ssBadge.setAttribute("aria-label", "Screensaver on");
@@ -1171,6 +1201,13 @@ function syncCoverArtScreensaverUi() {
     els.setCoverArtFilterOptions.classList.toggle("sp-visible", !!state.coverArtFilteringEnabled);
   }
   syncInput(els.setCoverArtConditions, state.coverArtAttributeConditions || "");
+}
+
+function syncPrimaryViewUi() {
+  state.primaryView = normalizePrimaryView(state.primaryView);
+  if (els.setPrimaryView) {
+    els.setPrimaryView.value = state.primaryView;
+  }
 }
 
 function syncOptionalClockBrightness(field, previousField, display) {

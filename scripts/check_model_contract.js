@@ -211,6 +211,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   screensaver_mode: "timer",
   screensaver_action: "Screen Dimmed",
   cover_art_hide_external_input: true,
+  primary_view: "Media",
   clock_brightness_day: 44,
   clock_brightness_night: 22,
   screen_rotation: "90",
@@ -236,6 +237,7 @@ assert.strictEqual(panelSettings.ntpServer1, "pool.ntp.org", "panel NTP server i
 assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mode imports");
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
+assert.strictEqual(panelSettings.primaryView, "media", "panel primary view imports");
 assert.strictEqual(
   model.normalizeBackupPanelSettings({
     media_player_sleep_prevention_entity: "media_player.living",
@@ -271,5 +273,6 @@ const legacyPanelSettings = model.normalizeBackupPanelSettings({}, {
 });
 assert.strictEqual(legacyPanelSettings.clockBarTime, true, "legacy panel settings default clock bar time on");
 assert.strictEqual(legacyPanelSettings.coverArtHideExternalInput, true, "legacy panel settings default cover art external-input setting on");
+assert.strictEqual(legacyPanelSettings.primaryView, "controls", "legacy panel settings default primary view controls");
 
 console.log("Model contract tests passed.");

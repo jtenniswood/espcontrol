@@ -668,6 +668,7 @@ script:
                   - script.execute: backlight_apply_brightness
       - script.execute: screensaver_idle_check
       - script.execute: home_screen_idle_check
+      - script.execute: cover_art_apply_primary_view
       - if:
           condition:
             lambda: 'return id(cover_art_media_playing) && id(cover_art_screensaver_enabled).state;'

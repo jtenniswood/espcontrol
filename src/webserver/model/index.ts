@@ -75,6 +75,7 @@ export {
   normalizeHour,
   normalizeLanguage,
   normalizeNtpServer,
+  normalizePrimaryView,
   normalizeScheduleClockBrightness,
   normalizeScheduleDimmedBrightness,
   normalizeScheduleMode,
@@ -85,6 +86,7 @@ export {
   normalizeScreensaverDimmedBrightness,
   normalizeTemperatureUnit,
   normalizeTimeOfDay,
+  primaryViewOption,
   scheduleModeOption,
   screensaverActionOption,
 } from "./settings";
