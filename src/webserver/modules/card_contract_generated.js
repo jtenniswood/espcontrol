@@ -175,6 +175,35 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "timer": {
+    "label": "Timer",
+    "allowInSubpage": true,
+    "domains": [
+      "timer"
+    ],
+    "options": [
+      {
+        "name": "default_minutes",
+        "label": "Default Duration",
+        "kind": "number",
+        "defaultValue": "10",
+        "min": 1,
+        "max": 5999,
+        "step": 1
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "Timer",
+      "icon": "Timer",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "timer",
+      "precision": "",
+      "options": "default_minutes=10"
+    }
+  },
   "alarm": {
     "label": "Alarm",
     "allowInSubpage": true,
@@ -1385,6 +1414,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "slider": "L",
   "cover": "C",
   "vacuum": "VC",
+  "timer": "TM",
   "light_temperature": "N",
   "garage": "R",
   "lock": "K",
@@ -1421,6 +1451,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "L": "slider",
   "C": "cover",
   "VC": "vacuum",
+  "TM": "timer",
   "N": "light_temperature",
   "R": "garage",
   "K": "lock",
@@ -1451,6 +1482,7 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
   "clock": true,
   "climate": true,
   "media": true,
+  "timer": true,
   "subpage": true,
   "timezone": true
 };

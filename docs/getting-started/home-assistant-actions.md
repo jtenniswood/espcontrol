@@ -6,7 +6,7 @@ description:
 
 # Enable Actions
 
-EspControl needs permission to call Home Assistant actions (like toggling lights, running scripts, changing media volume, or adjusting climate targets) on your behalf. Without this, the touchscreen can display read-only information but **cards won't be able to control your devices or request forecast data**.
+EspControl needs permission to call Home Assistant actions (like toggling lights, running scripts, changing media volume, starting timers, or adjusting climate targets) on your behalf. Without this, the touchscreen can display read-only information but **cards won't be able to control your devices or request forecast data**.
 
 Your display will prompt you to do this during first-time setup. Follow the steps below.
 
@@ -36,7 +36,7 @@ You only need to do this once per device. The setting persists across firmware u
 
 ## What If I Skip This?
 
-You won't be able to control any devices, it will be in a read-only state, and entities such as lights, switches, fans, scenes, scripts, helpers, covers, locks, media players, and climate devices won't do anything when tapped. Weather cards set to **Temperatures Today** or **Temperatures Tomorrow** also won't be able to fetch the daily forecast.
+You won't be able to control any devices, it will be in a read-only state, and entities such as lights, switches, fans, scenes, scripts, helpers, covers, locks, timers, media players, and climate devices won't do anything when tapped. Weather cards set to **Temperatures Today** or **Temperatures Tomorrow** also won't be able to fetch the daily forecast.
 
 ## Device Not Showing Up?
 

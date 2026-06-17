@@ -122,6 +122,9 @@ function normalizeButtonConfig(b) {
   if (b && b.type === "vacuum") {
     normalizeVacuumConfig(b);
   }
+  if (b && b.type === "timer") {
+    normalizeTimerConfig(b);
+  }
   if (b && b.type === "screen_lock") {
     b.entity = "";
     b.label = "";

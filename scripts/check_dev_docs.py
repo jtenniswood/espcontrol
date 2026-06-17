@@ -134,6 +134,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "local_sensor": "docs/card-types/local-sensors.md",
     "lock": "docs/card-types/locks.md",
     "media": "docs/card-types/media.md",
+    "timer": "docs/card-types/timers.md",
     "option_select": "docs/card-types/option-select.md",
     "push": "docs/card-types/buttons.md",
     "screen_lock": "docs/card-types/screen-lock.md",

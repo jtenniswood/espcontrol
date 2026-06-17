@@ -404,6 +404,16 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_vacuum_card(s, p);
     return;
   }
+  if (p.type == "timer") {
+    setup_timer_card(s, p);
+    if (large_number_square_card_layout(row_span, col_span) &&
+        card_large_numbers_active_for_layout(p, row_span, col_span) &&
+        display_large_sensor_font(display)) {
+      apply_large_sensor_number_style(
+        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
+    }
+    return;
+  }
   if (p.type == "option_select") {
     setup_option_select_card(
       s, p, palette.has_sensor_color, palette.sensor_val,
@@ -1094,6 +1104,25 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "timer") {
+      if (!p.entity.empty()) {
+        TimerCardCtx *ctx = create_timer_card_context(
+          s, p,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          has_off ? off_val : DEFAULT_OFF_COLOR,
+          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          large_number_square_card_layout(row_span, col_span) &&
+              card_large_numbers_active_for_layout(p, row_span, col_span) &&
+              display_large_sensor_font(display)
+            ? display_large_sensor_font(display) : display_sensor_font(display),
+          lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+          display_icon_font(display),
+          display_main_width_percent(display));
+        subscribe_timer_card_state(ctx);
+        if (p.label.empty()) subscribe_friendly_name(s.text_lbl, p.entity);
+      }
+      continue;
+    }
     if (p.type == "option_select") {
       if (!p.entity.empty()) {
         OptionSelectCtx *ctx = create_option_select_context(
@@ -1722,6 +1751,30 @@ inline void grid_phase2(
               send_vacuum_card_action(ctx);
             }, LV_EVENT_CLICKED, ctx);
           }
+        }
+        continue;
+      }
+      if (sb_cfg.type == "timer") {
+        if (!sb_cfg.entity.empty()) {
+          TimerCardCtx *ctx = create_timer_card_context(
+            sub_slot, sb_cfg,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            has_off ? off_val : DEFAULT_OFF_COLOR,
+            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            large_number_square_card_layout(rs, cs) &&
+                card_large_numbers_active_for_layout(sb_cfg, rs, cs) &&
+                display_large_sensor_font(display)
+              ? display_large_sensor_font(display) : display_sensor_font(display),
+            lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_icon_font(display),
+            display_main_width_percent(display));
+          subscribe_timer_card_state(ctx);
+          if (sb_cfg.label.empty()) subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
+          add_parent_indicator(sb_cfg.entity);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            TimerCardCtx *ctx = (TimerCardCtx *)lv_event_get_user_data(e);
+            if (timer_card_context_valid(ctx)) timer_card_open_modal(ctx);
+          }, LV_EVENT_CLICKED, ctx);
         }
         continue;
       }
