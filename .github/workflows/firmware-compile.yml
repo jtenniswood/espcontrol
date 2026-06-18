@@ -74,9 +74,6 @@ jobs:
     needs: [detect-changes, device-matrix]
     if: needs.detect-changes.outputs.compile_required == 'true'
     runs-on: self-hosted
-    concurrency:
-      group: firmware-compile-self-hosted
-      cancel-in-progress: false
     strategy:
       fail-fast: false
       max-parallel: 1
