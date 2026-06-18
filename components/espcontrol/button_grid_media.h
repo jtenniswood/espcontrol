@@ -252,7 +252,7 @@ inline lv_obj_t *setup_media_progress_background(lv_obj_t *btn,
   lv_obj_t *slider = setup_slider_widget(btn, progress_color, true);
   lv_obj_t *fill = lv_obj_get_child(btn, 0);
 
-  SliderCtx *ctx = new SliderCtx();
+  SliderCtx *ctx = grid_own_context(slider, new SliderCtx());
   ctx->entity_id = entity_id;
   ctx->fill = fill;
   ctx->horizontal = true;
@@ -361,7 +361,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
     if (text_lbl) lv_obj_move_foreground(text_lbl);
   }
 
-  SliderCtx *ctx = new SliderCtx();
+  SliderCtx *ctx = grid_own_context(slider, new SliderCtx());
   ctx->entity_id = p.entity;
   ctx->fill = fill;
   ctx->horizontal = horizontal;
@@ -457,7 +457,7 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
   if (mode == "now_playing") {
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
-    MediaNowPlayingCtx *ctx = new MediaNowPlayingCtx();
+    MediaNowPlayingCtx *ctx = grid_own_context(s.sensor_container, new MediaNowPlayingCtx());
     ctx->btn = s.btn;
     ctx->play_pause_background = media_now_playing_play_pause_enabled(p);
     if (media_now_playing_progress_enabled(p)) {
@@ -559,7 +559,7 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
                                                    lv_obj_t *unit_lbl = nullptr,
                                                    std::function<void()> suspend_display_takeover = nullptr,
                                                    std::function<void()> resume_display_takeover = nullptr) {
-  MediaVolumeCtx *ctx = new MediaVolumeCtx();
+  MediaVolumeCtx *ctx = grid_own_context(btn, new MediaVolumeCtx());
   ctx->entity_id = p.entity;
   ctx->label = media_label(p);
   ctx->max_pct = media_volume_max_percent(p);

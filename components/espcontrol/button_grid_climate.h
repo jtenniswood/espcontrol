@@ -105,6 +105,16 @@ struct ClimateControlCtx {
   const lv_font_t *icon_font = nullptr;
 };
 
+template<>
+inline void grid_delete_context<ClimateControlCtx>(void *ptr) {
+  ClimateControlCtx *ctx = static_cast<ClimateControlCtx *>(ptr);
+  if (ctx && ctx->debounce_timer) {
+    lv_timer_del(ctx->debounce_timer);
+    ctx->debounce_timer = nullptr;
+  }
+  delete ctx;
+}
+
 struct ClimateOptionClick {
   ClimateControlCtx *ctx = nullptr;
   std::string kind;
@@ -1813,7 +1823,7 @@ inline ClimateControlCtx *create_climate_control_context(
     const lv_font_t *card_icon_font, const lv_font_t *icon_font,
     int width_compensation_percent,
     lv_obj_t *sensor_container, lv_obj_t *value_lbl, lv_obj_t *unit_lbl) {
-  ClimateControlCtx *ctx = new ClimateControlCtx();
+  ClimateControlCtx *ctx = grid_own_context(btn, new ClimateControlCtx());
   ctx->entity_id = p.entity;
   ctx->configured_label = p.label;
   ctx->precision = parse_precision(p.precision);

@@ -627,7 +627,7 @@ inline TodoCardCtx *create_todo_card_context(
   (void) accent_color;
   (void) secondary_color;
   (void) top_task_limit_two_lines;
-  TodoCardCtx *ctx = new TodoCardCtx();
+  TodoCardCtx *ctx = grid_own_context(s.btn, new TodoCardCtx());
   ctx->entity_id = p.entity;
   ctx->configured_label = p.label;
   ctx->btn = s.btn;
@@ -1347,7 +1347,7 @@ inline TodoCardCtx *create_todo_card_context(
     bool top_task_limit_two_lines = false) {
   (void) accent_color;
   (void) top_task_limit_two_lines;
-  TodoCardCtx *ctx = new TodoCardCtx();
+  TodoCardCtx *ctx = grid_own_context(s.btn, new TodoCardCtx());
   ctx->entity_id = p.entity;
   ctx->configured_label = p.label;
   ctx->btn = s.btn;

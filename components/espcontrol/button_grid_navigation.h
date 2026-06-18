@@ -84,6 +84,7 @@ inline void navigation_clear_subpages(lv_obj_t *main_page_obj = nullptr) {
   for (auto &entry : navigation_subpages()) {
     if (entry.screen == nullptr || entry.screen == main_page_obj) continue;
     if (lv_obj_is_valid(entry.screen)) {
+      grid_free_owned_context_tree(entry.screen);
       lv_obj_delete(entry.screen);
     }
     entry.screen = nullptr;

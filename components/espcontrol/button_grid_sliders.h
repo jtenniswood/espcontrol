@@ -148,6 +148,16 @@ struct LightControlCtx {
   bool dragging_temp_slider = false;
 };
 
+template<>
+inline void grid_delete_context<SliderCtx>(void *ptr) {
+  SliderCtx *ctx = static_cast<SliderCtx *>(ptr);
+  if (ctx && ctx->media_timer) {
+    lv_timer_del(ctx->media_timer);
+    ctx->media_timer = nullptr;
+  }
+  delete ctx;
+}
+
 enum class LightControlTab : uint8_t {
   BRIGHTNESS = 0,
   TEMPERATURE = 1,
@@ -731,7 +741,7 @@ inline LightControlCtx *create_light_control_context(
     const lv_font_t *label_font,
     const lv_font_t *icon_font,
     int width_compensation_percent) {
-  LightControlCtx *ctx = new LightControlCtx();
+  LightControlCtx *ctx = grid_own_context(s.btn, new LightControlCtx());
   ctx->entity_id = p.entity;
   ctx->label = p.label;
   ctx->accent_color = accent_color;
@@ -1654,7 +1664,7 @@ inline CoverControlCtx *create_cover_control_context(
     uint32_t secondary_color,
     const lv_font_t *icon_font,
     int width_compensation_percent) {
-  CoverControlCtx *ctx = new CoverControlCtx();
+  CoverControlCtx *ctx = grid_own_context(s.btn, new CoverControlCtx());
   ctx->entity_id = p.entity;
   ctx->label = p.label;
   ctx->accent_color = accent_color;
@@ -1779,8 +1789,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     if (s.sensor_container) lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     return;
   }
-  // Intentionally leaked -- lives for the lifetime of the display
-  SliderCtx *ctx = new SliderCtx();
+  SliderCtx *ctx = grid_own_context(slider, new SliderCtx());
   ctx->entity_id = p.entity;
   ctx->fill = fill;
   ctx->horizontal = horizontal;
@@ -2072,8 +2081,7 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
   lv_obj_set_user_data(s.sensor_container, (void *)slider);
 
   lv_obj_t *fill = lv_obj_get_child(s.btn, 0);
-  // Intentionally leaked -- lives for the lifetime of the display
-  SliderCtx *ctx = new SliderCtx();
+  SliderCtx *ctx = grid_own_context(slider, new SliderCtx());
   ctx->entity_id = p.entity;
   ctx->fill = fill;
   ctx->horizontal = false;

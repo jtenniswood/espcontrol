@@ -49,7 +49,32 @@ struct AlarmActionCtx {
   AlarmCardCtx *card = nullptr;
   std::string mode;
   bool requires_pin = true;
+  bool owns_card = false;
 };
+
+template<>
+inline void grid_delete_context<AlarmCardCtx>(void *ptr) {
+  AlarmCardCtx *ctx = static_cast<AlarmCardCtx *>(ptr);
+  if (ctx && ctx->arm_delay_timer) {
+    lv_timer_del(ctx->arm_delay_timer);
+    ctx->arm_delay_timer = nullptr;
+  }
+  if (ctx && ctx->pending_action_timer) {
+    lv_timer_del(ctx->pending_action_timer);
+    ctx->pending_action_timer = nullptr;
+  }
+  delete ctx;
+}
+
+template<>
+inline void grid_delete_context<AlarmActionCtx>(void *ptr) {
+  AlarmActionCtx *ctx = static_cast<AlarmActionCtx *>(ptr);
+  if (ctx && ctx->owns_card) {
+    grid_delete_context<AlarmCardCtx>(ctx->card);
+    ctx->card = nullptr;
+  }
+  delete ctx;
+}
 
 struct AlarmPinModalUi {
   lv_obj_t *overlay = nullptr;
@@ -1359,7 +1384,7 @@ inline AlarmCardCtx *create_alarm_card_context(
     lv_color_t text_color,
     int width_compensation_percent,
     bool build_default_page = false) {
-  AlarmCardCtx *ctx = new AlarmCardCtx();
+  AlarmCardCtx *ctx = grid_own_context(slot.btn, new AlarmCardCtx());
   ctx->entity_id = p.entity;
   ctx->label = p.label.empty() ? espcontrol_i18n(std::string("Alarm")) : p.label;
   ctx->options = p.options;
@@ -1435,7 +1460,7 @@ inline AlarmCardCtx *create_alarm_card_context(
     lv_label_set_text(action_slot.text_lbl, alarm_action_label(mode));
     apply_push_button_transition(action_btn);
 
-    AlarmActionCtx *action_ctx = new AlarmActionCtx();
+    AlarmActionCtx *action_ctx = grid_own_context(action_btn, new AlarmActionCtx());
     action_ctx->card = ctx;
     action_ctx->mode = mode;
     action_ctx->requires_pin = alarm_action_requires_pin(p.options, mode);

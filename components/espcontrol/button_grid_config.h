@@ -116,6 +116,48 @@ struct BtnSlot {
   lv_obj_t *subpage_lbl = nullptr;  // small chevron marker for subpage cards
 };
 
+struct GridOwnedContext {
+  lv_obj_t *owner = nullptr;
+  void *ptr = nullptr;
+  void (*deleter)(void *) = nullptr;
+};
+
+inline std::vector<GridOwnedContext> &grid_owned_contexts() {
+  static std::vector<GridOwnedContext> contexts;
+  return contexts;
+}
+
+template<typename T>
+inline void grid_delete_context(void *ptr) {
+  delete static_cast<T *>(ptr);
+}
+
+template<typename T>
+inline T *grid_own_context(lv_obj_t *owner, T *ptr) {
+  if (!owner || !ptr) return ptr;
+  grid_owned_contexts().push_back({owner, ptr, grid_delete_context<T>});
+  return ptr;
+}
+
+inline void grid_free_owned_contexts(lv_obj_t *owner) {
+  if (!owner) return;
+  auto &contexts = grid_owned_contexts();
+  for (int i = static_cast<int>(contexts.size()) - 1; i >= 0; i--) {
+    if (contexts[i].owner != owner) continue;
+    if (contexts[i].deleter && contexts[i].ptr) contexts[i].deleter(contexts[i].ptr);
+    contexts.erase(contexts.begin() + i);
+  }
+}
+
+inline void grid_free_owned_context_tree(lv_obj_t *owner) {
+  if (!owner) return;
+  int32_t count = static_cast<int32_t>(lv_obj_get_child_cnt(owner));
+  for (int32_t i = count - 1; i >= 0; i--) {
+    grid_free_owned_context_tree(lv_obj_get_child(owner, i));
+  }
+  grid_free_owned_contexts(owner);
+}
+
 struct ParsedCfg;
 inline void set_card_checked_state(lv_obj_t *btn, bool checked);
 
@@ -2802,6 +2844,16 @@ struct TransientStatusLabel {
   lv_timer_t *revert_timer = nullptr;
 };
 
+template<>
+inline void grid_delete_context<TransientStatusLabel>(void *ptr) {
+  TransientStatusLabel *ctx = static_cast<TransientStatusLabel *>(ptr);
+  if (ctx && ctx->revert_timer) {
+    lv_timer_del(ctx->revert_timer);
+    ctx->revert_timer = nullptr;
+  }
+  delete ctx;
+}
+
 inline void transient_status_label_revert_cb(lv_timer_t *timer) {
   TransientStatusLabel *ctx = static_cast<TransientStatusLabel *>(lv_timer_get_user_data(timer));
   if (!ctx) return;
@@ -2813,8 +2865,7 @@ inline void transient_status_label_revert_cb(lv_timer_t *timer) {
 inline TransientStatusLabel *create_transient_status_label(
     lv_obj_t *label, const std::string &steady_text,
     uint32_t stable_ms = STATUS_LABEL_STABLE_MS) {
-  // Intentionally leaked -- lives for the lifetime of the display.
-  TransientStatusLabel *ctx = new TransientStatusLabel();
+  TransientStatusLabel *ctx = grid_own_context(label, new TransientStatusLabel());
   ctx->label = label;
   ctx->steady_text = steady_text;
   if (ctx->label) lv_label_set_text(ctx->label, ctx->steady_text.c_str());

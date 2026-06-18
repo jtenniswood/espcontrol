@@ -394,7 +394,7 @@ struct ActionCardStateCtx {
 
 inline ActionCardStateCtx *create_action_card_state_context(const BtnSlot &s,
                                                             const ParsedCfg &p) {
-  ActionCardStateCtx *ctx = new ActionCardStateCtx();
+  ActionCardStateCtx *ctx = grid_own_context(s.btn, new ActionCardStateCtx());
   ctx->btn = s.btn;
   ctx->icon_lbl = s.icon_lbl;
   ctx->text_lbl = s.text_lbl;

@@ -188,11 +188,18 @@ inline bool card_slot_static_child(const BtnSlot &s, lv_obj_t *child) {
 
 inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   if (!s.btn) return;
+  grid_free_owned_contexts(s.btn);
+  grid_free_owned_contexts(s.sensor_container);
+  grid_free_owned_contexts(s.text_lbl);
+  grid_free_owned_contexts(s.icon_lbl);
+  grid_free_owned_contexts(s.sensor_lbl);
+  grid_free_owned_contexts(s.unit_lbl);
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_state(s.btn, LV_STATE_CHECKED);
   sync_card_checked_text_color(s.btn);
   lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
   lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_user_data(s.btn, nullptr);
   if (s.sensor_container) lv_obj_set_user_data(s.sensor_container, nullptr);
   if (s.text_lbl) {
     lv_obj_set_style_bg_opa(s.text_lbl, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -203,6 +210,7 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   for (int32_t i = count - 1; i >= 0; i--) {
     lv_obj_t *child = lv_obj_get_child(s.btn, i);
     if (!child || card_slot_static_child(s, child)) continue;
+    grid_free_owned_context_tree(child);
     lv_obj_del(child);
   }
 }
@@ -539,7 +547,7 @@ inline LockCardCtx *bind_lock_status_card(BtnSlot &s, const ParsedCfg &p) {
   if (p.type != "lock" || p.entity.empty() || lock_command_mode(p.sensor)) {
     return nullptr;
   }
-  LockCardCtx *ctx = new LockCardCtx();
+  LockCardCtx *ctx = grid_own_context(s.btn, new LockCardCtx());
   ctx->entity_id = p.entity;
   lv_obj_set_user_data(s.btn, ctx);
   std::string fallback_label = p.label.empty() ? espcontrol_i18n(std::string("Lock")) : p.label;
@@ -1014,8 +1022,9 @@ inline void grid_phase2(
         alarm_action_card->grid_cols = COLS;
         alarm_set_card_state_colors(alarm_action_card, alarm_action_card->on_color);
 
-        AlarmActionCtx *action_ctx = new AlarmActionCtx();
+        AlarmActionCtx *action_ctx = grid_own_context(s.btn, new AlarmActionCtx());
         action_ctx->card = alarm_action_card;
+        action_ctx->owns_card = true;
         action_ctx->mode = alarm_action_valid(p.sensor) ? p.sensor : "away";
         action_ctx->requires_pin =
           alarm_action_requires_pin(alarm_action_card->options, action_ctx->mode);
@@ -1277,7 +1286,7 @@ inline void grid_phase2(
 
     ToggleTextSensorCtx *text_sensor_ctx = nullptr;
     if (sensor_text_mode[idx - 1]) {
-      text_sensor_ctx = new ToggleTextSensorCtx();
+      text_sensor_ctx = grid_own_context(s.btn, new ToggleTextSensorCtx());
       text_sensor_ctx->text_lbl = s.text_lbl;
       text_sensor_ctx->steady_text = label_text_or_empty(s.text_lbl);
     }
@@ -1511,7 +1520,7 @@ inline void grid_phase2(
           if (sb_cfg.label.empty())
             subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
           subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
-          ParsedCfg *ctx = new ParsedCfg(sb_cfg);
+          ParsedCfg *ctx = grid_own_context(sb_btn, new ParsedCfg(sb_cfg));
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
             if (c) send_cover_command_action(*c);
@@ -1542,7 +1551,7 @@ inline void grid_phase2(
               bind_garage_status_card(sub_slot, sb_cfg);
               add_parent_indicator(sb_cfg.entity);
             }
-            ParsedCfg *ctx = new ParsedCfg(sb_cfg);
+            ParsedCfg *ctx = grid_own_context(sb_btn, new ParsedCfg(sb_cfg));
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_cover_command_action(*c);
@@ -1560,7 +1569,7 @@ inline void grid_phase2(
         if (!sb_cfg.entity.empty()) {
           if (lock_command_mode(sb_cfg.sensor)) {
             subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
-            ParsedCfg *ctx = new ParsedCfg(sb_cfg);
+            ParsedCfg *ctx = grid_own_context(sb_btn, new ParsedCfg(sb_cfg));
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_lock_command_action(*c);
@@ -1631,8 +1640,9 @@ inline void grid_phase2(
           alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
           alarm_action_card->width_compensation_percent = display_main_width_percent(display);
           alarm_action_card->grid_cols = COLS;
-          AlarmActionCtx *action_ctx = new AlarmActionCtx();
+          AlarmActionCtx *action_ctx = grid_own_context(sb_btn, new AlarmActionCtx());
           action_ctx->card = alarm_action_card;
+          action_ctx->owns_card = true;
           action_ctx->mode = alarm_action_valid(sb_cfg.sensor) ? sb_cfg.sensor : "away";
           action_ctx->requires_pin =
             alarm_action_requires_pin(alarm_action_card->options, action_ctx->mode);
@@ -1666,7 +1676,7 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "push") {
         std::string push_label = sb_cfg.label.empty() ? espcontrol_i18n(std::string("Push")) : sb_cfg.label;
-        std::string *label = new std::string(push_label);
+        std::string *label = grid_own_context(sb_btn, new std::string(push_label));
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           std::string *label = (std::string *)lv_event_get_user_data(e);
           esphome::api::HomeassistantActionRequest req;
@@ -1706,7 +1716,7 @@ inline void grid_phase2(
             ActionCardStateCtx *action_ctx = create_action_card_state_context(sub_slot, sb_cfg);
             subscribe_action_card_display_state(action_ctx, state_entity);
           }
-          ParsedCfg *ctx = new ParsedCfg(sb_cfg);
+          ParsedCfg *ctx = grid_own_context(sb_btn, new ParsedCfg(sb_cfg));
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
             lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -1739,7 +1749,7 @@ inline void grid_phase2(
         continue;
       }
       if (sb_cfg.type == "webhook") {
-        ParsedCfg *ctx = new ParsedCfg(sb_cfg);
+        ParsedCfg *ctx = grid_own_context(sb_btn, new ParsedCfg(sb_cfg));
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
           if (c) send_webhook_action(*c);
@@ -1792,7 +1802,7 @@ inline void grid_phase2(
         std::string mode = media_card_mode(sb_cfg.sensor);
         if (!sb_cfg.entity.empty()) {
           if (media_playback_button_mode(mode)) {
-            ParsedCfg *ctx = new ParsedCfg(sb_cfg);
+            ParsedCfg *ctx = grid_own_context(sb_btn, new ParsedCfg(sb_cfg));
             ctx->sensor = mode;
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -1834,7 +1844,7 @@ inline void grid_phase2(
             MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(sub_slot.sensor_container);
             subscribe_media_now_playing_state(ctx, sb_cfg.entity);
             if (media_now_playing_play_pause_enabled(sb_cfg)) {
-              ParsedCfg *click_ctx = new ParsedCfg(sb_cfg);
+              ParsedCfg *click_ctx = grid_own_context(sb_btn, new ParsedCfg(sb_cfg));
               lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
                 ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
                 if (c) send_media_playback_action(c->entity, "play_pause");
@@ -1942,7 +1952,7 @@ inline void grid_phase2(
             sp_has_icon_on, sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
         }
         if (!sb_cfg.entity.empty()) {
-          InternalRelayClickCtx *ctx = new InternalRelayClickCtx();
+          InternalRelayClickCtx *ctx = grid_own_context(sb_btn, new InternalRelayClickCtx());
           ctx->key = sb_cfg.entity;
           ctx->push_mode = push_mode;
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
@@ -1985,7 +1995,7 @@ inline void grid_phase2(
           if (sb_cfg.label.empty())
             subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
           add_parent_indicator(sb_cfg.entity);
-          std::string *eid = new std::string(sb_cfg.entity);
+          std::string *eid = grid_own_context(sb_btn, new std::string(sb_cfg.entity));
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             std::string *en = (std::string *)lv_event_get_user_data(e);
             if (en && !en->empty()) send_slider_action(*en, -1);
@@ -2004,7 +2014,7 @@ inline void grid_phase2(
 
         ToggleTextSensorCtx *switch_text_ctx = nullptr;
         if (switch_sensor_text_mode) {
-          switch_text_ctx = new ToggleTextSensorCtx();
+          switch_text_ctx = grid_own_context(sb_btn, new ToggleTextSensorCtx());
           switch_text_ctx->text_lbl = sub_slot.text_lbl;
           switch_text_ctx->steady_text = label_text_or_empty(sub_slot.text_lbl);
         }
@@ -2016,11 +2026,11 @@ inline void grid_phase2(
             subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
         }
 
-        bool *switch_has_sensor_ptr = new bool(switch_has_sensor);
-        bool *switch_sensor_text_ptr = new bool(switch_sensor_text_mode);
-        bool *switch_has_icon_on_ptr = new bool(switch_has_icon_on);
-        const char **switch_icon_off_ptr = new const char*(switch_icon_off);
-        const char **switch_icon_on_ptr = new const char*(switch_icon_on);
+        bool *switch_has_sensor_ptr = grid_own_context(sb_btn, new bool(switch_has_sensor));
+        bool *switch_sensor_text_ptr = grid_own_context(sb_btn, new bool(switch_sensor_text_mode));
+        bool *switch_has_icon_on_ptr = grid_own_context(sb_btn, new bool(switch_has_icon_on));
+        const char **switch_icon_off_ptr = grid_own_context(sb_btn, new const char*(switch_icon_off));
+        const char **switch_icon_on_ptr = grid_own_context(sb_btn, new const char*(switch_icon_on));
         subscribe_toggle_state(sub_slot.btn, sub_slot.icon_lbl, sub_slot.sensor_container,
           switch_has_sensor_ptr, switch_sensor_text_ptr, switch_has_icon_on_ptr,
           switch_icon_off_ptr, switch_icon_on_ptr, switch_text_ctx, sb_cfg.entity);
@@ -2034,7 +2044,7 @@ inline void grid_phase2(
         }
 
         add_parent_indicator(sb_cfg.entity);
-        ParsedCfg *click_ctx = new ParsedCfg(sb_cfg);
+        ParsedCfg *click_ctx = grid_own_context(sb_btn, new ParsedCfg(sb_cfg));
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
           lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));

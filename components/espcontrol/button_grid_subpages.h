@@ -455,7 +455,7 @@ inline void subscribe_climate_subpage_parent_indicator(
     lv_obj_t *parent_btn, lv_obj_t *parent_icon,
     bool has_alt_icon, const char *off_glyph, const char *on_glyph) {
   if (entity_id.empty()) return;
-  ClimateSubpageParentIndicatorCtx *ctx = new ClimateSubpageParentIndicatorCtx();
+  ClimateSubpageParentIndicatorCtx *ctx = grid_own_context(parent_btn, new ClimateSubpageParentIndicatorCtx());
   ctx->parent_btn = parent_btn;
   ctx->parent_icon = parent_icon;
   ctx->has_alt_icon = has_alt_icon;

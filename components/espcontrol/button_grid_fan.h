@@ -357,7 +357,7 @@ inline FanCardCtx *create_fan_card_context(
     const lv_font_t *label_font,
     const lv_font_t *icon_font,
     int width_compensation_percent) {
-  FanCardCtx *ctx = new FanCardCtx();
+  FanCardCtx *ctx = grid_own_context(slot.btn, new FanCardCtx());
   ctx->type = p.type;
   ctx->entity_id = p.entity;
   ctx->label = fan_card_label(p);

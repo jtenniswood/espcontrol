@@ -84,7 +84,7 @@ inline void setup_vacuum_card(BtnSlot &s, const ParsedCfg &p) {
 
 inline VacuumCardCtx *create_vacuum_card_context(const BtnSlot &s,
                                                  const ParsedCfg &p) {
-  VacuumCardCtx *ctx = new VacuumCardCtx();
+  VacuumCardCtx *ctx = grid_own_context(s.btn, new VacuumCardCtx());
   ctx->btn = s.btn;
   ctx->icon_lbl = s.icon_lbl;
   ctx->text_lbl = s.text_lbl;

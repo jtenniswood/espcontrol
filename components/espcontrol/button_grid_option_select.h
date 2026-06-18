@@ -294,7 +294,7 @@ inline OptionSelectCtx *create_option_select_context(
     BtnSlot &s, const ParsedCfg &p,
     uint32_t accent_color, uint32_t secondary_color, uint32_t tertiary_color,
     int width_compensation_percent) {
-  OptionSelectCtx *ctx = new OptionSelectCtx();
+  OptionSelectCtx *ctx = grid_own_context(s.btn, new OptionSelectCtx());
   ctx->entity_id = p.entity;
   ctx->configured_label = p.label;
   ctx->btn = s.btn;

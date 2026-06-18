@@ -369,6 +369,8 @@ def test_weather_card_mode_visibility_reset() -> None:
 
 def test_grid_phase2_uses_cleaned_spanned_layout() -> None:
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+    config = (ROOT / "components" / "espcontrol" / "button_grid_config.h").read_text(encoding="utf-8")
+    navigation = (ROOT / "components" / "espcontrol" / "button_grid_navigation.h").read_text(encoding="utf-8")
     match = re.search(
         r"inline void grid_phase2\([\s\S]*?ESP_LOGI\(\"sensors\", \"Phase 2: done",
         grid,
@@ -380,6 +382,18 @@ def test_grid_phase2_uses_cleaned_spanned_layout() -> None:
     )
     assert "int idx = order.positions[pos];" in body, (
         "phase 2 must skip grid cells covered by larger cards"
+    )
+    assert "inline T *grid_own_context" in config and "inline void grid_free_owned_context_tree" in config, (
+        "live grid reapply must track heap contexts attached to rebuilt LVGL cards"
+    )
+    assert "grid_free_owned_contexts(s.btn);" in grid and "grid_free_owned_context_tree(child);" in grid, (
+        "main-grid live reapply must free old per-card contexts before deleting card children"
+    )
+    assert "grid_free_owned_context_tree(entry.screen);" in navigation, (
+        "subpage live reapply must free old per-card contexts before deleting subpage screens"
+    )
+    assert "grid_own_context(sb_btn, new ParsedCfg(sb_cfg))" in grid, (
+        "subpage click contexts must be owned so repeated live reapply does not leak them"
     )
 
 
