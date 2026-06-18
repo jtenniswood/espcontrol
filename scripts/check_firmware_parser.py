@@ -26,6 +26,7 @@ IMAGE_CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "image_card_nor
 
 
 CPP_SOURCE = r'''
+#include <algorithm>
 #include <cassert>
 #include <algorithm>
 #include <cmath>
