@@ -25,6 +25,8 @@ enum class ControlModalKind {
   ALARM_CONTROL,
   IMAGE_CARD,
   TODO_LIST,
+  COVER_CONTROL,
+  LIGHT_CONTROL,
 };
 
 using ControlModalCloseCallback = void (*)();
@@ -261,6 +263,32 @@ inline lv_coord_t control_modal_card_radius(lv_obj_t *btn) {
   if (btn) return lv_obj_get_style_radius(btn, LV_PART_MAIN);
   ControlModalGridMetrics &metrics = control_modal_grid_metrics();
   return metrics.first_card ? lv_obj_get_style_radius(metrics.first_card, LV_PART_MAIN) : 18;
+}
+
+inline lv_coord_t control_modal_home_card_width(lv_obj_t *btn,
+                                                const ControlModalLayout &layout) {
+  lv_coord_t width = 0;
+  if (btn) {
+    lv_obj_update_layout(btn);
+    width = lv_obj_get_width(btn);
+  }
+
+  ControlModalGridMetrics &metrics = control_modal_grid_metrics();
+  if (width <= 0 && metrics.first_card) {
+    lv_obj_update_layout(metrics.first_card);
+    width = lv_obj_get_width(metrics.first_card);
+  }
+  if (width <= 0 && metrics.page) {
+    lv_obj_update_layout(metrics.page);
+    lv_coord_t gap = lv_obj_get_style_pad_column(metrics.page, LV_PART_MAIN);
+    width = (layout.panel_w - gap * (metrics.cols - 1)) / metrics.cols;
+  }
+  if (width <= 0) width = layout.panel_w - layout.inset * 3;
+
+  lv_coord_t max_width = layout.panel_w - layout.inset * 3;
+  if (max_width > 0 && width > max_width) width = max_width;
+  if (width < 1) width = 1;
+  return width;
 }
 
 inline ControlModalLayout control_modal_calc_layout(int width_compensation_percent) {

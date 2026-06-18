@@ -385,7 +385,17 @@ var CSS =
 
   ".sp-cond-field{padding:0 0 4px;display:none}" +
   ".sp-cond-field.sp-visible{display:block}" +
+  ".sp-action-confirm-section.sp-visible{margin-bottom:28px}" +
   ".sp-cond-field.sp-climate-settings-gap.sp-visible{margin-bottom:24px}" +
+  ".sp-disclosure{border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02);overflow:hidden;margin-top:4px}" +
+  ".sp-disclosure-button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;" +
+  "padding:12px 14px;background:transparent;border:0;color:var(--text);font:inherit;font-size:.875rem;font-weight:500;cursor:pointer;text-align:left}" +
+  ".sp-disclosure-button:hover{background:rgba(255,255,255,.03)}" +
+  ".sp-disclosure-chevron{display:inline-flex;width:20px;height:20px;color:var(--text3);transition:transform .25s ease;flex-shrink:0}" +
+  ".sp-disclosure-chevron svg{width:100%;height:100%}" +
+  ".sp-disclosure-body{display:none;padding:4px 14px 14px}" +
+  ".sp-disclosure.sp-open .sp-disclosure-chevron{transform:rotate(180deg)}" +
+  ".sp-disclosure.sp-open .sp-disclosure-body{display:block}" +
   ".sp-schedule-times.sp-hidden{display:none}" +
   ".sp-info-panel{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-bottom:16px;" +
   "background:rgba(92,115,231,.12);border:1px solid rgba(92,115,231,.22);border-radius:8px;" +

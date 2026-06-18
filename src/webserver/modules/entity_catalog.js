@@ -471,14 +471,6 @@ var ENTITY_CATALOG = {
       "domain": "select",
       "name": "Firmware: Update Frequency"
     },
-    "developer_experimental_features": {
-      "domain": "switch",
-      "name": "Developer: Experimental Features",
-      "objectIds": [
-        "developer__experimental_features",
-        "developer_experimental_features"
-      ]
-    },
     "screen_rotation": {
       "domain": "select",
       "name": "Screen: Rotation"
@@ -566,8 +558,7 @@ var ENTITY_CATALOG = {
       "firmware_check_for_update",
       "firmware_install_update",
       "firmware_auto_update",
-      "firmware_update_frequency",
-      "developer_experimental_features"
+      "firmware_update_frequency"
     ],
     "settings_optional": [
       "screen_rotation"

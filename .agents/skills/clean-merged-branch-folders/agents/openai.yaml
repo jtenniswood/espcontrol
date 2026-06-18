@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean Merged Branch Folders"
+  short_description: "Remove merged local worktree folders"
+  default_prompt: "Use $clean-merged-branch-folders to clean up local branch worktree folders that have already merged to main."

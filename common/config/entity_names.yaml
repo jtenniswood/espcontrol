@@ -88,5 +88,4 @@ substitutions:
   entity_firmware_install_update: "Firmware: Install Update"
   entity_firmware_auto_update: "Firmware: Auto Update"
   entity_firmware_update_frequency: "Firmware: Update Frequency"
-  entity_developer_experimental_features: "Developer: Experimental Features"
   entity_screen_rotation: "Screen: Rotation"

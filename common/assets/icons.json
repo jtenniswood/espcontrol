@@ -24,6 +24,12 @@
       "comment": "Modal close button"
     },
     {
+      "name": "Folder",
+      "codepoint": "F024B",
+      "mdi": "folder",
+      "comment": "Default subpage indicator"
+    },
+    {
       "name": "Download",
       "codepoint": "F01DA",
       "mdi": "download",
@@ -935,6 +941,11 @@
       "mdi": "stove"
     },
     {
+      "name": "Palette",
+      "codepoint": "F03D8",
+      "mdi": "palette"
+    },
+    {
       "name": "Package",
       "codepoint": "F03D6",
       "mdi": "package-variant"
@@ -1063,6 +1074,31 @@
       "name": "Robot Vacuum",
       "codepoint": "F070D",
       "mdi": "robot-vacuum"
+    },
+    {
+      "name": "Robot Vacuum Alert",
+      "codepoint": "F1B5D",
+      "mdi": "robot-vacuum-alert"
+    },
+    {
+      "name": "Robot Vacuum Off",
+      "codepoint": "F1C01",
+      "mdi": "robot-vacuum-off"
+    },
+    {
+      "name": "Robot Vacuum Variant",
+      "codepoint": "F0908",
+      "mdi": "robot-vacuum-variant"
+    },
+    {
+      "name": "Robot Vacuum Variant Alert",
+      "codepoint": "F1B5E",
+      "mdi": "robot-vacuum-variant-alert"
+    },
+    {
+      "name": "Robot Vacuum Variant Off",
+      "codepoint": "F1C02",
+      "mdi": "robot-vacuum-variant-off"
     },
     {
       "name": "Roller Shade",
@@ -1220,6 +1256,11 @@
       "mdi": "swap-horizontal"
     },
     {
+      "name": "Swap Vertical",
+      "codepoint": "F04E2",
+      "mdi": "swap-vertical"
+    },
+    {
       "name": "Power Socket UK",
       "codepoint": "F07E8",
       "mdi": "power-socket-uk"
@@ -1333,6 +1374,21 @@
       "name": "Trash Can Outline",
       "codepoint": "F0A7A",
       "mdi": "trash-can-outline"
+    },
+    {
+      "name": "Vacuum",
+      "codepoint": "F19A1",
+      "mdi": "vacuum"
+    },
+    {
+      "name": "Vacuum Outline",
+      "codepoint": "F19A2",
+      "mdi": "vacuum-outline"
+    },
+    {
+      "name": "View Headline",
+      "codepoint": "F0571",
+      "mdi": "view-headline"
     },
     {
       "name": "Volume High",

@@ -26,7 +26,6 @@ var SSE_ALIAS_GROUPS = {
   ntpServer1: ["text-screen__ntp_server_1", "text-ntp_server_1"],
   ntpServer2: ["text-screen__ntp_server_2", "text-ntp_server_2"],
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
-  developerExperimentalFeatures: ["switch-developer__experimental_features", "switch-developer_experimental_features"],
 };
 
 function applyClockBarStateValue(val, d, matchedKey) {
@@ -444,14 +443,6 @@ function connectEvents() {
       if (els.setAutoUpdate) els.setAutoUpdate.checked = state.autoUpdate;
       syncFirmwareUpdateUi();
     },
-    "switch-developer__experimental_features": function (val, d) {
-      state.developerExperimentalFeatures = d.value === true || val === "ON";
-      if (els.setDeveloperExperimentalFeatures) {
-        els.setDeveloperExperimentalFeatures.checked = state.developerExperimentalFeatures;
-      }
-      syncScreenRotationSelect();
-      scheduleRender();
-    },
     "select-firmware__update_frequency": function (val, d) {
       state.firmwareUpdateControlsSupported = true;
       state.updateFrequency = d.value || val || state.updateFrequency;
@@ -488,7 +479,6 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer1, sseHandlers["text-screen__ntp_server_1"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer2, sseHandlers["text-screen__ntp_server_2"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer3, sseHandlers["text-screen__ntp_server_3"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.developerExperimentalFeatures, sseHandlers["switch-developer__experimental_features"]);
 
   var ssePatterns = [
     {

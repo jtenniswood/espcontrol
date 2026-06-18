@@ -359,7 +359,7 @@ switch:
     on_turn_on:
       - if:
           condition:
-            lambda: 'return !screensaver_action_clock_mode(id(screensaver_action).current_option());'
+            lambda: 'return !id(screensaver_action_clock);'
           then:
             - select.set:
                 id: screensaver_action
@@ -372,7 +372,7 @@ switch:
     on_turn_off:
       - if:
           condition:
-            lambda: 'return screensaver_action_clock_mode(id(screensaver_action).current_option());'
+            lambda: 'return id(screensaver_action_clock);'
           then:
             - select.set:
                 id: screensaver_action
@@ -417,6 +417,7 @@ switch:
     web_server:
       sorting_group_id: sg_screensaver
     on_turn_on:
+      - switch.turn_on: media_player_sleep_prevention_enabled
       - script.execute: cover_art_resubscribe
       - script.execute: cover_art_playback_refresh
     on_turn_off:
@@ -455,18 +456,20 @@ select:
       sorting_group_id: sg_screensaver
     on_value:
       then:
+        - lambda: |-
+            std::string action = id(screensaver_action).current_option();
+            id(screensaver_action_clock) = screensaver_action_clock_mode(action);
+            id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
         - if:
             condition:
               lambda: |-
-                return screensaver_action_clock_mode(id(screensaver_action).current_option()) &&
-                       !id(clock_screensaver_enabled).state;
+                return id(screensaver_action_clock) && !id(clock_screensaver_enabled).state;
             then:
               - switch.turn_on: clock_screensaver_enabled
         - if:
             condition:
               lambda: |-
-                return !screensaver_action_clock_mode(id(screensaver_action).current_option()) &&
-                       id(clock_screensaver_enabled).state;
+                return !id(screensaver_action_clock) && id(clock_screensaver_enabled).state;
             then:
               - switch.turn_off: clock_screensaver_enabled
         - if:

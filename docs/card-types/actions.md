@@ -1,14 +1,14 @@
 ---
 title: Action Cards
 description:
-  How to use action cards on your EspControl panel to run Home Assistant scenes, scripts, automations, buttons, vacuums, and helpers.
+  How to use action cards on your EspControl panel to run Home Assistant scenes, scripts, automations, buttons, and helpers.
 ---
 
 # Action
 
 An Action card is a simple one-tap shortcut. It sends a selected Home Assistant action when you tap it, but it does not show an on/off state.
 
-Use Action cards for shortcuts such as running a scene, starting a script, triggering an automation, pressing a Home Assistant button entity, starting or docking a vacuum, or changing a helper.
+Use Action cards for shortcuts such as running a scene, starting a script, triggering an automation, pressing a Home Assistant button entity, or changing a helper.
 
 ## Setting Up an Action Card
 
@@ -18,7 +18,8 @@ Use Action cards for shortcuts such as running a scene, starting a script, trigg
 4. Enter the **Entity** for the thing you want the action to use.
 5. If you choose **Set Number Helper**, enter the value.
 6. Choose an **Icon**.
-7. Optionally turn on **Show State** if the Action card should show a separate Home Assistant state.
+7. If you choose **Run Script**, optionally turn on **Confirmation Required** if accidental taps would be a problem.
+8. Optionally turn on **Show State** if the Action card should show a separate Home Assistant state.
 
 ## Run an Existing Home Assistant Script
 
@@ -34,6 +35,8 @@ For example, to run a script called `script.mettre_de_la_musique`:
 
 When you tap the card, EspControl sends `script.turn_on` to Home Assistant with that script as the target entity. The label is only what appears on the panel, so it can be different from the script name.
 
+For safety-sensitive scripts, turn on **Confirmation Required**. The card will open the same confirmation popup used by Switch cards before it sends `script.turn_on`. You can customise the popup message and the confirm/cancel button text.
+
 Action cards do not currently pass script variables or extra data. If a script needs inputs, handle those inside the Home Assistant script, or create a small wrapper script in Home Assistant and point the Action card at that wrapper.
 
 ## Supported Actions
@@ -44,8 +47,6 @@ Action cards do not currently pass script variables or extra data. If a script n
 | **Run Script** | `script.goodnight` | None |
 | **Trigger Automation** | `automation.goodnight` | None |
 | **Press Button** | `button.restart_router` | None |
-| **Start Vacuum** | `vacuum.k11_vacuum_784c` | None |
-| **Vacuum Return to Base** | `vacuum.k11_vacuum_784c` | None |
 | **Press Input Button** | `input_button.doorbell` | None |
 | **Toggle Helper** | `input_boolean.guest_mode` | None |
 | **Set Number Helper** | `input_number.target_level` | Value |
@@ -78,7 +79,7 @@ When the state entity is active, Icon mode highlights the card. If the state ent
 When you tap an Action card:
 
 - The card briefly flashes the highlight colour.
-- The selected Home Assistant action is sent with the configured entity.
+- The selected Home Assistant action is sent with the configured entity. Run Script cards with **Confirmation Required** ask first.
 - If **Show State** is off, the card does not stay highlighted.
 - If **Show State** is on, the card display follows the state entity you chose.
 
@@ -97,6 +98,7 @@ Use the dedicated card types for richer controls:
 - Use [Lights](/card-types/lights) for light switching, brightness, and colour temperature.
 - Use [Media](/card-types/media) for media player playback, volume, and now-playing controls.
 - Use [Climate](/card-types/climate) for thermostat and HVAC controls.
+- Use [Vacuum](/card-types/vacuum) for robot vacuum status and cleaning controls.
 
 ::: info Requires Home Assistant actions
 Action cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Enable Actions](/getting-started/home-assistant-actions).

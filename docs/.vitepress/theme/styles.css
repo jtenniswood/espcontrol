@@ -8,3 +8,54 @@
   line-height: 20px;
   text-transform: uppercase;
 }
+
+.github-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-left: 12px;
+  padding: 0 10px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 7px;
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.github-stars:hover {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-bg-soft);
+}
+
+.github-stars__icon {
+  color: #d19a00;
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.github-stars__count {
+  min-width: 28px;
+  padding-left: 6px;
+  border-left: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-2);
+  text-align: center;
+}
+
+.github-stars:hover .github-stars__count {
+  color: var(--vp-c-brand-1);
+}
+
+@media (max-width: 767px) {
+  .github-stars {
+    display: none;
+  }
+}

@@ -214,7 +214,6 @@ export interface BackupPanelSettingsCurrent {
   clockBarLayout: string;
   clockFormat: string;
   clockFormatOptions: readonly string[];
-  developerExperimentalFeatures: boolean;
   ntpDefaults: readonly string[];
   ntpServer1: string;
   ntpServer2: string;
@@ -241,8 +240,6 @@ export interface BackupPanelSettingsState {
   hasNtpServer1: boolean;
   hasNtpServer2: boolean;
   hasNtpServer3: boolean;
-  hasDeveloperExperimentalFeatures: boolean;
-  developerExperimentalFeatures: boolean;
   ntpServer1: string;
   ntpServer2: string;
   ntpServer3: string;
@@ -283,7 +280,6 @@ export function normalizeBackupPanelSettings(
   const hasNtpServer1 = objectValue(settings, "ntp_server_1") !== undefined;
   const hasNtpServer2 = objectValue(settings, "ntp_server_2") !== undefined;
   const hasNtpServer3 = objectValue(settings, "ntp_server_3") !== undefined;
-  const hasDeveloperExperimentalFeatures = objectValue(settings, "developer_experimental_features") !== undefined;
   const hasOutdoorTempEnable = objectValue(settings, "outdoor_temp_enable") !== undefined;
   const clockFormat = current.clockFormatOptions.indexOf(String(settings.clock_format || "")) !== -1
     ? String(settings.clock_format)
@@ -336,10 +332,6 @@ export function normalizeBackupPanelSettings(
     hasNtpServer1,
     hasNtpServer2,
     hasNtpServer3,
-    hasDeveloperExperimentalFeatures,
-    developerExperimentalFeatures: hasDeveloperExperimentalFeatures
-      ? !!settings.developer_experimental_features
-      : current.developerExperimentalFeatures,
     ntpServer1: hasNtpServer1
       ? normalizeNtpServer(settings.ntp_server_1, current.ntpDefaults[0] || "")
       : current.ntpServer1,

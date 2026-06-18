@@ -47,6 +47,7 @@ substitutions:
   firmware_update_package_suffix: ${ "_disabled" if disable_updates == "true" else "" }
   backlight_pwm_frequency: ${ "20000Hz" if network_transport == "ethernet" else "100Hz" }
   cover_art_size: "720"
+  cover_art_decode_size: "720"
   cover_art_x: "0"
   cover_art_y: "0"
   cover_art_accent_x: "0"

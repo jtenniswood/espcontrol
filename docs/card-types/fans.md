@@ -10,10 +10,6 @@ Fan cards are grouped controls for Home Assistant `fan` entities. They can show 
 
 Use Fan cards when you want fan-specific controls. Use [Slider](/card-types/sliders) when you only need a simple fan speed slider, or [Switch](/card-types/switches) when you only need basic on/off fan control.
 
-::: tip Availability
-Fan cards are marked as experimental in the current card contract. If your setup page does not show **Fans**, use **Switch** for on/off control or **Slider** for fan speed.
-:::
-
 ## Setting Up a Fan Card
 
 1. Select a card and change its type to **Fans**.

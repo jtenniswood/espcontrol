@@ -73,6 +73,7 @@ function lightTempClampMax(v, mn) {
 }
 
 var LIGHT_CONTROL_TYPE_OPTIONS = [
+  ["light_control", "All Controls"],
   ["light_switch", "Switch"],
   ["light_brightness", "Brightness"],
   ["light_temperature", "Colour Temperature"],
@@ -82,7 +83,9 @@ var LIGHT_CONTROL_TYPE_METADATA = {
   mode: {
     label: "Type",
     idSuffix: "light-control-type",
-    options: LIGHT_CONTROL_TYPE_OPTIONS,
+    options: function (b) {
+      return LIGHT_CONTROL_TYPE_OPTIONS;
+    },
     value: function (b) { return normalizeLightControlType(b.type); },
     onChange: function (b, helpers) {
       setLightControlType(b, this.value, helpers);
@@ -110,8 +113,35 @@ var LIGHT_TEMPERATURE_CARD_METADATA = {
   },
 };
 
+var LIGHT_FULL_CONTROL_CARD_METADATA = {
+  mode: LIGHT_CONTROL_TYPE_METADATA.mode,
+  entity: {
+    label: "Entity",
+    placeholder: "e.g. light.living_room",
+    domains: function () { return cardContractDomains("light_control"); },
+  },
+  labelField: {
+    label: "Label",
+    placeholder: "e.g. Living Room",
+  },
+  iconOff: {
+    field: "icon",
+    fallback: "Lightbulb Outline",
+    label: "Off Icon",
+  },
+  iconOn: {
+    field: "icon_on",
+    fallback: "Lightbulb",
+    label: "On Icon",
+  },
+  preview: {
+    badge: "lightbulb-on",
+  },
+};
+
 function normalizeLightControlType(type) {
   if (type === "light_switch") return "light_switch";
+  if (type === "light_control") return "light_control";
   return type === "light_temperature" ? "light_temperature" : "light_brightness";
 }
 
@@ -139,7 +169,6 @@ registerButtonType("light_temperature", {
   allowInSubpage: function () { return cardContractAllowInSubpage("light_temperature"); },
   hideLabel: true,
   pickerKey: function () { return cardContractPickerKey("light_temperature"); },
-  experimental: function () { return cardContractExperimental("light_temperature"); },
   hidden: function () { return cardContractHidden("light_temperature"); },
   defaultConfig: function () { return cardContractDefaultConfig("light_temperature"); },
   isAvailable: function () {
@@ -229,6 +258,41 @@ registerButtonType("light_temperature", {
           '<span class="sp-slider-fill"></span>' +
         '</span></span>',
       badge: LIGHT_TEMPERATURE_CARD_METADATA.preview.badge,
+    });
+  },
+});
+
+registerButtonType("light_control", {
+  label: function () { return cardContractCardLabel("light_control"); },
+  allowInSubpage: function () { return cardContractAllowInSubpage("light_control"); },
+  hideLabel: true,
+  pickerKey: function () { return cardContractPickerKey("light_control"); },
+  hidden: function () { return cardContractHidden("light_control"); },
+  defaultConfig: function () { return cardContractDefaultConfig("light_control"); },
+  isAvailable: function () {
+    return false;
+  },
+  labelPlaceholder: "e.g. Living Room",
+  cardMetadata: LIGHT_FULL_CONTROL_CARD_METADATA,
+  onSelect: function (b) {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    b.icon = "Lightbulb Outline";
+    b.icon_on = "Lightbulb";
+  },
+  renderSettings: function (panel, b, slot, helpers) {
+    renderLightControlTypeField(panel, b, helpers);
+
+    helpers.renderBasicCardFields(panel, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA);
+  },
+  renderPreview: function (b, helpers) {
+    var label = b.label || b.entity || "Light";
+    return cardBadgePreview(b, helpers, {
+      label: label,
+      iconFallback: "Lightbulb Outline",
+      badge: LIGHT_FULL_CONTROL_CARD_METADATA.preview.badge,
     });
   },
 });

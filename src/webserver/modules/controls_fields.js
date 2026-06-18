@@ -172,7 +172,7 @@ function renderCardModeSelector(panel, b, helpers, metadata) {
   var field = helpers.selectField(
     mode.label || "Type",
     helpers.idPrefix + (mode.idSuffix || "mode"),
-    mode.options || [],
+    cardMetadataValue(mode.options, b, helpers) || [],
     cardMetadataValue(mode.value, b, helpers) || "",
     function () {
       if (mode.onChange) mode.onChange.call(this, b, helpers);
@@ -219,14 +219,14 @@ function renderCardEntityField(panel, b, helpers, metadata) {
   var value = entity.value != null ? cardMetadataValue(entity.value, b, helpers) : (bindName ? b[bindName] : "");
   var domains = cardMetadataValue(entity.domains, b, helpers) || [];
   var field = helpers.entityField(
-    entity.label || "Entity",
+    cardMetadataValue(entity.label, b, helpers) || "Entity",
     helpers.idPrefix + (entity.idSuffix || "entity"),
     value || "",
-    entity.placeholder || "",
+    cardMetadataValue(entity.placeholder, b, helpers) || "",
     domains,
     bindName,
     entity.rerender !== false,
-    entity.requiredMessage || ""
+    cardMetadataValue(entity.requiredMessage, b, helpers) || ""
   );
   panel.appendChild(field.field);
   return field;

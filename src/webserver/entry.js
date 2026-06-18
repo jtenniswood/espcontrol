@@ -212,28 +212,30 @@
     "Lock", "Lock Open", "Lock Open Outline", "Lock Outline", "Mailbox", "Message Video",
     "Medication", "Medication Outline", "Meter Electric", "Meter Gas", "Microsoft Xbox", "Microwave",
     "Minus", "Monitor", "Motion Sensor", "Motion Sensor Off", "Movie Roll", "Music",
-    "Nintendo Switch", "Outdoor Lamp", "Oven", "Package", "Package Closed", "Pill",
-    "Pill Multiple", "Plus", "Pause", "Play", "Play Pause", "PlayStation",
-    "Pool", "Power", "Power Plug", "Progress Clock", "Printer", "Printer 3D",
-    "Projector", "Projector Off", "Recycle", "Remote Back", "Remote Down", "Remote Home",
-    "Remote Left", "Remote OK", "Remote Right", "Remote Up", "Robot Vacuum", "Roller Shade",
+    "Nintendo Switch", "Outdoor Lamp", "Oven", "Palette", "Package", "Package Closed",
+    "Pill", "Pill Multiple", "Plus", "Pause", "Play", "Play Pause",
+    "PlayStation", "Pool", "Power", "Power Plug", "Progress Clock", "Printer",
+    "Printer 3D", "Projector", "Projector Off", "Recycle", "Remote Back", "Remote Down",
+    "Remote Home", "Remote Left", "Remote OK", "Remote Right", "Remote Up", "Robot Vacuum",
+    "Robot Vacuum Alert", "Robot Vacuum Off", "Robot Vacuum Variant", "Robot Vacuum Variant Alert", "Robot Vacuum Variant Off", "Roller Shade",
     "Roller Shade Closed", "Router", "Router Network", "Security", "Shield Home", "Shield Lock",
     "Shield Off", "Shower", "Shower Head", "Skip Next", "Skip Previous", "Smoke Detector",
     "Snowflake", "Snowflake Alert", "Snowflake Thermometer", "Silverware", "Sofa", "Sofa Outline",
     "Solar Panel", "Solar Panel Large", "Solar Power", "Solar Power Variant", "Speaker", "Spotlight",
     "Sprinkler", "Stop", "String Lights", "String Lights Off", "Stove", "Swap Horizontal",
-    "Power Socket UK", "Power Socket EU", "Power Socket US", "Sun", "Table", "Table Chair",
-    "Television", "Television Off", "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low",
-    "Thermometer Off", "Thermostat", "Thermostat Box", "Home-Thermostat", "Thermostat Auto", "Thermometer Water",
-    "Timer", "Toilet", "Transmission Tower", "Trash Can", "Trash Can Outline", "Volume High",
-    "Wall Outlet", "Wall Sconce", "Washing Machine", "Washing Machine Off", "Water", "Water Boiler",
-    "Water Boiler Off", "Water Percent", "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust",
-    "Weather Fog", "Weather Hail", "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy",
-    "Weather Night", "Weather Night Cloudy", "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy",
-    "Weather Partly Snowy Rainy", "Weather Pouring", "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy",
-    "Weather Sunny", "Weather Sunny Alert", "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up",
-    "Weather Tornado", "Weather Windy", "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert",
-    "Wind Turbine Check", "Window Closed", "Window Open", "Window Shutter", "Window Shutter Open",
+    "Swap Vertical", "Power Socket UK", "Power Socket EU", "Power Socket US", "Sun", "Table",
+    "Table Chair", "Television", "Television Off", "Thermometer", "Thermometer Alert", "Thermometer High",
+    "Thermometer Low", "Thermometer Off", "Thermostat", "Thermostat Box", "Home-Thermostat", "Thermostat Auto",
+    "Thermometer Water", "Timer", "Toilet", "Transmission Tower", "Trash Can", "Trash Can Outline",
+    "Vacuum", "Vacuum Outline", "View Headline", "Volume High", "Wall Outlet", "Wall Sconce",
+    "Washing Machine", "Washing Machine Off", "Water", "Water Boiler", "Water Boiler Off", "Water Percent",
+    "Water Alert", "Weather Cloudy", "Weather Cloudy Alert", "Weather Dust", "Weather Fog", "Weather Hail",
+    "Weather Hazy", "Weather Hurricane", "Weather Lightning", "Weather Lightning Rainy", "Weather Night", "Weather Night Cloudy",
+    "Weather Partly Cloudy", "Weather Partly Lightning", "Weather Partly Rainy", "Weather Partly Snowy", "Weather Partly Snowy Rainy", "Weather Pouring",
+    "Weather Rainy", "Weather Snowy", "Weather Snowy Heavy", "Weather Snowy Rainy", "Weather Sunny", "Weather Sunny Alert",
+    "Weather Sunny Off", "Weather Sunset", "Weather Sunset Down", "Weather Sunset Up", "Weather Tornado", "Weather Windy",
+    "Weather Windy Variant", "Wind Power", "Wind Turbine", "Wind Turbine Alert", "Wind Turbine Check", "Window Closed",
+    "Window Open", "Window Shutter", "Window Shutter Open",
   ];
   // --- GENERATED:ICONS END ---
 
@@ -278,21 +280,9 @@
       renderSettings: null,
       renderPreview: null,
       contextMenuItems: null,
-      experimental: null,
       cardMetadata: null,
       defaultConfig: null,
     }, def);
-  }
-  function developerExperimentalUrlFlag() {
-    var value = "";
-    try {
-      value = new URLSearchParams(window.location.search).get("developer") || "";
-    } catch (e) {}
-    return value.trim().toLowerCase() === "experimental";
-  }
-
-  function isExperimentalEnabled(key) {
-    return developerExperimentalUrlFlag() || !!state.developerExperimentalFeatures;
   }
 
   function subpageStateDisplayMode(b) {

@@ -9,7 +9,6 @@ registerButtonType("screen_lock", {
   label: function () { return cardContractCardLabel("screen_lock"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("screen_lock"); },
   pickerKey: function () { return cardContractPickerKey("screen_lock"); },
-  experimental: function () { return cardContractExperimental("screen_lock"); },
   hidden: function () { return cardContractHidden("screen_lock"); },
   hideLabel: true,
   labelPlaceholder: "e.g. Screen Lock",

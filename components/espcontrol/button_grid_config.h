@@ -248,11 +248,14 @@ inline int hex_digit(char c) {
   return -1;
 }
 
-inline std::string decode_compact_field(const std::string &value) {
+inline std::string decode_compact_field(const std::string &value, size_t start, size_t len) {
+  if (start > value.size()) return "";
+  size_t end = start + len;
+  if (end < start || end > value.size()) end = value.size();
   std::string out;
-  out.reserve(value.size());
-  for (size_t i = 0; i < value.size(); i++) {
-    if (value[i] == '%' && i + 2 < value.size()) {
+  out.reserve(end - start);
+  for (size_t i = start; i < end; i++) {
+    if (value[i] == '%' && i + 2 < end) {
       int hi = hex_digit(value[i + 1]);
       int lo = hex_digit(value[i + 2]);
       if (hi >= 0 && lo >= 0) {
@@ -264,6 +267,10 @@ inline std::string decode_compact_field(const std::string &value) {
     out.push_back(value[i]);
   }
   return out;
+}
+
+inline std::string decode_compact_field(const std::string &value) {
+  return decode_compact_field(value, 0, value.size());
 }
 
 inline char compact_hex_char(uint8_t value) {
@@ -488,7 +495,12 @@ inline std::string sensor_card_options_normalized(const std::string &options,
 
 inline std::string normalize_subpage_kind(const std::string &value) {
   return value == "lights" || value == "media" ||
-    value == "climate" || value == "presence" ? value : "";
+    value == "climate" || value == "presence" ||
+    value == "switch" || value == "alarm" ||
+    value == "cover" || value == "garage" ||
+    value == "lock" || value == "vacuum" ||
+    value == "weather" || value == "sensor" ||
+    value == "image" ? value : "";
 }
 
 inline std::string subpage_card_options_normalized(const std::string &options,
@@ -754,6 +766,51 @@ inline std::string switch_card_options_normalized(const std::string &options) {
   return out;
 }
 
+inline void append_config_token(std::string &out, const std::string &token) {
+  if (token.empty()) return;
+  if (!out.empty()) out += ",";
+  out += token;
+}
+
+inline std::string action_card_options_normalized(const std::string &options,
+                                                  const std::string &action) {
+  std::string out;
+  std::string state_entity = cfg_option_value(options, "state_entity");
+  if (!state_entity.empty()) {
+    append_config_token(out, "state_entity=" + encode_compact_field(state_entity));
+    std::string state_precision = cfg_option_value(options, "state_precision");
+    if (state_precision == "icon" || state_precision == "text") {
+      append_config_token(out, "state_precision=" + state_precision);
+    } else {
+      std::string state_unit = cfg_option_value(options, "state_unit");
+      if (!state_unit.empty()) {
+        append_config_token(out, "state_unit=" + encode_compact_field(state_unit));
+      }
+      if (state_precision == "1" || state_precision == "2") {
+        append_config_token(out, "state_precision=" + state_precision);
+      }
+      append_large_numbers_option(out, options);
+    }
+  }
+
+  if (action == "script.turn_on" && cfg_option_token_present(options, "confirm_on")) {
+    append_config_token(out, "confirm_on");
+    std::string message = cfg_option_value(options, "confirm_message");
+    std::string yes = cfg_option_value(options, "confirm_yes");
+    std::string no = cfg_option_value(options, "confirm_no");
+    if (!message.empty() && message != "Run this script?") {
+      append_config_token(out, "confirm_message=" + encode_compact_field(message));
+    }
+    if (!yes.empty() && yes != "Yes") {
+      append_config_token(out, "confirm_yes=" + encode_compact_field(yes));
+    }
+    if (!no.empty() && no != "No") {
+      append_config_token(out, "confirm_no=" + encode_compact_field(no));
+    }
+  }
+  return out;
+}
+
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
@@ -897,6 +954,36 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.icon_on.clear();
     if (p.icon.empty() || p.icon == "Auto" || p.icon == "Chevron Down") p.icon = "Flash";
   }
+  if (p.type == "action" && p.sensor == "vacuum.start") {
+    p.type = "vacuum";
+    p.sensor = "start_stop";
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on = "Auto";
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Robot Vacuum";
+  }
+  if (p.type == "action" && p.sensor == "vacuum.return_to_base") {
+    p.type = "vacuum";
+    p.sensor = "dock";
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on = "Auto";
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Robot Vacuum Variant";
+  }
+  if (p.type == "action") {
+    p.precision.clear();
+    p.options = action_card_options_normalized(p.options, p.sensor);
+  }
+  if (p.type == "vacuum") {
+    p.sensor = card_runtime_vacuum_mode(p.sensor);
+    if (p.sensor != "clean_area") p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on = "Auto";
+    if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_vacuum_default_icon_name(p.sensor);
+  }
   if (p.type.empty()) {
     p.options = switch_card_options_normalized(p.options);
   }
@@ -916,7 +1003,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "vacuum" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (p.type == "sensor") {
@@ -1037,6 +1124,11 @@ inline bool switch_confirmation_enabled(const ParsedCfg &p) {
           cfg_option_enabled(p.options, "confirm_on"));
 }
 
+inline bool action_script_confirmation_enabled(const ParsedCfg &p) {
+  return p.type == "action" && p.sensor == "script.turn_on" &&
+         cfg_option_enabled(p.options, "confirm_on");
+}
+
 inline bool switch_confirmation_required(const ParsedCfg &p, bool currently_on) {
   if (p.type.empty()) {
     return currently_on
@@ -1047,6 +1139,9 @@ inline bool switch_confirmation_required(const ParsedCfg &p, bool currently_on) 
 }
 
 inline std::string switch_confirmation_default_message(const ParsedCfg &p) {
+  if (action_script_confirmation_enabled(p)) {
+    return espcontrol_i18n(std::string("Run this script?"));
+  }
   bool confirm_off = cfg_option_enabled(p.options, "confirm_off");
   bool confirm_on = cfg_option_enabled(p.options, "confirm_on");
   if (confirm_off && confirm_on) return espcontrol_i18n(std::string("Toggle this device?"));
@@ -1270,9 +1365,6 @@ inline void reset_ha_control_availability_refs() {
   ha_control_availability_refs().clear();
 }
 
-#ifndef ESPCONTROL_HA_RETRY_HELPERS_DEFINED
-inline void ha_reset_unavailable_state_retries() {}
-#endif
 #ifndef ESPCONTROL_HA_DEFERRED_HELPERS_DEFINED
 inline void ha_reset_deferred_state_requests() {}
 #endif
@@ -1286,7 +1378,6 @@ inline void bump_ha_subscription_generation() {
   uint32_t &generation = ha_subscription_generation();
   generation++;
   if (generation == 0) generation = 1;
-  ha_reset_unavailable_state_retries();
   ha_reset_deferred_state_requests();
 }
 

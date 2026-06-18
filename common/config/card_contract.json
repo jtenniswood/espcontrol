@@ -75,12 +75,36 @@
     "action": {
       "label": "Action",
       "allowInSubpage": true,
-      "domains": ["scene", "script", "automation", "button", "vacuum", "input_button", "input_boolean", "input_number", "input_select", "select"],
+      "domains": ["scene", "script", "automation", "button", "input_button", "input_boolean", "input_number", "input_select", "select"],
       "options": [
         {
           "name": "large_numbers",
           "label": "Large State Numbers",
           "kind": "flag"
+        },
+        {
+          "name": "confirmation_required",
+          "label": "Confirmation Required",
+          "kind": "flag",
+          "storage": ["confirm_on"]
+        },
+        {
+          "name": "confirm_message",
+          "label": "Message",
+          "kind": "text",
+          "defaultValue": "Run this script?"
+        },
+        {
+          "name": "confirm_yes",
+          "label": "Confirm Button",
+          "kind": "text",
+          "defaultValue": "Yes"
+        },
+        {
+          "name": "confirm_no",
+          "label": "Cancel Button",
+          "kind": "text",
+          "defaultValue": "No"
         }
       ],
       "default": {
@@ -95,6 +119,31 @@
         "options": ""
       }
     },
+    "vacuum": {
+      "label": "Vacuum",
+      "allowInSubpage": true,
+      "domains": ["vacuum"],
+      "options": [
+        {
+          "name": "vacuum_mode",
+          "label": "Type",
+          "kind": "choice",
+          "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"],
+          "defaultValue": "start_stop"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Robot Vacuum",
+        "icon_on": "Auto",
+        "sensor": "start_stop",
+        "unit": "",
+        "type": "vacuum",
+        "precision": "",
+        "options": ""
+      }
+    },
     "alarm": {
       "label": "Alarm",
       "allowInSubpage": true,
@@ -104,7 +153,7 @@
           "name": "alarm_card_type",
           "label": "Type",
           "kind": "choice",
-          "values": ["control_panel", "away", "home", "disarm"],
+          "values": ["control_panel", "away", "home", "night", "vacation", "disarm"],
           "defaultValue": "control_panel"
         },
         {
@@ -123,7 +172,7 @@
           "name": "actions",
           "label": "Visible Actions",
           "kind": "choice",
-          "values": ["away", "home", "disarm"],
+          "values": ["away", "home", "night", "vacation", "disarm"],
           "defaultValue": "away|home|disarm"
         },
         {
@@ -159,6 +208,20 @@
               "service": "alarm_control_panel.alarm_arm_home",
               "icon": "Shield Home",
               "legacyIcon": "Home"
+            },
+            {
+              "value": "night",
+              "label": "Arm Night",
+              "service": "alarm_control_panel.alarm_arm_night",
+              "icon": "Weather Night",
+              "legacyIcon": "Weather Night"
+            },
+            {
+              "value": "vacation",
+              "label": "Arm Vacation",
+              "service": "alarm_control_panel.alarm_arm_vacation",
+              "icon": "Airplane",
+              "legacyIcon": "Airplane"
             },
             {
               "value": "disarm",
@@ -313,8 +376,8 @@
           "name": "cover_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "tilt", "toggle", "open", "close", "stop", "set_position"],
-          "defaultValue": ""
+          "values": ["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"],
+          "defaultValue": "modal"
         },
         {
           "name": "cover_position",
@@ -341,7 +404,7 @@
         "label": "",
         "icon": "Blinds",
         "icon_on": "Blinds Open",
-        "sensor": "",
+        "sensor": "modal",
         "unit": "",
         "type": "cover",
         "precision": "",
@@ -384,7 +447,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -402,7 +464,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -420,7 +481,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -437,7 +497,6 @@
     "fan_speed": {
       "label": "Fans",
       "allowInSubpage": true,
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -455,7 +514,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -591,6 +649,24 @@
         "sensor": "",
         "unit": "2000-6500",
         "type": "light_temperature",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "light_control": {
+      "label": "Lights",
+      "allowInSubpage": true,
+      "pickerKey": "light_brightness",
+      "hidden": true,
+      "domains": ["light"],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Lightbulb Outline",
+        "icon_on": "Lightbulb",
+        "sensor": "",
+        "unit": "",
+        "type": "light_control",
         "precision": "",
         "options": ""
       }
@@ -879,7 +955,7 @@
           "name": "subpage_kind",
           "label": "Subpage Type",
           "kind": "choice",
-          "values": ["", "lights", "climate", "presence", "media"],
+          "values": ["", "switch", "lights", "climate", "presence", "media", "alarm", "cover", "garage", "lock", "vacuum", "weather", "sensor", "image"],
           "defaultValue": ""
         },
         {
@@ -1103,10 +1179,12 @@
     "fan_preset": "Z",
     "light_brightness": "V",
     "light_switch": "Q",
+    "light_control": "LC",
     "alarm": "Y",
     "alarm_action": "AA",
     "slider": "L",
     "cover": "C",
+    "vacuum": "VC",
     "light_temperature": "N",
     "garage": "R",
     "lock": "K",

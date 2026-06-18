@@ -10,7 +10,6 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     cardContractCardLabel: cardContractCardLabel,
     cardContractAllowInSubpage: cardContractAllowInSubpage,
     cardContractPickerKey: cardContractPickerKey,
-    cardContractExperimental: cardContractExperimental,
     cardContractHidden: cardContractHidden,
     cardContractOptions: cardContractOptions,
     cardContractDefaultConfig: cardContractDefaultConfig,
@@ -125,6 +124,10 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     actionCardStateUnit: actionCardStateUnit,
     actionCardStatePrecision: actionCardStatePrecision,
     actionCardStateDisplayMode: actionCardStateDisplayMode,
+    actionScriptConfirmationEnabled: actionScriptConfirmationEnabled,
+    actionScriptConfirmationMessage: actionScriptConfirmationMessage,
+    actionScriptConfirmationYesText: actionScriptConfirmationYesText,
+    actionScriptConfirmationNoText: actionScriptConfirmationNoText,
     alarmPinRequired: alarmPinRequired,
     alarmIconDisplayMode: alarmIconDisplayMode,
     alarmLabelDisplayMode: alarmLabelDisplayMode,
@@ -145,19 +148,17 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         return option.value;
       });
     },
+    coverModeOptionLabels: function (currentMode) {
+      var options = coverModeOptionsForSettings(currentMode || "");
+      return options.map(function (option) { return option[0] + ":" + option[1]; });
+    },
     normalizeAlarmOptions: normalizeAlarmOptions,
-    buttonTypePickerKeysForExperimental: function (enabled, isSub, selectedTypeKey) {
-      var oldExperimental = state.developerExperimentalFeatures;
-      state.developerExperimentalFeatures = !!enabled;
+    buttonTypePickerKeysFor: function (isSub, selectedTypeKey) {
       var keys = buttonTypePickerKeys(!!isSub, selectedTypeKey || "");
-      state.developerExperimentalFeatures = oldExperimental;
       return keys;
     },
-    buttonTypeVisibleInPickerForExperimental: function (key, enabled, isSub) {
-      var oldExperimental = state.developerExperimentalFeatures;
-      state.developerExperimentalFeatures = !!enabled;
+    buttonTypeVisibleInPickerFor: function (key, isSub) {
       var visible = buttonTypeVisibleInPicker(key, !!isSub);
-      state.developerExperimentalFeatures = oldExperimental;
       return visible;
     },
     buttonTypePickerKeysForInfoOnly: function (enabled, selectedTypeKey) {
@@ -170,6 +171,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     buttonTypePickerOptionsFor: function (isSub, selectedTypeKey) {
       return buttonTypePickerOptionList(!!isSub, selectedTypeKey == null ? null : selectedTypeKey);
     },
+    defaultButtonTypeForPicker: defaultButtonTypeForPicker,
     buttonTypesMissingCardMetadata: function () {
       var missing = [];
       for (var key in BUTTON_TYPES) {
@@ -191,7 +193,6 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         label: buttonTypeRegistryValue(typeDef, "label", typeDef.key || "Toggle"),
         allowInSubpage: !!buttonTypeRegistryValue(typeDef, "allowInSubpage", false),
         pickerKey: buttonTypeRegistryValue(typeDef, "pickerKey", "") || "",
-        experimental: buttonTypeRegistryValue(typeDef, "experimental", "") || "",
         hidden: !!buttonTypeRegistryValue(typeDef, "hidden", false),
         domains: entity && entity.domains
           ? cardMetadataValue(entity.domains, {}, {}) || []
@@ -315,6 +316,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     entityInitialDetail: entityInitialDetail,
     entityLookupNames: entityLookupNames,
     coverArtHideExternalInputPostUrls: coverArtHideExternalInputPostUrls,
+    coverArtDelayPostUrls: coverArtDelayPostUrls,
+    coverArtTrackOverlayDurationPostUrls: coverArtTrackOverlayDurationPostUrls,
     firmwareUpdateControlsVisibleFor: function (transport, supported) {
       var oldTransport = state.networkTransport;
       var oldSupported = state.firmwareUpdateControlsSupported;

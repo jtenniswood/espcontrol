@@ -9,10 +9,11 @@
 
 - Treat `main` as the stable branch.
 - For normal code, firmware, configuration, UI, or documentation changes, create a short-lived branch from the latest `main`.
-- Use branch names like `codex/fix-display-timeout` or `codex/update-pr-workflow`.
+- Use a separate git worktree for feature or fix work so multiple issues can be developed and tested at the same time without changing `main`.
+- Use short, descriptive branch names like `fix-display-timeout` or `update-pr-workflow`; do not include `codex` in branch names or PR titles.
 - Keep each branch focused on one bug fix, feature, device change, cleanup, or documentation change.
 - Commit completed changes and push the branch.
-- Open a draft pull request for user testing instead of merging directly to `main`.
+- Open a pull request marked ready for review so automated checks and review systems run, instead of merging directly to `main`.
 - Leave the pull request open until the user confirms they have tested it.
 - Do not close related GitHub issues until the user confirms the fix works.
 - Only work directly on `main` when the user explicitly asks for it, or for a tiny emergency/documentation-only change where a PR would add no value.

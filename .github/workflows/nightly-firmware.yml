@@ -87,6 +87,18 @@ jobs:
           echo "PLATFORMIO_CACHE=${PLATFORMIO_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_CACHE=${BUILD_CACHE}" >> "$GITHUB_ENV"
 
+      - name: Pull ESPHome image
+        working-directory: espcontrol-${{ matrix.slug }}
+        run: |
+          ESPHOME_IMAGE="ghcr.io/esphome/esphome:${ESPHOME_VERSION}"
+          LOCK_FILE="/tmp/espcontrol-esphome-image.lock"
+          if command -v flock >/dev/null 2>&1; then
+            flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}"
+          else
+            ${DOCKER} pull "${ESPHOME_IMAGE}"
+          fi
+          echo "ESPHOME_IMAGE=${ESPHOME_IMAGE}" >> "$GITHUB_ENV"
+
       - name: Compile firmware
         working-directory: espcontrol-${{ matrix.slug }}
         run: >-
@@ -98,7 +110,7 @@ jobs:
           -v "${PWD}:/config"
           -v "${PLATFORMIO_CACHE}:/config/.esphome"
           -v "${BUILD_CACHE}:/config/builds/.esphome"
-          ghcr.io/esphome/esphome:${ESPHOME_VERSION}
+          "${ESPHOME_IMAGE}"
           compile /config/builds/${{ matrix.slug }}.factory.yaml
 
       - name: Clean firmware caches

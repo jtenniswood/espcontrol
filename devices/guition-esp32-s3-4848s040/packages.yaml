@@ -42,6 +42,7 @@ substitutions:
   screen_schedule_clock_min_brightness: "1"
   screen_schedule_clock_default_brightness: "10"
   cover_art_size: "480"
+  cover_art_decode_size: "320"
   cover_art_x: "0"
   cover_art_y: "0"
   cover_art_accent_x: "0"

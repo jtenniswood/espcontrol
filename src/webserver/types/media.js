@@ -107,7 +107,6 @@ registerButtonType("media", {
   label: function () { return cardContractCardLabel("media"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("media"); },
   pickerKey: function () { return cardContractPickerKey("media"); },
-  experimental: function () { return cardContractExperimental("media"); },
   hidden: function () { return cardContractHidden("media"); },
   hideLabel: true,
   labelPlaceholder: "e.g. Living Room Speaker",

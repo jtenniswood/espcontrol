@@ -35,7 +35,6 @@ registerButtonType("timezone", {
   label: function () { return cardContractCardLabel("timezone"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("timezone"); },
   pickerKey: function () { return cardContractPickerKey("timezone"); },
-  experimental: function () { return cardContractExperimental("timezone"); },
   hidden: function () { return cardContractHidden("timezone"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("timezone"); },

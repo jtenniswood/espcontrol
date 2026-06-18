@@ -42,6 +42,7 @@
   "devDependencies": {
     "esbuild": "^0.28.0",
     "playwright": "^1.60.0",
+    "postcss": "^8.5.15",
     "typescript": "^6.0.3",
     "vitepress": "^1.6.3"
   }

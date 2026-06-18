@@ -38,7 +38,6 @@ export interface CardTypeSpec {
   default: CardConfig;
   domains: readonly string[];
   pickerKey?: string;
-  experimental?: "developer";
   hidden?: boolean;
   options?: readonly CardOptionSpec[];
   behavior?: {

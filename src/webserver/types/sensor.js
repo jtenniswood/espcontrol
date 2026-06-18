@@ -39,7 +39,6 @@ registerButtonType("sensor", {
   label: function () { return cardContractCardLabel("sensor"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("sensor"); },
   pickerKey: function () { return cardContractPickerKey("sensor"); },
-  experimental: function () { return cardContractExperimental("sensor"); },
   hidden: function () { return cardContractHidden("sensor"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("sensor"); },

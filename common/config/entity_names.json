@@ -76,7 +76,6 @@
     { "key": "firmware_install_update", "domain": "button", "name": "Firmware: Install Update", "objectIds": ["firmware__install_update", "firmware_install_update"], "groups": ["settings"] },
     { "key": "firmware_auto_update", "domain": "switch", "name": "Firmware: Auto Update", "groups": ["settings"] },
     { "key": "firmware_update_frequency", "domain": "select", "name": "Firmware: Update Frequency", "groups": ["settings"] },
-    { "key": "developer_experimental_features", "domain": "switch", "name": "Developer: Experimental Features", "objectIds": ["developer__experimental_features", "developer_experimental_features"], "groups": ["settings"] },
     { "key": "screen_rotation", "domain": "select", "name": "Screen: Rotation", "groups": ["settings_optional"] }
   ]
 }

@@ -78,12 +78,25 @@ globals:
     type: bool
     restore_value: true
     initial_value: 'false'
+  - id: screensaver_action_clock
+    type: bool
+    initial_value: 'false'
+  - id: screensaver_action_dimmed
+    type: bool
+    initial_value: 'false'
 
 esphome:
   on_boot:
     priority: -240
     then:
       - lambda: |-
+          auto update_screensaver_action_cache = []() {
+            std::string action = id(screensaver_action).current_option();
+            id(screensaver_action_clock) = screensaver_action_clock_mode(action);
+            id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
+          };
+          update_screensaver_action_cache();
+
           if (!id(screensaver_action_migrated)) {
             if (id(clock_screensaver_enabled).state) {
               auto action_call = id(screensaver_action).make_call();
@@ -93,6 +106,7 @@ esphome:
             id(screensaver_action_migrated) = true;
             global_preferences->sync();
           }
+          update_screensaver_action_cache();
 
           auto clamp_clock_pct = [](float pct, float fallback) -> float {
             if (std::isnan(pct) || pct <= 0.0f) pct = fallback;
@@ -194,7 +208,7 @@ script:
                   - lambda: 'navigation_return_home(id(main_page)->obj);'
                   - if:
                       condition:
-                        lambda: 'return screensaver_action_clock_mode(id(screensaver_action).current_option());'
+                        lambda: 'return id(screensaver_action_clock);'
                       then:
                         - globals.set:
                             id: display_asleep
@@ -204,7 +218,7 @@ script:
                         - script.execute: hide_cover_art_view
                         - if:
                             condition:
-                              lambda: 'return screensaver_action_dimmed_mode(id(screensaver_action).current_option());'
+                              lambda: 'return id(screensaver_action_dimmed);'
                             then:
                               - script.execute: show_dimmed_view
                             else:
@@ -268,7 +282,7 @@ script:
                           now.is_valid() ? now.hour : 0,
                           (int) id(schedule_on_hour).state,
                           (int) id(schedule_off_hour).state)) return true;
-                    return screen_schedule_always_on_mode(id(schedule_mode).current_option());
+                    return id(schedule_mode_always_on);
                 then:
                   - script.execute: screensaver_wake
                 else:
@@ -493,7 +507,7 @@ script:
           condition:
             lambda: |-
               return (id(screen_schedule_asleep) &&
-                      !screen_schedule_clock_mode(id(schedule_mode).current_option())) ||
+                      !id(schedule_mode_clock)) ||
                      screen_schedule_waiting_for_time(
                        id(screen_schedule_trigger).state,
                        id(schedule_enabled).state,
@@ -558,9 +572,8 @@ script:
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
               (int) id(schedule_off_hour).state);
-            std::string mode = id(schedule_mode).current_option();
             id(manual_wake_ms) =
-              (schedule_night && !screen_schedule_always_on_mode(mode)) ? millis() : 0;
+              (schedule_night && !id(schedule_mode_always_on)) ? millis() : 0;
           }
       - if:
           condition:
@@ -573,9 +586,6 @@ script:
           condition:
             lambda: 'return id(cover_art_screensaver_active);'
           then:
-            - globals.set:
-                id: cover_art_manual_wake_ms
-                value: !lambda 'return millis();'
             - globals.set:
                 id: screensaver_wake_touch_guard_skip_once
                 value: 'true'
@@ -740,7 +750,7 @@ script:
 
           float pct = ${screen_saver_clock_default_brightness}.0f;
           if (id(screen_schedule_asleep) &&
-              screen_schedule_clock_mode(id(schedule_mode).current_option())) {
+              id(schedule_mode_clock)) {
             pct = id(schedule_clock_brightness).state;
             if (std::isnan(pct) || pct <= 0.0f) {
               pct = ${screen_schedule_clock_default_brightness}.0f;
@@ -818,7 +828,7 @@ script:
                 auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
                 if (time.is_valid()) {
                   char buf[8];
-                  bool use_12h = id(clock_format_select).current_option() == "12h";
+                  bool use_12h = id(clock_format_12h);
                   format_clock_time_without_suffix(buf, sizeof(buf),
                                                    time.hour, time.minute, use_12h);
                   lv_label_set_text(id(clock_label), buf);
@@ -925,7 +935,7 @@ interval:
           auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (!time.is_valid()) return;
           char buf[8];
-          bool use_12h = id(clock_format_select).current_option() == "12h";
+          bool use_12h = id(clock_format_12h);
           format_clock_time_without_suffix(buf, sizeof(buf),
                                            time.hour, time.minute, use_12h);
           lv_label_set_text(id(clock_label), buf);

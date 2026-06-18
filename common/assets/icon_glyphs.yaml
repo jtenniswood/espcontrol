@@ -3,6 +3,7 @@
 - "\U000F0141"  # mdi-chevron-left (Back button)
 - "\U000F0142"  # mdi-chevron-right (Subpage indicator)
 - "\U000F0156"  # mdi-close (Modal close button)
+- "\U000F024B"  # mdi-folder (Default subpage indicator)
 - "\U000F01DA"  # mdi-download (Firmware install update entity)
 - "\U000F04F9"  # mdi-tag (Firmware version entity)
 - "\U000F06B0"  # mdi-update (Firmware update entities)
@@ -182,6 +183,7 @@
 - "\U000F07E1"  # mdi-nintendo-switch
 - "\U000F1054"  # mdi-outdoor-lamp
 - "\U000F04DE"  # mdi-stove
+- "\U000F03D8"  # mdi-palette
 - "\U000F03D6"  # mdi-package-variant
 - "\U000F03D7"  # mdi-package-variant-closed
 - "\U000F0402"  # mdi-pill
@@ -208,6 +210,11 @@
 - "\U000F0056"  # mdi-arrow-right-bold-circle
 - "\U000F005F"  # mdi-arrow-up-bold-circle
 - "\U000F070D"  # mdi-robot-vacuum
+- "\U000F1B5D"  # mdi-robot-vacuum-alert
+- "\U000F1C01"  # mdi-robot-vacuum-off
+- "\U000F0908"  # mdi-robot-vacuum-variant
+- "\U000F1B5E"  # mdi-robot-vacuum-variant-alert
+- "\U000F1C02"  # mdi-robot-vacuum-variant-off
 - "\U000F1A6B"  # mdi-roller-shade
 - "\U000F1A6C"  # mdi-roller-shade-closed
 - "\U000F0469"  # mdi-router-wireless
@@ -237,6 +244,7 @@
 - "\U000F12BA"  # mdi-string-lights
 - "\U000F12BB"  # mdi-string-lights-off
 - "\U000F04E1"  # mdi-swap-horizontal
+- "\U000F04E2"  # mdi-swap-vertical
 - "\U000F07E8"  # mdi-power-socket-uk
 - "\U000F07E7"  # mdi-power-socket-eu
 - "\U000F07E9"  # mdi-power-socket-us
@@ -260,6 +268,9 @@
 - "\U000F0D3E"  # mdi-transmission-tower
 - "\U000F0A79"  # mdi-trash-can
 - "\U000F0A7A"  # mdi-trash-can-outline
+- "\U000F19A1"  # mdi-vacuum
+- "\U000F19A2"  # mdi-vacuum-outline
+- "\U000F0571"  # mdi-view-headline
 - "\U000F057E"  # mdi-volume-high
 - "\U000F0427"  # mdi-power-socket
 - "\U000F091C"  # mdi-wall-sconce

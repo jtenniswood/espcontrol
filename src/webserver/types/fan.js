@@ -1,4 +1,4 @@
-// Fan cards: experimental grouped controls for Home Assistant fan entities.
+// Fan cards: grouped controls for Home Assistant fan entities.
 
 var FAN_CONTROL_TYPE_OPTIONS = [
   ["fan_switch", "Switch"],
@@ -91,7 +91,6 @@ function fanTypeFactory(opts) {
     allowInSubpage: true,
     hideLabel: true,
     pickerKey: opts.pickerKey,
-    experimental: "developer",
     isAvailable: opts.hidden ? function () { return false; } : null,
     labelPlaceholder: "e.g. Bedroom Fan",
     cardMetadata: FAN_CARD_METADATA,

@@ -7,6 +7,8 @@
 constexpr uint32_t ALARM_TRIGGERED_COLOR = 0xC62828;
 constexpr uint32_t ALARM_CARD_CTX_MAGIC = 0x414C4D43;    // ALMC
 constexpr uint32_t ALARM_ACTION_CTX_MAGIC = 0x414C4D41;  // ALMA
+constexpr int ALARM_MAX_ACTIONS = 5;
+constexpr int ALARM_MAX_VISIBLE_ACTIONS = 3;
 
 struct AlarmCardCtx {
   uint32_t magic = ALARM_CARD_CTX_MAGIC;
@@ -63,17 +65,18 @@ struct AlarmControlModalUi {
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
   lv_obj_t *rail = nullptr;
-  lv_obj_t *mode_btn[3] = {};
-  lv_obj_t *mode_icon[3] = {};
-  lv_obj_t *mode_label[3] = {};
+  lv_obj_t *mode_btn[ALARM_MAX_ACTIONS] = {};
+  lv_obj_t *mode_icon[ALARM_MAX_ACTIONS] = {};
+  lv_obj_t *mode_label[ALARM_MAX_ACTIONS] = {};
   lv_obj_t *arming_view = nullptr;
   lv_obj_t *arming_title = nullptr;
   lv_obj_t *arming_countdown = nullptr;
   lv_obj_t *arming_disarm_btn = nullptr;
   lv_obj_t *arming_disarm_label = nullptr;
-  AlarmActionCtx actions[3];
+  AlarmActionCtx actions[ALARM_MAX_ACTIONS];
   AlarmActionCtx arming_disarm_action;
   AlarmCardCtx *active = nullptr;
+  int action_count = 0;
 };
 
 struct AlarmToastUi {
@@ -136,12 +139,25 @@ inline bool alarm_pin_disarm_required(const std::string &options) {
 }
 
 inline bool alarm_action_valid(const std::string &mode) {
+  return card_runtime_alarm_action_mode_valid(mode);
+}
+
+inline size_t alarm_action_mode_count() {
+  size_t count = card_runtime_alarm_action_mode_count();
+  return count < ALARM_MAX_ACTIONS ? count : ALARM_MAX_ACTIONS;
+}
+
+inline const char *alarm_action_mode_at(size_t index) {
+  return card_runtime_alarm_action_mode_at(index);
+}
+
+inline bool alarm_action_default_visible(const std::string &mode) {
   return mode == "away" || mode == "home" || mode == "disarm";
 }
 
 inline bool alarm_action_visible(const std::string &options, const std::string &mode) {
   std::string actions = cfg_option_value(options, "actions");
-  if (actions.empty()) return true;
+  if (actions.empty()) return alarm_action_default_visible(mode);
   bool saw_valid = false;
   size_t start = 0;
   while (start <= actions.length()) {
@@ -154,7 +170,20 @@ inline bool alarm_action_visible(const std::string &options, const std::string &
     }
     start = end + 1;
   }
-  return !saw_valid;
+  return !saw_valid && alarm_action_default_visible(mode);
+}
+
+inline int alarm_visible_action_modes(const std::string &options,
+                                      std::string *modes,
+                                      int max_modes) {
+  if (!modes || max_modes <= 0) return 0;
+  int count = 0;
+  size_t action_count = alarm_action_mode_count();
+  for (size_t i = 0; i < action_count && count < max_modes; i++) {
+    std::string mode = alarm_action_mode_at(i);
+    if (!mode.empty() && alarm_action_visible(options, mode)) modes[count++] = mode;
+  }
+  return count;
 }
 
 inline bool alarm_action_requires_pin(const std::string &options, const std::string &mode) {
@@ -164,6 +193,8 @@ inline bool alarm_action_requires_pin(const std::string &options, const std::str
 inline const char *alarm_action_label(const std::string &mode) {
   if (mode == "away") return espcontrol_i18n("Arm Away");
   if (mode == "home") return espcontrol_i18n("Arm Home");
+  if (mode == "night") return espcontrol_i18n("Arm Night");
+  if (mode == "vacation") return espcontrol_i18n("Arm Vacation");
   if (mode == "disarm") return espcontrol_i18n("Disarm");
   return espcontrol_i18n("Alarm");
 }
@@ -188,6 +219,8 @@ inline const char *alarm_action_service(const std::string &mode) {
 inline const char *alarm_control_button_label(const std::string &mode) {
   if (mode == "home") return espcontrol_i18n("Home");
   if (mode == "away") return espcontrol_i18n("Away");
+  if (mode == "night") return espcontrol_i18n("Night");
+  if (mode == "vacation") return espcontrol_i18n("Vacation");
   if (mode == "disarm") return espcontrol_i18n("Disarmed");
   return alarm_action_label(mode);
 }
@@ -198,6 +231,7 @@ inline std::string alarm_state_label(const std::string &state) {
   if (state == "armed_away") return espcontrol_i18n(std::string("Armed Away"));
   if (state == "armed_home") return espcontrol_i18n(std::string("Armed Home"));
   if (state == "armed_night") return espcontrol_i18n(std::string("Armed Night"));
+  if (state == "armed_vacation") return espcontrol_i18n(std::string("Armed Vacation"));
   if (state == "armed_custom_bypass") return espcontrol_i18n(std::string("Armed Custom"));
   if (state == "arming") return espcontrol_i18n(std::string("Arming"));
   if (state == "pending") return espcontrol_i18n(std::string("Pending"));
@@ -218,6 +252,8 @@ inline bool alarm_state_is_active(const std::string &state) {
 inline std::string alarm_action_achieved_state(const std::string &mode) {
   if (mode == "away") return "armed_away";
   if (mode == "home") return "armed_home";
+  if (mode == "night") return "armed_night";
+  if (mode == "vacation") return "armed_vacation";
   if (mode == "disarm") return "disarmed";
   return "";
 }
@@ -226,8 +262,10 @@ inline std::string alarm_normalized_arm_mode(const std::string &arm_mode) {
   if (arm_mode == "away") return "armed_away";
   if (arm_mode == "home") return "armed_home";
   if (arm_mode == "night") return "armed_night";
+  if (arm_mode == "vacation") return "armed_vacation";
   if (arm_mode == "armed_away" || arm_mode == "armed_home" ||
-      arm_mode == "armed_night" || arm_mode == "armed_custom_bypass") {
+      arm_mode == "armed_night" || arm_mode == "armed_vacation" ||
+      arm_mode == "armed_custom_bypass") {
     return arm_mode;
   }
   return "";
@@ -246,6 +284,7 @@ inline const char *alarm_state_icon(const std::string &state,
   if (effective == "armed_home") return find_icon("Shield Home");
   if (effective == "armed_away" || effective == "armed_custom_bypass") return find_icon("Shield Lock");
   if (effective == "armed_night") return find_icon("Weather Night");
+  if (effective == "armed_vacation") return find_icon("Airplane");
   if (effective == "disarmed") return find_icon("Shield Off");
   if (effective == "triggered") return find_icon("Alarm Light");
   return find_icon("Alarm");
@@ -275,6 +314,8 @@ inline void alarm_apply_card_status_icon(AlarmCardCtx *ctx) {
 inline std::string alarm_state_control_mode(const std::string &state) {
   if (state == "armed_home") return "home";
   if (state == "armed_away") return "away";
+  if (state == "armed_night") return "night";
+  if (state == "armed_vacation") return "vacation";
   if (state == "disarmed") return "disarm";
   return "";
 }
@@ -699,12 +740,12 @@ inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
 
   std::string active_mode = alarm_state_control_mode(
     alarm_effective_state(ctx->state, ctx->arm_mode));
-  static const char *modes[3] = {"home", "away", "disarm"};
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < ui.action_count && i < ALARM_MAX_ACTIONS; i++) {
     lv_obj_t *btn = ui.mode_btn[i];
     if (!btn) continue;
-    bool selected = active_mode == modes[i];
-    uint32_t bg = selected ? alarm_control_active_color(ctx, modes[i])
+    std::string mode = ui.actions[i].mode;
+    bool selected = active_mode == mode;
+    uint32_t bg = selected ? alarm_control_active_color(ctx, mode)
                            : alarm_control_inactive_color(ctx);
     lv_obj_set_style_bg_color(btn, lv_color_hex(bg), LV_PART_MAIN);
     lv_obj_set_style_bg_color(btn, lv_color_hex(bg),
@@ -713,8 +754,8 @@ inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
     lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
     if (ui.mode_label[i]) {
       std::string label = selected
-        ? alarm_control_button_label_for_state(modes[i], ctx->state, ctx->arm_mode)
-        : alarm_control_button_label(modes[i]);
+        ? alarm_control_button_label_for_state(mode, ctx->state, ctx->arm_mode)
+        : alarm_control_button_label(mode);
       lv_label_set_text(ui.mode_label[i], label.c_str());
     }
   }
@@ -1132,6 +1173,12 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
   ui.back_btn = shell.close_btn;
 
   ControlModalLayout &layout = shell.layout;
+  std::string modes[ALARM_MAX_ACTIONS];
+  ui.action_count = alarm_visible_action_modes(ctx->options, modes, ALARM_MAX_VISIBLE_ACTIONS);
+  if (ui.action_count < 1) {
+    ui.action_count = 1;
+    modes[0] = "disarm";
+  }
 
   lv_coord_t rail_w = layout.panel_w * 58 / 100;
   if (rail_w < control_modal_scaled_px(156, layout.short_side))
@@ -1146,15 +1193,14 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
     rail_h = layout.panel_h - layout.inset * 2;
   if (rail_h < control_modal_scaled_px(240, layout.short_side))
     rail_h = control_modal_scaled_px(240, layout.short_side);
-  static const char *modes[3] = {"home", "away", "disarm"};
   lv_coord_t button_inset = control_modal_scaled_px(8, layout.short_side);
   if (button_inset < 4) button_inset = 4;
   lv_coord_t button_gap = control_modal_scaled_px(8, layout.short_side);
   if (button_gap < 4) button_gap = 4;
   lv_coord_t btn_w = rail_w - button_inset * 2;
-  lv_coord_t btn_h = (rail_h - button_inset * 2 - button_gap * 2) / 3;
+  lv_coord_t btn_h = (rail_h - button_inset * 2 - button_gap * (ui.action_count - 1)) / ui.action_count;
   if (btn_w < 1) btn_w = rail_w;
-  if (btn_h < 1) btn_h = rail_h / 3;
+  if (btn_h < 1) btn_h = rail_h / ui.action_count;
   lv_coord_t control_radius = alarm_control_mode_button_radius(layout, btn_w, btn_h);
   lv_coord_t background_radius = alarm_control_rail_radius(layout, control_radius, button_inset);
 
@@ -1170,9 +1216,9 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
   lv_obj_clear_flag(ui.rail, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_align(ui.rail, LV_ALIGN_CENTER, 0, 0);
 
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < ui.action_count && i < ALARM_MAX_ACTIONS; i++) {
     ui.mode_btn[i] = alarm_control_create_mode_button(
-      ui.rail, ctx, modes[i], btn_w, btn_h, control_radius,
+      ui.rail, ctx, modes[i].c_str(), btn_w, btn_h, control_radius,
       icon_font, label_font, &ui.mode_icon[i], &ui.mode_label[i]);
     lv_obj_set_pos(ui.mode_btn[i], button_inset, button_inset + i * (btn_h + button_gap));
     ui.actions[i].card = ctx;
@@ -1194,9 +1240,10 @@ inline void alarm_configure_page_grid(lv_obj_t *page, int num_slots, int cols) {
   if (col_count > MAX_GRID_SLOTS) col_count = MAX_GRID_SLOTS;
   int row_count = (slot_count + col_count - 1) / col_count;
   if (row_count < 1) row_count = 1;
+  if (row_count > MAX_GRID_SLOTS) row_count = MAX_GRID_SLOTS;
 
-  lv_coord_t *col_dsc = new lv_coord_t[col_count + 1];
-  lv_coord_t *row_dsc = new lv_coord_t[row_count + 1];
+  static lv_coord_t col_dsc[MAX_GRID_SLOTS + 1];
+  static lv_coord_t row_dsc[MAX_GRID_SLOTS + 1];
   for (int i = 0; i < col_count; i++) col_dsc[i] = LV_GRID_FR(1);
   col_dsc[col_count] = LV_GRID_TEMPLATE_LAST;
   for (int i = 0; i < row_count; i++) row_dsc[i] = LV_GRID_FR(1);
@@ -1279,11 +1326,11 @@ inline AlarmCardCtx *create_alarm_card_context(
     if (target) lv_scr_load_anim(target, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
   }, LV_EVENT_CLICKED, main_page_obj);
 
-  const char *modes[3] = {"away", "home", "disarm"};
+  std::string modes[ALARM_MAX_ACTIONS];
+  int mode_count = alarm_visible_action_modes(p.options, modes, ALARM_MAX_VISIBLE_ACTIONS);
   int page_pos = 1;
-  for (int i = 0; i < 3 && page_pos < NS; i++) {
+  for (int i = 0; i < mode_count && page_pos < NS; i++) {
     std::string mode = modes[i];
-    if (!alarm_action_visible(p.options, mode)) continue;
 
     lv_obj_t *action_btn = create_grid_card_button(ctx->page, radius, pad, label_font, text_color);
     apply_button_colors(action_btn, false, DEFAULT_SLIDER_COLOR, true, off_color);

@@ -21,6 +21,18 @@ REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
 }
+REQUIRED_CLIMATE_CARD_ICON_NAMES = {
+    "Air Filter",
+    "Fan",
+    "Fire",
+    "Power",
+    "Snowflake",
+    "Swap Horizontal",
+    "Thermometer",
+    "Thermostat",
+    "Thermostat Auto",
+    "Water",
+}
 
 
 def read_json(path: Path) -> object:
@@ -171,6 +183,29 @@ def test_setup_icon_glyphs() -> None:
     glyphs = (ROOT / "common" / "assets" / "icon_glyphs.yaml").read_text(encoding="utf-8")
     for glyph, icon_name in REQUIRED_SETUP_ICON_GLYPHS.items():
         assert glyph in glyphs, f"shared icon font missing {icon_name} for OTA update screen"
+
+
+def test_climate_card_icon_glyphs() -> None:
+    icons = read_json(ROOT / "common" / "assets" / "icons.json")
+    icon_by_name = {icon["name"]: icon for icon in icons["icons"]}
+    glyphs = (ROOT / "common" / "assets" / "climate_card_icon_glyphs.yaml").read_text(encoding="utf-8")
+
+    for icon_name in sorted(REQUIRED_CLIMATE_CARD_ICON_NAMES):
+        icon = icon_by_name[icon_name]
+        glyph = rf'"\U{icon["codepoint"]:>08s}"'
+        assert glyph in glyphs, f"climate card icon font missing {icon_name}"
+
+    for font_path in sorted((ROOT / "devices").glob("*/device/fonts.yaml")):
+        text = font_path.read_text(encoding="utf-8")
+        rel = font_path.relative_to(ROOT)
+        card_match = re.search(
+            r"id: font_icon_card\n\s*size: \d+\n\s*bpp: \d+\n\s*glyphs: !include (.+)",
+            text,
+        )
+        assert card_match, f"{rel}: missing font_icon_card"
+        assert card_match.group(1).strip().endswith("common/assets/climate_card_icon_glyphs.yaml"), (
+            f"{rel}: font_icon_card should use climate_card_icon_glyphs.yaml"
+        )
 
 
 def test_weather_card_visual_matches_preview() -> None:

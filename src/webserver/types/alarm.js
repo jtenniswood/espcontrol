@@ -140,11 +140,58 @@ function renderAlarmCardTypeField(panel, b, helpers) {
   }));
 }
 
+function renderAlarmVisibleActionsField(panel, b, helpers) {
+  var actions = alarmActionSpecs();
+  if (!actions.length) return null;
+  var field = document.createElement("div");
+  field.className = "sp-field";
+  field.appendChild(helpers.fieldLabel("Visible Actions", helpers.idPrefix + "alarm-visible-actions"));
+  var inputs = [];
+
+  function selectedActions() {
+    var selected = [];
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i].input.checked) selected.push(inputs[i].value);
+    }
+    return selected;
+  }
+
+  function syncInputs(values) {
+    values = values || alarmVisibleActions(b);
+    var selectedCount = values.length;
+    for (var i = 0; i < inputs.length; i++) {
+      inputs[i].input.checked = values.indexOf(inputs[i].value) >= 0;
+      inputs[i].input.disabled = !inputs[i].input.checked && selectedCount >= ALARM_MAX_VISIBLE_ACTIONS;
+    }
+  }
+
+  var visible = alarmVisibleActions(b);
+  for (var i = 0; i < actions.length; i++) {
+    var action = actions[i];
+    var row = helpers.toggleRow(
+      action.label,
+      helpers.idPrefix + "alarm-visible-action-" + action.value,
+      visible.indexOf(action.value) >= 0
+    );
+    field.appendChild(row.row);
+    inputs.push({ value: action.value, input: row.input });
+    row.input.addEventListener("change", function () {
+      var selected = selectedActions();
+      setAlarmVisibleActions(b, selected);
+      helpers.saveField("options", b.options);
+      syncInputs(alarmVisibleActions(b));
+      scheduleRender();
+    });
+  }
+  syncInputs(visible);
+  panel.appendChild(field);
+  return field;
+}
+
 registerButtonType("alarm", {
   label: function () { return cardContractCardLabel("alarm"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("alarm"); },
   pickerKey: function () { return cardContractPickerKey("alarm"); },
-  experimental: function () { return cardContractExperimental("alarm"); },
   hidden: function () { return cardContractHidden("alarm"); },
   hideLabel: true,
   labelPlaceholder: "e.g. House Alarm",
@@ -180,6 +227,8 @@ registerButtonType("alarm", {
         idSuffix: "alarm-entity",
       }),
     });
+
+    renderAlarmVisibleActionsField(panel, b, helpers);
 
     var labelControl = helpers.renderCardTextField(condField(), b, helpers, {
       label: "Label",
@@ -271,7 +320,6 @@ registerButtonType("alarm_action", {
   allowInSubpage: function () { return cardContractAllowInSubpage("alarm_action"); },
   labelPlaceholder: "e.g. Arm Away",
   pickerKey: function () { return cardContractPickerKey("alarm_action"); },
-  experimental: function () { return cardContractExperimental("alarm_action"); },
   hidden: function () { return cardContractHidden("alarm_action"); },
   defaultConfig: function () { return cardContractDefaultConfig("alarm_action"); },
   cardMetadata: ALARM_CARD_METADATA,

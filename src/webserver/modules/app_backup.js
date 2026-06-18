@@ -72,7 +72,6 @@ function exportConfig() {
       screensaver_timeout: state.screensaverTimeout,
       home_screen_timeout: state.homeScreenTimeout,
       screen_rotation: state.screenRotation,
-      developer_experimental_features: state.developerExperimentalFeatures,
     },
     screen: {
       brightness_day: Math.round(state.brightnessDayVal),
@@ -183,7 +182,6 @@ function importConfig() {
           clockBarLayout: CLOCK_BAR_FIXED_LAYOUT_STRING,
           clockFormat: state.clockFormat,
           clockFormatOptions: state.clockFormatOptions,
-          developerExperimentalFeatures: state.developerExperimentalFeatures,
           ntpDefaults: NTP_SERVER_DEFAULTS,
           ntpServer1: state.ntpServer1,
           ntpServer2: state.ntpServer2,
@@ -215,8 +213,6 @@ function importConfig() {
         var hasNtpServer1 = importedSettings.hasNtpServer1;
         var hasNtpServer2 = importedSettings.hasNtpServer2;
         var hasNtpServer3 = importedSettings.hasNtpServer3;
-        var hasDeveloperExperimentalFeatures = importedSettings.hasDeveloperExperimentalFeatures;
-        var importedDeveloperExperimentalFeatures = importedSettings.developerExperimentalFeatures;
         var importedNtpServer1 = importedSettings.ntpServer1;
         var importedNtpServer2 = importedSettings.ntpServer2;
         var importedNtpServer3 = importedSettings.ntpServer3;
@@ -241,8 +237,8 @@ function importConfig() {
         postSwitch(entityName("screen_saver_cover_art"), importedSettings.coverArtScreensaver);
         postText(entityName("screen_saver_cover_art_entity"), importedSettings.coverArtMediaPlayerEntity);
         postText(entityName("screen_saver_cover_art_conditions"), importedSettings.coverArtAttributeConditions);
-        postNumber(entityName("screen_saver_cover_art_delay"), importedSettings.coverArtDelay);
-        postNumber(entityName("screen_saver_track_overlay_duration"), importedSettings.coverArtTrackOverlayDuration);
+        postCoverArtDelay(importedSettings.coverArtDelay);
+        postCoverArtTrackOverlayDuration(importedSettings.coverArtTrackOverlayDuration);
         postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
         var importedScreensaverAction = importedSettings.screensaverAction;
         var importedScreensaverDimmedBrightness = importedSettings.screensaverDimmedBrightness;
@@ -257,9 +253,6 @@ function importConfig() {
         postNumber(entityName("home_screen_timeout"), importedSettings.homeScreenTimeout);
         var importedScreenRotation = importedSettings.screenRotation;
         if (CFG.features && CFG.features.screenRotation) postSelect(entityName("screen_rotation"), importedScreenRotation);
-        if (hasDeveloperExperimentalFeatures) {
-          postDeveloperExperimentalFeatures(importedDeveloperExperimentalFeatures);
-        }
         state.clockBarTemperatureEntities = importedSettings.clockBarTemperatureEntities;
         state._clockBarTemperatureEntitiesReceived = true;
         state._indoorOn = importedSettings.indoorTempEnable;
@@ -300,9 +293,6 @@ function importConfig() {
         state.screensaverTimeout = importedSettings.screensaverTimeout;
         state.homeScreenTimeout = importedSettings.homeScreenTimeout;
         state.screenRotation = importedScreenRotation;
-        if (hasDeveloperExperimentalFeatures) {
-          state.developerExperimentalFeatures = importedDeveloperExperimentalFeatures;
-        }
 
         syncTemperatureUi();
         syncClockBarUi();
@@ -322,9 +312,6 @@ function importConfig() {
         syncIdleUi();
         if (els.setScreenRotation) els.setScreenRotation.value = state.screenRotation;
         syncPreviewOrientation();
-        if (els.setDeveloperExperimentalFeatures) {
-          els.setDeveloperExperimentalFeatures.checked = state.developerExperimentalFeatures;
-        }
         if (els.setSsMode) els.setSsMode(getActiveScreensaverMode());
         updateTempPreview();
 

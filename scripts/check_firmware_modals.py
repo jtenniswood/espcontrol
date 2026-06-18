@@ -230,9 +230,40 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
+    grid_path = root / "components" / "espcontrol" / "button_grid_grid.h"
+    errors: list[str] = []
+
+    if not grid_path.exists():
+        errors.append("components/espcontrol/button_grid_grid.h: wire subpage modal cards")
+        return errors
+
+    text = grid_path.read_text(encoding="utf-8")
+    light_block = re.search(
+        r'if\s*\(\s*sb_cfg\.type\s*==\s*"light_control"\s*\)\s*\{(?P<body>.*?)\n      \}',
+        text,
+        re.S,
+    )
+    if light_block is None:
+        errors.append("components/espcontrol/button_grid_grid.h: keep light control cards available in subpages")
+        return errors
+
+    body = light_block.group("body")
+    if (
+        "create_light_control_context" not in body
+        or "subscribe_light_control_state(ctx);" not in body
+        or "light_control_open_modal(ctx);" not in body
+        or "LV_EVENT_CLICKED" not in body
+    ):
+        errors.append("components/espcontrol/button_grid_grid.h: open light control modals from subpage cards")
+
+    return errors
+
+
 def run_scan() -> int:
     errors = firmware_modal_errors(FIRMWARE_DIR, ROOT)
     errors.extend(firmware_modal_sleep_takeover_errors(ROOT))
+    errors.extend(firmware_subpage_modal_wiring_errors(ROOT))
 
     if errors:
         print("Firmware modal allocation check failed:")
@@ -268,6 +299,20 @@ def expect_sleep_takeover_errors(name: str, files: dict[str, str], expected: tup
             path.write_text(text, encoding="utf-8")
 
         errors = firmware_modal_sleep_takeover_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_subpage_modal_wiring_errors(name: str, grid_text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_grid.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(grid_text, encoding="utf-8")
+
+        errors = firmware_subpage_modal_wiring_errors(root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -392,6 +437,38 @@ def run_self_test() -> int:
     expect_sleep_takeover_errors(
         "display takeover close",
         valid_sleep_takeover_files(),
+        (),
+    )
+    expect_subpage_modal_wiring_errors(
+        "subpage light modal missing click handler",
+        (
+            '      if (sb_cfg.type == "light_control") {\n'
+            "        if (!sb_cfg.entity.empty()) {\n"
+            "          LightControlCtx *ctx = create_light_control_context(\n"
+            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, nullptr, nullptr, nullptr, 100);\n"
+            "          subscribe_light_control_state(ctx);\n"
+            "        }\n"
+            "        continue;\n"
+            "      }\n"
+        ),
+        ("open light control modals from subpage cards",),
+    )
+    expect_subpage_modal_wiring_errors(
+        "subpage light modal click handler",
+        (
+            '      if (sb_cfg.type == "light_control") {\n'
+            "        if (!sb_cfg.entity.empty()) {\n"
+            "          LightControlCtx *ctx = create_light_control_context(\n"
+            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, nullptr, nullptr, nullptr, 100);\n"
+            "          subscribe_light_control_state(ctx);\n"
+            "          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {\n"
+            "            LightControlCtx *ctx = (LightControlCtx *)lv_event_get_user_data(e);\n"
+            "            if (ctx) light_control_open_modal(ctx);\n"
+            "          }, LV_EVENT_CLICKED, ctx);\n"
+            "        }\n"
+            "        continue;\n"
+            "      }\n"
+        ),
         (),
     )
     home_idle_gated = valid_sleep_takeover_files()

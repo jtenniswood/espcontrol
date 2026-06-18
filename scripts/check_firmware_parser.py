@@ -30,8 +30,10 @@ CPP_SOURCE = r'''
 #include <string>
 #include <vector>
 
-#define ESP_LOGW(tag, fmt, ...)
-#define ESP_LOGI(tag, fmt, ...)
+template <typename... Args>
+inline void esp_log_ignore(Args&&...) {}
+#define ESP_LOGW(...) esp_log_ignore(__VA_ARGS__)
+#define ESP_LOGI(...) esp_log_ignore(__VA_ARGS__)
 
 namespace esphome {
 namespace text { class Text {}; }
@@ -78,7 +80,7 @@ constexpr int LV_ALIGN_TOP_LEFT = 0;
 constexpr int LV_ALIGN_TOP_MID = 1;
 constexpr int LV_ALIGN_TOP_RIGHT = 2;
 constexpr int LV_ALIGN_BOTTOM_LEFT = 0;
-constexpr int LV_ALIGN_BOTTOM_RIGHT = 1;
+[[maybe_unused]] constexpr int LV_ALIGN_BOTTOM_RIGHT = 1;
 constexpr int LV_GRID_ALIGN_START = 0;
 constexpr int LV_GRID_ALIGN_STRETCH = 1;
 constexpr int LV_OPA_COVER = 255;
@@ -411,6 +413,17 @@ int main() {
   assert(action_card_state_icon_mode(action_icon));
   assert(!action_card_state_numeric_mode(action_icon));
   assert(!action_card_state_text_mode(action_icon));
+  auto action_confirm = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F,confirm_yes=Run,confirm_no=Cancel");
+  assert(action_script_confirmation_enabled(action_confirm));
+  assert(switch_confirmation_message(action_confirm) == "Run bedtime?");
+  assert(switch_confirmation_yes_text(action_confirm) == "Run");
+  assert(switch_confirmation_no_text(action_confirm) == "Cancel");
+  auto action_confirm_default = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on");
+  assert(action_script_confirmation_enabled(action_confirm_default));
+  assert(switch_confirmation_message(action_confirm_default) == "Run this script?");
+  auto scene_confirm = parse_cfg("scene.goodnight;Goodnight;Movie Open;Auto;scene.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F");
+  assert(!action_script_confirmation_enabled(scene_confirm));
+  assert(scene_confirm.options == "");
 
   auto climate_large = parse_cfg("climate.living_room;Living;Thermostat;Auto;;;climate;1;large_numbers");
   assert(climate_large.options == "large_numbers");
@@ -440,6 +453,12 @@ int main() {
   assert(subpage_climate.options == "subpage_kind=climate");
   auto subpage_presence = parse_cfg("person.jane;Presence;Account;Auto;indicator;;subpage;;subpage_kind=presence");
   assert(subpage_presence.options == "subpage_kind=presence");
+  auto subpage_alarm = parse_cfg("alarm_control_panel.home;Alarm;Security;Auto;indicator;;subpage;;subpage_kind=alarm");
+  assert(subpage_alarm.options == "subpage_kind=alarm");
+  auto subpage_vacuum = parse_cfg("vacuum.downstairs;Vacuum;Robot Vacuum;Auto;indicator;;subpage;;subpage_kind=vacuum");
+  assert(subpage_vacuum.options == "subpage_kind=vacuum");
+  auto subpage_weather = parse_cfg("weather.home;Weather;Weather Partly Cloudy;Auto;indicator;;subpage;;subpage_kind=weather");
+  assert(subpage_weather.options == "subpage_kind=weather");
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 

@@ -566,8 +566,30 @@ function postCoverArtHideExternalInput(on) {
   return post(coverArtHideExternalInputPostUrls(on));
 }
 
-function postDeveloperExperimentalFeatures(on) {
-  postSwitchWithObjectIds(entityName("developer_experimental_features"), entityObjectIds("developer_experimental_features"), on);
+function coverArtDelayPostUrls(value) {
+  return entityPostUrls(
+    "number",
+    entityName("screen_saver_cover_art_delay"),
+    entityObjectIds("screen_saver_cover_art_delay"),
+    "set?value=" + encodeURIComponent(value)
+  );
+}
+
+function postCoverArtDelay(value) {
+  return post(coverArtDelayPostUrls(value));
+}
+
+function coverArtTrackOverlayDurationPostUrls(value) {
+  return entityPostUrls(
+    "number",
+    entityName("screen_saver_track_overlay_duration"),
+    entityObjectIds("screen_saver_track_overlay_duration"),
+    "set?value=" + encodeURIComponent(value)
+  );
+}
+
+function postCoverArtTrackOverlayDuration(value) {
+  return post(coverArtTrackOverlayDurationPostUrls(value));
 }
 
 function postNumber(name, value) {

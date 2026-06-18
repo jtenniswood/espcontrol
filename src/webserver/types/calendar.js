@@ -148,7 +148,6 @@ registerButtonType("calendar", {
   label: function () { return cardContractCardLabel("calendar"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("calendar"); },
   pickerKey: function () { return cardContractPickerKey("calendar"); },
-  experimental: function () { return cardContractExperimental("calendar"); },
   hidden: function () { return cardContractHidden("calendar"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("calendar"); },

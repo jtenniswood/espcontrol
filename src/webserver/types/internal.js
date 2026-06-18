@@ -104,7 +104,6 @@ registerButtonType("internal", {
   label: function () { return cardContractCardLabel("internal"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("internal"); },
   pickerKey: function () { return cardContractPickerKey("internal"); },
-  experimental: function () { return cardContractExperimental("internal"); },
   hidden: function () { return cardContractHidden("internal"); },
   hideLabel: true,
   labelPlaceholder: "e.g. Porch Light",

@@ -12,11 +12,12 @@ You will find these controls in **Settings > Sleep & Schedule > Media Cover Art*
 
 ## Settings
 
-- **Show Cover Art** - enables the cover art display.
-- **Media Player** - chooses the media player entity to watch, such as `media_player.living_room`.
-- **Only Show When** - optionally limits cover art to matching media player attributes, such as `app_id=com.apple.TVMusic` or `app_id=com.apple.TVMusic; media_content_type=music`.
+- **Show Cover Art** - enables the cover art display and keeps the screen awake while artwork is shown.
+- **Media Player Entity** - chooses the media player entity to watch, such as `media_player.living_room`.
 - **Show After** - chooses whether cover art appears immediately or waits for the selected delay.
-- **Track Overlay Duration** - controls how long track information is shown over the artwork on the 4-inch square displays.
-- **Hide for external sources** - hides cover art when the selected media player source is `TV` or `Line-in`.
+- **Show Track Details For** - controls how long track information is shown over the artwork on the 4-inch square displays.
+- **Advanced Options** - contains source and filtering controls you may not need every day.
+- **Hide for external source inputs** - hides cover art when the selected media player source is `TV` or `Line-in`.
+- **Advanced Filtering** - reveals **Only Show When**, which limits cover art to matching media player attributes, such as `app_id=com.apple.TVMusic` or `app_id=com.apple.TVMusic; media_content_type=music`.
 
 Cover art is separate from the normal [Screensaver](/features/screensaver) mode. Use Screensaver when you want the panel to dim, show a clock, or turn off after inactivity.

@@ -1,10 +1,10 @@
 ---
-title: 3D Printable Stands
+title: Printable Stands
 description:
   3D printable desk stands and case stands for EspControl supported ESP32 touchscreens, with links to the matching MakerWorld print files.
 ---
 
-# 3D Printable Stands
+# Printable Stands
 
 These stands are optional desk mounts for supported EspControl panels. They are useful when you want a display on a desk, shelf, bedside table, or test bench instead of wall mounting it.
 

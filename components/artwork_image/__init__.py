@@ -81,8 +81,7 @@ class JPEGFormat(Format):
         from esphome.core import CORE
 
         # Copy libjpeg-turbo as an IDF component into the build directory.
-        # Skip if dest already exists and CMakeLists.txt mtimes match (avoid
-        # redundant copies on incremental builds).
+        # Skip only when the generated copy is newer than all source files.
         src_path = os.path.join(
             os.path.dirname(__file__), "..", "libjpeg-turbo-esp32"
         )
@@ -96,13 +95,23 @@ class JPEGFormat(Format):
         )
         src_cmake = os.path.join(src_path, "CMakeLists.txt")
         dest_cmake = os.path.join(dest_path, "CMakeLists.txt")
+
+        def newest_mtime(path):
+            newest = 0
+            if os.path.isfile(path):
+                return os.path.getmtime(path)
+            for dirpath, _, filenames in os.walk(path):
+                for filename in filenames:
+                    newest = max(newest, os.path.getmtime(os.path.join(dirpath, filename)))
+            return newest
+
         missing_required_file = any(
             not os.path.exists(os.path.join(dest_path, file_name))
             for file_name in required_files
         )
         needs_copy = missing_required_file or (
             os.path.exists(dest_cmake)
-            and os.path.getmtime(src_cmake) > os.path.getmtime(dest_cmake)
+            and newest_mtime(src_path) > newest_mtime(dest_path)
         )
         if needs_copy:
             if os.path.exists(dest_path):

@@ -25,13 +25,13 @@ MODE_ARRAY_ALLOWLIST = CARD_RUNTIME_BOUNDARY_FILES | {
 DIRECT_CONTRACT_PATTERN = re.compile(r"\b(?:card_contract_[A-Za-z0-9_]+|CARD_CONTRACT_[A-Z0-9_]+)\b")
 MODE_ARRAY_PATTERN = re.compile(
     r"\{[^}\n]*\"(?:play_pause|previous|next|volume|position|now_playing|"
-    r"open|close|stop|set_position|tilt|toggle|lock|unlock|away|home|disarm)\""
+    r"open|close|stop|set_position|tilt|toggle|lock|unlock|away|home|night|vacation|disarm)\""
 )
 SERVICE_MAPPING_PATTERN = re.compile(
     r"\"(?:cover\.(?:open_cover|close_cover|stop_cover|set_cover_position)|"
     r"lock\.(?:lock|unlock)|"
     r"media_player\.(?:media_play_pause|media_previous_track|media_next_track)|"
-    r"alarm_control_panel\.(?:alarm_arm_away|alarm_arm_home|alarm_disarm))\""
+    r"alarm_control_panel\.(?:alarm_arm_away|alarm_arm_home|alarm_arm_night|alarm_arm_vacation|alarm_disarm))\""
 )
 
 

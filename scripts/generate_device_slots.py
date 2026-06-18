@@ -60,6 +60,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
     layouts = {
         "guition-esp32-s3-4848s040": {
             "cover_art_size": "480",
+            "cover_art_decode_size": "320",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "0",
@@ -93,6 +94,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
         },
         "esp32-p4-86": {
             "cover_art_size": "720",
+            "cover_art_decode_size": "720",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "0",
@@ -125,6 +127,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
         },
         "guition-esp32-p4-jc4880p443": {
             "cover_art_size": "480",
+            "cover_art_decode_size": "480",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "0",
@@ -157,6 +160,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
         },
         "guition-esp32-p4-jc8012p4a1": {
             "cover_art_size": "800",
+            "cover_art_decode_size": "800",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "800",
@@ -189,6 +193,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
         },
         "guition-esp32-p4-jc1060p470": {
             "cover_art_size": "600",
+            "cover_art_decode_size": "600",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "585",

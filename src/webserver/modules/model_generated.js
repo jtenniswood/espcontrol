@@ -974,7 +974,6 @@ var EspControlModel = (() => {
     const hasNtpServer1 = objectValue(settings, "ntp_server_1") !== void 0;
     const hasNtpServer2 = objectValue(settings, "ntp_server_2") !== void 0;
     const hasNtpServer3 = objectValue(settings, "ntp_server_3") !== void 0;
-    const hasDeveloperExperimentalFeatures = objectValue(settings, "developer_experimental_features") !== void 0;
     const hasOutdoorTempEnable = objectValue(settings, "outdoor_temp_enable") !== void 0;
     const clockFormat = current.clockFormatOptions.indexOf(String(settings.clock_format || "")) !== -1 ? String(settings.clock_format) : current.clockFormat;
     const screensaverAction = normalizeScreensaverAction(
@@ -1017,8 +1016,6 @@ var EspControlModel = (() => {
       hasNtpServer1,
       hasNtpServer2,
       hasNtpServer3,
-      hasDeveloperExperimentalFeatures,
-      developerExperimentalFeatures: hasDeveloperExperimentalFeatures ? !!settings.developer_experimental_features : current.developerExperimentalFeatures,
       ntpServer1: hasNtpServer1 ? normalizeNtpServer(settings.ntp_server_1, current.ntpDefaults[0] || "") : current.ntpServer1,
       ntpServer2: hasNtpServer2 ? normalizeNtpServer(settings.ntp_server_2, current.ntpDefaults[1] || "") : current.ntpServer2,
       ntpServer3: hasNtpServer3 ? normalizeNtpServer(settings.ntp_server_3, current.ntpDefaults[2] || "") : current.ntpServer3,

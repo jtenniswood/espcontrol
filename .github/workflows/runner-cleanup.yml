@@ -39,4 +39,7 @@ jobs:
           fi
 
       - name: Reclaim runner disk
+        env:
+          ESPCONTROL_DOCKER_PRUNE_ALL_IMAGES: true
+          ESPCONTROL_DOCKER_PRUNE_VOLUMES: true
         run: bash scripts/reclaim_actions_disk.sh

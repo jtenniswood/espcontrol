@@ -282,15 +282,6 @@ inline std::string timezone_city_label(const std::string &tz_option) {
   return city.empty() ? espcontrol_i18n(std::string("World Clock")) : city;
 }
 
-inline void set_posix_timezone_for_epoch(const std::string &tz_option, time_t epoch) {
-  std::string tz_id = timezone_id_from_option(tz_option);
-  struct tm utc_tm;
-  gmtime_r(&epoch, &utc_tm);
-  const char *posix = resolve_posix_tz_at_utc(tz_id, utc_point_from_tm(utc_tm));
-  setenv("TZ", posix, 1);
-  tzset();
-}
-
 inline bool timezone_localtime(const std::string &tz_option, time_t epoch, struct tm &out) {
   int offset_minutes = 0;
   if (!timezone_offset_minutes_at_utc(tz_option, epoch, offset_minutes)) return false;
@@ -349,10 +340,6 @@ inline void update_timezone_cards(bool valid,
   int count = timezone_card_count();
   for (int i = 0; i < count; i++) {
     apply_timezone_card_text(refs[i], valid, epoch, active_timezone, use_12h);
-  }
-  if (count > 0) {
-    if (valid) set_posix_timezone_for_epoch(active_timezone, epoch);
-    else apply_timezone(active_timezone);
   }
 }
 

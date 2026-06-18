@@ -18,7 +18,7 @@ font:
     id: font_icon_card
     size: 41
     bpp: 4
-    glyphs: !include ../../../common/assets/icon_glyphs.yaml
+    glyphs: !include ../../../common/assets/climate_card_icon_glyphs.yaml
 
   # Status, network, and subpage icons
   - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
@@ -94,15 +94,6 @@ font:
   - file: "gfonts://Roboto@Thin"
     id: font_number_value_large
     size: 138
-    bpp: 4
-    glyphs:
-      - "0123456789.-°/%"
-      - ":"
-
-  # Large modal numbers
-  - file: "gfonts://Roboto@Thin"
-    id: font_number_modal
-    size: 120
     bpp: 4
     glyphs:
       - "0123456789.-°/%"

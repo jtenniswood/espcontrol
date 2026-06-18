@@ -32,7 +32,7 @@ api:
             }
             int port = static_cast<int>(id(cover_art_home_assistant_artwork_port).state);
             id(cover_art_home_assistant_base_url) =
-              id(cover_art_home_assistant_artwork_protocol).state + "://" + host + ":" + std::to_string(port);
+              id(cover_art_home_assistant_artwork_protocol).current_option() + "://" + host + ":" + std::to_string(port);
             ESP_LOGI("api", "Using Home Assistant base URL: %s",
                      id(cover_art_home_assistant_base_url).c_str());
           } else {
@@ -41,7 +41,6 @@ api:
           refresh_image_cards();
           if (ha_api_state_connected()) {
             apply_registered_ha_control_availability(true);
-            ha_retry_unavailable_states(true);
             refresh_weather_forecast_cards();
             ha_flush_deferred_state_requests();
           }
@@ -51,14 +50,12 @@ api:
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
           ha_flush_deferred_state_requests();
-          ha_retry_unavailable_states(true);
         }
         todo_reload_active_modal();
     - delay: 8s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
-          ha_retry_unavailable_states(true);
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
         }
@@ -67,7 +64,6 @@ api:
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
-          ha_retry_unavailable_states(true);
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
         }
@@ -91,7 +87,6 @@ interval:
           weather_forecast_cancel_stale_requests();
           weather_forecast_send_next_queued();
           ha_flush_deferred_state_requests();
-          ha_retry_unavailable_states();
           todo_retry_waiting_modal();
 
   - interval: 1h
@@ -132,10 +127,6 @@ web_server:
     - id: sg_firmware
       name: "Firmware"
       sorting_weight: 40
-    - id: sg_developer
-      name: "Developer"
-      sorting_weight: 90
-
 button:
   - platform: template
     name: "Apply Configuration"
@@ -150,18 +141,6 @@ button:
         - lambda: |-
             global_preferences->sync();
             App.safe_reboot();
-
-switch:
-  - platform: template
-    name: "${entity_developer_experimental_features}"
-    internal: true
-    id: developer_experimental_features
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
-    entity_category: config
-    icon: "mdi:flask-outline"
-    web_server:
-      sorting_group_id: sg_developer
 
 select:
   - platform: template

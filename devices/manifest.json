@@ -89,7 +89,7 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
@@ -231,12 +231,12 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_small"
+          "climateOptionValue": "font_text_body"
         },
         "display": {
           "wrapTallLabels": false,
@@ -369,7 +369,7 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
@@ -508,8 +508,8 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
-          "volumeLabel": "font_text_large",
+          "volumeNumber": "font_number_value_large",
+          "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
@@ -662,12 +662,12 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_small"
+          "climateOptionValue": "font_text_body"
         },
         "display": {
           "wrapTallLabels": false,

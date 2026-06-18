@@ -8,9 +8,9 @@
  * For conditions of distribution and use, see the accompanying README.ijg
  * file.
  *
- * ESP32 modification: Route large allocations to PSRAM via heap_caps_malloc.
- * This is required for progressive JPEG decoding which needs multi-MB
- * coefficient buffers that don't fit in internal SRAM.
+ * ESP32 modification: Route JPEG allocation pools to PSRAM via
+ * heap_caps_malloc. This is required for artwork decoding on displays where
+ * LVGL and networking leave very little internal SRAM available.
  */
 
 #define JPEG_INTERNALS
@@ -31,7 +31,14 @@
 GLOBAL(void *)
 jpeg_get_small(j_common_ptr cinfo, size_t sizeofobject)
 {
+#ifdef ESP_PLATFORM
+  void *p = heap_caps_malloc(sizeofobject, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (p == NULL)
+    p = (void *)MALLOC(sizeofobject);
+  return p;
+#else
   return (void *)MALLOC(sizeofobject);
+#endif
 }
 
 GLOBAL(void)

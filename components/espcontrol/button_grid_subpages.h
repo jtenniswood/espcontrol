@@ -37,6 +37,10 @@ inline std::string decode_compact_subpage_field(const std::string &value) {
   return decode_compact_field(value);
 }
 
+inline std::string decode_compact_subpage_field(const std::string &value, size_t start, size_t len) {
+  return decode_compact_field(value, start, len);
+}
+
 inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   if (brightness_slider_type(b.type) && !b.sensor.empty()) b.sensor.clear();
   if (fan_card_type(b.type)) {
@@ -349,17 +353,19 @@ inline std::string get_subpage_order(const std::string &sp_cfg) {
   return sp_cfg.substr(start, pe - start);
 }
 
-inline std::string subpage_back_token_base(std::string token) {
-  size_t eq = token.find('=');
-  if (eq != std::string::npos) token = token.substr(0, eq);
-  return token;
-}
-
-inline std::string subpage_back_label_from_order_token(const std::string &token) {
-  size_t eq = token.find('=');
-  if (eq == std::string::npos) return espcontrol_i18n(std::string("Back"));
-  std::string label = decode_compact_subpage_field(token.substr(eq + 1));
-  return label.empty() ? espcontrol_i18n(std::string("Back")) : label;
+inline bool subpage_back_token_span(const std::string &order_str, size_t start, size_t end, char &suffix,
+                                    size_t *label_start = nullptr) {
+  while (start < end && std::isspace(static_cast<unsigned char>(order_str[start]))) start++;
+  while (end > start && std::isspace(static_cast<unsigned char>(order_str[end - 1]))) end--;
+  size_t eq = order_str.find('=', start);
+  size_t base_end = (eq == std::string::npos || eq > end) ? end : eq;
+  while (base_end > start && std::isspace(static_cast<unsigned char>(order_str[base_end - 1]))) base_end--;
+  size_t len = base_end - start;
+  if (len < 1 || len > 2 || order_str[start] != 'B') return false;
+  suffix = len == 2 ? order_str[start + 1] : '\0';
+  if (suffix != '\0' && !grid_token_has_span_suffix(suffix)) return false;
+  if (label_start) *label_start = (eq == std::string::npos || eq >= end) ? std::string::npos : eq + 1;
+  return true;
 }
 
 inline std::string get_subpage_back_label(const std::string &order_str) {
@@ -369,11 +375,14 @@ inline std::string get_subpage_back_label(const std::string &order_str) {
     size_t cm = order_str.find(',', st);
     if (cm == std::string::npos) cm = order_str.length();
     if (cm > st) {
-      std::string tk = order_str.substr(st, cm - st);
-      std::string base = subpage_back_token_base(tk);
-      if (base == "B" || base == "Bd" || base == "Bw" || base == "Bb" ||
-          base == "Bt" || base == "Bx") {
-        return subpage_back_label_from_order_token(tk);
+      char suffix = '\0';
+      size_t label_start = std::string::npos;
+      if (subpage_back_token_span(order_str, st, cm, suffix, &label_start)) {
+        if (label_start != std::string::npos) {
+          std::string label = decode_compact_subpage_field(order_str, label_start, cm - label_start);
+          return label.empty() ? espcontrol_i18n(std::string("Back")) : label;
+        }
+        return espcontrol_i18n(std::string("Back"));
       }
     }
     st = cm + 1;
@@ -500,19 +509,22 @@ inline void parse_subpage_order(const std::string &order_str, int num_slots, int
     size_t cm = order_str.find(',', st2);
     if (cm == std::string::npos) cm = order_str.length();
     if (cm > st2) {
-      std::string tk = order_str.substr(st2, cm - st2);
-      tk = subpage_back_token_base(tk);
-      if (tk == "B" || tk == "Bd" || tk == "Bw" || tk == "Bb" || tk == "Bt" || tk == "Bx") {
+      char back_suffix = '\0';
+      if (subpage_back_token_span(order_str, st2, cm, back_suffix)) {
         result.back_pos = gp2;
-        grid_token_spans(tk.length() > 1 ? tk[1] : '\0', result.back_row_span, result.back_col_span);
+        grid_token_spans(back_suffix, result.back_row_span, result.back_col_span);
         result.has_back_token = true;
       } else {
+        size_t token_end = cm;
         int row_span = 1, col_span = 1;
-        if (!tk.empty() && grid_token_has_span_suffix(tk.back())) {
-          grid_token_spans(tk.back(), row_span, col_span);
-          tk.pop_back();
+        while (token_end > st2 && std::isspace(static_cast<unsigned char>(order_str[token_end - 1]))) {
+          token_end--;
         }
-        int v = atoi(tk.c_str());
+        if (token_end > st2 && grid_token_has_span_suffix(order_str[token_end - 1])) {
+          grid_token_spans(order_str[token_end - 1], row_span, col_span);
+          token_end--;
+        }
+        int v = parse_positive_int_span(order_str, st2, token_end);
         if (v >= 1 && v <= btn_limit) {
           result.positions[gp2] = v;
           result.row_span[v - 1] = row_span;
