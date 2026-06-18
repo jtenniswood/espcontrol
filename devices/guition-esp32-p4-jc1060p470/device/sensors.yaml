@@ -151,6 +151,7 @@ script:
     then:
       - lambda: |-
           if (!id(screen_rotation_ready)) return;
+          bump_ha_subscription_generation();
           navigation_close_modals_for_display_takeover();
           navigation_return_home(id(main_page)->obj);
           // BEGIN GENERATED LIVE PHASE 1 GRID WIRING

@@ -727,6 +727,7 @@ def live_apply_script_block(device: dict) -> list[str]:
         "    then:",
         "      - lambda: |-",
         "          if (!id(screen_rotation_ready)) return;",
+        "          bump_ha_subscription_generation();",
         "          navigation_close_modals_for_display_takeover();",
         "          navigation_return_home(id(main_page)->obj);",
         script_lambda_block(phase1_block(device)),

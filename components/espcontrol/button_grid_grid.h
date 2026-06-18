@@ -195,6 +195,7 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   grid_free_owned_contexts(s.sensor_lbl);
   grid_free_owned_contexts(s.unit_lbl);
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_clear_state(s.btn, LV_STATE_CHECKED);
   sync_card_checked_text_color(s.btn);
   lv_obj_clear_state(s.btn, LV_STATE_DISABLED);
