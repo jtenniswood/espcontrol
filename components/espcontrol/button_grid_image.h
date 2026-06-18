@@ -22,6 +22,7 @@ constexpr uint32_t IMAGE_CARD_MODAL_CLEANUP_DELAY_MS = 100;
 constexpr uint32_t IMAGE_CARD_MODAL_CLOSE_GUARD_MS = 350;
 constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;
+constexpr int CARD_BACKGROUND_IMAGE_MAX_CONTEXTS = 8;
 constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;
 constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;
 constexpr lv_coord_t IMAGE_CARD_JC4880P443_MODAL_BACK_BUTTON_REF_PX = 58;
@@ -80,8 +81,25 @@ struct ImageCardModalUi {
   lv_timer_t *request_timer = nullptr;
 };
 
+struct CardBackgroundImageCtx {
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *widget = nullptr;
+  lv_obj_t *dim = nullptr;
+  esphome::artwork_image::ArtworkImage *image = nullptr;
+  std::string id;
+  std::string url;
+  bool active = false;
+  bool callbacks_bound = false;
+  bool requested_once = false;
+};
+
 inline ImageCardCtx *image_card_contexts() {
   static ImageCardCtx contexts[IMAGE_CARD_MAX_CONTEXTS];
+  return contexts;
+}
+
+inline CardBackgroundImageCtx *card_background_image_contexts() {
+  static CardBackgroundImageCtx contexts[CARD_BACKGROUND_IMAGE_MAX_CONTEXTS];
   return contexts;
 }
 
@@ -697,6 +715,163 @@ inline bool image_card_position_widget(lv_obj_t *btn, lv_obj_t *widget,
   if (target_width) *target_width = width;
   if (target_height) *target_height = height;
   return true;
+}
+
+inline void card_background_move_content_foreground(const BtnSlot &s) {
+  if (s.sensor_container) lv_obj_move_foreground(s.sensor_container);
+  if (s.icon_lbl) lv_obj_move_foreground(s.icon_lbl);
+  if (s.text_lbl) lv_obj_move_foreground(s.text_lbl);
+  if (s.subpage_lbl) lv_obj_move_foreground(s.subpage_lbl);
+}
+
+inline void card_background_position_widget(lv_obj_t *btn, lv_obj_t *widget) {
+  lv_coord_t width = 0;
+  lv_coord_t height = 0;
+  if (!image_card_position_widget(btn, widget, &width, &height)) return;
+  (void) width;
+  (void) height;
+  image_card_apply_tile_image_align(widget);
+}
+
+inline void card_background_apply_downloaded(CardBackgroundImageCtx *ctx) {
+  if (!ctx || !ctx->active || !ctx->widget || !ctx->image) return;
+  if (ctx->image->get_url() != ctx->url) return;
+  ctx->requested_once = true;
+  card_background_position_widget(ctx->btn, ctx->widget);
+  image_card_set_widget_source(ctx->widget, ctx->image);
+  if (ctx->dim) lv_obj_move_background(ctx->dim);
+  lv_obj_move_background(ctx->widget);
+  if (ctx->btn) lv_obj_invalidate(ctx->btn);
+  notify_dashboard_content_changed();
+}
+
+inline void card_background_handle_download_error(CardBackgroundImageCtx *ctx) {
+  if (!ctx || !ctx->active) return;
+  ESP_LOGW("card_background", "Card background image download failed: %s", ctx->id.c_str());
+  if (ctx->widget) lv_obj_add_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN);
+}
+
+inline void card_background_bind_callbacks(CardBackgroundImageCtx *ctx) {
+  if (!ctx || !ctx->image || ctx->callbacks_bound) return;
+  ctx->callbacks_bound = true;
+  ctx->image->add_on_finished_callback([ctx](bool) {
+    card_background_apply_downloaded(ctx);
+  });
+  ctx->image->add_on_error_callback([ctx]() {
+    card_background_handle_download_error(ctx);
+  });
+}
+
+inline void reset_card_background_image_pool(const GridConfig &cfg) {
+  CardBackgroundImageCtx *contexts = card_background_image_contexts();
+  int count = cfg.card_background_image_count;
+  if (count > CARD_BACKGROUND_IMAGE_MAX_CONTEXTS) count = CARD_BACKGROUND_IMAGE_MAX_CONTEXTS;
+  for (int i = 0; i < CARD_BACKGROUND_IMAGE_MAX_CONTEXTS; i++) {
+    image_card_clear_widget_source(contexts[i].widget);
+    contexts[i].active = false;
+    contexts[i].btn = nullptr;
+    contexts[i].widget = nullptr;
+    contexts[i].dim = nullptr;
+    contexts[i].id.clear();
+    contexts[i].url.clear();
+    contexts[i].requested_once = false;
+    contexts[i].image = i < count && cfg.card_background_images ? cfg.card_background_images[i] : nullptr;
+    if (contexts[i].image) contexts[i].image->release();
+  }
+}
+
+inline void refresh_card_background_image(lv_obj_t *btn) {
+  if (!btn) return;
+  CardBackgroundImageCtx *contexts = card_background_image_contexts();
+  for (int i = 0; i < CARD_BACKGROUND_IMAGE_MAX_CONTEXTS; i++) {
+    CardBackgroundImageCtx *ctx = &contexts[i];
+    if (!ctx->active || ctx->btn != btn || !ctx->image || !ctx->widget) continue;
+    int previous_width = ctx->image->get_fixed_width();
+    int previous_height = ctx->image->get_fixed_height();
+    card_background_position_widget(ctx->btn, ctx->widget);
+    image_card_position_widget(ctx->btn, ctx->dim);
+    int width = lv_obj_get_width(btn);
+    int height = lv_obj_get_height(btn);
+    if (width <= 0 || height <= 0) return;
+  ctx->image->set_target_size(width, height);
+  if ((previous_width != width || previous_height != height) && !ctx->url.empty()) {
+    ctx->image->release();
+    ctx->requested_once = true;
+    std::string effective_url = ctx->image->request_update_url(ctx->url, std::max(width, height));
+    if (!effective_url.empty()) ctx->url = effective_url;
+  }
+    if (ctx->dim) lv_obj_move_background(ctx->dim);
+    lv_obj_move_background(ctx->widget);
+  }
+}
+
+inline CardBackgroundImageCtx *acquire_card_background_image_context(const GridConfig &cfg) {
+  CardBackgroundImageCtx *contexts = card_background_image_contexts();
+  int count = cfg.card_background_image_count;
+  if (count > CARD_BACKGROUND_IMAGE_MAX_CONTEXTS) count = CARD_BACKGROUND_IMAGE_MAX_CONTEXTS;
+  for (int i = 0; i < count; i++) {
+    if (!contexts[i].active && contexts[i].image) {
+      contexts[i].active = true;
+      card_background_bind_callbacks(&contexts[i]);
+      return &contexts[i];
+    }
+  }
+  return nullptr;
+}
+
+inline std::string card_background_image_url(const std::string &id) {
+  return "http://127.0.0.1/card-images/" + id + ".jpg";
+}
+
+inline void apply_card_background_image(BtnSlot &s, const ParsedCfg &p,
+                                        const GridConfig &cfg) {
+  if (!s.btn || !card_background_supported_type(p.type)) return;
+  std::string id = cfg_option_value(p.options, CARD_BACKGROUND_IMAGE_OPTION);
+  if (!card_background_image_id_valid(id)) return;
+
+  CardBackgroundImageCtx *ctx = acquire_card_background_image_context(cfg);
+  if (!ctx) {
+    ESP_LOGW("card_background", "No downloader available for card background image %s", id.c_str());
+    return;
+  }
+
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+  lv_obj_t *img = lv_image_create(s.btn);
+#else
+  lv_obj_t *img = lv_img_create(s.btn);
+#endif
+  lv_obj_clear_flag(img, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_pad_all(img, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_width(img, 0, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, LV_PART_MAIN);
+  image_card_apply_tile_image_align(img);
+
+  lv_obj_t *dim = lv_obj_create(s.btn);
+  lv_obj_clear_flag(dim, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(dim, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_border_width(dim, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(dim, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(dim, 0, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(dim, lv_color_hex(DARK_OVERLAY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(
+    dim, static_cast<lv_opa_t>(card_background_dim_percent(p.options) * 255 / 100), LV_PART_MAIN);
+  image_card_position_widget(s.btn, dim);
+
+  ctx->btn = s.btn;
+  ctx->widget = img;
+  ctx->dim = dim;
+  ctx->id = id;
+  ctx->url = card_background_image_url(id);
+  card_background_position_widget(ctx->btn, ctx->widget);
+  ctx->image->set_target_size(lv_obj_get_width(s.btn), lv_obj_get_height(s.btn));
+  ctx->image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
+  std::string effective_url = ctx->image->request_update_url(
+    ctx->url, std::max(lv_obj_get_width(s.btn), lv_obj_get_height(s.btn)));
+  if (!effective_url.empty()) ctx->url = effective_url;
+  lv_obj_move_background(dim);
+  lv_obj_move_background(img);
+  card_background_move_content_foreground(s);
 }
 
 inline void image_card_apply_widget_geometry(lv_obj_t *btn, lv_obj_t *widget,

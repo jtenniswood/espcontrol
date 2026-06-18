@@ -15,6 +15,9 @@
 #include "esphome/core/defines.h"
 
 #include "esp_tls_crypto.h"
+#ifdef USE_ESP_IDF
+#include "esp_spiffs.h"
+#endif
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -45,6 +48,7 @@ namespace esphome::web_server_idf {
 #define CRLF_LEN (sizeof(CRLF_STR) - 1)
 
 static const char *const TAG = "web_server_idf";
+static constexpr const char *CARD_IMAGE_MOUNT = "/config";
 static constexpr const char *CARD_IMAGE_DIR = "/config/espcontrol/card-images";
 static constexpr size_t CARD_IMAGE_MAX_BYTES = 80 * 1024;
 static constexpr size_t CARD_IMAGE_MAX_COUNT = 8;
@@ -138,7 +142,44 @@ std::string card_image_path(const std::string &id) {
   return std::string(CARD_IMAGE_DIR) + "/" + id + ".jpg";
 }
 
+bool ensure_card_image_storage() {
+#ifdef USE_ESP_IDF
+  static bool mounted = false;
+  static bool attempted = false;
+  if (mounted) return true;
+  if (!attempted) {
+    attempted = true;
+    esp_vfs_spiffs_conf_t conf = {};
+    conf.base_path = CARD_IMAGE_MOUNT;
+    conf.partition_label = nullptr;
+    conf.max_files = 8;
+    conf.format_if_mount_failed = true;
+    esp_err_t err = esp_vfs_spiffs_register(&conf);
+    if (err == ESP_OK || err == ESP_ERR_INVALID_STATE) {
+      size_t total = 0;
+      size_t used = 0;
+      esp_err_t info_err = esp_spiffs_info(nullptr, &total, &used);
+      if (info_err == ESP_OK) {
+        ESP_LOGI(TAG, "Mounted card image storage at %s (%u/%u bytes used)",
+                 CARD_IMAGE_MOUNT, static_cast<unsigned>(used), static_cast<unsigned>(total));
+      } else {
+        ESP_LOGW(TAG, "Mounted card image storage at %s; info unavailable: %s",
+                 CARD_IMAGE_MOUNT, esp_err_to_name(info_err));
+      }
+      mounted = true;
+      return true;
+    }
+    ESP_LOGE(TAG, "Failed to mount card image storage at %s: %s",
+             CARD_IMAGE_MOUNT, esp_err_to_name(err));
+  }
+  return false;
+#else
+  return true;
+#endif
+}
+
 bool ensure_card_image_dir() {
+  if (!ensure_card_image_storage()) return false;
   mkdir("/config/espcontrol", 0755);
   if (mkdir(CARD_IMAGE_DIR, 0755) == 0 || errno == EEXIST) return true;
   return false;
