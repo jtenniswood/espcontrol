@@ -730,6 +730,7 @@ def live_apply_script_block(device: dict) -> list[str]:
         "          navigation_close_modals_for_display_takeover();",
         "          navigation_return_home(id(main_page)->obj);",
         script_lambda_block(phase1_block(device)),
+        "          reset_image_card_pool(cfg);",
         "          grid_phase1(slots, cfg,",
         "            id(button_order).state,",
         "            id(button_on_color).state,",

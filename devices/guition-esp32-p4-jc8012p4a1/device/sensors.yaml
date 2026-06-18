@@ -286,6 +286,7 @@ script:
           apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
           apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
           // END GENERATED LIVE PHASE 1 GRID WIRING
+          reset_image_card_pool(cfg);
           grid_phase1(slots, cfg,
             id(button_order).state,
             id(button_on_color).state,
