@@ -503,7 +503,7 @@ inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p,
       PlantCardCtx *ctx = create_plant_card_context(s, p);
       subscribe_plant_card(ctx);
       if (p.label.empty() && plant_card_metric_mode(p.precision))
-        subscribe_friendly_name(s.text_lbl, p.entity);
+        subscribe_plant_metric_friendly_name(ctx);
     }
     return true;
   }

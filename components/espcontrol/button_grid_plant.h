@@ -116,6 +116,18 @@ inline void apply_plant_metric_card(PlantCardCtx *ctx) {
   notify_dashboard_content_changed();
 }
 
+inline void subscribe_plant_metric_friendly_name(PlantCardCtx *ctx) {
+  if (!ctx || ctx->entity_id.empty()) return;
+  ha_subscribe_attribute(
+    ctx->entity_id,
+    std::string("friendly_name"),
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
+      ctx->label = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
+      apply_plant_metric_card(ctx);
+    })
+  );
+}
+
 inline std::string plant_metric_unit_from_dict(const std::string &dict,
                                                const std::string &mode) {
   std::string key = "\"" + mode + "\"";
