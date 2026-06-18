@@ -429,7 +429,7 @@ function imageCardLimitMessage() {
 }
 
 function isImageCard(button) {
-  return !!button && button.type === "image";
+  return !!button && (button.type === "image" || mediaCoverArtEnabled(button));
 }
 
 function activeGridSlots(grid) {
