@@ -559,7 +559,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       display_media_title_font(display),
       display_main_width_percent(display),
       row_span, col_span);
-    setup_media_cover_art(s, p, cfg);
     return;
   }
   if (climate_card_type(p.type)) {
@@ -1637,6 +1636,7 @@ inline void grid_phase2(
           if (p.label.empty()) subscribe_friendly_name(s.text_lbl, p.entity);
         } else if (mode == "now_playing") {
           MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
+          setup_media_cover_art(s, p, cfg);
           subscribe_media_now_playing_state(ctx, p.entity);
           subscribe_media_cover_art(ctx, p.entity);
         } else {
@@ -2403,6 +2403,7 @@ inline void grid_phase2(
             }, LV_EVENT_CLICKED, ctx);
           } else if (mode == "now_playing") {
             MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(sub_slot.sensor_container);
+            setup_media_cover_art(sub_slot, sb_cfg, cfg);
             subscribe_media_now_playing_state(ctx, sb_cfg.entity);
             subscribe_media_cover_art(ctx, sb_cfg.entity);
             if (media_now_playing_play_pause_enabled(sb_cfg)) {

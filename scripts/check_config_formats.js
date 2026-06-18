@@ -2220,6 +2220,17 @@ const switchCardForImageLimit = {
   precision: "",
   options: "",
 };
+const mediaCoverArtCardForLimit = {
+  entity: "media_player.living_room",
+  label: "",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "now_playing",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "media_cover_art",
+};
 const imageLimitSnapshot = {
   grid: [1, 2, 3, 0],
   buttons: [imageCardForLimit, imageCardForLimit, switchCardForImageLimit, imageCardForLimit],
@@ -2248,6 +2259,16 @@ assert.strictEqual(hooks.imageCardCandidateAllowedForTest(imageLimitSnapshot, {
   slot: 2,
   button: switchCardForImageLimit,
 }), true, "replacing an existing image card frees a firmware slot");
+assert.strictEqual(hooks.imageCardCountForTest({
+  grid: [1, 2, 0],
+  buttons: [imageCardForLimit, mediaCoverArtCardForLimit],
+  subpages: {},
+}), 2, "media cover art cards count against firmware image slots");
+assert.strictEqual(hooks.imageCardCandidateAllowedForTest(imageLimitSnapshot, {
+  isSub: false,
+  slot: 3,
+  button: mediaCoverArtCardForLimit,
+}), false, "saving media cover art as a fifth firmware image slot is blocked");
 assertButtonRoundTrip(hooks, "image card default options", {
   entity: "camera.front_door",
   label: "",
