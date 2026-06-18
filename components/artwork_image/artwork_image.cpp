@@ -589,6 +589,24 @@ void ArtworkImage::loop() {
     return;
   }
 
+  if (this->downloader_->is_read_complete()) {
+    if (this->decoder_->has_unknown_download_size()) {
+      this->decoder_->set_download_size(this->downloader_->get_bytes_read());
+      ESP_LOGD(TAG, "HTTP transfer complete; inferred image size: %zu bytes", this->downloader_->get_bytes_read());
+    }
+    if (!this->decode_buffered_data_()) {
+      this->fail_download_();
+      return;
+    }
+    if (this->decoder_->is_finished()) {
+      this->finish_download_();
+      return;
+    }
+    ESP_LOGE(TAG, "HTTP transfer finished before image decoder completed");
+    this->fail_download_();
+    return;
+  }
+
   if (!this->ensure_download_buffer_capacity_()) {
     this->fail_download_();
     return;
@@ -615,24 +633,6 @@ void ArtworkImage::loop() {
 
   if (len < 0) {
     ESP_LOGE(TAG, "Download failed while reading image data: %d", len);
-    this->fail_download_();
-    return;
-  }
-
-  if (this->downloader_->is_read_complete()) {
-    if (this->decoder_->has_unknown_download_size()) {
-      this->decoder_->set_download_size(this->downloader_->get_bytes_read());
-      ESP_LOGD(TAG, "HTTP transfer complete; inferred image size: %zu bytes", this->downloader_->get_bytes_read());
-    }
-    if (!this->decode_buffered_data_()) {
-      this->fail_download_();
-      return;
-    }
-    if (this->decoder_->is_finished()) {
-      this->finish_download_();
-      return;
-    }
-    ESP_LOGE(TAG, "HTTP transfer finished before image decoder completed");
     this->fail_download_();
     return;
   }

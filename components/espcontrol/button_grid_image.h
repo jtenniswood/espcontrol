@@ -1442,9 +1442,13 @@ inline void image_card_finish_modal_cleanup(ImageCardCtx *ctx) {
       image_card_log_diagnostics(ctx, "modal-close-refresh-scheduled");
       image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, reason);
     } else {
-      ctx->next_download_retry_ms = 0;
-      image_card_log_diagnostics(ctx, "modal-close-refresh-skipped");
-      ESP_LOGD("image_card", "Skipping tile refresh after modal close for %s", ctx->entity_id.c_str());
+      if (ctx->next_download_retry_ms != 0) {
+        image_card_log_diagnostics(ctx, "modal-close-refresh-preserved");
+        ESP_LOGD("image_card", "Preserving queued tile refresh after modal close for %s", ctx->entity_id.c_str());
+      } else {
+        image_card_log_diagnostics(ctx, "modal-close-refresh-skipped");
+        ESP_LOGD("image_card", "Skipping tile refresh after modal close for %s", ctx->entity_id.c_str());
+      }
     }
   }
   ctx->modal_open_source_url.clear();
