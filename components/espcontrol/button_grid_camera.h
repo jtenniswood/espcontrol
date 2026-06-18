@@ -1900,7 +1900,8 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
     : CameraAttachmentTapMode::ACTION;
   camera.modal_fit = image_card_modal_fit_enabled(p);
   camera.diagnostics_enabled = cfg.image_card_diagnostics;
-  bind_camera_attachment(s, widget, camera, cfg);
-  lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+  if (bind_camera_attachment(s, widget, camera, cfg)) {
+    lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+  }
   return true;
 }
