@@ -147,9 +147,13 @@ function buildScreenPage(parent) {
 function buildApplyBar() {
   var bar = document.createElement("div");
   bar.className = "sp-apply-bar";
+  var status = document.createElement("div");
+  status.className = "sp-apply-status";
+  status.textContent = "Changes apply automatically";
+  bar.appendChild(status);
   var btn = document.createElement("button");
   btn.className = "sp-apply-btn";
-  btn.textContent = "Apply Configuration";
+  btn.textContent = "Restart Device";
   btn.addEventListener("click", function () {
     if (isConfigLocked()) return;
     if (document.activeElement && document.activeElement.blur) {
@@ -169,7 +173,7 @@ function buildApplyBar() {
   bar.appendChild(btn);
   var note = document.createElement("div");
   note.className = "sp-apply-note";
-  note.textContent = "Restarts the device to apply changes";
+  note.textContent = "Recovery only: use if the panel does not recover after a configuration change";
   bar.appendChild(note);
   return bar;
 }
@@ -207,7 +211,7 @@ function syncConfigLockUi() {
     if ((state.configLockReason || "").indexOf("Restarting") !== -1) text = "Restarting\u2026";
     els.root.querySelectorAll(".sp-apply-btn").forEach(function (btn) {
       btn.disabled = isConfigLocked();
-      btn.textContent = isConfigLocked() ? text : "Apply Configuration";
+      btn.textContent = isConfigLocked() ? text : "Restart Device";
     });
   }
   updatePreviewHint();

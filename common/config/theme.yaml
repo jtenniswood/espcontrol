@@ -40,4 +40,3 @@ select:
             id(button_off_color).publish_state("${screen_theme_light_button_off_color}");
             id(sensor_card_color).publish_state("${screen_theme_light_sensor_card_color}");
           }
-      - script.execute: refresh_button_grid

@@ -13,6 +13,8 @@
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #endif
 
+#include <algorithm>
+
 // RGB multipliers for display calibration; 100 leaves a channel unchanged.
 constexpr int COLOR_CORRECTION_RED_PERCENT = 100;
 constexpr int COLOR_CORRECTION_GREEN_PERCENT = 100;

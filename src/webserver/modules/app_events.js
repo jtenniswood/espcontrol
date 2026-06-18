@@ -69,7 +69,7 @@ function connectEvents() {
     if (els.banner) els.banner.className = "sp-banner";
     els.root.querySelectorAll(".sp-apply-btn").forEach(function (btn) {
       btn.disabled = false;
-      btn.textContent = "Apply Configuration";
+      btn.textContent = "Restart Device";
     });
     clearTimeout(migrationTimer);
     migrationTimer = setTimeout(scheduleMigration, 5000);

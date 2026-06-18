@@ -96,6 +96,6 @@ The **Settings** tab also includes display, brightness, screensaver, backup, and
 
 Open **Settings > System > Home Assistant Settings** to change **Home Assistant Port** if your Home Assistant instance does not use the default `8123` port. Camera/image cards and media artwork downloads use this port when loading images from Home Assistant.
 
-## Apply Configuration
+## Applying Changes
 
-After making changes, tap **Apply Configuration** at the bottom of the page. The panel restarts and loads your new settings — you'll see a message while it reconnects.
+Saved changes apply automatically while the panel stays online. Use **Restart Device** only as a recovery action if the panel does not recover after a configuration change.

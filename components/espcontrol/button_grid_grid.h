@@ -864,7 +864,7 @@ inline void grid_phase2(
   weather_forecast_cancel_pending_requests();
   reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
-  navigation_clear_subpages();
+  navigation_clear_subpages(main_page_obj);
   reset_image_card_pool(cfg);
 
   bool has_on, has_off, has_sensor_color;

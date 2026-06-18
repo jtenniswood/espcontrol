@@ -56,7 +56,7 @@ espcontrol:
 # peripherals after a software reset. A brief deep sleep forces a full
 # hardware reset on wake, equivalent to a power cycle. The on_boot
 # handler catches USB-triggered and software-triggered resets (the
-# latter fired by the "Apply Configuration" restart button); the OTA
+# latter fired by the recovery restart button); the OTA
 # on_end hook catches wireless updates.
 # ---------------------------------------------------------------------------
 esphome:

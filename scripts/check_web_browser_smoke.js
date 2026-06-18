@@ -986,7 +986,7 @@ async function assertEditAndApplySmoke(page, posts, errors) {
     action: "set",
   }, "media card edit", before);
 
-  await page.getByRole("button", { name: "Apply Configuration" }).click();
+  await page.getByRole("button", { name: "Restart Device" }).click();
   await waitForPost(posts, {
     domain: "button",
     name: "Apply Configuration",

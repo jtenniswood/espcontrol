@@ -26,6 +26,9 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: live_config_refresh_debounced
 
   - platform: template
     name: "${entity_button_off_color}"
@@ -42,6 +45,9 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: live_config_refresh_debounced
 
   - platform: template
     name: "${entity_sensor_card_color}"
@@ -58,3 +64,6 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_display
+    on_value:
+      then:
+        - script.execute: live_config_refresh_debounced

@@ -707,6 +707,51 @@ def phase2_block(device: dict) -> str:
     return "\n".join(lines)
 
 
+def script_lambda_block(block: str) -> str:
+    lines = []
+    for line in block.splitlines():
+        line = line.replace("GENERATED PHASE", "GENERATED LIVE PHASE")
+        lines.append("          " + line[12:] if line.startswith("            ") else line)
+    return "\n".join(lines)
+
+
+def live_apply_script_block(device: dict) -> list[str]:
+    package = device.get("package") or {}
+    subpage_chunks = int(package.get("subpageConfigChunks") or 8)
+    phase2_args = "sp_cfgs, sp_ext, sp_ext2, sp_ext3"
+    if subpage_chunks >= 8:
+        phase2_args += ", sp_ext4, sp_ext5, sp_ext6, sp_ext7"
+    return [
+        "  - id: apply_live_button_grid_config",
+        "    mode: restart",
+        "    then:",
+        "      - lambda: |-",
+        "          if (!id(screen_rotation_ready)) return;",
+        "          navigation_close_modals_for_display_takeover();",
+        "          navigation_return_home(id(main_page)->obj);",
+        script_lambda_block(phase1_block(device)),
+        "          grid_phase1(slots, cfg,",
+        "            id(button_order).state,",
+        "            id(button_on_color).state,",
+        "            id(button_off_color).state,",
+        "            id(sensor_card_color).state,",
+        "            id(main_page)->obj);",
+        "      - delay: 250ms",
+        "      - lambda: |-",
+        "          if (!id(screen_rotation_ready)) return;",
+        script_lambda_block(phase2_block(device)),
+        f"          grid_phase2(slots, cfg, {phase2_args},",
+        "            id(button_order).state,",
+        "            id(button_on_color).state,",
+        "            id(button_off_color).state,",
+        "            id(sensor_card_color).state,",
+        "            id(main_page)->obj);",
+        "      - script.execute: clock_bar_apply",
+        "      - script.execute: time_update",
+        "",
+    ]
+
+
 def script_block(device: dict) -> str:
     after_refresh = ["      - script.execute: clock_bar_apply"]
     return "\n".join(
@@ -721,6 +766,7 @@ def script_block(device: dict) -> str:
             "            id(main_page)->obj);",
             *after_refresh,
             "",
+            *live_apply_script_block(device),
         ]
     )
 

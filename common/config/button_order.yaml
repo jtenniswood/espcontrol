@@ -8,6 +8,13 @@
 # editor.
 # =============================================================================
 
+script:
+  - id: live_config_refresh_debounced
+    mode: restart
+    then:
+      - delay: 750ms
+      - script.execute: apply_live_button_grid_config
+
 text:
   - platform: template
     name: "${entity_button_order}"
@@ -26,5 +33,4 @@ text:
       sorting_group_id: sg_button
     on_value:
       then:
-        - delay: 750ms
-        - script.execute: refresh_button_grid
+        - script.execute: live_config_refresh_debounced

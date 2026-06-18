@@ -79,7 +79,14 @@ inline bool navigation_return_home(lv_obj_t *main_page_obj) {
   return true;
 }
 
-inline void navigation_clear_subpages() {
+inline void navigation_clear_subpages(lv_obj_t *main_page_obj = nullptr) {
+  for (auto &entry : navigation_subpages()) {
+    if (entry.screen == nullptr || entry.screen == main_page_obj) continue;
+    if (lv_obj_is_valid(entry.screen)) {
+      lv_obj_delete(entry.screen);
+    }
+    entry.screen = nullptr;
+  }
   navigation_subpages().clear();
   clock_bar_clear_button_grid_pages();
 }

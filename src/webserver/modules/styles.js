@@ -440,6 +440,7 @@ var CSS =
   ".sp-number-unit{font-size:.85rem;color:var(--text2)}" +
 
   ".sp-apply-bar{padding:var(--gap);text-align:center}" +
+  ".sp-apply-status{font-size:.875rem;font-weight:600;color:var(--text);margin-bottom:10px}" +
   ".sp-apply-btn{background:var(--accent);color:#fff;border:none;border-radius:var(--action-r);" +
   "padding:12px 28px;font-size:.875rem;font-weight:600;cursor:pointer;" +
   "font-family:inherit;transition:background .25s,opacity .25s,box-shadow .25s}" +
