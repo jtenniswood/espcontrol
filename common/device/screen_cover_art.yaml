@@ -2056,9 +2056,17 @@ script:
                 }
             - if:
                 condition:
-                  lambda: 'return id(screen_primary_view_select).current_option() == "Media" && !id(cover_art_primary_view_active);'
+                  lambda: 'return id(screen_primary_view_select).current_option() == "Media";'
                 then:
-                  - script.execute: cover_art_apply_primary_view
+                  - script.stop: cover_art_delay_timer
+                  - if:
+                      condition:
+                        lambda: 'return !id(cover_art_primary_view_active);'
+                      then:
+                        - script.execute: cover_art_apply_primary_view
+                      else:
+                        - script.execute: cover_art_show_track_overlay
+                        - script.execute: cover_art_request_artwork
                 else:
                   - script.execute: cover_art_delay_timer
 
