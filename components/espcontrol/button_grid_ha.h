@@ -149,18 +149,21 @@ inline void ha_flush_deferred_state_requests(size_t max_requests = 8) {
     }
 
     auto callback = request.callback;
+    const uint32_t generation = request.generation;
     if (request.has_attribute) {
       esphome::api::global_api_server->get_home_assistant_state(
         std::move(request.entity_id),
         std::move(request.attribute),
-        [callback](esphome::StringRef state) {
+        [callback, generation](esphome::StringRef state) {
+          if (generation != ha_subscription_generation()) return;
           ha_invoke_state_callback(callback, state);
         });
     } else {
       esphome::api::global_api_server->get_home_assistant_state(
         std::move(request.entity_id),
         {},
-        [callback](esphome::StringRef state) {
+        [callback, generation](esphome::StringRef state) {
+          if (generation != ha_subscription_generation()) return;
           ha_invoke_state_callback(callback, state);
         });
     }
