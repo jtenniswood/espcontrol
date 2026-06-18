@@ -95,6 +95,8 @@ var state = {
   _screensaverModeReceived: false,
   screensaverAction: "off",
   _screensaverActionReceived: false,
+  screensaverPinRequired: false,
+  screensaverPinSet: false,
   clockScreensaverOn: false,
   clockBrightnessDay: 35,
   clockBrightnessNight: 35,
@@ -256,6 +258,10 @@ function normalizeTemperatureUnit(value) {
 function normalizeLanguage(value) {
   var language = String(value == null ? "" : value).trim().toLowerCase();
   return language || "en";
+}
+
+function normalizePin(value) {
+  return String(value == null ? "" : value).replace(/\D+/g, "").slice(0, 16);
 }
 
 function languageLabel(value) {

@@ -398,6 +398,8 @@ var EspControlModel = (() => {
   function createBackupEnvelope(snapshot, outputs) {
     const slots = parseInt(String(snapshot.slots), 10) || outputs.buttons.length;
     const device = snapshot.device || "";
+    const settings = { ...snapshot.settings || {} };
+    delete settings.screensaver_pin;
     return {
       version: BACKUP_CONFIG_VERSION,
       format: BACKUP_FORMAT,
@@ -414,7 +416,7 @@ var EspControlModel = (() => {
       buttons: outputs.buttons,
       subpages: outputs.subpages,
       subpage_objects: outputs.subpage_objects || {},
-      settings: snapshot.settings || {},
+      settings,
       screen: snapshot.screen || {}
     };
   }
@@ -1030,6 +1032,7 @@ var EspControlModel = (() => {
       coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
       coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null ? !!settings.cover_art_hide_external_input : true,
       screensaverAction,
+      screensaverPinRequired: !!settings.screensaver_pin_required,
       clockScreensaver: screensaverAction === "clock",
       clockBrightnessDay,
       clockBrightnessNight,

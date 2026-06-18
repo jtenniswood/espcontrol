@@ -210,6 +210,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   ntp_server_1: "pool.ntp.org",
   screensaver_mode: "timer",
   screensaver_action: "Screen Dimmed",
+  screensaver_pin_required: true,
   cover_art_hide_external_input: true,
   clock_brightness_day: 44,
   clock_brightness_night: 22,
@@ -235,6 +236,7 @@ assert.strictEqual(panelSettings.clockFormat, "24h", "panel clock format validat
 assert.strictEqual(panelSettings.ntpServer1, "pool.ntp.org", "panel NTP server imports");
 assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mode imports");
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
+assert.strictEqual(panelSettings.screensaverPinRequired, true, "panel screensaver PIN flag imports");
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
 assert.strictEqual(
   model.normalizeBackupPanelSettings({

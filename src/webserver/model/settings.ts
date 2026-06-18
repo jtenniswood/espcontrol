@@ -254,6 +254,7 @@ export interface BackupPanelSettingsState {
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
   screensaverAction: string;
+  screensaverPinRequired: boolean;
   clockScreensaver: boolean;
   clockBrightnessDay: number;
   clockBrightnessNight: number;
@@ -354,6 +355,7 @@ export function normalizeBackupPanelSettings(
       ? !!settings.cover_art_hide_external_input
       : true,
     screensaverAction,
+    screensaverPinRequired: !!settings.screensaver_pin_required,
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,
     clockBrightnessNight,

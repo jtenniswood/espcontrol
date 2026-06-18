@@ -64,6 +64,7 @@ function exportConfig() {
       cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
       cover_art_hide_external_input: state.coverArtHideExternalInputOn,
       screensaver_action: normalizeScreensaverAction(state.screensaverAction),
+      screensaver_pin_required: !!state.screensaverPinRequired,
       clock_screensaver: state.clockScreensaverOn,
       clock_brightness: state.clockBrightnessDay,
       clock_brightness_day: state.clockBrightnessDay,
@@ -246,6 +247,7 @@ function importConfig() {
         var importedClockBrightnessNight = importedSettings.clockBrightnessNight;
         postScreensaverAction(importedScreensaverAction);
         postSwitch(entityName("screen_saver_clock"), importedScreensaverAction === "clock");
+        postSwitch(entityName("screensaver_pin_required"), importedSettings.screensaverPinRequired);
         postClockBrightnessDay(importedClockBrightnessDay);
         postClockBrightnessNight(importedClockBrightnessNight);
         postScreensaverDimmedBrightness(importedScreensaverDimmedBrightness);
@@ -285,6 +287,8 @@ function importConfig() {
         state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
         state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
         state.screensaverAction = importedScreensaverAction;
+        state.screensaverPinRequired = importedSettings.screensaverPinRequired;
+        state.screensaverPinSet = false;
         state._screensaverActionReceived = true;
         state.clockScreensaverOn = importedScreensaverAction === "clock";
         state.clockBrightnessDay = importedClockBrightnessDay;
@@ -308,6 +312,7 @@ function importConfig() {
         if (els.setClockFormat) els.setClockFormat.value = state.clockFormat;
         syncNtpServerUi();
         syncClockScreensaverControls();
+        syncScreensaverPinUi();
         syncScreensaverTimeoutUi();
         syncIdleUi();
         if (els.setScreenRotation) els.setScreenRotation.value = state.screenRotation;

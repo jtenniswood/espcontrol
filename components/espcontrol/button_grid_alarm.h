@@ -768,6 +768,11 @@ inline void alarm_control_hide_modal() {
 }
 
 inline void alarm_pin_hide_modal() {
+  PinKeypadUi &pin_ui = pin_keypad_ui();
+  if (pin_ui.kind == PinKeypadKind::ALARM) {
+    pin_keypad_hide_modal();
+    return;
+  }
   AlarmPinModalUi &ui = alarm_pin_modal_ui();
   ui.pin.clear();
   control_modal_delete_overlay(ControlModalKind::ALARM_PIN, ui.overlay);
@@ -832,6 +837,13 @@ inline void alarm_pin_submit() {
   AlarmActionCtx *action = ui.active;
   std::string code = ui.pin;
   alarm_defer_action(action, code, true);
+}
+
+inline bool alarm_pin_keypad_submit(const std::string &code, void *user_data) {
+  AlarmActionCtx *action = static_cast<AlarmActionCtx *>(user_data);
+  if (!alarm_action_context_valid(action) || code.empty()) return false;
+  send_alarm_action(action, code);
+  return true;
 }
 
 inline lv_obj_t *alarm_create_key_button(lv_obj_t *parent, lv_coord_t width,
@@ -926,90 +938,21 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
     ? lv_obj_get_style_text_font(action->card->icon_lbl, LV_PART_MAIN)
     : label_font;
 
-  ControlModalShell shell = control_modal_open_shell(
-    ControlModalKind::ALARM_PIN, action->card->btn,
-    action->card->width_compensation_percent, icon_font,
-    "\U000F0141", false, alarm_pin_hide_modal);
-
   AlarmPinModalUi &ui = alarm_pin_modal_ui();
   ui.active_action = *action;
   ui.active = &ui.active_action;
   ui.pin.clear();
-  ui.overlay = shell.overlay;
-  ui.panel = shell.panel;
-  ui.back_btn = shell.close_btn;
-
-  ControlModalLayout &layout = shell.layout;
-
-  ui.pin_lbl = lv_label_create(ui.panel);
-  lv_obj_set_style_text_color(ui.pin_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-  lv_obj_set_style_text_align(ui.pin_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (pin_label_font) lv_obj_set_style_text_font(ui.pin_lbl, pin_label_font, LV_PART_MAIN);
-  apply_width_compensation(ui.pin_lbl, action->card->width_compensation_percent);
-  lv_coord_t pin_w = layout.panel_w - (layout.inset + layout.back_size) * 2;
-  if (pin_w < 60) pin_w = layout.panel_w - layout.inset * 2;
-  lv_obj_set_width(ui.pin_lbl, pin_w);
-  alarm_pin_update_display();
-  lv_obj_update_layout(ui.pin_lbl);
-  lv_coord_t pin_h = lv_obj_get_height(ui.pin_lbl);
-  lv_coord_t pin_y = alarm_pin_label_y(layout, pin_h);
-  lv_obj_align(ui.pin_lbl, LV_ALIGN_TOP_MID, 0, pin_y);
-
-  lv_coord_t pin_button_gap = control_modal_scaled_px(24, layout.short_side);
-  if (pin_button_gap < 10) pin_button_gap = 10;
-  lv_coord_t keypad_top = layout.inset + layout.back_size + pin_button_gap;
-  lv_coord_t keypad_bottom = layout.panel_h - layout.inset;
-  lv_coord_t keypad_w = layout.panel_w - layout.inset * 2;
-  lv_coord_t keypad_h = keypad_bottom - keypad_top;
-  lv_coord_t gap = alarm_pin_keypad_gap(keypad_w, keypad_h, layout.short_side);
-  lv_coord_t key_size = alarm_pin_key_size(keypad_w, keypad_h, gap, layout.short_side);
-  lv_coord_t total_w = key_size * 3 + gap * 2;
-  lv_coord_t total_h = key_size * 4 + gap * 3;
-  lv_coord_t start_x = (layout.panel_w - total_w) / 2;
-  lv_coord_t start_y = keypad_top + (keypad_h - total_h) / 2;
-  if (start_y < keypad_top) start_y = keypad_top;
-
-  static const char *key_data[12] = {
-    "1", "2", "3",
-    "4", "5", "6",
-    "7", "8", "9",
-    "back", "0", "submit",
-  };
-
-  for (int i = 0; i < 12; i++) {
-    const char *text = key_data[i];
-    const lv_font_t *key_font = key_label_font;
-    uint16_t key_zoom = 256;
-    if (strcmp(text, "back") == 0) {
-      text = "\U000F0156";
-      key_font = icon_font;
-      key_zoom = 170;
-    } else if (strcmp(text, "submit") == 0) {
-      text = find_icon("Check");
-      key_font = icon_font;
-      key_zoom = 170;
-    }
-
-    lv_obj_t *key_btn = alarm_create_key_button(
-      ui.panel, key_size, key_size, text, key_font,
-      action->card->width_compensation_percent, key_zoom);
-    if (strcmp(key_data[i], "submit") == 0) {
-      lv_obj_set_style_bg_color(key_btn, lv_color_hex(DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
-      lv_obj_set_style_border_color(key_btn, lv_color_hex(DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
-      lv_obj_t *key_lbl = lv_obj_get_child(key_btn, 0);
-      if (key_lbl) lv_obj_set_style_text_color(key_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    }
-    int row = i / 3;
-    int col = i % 3;
-    lv_coord_t x = start_x + col * (key_size + gap);
-    lv_coord_t y = start_y + row * (key_size + gap);
-    lv_obj_set_pos(key_btn, x, y);
-    lv_obj_add_event_cb(key_btn, alarm_pin_key_cb, LV_EVENT_CLICKED,
-      const_cast<char *>(key_data[i]));
-  }
-
-  lv_obj_move_foreground(ui.back_btn);
-  lv_obj_move_foreground(ui.overlay);
+  pin_keypad_open_modal(
+    PinKeypadKind::ALARM,
+    action->card->btn,
+    action->card->width_compensation_percent,
+    pin_label_font,
+    key_label_font,
+    icon_font,
+    "Enter Pin",
+    false,
+    alarm_pin_keypad_submit,
+    ui.active);
 }
 
 inline void alarm_action_activate(AlarmActionCtx *action) {

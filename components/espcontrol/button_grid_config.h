@@ -84,6 +84,7 @@ constexpr const char *IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
 
 #include "button_grid_contract_generated.h"
 #include "button_grid_card_runtime.h"
+#include <algorithm>
 #include <cstdlib>
 
 inline int bounded_grid_slots(int num_slots) {
@@ -117,6 +118,29 @@ struct ScreenLockCardRef {
 inline bool &screen_lock_enabled() {
   static bool locked = false;
   return locked;
+}
+
+inline bool &screensaver_pin_locked() {
+  static bool locked = false;
+  return locked;
+}
+
+inline std::string &screensaver_pin_unlock_code() {
+  static std::string code;
+  return code;
+}
+
+inline std::function<void()> &screen_lock_force_screensaver_callback() {
+  static std::function<void()> callback;
+  return callback;
+}
+
+inline void set_screen_lock_force_screensaver_callback(std::function<void()> callback) {
+  screen_lock_force_screensaver_callback() = std::move(callback);
+}
+
+inline bool screen_interaction_locked() {
+  return screen_lock_enabled() || screensaver_pin_locked();
 }
 
 inline std::vector<lv_obj_t *> &screen_lock_controlled_buttons() {
@@ -173,8 +197,8 @@ inline void screen_lock_clear_clickable_tree(lv_obj_t *obj) {
 }
 
 inline void screen_lock_apply() {
-  bool locked = screen_lock_enabled();
-  if (screen_lock_card_refs().empty()) {
+  bool locked = screen_interaction_locked();
+  if (screen_lock_card_refs().empty() && !screensaver_pin_locked()) {
     locked = false;
     screen_lock_enabled() = false;
   }
@@ -203,7 +227,7 @@ inline void screen_lock_apply() {
     }
     if (ref.text_lbl) {
       lv_label_set_text(ref.text_lbl,
-        locked ? espcontrol_i18n("Screen Locked") : espcontrol_i18n("Screen Unlocked"));
+        locked ? espcontrol_i18n("Screen Locked") : espcontrol_i18n("Screen Sleep"));
     }
   }
 }
@@ -215,6 +239,19 @@ inline void screen_lock_set_enabled(bool locked) {
 
 inline void screen_lock_toggle() {
   screen_lock_set_enabled(!screen_lock_enabled());
+}
+
+inline void screen_lock_force_screensaver() {
+  auto &callback = screen_lock_force_screensaver_callback();
+  if (callback) callback();
+}
+
+inline std::string normalize_numeric_pin(const std::string &value) {
+  std::string out;
+  for (char ch : value) {
+    if (ch >= '0' && ch <= '9') out.push_back(ch);
+  }
+  return out;
 }
 
 // Extract the Nth semicolon-delimited field from a config string

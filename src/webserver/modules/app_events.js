@@ -15,6 +15,8 @@ var SSE_ALIAS_GROUPS = {
   coverArtDelay: ["number-screen_saver__cover_art_delay", "number-screen_saver_cover_art_delay", "number-cover_art_delay"],
   trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration", "number-screen_saver__show_track_overlay"],
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
+  screensaverPinRequired: ["switch-screensaver__pin_required", "switch-screensaver_pin_required"],
+  screensaverPin: ["text-screensaver__pin", "text-screensaver_pin"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
   scheduleWakeBrightness: ["number-screen__schedule_wake_brightness", "number-screen_schedule_wake_brightness", "number-schedule_wake_brightness"],
@@ -228,6 +230,14 @@ function connectEvents() {
       state.screensaverAction = normalizeScreensaverAction(d.value || val);
       state.clockScreensaverOn = state.screensaverAction === "clock";
       syncClockScreensaverControls();
+    },
+    "switch-screensaver__pin_required": function (val, d) {
+      state.screensaverPinRequired = d.value === true || val === "ON";
+      syncScreensaverPinUi();
+    },
+    "text-screensaver__pin": function (val) {
+      state.screensaverPinSet = normalizePin(val).length > 0;
+      syncScreensaverPinUi();
     },
     "number-screen_saver__dimmed_brightness": function (val) {
       state.screensaverDimmedBrightness = normalizeScreensaverDimmedBrightness(val);
@@ -468,6 +478,8 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtDelay, sseHandlers["number-screen_saver__cover_art_delay"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.trackOverlayDuration, sseHandlers["number-screen_saver__track_overlay_duration"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, sseHandlers["switch-screen_saver__hide_cover_art_on_external_input"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screensaverPinRequired, sseHandlers["switch-screensaver__pin_required"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screensaverPin, sseHandlers["text-screensaver__pin"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleTrigger, sseHandlers["text-screen__schedule_trigger"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, sseHandlers["number-screen__schedule_wake_timeout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeBrightness, sseHandlers["number-screen__schedule_wake_brightness"]);
