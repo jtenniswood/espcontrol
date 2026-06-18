@@ -211,6 +211,7 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   for (int32_t i = count - 1; i >= 0; i--) {
     lv_obj_t *child = lv_obj_get_child(s.btn, i);
     if (!child || card_slot_static_child(s, child)) continue;
+    button_grid_slider_unbind_geometry_refresh(child);
     grid_free_owned_context_tree(child);
     lv_obj_del(child);
   }
