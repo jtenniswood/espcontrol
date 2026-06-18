@@ -60,6 +60,7 @@ function subpageTypeFromCode(code) {
     S: "sensor",
     X: "door_window",
     PR: "presence",
+    PL: "plant",
     W: "weather",
     F: "weather_forecast",
     B: "fan_switch",
@@ -513,6 +514,38 @@ assert.strictEqual(
   hooks.cardContractOptionSupportedFor("sensor", "active_color", { precision: "text" }),
   false,
   "sensor active-colour option cleanup is spec-backed"
+);
+const plantOptionSpecs = hooks.cardContractOptions("plant");
+const plantOptionByName = Object.fromEntries(plantOptionSpecs.map((option) => [option.name, option]));
+assert.deepStrictEqual(
+  Array.from(plantOptionSpecs, (option) => option.name),
+  ["plant_mode", "large_numbers"],
+  "plant option specs preserve current option order"
+);
+assert.deepStrictEqual(
+  Array.from(plantOptionByName.plant_mode.values),
+  ["status", "moisture", "battery", "temperature", "conductivity", "brightness"],
+  "plant mode spec exposes all plant display modes"
+);
+assert.deepStrictEqual(
+  Array.from(plantOptionByName.plant_mode.storage),
+  ["precision"],
+  "plant mode spec stores the selected mode in precision"
+);
+assert.deepStrictEqual(
+  Array.from(plantOptionByName.large_numbers.supportedWhen.precision),
+  ["moisture", "battery", "temperature", "conductivity", "brightness"],
+  "plant large-number option only supports metric modes"
+);
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("plant", "large_numbers", { precision: "status" }),
+  false,
+  "plant large-number option blocks status mode"
+);
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("plant", "large_numbers", { precision: "moisture" }),
+  true,
+  "plant large-number option supports metric modes"
 );
 assert.deepStrictEqual(Object.assign({}, hooks.cardContractMigrationAlias("weather_forecast")), {
   type: "weather",

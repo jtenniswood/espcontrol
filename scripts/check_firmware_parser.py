@@ -22,6 +22,7 @@ DEVICES_DIR = ROOT / "devices"
 
 CPP_SOURCE = r'''
 #include <cassert>
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -315,6 +316,27 @@ int main() {
   assert(weather_invalid_mode.precision == "");
   assert(weather_invalid_mode.options == "");
   assert(!card_large_numbers_enabled(weather_invalid_mode));
+  auto plant_status = parse_cfg("plant.monstera;Monstera;Leaf;Auto;;;plant;status;large_numbers");
+  assert(plant_status.type == "plant");
+  assert(plant_status.entity == "plant.monstera");
+  assert(plant_status.precision == "status");
+  assert(plant_status.options == "");
+  assert(!card_large_numbers_enabled(plant_status));
+  auto plant_metric = parse_cfg("plant.monstera;Moisture;Leaf;Auto;;;plant;moisture;large_numbers");
+  assert(plant_metric.type == "plant");
+  assert(plant_metric.sensor == "");
+  assert(plant_metric.unit == "");
+  assert(plant_metric.icon == "Leaf");
+  assert(plant_metric.icon_on == "Auto");
+  assert(plant_metric.precision == "moisture");
+  assert(plant_metric.options == "large_numbers");
+  assert(card_large_numbers_enabled(plant_metric));
+  auto plant_invalid_mode = parse_cfg("plant.monstera;Plant;Auto;Leaf;;;plant;bad;large_numbers");
+  assert(plant_invalid_mode.type == "plant");
+  assert(plant_invalid_mode.precision == "status");
+  assert(plant_invalid_mode.options == "");
+  assert(plant_invalid_mode.icon == "Leaf");
+  assert(plant_invalid_mode.icon_on == "Auto");
   auto legacy_weather_forecast = parse_cfg("weather.home;Weather;Auto;Auto;;;weather_forecast");
   assert(legacy_weather_forecast.type == "weather");
   assert(legacy_weather_forecast.precision == "tomorrow");

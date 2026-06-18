@@ -137,6 +137,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "push": "docs/card-types/buttons.md",
     "screen_lock": "docs/card-types/screen-lock.md",
     "webhook": "docs/card-types/webhooks.md",
+    "plant": "docs/card-types/plants.md",
     "sensor": "docs/card-types/sensors.md",
     "slider": "docs/card-types/sliders.md",
     "subpage": "docs/features/subpages.md",

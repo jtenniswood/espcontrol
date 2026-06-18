@@ -499,7 +499,7 @@ inline std::string normalize_subpage_kind(const std::string &value) {
     value == "switch" || value == "alarm" ||
     value == "cover" || value == "garage" ||
     value == "lock" || value == "vacuum" ||
-    value == "weather" || value == "sensor" ||
+    value == "plant" || value == "weather" || value == "sensor" ||
     value == "image" ? value : "";
 }
 
@@ -578,6 +578,26 @@ inline bool todo_card_label_shows_count(const ParsedCfg &p) {
 inline bool todo_card_shows_completed_items(const ParsedCfg &p) {
   (void) p;
   return false;
+}
+
+inline std::string normalize_plant_card_mode(const std::string &mode) {
+  if (mode == "moisture" || mode == "battery" || mode == "temperature" ||
+      mode == "conductivity" || mode == "brightness") {
+    return mode;
+  }
+  return "status";
+}
+
+inline bool plant_metric_precision(const std::string &mode) {
+  return normalize_plant_card_mode(mode) != "status";
+}
+
+inline std::string plant_card_options_normalized(const std::string &options,
+                                                 const std::string &precision) {
+  if (!plant_metric_precision(precision)) return "";
+  std::string out;
+  append_large_numbers_option(out, options);
+  return out;
 }
 
 inline std::string normalize_climate_label_display(const std::string &value) {
@@ -984,6 +1004,14 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_vacuum_default_icon_name(p.sensor);
   }
+  if (p.type == "plant") {
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision = normalize_plant_card_mode(p.precision);
+    p.icon_on = "Auto";
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Leaf";
+    p.options = plant_card_options_normalized(p.options, p.precision);
+  }
   if (p.type.empty()) {
     p.options = switch_card_options_normalized(p.options);
   }
@@ -1003,7 +1031,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "vacuum" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "vacuum" && p.type != "plant" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (p.type == "sensor") {

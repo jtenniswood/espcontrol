@@ -211,7 +211,7 @@ inline bool info_only_hidden_card_type(const ParsedCfg &p) {
   if (p.type == "sensor" || p.type == "text_sensor" ||
       p.type == "door_window" || p.type == "presence" ||
       p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||
-      p.type == "weather" || p.type == "weather_forecast" || p.type == "image") {
+      p.type == "plant" || p.type == "weather" || p.type == "weather_forecast" || p.type == "image") {
     return false;
   }
   return true;
@@ -266,6 +266,18 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     if (p.sensor.empty()) return;
     setup_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     if (large_number_square_card_layout(row_span, col_span) &&
+        card_large_numbers_active_for_layout(p, row_span, col_span) &&
+        display_large_sensor_font(display)) {
+      apply_large_sensor_number_style(
+        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
+    }
+    return;
+  }
+  if (p.type == "plant") {
+    if (p.entity.empty()) return;
+    setup_plant_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    if (plant_card_metric_mode(p.precision) &&
+        large_number_square_card_layout(row_span, col_span) &&
         card_large_numbers_active_for_layout(p, row_span, col_span) &&
         display_large_sensor_font(display)) {
       apply_large_sensor_number_style(
@@ -483,6 +495,15 @@ inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p,
         presence_active_color_enabled(p), palette.on_val, palette.sensor_val);
       if (p.label.empty())
         subscribe_friendly_name(s.text_lbl, p.sensor);
+    }
+    return true;
+  }
+  if (p.type == "plant") {
+    if (!p.entity.empty()) {
+      PlantCardCtx *ctx = create_plant_card_context(s, p);
+      subscribe_plant_card(ctx);
+      if (p.label.empty() && plant_card_metric_mode(p.precision))
+        subscribe_friendly_name(s.text_lbl, p.entity);
     }
     return true;
   }
@@ -1707,6 +1728,16 @@ inline void grid_phase2(
               send_vacuum_card_action(ctx);
             }, LV_EVENT_CLICKED, ctx);
           }
+        }
+        continue;
+      }
+      if (sb_cfg.type == "plant") {
+        if (!sb_cfg.entity.empty()) {
+          PlantCardCtx *ctx = create_plant_card_context(sub_slot, sb_cfg);
+          subscribe_plant_card(ctx);
+          add_parent_indicator(sb_cfg.entity);
+          if (sb_cfg.label.empty() && plant_card_metric_mode(sb_cfg.precision))
+            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
         }
         continue;
       }

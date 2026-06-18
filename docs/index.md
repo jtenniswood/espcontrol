@@ -31,7 +31,7 @@ Start here: **[Install EspControl](/getting-started/install)**.
 - **Drag-and-drop grid layout** - each supported display has a layout sized for its resolution, with Single, Tall, Wide, and Large card sizes.
 - **Subpages** - open folder-like pages for rooms, device types, or extra controls while keeping the home screen tidy.
 - **Home Assistant controls** - control lights, switches, fans, covers, locks, alarms, climate devices, media players, scenes, scripts, automations, buttons, helpers, webhooks, and built-in relays.
-- **Live Home Assistant information** - show sensors, binary sensors, weather, clocks, time zones, doors, windows, presence, camera images, and media player status.
+- **Live Home Assistant information** - show sensors, plants, binary sensors, weather, clocks, time zones, doors, windows, presence, camera images, and media player status.
 - **Display behaviour controls** - set brightness, idle timeout, screensaver mode, presence-based wake, clock bar, rotation, screen schedule, and before-clock-sync behaviour.
 - **Appearance controls** - choose card icons, labels, status text, active colours, display modes, clock style, temperature units, and panel language.
 - **Firmware updates** - keep panels current over WiFi after the first install, with a manual update option when needed.
