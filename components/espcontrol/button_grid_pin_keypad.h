@@ -191,7 +191,7 @@ inline bool pin_keypad_open_modal(
 
   ControlModalShell shell = control_modal_open_shell(
     pin_keypad_modal_kind(kind), source_btn, width_compensation_percent, icon_font,
-    "\U000F0141", closeable, pin_keypad_hide_modal);
+    closeable ? "\U000F0141" : nullptr, closeable, pin_keypad_hide_modal);
 
   PinKeypadUi &ui = pin_keypad_ui();
   ui = PinKeypadUi();
@@ -267,7 +267,7 @@ inline bool pin_keypad_open_modal(
     lv_obj_add_event_cb(key_btn, pin_keypad_key_cb, LV_EVENT_CLICKED, &ui.key_data[i]);
   }
 
-  lv_obj_move_foreground(ui.back_btn);
+  if (ui.back_btn) lv_obj_move_foreground(ui.back_btn);
   lv_obj_move_foreground(ui.overlay);
   return true;
 }

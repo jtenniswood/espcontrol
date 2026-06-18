@@ -664,8 +664,10 @@ function buildSettingsPage(parent) {
     onBlur: function (value) {
       var next = normalizePin(value);
       state.screensaverPinSet = next.length > 0;
-      pinInput.value = "";
       syncScreensaverPinUi();
+      window.setTimeout(function () {
+        pinInput.value = "";
+      }, 0);
     },
   });
   pinField.appendChild(pinInput);
