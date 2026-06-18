@@ -860,12 +860,11 @@ inline void grid_phase2(
   memset(has_sensor, 0, sizeof(has_sensor));
   memset(sensor_text_mode, 0, sizeof(sensor_text_mode));
   memset(has_icon_on, 0, sizeof(has_icon_on));
-  bump_ha_subscription_generation();
-  HaSubscriptionGenerationScope ha_generation_scope(ha_subscription_generation());
   weather_forecast_cancel_pending_requests();
   reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
   navigation_clear_subpages(main_page_obj);
+  HaSubscriptionGenerationScope ha_generation_scope(ha_subscription_generation());
   reset_image_card_pool(cfg);
 
   bool has_on, has_off, has_sensor_color;
