@@ -15,7 +15,8 @@
 #include "esphome/core/defines.h"
 
 #include "esp_tls_crypto.h"
-#ifdef USE_ESP_IDF
+#if defined(USE_ESP_IDF) && __has_include("esp_spiffs.h")
+#define ESPCONTROL_CARD_IMAGE_SPIFFS 1
 #include "esp_spiffs.h"
 #endif
 #include <freertos/FreeRTOS.h>
@@ -143,7 +144,7 @@ std::string card_image_path(const std::string &id) {
 }
 
 bool ensure_card_image_storage() {
-#ifdef USE_ESP_IDF
+#ifdef ESPCONTROL_CARD_IMAGE_SPIFFS
   static bool mounted = false;
   static bool attempted = false;
   if (mounted) return true;
@@ -174,7 +175,8 @@ bool ensure_card_image_storage() {
   }
   return false;
 #else
-  return true;
+  ESP_LOGW(TAG, "Card image storage is unavailable because SPIFFS is not included in this build");
+  return false;
 #endif
 }
 
