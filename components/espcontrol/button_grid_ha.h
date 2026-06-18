@@ -19,6 +19,28 @@ using HomeAssistantActionResponseCallback =
 
 inline uint32_t &ha_subscription_generation();
 
+inline uint32_t &ha_subscription_callback_generation_scope() {
+  static uint32_t generation = 0;
+  return generation;
+}
+
+struct HaSubscriptionGenerationScope {
+  uint32_t previous_generation;
+
+  explicit HaSubscriptionGenerationScope(uint32_t generation)
+      : previous_generation(ha_subscription_callback_generation_scope()) {
+    ha_subscription_callback_generation_scope() = generation;
+  }
+
+  ~HaSubscriptionGenerationScope() {
+    ha_subscription_callback_generation_scope() = previous_generation;
+  }
+};
+
+inline bool ha_subscription_callback_generation_valid(uint32_t generation) {
+  return generation == 0 || generation == ha_subscription_generation();
+}
+
 inline bool ha_api_available() {
   return esphome::api::global_api_server != nullptr;
 }
@@ -236,9 +258,11 @@ inline bool ha_subscribe_state(const std::string &entity_id,
                                HomeAssistantStateCallback callback) {
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
   auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
+  uint32_t generation = ha_subscription_callback_generation_scope();
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, {},
-    [callback_ref](esphome::StringRef state) {
+    [callback_ref, generation](esphome::StringRef state) {
+      if (!ha_subscription_callback_generation_valid(generation)) return;
       ha_invoke_state_callback(callback_ref, state);
     });
   return true;
@@ -254,9 +278,11 @@ inline bool ha_get_state(const std::string &entity_id,
   if (ha_state_callback_depth() != 0) {
     return ha_queue_deferred_state_request(entity_id, std::string(), callback_ref, false);
   }
+  uint32_t generation = ha_subscription_callback_generation_scope();
   esphome::api::global_api_server->get_home_assistant_state(
     entity_id, {},
-    [callback_ref](esphome::StringRef state) {
+    [callback_ref, generation](esphome::StringRef state) {
+      if (!ha_subscription_callback_generation_valid(generation)) return;
       ha_invoke_state_callback(callback_ref, state);
     });
   return true;
@@ -267,9 +293,11 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
                                    HomeAssistantStateCallback callback) {
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
   auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
+  uint32_t generation = ha_subscription_callback_generation_scope();
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, attribute,
-    [callback_ref](esphome::StringRef state) {
+    [callback_ref, generation](esphome::StringRef state) {
+      if (!ha_subscription_callback_generation_valid(generation)) return;
       ha_invoke_state_callback(callback_ref, state);
     });
   return true;
@@ -286,9 +314,11 @@ inline bool ha_get_attribute(const std::string &entity_id,
   if (ha_state_callback_depth() != 0) {
     return ha_queue_deferred_state_request(entity_id, attribute, callback_ref, true);
   }
+  uint32_t generation = ha_subscription_callback_generation_scope();
   esphome::api::global_api_server->get_home_assistant_state(
     entity_id, attribute,
-    [callback_ref](esphome::StringRef state) {
+    [callback_ref, generation](esphome::StringRef state) {
+      if (!ha_subscription_callback_generation_valid(generation)) return;
       ha_invoke_state_callback(callback_ref, state);
     });
   return true;

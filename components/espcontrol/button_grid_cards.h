@@ -235,6 +235,12 @@ inline std::string calendar_date_entity_or_default(const std::string &entity_id)
 inline void subscribe_calendar_date_source(const std::string &entity_id) {
   std::string source = calendar_date_entity_or_default(entity_id);
   static std::vector<std::string> subscribed;
+  static uint32_t subscribed_generation = 0;
+  uint32_t generation = ha_subscription_generation();
+  if (subscribed_generation != generation) {
+    subscribed.clear();
+    subscribed_generation = generation;
+  }
   for (const auto &existing : subscribed) {
     if (existing == source) return;
   }
