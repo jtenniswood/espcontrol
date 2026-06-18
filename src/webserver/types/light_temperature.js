@@ -169,11 +169,41 @@ function renderLightControlTabSettings(panel, b, helpers) {
   b.options = normalizeLightControlOptions(b.options);
   var tabs = lightControlTabs(b);
   var definitions = lightControlTabDefinitions();
+  var definitionByValue = {};
+  definitions.forEach(function (definition) {
+    definitionByValue[definition.value] = definition;
+  });
+  var orderedDefinitions = [];
+  tabs.forEach(function (tab) {
+    if (definitionByValue[tab]) orderedDefinitions.push(definitionByValue[tab]);
+  });
+  definitions.forEach(function (definition) {
+    if (tabs.indexOf(definition.value) < 0) orderedDefinitions.push(definition);
+  });
 
   var heading = document.createElement("div");
   heading.className = "sp-field";
   heading.appendChild(helpers.fieldLabel("Modal Tabs"));
   panel.appendChild(heading);
+
+  var list = document.createElement("div");
+  list.className = "sp-light-tab-list";
+  panel.appendChild(list);
+
+  function listRows() {
+    return Array.prototype.slice.call(list.querySelectorAll(".sp-light-tab-row"));
+  }
+
+  function saveTabsFromRows() {
+    var nextTabs = [];
+    listRows().forEach(function (row) {
+      var input = row.querySelector("input[type=checkbox]");
+      if (input && input.checked) nextTabs.push(row.getAttribute("data-tab"));
+    });
+    if (!nextTabs.length) return false;
+    saveTabs(nextTabs);
+    return true;
+  }
 
   function saveTabs(nextTabs) {
     setLightControlTabs(b, nextTabs);
@@ -181,49 +211,123 @@ function renderLightControlTabSettings(panel, b, helpers) {
     renderButtonSettings();
   }
 
-  definitions.forEach(function (definition) {
+  function updateMoveButtons() {
+    var rows = listRows();
+    rows.forEach(function (row, index) {
+      var up = row.querySelector(".sp-light-tab-move-up");
+      var down = row.querySelector(".sp-light-tab-move-down");
+      if (up) up.disabled = index === 0;
+      if (down) down.disabled = index === rows.length - 1;
+    });
+  }
+
+  function moveRow(row, direction) {
+    if (!row) return;
+    if (direction < 0 && row.previousElementSibling) {
+      list.insertBefore(row, row.previousElementSibling);
+      saveTabsFromRows();
+    } else if (direction > 0 && row.nextElementSibling) {
+      list.insertBefore(row.nextElementSibling, row);
+      saveTabsFromRows();
+    }
+  }
+
+  orderedDefinitions.forEach(function (definition) {
     var tabIndex = tabs.indexOf(definition.value);
     var visible = tabIndex >= 0;
-    var toggle = helpers.toggleRow(
-      "Show " + definition.label,
-      helpers.idPrefix + "light-tab-" + definition.value,
-      visible
-    );
-    panel.appendChild(toggle.row);
-    toggle.input.addEventListener("change", function () {
-      var nextTabs = tabs.slice();
-      var currentIndex = nextTabs.indexOf(definition.value);
-      if (this.checked && currentIndex < 0) {
-        nextTabs.push(definition.value);
-      } else if (!this.checked && currentIndex >= 0 && nextTabs.length > 1) {
-        nextTabs.splice(currentIndex, 1);
-      }
-      saveTabs(nextTabs);
+
+    var row = document.createElement("div");
+    row.className = "sp-light-tab-row";
+    row.setAttribute("data-tab", definition.value);
+    row.draggable = true;
+
+    var controls = document.createElement("div");
+    controls.className = "sp-light-tab-controls";
+
+    var upBtn = document.createElement("button");
+    upBtn.type = "button";
+    upBtn.className = "sp-light-tab-move sp-light-tab-move-up mdi mdi-chevron-up";
+    upBtn.setAttribute("aria-label", "Move " + definition.label + " up");
+    upBtn.addEventListener("click", function () {
+      moveRow(row, -1);
     });
 
-    if (!visible) return;
-    var orderOptions = tabs.map(function (_tab, index) {
-      return [String(index + 1), String(index + 1)];
+    var drag = document.createElement("button");
+    drag.type = "button";
+    drag.className = "sp-light-tab-drag mdi mdi-drag";
+    drag.setAttribute("aria-label", "Drag " + definition.label);
+    drag.tabIndex = -1;
+
+    var downBtn = document.createElement("button");
+    downBtn.type = "button";
+    downBtn.className = "sp-light-tab-move sp-light-tab-move-down mdi mdi-chevron-down";
+    downBtn.setAttribute("aria-label", "Move " + definition.label + " down");
+    downBtn.addEventListener("click", function () {
+      moveRow(row, 1);
     });
-    var orderField = helpers.selectField(
-      definition.label + " Position",
-      helpers.idPrefix + "light-tab-order-" + definition.value,
-      orderOptions,
-      String(tabIndex + 1)
-    );
-    panel.appendChild(orderField.field);
-    orderField.select.addEventListener("change", function () {
-      var nextTabs = tabs.slice();
-      var from = nextTabs.indexOf(definition.value);
-      var to = parseInt(this.value, 10) - 1;
-      if (from < 0 || !isFinite(to)) return;
-      if (to < 0) to = 0;
-      if (to >= nextTabs.length) to = nextTabs.length - 1;
-      nextTabs.splice(from, 1);
-      nextTabs.splice(to, 0, definition.value);
-      saveTabs(nextTabs);
+
+    controls.appendChild(upBtn);
+    controls.appendChild(drag);
+    controls.appendChild(downBtn);
+    row.appendChild(controls);
+
+    var label = document.createElement("label");
+    label.className = "sp-light-tab-label";
+    label.htmlFor = helpers.idPrefix + "light-tab-" + definition.value;
+    label.textContent = definition.label;
+    row.appendChild(label);
+
+    var toggle = document.createElement("label");
+    toggle.className = "sp-toggle";
+    var input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = helpers.idPrefix + "light-tab-" + definition.value;
+    input.checked = visible;
+    var track = document.createElement("span");
+    track.className = "sp-toggle-track";
+    toggle.appendChild(input);
+    toggle.appendChild(track);
+    row.appendChild(toggle);
+
+    input.addEventListener("change", function () {
+      if (!this.checked) {
+        var visibleCount = listRows().filter(function (item) {
+          var itemInput = item.querySelector("input[type=checkbox]");
+          return itemInput && itemInput.checked;
+        }).length;
+        if (visibleCount < 1) {
+          this.checked = true;
+          return;
+        }
+      }
+      saveTabsFromRows();
     });
+
+    row.addEventListener("dragstart", function (event) {
+      row.classList.add("sp-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", definition.value);
+    });
+    row.addEventListener("dragend", function () {
+      row.classList.remove("sp-dragging");
+    });
+    row.addEventListener("dragover", function (event) {
+      var dragging = list.querySelector(".sp-dragging");
+      if (!dragging || dragging === row) return;
+      event.preventDefault();
+      var rect = row.getBoundingClientRect();
+      var after = event.clientY > rect.top + rect.height / 2;
+      list.insertBefore(dragging, after ? row.nextSibling : row);
+    });
+    row.addEventListener("drop", function (event) {
+      event.preventDefault();
+      saveTabsFromRows();
+    });
+
+    list.appendChild(row);
   });
+
+  updateMoveButtons();
 }
 
 registerButtonType("light_temperature", {
