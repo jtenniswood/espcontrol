@@ -627,7 +627,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
       s, cfg.subpage_chevrons_enabled, cfg.subpage_chevron_x,
       cfg.subpage_chevron_y, cfg.subpage_chevron_text_width_percent);
   }
-  refresh_card_background_image(s.btn);
+  refresh_card_background_image(s.btn, cfg);
 
   if (p.type == "image") {
     ImageCardCtx *ctx = s.btn
