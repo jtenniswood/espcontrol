@@ -1737,7 +1737,7 @@ inline void grid_phase2(
           subscribe_plant_card(ctx);
           add_parent_indicator(sb_cfg.entity);
           if (sb_cfg.label.empty() && plant_card_metric_mode(sb_cfg.precision))
-            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
+            subscribe_plant_metric_friendly_name(ctx);
         }
         continue;
       }
