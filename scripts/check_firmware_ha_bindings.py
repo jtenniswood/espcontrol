@@ -541,6 +541,13 @@ def firmware_plant_card_errors(firmware_dir: Path, root: Path) -> list[str]:
     for mode in ("moisture", "battery", "temperature", "conductivity", "brightness"):
         if f'mode == "{mode}"' not in text and f'normalized == "{mode}"' not in text:
             errors.append(f"{rel}: plant mode {mode} is not handled")
+    friendly_match = re.search(
+        r"(?ms)subscribe_plant_metric_friendly_name\(PlantCardCtx \*ctx\).*?ha_subscribe_attribute"
+        r".*?\"friendly_name\".*?ctx->label\s*=\s*string_ref_limited\(name,\s*HA_FRIENDLY_NAME_MAX_LEN\)",
+        text,
+    )
+    if not friendly_match:
+        errors.append(f"{rel}: plant metric friendly names must update the cached card label")
     return errors
 
 
