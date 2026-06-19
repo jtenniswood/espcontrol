@@ -689,7 +689,9 @@ inline void setup_local_sensor_card(BtnSlot &s, const ParsedCfg &p,
       if (std::string(esp_s->get_object_id_to(oid_buf).c_str()) != ctrl.key) continue;
       auto *lbl = ctrl.sensor_lbl;
       int prec = ctrl.precision;
-      esp_s->add_on_state_callback([lbl, prec](float val) {
+      uint32_t generation = local_sensor_callback_generation();
+      esp_s->add_on_state_callback([lbl, prec, generation](float val) {
+        if (generation != local_sensor_callback_generation()) return;
         if (!lbl || std::isnan(val)) return;
         char buf[32];
         if (prec == 1) snprintf(buf, sizeof(buf), "%.1f", val);
@@ -714,7 +716,9 @@ inline void setup_local_sensor_card(BtnSlot &s, const ParsedCfg &p,
       char oid_buf[128];
       if (std::string(esp_ts->get_object_id_to(oid_buf).c_str()) != ctrl.key) continue;
       auto *lbl = ctrl.text_lbl;
-      esp_ts->add_on_state_callback([lbl](std::string val) {
+      uint32_t generation = local_sensor_callback_generation();
+      esp_ts->add_on_state_callback([lbl, generation](std::string val) {
+        if (generation != local_sensor_callback_generation()) return;
         if (!lbl) return;
         set_wrapped_button_label_text(lbl, val);
       });

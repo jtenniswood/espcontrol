@@ -743,6 +743,7 @@ inline void grid_phase1(
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
+  bump_local_sensor_callback_generation();
   for (int i = 0; i < NS; i++) {
     reset_card_slot_dynamic_children(slots[i]);
     lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);

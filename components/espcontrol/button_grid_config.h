@@ -2514,6 +2514,17 @@ inline std::vector<LocalSensorControl> &local_sensor_registry() {
   return sensors;
 }
 
+inline uint32_t &local_sensor_callback_generation() {
+  static uint32_t generation = 1;
+  return generation;
+}
+
+inline void bump_local_sensor_callback_generation() {
+  uint32_t &generation = local_sensor_callback_generation();
+  generation++;
+  if (generation == 0) generation = 1;
+}
+
 #ifdef USE_WEBSERVER
 inline std::string local_endpoint_json_escape(const std::string &s) {
   std::string out;
