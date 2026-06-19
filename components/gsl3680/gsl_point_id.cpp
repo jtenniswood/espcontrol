@@ -3208,4 +3208,3 @@ void gsl_alg_id_main(struct gsl_touch_info *cinfo)
 	PressMask();
 	PointReport(cinfo);
 }
-
