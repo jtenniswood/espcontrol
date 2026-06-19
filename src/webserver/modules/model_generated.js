@@ -67,6 +67,7 @@ var EspControlModel = (() => {
     normalizeHour: () => normalizeHour,
     normalizeLanguage: () => normalizeLanguage,
     normalizeNtpServer: () => normalizeNtpServer,
+    normalizePrimaryView: () => normalizePrimaryView,
     normalizeScheduleClockBrightness: () => normalizeScheduleClockBrightness,
     normalizeScheduleDimmedBrightness: () => normalizeScheduleDimmedBrightness,
     normalizeScheduleMode: () => normalizeScheduleMode,
@@ -86,6 +87,7 @@ var EspControlModel = (() => {
     parseStructuredSubpageConfig: () => parseStructuredSubpageConfig,
     parseSubpageOrder: () => parseSubpageOrder,
     planBackupButtonLayout: () => planBackupButtonLayout,
+    primaryViewOption: () => primaryViewOption,
     scheduleModeOption: () => scheduleModeOption,
     screensaverActionOption: () => screensaverActionOption,
     serializeCompactSubpageConfig: () => serializeCompactSubpageConfig,
@@ -896,6 +898,13 @@ var EspControlModel = (() => {
     if (action === "clock") return "clock";
     return "off";
   }
+  function normalizePrimaryView(value) {
+    const view = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+    return view === "media" ? "media" : "controls";
+  }
+  function primaryViewOption(value) {
+    return normalizePrimaryView(value) === "media" ? "Media" : "Controls";
+  }
   function screensaverActionOption(value) {
     const action = normalizeScreensaverAction(value);
     if (action === "dim") return "Screen Dimmed";
@@ -1037,6 +1046,7 @@ var EspControlModel = (() => {
       coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
       coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
       coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null ? !!settings.cover_art_hide_external_input : true,
+      primaryView: normalizePrimaryView(settings.primary_view),
       coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port) : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
       screensaverAction,
       clockScreensaver: screensaverAction === "clock",

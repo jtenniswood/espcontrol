@@ -102,6 +102,15 @@ export function normalizeScreensaverAction(value: unknown): string {
   return "off";
 }
 
+export function normalizePrimaryView(value: unknown): string {
+  const view = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return view === "media" ? "media" : "controls";
+}
+
+export function primaryViewOption(value: unknown): string {
+  return normalizePrimaryView(value) === "media" ? "Media" : "Controls";
+}
+
 export function screensaverActionOption(value: unknown): string {
   const action = normalizeScreensaverAction(value);
   if (action === "dim") return "Screen Dimmed";
@@ -262,6 +271,7 @@ export interface BackupPanelSettingsState {
   coverArtDelay: unknown;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
+  primaryView: string;
   coverArtHomeAssistantPort: number;
   screensaverAction: string;
   clockScreensaver: boolean;
@@ -363,6 +373,7 @@ export function normalizeBackupPanelSettings(
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
+    primaryView: normalizePrimaryView(settings.primary_view),
     coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null
       ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
       : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),

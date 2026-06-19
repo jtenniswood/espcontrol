@@ -536,6 +536,9 @@ assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "°F", "fahrenh
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "°C", "centigrade unit normalization");
 assert.strictEqual(hooks.normalizeScreensaverAction("Screen Dimmed"), "dim", "dimmed screensaver action normalization");
 assert.strictEqual(hooks.screensaverActionOption("dim"), "Screen Dimmed", "dimmed screensaver action option");
+assert.strictEqual(hooks.normalizePrimaryView("Media"), "media", "primary view media normalization");
+assert.strictEqual(hooks.normalizePrimaryView("unknown"), "controls", "primary view controls fallback");
+assert.strictEqual(hooks.primaryViewOption("media"), "Media", "primary view select option label");
 assert.strictEqual(hooks.normalizeScreensaverDimmedBrightness(0), 10, "dimmed screensaver brightness fallback");
 assert.strictEqual(hooks.normalizeScreensaverDimmedBrightness(101), 100, "dimmed screensaver brightness maximum");
 assert.strictEqual(hooks.temperatureUnitSymbolFor("America/New_York (GMT-5)", "Auto"), "°F", "auto unit for US timezone");

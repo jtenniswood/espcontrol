@@ -650,6 +650,37 @@ function buildSettingsPage(parent) {
     });
     els.setCoverArtToggle = coverArtToggle.input;
 
+    var primaryViewField = document.createElement("div");
+    primaryViewField.className = "sp-field";
+    primaryViewField.appendChild(fieldLabel("Primary View", "sp-set-primary-view"));
+    var primaryViewSelect = document.createElement("select");
+    primaryViewSelect.className = "sp-select";
+    primaryViewSelect.id = "sp-set-primary-view";
+    [
+      { label: "Controls", value: "controls" },
+      { label: "Media", value: "media" },
+    ].forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      primaryViewSelect.appendChild(o);
+    });
+    primaryViewSelect.value = normalizePrimaryView(state.primaryView);
+    primaryViewSelect.addEventListener("change", function () {
+      state.primaryView = normalizePrimaryView(this.value);
+      postPrimaryView(state.primaryView);
+      syncPrimaryViewUi();
+    });
+    primaryViewField.appendChild(primaryViewSelect);
+    var primaryViewHelp = document.createElement("div");
+    primaryViewHelp.className = "sp-help";
+    primaryViewHelp.textContent = "Controls keeps today's home screen; Media shows media artwork first and swipe up reveals controls.";
+    primaryViewField.appendChild(primaryViewHelp);
+    coverArtBody.appendChild(primaryViewField);
+    els.setPrimaryView = primaryViewSelect;
+
+    var coverArtEntityOptions = condField();
+    var coverArtScreensaverOptions = condField();
     var coverArtOptions = condField();
     var coverArtAdvancedBody = document.createElement("div");
 
@@ -662,11 +693,13 @@ function buildSettingsPage(parent) {
       "e.g. media_player.living_room",
       ["media_player"]);
     coverArtEntityField.appendChild(coverArtEntityInp);
-    coverArtOptions.appendChild(coverArtEntityField);
+    coverArtEntityOptions.appendChild(coverArtEntityField);
     bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
       onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
     });
     els.setCoverArtMediaPlayer = coverArtEntityInp;
+    els.setCoverArtEntityOptions = coverArtEntityOptions;
+    coverArtBody.appendChild(coverArtEntityOptions);
 
     var coverArtDelayField = document.createElement("div");
     coverArtDelayField.className = "sp-field";
@@ -692,7 +725,9 @@ function buildSettingsPage(parent) {
       postCoverArtDelay(state.coverArtDelay);
     });
     coverArtDelayField.appendChild(coverArtDelaySelect);
-    coverArtOptions.appendChild(coverArtDelayField);
+    coverArtScreensaverOptions.appendChild(coverArtDelayField);
+    els.setCoverArtScreensaverOptions = coverArtScreensaverOptions;
+    coverArtBody.appendChild(coverArtScreensaverOptions);
     els.setCoverArtDelay = coverArtDelaySelect;
 
     if (coverArtTrackOverlayDurationSupported()) {
@@ -819,6 +854,7 @@ function buildSettingsPage(parent) {
   syncClockScreensaverControls();
   syncMediaPlayerSleepPreventionUi();
   syncCoverArtScreensaverUi();
+  syncPrimaryViewUi();
 
   var ssBadge = document.createElement("span");
   ssBadge.setAttribute("aria-label", "Screensaver on");
@@ -1160,14 +1196,29 @@ function syncMediaPlayerSleepPreventionUi() {
   }
 }
 
+function syncCoverArtMediaPlayerEntityUi() {
+  if (els.setCoverArtEntityOptions) {
+    els.setCoverArtEntityOptions.classList.toggle(
+      "sp-visible",
+      !!state.coverArtScreensaverOn || state.primaryView === "media");
+  }
+}
+
 function syncCoverArtScreensaverUi() {
+  var showMediaCoverArtOptions = !!state.coverArtScreensaverOn || state.primaryView === "media";
   if (els.setCoverArtToggle) {
     els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
+  }
+  syncCoverArtMediaPlayerEntityUi();
+  if (els.setCoverArtScreensaverOptions) {
+    els.setCoverArtScreensaverOptions.classList.toggle(
+      "sp-visible",
+      !!state.coverArtScreensaverOn);
   }
   if (els.setCoverArtOptions) {
     els.setCoverArtOptions.classList.toggle(
       "sp-visible",
-      !!state.coverArtScreensaverOn);
+      showMediaCoverArtOptions);
   }
   if (els.setCoverArtBadge) {
     els.setCoverArtBadge.className = "sp-card-badge" + (state.coverArtScreensaverOn ? "" : " sp-hidden");
@@ -1202,6 +1253,14 @@ function syncCoverArtScreensaverUi() {
     els.setCoverArtFilterOptions.classList.toggle("sp-visible", !!state.coverArtFilteringEnabled);
   }
   syncInput(els.setCoverArtConditions, state.coverArtAttributeConditions || "");
+}
+
+function syncPrimaryViewUi() {
+  state.primaryView = normalizePrimaryView(state.primaryView);
+  if (els.setPrimaryView) {
+    els.setPrimaryView.value = state.primaryView;
+  }
+  syncCoverArtScreensaverUi();
 }
 
 function syncOptionalClockBrightness(field, previousField, display) {

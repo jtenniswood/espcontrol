@@ -137,6 +137,15 @@ var ENTITY_CATALOG = {
       "domain": "select",
       "name": "Screen: Temperature Unit"
     },
+    "screen_primary_view": {
+      "domain": "select",
+      "name": "Screen: Primary View",
+      "objectIds": [
+        "screen__primary_view",
+        "screen_primary_view",
+        "primary_view"
+      ]
+    },
     "indoor_temp_entity": {
       "domain": "text",
       "name": "Indoor Temp Entity"
@@ -515,6 +524,7 @@ var ENTITY_CATALOG = {
       "screen_temperature_degree_symbol",
       "screen_subpage_chevron",
       "screen_temperature_unit",
+      "screen_primary_view",
       "indoor_temp_entity",
       "outdoor_temp_entity",
       "screensaver_mode",

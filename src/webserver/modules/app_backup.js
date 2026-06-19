@@ -63,6 +63,7 @@ function exportConfig() {
       cover_art_delay: state.coverArtDelay,
       cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
       cover_art_hide_external_input: state.coverArtHideExternalInputOn,
+      primary_view: normalizePrimaryView(state.primaryView),
       home_assistant_artwork_port: normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort),
       screensaver_action: normalizeScreensaverAction(state.screensaverAction),
       clock_screensaver: state.clockScreensaverOn,
@@ -242,6 +243,7 @@ function importConfig() {
         postCoverArtDelay(importedSettings.coverArtDelay);
         postCoverArtTrackOverlayDuration(importedSettings.coverArtTrackOverlayDuration);
         postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
+        postPrimaryView(importedSettings.primaryView);
         postHomeAssistantArtworkPort(importedSettings.coverArtHomeAssistantPort);
         var importedScreensaverAction = importedSettings.screensaverAction;
         var importedScreensaverDimmedBrightness = importedSettings.screensaverDimmedBrightness;
@@ -287,6 +289,7 @@ function importConfig() {
         state.coverArtDelay = importedSettings.coverArtDelay;
         state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
         state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
+        state.primaryView = importedSettings.primaryView;
         state.coverArtHomeAssistantPort = importedSettings.coverArtHomeAssistantPort;
         state.screensaverAction = importedScreensaverAction;
         state._screensaverActionReceived = true;
@@ -306,6 +309,7 @@ function importConfig() {
         syncInput(els.setCoverArtMediaPlayer, state.coverArtMediaPlayerEntity);
         syncInput(els.setCoverArtConditions, state.coverArtAttributeConditions);
         syncCoverArtScreensaverUi();
+        syncPrimaryViewUi();
         syncThemeUi();
         if (els.setTimezone) els.setTimezone.value = state.timezone;
         syncLanguageSelect();
