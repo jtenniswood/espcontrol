@@ -207,6 +207,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "screen_lock") return "Screen Lock";
   if (type == "webhook") return "Webhook";
   if (type == "sensor") return "Sensor";
+  if (type == "local_sensor") return "Local Sensor";
   if (type == "slider") return "Slider";
   if (type == "subpage") return "Subpage";
   if (type == "timezone") return "Date & Time";
@@ -246,6 +247,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "screen_lock") return true;
   if (type == "webhook") return true;
   if (type == "sensor") return true;
+  if (type == "local_sensor") return true;
   if (type == "slider") return true;
   if (type == "subpage") return false;
   if (type == "timezone") return true;
@@ -285,6 +287,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "screen_lock") return "Lock";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
+  if (type == "local_sensor") return "Auto";
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
@@ -324,6 +327,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "screen_lock") return "Lock Open";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
+  if (type == "local_sensor") return "Auto";
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
@@ -369,6 +373,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "clock") return "CK";
   if (type == "timezone") return "T";
   if (type == "sensor") return "S";
+  if (type == "local_sensor") return "LS";
   if (type == "door_window") return "X";
   if (type == "presence") return "PR";
   if (type == "weather") return "W";
@@ -406,6 +411,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "CK") return "clock";
   if (code == "T") return "timezone";
   if (code == "S") return "sensor";
+  if (code == "LS") return "local_sensor";
   if (code == "X") return "door_window";
   if (code == "PR") return "presence";
   if (code == "W") return "weather";

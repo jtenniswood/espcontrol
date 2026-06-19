@@ -930,6 +930,22 @@
         "options": ""
       }
     },
+    "local_sensor": {
+      "label": "Local Sensor",
+      "allowInSubpage": true,
+      "domains": ["sensor", "text_sensor"],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "local_sensor",
+        "precision": "",
+        "options": ""
+      }
+    },
     "slider": {
       "label": "Slider",
       "allowInSubpage": true,
@@ -1167,6 +1183,7 @@
     "clock": "CK",
     "timezone": "T",
     "sensor": "S",
+    "local_sensor": "LS",
     "door_window": "X",
     "presence": "PR",
     "weather": "W",

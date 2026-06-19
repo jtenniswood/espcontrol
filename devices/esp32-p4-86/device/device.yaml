@@ -22,10 +22,11 @@ esp32:
   engineering_sample: true
   framework:
     type: esp-idf
-    version: 5.5.2
+    # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
+    #version: 5.5.2
     # pioarduino 55.03.38-1 pulls tool-esptoolpy 5.2.0, which can install
     # incompletely in ESPHome containers and then fail while creating .bin files.
-    platform_version: 55.03.37
+    #platform_version: 55.03.37
     advanced:
       enable_idf_experimental_features: true
       execute_from_psram: true
