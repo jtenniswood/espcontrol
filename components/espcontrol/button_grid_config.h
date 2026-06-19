@@ -1570,6 +1570,15 @@ inline std::string weather_label_for_state(const std::string &state) {
   return sentence_cap_text(state);
 }
 
+constexpr float WEATHER_FORECAST_TEMP_MISSING = 32767.0f;
+
+struct WeatherForecastStoredDay {
+  std::string label;
+  bool valid = false;
+  float high = WEATHER_FORECAST_TEMP_MISSING;
+  float low = WEATHER_FORECAST_TEMP_MISSING;
+};
+
 struct WeatherForecastCardRef {
   lv_obj_t *btn;
   lv_obj_t *value_lbl;
@@ -1584,6 +1593,7 @@ struct WeatherForecastCardRef {
   float low = 0.0f;
   std::string source_unit;
   std::string forecast_text;
+  WeatherForecastStoredDay forecast_days[3];
 };
 
 inline WeatherForecastCardRef *weather_forecast_card_refs() {
@@ -1604,7 +1614,6 @@ inline void reset_weather_forecast_cards() {
   weather_forecast_card_count() = 0;
 }
 
-constexpr float WEATHER_FORECAST_TEMP_MISSING = 32767.0f;
 constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
 constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS = 60000;
 constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;
@@ -1657,6 +1666,25 @@ inline std::string weather_forecast_temp_pair_text(float high, float low,
   return std::string(buf);
 }
 
+inline std::string weather_forecast_3day_text(const WeatherForecastCardRef &ref,
+                                              const std::string &unit) {
+  std::string text;
+  bool has_rows = false;
+  for (int day_index = 0; day_index < 3; day_index++) {
+    const auto &day = ref.forecast_days[day_index];
+    if (!day.valid && day.label.empty() &&
+        day.high == WEATHER_FORECAST_TEMP_MISSING &&
+        day.low == WEATHER_FORECAST_TEMP_MISSING) {
+      continue;
+    }
+    if (!text.empty()) text += "\n";
+    std::string label = day.label.empty() ? ("D" + std::to_string(day_index + 1)) : day.label;
+    text += label + " " + weather_forecast_temp_pair_text(day.high, day.low, unit);
+    has_rows = true;
+  }
+  return has_rows ? text : "";
+}
+
 inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
                                              bool valid, float high, float low,
                                              const std::string &unit) {
@@ -1675,8 +1703,9 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
     lv_label_set_text(ref.unit_lbl, normalized_unit.c_str());
     return;
   }
-  if (ref.day == "3day" && !ref.forecast_text.empty()) {
-    lv_label_set_text(ref.value_lbl, ref.forecast_text.c_str());
+  if (ref.day == "3day") {
+    std::string text = weather_forecast_3day_text(ref, unit);
+    lv_label_set_text(ref.value_lbl, text.empty() ? ref.forecast_text.c_str() : text.c_str());
   } else {
     std::string text = weather_forecast_temp_pair_text(high, low, unit);
     lv_label_set_text(ref.value_lbl, text.c_str());
@@ -1702,6 +1731,9 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
       refs[i].source_unit = unit;
       refs[i].status_label = "";
       refs[i].forecast_text = "";
+      for (int day_index = 0; day_index < 3; day_index++) {
+        refs[i].forecast_days[day_index] = WeatherForecastStoredDay();
+      }
       apply_control_availability(refs[i].btn, refs[i].btn, valid, false);
       apply_weather_forecast_card_text(refs[i], valid, high, low, unit);
       notify_dashboard_content_changed();
@@ -1723,12 +1755,12 @@ inline void apply_weather_forecast_3day_to_entity(const std::string &entity_id,
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
     if (refs[i].entity_id != entity_id || refs[i].day != "3day") continue;
-    std::string text;
     bool any_valid = false;
     for (int day_index = 0; day_index < 3; day_index++) {
-      if (!text.empty()) text += "\n";
-      std::string label = days[day_index].label.empty() ? ("D" + std::to_string(day_index + 1)) : days[day_index].label;
-      text += label + " " + weather_forecast_temp_pair_text(days[day_index].high, days[day_index].low, unit);
+      refs[i].forecast_days[day_index].label = days[day_index].label;
+      refs[i].forecast_days[day_index].valid = days[day_index].valid;
+      refs[i].forecast_days[day_index].high = days[day_index].high;
+      refs[i].forecast_days[day_index].low = days[day_index].low;
       any_valid = any_valid || days[day_index].valid;
     }
     refs[i].valid = any_valid;
@@ -1736,7 +1768,7 @@ inline void apply_weather_forecast_3day_to_entity(const std::string &entity_id,
     refs[i].low = days[0].low;
     refs[i].source_unit = unit;
     refs[i].status_label = "";
-    refs[i].forecast_text = any_valid ? text : "";
+    refs[i].forecast_text = any_valid ? weather_forecast_3day_text(refs[i], unit) : "";
     apply_control_availability(refs[i].btn, refs[i].btn, any_valid, false);
     apply_weather_forecast_card_text(refs[i], any_valid, refs[i].high, refs[i].low, unit);
     notify_dashboard_content_changed();
@@ -1755,6 +1787,9 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
       refs[i].source_unit = "";
       refs[i].status_label = "";
       refs[i].forecast_text = "";
+      for (int day_index = 0; day_index < 3; day_index++) {
+        refs[i].forecast_days[day_index] = WeatherForecastStoredDay();
+      }
       apply_control_availability(refs[i].btn, refs[i].btn, false, false);
       apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
       notify_dashboard_content_changed();
@@ -1773,6 +1808,9 @@ inline void apply_weather_forecast_unavailable_all() {
     refs[i].source_unit = "";
     refs[i].status_label = "";
     refs[i].forecast_text = "";
+    for (int day_index = 0; day_index < 3; day_index++) {
+      refs[i].forecast_days[day_index] = WeatherForecastStoredDay();
+    }
     apply_control_availability(refs[i].btn, refs[i].btn, false, false);
     apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
   }
@@ -1793,6 +1831,9 @@ inline void apply_weather_forecast_actions_required_for_entity(const std::string
       refs[i].source_unit = "";
       refs[i].status_label = "";
       refs[i].forecast_text = "";
+      for (int day_index = 0; day_index < 3; day_index++) {
+        refs[i].forecast_days[day_index] = WeatherForecastStoredDay();
+      }
       apply_control_availability(refs[i].btn, refs[i].btn, false, false);
       apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
       notify_dashboard_content_changed();
