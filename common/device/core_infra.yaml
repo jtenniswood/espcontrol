@@ -18,6 +18,7 @@ api:
   homeassistant_services: true
   on_client_connected:
     - lambda: |-
+        register_local_sensor_endpoint();
         ESP_LOGI("api", "API client connected: %s", client_info.c_str());
         bool is_home_assistant = client_info.find("Home Assistant") != std::string::npos;
         if (is_home_assistant && ha_api_connected()) {
@@ -45,6 +46,7 @@ api:
             ha_flush_deferred_state_requests();
           }
         }
+        register_local_action_endpoint();
     - delay: 2s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
