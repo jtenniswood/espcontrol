@@ -293,6 +293,10 @@ bool handle_card_image_get(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "Not found");
     return true;
   }
+  if (!ensure_card_image_dir()) {
+    request->send(404, "text/plain", "Not found");
+    return true;
+  }
   std::string path = card_image_path(id);
   FILE *file = fopen(path.c_str(), "rb");
   if (!file) {
