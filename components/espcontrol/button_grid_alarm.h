@@ -27,6 +27,7 @@ struct AlarmCardCtx {
   lv_timer_t *pending_action_timer = nullptr;
   uint32_t arm_delay_started_ms = 0;
   int arm_delay_seconds = -1;
+  int arm_delay_total_seconds = -1;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *pin_label_font = nullptr;
   const lv_font_t *key_label_font = nullptr;
@@ -71,6 +72,8 @@ struct AlarmControlModalUi {
   lv_obj_t *arming_view = nullptr;
   lv_obj_t *arming_title = nullptr;
   lv_obj_t *arming_countdown = nullptr;
+  lv_obj_t *arming_progress = nullptr;
+  lv_obj_t *arming_progress_fill = nullptr;
   lv_obj_t *arming_disarm_btn = nullptr;
   lv_obj_t *arming_disarm_label = nullptr;
   AlarmActionCtx actions[ALARM_MAX_ACTIONS];
@@ -249,6 +252,10 @@ inline bool alarm_state_is_active(const std::string &state) {
   return alarm_state_is_armed(state) || state == "arming" || state == "pending";
 }
 
+inline bool alarm_state_is_delay(const std::string &state) {
+  return state == "arming" || state == "pending";
+}
+
 inline std::string alarm_action_achieved_state(const std::string &mode) {
   if (mode == "away") return "armed_away";
   if (mode == "home") return "armed_home";
@@ -395,18 +402,29 @@ inline std::string alarm_delay_label(int seconds) {
   return std::string(buf);
 }
 
+inline int alarm_delay_progress_percent(AlarmCardCtx *ctx, int remaining) {
+  if (!ctx || remaining < 0) return -1;
+  int total = ctx->arm_delay_total_seconds > 0 ? ctx->arm_delay_total_seconds : ctx->arm_delay_seconds;
+  if (total <= 0) return -1;
+  if (remaining > total) remaining = total;
+  int pct = (remaining * 100 + total / 2) / total;
+  if (pct < 0) return 0;
+  if (pct > 100) return 100;
+  return pct;
+}
+
 inline void alarm_arm_delay_timer_cb(lv_timer_t *timer) {
   AlarmCardCtx *ctx = static_cast<AlarmCardCtx *>(lv_timer_get_user_data(timer));
   if (!ctx) return;
   alarm_control_update_modal(ctx);
-  if (ctx->state != "arming" || alarm_remaining_delay_seconds(ctx) <= 0) {
+  if (!alarm_state_is_delay(ctx->state) || alarm_remaining_delay_seconds(ctx) <= 0) {
     lv_timer_pause(timer);
   }
 }
 
 inline void alarm_arm_delay_refresh_timer(AlarmCardCtx *ctx) {
   if (!ctx) return;
-  bool should_run = ctx->state == "arming" && alarm_remaining_delay_seconds(ctx) > 0;
+  bool should_run = alarm_state_is_delay(ctx->state) && alarm_remaining_delay_seconds(ctx) > 0;
   if (!should_run) {
     if (ctx->arm_delay_timer) lv_timer_pause(ctx->arm_delay_timer);
     return;
@@ -420,7 +438,7 @@ inline void alarm_arm_delay_refresh_timer(AlarmCardCtx *ctx) {
 }
 
 inline bool alarm_control_modal_shows_arming(AlarmCardCtx *ctx) {
-  return ctx && ctx->state == "arming";
+  return ctx && alarm_state_is_delay(ctx->state);
 }
 
 inline void alarm_control_set_hidden(lv_obj_t *obj, bool hidden) {
@@ -457,9 +475,13 @@ inline void alarm_set_card_state_colors(AlarmCardCtx *ctx, uint32_t checked_colo
 
 inline void alarm_apply_home_state(AlarmCardCtx *ctx, const std::string &state) {
   if (!ctx || !ctx->btn) return;
-  bool was_arming = ctx->state == "arming";
+  bool delay_state_changed = alarm_state_is_delay(state) && ctx->state != state;
   ctx->state = state;
-  if (ctx->state == "arming" && !was_arming) ctx->arm_delay_started_ms = lv_tick_get();
+  if (delay_state_changed) {
+    ctx->arm_delay_started_ms = lv_tick_get();
+    ctx->arm_delay_total_seconds = ctx->arm_delay_seconds > 0 ? ctx->arm_delay_seconds : -1;
+  }
+  if (!alarm_state_is_delay(ctx->state)) ctx->arm_delay_total_seconds = -1;
   bool unavailable = state.empty() || state == "unavailable" || state == "unknown";
   ctx->available = !unavailable;
   apply_control_availability(ctx->btn, ctx->btn, ctx->available);
@@ -491,7 +513,13 @@ inline void alarm_apply_home_arm_mode(AlarmCardCtx *ctx, const std::string &arm_
 
 inline void alarm_apply_home_arm_delay(AlarmCardCtx *ctx, const std::string &delay) {
   if (!ctx) return;
-  ctx->arm_delay_seconds = alarm_parse_delay_seconds(delay);
+  int seconds = alarm_parse_delay_seconds(delay);
+  ctx->arm_delay_seconds = seconds;
+  if (seconds >= 0 && seconds > ctx->arm_delay_total_seconds) {
+    ctx->arm_delay_total_seconds = seconds;
+  } else if (seconds < 0) {
+    ctx->arm_delay_total_seconds = -1;
+  }
   ctx->arm_delay_started_ms = lv_tick_get();
   alarm_control_update_modal(ctx);
   alarm_arm_delay_refresh_timer(ctx);
@@ -716,6 +744,33 @@ inline lv_coord_t alarm_control_rail_radius(const ControlModalLayout &layout,
   return control_radius + button_inset;
 }
 
+inline void alarm_control_update_delay_progress(AlarmControlModalUi &ui,
+                                                AlarmCardCtx *ctx,
+                                                int remaining) {
+  if (!ui.arming_progress || !ui.arming_progress_fill) return;
+  int pct = alarm_delay_progress_percent(ctx, remaining);
+  alarm_control_set_hidden(ui.arming_progress, pct < 0);
+  alarm_control_set_hidden(ui.arming_progress_fill, pct < 0);
+  if (pct < 0) return;
+
+  lv_obj_update_layout(ui.arming_progress);
+  lv_coord_t track_w = lv_obj_get_width(ui.arming_progress);
+  lv_coord_t track_h = lv_obj_get_height(ui.arming_progress);
+  if (track_w <= 0 || track_h <= 0) return;
+  lv_coord_t fill_w = static_cast<lv_coord_t>((int32_t) track_w * pct / 100);
+  if (fill_w <= 0) {
+    lv_obj_add_flag(ui.arming_progress_fill, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+
+  lv_obj_clear_flag(ui.arming_progress_fill, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_set_size(ui.arming_progress_fill, fill_w, track_h);
+  lv_obj_set_style_radius(ui.arming_progress_fill, track_h / 2, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.arming_progress_fill,
+    lv_color_hex(ctx ? ctx->on_color : DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
+  lv_obj_align(ui.arming_progress_fill, LV_ALIGN_LEFT_MID, 0, 0);
+}
+
 inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
   AlarmControlModalUi &ui = alarm_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
@@ -725,14 +780,15 @@ inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
   alarm_control_set_hidden(ui.arming_view, !show_arming);
   if (ui.arming_view) {
     if (ui.arming_title) lv_label_set_text(ui.arming_title, alarm_state_label(ctx->state).c_str());
+    int remaining = show_arming ? alarm_remaining_delay_seconds(ctx) : -1;
     if (ui.arming_countdown) {
-      int remaining = show_arming ? alarm_remaining_delay_seconds(ctx) : -1;
       alarm_control_set_hidden(ui.arming_countdown, remaining < 0);
       if (remaining >= 0) {
         std::string countdown = alarm_delay_label(remaining);
         lv_label_set_text(ui.arming_countdown, countdown.c_str());
       }
     }
+    alarm_control_update_delay_progress(ui, ctx, remaining);
     ui.arming_disarm_action.card = ctx;
     ui.arming_disarm_action.mode = "disarm";
     ui.arming_disarm_action.requires_pin = alarm_action_requires_pin(ctx->options, "disarm");
@@ -1120,6 +1176,41 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_set_width(ui.arming_countdown, layout.panel_w - layout.inset * 2);
   lv_obj_align(ui.arming_countdown, LV_ALIGN_CENTER, 0, countdown_y);
   lv_obj_add_flag(ui.arming_countdown, LV_OBJ_FLAG_HIDDEN);
+
+  lv_coord_t progress_h = control_modal_scaled_px(12, layout.short_side);
+  if (progress_h < 8) progress_h = 8;
+  if (progress_h > 16) progress_h = 16;
+  lv_coord_t progress_w = layout.panel_w - layout.inset * 3;
+  if (progress_w < layout.panel_w / 2) progress_w = layout.panel_w / 2;
+  lv_coord_t progress_gap = control_modal_scaled_px(18, layout.short_side);
+  if (jc4880p443_layout) progress_gap = control_modal_scaled_px(20, layout.short_side);
+
+  ui.arming_progress = lv_obj_create(ui.arming_view);
+  lv_obj_set_size(ui.arming_progress, progress_w, progress_h);
+  lv_obj_set_style_bg_color(ui.arming_progress, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.arming_progress, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.arming_progress, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.arming_progress, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.arming_progress, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(ui.arming_progress, progress_h / 2, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.arming_progress, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(ui.arming_progress, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(ui.arming_progress, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_align(ui.arming_progress, LV_ALIGN_CENTER, 0, countdown_y + progress_gap);
+
+  ui.arming_progress_fill = lv_obj_create(ui.arming_progress);
+  lv_obj_set_size(ui.arming_progress_fill, 0, progress_h);
+  lv_obj_set_style_bg_color(ui.arming_progress_fill,
+    lv_color_hex(ctx ? ctx->on_color : DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.arming_progress_fill, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.arming_progress_fill, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.arming_progress_fill, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.arming_progress_fill, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(ui.arming_progress_fill, progress_h / 2, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.arming_progress_fill, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(ui.arming_progress_fill, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(ui.arming_progress_fill, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_align(ui.arming_progress_fill, LV_ALIGN_LEFT_MID, 0, 0);
 
   lv_coord_t disarm_h = control_modal_scaled_px(52, layout.short_side);
   if (disarm_h < 44) disarm_h = 44;

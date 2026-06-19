@@ -91,6 +91,7 @@ var state = {
   coverArtDelay: 10,
   coverArtTrackOverlayDuration: 5,
   coverArtHideExternalInputOn: true,
+  coverArtHomeAssistantPort: 8123,
   screensaverMode: "disabled",
   _screensaverModeReceived: false,
   screensaverAction: "off",
@@ -611,6 +612,14 @@ function applyScreensaverTimeoutState(d) {
   if (!isFinite(n)) return;
   state.screensaverTimeout = n;
   syncScreensaverTimeoutUi();
+}
+
+function normalizeHomeAssistantArtworkPort(value) {
+  var port = parseInt(value, 10);
+  if (!isFinite(port)) return 8123;
+  if (port < 1) return 1;
+  if (port > 65535) return 65535;
+  return port;
 }
 
 function setSelectValue(select, value, label) {

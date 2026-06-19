@@ -15,7 +15,7 @@ A subpage has one fewer usable slot than the home screen because it includes a *
 ## Setting Up a Subpage
 
 1. Select a card on the home screen and change its type to **Subpage**.
-2. Choose a subpage **Type**. **Generic** is a normal folder, while **Lights**, **Climate**, **Presence**, and **Media** use useful defaults for those common room pages.
+2. Choose a subpage **Type**. **Generic** is a normal folder. The other presets make the home-screen Subpage tile look and behave like the thing it represents, such as **Lights**, **Switch**, **Alarm**, **Cover**, **Garage Door**, **Lock**, **Vacuum**, **Weather**, **Sensor**, or **Camera / Image**, before opening the detailed subpage.
 3. Set a **Label** and **Icon** if you want them.
 4. Click **Edit Subpage** in the card settings, or right-click the card and choose **Edit Subpage**.
 5. The preview switches to the subpage. Add and arrange cards here the same way you would on the home screen.
