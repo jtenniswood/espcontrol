@@ -38,6 +38,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Screen Lock | screen_lock | None | Yes | Own picker item | None | Visible |
 | Webhook | webhook | None | Yes | Own picker item | Headers | Visible |
 | Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Large Sensor Numbers; Active Color; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
+| Local Sensor | local_sensor | sensor, text_sensor | Yes | Own picker item | None | Visible |
 | Slider | slider | light, fan | Yes | Own picker item | None | Visible |
 | Subpage | subpage | None | No | Own picker item | Subpage Type: default, switch, lights, climate, presence, media, alarm, cover, garage, lock, vacuum, weather, sensor, image; Large State Numbers | Visible |
 | Date & Time | timezone | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
