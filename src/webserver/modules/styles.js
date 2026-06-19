@@ -286,6 +286,8 @@ var CSS =
   "font-family:inherit;box-sizing:border-box;outline:none;" +
   "transition:border-color .25s,box-shadow .25s}" +
   ".sp-input[type=number]{color-scheme:dark}" +
+  ".sp-input--no-stepper{-moz-appearance:textfield}" +
+  ".sp-input--no-stepper::-webkit-outer-spin-button,.sp-input--no-stepper::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}" +
   ".sp-input:focus,.sp-select:focus{border-color:var(--accent);" +
   "box-shadow:0 0 0 3px var(--accent-soft)}" +
   ".sp-input.sp-input-error,.sp-select.sp-input-error{border-color:var(--danger);" +

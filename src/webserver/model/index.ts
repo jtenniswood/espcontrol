@@ -73,6 +73,7 @@ export {
   normalizeClockBrightness,
   normalizeHexColor,
   normalizeHour,
+  normalizeHomeAssistantArtworkPort,
   normalizeLanguage,
   normalizeNtpServer,
   normalizeScheduleClockBrightness,

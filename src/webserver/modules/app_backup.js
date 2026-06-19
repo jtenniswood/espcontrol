@@ -63,6 +63,7 @@ function exportConfig() {
       cover_art_delay: state.coverArtDelay,
       cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
       cover_art_hide_external_input: state.coverArtHideExternalInputOn,
+      home_assistant_artwork_port: normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort),
       screensaver_action: normalizeScreensaverAction(state.screensaverAction),
       clock_screensaver: state.clockScreensaverOn,
       clock_brightness: state.clockBrightnessDay,
@@ -186,6 +187,7 @@ function importConfig() {
           ntpServer1: state.ntpServer1,
           ntpServer2: state.ntpServer2,
           ntpServer3: state.ntpServer3,
+          coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
           screenRotationOptions: allScreenRotationOptions(),
         });
 
@@ -240,6 +242,7 @@ function importConfig() {
         postCoverArtDelay(importedSettings.coverArtDelay);
         postCoverArtTrackOverlayDuration(importedSettings.coverArtTrackOverlayDuration);
         postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
+        postHomeAssistantArtworkPort(importedSettings.coverArtHomeAssistantPort);
         var importedScreensaverAction = importedSettings.screensaverAction;
         var importedScreensaverDimmedBrightness = importedSettings.screensaverDimmedBrightness;
         var importedClockBrightnessDay = importedSettings.clockBrightnessDay;
@@ -284,6 +287,7 @@ function importConfig() {
         state.coverArtDelay = importedSettings.coverArtDelay;
         state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
         state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
+        state.coverArtHomeAssistantPort = importedSettings.coverArtHomeAssistantPort;
         state.screensaverAction = importedScreensaverAction;
         state._screensaverActionReceived = true;
         state.clockScreensaverOn = importedScreensaverAction === "clock";

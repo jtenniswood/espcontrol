@@ -1052,6 +1052,32 @@ function buildSettingsPage(parent) {
 
   var firmwareCard = makeCollapsibleCard("Firmware", fwBody, true);
 
+  var homeAssistantSettingsBody = document.createElement("div");
+  var haPortField = document.createElement("div");
+  haPortField.className = "sp-field";
+  haPortField.appendChild(fieldLabel("Home Assistant Port", "sp-set-ha-artwork-port"));
+  var haPortInput = document.createElement("input");
+  haPortInput.className = "sp-input sp-input--no-stepper";
+  haPortInput.id = "sp-set-ha-artwork-port";
+  haPortInput.type = "number";
+  haPortInput.min = "1";
+  haPortInput.max = "65535";
+  haPortInput.step = "1";
+  haPortInput.inputMode = "numeric";
+  haPortInput.value = String(normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort));
+  haPortInput.addEventListener("change", function () {
+    state.coverArtHomeAssistantPort = normalizeHomeAssistantArtworkPort(this.value);
+    this.value = String(state.coverArtHomeAssistantPort);
+    postHomeAssistantArtworkPort(state.coverArtHomeAssistantPort);
+  });
+  haPortField.appendChild(haPortInput);
+  homeAssistantSettingsBody.appendChild(haPortField);
+  els.setCoverArtHomeAssistantPort = haPortInput;
+  var homeAssistantSettingsCard = makeCollapsibleCard(
+    "Home Assistant Settings",
+    homeAssistantSettingsBody,
+    true);
+
   appendSettingsSection(config, "Display", [
     appearanceCard,
     backlightCard,
@@ -1070,6 +1096,7 @@ function buildSettingsPage(parent) {
     temperatureCard,
     backupCard,
     firmwareCard,
+    homeAssistantSettingsCard,
   ]);
 
   page.appendChild(config);
@@ -1162,6 +1189,10 @@ function syncCoverArtScreensaverUi() {
   }
   if (els.setCoverArtHideExternalInputToggle) {
     els.setCoverArtHideExternalInputToggle.checked = !!state.coverArtHideExternalInputOn;
+  }
+  if (els.setCoverArtHomeAssistantPort) {
+    els.setCoverArtHomeAssistantPort.value = String(
+      normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort));
   }
   if (els.setCoverArtFilterToggle) {
     state.coverArtFilteringEnabled = !!state.coverArtFilteringEnabled || !!state.coverArtAttributeConditions;

@@ -132,6 +132,14 @@ export function normalizeScreensaverDimmedBrightness(value: unknown): number {
   return Math.round(n);
 }
 
+export function normalizeHomeAssistantArtworkPort(value: unknown): number {
+  const port = parseInt(String(value), 10);
+  if (!Number.isFinite(port)) return 8123;
+  if (port < 1) return 1;
+  if (port > 65535) return 65535;
+  return port;
+}
+
 export function normalizeNtpServer(value: unknown, fallback: string): string {
   const server = String(value == null ? "" : value).trim();
   return server || fallback;
@@ -218,6 +226,7 @@ export interface BackupPanelSettingsCurrent {
   ntpServer1: string;
   ntpServer2: string;
   ntpServer3: string;
+  coverArtHomeAssistantPort: number;
   screenRotationOptions: readonly string[];
 }
 
@@ -253,6 +262,7 @@ export interface BackupPanelSettingsState {
   coverArtDelay: unknown;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
+  coverArtHomeAssistantPort: number;
   screensaverAction: string;
   clockScreensaver: boolean;
   clockBrightnessDay: number;
@@ -353,6 +363,9 @@ export function normalizeBackupPanelSettings(
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
+    coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null
+      ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
+      : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
     screensaverAction,
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,
