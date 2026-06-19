@@ -7,6 +7,8 @@
 #include <cinttypes>
 #include <cstdio>
 #include <dirent.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -129,6 +131,26 @@ bool handle_firmware_version_request(AsyncWebServerRequest *request) {
   std::string body = firmware_version_json();
   request->send(200, "application/json", body.c_str());
   return true;
+}
+
+bool is_loopback_request(httpd_req_t *r) {
+  int fd = httpd_req_to_sockfd(r);
+  if (fd < 0) return false;
+  sockaddr_storage addr {};
+  socklen_t addr_len = sizeof(addr);
+  if (getpeername(fd, reinterpret_cast<sockaddr *>(&addr), &addr_len) != 0) return false;
+  if (addr.ss_family == AF_INET) {
+    auto *in = reinterpret_cast<sockaddr_in *>(&addr);
+    return ntohl(in->sin_addr.s_addr) == INADDR_LOOPBACK;
+  }
+#ifdef AF_INET6
+  if (addr.ss_family == AF_INET6) {
+    auto *in6 = reinterpret_cast<sockaddr_in6 *>(&addr);
+    static constexpr uint8_t LOOPBACK6[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+    return memcmp(in6->sin6_addr.s6_addr, LOOPBACK6, sizeof(LOOPBACK6)) == 0;
+  }
+#endif
+  return false;
 }
 
 bool card_image_id_valid(const std::string &id) {
@@ -308,6 +330,16 @@ bool handle_card_image_delete(AsyncWebServerRequest *request) {
   unlink(card_image_path(id).c_str());
   request->send(200, "application/json", "{\"ok\":true}");
   return true;
+}
+
+bool is_card_image_shortcut_request(AsyncWebServerRequest *request) {
+  if (request->method() != HTTP_GET && request->method() != HTTP_DELETE) return false;
+  char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+  std::string url(request->url_to(url_buf));
+  if (request->method() == HTTP_GET) {
+    return url == "/api/card-images" || url.rfind("/card-images/", 0) == 0;
+  }
+  return url.rfind("/api/card-images/", 0) == 0;
 }
 
 esp_err_t handle_card_image_upload(httpd_req_t *r) {
@@ -495,6 +527,11 @@ void AsyncWebServer::begin() {
 esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
   ESP_LOGVV(TAG, "Enter AsyncWebServer::request_post_handler. uri=%s", r->uri);
   if (strcmp(r->uri, "/api/card-images") == 0) {
+#ifdef USE_WEBSERVER_AUTH
+    AsyncWebServerRequest req(r);
+    auto *server = static_cast<AsyncWebServer *>(r->user_ctx);
+    if (!server->authenticate_shortcut_request_(&req)) return ESP_OK;
+#endif
     return handle_card_image_upload(r);
   }
   auto content_type = request_get_header(r, "Content-Type");
@@ -556,6 +593,11 @@ esp_err_t AsyncWebServer::request_handler(httpd_req_t *r) {
 }
 
 esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const {
+  if (is_card_image_shortcut_request(request) && !is_loopback_request(*request)) {
+#ifdef USE_WEBSERVER_AUTH
+    if (!this->authenticate_shortcut_request_(request)) return ESP_OK;
+#endif
+  }
   if (handle_card_image_get(request) || handle_card_image_delete(request)) {
     return ESP_OK;
   }
@@ -576,6 +618,21 @@ esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const
   }
   return ESP_ERR_NOT_FOUND;
 }
+
+#ifdef USE_WEBSERVER_AUTH
+bool AsyncWebServer::authenticate_shortcut_request_(AsyncWebServerRequest *request) const {
+  bool saw_handler = false;
+  for (auto *handler : this->handlers_) {
+    saw_handler = true;
+    if (!handler->check_auth(request)) return false;
+  }
+  if (!saw_handler) {
+    request->requestAuthentication();
+    return false;
+  }
+  return true;
+}
+#endif
 
 AsyncWebServerRequest::~AsyncWebServerRequest() {
   delete this->rsp_;
