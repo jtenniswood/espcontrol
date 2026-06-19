@@ -287,6 +287,7 @@ struct ScreensaverPinKeypadOpenArgs {
   const lv_font_t *pin_label_font = nullptr;
   const lv_font_t *key_label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
+  lv_timer_t *reopen_timer = nullptr;
 };
 
 inline ScreensaverPinKeypadOpenArgs &screensaver_pin_keypad_open_args() {
@@ -294,9 +295,13 @@ inline ScreensaverPinKeypadOpenArgs &screensaver_pin_keypad_open_args() {
   return args;
 }
 
-inline void screensaver_pin_reopen_if_locked() {
-  if (!screensaver_pin_locked() || screensaver_pin_unlock_code().empty()) return;
+inline void screensaver_pin_reopen_if_locked();
+
+inline void screensaver_pin_reopen_timer_cb(lv_timer_t *timer) {
   ScreensaverPinKeypadOpenArgs &args = screensaver_pin_keypad_open_args();
+  if (args.reopen_timer == timer) args.reopen_timer = nullptr;
+  lv_timer_del(timer);
+  if (!screensaver_pin_locked() || screensaver_pin_unlock_code().empty()) return;
   pin_keypad_open_modal(
     PinKeypadKind::SCREENSAVER,
     nullptr,
@@ -309,6 +314,13 @@ inline void screensaver_pin_reopen_if_locked() {
     screensaver_pin_keypad_submit,
     nullptr,
     screensaver_pin_reopen_if_locked);
+}
+
+inline void screensaver_pin_reopen_if_locked() {
+  if (!screensaver_pin_locked() || screensaver_pin_unlock_code().empty()) return;
+  ScreensaverPinKeypadOpenArgs &args = screensaver_pin_keypad_open_args();
+  if (args.reopen_timer) lv_timer_del(args.reopen_timer);
+  args.reopen_timer = lv_timer_create(screensaver_pin_reopen_timer_cb, 1, nullptr);
 }
 
 inline bool screensaver_pin_active(bool required, const std::string &pin) {
