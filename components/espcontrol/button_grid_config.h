@@ -94,6 +94,7 @@ constexpr const char *IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
 
 #include "button_grid_contract_generated.h"
 #include "button_grid_card_runtime.h"
+#include <algorithm>
 #include <cstdlib>
 
 inline int bounded_grid_slots(int num_slots) {
@@ -431,17 +432,34 @@ inline std::string image_card_options_normalized(const std::string &options) {
     if (!out.empty()) out += ",";
     out += std::string(IMAGE_MODAL_MODE_OPTION) + "=" + modal_mode;
   }
+  std::string refresh_interval = normalize_image_refresh_interval(
+    cfg_option_value(options, IMAGE_REFRESH_OPTION));
+  if (refresh_interval != "off") {
+    if (!out.empty()) out += ",";
+    out += std::string(IMAGE_REFRESH_OPTION) + "=" + refresh_interval;
+    std::string refresh_mode = normalize_image_refresh_mode(
+      cfg_option_value(options, IMAGE_REFRESH_MODE_OPTION));
+    if (refresh_mode == "timer") {
+      out += ",";
+      out += std::string(IMAGE_REFRESH_MODE_OPTION) + "=" + refresh_mode;
+    }
+  }
   return out;
 }
 
 inline uint32_t image_card_refresh_interval_ms(const ParsedCfg &p) {
-  (void) p;
+  std::string interval = normalize_image_refresh_interval(
+    cfg_option_value(p.options, IMAGE_REFRESH_OPTION));
+  if (interval == "10") return 10000;
+  if (interval == "30") return 30000;
+  if (interval == "60") return 60000;
+  if (interval == "300") return 300000;
   return 0;
 }
 
 inline bool image_card_timer_only_refresh(const ParsedCfg &p) {
-  (void) p;
-  return false;
+  return image_card_refresh_interval_ms(p) != 0 &&
+         normalize_image_refresh_mode(cfg_option_value(p.options, IMAGE_REFRESH_MODE_OPTION)) == "timer";
 }
 
 inline bool image_card_label_enabled(const ParsedCfg &p) {

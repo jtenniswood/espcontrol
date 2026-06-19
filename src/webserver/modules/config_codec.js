@@ -239,6 +239,9 @@ var IMAGE_ICON_OPTION = "image_icon";
 var IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
 var IMAGE_REFRESH_OPTION = "image_refresh";
 var IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
+var CAMERA_ATTACHMENT_ENTITY_OPTION = "camera_entity";
+var CAMERA_ATTACHMENT_MODAL_MODE_OPTION = "camera_modal_mode";
+var CAMERA_ATTACHMENT_TAP_OPTION = "camera_tap";
 var IMAGE_CARD_LIMIT = Math.max(0, parseInt(CFG && CFG.imageCardLimit != null ? CFG.imageCardLimit : 4, 10) || 0);
 var ALARM_ACTIONS = [
   { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Shield Lock" },
@@ -524,6 +527,14 @@ function normalizeImageOptions(options) {
   if (modalMode !== "fill") {
     out = setConfigOptionValue(out, IMAGE_MODAL_MODE_OPTION, modalMode);
   }
+  var refreshInterval = normalizeImageRefreshInterval(configOptionValue(options, IMAGE_REFRESH_OPTION));
+  if (refreshInterval !== "off") {
+    out = setConfigOptionValue(out, IMAGE_REFRESH_OPTION, refreshInterval);
+    var refreshMode = normalizeImageRefreshMode(configOptionValue(options, IMAGE_REFRESH_MODE_OPTION));
+    if (refreshMode !== "changes_timer") {
+      out = setConfigOptionValue(out, IMAGE_REFRESH_MODE_OPTION, refreshMode);
+    }
+  }
   return out;
 }
 
@@ -567,6 +578,60 @@ function setImageRefreshMode(b, value) {
     mode === "changes_timer" ? "" : mode
   );
   b.options = normalizeImageOptions(b.options);
+  return b.options;
+}
+
+function normalizeCameraAttachmentModalMode(value) {
+  return value === "fit" ? "fit" : "fill";
+}
+
+function normalizeCameraAttachmentTapMode(value) {
+  return value === "modal" ? "modal" : "action";
+}
+
+function cameraAttachmentEntity(b) {
+  return String(configOptionValue(b && b.options, CAMERA_ATTACHMENT_ENTITY_OPTION) || "").trim();
+}
+
+function cameraAttachmentModalMode(b) {
+  return normalizeCameraAttachmentModalMode(
+    configOptionValue(b && b.options, CAMERA_ATTACHMENT_MODAL_MODE_OPTION));
+}
+
+function cameraAttachmentTapMode(b) {
+  return normalizeCameraAttachmentTapMode(
+    configOptionValue(b && b.options, CAMERA_ATTACHMENT_TAP_OPTION));
+}
+
+function setCameraAttachmentEntity(b, entity) {
+  if (!b) return "";
+  b.options = setConfigOptionValue(
+    b.options,
+    CAMERA_ATTACHMENT_ENTITY_OPTION,
+    String(entity || "").trim()
+  );
+  return b.options;
+}
+
+function setCameraAttachmentModalMode(b, value) {
+  if (!b) return "";
+  var mode = normalizeCameraAttachmentModalMode(value);
+  b.options = setConfigOptionValue(
+    b.options,
+    CAMERA_ATTACHMENT_MODAL_MODE_OPTION,
+    mode === "fill" ? "" : mode
+  );
+  return b.options;
+}
+
+function setCameraAttachmentTapMode(b, value) {
+  if (!b) return "";
+  var mode = normalizeCameraAttachmentTapMode(value);
+  b.options = setConfigOptionValue(
+    b.options,
+    CAMERA_ATTACHMENT_TAP_OPTION,
+    mode === "action" ? "" : mode
+  );
   return b.options;
 }
 
