@@ -619,6 +619,64 @@ inline void subscribe_media_volume_state(MediaVolumeCtx *ctx) {
   );
 }
 
+inline void open_device_volume_modal(lv_obj_t *anchor,
+                                     esphome::media_player::MediaPlayer *player,
+                                     const lv_font_t *value_font,
+                                     const lv_font_t *number_font,
+                                     const lv_font_t *unit_font,
+                                     const lv_font_t *label_font,
+                                     const lv_font_t *icon_font,
+                                     int width_compensation_percent = 100,
+                                     std::function<bool()> mic_muted = nullptr,
+                                     std::function<void(bool)> set_mic_muted = nullptr) {
+  if (!player) return;
+  static MediaVolumeCtx *ctx = nullptr;
+  static esphome::media_player::MediaPlayer *subscribed_player = nullptr;
+  if (!ctx) {
+    ctx = new MediaVolumeCtx();
+    ctx->max_pct = 100;
+    ctx->accent_color = DEFAULT_SLIDER_COLOR;
+    ctx->secondary_color = DEFAULT_OFF_COLOR;
+    ctx->tertiary_color = DEFAULT_TERTIARY_COLOR;
+  }
+  if (subscribed_player != player) {
+    subscribed_player = player;
+    MediaVolumeCtx *callback_ctx = ctx;
+    player->add_on_state_callback([callback_ctx, player](esphome::media_player::MediaPlayerState) {
+      int pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
+      if (media_volume_pending_active(callback_ctx) && callback_ctx->pending_pct == pct) {
+        callback_ctx->pending_pct = -1;
+        callback_ctx->pending_until_ms = 0;
+      }
+      if (!media_volume_pending_active(callback_ctx)) {
+        callback_ctx->current_pct = pct;
+        media_volume_set_card_value(callback_ctx, pct);
+        media_volume_set_modal_value(callback_ctx, pct);
+      }
+    });
+  }
+  ctx->entity_id.clear();
+  ctx->label = "Device Volume";
+  ctx->btn = anchor;
+  ctx->current_pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
+  ctx->pending_pct = -1;
+  ctx->pending_until_ms = 0;
+  ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);
+  ctx->value_font = value_font;
+  ctx->number_font = number_font ? number_font : value_font;
+  ctx->unit_font = unit_font;
+  ctx->label_font = label_font;
+  ctx->icon_font = icon_font;
+  ctx->available = true;
+  ctx->mic_muted = mic_muted;
+  ctx->set_mic_muted = set_mic_muted;
+  ctx->apply_percent = [player](int pct) {
+    float volume = media_clamp_percent(pct) / 100.0f;
+    player->make_call().set_volume(volume).perform();
+  };
+  media_volume_open_modal(ctx);
+}
+
 inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
                                          lv_obj_t *slider,
                                          const std::string &entity_id) {

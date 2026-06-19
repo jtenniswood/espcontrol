@@ -105,7 +105,21 @@ lvgl:
                 text_color: 0xFFFFFF
           on_press:
             then:
-              - switch.toggle: master_mute_switch
+              - lambda: |-
+                  open_device_volume_modal(
+                    id(voice_clock_bar_mute_button),
+                    id(voice_media_player),
+                    id(font_number_value_large)->get_lv_font(),
+                    id(font_number_value_large)->get_lv_font(),
+                    id(font_text_body)->get_lv_font(),
+                    id(font_text_body)->get_lv_font(),
+                    id(font_icon_main)->get_lv_font(),
+                    100,
+                    []() -> bool { return id(master_mute_switch).state; },
+                    [](bool muted) {
+                      if (muted) id(master_mute_switch).turn_on();
+                      else id(master_mute_switch).turn_off();
+                    });
 
       # Network status (tappable, right side of clock bar)
       - obj:

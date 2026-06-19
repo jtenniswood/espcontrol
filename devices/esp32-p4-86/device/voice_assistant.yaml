@@ -748,6 +748,8 @@ select:
       - Hey Jarvis
       - Hey Mycroft
     set_action:
+      - lambda: |-
+          id(voice_wake_word_select).publish_state(x);
       - script.execute: apply_restored_voice_wake_word
 
   - platform: template
@@ -1058,6 +1060,7 @@ switch:
           id: voice_assistant_stage
           state: Muted
       - script.execute: refresh_voice_clock_bar_mute_icon
+      - lambda: media_volume_refresh_active_mic_button();
     turn_off_action:
       - lambda: id(voice_speaker).set_pause_state(false);
       - text_sensor.template.publish:
@@ -1065,6 +1068,7 @@ switch:
           state: Idle
       - script.execute: apply_restored_voice_wake_word
       - script.execute: refresh_voice_clock_bar_mute_icon
+      - lambda: media_volume_refresh_active_mic_button();
 
   - platform: template
     id: wake_sound

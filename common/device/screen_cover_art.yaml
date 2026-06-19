@@ -39,6 +39,9 @@ globals:
   - id: cover_art_loaded_url
     type: std::string
     initial_value: '""'
+  - id: cover_art_last_good_url
+    type: std::string
+    initial_value: '""'
   - id: cover_art_refresh_needed
     type: bool
     initial_value: 'false'
@@ -531,9 +534,11 @@ script:
                 bool applied_current_url = applied_url == id(cover_art_url);
                 if (applied_current_url) {
                   id(cover_art_loaded_url) = id(cover_art_url);
+                  id(cover_art_last_good_url) = id(cover_art_url);
                   id(cover_art_refresh_needed) = false;
                 } else {
                   id(cover_art_loaded_url) = applied_url;
+                  id(cover_art_last_good_url) = applied_url;
                   id(cover_art_refresh_needed) = true;
                 }
                 id(cover_art_download_url).clear();
@@ -773,6 +778,7 @@ script:
           id(cover_art_artwork_pending_count) = 0;
           id(cover_art_request_id)++;
           id(cover_art_loaded_url).clear();
+          id(cover_art_last_good_url).clear();
           id(cover_art_refresh_needed) = false;
           id(cover_art_retry_url).clear();
           id(cover_art_fallback_url).clear();
@@ -998,6 +1004,7 @@ script:
 
           ESP_LOGI("cover_art", "Using cached artwork URL (%u chars)", (unsigned) chosen.size());
           id(cover_art_url) = chosen;
+          id(cover_art_last_good_url) = chosen;
           id(cover_art_retry_url).clear();
           id(cover_art_retry_count) = 0;
           if (id(cover_art_loaded_url).empty()) {
@@ -1419,6 +1426,23 @@ script:
               id(cover_art_deferred_download).execute();
             }
             id(cover_art_show_track_overlay).execute();
+            return;
+          }
+
+          std::string previous = id(cover_art_last_good_url);
+          if (previous.empty()) previous = id(cover_art_loaded_url);
+          if (!previous.empty() && id(cover_art_media_playing)) {
+            ESP_LOGI("cover_art", "Reusing last artwork URL while waiting for Home Assistant artwork attributes");
+            id(cover_art_url) = previous;
+            id(cover_art_refresh_needed) = false;
+            id(cover_art_retry_url).clear();
+            id(cover_art_retry_count) = 0;
+            if (id(cover_art_screensaver_active)) {
+              if (!id(cover_art_image_available) || id(cover_art_loaded_url) != previous) {
+                id(cover_art_deferred_download).execute();
+              }
+              id(cover_art_show_track_overlay).execute();
+            }
             return;
           }
 

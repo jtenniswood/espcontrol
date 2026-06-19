@@ -146,15 +146,10 @@ script:
           lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,
                        -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);
           lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
-          if (id(master_mute_switch).state) {
-            lv_label_set_text(id(voice_clock_bar_mute_icon_label), "\U000F036D");
-            lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),
-                                        lv_color_hex(0xFF3333), LV_PART_MAIN);
-          } else {
-            lv_label_set_text(id(voice_clock_bar_mute_icon_label), "\U000F04C3");
-            lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),
-                                        lv_color_hex(0xFFFFFF), LV_PART_MAIN);
-          }
+          lv_label_set_text(id(voice_clock_bar_mute_icon_label), "\U000F04C3");
+          lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),
+                                      lv_color_hex(id(master_mute_switch).state ? 0xFF3333 : 0xFFFFFF),
+                                      LV_PART_MAIN);
           #endif
           if (!visible) return;
 
