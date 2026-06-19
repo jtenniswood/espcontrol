@@ -383,6 +383,15 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_internal_relay_card(s, p);
     return;
   }
+  if (p.type == "local") {
+    setup_local_action_card(s, p);
+    return;
+  }
+  if (p.type == "local_sensor") {
+    if (p.entity.empty()) return;
+    setup_local_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
   if (p.type == "action") {
     if (action_card_option_select(p)) {
       setup_option_select_card(
@@ -1055,6 +1064,9 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "local_sensor") {
+      continue;
+    }
     if (p.type == "action") {
       if (action_card_option_select(p)) {
         if (!p.entity.empty()) {
@@ -1119,6 +1131,9 @@ inline void grid_phase2(
         subscribe_todo_state(ctx);
         subscribe_todo_friendly_name(ctx);
       }
+      continue;
+    }
+    if (p.type == "local") {
       continue;
     }
     if (p.type == "media") {
@@ -1862,6 +1877,16 @@ inline void grid_phase2(
         }
         continue;
       }
+      if (sb_cfg.type == "local") {
+        if (!sb_cfg.entity.empty()) {
+          std::string *key = new std::string(sb_cfg.entity);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            std::string *k = (std::string *)lv_event_get_user_data(e);
+            if (k) send_local_action(*k);
+          }, LV_EVENT_CLICKED, key);
+        }
+        continue;
+      }
       if (sb_cfg.type == "light_control") {
         if (!sb_cfg.entity.empty()) {
           LightControlCtx *ctx = create_light_control_context(
@@ -1917,6 +1942,9 @@ inline void grid_phase2(
             if (c && !c->key.empty()) send_internal_relay_action(c->key, c->push_mode);
           }, LV_EVENT_CLICKED, ctx);
         }
+        continue;
+      }
+      if (sb_cfg.type == "local_sensor") {
         continue;
       }
       if (sb_cfg.type == "light_temperature") {
