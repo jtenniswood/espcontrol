@@ -507,17 +507,19 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
 
 inline void subscribe_media_state(lv_obj_t *btn_ptr,
                                   lv_obj_t *status_lbl,
-                                  const std::string &entity_id) {
+                                  const std::string &entity_id,
+                                  std::function<void()> after_checked_state_sync = nullptr) {
   register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
-      [btn_ptr, status_lbl](esphome::StringRef state) {
+      [btn_ptr, status_lbl, after_checked_state_sync](esphome::StringRef state) {
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         bool unavailable = ha_state_unavailable_ref(state);
         apply_control_availability(btn_ptr, btn_ptr, !unavailable);
         bool playing = state_text == "playing";
         set_card_checked_state(btn_ptr, playing);
+        if (after_checked_state_sync) after_checked_state_sync();
         if (status_lbl) {
           std::string label = media_status_text(state_text);
           lv_label_set_text(status_lbl, label.c_str());
@@ -554,7 +556,14 @@ inline void subscribe_media_now_playing_state(MediaNowPlayingCtx *ctx,
     subscribe_media_slider_state(lv_obj_get_parent(ctx->progress_slider), ctx->progress_slider, entity_id);
   }
   if (ctx && ctx->play_pause_background && ctx->btn) {
-    subscribe_media_state(ctx->btn, nullptr, entity_id);
+    std::function<void()> preserve_cover_art_text = nullptr;
+    if (ctx->cover_art_enabled) {
+      preserve_cover_art_text = [ctx]() {
+        media_cover_art_configure_text(ctx->title_lbl);
+        media_cover_art_configure_text(ctx->artist_lbl);
+      };
+    }
+    subscribe_media_state(ctx->btn, nullptr, entity_id, preserve_cover_art_text);
   }
 }
 
