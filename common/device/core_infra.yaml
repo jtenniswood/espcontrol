@@ -179,4 +179,24 @@ number:
       sorting_group_id: sg_connectivity
     set_action:
       - lambda: |-
+          std::string current = id(cover_art_home_assistant_base_url);
+          if (!current.empty()) {
+            size_t host_start = current.find("://");
+            host_start = host_start == std::string::npos ? 0 : host_start + 3;
+            std::string host = current.substr(host_start);
+            if (!host.empty() && host.front() == '[') {
+              size_t host_end = host.find(']');
+              if (host_end != std::string::npos) host = host.substr(0, host_end + 1);
+            } else {
+              size_t port_separator = host.find(':');
+              if (port_separator != std::string::npos) host = host.substr(0, port_separator);
+            }
+            if (!host.empty()) {
+              int port = static_cast<int>(x);
+              id(cover_art_home_assistant_base_url) =
+                id(cover_art_home_assistant_artwork_protocol).current_option() + "://" + host + ":" + std::to_string(port);
+              ESP_LOGI("api", "Using Home Assistant base URL: %s",
+                       id(cover_art_home_assistant_base_url).c_str());
+            }
+          }
           refresh_image_cards();

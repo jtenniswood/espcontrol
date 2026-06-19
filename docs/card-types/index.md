@@ -65,7 +65,7 @@ Some names in the setup page group several related modes:
 | **Date & Time** | Clock, Date, Time & Date, World Clock |
 | **Media** | Play/Pause, Previous, Next, Volume, Track Position, Now Playing |
 | **Cover** | Modal, Position, Tilt, Toggle, Open, Close, Stop, Set Position |
-| **Subpage** | Generic, Lights, Climate, Presence, Media |
+| **Subpage** | Generic, Switch, Lights, Climate, Presence, Media, Alarm, Cover, Garage Door, Lock, Vacuum, Weather, Sensor, Camera / Image |
 
 ## Permissions
 

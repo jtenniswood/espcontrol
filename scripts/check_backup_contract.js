@@ -86,6 +86,7 @@ const v2 = hooks.createBackupConfig({
     timezone: "Europe/London (GMT+0)",
     clock_bar: true,
     cover_art_hide_external_input: true,
+    home_assistant_artwork_port: 80,
   },
   screen: { brightness_day: 80, schedule_mode: "clock" },
 });
@@ -114,6 +115,7 @@ assert.deepStrictEqual(plain(v2.subpage_objects["1"]), {
 assert.strictEqual(v2.buttons[1].type, "weather", "exports canonical card types");
 assert.strictEqual(v2.buttons[1].precision, "tomorrow", "exports migrated card details");
 assert.strictEqual(v2.settings.cover_art_hide_external_input, true, "exports cover art external-input setting");
+assert.strictEqual(v2.settings.home_assistant_artwork_port, 80, "exports Home Assistant artwork port setting");
 
 const normalizedV1 = hooks.normalizeBackupConfig({
   version: 1,
