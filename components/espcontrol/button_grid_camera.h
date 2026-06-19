@@ -43,8 +43,10 @@ enum class CameraAttachmentTapMode {
 struct CameraAttachmentConfig {
   std::string entity_id;
   CameraAttachmentTapMode tap_mode = CameraAttachmentTapMode::ACTION;
+  uint32_t refresh_interval_ms = 0;
   bool modal_fit = false;
   bool diagnostics_enabled = false;
+  bool timer_only = false;
 };
 
 struct ImageCardCtx {
@@ -1881,8 +1883,8 @@ inline bool bind_camera_attachment(BtnSlot &s, lv_obj_t *widget,
   ctx->base_url_provider = cfg.home_assistant_base_url;
   ctx->suspend_display_takeover = cfg.suspend_display_takeover;
   ctx->resume_display_takeover = cfg.resume_display_takeover;
-  ctx->refresh_interval_ms = 0;
-  ctx->timer_only = false;
+  ctx->refresh_interval_ms = camera.refresh_interval_ms;
+  ctx->timer_only = camera.timer_only;
   ctx->modal_fit = camera.modal_fit;
   ctx->diagnostics_enabled = camera.diagnostics_enabled || cfg.image_card_diagnostics;
   ctx->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
@@ -1951,6 +1953,8 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
     : CameraAttachmentTapMode::ACTION;
   camera.modal_fit = image_card_modal_fit_enabled(p);
   camera.diagnostics_enabled = cfg.image_card_diagnostics;
+  camera.refresh_interval_ms = image_card_refresh_interval_ms(p);
+  camera.timer_only = image_card_timer_only_refresh(p);
   if (bind_camera_attachment(s, widget, camera, cfg)) {
     lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   }
