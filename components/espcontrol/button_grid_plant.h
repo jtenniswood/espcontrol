@@ -15,6 +15,7 @@ struct PlantCardCtx {
   std::string problem;
   std::string value;
   std::string unit;
+  std::string friendly_name_label;
   bool available = false;
   bool use_friendly_name_label = false;
 };
@@ -114,7 +115,12 @@ inline void apply_plant_metric_card(PlantCardCtx *ctx) {
   if (ctx->btn) apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);
   if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, ctx->available && !ctx->value.empty() ? ctx->value.c_str() : "--");
   if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, ctx->available ? ctx->unit.c_str() : plant_metric_fallback_unit(ctx->mode));
-  if (ctx->text_lbl) set_wrapped_button_label_text(ctx->text_lbl, ctx->label);
+  if (ctx->text_lbl) {
+    const std::string &label = ctx->use_friendly_name_label && !ctx->friendly_name_label.empty()
+      ? ctx->friendly_name_label
+      : ctx->label;
+    set_wrapped_button_label_text(ctx->text_lbl, label);
+  }
   notify_dashboard_content_changed();
 }
 
@@ -125,6 +131,7 @@ inline void subscribe_plant_metric_friendly_name(PlantCardCtx *ctx) {
     std::string("friendly_name"),
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef name) {
       ctx->label = string_ref_limited(name, HA_FRIENDLY_NAME_MAX_LEN);
+      ctx->friendly_name_label = ctx->label;
       apply_plant_metric_card(ctx);
     })
   );
