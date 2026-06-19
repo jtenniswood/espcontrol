@@ -1892,8 +1892,8 @@ inline bool bind_camera_attachment(BtnSlot &s, lv_obj_t *widget,
   image_card_log_diagnostics(ctx, "bind-camera-attachment");
   image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
   image_card_set_loading_state(ctx, "Loading", true);
-  lv_obj_set_user_data(s.btn, ctx);
   if (camera.tap_mode == CameraAttachmentTapMode::MODAL) {
+    lv_obj_set_user_data(s.btn, ctx);
     lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
       ImageCardCtx *ctx = static_cast<ImageCardCtx *>(lv_event_get_user_data(e));
