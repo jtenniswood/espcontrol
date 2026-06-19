@@ -482,6 +482,28 @@ async function assertSettingsPage(page, label, options = {}) {
     0,
     `${label}: sensor cover art override should not render`
   );
+  const homeAssistantSettingsCard = page.locator("#sp-settings .card").filter({
+    has: page.locator(".card-header h3", { hasText: /^Home Assistant Settings$/ }),
+  }).first();
+  assert(await homeAssistantSettingsCard.isVisible(), `${label}: Home Assistant settings card should render`);
+  assert(
+    !(await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible()),
+    `${label}: Home Assistant settings card should be collapsed by default`
+  );
+  await homeAssistantSettingsCard.locator(".card-header").click();
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
+    `${label}: Home Assistant port field should render in Home Assistant settings`
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").inputValue(),
+    "8123",
+    `${label}: Home Assistant port field should default to 8123`
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port.sp-input--no-stepper").count() === 1,
+    `${label}: Home Assistant port field should hide browser stepper controls`
+  );
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   assert(!overflow, `${label}: settings page has horizontal overflow`);
   await page.getByRole("tab", { name: "Screen" }).click();
@@ -887,20 +909,18 @@ async function assertBackupImportSmoke(page, posts, testCase) {
 
 async function entitySuggestionValues(page, inputSelector, query = "light", expectedValues = []) {
   await page.locator(inputSelector).fill(query);
-  await page.waitForFunction(({ selector, query, expectedValues }) => {
+  const suggestions = await page.waitForFunction(({ selector, query, expectedValues }) => {
     const input = document.querySelector(selector);
     const normalizedQuery = String(query || "").toLowerCase();
     if (!input || String(input.value || "").toLowerCase() !== normalizedQuery) return false;
     const options = Array.from(input.parentElement.querySelectorAll(".sp-entity-dropdown.sp-open .sp-entity-option"));
     if (!options.length) return false;
     const values = options.map((option) => String(option.textContent || ""));
-    return options.every((option) => String(option.textContent || "").toLowerCase().includes(normalizedQuery)) &&
-      expectedValues.every((value) => values.indexOf(value) !== -1);
+    if (!options.every((option) => String(option.textContent || "").toLowerCase().includes(normalizedQuery))) return false;
+    if (!expectedValues.every((value) => values.indexOf(value) !== -1)) return false;
+    return values;
   }, { selector: inputSelector, query, expectedValues });
-  return page.locator(inputSelector).evaluate((input) => {
-    return Array.from(input.parentElement.querySelectorAll(".sp-entity-dropdown.sp-open .sp-entity-option"))
-      .map((option) => option.textContent || "");
-  });
+  return suggestions.jsonValue();
 }
 
 async function assertEditAndApplySmoke(page, posts, errors) {

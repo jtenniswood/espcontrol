@@ -1,12 +1,11 @@
 name: Firmware Compile
 
 on:
-  pull_request:
   workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ESPHOME_VERSION: 2026.5.3
+  ESPHOME_VERSION: 2026.6.0
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
 permissions:
@@ -53,7 +52,7 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
         with:
           sparse-checkout: |
             common/assets/*.yaml
@@ -76,6 +75,10 @@ jobs:
     runs-on: self-hosted
     strategy:
       fail-fast: false
+      # Keep self-hosted firmware compiles serialized without using a job-level
+      # concurrency group. GitHub Actions only allows one running and one
+      # pending job per concurrency group, so sharing one group across matrix
+      # children cancels queued device builds before they run.
       max-parallel: 1
       matrix: ${{ fromJSON(needs.device-matrix.outputs.matrix) }}
     steps:
@@ -84,7 +87,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
         with:
           path: espcontrol-${{ matrix.slug }}
 

@@ -138,6 +138,7 @@
           },
           "deviceFontPackageKey": "fonts_device",
           "networkCoprocessor": true,
+          "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
@@ -280,7 +281,8 @@
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\""
           },
-          "deviceFontPackageKey": "fonts_lg"
+          "deviceFontPackageKey": "fonts_lg",
+          "esp32C6FirmwareUpdate": true
         }
       }
     },
@@ -418,7 +420,8 @@
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\""
           },
-          "deviceFontPackageKey": "fonts_device"
+          "deviceFontPackageKey": "fonts_device",
+          "esp32C6FirmwareUpdate": true
         }
       }
     },
@@ -562,6 +565,7 @@
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,
           "networkCoprocessor": true,
+          "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
           "backlightPwmFrequency": {
             "wifi": "100Hz",

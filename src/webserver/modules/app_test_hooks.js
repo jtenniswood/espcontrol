@@ -228,6 +228,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     buttonConfigNeedsMigration: buttonConfigNeedsMigration,
     subpageConfigNeedsMigration: subpageConfigNeedsMigration,
     normalizeTemperatureUnit: normalizeTemperatureUnit,
+    normalizeHomeAssistantArtworkPort: normalizeHomeAssistantArtworkPort,
     defaultTimezoneOptions: defaultTimezoneOptions,
     timezoneOptionsWithFallback: timezoneOptionsWithFallback,
     normalizeScreensaverAction: normalizeScreensaverAction,
@@ -318,6 +319,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     coverArtHideExternalInputPostUrls: coverArtHideExternalInputPostUrls,
     coverArtDelayPostUrls: coverArtDelayPostUrls,
     coverArtTrackOverlayDurationPostUrls: coverArtTrackOverlayDurationPostUrls,
+    homeAssistantArtworkPortPostUrls: homeAssistantArtworkPortPostUrls,
     firmwareUpdateControlsVisibleFor: function (transport, supported) {
       var oldTransport = state.networkTransport;
       var oldSupported = state.firmwareUpdateControlsSupported;
