@@ -1831,12 +1831,19 @@ script:
           auto cover_art_conditions = std::make_shared<std::vector<std::pair<std::string, std::string>>>(
               parse_cover_art_conditions());
           auto cover_art_condition_matches = std::make_shared<std::vector<bool>>(cover_art_conditions->size(), false);
-          id(cover_art_attribute_conditions_match) = cover_art_conditions->empty();
+          const bool initial_conditions_match = cover_art_conditions->empty();
+          const bool conditions_match_changed =
+              id(cover_art_attribute_conditions_match) != initial_conditions_match;
+          id(cover_art_attribute_conditions_match) = initial_conditions_match;
           if (cover_art_conditions->empty()) {
             ESP_LOGI("cover_art", "No cover art attribute conditions configured");
           } else {
             ESP_LOGI("cover_art", "Watching %u cover art attribute condition(s)",
                      (unsigned) cover_art_conditions->size());
+            id(cover_art_apply_external_input_policy).execute();
+          }
+          if (conditions_match_changed && initial_conditions_match) {
+            id(cover_art_apply_external_input_policy).execute();
           }
 
           std::function<void()> apply_cover_art_condition_policy =
