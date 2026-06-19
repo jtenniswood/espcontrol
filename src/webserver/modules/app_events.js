@@ -15,7 +15,7 @@ var SSE_ALIAS_GROUPS = {
   coverArtDelay: ["number-screen_saver__cover_art_delay", "number-screen_saver_cover_art_delay", "number-cover_art_delay"],
   trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration", "number-screen_saver__show_track_overlay"],
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
-  screensaverPinRequired: ["switch-screensaver__pin_required", "switch-screensaver_pin_required"],
+  screensaverPinRequired: ["switch-screensaver__pin_required", "switch-screensaver_pin_required", "switch-screensaver__require_pin_after_wake"],
   screensaverPin: ["text-screensaver__pin", "text-screensaver_pin"],
   homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],

@@ -250,6 +250,7 @@ function importConfig() {
         var importedClockBrightnessNight = importedSettings.clockBrightnessNight;
         postScreensaverAction(importedScreensaverAction);
         postSwitch(entityName("screen_saver_clock"), importedScreensaverAction === "clock");
+        postText(entityName("screensaver_pin"), "");
         postSwitch(entityName("screensaver_pin_required"), importedSettings.screensaverPinRequired);
         postClockBrightnessDay(importedClockBrightnessDay);
         postClockBrightnessNight(importedClockBrightnessNight);
