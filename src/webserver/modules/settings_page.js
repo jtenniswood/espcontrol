@@ -679,6 +679,7 @@ function buildSettingsPage(parent) {
     coverArtBody.appendChild(primaryViewField);
     els.setPrimaryView = primaryViewSelect;
 
+    var coverArtEntityOptions = condField();
     var coverArtOptions = condField();
     var coverArtAdvancedBody = document.createElement("div");
 
@@ -691,11 +692,13 @@ function buildSettingsPage(parent) {
       "e.g. media_player.living_room",
       ["media_player"]);
     coverArtEntityField.appendChild(coverArtEntityInp);
-    coverArtOptions.appendChild(coverArtEntityField);
+    coverArtEntityOptions.appendChild(coverArtEntityField);
     bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
       onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
     });
     els.setCoverArtMediaPlayer = coverArtEntityInp;
+    els.setCoverArtEntityOptions = coverArtEntityOptions;
+    coverArtBody.appendChild(coverArtEntityOptions);
 
     var coverArtDelayField = document.createElement("div");
     coverArtDelayField.className = "sp-field";
@@ -1190,10 +1193,19 @@ function syncMediaPlayerSleepPreventionUi() {
   }
 }
 
+function syncCoverArtMediaPlayerEntityUi() {
+  if (els.setCoverArtEntityOptions) {
+    els.setCoverArtEntityOptions.classList.toggle(
+      "sp-visible",
+      !!state.coverArtScreensaverOn || state.primaryView === "media");
+  }
+}
+
 function syncCoverArtScreensaverUi() {
   if (els.setCoverArtToggle) {
     els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
   }
+  syncCoverArtMediaPlayerEntityUi();
   if (els.setCoverArtOptions) {
     els.setCoverArtOptions.classList.toggle(
       "sp-visible",
@@ -1239,6 +1251,7 @@ function syncPrimaryViewUi() {
   if (els.setPrimaryView) {
     els.setPrimaryView.value = state.primaryView;
   }
+  syncCoverArtMediaPlayerEntityUi();
 }
 
 function syncOptionalClockBrightness(field, previousField, display) {
