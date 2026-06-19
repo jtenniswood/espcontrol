@@ -41,6 +41,48 @@ inline bool ha_subscription_callback_generation_valid(uint32_t generation) {
   return generation == 0 || generation == ha_subscription_generation();
 }
 
+struct HaStateSubscriptionRef {
+  std::string entity_id;
+  std::string attribute;
+  std::shared_ptr<HomeAssistantStateCallback> callback;
+  uint32_t generation = 0;
+};
+
+inline std::vector<HaStateSubscriptionRef> &ha_state_subscription_refs() {
+  static std::vector<HaStateSubscriptionRef> refs;
+  return refs;
+}
+
+inline std::shared_ptr<HomeAssistantStateCallback> ha_state_subscription_callback_ref(
+    const std::string &entity_id,
+    const std::string &attribute,
+    HomeAssistantStateCallback callback,
+    uint32_t generation,
+    bool *already_subscribed) {
+  std::vector<HaStateSubscriptionRef> &refs = ha_state_subscription_refs();
+  for (auto &ref : refs) {
+    if (ref.entity_id == entity_id && ref.attribute == attribute) {
+      *(ref.callback) = std::move(callback);
+      ref.generation = generation;
+      if (already_subscribed) *already_subscribed = true;
+      return ref.callback;
+    }
+  }
+  auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
+  refs.push_back({entity_id, attribute, callback_ref, generation});
+  if (already_subscribed) *already_subscribed = false;
+  return callback_ref;
+}
+
+inline bool ha_state_subscription_generation_valid(
+    const std::shared_ptr<HomeAssistantStateCallback> &callback_ref) {
+  if (!callback_ref) return false;
+  for (const auto &ref : ha_state_subscription_refs()) {
+    if (ref.callback == callback_ref) return ha_subscription_callback_generation_valid(ref.generation);
+  }
+  return false;
+}
+
 inline bool ha_api_available() {
   return esphome::api::global_api_server != nullptr;
 }
@@ -260,12 +302,15 @@ inline bool ha_cancel_action_response_callback(uint32_t call_id, const char *err
 inline bool ha_subscribe_state(const std::string &entity_id,
                                HomeAssistantStateCallback callback) {
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
-  auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
   uint32_t generation = ha_subscription_callback_generation_scope();
+  bool already_subscribed = false;
+  auto callback_ref = ha_state_subscription_callback_ref(
+    entity_id, std::string(), std::move(callback), generation, &already_subscribed);
+  if (already_subscribed) return true;
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, {},
-    [callback_ref, generation](esphome::StringRef state) {
-      if (!ha_subscription_callback_generation_valid(generation)) return;
+    [callback_ref](esphome::StringRef state) {
+      if (!ha_state_subscription_generation_valid(callback_ref)) return;
       ha_invoke_state_callback(callback_ref, state);
     });
   return true;
@@ -295,12 +340,15 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
                                    const std::string &attribute,
                                    HomeAssistantStateCallback callback) {
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
-  auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
   uint32_t generation = ha_subscription_callback_generation_scope();
+  bool already_subscribed = false;
+  auto callback_ref = ha_state_subscription_callback_ref(
+    entity_id, attribute, std::move(callback), generation, &already_subscribed);
+  if (already_subscribed) return true;
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, attribute,
-    [callback_ref, generation](esphome::StringRef state) {
-      if (!ha_subscription_callback_generation_valid(generation)) return;
+    [callback_ref](esphome::StringRef state) {
+      if (!ha_state_subscription_generation_valid(callback_ref)) return;
       ha_invoke_state_callback(callback_ref, state);
     });
   return true;
