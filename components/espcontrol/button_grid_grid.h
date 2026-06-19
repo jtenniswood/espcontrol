@@ -743,8 +743,10 @@ inline void grid_phase1(
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
-  for (int i = 0; i < NS; i++)
+  for (int i = 0; i < NS; i++) {
+    reset_card_slot_dynamic_children(slots[i]);
     lv_obj_add_flag(slots[i].btn, LV_OBJ_FLAG_HIDDEN);
+  }
   configure_grid_layout(main_page_obj, NS, COLS);
   int ROWS = (NS + COLS - 1) / COLS;
   if (NS != cfg.num_slots) {
