@@ -93,6 +93,9 @@ assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.trackOverlayDuration), 
   "number-track_overlay_duration",
   "number-screen_saver__show_track_overlay",
 ], "cover art track-overlay SSE aliases are registered together");
+assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.homeAssistantArtworkPort), [
+  "number-home_assistant_artwork_port",
+], "Home Assistant artwork port SSE aliases are registered together");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"
@@ -126,6 +129,10 @@ assert.deepStrictEqual(Array.from(hooks.coverArtTrackOverlayDurationPostUrls(15)
   "/number/screen_saver__show_track_overlay/set?value=15",
   "/number/Screen%20Saver%3A%20Show%20Track%20Overlay/set?value=15",
 ], "cover art track-overlay posts include all firmware object id aliases");
+assert.deepStrictEqual(Array.from(hooks.homeAssistantArtworkPortPostUrls(80)), [
+  "/number/home_assistant_artwork_port/set?value=80",
+  "/number/Home%20Assistant%20Artwork%20Port/set?value=80",
+], "Home Assistant artwork port posts include object id and entity name fallbacks");
 assert.strictEqual(hooks.clockBarVisibleInPreviewFor(true, "off"), true, "clock bar preview is visible when enabled");
 assert.strictEqual(hooks.clockBarVisibleInPreviewFor(true, "dim"), true, "clock bar preview stays visible for dimmed screen saver");
 assert.strictEqual(hooks.clockBarVisibleInPreviewFor(true, "clock"), true, "clock bar preview stays visible when clock screen saver is configured");
@@ -354,6 +361,10 @@ assert(!hooks.buttonTypeRuntimeSpec("todo"), "todo card type is not registered")
 
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "\u00b0F");
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "\u00b0C");
+assert.strictEqual(hooks.normalizeHomeAssistantArtworkPort("80"), 80);
+assert.strictEqual(hooks.normalizeHomeAssistantArtworkPort(""), 8123);
+assert.strictEqual(hooks.normalizeHomeAssistantArtworkPort(0), 1);
+assert.strictEqual(hooks.normalizeHomeAssistantArtworkPort(70000), 65535);
 const climatePreviewButton = {
   entity: "climate.home",
   label: "Home",

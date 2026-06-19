@@ -161,6 +161,10 @@ assert.strictEqual(layoutPlan.buttons[1].entity, "light.kitchen", "backup layout
 assert.strictEqual(model.normalizeTemperatureUnit("fahrenheit"), "\u00B0F", "temperature unit normalization");
 assert.strictEqual(model.normalizeScheduleWakeTimeout(1), 10, "wake timeout minimum");
 assert.strictEqual(model.normalizeScheduleClockBrightness(0), 10, "schedule clock brightness fallback");
+assert.strictEqual(model.normalizeHomeAssistantArtworkPort("80"), 80, "Home Assistant artwork port accepts custom port");
+assert.strictEqual(model.normalizeHomeAssistantArtworkPort(""), 8123, "Home Assistant artwork port defaults to 8123");
+assert.strictEqual(model.normalizeHomeAssistantArtworkPort(0), 1, "Home Assistant artwork port clamps low values");
+assert.strictEqual(model.normalizeHomeAssistantArtworkPort(70000), 65535, "Home Assistant artwork port clamps high values");
 assert.deepStrictEqual(
   plain(model.normalizeBackupScreenSettings({
     brightness_day: "88",
@@ -212,6 +216,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   screensaver_action: "Screen Dimmed",
   screensaver_pin_required: true,
   cover_art_hide_external_input: true,
+  home_assistant_artwork_port: "80",
   clock_brightness_day: 44,
   clock_brightness_night: 22,
   screen_rotation: "90",
@@ -224,6 +229,7 @@ const panelSettings = model.normalizeBackupPanelSettings({
   ntpServer1: "0.pool.ntp.org",
   ntpServer2: "1.pool.ntp.org",
   ntpServer3: "2.pool.ntp.org",
+  coverArtHomeAssistantPort: 8123,
   screenRotationOptions: ["0", "90", "180", "270"],
 });
 assert.strictEqual(panelSettings.temperatureUnit, "\u00B0C", "panel temperature unit normalizes");
@@ -238,6 +244,7 @@ assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mo
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
 assert.strictEqual(panelSettings.screensaverPinRequired, true, "panel screensaver PIN flag imports");
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
+assert.strictEqual(panelSettings.coverArtHomeAssistantPort, 80, "panel Home Assistant artwork port imports");
 assert.strictEqual(
   model.normalizeBackupPanelSettings({
     media_player_sleep_prevention_entity: "media_player.living",
@@ -250,6 +257,7 @@ assert.strictEqual(
     ntpServer1: "0.pool.ntp.org",
     ntpServer2: "1.pool.ntp.org",
     ntpServer3: "2.pool.ntp.org",
+    coverArtHomeAssistantPort: 8123,
     screenRotationOptions: ["0", "90", "180", "270"],
   }).coverArtMediaPlayerEntity,
   "media_player.living",
@@ -269,9 +277,11 @@ const legacyPanelSettings = model.normalizeBackupPanelSettings({}, {
   ntpServer1: "0.pool.ntp.org",
   ntpServer2: "1.pool.ntp.org",
   ntpServer3: "2.pool.ntp.org",
+  coverArtHomeAssistantPort: 80,
   screenRotationOptions: ["0", "90", "180", "270"],
 });
 assert.strictEqual(legacyPanelSettings.clockBarTime, true, "legacy panel settings default clock bar time on");
 assert.strictEqual(legacyPanelSettings.coverArtHideExternalInput, true, "legacy panel settings default cover art external-input setting on");
+assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantPort, 80, "legacy panel settings keep current Home Assistant artwork port");
 
 console.log("Model contract tests passed.");

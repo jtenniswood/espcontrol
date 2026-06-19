@@ -17,6 +17,7 @@ var SSE_ALIAS_GROUPS = {
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
   screensaverPinRequired: ["switch-screensaver__pin_required", "switch-screensaver_pin_required"],
   screensaverPin: ["text-screensaver__pin", "text-screensaver_pin"],
+  homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
   scheduleWakeBrightness: ["number-screen__schedule_wake_brightness", "number-screen_schedule_wake_brightness", "number-schedule_wake_brightness"],
@@ -274,6 +275,10 @@ function connectEvents() {
       state.coverArtTrackOverlayDuration = parseFloat(val) || 0;
       syncCoverArtScreensaverUi();
     },
+    "number-home_assistant_artwork_port": function (val) {
+      state.coverArtHomeAssistantPort = normalizeHomeAssistantArtworkPort(val);
+      syncCoverArtScreensaverUi();
+    },
     "text-screensaver_mode": function (val) {
       state._screensaverModeReceived = true;
       state.screensaverMode = val === "sensor" || val === "timer" || val === "disabled" ? val : "disabled";
@@ -480,6 +485,7 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, sseHandlers["switch-screen_saver__hide_cover_art_on_external_input"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screensaverPinRequired, sseHandlers["switch-screensaver__pin_required"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screensaverPin, sseHandlers["text-screensaver__pin"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, sseHandlers["number-home_assistant_artwork_port"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleTrigger, sseHandlers["text-screen__schedule_trigger"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, sseHandlers["number-screen__schedule_wake_timeout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeBrightness, sseHandlers["number-screen__schedule_wake_brightness"]);

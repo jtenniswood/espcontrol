@@ -88,6 +88,7 @@ const v2 = hooks.createBackupConfig({
     cover_art_hide_external_input: true,
     screensaver_pin_required: true,
     screensaver_pin: "1234",
+    home_assistant_artwork_port: 80,
   },
   screen: { brightness_day: 80, schedule_mode: "clock" },
 });
@@ -118,6 +119,7 @@ assert.strictEqual(v2.buttons[1].precision, "tomorrow", "exports migrated card d
 assert.strictEqual(v2.settings.cover_art_hide_external_input, true, "exports cover art external-input setting");
 assert.strictEqual(v2.settings.screensaver_pin_required, true, "exports screensaver PIN required flag");
 assert(!Object.prototype.hasOwnProperty.call(v2.settings, "screensaver_pin"), "does not export screensaver PIN");
+assert.strictEqual(v2.settings.home_assistant_artwork_port, 80, "exports Home Assistant artwork port setting");
 
 const normalizedV1 = hooks.normalizeBackupConfig({
   version: 1,
