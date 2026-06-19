@@ -680,6 +680,7 @@ function buildSettingsPage(parent) {
     els.setPrimaryView = primaryViewSelect;
 
     var coverArtEntityOptions = condField();
+    var coverArtScreensaverOptions = condField();
     var coverArtOptions = condField();
     var coverArtAdvancedBody = document.createElement("div");
 
@@ -724,7 +725,9 @@ function buildSettingsPage(parent) {
       postCoverArtDelay(state.coverArtDelay);
     });
     coverArtDelayField.appendChild(coverArtDelaySelect);
-    coverArtOptions.appendChild(coverArtDelayField);
+    coverArtScreensaverOptions.appendChild(coverArtDelayField);
+    els.setCoverArtScreensaverOptions = coverArtScreensaverOptions;
+    coverArtBody.appendChild(coverArtScreensaverOptions);
     els.setCoverArtDelay = coverArtDelaySelect;
 
     if (coverArtTrackOverlayDurationSupported()) {
@@ -1202,14 +1205,20 @@ function syncCoverArtMediaPlayerEntityUi() {
 }
 
 function syncCoverArtScreensaverUi() {
+  var showMediaCoverArtOptions = !!state.coverArtScreensaverOn || state.primaryView === "media";
   if (els.setCoverArtToggle) {
     els.setCoverArtToggle.checked = !!state.coverArtScreensaverOn;
   }
   syncCoverArtMediaPlayerEntityUi();
+  if (els.setCoverArtScreensaverOptions) {
+    els.setCoverArtScreensaverOptions.classList.toggle(
+      "sp-visible",
+      !!state.coverArtScreensaverOn);
+  }
   if (els.setCoverArtOptions) {
     els.setCoverArtOptions.classList.toggle(
       "sp-visible",
-      !!state.coverArtScreensaverOn);
+      showMediaCoverArtOptions);
   }
   if (els.setCoverArtBadge) {
     els.setCoverArtBadge.className = "sp-card-badge" + (state.coverArtScreensaverOn ? "" : " sp-hidden");
@@ -1251,7 +1260,7 @@ function syncPrimaryViewUi() {
   if (els.setPrimaryView) {
     els.setPrimaryView.value = state.primaryView;
   }
-  syncCoverArtMediaPlayerEntityUi();
+  syncCoverArtScreensaverUi();
 }
 
 function syncOptionalClockBrightness(field, previousField, display) {

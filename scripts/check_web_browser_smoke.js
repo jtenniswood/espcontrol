@@ -431,6 +431,37 @@ async function assertSettingsPage(page, label, options = {}) {
       0,
       `${label}: keep-screen-awake option should not render separately`
     );
+    assert.strictEqual(
+      await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
+      false,
+      `${label}: media player entity field should be hidden before cover art or media primary view is enabled`
+    );
+    assert.strictEqual(
+      await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
+      false,
+      `${label}: cover art show-after field should be hidden when cover art is disabled`
+    );
+    await coverArtCard.locator("#sp-set-primary-view").selectOption("media");
+    assert(
+      await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
+      `${label}: media player entity field should render when media primary view is enabled`
+    );
+    assert.strictEqual(
+      await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
+      false,
+      `${label}: cover art show-after field should remain hidden when only media primary view is enabled`
+    );
+    if (options.coverArtSquareOverlay) {
+      assert(
+        await coverArtCard.locator("#sp-set-ss-track-overlay").isVisible(),
+        `${label}: track overlay duration should render when media primary view is enabled`
+      );
+    }
+    assert(
+      await coverArtCard.getByText("Advanced Options", { exact: true }).isVisible(),
+      `${label}: media cover art advanced options should render when media primary view is enabled`
+    );
+    await coverArtCard.locator("#sp-set-primary-view").selectOption("controls");
     await coverArtCard.locator("#sp-set-ss-cover-art-enable + .sp-toggle-track").click();
     assert(
       await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
