@@ -592,6 +592,19 @@ function postCoverArtTrackOverlayDuration(value) {
   return post(coverArtTrackOverlayDurationPostUrls(value));
 }
 
+function homeAssistantArtworkPortPostUrls(value) {
+  return entityPostUrls(
+    "number",
+    entityName("home_assistant_artwork_port"),
+    entityObjectIds("home_assistant_artwork_port"),
+    "set?value=" + encodeURIComponent(value)
+  );
+}
+
+function postHomeAssistantArtworkPort(value) {
+  return post(homeAssistantArtworkPortPostUrls(value));
+}
+
 function postNumber(name, value) {
   return post(entityPostUrls("number", name, [], "set?value=" + encodeURIComponent(value)));
 }

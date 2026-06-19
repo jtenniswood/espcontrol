@@ -57,21 +57,27 @@ external_components:
     refresh: 1s
 ```
 
-Build and upload local firmware from the device folder:
+Build and upload local firmware from the repo root with the local ESPHome helper:
 
 ```bash
-cd devices/<slug>
-esphome run dev.yaml
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run
 ```
+
+The helper injects a dynamic `firmware_version` such as
+`fix-issue-581-esp32-p4-86-a1b566c`. That version appears in ESPHome logs,
+Home Assistant diagnostics, and the firmware version sensor, which makes local
+test builds easier to identify in bug reports. Running `esphome run dev.yaml`
+directly still works, but it uses the static fallback version from
+`devices/<slug>/packages.yaml`.
 
 If both USB and over-the-air upload targets are available, ESPHome prompts for a
 choice. In scripts or background runs, that prompt can stop the upload, so pass
 the target explicitly:
 
 ```bash
-esphome run dev.yaml --device 192.168.x.x
-esphome run dev.yaml --device /dev/cu.usbserial-...
-esphome run dev.yaml --device <ip> --no-logs
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device 192.168.x.x
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device /dev/cu.usbserial-...
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <ip> --no-logs
 ```
 
 OTA upload only works after the display is already running EspControl firmware

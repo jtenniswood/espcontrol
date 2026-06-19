@@ -63,6 +63,12 @@ Use the PIN settings to match how you want the wall panel to behave:
 - Leave **PIN required for disarming** on for panels in shared spaces.
 - Turn off the arming PIN only when quick arming is safe for that panel location.
 
+## Entry and Exit Delays
+
+If Home Assistant reports an alarm arming delay or pending entry delay, the panel shows the delay state in the alarm screen with a countdown timer. A progress bar under the timer gives a quick visual indication of how much delay time is left before the alarm changes state.
+
+The delay display follows the alarm entity updates from Home Assistant, so it works whether Home Assistant sends the total delay once or keeps sending updated remaining-time values during the countdown.
+
 ## How It Works on the Panel
 
 - The card subscribes to the alarm entity state in Home Assistant.

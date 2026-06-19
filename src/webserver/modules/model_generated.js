@@ -63,6 +63,7 @@ var EspControlModel = (() => {
     normalizeBackupScreenSettings: () => normalizeBackupScreenSettings,
     normalizeClockBrightness: () => normalizeClockBrightness,
     normalizeHexColor: () => normalizeHexColor,
+    normalizeHomeAssistantArtworkPort: () => normalizeHomeAssistantArtworkPort,
     normalizeHour: () => normalizeHour,
     normalizeLanguage: () => normalizeLanguage,
     normalizeNtpServer: () => normalizeNtpServer,
@@ -930,6 +931,13 @@ var EspControlModel = (() => {
     if (n > 100) return 100;
     return Math.round(n);
   }
+  function normalizeHomeAssistantArtworkPort(value) {
+    const port = parseInt(String(value), 10);
+    if (!Number.isFinite(port)) return 8123;
+    if (port < 1) return 1;
+    if (port > 65535) return 65535;
+    return port;
+  }
   function normalizeNtpServer(value, fallback) {
     const server = String(value == null ? "" : value).trim();
     return server || fallback;
@@ -1039,6 +1047,7 @@ var EspControlModel = (() => {
       coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
       coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null ? !!settings.cover_art_hide_external_input : true,
       primaryView: normalizePrimaryView(settings.primary_view),
+      coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port) : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
       screensaverAction,
       clockScreensaver: screensaverAction === "clock",
       clockBrightnessDay,

@@ -961,7 +961,7 @@ inline void grid_phase2(
           has_off ? off_val : DEFAULT_OFF_COLOR,
           has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
           display_icon_font(display),
-          display_volume_number_font(display),
+          display_media_title_font_or(display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
           display_sensor_font(display),
           display_optional_media_title_font(display),
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
@@ -990,7 +990,7 @@ inline void grid_phase2(
           display_media_title_font_or(display, alarm_action_card->label_font);
         alarm_action_card->pin_label_font = alarm_action_card->key_label_font;
         alarm_action_card->icon_font = display_icon_font(display);
-        alarm_action_card->arming_title_font = display_volume_number_font(display);
+        alarm_action_card->arming_title_font = alarm_action_card->key_label_font;
         alarm_action_card->on_color = has_on ? on_val : DEFAULT_SLIDER_COLOR;
         alarm_action_card->off_color = has_off ? off_val : DEFAULT_OFF_COLOR;
         alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
@@ -1569,7 +1569,7 @@ inline void grid_phase2(
             palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
             palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
             display_icon_font(display),
-            display_volume_number_font(display),
+            display_media_title_font_or(display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
             display_sensor_font(display),
             display_optional_media_title_font(display),
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
@@ -1605,7 +1605,7 @@ inline void grid_phase2(
             display_media_title_font_or(display, alarm_action_card->label_font);
           alarm_action_card->pin_label_font = alarm_action_card->key_label_font;
           alarm_action_card->icon_font = display_icon_font(display);
-          alarm_action_card->arming_title_font = display_volume_number_font(display);
+          alarm_action_card->arming_title_font = alarm_action_card->key_label_font;
           alarm_action_card->on_color = has_on ? on_val : DEFAULT_SLIDER_COLOR;
           alarm_action_card->off_color = has_off ? off_val : DEFAULT_OFF_COLOR;
           alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;

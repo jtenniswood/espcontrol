@@ -49,6 +49,7 @@ def package_substitution_lines(device: dict) -> list[str]:
                 '  disable_updates: "false"',
                 '  network_package_suffix: ${ "_ethernet" if network_transport == "ethernet" else "" }',
                 '  firmware_update_package_suffix: ${ "_disabled" if disable_updates == "true" else "" }',
+                '  esp32_c6_firmware_update_package_suffix: ${ "_disabled" if network_transport == "ethernet" else "" }',
                 f'  backlight_pwm_frequency: ${{ "{frequency["ethernet"]}" if network_transport == "ethernet" else "{frequency["wifi"]}" }}',
             ]
         )
@@ -250,6 +251,11 @@ def package_file_text(device: dict) -> str:
     firmware_update_suffix = (
         "${firmware_update_package_suffix}" if package.get("ethernetSelectable") else ""
     )
+    esp32_c6_firmware_update_suffix = (
+        "${esp32_c6_firmware_update_package_suffix}"
+        if package.get("ethernetSelectable")
+        else ""
+    )
     provisioning_suffix = (
         "${provisioning_package_suffix}" if package.get("provisioningSelectable") else ""
     )
@@ -287,6 +293,13 @@ def package_file_text(device: dict) -> str:
             include_line(
                 "network_coprocessor",
                 f"!include device/network_coprocessor{network_suffix}.yaml",
+            )
+        )
+    if package.get("esp32C6FirmwareUpdate"):
+        lines.append(
+            include_line(
+                "esp32_c6_firmware_update",
+                f"!include ../../common/device/esp32_c6_firmware_update{esp32_c6_firmware_update_suffix}.yaml",
             )
         )
     lines.extend(
