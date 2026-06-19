@@ -539,6 +539,7 @@ script:
                 return (int)(val * 1000);
             - lambda: |-
                 navigation_return_home(id(main_page)->obj);
+            - script.execute: cover_art_apply_primary_view
 
   # Wake from screensaver
   - id: screensaver_wake

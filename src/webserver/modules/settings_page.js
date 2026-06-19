@@ -650,24 +650,6 @@ function buildSettingsPage(parent) {
     });
     els.setCoverArtToggle = coverArtToggle.input;
 
-    var coverArtOptions = condField();
-    var coverArtAdvancedBody = document.createElement("div");
-
-    var coverArtEntityField = document.createElement("div");
-    coverArtEntityField.className = "sp-field";
-    coverArtEntityField.appendChild(fieldLabel("Media Player Entity", "sp-set-ss-cover-art-player"));
-    var coverArtEntityInp = entityInput(
-      "sp-set-ss-cover-art-player",
-      state.coverArtMediaPlayerEntity,
-      "e.g. media_player.living_room",
-      ["media_player"]);
-    coverArtEntityField.appendChild(coverArtEntityInp);
-    coverArtOptions.appendChild(coverArtEntityField);
-    bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
-      onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
-    });
-    els.setCoverArtMediaPlayer = coverArtEntityInp;
-
     var primaryViewField = document.createElement("div");
     primaryViewField.className = "sp-field";
     primaryViewField.appendChild(fieldLabel("Primary View", "sp-set-primary-view"));
@@ -694,8 +676,26 @@ function buildSettingsPage(parent) {
     primaryViewHelp.className = "sp-help";
     primaryViewHelp.textContent = "Controls keeps today's home screen; Media shows media artwork first and swipe up reveals controls.";
     primaryViewField.appendChild(primaryViewHelp);
-    coverArtOptions.appendChild(primaryViewField);
+    coverArtBody.appendChild(primaryViewField);
     els.setPrimaryView = primaryViewSelect;
+
+    var coverArtOptions = condField();
+    var coverArtAdvancedBody = document.createElement("div");
+
+    var coverArtEntityField = document.createElement("div");
+    coverArtEntityField.className = "sp-field";
+    coverArtEntityField.appendChild(fieldLabel("Media Player Entity", "sp-set-ss-cover-art-player"));
+    var coverArtEntityInp = entityInput(
+      "sp-set-ss-cover-art-player",
+      state.coverArtMediaPlayerEntity,
+      "e.g. media_player.living_room",
+      ["media_player"]);
+    coverArtEntityField.appendChild(coverArtEntityInp);
+    coverArtOptions.appendChild(coverArtEntityField);
+    bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
+      onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
+    });
+    els.setCoverArtMediaPlayer = coverArtEntityInp;
 
     var coverArtDelayField = document.createElement("div");
     coverArtDelayField.className = "sp-field";
