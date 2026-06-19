@@ -383,7 +383,13 @@ esp_err_t handle_card_image_upload(httpd_req_t *r) {
       httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, "Upload failed");
       return ESP_OK;
     }
-    fwrite(buffer.get(), 1, static_cast<size_t>(ret), file);
+    size_t written = fwrite(buffer.get(), 1, static_cast<size_t>(ret), file);
+    if (written != static_cast<size_t>(ret) || ferror(file)) {
+      fclose(file);
+      unlink(path.c_str());
+      httpd_resp_send_err(r, HTTPD_500_INTERNAL_SERVER_ERROR, "Upload failed");
+      return ESP_OK;
+    }
     remaining -= static_cast<size_t>(ret);
   }
   fclose(file);

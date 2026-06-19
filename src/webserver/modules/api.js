@@ -32,7 +32,6 @@ function listCardImages(force) {
     _cardImageLibrary = items.slice(0, CARD_IMAGE_MAX_COUNT);
     return _cardImageLibrary.slice();
   }).catch(function () {
-    _cardImageLibrary = [];
     return [];
   });
 }
