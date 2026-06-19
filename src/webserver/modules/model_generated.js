@@ -399,6 +399,8 @@ var EspControlModel = (() => {
   function createBackupEnvelope(snapshot, outputs) {
     const slots = parseInt(String(snapshot.slots), 10) || outputs.buttons.length;
     const device = snapshot.device || "";
+    const settings = { ...snapshot.settings || {} };
+    delete settings.screensaver_pin;
     return {
       version: BACKUP_CONFIG_VERSION,
       format: BACKUP_FORMAT,
@@ -415,7 +417,7 @@ var EspControlModel = (() => {
       buttons: outputs.buttons,
       subpages: outputs.subpages,
       subpage_objects: outputs.subpage_objects || {},
-      settings: snapshot.settings || {},
+      settings,
       screen: snapshot.screen || {}
     };
   }
@@ -1039,6 +1041,7 @@ var EspControlModel = (() => {
       coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null ? !!settings.cover_art_hide_external_input : true,
       coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port) : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
       screensaverAction,
+      screensaverPinRequired: !!settings.screensaver_pin_required,
       clockScreensaver: screensaverAction === "clock",
       clockBrightnessDay,
       clockBrightnessNight,

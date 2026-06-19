@@ -438,6 +438,17 @@ switch:
     on_turn_off:
       - script.execute: cover_art_apply_external_input_policy
 
+  - platform: template
+    name: "${entity_screensaver_pin_required}"
+    internal: true
+    id: screensaver_pin_required
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:lock-outline"
+    entity_category: config
+    web_server:
+      sorting_group_id: sg_screensaver
+
 select:
   - platform: template
     name: "${entity_screen_saver_action}"
@@ -636,6 +647,22 @@ text:
               lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
             then:
               - script.execute: screensaver_idle_check
+
+  - platform: template
+    name: "${entity_screensaver_pin}"
+    internal: true
+    id: screensaver_pin
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 16
+    mode: password
+    entity_category: config
+    icon: "mdi:form-textbox-password"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_screensaver
 
   # Optional presence sensor for screensaver (e.g. mmWave)
   - platform: template

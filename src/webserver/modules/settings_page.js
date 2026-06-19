@@ -633,6 +633,55 @@ function buildSettingsPage(parent) {
   els.setClockBrightnessNightVal = timerClockControls.clockBrightnessNightVal;
   els.setClockBrightnessField = timerClockControls.brightnessField;
 
+  var pinProtectionToggle = toggleRow(
+    "Require PIN after wake",
+    "sp-set-ss-pin-required",
+    state.screensaverPinRequired);
+  ssBody.appendChild(pinProtectionToggle.row);
+  pinProtectionToggle.input.addEventListener("change", function () {
+    state.screensaverPinRequired = this.checked;
+    postSwitch(entityName("screensaver_pin_required"), state.screensaverPinRequired);
+    syncScreensaverPinUi();
+  });
+  els.setScreensaverPinRequired = pinProtectionToggle.input;
+
+  var pinField = document.createElement("div");
+  pinField.className = "sp-field";
+  pinField.appendChild(fieldLabel("PIN", "sp-set-ss-pin"));
+  var pinInput = document.createElement("input");
+  pinInput.className = "sp-input";
+  pinInput.id = "sp-set-ss-pin";
+  pinInput.type = "password";
+  pinInput.inputMode = "numeric";
+  pinInput.maxLength = 16;
+  pinInput.autocomplete = "new-password";
+  pinInput.placeholder = state.screensaverPinSet ? "PIN set" : "Enter numeric PIN";
+  var pinEdited = false;
+  pinInput.addEventListener("input", function () {
+    var next = normalizePin(this.value);
+    if (this.value !== next) this.value = next;
+    pinEdited = true;
+  });
+  pinInput.addEventListener("blur", function () {
+    var next = normalizePin(this.value);
+    if (!pinEdited && next.length === 0) return;
+    postText(entityName("screensaver_pin"), next);
+    state.screensaverPinSet = next.length > 0;
+    pinEdited = false;
+    syncScreensaverPinUi();
+    window.setTimeout(function () {
+      pinInput.value = "";
+    }, 0);
+  });
+  pinField.appendChild(pinInput);
+  var pinHelp = document.createElement("div");
+  pinHelp.className = "sp-help";
+  pinHelp.textContent = "Protects local touchscreen use after wake. It does not secure web/admin access.";
+  pinField.appendChild(pinHelp);
+  ssBody.appendChild(pinField);
+  els.setScreensaverPin = pinInput;
+  els.setScreensaverPinField = pinField;
+
   var coverArtBody = document.createElement("div");
   if (!isEpaperPreview()) {
     var coverArtToggle = toggleRow(
@@ -1148,6 +1197,16 @@ function syncClockScreensaverControls() {
   if (els.setSensorClockBrightnessNight) {
     els.setSensorClockBrightnessNight.value = state.clockBrightnessNight;
     els.setSensorClockBrightnessNightVal.textContent = nightBrightness;
+  }
+}
+
+function syncScreensaverPinUi() {
+  if (els.setScreensaverPinRequired) {
+    els.setScreensaverPinRequired.checked = !!state.screensaverPinRequired;
+  }
+  if (els.setScreensaverPin) {
+    if (document.activeElement !== els.setScreensaverPin) els.setScreensaverPin.value = "";
+    els.setScreensaverPin.placeholder = state.screensaverPinSet ? "PIN set" : "Enter numeric PIN";
   }
 }
 

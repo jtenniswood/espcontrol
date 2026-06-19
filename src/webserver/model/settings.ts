@@ -264,6 +264,7 @@ export interface BackupPanelSettingsState {
   coverArtHideExternalInput: boolean;
   coverArtHomeAssistantPort: number;
   screensaverAction: string;
+  screensaverPinRequired: boolean;
   clockScreensaver: boolean;
   clockBrightnessDay: number;
   clockBrightnessNight: number;
@@ -367,6 +368,7 @@ export function normalizeBackupPanelSettings(
       ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
       : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
     screensaverAction,
+    screensaverPinRequired: !!settings.screensaver_pin_required,
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,
     clockBrightnessNight,

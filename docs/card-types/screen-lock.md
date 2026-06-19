@@ -1,14 +1,14 @@
 ---
 title: Screen Lock Cards
 description:
-  How to use screen lock cards on your EspControl panel to lock and unlock local touchscreen controls.
+  How to use screen lock cards on your EspControl panel to start the configured screensaver.
 ---
 
 # Screen Lock
 
-A Screen Lock card locks and unlocks the panel's touchscreen controls locally. It does not need a Home Assistant entity and does not send a Home Assistant action.
+A Screen Lock card sends the panel to its configured screensaver action immediately. It does not need a Home Assistant entity and does not send a Home Assistant action.
 
-Use this when a panel is in a shared area and you want a quick way to prevent accidental taps.
+Use this when you want a local card that turns the screen off, dims it, or shows the clock using the same **Screensaver** setting as the automatic idle timer.
 
 ## Setting Up a Screen Lock Card
 
@@ -19,9 +19,9 @@ Use this when a panel is in a shared area and you want a quick way to prevent ac
 
 ## How It Works on the Panel
 
-- Tapping the card switches the panel between locked and unlocked states.
-- The lock state is local to the panel.
-- Other cards are protected while the screen is locked.
+- Tapping the card immediately starts the configured screensaver action: Display Off, Screen Dimmed, or Clock.
+- If **Require PIN after wake** is enabled and a PIN is set in Screensaver settings, the panel asks for that PIN after waking.
+- Other cards stay blocked until the correct PIN is entered.
 - The card can be used on the home screen or inside a subpage.
 - It does not depend on Home Assistant availability.
 
@@ -29,6 +29,6 @@ Screen Lock is different from a [Lock](/card-types/locks) card. **Lock** control
 
 ## When to Use It
 
-Screen Lock is useful for hallway panels, bedside panels, child-accessible panels, or any location where accidental control changes would be annoying.
+Screen Lock is useful for hallway panels, bedside panels, child-accessible panels, or any location where you want a quick local sleep button.
 
-For security-sensitive actions such as unlocking a door, use the Home Assistant lock's own security features, a Home Assistant script, or card-level confirmation where available. Screen Lock is a local interaction guard, not a replacement for Home Assistant permissions.
+For security-sensitive actions such as unlocking a door, use the Home Assistant lock's own security features, a Home Assistant script, or card-level confirmation where available. Screensaver PIN protection is a local touchscreen guard, not a replacement for Home Assistant permissions or web/admin security.

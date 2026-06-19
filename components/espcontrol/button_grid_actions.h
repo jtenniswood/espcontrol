@@ -492,6 +492,7 @@ inline void handle_button_press(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
   if (slot_num <= 0 || slot_num > MAX_GRID_SLOTS) return;
   if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
+  if (screensaver_pin_locked()) return;
   ParsedCfg p = parse_cfg(cfg);
   if (p.type != "media") return;
   std::string mode = media_card_mode(p.sensor);
@@ -534,6 +535,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
   if (media_fast_press_consume(slot_num)) return;
   if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
+  if (screensaver_pin_locked()) return;
   ParsedCfg p = parse_cfg(cfg);
   if (p.type == "sensor" || p.type == "text_sensor" || p.type == "local_sensor" ||
       p.type == "door_window" ||
@@ -541,7 +543,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||
       p.type == "weather_forecast") return;
   if (p.type == "screen_lock") {
-    screen_lock_toggle();
+    screen_lock_force_screensaver();
   } else if (p.type == "push") {
     std::string label = p.label;
     if (label.empty()) {

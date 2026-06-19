@@ -471,9 +471,9 @@ inline const char *screen_lock_unlocked_icon(const ParsedCfg &p) {
 }
 
 inline std::string screen_lock_card_label() {
-  return screen_lock_enabled()
+  return screen_interaction_locked()
     ? espcontrol_i18n(std::string("Screen Locked"))
-    : espcontrol_i18n(std::string("Screen Unlocked"));
+    : espcontrol_i18n(std::string("Screen Sleep"));
 }
 
 inline void screen_lock_register_card(const BtnSlot &s, const ParsedCfg &p) {
@@ -489,7 +489,7 @@ inline void screen_lock_register_card(const BtnSlot &s, const ParsedCfg &p) {
 
 inline void setup_screen_lock_card(BtnSlot &s, const ParsedCfg &p) {
   lv_label_set_text(s.icon_lbl,
-    screen_lock_enabled() ? screen_lock_locked_icon(p) : screen_lock_unlocked_icon(p));
+    screen_interaction_locked() ? screen_lock_locked_icon(p) : screen_lock_unlocked_icon(p));
   std::string label = screen_lock_card_label();
   lv_label_set_text(s.text_lbl, label.c_str());
   screen_lock_register_card(s, p);

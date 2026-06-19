@@ -1475,7 +1475,8 @@ inline void grid_phase2(
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
           if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
-          screen_lock_toggle();
+          if (screensaver_pin_locked()) return;
+          screen_lock_force_screensaver();
         }, LV_EVENT_CLICKED, nullptr);
         continue;
       }
