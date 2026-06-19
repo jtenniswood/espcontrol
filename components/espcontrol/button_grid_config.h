@@ -73,6 +73,15 @@ constexpr uint32_t DARK_BORDER = correct_display_color(0x3A3A3A);
 constexpr uint32_t DARK_CONTROL_NEUTRAL = correct_display_color(0x424242);
 constexpr uint32_t DARK_OVERLAY = 0x000000;
 constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x2F2F2F);
+
+inline uint32_t readable_text_color_for_bg(uint32_t color) {
+  uint32_t r = (color >> 16) & 0xFF;
+  uint32_t g = (color >> 8) & 0xFF;
+  uint32_t b = color & 0xFF;
+  uint32_t luminance = (r * 299 + g * 587 + b * 114) / 1000;
+  return luminance > 160 ? DARK_OVERLAY : DARK_TEXT_PRIMARY;
+}
+
 #ifndef ESPCONTROL_MAX_GRID_SLOTS
 #define ESPCONTROL_MAX_GRID_SLOTS 25
 #endif

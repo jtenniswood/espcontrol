@@ -661,7 +661,8 @@ inline lv_obj_t *control_modal_create_list_row(lv_obj_t *parent,
   lv_label_set_text(value, label.c_str());
   lv_label_set_long_mode(value, LV_LABEL_LONG_DOT);
   lv_obj_set_width(value, lv_pct(100));
-  lv_obj_set_style_text_color(value, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_color(
+    value, lv_color_hex(readable_text_color_for_bg(active ? active_color : inactive_color)), LV_PART_MAIN);
   lv_obj_set_style_text_align(value, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(value, font, LV_PART_MAIN);
   apply_width_compensation(value, width_compensation_percent);
@@ -677,6 +678,7 @@ inline lv_obj_t *control_modal_create_text_button(
     lv_coord_t min_height,
     lv_coord_t radius,
     uint32_t bg_color,
+    uint32_t text_color,
     const lv_font_t *font) {
   lv_obj_t *btn = lv_btn_create(parent);
   lv_obj_set_size(btn, min_width, min_height);
@@ -691,7 +693,7 @@ inline lv_obj_t *control_modal_create_text_button(
   lv_obj_t *label = lv_label_create(btn);
   lv_label_set_text(label, text.c_str());
   lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
-  lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 

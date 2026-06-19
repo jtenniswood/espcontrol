@@ -255,6 +255,8 @@ inline void set_grid_card_cell(lv_obj_t *btn,
 
 // ── Button visuals ────────────────────────────────────────────────────
 
+inline void apply_card_descendant_text_color(lv_obj_t *obj, lv_color_t color);
+
 // Apply on/off background colors to a button's checked/pressed/default states
 inline void apply_button_colors(lv_obj_t *btn, bool has_on, uint32_t on_val,
                                 bool has_off, uint32_t off_val) {
@@ -263,11 +265,19 @@ inline void apply_button_colors(lv_obj_t *btn, bool has_on, uint32_t on_val,
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
     lv_obj_set_style_bg_color(btn, lv_color_hex(on_val),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+    lv_color_t text_color = lv_color_hex(readable_text_color_for_bg(on_val));
+    lv_obj_set_style_text_color(btn, text_color,
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_CHECKED));
+    lv_obj_set_style_text_color(btn, text_color,
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
   }
   if (has_off) {
     lv_obj_set_style_bg_color(btn, lv_color_hex(off_val),
       static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+    lv_obj_set_style_text_color(btn, lv_color_hex(readable_text_color_for_bg(off_val)),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
   }
+  apply_card_descendant_text_color(btn, lv_obj_get_style_text_color(btn, LV_PART_MAIN));
 }
 
 inline uint32_t card_pattern_highlight_color(uint32_t color) {
