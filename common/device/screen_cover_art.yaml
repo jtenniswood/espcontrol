@@ -801,52 +801,63 @@ script:
     then:
       - switch.turn_off: media_player_sleep_prevention_enabled
       - script.stop: cover_art_delay_timer
-      - script.stop: cover_art_show_track_overlay
-      - script.stop: cover_art_download
-      - script.stop: cover_art_deferred_download
-      - script.stop: cover_art_deferred_request_artwork
-      - script.stop: cover_art_prepare_download
-      - script.stop: cover_art_retry_download
-      - globals.set:
-          id: cover_art_media_playing
-          value: 'false'
-      - globals.set:
-          id: cover_art_image_available
-          value: 'false'
-      - lambda: |-
-          id(cover_art_url).clear();
-          id(cover_art_download_url).clear();
-          id(cover_art_active_download_source_url).clear();
-          id(cover_art_pending_remote_url).clear();
-          id(cover_art_pending_local_url).clear();
-          id(cover_art_cached_remote_url).clear();
-          id(cover_art_cached_local_url).clear();
-          id(cover_art_artwork_pending_count) = 0;
-          id(cover_art_request_id)++;
-          id(cover_art_loaded_url).clear();
-          id(cover_art_refresh_needed) = false;
-          id(cover_art_retry_url).clear();
-          id(cover_art_fallback_url).clear();
-          id(cover_art_retry_count) = 0;
-          id(cover_art_title).clear();
-          id(cover_art_artist).clear();
-          id(cover_art_album).clear();
-          id(cover_art_media_source).clear();
-          id(cover_art_external_input_active) = false;
-          id(cover_art_last_playback_state).clear();
-          id(cover_art_api_wait_logged) = false;
-          id(cover_art_media_position) = 0.0f;
-          id(cover_art_position_anchor) = 0.0f;
-          id(cover_art_media_duration) = 0.0f;
-          id(cover_art_position_anchor_epoch) = 0;
-          id(cover_art_last_position_timestamp) = 0;
-          id(cover_art_last_progress_percent) = -1;
-          lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
-          lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
-      - script.execute: cover_art_clear_image_source
-      - script.wait: cover_art_clear_image_source
-      - artwork_image.release: cover_art_downloaded_image
-      - script.execute: hide_cover_art_view
+      - if:
+          condition:
+            lambda: |-
+              return id(screen_primary_view_select).current_option() == "Media" &&
+                     id(cover_art_primary_view_active);
+          then:
+            - globals.set:
+                id: cover_art_screensaver_active
+                value: 'false'
+            - script.execute: cover_art_apply_primary_view
+          else:
+            - script.stop: cover_art_show_track_overlay
+            - script.stop: cover_art_download
+            - script.stop: cover_art_deferred_download
+            - script.stop: cover_art_deferred_request_artwork
+            - script.stop: cover_art_prepare_download
+            - script.stop: cover_art_retry_download
+            - globals.set:
+                id: cover_art_media_playing
+                value: 'false'
+            - globals.set:
+                id: cover_art_image_available
+                value: 'false'
+            - lambda: |-
+                id(cover_art_url).clear();
+                id(cover_art_download_url).clear();
+                id(cover_art_active_download_source_url).clear();
+                id(cover_art_pending_remote_url).clear();
+                id(cover_art_pending_local_url).clear();
+                id(cover_art_cached_remote_url).clear();
+                id(cover_art_cached_local_url).clear();
+                id(cover_art_artwork_pending_count) = 0;
+                id(cover_art_request_id)++;
+                id(cover_art_loaded_url).clear();
+                id(cover_art_refresh_needed) = false;
+                id(cover_art_retry_url).clear();
+                id(cover_art_fallback_url).clear();
+                id(cover_art_retry_count) = 0;
+                id(cover_art_title).clear();
+                id(cover_art_artist).clear();
+                id(cover_art_album).clear();
+                id(cover_art_media_source).clear();
+                id(cover_art_external_input_active) = false;
+                id(cover_art_last_playback_state).clear();
+                id(cover_art_api_wait_logged) = false;
+                id(cover_art_media_position) = 0.0f;
+                id(cover_art_position_anchor) = 0.0f;
+                id(cover_art_media_duration) = 0.0f;
+                id(cover_art_position_anchor_epoch) = 0;
+                id(cover_art_last_position_timestamp) = 0;
+                id(cover_art_last_progress_percent) = -1;
+                lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
+                lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
+            - script.execute: cover_art_clear_image_source
+            - script.wait: cover_art_clear_image_source
+            - artwork_image.release: cover_art_downloaded_image
+            - script.execute: hide_cover_art_view
 
   - id: cover_art_download
     mode: restart
@@ -1261,6 +1272,9 @@ script:
             lambda: |-
               return id(screen_primary_view_select).current_option() == "Media" &&
                      !id(cover_art_media_player_entity).state.empty() &&
+                     id(cover_art_attribute_conditions_match) &&
+                     !(id(cover_art_hide_external_input_enabled).state &&
+                       id(cover_art_external_input_active)) &&
                      !id(cover_art_screensaver_active) &&
                      !id(display_asleep) &&
                      !id(screen_schedule_asleep) &&
