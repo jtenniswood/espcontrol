@@ -300,6 +300,7 @@ def validate_package(slug: str, device: dict[str, Any], errors: list[str]) -> No
         "improvSerial",
         "touchscreenPackage",
         "apiNavigateAction",
+        "esp32C6FirmwareUpdate",
     ):
         if key in package and not isinstance(package[key], bool):
             errors.append(device_error(slug, f"firmware.package.{key} must be true or false when set"))

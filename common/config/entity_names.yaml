@@ -50,6 +50,7 @@ substitutions:
   entity_screen_saver_cover_art_delay: "Screen Saver: Cover Art Delay"
   entity_screen_saver_track_overlay_duration: "Screen Saver: Show Track Overlay"
   entity_screen_saver_hide_cover_art_external_input: "Screen Saver: Hide for external sources"
+  entity_home_assistant_artwork_port: "Home Assistant Artwork Port"
   entity_screen_saver_daytime_clock_brightness: "Screen Saver: Daytime Clock Brightness"
   entity_screen_saver_nighttime_clock_brightness: "Screen Saver: Nighttime Clock Brightness"
   entity_screen_saver_clock_brightness: "Screen Saver: Clock Brightness"
