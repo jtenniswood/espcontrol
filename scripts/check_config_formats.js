@@ -58,6 +58,7 @@ function subpageTypeFromCode(code) {
     CK: "clock",
     T: "timezone",
     S: "sensor",
+    LS: "local_sensor",
     X: "door_window",
     PR: "presence",
     W: "weather",
