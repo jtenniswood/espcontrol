@@ -131,6 +131,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "light_control": "docs/card-types/lights.md",
     "light_switch": "docs/card-types/lights.md",
     "light_temperature": "docs/card-types/lights.md",
+    "local_sensor": "docs/card-types/local-sensors.md",
     "lock": "docs/card-types/locks.md",
     "media": "docs/card-types/media.md",
     "option_select": "docs/card-types/option-select.md",
