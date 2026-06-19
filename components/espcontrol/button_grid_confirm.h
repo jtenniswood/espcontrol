@@ -29,12 +29,21 @@ inline const lv_font_t *&switch_confirmation_icon_font_ref() {
   return font;
 }
 
+inline uint32_t &switch_confirmation_accent_color_ref() {
+  static uint32_t color = DEFAULT_SLIDER_COLOR;
+  return color;
+}
+
 inline void set_switch_confirmation_message_font(const lv_font_t *font) {
   switch_confirmation_message_font_ref() = font;
 }
 
 inline void set_switch_confirmation_icon_font(const lv_font_t *font) {
   switch_confirmation_icon_font_ref() = font;
+}
+
+inline void set_switch_confirmation_accent_color(uint32_t color) {
+  switch_confirmation_accent_color_ref() = color;
 }
 
 inline const lv_font_t *switch_confirmation_message_font(const lv_font_t *fallback) {
@@ -115,7 +124,7 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
     button_h / 2, DARK_BORDER, button_font);
   ui.confirm_btn = control_modal_create_text_button(
     ui.panel, switch_confirmation_yes_text(p), button_max_w, button_min_w, button_h,
-    button_h / 2, DEFAULT_SLIDER_COLOR, button_font);
+    button_h / 2, switch_confirmation_accent_color_ref(), button_font);
 
   lv_obj_update_layout(ui.message_lbl);
   lv_obj_update_layout(ui.no_btn);
