@@ -409,6 +409,7 @@ inline bool weather_card_shows_forecast(const ParsedCfg &p) {
 }
 
 inline std::string weather_card_forecast_day(const ParsedCfg &p) {
+  if (p.precision == "3day") return "3day";
   return p.precision == "today" ? "today" : "tomorrow";
 }
 
@@ -426,7 +427,8 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
   lv_label_set_text(s.unit_lbl, display_temperature_unit_symbol());
   std::string day = weather_card_forecast_day(p);
   std::string label = p.label.empty()
-    ? (day == "today" ? espcontrol_i18n(std::string("Today")) : espcontrol_i18n(std::string("Tomorrow")))
+    ? (day == "today" ? espcontrol_i18n(std::string("Today")) :
+        (day == "3day" ? espcontrol_i18n(std::string("3-Day Forecast")) : espcontrol_i18n(std::string("Tomorrow"))))
     : p.label;
   lv_label_set_text(s.text_lbl, label.c_str());
   apply_width_compensation(s.sensor_container, width_compensation_percent);

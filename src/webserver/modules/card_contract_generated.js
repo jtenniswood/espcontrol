@@ -1244,7 +1244,8 @@ var CARD_CONTRACT_CARDS = {
         "values": [
           "",
           "today",
-          "tomorrow"
+          "tomorrow",
+          "3day"
         ],
         "defaultValue": ""
       },
