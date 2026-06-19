@@ -16,6 +16,7 @@ struct PlantCardCtx {
   std::string value;
   std::string unit;
   bool available = false;
+  bool use_friendly_name_label = false;
 };
 
 inline std::string plant_card_mode(const std::string &mode) {
@@ -83,6 +84,7 @@ inline PlantCardCtx *create_plant_card_context(const BtnSlot &s,
     ? espcontrol_i18n(std::string(plant_card_metric_mode(ctx->mode) ? plant_metric_label(ctx->mode) : "Plant"))
     : p.label;
   ctx->unit = plant_metric_fallback_unit(ctx->mode);
+  ctx->use_friendly_name_label = p.label.empty() && plant_card_metric_mode(ctx->mode);
   return ctx;
 }
 
@@ -193,4 +195,5 @@ inline void subscribe_plant_card(PlantCardCtx *ctx) {
       apply_plant_metric_card(ctx);
     })
   );
+  if (ctx->use_friendly_name_label) subscribe_plant_metric_friendly_name(ctx);
 }

@@ -502,8 +502,6 @@ inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p,
     if (!p.entity.empty()) {
       PlantCardCtx *ctx = create_plant_card_context(s, p);
       subscribe_plant_card(ctx);
-      if (p.label.empty() && plant_card_metric_mode(p.precision))
-        subscribe_plant_metric_friendly_name(ctx);
     }
     return true;
   }
@@ -1736,8 +1734,6 @@ inline void grid_phase2(
           PlantCardCtx *ctx = create_plant_card_context(sub_slot, sb_cfg);
           subscribe_plant_card(ctx);
           add_parent_indicator(sb_cfg.entity);
-          if (sb_cfg.label.empty() && plant_card_metric_mode(sb_cfg.precision))
-            subscribe_plant_metric_friendly_name(ctx);
         }
         continue;
       }
