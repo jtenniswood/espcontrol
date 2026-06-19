@@ -535,7 +535,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   if (media_fast_press_consume(slot_num)) return;
   if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
-  if (p.type == "sensor" || p.type == "text_sensor" ||
+  if (p.type == "sensor" || p.type == "text_sensor" || p.type == "local_sensor" ||
       p.type == "door_window" ||
       p.type == "presence" ||
       p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||

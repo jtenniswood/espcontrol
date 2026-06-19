@@ -419,6 +419,7 @@ export default defineConfig({
           { text: 'Presence', link: '/card-types/presence' },
           { text: 'Screen Lock', link: '/card-types/screen-lock' },
           { text: 'Sensor', link: '/card-types/sensors' },
+          { text: 'Local Sensor', link: '/card-types/local-sensors' },
           { text: 'Slider', link: '/card-types/sliders' },
           { text: 'Subpage', link: '/features/subpages' },
           { text: 'Switch', link: '/card-types/switches' },
