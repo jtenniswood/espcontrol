@@ -1723,12 +1723,12 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("image", false), true, "im
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("image", true), true, "image picker visible in subpages");
 assert.deepStrictEqual(Array.from(hooks.imageModalModeValues()), ["fill", "fit"], "image modal mode values are contract-backed");
 assert.deepStrictEqual(Array.from(hooks.cardContractDomains("image")), ["camera", "image"], "image cards accept camera and image entities");
-assert.strictEqual(hooks.normalizeImageOptions("image_refresh=30,image_refresh_mode=timer,unknown=1"), "", "legacy image refresh options are dropped");
-assert.strictEqual(hooks.normalizeImageOptions("image_label,image_refresh=30,image_refresh_mode=timer,unknown=1"), "image_label", "image label option is preserved while legacy refresh values are dropped");
-assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fit,image_refresh=30,image_refresh_mode=timer,unknown=1"), "image_modal_mode=fit", "image modal fit option is preserved while legacy refresh values are dropped");
-assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fill,image_refresh=30"), "", "image modal fill and legacy refresh options are omitted");
-assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=bad,image_refresh=30"), "", "invalid image modal mode and legacy refresh options are dropped");
-assert.strictEqual(hooks.normalizeImageOptions("image_label,image_refresh=5,image_refresh_mode=bad"), "image_label", "image label option survives invalid legacy refresh values");
+assert.strictEqual(hooks.normalizeImageOptions("image_refresh=30,image_refresh_mode=timer,unknown=1"), "image_refresh=30,image_refresh_mode=timer", "image refresh options are preserved");
+assert.strictEqual(hooks.normalizeImageOptions("image_label,image_refresh=30,image_refresh_mode=timer,unknown=1"), "image_label,image_refresh=30,image_refresh_mode=timer", "image label and refresh options are preserved");
+assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fit,image_refresh=30,image_refresh_mode=timer,unknown=1"), "image_modal_mode=fit,image_refresh=30,image_refresh_mode=timer", "image modal fit and refresh options are preserved");
+assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fill,image_refresh=30"), "image_refresh=30", "image modal fill is omitted while refresh options are preserved");
+assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=bad,image_refresh=30"), "image_refresh=30", "invalid image modal mode is dropped while refresh options are preserved");
+assert.strictEqual(hooks.normalizeImageOptions("image_label,image_refresh=5,image_refresh_mode=timer"), "image_label", "image label option survives invalid refresh values");
 const imageCardForLimit = {
   entity: "camera.front_door",
   label: "",
@@ -1795,7 +1795,8 @@ assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(
 )), buttonShape({
   entity: "camera.front_door",
   type: "image",
-}), "image card legacy refresh options are cleaned up by web parser");
+  options: "image_refresh=30,image_refresh_mode=timer",
+}), "image card refresh options are preserved by web parser");
 assertButtonRoundTrip(hooks, "image card label option", {
   entity: "camera.front_door",
   label: "Front Door",
@@ -1813,8 +1814,8 @@ assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(
   entity: "camera.front_door",
   label: "Front Door",
   type: "image",
-  options: "image_label",
-}), "image card label survives legacy refresh cleanup");
+  options: "image_label,image_refresh=30,image_refresh_mode=timer",
+}), "image card label and refresh options are preserved");
 assertButtonRoundTrip(hooks, "image card icon option", {
   entity: "camera.front_door",
   label: "",

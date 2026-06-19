@@ -530,10 +530,10 @@ function normalizeImageOptions(options) {
   var refreshInterval = normalizeImageRefreshInterval(configOptionValue(options, IMAGE_REFRESH_OPTION));
   if (refreshInterval !== "off") {
     out = setConfigOptionValue(out, IMAGE_REFRESH_OPTION, refreshInterval);
-  }
-  var refreshMode = normalizeImageRefreshMode(configOptionValue(options, IMAGE_REFRESH_MODE_OPTION));
-  if (refreshMode !== "changes_timer") {
-    out = setConfigOptionValue(out, IMAGE_REFRESH_MODE_OPTION, refreshMode);
+    var refreshMode = normalizeImageRefreshMode(configOptionValue(options, IMAGE_REFRESH_MODE_OPTION));
+    if (refreshMode !== "changes_timer") {
+      out = setConfigOptionValue(out, IMAGE_REFRESH_MODE_OPTION, refreshMode);
+    }
   }
   return out;
 }
