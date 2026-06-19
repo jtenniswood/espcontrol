@@ -27,6 +27,7 @@ function buttonTypeInfoOnlyVisible(key) {
     "door_window",
     "image",
     "local_sensor",
+    "plant",
     "presence",
     "timezone",
     "weather",
@@ -52,6 +53,7 @@ var CARD_TYPE_PICKER_DETAILS = {
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
+  plant: { icon: "leaf", description: "Show plant status or readings." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
   subpage: { icon: "view-grid-plus", description: "Open a nested page of cards." },
@@ -180,7 +182,7 @@ function renderPreview() {
       var iconName = resolveIcon(b);
       var label = b.label || b.entity || "Configure";
       var color = isEpaperPreview() ? epaperPreviewFillColor() :
-        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
+        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "plant" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
         ? state.sensorColor : state.offColor;
       var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
       if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {

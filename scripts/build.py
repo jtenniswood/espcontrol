@@ -498,6 +498,22 @@ def cpp_string_array(name, values):
     return f"inline const char *const {name}[] = {{{quoted}}};\n"
 
 
+def cpp_or_conditions(conditions, indent="  ", continuation="      "):
+    if not conditions:
+        return "false"
+    lines = []
+    current = indent + conditions[0]
+    for condition in conditions[1:]:
+        addition = " || " + condition
+        if len(current) + len(addition) > 96:
+            lines.append(current + " ||")
+            current = continuation + condition
+        else:
+            current += addition
+    lines.append(current)
+    return "\n".join(lines)
+
+
 def contract_card_option(cards, card_type, option_name):
     for option in cards[card_type].get("options", []):
         if option.get("name") == option_name:
@@ -770,11 +786,28 @@ def gen_card_contract_h(data):
         "}\n",
         "\n",
         "inline bool card_contract_large_numbers_supported(const std::string &type, const std::string &precision) {\n",
-        "  if (type == \"sensor\") return precision != \"icon\" && precision != \"text\";\n",
-        "  if (type == \"weather\") return precision == \"today\" || precision == \"tomorrow\";\n",
-        "  return type == \"\" || type == \"action\" || type == \"calendar\" || type == \"clock\" ||\n",
-        "         type == \"climate\" || type == \"media\" || type == \"subpage\" ||\n",
-        "         type == \"timezone\";\n",
+    ])
+    true_large_number_types = []
+    for card_type, rule in large_numbers.items():
+        if rule is True:
+            true_large_number_types.append(card_type)
+        elif isinstance(rule, dict) and rule.get("excludedPrecisions"):
+            blocked = cpp_or_conditions(
+                [f'precision == {json.dumps(value)}' for value in rule["excludedPrecisions"]],
+                indent="    ",
+                continuation="        ",
+            ).strip()
+            lines.append(f'  if (type == {json.dumps(card_type)}) return !({blocked});\n')
+        elif isinstance(rule, dict) and rule.get("precisions"):
+            allowed = cpp_or_conditions(
+                [f'precision == {json.dumps(value)}' for value in rule["precisions"]],
+                indent="    ",
+                continuation="        ",
+            ).strip()
+            lines.append(f'  if (type == {json.dumps(card_type)}) return {allowed};\n')
+    conditions = [f'type == {json.dumps(card_type)}' for card_type in true_large_number_types]
+    lines.append("  return " + cpp_or_conditions(conditions, indent="", continuation="         ").strip() + ";\n")
+    lines.extend([
         "}\n",
         "\n",
         "inline const char *card_contract_subpage_type_code(const std::string &type) {\n",

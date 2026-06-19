@@ -517,6 +517,40 @@ def firmware_weather_reconnect_errors(core_infra_path: Path, root: Path) -> list
     return errors
 
 
+def firmware_plant_card_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_plant.h"
+    if not path.exists():
+        return [f"{firmware_dir.relative_to(root)}/button_grid_plant.h: missing plant card runtime"]
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    required = {
+        'ha_subscribe_state(': "subscribe status mode to the plant entity state",
+        '"problem"': "subscribe status mode to the plant problem attribute",
+        'ha_subscribe_attribute(': "subscribe metric modes to plant attributes",
+        '"unit_of_measurement_dict"': "subscribe metric modes to plant unit metadata",
+        'plant_metric_fallback_unit': "provide fallback plant metric units",
+        '"\\xC2\\xB5S/cm"': "fallback conductivity unit must be micro-siemens per centimeter",
+        '"lx"': "fallback brightness unit must be lux",
+        'display_temperature_unit_symbol()': "fallback temperature unit must follow the display setting",
+        'lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE)': "plant cards must be read-only",
+    }
+    for needle, message in required.items():
+        if needle not in text:
+            errors.append(f"{rel}: {message}")
+    for mode in ("moisture", "battery", "temperature", "conductivity", "brightness"):
+        if f'mode == "{mode}"' not in text and f'normalized == "{mode}"' not in text:
+            errors.append(f"{rel}: plant mode {mode} is not handled")
+    friendly_match = re.search(
+        r"(?ms)subscribe_plant_metric_friendly_name\(PlantCardCtx \*ctx\).*?ha_subscribe_attribute"
+        r".*?\"friendly_name\".*?ctx->label\s*=\s*string_ref_limited\(name,\s*HA_FRIENDLY_NAME_MAX_LEN\)",
+        text,
+    )
+    if not friendly_match:
+        errors.append(f"{rel}: plant metric friendly names must update the cached card label")
+    return errors
+
+
 def firmware_cover_request_errors(firmware_dir: Path, core_infra_path: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_actions.h"
     if not path.exists() or not core_infra_path.exists():
@@ -1198,6 +1232,7 @@ def run_scan() -> int:
     errors.extend(firmware_weather_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_weather_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_weather_reconnect_errors(CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_plant_card_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_unavailable_retry_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_cover_request_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_cover_art_external_input_errors(COVER_ART_PATH, ROOT))

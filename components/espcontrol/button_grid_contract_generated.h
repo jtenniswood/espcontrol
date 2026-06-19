@@ -208,6 +208,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "webhook") return "Webhook";
   if (type == "sensor") return "Sensor";
   if (type == "local_sensor") return "Local Sensor";
+  if (type == "plant") return "Plant";
   if (type == "slider") return "Slider";
   if (type == "subpage") return "Subpage";
   if (type == "timezone") return "Date & Time";
@@ -248,6 +249,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "webhook") return true;
   if (type == "sensor") return true;
   if (type == "local_sensor") return true;
+  if (type == "plant") return true;
   if (type == "slider") return true;
   if (type == "subpage") return false;
   if (type == "timezone") return true;
@@ -288,6 +290,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "local_sensor") return "Auto";
+  if (type == "plant") return "Leaf";
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
@@ -328,6 +331,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "local_sensor") return "Auto";
+  if (type == "plant") return "Auto";
   if (type == "slider") return "Auto";
   if (type == "subpage") return "Auto";
   if (type == "timezone") return "Auto";
@@ -360,11 +364,12 @@ inline const char *card_contract_fan_default_icon_on_name(const std::string &typ
 }
 
 inline bool card_contract_large_numbers_supported(const std::string &type, const std::string &precision) {
-  if (type == "sensor") return precision != "icon" && precision != "text";
+  if (type == "sensor") return !(precision == "icon" || precision == "text");
   if (type == "weather") return precision == "today" || precision == "tomorrow";
-  return type == "" || type == "action" || type == "calendar" || type == "clock" ||
-         type == "climate" || type == "media" || type == "subpage" ||
-         type == "timezone";
+  if (type == "plant") return precision == "moisture" || precision == "battery" || precision == "temperature" ||
+        precision == "conductivity" || precision == "brightness";
+  return type == "" || type == "action" || type == "calendar" || type == "clock" || type == "climate" ||
+         type == "media" || type == "subpage" || type == "timezone";
 }
 
 inline const char *card_contract_subpage_type_code(const std::string &type) {
@@ -376,6 +381,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "local_sensor") return "LS";
   if (type == "door_window") return "X";
   if (type == "presence") return "PR";
+  if (type == "plant") return "PL";
   if (type == "weather") return "W";
   if (type == "weather_forecast") return "F";
   if (type == "option_select") return "U";
@@ -414,6 +420,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "LS") return "local_sensor";
   if (code == "X") return "door_window";
   if (code == "PR") return "presence";
+  if (code == "PL") return "plant";
   if (code == "W") return "weather";
   if (code == "F") return "weather_forecast";
   if (code == "U") return "option_select";

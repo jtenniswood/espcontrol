@@ -310,6 +310,7 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("alarm_action", false), fa
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("alarm_action", true), false);
 const infoOnlyPickerKeys = Array.from(hooks.buttonTypePickerKeysForInfoOnly(true));
 assert(infoOnlyPickerKeys.includes("sensor"), "info-only displays can still add sensor cards");
+assert(infoOnlyPickerKeys.includes("plant"), "info-only displays can still add plant cards");
 assert(infoOnlyPickerKeys.includes("weather"), "info-only displays can still add weather cards");
 assert(!infoOnlyPickerKeys.includes(""), "info-only displays hide switch controls");
 assert(!infoOnlyPickerKeys.includes("subpage"), "info-only displays hide subpage cards");
@@ -326,6 +327,36 @@ const switchPickerOption = pickerOptions.find((option) => option.key === "");
 assert(switchPickerOption, "switch card appears in the main card picker");
 assert.strictEqual(switchPickerOption.icon, "toggle-switch", "switch picker option uses the expected icon");
 assert(/Toggle lights/.test(switchPickerOption.description), "switch picker option includes concise help text");
+const plantPickerOption = pickerOptions.find((option) => option.key === "plant");
+assert(plantPickerOption, "plant card appears in the main card picker");
+assert.strictEqual(plantPickerOption.icon, "leaf", "plant picker option uses the expected icon");
+assert(/plant status or readings/.test(plantPickerOption.description), "plant picker option includes concise help text");
+const plantStatusPreview = hooks.buttonTypePreviewFor("plant", {
+  entity: "plant.monstera",
+  label: "Monstera",
+  icon: "Leaf",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "plant",
+  precision: "status",
+  options: "",
+}, { cardSize: 1 });
+assert(plantStatusPreview.iconHtml.includes("mdi-leaf"), "plant status preview uses the leaf icon");
+assert(plantStatusPreview.labelHtml.includes("Monstera"), "plant status preview uses the configured label");
+const plantMetricPreview = hooks.buttonTypePreviewFor("plant", {
+  entity: "plant.monstera",
+  label: "Moisture",
+  icon: "Leaf",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "plant",
+  precision: "moisture",
+  options: "large_numbers",
+}, { cardSize: 4 });
+assert(plantMetricPreview.iconHtml.includes("sp-sensor-preview-large"), "plant metric preview supports large numbers");
+assert(plantMetricPreview.iconHtml.includes("%"), "plant moisture preview shows percent units");
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Security", type: "alarm" }).iconHtml.includes("mdi-shield-off"),
   "alarm preview defaults to the status icon"

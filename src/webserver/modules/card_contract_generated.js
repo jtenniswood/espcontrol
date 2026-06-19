@@ -1130,6 +1130,57 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "plant": {
+    "label": "Plant",
+    "allowInSubpage": true,
+    "domains": [
+      "plant"
+    ],
+    "options": [
+      {
+        "name": "plant_mode",
+        "label": "Type",
+        "kind": "choice",
+        "values": [
+          "status",
+          "moisture",
+          "battery",
+          "temperature",
+          "conductivity",
+          "brightness"
+        ],
+        "defaultValue": "status",
+        "storage": [
+          "precision"
+        ]
+      },
+      {
+        "name": "large_numbers",
+        "label": "Large Metric Numbers",
+        "kind": "flag",
+        "supportedWhen": {
+          "precision": [
+            "moisture",
+            "battery",
+            "temperature",
+            "conductivity",
+            "brightness"
+          ]
+        }
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Leaf",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "plant",
+      "precision": "status",
+      "options": ""
+    }
+  },
   "slider": {
     "label": "Slider",
     "allowInSubpage": true,
@@ -1369,6 +1420,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "local_sensor": "LS",
   "door_window": "X",
   "presence": "PR",
+  "plant": "PL",
   "weather": "W",
   "weather_forecast": "F",
   "option_select": "U",
@@ -1405,6 +1457,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "LS": "local_sensor",
   "X": "door_window",
   "PR": "presence",
+  "PL": "plant",
   "W": "weather",
   "F": "weather_forecast",
   "U": "option_select",
@@ -1445,6 +1498,15 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
     "precisions": [
       "today",
       "tomorrow"
+    ]
+  },
+  "plant": {
+    "precisions": [
+      "moisture",
+      "battery",
+      "temperature",
+      "conductivity",
+      "brightness"
     ]
   },
   "calendar": true,

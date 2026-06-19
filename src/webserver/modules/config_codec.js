@@ -122,6 +122,15 @@ function normalizeButtonConfig(b) {
   if (b && b.type === "vacuum") {
     normalizeVacuumConfig(b);
   }
+  if (b && b.type === "plant") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = typeof normalizePlantMode === "function" ? normalizePlantMode(b.precision) : (b.precision || "status");
+    b.icon_on = "Auto";
+    if (!b.icon || b.icon === "Auto") b.icon = "Leaf";
+    if (!plantCardIsMetricMode(b)) b.options = "";
+    else b.options = copyLargeNumbersOption("", b.options);
+  }
   if (b && b.type === "screen_lock") {
     b.entity = "";
     b.label = "";
