@@ -1006,7 +1006,7 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
     key_label_font,
     icon_font,
     "Enter Pin",
-    false,
+    true,
     alarm_pin_keypad_submit,
     ui.active);
 }
