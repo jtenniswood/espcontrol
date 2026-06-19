@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -48,9 +49,19 @@ struct HaStateSubscriptionRef {
   uint32_t generation = 0;
 };
 
+struct HaStateSubscriptionKey {
+  std::string entity_id;
+  std::string attribute;
+};
+
 inline std::vector<HaStateSubscriptionRef> &ha_state_subscription_refs() {
   static std::vector<HaStateSubscriptionRef> refs;
   return refs;
+}
+
+inline std::vector<HaStateSubscriptionKey> &ha_state_subscription_keys() {
+  static std::vector<HaStateSubscriptionKey> keys;
+  return keys;
 }
 
 inline std::shared_ptr<HomeAssistantStateCallback> ha_state_subscription_callback_ref(
@@ -59,18 +70,26 @@ inline std::shared_ptr<HomeAssistantStateCallback> ha_state_subscription_callbac
     HomeAssistantStateCallback callback,
     uint32_t generation,
     bool *already_subscribed) {
-  std::vector<HaStateSubscriptionRef> &refs = ha_state_subscription_refs();
-  for (auto &ref : refs) {
-    if (ref.entity_id == entity_id && ref.attribute == attribute) {
-      *(ref.callback) = std::move(callback);
-      ref.generation = generation;
-      if (already_subscribed) *already_subscribed = true;
-      return ref.callback;
+  bool found_existing_subscription = false;
+  for (const auto &key : ha_state_subscription_keys()) {
+    if (key.entity_id == entity_id && key.attribute == attribute) {
+      found_existing_subscription = true;
+      break;
     }
   }
+  if (!found_existing_subscription) {
+    ha_state_subscription_keys().push_back({entity_id, attribute});
+  }
+
+  std::vector<HaStateSubscriptionRef> &refs = ha_state_subscription_refs();
+  refs.erase(std::remove_if(
+      refs.begin(), refs.end(),
+      [](const HaStateSubscriptionRef &ref) {
+        return !ha_subscription_callback_generation_valid(ref.generation);
+      }), refs.end());
   auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
   refs.push_back({entity_id, attribute, callback_ref, generation});
-  if (already_subscribed) *already_subscribed = false;
+  if (already_subscribed) *already_subscribed = found_existing_subscription;
   return callback_ref;
 }
 
@@ -150,6 +169,20 @@ inline void ha_invoke_state_callback(const std::shared_ptr<HomeAssistantStateCal
   depth++;
   (*callback)(state);
   depth--;
+}
+
+inline void ha_invoke_state_subscription_callbacks(const std::string &entity_id,
+                                                   const std::string &attribute,
+                                                   esphome::StringRef state) {
+  std::vector<std::shared_ptr<HomeAssistantStateCallback>> callbacks;
+  for (const auto &ref : ha_state_subscription_refs()) {
+    if (ref.entity_id != entity_id || ref.attribute != attribute) continue;
+    if (!ha_subscription_callback_generation_valid(ref.generation)) continue;
+    callbacks.push_back(ref.callback);
+  }
+  for (const auto &callback_ref : callbacks) {
+    ha_invoke_state_callback(callback_ref, state);
+  }
 }
 
 inline bool ha_queue_deferred_state_request(const std::string &entity_id,
@@ -304,14 +337,13 @@ inline bool ha_subscribe_state(const std::string &entity_id,
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
   uint32_t generation = ha_subscription_callback_generation_scope();
   bool already_subscribed = false;
-  auto callback_ref = ha_state_subscription_callback_ref(
+  ha_state_subscription_callback_ref(
     entity_id, std::string(), std::move(callback), generation, &already_subscribed);
   if (already_subscribed) return true;
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, {},
-    [callback_ref](esphome::StringRef state) {
-      if (!ha_state_subscription_generation_valid(callback_ref)) return;
-      ha_invoke_state_callback(callback_ref, state);
+    [entity_id](esphome::StringRef state) {
+      ha_invoke_state_subscription_callbacks(entity_id, std::string(), state);
     });
   return true;
 }
@@ -342,14 +374,13 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
   uint32_t generation = ha_subscription_callback_generation_scope();
   bool already_subscribed = false;
-  auto callback_ref = ha_state_subscription_callback_ref(
+  ha_state_subscription_callback_ref(
     entity_id, attribute, std::move(callback), generation, &already_subscribed);
   if (already_subscribed) return true;
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, attribute,
-    [callback_ref](esphome::StringRef state) {
-      if (!ha_state_subscription_generation_valid(callback_ref)) return;
-      ha_invoke_state_callback(callback_ref, state);
+    [entity_id, attribute](esphome::StringRef state) {
+      ha_invoke_state_subscription_callbacks(entity_id, attribute, state);
     });
   return true;
 }

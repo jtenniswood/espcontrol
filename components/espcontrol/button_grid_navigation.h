@@ -80,6 +80,9 @@ inline bool navigation_return_home(lv_obj_t *main_page_obj) {
 }
 
 inline void navigation_clear_subpages(lv_obj_t *main_page_obj = nullptr) {
+  if (main_page_obj != nullptr) {
+    navigation_return_home(main_page_obj);
+  }
   bump_ha_subscription_generation();
   for (auto &entry : navigation_subpages()) {
     if (entry.screen == nullptr || entry.screen == main_page_obj) continue;
