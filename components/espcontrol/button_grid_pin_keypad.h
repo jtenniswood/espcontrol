@@ -281,6 +281,36 @@ inline bool screensaver_pin_keypad_submit(const std::string &code, void *user_da
   return true;
 }
 
+struct ScreensaverPinKeypadOpenArgs {
+  lv_obj_t *source_btn = nullptr;
+  int width_compensation_percent = 0;
+  const lv_font_t *pin_label_font = nullptr;
+  const lv_font_t *key_label_font = nullptr;
+  const lv_font_t *icon_font = nullptr;
+};
+
+inline ScreensaverPinKeypadOpenArgs &screensaver_pin_keypad_open_args() {
+  static ScreensaverPinKeypadOpenArgs args;
+  return args;
+}
+
+inline void screensaver_pin_reopen_if_locked() {
+  if (!screensaver_pin_locked() || screensaver_pin_unlock_code().empty()) return;
+  ScreensaverPinKeypadOpenArgs &args = screensaver_pin_keypad_open_args();
+  pin_keypad_open_modal(
+    PinKeypadKind::SCREENSAVER,
+    nullptr,
+    args.width_compensation_percent,
+    args.pin_label_font,
+    args.key_label_font,
+    args.icon_font,
+    "Unlock Screen",
+    false,
+    screensaver_pin_keypad_submit,
+    nullptr,
+    screensaver_pin_reopen_if_locked);
+}
+
 inline bool screensaver_pin_active(bool required, const std::string &pin) {
   return required && !normalize_numeric_pin(pin).empty();
 }
@@ -301,6 +331,12 @@ inline bool screensaver_pin_lock_and_open(
     return false;
   }
   control_modal_force_close_active();
+  ScreensaverPinKeypadOpenArgs &args = screensaver_pin_keypad_open_args();
+  args.source_btn = source_btn;
+  args.width_compensation_percent = width_compensation_percent;
+  args.pin_label_font = pin_label_font;
+  args.key_label_font = key_label_font;
+  args.icon_font = icon_font;
   screensaver_pin_unlock_code() = normalized_pin;
   screensaver_pin_locked() = true;
   screen_lock_apply();
@@ -314,5 +350,6 @@ inline bool screensaver_pin_lock_and_open(
     "Unlock Screen",
     false,
     screensaver_pin_keypad_submit,
-    nullptr);
+    nullptr,
+    screensaver_pin_reopen_if_locked);
 }

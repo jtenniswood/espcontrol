@@ -656,19 +656,22 @@ function buildSettingsPage(parent) {
   pinInput.maxLength = 16;
   pinInput.autocomplete = "new-password";
   pinInput.placeholder = state.screensaverPinSet ? "PIN set" : "Enter numeric PIN";
+  var pinEdited = false;
   pinInput.addEventListener("input", function () {
     var next = normalizePin(this.value);
     if (this.value !== next) this.value = next;
+    pinEdited = true;
   });
-  bindTextPost(pinInput, entityName("screensaver_pin"), {
-    onBlur: function (value) {
-      var next = normalizePin(value);
-      state.screensaverPinSet = next.length > 0;
-      syncScreensaverPinUi();
-      window.setTimeout(function () {
-        pinInput.value = "";
-      }, 0);
-    },
+  pinInput.addEventListener("blur", function () {
+    var next = normalizePin(this.value);
+    if (!pinEdited && next.length === 0) return;
+    postText(entityName("screensaver_pin"), next);
+    state.screensaverPinSet = next.length > 0;
+    pinEdited = false;
+    syncScreensaverPinUi();
+    window.setTimeout(function () {
+      pinInput.value = "";
+    }, 0);
   });
   pinField.appendChild(pinInput);
   var pinHelp = document.createElement("div");
