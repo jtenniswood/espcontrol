@@ -89,6 +89,8 @@ struct CardBackgroundImageCtx {
   bool active = false;
   bool callbacks_bound = false;
   bool requested_once = false;
+  bool download_active = false;
+  bool download_queued = false;
   struct Binding {
     lv_obj_t *btn = nullptr;
     lv_obj_t *widget = nullptr;
@@ -737,9 +739,48 @@ inline void card_background_position_widget(lv_obj_t *btn, lv_obj_t *widget) {
   image_card_apply_tile_image_align(widget);
 }
 
+inline CardBackgroundImageCtx *&card_background_active_download_context() {
+  static CardBackgroundImageCtx *ctx = nullptr;
+  return ctx;
+}
+
+inline void card_background_request_download(CardBackgroundImageCtx *ctx) {
+  if (!ctx || !ctx->active || !ctx->image || ctx->url.empty()) return;
+  int width = ctx->image->get_fixed_width();
+  int height = ctx->image->get_fixed_height();
+  ctx->download_active = true;
+  ctx->download_queued = false;
+  card_background_active_download_context() = ctx;
+  std::string effective_url = ctx->image->request_update_url(
+    ctx->url, std::max(width, height));
+  if (!effective_url.empty()) ctx->url = effective_url;
+}
+
+inline void card_background_start_next_queued_download(CardBackgroundImageCtx *finished_ctx) {
+  CardBackgroundImageCtx *contexts = card_background_image_contexts();
+  for (int i = 0; i < CARD_BACKGROUND_IMAGE_MAX_CONTEXTS; i++) {
+    CardBackgroundImageCtx *next = &contexts[i];
+    if (!next->active || !next->download_queued || next == finished_ctx) continue;
+    card_background_request_download(next);
+    return;
+  }
+}
+
+inline void card_background_release_download_slot(CardBackgroundImageCtx *ctx) {
+  if (!ctx) return;
+  ctx->download_active = false;
+  ctx->download_queued = false;
+  CardBackgroundImageCtx *&active = card_background_active_download_context();
+  if (active == ctx) {
+    active = nullptr;
+    card_background_start_next_queued_download(ctx);
+  }
+}
+
 inline void card_background_apply_downloaded(CardBackgroundImageCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->image) return;
   if (ctx->image->get_url() != ctx->url) return;
+  card_background_release_download_slot(ctx);
   ctx->requested_once = true;
   for (auto &binding : ctx->bindings) {
     if (!binding.active || !binding.widget) continue;
@@ -757,6 +798,7 @@ inline void card_background_apply_downloaded(CardBackgroundImageCtx *ctx) {
 
 inline void card_background_handle_download_error(CardBackgroundImageCtx *ctx) {
   if (!ctx || !ctx->active) return;
+  card_background_release_download_slot(ctx);
   ESP_LOGW("card_background", "Card background image download failed: %s", ctx->id.c_str());
   for (auto &binding : ctx->bindings) {
     if (!binding.active) continue;
@@ -794,6 +836,11 @@ inline void reset_card_background_image_pool(const GridConfig &cfg) {
     contexts[i].id.clear();
     contexts[i].url.clear();
     contexts[i].requested_once = false;
+    if (card_background_active_download_context() == &contexts[i]) {
+      card_background_active_download_context() = nullptr;
+    }
+    contexts[i].download_active = false;
+    contexts[i].download_queued = false;
     contexts[i].image = i < count && cfg.card_background_images ? cfg.card_background_images[i] : nullptr;
     if (contexts[i].image) contexts[i].image->release();
   }
@@ -817,9 +864,14 @@ inline void refresh_card_background_image(lv_obj_t *btn) {
       ctx->image->set_target_size(width, height);
       if ((previous_width != width || previous_height != height) && !ctx->url.empty()) {
         ctx->image->release();
-        ctx->requested_once = true;
-        std::string effective_url = ctx->image->request_update_url(ctx->url, std::max(width, height));
-        if (!effective_url.empty()) ctx->url = effective_url;
+        ctx->requested_once = false;
+        ctx->image->set_target_size(width, height);
+        CardBackgroundImageCtx *active_download = card_background_active_download_context();
+        if (active_download && active_download != ctx) {
+          ctx->download_queued = true;
+        } else if (!ctx->download_active) {
+          card_background_request_download(ctx);
+        }
       }
       if (binding.dim) lv_obj_move_background(binding.dim);
       lv_obj_move_background(binding.widget);
@@ -914,11 +966,13 @@ inline void apply_card_background_image(BtnSlot &s, const ParsedCfg &p,
   card_background_position_widget(binding->btn, binding->widget);
   ctx->image->set_target_size(lv_obj_get_width(s.btn), lv_obj_get_height(s.btn));
   ctx->image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
-  std::string effective_url = ctx->image->request_update_url(
-    ctx->url, std::max(lv_obj_get_width(s.btn), lv_obj_get_height(s.btn)));
-  if (!effective_url.empty()) ctx->url = effective_url;
+  CardBackgroundImageCtx *active_download = card_background_active_download_context();
   if (ctx->requested_once && ctx->image->get_url() == ctx->url) {
     image_card_set_widget_source(binding->widget, ctx->image);
+  } else if (active_download && active_download != ctx) {
+    ctx->download_queued = true;
+  } else if (!ctx->download_active) {
+    card_background_request_download(ctx);
   }
   lv_obj_move_background(dim);
   lv_obj_move_background(img);
