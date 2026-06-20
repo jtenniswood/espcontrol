@@ -70,7 +70,7 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 - **Drag-and-drop layout** - move controls around without editing files.
 - **Subpages** - make folder-like pages for rooms or groups of controls.
 - **Different card sizes** - make important controls larger and keep smaller items compact.
-- **Dedicated card types** - Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage.
+- **Dedicated card types** - Switch, Lights, Action, Local Action, Option Select, Webhook, Trigger, Sensor, Local Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage.
 - **Home Assistant action support** - run scenes, scripts, automations, buttons, webhooks, and helper changes directly from the panel.
 - **Camera and media displays** - show camera images, media player state, album art, playback controls, volume, and progress.
 - **Display scheduling** - use idle timers, night schedules, brightness controls, and optional presence sensors so the screen behaves well in real rooms.

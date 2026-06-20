@@ -33,10 +33,12 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Switch](/card-types/switches)** | Controls a Home Assistant entity and shows its on/off state. This is the default card type. | Yes |
 | **[Lights](/card-types/lights)** | Controls a light as a full control popup, switch, brightness slider, or colour temperature slider. | Yes, as a light entity |
 | **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, helper action, or Option Select picker. | Yes |
+| **[Local Action](/card-types/local-actions)** | Runs an action registered directly on the panel firmware. | Local action key |
 | **[Option Select](/card-types/option-select)** | Opens a live `select` or `input_select` option list through the Action card. | Yes, as a select entity |
 | **[Webhook](/card-types/webhooks)** | Calls an HTTP URL directly from the panel for other automation platforms and webhook services. | URL |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
 | **[Sensor](/card-types/sensors)** | Shows a live numeric reading, text state, or icon state. | Yes, as **Sensor Entity** |
+| **[Local Sensor](/card-types/local-sensors)** | Shows a sensor value from the panel itself instead of Home Assistant. | Local sensor key |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |
 | **[Presence](/card-types/presence)** | Shows whether a person, room, or motion sensor is active. | Yes, as **Sensor Entity** |
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
@@ -93,6 +95,8 @@ If a card already occupies the space needed for a larger size, the setup page tr
 The **Settings** tab also includes display, brightness, screensaver, backup, and firmware update controls.
 
 ![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
+
+Open **Settings > System > Home Assistant Settings** to change **Home Assistant Port** if your Home Assistant instance does not use the default `8123` port. Camera/image cards and media artwork downloads use this port when loading images from Home Assistant.
 
 ## Apply Configuration
 

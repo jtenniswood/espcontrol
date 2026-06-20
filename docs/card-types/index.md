@@ -17,11 +17,13 @@ Use this page when you know what you want the panel to do but are not sure which
 | Toggle a light, switch, fan, helper, or button-style entity | [Switch](/card-types/switches) | `light`, `switch`, `input_boolean`, `fan`, or `button` |
 | Control a light as on/off, brightness, colour temperature, or colour presets | [Lights](/card-types/lights) | `light` |
 | Run a scene, script, automation, helper action, or button press | [Action](/card-types/actions) | Depends on the selected action |
+| Run an action registered directly on the panel | [Local Action](/card-types/local-actions) | Local action key |
 | Show or control a robot vacuum | [Vacuum](/card-types/vacuum) | `vacuum` |
 | Pick from a Home Assistant select list | [Option Select](/card-types/option-select) | `select` or `input_select` |
 | Fire a custom Home Assistant automation event | [Trigger](/card-types/buttons) | No entity required |
 | Call an HTTP URL directly from the panel | [Webhook](/card-types/webhooks) | URL |
 | Show a live number, text state, or active/inactive icon | [Sensor](/card-types/sensors) | `sensor`, `binary_sensor`, or `text_sensor` |
+| Show a sensor value from the panel itself | [Local Sensor](/card-types/local-sensors) | Local sensor key |
 | Show a door or window contact sensor | [Doors & Windows](/card-types/doors-windows) | `binary_sensor` or `sensor` |
 | Show presence, motion, person, or tracker state | [Presence](/card-types/presence) | `binary_sensor`, `sensor`, `text_sensor`, `person`, or tracker helpers |
 | Drag to set light brightness or fan speed | [Slider](/card-types/sliders) | `light` or `fan` |
@@ -47,6 +49,8 @@ Most cards use Home Assistant entities. The entity ID is the exact name Home Ass
 Some cards do not need a Home Assistant entity:
 
 - **Trigger** sends a custom event that Home Assistant automations can listen for.
+- **Local Action** runs a callback registered directly on the panel firmware.
+- **Local Sensor** shows a value supplied by the panel firmware.
 - **Webhook** sends a direct HTTP request.
 - **Date & Time**, **World Clock**, **Screen Lock**, and **Subpage** can work from the panel itself.
 - **Internal Switches** controls built-in relay hardware on supported panels.

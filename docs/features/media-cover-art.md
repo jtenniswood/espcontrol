@@ -21,3 +21,5 @@ You will find these controls in **Settings > Sleep & Schedule > Media Cover Art*
 - **Advanced Filtering** - reveals **Only Show When**, which limits cover art to matching media player attributes, such as `app_id=com.apple.TVMusic` or `app_id=com.apple.TVMusic; media_content_type=music`.
 
 Cover art is separate from the normal [Screensaver](/features/screensaver) mode. Use Screensaver when you want the panel to dim, show a clock, or turn off after inactivity.
+
+If your Home Assistant instance uses a custom port, open **Settings > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Media cover art downloads use this port when loading artwork from Home Assistant.
