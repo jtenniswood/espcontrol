@@ -1560,6 +1560,10 @@ function serializeButtonConfig(b) {
   return "~" + fields.map(encodeConfigField).join(",");
 }
 
+function serializePendingRestartButtonConfig(b) {
+  return "!" + serializeButtonConfig(b);
+}
+
 function parseRawButtonConfig(str) {
   return EspControlModel.parseRawButtonConfig(str);
 }

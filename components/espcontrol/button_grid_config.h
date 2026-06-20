@@ -315,6 +315,7 @@ struct ParsedCfg {
   std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, climate, push, webhook, todo, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
+  bool pending_restart = false;
 };
 
 inline bool brightness_slider_type(const std::string &type) {
@@ -1072,8 +1073,13 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
 
 inline ParsedCfg parse_cfg(const std::string &cfg) {
   ParsedCfg p;
-  if (!cfg.empty() && cfg[0] == '~') {
-    std::vector<std::string> f = split_config_fields(cfg.substr(1), ',');
+  std::string raw = cfg;
+  if (!raw.empty() && raw[0] == '!') {
+    p.pending_restart = true;
+    raw = raw.substr(1);
+  }
+  if (!raw.empty() && raw[0] == '~') {
+    std::vector<std::string> f = split_config_fields(raw.substr(1), ',');
     p.entity    = f.size() > 0 ? decode_compact_field(f[0]) : "";
     p.label     = f.size() > 1 ? decode_compact_field(f[1]) : "";
     p.icon      = f.size() > 2 ? decode_compact_field(f[2]) : "";
@@ -1085,15 +1091,15 @@ inline ParsedCfg parse_cfg(const std::string &cfg) {
     p.options   = f.size() > 8 ? decode_compact_field(f[8]) : "";
     return normalize_parsed_cfg(p);
   }
-  p.entity    = cfg_field(cfg, 0);
-  p.label     = cfg_field(cfg, 1);
-  p.icon      = cfg_field(cfg, 2);
-  p.icon_on   = cfg_field(cfg, 3);
-  p.sensor    = cfg_field(cfg, 4);
-  p.unit      = cfg_field(cfg, 5);
-  p.type      = cfg_field(cfg, 6);
-  p.precision = cfg_field(cfg, 7);
-  p.options   = cfg_field(cfg, 8);
+  p.entity    = cfg_field(raw, 0);
+  p.label     = cfg_field(raw, 1);
+  p.icon      = cfg_field(raw, 2);
+  p.icon_on   = cfg_field(raw, 3);
+  p.sensor    = cfg_field(raw, 4);
+  p.unit      = cfg_field(raw, 5);
+  p.type      = cfg_field(raw, 6);
+  p.precision = cfg_field(raw, 7);
+  p.options   = cfg_field(raw, 8);
   return normalize_parsed_cfg(p);
 }
 

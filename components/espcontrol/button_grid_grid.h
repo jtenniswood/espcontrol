@@ -241,6 +241,12 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     cfg.subpage_chevron_x, cfg.subpage_chevron_y,
     cfg.subpage_chevron_text_width_percent);
 
+  if (p.pending_restart) {
+    lv_obj_add_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+    return;
+  }
+
   if (cfg.info_only && info_only_hidden_card_type(p)) {
     lv_obj_add_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
@@ -715,6 +721,11 @@ inline void grid_refresh_layout(
     if (idx < 1 || idx > NS) continue;
     auto &s = slots[idx - 1];
     ParsedCfg p = parse_cfg(s.config->state);
+    if (p.pending_restart) {
+      lv_obj_add_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+      continue;
+    }
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     refresh_card_layout(s, p, cfg, row_span);
   }
@@ -729,6 +740,7 @@ inline void grid_phase1(
     const std::string &on_hex, const std::string &off_hex,
     const std::string &sensor_hex,
     lv_obj_t *main_page_obj = nullptr) {
+  static bool pending_restart_configs_cleared = false;
   ESP_LOGI("sensors", "Phase 1: visual setup start (%lu ms)", esphome::millis());
   set_backlight_display_takeover_callback(navigation_close_modals_for_display_takeover);
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
@@ -792,6 +804,10 @@ inline void grid_phase1(
     if (idx < 1 || idx > NS) continue;
     auto &s = slots[idx - 1];
     std::string scfg = s.config->state;
+    if (!pending_restart_configs_cleared && !scfg.empty() && scfg[0] == '!') {
+      scfg = scfg.substr(1);
+      s.config->publish_state(scfg);
+    }
     lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
     int col = pos % COLS, row = pos / COLS;
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
@@ -809,6 +825,7 @@ inline void grid_phase1(
     setup_card_visual(s, p, cfg, palette, row_span, col_span);
     refresh_card_layout(s, p, cfg, row_span);
   }
+  pending_restart_configs_cleared = true;
   screen_lock_apply();
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
 }

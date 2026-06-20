@@ -190,8 +190,9 @@ var EspControlModel = (() => {
     });
   }
   function parseRawButtonConfig(value) {
-    const compact = !!(value && value.charAt(0) === "~");
-    const parts = compact ? value.substring(1).split(",") : (value || "").split(";");
+    const raw = value && value.charAt(0) === "!" ? value.substring(1) : value || "";
+    const compact = raw.charAt(0) === "~";
+    const parts = compact ? raw.substring(1).split(",") : raw.split(";");
     const decoded = compact ? parts.map(decodeConfigField) : parts;
     return {
       entity: decoded[0] || "",
