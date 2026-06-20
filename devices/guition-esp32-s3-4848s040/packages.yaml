@@ -74,6 +74,20 @@ substitutions:
   cover_art_square_overlay: "true"
   cover_art_live_image_updates: "false"
 
+globals:
+  - id: voice_interaction_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: master_mute_switch
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: voice_media_player
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
 packages:
   # ---------------------------------------------------------------------------
   # Device, assets, and LVGL base
