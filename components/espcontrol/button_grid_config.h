@@ -391,6 +391,9 @@ inline int normalize_media_volume_max_percent(const std::string &value) {
 
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
+  if (mode == "now_playing") {
+    return cfg_option_token_present(options, "media_cover_art") ? "media_cover_art" : "";
+  }
   if (mode != "volume" && mode != "position") return "";
   std::string out;
   int max_pct = normalize_media_volume_max_percent(
@@ -1057,6 +1060,11 @@ inline int media_volume_max_percent(const ParsedCfg &p) {
   return p.type == "media" && p.sensor == "volume"
     ? normalize_media_volume_max_percent(cfg_option_value(p.options, "volume_max"))
     : 100;
+}
+
+inline bool media_cover_art_enabled(const ParsedCfg &p) {
+  return p.type == "media" && p.sensor == "now_playing" &&
+         cfg_option_token_present(p.options, "media_cover_art");
 }
 
 inline std::string action_card_state_entity(const ParsedCfg &p) {

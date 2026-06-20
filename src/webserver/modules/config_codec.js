@@ -233,6 +233,7 @@ var GARAGE_LABEL_DISPLAY_OPTION = "label_display";
 var CLIMATE_LABEL_DISPLAY_OPTION = "label_display";
 var CLIMATE_NUMBER_DISPLAY_OPTION = "number_display";
 var MEDIA_VOLUME_MAX_OPTION = "volume_max";
+var MEDIA_COVER_ART_OPTION = "media_cover_art";
 var SUBPAGE_KIND_OPTION = "subpage_kind";
 var IMAGE_LABEL_OPTION = "image_label";
 var IMAGE_ICON_OPTION = "image_icon";
@@ -352,14 +353,31 @@ function normalizeMediaVolumeMax(value) {
 
 function normalizeMediaOptions(options, mode) {
   mode = mediaEditorMode(mode);
-  if (mode !== "volume" && mode !== "position") return "";
+  if (mode !== "volume" && mode !== "position" && mode !== "now_playing") return "";
   var out = "";
+  if (mode === "now_playing") {
+    return configOptionEnabled(options, MEDIA_COVER_ART_OPTION)
+      ? setConfigOption(out, MEDIA_COVER_ART_OPTION, true)
+      : "";
+  }
   var maxVolume = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
   if (mode === "volume" && maxVolume !== "100") {
     out = setConfigOptionValue(out, MEDIA_VOLUME_MAX_OPTION, maxVolume);
   }
   out = copyLargeNumbersOption(out, options);
   return out;
+}
+
+function mediaCoverArtEnabled(b) {
+  return !!(b && mediaEditorMode(b.sensor) === "now_playing" &&
+    configOptionEnabled(b.options, MEDIA_COVER_ART_OPTION));
+}
+
+function setMediaCoverArtEnabled(b, enabled) {
+  if (!b) return "";
+  b.options = setConfigOption(b.options, MEDIA_COVER_ART_OPTION, !!enabled);
+  b.options = normalizeMediaOptions(b.options, b.sensor);
+  return b.options;
 }
 
 function imageRefreshIntervalValues() {
@@ -411,7 +429,7 @@ function imageCardLimitMessage() {
 }
 
 function isImageCard(button) {
-  return !!button && button.type === "image";
+  return !!button && (button.type === "image" || mediaCoverArtEnabled(button));
 }
 
 function activeGridSlots(grid) {

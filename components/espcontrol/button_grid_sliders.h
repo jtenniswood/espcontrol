@@ -50,8 +50,11 @@ struct MediaNowPlayingCtx {
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
+  ImageCardCtx *cover_art = nullptr;
+  lv_obj_t *cover_overlay = nullptr;
   lv_obj_t *btn = nullptr;
   bool play_pause_background = false;
+  bool cover_art_enabled = false;
 };
 
 constexpr uint32_t MEDIA_SEEK_PENDING_TIMEOUT_MS = 3000;

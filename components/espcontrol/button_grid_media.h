@@ -34,6 +34,16 @@ inline void media_refresh_artist_text(lv_obj_t *artist_lbl,
   );
 }
 
+inline void media_cover_art_configure_text(lv_obj_t *label) {
+  if (!label) return;
+  lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+  lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_shadow_color(label, lv_color_black(), LV_PART_MAIN);
+  lv_obj_set_style_shadow_opa(label, LV_OPA_70, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(label, 4, LV_PART_MAIN);
+  lv_obj_set_style_shadow_ofs_y(label, 1, LV_PART_MAIN);
+}
+
 inline bool media_seek_pending_active(SliderCtx *ctx) {
   return ctx && ctx->media_seek_pending &&
          (esphome::millis() - ctx->media_seek_pending_ms) < MEDIA_SEEK_PENDING_TIMEOUT_MS;
@@ -469,6 +479,11 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     s.sensor_lbl = title_lbl;
     ctx->title_lbl = title_lbl;
     ctx->artist_lbl = s.text_lbl;
+    ctx->cover_art_enabled = media_cover_art_enabled(p);
+    if (ctx->cover_art_enabled) {
+      media_cover_art_configure_text(title_lbl);
+      media_cover_art_configure_text(s.text_lbl);
+    }
     lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad,
@@ -492,17 +507,19 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
 
 inline void subscribe_media_state(lv_obj_t *btn_ptr,
                                   lv_obj_t *status_lbl,
-                                  const std::string &entity_id) {
+                                  const std::string &entity_id,
+                                  std::function<void()> after_checked_state_sync = nullptr) {
   register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
-      [btn_ptr, status_lbl](esphome::StringRef state) {
+      [btn_ptr, status_lbl, after_checked_state_sync](esphome::StringRef state) {
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         bool unavailable = ha_state_unavailable_ref(state);
         apply_control_availability(btn_ptr, btn_ptr, !unavailable);
         bool playing = state_text == "playing";
         set_card_checked_state(btn_ptr, playing);
+        if (after_checked_state_sync) after_checked_state_sync();
         if (status_lbl) {
           std::string label = media_status_text(state_text);
           lv_label_set_text(status_lbl, label.c_str());
@@ -539,7 +556,14 @@ inline void subscribe_media_now_playing_state(MediaNowPlayingCtx *ctx,
     subscribe_media_slider_state(lv_obj_get_parent(ctx->progress_slider), ctx->progress_slider, entity_id);
   }
   if (ctx && ctx->play_pause_background && ctx->btn) {
-    subscribe_media_state(ctx->btn, nullptr, entity_id);
+    std::function<void()> preserve_cover_art_text = nullptr;
+    if (ctx->cover_art_enabled) {
+      preserve_cover_art_text = [ctx]() {
+        media_cover_art_configure_text(ctx->title_lbl);
+        media_cover_art_configure_text(ctx->artist_lbl);
+      };
+    }
+    subscribe_media_state(ctx->btn, nullptr, entity_id, preserve_cover_art_text);
   }
 }
 

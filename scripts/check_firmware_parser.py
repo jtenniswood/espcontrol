@@ -21,6 +21,7 @@ DEVICES_DIR = ROOT / "devices"
 
 
 CPP_SOURCE = r'''
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -402,6 +403,12 @@ int main() {
   auto now_playing_large = parse_cfg("media_player.office;;Auto;Auto;now_playing;;media;;large_numbers");
   assert(now_playing_large.options == "");
   assert(!card_large_numbers_enabled(now_playing_large));
+  auto now_playing_cover_art = parse_cfg("media_player.office;;Auto;Auto;now_playing;;media;progress;media_cover_art");
+  assert(now_playing_cover_art.options == "media_cover_art");
+  assert(media_cover_art_enabled(now_playing_cover_art));
+  auto volume_cover_art = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;media_cover_art,volume_max=40");
+  assert(volume_cover_art.options == "volume_max=40");
+  assert(!media_cover_art_enabled(volume_cover_art));
   auto volume_uncapped = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=150");
   assert(volume_uncapped.options == "");
   assert(media_volume_max_percent(volume_uncapped) == 100);
