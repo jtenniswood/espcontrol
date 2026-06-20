@@ -264,7 +264,8 @@ var CSS =
   ".card-chevron svg{width:100%;height:100%}" +
   ".card.collapsed .card-chevron{transform:rotate(-90deg)}" +
   ".card.collapsed .card-body{display:none}" +
-  ".card-header-right{display:flex;align-items:center;gap:8px}" +
+  ".card-header-right{display:flex;align-items:center;gap:12px}" +
+  ".card.collapsed .sp-card-header-action{display:none}" +
   ".sp-card-badge{display:inline-flex;align-items:center;gap:7px;min-height:24px;" +
   "padding:0 12px 0 10px;border-radius:999px;background:rgba(48,164,108,.16);" +
   "color:#30a46c;font-size:.68rem;font-weight:400;text-transform:uppercase;letter-spacing:.04em;line-height:1}" +
@@ -300,6 +301,10 @@ var CSS =
   "background:var(--surface2);color:var(--text2);display:inline-flex;align-items:center;justify-content:center;" +
   "font-size:18px;cursor:pointer;font-family:inherit;transition:background .25s,color .25s,border-color .25s}" +
   ".sp-icon-button:hover{background:var(--border);color:var(--text)}" +
+  ".sp-icon-button.sp-card-header-action{width:24px;height:24px;margin-right:12px;border:0;" +
+  "background:transparent;border-radius:0;color:var(--text3);font-size:20px;box-shadow:none}" +
+  ".sp-icon-button.sp-card-header-action:hover,.sp-icon-button.sp-card-header-action:focus{" +
+  "background:transparent;color:var(--text);box-shadow:none}" +
   ".sp-secondary-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;" +
   "border:1px solid var(--border);border-radius:var(--action-r);background:var(--surface2);" +
   "color:var(--text);padding:10px 14px;font-size:.875rem;font-weight:500;cursor:pointer;" +

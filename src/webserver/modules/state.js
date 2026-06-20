@@ -29,6 +29,7 @@ var THEME_PRESETS = {
   Light: { on: "0073FF", off: "CECECE", sensor: "DEDEDE" },
   Dark: { on: "FF8C00", off: "313131", sensor: "212121" },
 };
+var DEFAULT_COLOR_PRESET = THEME_PRESETS[defaultTheme()];
 
 function defaultTheme() {
   return "Dark";
@@ -73,9 +74,9 @@ var state = {
   buttons: [],
   theme: defaultTheme(),
   themeOptions: ["Light", "Dark"],
-  onColor: THEME_PRESETS[defaultTheme()].on,
-  offColor: THEME_PRESETS[defaultTheme()].off,
-  sensorColor: THEME_PRESETS[defaultTheme()].sensor,
+  onColor: DEFAULT_COLOR_PRESET.on,
+  offColor: DEFAULT_COLOR_PRESET.off,
+  sensorColor: DEFAULT_COLOR_PRESET.sensor,
   selectedSlots: [],
   lastClickedSlot: -1,
   clockBarSelectedItem: "",
@@ -800,6 +801,19 @@ function applyThemePreset(theme, postChanges) {
       postText(entityName("button_off_color"), state.offColor);
       postText(entityName("sensor_card_color"), state.sensorColor);
     }
+  }
+}
+
+function resetAppearanceColors(postChanges) {
+  state.onColor = DEFAULT_COLOR_PRESET.on;
+  state.offColor = DEFAULT_COLOR_PRESET.off;
+  state.sensorColor = DEFAULT_COLOR_PRESET.sensor;
+  syncColorUi();
+  renderPreview();
+  if (postChanges) {
+    postText(entityName("button_on_color"), state.onColor);
+    postText(entityName("button_off_color"), state.offColor);
+    postText(entityName("sensor_card_color"), state.sensorColor);
   }
 }
 
