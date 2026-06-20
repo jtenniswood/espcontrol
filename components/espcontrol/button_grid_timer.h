@@ -259,8 +259,8 @@ inline void setup_timer_card(BtnSlot &slot, const ParsedCfg &cfg,
     lv_obj_set_style_text_font(slot.sensor_lbl, value_font, LV_PART_MAIN);
   lv_label_set_text(slot.sensor_lbl, "0:00");
   lv_label_set_text(slot.unit_lbl, "");
-  lv_label_set_text(slot.text_lbl,
-    cfg.label.empty() ? espcontrol_i18n(std::string("Timer")) : cfg.label.c_str());
+  std::string label = cfg.label.empty() ? espcontrol_i18n(std::string("Timer")) : cfg.label;
+  lv_label_set_text(slot.text_lbl, label.c_str());
 }
 
 inline uint16_t timer_parse_confirm_timeout(const std::string &unit) {
