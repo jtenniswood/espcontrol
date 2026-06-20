@@ -412,6 +412,11 @@ const climatePreviewAuto = hooks.buttonTypePreviewFor("climate", climatePreviewB
   timezone: "America/New_York (GMT-5)",
 });
 assert(climatePreviewAuto.iconHtml.includes("\u00b0F"), "climate preview follows Auto timezone unit");
+assert.strictEqual(
+  hooks.temperatureUnitSymbolFor("Auto (Home Assistant)", "Auto", "America/New_York"),
+  "\u00b0F",
+  "Auto temperature unit follows the published active timezone"
+);
 const climateLabelPreview = hooks.buttonTypePreviewFor("climate", {
   ...climatePreviewButton,
   options: "label_display=actual",
@@ -519,6 +524,17 @@ const timezonePreview = hooks.buttonTypePreviewFor("timezone", {
 });
 assert(timezonePreview.labelHtml.includes("New York"), "world clock preview uses the city label");
 assert(timezonePreview.labelHtml.includes("mdi-map-clock"), "world clock preview uses the map clock badge");
+
+const autoTimezonePreview = hooks.buttonTypePreviewForMockNow("timezone", {
+  entity: "Auto (Home Assistant)",
+  type: "timezone",
+  options: "",
+}, {
+  activeTimezone: "America/New_York",
+  clockFormat: "24h",
+});
+assert(autoTimezonePreview.labelHtml.includes("New York"), "Auto world clock preview uses the published active timezone city");
+assert.strictEqual(previewSensorValue(autoTimezonePreview), "04:00", "Auto world clock preview uses the published active timezone time");
 
 const wideTimezonePreview = hooks.buttonTypePreviewFor("timezone", {
   entity: "America/New_York (GMT-5)",

@@ -52,7 +52,9 @@ function isHomeAssistantAutoTimezone(value) {
 }
 
 function effectiveTimezoneOptionForWeb(value) {
-  return isHomeAssistantAutoTimezone(value) ? FALLBACK_TIMEZONE_OPTION : value;
+  if (!isHomeAssistantAutoTimezone(value)) return value;
+  var active = String(state && state.activeTimezone || "").trim();
+  return active && !isHomeAssistantAutoTimezone(active) ? active : FALLBACK_TIMEZONE_OPTION;
 }
 
 function timezoneOptionsWithFallback(options, selected) {
@@ -139,6 +141,7 @@ var state = {
   scheduleClockBrightness: 10,
   scheduleClockTextColor: "FFFFFF",
   timezone: AUTO_TIMEZONE_OPTION,
+  activeTimezone: FALLBACK_TIMEZONE_OPTION,
   timezoneOptions: defaultTimezoneOptions(),
   language: "en",
   languageOptions: ["en", "cs", "da", "de", "es", "fi", "fr", "hu", "it", "nb", "nl", "pl", "pt", "pt-br", "ro", "sk", "sl", "sv", "tr", "uk"],
