@@ -994,6 +994,24 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "timer": {
+    "label": "Timer",
+    "allowInSubpage": true,
+    "domains": [
+      "timer"
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "3",
+      "type": "timer",
+      "precision": "",
+      "options": ""
+    }
+  },
   "webhook": {
     "label": "Webhook",
     "allowInSubpage": true,
@@ -1392,6 +1410,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "climate": "H",
   "push": "P",
   "screen_lock": "SL",
+  "timer": "TM",
   "webhook": "WH",
   "internal": "I",
   "subpage": "G"
@@ -1428,6 +1447,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "H": "climate",
   "P": "push",
   "SL": "screen_lock",
+  "TM": "timer",
   "WH": "webhook",
   "I": "internal",
   "G": "subpage"
@@ -1452,6 +1472,7 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
   "climate": true,
   "media": true,
   "subpage": true,
+  "timer": true,
   "timezone": true
 };
 

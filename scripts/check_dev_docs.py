@@ -141,6 +141,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "sensor": "docs/card-types/sensors.md",
     "slider": "docs/card-types/sliders.md",
     "subpage": "docs/features/subpages.md",
+    "timer": "docs/card-types/timers.md",
     "timezone": "docs/card-types/timezones.md",
     "vacuum": "docs/card-types/vacuum.md",
     "weather": "docs/card-types/weather.md",

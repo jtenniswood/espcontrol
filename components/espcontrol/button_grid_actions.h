@@ -628,6 +628,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "todo") {
     TodoCardCtx *ctx = (TodoCardCtx *)lv_obj_get_user_data(btn_obj);
     if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
+  } else if (p.type == "timer") {
+    TimerCardCtx *ctx = (TimerCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) handle_timer_card_click(ctx);
   } else if (p.type == "media") {
     std::string mode = media_card_mode(p.sensor);
     if (mode == "volume") {
