@@ -1050,10 +1050,14 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
       ui.panel, key_size, key_size, text, key_font,
       action->card->width_compensation_percent, key_zoom);
     if (strcmp(key_data[i], "submit") == 0) {
-      lv_obj_set_style_bg_color(key_btn, lv_color_hex(DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
-      lv_obj_set_style_border_color(key_btn, lv_color_hex(DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
+      uint32_t submit_color = action->card->on_color;
+      lv_obj_set_style_bg_color(key_btn, lv_color_hex(submit_color), LV_PART_MAIN);
+      lv_obj_set_style_border_color(key_btn, lv_color_hex(submit_color), LV_PART_MAIN);
       lv_obj_t *key_lbl = lv_obj_get_child(key_btn, 0);
-      if (key_lbl) lv_obj_set_style_text_color(key_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      if (key_lbl) {
+        lv_obj_set_style_text_color(
+          key_lbl, lv_color_hex(readable_text_color_for_bg(submit_color)), LV_PART_MAIN);
+      }
     }
     int row = i / 3;
     int col = i % 3;

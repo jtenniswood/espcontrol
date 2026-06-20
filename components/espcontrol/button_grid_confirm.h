@@ -46,6 +46,18 @@ inline void set_switch_confirmation_accent_color(uint32_t color) {
   switch_confirmation_accent_color_ref() = color;
 }
 
+inline uint32_t switch_confirmation_button_accent_color(lv_obj_t *btn_obj) {
+  if (!btn_obj) return switch_confirmation_accent_color_ref();
+  bool was_checked = lv_obj_has_state(btn_obj, LV_STATE_CHECKED);
+  if (!was_checked) lv_obj_add_state(btn_obj, LV_STATE_CHECKED);
+  lv_color32_t color = lv_color_to_32(
+    lv_obj_get_style_bg_color(btn_obj, LV_PART_MAIN), LV_OPA_COVER);
+  if (!was_checked) lv_obj_clear_state(btn_obj, LV_STATE_CHECKED);
+  return (static_cast<uint32_t>(color.red) << 16) |
+         (static_cast<uint32_t>(color.green) << 8) |
+         static_cast<uint32_t>(color.blue);
+}
+
 inline const lv_font_t *switch_confirmation_message_font(const lv_font_t *fallback) {
   const lv_font_t *font = switch_confirmation_message_font_ref();
   return font ? font : fallback;
@@ -122,7 +134,7 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
   ui.no_btn = control_modal_create_text_button(
     ui.panel, switch_confirmation_no_text(p), button_max_w, button_min_w, button_h,
     button_h / 2, DARK_BORDER, DARK_TEXT_PRIMARY, button_font);
-  uint32_t confirm_color = switch_confirmation_accent_color_ref();
+  uint32_t confirm_color = switch_confirmation_button_accent_color(btn_obj);
   ui.confirm_btn = control_modal_create_text_button(
     ui.panel, switch_confirmation_yes_text(p), button_max_w, button_min_w, button_h,
     button_h / 2, confirm_color, readable_text_color_for_bg(confirm_color), button_font);
