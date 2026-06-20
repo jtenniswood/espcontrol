@@ -206,6 +206,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "option_select") return "Option Select";
   if (type == "push") return "Trigger";
   if (type == "screen_lock") return "Screen Lock";
+  if (type == "timer") return "Timer";
   if (type == "webhook") return "Webhook";
   if (type == "sensor") return "Sensor";
   if (type == "local_sensor") return "Local Sensor";
@@ -247,6 +248,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "option_select") return true;
   if (type == "push") return true;
   if (type == "screen_lock") return true;
+  if (type == "timer") return true;
   if (type == "webhook") return true;
   if (type == "sensor") return true;
   if (type == "local_sensor") return true;
@@ -288,6 +290,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "option_select") return "Flash";
   if (type == "push") return "Gesture Tap";
   if (type == "screen_lock") return "Lock";
+  if (type == "timer") return "Auto";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "local_sensor") return "Auto";
@@ -329,6 +332,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "option_select") return "Auto";
   if (type == "push") return "Auto";
   if (type == "screen_lock") return "Lock Open";
+  if (type == "timer") return "Auto";
   if (type == "webhook") return "Auto";
   if (type == "sensor") return "Auto";
   if (type == "local_sensor") return "Auto";
@@ -404,6 +408,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "climate") return "H";
   if (type == "push") return "P";
   if (type == "screen_lock") return "SL";
+  if (type == "timer") return "TM";
   if (type == "webhook") return "WH";
   if (type == "internal") return "I";
   if (type == "subpage") return "G";
@@ -443,6 +448,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "H") return "climate";
   if (code == "P") return "push";
   if (code == "SL") return "screen_lock";
+  if (code == "TM") return "timer";
   if (code == "WH") return "webhook";
   if (code == "I") return "internal";
   if (code == "G") return "subpage";

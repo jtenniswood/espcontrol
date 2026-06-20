@@ -863,6 +863,22 @@
         "options": ""
       }
     },
+    "timer": {
+      "label": "Timer",
+      "allowInSubpage": true,
+      "domains": ["timer"],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "3",
+        "type": "timer",
+        "precision": "",
+        "options": ""
+      }
+    },
     "webhook": {
       "label": "Webhook",
       "allowInSubpage": true,
@@ -1214,6 +1230,7 @@
     "climate": true,
     "media": true,
     "subpage": true,
+    "timer": true,
     "timezone": true
   },
   "subpageTypeCodes": {
@@ -1249,6 +1266,7 @@
     "climate": "H",
     "push": "P",
     "screen_lock": "SL",
+    "timer": "TM",
     "webhook": "WH",
     "internal": "I",
     "subpage": "G"
