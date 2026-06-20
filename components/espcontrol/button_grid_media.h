@@ -619,6 +619,7 @@ inline void subscribe_media_volume_state(MediaVolumeCtx *ctx) {
   );
 }
 
+#ifdef USE_MEDIA_PLAYER
 inline void open_device_volume_modal(lv_obj_t *anchor,
                                      esphome::media_player::MediaPlayer *player,
                                      const lv_font_t *value_font,
@@ -676,6 +677,7 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
   };
   media_volume_open_modal(ctx);
 }
+#endif
 
 inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
                                          lv_obj_t *slider,
