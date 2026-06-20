@@ -360,7 +360,7 @@ function postTextWithObjectIds(name, objectIds, value, errorMessage) {
 
 function saveButtonConfig(slot) {
   var b = state.buttons[slot - 1];
-  postText(entityNameForSlot("button_config", slot), serializePendingRestartButtonConfig(b));
+  postText(entityNameForSlot("button_config", slot), serializeButtonConfigForPost(b));
 }
 
 function subpageEntityKeys() {

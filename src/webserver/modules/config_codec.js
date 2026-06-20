@@ -1564,6 +1564,11 @@ function serializePendingRestartButtonConfig(b) {
   return "!" + serializeButtonConfig(b);
 }
 
+function serializeButtonConfigForPost(b) {
+  var pending = serializePendingRestartButtonConfig(b);
+  return pending.length <= 255 ? pending : serializeButtonConfig(b);
+}
+
 function parseRawButtonConfig(str) {
   return EspControlModel.parseRawButtonConfig(str);
 }
