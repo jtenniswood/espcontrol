@@ -217,29 +217,6 @@ inline void reset_card_slot_dynamic_children(BtnSlot &s) {
   }
 }
 
-inline void reset_card_slot_static_visuals(BtnSlot &s) {
-  if (s.icon_lbl) {
-    lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(s.icon_lbl, find_icon("Auto"));
-    lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
-  }
-  if (s.sensor_container) {
-    lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
-  }
-  if (s.sensor_lbl) lv_label_set_text(s.sensor_lbl, "");
-  if (s.unit_lbl) {
-    lv_label_set_text(s.unit_lbl, "");
-    lv_obj_set_style_translate_y(s.unit_lbl, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
-  }
-  if (s.text_lbl) {
-    lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
-    lv_label_set_text(s.text_lbl, "");
-    lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
-  }
-}
-
 inline bool info_only_hidden_card_type(const ParsedCfg &p) {
   if (p.type == "sensor" || p.type == "text_sensor" ||
       p.type == "door_window" || p.type == "presence" ||
@@ -257,13 +234,18 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   reset_card_slot_dynamic_children(s);
-  reset_card_slot_static_visuals(s);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
   apply_button_on_pattern(s.btn, p.options, palette.has_on, palette.on_val);
   if (s.sensor_lbl && display_sensor_font(display)) {
     lv_obj_set_style_text_font(s.sensor_lbl, display_sensor_font(display), LV_PART_MAIN);
   }
+  if (s.unit_lbl) lv_obj_set_style_translate_y(s.unit_lbl, 0, LV_PART_MAIN);
+  if (s.unit_lbl) lv_obj_clear_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (s.text_lbl) lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+  if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+  if (s.sensor_container) lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
+  if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   set_subpage_chevron_visible(
     s, p.type == "subpage" && cfg.subpage_chevrons_enabled,
     cfg.subpage_chevron_x, cfg.subpage_chevron_y,
