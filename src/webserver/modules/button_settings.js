@@ -408,6 +408,7 @@ function renderButtonSettings(forceOpen) {
   }
 
   function saveField(field, val) {
+    if (field) b[field] = val;
     markDraftDirty();
     scheduleDraftSave();
   }
