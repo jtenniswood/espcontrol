@@ -523,8 +523,8 @@ function renderButtonSettings(forceOpen) {
       if (c.isSub) {
         saveSubpageConfig(state.editingSubpage);
       } else {
-        postText(entityName("button_order"), serializeGrid(state.grid));
         saveButtonConfig(slot);
+        postText(entityName("button_order"), serializeGrid(state.grid));
       }
     } else {
       copyButtonConfig(liveButton, draft.button);
