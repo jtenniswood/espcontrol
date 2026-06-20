@@ -1212,12 +1212,7 @@ script:
     then:
       - if:
           condition:
-            lambda: |-
-              #ifdef USE_VOICE_ASSISTANT
-              return id(voice_interaction_active);
-              #else
-              return false;
-              #endif
+            lambda: 'return ${voice_interaction_active_condition};'
           then:
             - logger.log:
                 level: DEBUG
@@ -1342,10 +1337,7 @@ script:
       - if:
           condition:
             lambda: |-
-              bool voice_active = false;
-              #ifdef USE_VOICE_ASSISTANT
-              voice_active = id(voice_interaction_active);
-              #endif
+              bool voice_active = ${voice_interaction_active_condition};
               return id(cover_art_screensaver_enabled).state &&
                      id(cover_art_media_playing) &&
                      !voice_active &&

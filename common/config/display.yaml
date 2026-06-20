@@ -54,9 +54,7 @@ script:
           hide_clock_bar_top_layer_widgets(temperature_labels, 6,
                                            id(display_time),
                                            id(network_status_button));
-          #ifdef USE_VOICE_ASSISTANT
-          lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
-          #endif
+          ${voice_clock_bar_hide_code}
           network_status_hide_modal();
 
   - id: clock_bar_apply
@@ -106,9 +104,7 @@ script:
             hide_clock_bar_top_layer_widgets(temperature_labels, 6,
                                              id(display_time),
                                              id(network_status_button));
-            #ifdef USE_VOICE_ASSISTANT
-            lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
-            #endif
+            ${voice_clock_bar_hide_code}
             network_status_hide_modal();
             return;
           }
@@ -142,19 +138,7 @@ script:
             lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
             network_status_hide_modal();
           }
-          #ifdef USE_VOICE_ASSISTANT
-          lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,
-                       -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);
-          lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
-          const bool microphone_muted = id(master_mute_switch).state;
-          const bool output_muted = id(voice_media_player).is_muted();
-          lv_label_set_text(id(voice_clock_bar_mute_icon_label),
-                            microphone_muted ? "\U000F036D" :
-                            output_muted ? "\U000F0581" : "\U000F04C3");
-          lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),
-                                      lv_color_hex((microphone_muted || output_muted) ? 0xFF3333 : 0xFFFFFF),
-                                      LV_PART_MAIN);
-          #endif
+          ${voice_clock_bar_apply_code}
           if (!visible) return;
 
           refresh_clock_bar_temperature_label_values(id(main_page)->obj,
