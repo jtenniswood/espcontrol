@@ -67,6 +67,7 @@ speaker:
   - platform: esp_audio_stack
     id: voice_speaker
     sample_rate: 48000
+    bits_per_sample: 16
     esp_audio_stack_id: voice_audio_stack
     buffer_duration: 500ms
     timeout: 500ms
