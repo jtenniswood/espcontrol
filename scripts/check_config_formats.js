@@ -707,6 +707,26 @@ assertButtonRoundTrip(hooks, "large sensor numbers option", {
   options: "large_numbers",
 }, false);
 
+const localSensorSubtype = {
+  entity: "room_temp",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "local",
+  unit: "°C",
+  type: "sensor",
+  precision: "1",
+  options: "",
+};
+assertButtonRoundTrip(hooks, "local sensor subtype", localSensorSubtype, false);
+assert.strictEqual(hooks.sensorCardIsLocal(localSensorSubtype), true, "local sensor subtype is detected");
+assert.strictEqual(hooks.cardLargeNumbersEnabled({
+  type: "sensor",
+  sensor: "local",
+  precision: "1",
+  options: "large_numbers",
+}), false, "local sensor subtype does not use large sensor numbers");
+
 const iconSensor = hooks.parseButtonConfig(";;;;binary_sensor.patio_door;;sensor;icon;");
 iconSensor.icon = "Door Closed";
 iconSensor.icon_on = "Door Open";
@@ -2003,6 +2023,18 @@ assertButtonMigration(hooks, "legacy text sensor card", "sensor.washer_state;Was
   unit: "",
   type: "sensor",
   precision: "text",
+});
+
+assertButtonMigration(hooks, "legacy local sensor card", "room_temp;Living Room;Auto;Thermometer;;°C;local_sensor;1;large_numbers", {
+  entity: "room_temp",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "local",
+  unit: "°C",
+  type: "sensor",
+  precision: "1",
+  options: "",
 });
 
 assertButtonMigration(hooks, "legacy media controls card", "media_player.living_room;Living Room;Speaker;Auto;controls;;media", {

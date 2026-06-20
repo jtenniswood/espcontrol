@@ -313,6 +313,31 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
     return errors
 
 
+def firmware_local_sensor_binding_order_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_grid.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    if "if (sensor_card_local_sensor(p)) return false;" not in text:
+        errors.append(f"{rel}: keep local sensor subtypes out of bind_basic_sensor_card")
+
+    for match in re.finditer(r"if\s*\(\s*bind_basic_sensor_card\s*\(", text):
+        bind_start = match.start()
+        image_start = text.rfind("if (bind_image_card", 0, bind_start)
+        line_no = text.count("\n", 0, bind_start) + 1
+        if image_start < 0:
+            errors.append(f"{rel}:{line_no}: bind image cards before basic sensor cards")
+            continue
+        pre_bind_window = text[image_start:bind_start]
+        if "sensor_card_local_sensor" not in pre_bind_window:
+            errors.append(f"{rel}:{line_no}: skip local sensor subtypes before Home Assistant sensor binding")
+
+    return errors
+
+
 def firmware_time_reconnect_errors(time_path: Path, root: Path) -> list[str]:
     if not time_path.exists():
         return []
@@ -1198,6 +1223,7 @@ def run_scan() -> int:
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
     errors.extend(firmware_ntp_startup_errors(TIME_ADDON_PATH, SUN_CALC_PATH, CONNECTIVITY_PATHS, ROOT))
     errors.extend(firmware_weather_request_errors(FIRMWARE_DIR, ROOT))
@@ -1336,6 +1362,20 @@ def expect_action_card_availability_errors(name: str, text: str, expected: tuple
         (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
 
         errors = firmware_action_card_availability_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_local_sensor_binding_order_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_local_sensor_binding_order_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -2217,6 +2257,29 @@ def run_self_test() -> int:
         "  std::string push_label = sb_cfg.label.empty() ? espcontrol_i18n(std::string(\"Push\")) : sb_cfg.label;\n"
         "  continue;\n"
         "}\n",
+        (),
+    )
+    expect_local_sensor_binding_order_errors(
+        "local sensor subtype reaches HA binding",
+        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const CardPalette &palette) {\n"
+        "  if (p.type == \"sensor\") return true;\n"
+        "}\n"
+        "if (bind_image_card(s, p, cfg)) continue;\n"
+        "if (bind_basic_sensor_card(s, p, palette)) continue;\n",
+        ("keep local sensor subtypes out of bind_basic_sensor_card", "skip local sensor subtypes"),
+    )
+    expect_local_sensor_binding_order_errors(
+        "local sensor subtype skipped before HA binding",
+        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const CardPalette &palette) {\n"
+        "  if (sensor_card_local_sensor(p)) return false;\n"
+        "  if (p.type == \"sensor\") return true;\n"
+        "}\n"
+        "if (bind_image_card(s, p, cfg)) continue;\n"
+        "if (p.type == \"local_sensor\" || sensor_card_local_sensor(p)) continue;\n"
+        "if (bind_basic_sensor_card(s, p, palette)) continue;\n"
+        "if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;\n"
+        "if (sb_cfg.type == \"local_sensor\" || sensor_card_local_sensor(sb_cfg)) continue;\n"
+        "if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;\n",
         (),
     )
     expect_time_reconnect_errors(

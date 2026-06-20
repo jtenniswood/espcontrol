@@ -468,6 +468,7 @@ var CSS =
   ".sp-banner.sp-offline{display:block;background:var(--accent);color:#fff;border-bottom:none}" +
   ".sp-banner.sp-success{display:block;background:rgba(16,185,129,.16);color:#3dd68c;border-bottom:1px solid rgba(16,185,129,.25)}" +
   ".sp-banner.sp-warning{display:block;background:rgba(234,179,8,.16);color:#f9b44e;border-bottom:1px solid rgba(234,179,8,.25)}" +
+  ".sp-local-picker-fallback .sp-banner{margin-bottom:28px}" +
 
   ".sp-backup-btns{display:flex;gap:8px}" +
   ".sp-backup-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;" +

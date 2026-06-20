@@ -258,6 +258,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
 
+  if (sensor_card_local_sensor(p)) {
+    if (p.entity.empty()) return;
+    setup_local_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
+    return;
+  }
   if (is_text_sensor_card(p)) {
     setup_text_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     return;
@@ -384,7 +389,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_local_action_card(s, p);
     return;
   }
-  if (p.type == "local_sensor") {
+  if (p.type == "local_sensor" || sensor_card_local_sensor(p)) {
     if (p.entity.empty()) return;
     setup_local_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     return;
@@ -455,6 +460,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
 inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p,
                                    const CardPalette &palette) {
+  if (sensor_card_local_sensor(p)) return false;
   if (is_text_sensor_card(p)) {
     if (!p.sensor.empty())
       subscribe_sensor_text_card_value(s.text_lbl, p, s.btn,
@@ -901,6 +907,7 @@ inline void grid_phase2(
     if (cfg.info_only && info_only_hidden_card_type(p)) continue;
     if (p.type == "push") continue;
     if (bind_image_card(s, p, cfg)) continue;
+    if (p.type == "local_sensor" || sensor_card_local_sensor(p)) continue;
     if (bind_basic_sensor_card(s, p, palette)) continue;
     if (bind_passive_card_sources(s, p)) continue;
     if (p.type == "garage") {
@@ -1057,9 +1064,6 @@ inline void grid_phase2(
         watch_internal_relay_state(p.entity, s.btn, s.icon_lbl,
           internal_has_icon_on, internal_relay_icon(p, false), internal_icon_on);
       }
-      continue;
-    }
-    if (p.type == "local_sensor") {
       continue;
     }
     if (p.type == "action") {
@@ -1480,6 +1484,7 @@ inline void grid_phase2(
         continue;
       }
       if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;
+      if (sb_cfg.type == "local_sensor" || sensor_card_local_sensor(sb_cfg)) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;
       if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;
       if (sb_cfg.type == "cover" && cover_modal_mode(sb_cfg.sensor)) {
@@ -1937,9 +1942,6 @@ inline void grid_phase2(
             if (c && !c->key.empty()) send_internal_relay_action(c->key, c->push_mode);
           }, LV_EVENT_CLICKED, ctx);
         }
-        continue;
-      }
-      if (sb_cfg.type == "local_sensor") {
         continue;
       }
       if (sb_cfg.type == "light_temperature") {

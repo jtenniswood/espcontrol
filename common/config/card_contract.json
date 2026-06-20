@@ -933,15 +933,17 @@
     "local_sensor": {
       "label": "Local Sensor",
       "allowInSubpage": true,
+      "pickerKey": "sensor",
+      "hidden": true,
       "domains": ["sensor", "text_sensor"],
       "default": {
         "entity": "",
         "label": "",
         "icon": "Auto",
         "icon_on": "Auto",
-        "sensor": "",
+        "sensor": "local",
         "unit": "",
-        "type": "local_sensor",
+        "type": "sensor",
         "precision": "",
         "options": ""
       }
@@ -1121,6 +1123,10 @@
     "weather_forecast": {
       "type": "weather",
       "precision": "tomorrow"
+    },
+    "local_sensor": {
+      "type": "sensor",
+      "sensor": "local"
     }
   },
   "optionSelect": {

@@ -34,6 +34,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     cardOnPattern: cardOnPattern,
     setCardOnPattern: setCardOnPattern,
     sensorActiveColorEnabled: sensorActiveColorEnabled,
+    sensorCardIsLocal: sensorCardIsLocal,
     sensorStateLabelsEnabled: sensorStateLabelsEnabled,
     sensorStateInput: sensorStateInput,
     sensorStateOutput: sensorStateOutput,

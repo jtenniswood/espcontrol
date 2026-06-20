@@ -11,6 +11,14 @@ var CARD_ON_PATTERN_OPTION = "on_pattern";
 
 function normalizeButtonConfig(b) {
   if (b) b.options = b.options || "";
+  if (b && b.type === "local_sensor") {
+    b.type = "sensor";
+    b.sensor = SENSOR_CARD_LOCAL_SENSOR;
+    b.icon_on = "Auto";
+    b.options = "";
+    if (b.precision !== "text" && b.precision !== "1" && b.precision !== "2") b.precision = "";
+    if (b.precision !== "text" && (!b.icon || b.icon === "Auto")) b.icon = "Auto";
+  }
   if (b && b.type === "action" && b.sensor === "vacuum.start") {
     b.type = "vacuum";
     b.sensor = "start_stop";
@@ -170,7 +178,14 @@ function normalizeButtonConfig(b) {
   } else if (b && b.type === "action") {
     b.options = normalizeActionOptions(b.options, b.sensor);
   }
-  if (b && !b.type) {
+  if (b && sensorCardIsLocal(b)) {
+    b.type = "sensor";
+    b.sensor = SENSOR_CARD_LOCAL_SENSOR;
+    b.icon_on = "Auto";
+    b.options = "";
+    if (b.precision !== "text" && b.precision !== "1" && b.precision !== "2") b.precision = "";
+    if (b.precision !== "text" && (!b.icon || b.icon === "Auto")) b.icon = "Auto";
+  } else if (b && !b.type) {
     b.options = normalizeSwitchConfirmationOptions(b.options);
   } else if (b && b.type === "sensor") {
     b.options = normalizeSensorOptions(b.options, b.precision);
@@ -1376,10 +1391,12 @@ function buttonConfigFields(b) {
   }
   var isActionOptionSelect = !!(b && (actionCardIsOptionSelect(b) || isOptionSelectType(type)));
   if (isActionOptionSelect) type = "action";
+  if (type === "local_sensor") type = "sensor";
   var label = b && b.label || "";
   if (type === "screen_lock") label = "";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
     (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "alarm" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+  if (b && (b.type === "local_sensor" || sensorCardIsLocal(b))) sensor = SENSOR_CARD_LOCAL_SENSOR;
   var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.unit || "");
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
@@ -1391,6 +1408,7 @@ function buttonConfigFields(b) {
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
   if (type === "screen_lock") iconOn = "Lock Open";
   var precision = (isActionOptionSelect || type === "light_switch" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  if (sensor === SENSOR_CARD_LOCAL_SENSOR && precision !== "text" && precision !== "1" && precision !== "2") precision = "";
   if (type === "media") {
     sensor = mediaEditorMode(sensor);
     precision = sensor === "now_playing"
@@ -1439,7 +1457,7 @@ function buttonConfigFields(b) {
   } else if (type === "vacuum") {
     options = "";
   } else if (type === "sensor") {
-    options = normalizeSensorOptions(options, precision);
+    options = sensor === SENSOR_CARD_LOCAL_SENSOR ? "" : normalizeSensorOptions(options, precision);
   } else if (type === "door_window") {
     options = normalizeDoorWindowOptions(options);
   } else if (type === "presence") {
