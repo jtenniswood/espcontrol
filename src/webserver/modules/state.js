@@ -58,9 +58,11 @@ function effectiveTimezoneOptionForWeb(value) {
   return active && !isHomeAssistantAutoTimezone(active) ? active : FALLBACK_TIMEZONE_OPTION;
 }
 
-function timezoneOptionsWithFallback(options, selected) {
+function timezoneOptionsWithFallback(options, selected, preserveSelectedAuto) {
   var list = Array.isArray(options) && options.length ? options.slice() : defaultTimezoneOptions();
-  if (selected && list.indexOf(selected) === -1) {
+  var supportsAuto = list.indexOf(AUTO_TIMEZONE_OPTION) !== -1;
+  if (selected && list.indexOf(selected) === -1 &&
+      (!isHomeAssistantAutoTimezone(selected) || supportsAuto || preserveSelectedAuto)) {
     list.unshift(selected);
   }
   return list;

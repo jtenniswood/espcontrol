@@ -359,7 +359,7 @@ function connectEvents() {
     "select-screen__timezone": function (val, d) {
       state.timezone = d.value || val || state.timezone;
       if (Array.isArray(d.option)) {
-        state.timezoneOptions = timezoneOptionsWithFallback(d.option, state.timezone);
+        state.timezoneOptions = timezoneOptionsWithFallback(d.option, state.timezone, true);
         if (els.setTimezone) {
           els.setTimezone.innerHTML = "";
           state.timezoneOptions.forEach(function (opt) {
