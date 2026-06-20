@@ -4,8 +4,6 @@
 
 // ── Climate control card helpers ─────────────────────────────────────
 
-constexpr uint32_t CLIMATE_HEATING_COLOR = 0xA44A1C;
-constexpr uint32_t CLIMATE_COOLING_COLOR = 0x1565C0;
 constexpr int CLIMATE_DEFAULT_TARGET_TENTHS = 200;
 constexpr int CLIMATE_DEFAULT_LOW_TENTHS = 180;
 constexpr int CLIMATE_DEFAULT_HIGH_TENTHS = 220;
@@ -626,8 +624,6 @@ inline void climate_raise_arc_markers() {
 
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
   if (!ctx) return DEFAULT_SLIDER_COLOR;
-  if (ctx->hvac_action == "heating") return CLIMATE_HEATING_COLOR;
-  if (ctx->hvac_action == "cooling") return CLIMATE_COOLING_COLOR;
   return ctx->accent_color;
 }
 
