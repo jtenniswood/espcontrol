@@ -18,6 +18,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Control a light as on/off, brightness, colour temperature, or colour presets | [Lights](/card-types/lights) | `light` |
 | Run a scene, script, automation, helper action, or button press | [Action](/card-types/actions) | Depends on the selected action |
 | Show or control a robot vacuum | [Vacuum](/card-types/vacuum) | `vacuum` |
+| Show and control a Home Assistant timer helper | [Timer](/card-types/timers) | `timer` |
 | Pick from a Home Assistant select list | [Option Select](/card-types/option-select) | `select` or `input_select` |
 | Fire a custom Home Assistant automation event | [Trigger](/card-types/buttons) | No entity required |
 | Call an HTTP URL directly from the panel | [Webhook](/card-types/webhooks) | URL |

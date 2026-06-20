@@ -30,7 +30,7 @@ Start here: **[Install EspControl](/getting-started/install)**.
 - **Built-in setup page** - configure cards, pages, icons, labels, colours, display settings, backups, and firmware updates from a phone, tablet, or computer browser.
 - **Drag-and-drop grid layout** - each supported display has a layout sized for its resolution, with Single, Tall, Wide, and Large card sizes.
 - **Subpages** - open folder-like pages for rooms, device types, or extra controls while keeping the home screen tidy.
-- **Home Assistant controls** - control lights, switches, fans, covers, locks, alarms, climate devices, media players, scenes, scripts, automations, buttons, helpers, webhooks, and built-in relays.
+- **Home Assistant controls** - control lights, switches, fans, covers, locks, alarms, timers, climate devices, media players, scenes, scripts, automations, buttons, helpers, webhooks, and built-in relays.
 - **Live Home Assistant information** - show sensors, binary sensors, weather, clocks, time zones, doors, windows, presence, camera images, and media player status.
 - **Display behaviour controls** - set brightness, idle timeout, screensaver mode, presence-based wake, clock bar, rotation, screen schedule, and before-clock-sync behaviour.
 - **Appearance controls** - choose card icons, labels, status text, active colours, display modes, clock style, temperature units, and panel language.
@@ -41,7 +41,7 @@ Start here: **[Install EspControl](/getting-started/install)**.
 
 EspControl includes card types for common Home Assistant controls and display-only information:
 
-Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage.
+Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Timer, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage.
 
 See [Card Types](/card-types/) for examples and setup notes.
 

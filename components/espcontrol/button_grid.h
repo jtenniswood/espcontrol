@@ -38,6 +38,7 @@
 #include "button_grid_display.h"
 #include "button_grid_cards.h"
 #include "button_grid_modal.h"
+#include "button_grid_timer.h"
 #include "button_grid_subscriptions.h"
 #include "button_grid_vacuum.h"
 #include "button_grid_actions.h"

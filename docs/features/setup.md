@@ -42,6 +42,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
 | **[Fans](/card-types/fans)** | Controls supported fan switch, speed, oscillation, direction, and preset features. | Yes, as a fan entity |
 | **[Vacuum](/card-types/vacuum)** | Shows vacuum status or controls start/stop, dock, pause/resume, spot clean, locate, and clean area. | Yes, as a vacuum entity |
+| **[Timer](/card-types/timers)** | Shows and controls an existing Home Assistant Timer helper. | Yes, as a timer entity |
 | **[Cover](/card-types/covers)** | Controls blinds, shutters, and similar cover entities with a full control popup, slider, or tap action. | Yes |
 | **[Garage Door](/card-types/garage-doors)** | Controls a garage door cover entity with an open/close tap action. | Yes |
 | **[Lock](/card-types/locks)** | Locks, unlocks, or toggles a Home Assistant lock entity. | Yes |

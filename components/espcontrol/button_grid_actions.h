@@ -527,6 +527,9 @@ struct CoverControlCtx;
 inline void cover_control_open_modal(CoverControlCtx *ctx);
 struct LightControlCtx;
 inline void light_control_open_modal(LightControlCtx *ctx);
+struct TimerCardCtx;
+inline bool timer_card_context_valid(TimerCardCtx *ctx);
+inline void timer_card_open_modal(TimerCardCtx *ctx);
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
@@ -641,6 +644,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "climate") {
     ClimateControlCtx *ctx = (ClimateControlCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) climate_control_open_modal(ctx);
+  } else if (p.type == "timer") {
+    TimerCardCtx *ctx = (TimerCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (timer_card_context_valid(ctx)) timer_card_open_modal(ctx);
   } else if (p.type == "image") {
     ImageCardCtx *ctx = (ImageCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) image_card_open_modal(ctx);

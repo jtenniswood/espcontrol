@@ -144,6 +144,33 @@
         "options": ""
       }
     },
+    "timer": {
+      "label": "Timer",
+      "allowInSubpage": true,
+      "domains": ["timer"],
+      "options": [
+        {
+          "name": "default_minutes",
+          "label": "Default Duration",
+          "kind": "number",
+          "defaultValue": "10",
+          "min": 1,
+          "max": 5999,
+          "step": 1
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "Timer",
+        "icon": "Timer",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "timer",
+        "precision": "",
+        "options": "default_minutes=10"
+      }
+    },
     "alarm": {
       "label": "Alarm",
       "allowInSubpage": true,
@@ -1174,6 +1201,7 @@
     "clock": true,
     "climate": true,
     "media": true,
+    "timer": true,
     "subpage": true,
     "timezone": true
   },
@@ -1202,6 +1230,7 @@
     "slider": "L",
     "cover": "C",
     "vacuum": "VC",
+    "timer": "TM",
     "light_temperature": "N",
     "garage": "R",
     "lock": "K",
