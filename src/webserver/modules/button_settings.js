@@ -383,8 +383,33 @@ function renderButtonSettings(forceOpen) {
     }
   }
 
+  function persistExistingDraft() {
+    if (!state.settingsDraft ||
+        state.settingsDraft.key !== draftKey ||
+        state.settingsDraft.isNew ||
+        !state.settingsDraft.dirty) return;
+    if (!validateSettingsDraft() || !validateConfigSize() || !validateImageCardLimit()) return;
+    copyButtonConfig(liveButton, state.settingsDraft.button);
+    state.settingsDraft.dirty = false;
+    if (c.isSub) {
+      saveSubpageConfig(state.editingSubpage);
+    } else {
+      saveButtonConfig(slot);
+    }
+    renderPreview();
+  }
+
+  function scheduleDraftSave() {
+    if (!state.settingsDraft ||
+        state.settingsDraft.key !== draftKey ||
+        state.settingsDraft.isNew) return;
+    clearTimeout(state.settingsDraft.saveTimer);
+    state.settingsDraft.saveTimer = setTimeout(persistExistingDraft, 500);
+  }
+
   function saveField(field, val) {
     markDraftDirty();
+    scheduleDraftSave();
   }
 
   function fieldContainer(input) {
@@ -523,6 +548,7 @@ function renderButtonSettings(forceOpen) {
       b[field] = input.value;
       markDraftDirty();
       if (rerender) renderPreview();
+      scheduleDraftSave();
     }
     input.addEventListener("input", function () {
       syncValue();
