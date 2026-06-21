@@ -12,6 +12,7 @@ binary_sensor:
     internal: true
     pin:
       number: GPIO35
+      ignore_strapping_warning: true
       mode:
         input: true
         pullup: true
