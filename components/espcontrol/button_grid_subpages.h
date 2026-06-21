@@ -433,6 +433,36 @@ inline void subscribe_subpage_parent_indicator(
   );
 }
 
+inline void subscribe_timer_subpage_parent_indicator(
+    const std::string &entity_id,
+    lv_obj_t *parent_btn, lv_obj_t *parent_icon,
+    int parent_idx, bool *child_was_on,
+    bool has_alt_icon, const char *off_glyph, const char *on_glyph,
+    int *sp_on_count) {
+  ha_subscribe_state(
+    entity_id,
+    std::function<void(esphome::StringRef)>(
+      [parent_btn, parent_icon, parent_idx, child_was_on,
+       has_alt_icon, off_glyph, on_glyph, sp_on_count](esphome::StringRef state) {
+        bool is_on = normalized_state_text(state) == "active";
+        if (is_on && !*child_was_on) {
+          sp_on_count[parent_idx]++;
+          *child_was_on = true;
+        } else if (!is_on && *child_was_on) {
+          sp_on_count[parent_idx]--;
+          *child_was_on = false;
+        }
+        if (sp_on_count[parent_idx] > 0) {
+          set_card_checked_state(parent_btn, true);
+          if (has_alt_icon) lv_label_set_text(parent_icon, on_glyph);
+        } else {
+          set_card_checked_state(parent_btn, false);
+          if (has_alt_icon) lv_label_set_text(parent_icon, off_glyph);
+        }
+      })
+  );
+}
+
 struct ClimateSubpageParentIndicatorCtx {
   std::string hvac_mode = "off";
   std::string hvac_action;

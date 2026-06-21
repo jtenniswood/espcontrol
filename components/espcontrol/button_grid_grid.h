@@ -1907,7 +1907,18 @@ inline void grid_phase2(
           TimerCardCtx *ctx = create_timer_card_context(sub_slot, sb_cfg);
           if (sb_cfg.label.empty())
             subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
-          add_parent_indicator(sb_cfg.entity);
+          if (sp_indicator) {
+            int cwi = sp_child_alloc_idx++;
+            if (cwi >= MAX_SUBPAGE_ITEMS) {
+              ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb_cfg.entity.c_str());
+            } else {
+              sp_child_was_on[cwi] = false;
+              subscribe_timer_subpage_parent_indicator(
+                sb_cfg.entity, slots[si].btn, slots[si].icon_lbl, si,
+                &sp_child_was_on[cwi], sp_has_icon_on,
+                sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+            }
+          }
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             TimerCardCtx *ctx = static_cast<TimerCardCtx *>(lv_event_get_user_data(e));
             if (ctx) handle_timer_card_click(ctx);
