@@ -110,6 +110,13 @@ inline bool ha_calendar_ctx_valid(HaCalendarCardCtx *ctx) {
   return ctx != nullptr && ctx->magic == HA_CALENDAR_CTX_MAGIC;
 }
 
+inline bool ha_calendar_ctx_current(HaCalendarCardCtx *ctx, uint32_t generation) {
+  return ha_calendar_ctx_valid(ctx) &&
+         generation == ha_subscription_generation() &&
+         ctx->btn != nullptr &&
+         lv_obj_get_user_data(ctx->btn) == ctx;
+}
+
 // ── Card face helpers ────────────────────────────────────────────────────────
 
 inline std::string ha_calendar_card_label(HaCalendarCardCtx *ctx) {
@@ -720,7 +727,7 @@ inline void ha_calendar_modal_hide() {
 
 // ── Modal: event parsing ─────────────────────────────────────────────────────
 
-// Parse "H:MM|H:MM|title\n" lines, convert to epochs relative to today's midnight.
+// Parse "start_epoch|end_epoch|title\n" lines returned by calendar.get_events.
 // Device 12h/24h clock format. The time tick (time.yaml) publishes the device's
 // "Screen: Clock Format" here so the modal can format event times to match.
 inline bool &ha_calendar_use_12h_flag() {
@@ -740,7 +747,7 @@ inline void ha_calendar_format_hm(char *buf, size_t len, int hour, int minute) {
   }
 }
 
-inline void ha_calendar_parse_and_merge(const char *payload, time_t /*midnight_unused*/) {
+inline void ha_calendar_parse_and_merge(const char *payload) {
   if (!payload || !payload[0]) return;
   HaCalendarModalUi &ui = ha_calendar_modal_ui();
   const char *p = payload;
@@ -1043,13 +1050,13 @@ inline uint32_t next_ha_calendar_call_id() {
   return call_id++;
 }
 
-inline std::string ha_calendar_today_end_str() {
-  time_t now = std::time(nullptr);
-  struct tm *utc = std::gmtime(&now);
+inline std::string ha_calendar_local_datetime_str(time_t epoch) {
+  struct tm *local = std::localtime(&epoch);
   char buf[25] = {};
-  if (utc) {
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT23:59:59Z",
-      utc->tm_year + 1900, utc->tm_mon + 1, utc->tm_mday);
+  if (local) {
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d",
+      local->tm_year + 1900, local->tm_mon + 1, local->tm_mday,
+      local->tm_hour, local->tm_min, local->tm_sec);
   }
   return std::string(buf);
 }
@@ -1064,6 +1071,17 @@ inline time_t ha_calendar_today_midnight_epoch() {
   midnight.tm_sec = 0;
   midnight.tm_isdst = -1;
   return std::mktime(&midnight);
+}
+
+inline time_t ha_calendar_tomorrow_midnight_epoch() {
+  time_t today = ha_calendar_today_midnight_epoch();
+  if (today == 0) return 0;
+  struct tm *local = std::localtime(&today);
+  if (!local) return 0;
+  struct tm tomorrow = *local;
+  tomorrow.tm_mday += 1;
+  tomorrow.tm_isdst = -1;
+  return std::mktime(&tomorrow);
 }
 
 // Response template for one entity: emits "start_epoch|end_epoch|title\n" for
@@ -1103,12 +1121,13 @@ inline void ha_calendar_request_events_for_entity(HaCalendarCardCtx *ctx,
 
   esphome::api::HomeassistantActionRequest req;
   uint32_t call_id = next_ha_calendar_call_id();
+  const uint32_t generation = ha_subscription_generation();
   std::string tmpl = ha_calendar_response_template(entity_id);
-  std::string end_dt = ha_calendar_today_end_str();
-  time_t midnight = ha_calendar_today_midnight_epoch();
+  std::string start_dt = ha_calendar_local_datetime_str(ha_calendar_today_midnight_epoch());
+  std::string end_dt = ha_calendar_local_datetime_str(ha_calendar_tomorrow_midnight_epoch());
 
-  if (!ha_action_begin(req, "calendar.get_events", false, 2, call_id)) {
-    if (ui.active == ctx) {
+  if (!ha_action_begin(req, "calendar.get_events", false, 3, call_id)) {
+    if (ui.active == ctx && ha_calendar_ctx_current(ctx, generation)) {
       ui.pending_entity_count--;
       if (ui.pending_entity_count <= 0) ha_calendar_modal_set_status("Could not load");
     }
@@ -1117,13 +1136,14 @@ inline void ha_calendar_request_events_for_entity(HaCalendarCardCtx *ctx,
   req.wants_response = true;
   req.response_template = decltype(req.response_template)(tmpl);
   ha_action_add_entity(req, entity_id);
+  ha_action_add_data(req, "start_date_time", start_dt.c_str());
   ha_action_add_data(req, "end_date_time", end_dt.c_str());
 
   if (!ha_register_action_response_callback(req.call_id,
-    [ctx, call_id, midnight](const esphome::api::ActionResponse &response) {
+    [ctx, call_id, generation](const esphome::api::ActionResponse &response) {
       (void) call_id;
       HaCalendarModalUi &ui = ha_calendar_modal_ui();
-      if (ui.active != ctx) return;
+      if (ui.active != ctx || !ha_calendar_ctx_current(ctx, generation)) return;
       ui.pending_entity_count--;
       if (!response.is_success()) {
         if (ui.pending_entity_count <= 0)
@@ -1132,26 +1152,30 @@ inline void ha_calendar_request_events_for_entity(HaCalendarCardCtx *ctx,
       }
       JsonVariantConst rv = response.get_json()["response"];
       const char *payload = rv.as<const char *>();
-      if (payload) ha_calendar_parse_and_merge(payload, midnight);
+      if (payload) ha_calendar_parse_and_merge(payload);
       if (ui.pending_entity_count <= 0) {
         ui.waiting_for_ha = false;
         ha_calendar_render_modal(ctx);
       }
     })) {
-    ui.pending_entity_count--;
-    if (ui.pending_entity_count <= 0) ha_calendar_modal_set_status("Could not load");
+    if (ui.active == ctx && ha_calendar_ctx_current(ctx, generation)) {
+      ui.pending_entity_count--;
+      if (ui.pending_entity_count <= 0) ha_calendar_modal_set_status("Could not load");
+    }
     return;
   }
 
   if (!ha_action_send(req)) {
     ha_cancel_action_response_callback(call_id, "send failed");
-    ui.pending_entity_count--;
-    if (ui.pending_entity_count <= 0) {
-      if (!ha_api_state_connected()) {
-        ui.waiting_for_ha = true;
-        ha_calendar_modal_set_status("Waiting for Home Assistant");
-      } else {
-        ha_calendar_modal_set_status("Could not load");
+    if (ui.active == ctx && ha_calendar_ctx_current(ctx, generation)) {
+      ui.pending_entity_count--;
+      if (ui.pending_entity_count <= 0) {
+        if (!ha_api_state_connected()) {
+          ui.waiting_for_ha = true;
+          ha_calendar_modal_set_status("Waiting for Home Assistant");
+        } else {
+          ha_calendar_modal_set_status("Could not load");
+        }
       }
     }
   }
@@ -1162,7 +1186,7 @@ inline void ha_calendar_request_events_for_entity(HaCalendarCardCtx *ctx,
 // Scan a "H:MM|H:MM|title" payload for the earliest event that STARTS after now
 // and fold it into the card's in-flight candidate (ctx->fetch_best_*).
 inline void ha_calendar_card_scan_payload(HaCalendarCardCtx *ctx,
-                                          const char *payload, time_t /*midnight_unused*/) {
+                                          const char *payload) {
   if (!payload || !payload[0]) return;
   time_t now = std::time(nullptr);
   const char *p = payload;
@@ -1218,10 +1242,12 @@ inline void ha_calendar_card_fetch(HaCalendarCardCtx *ctx) {
   ctx->fetch_active_start = 0;
   ctx->fetch_active_end = 0;
   ctx->fetch_pending = static_cast<int>(ctx->entities.size());
-  std::string end_dt = ha_calendar_today_end_str();
-  time_t midnight = ha_calendar_today_midnight_epoch();
+  const uint32_t generation = ha_subscription_generation();
+  std::string start_dt = ha_calendar_local_datetime_str(ha_calendar_today_midnight_epoch());
+  std::string end_dt = ha_calendar_local_datetime_str(ha_calendar_tomorrow_midnight_epoch());
 
-  auto finish_one = [](HaCalendarCardCtx *c) {
+  auto finish_one = [generation](HaCalendarCardCtx *c) {
+    if (!ha_calendar_ctx_current(c, generation)) return;
     if (c->fetch_pending > 0) c->fetch_pending--;
     if (c->fetch_pending <= 0) {
       c->next_start_epoch = c->fetch_best_start;
@@ -1245,22 +1271,23 @@ inline void ha_calendar_card_fetch(HaCalendarCardCtx *ctx) {
     esphome::api::HomeassistantActionRequest req;
     uint32_t call_id = next_ha_calendar_call_id();
     std::string tmpl = ha_calendar_response_template(entity_id);
-    if (!ha_action_begin(req, "calendar.get_events", false, 2, call_id)) {
+    if (!ha_action_begin(req, "calendar.get_events", false, 3, call_id)) {
       finish_one(ctx);
       continue;
     }
     req.wants_response = true;
     req.response_template = decltype(req.response_template)(tmpl);
     ha_action_add_entity(req, entity_id);
+    ha_action_add_data(req, "start_date_time", start_dt.c_str());
     ha_action_add_data(req, "end_date_time", end_dt.c_str());
 
     if (!ha_register_action_response_callback(req.call_id,
-      [ctx, midnight, finish_one](const esphome::api::ActionResponse &response) {
-        if (!ha_calendar_ctx_valid(ctx)) return;
+      [ctx, generation, finish_one](const esphome::api::ActionResponse &response) {
+        if (!ha_calendar_ctx_current(ctx, generation)) return;
         if (response.is_success()) {
           JsonVariantConst rv = response.get_json()["response"];
           const char *payload = rv.as<const char *>();
-          if (payload) ha_calendar_card_scan_payload(ctx, payload, midnight);
+          if (payload) ha_calendar_card_scan_payload(ctx, payload);
         }
         finish_one(ctx);
       })) {

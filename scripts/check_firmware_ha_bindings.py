@@ -1011,6 +1011,31 @@ def firmware_image_card_startup_errors(
     return errors
 
 
+def firmware_calendar_request_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_ha_calendar.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    if (
+        "ha_calendar_local_datetime_str(ha_calendar_today_midnight_epoch())" not in text
+        or "ha_calendar_local_datetime_str(ha_calendar_tomorrow_midnight_epoch())" not in text
+        or 'ha_action_add_data(req, "start_date_time", start_dt.c_str())' not in text
+        or 'ha_action_add_data(req, "end_date_time", end_dt.c_str())' not in text
+    ):
+        errors.append(f"{rel}: request calendar events for the local-day start/end range")
+    if (
+        "ha_calendar_ctx_current" not in text
+        or "generation == ha_subscription_generation()" not in text
+        or "lv_obj_get_user_data(ctx->btn) == ctx" not in text
+        or "const uint32_t generation = ha_subscription_generation();" not in text
+        or "ha_calendar_ctx_current(ctx, generation)" not in text
+    ):
+        errors.append(f"{rel}: ignore stale calendar callbacks after grid rebuild")
+    return errors
+
+
 def firmware_artwork_image_auth_errors(path: Path, root: Path) -> list[str]:
     if not path.exists():
         return []
@@ -1384,6 +1409,7 @@ def run_scan() -> int:
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_startup_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_calendar_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_artwork_image_auth_errors(ARTWORK_IMAGE_PATH, ROOT))
     errors.extend(firmware_screensaver_wake_guard_errors(BACKLIGHT_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
@@ -1853,6 +1879,19 @@ def expect_screen_schedule_screensaver_override_errors(
         path.parent.mkdir(parents=True)
         path.write_text(text, encoding="utf-8")
         errors = firmware_screen_schedule_screensaver_override_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_calendar_request_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_ha_calendar.h").write_text(text, encoding="utf-8")
+        errors = firmware_calendar_request_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3516,6 +3555,34 @@ def run_self_test() -> int:
             1,
         ),
         ("wake when the screen schedule is disabled",),
+    )
+    expect_calendar_request_errors(
+        "calendar request uses UTC end only and stale callbacks",
+        "inline std::string ha_calendar_today_end_str() { return \"2026-06-21T23:59:59Z\"; }\n"
+        "inline void ha_calendar_request_events_for_entity() {\n"
+        "  ha_action_add_data(req, \"end_date_time\", end_dt.c_str());\n"
+        "}\n"
+        "inline void ha_calendar_card_fetch(HaCalendarCardCtx *ctx) {\n"
+        "  ha_register_action_response_callback(req.call_id, [ctx](const auto &response) {\n"
+        "    if (!ha_calendar_ctx_valid(ctx)) return;\n"
+        "  });\n"
+        "}\n",
+        ("request calendar events for the local-day start/end range", "ignore stale calendar callbacks"),
+    )
+    expect_calendar_request_errors(
+        "calendar request uses local-day range and guarded callbacks",
+        "inline bool ha_calendar_ctx_current(HaCalendarCardCtx *ctx, uint32_t generation) {\n"
+        "  return generation == ha_subscription_generation() && lv_obj_get_user_data(ctx->btn) == ctx;\n"
+        "}\n"
+        "inline void ha_calendar_request_events_for_entity() {\n"
+        "  const uint32_t generation = ha_subscription_generation();\n"
+        "  std::string start_dt = ha_calendar_local_datetime_str(ha_calendar_today_midnight_epoch());\n"
+        "  std::string end_dt = ha_calendar_local_datetime_str(ha_calendar_tomorrow_midnight_epoch());\n"
+        "  ha_action_add_data(req, \"start_date_time\", start_dt.c_str());\n"
+        "  ha_action_add_data(req, \"end_date_time\", end_dt.c_str());\n"
+        "  ha_calendar_ctx_current(ctx, generation);\n"
+        "}\n",
+        (),
     )
     expect_artwork_image_auth_errors(
         "local artwork image request uses Basic auth",
