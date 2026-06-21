@@ -1067,7 +1067,7 @@
           "name": "weather_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "today", "tomorrow"],
+          "values": ["", "today", "tomorrow", "daily_strip"],
           "defaultValue": ""
         },
         {

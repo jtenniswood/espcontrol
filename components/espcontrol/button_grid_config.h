@@ -19,6 +19,7 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
 #include <esp_http_server.h>
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #endif
+#include <vector>
 
 // RGB multipliers for display calibration; 100 leaves a channel unchanged.
 constexpr int COLOR_CORRECTION_RED_PERCENT = 100;
@@ -910,7 +911,8 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.precision = "tomorrow";
     if (p.label == "Weather") p.label.clear();
   }
-  if (p.type == "weather" && !card_runtime_weather_forecast_precision(p.precision)) {
+  if (p.type == "weather" && !card_runtime_weather_forecast_precision(p.precision) &&
+      p.precision != "daily_strip") {
     p.precision.clear();
   }
   if (p.type == "media") {
@@ -1708,6 +1710,17 @@ inline int &weather_forecast_card_count() {
   return count;
 }
 
+constexpr float WEATHER_FORECAST_TEMP_MISSING = 32767.0f;
+constexpr int WEATHER_DAILY_STRIP_DAY_COUNT = 5;
+
+struct WeatherStripDayPayload {
+  std::string weekday;
+  float high = WEATHER_FORECAST_TEMP_MISSING;
+  float low = WEATHER_FORECAST_TEMP_MISSING;
+  std::string condition;
+  bool valid = false;
+};
+
 inline void reset_weather_forecast_cards() {
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   for (int i = 0; i < MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS; i++) {
@@ -1716,7 +1729,41 @@ inline void reset_weather_forecast_cards() {
   weather_forecast_card_count() = 0;
 }
 
-constexpr float WEATHER_FORECAST_TEMP_MISSING = 32767.0f;
+struct WeatherDailyStripDayRef {
+  lv_obj_t *column = nullptr;
+  lv_obj_t *weekday_lbl = nullptr;
+  lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *value_lbl = nullptr;
+};
+
+struct WeatherDailyStripCardRef {
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *strip_container = nullptr;
+  WeatherDailyStripDayRef days[WEATHER_DAILY_STRIP_DAY_COUNT];
+  std::string entity_id;
+  std::string source_unit;
+  bool compact = false;
+  int visible_day_count = WEATHER_DAILY_STRIP_DAY_COUNT;
+};
+
+inline WeatherDailyStripCardRef *weather_daily_strip_card_refs() {
+  static WeatherDailyStripCardRef refs[MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS];
+  return refs;
+}
+
+inline int &weather_daily_strip_card_count() {
+  static int count = 0;
+  return count;
+}
+
+inline void reset_weather_daily_strip_cards() {
+  WeatherDailyStripCardRef *refs = weather_daily_strip_card_refs();
+  for (int i = 0; i < MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS; i++) {
+    refs[i] = WeatherDailyStripCardRef();
+  }
+  weather_daily_strip_card_count() = 0;
+}
+
 constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
 constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS = 60000;
 constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;
@@ -1826,6 +1873,8 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
   }
 }
 
+inline void apply_weather_daily_strip_unavailable_for_entity(const std::string &entity_id);
+
 inline void apply_weather_forecast_unavailable_for_entity(const std::string &entity_id) {
   ESP_LOGW("weather_forecast", "Marking forecast unavailable for %s", entity_id.c_str());
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
@@ -1843,6 +1892,7 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
       notify_dashboard_content_changed();
     }
   }
+  apply_weather_daily_strip_unavailable_for_entity(entity_id);
 }
 
 inline void apply_weather_forecast_unavailable_all() {
@@ -1951,9 +2001,8 @@ struct WeatherForecastPayload {
   std::string unit;
 };
 
-inline bool parse_weather_forecast_payload(const std::string &payload,
-                                           WeatherForecastPayload &out) {
-  out = WeatherForecastPayload();
+inline bool parse_weather_forecast_payload_v1(const std::string &payload,
+                                              WeatherForecastPayload &out) {
   size_t p1 = payload.find('|');
   if (p1 == std::string::npos) return false;
   size_t p2 = payload.find('|', p1 + 1);
@@ -1990,6 +2039,158 @@ inline bool parse_weather_forecast_payload(const std::string &payload,
   return out.today_valid || out.tomorrow_valid;
 }
 
+inline bool parse_weather_forecast_payload_v2(const std::string &payload,
+                                              WeatherForecastPayload &out,
+                                              WeatherStripDayPayload *strip_days,
+                                              int strip_day_count) {
+  if (strip_day_count < WEATHER_DAILY_STRIP_DAY_COUNT) return false;
+  if (payload.rfind("v2|", 0) != 0) return false;
+  std::vector<std::string> parts;
+  size_t start = 0;
+  while (start <= payload.size()) {
+    size_t next = payload.find('|', start);
+    if (next == std::string::npos) {
+      parts.push_back(payload.substr(start));
+      break;
+    }
+    parts.push_back(payload.substr(start, next - start));
+    start = next + 1;
+  }
+  if (parts.size() < 2 + WEATHER_DAILY_STRIP_DAY_COUNT * 4) return false;
+  out.unit = parts[1];
+  bool any_valid = false;
+  for (int i = 0; i < WEATHER_DAILY_STRIP_DAY_COUNT; i++) {
+    size_t base = 2 + static_cast<size_t>(i) * 4;
+    WeatherStripDayPayload &day = strip_days[i];
+    day = WeatherStripDayPayload();
+    day.weekday = parts[base];
+    bool has_high = parse_weather_forecast_temp(parts[base + 1], day.high);
+    bool has_low = parse_weather_forecast_temp(parts[base + 2], day.low);
+    day.condition = parts[base + 3];
+    day.valid = has_high || has_low;
+    any_valid = any_valid || day.valid;
+  }
+  if (strip_days[0].valid) {
+    out.today_valid = true;
+    out.today_high = strip_days[0].high;
+    out.today_low = strip_days[0].low;
+    out.today_condition = strip_days[0].condition;
+  }
+  if (strip_days[1].valid) {
+    out.tomorrow_valid = true;
+    out.tomorrow_high = strip_days[1].high;
+    out.tomorrow_low = strip_days[1].low;
+    out.tomorrow_condition = strip_days[1].condition;
+  }
+  return any_valid;
+}
+
+inline bool parse_weather_forecast_payload(const std::string &payload,
+                                           WeatherForecastPayload &out,
+                                           WeatherStripDayPayload *strip_days = nullptr,
+                                           int strip_day_count = 0) {
+  out = WeatherForecastPayload();
+  if (strip_days != nullptr && strip_day_count >= WEATHER_DAILY_STRIP_DAY_COUNT &&
+      parse_weather_forecast_payload_v2(payload, out, strip_days, strip_day_count)) {
+    return true;
+  }
+  return parse_weather_forecast_payload_v1(payload, out);
+}
+
+inline void apply_weather_strip_day_text(WeatherDailyStripDayRef &day_ref,
+                                         const WeatherStripDayPayload &day,
+                                         const std::string &unit) {
+  if (day_ref.weekday_lbl) {
+    lv_label_set_text(day_ref.weekday_lbl,
+      day.weekday.empty() ? "--" : day.weekday.c_str());
+  }
+  if (day_ref.icon_lbl) {
+    if (day.valid && !day.condition.empty()) {
+      lv_label_set_text(day_ref.icon_lbl, weather_icon_for_state(day.condition));
+      lv_obj_clear_flag(day_ref.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_label_set_text(day_ref.icon_lbl, find_icon("Weather Sunny Off"));
+      lv_obj_add_flag(day_ref.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  if (!day_ref.value_lbl) return;
+  if (!day.valid) {
+    lv_label_set_text(day_ref.value_lbl, "--/--");
+    return;
+  }
+  char high_buf[12];
+  char low_buf[12];
+  if (day.high == WEATHER_FORECAST_TEMP_MISSING) snprintf(high_buf, sizeof(high_buf), "--");
+  else snprintf(high_buf, sizeof(high_buf), "%d", weather_forecast_display_temp(day.high, unit));
+  if (day.low == WEATHER_FORECAST_TEMP_MISSING) snprintf(low_buf, sizeof(low_buf), "--");
+  else snprintf(low_buf, sizeof(low_buf), "%d", weather_forecast_display_temp(day.low, unit));
+  char buf[24];
+  snprintf(buf, sizeof(buf), "%s/%s", high_buf, low_buf);
+  lv_label_set_text(day_ref.value_lbl, buf);
+}
+
+inline void apply_weather_daily_strip_card_text(WeatherDailyStripCardRef &ref,
+                                                const WeatherStripDayPayload *days,
+                                                int day_count,
+                                                const std::string &unit) {
+  if (!days || day_count <= 0) return;
+  int visible = ref.compact ? 1 : ref.visible_day_count;
+  if (visible > day_count) visible = day_count;
+  if (visible > WEATHER_DAILY_STRIP_DAY_COUNT) visible = WEATHER_DAILY_STRIP_DAY_COUNT;
+  ref.source_unit = unit;
+  for (int i = 0; i < WEATHER_DAILY_STRIP_DAY_COUNT; i++) {
+    if (ref.days[i].column) {
+      if (i < visible) lv_obj_clear_flag(ref.days[i].column, LV_OBJ_FLAG_HIDDEN);
+      else lv_obj_add_flag(ref.days[i].column, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (i < day_count) apply_weather_strip_day_text(ref.days[i], days[i], unit);
+    else apply_weather_strip_day_text(ref.days[i], WeatherStripDayPayload(), unit);
+  }
+}
+
+inline void apply_weather_daily_strip_to_entity(const std::string &entity_id,
+                                                const WeatherStripDayPayload *days,
+                                                int day_count,
+                                                const std::string &unit) {
+  WeatherDailyStripCardRef *refs = weather_daily_strip_card_refs();
+  int count = weather_daily_strip_card_count();
+  for (int i = 0; i < count; i++) {
+    if (refs[i].entity_id != entity_id) continue;
+    apply_weather_daily_strip_card_text(refs[i], days, day_count, unit);
+    apply_control_availability(refs[i].btn, refs[i].btn, day_count > 0, false);
+    notify_dashboard_content_changed();
+  }
+}
+
+inline void apply_weather_daily_strip_unavailable_for_entity(const std::string &entity_id) {
+  WeatherStripDayPayload empty_days[WEATHER_DAILY_STRIP_DAY_COUNT];
+  apply_weather_daily_strip_to_entity(entity_id, empty_days, WEATHER_DAILY_STRIP_DAY_COUNT, "");
+}
+
+inline void register_weather_daily_strip_card(lv_obj_t *btn,
+                                              lv_obj_t *strip_container,
+                                              WeatherDailyStripDayRef *days,
+                                              int day_count,
+                                              const std::string &entity_id,
+                                              bool compact) {
+  int &count = weather_daily_strip_card_count();
+  if (count >= MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS || day_count < WEATHER_DAILY_STRIP_DAY_COUNT) {
+    ESP_LOGW("weather_forecast", "Too many daily strip cards; skipping updates");
+    return;
+  }
+  WeatherDailyStripCardRef &ref = weather_daily_strip_card_refs()[count++];
+  ref.btn = btn;
+  ref.strip_container = strip_container;
+  ref.entity_id = entity_id;
+  ref.compact = compact;
+  ref.visible_day_count = compact ? 1 : WEATHER_DAILY_STRIP_DAY_COUNT;
+  for (int i = 0; i < WEATHER_DAILY_STRIP_DAY_COUNT; i++) {
+    ref.days[i] = days[i];
+  }
+  apply_control_availability(ref.btn, ref.btn, false, false);
+  apply_weather_daily_strip_unavailable_for_entity(entity_id);
+}
+
 inline std::string weather_forecast_response_template(const std::string &entity_id) {
   return std::string("{% set entity = '") + entity_id + "' %}"
     "{% set response_data = response if response is defined and response is not none else {} %}"
@@ -2011,9 +2212,17 @@ inline std::string weather_forecast_response_template(const std::string &entity_
     "{% set cond_keys = ['condition', 'native_condition'] %}"
     "{% for key in cond_keys %}{% if out.today_cond == '' and today is not none and key in today %}{% set out.today_cond = today[key] %}{% endif %}{% if out.tomorrow_cond == '' and tomorrow is not none and key in tomorrow %}{% set out.tomorrow_cond = tomorrow[key] %}{% endif %}{% endfor %}"
     "{% for key in unit_keys %}{% if out.unit == '' and key in entity_response %}{% set out.unit = entity_response[key] %}{% endif %}{% if out.unit == '' and today is not none and key in today %}{% set out.unit = today[key] %}{% endif %}{% if out.unit == '' and tomorrow is not none and key in tomorrow %}{% set out.unit = tomorrow[key] %}{% endif %}{% endfor %}"
-    "{{ out.today_high }}|{{ out.today_low }}|{{ out.tomorrow_high }}|{{ out.tomorrow_low }}|"
-    "{{ out.unit or state_attr(entity, 'temperature_unit') or state_attr(entity, 'native_temperature_unit') or state_attr(entity, 'unit_of_measurement') or '' }}|"
-    "{{ out.today_cond }}|{{ out.tomorrow_cond }}";
+    "{% set unit_val = out.unit or state_attr(entity, 'temperature_unit') or state_attr(entity, 'native_temperature_unit') or state_attr(entity, 'unit_of_measurement') or '' %}"
+    "{% set strip_ns = namespace(text='') %}"
+    "{% for i in range(5) %}{% set item = forecasts[i] if forecasts|length > i else none %}"
+    "{% set day_ns = namespace(weekday='', hi='', lo='', cond='') %}"
+    "{% if item is not none %}{% set item_dt = as_datetime(item['datetime']) if 'datetime' in item else none %}"
+    "{% if item_dt is not none %}{% set day_ns.weekday = as_local(item_dt).strftime('%a') %}{% endif %}"
+    "{% for key in high_keys %}{% if day_ns.hi == '' and key in item %}{% set day_ns.hi = item[key] %}{% endif %}{% endfor %}"
+    "{% for key in low_keys %}{% if day_ns.lo == '' and key in item %}{% set day_ns.lo = item[key] %}{% endif %}{% endfor %}"
+    "{% for key in cond_keys %}{% if day_ns.cond == '' and key in item %}{% set day_ns.cond = item[key] %}{% endif %}{% endfor %}"
+    "{% endif %}{% set strip_ns.text = strip_ns.text ~ day_ns.weekday ~ '|' ~ day_ns.hi ~ '|' ~ day_ns.lo ~ '|' ~ day_ns.cond ~ '|' %}{% endfor %}"
+    "v2|{{ unit_val }}|{{ strip_ns.text }}";
 }
 
 inline uint32_t next_weather_forecast_call_id() {
@@ -2329,7 +2538,9 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
         return;
       }
       WeatherForecastPayload forecast;
-      bool valid = parse_weather_forecast_payload(payload, forecast);
+      WeatherStripDayPayload strip_days[WEATHER_DAILY_STRIP_DAY_COUNT];
+      bool valid = parse_weather_forecast_payload(
+        payload, forecast, strip_days, WEATHER_DAILY_STRIP_DAY_COUNT);
       if (!valid) {
         ESP_LOGW("weather_forecast", "No usable forecast temperatures for %s: %s",
           entity_id.c_str(), payload);
@@ -2339,6 +2550,8 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
         forecast.today_high, forecast.today_low, forecast.unit, forecast.today_condition);
       apply_weather_forecast_to_entity(entity_id, "tomorrow", forecast.tomorrow_valid,
         forecast.tomorrow_high, forecast.tomorrow_low, forecast.unit, forecast.tomorrow_condition);
+      apply_weather_daily_strip_to_entity(
+        entity_id, strip_days, WEATHER_DAILY_STRIP_DAY_COUNT, forecast.unit);
       weather_forecast_send_next_queued();
     })) {
     apply_weather_forecast_unavailable_for_entity(entity_id);

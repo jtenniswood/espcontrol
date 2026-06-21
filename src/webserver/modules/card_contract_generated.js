@@ -1287,7 +1287,8 @@ var CARD_CONTRACT_CARDS = {
         "values": [
           "",
           "today",
-          "tomorrow"
+          "tomorrow",
+          "daily_strip"
         ],
         "defaultValue": ""
       },

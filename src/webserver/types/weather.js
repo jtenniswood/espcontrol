@@ -7,6 +7,7 @@ var WEATHER_CARD_METADATA = {
       ["", "Current Conditions"],
       ["today", "Temperatures Today"],
       ["tomorrow", "Temperatures Tomorrow"],
+      ["daily_strip", "Daily Strip (5 days)"],
     ],
     value: function (b) {
       return weatherCardIsForecastMode(b) ? b.precision : "";
@@ -44,7 +45,10 @@ var WEATHER_CARD_METADATA = {
 };
 
 function weatherCardDefaultForecastLabel(b) {
-  return b.precision === "today" ? "Today" : "Tomorrow";
+  if (b.precision === "today") return "Today";
+  if (b.precision === "tomorrow") return "Tomorrow";
+  if (b.precision === "daily_strip") return "Forecast";
+  return "Tomorrow";
 }
 
 function weatherModeOptionValues() {
@@ -103,6 +107,12 @@ registerButtonType("weather", {
     syncForecastFields();
   },
   renderPreview: function (b, helpers) {
+    if (b.precision === "daily_strip") {
+      return {
+        iconHtml: '<div class="sp-forecast-strip-preview"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>',
+        labelHtml: cardBadgeLabelHtml(helpers, b.label || "Forecast", WEATHER_CARD_METADATA.preview.forecastBadge),
+      };
+    }
     if (weatherCardIsForecastMode(b)) {
       var defaultLabel = weatherCardDefaultForecastLabel(b);
       var label = b.label || defaultLabel;

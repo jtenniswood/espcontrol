@@ -403,13 +403,101 @@ inline void setup_weather_card(BtnSlot &s, bool has_sensor_color, uint32_t senso
   lv_label_set_text(s.text_lbl, espcontrol_i18n("Cloudy"));
 }
 
+inline bool weather_card_is_daily_strip(const ParsedCfg &p) {
+  return p.type == "weather" && p.precision == "daily_strip";
+}
+
 inline bool weather_card_shows_forecast(const ParsedCfg &p) {
   return p.type == "weather_forecast" ||
-    (p.type == "weather" && card_runtime_weather_forecast_precision(p.precision));
+    (p.type == "weather" &&
+     (card_runtime_weather_forecast_precision(p.precision) || weather_card_is_daily_strip(p)));
 }
 
 inline std::string weather_card_forecast_day(const ParsedCfg &p) {
   return p.precision == "today" ? "today" : "tomorrow";
+}
+
+inline lv_obj_t *create_weather_strip_day_column(lv_obj_t *parent,
+                                                 const lv_font_t *weekday_font,
+                                                 const lv_font_t *icon_font,
+                                                 const lv_font_t *value_font,
+                                                 lv_color_t text_color,
+                                                 WeatherDailyStripDayRef &out) {
+  lv_obj_t *column = lv_obj_create(parent);
+  lv_obj_set_size(column, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_clear_flag(column, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(column, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_opa(column, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(column, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(column, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(column, 2, LV_PART_MAIN);
+  lv_obj_set_layout(column, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(column, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(column, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(column, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+
+  out.column = column;
+  out.weekday_lbl = lv_label_create(column);
+  if (weekday_font) lv_obj_set_style_text_font(out.weekday_lbl, weekday_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(out.weekday_lbl, text_color, LV_PART_MAIN);
+  lv_label_set_text(out.weekday_lbl, "--");
+
+  out.icon_lbl = lv_label_create(column);
+  if (icon_font) lv_obj_set_style_text_font(out.icon_lbl, icon_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(out.icon_lbl, text_color, LV_PART_MAIN);
+  lv_label_set_text(out.icon_lbl, find_icon("Weather Cloudy"));
+
+  out.value_lbl = lv_label_create(column);
+  if (value_font) lv_obj_set_style_text_font(out.value_lbl, value_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(out.value_lbl, text_color, LV_PART_MAIN);
+  lv_label_set_text(out.value_lbl, "--/--");
+  return column;
+}
+
+inline void setup_weather_daily_strip_card(BtnSlot &s, const ParsedCfg &p,
+                                           bool has_sensor_color, uint32_t sensor_val,
+                                           bool compact,
+                                           int width_compensation_percent = 100) {
+  if (has_sensor_color) {
+    lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  }
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+
+  const lv_font_t *icon_font = s.icon_lbl
+    ? lv_obj_get_style_text_font(s.icon_lbl, LV_PART_MAIN) : nullptr;
+  const lv_font_t *weekday_font = s.text_lbl
+    ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr;
+  const lv_font_t *value_font = s.sensor_lbl
+    ? lv_obj_get_style_text_font(s.sensor_lbl, LV_PART_MAIN) : nullptr;
+  lv_color_t text_color = s.text_lbl
+    ? lv_obj_get_style_text_color(s.text_lbl, LV_PART_MAIN) : lv_color_white();
+
+  lv_obj_t *strip_container = lv_obj_create(s.btn);
+  lv_obj_set_align(strip_container, LV_ALIGN_CENTER);
+  lv_obj_set_size(strip_container, lv_pct(100), LV_SIZE_CONTENT);
+  lv_obj_clear_flag(strip_container, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(strip_container, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_opa(strip_container, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(strip_container, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(strip_container, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(strip_container, 6, LV_PART_MAIN);
+  lv_obj_set_layout(strip_container, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(strip_container, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(strip_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(strip_container, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+
+  WeatherDailyStripDayRef days[WEATHER_DAILY_STRIP_DAY_COUNT];
+  for (int i = 0; i < WEATHER_DAILY_STRIP_DAY_COUNT; i++) {
+    create_weather_strip_day_column(
+      strip_container, weekday_font, icon_font, value_font, text_color, days[i]);
+  }
+  apply_width_compensation(strip_container, width_compensation_percent);
+  register_weather_daily_strip_card(
+    s.btn, strip_container, days, WEATHER_DAILY_STRIP_DAY_COUNT, p.entity, compact);
 }
 
 inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,

@@ -327,6 +327,16 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     }
     return;
   }
+  if (weather_card_is_daily_strip(p)) {
+    bool wide = card_span_is_wide(row_span, col_span);
+    if (!wide) {
+      ESP_LOGW("weather_forecast",
+        "Daily strip card needs a wide grid slot; showing compact day view");
+    }
+    setup_weather_daily_strip_card(s, p, palette.has_sensor_color, palette.sensor_val, !wide,
+      display_main_width_percent(display));
+    return;
+  }
   if (weather_card_shows_forecast(p)) {
     setup_weather_forecast_card(s, p, palette.has_sensor_color, palette.sensor_val,
       display_main_width_percent(display));
@@ -784,6 +794,7 @@ inline void grid_phase1(
   reset_timezone_cards();
   weather_forecast_cancel_pending_requests();
   reset_weather_forecast_cards();
+  reset_weather_daily_strip_cards();
   reset_climate_control_refs();
   screen_lock_reset_registry();
 
