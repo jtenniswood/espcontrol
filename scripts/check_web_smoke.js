@@ -613,6 +613,38 @@ assert(weatherForecastPreview.iconHtml.includes("sp-sensor-preview-large"), "wea
 assert(weatherForecastPreview.iconHtml.includes("\u00b0F"), "weather forecast preview uses the selected temperature unit");
 assert(weatherForecastPreview.labelHtml.includes("Garden"), "weather forecast preview uses the custom label");
 
+const weatherDailyStripPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  label: "Forecast",
+  type: "weather",
+  precision: "daily_strip",
+  options: "",
+}, { cardSize: CARD_SIZE_WIDE });
+assert(weatherDailyStripPreview.iconHtml.includes("sp-forecast-strip-preview"), "weather daily strip preview uses strip styling");
+assert(weatherDailyStripPreview.labelHtml.includes("Forecast"), "weather daily strip preview uses the custom label");
+const weatherDailyStripNarrowPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "daily_strip",
+}, { cardSize: CARD_SIZE_SINGLE });
+assert(!weatherDailyStripNarrowPreview.iconHtml.includes("sp-forecast-strip-preview"), "weather daily strip preview warns in a single slot");
+assert(weatherDailyStripNarrowPreview.labelHtml.includes("Today"), "weather daily strip preview falls back in a single slot");
+assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "daily_strip",
+}, 3, { cardSize: CARD_SIZE_SINGLE }), false, "weather daily strip save requires a wide slot");
+assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "daily_strip",
+}, 3, { cardSize: CARD_SIZE_WIDE }), true, "weather daily strip save allows a wide slot");
+assert.deepStrictEqual(
+  Array.from(hooks.weatherModeOptionValues()),
+  ["", "today", "tomorrow", "daily_strip"],
+  "weather card mode selector includes daily strip"
+);
+
 const imagePreview = hooks.buttonTypePreviewFor("image", {
   entity: "camera.seaside",
   label: "Seaside",

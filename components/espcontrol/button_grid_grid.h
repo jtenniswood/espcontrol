@@ -328,12 +328,16 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
   if (weather_card_is_daily_strip(p)) {
-    bool wide = card_span_is_wide(row_span, col_span);
-    if (!wide) {
+    if (!card_span_fits_weather_daily_strip(row_span, col_span)) {
       ESP_LOGW("weather_forecast",
-        "Daily strip card needs a wide grid slot; showing compact day view");
+        "Daily strip card needs a wide grid slot; showing today forecast instead");
+      ParsedCfg fallback = p;
+      fallback.precision = "today";
+      setup_weather_forecast_card(s, fallback, palette.has_sensor_color, palette.sensor_val,
+        display_main_width_percent(display));
+      return;
     }
-    setup_weather_daily_strip_card(s, p, palette.has_sensor_color, palette.sensor_val, !wide,
+    setup_weather_daily_strip_card(s, p, palette.has_sensor_color, palette.sensor_val,
       display_main_width_percent(display));
     return;
   }

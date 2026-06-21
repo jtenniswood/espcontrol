@@ -1742,8 +1742,6 @@ struct WeatherDailyStripCardRef {
   WeatherDailyStripDayRef days[WEATHER_DAILY_STRIP_DAY_COUNT];
   std::string entity_id;
   std::string source_unit;
-  bool compact = false;
-  int visible_day_count = WEATHER_DAILY_STRIP_DAY_COUNT;
 };
 
 inline WeatherDailyStripCardRef *weather_daily_strip_card_refs() {
@@ -2134,8 +2132,7 @@ inline void apply_weather_daily_strip_card_text(WeatherDailyStripCardRef &ref,
                                                 int day_count,
                                                 const std::string &unit) {
   if (!days || day_count <= 0) return;
-  int visible = ref.compact ? 1 : ref.visible_day_count;
-  if (visible > day_count) visible = day_count;
+  int visible = day_count;
   if (visible > WEATHER_DAILY_STRIP_DAY_COUNT) visible = WEATHER_DAILY_STRIP_DAY_COUNT;
   ref.source_unit = unit;
   for (int i = 0; i < WEATHER_DAILY_STRIP_DAY_COUNT; i++) {
@@ -2171,8 +2168,7 @@ inline void register_weather_daily_strip_card(lv_obj_t *btn,
                                               lv_obj_t *strip_container,
                                               WeatherDailyStripDayRef *days,
                                               int day_count,
-                                              const std::string &entity_id,
-                                              bool compact) {
+                                              const std::string &entity_id) {
   int &count = weather_daily_strip_card_count();
   if (count >= MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS || day_count < WEATHER_DAILY_STRIP_DAY_COUNT) {
     ESP_LOGW("weather_forecast", "Too many daily strip cards; skipping updates");
@@ -2182,8 +2178,6 @@ inline void register_weather_daily_strip_card(lv_obj_t *btn,
   ref.btn = btn;
   ref.strip_container = strip_container;
   ref.entity_id = entity_id;
-  ref.compact = compact;
-  ref.visible_day_count = compact ? 1 : WEATHER_DAILY_STRIP_DAY_COUNT;
   for (int i = 0; i < WEATHER_DAILY_STRIP_DAY_COUNT; i++) {
     ref.days[i] = days[i];
   }
@@ -2583,26 +2577,41 @@ inline void weather_forecast_send_next_queued() {
 }
 
 inline void refresh_weather_forecast_cards() {
-  WeatherForecastCardRef *refs = weather_forecast_card_refs();
-  int count = weather_forecast_card_count();
-  if (count <= 0) return;
   std::vector<std::string> requested;
-  requested.reserve(count);
-  for (int i = 0; i < count; i++) {
-    const std::string &entity_id = refs[i].entity_id;
+  WeatherForecastCardRef *forecast_refs = weather_forecast_card_refs();
+  int forecast_count = weather_forecast_card_count();
+  requested.reserve(forecast_count + weather_daily_strip_card_count());
+  for (int i = 0; i < forecast_count; i++) {
+    const std::string &entity_id = forecast_refs[i].entity_id;
     if (entity_id.empty()) continue;
-    std::string request_key = entity_id;
     bool already_requested = false;
     for (const auto &existing : requested) {
-      if (existing == request_key) {
+      if (existing == entity_id) {
         already_requested = true;
         break;
       }
     }
     if (already_requested) continue;
-    requested.push_back(request_key);
+    requested.push_back(entity_id);
     weather_forecast_enqueue(entity_id, "");
   }
+  WeatherDailyStripCardRef *strip_refs = weather_daily_strip_card_refs();
+  int strip_count = weather_daily_strip_card_count();
+  for (int i = 0; i < strip_count; i++) {
+    const std::string &entity_id = strip_refs[i].entity_id;
+    if (entity_id.empty()) continue;
+    bool already_requested = false;
+    for (const auto &existing : requested) {
+      if (existing == entity_id) {
+        already_requested = true;
+        break;
+      }
+    }
+    if (already_requested) continue;
+    requested.push_back(entity_id);
+    weather_forecast_enqueue(entity_id, "");
+  }
+  if (requested.empty()) return;
   weather_forecast_send_next_queued();
 }
 

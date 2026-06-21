@@ -88,6 +88,8 @@ var CSS =
   ".sp-clock-wide-large{justify-content:center;align-items:flex-start}" +
   ".sp-clock-wide-large .sp-sensor-value{font-family:Roboto,sans-serif;font-weight:100}" +
   ".sp-forecast-preview{white-space:nowrap;gap:0}" +
+  ".sp-forecast-strip-preview{display:flex;align-items:center;justify-content:space-evenly;width:100%;gap:2px;font-size:calc(var(--btn-label)*0.85);line-height:1.1;text-align:center}" +
+  ".sp-forecast-strip-preview span{flex:1 1 0;min-width:0}" +
   ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
   ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:#fff}" +
   ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +

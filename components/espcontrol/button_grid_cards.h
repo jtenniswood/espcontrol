@@ -456,7 +456,6 @@ inline lv_obj_t *create_weather_strip_day_column(lv_obj_t *parent,
 
 inline void setup_weather_daily_strip_card(BtnSlot &s, const ParsedCfg &p,
                                            bool has_sensor_color, uint32_t sensor_val,
-                                           bool compact,
                                            int width_compensation_percent = 100) {
   if (has_sensor_color) {
     lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
@@ -497,7 +496,7 @@ inline void setup_weather_daily_strip_card(BtnSlot &s, const ParsedCfg &p,
   }
   apply_width_compensation(strip_container, width_compensation_percent);
   register_weather_daily_strip_card(
-    s.btn, strip_container, days, WEATHER_DAILY_STRIP_DAY_COUNT, p.entity, compact);
+    s.btn, strip_container, days, WEATHER_DAILY_STRIP_DAY_COUNT, p.entity);
 }
 
 inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,

@@ -280,6 +280,7 @@
       renderSettingsBeforeLabel: null,
       renderSettings: null,
       renderPreview: null,
+      validateSave: null,
       contextMenuItems: null,
       cardMetadata: null,
       defaultConfig: null,
