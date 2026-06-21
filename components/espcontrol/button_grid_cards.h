@@ -431,7 +431,7 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
   lv_label_set_text(s.text_lbl, label.c_str());
   apply_width_compensation(s.sensor_container, width_compensation_percent);
   apply_width_compensation(s.text_lbl, width_compensation_percent);
-  register_weather_forecast_card(s.btn, s.sensor_lbl, s.unit_lbl, s.text_lbl,
+  register_weather_forecast_card(s.btn, s.icon_lbl, s.sensor_lbl, s.unit_lbl, s.text_lbl,
     p.entity, day, p.label);
 }
 

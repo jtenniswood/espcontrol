@@ -1,0 +1,7 @@
+# Dev-only: compile espcontrol from the working tree (includes uncommitted changes).
+# Release builds keep using the git-pinned component from device/device.yaml.
+external_components:
+  - source:
+      type: local
+      path: ../../components
+    components: [espcontrol, web_server_idf, artwork_image, gsl3680]

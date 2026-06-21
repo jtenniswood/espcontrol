@@ -1682,14 +1682,16 @@ inline std::string weather_label_for_state(const std::string &state) {
 }
 
 struct WeatherForecastCardRef {
-  lv_obj_t *btn;
-  lv_obj_t *value_lbl;
-  lv_obj_t *unit_lbl;
-  lv_obj_t *label_lbl;
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *value_lbl = nullptr;
+  lv_obj_t *unit_lbl = nullptr;
+  lv_obj_t *label_lbl = nullptr;
   std::string entity_id;
   std::string day;
   std::string label;
   std::string status_label;
+  std::string condition;
   bool valid = false;
   float high = 0.0f;
   float low = 0.0f;
@@ -1751,6 +1753,26 @@ inline int weather_forecast_display_temp(float value, const std::string &unit) {
 inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
                                              bool valid, float high, float low,
                                              const std::string &unit) {
+  lv_obj_t *sensor_container = ref.value_lbl ? lv_obj_get_parent(ref.value_lbl) : nullptr;
+  const bool show_condition_icon = valid && !ref.condition.empty();
+  if (ref.icon_lbl) {
+    if (show_condition_icon) {
+      lv_label_set_text(ref.icon_lbl, weather_icon_for_state(ref.condition));
+      lv_obj_clear_flag(ref.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_align(ref.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
+      if (sensor_container) {
+        lv_obj_align_to(sensor_container, ref.icon_lbl, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 2);
+      }
+    } else {
+      lv_label_set_text(ref.icon_lbl, find_icon("Weather Sunny Off"));
+      lv_obj_add_flag(ref.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (sensor_container) {
+        lv_obj_align(sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
+      }
+    }
+  } else if (sensor_container) {
+    lv_obj_align(sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
+  }
   if (ref.label_lbl) {
     std::string label = !ref.status_label.empty()
       ? ref.status_label
@@ -1782,10 +1804,11 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
 inline void apply_weather_forecast_to_entity(const std::string &entity_id,
                                              const std::string &day,
                                              bool valid, float high, float low,
-                                             const std::string &unit) {
-  ESP_LOGI("weather_forecast", "Applying %s forecast for %s: %s high=%.1f low=%.1f unit=%s",
+                                             const std::string &unit,
+                                             const std::string &condition = "") {
+  ESP_LOGI("weather_forecast", "Applying %s forecast for %s: %s high=%.1f low=%.1f unit=%s cond=%s",
     day.c_str(), entity_id.c_str(), valid ? "valid" : "unavailable",
-    high, low, unit.c_str());
+    high, low, unit.c_str(), condition.c_str());
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
@@ -1794,6 +1817,7 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
       refs[i].high = high;
       refs[i].low = low;
       refs[i].source_unit = unit;
+      refs[i].condition = condition;
       refs[i].status_label = "";
       apply_control_availability(refs[i].btn, refs[i].btn, valid, false);
       apply_weather_forecast_card_text(refs[i], valid, high, low, unit);
@@ -1812,6 +1836,7 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
       refs[i].high = 0;
       refs[i].low = 0;
       refs[i].source_unit = "";
+      refs[i].condition = "";
       refs[i].status_label = "";
       apply_control_availability(refs[i].btn, refs[i].btn, false, false);
       apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
@@ -1829,6 +1854,7 @@ inline void apply_weather_forecast_unavailable_all() {
     refs[i].high = 0;
     refs[i].low = 0;
     refs[i].source_unit = "";
+    refs[i].condition = "";
     refs[i].status_label = "";
     apply_control_availability(refs[i].btn, refs[i].btn, false, false);
     apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
@@ -1848,6 +1874,7 @@ inline void apply_weather_forecast_actions_required_for_entity(const std::string
       refs[i].high = 0;
       refs[i].low = 0;
       refs[i].source_unit = "";
+      refs[i].condition = "";
       refs[i].status_label = "";
       apply_control_availability(refs[i].btn, refs[i].btn, false, false);
       apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
@@ -1874,6 +1901,7 @@ inline bool weather_forecast_request_matches(const std::string &entity_id,
 }
 
 inline void register_weather_forecast_card(lv_obj_t *btn,
+                                           lv_obj_t *icon_lbl,
                                            lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
                                            lv_obj_t *label_lbl,
                                            const std::string &entity_id,
@@ -1885,7 +1913,7 @@ inline void register_weather_forecast_card(lv_obj_t *btn,
     return;
   }
   weather_forecast_card_refs()[count++] = {
-    btn, value_lbl, unit_lbl, label_lbl, entity_id, day, label, "", false, 0, 0, ""
+    btn, icon_lbl, value_lbl, unit_lbl, label_lbl, entity_id, day, label, "", "", false, 0, 0, ""
   };
   apply_control_availability(weather_forecast_card_refs()[count - 1].btn,
                              weather_forecast_card_refs()[count - 1].btn,
@@ -1915,14 +1943,17 @@ struct WeatherForecastPayload {
   bool today_valid = false;
   float today_high = WEATHER_FORECAST_TEMP_MISSING;
   float today_low = WEATHER_FORECAST_TEMP_MISSING;
+  std::string today_condition;
   bool tomorrow_valid = false;
   float tomorrow_high = WEATHER_FORECAST_TEMP_MISSING;
   float tomorrow_low = WEATHER_FORECAST_TEMP_MISSING;
+  std::string tomorrow_condition;
   std::string unit;
 };
 
 inline bool parse_weather_forecast_payload(const std::string &payload,
                                            WeatherForecastPayload &out) {
+  out = WeatherForecastPayload();
   size_t p1 = payload.find('|');
   if (p1 == std::string::npos) return false;
   size_t p2 = payload.find('|', p1 + 1);
@@ -1936,7 +1967,19 @@ inline bool parse_weather_forecast_payload(const std::string &payload,
   std::string today_low_text = payload.substr(p1 + 1, p2 - p1 - 1);
   std::string tomorrow_high_text = payload.substr(p2 + 1, p3 - p2 - 1);
   std::string tomorrow_low_text = payload.substr(p3 + 1, p4 - p3 - 1);
-  out.unit = payload.substr(p4 + 1);
+  size_t p5 = payload.find('|', p4 + 1);
+  if (p5 == std::string::npos) {
+    out.unit = payload.substr(p4 + 1);
+  } else {
+    out.unit = payload.substr(p4 + 1, p5 - p4 - 1);
+    size_t p6 = payload.find('|', p5 + 1);
+    if (p6 == std::string::npos) {
+      out.today_condition = payload.substr(p5 + 1);
+    } else {
+      out.today_condition = payload.substr(p5 + 1, p6 - p5 - 1);
+      out.tomorrow_condition = payload.substr(p6 + 1);
+    }
+  }
 
   bool today_has_high = parse_weather_forecast_temp(today_high_text, out.today_high);
   bool today_has_low = parse_weather_forecast_temp(today_low_text, out.today_low);
@@ -1962,12 +2005,15 @@ inline std::string weather_forecast_response_template(const std::string &entity_
     "{% set high_keys = ['temperature','native_temperature','temperature_high','native_temperature_high','high_temperature','max_temperature','temperature_max','temp_high','max_temp','high'] %}"
     "{% set low_keys = ['templow','native_templow','temperature_low','native_temperature_low','low_temperature','min_temperature','temperature_min','temp_low','min_temp','low'] %}"
     "{% set unit_keys = ['temperature_unit','native_temperature_unit','unit_of_measurement','native_unit_of_measurement','unit'] %}"
-    "{% set out = namespace(today_high='', today_low='', tomorrow_high='', tomorrow_low='', unit='') %}"
+    "{% set out = namespace(today_high='', today_low='', tomorrow_high='', tomorrow_low='', unit='', today_cond='', tomorrow_cond='') %}"
     "{% for key in high_keys %}{% if out.today_high == '' and today is not none and key in today %}{% set out.today_high = today[key] %}{% endif %}{% if out.tomorrow_high == '' and tomorrow is not none and key in tomorrow %}{% set out.tomorrow_high = tomorrow[key] %}{% endif %}{% endfor %}"
     "{% for key in low_keys %}{% if out.today_low == '' and today is not none and key in today %}{% set out.today_low = today[key] %}{% endif %}{% if out.tomorrow_low == '' and tomorrow is not none and key in tomorrow %}{% set out.tomorrow_low = tomorrow[key] %}{% endif %}{% endfor %}"
+    "{% set cond_keys = ['condition', 'native_condition'] %}"
+    "{% for key in cond_keys %}{% if out.today_cond == '' and today is not none and key in today %}{% set out.today_cond = today[key] %}{% endif %}{% if out.tomorrow_cond == '' and tomorrow is not none and key in tomorrow %}{% set out.tomorrow_cond = tomorrow[key] %}{% endif %}{% endfor %}"
     "{% for key in unit_keys %}{% if out.unit == '' and key in entity_response %}{% set out.unit = entity_response[key] %}{% endif %}{% if out.unit == '' and today is not none and key in today %}{% set out.unit = today[key] %}{% endif %}{% if out.unit == '' and tomorrow is not none and key in tomorrow %}{% set out.unit = tomorrow[key] %}{% endif %}{% endfor %}"
     "{{ out.today_high }}|{{ out.today_low }}|{{ out.tomorrow_high }}|{{ out.tomorrow_low }}|"
-    "{{ out.unit or state_attr(entity, 'temperature_unit') or state_attr(entity, 'native_temperature_unit') or state_attr(entity, 'unit_of_measurement') or '' }}";
+    "{{ out.unit or state_attr(entity, 'temperature_unit') or state_attr(entity, 'native_temperature_unit') or state_attr(entity, 'unit_of_measurement') or '' }}|"
+    "{{ out.today_cond }}|{{ out.tomorrow_cond }}";
 }
 
 inline uint32_t next_weather_forecast_call_id() {
@@ -2290,9 +2336,9 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
         weather_forecast_schedule_retry(entity_id, day, "no usable forecast temperatures");
       }
       apply_weather_forecast_to_entity(entity_id, "today", forecast.today_valid,
-        forecast.today_high, forecast.today_low, forecast.unit);
+        forecast.today_high, forecast.today_low, forecast.unit, forecast.today_condition);
       apply_weather_forecast_to_entity(entity_id, "tomorrow", forecast.tomorrow_valid,
-        forecast.tomorrow_high, forecast.tomorrow_low, forecast.unit);
+        forecast.tomorrow_high, forecast.tomorrow_low, forecast.unit, forecast.tomorrow_condition);
       weather_forecast_send_next_queued();
     })) {
     apply_weather_forecast_unavailable_for_entity(entity_id);
