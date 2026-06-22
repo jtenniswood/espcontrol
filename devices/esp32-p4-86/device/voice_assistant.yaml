@@ -114,6 +114,8 @@ media_player:
         file: ${voice_wake_chime_file}
       - id: voice_timer_alert
         file: ${voice_timer_alert_file}
+      - id: voice_stt_failure_chime
+        file: ${voice_stt_failure_chime_file}
     volume_min: 0.0
     volume_max: 1.0
     volume_increment: 0.005
@@ -384,6 +386,16 @@ script:
                 id: voice_media_player
                 media_file: voice_wake_chime
                 announcement: true
+
+  - id: play_voice_stt_failure_chime
+    mode: restart
+    then:
+      - lambda: id(voice_speaker).set_pause_state(false);
+      - switch.turn_on: speaker_amplifier_enable
+      - media_player.speaker.play_on_device_media_file:
+          id: voice_media_player
+          media_file: voice_stt_failure_chime
+          announcement: true
 
   - id: play_voice_timer_alert
     mode: restart
@@ -1002,6 +1014,15 @@ voice_assistant:
         tag: voice
         format: "Voice assistant error: %s - %s"
         args: [code.c_str(), message.c_str()]
+    - if:
+        condition:
+          lambda: return code == "stt-no-text-recognized";
+        then:
+          - logger.log:
+              level: INFO
+              tag: voice
+              format: "Playing STT no-text-recognized failure sound"
+          - script.execute: play_voice_stt_failure_chime
   on_idle:
     - lambda: id(voice_interaction_active) = false;
     - script.stop: release_voice_after_response

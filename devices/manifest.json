@@ -562,7 +562,8 @@
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\"",
             "voice_wake_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac\"",
-            "voice_timer_alert_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac\""
+            "voice_timer_alert_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac\"",
+            "voice_stt_failure_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac\""
           },
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,

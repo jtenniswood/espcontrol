@@ -11,6 +11,7 @@ substitutions:
   friendly_name: "EspControl P4 86 Panel"
   espcontrol_component_url: "file:///config"
   espcontrol_component_ref: "HEAD"
+  voice_stt_failure_chime_file: "../devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
 
 esphome:
   name_add_mac_suffix: true
