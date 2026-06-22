@@ -1067,7 +1067,7 @@
           "name": "weather_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "today", "tomorrow", "daily_strip"],
+          "values": ["", "today", "tomorrow", "hero", "daily_strip"],
           "defaultValue": ""
         },
         {
@@ -1075,7 +1075,7 @@
           "label": "Large Temperature Numbers",
           "kind": "flag",
           "supportedWhen": {
-            "precision": ["today", "tomorrow"]
+            "precision": ["today", "tomorrow", "hero"]
           }
         }
       ],

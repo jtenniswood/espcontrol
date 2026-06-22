@@ -7,11 +7,13 @@ var WEATHER_CARD_METADATA = {
       ["", "Current Conditions"],
       ["today", "Temperatures Today"],
       ["tomorrow", "Temperatures Tomorrow"],
+      ["hero", "Hero (current + today)"],
       ["daily_strip", "Daily Strip (5 days)"],
     ],
     value: function (b) {
       if (!b) return "";
       if (b.precision === "daily_strip") return "daily_strip";
+      if (b.precision === "hero") return "hero";
       return weatherCardIsForecastMode(b) ? b.precision : "";
     },
     onChange: function (b, helpers) {
@@ -65,6 +67,10 @@ function normalizeWeatherCardMode(mode) {
 
 function weatherCardShowsLabelField(b) {
   return weatherCardIsForecastMode(b) || (!!b && b.precision === "daily_strip");
+}
+
+function weatherCardSupportsLargeNumbers(b) {
+  return weatherCardIsForecastMode(b) || (!!b && b.precision === "hero");
 }
 
 function weatherCardIsForecastMode(b) {
@@ -163,9 +169,10 @@ registerButtonType("weather", {
     function syncForecastFields() {
       syncModeOptions();
       var forecast = weatherCardShowsLabelField(b);
+      var heroOrForecast = weatherCardSupportsLargeNumbers(b);
       labelField.style.display = forecast ? "" : "none";
       labelInp.placeholder = "e.g. " + weatherCardDefaultForecastLabel(b);
-      helpers.syncCardLargeNumbersToggle(largeNumbersToggle, b, helpers, forecast);
+      helpers.syncCardLargeNumbersToggle(largeNumbersToggle, b, helpers, heroOrForecast);
       syncDailyStripHint();
     }
 
@@ -176,6 +183,17 @@ registerButtonType("weather", {
     syncForecastFields();
   },
   renderPreview: function (b, helpers) {
+    if (b.precision === "hero") {
+      return {
+        iconHtml:
+          '<div class="sp-forecast-hero-preview">' +
+          '<span class="sp-btn-icon mdi mdi-weather-partly-cloudy"></span>' +
+          '<span class="sp-forecast-hero-condition">Cloudy</span>' +
+          cardSensorPreviewHtml(b, helpers, "12", temperatureUnitSymbol(), "sp-forecast-preview sp-forecast-hero-temp", "sp-forecast-value") +
+          "</div>",
+        labelHtml: cardSensorPreviewHtml(b, helpers, "18/10", temperatureUnitSymbol(), "sp-forecast-hero-range", "sp-forecast-value"),
+      };
+    }
     if (b.precision === "daily_strip") {
       if (!weatherCardHasWideSlot(helpers && helpers.cardSize)) {
         return {

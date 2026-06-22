@@ -641,8 +641,24 @@ assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
 }, 3, { cardSize: CARD_SIZE_WIDE }), true, "weather daily strip save allows a wide slot");
 assert.deepStrictEqual(
   Array.from(hooks.weatherModeOptionValues()),
-  ["", "today", "tomorrow", "daily_strip"],
+  ["", "today", "tomorrow", "hero", "daily_strip"],
   "weather card mode selector includes daily strip"
+);
+
+const weatherHeroPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "hero",
+  options: "",
+}, { cardSize: CARD_SIZE_LARGE });
+assert(weatherHeroPreview.iconHtml.includes("sp-forecast-hero-preview"), "weather hero preview uses hero styling");
+assert(weatherHeroPreview.labelHtml.includes("18/10"), "weather hero preview shows high/low range label");
+assert(weatherHeroPreview.labelHtml.includes("sp-sensor-unit"), "weather hero range shows unit suffix");
+assert(!weatherHeroPreview.labelHtml.includes("sp-type-badge"), "weather hero range omits forecast badge icon");
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("weather", "large_numbers", { precision: "hero" }),
+  true,
+  "weather large-number option supports hero mode"
 );
 
 const imagePreview = hooks.buttonTypePreviewFor("image", {

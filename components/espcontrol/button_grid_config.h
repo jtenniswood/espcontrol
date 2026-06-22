@@ -912,7 +912,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.label == "Weather") p.label.clear();
   }
   if (p.type == "weather" && !card_runtime_weather_forecast_precision(p.precision) &&
-      p.precision != "daily_strip") {
+      p.precision != "daily_strip" && p.precision != "hero") {
     p.precision.clear();
   }
   if (p.type == "media") {
@@ -1698,6 +1698,9 @@ struct WeatherForecastCardRef {
   float high = 0.0f;
   float low = 0.0f;
   std::string source_unit;
+  lv_obj_t *hero_today_lbl = nullptr;
+  lv_obj_t *hero_today_unit_lbl = nullptr;
+  lv_obj_t *hero_range_row = nullptr;
 };
 
 inline WeatherForecastCardRef *weather_forecast_card_refs() {
@@ -1846,6 +1849,52 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
   lv_label_set_text(ref.unit_lbl, normalized_unit.c_str());
 }
 
+inline void apply_weather_hero_today_text(WeatherForecastCardRef &ref,
+                                          bool valid, float high, float low,
+                                          const std::string &unit) {
+  if (!ref.hero_today_lbl) return;
+  if (!valid) {
+    lv_label_set_text(ref.hero_today_lbl, "--/--");
+    if (ref.hero_today_unit_lbl) {
+      lv_label_set_text(ref.hero_today_unit_lbl, display_temperature_unit_symbol());
+    }
+    return;
+  }
+  char high_buf[12];
+  char low_buf[12];
+  char buf[24];
+  if (high == WEATHER_FORECAST_TEMP_MISSING) snprintf(high_buf, sizeof(high_buf), "--");
+  else snprintf(high_buf, sizeof(high_buf), "%d", weather_forecast_display_temp(high, unit));
+  if (low == WEATHER_FORECAST_TEMP_MISSING) snprintf(low_buf, sizeof(low_buf), "--");
+  else snprintf(low_buf, sizeof(low_buf), "%d", weather_forecast_display_temp(low, unit));
+  snprintf(buf, sizeof(buf), "%s/%s", high_buf, low_buf);
+  lv_label_set_text(ref.hero_today_lbl, buf);
+  if (ref.hero_today_unit_lbl) {
+    lv_label_set_text(ref.hero_today_unit_lbl, display_temperature_unit_symbol());
+  }
+}
+
+inline void apply_weather_hero_forecast_to_entity(const std::string &entity_id,
+                                                  bool valid, float high, float low,
+                                                  const std::string &unit) {
+  WeatherForecastCardRef *refs = weather_forecast_card_refs();
+  int count = weather_forecast_card_count();
+  for (int i = 0; i < count; i++) {
+    if (refs[i].entity_id != entity_id || !refs[i].hero_today_lbl) continue;
+    refs[i].valid = valid;
+    refs[i].high = high;
+    refs[i].low = low;
+    refs[i].source_unit = unit;
+    apply_weather_hero_today_text(refs[i], valid, high, low, unit);
+    notify_dashboard_content_changed();
+  }
+}
+
+inline void apply_weather_hero_unavailable_for_entity(const std::string &entity_id) {
+  apply_weather_hero_forecast_to_entity(entity_id, false, WEATHER_FORECAST_TEMP_MISSING,
+    WEATHER_FORECAST_TEMP_MISSING, "");
+}
+
 inline void apply_weather_forecast_to_entity(const std::string &entity_id,
                                              const std::string &day,
                                              bool valid, float high, float low,
@@ -1869,6 +1918,9 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
       notify_dashboard_content_changed();
     }
   }
+  if (day == "today") {
+    apply_weather_hero_forecast_to_entity(entity_id, valid, high, low, unit);
+  }
 }
 
 inline void apply_weather_daily_strip_unavailable_for_entity(const std::string &entity_id);
@@ -1879,6 +1931,7 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
     if (refs[i].entity_id == entity_id) {
+      if (refs[i].hero_today_lbl) continue;
       refs[i].valid = false;
       refs[i].high = 0;
       refs[i].low = 0;
@@ -1891,6 +1944,7 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
     }
   }
   apply_weather_daily_strip_unavailable_for_entity(entity_id);
+  apply_weather_hero_unavailable_for_entity(entity_id);
 }
 
 inline void apply_weather_forecast_unavailable_all() {
@@ -1898,6 +1952,7 @@ inline void apply_weather_forecast_unavailable_all() {
   WeatherForecastCardRef *refs = weather_forecast_card_refs();
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
+    if (refs[i].hero_today_lbl) continue;
     refs[i].valid = false;
     refs[i].high = 0;
     refs[i].low = 0;
@@ -1918,6 +1973,7 @@ inline void apply_weather_forecast_actions_required_for_entity(const std::string
   int count = weather_forecast_card_count();
   for (int i = 0; i < count; i++) {
     if (refs[i].entity_id == entity_id) {
+      if (refs[i].hero_today_lbl) continue;
       refs[i].valid = false;
       refs[i].high = 0;
       refs[i].low = 0;
@@ -2183,6 +2239,76 @@ inline void register_weather_daily_strip_card(lv_obj_t *btn,
   }
   apply_control_availability(ref.btn, ref.btn, false, false);
   apply_weather_daily_strip_unavailable_for_entity(entity_id);
+}
+
+inline void register_weather_hero_card(lv_obj_t *btn,
+                                       lv_obj_t *icon_lbl,
+                                       lv_obj_t *condition_lbl,
+                                       lv_obj_t *temp_lbl,
+                                       lv_obj_t *unit_lbl,
+                                       lv_obj_t *range_row,
+                                       lv_obj_t *today_lbl,
+                                       lv_obj_t *today_unit_lbl,
+                                       const std::string &entity_id) {
+  int &count = weather_forecast_card_count();
+  if (count >= MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) {
+    ESP_LOGW("weather_forecast", "Too many hero weather cards; skipping updates");
+    return;
+  }
+  WeatherForecastCardRef &ref = weather_forecast_card_refs()[count++];
+  ref.btn = btn;
+  ref.icon_lbl = icon_lbl;
+  ref.value_lbl = temp_lbl;
+  ref.unit_lbl = unit_lbl;
+  ref.label_lbl = condition_lbl;
+  ref.hero_today_lbl = today_lbl;
+  ref.hero_today_unit_lbl = today_unit_lbl;
+  ref.hero_range_row = range_row;
+  ref.entity_id = entity_id;
+  ref.day = "hero";
+  ref.label.clear();
+  ref.status_label.clear();
+  ref.condition.clear();
+  ref.valid = false;
+  ref.high = WEATHER_FORECAST_TEMP_MISSING;
+  ref.low = WEATHER_FORECAST_TEMP_MISSING;
+  ref.source_unit.clear();
+  apply_control_availability(ref.btn, ref.btn, false, false);
+  apply_weather_hero_unavailable_for_entity(entity_id);
+}
+
+inline lv_obj_t *weather_hero_range_row_for_btn(lv_obj_t *btn) {
+  if (!btn) return nullptr;
+  WeatherForecastCardRef *refs = weather_forecast_card_refs();
+  int count = weather_forecast_card_count();
+  for (int i = 0; i < count; i++) {
+    if (refs[i].btn == btn && refs[i].hero_range_row) return refs[i].hero_range_row;
+  }
+  return nullptr;
+}
+
+inline void weather_hero_today_labels_for_btn(lv_obj_t *btn,
+                                              lv_obj_t *&value_lbl,
+                                              lv_obj_t *&unit_lbl) {
+  value_lbl = nullptr;
+  unit_lbl = nullptr;
+  if (!btn) return;
+  WeatherForecastCardRef *refs = weather_forecast_card_refs();
+  int count = weather_forecast_card_count();
+  for (int i = 0; i < count; i++) {
+    if (refs[i].btn == btn && refs[i].hero_today_lbl) {
+      value_lbl = refs[i].hero_today_lbl;
+      unit_lbl = refs[i].hero_today_unit_lbl;
+      return;
+    }
+  }
+}
+
+inline lv_obj_t *weather_hero_today_label_for_btn(lv_obj_t *btn) {
+  lv_obj_t *value_lbl = nullptr;
+  lv_obj_t *unit_lbl = nullptr;
+  weather_hero_today_labels_for_btn(btn, value_lbl, unit_lbl);
+  return value_lbl;
 }
 
 inline std::string weather_forecast_response_template(const std::string &entity_id) {
@@ -2625,9 +2751,16 @@ inline void refresh_temperature_unit_labels() {
   WeatherForecastCardRef *weather_refs = weather_forecast_card_refs();
   int weather_count = weather_forecast_card_count();
   for (int i = 0; i < weather_count; i++) {
+    if (weather_refs[i].hero_today_lbl) continue;
     apply_weather_forecast_card_text(weather_refs[i], weather_refs[i].valid,
                                      weather_refs[i].high, weather_refs[i].low,
                                      weather_refs[i].source_unit);
+  }
+  for (int i = 0; i < weather_count; i++) {
+    if (!weather_refs[i].hero_today_lbl) continue;
+    apply_weather_hero_today_text(weather_refs[i], weather_refs[i].valid,
+                                  weather_refs[i].high, weather_refs[i].low,
+                                  weather_refs[i].source_unit);
   }
   ClimateControlCtx **climate_refs = climate_control_refs();
   int climate_count = climate_control_ref_count();

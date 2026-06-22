@@ -212,6 +212,57 @@ inline void subscribe_weather_state(lv_obj_t *icon_lbl, lv_obj_t *text_lbl, cons
   );
 }
 
+inline void subscribe_weather_hero_state(lv_obj_t *btn_ptr,
+                                           lv_obj_t *icon_lbl,
+                                           lv_obj_t *condition_lbl,
+                                           lv_obj_t *temp_lbl,
+                                           lv_obj_t *unit_lbl,
+                                           const std::string &entity_id) {
+  ESP_LOGI("weather", "Subscribing to hero weather state for %s", entity_id.c_str());
+  uint32_t generation = ha_subscription_generation();
+  register_ha_control_availability(btn_ptr, btn_ptr, false);
+  apply_control_availability(btn_ptr, btn_ptr, false, false);
+  if (unit_lbl) lv_label_set_text(unit_lbl, display_temperature_unit_symbol());
+  auto update_current_temp = [temp_lbl, unit_lbl, generation](esphome::StringRef value) {
+    if (generation != ha_subscription_generation()) return;
+    float parsed = 0.0f;
+    if (!parse_float_ref(value, parsed) || !std::isfinite(parsed)) return;
+    if (temp_lbl) {
+      char buf[12];
+      snprintf(buf, sizeof(buf), "%d", weather_forecast_display_temp(parsed, ""));
+      lv_label_set_text(temp_lbl, buf);
+    }
+    if (unit_lbl) lv_label_set_text(unit_lbl, display_temperature_unit_symbol());
+    notify_dashboard_content_changed();
+  };
+  ha_subscribe_state(
+    entity_id,
+    std::function<void(esphome::StringRef)>([btn_ptr, icon_lbl, condition_lbl, entity_id, generation](
+      esphome::StringRef state) {
+      if (generation != ha_subscription_generation()) return;
+      std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+      bool unavailable = ha_state_unavailable_ref(state);
+      apply_control_availability(btn_ptr, btn_ptr, !unavailable, false);
+      ESP_LOGI("weather", "Hero weather state for %s: %s", entity_id.c_str(), state_text.c_str());
+      if (icon_lbl) lv_label_set_text(icon_lbl, weather_icon_for_state(state_text));
+      if (condition_lbl) lv_label_set_text(condition_lbl, weather_label_for_state(state_text).c_str());
+      notify_dashboard_content_changed();
+    })
+  );
+  ha_subscribe_attribute(
+    entity_id, std::string("temperature"),
+    std::function<void(esphome::StringRef)>([update_current_temp](esphome::StringRef value) {
+      update_current_temp(value);
+    })
+  );
+  ha_subscribe_attribute(
+    entity_id, std::string("native_temperature"),
+    std::function<void(esphome::StringRef)>([update_current_temp](esphome::StringRef value) {
+      update_current_temp(value);
+    })
+  );
+}
+
 inline void subscribe_garage_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                    TransientStatusLabel *status_label,
                                    const char *closed_icon, const char *open_icon,

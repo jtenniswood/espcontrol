@@ -90,6 +90,10 @@ var CSS =
   ".sp-forecast-preview{white-space:nowrap;gap:0}" +
   ".sp-forecast-strip-preview{display:flex;align-items:center;justify-content:space-evenly;width:100%;gap:2px;font-size:calc(var(--btn-label)*0.85);line-height:1.1;text-align:center}" +
   ".sp-forecast-strip-preview span{flex:1 1 0;min-width:0}" +
+  ".sp-forecast-hero-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%}" +
+  ".sp-forecast-hero-condition{font-size:calc(var(--btn-label)*0.95);line-height:1.1}" +
+  ".sp-forecast-hero-temp{margin-top:2px}" +
+  ".sp-forecast-hero-range{font-size:calc(var(--btn-label)*1.05);line-height:1.1}" +
   ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
   ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:#fff}" +
   ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +

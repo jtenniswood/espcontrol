@@ -1288,6 +1288,7 @@ var CARD_CONTRACT_CARDS = {
           "",
           "today",
           "tomorrow",
+          "hero",
           "daily_strip"
         ],
         "defaultValue": ""
@@ -1299,7 +1300,8 @@ var CARD_CONTRACT_CARDS = {
         "supportedWhen": {
           "precision": [
             "today",
-            "tomorrow"
+            "tomorrow",
+            "hero"
           ]
         }
       }

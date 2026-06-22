@@ -407,6 +407,10 @@ inline bool weather_card_is_daily_strip(const ParsedCfg &p) {
   return p.type == "weather" && p.precision == "daily_strip";
 }
 
+inline bool weather_card_is_hero(const ParsedCfg &p) {
+  return p.type == "weather" && p.precision == "hero";
+}
+
 inline bool weather_card_shows_forecast(const ParsedCfg &p) {
   return p.type == "weather_forecast" ||
     (p.type == "weather" &&
@@ -497,6 +501,201 @@ inline void setup_weather_daily_strip_card(BtnSlot &s, const ParsedCfg &p,
   apply_width_compensation(strip_container, width_compensation_percent);
   register_weather_daily_strip_card(
     s.btn, strip_container, days, WEATHER_DAILY_STRIP_DAY_COUNT, p.entity);
+}
+
+constexpr lv_coord_t HERO_LAYOUT_REF_HEIGHT = 100;
+constexpr lv_coord_t HERO_LAYOUT_MARGIN_BASE = 3;
+constexpr lv_coord_t HERO_LAYOUT_GAP_BASE = 2;
+constexpr lv_coord_t HERO_LAYOUT_BOTTOM_SAFE_BASE = 2;
+
+inline lv_coord_t hero_layout_scaled_px(lv_coord_t btn_height, lv_coord_t base_px) {
+  if (btn_height <= 0) return base_px;
+  lv_coord_t inner = btn_height - HERO_LAYOUT_MARGIN_BASE * 2;
+  if (inner <= 0) return base_px;
+  lv_coord_t ref_inner = HERO_LAYOUT_REF_HEIGHT - HERO_LAYOUT_MARGIN_BASE * 2;
+  return std::max(static_cast<lv_coord_t>(1),
+    (base_px * inner + ref_inner / 2) / ref_inner);
+}
+
+struct HeroLayoutVertical {
+  lv_coord_t y;
+  lv_coord_t gap;
+};
+
+inline HeroLayoutVertical hero_layout_vertical(lv_obj_t *btn, lv_coord_t margin_v,
+                                               lv_coord_t row_gap, lv_coord_t icon_h,
+                                               lv_coord_t cond_h, lv_coord_t temp_h,
+                                               lv_coord_t range_h) {
+  HeroLayoutVertical result{margin_v, row_gap};
+  if (!btn) return result;
+  lv_coord_t btn_h = lv_obj_get_height(btn);
+  lv_coord_t bottom_safe = hero_layout_scaled_px(btn_h, HERO_LAYOUT_BOTTOM_SAFE_BASE);
+  lv_coord_t usable_h = btn_h - margin_v - bottom_safe;
+  if (usable_h < 0) usable_h = 0;
+
+  lv_coord_t gap = row_gap;
+  lv_coord_t block_h = icon_h + cond_h + temp_h + range_h + gap * 3;
+  while (gap > 0 && block_h > usable_h - margin_v) {
+    gap--;
+    block_h = icon_h + cond_h + temp_h + range_h + gap * 3;
+  }
+
+  lv_coord_t y = margin_v;
+  if (block_h < usable_h - margin_v) {
+    lv_coord_t extra = (usable_h - margin_v) - block_h;
+    y = margin_v + extra / 2;
+  }
+  if (y + block_h > btn_h - bottom_safe) {
+    y = btn_h - bottom_safe - block_h;
+  }
+  if (y < margin_v) y = margin_v;
+  result.y = y;
+  result.gap = gap;
+  return result;
+}
+
+inline lv_obj_t *create_hero_metric_row(lv_obj_t *parent,
+                                        const lv_font_t *value_font,
+                                        const lv_font_t *unit_font,
+                                        lv_color_t text_color,
+                                        lv_obj_t **value_lbl,
+                                        lv_obj_t **unit_lbl) {
+  lv_obj_t *row = lv_obj_create(parent);
+  lv_obj_set_size(row, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_clear_flag(row, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(row, 2, LV_PART_MAIN);
+  lv_obj_set_layout(row, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+
+  lv_obj_t *value = lv_label_create(row);
+  if (value_font) lv_obj_set_style_text_font(value, value_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(value, text_color, LV_PART_MAIN);
+  lv_label_set_text(value, "--");
+
+  lv_obj_t *unit = lv_label_create(row);
+  if (unit_font) lv_obj_set_style_text_font(unit, unit_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(unit, text_color, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(unit, 0, LV_PART_MAIN);
+  lv_label_set_text(unit, "");
+
+  if (value_lbl) *value_lbl = value;
+  if (unit_lbl) *unit_lbl = unit;
+  return row;
+}
+
+inline void apply_weather_hero_card_layout(BtnSlot &s, lv_obj_t *range_row,
+                                           lv_obj_t *today_lbl, lv_obj_t *today_unit_lbl,
+                                           bool large_slot, bool large_numbers,
+                                           const lv_font_t *icon_font = nullptr,
+                                           const lv_font_t *label_font = nullptr,
+                                           const lv_font_t *sensor_font = nullptr,
+                                           const lv_font_t *large_sensor_font = nullptr,
+                                           int large_unit_offset_percent = -10) {
+  if (!s.btn || !s.icon_lbl || !s.text_lbl || !s.sensor_container || !range_row) return;
+  lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(range_row, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_set_style_transform_scale_x(s.icon_lbl, 256, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_y(s.icon_lbl, 256, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_x(s.text_lbl, 256, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_y(s.text_lbl, 256, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_x(s.sensor_container, 256, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_y(s.sensor_container, 256, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_x(range_row, 256, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_y(range_row, 256, LV_PART_MAIN);
+  lv_label_set_long_mode(s.text_lbl, LV_LABEL_LONG_CLIP);
+  lv_obj_set_width(s.text_lbl, LV_SIZE_CONTENT);
+
+  lv_coord_t btn_h = lv_obj_get_height(s.btn);
+  lv_coord_t margin_v = hero_layout_scaled_px(btn_h, HERO_LAYOUT_MARGIN_BASE);
+  lv_coord_t row_gap = hero_layout_scaled_px(btn_h, HERO_LAYOUT_GAP_BASE);
+
+  const lv_font_t *value_font = label_font;
+  if (large_slot) {
+    if (large_numbers && large_sensor_font) value_font = large_sensor_font;
+    else if (sensor_font) value_font = sensor_font;
+  }
+
+  if (icon_font) lv_obj_set_style_text_font(s.icon_lbl, icon_font, LV_PART_MAIN);
+  if (label_font) lv_obj_set_style_text_font(s.text_lbl, label_font, LV_PART_MAIN);
+  if (value_font && s.sensor_lbl) lv_obj_set_style_text_font(s.sensor_lbl, value_font, LV_PART_MAIN);
+  if (label_font && s.unit_lbl) {
+    lv_obj_set_style_text_font(s.unit_lbl, label_font, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(s.unit_lbl, 0, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(s.unit_lbl, 0, LV_PART_MAIN);
+  }
+  lv_obj_set_style_pad_column(s.sensor_container, 2, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(s.sensor_container, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(s.sensor_container, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+
+  if (today_lbl && value_font) lv_obj_set_style_text_font(today_lbl, value_font, LV_PART_MAIN);
+  if (today_unit_lbl && label_font) {
+    lv_obj_set_style_text_font(today_unit_lbl, label_font, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(today_unit_lbl, 0, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(today_unit_lbl, 0, LV_PART_MAIN);
+  }
+
+  lv_obj_update_layout(s.btn);
+
+  lv_coord_t icon_h = lv_obj_get_height(s.icon_lbl);
+  lv_coord_t cond_h = lv_obj_get_height(s.text_lbl);
+  lv_coord_t temp_h = lv_obj_get_height(s.sensor_container);
+  lv_coord_t range_h = lv_obj_get_height(range_row);
+  HeroLayoutVertical layout = hero_layout_vertical(
+    s.btn, margin_v, row_gap, icon_h, cond_h, temp_h, range_h);
+
+  lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_MID, 0, layout.y);
+  layout.y += icon_h + layout.gap;
+  lv_obj_align(s.text_lbl, LV_ALIGN_TOP_MID, 0, layout.y);
+  layout.y += cond_h + layout.gap;
+  lv_obj_align(s.sensor_container, LV_ALIGN_TOP_MID, 0, layout.y);
+  layout.y += temp_h + layout.gap;
+  lv_obj_align(range_row, LV_ALIGN_TOP_MID, 0, layout.y);
+}
+
+inline void setup_weather_hero_card(BtnSlot &s, const ParsedCfg &p,
+                                    bool has_sensor_color, uint32_t sensor_val,
+                                    bool large_slot, bool large_numbers,
+                                    const lv_font_t *icon_font = nullptr,
+                                    const lv_font_t *label_font = nullptr,
+                                    const lv_font_t *sensor_font = nullptr,
+                                    const lv_font_t *large_sensor_font = nullptr,
+                                    int large_unit_offset_percent = -10) {
+  if (has_sensor_color) {
+    lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  }
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+  lv_label_set_text(s.icon_lbl, find_icon("Weather Cloudy"));
+  lv_label_set_text(s.text_lbl, espcontrol_i18n(std::string("Cloudy")).c_str());
+  lv_label_set_text(s.sensor_lbl, "--");
+  lv_label_set_text(s.unit_lbl, display_temperature_unit_symbol());
+
+  lv_color_t text_color = s.text_lbl
+    ? lv_obj_get_style_text_color(s.text_lbl, LV_PART_MAIN) : lv_color_white();
+  lv_obj_t *today_lbl = nullptr;
+  lv_obj_t *today_unit_lbl = nullptr;
+  lv_obj_t *range_row = create_hero_metric_row(
+    s.btn, label_font, label_font, text_color, &today_lbl, &today_unit_lbl);
+  lv_label_set_text(today_lbl, "--/--");
+  lv_label_set_text(today_unit_lbl, display_temperature_unit_symbol());
+
+  register_weather_hero_card(
+    s.btn, s.icon_lbl, s.text_lbl, s.sensor_lbl, s.unit_lbl,
+    range_row, today_lbl, today_unit_lbl, p.entity);
+  apply_weather_hero_card_layout(
+    s, range_row, today_lbl, today_unit_lbl, large_slot, large_numbers, icon_font,
+    label_font, sensor_font, large_sensor_font, large_unit_offset_percent);
 }
 
 inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,

@@ -327,6 +327,17 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     }
     return;
   }
+  if (weather_card_is_hero(p)) {
+    const bool hero_large_slot = large_number_square_card_layout(row_span, col_span);
+    const bool hero_large_numbers = card_large_numbers_active_for_layout(p, row_span, col_span);
+    const lv_font_t *hero_label_font = s.text_lbl
+      ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr;
+    setup_weather_hero_card(s, p, palette.has_sensor_color, palette.sensor_val,
+      hero_large_slot, hero_large_numbers, display_icon_font(display), hero_label_font,
+      display_sensor_font(display), display_large_sensor_font(display),
+      display_large_sensor_unit_offset_percent(display));
+    return;
+  }
   if (weather_card_is_daily_strip(p)) {
     if (!card_span_fits_weather_daily_strip(row_span, col_span)) {
       ESP_LOGW("weather_forecast",
@@ -530,6 +541,13 @@ inline bool bind_passive_card_sources(BtnSlot &s, const ParsedCfg &p) {
   if (p.type == "clock" || p.type == "timezone" || weather_card_shows_forecast(p)) {
     return true;
   }
+  if (weather_card_is_hero(p)) {
+    if (!p.entity.empty()) {
+      subscribe_weather_hero_state(
+        s.btn, s.icon_lbl, s.text_lbl, s.sensor_lbl, s.unit_lbl, p.entity);
+    }
+    return true;
+  }
   if (p.type == "weather") {
     if (!p.entity.empty())
       subscribe_weather_state(s.icon_lbl, s.text_lbl, p.entity);
@@ -633,8 +651,27 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
 
 inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 const GridConfig &cfg,
-                                int row_span = 1) {
+                                int row_span = 1,
+                                int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
+  if (weather_card_is_hero(p)) {
+    lv_obj_t *today_lbl = nullptr;
+    lv_obj_t *today_unit_lbl = nullptr;
+    lv_obj_t *range_row = weather_hero_range_row_for_btn(s.btn);
+    weather_hero_today_labels_for_btn(s.btn, today_lbl, today_unit_lbl);
+    const bool hero_large_slot = large_number_square_card_layout(row_span, col_span);
+    const bool hero_large_numbers = card_large_numbers_active_for_layout(p, row_span, col_span);
+    const lv_font_t *hero_label_font = s.text_lbl
+      ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr;
+    if (range_row) {
+      apply_weather_hero_card_layout(
+        s, range_row, today_lbl, today_unit_lbl, hero_large_slot, hero_large_numbers,
+        display_icon_font(display), hero_label_font, display_sensor_font(display),
+        display_large_sensor_font(display),
+        display_large_sensor_unit_offset_percent(display));
+    }
+    return;
+  }
   if (cfg.label_lines > 0) {
     apply_card_label_line_clamp(s.text_lbl, cfg, row_span);
   } else if (cfg.wrap_tall_labels && row_span > 1) {
@@ -730,7 +767,8 @@ inline void grid_refresh_layout(
     auto &s = slots[idx - 1];
     ParsedCfg p = parse_cfg(s.config->state);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
-    refresh_card_layout(s, p, cfg, row_span);
+    int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
+    refresh_card_layout(s, p, cfg, row_span, col_span);
   }
   ESP_LOGI("sensors", "Grid refresh: layout done (%lu ms)", esphome::millis());
 }
@@ -822,7 +860,7 @@ inline void grid_phase1(
     display_apply_main_width(s.icon_lbl, display);
     display_apply_slot_text_width(s, display);
     setup_card_visual(s, p, cfg, palette, row_span, col_span);
-    refresh_card_layout(s, p, cfg, row_span);
+    refresh_card_layout(s, p, cfg, row_span, col_span);
   }
   screen_lock_apply();
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
