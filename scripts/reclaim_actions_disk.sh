@@ -3,9 +3,16 @@ set -euo pipefail
 
 DOCKER_COMMAND=${DOCKER:-docker}
 KEEP_STORAGE=${ESPCONTROL_DOCKER_BUILD_CACHE_KEEP:-2GB}
-PRUNE_VOLUMES=${ESPCONTROL_DOCKER_PRUNE_VOLUMES:-true}
+LOCK_FILE=${ESPCONTROL_DOCKER_LOCK_FILE:-/tmp/espcontrol-esphome-image.lock}
+PRUNE_ALL_IMAGES=${ESPCONTROL_DOCKER_PRUNE_ALL_IMAGES:-false}
+PRUNE_VOLUMES=${ESPCONTROL_DOCKER_PRUNE_VOLUMES:-false}
 CLEAN_RUNNER_UPDATES=${ESPCONTROL_CLEAN_RUNNER_UPDATES:-true}
 CLEAN_LEGACY_ESPHOME_CACHE=${ESPCONTROL_CLEAN_LEGACY_ESPHOME_CACHE:-true}
+
+if [ "${ESPCONTROL_DOCKER_LOCK_HELD:-false}" != "true" ] && command -v flock >/dev/null 2>&1; then
+  export ESPCONTROL_DOCKER_LOCK_HELD=true
+  exec flock "${LOCK_FILE}" bash "$0" "$@"
+fi
 
 disk_report() {
   local label=$1
@@ -17,7 +24,11 @@ disk_report "Disk before cleanup"
 
 if ${DOCKER_COMMAND} info >/dev/null 2>&1; then
   ${DOCKER_COMMAND} container prune -f >/dev/null || true
-  ${DOCKER_COMMAND} image prune -af >/dev/null || true
+  if [ "${PRUNE_ALL_IMAGES}" = "true" ]; then
+    ${DOCKER_COMMAND} image prune -af >/dev/null || true
+  else
+    ${DOCKER_COMMAND} image prune -f >/dev/null || true
+  fi
   ${DOCKER_COMMAND} builder prune -f --keep-storage "${KEEP_STORAGE}" >/dev/null || true
   if [ "${PRUNE_VOLUMES}" = "true" ]; then
     ${DOCKER_COMMAND} volume prune -f >/dev/null || true

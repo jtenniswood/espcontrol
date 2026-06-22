@@ -103,6 +103,12 @@ npm run docs:build
 For firmware changes, also compile the affected device with ESPHome before
 publishing.
 
+The `Firmware Compile` GitHub workflow starts on every pull request, then checks
+the changed files itself. It only runs the expensive firmware compile when a PR
+touches firmware-visible paths such as `common/`, `components/`, `devices/`,
+`builds/`, generated web bundles, or the device build scripts. It can still be
+started manually with `workflow_dispatch` when a full firmware compile is needed.
+
 If generated inputs changed, make sure the regenerated outputs are committed too.
 `python3 scripts/build.py --check` is the command that catches stale or missing
 generated files before CI does.

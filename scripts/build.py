@@ -424,11 +424,6 @@ def gen_card_contract_js(data):
         "  return card && card.pickerKey ? card.pickerKey : \"\";\n"
         "}\n"
         "\n"
-        "function cardContractExperimental(type) {\n"
-        "  var card = cardContractCard(type);\n"
-        "  return card && card.experimental ? card.experimental : \"\";\n"
-        "}\n"
-        "\n"
         "function cardContractHidden(type) {\n"
         "  var card = cardContractCard(type);\n"
         "  return !!(card && card.hidden);\n"
@@ -839,12 +834,9 @@ def summarize_card_options(card):
 
 
 def summarize_card_status(card):
-    status = []
     if card.get("hidden"):
-        status.append("Hidden")
-    if card.get("experimental"):
-        status.append("Experimental")
-    return ", ".join(status) if status else "Visible"
+        return "Hidden"
+    return "Visible"
 
 
 def summarize_picker_group(card_type, card, cards):
@@ -1042,6 +1034,33 @@ def check_duplicate_icon_fields(data):
     return errors
 
 
+def normalize_icon_codepoint(value):
+    return value.upper().lstrip("0") or "0"
+
+
+def check_firmware_icon_literals(data):
+    """Catch raw firmware icon literals that are missing from the device font subset."""
+    known_codepoints = {
+        normalize_icon_codepoint(item["codepoint"])
+        for item in icon_items(data)
+    }
+    errors = []
+    for path in sorted((ROOT / "components" / "espcontrol").glob("*.h")):
+        if path.name == "icons.h":
+            continue
+        text = path.read_text()
+        for match in re.finditer(r"\\U([0-9A-Fa-f]{8})", text):
+            codepoint = normalize_icon_codepoint(match.group(1))
+            if codepoint in known_codepoints:
+                continue
+            line_no = text.count("\n", 0, match.start()) + 1
+            errors.append(
+                f"{path.relative_to(ROOT)}:{line_no} uses U+{codepoint:0>8s} "
+                f"but it is not in {ICONS_JSON.relative_to(ROOT)}"
+            )
+    return errors
+
+
 def check_mdi_versions():
     """Make sure the browser CSS and device font URLs stay on the same MDI version."""
     files = [
@@ -1067,6 +1086,7 @@ def validate_icon_data(data):
     errors = []
     errors.extend(check_duplicate_icon_fields(data))
     errors.extend(check_mdi_versions())
+    errors.extend(check_firmware_icon_literals(data))
 
     mdi_codepoints = load_mdi_codepoints()
     for item in icon_items(data):
@@ -1279,7 +1299,9 @@ def load_timezone_options():
     options = []
     for match in re.finditer(r'^\s+- "([^"]+)"$', TIME_YAML.read_text(), re.M):
         option = match.group(1)
-        if " (GMT" in option and ("/" in option or option.startswith("UTC ")):
+        if option == "Auto (Home Assistant)" or (
+            " (GMT" in option and ("/" in option or option.startswith("UTC "))
+        ):
             options.append(option)
     if not options:
         raise BuildError(f"No timezone options found in {TIME_YAML.relative_to(ROOT)}")

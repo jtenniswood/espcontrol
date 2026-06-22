@@ -15,7 +15,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ESPHOME_VERSION: 2026.5.3
+  ESPHOME_VERSION: 2026.6.1
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
       - uses: actions/setup-node@v6
@@ -57,7 +57,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
 
       - name: Generate device matrix
         id: matrix
@@ -79,7 +79,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
         with:
           path: espcontrol-${{ matrix.slug }}
       - run: git sparse-checkout disable || true
@@ -135,6 +135,18 @@ jobs:
           echo "PLATFORMIO_CACHE=${PLATFORMIO_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_CACHE=${BUILD_CACHE}" >> "$GITHUB_ENV"
 
+      - name: Pull ESPHome image
+        working-directory: espcontrol-${{ matrix.slug }}
+        run: |
+          ESPHOME_IMAGE="ghcr.io/esphome/esphome:${ESPHOME_VERSION}"
+          LOCK_FILE="/tmp/espcontrol-esphome-image.lock"
+          if command -v flock >/dev/null 2>&1; then
+            flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}"
+          else
+            ${DOCKER} pull "${ESPHOME_IMAGE}"
+          fi
+          echo "ESPHOME_IMAGE=${ESPHOME_IMAGE}" >> "$GITHUB_ENV"
+
       - name: Compile firmware
         working-directory: espcontrol-${{ matrix.slug }}
         env:
@@ -148,7 +160,7 @@ jobs:
           -v "${PWD}:/config"
           -v "${PLATFORMIO_CACHE}:/config/.esphome"
           -v "${BUILD_CACHE}:/config/builds/.esphome"
-          ghcr.io/esphome/esphome:${ESPHOME_VERSION}
+          "${ESPHOME_IMAGE}"
           -s firmware_version "${VERSION}"
           compile /config/builds/${{ matrix.slug }}.factory.yaml
 

@@ -5,11 +5,12 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ESPHOME_VERSION: 2026.5.3
+  ESPHOME_VERSION: 2026.6.1
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: firmware-compile-${{ github.event.pull_request.number || github.ref }}
@@ -51,7 +52,7 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
         with:
           sparse-checkout: |
             common/assets/*.yaml
@@ -72,11 +73,12 @@ jobs:
     needs: [detect-changes, device-matrix]
     if: needs.detect-changes.outputs.compile_required == 'true'
     runs-on: self-hosted
-    concurrency:
-      group: firmware-compile-self-hosted
-      cancel-in-progress: false
     strategy:
       fail-fast: false
+      # Keep self-hosted firmware compiles serialized without using a job-level
+      # concurrency group. GitHub Actions only allows one running and one
+      # pending job per concurrency group, so sharing one group across matrix
+      # children cancels queued device builds before they run.
       max-parallel: 1
       matrix: ${{ fromJSON(needs.device-matrix.outputs.matrix) }}
     steps:
@@ -85,7 +87,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
         with:
           path: espcontrol-${{ matrix.slug }}
 
@@ -121,6 +123,18 @@ jobs:
           echo "PLATFORMIO_CACHE=${PLATFORMIO_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_CACHE=${BUILD_CACHE}" >> "$GITHUB_ENV"
 
+      - name: Pull ESPHome image
+        working-directory: espcontrol-${{ matrix.slug }}
+        run: |
+          ESPHOME_IMAGE="ghcr.io/esphome/esphome:${ESPHOME_VERSION}"
+          LOCK_FILE="/tmp/espcontrol-esphome-image.lock"
+          if command -v flock >/dev/null 2>&1; then
+            flock "${LOCK_FILE}" ${DOCKER} pull "${ESPHOME_IMAGE}"
+          else
+            ${DOCKER} pull "${ESPHOME_IMAGE}"
+          fi
+          echo "ESPHOME_IMAGE=${ESPHOME_IMAGE}" >> "$GITHUB_ENV"
+
       - name: Compile firmware
         working-directory: espcontrol-${{ matrix.slug }}
         run: >-
@@ -132,7 +146,7 @@ jobs:
           -v "${PWD}:/config"
           -v "${PLATFORMIO_CACHE}:/config/.esphome"
           -v "${BUILD_CACHE}:/config/builds/.esphome"
-          ghcr.io/esphome/esphome:${ESPHOME_VERSION}
+          "${ESPHOME_IMAGE}"
           compile /config/builds/${{ matrix.slug }}.factory.yaml
 
       - name: Clean firmware caches

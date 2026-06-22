@@ -1,6 +1,6 @@
 // Read-only world clock card: displays local time for a selected city.
 function timezoneCardCityLabel(tzOption) {
-  var tzId = getTzId(tzOption || "");
+  var tzId = getTzId(effectiveTimezoneOptionForWeb(tzOption || ""));
   if (!tzId) return "World Clock";
   if (tzId === "UTC") return "UTC";
   var city = tzId.substring(tzId.lastIndexOf("/") + 1);
@@ -9,12 +9,12 @@ function timezoneCardCityLabel(tzOption) {
 
 function timezoneCardTimeParts(tzOption) {
   var use12h = typeof state !== "undefined" && state.clockFormat === "12h";
-  var tzId = getTzId(tzOption || "UTC");
+  var tzId = getTzId(effectiveTimezoneOptionForWeb(tzOption || "UTC"));
   try {
     var opts = { timeZone: tzId, hour: "numeric", minute: "2-digit" };
     if (use12h) opts.hour12 = true;
     else opts.hourCycle = "h23";
-    var parts = new Intl.DateTimeFormat("en-US", opts).formatToParts(new Date());
+    var parts = new Intl.DateTimeFormat("en-US", opts).formatToParts(webserverNow());
     var hour = "";
     var minute = "";
     for (var i = 0; i < parts.length; i++) {
@@ -35,7 +35,6 @@ registerButtonType("timezone", {
   label: function () { return cardContractCardLabel("timezone"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("timezone"); },
   pickerKey: function () { return cardContractPickerKey("timezone"); },
-  experimental: function () { return cardContractExperimental("timezone"); },
   hidden: function () { return cardContractHidden("timezone"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("timezone"); },

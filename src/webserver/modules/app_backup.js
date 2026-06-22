@@ -45,6 +45,7 @@ function exportConfig() {
       clock_bar_layout: CLOCK_BAR_FIXED_LAYOUT_STRING,
       clock_bar_time: state.clockBarTimeOn,
       network_status_icon: state.networkStatusOn,
+      voice_services: state.voiceServicesOn,
       temperature_degree_symbol: state.temperatureDegreeSymbolOn,
       subpage_chevron: state.subpageChevronsOn,
       timezone: state.timezone,
@@ -63,6 +64,7 @@ function exportConfig() {
       cover_art_delay: state.coverArtDelay,
       cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
       cover_art_hide_external_input: state.coverArtHideExternalInputOn,
+      home_assistant_artwork_port: normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort),
       screensaver_action: normalizeScreensaverAction(state.screensaverAction),
       clock_screensaver: state.clockScreensaverOn,
       clock_brightness: state.clockBrightnessDay,
@@ -72,7 +74,6 @@ function exportConfig() {
       screensaver_timeout: state.screensaverTimeout,
       home_screen_timeout: state.homeScreenTimeout,
       screen_rotation: state.screenRotation,
-      developer_experimental_features: state.developerExperimentalFeatures,
     },
     screen: {
       brightness_day: Math.round(state.brightnessDayVal),
@@ -183,11 +184,11 @@ function importConfig() {
           clockBarLayout: CLOCK_BAR_FIXED_LAYOUT_STRING,
           clockFormat: state.clockFormat,
           clockFormatOptions: state.clockFormatOptions,
-          developerExperimentalFeatures: state.developerExperimentalFeatures,
           ntpDefaults: NTP_SERVER_DEFAULTS,
           ntpServer1: state.ntpServer1,
           ntpServer2: state.ntpServer2,
           ntpServer3: state.ntpServer3,
+          coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
           screenRotationOptions: allScreenRotationOptions(),
         });
 
@@ -205,6 +206,7 @@ function importConfig() {
         postClockBarLayout(CLOCK_BAR_FIXED_LAYOUT_STRING);
         postClockBarTime(importedSettings.clockBarTime);
         postNetworkStatusIcon(importedSettings.networkStatusIcon);
+        if (CFG.features && CFG.features.voiceServices) postVoiceServices(importedSettings.voiceServices);
         postTemperatureDegreeSymbol(importedSettings.temperatureDegreeSymbol);
         postSubpageChevron(importedSettings.subpageChevron);
         var importedTimezone = importedSettings.timezone;
@@ -215,8 +217,6 @@ function importConfig() {
         var hasNtpServer1 = importedSettings.hasNtpServer1;
         var hasNtpServer2 = importedSettings.hasNtpServer2;
         var hasNtpServer3 = importedSettings.hasNtpServer3;
-        var hasDeveloperExperimentalFeatures = importedSettings.hasDeveloperExperimentalFeatures;
-        var importedDeveloperExperimentalFeatures = importedSettings.developerExperimentalFeatures;
         var importedNtpServer1 = importedSettings.ntpServer1;
         var importedNtpServer2 = importedSettings.ntpServer2;
         var importedNtpServer3 = importedSettings.ntpServer3;
@@ -241,9 +241,10 @@ function importConfig() {
         postSwitch(entityName("screen_saver_cover_art"), importedSettings.coverArtScreensaver);
         postText(entityName("screen_saver_cover_art_entity"), importedSettings.coverArtMediaPlayerEntity);
         postText(entityName("screen_saver_cover_art_conditions"), importedSettings.coverArtAttributeConditions);
-        postNumber(entityName("screen_saver_cover_art_delay"), importedSettings.coverArtDelay);
-        postNumber(entityName("screen_saver_track_overlay_duration"), importedSettings.coverArtTrackOverlayDuration);
+        postCoverArtDelay(importedSettings.coverArtDelay);
+        postCoverArtTrackOverlayDuration(importedSettings.coverArtTrackOverlayDuration);
         postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
+        postHomeAssistantArtworkPort(importedSettings.coverArtHomeAssistantPort);
         var importedScreensaverAction = importedSettings.screensaverAction;
         var importedScreensaverDimmedBrightness = importedSettings.screensaverDimmedBrightness;
         var importedClockBrightnessDay = importedSettings.clockBrightnessDay;
@@ -257,9 +258,6 @@ function importConfig() {
         postNumber(entityName("home_screen_timeout"), importedSettings.homeScreenTimeout);
         var importedScreenRotation = importedSettings.screenRotation;
         if (CFG.features && CFG.features.screenRotation) postSelect(entityName("screen_rotation"), importedScreenRotation);
-        if (hasDeveloperExperimentalFeatures) {
-          postDeveloperExperimentalFeatures(importedDeveloperExperimentalFeatures);
-        }
         state.clockBarTemperatureEntities = importedSettings.clockBarTemperatureEntities;
         state._clockBarTemperatureEntitiesReceived = true;
         state._indoorOn = importedSettings.indoorTempEnable;
@@ -270,6 +268,7 @@ function importConfig() {
         state.clockBarOn = importedSettings.clockBar;
         state.clockBarTimeOn = importedSettings.clockBarTime;
         state.networkStatusOn = importedSettings.networkStatusIcon;
+        state.voiceServicesOn = importedSettings.voiceServices;
         state.temperatureDegreeSymbolOn = importedSettings.temperatureDegreeSymbol;
         state.subpageChevronsOn = importedSettings.subpageChevron;
         state.timezone = importedTimezone;
@@ -291,6 +290,7 @@ function importConfig() {
         state.coverArtDelay = importedSettings.coverArtDelay;
         state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
         state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
+        state.coverArtHomeAssistantPort = importedSettings.coverArtHomeAssistantPort;
         state.screensaverAction = importedScreensaverAction;
         state._screensaverActionReceived = true;
         state.clockScreensaverOn = importedScreensaverAction === "clock";
@@ -300,9 +300,6 @@ function importConfig() {
         state.screensaverTimeout = importedSettings.screensaverTimeout;
         state.homeScreenTimeout = importedSettings.homeScreenTimeout;
         state.screenRotation = importedScreenRotation;
-        if (hasDeveloperExperimentalFeatures) {
-          state.developerExperimentalFeatures = importedDeveloperExperimentalFeatures;
-        }
 
         syncTemperatureUi();
         syncClockBarUi();
@@ -322,9 +319,6 @@ function importConfig() {
         syncIdleUi();
         if (els.setScreenRotation) els.setScreenRotation.value = state.screenRotation;
         syncPreviewOrientation();
-        if (els.setDeveloperExperimentalFeatures) {
-          els.setDeveloperExperimentalFeatures.checked = state.developerExperimentalFeatures;
-        }
         if (els.setSsMode) els.setSsMode(getActiveScreensaverMode());
         updateTempPreview();
 

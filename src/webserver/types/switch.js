@@ -121,7 +121,6 @@ registerButtonType("", {
   label: function () { return cardContractCardLabel(""); },
   allowInSubpage: function () { return cardContractAllowInSubpage(""); },
   pickerKey: function () { return cardContractPickerKey(""); },
-  experimental: function () { return cardContractExperimental(""); },
   hidden: function () { return cardContractHidden(""); },
   defaultConfig: function () { return cardContractDefaultConfig(""); },
   cardMetadata: SWITCH_CARD_METADATA,
@@ -284,7 +283,6 @@ registerButtonType("light_switch", {
   allowInSubpage: function () { return cardContractAllowInSubpage("light_switch"); },
   hideLabel: true,
   pickerKey: function () { return cardContractPickerKey("light_switch"); },
-  experimental: function () { return cardContractExperimental("light_switch"); },
   hidden: function () { return cardContractHidden("light_switch"); },
   defaultConfig: function () { return cardContractDefaultConfig("light_switch"); },
   isAvailable: function () {

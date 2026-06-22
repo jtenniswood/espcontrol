@@ -64,7 +64,6 @@ registerButtonType("lock", {
   label: function () { return cardContractCardLabel("lock"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("lock"); },
   pickerKey: function () { return cardContractPickerKey("lock"); },
-  experimental: function () { return cardContractExperimental("lock"); },
   hidden: function () { return cardContractHidden("lock"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("lock"); },

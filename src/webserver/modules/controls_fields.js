@@ -1,6 +1,6 @@
 // ── Settings helpers ───────────────────────────────────────────────────
 
-function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement) {
+function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement, actionElement) {
   var card = document.createElement("div");
   card.className = "card";
   var header = document.createElement("div");
@@ -13,6 +13,7 @@ function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement)
   chevron.className = "card-chevron";
   chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   if (badgeElement) rightWrap.appendChild(badgeElement);
+  if (actionElement) rightWrap.appendChild(actionElement);
   rightWrap.appendChild(chevron);
   header.appendChild(h3);
   header.appendChild(rightWrap);
@@ -172,7 +173,7 @@ function renderCardModeSelector(panel, b, helpers, metadata) {
   var field = helpers.selectField(
     mode.label || "Type",
     helpers.idPrefix + (mode.idSuffix || "mode"),
-    mode.options || [],
+    cardMetadataValue(mode.options, b, helpers) || [],
     cardMetadataValue(mode.value, b, helpers) || "",
     function () {
       if (mode.onChange) mode.onChange.call(this, b, helpers);
@@ -219,14 +220,14 @@ function renderCardEntityField(panel, b, helpers, metadata) {
   var value = entity.value != null ? cardMetadataValue(entity.value, b, helpers) : (bindName ? b[bindName] : "");
   var domains = cardMetadataValue(entity.domains, b, helpers) || [];
   var field = helpers.entityField(
-    entity.label || "Entity",
+    cardMetadataValue(entity.label, b, helpers) || "Entity",
     helpers.idPrefix + (entity.idSuffix || "entity"),
     value || "",
-    entity.placeholder || "",
+    cardMetadataValue(entity.placeholder, b, helpers) || "",
     domains,
     bindName,
     entity.rerender !== false,
-    entity.requiredMessage || ""
+    cardMetadataValue(entity.requiredMessage, b, helpers) || ""
   );
   panel.appendChild(field.field);
   return field;

@@ -71,7 +71,6 @@ registerButtonType("garage", {
   label: function () { return cardContractCardLabel("garage"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("garage"); },
   pickerKey: function () { return cardContractPickerKey("garage"); },
-  experimental: function () { return cardContractExperimental("garage"); },
   hidden: function () { return cardContractHidden("garage"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("garage"); },

@@ -1,0 +1,2 @@
+# GPIO35 is the fixed RMII TXD1 signal in Ethernet firmware, so the shared
+# BOOT/Key2 line cannot also be used as a runtime volume button.

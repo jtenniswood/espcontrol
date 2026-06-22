@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 ROOT = Path(__file__).resolve().parent.parent
 TIME_YAML = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_H = ROOT / "components" / "espcontrol" / "sun_calc.h"
+AUTO_TIMEZONE_OPTION = "Auto (Home Assistant)"
 
 ZONEINFO_ALIASES = {
     "Asia/Rangoon": "Asia/Yangon",
@@ -24,6 +25,8 @@ def load_timezone_options() -> dict[str, str]:
     options: dict[str, str] = {}
     for match in re.finditer(r'^\s+- "([^"]+)"$', TIME_YAML.read_text(), re.M):
         option = match.group(1)
+        if option == AUTO_TIMEZONE_OPTION:
+            continue
         if " (GMT" not in option or ("/" not in option and not option.startswith("UTC ")):
             continue
         tz_id = option.split(" (", 1)[0]

@@ -300,6 +300,7 @@ def validate_package(slug: str, device: dict[str, Any], errors: list[str]) -> No
         "improvSerial",
         "touchscreenPackage",
         "apiNavigateAction",
+        "esp32C6FirmwareUpdate",
     ):
         if key in package and not isinstance(package[key], bool):
             errors.append(device_error(slug, f"firmware.package.{key} must be true or false when set"))
@@ -511,6 +512,8 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
             features["screenRotationDisplayOffset"] = rotation["displayOffset"]
     if profile.get("internalRelays"):
         features["internalRelays"] = copy.deepcopy(profile["internalRelays"])
+    if "voice_assistant" in (package.get("extraPackages") or {}):
+        features["voiceServices"] = True
     if package.get("subpageConfigChunks"):
         features["subpageConfigChunks"] = package["subpageConfigChunks"]
     return features

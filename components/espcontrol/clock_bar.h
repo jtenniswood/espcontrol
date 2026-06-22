@@ -515,6 +515,9 @@ enum ClockBarSectionId {
   CLOCK_BAR_SECTION_COUNT = 3,
 };
 
+inline int clock_bar_section_id(const std::string &value, size_t start, size_t end);
+inline int clock_bar_item_id(const std::string &value, size_t start, size_t end);
+
 struct ClockBarParsedLayout {
   int section[CLOCK_BAR_ITEM_COUNT];
   int order[CLOCK_BAR_ITEM_COUNT];
@@ -530,29 +533,49 @@ inline void clock_bar_clear_layout(ClockBarParsedLayout &layout) {
 }
 
 inline int clock_bar_section_id(const std::string &value) {
-  std::string token = clock_bar_trim(value);
-  if (token == "left") return CLOCK_BAR_SECTION_LEFT;
-  if (token == "middle") return CLOCK_BAR_SECTION_MIDDLE;
-  if (token == "right") return CLOCK_BAR_SECTION_RIGHT;
+  return clock_bar_section_id(value, 0, value.size());
+}
+
+inline void clock_bar_trim_span(const std::string &value, size_t &start, size_t &end) {
+  while (start < end && std::isspace(static_cast<unsigned char>(value[start]))) start++;
+  while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1]))) end--;
+}
+
+inline bool clock_bar_span_equals(const std::string &value, size_t start, size_t end, const char *text) {
+  clock_bar_trim_span(value, start, end);
+  const size_t len = strlen(text);
+  return end - start == len && value.compare(start, len, text) == 0;
+}
+
+inline int clock_bar_section_id(const std::string &value, size_t start, size_t end) {
+  if (clock_bar_span_equals(value, start, end, "left")) return CLOCK_BAR_SECTION_LEFT;
+  if (clock_bar_span_equals(value, start, end, "middle")) return CLOCK_BAR_SECTION_MIDDLE;
+  if (clock_bar_span_equals(value, start, end, "right")) return CLOCK_BAR_SECTION_RIGHT;
   return -1;
 }
 
 inline int clock_bar_item_id(const std::string &value) {
-  std::string token = clock_bar_trim(value);
-  if (token == "temperature") return CLOCK_BAR_ITEM_TEMPERATURE;
-  const std::string prefix = "temperature_";
-  if (token.compare(0, prefix.size(), prefix) == 0) {
-    int slot = 0;
-    for (size_t i = prefix.size(); i < token.size(); i++) {
-      if (token[i] < '0' || token[i] > '9') return -1;
-      slot = slot * 10 + (token[i] - '0');
-    }
-    if (slot >= 2 && slot <= (int) CLOCK_BAR_TEMPERATURE_SLOT_COUNT) {
-      return CLOCK_BAR_ITEM_TEMPERATURE + slot - 1;
-    }
+  return clock_bar_item_id(value, 0, value.size());
+}
+
+inline int clock_bar_item_id(const std::string &value, size_t start, size_t end) {
+  if (clock_bar_span_equals(value, start, end, "temperature")) return CLOCK_BAR_ITEM_TEMPERATURE;
+  if (clock_bar_span_equals(value, start, end, "time")) return CLOCK_BAR_ITEM_TIME;
+  if (clock_bar_span_equals(value, start, end, "network")) return CLOCK_BAR_ITEM_NETWORK;
+
+  clock_bar_trim_span(value, start, end);
+  static const char prefix[] = "temperature_";
+  const size_t prefix_len = sizeof(prefix) - 1;
+  if (end - start <= prefix_len || value.compare(start, prefix_len, prefix) != 0) return -1;
+
+  int slot = 0;
+  for (size_t i = start + prefix_len; i < end; i++) {
+    if (value[i] < '0' || value[i] > '9') return -1;
+    slot = slot * 10 + (value[i] - '0');
   }
-  if (token == "time") return CLOCK_BAR_ITEM_TIME;
-  if (token == "network") return CLOCK_BAR_ITEM_NETWORK;
+  if (slot >= 2 && slot <= (int) CLOCK_BAR_TEMPERATURE_SLOT_COUNT) {
+    return CLOCK_BAR_ITEM_TEMPERATURE + slot - 1;
+  }
   return -1;
 }
 
@@ -580,19 +603,18 @@ inline ClockBarParsedLayout parse_clock_bar_layout(const std::string &layout_tex
   while (segment_start <= layout_text.size()) {
     size_t segment_end = layout_text.find('|', segment_start);
     if (segment_end == std::string::npos) segment_end = layout_text.size();
-    std::string segment = layout_text.substr(segment_start, segment_end - segment_start);
-    size_t colon = segment.find(':');
-    if (colon != std::string::npos) {
-      int section = clock_bar_section_id(segment.substr(0, colon));
+    size_t colon = layout_text.find(':', segment_start);
+    if (colon != std::string::npos && colon < segment_end) {
+      int section = clock_bar_section_id(layout_text, segment_start, colon);
       size_t item_start = colon + 1;
-      while (section >= 0 && item_start <= segment.size()) {
-        size_t item_end = segment.find(',', item_start);
-        if (item_end == std::string::npos) item_end = segment.size();
+      while (section >= 0 && item_start <= segment_end) {
+        size_t item_end = layout_text.find(',', item_start);
+        if (item_end == std::string::npos || item_end > segment_end) item_end = segment_end;
         clock_bar_add_item(
             layout,
             section,
-            clock_bar_item_id(segment.substr(item_start, item_end - item_start)));
-        if (item_end == segment.size()) break;
+            clock_bar_item_id(layout_text, item_start, item_end));
+        if (item_end == segment_end) break;
         item_start = item_end + 1;
       }
     }

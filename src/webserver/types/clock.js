@@ -3,7 +3,6 @@ registerButtonType("clock", {
   label: function () { return cardContractCardLabel("clock"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("clock"); },
   pickerKey: function () { return cardContractPickerKey("clock"); },
-  experimental: function () { return cardContractExperimental("clock"); },
   hidden: function () { return cardContractHidden("clock"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("clock"); },

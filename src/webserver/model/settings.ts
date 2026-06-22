@@ -132,6 +132,14 @@ export function normalizeScreensaverDimmedBrightness(value: unknown): number {
   return Math.round(n);
 }
 
+export function normalizeHomeAssistantArtworkPort(value: unknown): number {
+  const port = parseInt(String(value), 10);
+  if (!Number.isFinite(port)) return 8123;
+  if (port < 1) return 1;
+  if (port > 65535) return 65535;
+  return port;
+}
+
 export function normalizeNtpServer(value: unknown, fallback: string): string {
   const server = String(value == null ? "" : value).trim();
   return server || fallback;
@@ -214,11 +222,11 @@ export interface BackupPanelSettingsCurrent {
   clockBarLayout: string;
   clockFormat: string;
   clockFormatOptions: readonly string[];
-  developerExperimentalFeatures: boolean;
   ntpDefaults: readonly string[];
   ntpServer1: string;
   ntpServer2: string;
   ntpServer3: string;
+  coverArtHomeAssistantPort: number;
   screenRotationOptions: readonly string[];
 }
 
@@ -232,6 +240,7 @@ export interface BackupPanelSettingsState {
   clockBarLayout: string;
   clockBarTime: boolean;
   networkStatusIcon: boolean;
+  voiceServices: boolean;
   temperatureDegreeSymbol: boolean;
   subpageChevron: boolean;
   timezone: string;
@@ -241,8 +250,6 @@ export interface BackupPanelSettingsState {
   hasNtpServer1: boolean;
   hasNtpServer2: boolean;
   hasNtpServer3: boolean;
-  hasDeveloperExperimentalFeatures: boolean;
-  developerExperimentalFeatures: boolean;
   ntpServer1: string;
   ntpServer2: string;
   ntpServer3: string;
@@ -256,6 +263,7 @@ export interface BackupPanelSettingsState {
   coverArtDelay: unknown;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
+  coverArtHomeAssistantPort: number;
   screensaverAction: string;
   clockScreensaver: boolean;
   clockBrightnessDay: number;
@@ -283,7 +291,6 @@ export function normalizeBackupPanelSettings(
   const hasNtpServer1 = objectValue(settings, "ntp_server_1") !== undefined;
   const hasNtpServer2 = objectValue(settings, "ntp_server_2") !== undefined;
   const hasNtpServer3 = objectValue(settings, "ntp_server_3") !== undefined;
-  const hasDeveloperExperimentalFeatures = objectValue(settings, "developer_experimental_features") !== undefined;
   const hasOutdoorTempEnable = objectValue(settings, "outdoor_temp_enable") !== undefined;
   const clockFormat = current.clockFormatOptions.indexOf(String(settings.clock_format || "")) !== -1
     ? String(settings.clock_format)
@@ -323,6 +330,7 @@ export function normalizeBackupPanelSettings(
     clockBarLayout: CLOCK_BAR_FIXED_LAYOUT,
     clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
     networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
+    voiceServices: objectValue(settings, "voice_services") != null ? !!settings.voice_services : false,
     temperatureDegreeSymbol: objectValue(settings, "temperature_degree_symbol") != null
       ? !!settings.temperature_degree_symbol
       : true,
@@ -336,10 +344,6 @@ export function normalizeBackupPanelSettings(
     hasNtpServer1,
     hasNtpServer2,
     hasNtpServer3,
-    hasDeveloperExperimentalFeatures,
-    developerExperimentalFeatures: hasDeveloperExperimentalFeatures
-      ? !!settings.developer_experimental_features
-      : current.developerExperimentalFeatures,
     ntpServer1: hasNtpServer1
       ? normalizeNtpServer(settings.ntp_server_1, current.ntpDefaults[0] || "")
       : current.ntpServer1,
@@ -361,6 +365,9 @@ export function normalizeBackupPanelSettings(
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
+    coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null
+      ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
+      : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
     screensaverAction,
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,

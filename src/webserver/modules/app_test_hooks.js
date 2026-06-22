@@ -10,7 +10,6 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     cardContractCardLabel: cardContractCardLabel,
     cardContractAllowInSubpage: cardContractAllowInSubpage,
     cardContractPickerKey: cardContractPickerKey,
-    cardContractExperimental: cardContractExperimental,
     cardContractHidden: cardContractHidden,
     cardContractOptions: cardContractOptions,
     cardContractDefaultConfig: cardContractDefaultConfig,
@@ -35,6 +34,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     cardOnPattern: cardOnPattern,
     setCardOnPattern: setCardOnPattern,
     sensorActiveColorEnabled: sensorActiveColorEnabled,
+    sensorCardIsLocal: sensorCardIsLocal,
     sensorStateLabelsEnabled: sensorStateLabelsEnabled,
     sensorStateInput: sensorStateInput,
     sensorStateOutput: sensorStateOutput,
@@ -57,6 +57,10 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     lightTempClampMax: lightTempClampMax,
     lightTempLegacySensorValues: lightTempLegacySensorValues,
     lightTempSensorNeedsCleanup: lightTempSensorNeedsCleanup,
+    lightControlTabDefinitions: lightControlTabDefinitions,
+    lightControlTabs: lightControlTabs,
+    normalizeLightControlTabs: normalizeLightControlTabs,
+    normalizeLightControlOptions: normalizeLightControlOptions,
     doorWindowActiveColorEnabled: doorWindowActiveColorEnabled,
     presenceActiveColorEnabled: presenceActiveColorEnabled,
     garageModeOptionValues: garageModeOptionValues,
@@ -125,6 +129,11 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     actionCardStateUnit: actionCardStateUnit,
     actionCardStatePrecision: actionCardStatePrecision,
     actionCardStateDisplayMode: actionCardStateDisplayMode,
+    actionCardIsLocal: actionCardIsLocal,
+    actionScriptConfirmationEnabled: actionScriptConfirmationEnabled,
+    actionScriptConfirmationMessage: actionScriptConfirmationMessage,
+    actionScriptConfirmationYesText: actionScriptConfirmationYesText,
+    actionScriptConfirmationNoText: actionScriptConfirmationNoText,
     alarmPinRequired: alarmPinRequired,
     alarmIconDisplayMode: alarmIconDisplayMode,
     alarmLabelDisplayMode: alarmLabelDisplayMode,
@@ -145,19 +154,17 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         return option.value;
       });
     },
+    coverModeOptionLabels: function (currentMode) {
+      var options = coverModeOptionsForSettings(currentMode || "");
+      return options.map(function (option) { return option[0] + ":" + option[1]; });
+    },
     normalizeAlarmOptions: normalizeAlarmOptions,
-    buttonTypePickerKeysForExperimental: function (enabled, isSub, selectedTypeKey) {
-      var oldExperimental = state.developerExperimentalFeatures;
-      state.developerExperimentalFeatures = !!enabled;
+    buttonTypePickerKeysFor: function (isSub, selectedTypeKey) {
       var keys = buttonTypePickerKeys(!!isSub, selectedTypeKey || "");
-      state.developerExperimentalFeatures = oldExperimental;
       return keys;
     },
-    buttonTypeVisibleInPickerForExperimental: function (key, enabled, isSub) {
-      var oldExperimental = state.developerExperimentalFeatures;
-      state.developerExperimentalFeatures = !!enabled;
+    buttonTypeVisibleInPickerFor: function (key, isSub) {
       var visible = buttonTypeVisibleInPicker(key, !!isSub);
-      state.developerExperimentalFeatures = oldExperimental;
       return visible;
     },
     buttonTypePickerKeysForInfoOnly: function (enabled, selectedTypeKey) {
@@ -170,6 +177,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     buttonTypePickerOptionsFor: function (isSub, selectedTypeKey) {
       return buttonTypePickerOptionList(!!isSub, selectedTypeKey == null ? null : selectedTypeKey);
     },
+    defaultButtonTypeForPicker: defaultButtonTypeForPicker,
     buttonTypesMissingCardMetadata: function () {
       var missing = [];
       for (var key in BUTTON_TYPES) {
@@ -191,7 +199,6 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         label: buttonTypeRegistryValue(typeDef, "label", typeDef.key || "Toggle"),
         allowInSubpage: !!buttonTypeRegistryValue(typeDef, "allowInSubpage", false),
         pickerKey: buttonTypeRegistryValue(typeDef, "pickerKey", "") || "",
-        experimental: buttonTypeRegistryValue(typeDef, "experimental", "") || "",
         hidden: !!buttonTypeRegistryValue(typeDef, "hidden", false),
         domains: entity && entity.domains
           ? cardMetadataValue(entity.domains, {}, {}) || []
@@ -227,8 +234,10 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     buttonConfigNeedsMigration: buttonConfigNeedsMigration,
     subpageConfigNeedsMigration: subpageConfigNeedsMigration,
     normalizeTemperatureUnit: normalizeTemperatureUnit,
+    normalizeHomeAssistantArtworkPort: normalizeHomeAssistantArtworkPort,
     defaultTimezoneOptions: defaultTimezoneOptions,
     timezoneOptionsWithFallback: timezoneOptionsWithFallback,
+    effectiveTimezoneOptionForWeb: effectiveTimezoneOptionForWeb,
     normalizeScreensaverAction: normalizeScreensaverAction,
     screensaverActionOption: screensaverActionOption,
     clockBarVisibleInPreviewFor: function (clockBarOn, screensaverAction) {
@@ -272,14 +281,18 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       return isRemovedLegacyStateEvent(id, event || {});
     },
     normalizeScreensaverDimmedBrightness: normalizeScreensaverDimmedBrightness,
+    webserverMockNow: webserverMockNow,
+    webserverNow: webserverNow,
     previewHtmlValue: previewHtmlValue,
     buttonTypePreviewFor: function (type, button, options) {
       var oldTimezone = state.timezone;
+      var oldActiveTimezone = state.activeTimezone;
       var oldUnit = state.temperatureUnit;
       var oldClockFormat = state.clockFormat;
       var oldLanguage = state.language;
       options = options || {};
       if (options.timezone != null) state.timezone = options.timezone;
+      if (options.activeTimezone != null) state.activeTimezone = options.activeTimezone;
       if (options.temperatureUnit != null) {
         state.temperatureUnit = normalizeTemperatureUnit(options.temperatureUnit);
       }
@@ -290,10 +303,16 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         ? typeDef.renderPreview(button || {}, { escHtml: escHtml, cardSize: options.cardSize || 1 })
         : null;
       state.timezone = oldTimezone;
+      state.activeTimezone = oldActiveTimezone;
       state.temperatureUnit = oldUnit;
       state.clockFormat = oldClockFormat;
       state.language = oldLanguage;
       return preview;
+    },
+    buttonTypePreviewForMockNow: function (type, button, options) {
+      return withWebserverMockNow(function () {
+        return globalThis.__ESPCONTROL_TEST_HOOKS__.config.buttonTypePreviewFor(type, button, options);
+      });
     },
     networkPreviewIconSlug: networkPreviewIconSlug,
     displayFirmwareVersion: displayFirmwareVersion,
@@ -315,6 +334,10 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     entityInitialDetail: entityInitialDetail,
     entityLookupNames: entityLookupNames,
     coverArtHideExternalInputPostUrls: coverArtHideExternalInputPostUrls,
+    coverArtDelayPostUrls: coverArtDelayPostUrls,
+    coverArtTrackOverlayDurationPostUrls: coverArtTrackOverlayDurationPostUrls,
+    homeAssistantArtworkPortPostUrls: homeAssistantArtworkPortPostUrls,
+    voiceServicesPostUrls: voiceServicesPostUrls,
     firmwareUpdateControlsVisibleFor: function (transport, supported) {
       var oldTransport = state.networkTransport;
       var oldSupported = state.firmwareUpdateControlsSupported;
@@ -489,13 +512,16 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.screensaverTimeoutMax = oldMax;
       return supported;
     },
-    temperatureUnitSymbolFor: function (timezone, unit) {
+    temperatureUnitSymbolFor: function (timezone, unit, activeTimezone) {
       var oldTimezone = state.timezone;
+      var oldActiveTimezone = state.activeTimezone;
       var oldUnit = state.temperatureUnit;
       state.timezone = timezone || oldTimezone;
+      if (activeTimezone != null) state.activeTimezone = activeTimezone;
       state.temperatureUnit = normalizeTemperatureUnit(unit);
       var symbol = temperatureUnitSymbol();
       state.timezone = oldTimezone;
+      state.activeTimezone = oldActiveTimezone;
       state.temperatureUnit = oldUnit;
       return symbol;
     },

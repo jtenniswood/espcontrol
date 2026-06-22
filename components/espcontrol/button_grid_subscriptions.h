@@ -320,17 +320,18 @@ inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                    const char **slot_icon_off, const char **slot_icon_on,
                                    ToggleTextSensorCtx *text_sensor_ctx,
                                    const std::string &entity_id,
-                                   bool disable_interaction = true) {
+                                   bool disable_interaction = true,
+                                   bool (*is_active_state)(esphome::StringRef) = is_entity_on_ref) {
   register_ha_control_availability(btn_ptr, btn_ptr, disable_interaction);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
       [btn_ptr, icon_lbl, sensor_ctr, slot_has_sensor, slot_sensor_text_mode,
        slot_has_icon_on, slot_icon_off, slot_icon_on, text_sensor_ctx,
-       disable_interaction](esphome::StringRef state) {
+       disable_interaction, is_active_state](esphome::StringRef state) {
         bool unavailable = ha_state_unavailable_ref(state);
         apply_control_availability(btn_ptr, btn_ptr, !unavailable, disable_interaction);
-        bool on = is_entity_on_ref(state);
+        bool on = is_active_state(state);
         set_card_checked_state(btn_ptr, on);
 
         if (text_sensor_ctx) {

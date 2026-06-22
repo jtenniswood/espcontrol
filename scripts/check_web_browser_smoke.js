@@ -177,7 +177,6 @@ function seededEvents() {
     { id: "select-screen__clock_format", state: "24h", value: "24h", option: ["12h", "24h"] },
     { id: "select-screen__rotation", state: "0", value: "0", option: ["0", "90", "180", "270"] },
     { id: "number-screensaver_timeout", state: "300", value: 300, min: 10, max: 3600 },
-    { id: "switch-developer__experimental_features", state: "ON", value: true },
     { id: "text-subpage_6_config", state: "1,B|media_player.living:Living:Speaker:Auto:play_pause::media" },
   ];
   BUTTON_FIXTURES.forEach((state, index) => {
@@ -404,6 +403,17 @@ async function assertSettingsPage(page, label, options = {}) {
   assert(appearanceVisible, `${label}: settings content should render`);
   assert.strictEqual(themeVisible, !!options.isEpaper, `${label}: theme selector visibility should match display type`);
   assert.strictEqual(onColorVisible, !options.isEpaper, `${label}: color controls visibility should match display type`);
+  const clockBarCard = page.locator("#sp-settings .card").filter({ hasText: "Clock Bar" }).first();
+  const clockBarText = await clockBarCard.textContent();
+  const voiceServicesCard = page.locator("#sp-settings .card").filter({
+    has: page.locator(".card-header h3", { hasText: /^Voice Services$/ }),
+  }).first();
+  if (options.slug === "esp32-p4-86") {
+    assert(await voiceServicesCard.isVisible(), `${label}: voice services settings card is available for the voice-capable panel`);
+  } else {
+    assert(!clockBarText.includes("Voice Services"), `${label}: voice services toggle is hidden from the clock bar`);
+    assert.strictEqual(await voiceServicesCard.count(), 0, `${label}: voice services settings card is hidden on panels without local voice`);
+  }
   const nightScheduleCard = page.locator("#sp-settings .card").filter({
     has: page.locator(".card-header h3", { hasText: /^Night Schedule$/ }),
   }).first();
@@ -422,18 +432,62 @@ async function assertSettingsPage(page, label, options = {}) {
     }).first();
     assert(await coverArtCard.isVisible(), `${label}: media cover art settings card should render`);
     await coverArtCard.locator(".card-header").click();
-    const coverArtInfo = page.locator("#sp-cover-art-info");
-    assert(await coverArtInfo.isVisible(), `${label}: media cover art override info panel should render`);
     assert.strictEqual(
-      await coverArtInfo.innerText(),
-      "Media Cover Art overrides existing screensaver settings while the selected media player is playing.",
-      `${label}: media cover art override info panel text should match`
+      await page.locator("#sp-cover-art-info").count(),
+      0,
+      `${label}: media cover art override info panel should not render`
+    );
+    assert.strictEqual(
+      await page.locator("#sp-set-ss-media-sleep-prevention").count(),
+      1,
+      `${label}: keep-screen-awake option should render separately`
+    );
+    await coverArtCard.locator("#sp-set-ss-media-sleep-prevention + .sp-toggle-track").click();
+    assert(
+      await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
+      `${label}: media player entity field should render when keep-screen-awake is enabled`
+    );
+    assert.strictEqual(
+      await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
+      false,
+      `${label}: cover art show-after field should stay hidden until cover art is enabled`
     );
     await coverArtCard.locator("#sp-set-ss-cover-art-enable + .sp-toggle-track").click();
+    assert(
+      await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
+      `${label}: media player entity field should render when cover art is enabled`
+    );
+    assert(
+      await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
+      `${label}: cover art show-after field should render when cover art is enabled`
+    );
     assert.strictEqual(
       await page.locator("#sp-set-ss-track-overlay").count(),
       options.coverArtSquareOverlay ? 1 : 0,
       `${label}: track overlay duration visibility should match square cover art layout`
+    );
+    assert(
+      await coverArtCard.getByText("Advanced Options", { exact: true }).isVisible(),
+      `${label}: media cover art advanced options should render`
+    );
+    assert.strictEqual(
+      await coverArtCard.locator("#sp-set-ss-cover-art-conditions").isVisible(),
+      false,
+      `${label}: cover art conditions field should be hidden until advanced filtering is enabled`
+    );
+    await coverArtCard.getByText("Advanced Options", { exact: true }).click();
+    assert(
+      await coverArtCard.getByText("Hide for external source inputs", { exact: true }).isVisible(),
+      `${label}: external source input option should render inside advanced options`
+    );
+    assert(
+      await coverArtCard.getByText("Advanced Filtering", { exact: true }).isVisible(),
+      `${label}: advanced filtering toggle should render inside advanced options`
+    );
+    await coverArtCard.locator("#sp-set-ss-cover-art-filtering + .sp-toggle-track").click();
+    assert(
+      await coverArtCard.locator("#sp-set-ss-cover-art-conditions").isVisible(),
+      `${label}: cover art conditions field should render after advanced filtering is enabled`
     );
     assert(
       await page.locator("#sp-set-ss-cover-art-server").count() === 0,
@@ -448,6 +502,28 @@ async function assertSettingsPage(page, label, options = {}) {
     await page.locator("#sp-set-sensor-media-player-enable").count(),
     0,
     `${label}: sensor cover art override should not render`
+  );
+  const homeAssistantSettingsCard = page.locator("#sp-settings .card").filter({
+    has: page.locator(".card-header h3", { hasText: /^Home Assistant Settings$/ }),
+  }).first();
+  assert(await homeAssistantSettingsCard.isVisible(), `${label}: Home Assistant settings card should render`);
+  assert(
+    !(await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible()),
+    `${label}: Home Assistant settings card should be collapsed by default`
+  );
+  await homeAssistantSettingsCard.locator(".card-header").click();
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").isVisible(),
+    `${label}: Home Assistant port field should render in Home Assistant settings`
+  );
+  assert.strictEqual(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port").inputValue(),
+    "8123",
+    `${label}: Home Assistant port field should default to 8123`
+  );
+  assert(
+    await homeAssistantSettingsCard.locator("#sp-set-ha-artwork-port.sp-input--no-stepper").count() === 1,
+    `${label}: Home Assistant port field should hide browser stepper controls`
   );
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   assert(!overflow, `${label}: settings page has horizontal overflow`);
@@ -852,20 +928,20 @@ async function assertBackupImportSmoke(page, posts, testCase) {
   );
 }
 
-async function entitySuggestionValues(page, inputSelector, query = "light") {
+async function entitySuggestionValues(page, inputSelector, query = "light", expectedValues = []) {
   await page.locator(inputSelector).fill(query);
-  await page.waitForFunction(({ selector, query }) => {
+  const suggestions = await page.waitForFunction(({ selector, query, expectedValues }) => {
     const input = document.querySelector(selector);
     const normalizedQuery = String(query || "").toLowerCase();
     if (!input || String(input.value || "").toLowerCase() !== normalizedQuery) return false;
     const options = Array.from(input.parentElement.querySelectorAll(".sp-entity-dropdown.sp-open .sp-entity-option"));
     if (!options.length) return false;
-    return options.every((option) => String(option.textContent || "").toLowerCase().includes(normalizedQuery));
-  }, { selector: inputSelector, query });
-  return page.locator(inputSelector).evaluate((input) => {
-    return Array.from(input.parentElement.querySelectorAll(".sp-entity-dropdown.sp-open .sp-entity-option"))
-      .map((option) => option.textContent || "");
-  });
+    const values = options.map((option) => String(option.textContent || ""));
+    if (!options.every((option) => String(option.textContent || "").toLowerCase().includes(normalizedQuery))) return false;
+    if (!expectedValues.every((value) => values.indexOf(value) !== -1)) return false;
+    return values;
+  }, { selector: inputSelector, query, expectedValues });
+  return suggestions.jsonValue();
 }
 
 async function assertEditAndApplySmoke(page, posts, errors) {
@@ -875,7 +951,7 @@ async function assertEditAndApplySmoke(page, posts, errors) {
 
   await page.locator('.sp-main [data-slot="1"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  const switchSuggestions = await entitySuggestionValues(page, "#sp-inp-entity");
+  const switchSuggestions = await entitySuggestionValues(page, "#sp-inp-entity", "light", ["light.kitchen"]);
   assert(switchSuggestions.includes("light.kitchen"), "switch card suggestions include a recently used light");
   assert(!switchSuggestions.includes("sensor.energy"), "switch card suggestions exclude recently used sensors");
   assert(!switchSuggestions.includes("media_player.living"), "switch card suggestions exclude recently used media players");

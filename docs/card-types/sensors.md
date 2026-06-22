@@ -1,12 +1,14 @@
 ---
 title: Sensor Cards
 description:
-  How to display live numeric readings, text states, or icon states from Home Assistant on your EspControl panel.
+  How to display live numeric readings, text states, or icon states from Home Assistant or local device sensors on your EspControl panel.
 ---
 
 # Sensor
 
-A sensor card displays live Home Assistant data. It has three modes:
+A sensor card displays live sensor data. By default it uses Home Assistant entities, and it can also use local sensors running directly on the display device.
+
+It has three Home Assistant modes:
 
 - **Icon** — shows an icon and can change to an on icon when the sensor is active.
 - **Numeric** — shows a large number with an optional unit and label. This is the default mode.
@@ -19,8 +21,11 @@ Sensor cards are read-only — tapping them does nothing.
 ## Setting Up a Sensor Card
 
 1. Select a card and change its type to **Sensor**.
-2. Choose **Icon**, **Numeric**, or **Text** from the mode tabs. Numeric is selected by default.
-3. Enter a **Sensor Entity** — the Home Assistant entity ID of the sensor you want to display.
+2. Leave **Source** set to **Home Assistant**. This is the default.
+3. Choose **Icon**, **Numeric**, or **Text** from the mode tabs. Numeric is selected by default.
+4. Enter a **Sensor Entity** — the Home Assistant entity ID of the sensor you want to display.
+
+To display a sensor that runs directly on the device, change **Source** to **Local Sensor**. See [Local Sensor](/card-types/local-sensors) for the local setup details.
 
 For **Icon** mode:
 

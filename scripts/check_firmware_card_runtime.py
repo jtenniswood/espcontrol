@@ -25,14 +25,17 @@ MODE_ARRAY_ALLOWLIST = CARD_RUNTIME_BOUNDARY_FILES | {
 DIRECT_CONTRACT_PATTERN = re.compile(r"\b(?:card_contract_[A-Za-z0-9_]+|CARD_CONTRACT_[A-Z0-9_]+)\b")
 MODE_ARRAY_PATTERN = re.compile(
     r"\{[^}\n]*\"(?:play_pause|previous|next|volume|position|now_playing|"
-    r"open|close|stop|set_position|tilt|toggle|lock|unlock|away|home|disarm)\""
+    r"open|close|stop|set_position|tilt|toggle|lock|unlock|away|home|night|vacation|disarm)\""
 )
 SERVICE_MAPPING_PATTERN = re.compile(
     r"\"(?:cover\.(?:open_cover|close_cover|stop_cover|set_cover_position)|"
     r"lock\.(?:lock|unlock)|"
     r"media_player\.(?:media_play_pause|media_previous_track|media_next_track)|"
-    r"alarm_control_panel\.(?:alarm_arm_away|alarm_arm_home|alarm_disarm))\""
+    r"alarm_control_panel\.(?:alarm_arm_away|alarm_arm_home|alarm_arm_night|alarm_arm_vacation|alarm_disarm))\""
 )
+
+LAWN_MOWER_HEADER = "button_grid_lawn_mower.h"
+GRID_HEADER = "button_grid_grid.h"
 
 
 def service_mapping_line_allowed(line: str) -> bool:
@@ -63,6 +66,36 @@ def check_root(root: Path) -> list[str]:
                 and not service_mapping_line_allowed(line)
             ):
                 failures.append(f"{rel}:{line_no}: keep shared card service mappings in the card runtime/contract boundary")
+    mower_header = root / "components" / "espcontrol" / LAWN_MOWER_HEADER
+    if mower_header.exists():
+        text = mower_header.read_text(encoding="utf-8")
+        required = (
+            "lawn_mower.start_mowing",
+            "lawn_mower.pause",
+            "lawn_mower.dock",
+            'ctx->state == "mowing"',
+            'ctx->state == "unavailable" || ctx->state == "unknown"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(f"components/espcontrol/{LAWN_MOWER_HEADER}: missing mower runtime guard {needle}")
+        forbidden = (
+            "vacuum.",
+            "lawn_mower.stop",
+            "lawn_mower.locate",
+            "lawn_mower.clean_spot",
+            "lawn_mower.clean_area",
+        )
+        for needle in forbidden:
+            if needle in text:
+                failures.append(f"components/espcontrol/{LAWN_MOWER_HEADER}: unexpected mower service/reference {needle}")
+    grid_header = root / "components" / "espcontrol" / GRID_HEADER
+    if grid_header.exists():
+        text = grid_header.read_text(encoding="utf-8")
+        if 'parent_subpage_kind == "lawn_mower"' not in text or "lawn_mower_state_active_ref" not in text:
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: route mower subpage parent indicators through mower active-state handling"
+            )
     return failures
 
 
@@ -107,6 +140,18 @@ def run_self_test() -> None:
         (
             {"button_grid_actions.h": "cover_tilt ? \"cover.set_cover_tilt_position\" : \"cover.set_cover_position\";\n"},
             (),
+        ),
+        (
+            {"button_grid_lawn_mower.h": "return \"lawn_mower.start_mowing\";\n"},
+            ("missing mower runtime guard lawn_mower.pause",),
+        ),
+        (
+            {"button_grid_lawn_mower.h": "return \"lawn_mower.clean_spot\";\n"},
+            ("unexpected mower service/reference lawn_mower.clean_spot",),
+        ),
+        (
+            {"button_grid_grid.h": 'if (parent_subpage_kind == "climate") {}\n'},
+            ("route mower subpage parent indicators through mower active-state handling",),
         ),
     )
     for files, expected in cases:

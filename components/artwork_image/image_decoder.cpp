@@ -146,5 +146,24 @@ size_t DownloadBuffer::resize(size_t size) {
   }
 }
 
+void DownloadBuffer::shrink_to(size_t size) {
+  this->reset();
+  if (this->size_ <= size) {
+    return;
+  }
+  this->allocator_.deallocate(this->buffer_, this->size_);
+  this->buffer_ = nullptr;
+  this->size_ = 0;
+  if (size == 0) {
+    return;
+  }
+  this->buffer_ = this->allocator_.allocate(size);
+  if (!this->buffer_) {
+    ESP_LOGW(TAG, "allocation of shrunken download buffer failed: %zu bytes", size);
+    return;
+  }
+  this->size_ = size;
+}
+
 }  // namespace artwork_image
 }  // namespace esphome

@@ -22,6 +22,7 @@ DEVICES_DIR = ROOT / "devices"
 
 CPP_SOURCE = r'''
 #include <cassert>
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -30,8 +31,10 @@ CPP_SOURCE = r'''
 #include <string>
 #include <vector>
 
-#define ESP_LOGW(tag, fmt, ...)
-#define ESP_LOGI(tag, fmt, ...)
+template <typename... Args>
+inline void esp_log_ignore(Args&&...) {}
+#define ESP_LOGW(...) esp_log_ignore(__VA_ARGS__)
+#define ESP_LOGI(...) esp_log_ignore(__VA_ARGS__)
 
 namespace esphome {
 namespace text { class Text {}; }
@@ -78,7 +81,7 @@ constexpr int LV_ALIGN_TOP_LEFT = 0;
 constexpr int LV_ALIGN_TOP_MID = 1;
 constexpr int LV_ALIGN_TOP_RIGHT = 2;
 constexpr int LV_ALIGN_BOTTOM_LEFT = 0;
-constexpr int LV_ALIGN_BOTTOM_RIGHT = 1;
+[[maybe_unused]] constexpr int LV_ALIGN_BOTTOM_RIGHT = 1;
 constexpr int LV_GRID_ALIGN_START = 0;
 constexpr int LV_GRID_ALIGN_STRETCH = 1;
 constexpr int LV_OPA_COVER = 255;
@@ -324,6 +327,25 @@ int main() {
   assert(image_card_refresh_interval_ms(image_default) == 0);
   assert(!image_card_timer_only_refresh(image_default));
   assert(!image_card_modal_fit_enabled(image_default));
+  auto lawn_mower = parse_cfg("lawn_mower.backyard;Backyard Mower;Auto;Bell;pause_resume;ignored;lawn_mower;2;large_numbers");
+  assert(lawn_mower.type == "lawn_mower");
+  assert(lawn_mower.entity == "lawn_mower.backyard");
+  assert(lawn_mower.sensor == "pause_resume");
+  assert(lawn_mower.unit == "");
+  assert(lawn_mower.precision == "");
+  assert(lawn_mower.options == "");
+  assert(lawn_mower.icon == "Robot Mower");
+  assert(lawn_mower.icon_on == "Auto");
+  auto lawn_mower_dock = parse_cfg("lawn_mower.backyard;Dock;Auto;Auto;dock;;lawn_mower");
+  assert(lawn_mower_dock.sensor == "dock");
+  assert(lawn_mower_dock.icon == "Robot Mower Outline");
+  auto lawn_mower_invalid = parse_cfg("lawn_mower.backyard;Start;Auto;Auto;bad_mode;;lawn_mower");
+  assert(lawn_mower_invalid.sensor == "start_mowing");
+  assert(lawn_mower_invalid.icon == "Robot Mower");
+  assert(card_runtime_lawn_mower_state_mode("status"));
+  assert(card_runtime_lawn_mower_state_mode("start_mowing"));
+  assert(card_runtime_lawn_mower_state_mode("dock"));
+  assert(card_runtime_lawn_mower_state_mode("pause_resume"));
   auto image_label = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;image_label");
   assert(image_label.type == "image");
   assert(image_label.label == "Front Door");
@@ -368,6 +390,15 @@ int main() {
   assert(image_refresh_invalid.options == "");
   assert(image_card_refresh_interval_ms(image_refresh_invalid) == 0);
 
+  auto light_control_default_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=power%7Cbrightness%7Ctemperature%7Ccolor");
+  assert(light_control_default_tabs.type == "light_control");
+  assert(light_control_default_tabs.options == "");
+  auto light_control_custom_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=brightness%7Cpower");
+  assert(light_control_custom_tabs.options == "light_tabs=brightness%7Cpower");
+  assert(cfg_option_value(light_control_custom_tabs.options, "light_tabs") == "brightness|power");
+  auto light_control_bad_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=bad%7Cpower%7Cpower");
+  assert(light_control_bad_tabs.options == "light_tabs=power");
+
   set_display_temperature_unit("\u00B0F", "UTC (GMT+0)");
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 50);
   assert(convert_temperature_value_for_display(10, "\u00B0F") == 10);
@@ -411,6 +442,17 @@ int main() {
   assert(action_card_state_icon_mode(action_icon));
   assert(!action_card_state_numeric_mode(action_icon));
   assert(!action_card_state_text_mode(action_icon));
+  auto action_confirm = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F,confirm_yes=Run,confirm_no=Cancel");
+  assert(action_script_confirmation_enabled(action_confirm));
+  assert(switch_confirmation_message(action_confirm) == "Run bedtime?");
+  assert(switch_confirmation_yes_text(action_confirm) == "Run");
+  assert(switch_confirmation_no_text(action_confirm) == "Cancel");
+  auto action_confirm_default = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on");
+  assert(action_script_confirmation_enabled(action_confirm_default));
+  assert(switch_confirmation_message(action_confirm_default) == "Run this script?");
+  auto scene_confirm = parse_cfg("scene.goodnight;Goodnight;Movie Open;Auto;scene.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F");
+  assert(!action_script_confirmation_enabled(scene_confirm));
+  assert(scene_confirm.options == "");
 
   auto climate_large = parse_cfg("climate.living_room;Living;Thermostat;Auto;;;climate;1;large_numbers");
   assert(climate_large.options == "large_numbers");
@@ -440,6 +482,14 @@ int main() {
   assert(subpage_climate.options == "subpage_kind=climate");
   auto subpage_presence = parse_cfg("person.jane;Presence;Account;Auto;indicator;;subpage;;subpage_kind=presence");
   assert(subpage_presence.options == "subpage_kind=presence");
+  auto subpage_alarm = parse_cfg("alarm_control_panel.home;Alarm;Security;Auto;indicator;;subpage;;subpage_kind=alarm");
+  assert(subpage_alarm.options == "subpage_kind=alarm");
+  auto subpage_vacuum = parse_cfg("vacuum.downstairs;Vacuum;Robot Vacuum;Auto;indicator;;subpage;;subpage_kind=vacuum");
+  assert(subpage_vacuum.options == "subpage_kind=vacuum");
+  auto subpage_lawn_mower = parse_cfg("lawn_mower.backyard;Lawn Mower;Robot Mower;Auto;indicator;;subpage;;subpage_kind=lawn_mower");
+  assert(subpage_lawn_mower.options == "subpage_kind=lawn_mower");
+  auto subpage_weather = parse_cfg("weather.home;Weather;Weather Partly Cloudy;Auto;indicator;;subpage;;subpage_kind=weather");
+  assert(subpage_weather.options == "subpage_kind=weather");
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 
@@ -593,6 +643,8 @@ def main() -> int:
             "namespace esphome { struct AppClass { bool is_setup_complete() const { return true; } }; inline AppClass App; }\n",
             encoding="utf-8",
         )
+        defines_stub = tmp_path / "esphome" / "core" / "defines.h"
+        defines_stub.write_text("", encoding="utf-8")
         log_stub = tmp_path / "esphome" / "core" / "log.h"
         log_stub.write_text("", encoding="utf-8")
         network_stub = tmp_path / "esphome" / "components" / "network" / "util.h"

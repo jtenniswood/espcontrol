@@ -227,9 +227,114 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
+    grid_path = root / "components" / "espcontrol" / "button_grid_grid.h"
+    subpages_path = root / "components" / "espcontrol" / "button_grid_subpages.h"
+    errors: list[str] = []
+
+    if not grid_path.exists():
+        errors.append("components/espcontrol/button_grid_grid.h: wire subpage modal cards")
+        return errors
+
+    text = grid_path.read_text(encoding="utf-8")
+    light_block = re.search(
+        r'if\s*\(\s*sb_cfg\.type\s*==\s*"light_control"\s*\)\s*\{(?P<body>.*?)\n      \}',
+        text,
+        re.S,
+    )
+    if light_block is None:
+        errors.append("components/espcontrol/button_grid_grid.h: keep light control cards available in subpages")
+        return errors
+
+    body = light_block.group("body")
+    if (
+        "create_light_control_context" not in body
+        or "subscribe_light_control_state(ctx);" not in body
+        or "light_control_open_modal(ctx);" not in body
+        or "LV_EVENT_CLICKED" not in body
+    ):
+        errors.append("components/espcontrol/button_grid_grid.h: open light control modals from subpage cards")
+
+    if not subpages_path.exists():
+        errors.append("components/espcontrol/button_grid_subpages.h: preserve light control tab options in subpages")
+        return errors
+
+    subpages_text = subpages_path.read_text(encoding="utf-8")
+    if (
+        'b.type == "light_control"' not in subpages_text
+        or "light_control_card_options_normalized(b.options)" not in subpages_text
+    ):
+        errors.append("components/espcontrol/button_grid_subpages.h: preserve light control tab options in subpages")
+    unsupported_block = re.search(
+        r'if\s*\(\s*!b\.type\.empty\(\)(?P<body>.*?)\)\s*\{\s*\n\s*b\.options\.clear\(\);',
+        subpages_text,
+        re.S,
+    )
+    if unsupported_block is None or 'b.type != "light_control"' not in unsupported_block.group("body"):
+        errors.append("components/espcontrol/button_grid_subpages.h: keep light control options out of the unsupported-card cleanup")
+
+    return errors
+
+
+def firmware_light_control_brightness_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_sliders.h"
+    errors: list[str] = []
+
+    if not path.exists():
+        errors.append("components/espcontrol/button_grid_sliders.h: keep light-off brightness display at zero")
+        return errors
+
+    text = path.read_text(encoding="utf-8")
+    if (
+        "light_control_display_pct" not in text
+        or "ctx && ctx->on ? ctx->current_pct : 0" not in text
+    ):
+        errors.append("components/espcontrol/button_grid_sliders.h: display zero brightness while light control is off")
+    if text.count("light_control_set_modal_value(ctx, light_control_display_pct(ctx));") < 2:
+        errors.append("components/espcontrol/button_grid_sliders.h: refresh brightness slider from light on/off and brightness updates")
+    if "light_control_set_modal_value(ui.active, light_control_display_pct(ui.active));" not in text:
+        errors.append("components/espcontrol/button_grid_sliders.h: update brightness slider immediately when the light power button is used")
+
+    return errors
+
+
+def firmware_network_status_version_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "network_status.h"
+    errors: list[str] = []
+    if not path.exists():
+        errors.append("components/espcontrol/network_status.h: keep network status version labeling")
+        return errors
+
+    text = path.read_text(encoding="utf-8")
+    if "network_status_is_specific_firmware_version" not in text:
+        errors.append("components/espcontrol/network_status.h: classify release versions before labeling firmware")
+
+    label_match = re.search(
+        r"inline\s+std::string\s+network_status_firmware_label\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        text,
+        re.S,
+    )
+    if label_match is None:
+        errors.append("components/espcontrol/network_status.h: keep network_status_firmware_label helper")
+        return errors
+
+    body = label_match.group("body")
+    if "network_status_is_specific_firmware_version(trimmed)" not in body:
+        errors.append("components/espcontrol/network_status.h: show only release versions as installed versions")
+    if 'espcontrol_i18n(std::string("Dev build"))' not in body:
+        errors.append("components/espcontrol/network_status.h: label local ESPHome builds as Dev build")
+    if 'espcontrol_i18n(std::string("Version unknown"))' not in body:
+        errors.append("components/espcontrol/network_status.h: keep empty firmware versions readable")
+
+    return errors
+
+
 def run_scan() -> int:
     errors = firmware_modal_errors(FIRMWARE_DIR, ROOT)
     errors.extend(firmware_modal_sleep_takeover_errors(ROOT))
+    errors.extend(firmware_subpage_modal_wiring_errors(ROOT))
+    errors.extend(firmware_light_control_brightness_errors(ROOT))
+    errors.extend(firmware_network_status_version_errors(ROOT))
 
     if errors:
         print("Firmware modal allocation check failed:")
@@ -265,6 +370,43 @@ def expect_sleep_takeover_errors(name: str, files: dict[str, str], expected: tup
             path.write_text(text, encoding="utf-8")
 
         errors = firmware_modal_sleep_takeover_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_subpage_modal_wiring_errors(name: str, grid_text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_grid.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(grid_text, encoding="utf-8")
+        (path.parent / "button_grid_subpages.h").write_text(
+            'if (b.type == "light_control") {\n'
+            "  b.options = light_control_card_options_normalized(b.options);\n"
+            "}\n"
+            'if (!b.type.empty() && b.type != "light_control") {\n'
+            "  b.options.clear();\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
+        errors = firmware_subpage_modal_wiring_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_network_status_version_errors(name: str, header_text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "network_status.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(header_text, encoding="utf-8")
+
+        errors = firmware_network_status_version_errors(root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -389,6 +531,66 @@ def run_self_test() -> int:
     expect_sleep_takeover_errors(
         "display takeover close",
         valid_sleep_takeover_files(),
+        (),
+    )
+    expect_subpage_modal_wiring_errors(
+        "subpage light modal missing click handler",
+        (
+            '      if (sb_cfg.type == "light_control") {\n'
+            "        if (!sb_cfg.entity.empty()) {\n"
+            "          LightControlCtx *ctx = create_light_control_context(\n"
+            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, nullptr, nullptr, nullptr, 100);\n"
+            "          subscribe_light_control_state(ctx);\n"
+            "        }\n"
+            "        continue;\n"
+            "      }\n"
+        ),
+        ("open light control modals from subpage cards",),
+    )
+    expect_subpage_modal_wiring_errors(
+        "subpage light modal click handler",
+        (
+            '      if (sb_cfg.type == "light_control") {\n'
+            "        if (!sb_cfg.entity.empty()) {\n"
+            "          LightControlCtx *ctx = create_light_control_context(\n"
+            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, nullptr, nullptr, nullptr, 100);\n"
+            "          subscribe_light_control_state(ctx);\n"
+            "          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {\n"
+            "            LightControlCtx *ctx = (LightControlCtx *)lv_event_get_user_data(e);\n"
+            "            if (ctx) light_control_open_modal(ctx);\n"
+            "          }, LV_EVENT_CLICKED, ctx);\n"
+            "        }\n"
+            "        continue;\n"
+            "      }\n"
+        ),
+        (),
+    )
+    expect_network_status_version_errors(
+        "raw local firmware version leaks",
+        (
+            "inline std::string network_status_firmware_label(const std::string &version) {\n"
+            "  std::string trimmed = version;\n"
+            "  if (trimmed.empty()) return espcontrol_i18n(std::string(\"Version unknown\"));\n"
+            "  if (trimmed == \"dev\" || trimmed == \"0.0.0\") return espcontrol_i18n(std::string(\"Dev build\"));\n"
+            "  return trimmed;\n"
+            "}\n"
+        ),
+        (
+            "classify release versions before labeling firmware",
+            "show only release versions as installed versions",
+        ),
+    )
+    expect_network_status_version_errors(
+        "release-only firmware version label",
+        (
+            "inline bool network_status_is_specific_firmware_version(const std::string &version) { return true; }\n"
+            "inline std::string network_status_firmware_label(const std::string &version) {\n"
+            "  std::string trimmed = version;\n"
+            "  if (trimmed.empty()) return espcontrol_i18n(std::string(\"Version unknown\"));\n"
+            "  if (network_status_is_specific_firmware_version(trimmed)) return trimmed;\n"
+            "  return espcontrol_i18n(std::string(\"Dev build\"));\n"
+            "}\n"
+        ),
         (),
     )
     home_idle_gated = valid_sleep_takeover_files()

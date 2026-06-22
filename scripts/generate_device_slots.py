@@ -39,8 +39,14 @@ def package_substitution_lines(device: dict) -> list[str]:
     ]
     if package.get("firmwareVersion"):
         lines.append(f'  firmware_version: "{package["firmwareVersion"]}"')
+    added_voice_substitutions = False
     for key, value in package["substitutions"].items():
         lines.append(f"  {key}: {value}")
+        if key == "clock_bar_visual_gap":
+            lines.extend(voice_substitution_lines(device))
+            added_voice_substitutions = True
+    if not added_voice_substitutions:
+        lines.extend(voice_substitution_lines(device))
     if package.get("ethernetSelectable"):
         frequency = package["backlightPwmFrequency"]
         lines.extend(
@@ -49,6 +55,7 @@ def package_substitution_lines(device: dict) -> list[str]:
                 '  disable_updates: "false"',
                 '  network_package_suffix: ${ "_ethernet" if network_transport == "ethernet" else "" }',
                 '  firmware_update_package_suffix: ${ "_disabled" if disable_updates == "true" else "" }',
+                '  esp32_c6_firmware_update_package_suffix: ${ "_disabled" if network_transport == "ethernet" else "" }',
                 f'  backlight_pwm_frequency: ${{ "{frequency["ethernet"]}" if network_transport == "ethernet" else "{frequency["wifi"]}" }}',
             ]
         )
@@ -56,10 +63,41 @@ def package_substitution_lines(device: dict) -> list[str]:
     return lines
 
 
+def voice_substitution_lines(device: dict) -> list[str]:
+    if device["slug"] != "esp32-p4-86":
+        return [
+            '  voice_clock_bar_hide_code: ""',
+            '  voice_clock_bar_apply_code: ""',
+            '  voice_interaction_active_condition: "false"',
+        ]
+    return [
+        "  voice_clock_bar_hide_code: |-",
+        "    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "  voice_clock_bar_apply_code: |-",
+        "    if (id(voice_services_enabled).state) {",
+        "      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,",
+        "                   -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);",
+        "      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "      const bool microphone_muted = id(master_mute_switch).state;",
+        "      const bool output_muted = id(voice_media_player).is_muted();",
+        "      lv_label_set_text(id(voice_clock_bar_mute_icon_label),",
+        '                        microphone_muted ? "\\U000F036D" :',
+        '                        output_muted ? "\\U000F04C4" : "\\U000F036C");',
+        "      lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),",
+        "                                  lv_color_hex(0xFFFFFF),",
+        "                                  LV_PART_MAIN);",
+        "    } else {",
+        "      lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "    }",
+        '  voice_interaction_active_condition: "id(voice_interaction_active)"',
+    ]
+
+
 def cover_art_substitution_lines(device: dict) -> list[str]:
     layouts = {
         "guition-esp32-s3-4848s040": {
             "cover_art_size": "480",
+            "cover_art_decode_size": "320",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "0",
@@ -93,6 +131,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
         },
         "esp32-p4-86": {
             "cover_art_size": "720",
+            "cover_art_decode_size": "720",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "0",
@@ -122,9 +161,11 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "true",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc4880p443": {
             "cover_art_size": "480",
+            "cover_art_decode_size": "480",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "0",
@@ -154,9 +195,11 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc8012p4a1": {
             "cover_art_size": "800",
+            "cover_art_decode_size": "800",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "800",
@@ -186,9 +229,11 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFF5E0",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc1060p470": {
             "cover_art_size": "600",
+            "cover_art_decode_size": "600",
             "cover_art_x": "0",
             "cover_art_y": "0",
             "cover_art_accent_x": "585",
@@ -218,6 +263,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
     }
     layout = layouts.get(device["slug"])
@@ -244,6 +290,11 @@ def package_file_text(device: dict) -> str:
     )
     firmware_update_suffix = (
         "${firmware_update_package_suffix}" if package.get("ethernetSelectable") else ""
+    )
+    esp32_c6_firmware_update_suffix = (
+        "${esp32_c6_firmware_update_package_suffix}"
+        if package.get("ethernetSelectable")
+        else ""
     )
     provisioning_suffix = (
         "${provisioning_package_suffix}" if package.get("provisioningSelectable") else ""
@@ -282,6 +333,13 @@ def package_file_text(device: dict) -> str:
             include_line(
                 "network_coprocessor",
                 f"!include device/network_coprocessor{network_suffix}.yaml",
+            )
+        )
+    if package.get("esp32C6FirmwareUpdate"):
+        lines.append(
+            include_line(
+                "esp32_c6_firmware_update",
+                f"!include ../../common/device/esp32_c6_firmware_update{esp32_c6_firmware_update_suffix}.yaml",
             )
         )
     lines.extend(
@@ -326,6 +384,10 @@ def package_file_text(device: dict) -> str:
                 "fw_update",
                 f"!include ../../common/addon/firmware_update{firmware_update_suffix}.yaml",
             ),
+            *[
+                include_line(key, include)
+                for key, include in (package.get("extraPackages") or {}).items()
+            ],
             "",
             "  # ---------------------------------------------------------------------------",
             "  # Screens (loading must be first page for LVGL startup)",

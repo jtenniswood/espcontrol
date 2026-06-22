@@ -566,8 +566,43 @@ function postCoverArtHideExternalInput(on) {
   return post(coverArtHideExternalInputPostUrls(on));
 }
 
-function postDeveloperExperimentalFeatures(on) {
-  postSwitchWithObjectIds(entityName("developer_experimental_features"), entityObjectIds("developer_experimental_features"), on);
+function coverArtDelayPostUrls(value) {
+  return entityPostUrls(
+    "number",
+    entityName("screen_saver_cover_art_delay"),
+    entityObjectIds("screen_saver_cover_art_delay"),
+    "set?value=" + encodeURIComponent(value)
+  );
+}
+
+function postCoverArtDelay(value) {
+  return post(coverArtDelayPostUrls(value));
+}
+
+function coverArtTrackOverlayDurationPostUrls(value) {
+  return entityPostUrls(
+    "number",
+    entityName("screen_saver_track_overlay_duration"),
+    entityObjectIds("screen_saver_track_overlay_duration"),
+    "set?value=" + encodeURIComponent(value)
+  );
+}
+
+function postCoverArtTrackOverlayDuration(value) {
+  return post(coverArtTrackOverlayDurationPostUrls(value));
+}
+
+function homeAssistantArtworkPortPostUrls(value) {
+  return entityPostUrls(
+    "number",
+    entityName("home_assistant_artwork_port"),
+    entityObjectIds("home_assistant_artwork_port"),
+    "set?value=" + encodeURIComponent(value)
+  );
+}
+
+function postHomeAssistantArtworkPort(value) {
+  return post(homeAssistantArtworkPortPostUrls(value));
 }
 
 function postNumber(name, value) {
@@ -696,6 +731,22 @@ function postNetworkStatusIcon(on) {
     on,
     NETWORK_STATUS_ICON_UNAVAILABLE
   );
+}
+
+var VOICE_SERVICES_UNAVAILABLE =
+  "Voice services setting is not available on this firmware. Update the device firmware, then reload this page.";
+
+function voiceServicesPostUrls(on) {
+  return entityPostUrls(
+    "switch",
+    entityName("voice_services"),
+    entityObjectIds("voice_services"),
+    on ? "turn_on" : "turn_off"
+  );
+}
+
+function postVoiceServices(on) {
+  post(voiceServicesPostUrls(on), null, VOICE_SERVICES_UNAVAILABLE);
 }
 
 var TEMPERATURE_DEGREE_SYMBOL_UNAVAILABLE =
@@ -908,6 +959,9 @@ function settingsStateEntities() {
 
   if (CFG.features && CFG.features.screenRotation) {
     items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_optional));
+  }
+  if (CFG.features && CFG.features.voiceServices) {
+    items = items.concat(entityStateItems(ENTITY_CATALOG.groups.settings_voice));
   }
 
   return items;

@@ -9,7 +9,7 @@
 substitutions:
   device_slug: "guition-esp32-p4-jc1060p470"
   firmware_manifest_slug: "guition-esp32-p4-jc1060p470"
-  firmware_version: "dev-jc1060p470-20260611-livecheck"
+  firmware_version: "dev"
   screen_width: "1024"
   screen_height: "600"
   content_width: "550"
@@ -34,6 +34,9 @@ substitutions:
   main_page_compact_pad_top: "5"
   clock_bar_item_gap: "80"
   clock_bar_visual_gap: "10"
+  voice_clock_bar_hide_code: ""
+  voice_clock_bar_apply_code: ""
+  voice_interaction_active_condition: "false"
   clock_font_size: "200"
   clock_cx: "512"
   clock_cy: "300"
@@ -45,8 +48,10 @@ substitutions:
   disable_updates: "false"
   network_package_suffix: ${ "_ethernet" if network_transport == "ethernet" else "" }
   firmware_update_package_suffix: ${ "_disabled" if disable_updates == "true" else "" }
+  esp32_c6_firmware_update_package_suffix: ${ "_disabled" if network_transport == "ethernet" else "" }
   backlight_pwm_frequency: ${ "20000Hz" if network_transport == "ethernet" else "1000Hz" }
   cover_art_size: "600"
+  cover_art_decode_size: "600"
   cover_art_x: "0"
   cover_art_y: "0"
   cover_art_accent_x: "585"
@@ -76,7 +81,7 @@ substitutions:
   cover_art_progress_height: "4"
   cover_art_text_color: "0xFFFFFF"
   cover_art_square_overlay: "false"
-  cover_art_live_image_updates: "true"
+  cover_art_live_image_updates: "false"
 
 packages:
   # ---------------------------------------------------------------------------
@@ -85,6 +90,7 @@ packages:
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
   network_coprocessor: !include device/network_coprocessor${network_package_suffix}.yaml
+  esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update${esp32_c6_firmware_update_package_suffix}.yaml
   icons:           !include ../../common/assets/icons.yaml
   fonts_device:    !include device/fonts.yaml
   button_theme:    !include ../../common/theme/button.yaml

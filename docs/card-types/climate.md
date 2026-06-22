@@ -31,7 +31,7 @@ A Climate card controls a Home Assistant `climate` entity, such as a thermostat,
 
 ## How It Works on the Panel
 
-The card can show either an icon or a large temperature. It lights up when the climate entity is actively heating or cooling.
+The card can show either an icon or a large temperature. It lights up when Home Assistant reports that the climate entity is actively heating, cooling, drying, or running the fan. Idle and off states do not show as active.
 
 Tapping the card opens a climate control popup. From there, you can:
 

@@ -26,6 +26,7 @@ function buttonTypeInfoOnlyVisible(key) {
     "clock",
     "door_window",
     "image",
+    "local_sensor",
     "presence",
     "timezone",
     "weather",
@@ -35,7 +36,7 @@ function buttonTypeInfoOnlyVisible(key) {
 
 var CARD_TYPE_PICKER_DETAILS = {
   "": { icon: "toggle-switch", description: "Toggle lights, switches, helpers, or fans." },
-  action: { icon: "flash", description: "Run a Home Assistant action or service." },
+  action: { icon: "flash", description: "Run a Home Assistant or local action." },
   alarm: { icon: "shield-home", description: "Control or trigger alarm panel actions." },
   calendar: { icon: "calendar-clock", description: "Show date, time, or world clock values." },
   climate: { icon: "thermostat", description: "Show climate status and temperature controls." },
@@ -47,6 +48,8 @@ var CARD_TYPE_PICKER_DETAILS = {
   image: { icon: "image", description: "Display an image card where supported." },
   internal: { icon: "power-plug", description: "Control built-in device relays." },
   light_brightness: { icon: "lightbulb", description: "Configure light switch, brightness, or temperature controls." },
+  lawn_mower: { icon: "robot-mower", description: "Show or control a robotic lawn mower." },
+  local_sensor: { icon: "gauge", description: "Show a sensor value from this device." },
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
@@ -54,8 +57,19 @@ var CARD_TYPE_PICKER_DETAILS = {
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
   subpage: { icon: "view-grid-plus", description: "Open a nested page of cards." },
   webhook: { icon: "webhook", description: "Send a direct HTTP request." },
+  vacuum: { icon: "robot-vacuum", description: "Show or control a vacuum cleaner." },
   weather: { icon: "weather-partly-cloudy", description: "Show weather or forecast data." },
 };
+
+var CARD_TYPE_PICKER_DEFAULTS = {
+  light_brightness: "light_control",
+};
+
+function defaultButtonTypeForPicker(key) {
+  return Object.prototype.hasOwnProperty.call(CARD_TYPE_PICKER_DEFAULTS, key)
+    ? CARD_TYPE_PICKER_DEFAULTS[key]
+    : key;
+}
 
 function buttonTypePickerDetails(key, label) {
   var details = CARD_TYPE_PICKER_DETAILS[key || ""] || {};
@@ -69,12 +83,10 @@ function buttonTypePickerOptionList(isSub, selectedTypeKey) {
   var typeOpts = [];
   var selectedUnsupported = null;
   var hasSelectedType = selectedTypeKey !== null && selectedTypeKey !== undefined;
-  var selectedHiddenExperimental = null;
   for (var k in BUTTON_TYPES) {
     var td = BUTTON_TYPES[k];
     var pickerKey = buttonTypeRegistryValue(td, "pickerKey", "");
     var allowInSubpage = !!buttonTypeRegistryValue(td, "allowInSubpage", false);
-    var experimental = buttonTypeRegistryValue(td, "experimental", "");
     var label = buttonTypeRegistryValue(td, "label", td.key || "Toggle");
     if (buttonTypeDisabledForDevice(td.key) || buttonTypeDisabledForDevice(pickerKey)) continue;
     if (!buttonTypeInfoOnlyVisible(td.key) || (pickerKey && !buttonTypeInfoOnlyVisible(pickerKey))) {
@@ -86,26 +98,11 @@ function buttonTypePickerOptionList(isSub, selectedTypeKey) {
     if (pickerKey && pickerKey !== td.key) continue;
     if (isSub && !allowInSubpage) continue;
     if (td.isAvailable && !td.isAvailable({ isSub: isSub }) && selectedTypeKey !== td.key) continue;
-    var experimentalHidden = experimental && !isExperimentalEnabled(experimental);
-    if (experimentalHidden) {
-      var showSelectedExperimental = buttonTypeRegistryValue(td, "showSelectedWhenExperimentalHidden", true);
-      if (selectedTypeKey === td.key && showSelectedExperimental !== false) selectedHiddenExperimental = td;
-      continue;
-    }
     typeOpts.push(Object.assign({
       key: td.key,
       label: label,
       disabled: false,
     }, buttonTypePickerDetails(td.key, label)));
-  }
-  if (selectedHiddenExperimental) {
-    var selectedExperimentalLabel = buttonTypeRegistryValue(selectedHiddenExperimental, "label", selectedHiddenExperimental.key || "Toggle") +
-      " (experimental)";
-    typeOpts.push(Object.assign({
-      key: selectedHiddenExperimental.key,
-      label: selectedExperimentalLabel,
-      disabled: true,
-    }, buttonTypePickerDetails(selectedHiddenExperimental.key, selectedExperimentalLabel)));
   }
   if (selectedUnsupported) {
     var unsupportedLabel = selectedUnsupported.label + " (not available)";
@@ -129,21 +126,6 @@ function buttonTypePickerKeys(isSub, selectedTypeKey) {
 
 function buttonTypeVisibleInPicker(key, isSub) {
   return buttonTypePickerKeys(!!isSub, null).indexOf(key) >= 0;
-}
-
-function hiddenExperimentalButtonTypeDef(typeDef) {
-  if (!typeDef) return null;
-  return Object.assign({}, typeDef, {
-    hideLabel: true,
-    renderSettingsBeforeLabel: null,
-    renderSettings: function (panel) {
-      var note = document.createElement("div");
-      note.className = "sp-field-hint";
-      note.textContent = "Enable Developer/Experimental Features from ?developer=experimental to edit this card.";
-      panel.appendChild(note);
-    },
-    contextMenuItems: null,
-  });
 }
 
 function renderPreview() {
@@ -199,7 +181,7 @@ function renderPreview() {
       var iconName = resolveIcon(b);
       var label = b.label || b.entity || "Configure";
       var color = isEpaperPreview() ? epaperPreviewFillColor() :
-        (b.type === "sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
+        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
         ? state.sensorColor : state.offColor;
       var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
       if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {

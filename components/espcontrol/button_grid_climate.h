@@ -400,22 +400,29 @@ inline std::string climate_hvac_service_value(const std::string &raw) {
   return value;
 }
 
+inline bool climate_action_is_working(const std::string &action) {
+  return action == "heating" || action == "cooling" ||
+         action == "drying" || action == "fan";
+}
+
 inline std::string climate_action_label(ClimateControlCtx *ctx) {
   if (!ctx || !ctx->available) return espcontrol_i18n(std::string("Unavailable"));
-  if (ctx->hvac_mode == "off") return espcontrol_i18n(std::string("Off"));
-  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
-      ctx->hvac_action == "unavailable") return climate_option_label(ctx->hvac_mode);
   if (ctx->hvac_action == "heating") return espcontrol_i18n(std::string("Heating"));
   if (ctx->hvac_action == "cooling") return espcontrol_i18n(std::string("Cooling"));
   if (ctx->hvac_action == "drying") return espcontrol_i18n(std::string("Drying"));
   if (ctx->hvac_action == "fan") return espcontrol_i18n(std::string("Fan"));
+  if (ctx->hvac_mode == "off") return espcontrol_i18n(std::string("Off"));
+  if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
+      ctx->hvac_action == "unavailable") return climate_option_label(ctx->hvac_mode);
   if (ctx->hvac_action == "idle") return espcontrol_i18n(std::string("Idle"));
   if (ctx->hvac_action == "off") return espcontrol_i18n(std::string("Off"));
   return espcontrol_i18n(std::string("Idle"));
 }
 
 inline bool climate_is_active(ClimateControlCtx *ctx) {
-  if (!ctx || !ctx->available || ctx->hvac_mode == "off") return false;
+  if (!ctx || !ctx->available) return false;
+  if (climate_action_is_working(ctx->hvac_action)) return true;
+  if (ctx->hvac_mode == "off") return false;
   if (ctx->hvac_action.empty() || ctx->hvac_action == "unknown" ||
       ctx->hvac_action == "unavailable") {
     return !climate_unavailable_value(ctx->hvac_mode);
@@ -424,7 +431,8 @@ inline bool climate_is_active(ClimateControlCtx *ctx) {
 }
 
 inline bool climate_temperature_controls_enabled(ClimateControlCtx *ctx) {
-  return ctx && ctx->available && ctx->hvac_mode != "off";
+  return ctx && ctx->available &&
+         (ctx->hvac_mode != "off" || climate_action_is_working(ctx->hvac_action));
 }
 
 inline bool climate_modal_temperature_controls_enabled(ClimateControlCtx *ctx) {

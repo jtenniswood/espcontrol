@@ -29,7 +29,6 @@ registerButtonType("push", {
   label: function () { return cardContractCardLabel("push"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("push"); },
   pickerKey: function () { return cardContractPickerKey("push"); },
-  experimental: function () { return cardContractExperimental("push"); },
   hidden: function () { return cardContractHidden("push"); },
   labelPlaceholder: "e.g. Doorbell",
   defaultConfig: function () { return cardContractDefaultConfig("push"); },

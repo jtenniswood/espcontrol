@@ -1,6 +1,7 @@
 // ── Clock (minute-aligned) ─────────────────────────────────────────────
 
 function getTzId(tz) {
+  if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(tz)) return "UTC";
   var idx = tz.indexOf(" (");
   return idx > 0 ? tz.substring(0, idx) : tz;
 }
@@ -44,8 +45,9 @@ function timezoneOffsetMinutes(tzId, date) {
 }
 
 function formatTimezoneOption(opt) {
+  if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(opt)) return opt;
   var tzId = getTzId(opt);
-  var offset = timezoneOffsetMinutes(tzId, new Date());
+  var offset = timezoneOffsetMinutes(tzId, webserverNow());
   if (offset == null || !isFinite(offset)) return opt;
   return tzId + " (" + formatGmtOffset(offset) + ")";
 }
@@ -59,8 +61,8 @@ function appendTimezoneOption(select, opt) {
 
 function updateClockText() {
   if (!els.clock) return;
-  var now = new Date();
-  var tzId = getTzId(state.timezone);
+  var now = webserverNow();
+  var tzId = getTzId(effectiveTimezoneOptionForWeb(state.timezone));
   try {
     var parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tzId, hour: "numeric", minute: "2-digit",
@@ -82,7 +84,7 @@ function updateClockText() {
 
 function updateClock() {
   updateClockText();
-  var now = new Date();
+  var now = webserverNow();
   var msToNext = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
   setTimeout(updateClock, msToNext + 50);
 }

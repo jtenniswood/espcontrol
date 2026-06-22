@@ -1,5 +1,6 @@
 .DS_Store
 .cache/
+.worktrees/
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
@@ -18,3 +19,6 @@ wifi-secrets*.yaml
 # Brainstorming / superpowers artifacts (never commit)
 .superpowers/
 docs/superpowers/
+
+# Temporary local ESPHome entry points used when flashing PR builds.
+devices/*/dev-pr*.yaml

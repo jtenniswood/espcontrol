@@ -45,11 +45,40 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
       - name: Generate icon outputs
         run: python3 scripts/build.py icons
+
+      - name: Check for generated icon changes
+        id: icon_changes
+        run: |
+          if git diff --quiet -- \
+            common/assets/icon_glyphs.yaml \
+            components/espcontrol/icons.h \
+            src/webserver/entry.js; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v6
+        if: steps.icon_changes.outputs.changed == 'true'
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        if: steps.icon_changes.outputs.changed == 'true'
+        run: |
+          NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"
+          mkdir -p "${NPM_CACHE}"
+          npm ci --prefer-offline --cache "${NPM_CACHE}"
+          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
+
+      - name: Build generated web bundles
+        if: steps.icon_changes.outputs.changed == 'true'
+        run: python3 scripts/build.py www
 
       - name: Commit generated icon outputs
         id: commit
@@ -57,7 +86,8 @@ jobs:
           if git diff --quiet -- \
             common/assets/icon_glyphs.yaml \
             components/espcontrol/icons.h \
-            src/webserver/www.js; then
+            src/webserver/entry.js \
+            docs/public/webserver/*/www.js; then
             echo "Generated icon files are already up to date."
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -68,7 +98,8 @@ jobs:
           git add \
             common/assets/icon_glyphs.yaml \
             components/espcontrol/icons.h \
-            src/webserver/www.js
+            src/webserver/entry.js \
+            docs/public/webserver/*/www.js
           git commit -m "Build generated icon files"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -86,7 +117,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
       - uses: actions/setup-node@v6
@@ -119,7 +150,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
       - uses: actions/setup-node@v6

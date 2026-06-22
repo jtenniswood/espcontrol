@@ -63,7 +63,6 @@ registerButtonType("webhook", {
   label: function () { return cardContractCardLabel("webhook"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("webhook"); },
   pickerKey: function () { return cardContractPickerKey("webhook"); },
-  experimental: function () { return cardContractExperimental("webhook"); },
   hidden: function () { return cardContractHidden("webhook"); },
   labelPlaceholder: "e.g. Gate Open",
   defaultConfig: function () { return cardContractDefaultConfig("webhook"); },

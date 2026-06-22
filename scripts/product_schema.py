@@ -162,8 +162,8 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                 errors.append(path_error(f"{card_path}.domains", "must be a list of strings"))
             if "pickerKey" in card and not isinstance(card.get("pickerKey"), str):
                 errors.append(path_error(f"{card_path}.pickerKey", "must be a string"))
-            if "experimental" in card and not isinstance(card.get("experimental"), str):
-                errors.append(path_error(f"{card_path}.experimental", "must be a string"))
+            if "experimental" in card:
+                errors.append(path_error(f"{card_path}.experimental", "is no longer supported; use a draft PR for testing"))
             if "hidden" in card and not isinstance(card.get("hidden"), bool):
                 errors.append(path_error(f"{card_path}.hidden", "must be a boolean"))
 

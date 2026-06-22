@@ -73,6 +73,7 @@ function lightTempClampMax(v, mn) {
 }
 
 var LIGHT_CONTROL_TYPE_OPTIONS = [
+  ["light_control", "All Controls"],
   ["light_switch", "Switch"],
   ["light_brightness", "Brightness"],
   ["light_temperature", "Colour Temperature"],
@@ -82,7 +83,9 @@ var LIGHT_CONTROL_TYPE_METADATA = {
   mode: {
     label: "Type",
     idSuffix: "light-control-type",
-    options: LIGHT_CONTROL_TYPE_OPTIONS,
+    options: function (b) {
+      return LIGHT_CONTROL_TYPE_OPTIONS;
+    },
     value: function (b) { return normalizeLightControlType(b.type); },
     onChange: function (b, helpers) {
       setLightControlType(b, this.value, helpers);
@@ -110,8 +113,35 @@ var LIGHT_TEMPERATURE_CARD_METADATA = {
   },
 };
 
+var LIGHT_FULL_CONTROL_CARD_METADATA = {
+  mode: LIGHT_CONTROL_TYPE_METADATA.mode,
+  entity: {
+    label: "Entity",
+    placeholder: "e.g. light.living_room",
+    domains: function () { return cardContractDomains("light_control"); },
+  },
+  labelField: {
+    label: "Label",
+    placeholder: "e.g. Living Room",
+  },
+  iconOff: {
+    field: "icon",
+    fallback: "Lightbulb Outline",
+    label: "Off Icon",
+  },
+  iconOn: {
+    field: "icon_on",
+    fallback: "Lightbulb",
+    label: "On Icon",
+  },
+  preview: {
+    badge: "lightbulb-on",
+  },
+};
+
 function normalizeLightControlType(type) {
   if (type === "light_switch") return "light_switch";
+  if (type === "light_control") return "light_control";
   return type === "light_temperature" ? "light_temperature" : "light_brightness";
 }
 
@@ -125,6 +155,7 @@ function setLightControlType(b, type, helpers) {
   helpers.saveField("sensor", b.sensor || "");
   helpers.saveField("unit", b.unit || "");
   helpers.saveField("precision", b.precision || "");
+  helpers.saveField("options", b.options || "");
   helpers.saveField("icon", b.icon || "Auto");
   helpers.saveField("icon_on", b.icon_on || "Auto");
   renderButtonSettings();
@@ -134,12 +165,165 @@ function renderLightControlTypeField(panel, b, helpers) {
   return helpers.renderCardModeSelector(panel, b, helpers, LIGHT_CONTROL_TYPE_METADATA);
 }
 
+function renderLightControlTabSettings(panel, b, helpers) {
+  b.options = normalizeLightControlOptions(b.options);
+  var tabs = lightControlTabs(b);
+  var definitions = lightControlTabDefinitions();
+  var definitionByValue = {};
+  definitions.forEach(function (definition) {
+    definitionByValue[definition.value] = definition;
+  });
+  var orderedDefinitions = [];
+  tabs.forEach(function (tab) {
+    if (definitionByValue[tab]) orderedDefinitions.push(definitionByValue[tab]);
+  });
+  definitions.forEach(function (definition) {
+    if (tabs.indexOf(definition.value) < 0) orderedDefinitions.push(definition);
+  });
+
+  var heading = document.createElement("div");
+  heading.className = "sp-field";
+  heading.appendChild(helpers.fieldLabel("Modal Tabs"));
+  panel.appendChild(heading);
+
+  var list = document.createElement("div");
+  list.className = "sp-light-tab-list";
+  panel.appendChild(list);
+
+  function listRows() {
+    return Array.prototype.slice.call(list.querySelectorAll(".sp-light-tab-row"));
+  }
+
+  function saveTabsFromRows() {
+    var nextTabs = [];
+    listRows().forEach(function (row) {
+      var input = row.querySelector("input[type=checkbox]");
+      if (input && input.checked) nextTabs.push(row.getAttribute("data-tab"));
+    });
+    if (!nextTabs.length) return false;
+    saveTabs(nextTabs);
+    return true;
+  }
+
+  function saveTabs(nextTabs) {
+    setLightControlTabs(b, nextTabs);
+    helpers.saveField("options", b.options);
+    renderButtonSettings();
+  }
+
+  function updateMoveButtons() {
+    var rows = listRows();
+    rows.forEach(function (row, index) {
+      var down = row.querySelector(".sp-light-tab-move-down");
+      if (down) down.disabled = index === rows.length - 1;
+    });
+  }
+
+  function moveRow(row, direction) {
+    if (!row) return;
+    if (direction < 0 && row.previousElementSibling) {
+      list.insertBefore(row, row.previousElementSibling);
+      saveTabsFromRows();
+    } else if (direction > 0 && row.nextElementSibling) {
+      list.insertBefore(row.nextElementSibling, row);
+      saveTabsFromRows();
+    }
+  }
+
+  orderedDefinitions.forEach(function (definition) {
+    var tabIndex = tabs.indexOf(definition.value);
+    var visible = tabIndex >= 0;
+
+    var row = document.createElement("div");
+    row.className = "sp-light-tab-row";
+    row.setAttribute("data-tab", definition.value);
+    row.draggable = true;
+
+    var controls = document.createElement("div");
+    controls.className = "sp-light-tab-controls";
+
+    var drag = document.createElement("button");
+    drag.type = "button";
+    drag.className = "sp-light-tab-drag mdi mdi-drag";
+    drag.setAttribute("aria-label", "Drag " + definition.label);
+    drag.tabIndex = -1;
+
+    var downBtn = document.createElement("button");
+    downBtn.type = "button";
+    downBtn.className = "sp-light-tab-move sp-light-tab-move-down mdi mdi-chevron-down";
+    downBtn.setAttribute("aria-label", "Move " + definition.label + " down");
+    downBtn.addEventListener("click", function () {
+      moveRow(row, 1);
+    });
+
+    controls.appendChild(drag);
+    controls.appendChild(downBtn);
+    row.appendChild(controls);
+
+    var label = document.createElement("label");
+    label.className = "sp-light-tab-label";
+    label.htmlFor = helpers.idPrefix + "light-tab-" + definition.value;
+    label.textContent = definition.label;
+    row.appendChild(label);
+
+    var toggle = document.createElement("label");
+    toggle.className = "sp-toggle";
+    var input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = helpers.idPrefix + "light-tab-" + definition.value;
+    input.checked = visible;
+    var track = document.createElement("span");
+    track.className = "sp-toggle-track";
+    toggle.appendChild(input);
+    toggle.appendChild(track);
+    row.appendChild(toggle);
+
+    input.addEventListener("change", function () {
+      if (!this.checked) {
+        var visibleCount = listRows().filter(function (item) {
+          var itemInput = item.querySelector("input[type=checkbox]");
+          return itemInput && itemInput.checked;
+        }).length;
+        if (visibleCount < 1) {
+          this.checked = true;
+          return;
+        }
+      }
+      saveTabsFromRows();
+    });
+
+    row.addEventListener("dragstart", function (event) {
+      row.classList.add("sp-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", definition.value);
+    });
+    row.addEventListener("dragend", function () {
+      row.classList.remove("sp-dragging");
+    });
+    row.addEventListener("dragover", function (event) {
+      var dragging = list.querySelector(".sp-dragging");
+      if (!dragging || dragging === row) return;
+      event.preventDefault();
+      var rect = row.getBoundingClientRect();
+      var after = event.clientY > rect.top + rect.height / 2;
+      list.insertBefore(dragging, after ? row.nextSibling : row);
+    });
+    row.addEventListener("drop", function (event) {
+      event.preventDefault();
+      saveTabsFromRows();
+    });
+
+    list.appendChild(row);
+  });
+
+  updateMoveButtons();
+}
+
 registerButtonType("light_temperature", {
   label: function () { return cardContractCardLabel("light_temperature"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("light_temperature"); },
   hideLabel: true,
   pickerKey: function () { return cardContractPickerKey("light_temperature"); },
-  experimental: function () { return cardContractExperimental("light_temperature"); },
   hidden: function () { return cardContractHidden("light_temperature"); },
   defaultConfig: function () { return cardContractDefaultConfig("light_temperature"); },
   isAvailable: function () {
@@ -229,6 +413,43 @@ registerButtonType("light_temperature", {
           '<span class="sp-slider-fill"></span>' +
         '</span></span>',
       badge: LIGHT_TEMPERATURE_CARD_METADATA.preview.badge,
+    });
+  },
+});
+
+registerButtonType("light_control", {
+  label: function () { return cardContractCardLabel("light_control"); },
+  allowInSubpage: function () { return cardContractAllowInSubpage("light_control"); },
+  hideLabel: true,
+  pickerKey: function () { return cardContractPickerKey("light_control"); },
+  hidden: function () { return cardContractHidden("light_control"); },
+  defaultConfig: function () { return cardContractDefaultConfig("light_control"); },
+  isAvailable: function () {
+    return false;
+  },
+  labelPlaceholder: "e.g. Living Room",
+  cardMetadata: LIGHT_FULL_CONTROL_CARD_METADATA,
+  onSelect: function (b) {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    b.icon = "Lightbulb Outline";
+    b.icon_on = "Lightbulb";
+  },
+  renderSettings: function (panel, b, slot, helpers) {
+    renderLightControlTypeField(panel, b, helpers);
+    b.options = normalizeLightControlOptions(b.options);
+
+    helpers.renderBasicCardFields(panel, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA);
+    renderLightControlTabSettings(panel, b, helpers);
+  },
+  renderPreview: function (b, helpers) {
+    var label = b.label || b.entity || "Light";
+    return cardBadgePreview(b, helpers, {
+      label: label,
+      iconFallback: "Lightbulb Outline",
+      badge: LIGHT_FULL_CONTROL_CARD_METADATA.preview.badge,
     });
   },
 });

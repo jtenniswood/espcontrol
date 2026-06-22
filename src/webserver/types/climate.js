@@ -42,7 +42,6 @@ registerButtonType("climate", {
   label: function () { return cardContractCardLabel("climate"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("climate"); },
   pickerKey: function () { return cardContractPickerKey("climate"); },
-  experimental: function () { return cardContractExperimental("climate"); },
   hidden: function () { return cardContractHidden("climate"); },
   hideLabel: true,
   labelPlaceholder: "e.g. Living Room",

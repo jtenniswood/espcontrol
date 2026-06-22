@@ -6,6 +6,7 @@ var SSE_ALIAS_GROUPS = {
   clockBarTime: ["switch-screen__clock_bar_time", "switch-screen_clock_bar_time", "switch-clock_bar_time_enabled"],
   clockBarTemperatureEntities: ["text-clock_bar_temperature_entities", "text-clock_bar__temperature_entities"],
   networkStatus: ["switch-screen__network_status_icon", "switch-screen_network_status_icon", "switch-network_status_enabled"],
+  voiceServices: ["switch-voice_services", "switch-voice_services_enabled"],
   temperatureDegreeSymbol: ["switch-screen__temperature_degree_symbol", "switch-screen_temperature_degree_symbol", "switch-temperature_degree_symbol_enabled"],
   subpageChevron: ["switch-screen__subpage_chevron", "switch-screen_subpage_chevron", "switch-subpage_chevrons_enabled"],
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
@@ -15,6 +16,8 @@ var SSE_ALIAS_GROUPS = {
   coverArtDelay: ["number-screen_saver__cover_art_delay", "number-screen_saver_cover_art_delay", "number-cover_art_delay"],
   trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration", "number-screen_saver__show_track_overlay"],
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
+  homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
+  homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
   scheduleWakeBrightness: ["number-screen__schedule_wake_brightness", "number-screen_schedule_wake_brightness", "number-schedule_wake_brightness"],
@@ -22,11 +25,11 @@ var SSE_ALIAS_GROUPS = {
   scheduleClockBrightness: ["number-screen__schedule_clock_brightness", "number-screen_schedule_clock_brightness", "number-schedule_clock_brightness"],
   scheduleClockTextColor: ["text-screen__schedule_clock_text_color", "text-screen_schedule_clock_text_color", "text-schedule_clock_text_color"],
   screenTheme: ["select-screen__theme", "select-screen_theme"],
+  screenActiveTimezone: ["text_sensor-screen__active_timezone", "text_sensor-screen_active_timezone", "text_sensor:Screen: Active Timezone"],
   screenLanguage: ["select-screen__language", "select-screen_language"],
   ntpServer1: ["text-screen__ntp_server_1", "text-ntp_server_1"],
   ntpServer2: ["text-screen__ntp_server_2", "text-ntp_server_2"],
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
-  developerExperimentalFeatures: ["switch-developer__experimental_features", "switch-developer_experimental_features"],
 };
 
 function applyClockBarStateValue(val, d, matchedKey) {
@@ -148,6 +151,10 @@ function connectEvents() {
       state.networkStatusOn = d.value === true || val === "ON";
       syncClockBarUi();
     },
+    "switch-voice_services": function (val, d) {
+      state.voiceServicesOn = d.value === true || val === "ON";
+      syncClockBarUi();
+    },
     "switch-screen__temperature_degree_symbol": function (val, d) {
       state.temperatureDegreeSymbolOn = d.value === true || val === "ON";
       syncClockBarUi();
@@ -265,6 +272,14 @@ function connectEvents() {
       state.coverArtTrackOverlayDuration = parseFloat(val) || 0;
       syncCoverArtScreensaverUi();
     },
+    "select-home_assistant_artwork_protocol": function (val, d) {
+      state.homeAssistantArtworkProtocol = normalizeHomeAssistantArtworkProtocol(d.value || val);
+      syncCoverArtScreensaverUi();
+    },
+    "number-home_assistant_artwork_port": function (val) {
+      state.coverArtHomeAssistantPort = normalizeHomeAssistantArtworkPort(val);
+      syncCoverArtScreensaverUi();
+    },
     "text-screensaver_mode": function (val) {
       state._screensaverModeReceived = true;
       state.screensaverMode = val === "sensor" || val === "timer" || val === "disabled" ? val : "disabled";
@@ -344,7 +359,7 @@ function connectEvents() {
     "select-screen__timezone": function (val, d) {
       state.timezone = d.value || val || state.timezone;
       if (Array.isArray(d.option)) {
-        state.timezoneOptions = timezoneOptionsWithFallback(d.option, state.timezone);
+        state.timezoneOptions = timezoneOptionsWithFallback(d.option, state.timezone, true);
         if (els.setTimezone) {
           els.setTimezone.innerHTML = "";
           state.timezoneOptions.forEach(function (opt) {
@@ -358,6 +373,14 @@ function connectEvents() {
         renderPreview();
       }
       updateClock();
+    },
+    "text_sensor-screen__active_timezone": function (val, d) {
+      state.activeTimezone = d.value || val || FALLBACK_TIMEZONE_OPTION;
+      if (isHomeAssistantAutoTimezone(state.timezone)) {
+        if (normalizeTemperatureUnit(state.temperatureUnit) === "Auto") updateTempPreview();
+        renderPreview();
+        updateClock();
+      }
     },
     "select-screen__language": function (val, d) {
       state.language = normalizeLanguage(d.value || val || state.language);
@@ -444,14 +467,6 @@ function connectEvents() {
       if (els.setAutoUpdate) els.setAutoUpdate.checked = state.autoUpdate;
       syncFirmwareUpdateUi();
     },
-    "switch-developer__experimental_features": function (val, d) {
-      state.developerExperimentalFeatures = d.value === true || val === "ON";
-      if (els.setDeveloperExperimentalFeatures) {
-        els.setDeveloperExperimentalFeatures.checked = state.developerExperimentalFeatures;
-      }
-      syncScreenRotationSelect();
-      scheduleRender();
-    },
     "select-firmware__update_frequency": function (val, d) {
       state.firmwareUpdateControlsSupported = true;
       state.updateFrequency = d.value || val || state.updateFrequency;
@@ -468,6 +483,7 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarTime, sseHandlers["switch-screen__clock_bar_time"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarTemperatureEntities, sseHandlers["text-clock_bar_temperature_entities"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.networkStatus, sseHandlers["switch-screen__network_status_icon"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.voiceServices, sseHandlers["switch-voice_services"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.temperatureDegreeSymbol, sseHandlers["switch-screen__temperature_degree_symbol"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.subpageChevron, sseHandlers["switch-screen__subpage_chevron"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screensaverTimeout, sseHandlers["number-screensaver_timeout"]);
@@ -477,6 +493,8 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtDelay, sseHandlers["number-screen_saver__cover_art_delay"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.trackOverlayDuration, sseHandlers["number-screen_saver__track_overlay_duration"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, sseHandlers["switch-screen_saver__hide_cover_art_on_external_input"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, sseHandlers["select-home_assistant_artwork_protocol"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, sseHandlers["number-home_assistant_artwork_port"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleTrigger, sseHandlers["text-screen__schedule_trigger"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, sseHandlers["number-screen__schedule_wake_timeout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeBrightness, sseHandlers["number-screen__schedule_wake_brightness"]);
@@ -484,11 +502,11 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleClockBrightness, sseHandlers["number-screen__schedule_clock_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleClockTextColor, sseHandlers["text-screen__schedule_clock_text_color"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenTheme, sseHandlers["select-screen__theme"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenActiveTimezone, sseHandlers["text_sensor-screen__active_timezone"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenLanguage, sseHandlers["select-screen__language"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer1, sseHandlers["text-screen__ntp_server_1"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer2, sseHandlers["text-screen__ntp_server_2"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer3, sseHandlers["text-screen__ntp_server_3"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.developerExperimentalFeatures, sseHandlers["switch-developer__experimental_features"]);
 
   var ssePatterns = [
     {

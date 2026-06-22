@@ -13,7 +13,7 @@ the right size on every device.
 | Style ID | Intended use |
 | --- | --- |
 | `font_icon_main` | Main action icons and setup icons |
-| `font_icon_card` | Smaller card-level icons |
+| `font_icon_card` | Smaller fixed climate option chip icons |
 | `font_icon_status` | Status, network, and subpage indicator icons |
 | `font_text_body` | Labels, setup body copy, and normal UI text |
 | `font_text_small` | Compact supporting text on small displays, only where needed |
@@ -31,6 +31,11 @@ The old shared common font package was removed from normal device builds. Each
 device defines the style IDs it needs in `devices/*/device/fonts.yaml`, using
 device-specific sizes behind the same generic names. This avoids loading setup
 fonts that duplicate fonts already available on the device.
+
+Some icon roles intentionally use smaller glyph sets. `font_icon_main` carries
+the user-selectable icon picker glyphs. `font_icon_card` carries only the fixed
+climate option chip icons; user-selected climate card icons still render through
+`font_icon_main`.
 
 ### Shared ratios
 

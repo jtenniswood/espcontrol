@@ -1,0 +1,27 @@
+# =============================================================================
+# PHYSICAL VOLUME BUTTON - BOOT/Key2 on GPIO35 (WiFi firmware only)
+# =============================================================================
+# GPIO35 is also an ESP32-P4 boot strap and remains usable as a normal input
+# after startup. A press wakes the display and opens the same local volume
+# control shown by tapping the clock-bar speaker icon.
+# =============================================================================
+
+binary_sensor:
+  - platform: gpio
+    id: physical_volume_button
+    internal: true
+    pin:
+      number: GPIO35
+      ignore_strapping_warning: true
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+    on_press:
+      then:
+        - script.execute: screensaver_wake
+        - script.wait: screensaver_wake
+        - script.execute: open_device_volume_control

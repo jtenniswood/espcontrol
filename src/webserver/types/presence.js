@@ -41,7 +41,6 @@ registerButtonType("presence", {
   label: function () { return cardContractCardLabel("presence"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("presence"); },
   pickerKey: function () { return cardContractPickerKey("presence"); },
-  experimental: function () { return cardContractExperimental("presence"); },
   hidden: function () { return cardContractHidden("presence"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("presence"); },

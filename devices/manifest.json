@@ -89,7 +89,7 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
@@ -102,7 +102,7 @@
           "volumeWidthCompensationPercent": 95
         },
         "package": {
-          "firmwareVersion": "dev-jc1060p470-20260611-livecheck",
+          "firmwareVersion": "dev",
           "substitutions": {
             "screen_width": "\"1024\"",
             "screen_height": "\"600\"",
@@ -138,6 +138,7 @@
           },
           "deviceFontPackageKey": "fonts_device",
           "networkCoprocessor": true,
+          "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
@@ -231,12 +232,12 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_small"
+          "climateOptionValue": "font_text_body"
         },
         "display": {
           "wrapTallLabels": false,
@@ -246,7 +247,7 @@
           "subpageChevronTextWidthPercent": 96
         },
         "package": {
-          "firmwareVersion": "dev-jc4880p443-20260611-livecheck",
+          "firmwareVersion": "dev",
           "substitutions": {
             "screen_width": "\"480\"",
             "screen_height": "\"800\"",
@@ -280,7 +281,8 @@
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\""
           },
-          "deviceFontPackageKey": "fonts_lg"
+          "deviceFontPackageKey": "fonts_lg",
+          "esp32C6FirmwareUpdate": true
         }
       }
     },
@@ -369,7 +371,7 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
@@ -384,7 +386,7 @@
           "subpageChevronY": -2
         },
         "package": {
-          "firmwareVersion": "dev-jc8012p4a1-20260611-livecheck",
+          "firmwareVersion": "dev",
           "substitutions": {
             "screen_width": "\"1280\"",
             "screen_height": "\"800\"",
@@ -418,7 +420,8 @@
             "screen_schedule_clock_min_brightness": "\"1\"",
             "screen_schedule_clock_default_brightness": "\"10\""
           },
-          "deviceFontPackageKey": "fonts_device"
+          "deviceFontPackageKey": "fonts_device",
+          "esp32C6FirmwareUpdate": true
         }
       }
     },
@@ -508,8 +511,8 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
-          "volumeLabel": "font_text_large",
+          "volumeNumber": "font_number_value_large",
+          "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
@@ -525,7 +528,7 @@
           "wrapTallLabels": false
         },
         "package": {
-          "firmwareVersion": "dev-esp32-p4-86-20260611-livecheck",
+          "firmwareVersion": "dev",
           "substitutions": {
             "screen_width": "\"720\"",
             "screen_height": "\"720\"",
@@ -557,12 +560,19 @@
             "screen_saver_clock_min_brightness": "\"1\"",
             "screen_saver_clock_default_brightness": "\"35\"",
             "screen_schedule_clock_min_brightness": "\"1\"",
-            "screen_schedule_clock_default_brightness": "\"10\""
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "voice_wake_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac\"",
+            "voice_timer_alert_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac\""
           },
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,
           "networkCoprocessor": true,
+          "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
+          "extraPackages": {
+            "voice_assistant": "!include device/voice_assistant.yaml",
+            "physical_volume_button": "!include device/physical_volume_button${network_package_suffix}.yaml"
+          },
           "backlightPwmFrequency": {
             "wifi": "100Hz",
             "ethernet": "20000Hz"
@@ -662,12 +672,12 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_small"
+          "climateOptionValue": "font_text_body"
         },
         "display": {
           "wrapTallLabels": false,
@@ -677,7 +687,7 @@
           "subpageChevronTextWidthPercent": 96
         },
         "package": {
-          "firmwareVersion": "dev-4848s040-20260611-livecheck",
+          "firmwareVersion": "dev",
           "subpageConfigChunks": 4,
           "substitutions": {
             "screen_width": "\"480\"",

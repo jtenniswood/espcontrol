@@ -8,6 +8,10 @@
 #include "esphome/core/log.h"
 #include "esphome/core/version.h"
 
+#if defined(USE_LVGL) && ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+#include "src/misc/cache/instance/lv_image_cache.h"
+#endif
+
 #ifdef USE_ESP32
 #include "esp_heap_caps.h"
 #endif
@@ -19,6 +23,7 @@
 static const char *const TAG = "artwork_image";
 static const char *const CONTENT_TYPE_HEADER_NAME = "content-type";
 static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 3000;
+static constexpr size_t MAX_RETIRED_IMAGE_BUFFERS = 1;
 static constexpr size_t MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
 static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 
@@ -160,10 +165,7 @@ void ArtworkImage::release() {
   this->pending_url_.clear();
   this->end_connection_();
   this->retire_active_buffer_();
-  this->cleanup_retired_buffers_(false);
-  if (!this->retired_buffers_.empty()) {
-    this->enable_loop();
-  }
+  this->cleanup_retired_buffers_(true);
 }
 
 size_t ArtworkImage::resize_(int width_in, int height_in) {
@@ -196,6 +198,11 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
     }
   }
   size_t new_size = this->get_buffer_size_(width, height);
+  if (!this->retired_buffers_.empty()) {
+    ESP_LOGI(TAG, "Freeing retired artwork buffers before next decode: need=%zu retired_bytes=%zu",
+             new_size, this->retired_buffer_bytes_());
+    this->cleanup_retired_buffers_(true);
+  }
   if (this->decode_buffer_) {
     if (new_size <= this->get_decode_buffer_size_()) {
       this->decode_buffer_width_ = width;
@@ -865,6 +872,16 @@ void ArtworkImage::discard_decode_buffer_() {
   this->decode_offset_y_ = 0;
 }
 
+void ArtworkImage::invalidate_lvgl_cache_() {
+#ifdef USE_LVGL
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+  lv_image_cache_drop(&this->dsc_);
+#else
+  lv_img_cache_invalidate_src(&this->dsc_);
+#endif
+#endif
+}
+
 bool ArtworkImage::promote_decode_buffer_() {
   if (!this->decode_buffer_) {
     ESP_LOGE(TAG, "Decode finished without a decoded image buffer");
@@ -898,6 +915,7 @@ bool ArtworkImage::promote_decode_buffer_() {
   this->data_start_ = this->buffer_;
   this->width_ = this->buffer_width_;
   this->height_ = this->buffer_height_;
+  this->invalidate_lvgl_cache_();
 #ifdef USE_LVGL
   memset(&this->dsc_, 0, sizeof(this->dsc_));
 #endif
@@ -919,22 +937,55 @@ void ArtworkImage::retire_active_buffer_() {
   this->buffer_offset_y_ = 0;
   this->width_ = 0;
   this->height_ = 0;
+  this->invalidate_lvgl_cache_();
 #ifdef USE_LVGL
   memset(&this->dsc_, 0, sizeof(this->dsc_));
 #endif
+  this->limit_retired_buffers_();
   this->cleanup_retired_buffers_(false);
+  if (!this->retired_buffers_.empty()) {
+    this->enable_loop();
+  }
 }
 
 void ArtworkImage::cleanup_retired_buffers_(bool force) {
   uint32_t now = millis();
   auto it = this->retired_buffers_.begin();
+  size_t freed_bytes = 0;
   while (it != this->retired_buffers_.end()) {
     if (force || now - it->retired_at >= RETIRED_BUFFER_GRACE_MS) {
+      freed_bytes += it->size;
       this->allocator_.deallocate(it->data, it->size);
       it = this->retired_buffers_.erase(it);
     } else {
       ++it;
     }
+  }
+  if (freed_bytes > 0) {
+    size_t remaining_bytes = 0;
+    for (const auto &buffer : this->retired_buffers_) {
+      remaining_bytes += buffer.size;
+    }
+    ESP_LOGI(TAG, "Freed retired artwork buffers: freed=%zu remaining=%zu remaining_bytes=%zu",
+             freed_bytes, this->retired_buffers_.size(), remaining_bytes);
+  }
+}
+
+size_t ArtworkImage::retired_buffer_bytes_() const {
+  size_t retired_bytes = 0;
+  for (const auto &buffer : this->retired_buffers_) {
+    retired_bytes += buffer.size;
+  }
+  return retired_bytes;
+}
+
+void ArtworkImage::limit_retired_buffers_() {
+  while (this->retired_buffers_.size() > MAX_RETIRED_IMAGE_BUFFERS) {
+    auto it = this->retired_buffers_.begin();
+    ESP_LOGW(TAG, "Forcing retired artwork buffer cleanup: size=%zu remaining=%zu",
+             it->size, this->retired_buffers_.size() - 1);
+    this->allocator_.deallocate(it->data, it->size);
+    this->retired_buffers_.erase(it);
   }
 }
 
@@ -987,10 +1038,13 @@ void ArtworkImage::finish_download_() {
     this->fail_download_();
     return;
   }
+  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   this->log_state_("download-complete");
   ESP_LOGD(TAG, "Image fully downloaded, read %zu bytes, width/height = %d/%d",
-           this->downloader_ ? this->downloader_->get_bytes_read() : 0, this->width_, this->height_);
+           bytes_read, this->width_, this->height_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
+  this->end_connection_();
+  this->log_state_("download-resources-released");
   App.feed_wdt();
 #ifdef USE_LVGL
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
@@ -1001,7 +1055,6 @@ void ArtworkImage::finish_download_() {
 #endif
   this->log_state_("lvgl-descriptor-ready");
   App.feed_wdt();
-  this->end_connection_();
   this->download_finished_callback_.call(false);
   App.feed_wdt();
   this->log_state_("download-callback-finished");
@@ -1053,14 +1106,15 @@ void ArtworkImage::log_state_(const char *stage) {
 #endif
   size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   size_t content_length = this->downloader_ ? this->downloader_->content_length : 0;
+  size_t retired_bytes = this->retired_buffer_bytes_();
   ESP_LOGD(TAG,
-           "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu heap_free=%zu heap_largest=%zu pending=%s",
+           "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu retired_bytes=%zu heap_free=%zu heap_largest=%zu pending=%s",
            stage, this->url_.size(), bytes_read, content_length, this->download_buffer_.unread(),
            this->download_buffer_.size(), this->buffer_width_, this->buffer_height_, this->buffer_content_width_,
            this->buffer_content_height_, this->buffer_offset_x_, this->buffer_offset_y_, this->decode_buffer_width_,
            this->decode_buffer_height_, this->decode_content_width_, this->decode_content_height_,
-           this->decode_offset_x_, this->decode_offset_y_, this->retired_buffers_.size(), heap_free, heap_largest,
-           this->update_pending_ ? "yes" : "no");
+           this->decode_offset_x_, this->decode_offset_y_, this->retired_buffers_.size(), retired_bytes, heap_free,
+           heap_largest, this->update_pending_ ? "yes" : "no");
 }
 
 void ArtworkImage::end_connection_() {
@@ -1071,6 +1125,7 @@ void ArtworkImage::end_connection_() {
   this->decoder_.reset();
   this->discard_decode_buffer_();
   this->download_buffer_.reset();
+  this->download_buffer_.shrink_to(this->download_buffer_initial_size_);
 }
 
 bool ArtworkImage::validate_url_(const std::string &url) {

@@ -14,7 +14,7 @@ server. It is written as plain JavaScript modules and bundled into a single
 | `src/webserver/model/*.ts` | Typed model sources. |
 | `src/webserver/modules/model_generated.js` | Generated web model output. |
 | `scripts/web_modules.json` | Explicit order for shared modules. |
-| `docs/public/webserver/<slug>/www.js` | Generated per-device bundles served in production. |
+| `docs/public/webserver/<slug>/www.js` | Generated per-device bundles used for bundled firmware and hosted compatibility. |
 
 Files in `src/webserver/types/` are discovered by the build. Shared files in
 `src/webserver/modules/` must be listed in `scripts/web_modules.json`.
@@ -28,14 +28,18 @@ python3 scripts/build.py www
 That command writes `docs/public/webserver/<slug>/www.js` for each supported
 device. Commit those generated bundles when web behavior changes.
 
-The configurator page itself is served by the device, but in production the
-JavaScript bundle is fetched from GitHub Pages:
+The configurator page itself is served by the device. New build entry points in
+`builds/*.yaml` bundle the matching JavaScript with `web_server.js_include`, so
+a flashed branch uses that branch's setup UI. The generated files are still
+published for older firmware that loads the hosted GitHub Pages copy:
 
 ```text
 https://jtenniswood.github.io/espcontrol/webserver/<slug>/www.js
 ```
 
-The default bundle URL is set as `js_url` in `common/device/core_infra.yaml`.
+The fallback hosted bundle URL is set as `js_url` in
+`common/device/core_infra.yaml`. Keep that path stable for older installed
+firmware and imported configs.
 
 ## Device API Shape
 

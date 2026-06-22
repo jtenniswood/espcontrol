@@ -47,6 +47,10 @@ inline bool action_card_action_allowed(const std::string &action) {
 }
 
 inline void send_action_card_action(const ParsedCfg &p) {
+  if (action_card_local_action(p)) {
+    if (!p.entity.empty()) send_local_action(p.entity);
+    return;
+  }
   if (p.entity.empty() || p.sensor.empty() || !action_card_action_allowed(p.sensor)) return;
   if (action_card_option_select(p)) return;
   const char *value_key = action_card_value_key(p.sensor);
@@ -203,6 +207,10 @@ inline bool cover_tilt_mode(const std::string &sensor) {
   return card_runtime_cover_tilt_mode(sensor);
 }
 
+inline bool cover_modal_mode(const std::string &sensor) {
+  return card_runtime_cover_modal_mode(sensor);
+}
+
 inline bool cover_command_mode(const std::string &sensor) {
   return card_runtime_cover_command_mode(sensor);
 }
@@ -290,6 +298,14 @@ inline void send_cover_command_action(const ParsedCfg &p) {
   }
 }
 
+inline void send_cover_command_action(const std::string &entity_id,
+                                      const std::string &mode) {
+  ParsedCfg p;
+  p.entity = entity_id;
+  p.sensor = mode;
+  send_cover_command_action(p);
+}
+
 // Send HA action for a slider change: toggle (value<0), brightness, or cover position/tilt
 inline void send_slider_action(const std::string &entity_id, int value, bool cover_tilt = false) {
   esphome::api::HomeassistantActionRequest req;
@@ -373,6 +389,35 @@ inline void send_light_temp_action(const std::string &entity_id, int pct, int mi
   char buf[8];
   snprintf(buf, sizeof(buf), "%d", kelvin);
   ha_action_add_data(req, "color_temp_kelvin", buf);
+  ha_action_send(req);
+}
+
+inline void send_light_color_name_action(const std::string &entity_id, const char *color_name) {
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, "light.turn_on", false, 2)) return;
+  if (entity_id.empty() || !color_name || color_name[0] == '\0') return;
+  ha_action_add_entity(req, entity_id);
+  ha_action_add_data(req, "color_name", color_name);
+  ha_action_send(req);
+}
+
+inline void send_light_rgb_action(const std::string &entity_id, uint32_t color) {
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, "light.turn_on", false, 1)) return;
+  if (entity_id.empty()) return;
+  req.data_template.init(1);
+  req.variables.init(3);
+  ha_action_add_entity(req, entity_id);
+  ha_action_add_data_template(req, "rgb_color", "{{ [red | int, green | int, blue | int] }}");
+  char red[4];
+  char green[4];
+  char blue[4];
+  snprintf(red, sizeof(red), "%u", static_cast<unsigned>((color >> 16) & 0xFF));
+  snprintf(green, sizeof(green), "%u", static_cast<unsigned>((color >> 8) & 0xFF));
+  snprintf(blue, sizeof(blue), "%u", static_cast<unsigned>(color & 0xFF));
+  ha_action_add_variable(req, "red", red);
+  ha_action_add_variable(req, "green", green);
+  ha_action_add_variable(req, "blue", blue);
   ha_action_send(req);
 }
 
@@ -482,6 +527,10 @@ inline bool alarm_action_context_valid(AlarmActionCtx *action);
 struct FanCardCtx;
 inline bool fan_non_speed_card_type(const std::string &type);
 inline void fan_card_handle_click(FanCardCtx *ctx);
+struct CoverControlCtx;
+inline void cover_control_open_modal(CoverControlCtx *ctx);
+struct LightControlCtx;
+inline void light_control_open_modal(LightControlCtx *ctx);
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
@@ -490,7 +539,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   if (media_fast_press_consume(slot_num)) return;
   if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
-  if (p.type == "sensor" || p.type == "text_sensor" ||
+  if (p.type == "sensor" || p.type == "text_sensor" || p.type == "local_sensor" ||
       p.type == "door_window" ||
       p.type == "presence" ||
       p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||
@@ -524,6 +573,12 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (fan_non_speed_card_type(p.type)) {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_card_handle_click(ctx);
+  } else if (p.type == "cover" && cover_modal_mode(p.sensor)) {
+    CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) cover_control_open_modal(ctx);
+  } else if (p.type == "light_control") {
+    LightControlCtx *ctx = (LightControlCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) light_control_open_modal(ctx);
   } else if (p.type == "garage") {
     if (garage_command_mode(p.sensor)) {
       send_cover_command_action(p);
@@ -550,12 +605,37 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     }
   } else if (p.type == "internal") {
     if (!p.entity.empty()) send_internal_relay_action(p);
+  } else if (p.type == "local" || action_card_local_action(p)) {
+    if (!p.entity.empty()) send_local_action(p.entity);
   } else if (p.type == "action") {
     if (action_card_option_select(p)) {
       OptionSelectCtx *ctx = (OptionSelectCtx *)lv_obj_get_user_data(btn_obj);
       if (ctx) option_select_open_modal(ctx);
+    } else if (action_script_confirmation_enabled(p) && btn_obj) {
+      switch_confirmation_open_modal(p, btn_obj, false);
     } else {
       send_action_card_action(p);
+    }
+  } else if (p.type == "vacuum") {
+    VacuumCardCtx *ctx = (VacuumCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) {
+      send_vacuum_card_action(ctx);
+    } else if (!vacuum_card_read_only(p)) {
+      VacuumCardCtx fallback;
+      fallback.entity_id = p.entity;
+      fallback.mode = vacuum_card_mode(p.sensor);
+      fallback.area_id = p.unit;
+      send_vacuum_card_action(&fallback);
+    }
+  } else if (p.type == "lawn_mower") {
+    LawnMowerCardCtx *ctx = (LawnMowerCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) {
+      send_lawn_mower_card_action(ctx);
+    } else if (!lawn_mower_card_read_only(p)) {
+      LawnMowerCardCtx fallback;
+      fallback.entity_id = p.entity;
+      fallback.mode = lawn_mower_card_mode(p.sensor);
+      send_lawn_mower_card_action(&fallback);
     }
   } else if (p.type == "webhook") {
     send_webhook_action(p);

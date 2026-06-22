@@ -17,11 +17,13 @@ API_NAVIGATE_PATH = ROOT / "common" / "device" / "api_navigate.yaml"
 COVER_ART_PATH = ROOT / "common" / "device" / "screen_cover_art.yaml"
 ARTWORK_IMAGE_PATH = ROOT / "components" / "artwork_image" / "artwork_image.cpp"
 BACKLIGHT_PATH = ROOT / "common" / "addon" / "backlight.yaml"
+DISPLAY_CONFIG_PATH = ROOT / "common" / "config" / "display.yaml"
 TIME_ADDON_PATH = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_PATH = ROOT / "components" / "espcontrol" / "sun_calc.h"
 S3_DEVICE_PATH = ROOT / "devices" / "guition-esp32-s3-4848s040" / "device" / "device.yaml"
 S3_PACKAGES_PATH = ROOT / "devices" / "guition-esp32-s3-4848s040" / "packages.yaml"
 DEVICE_DEVICE_PATHS = tuple(sorted((ROOT / "devices").glob("*/device/device.yaml")))
+DEVICE_SENSOR_PATHS = tuple(sorted((ROOT / "devices").glob("*/device/sensors.yaml")))
 DEVICE_PACKAGE_PATHS = tuple(sorted((ROOT / "devices").glob("*/packages.yaml")))
 CONNECTIVITY_PATHS = (
     ROOT / "common" / "addon" / "connectivity.yaml",
@@ -112,22 +114,17 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: missing ha_subscribe_state helper")
     elif "heap_available" in state_helper.group("body"):
         errors.append(f"{rel}: keep core HA state subscriptions off the low-heap guard")
-    elif "ha_note_state_retry_result" not in state_helper.group("body"):
-        errors.append(f"{rel}: track unavailable subscribed states for reconnect retries")
 
-    if (
-        "ha_retry_unavailable_states" not in text
-        or "ha_unavailable_state_retry_refs" not in text
-        or "HA_UNAVAILABLE_STATE_RETRY_INTERVAL_MS" not in text
-        or "HA_UNAVAILABLE_STATE_RETRY_RESPONSE_TIMEOUT_MS" not in text
-    ):
-        errors.append(f"{rel}: retry unavailable subscribed states after Home Assistant finishes startup")
-    if "waiting_for_response = false" not in text:
-        errors.append(f"{rel}: expire unanswered unavailable-state retries after Home Assistant startup")
-    if "ha_entity_state_unavailable_ref(entity_id, state)" not in text:
-        errors.append(f"{rel}: use entity-aware unavailable checks for subscribed state retries")
-    if "ha_reset_unavailable_state_retries" not in text:
-        errors.append(f"{rel}: expose a helper to clear stale unavailable state retries")
+    retry_symbols = (
+        "HaUnavailableStateRetryRef",
+        "ha_unavailable_state_retry_refs",
+        "ha_note_state_retry_result",
+        "ha_retry_unavailable_states",
+        "ha_reset_unavailable_state_retries",
+        "HA_UNAVAILABLE_STATE_RETRY",
+    )
+    if any(symbol in text for symbol in retry_symbols):
+        errors.append(f"{rel}: do not reintroduce unavailable HA state retry polling")
 
     attribute_helper = ATTRIBUTE_HELPER_PATTERN.search(text)
     if not attribute_helper:
@@ -150,6 +147,18 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: defer Home Assistant actions when S3 internal heap is critically low")
     if "Home Assistant attribute request" not in text:
         errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
+    if text.count("ha_state_callback_depth() != 0 || !ha_api_state_connected()") < 2:
+        errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
+    if (
+        "request.callbacks.push_back(std::move(callback))" not in text
+        or "request.entity_id == entity_id" not in text
+        or "for (const auto &callback : *callbacks)" not in text
+    ):
+        errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
+    if text.count("ha_track_subscription_callback(callback_ref") < 2:
+        errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
+    if "ha_release_subscription_callbacks_now" not in text or "*ref.callback = nullptr" not in text:
+        errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
 
     return errors
 
@@ -169,20 +178,18 @@ def firmware_unavailable_retry_errors(
             config_text,
             re.DOTALL,
         )
-        if not bump_match or "ha_reset_unavailable_state_retries()" not in bump_match.group("body"):
-            errors.append(f"{config_rel}: clear stale unavailable state retries when subscriptions are rebuilt")
+        if bump_match and "ha_reset_unavailable_state_retries" in bump_match.group("body"):
+            errors.append(f"{config_rel}: do not reset removed unavailable HA state retries")
+        if bump_match and "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT)" not in bump_match.group("body"):
+            errors.append(f"{config_rel}: release retired default Home Assistant subscription callbacks on generation bumps")
+        if "ha_reset_unavailable_state_retries" in config_text:
+            errors.append(f"{config_rel}: do not keep removed unavailable HA state retry helpers")
 
     if core_infra_path.exists():
         core_rel = core_infra_path.relative_to(root)
         core_text = core_infra_path.read_text(encoding="utf-8")
-        if "ha_retry_unavailable_states" not in core_text:
-            errors.append(f"{core_rel}: retry unavailable HA states after reconnects and during maintenance")
-        interval_match = re.search(
-            r"(?ms)^interval:\n(?P<body>.*?)(?:^logger:|\Z)",
-            core_text,
-        )
-        if not interval_match or "ha_retry_unavailable_states();" not in interval_match.group("body"):
-            errors.append(f"{core_rel}: periodically retry unavailable HA states")
+        if "ha_retry_unavailable_states" in core_text:
+            errors.append(f"{core_rel}: do not retry unavailable HA states after reconnects or during maintenance")
     return errors
 
 
@@ -319,6 +326,31 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
         body = match.group("body")
         if "register_ha_control_availability(sb_btn, sb_btn)" in body:
             errors.append(f"{rel}: keep subpage trigger cards tappable while Home Assistant availability is pending")
+    return errors
+
+
+def firmware_local_sensor_binding_order_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_grid.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    if "if (sensor_card_local_sensor(p)) return false;" not in text:
+        errors.append(f"{rel}: keep local sensor subtypes out of bind_basic_sensor_card")
+
+    for match in re.finditer(r"if\s*\(\s*bind_basic_sensor_card\s*\(", text):
+        bind_start = match.start()
+        image_start = text.rfind("if (bind_image_card", 0, bind_start)
+        line_no = text.count("\n", 0, bind_start) + 1
+        if image_start < 0:
+            errors.append(f"{rel}:{line_no}: bind image cards before basic sensor cards")
+            continue
+        pre_bind_window = text[image_start:bind_start]
+        if "sensor_card_local_sensor" not in pre_bind_window:
+            errors.append(f"{rel}:{line_no}: skip local sensor subtypes before Home Assistant sensor binding")
+
     return errors
 
 
@@ -560,8 +592,12 @@ def firmware_cover_art_external_input_errors(path: Path, root: Path) -> list[str
     errors: list[str] = []
     if "cover_art_hide_external_input_enabled" not in text:
         errors.append(f"{rel}: expose a cover art external-input hide setting")
-    if 'ha_subscribe_attribute(cover_entity, std::string("source"), handle_media_source)' not in text:
+    if ('std::string("source")' not in text or
+            "handle_media_source" not in text or
+            "HA_SUBSCRIPTION_SCOPE_COVER_ART" not in text):
         errors.append(f"{rel}: subscribe to the media player source attribute")
+    if "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART)" not in text:
+        errors.append(f"{rel}: release retired cover art Home Assistant subscriptions")
     if 'ha_get_attribute(cover_entity, std::string("source"), handle_media_source)' not in text:
         errors.append(f"{rel}: refresh the media player source attribute")
     if 'next == "TV"' not in text or 'next == "Line-in"' not in text:
@@ -649,6 +685,13 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         ):
             errors.append(f"{rel}: do not exit early from {script_id} when stale artwork needs refresh")
 
+    cached_body = yaml_script_body(text, "cover_art_use_cached_artwork")
+    if cached_body and cached_body.count("id(cover_art_refresh_needed) = true;") < 2:
+        errors.append(f"{rel}: mark changed cached artwork URLs as stale before downloading")
+    resubscribe_body = yaml_script_body(text, "cover_art_resubscribe")
+    if resubscribe_body and "if (!url.empty() && url != id(cover_art_url))" not in resubscribe_body:
+        errors.append(f"{rel}: mark changed Home Assistant artwork attributes as stale")
+
     apply_body = yaml_script_body(text, "cover_art_apply_downloaded_image")
     if not apply_body:
         errors.append(f"{rel}: missing cover_art_apply_downloaded_image script")
@@ -659,6 +702,11 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
             errors.append(f"{rel}: remember the clean source artwork URL after a download")
         if "id(cover_art_refresh_needed) = false" not in apply_body:
             errors.append(f"{rel}: clear stale artwork state only after a replacement image applies")
+        if (
+            "script.execute: cover_art_clear_image_source" not in apply_body
+            or "script.wait: cover_art_clear_image_source" not in apply_body
+        ):
+            errors.append(f"{rel}: detach the previous LVGL artwork source before showing a replacement image")
 
     if text.count("mark_artwork_refresh_needed();") < 4:
         errors.append(f"{rel}: mark title, artist, album, and source changes as artwork refresh triggers")
@@ -687,8 +735,75 @@ def firmware_cover_art_disable_errors(path: Path, root: Path) -> list[str]:
     body = yaml_script_body(text, "cover_art_disable")
     if not body:
         errors.append(f"{rel}: missing cover_art_disable script")
-    elif "switch.turn_off: media_player_sleep_prevention_enabled" not in body:
-        errors.append(f"{rel}: turn off media sleep prevention when cover art is disabled")
+    elif "switch.turn_off: media_player_sleep_prevention_enabled" in body:
+        errors.append(f"{rel}: keep media sleep prevention independent when cover art is disabled")
+    return errors
+
+
+def firmware_media_sleep_prevention_errors(
+    backlight_path: Path, display_path: Path, cover_art_path: Path, root: Path
+) -> list[str]:
+    errors: list[str] = []
+
+    if backlight_path.exists():
+        rel = backlight_path.relative_to(root)
+        text = backlight_path.read_text(encoding="utf-8")
+        idle_body = yaml_script_body(text, "screensaver_idle_check")
+        if idle_body is None:
+            errors.append(f"{rel}: missing screensaver_idle_check script")
+        else:
+            if (
+                "id(media_player_sleep_prevention_enabled).state &&" not in idle_body
+                or "id(media_player_playing)" not in idle_body
+            ):
+                errors.append(f"{rel}: keep media playback awake only through the media sleep prevention setting")
+            if "id(cover_art_media_playing)" in idle_body:
+                errors.append(f"{rel}: use the dedicated media sleep prevention playback state")
+            if re.search(
+                r"id\(cover_art_screensaver_enabled\)\.state[\s\S]{0,160}"
+                r"id\(media_player_playing\)",
+                idle_body,
+            ):
+                errors.append(f"{rel}: do not let cover art alone keep the idle timer awake")
+
+    if display_path.exists():
+        rel = display_path.relative_to(root)
+        text = display_path.read_text(encoding="utf-8")
+        if "switch.turn_on: media_player_sleep_prevention_enabled" in text:
+            errors.append(f"{rel}: do not turn on media sleep prevention when cover art is enabled")
+
+    if cover_art_path.exists():
+        rel = cover_art_path.relative_to(root)
+        text = cover_art_path.read_text(encoding="utf-8")
+        playback_started_body = yaml_script_body(text, "cover_art_playback_started")
+        if playback_started_body is None:
+            errors.append(f"{rel}: missing cover_art_playback_started script")
+        elif (
+            "script.execute: cover_art_delay_timer" in playback_started_body
+            and (
+                "id(media_player_sleep_prevention_enabled).state" not in playback_started_body
+                or "script.execute: screensaver_idle_check" not in playback_started_body
+            )
+        ):
+            errors.append(f"{rel}: do not start cover art immediately unless media sleep prevention or screensaver is active")
+
+    return errors
+
+
+def firmware_media_sleep_prevention_subscription_errors(paths: tuple[Path, ...], root: Path) -> list[str]:
+    errors: list[str] = []
+    for path in paths:
+        if not path.exists():
+            continue
+        rel = path.relative_to(root)
+        text = path.read_text(encoding="utf-8")
+        if "id(media_player_sleep_prevention_entity).state" not in text:
+            errors.append(f"{rel}: subscribe media sleep prevention to its configured media player entity")
+        if re.search(
+            r"id\(cover_art_media_player_entity\)\.state,\s*\n\s*&id\(media_player_playing\)",
+            text,
+        ):
+            errors.append(f"{rel}: do not drive media sleep prevention from the cover art media player")
     return errors
 
 
@@ -849,6 +964,11 @@ def firmware_image_card_startup_errors(
     if "image_card_context_current" not in text or "generation == ha_subscription_generation()" not in text:
         errors.append(f"{rel}: ignore stale image-card callbacks after grid rebuild")
     if (
+        "image_card_generation" not in text
+        or "image_card_context_current(ctx, image_card_entity_id, image_card_generation)" not in text
+    ):
+        errors.append(f"{rel}: ignore stale image-card entity_picture callbacks after grid rebuild")
+    if (
         ("image_card_tile_request_size(width, height" not in text and
          "image_card_tile_request_size(decode_width, decode_height" not in text)
         or "image_card_high_quality_request_size" not in text
@@ -887,6 +1007,8 @@ def firmware_artwork_image_auth_errors(path: Path, root: Path) -> list[str]:
         or "container->status_code = HTTP_CODE_OK;" not in text
     ):
         errors.append(f"{rel}: allow Home Assistant media proxy artwork to fall back to image-byte detection")
+    if "download_buffer_.shrink_to(this->download_buffer_initial_size_)" not in text:
+        errors.append(f"{rel}: release oversized artwork download buffers after image requests")
     return errors
 
 
@@ -1020,8 +1142,23 @@ def firmware_screen_schedule_screensaver_overlay_errors(cover_art_path: Path, ro
 
     if show_body is None:
         errors.append(f"{rel}: missing show_cover_art_view script")
-    elif "lv_obj_move_foreground(id(cover_art_screensaver))" not in show_body:
-        errors.append(f"{rel}: raise the cover art screensaver above any existing top-layer elements")
+    else:
+        if "screen_schedule_blocks_cover_art(" not in show_body:
+            errors.append(f"{rel}: prevent cover art from overriding active screen schedule night mode")
+        if "lv_obj_move_foreground(id(cover_art_screensaver))" not in show_body:
+            errors.append(f"{rel}: raise the cover art screensaver above any existing top-layer elements")
+
+    delay_body = yaml_script_body(text, "cover_art_delay_timer")
+    if delay_body is None:
+        errors.append(f"{rel}: missing cover_art_delay_timer script")
+    elif "screen_schedule_blocks_cover_art(" not in delay_body:
+        errors.append(f"{rel}: keep delayed cover art from starting during screen schedule night mode")
+
+    playback_started_body = yaml_script_body(text, "cover_art_playback_started")
+    if playback_started_body is None:
+        errors.append(f"{rel}: missing cover_art_playback_started script")
+    elif "screen_schedule_blocks_cover_art(" not in playback_started_body:
+        errors.append(f"{rel}: keep playback-start cover art from overriding screen schedule night mode")
 
     return errors
 
@@ -1045,6 +1182,15 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             mode_index != -1 and schedule_index > mode_index
         ):
             errors.append(f"{rel}: let the night screen schedule override timer screensaver actions")
+
+    schedule_off_body = yaml_script_body(text, "backlight_schedule_display_off")
+    if schedule_off_body is None:
+        errors.append(f"{rel}: missing backlight_schedule_display_off script")
+    elif (
+        "script.stop: cover_art_delay_timer" not in schedule_off_body
+        or "script.execute: hide_cover_art_view" not in schedule_off_body
+    ):
+        errors.append(f"{rel}: screen schedule display-off should clear cover art before forcing the screen off")
 
     wake_body = yaml_script_body(text, "screensaver_presence_wake")
     if wake_body is None:
@@ -1195,6 +1341,7 @@ def run_scan() -> int:
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
     errors.extend(firmware_ntp_startup_errors(TIME_ADDON_PATH, SUN_CALC_PATH, CONNECTIVITY_PATHS, ROOT))
     errors.extend(firmware_weather_request_errors(FIRMWARE_DIR, ROOT))
@@ -1206,6 +1353,8 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_stale_image_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_refresh_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
+    errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
+    errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
@@ -1267,6 +1416,28 @@ def expect_ha_boundary_errors(name: str, files: dict[str, str], expected: tuple[
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_unavailable_retry_errors(
+    name: str,
+    config_text: str,
+    core_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        core_path = root / "common" / "device" / "core_infra.yaml"
+        firmware_dir.mkdir(parents=True)
+        core_path.parent.mkdir(parents=True)
+        (firmware_dir / "button_grid_config.h").write_text(config_text, encoding="utf-8")
+        core_path.write_text(core_text, encoding="utf-8")
+
+        errors = firmware_unavailable_retry_errors(firmware_dir, core_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_todo_request_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -1311,6 +1482,20 @@ def expect_action_card_availability_errors(name: str, text: str, expected: tuple
         (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
 
         errors = firmware_action_card_availability_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_local_sensor_binding_order_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_local_sensor_binding_order_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -1501,6 +1686,32 @@ def expect_cover_art_disable_errors(name: str, text: str, expected: tuple[str, .
         path.write_text(text, encoding="utf-8")
 
         errors = firmware_cover_art_disable_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_sleep_prevention_errors(
+    name: str,
+    backlight_text: str,
+    display_text: str,
+    cover_art_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        backlight_path = root / "common" / "addon" / "backlight.yaml"
+        display_path = root / "common" / "config" / "display.yaml"
+        cover_art_path = root / "common" / "device" / "screen_cover_art.yaml"
+        backlight_path.parent.mkdir(parents=True)
+        display_path.parent.mkdir(parents=True)
+        cover_art_path.parent.mkdir(parents=True)
+        backlight_path.write_text(backlight_text, encoding="utf-8")
+        display_path.write_text(display_text, encoding="utf-8")
+        cover_art_path.write_text(cover_art_text, encoding="utf-8")
+
+        errors = firmware_media_sleep_prevention_errors(backlight_path, display_path, cover_art_path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -1760,6 +1971,111 @@ def run_self_test() -> int:
             )
         },
         ("send Home Assistant actions only after state subscription is ready",),
+    )
+    expect_ha_boundary_errors(
+        "one-off state read before state connection",
+        {
+            "button_grid_ha.h": (
+                "inline bool ha_subscribe_state() {\n  return true;\n}\n"
+                "inline bool ha_subscribe_attribute() {\n  return true;\n}\n"
+                "inline bool ha_cancel_action_response_callback() {\n  handle_action_response(); return true;\n}\n"
+                "inline bool ha_action_send() {\n"
+                "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
+                "}\n"
+                "inline bool ha_get_attribute() {\n"
+                "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
+                "  if (ha_state_callback_depth() != 0) return true;\n"
+                "  return true;\n"
+                "}\n"
+            )
+        },
+        ("queue one-off Home Assistant reads until state subscription is ready",),
+    )
+    expect_ha_boundary_errors(
+        "duplicate deferred state reads",
+        {
+            "button_grid_ha.h": (
+                "inline bool ha_subscribe_state() {\n  return true;\n}\n"
+                "inline bool ha_subscribe_attribute() {\n  return true;\n}\n"
+                "inline bool ha_cancel_action_response_callback() {\n  handle_action_response(); return true;\n}\n"
+                "inline bool ha_action_send() {\n"
+                "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
+                "}\n"
+                "inline bool ha_get_state() {\n"
+                "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
+                "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
+                "  return true;\n"
+                "}\n"
+                "inline bool ha_get_attribute() {\n"
+                "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
+                "  return true;\n"
+                "}\n"
+            )
+        },
+        ("fan out duplicate deferred Home Assistant reads",),
+    )
+    expect_ha_boundary_errors(
+        "subscription callback bodies retained",
+        {
+            "button_grid_ha.h": (
+                "inline bool ha_subscribe_state() {\n"
+                "  ha_track_subscription_callback(callback_ref);\n"
+                "  return true;\n"
+                "}\n"
+                "inline bool ha_subscribe_attribute() {\n"
+                "  ha_track_subscription_callback(callback_ref);\n"
+                "  return true;\n"
+                "}\n"
+                "inline bool ha_cancel_action_response_callback() {\n  handle_action_response(); return true;\n}\n"
+                "inline bool ha_action_send() {\n"
+                "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
+                "}\n"
+                "inline bool ha_get_state() {\n"
+                "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
+                "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
+                "  request.callback = std::move(callback);\n"
+                "  request.entity_id == entity_id;\n"
+                "  return true;\n"
+                "}\n"
+                "inline bool ha_get_attribute() {\n"
+                "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
+                "  return true;\n"
+                "}\n"
+            )
+        },
+        ("release retired Home Assistant subscription callback bodies",),
+    )
+    expect_ha_boundary_errors(
+        "unavailable retry helper symbols",
+        {
+            "button_grid_ha.h": (
+                "struct HaUnavailableStateRetryRef {};\n"
+                "inline bool ha_subscribe_state() {\n  return true;\n}\n"
+                "inline bool ha_subscribe_attribute() {\n  return true;\n}\n"
+                "inline bool ha_cancel_action_response_callback() {\n  handle_action_response(); return true;\n}\n"
+                "inline bool ha_action_send() {\n"
+                "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
+                "}\n"
+            )
+        },
+        ("do not reintroduce unavailable HA state retry polling",),
+    )
+    expect_unavailable_retry_errors(
+        "unavailable retry reset and interval",
+        "inline void bump_ha_subscription_generation() {\n"
+        "  ha_reset_unavailable_state_retries();\n"
+        "  ha_reset_deferred_state_requests();\n"
+        "}\n",
+        "interval:\n"
+        "  - interval: 5s\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          ha_retry_unavailable_states();\n",
+        (
+            "do not reset removed unavailable HA state retries",
+            "do not keep removed unavailable HA state retry helpers",
+            "do not retry unavailable HA states",
+        ),
     )
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -2162,6 +2478,29 @@ def run_self_test() -> int:
         "}\n",
         (),
     )
+    expect_local_sensor_binding_order_errors(
+        "local sensor subtype reaches HA binding",
+        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const CardPalette &palette) {\n"
+        "  if (p.type == \"sensor\") return true;\n"
+        "}\n"
+        "if (bind_image_card(s, p, cfg)) continue;\n"
+        "if (bind_basic_sensor_card(s, p, palette)) continue;\n",
+        ("keep local sensor subtypes out of bind_basic_sensor_card", "skip local sensor subtypes"),
+    )
+    expect_local_sensor_binding_order_errors(
+        "local sensor subtype skipped before HA binding",
+        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const CardPalette &palette) {\n"
+        "  if (sensor_card_local_sensor(p)) return false;\n"
+        "  if (p.type == \"sensor\") return true;\n"
+        "}\n"
+        "if (bind_image_card(s, p, cfg)) continue;\n"
+        "if (p.type == \"local_sensor\" || sensor_card_local_sensor(p)) continue;\n"
+        "if (bind_basic_sensor_card(s, p, palette)) continue;\n"
+        "if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;\n"
+        "if (sb_cfg.type == \"local_sensor\" || sensor_card_local_sensor(sb_cfg)) continue;\n"
+        "if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;\n",
+        (),
+    )
     expect_time_reconnect_errors(
         "home assistant time sync runs on raw api connect",
         "api:\n"
@@ -2430,7 +2769,13 @@ def run_self_test() -> int:
         "      - lambda: |-\n"
         "          id(cover_art_hide_external_input_enabled).state && id(cover_art_external_input_active);\n"
         "          bool external = next == \"TV\" || next == \"Line-in\";\n"
-        "          ha_subscribe_attribute(cover_entity, std::string(\"source\"), handle_media_source);\n"
+        "          ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);\n"
+        "          ha_subscribe_attribute(\n"
+        "            cover_entity,\n"
+        "            std::string(\"source\"),\n"
+        "            handle_media_source,\n"
+        "            HA_SUBSCRIPTION_SCOPE_COVER_ART\n"
+        "          );\n"
         "          ha_get_attribute(cover_entity, std::string(\"source\"), handle_media_source);\n",
         (),
     )
@@ -2516,9 +2861,14 @@ def run_self_test() -> int:
         "  - id: cover_art_use_cached_artwork\n"
         "    then:\n"
         "      - lambda: |-\n"
+        "          if (chosen != id(cover_art_url)) {\n"
+        "            id(cover_art_refresh_needed) = true;\n"
+        "          }\n"
         "          if (chosen == id(cover_art_url)) {\n"
         "            if (!id(cover_art_image_available) || id(cover_art_refresh_needed)) {}\n"
         "          }\n"
+        "          id(cover_art_url) = chosen;\n"
+        "          id(cover_art_refresh_needed) = true;\n"
         "  - id: cover_art_request_artwork\n"
         "    then:\n"
         "      - lambda: |-\n"
@@ -2527,6 +2877,8 @@ def run_self_test() -> int:
         "          }\n"
         "  - id: cover_art_apply_downloaded_image\n"
         "    then:\n"
+        "      - script.execute: cover_art_clear_image_source\n"
+        "      - script.wait: cover_art_clear_image_source\n"
         "      - lambda: |-\n"
         "          std::string expected_url = id(cover_art_download_url);\n"
         "          id(cover_art_loaded_url) = id(cover_art_url);\n"
@@ -2546,24 +2898,84 @@ def run_self_test() -> int:
         "          mark_artwork_refresh_needed();\n"
         "          mark_artwork_refresh_needed();\n"
         "          mark_artwork_refresh_needed();\n"
+        "          if (!url.empty() && url != id(cover_art_url)) {\n"
+        "            id(cover_art_refresh_needed) = true;\n"
+        "          }\n"
         "          ha_subscribe_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n"
         "          ha_get_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n",
         (),
     )
     expect_cover_art_disable_errors(
-        "missing sleep prevention reset when cover art is disabled",
+        "independent media sleep prevention when cover art is disabled",
         "script:\n"
         "  - id: cover_art_disable\n"
         "    then:\n"
         "      - script.stop: cover_art_delay_timer\n",
-        ("turn off media sleep prevention",),
+        (),
     )
     expect_cover_art_disable_errors(
-        "sleep prevention reset when cover art is disabled",
+        "coupled media sleep prevention when cover art is disabled",
         "script:\n"
         "  - id: cover_art_disable\n"
         "    then:\n"
         "      - switch.turn_off: media_player_sleep_prevention_enabled\n",
+        ("keep media sleep prevention independent",),
+    )
+    expect_media_sleep_prevention_errors(
+        "cover art alone keeps media awake",
+        "script:\n"
+        "  - id: screensaver_idle_check\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_active) ||\n"
+        "                     ((id(media_player_sleep_prevention_enabled).state ||\n"
+        "                       id(cover_art_screensaver_enabled).state) &&\n"
+        "                      id(media_player_playing));\n",
+        "switch:\n"
+        "  - platform: template\n"
+        "    id: cover_art_screensaver_enabled\n"
+        "    on_turn_on:\n"
+        "      - switch.turn_on: media_player_sleep_prevention_enabled\n",
+        "script:\n"
+        "  - id: cover_art_playback_started\n"
+        "    then:\n"
+        "      - script.execute: cover_art_delay_timer\n",
+        (
+            "do not let cover art alone keep the idle timer awake",
+            "do not turn on media sleep prevention",
+            "do not start cover art immediately",
+        ),
+    )
+    expect_media_sleep_prevention_errors(
+        "media sleep prevention is independent from cover art",
+        "script:\n"
+        "  - id: screensaver_idle_check\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_active) ||\n"
+        "                     (id(media_player_sleep_prevention_enabled).state &&\n"
+        "                      id(media_player_playing));\n",
+        "switch:\n"
+        "  - platform: template\n"
+        "    id: cover_art_screensaver_enabled\n"
+        "    on_turn_on:\n"
+        "      - script.execute: cover_art_resubscribe\n",
+        "script:\n"
+        "  - id: cover_art_playback_started\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(media_player_sleep_prevention_enabled).state ||\n"
+        "                     id(display_asleep);\n"
+        "          then:\n"
+        "            - script.execute: cover_art_delay_timer\n"
+        "          else:\n"
+        "            - script.execute: screensaver_idle_check\n",
         (),
     )
     expect_image_card_entity_errors(
@@ -2742,6 +3154,7 @@ def run_self_test() -> int:
             "request image-card attributes once the Home Assistant API is connected",
             "refresh image cards when the camera/image entity state changes",
             "ignore stale image-card callbacks after grid rebuild",
+            "ignore stale image-card entity_picture callbacks after grid rebuild",
             "request high-quality Home Assistant image card source downloads",
             "request bounded Home Assistant image card proxy downloads",
             "recognize Home Assistant camera and image proxy URLs",
@@ -2778,6 +3191,13 @@ def run_self_test() -> int:
         "inline void subscribe_image_card_entity_state(ImageCardCtx *ctx,\n"
         "                                              const std::string &entity_id) {\n"
         "  ha_subscribe_state(entity_id, callback);\n"
+        "}\n"
+        "inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cfg) {\n"
+        "  const std::string image_card_entity_id = p.entity;\n"
+        "  const uint32_t image_card_generation = ha_subscription_generation();\n"
+        "  ha_subscribe_attribute(image_card_entity_id, std::string(\"entity_picture\"), callback);\n"
+        "  image_card_context_current(ctx, image_card_entity_id, image_card_generation);\n"
+        "  return true;\n"
         "}\n"
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
         "  image_card_tile_request_size(width, height, &request_width, &request_height);\n"
@@ -3006,6 +3426,10 @@ def run_self_test() -> int:
         "                      (int) id(schedule_off_hour).state);\n"
         "                then:\n"
         "            - script.execute: screensaver_wake\n"
+        "  - id: backlight_schedule_display_off\n"
+        "    then:\n"
+        "      - script.stop: cover_art_delay_timer\n"
+        "      - script.execute: hide_cover_art_view\n"
     )
     expect_screen_schedule_screensaver_override_errors(
         "night schedule overrides timer and sensor screensaver",
@@ -3085,6 +3509,9 @@ def run_self_test() -> int:
         "    ESP_LOGW(TAG, \"Home Assistant media proxy returned an unknown HTTP status; trying artwork bytes anyway\");\n"
         "    container->status_code = HTTP_CODE_OK;\n"
         "  }\n"
+        "}\n"
+        "void ArtworkImage::end_connection_() {\n"
+        "  this->download_buffer_.shrink_to(this->download_buffer_initial_size_);\n"
         "}\n",
         (),
     )

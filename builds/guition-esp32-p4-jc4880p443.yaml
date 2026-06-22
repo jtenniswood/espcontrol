@@ -1,7 +1,9 @@
 # =============================================================================
 # BUILD PROFILE - Guition ESP32-P4 JC4880P443 (4.3" portrait)
 # =============================================================================
-# CI/local build entry point for the 480×800 portrait panel.
+# CI/local build entry point for the 480x800 portrait panel.
+# Bundles the matching web UI so branch/release builds do not load the shared
+# GitHub Pages copy from main.
 # =============================================================================
 
 substitutions:
@@ -21,3 +23,7 @@ wifi:
     ssid: "${friendly_name}"
 
 captive_portal:
+
+web_server:
+  js_url: ""
+  js_include: "../docs/public/webserver/guition-esp32-p4-jc4880p443/www.js"

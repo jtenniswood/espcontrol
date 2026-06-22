@@ -96,7 +96,6 @@
         "script",
         "automation",
         "button",
-        "vacuum",
         "input_button",
         "input_boolean",
         "input_number",
@@ -108,6 +107,32 @@
           "name": "large_numbers",
           "label": "Large State Numbers",
           "kind": "flag"
+        },
+        {
+          "name": "confirmation_required",
+          "label": "Confirmation Required",
+          "kind": "flag",
+          "storage": [
+            "confirm_on"
+          ]
+        },
+        {
+          "name": "confirm_message",
+          "label": "Message",
+          "kind": "text",
+          "defaultValue": "Run this script?"
+        },
+        {
+          "name": "confirm_yes",
+          "label": "Confirm Button",
+          "kind": "text",
+          "defaultValue": "Yes"
+        },
+        {
+          "name": "confirm_no",
+          "label": "Cancel Button",
+          "kind": "text",
+          "defaultValue": "No"
         }
       ],
       "default": {
@@ -118,6 +143,73 @@
         "sensor": "scene.turn_on",
         "unit": "",
         "type": "action",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "vacuum": {
+      "label": "Vacuum",
+      "allowInSubpage": true,
+      "domains": [
+        "vacuum"
+      ],
+      "options": [
+        {
+          "name": "vacuum_mode",
+          "label": "Type",
+          "kind": "choice",
+          "values": [
+            "status",
+            "start_stop",
+            "dock",
+            "pause_resume",
+            "clean_spot",
+            "locate",
+            "clean_area"
+          ],
+          "defaultValue": "start_stop"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Robot Vacuum",
+        "icon_on": "Auto",
+        "sensor": "start_stop",
+        "unit": "",
+        "type": "vacuum",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "lawn_mower": {
+      "label": "Lawn Mower",
+      "allowInSubpage": true,
+      "domains": [
+        "lawn_mower"
+      ],
+      "options": [
+        {
+          "name": "lawn_mower_mode",
+          "label": "Type",
+          "kind": "choice",
+          "values": [
+            "status",
+            "start_mowing",
+            "dock",
+            "pause_resume"
+          ],
+          "defaultValue": "start_mowing"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Robot Mower",
+        "icon_on": "Auto",
+        "sensor": "start_mowing",
+        "unit": "",
+        "type": "lawn_mower",
         "precision": "",
         "options": ""
       }
@@ -137,6 +229,8 @@
             "control_panel",
             "away",
             "home",
+            "night",
+            "vacation",
             "disarm"
           ],
           "defaultValue": "control_panel"
@@ -160,6 +254,8 @@
           "values": [
             "away",
             "home",
+            "night",
+            "vacation",
             "disarm"
           ],
           "defaultValue": "away|home|disarm"
@@ -207,6 +303,20 @@
               "service": "alarm_control_panel.alarm_arm_home",
               "icon": "Shield Home",
               "legacyIcon": "Home"
+            },
+            {
+              "value": "night",
+              "label": "Arm Night",
+              "service": "alarm_control_panel.alarm_arm_night",
+              "icon": "Weather Night",
+              "legacyIcon": "Weather Night"
+            },
+            {
+              "value": "vacation",
+              "label": "Arm Vacation",
+              "service": "alarm_control_panel.alarm_arm_vacation",
+              "icon": "Airplane",
+              "legacyIcon": "Airplane"
             },
             {
               "value": "disarm",
@@ -394,6 +504,7 @@
           "label": "Type",
           "kind": "choice",
           "values": [
+            "modal",
             "",
             "tilt",
             "toggle",
@@ -402,7 +513,7 @@
             "stop",
             "set_position"
           ],
-          "defaultValue": ""
+          "defaultValue": "modal"
         },
         {
           "name": "cover_position",
@@ -429,7 +540,7 @@
         "label": "",
         "icon": "Blinds",
         "icon_on": "Blinds Open",
-        "sensor": "",
+        "sensor": "modal",
         "unit": "",
         "type": "cover",
         "precision": "",
@@ -479,7 +590,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": [
         "fan"
       ],
@@ -499,7 +609,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": [
         "fan"
       ],
@@ -519,7 +628,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": [
         "fan"
       ],
@@ -538,7 +646,6 @@
     "fan_speed": {
       "label": "Fans",
       "allowInSubpage": true,
-      "experimental": "developer",
       "domains": [
         "fan"
       ],
@@ -558,7 +665,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": [
         "fan"
       ],
@@ -716,6 +822,34 @@
         "sensor": "",
         "unit": "2000-6500",
         "type": "light_temperature",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "light_control": {
+      "label": "Lights",
+      "allowInSubpage": true,
+      "pickerKey": "light_brightness",
+      "hidden": true,
+      "domains": [
+        "light"
+      ],
+      "options": [
+        {
+          "name": "light_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "defaultValue": "power|brightness|temperature|color"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Lightbulb Outline",
+        "icon_on": "Lightbulb",
+        "sensor": "",
+        "unit": "",
+        "type": "light_control",
         "precision": "",
         "options": ""
       }
@@ -1024,6 +1158,27 @@
         "options": ""
       }
     },
+    "local_sensor": {
+      "label": "Local Sensor",
+      "allowInSubpage": true,
+      "pickerKey": "sensor",
+      "hidden": true,
+      "domains": [
+        "sensor",
+        "text_sensor"
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "local",
+        "unit": "",
+        "type": "sensor",
+        "precision": "",
+        "options": ""
+      }
+    },
     "slider": {
       "label": "Slider",
       "allowInSubpage": true,
@@ -1043,71 +1198,6 @@
         "options": ""
       }
     },
-    "solar": {
-      "label": "Solar",
-      "allowInSubpage": true,
-      "domains": [
-        "sensor"
-      ],
-      "options": [
-        {
-          "name": "mode",
-          "label": "Mode",
-          "kind": "choice",
-          "values": [
-            "live",
-            "today"
-          ],
-          "defaultValue": "live"
-        },
-        {
-          "name": "production",
-          "label": "Production",
-          "kind": "text"
-        },
-        {
-          "name": "invert_production",
-          "label": "Invert Production",
-          "kind": "flag"
-        },
-        {
-          "name": "consumption",
-          "label": "Consumption",
-          "kind": "text"
-        },
-        {
-          "name": "net",
-          "label": "Net Production",
-          "kind": "text"
-        },
-        {
-          "name": "battery",
-          "label": "Battery",
-          "kind": "text"
-        },
-        {
-          "name": "from_grid",
-          "label": "From Grid",
-          "kind": "text"
-        },
-        {
-          "name": "to_grid",
-          "label": "To Grid",
-          "kind": "text"
-        }
-      ],
-      "default": {
-        "entity": "",
-        "label": "Solar",
-        "icon": "Solar Power",
-        "icon_on": "Auto",
-        "sensor": "",
-        "unit": "",
-        "type": "solar",
-        "precision": "",
-        "options": "mode=live"
-      }
-    },
     "subpage": {
       "label": "Subpage",
       "allowInSubpage": false,
@@ -1119,10 +1209,20 @@
           "kind": "choice",
           "values": [
             "",
+            "switch",
             "lights",
             "climate",
             "presence",
-            "media"
+            "media",
+            "alarm",
+            "cover",
+            "garage",
+            "lock",
+            "vacuum",
+            "lawn_mower",
+            "weather",
+            "sensor",
+            "image"
           ],
           "defaultValue": ""
         },
@@ -1225,7 +1325,10 @@
     "image": {
       "label": "Camera Card",
       "allowInSubpage": true,
-      "domains": ["camera", "image"],
+      "domains": [
+        "camera",
+        "image"
+      ],
       "options": [
         {
           "name": "image_label",
@@ -1241,7 +1344,10 @@
           "name": "image_modal_mode",
           "label": "Expanded Image",
           "kind": "choice",
-          "values": ["fill", "fit"],
+          "values": [
+            "fill",
+            "fit"
+          ],
           "defaultValue": "fill"
         }
       ],
@@ -1275,6 +1381,71 @@
         "precision": "tomorrow",
         "options": ""
       }
+    },
+    "solar": {
+      "label": "Solar",
+      "allowInSubpage": true,
+      "domains": [
+        "sensor"
+      ],
+      "options": [
+        {
+          "name": "mode",
+          "label": "Mode",
+          "kind": "choice",
+          "values": [
+            "live",
+            "today"
+          ],
+          "defaultValue": "live"
+        },
+        {
+          "name": "production",
+          "label": "Production",
+          "kind": "text"
+        },
+        {
+          "name": "invert_production",
+          "label": "Invert Production",
+          "kind": "flag"
+        },
+        {
+          "name": "consumption",
+          "label": "Consumption",
+          "kind": "text"
+        },
+        {
+          "name": "net",
+          "label": "Net Production",
+          "kind": "text"
+        },
+        {
+          "name": "battery",
+          "label": "Battery",
+          "kind": "text"
+        },
+        {
+          "name": "from_grid",
+          "label": "From Grid",
+          "kind": "text"
+        },
+        {
+          "name": "to_grid",
+          "label": "To Grid",
+          "kind": "text"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "Solar",
+        "icon": "Solar Power",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "solar",
+        "precision": "",
+        "options": "mode=live"
+      }
     }
   },
   "migrationAliases": {
@@ -1289,6 +1460,10 @@
     "weather_forecast": {
       "type": "weather",
       "precision": "tomorrow"
+    },
+    "local_sensor": {
+      "type": "sensor",
+      "sensor": "local"
     }
   },
   "optionSelect": {
@@ -1351,6 +1526,7 @@
     "clock": "CK",
     "timezone": "T",
     "sensor": "S",
+    "local_sensor": "LS",
     "door_window": "X",
     "presence": "PR",
     "weather": "W",
@@ -1363,10 +1539,13 @@
     "fan_preset": "Z",
     "light_brightness": "V",
     "light_switch": "Q",
+    "light_control": "LC",
     "alarm": "Y",
     "alarm_action": "AA",
     "slider": "L",
     "cover": "C",
+    "vacuum": "VC",
+    "lawn_mower": "LM",
     "light_temperature": "N",
     "garage": "R",
     "lock": "K",

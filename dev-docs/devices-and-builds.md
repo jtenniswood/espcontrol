@@ -57,21 +57,25 @@ external_components:
     refresh: 1s
 ```
 
-Build and upload local firmware from the device folder:
+Build and upload local firmware from the repo root with the local ESPHome helper:
 
 ```bash
-cd devices/<slug>
-esphome run dev.yaml
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run
 ```
+
+The helper injects `dev` as the `firmware_version`. That version appears in
+ESPHome logs, Home Assistant diagnostics, and the firmware version sensor.
+Running `esphome run dev.yaml` directly still works, and it uses the same static
+fallback version from `devices/<slug>/packages.yaml`.
 
 If both USB and over-the-air upload targets are available, ESPHome prompts for a
 choice. In scripts or background runs, that prompt can stop the upload, so pass
 the target explicitly:
 
 ```bash
-esphome run dev.yaml --device 192.168.x.x
-esphome run dev.yaml --device /dev/cu.usbserial-...
-esphome run dev.yaml --device <ip> --no-logs
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device 192.168.x.x
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device /dev/cu.usbserial-...
+python3 scripts/local_esphome.py devices/<slug>/dev.yaml run --device <ip> --no-logs
 ```
 
 OTA upload only works after the display is already running EspControl firmware
@@ -110,9 +114,11 @@ Each device gets a bundle at:
 docs/public/webserver/<slug>/www.js
 ```
 
-Production firmware points the browser setup page at the GitHub Pages copy of
-that bundle. Local testing can override `web_server.js_url` to load a bundle
-served from a development machine.
+Generated bundles are committed even when firmware bundles them locally. Older
+installed firmware can still point at the GitHub Pages copy of this path, while
+new `builds/*.yaml` entry points use `web_server.js_include` so the setup page
+matches the firmware branch being flashed. Local testing can still override
+`web_server.js_url` to load a bundle served from a development machine.
 
 ## Firmware Build Artifacts
 

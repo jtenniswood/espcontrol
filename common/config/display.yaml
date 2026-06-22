@@ -54,6 +54,7 @@ script:
           hide_clock_bar_top_layer_widgets(temperature_labels, 6,
                                            id(display_time),
                                            id(network_status_button));
+          ${voice_clock_bar_hide_code}
           network_status_hide_modal();
 
   - id: clock_bar_apply
@@ -103,6 +104,7 @@ script:
             hide_clock_bar_top_layer_widgets(temperature_labels, 6,
                                              id(display_time),
                                              id(network_status_button));
+            ${voice_clock_bar_hide_code}
             network_status_hide_modal();
             return;
           }
@@ -136,6 +138,7 @@ script:
             lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
             network_status_hide_modal();
           }
+          ${voice_clock_bar_apply_code}
           if (!visible) return;
 
           refresh_clock_bar_temperature_label_values(id(main_page)->obj,
@@ -359,7 +362,7 @@ switch:
     on_turn_on:
       - if:
           condition:
-            lambda: 'return !screensaver_action_clock_mode(id(screensaver_action).current_option());'
+            lambda: 'return !id(screensaver_action_clock);'
           then:
             - select.set:
                 id: screensaver_action
@@ -372,7 +375,7 @@ switch:
     on_turn_off:
       - if:
           condition:
-            lambda: 'return screensaver_action_clock_mode(id(screensaver_action).current_option());'
+            lambda: 'return id(screensaver_action_clock);'
           then:
             - select.set:
                 id: screensaver_action
@@ -455,18 +458,20 @@ select:
       sorting_group_id: sg_screensaver
     on_value:
       then:
+        - lambda: |-
+            std::string action = id(screensaver_action).current_option();
+            id(screensaver_action_clock) = screensaver_action_clock_mode(action);
+            id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
         - if:
             condition:
               lambda: |-
-                return screensaver_action_clock_mode(id(screensaver_action).current_option()) &&
-                       !id(clock_screensaver_enabled).state;
+                return id(screensaver_action_clock) && !id(clock_screensaver_enabled).state;
             then:
               - switch.turn_on: clock_screensaver_enabled
         - if:
             condition:
               lambda: |-
-                return !screensaver_action_clock_mode(id(screensaver_action).current_option()) &&
-                       id(clock_screensaver_enabled).state;
+                return !id(screensaver_action_clock) && id(clock_screensaver_enabled).state;
             then:
               - switch.turn_off: clock_screensaver_enabled
         - if:

@@ -41,6 +41,33 @@ function infoPanel(id, text) {
   return panel;
 }
 
+function inlineDisclosure(title, bodyElement, defaultOpen) {
+  var panel = document.createElement("div");
+  panel.className = "sp-disclosure" + (defaultOpen ? " sp-open" : "");
+  var button = document.createElement("button");
+  button.type = "button";
+  button.className = "sp-disclosure-button";
+  button.setAttribute("aria-expanded", defaultOpen ? "true" : "false");
+  var label = document.createElement("span");
+  label.textContent = title;
+  var chevron = document.createElement("span");
+  chevron.className = "sp-disclosure-chevron";
+  chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  button.appendChild(label);
+  button.appendChild(chevron);
+  var body = document.createElement("div");
+  body.className = "sp-disclosure-body";
+  body.appendChild(bodyElement);
+  button.addEventListener("click", function () {
+    var open = !panel.classList.contains("sp-open");
+    panel.classList.toggle("sp-open", open);
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  panel.appendChild(button);
+  panel.appendChild(body);
+  return panel;
+}
+
 function buildSettingsPage(parent) {
   var page = document.createElement("div");
   page.id = "sp-settings";
@@ -73,28 +100,41 @@ function buildSettingsPage(parent) {
     els.setTheme = themeSelect;
   } else {
     appearBody.appendChild(fieldLabel("Primary"));
-    var onColor = colorField("sp-set-on-color", "0073FF", function (hex) {
+    var onColor = colorField("sp-set-on-color", DEFAULT_COLOR_PRESET.on, function (hex) {
       postText(entityName("button_on_color"), hex);
     });
     appearBody.appendChild(onColor);
     els.setOnColor = onColor;
 
     appearBody.appendChild(fieldLabel("Secondary"));
-    var offColor = colorField("sp-set-off-color", "CECECE", function (hex) {
+    var offColor = colorField("sp-set-off-color", DEFAULT_COLOR_PRESET.off, function (hex) {
       postText(entityName("button_off_color"), hex);
     });
     appearBody.appendChild(offColor);
     els.setOffColor = offColor;
 
     appearBody.appendChild(fieldLabel("Tertiary"));
-    var sensorColor = colorField("sp-set-sensor-color", "DEDEDE", function (hex) {
+    var sensorColor = colorField("sp-set-sensor-color", DEFAULT_COLOR_PRESET.sensor, function (hex) {
       postText(entityName("sensor_card_color"), hex);
     });
     appearBody.appendChild(sensorColor);
     els.setSensorColor = sensorColor;
   }
 
-  var appearanceCard = makeCollapsibleCard("Appearance", appearBody, true);
+  var appearanceResetButton = null;
+  if (!isEpaperPreview()) {
+    appearanceResetButton = document.createElement("button");
+    appearanceResetButton.type = "button";
+    appearanceResetButton.className = "sp-icon-button sp-card-header-action";
+    appearanceResetButton.title = "Reset colours";
+    appearanceResetButton.setAttribute("aria-label", "Reset colours to defaults");
+    appearanceResetButton.innerHTML = '<span class="mdi mdi-restore" aria-hidden="true"></span>';
+    appearanceResetButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      resetAppearanceColors(true);
+    });
+  }
+  var appearanceCard = makeCollapsibleCard("Appearance", appearBody, true, null, appearanceResetButton);
 
   var languageBody = document.createElement("div");
   var languageField = document.createElement("div");
@@ -498,6 +538,20 @@ function buildSettingsPage(parent) {
   syncTemperatureUi();
   var clockBarCard = makeCollapsibleCard("Clock Bar", clockBarBody, true, clockBarBadge);
 
+  var voiceServicesCard = null;
+  if (CFG.features && CFG.features.voiceServices) {
+    var voiceServicesBody = document.createElement("div");
+    var voiceServices = toggleRow("Voice Services", "sp-set-voice-services", state.voiceServicesOn);
+    voiceServicesBody.appendChild(voiceServices.row);
+    els.setVoiceServicesToggle = voiceServices.input;
+    voiceServices.input.addEventListener("change", function () {
+      state.voiceServicesOn = this.checked;
+      syncClockBarUi();
+      postVoiceServices(state.voiceServicesOn);
+    });
+    voiceServicesCard = makeCollapsibleCard("Voice Services", voiceServicesBody, true);
+  }
+
   var rotationCard = null;
   if (CFG.features && CFG.features.screenRotation) {
     var rotationBody = document.createElement("div");
@@ -608,11 +662,6 @@ function buildSettingsPage(parent) {
 
   var coverArtBody = document.createElement("div");
   if (!isEpaperPreview()) {
-    coverArtBody.appendChild(infoPanel(
-      "sp-cover-art-info",
-      "Media Cover Art overrides existing screensaver settings while the selected media player is playing."
-    ));
-
     var coverArtToggle = toggleRow(
       "Show Cover Art",
       "sp-set-ss-cover-art-enable",
@@ -620,11 +669,6 @@ function buildSettingsPage(parent) {
     coverArtBody.appendChild(coverArtToggle.row);
     coverArtToggle.input.addEventListener("change", function () {
       state.coverArtScreensaverOn = this.checked;
-      if (!state.coverArtScreensaverOn && state.mediaPlayerSleepPreventionOn) {
-        state.mediaPlayerSleepPreventionOn = false;
-        syncMediaPlayerSleepPreventionUi();
-        postSwitch(entityName("screen_saver_media_player_sleep_prevention"), false);
-      }
       syncCoverArtScreensaverUi();
       postSwitch(entityName("screen_saver_cover_art"), state.coverArtScreensaverOn);
     });
@@ -645,10 +689,11 @@ function buildSettingsPage(parent) {
 
     var coverArtOptions = condField();
     var coverArtOnlyOptions = condField();
+    var coverArtAdvancedBody = document.createElement("div");
 
     var coverArtEntityField = document.createElement("div");
     coverArtEntityField.className = "sp-field";
-    coverArtEntityField.appendChild(fieldLabel("Media Player", "sp-set-ss-cover-art-player"));
+    coverArtEntityField.appendChild(fieldLabel("Media Player Entity", "sp-set-ss-cover-art-player"));
     var coverArtEntityInp = entityInput(
       "sp-set-ss-cover-art-player",
       state.coverArtMediaPlayerEntity,
@@ -660,23 +705,6 @@ function buildSettingsPage(parent) {
       onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
     });
     els.setCoverArtMediaPlayer = coverArtEntityInp;
-
-    var coverArtConditionsField = document.createElement("div");
-    coverArtConditionsField.className = "sp-field";
-    coverArtConditionsField.appendChild(fieldLabel("Only Show When", "sp-set-ss-cover-art-conditions"));
-    var coverArtConditionsInp = document.createElement("input");
-    coverArtConditionsInp.className = "sp-input";
-    coverArtConditionsInp.id = "sp-set-ss-cover-art-conditions";
-    coverArtConditionsInp.type = "text";
-    coverArtConditionsInp.maxLength = 240;
-    coverArtConditionsInp.placeholder = "app_id=com.apple.TVMusic; media_content_type=music";
-    coverArtConditionsInp.value = state.coverArtAttributeConditions || "";
-    coverArtConditionsField.appendChild(coverArtConditionsInp);
-    coverArtOptions.appendChild(coverArtConditionsField);
-    bindTextPost(coverArtConditionsInp, entityName("screen_saver_cover_art_conditions"), {
-      onBlur: function (value) { state.coverArtAttributeConditions = value; },
-    });
-    els.setCoverArtConditions = coverArtConditionsInp;
 
     var coverArtDelayField = document.createElement("div");
     coverArtDelayField.className = "sp-field";
@@ -699,7 +727,7 @@ function buildSettingsPage(parent) {
     });
     coverArtDelaySelect.addEventListener("change", function () {
       state.coverArtDelay = parseFloat(this.value) || 0;
-      postNumber(entityName("screen_saver_cover_art_delay"), state.coverArtDelay);
+      postCoverArtDelay(state.coverArtDelay);
     });
     coverArtDelayField.appendChild(coverArtDelaySelect);
     coverArtOnlyOptions.appendChild(coverArtDelayField);
@@ -708,7 +736,7 @@ function buildSettingsPage(parent) {
     if (coverArtTrackOverlayDurationSupported()) {
       var trackOverlayField = document.createElement("div");
       trackOverlayField.className = "sp-field";
-      trackOverlayField.appendChild(fieldLabel("Track Overlay Duration", "sp-set-ss-track-overlay"));
+      trackOverlayField.appendChild(fieldLabel("Show Track Details For", "sp-set-ss-track-overlay"));
       var trackOverlaySelect = document.createElement("select");
       trackOverlaySelect.className = "sp-select";
       trackOverlaySelect.id = "sp-set-ss-track-overlay";
@@ -730,7 +758,7 @@ function buildSettingsPage(parent) {
       });
       trackOverlaySelect.addEventListener("change", function () {
         state.coverArtTrackOverlayDuration = parseFloat(this.value) || 0;
-        postNumber(entityName("screen_saver_track_overlay_duration"), state.coverArtTrackOverlayDuration);
+        postCoverArtTrackOverlayDuration(state.coverArtTrackOverlayDuration);
       });
       trackOverlayField.appendChild(trackOverlaySelect);
       coverArtOnlyOptions.appendChild(trackOverlayField);
@@ -738,19 +766,64 @@ function buildSettingsPage(parent) {
     }
 
     var coverArtHideExternalInputToggle = toggleRow(
-      "Hide for external sources",
+      "Hide for external source inputs",
       "sp-set-ss-cover-art-hide-external-input",
       state.coverArtHideExternalInputOn);
-    coverArtOptions.appendChild(coverArtHideExternalInputToggle.row);
+    coverArtAdvancedBody.appendChild(coverArtHideExternalInputToggle.row);
     coverArtHideExternalInputToggle.input.addEventListener("change", function () {
       state.coverArtHideExternalInputOn = this.checked;
       postCoverArtHideExternalInput(state.coverArtHideExternalInputOn);
     });
     els.setCoverArtHideExternalInputToggle = coverArtHideExternalInputToggle.input;
 
+    state.coverArtFilteringEnabled = !!state.coverArtAttributeConditions;
+    var coverArtFilterToggle = toggleRow(
+      "Advanced Filtering",
+      "sp-set-ss-cover-art-filtering",
+      state.coverArtFilteringEnabled);
+    coverArtAdvancedBody.appendChild(coverArtFilterToggle.row);
+    coverArtFilterToggle.input.addEventListener("change", function () {
+      state.coverArtFilteringEnabled = this.checked;
+      if (!state.coverArtFilteringEnabled) {
+        state.coverArtAttributeConditions = "";
+        syncInput(els.setCoverArtConditions, "");
+        postText(entityName("screen_saver_cover_art_conditions"), "");
+      }
+      syncCoverArtScreensaverUi();
+    });
+    els.setCoverArtFilterToggle = coverArtFilterToggle.input;
+
+    var coverArtFilterOptions = condField();
+    var coverArtConditionsField = document.createElement("div");
+    coverArtConditionsField.className = "sp-field";
+    coverArtConditionsField.appendChild(fieldLabel("Only Show When", "sp-set-ss-cover-art-conditions"));
+    var coverArtConditionsInp = document.createElement("input");
+    coverArtConditionsInp.className = "sp-input";
+    coverArtConditionsInp.id = "sp-set-ss-cover-art-conditions";
+    coverArtConditionsInp.type = "text";
+    coverArtConditionsInp.maxLength = 240;
+    coverArtConditionsInp.placeholder = "app_id=com.apple.TVMusic; media_content_type=music";
+    coverArtConditionsInp.value = state.coverArtAttributeConditions || "";
+    coverArtConditionsField.appendChild(coverArtConditionsInp);
+    coverArtFilterOptions.appendChild(coverArtConditionsField);
+    coverArtAdvancedBody.appendChild(coverArtFilterOptions);
+    bindTextPost(coverArtConditionsInp, entityName("screen_saver_cover_art_conditions"), {
+      onBlur: function (value) {
+        state.coverArtAttributeConditions = value;
+        state.coverArtFilteringEnabled = !!value || state.coverArtFilteringEnabled;
+        syncCoverArtScreensaverUi();
+      },
+    });
+    els.setCoverArtConditions = coverArtConditionsInp;
+    els.setCoverArtFilterOptions = coverArtFilterOptions;
+
+    coverArtOnlyOptions.appendChild(inlineDisclosure(
+      "Advanced Options",
+      coverArtAdvancedBody,
+      !!state.coverArtAttributeConditions || !state.coverArtHideExternalInputOn));
+
     els.setCoverArtOnlyOptions = coverArtOnlyOptions;
     coverArtOptions.appendChild(coverArtOnlyOptions);
-
     els.setCoverArtOptions = coverArtOptions;
     coverArtBody.appendChild(coverArtOptions);
   }
@@ -1019,28 +1092,62 @@ function buildSettingsPage(parent) {
 
   var firmwareCard = makeCollapsibleCard("Firmware", fwBody, true);
 
-  var developerCard = null;
-  if (developerExperimentalUrlFlag()) {
-    var devBody = document.createElement("div");
-    var experimentalToggle = toggleRow(
-      "Developer/Experimental Features",
-      "sp-set-developer-experimental-features",
-      state.developerExperimentalFeatures
-    );
-    devBody.appendChild(experimentalToggle.row);
-    experimentalToggle.input.addEventListener("change", function () {
-      state.developerExperimentalFeatures = this.checked;
-      postDeveloperExperimentalFeatures(state.developerExperimentalFeatures);
-      scheduleRender();
-    });
-    els.setDeveloperExperimentalFeatures = experimentalToggle.input;
-    developerCard = makeCollapsibleCard("Developer", devBody, true);
-  }
+  var homeAssistantSettingsBody = document.createElement("div");
+  var haProtocolField = document.createElement("div");
+  haProtocolField.className = "sp-field";
+  haProtocolField.appendChild(fieldLabel("Home Assistant Protocol", "sp-set-ha-artwork-protocol"));
+  var haProtocolSelect = document.createElement("select");
+  haProtocolSelect.className = "sp-select";
+  haProtocolSelect.id = "sp-set-ha-artwork-protocol";
+  ["http", "https"].forEach(function (option) {
+    var item = document.createElement("option");
+    item.value = option;
+    item.textContent = option;
+    haProtocolSelect.appendChild(item);
+  });
+  haProtocolSelect.value = normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol);
+  haProtocolSelect.addEventListener("change", function () {
+    state.homeAssistantArtworkProtocol = normalizeHomeAssistantArtworkProtocol(this.value);
+    this.value = state.homeAssistantArtworkProtocol;
+    postSelectWithObjectIds(
+      entityName("home_assistant_artwork_protocol"),
+      entityObjectIds("home_assistant_artwork_protocol"),
+      state.homeAssistantArtworkProtocol);
+  });
+  haProtocolField.appendChild(haProtocolSelect);
+  homeAssistantSettingsBody.appendChild(haProtocolField);
+  els.setHomeAssistantArtworkProtocol = haProtocolSelect;
+
+  var haPortField = document.createElement("div");
+  haPortField.className = "sp-field";
+  haPortField.appendChild(fieldLabel("Home Assistant Port", "sp-set-ha-artwork-port"));
+  var haPortInput = document.createElement("input");
+  haPortInput.className = "sp-input sp-input--no-stepper";
+  haPortInput.id = "sp-set-ha-artwork-port";
+  haPortInput.type = "number";
+  haPortInput.min = "1";
+  haPortInput.max = "65535";
+  haPortInput.step = "1";
+  haPortInput.inputMode = "numeric";
+  haPortInput.value = String(normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort));
+  haPortInput.addEventListener("change", function () {
+    state.coverArtHomeAssistantPort = normalizeHomeAssistantArtworkPort(this.value);
+    this.value = String(state.coverArtHomeAssistantPort);
+    postHomeAssistantArtworkPort(state.coverArtHomeAssistantPort);
+  });
+  haPortField.appendChild(haPortInput);
+  homeAssistantSettingsBody.appendChild(haPortField);
+  els.setCoverArtHomeAssistantPort = haPortInput;
+  var homeAssistantSettingsCard = makeCollapsibleCard(
+    "Home Assistant Settings",
+    homeAssistantSettingsBody,
+    true);
 
   appendSettingsSection(config, "Display", [
     appearanceCard,
     backlightCard,
     clockBarCard,
+    voiceServicesCard,
     rotationCard,
   ]);
   appendSettingsSection(config, "Sleep & Schedule", [
@@ -1055,7 +1162,7 @@ function buildSettingsPage(parent) {
     temperatureCard,
     backupCard,
     firmwareCard,
-    developerCard,
+    homeAssistantSettingsCard,
   ]);
 
   page.appendChild(config);
@@ -1129,7 +1236,9 @@ function syncCoverArtScreensaverUi() {
       !!state.coverArtScreensaverOn || !!state.mediaPlayerSleepPreventionOn);
   }
   if (els.setCoverArtOnlyOptions) {
-    els.setCoverArtOnlyOptions.classList.toggle("sp-visible", !!state.coverArtScreensaverOn);
+    els.setCoverArtOnlyOptions.classList.toggle(
+      "sp-visible",
+      !!state.coverArtScreensaverOn);
   }
   if (els.setCoverArtBadge) {
     els.setCoverArtBadge.className = "sp-card-badge" + (state.coverArtScreensaverOn ? "" : " sp-hidden");
@@ -1151,6 +1260,21 @@ function syncCoverArtScreensaverUi() {
   }
   if (els.setCoverArtHideExternalInputToggle) {
     els.setCoverArtHideExternalInputToggle.checked = !!state.coverArtHideExternalInputOn;
+  }
+  if (els.setHomeAssistantArtworkProtocol) {
+    els.setHomeAssistantArtworkProtocol.value =
+      normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol);
+  }
+  if (els.setCoverArtHomeAssistantPort) {
+    els.setCoverArtHomeAssistantPort.value = String(
+      normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort));
+  }
+  if (els.setCoverArtFilterToggle) {
+    state.coverArtFilteringEnabled = !!state.coverArtFilteringEnabled || !!state.coverArtAttributeConditions;
+    els.setCoverArtFilterToggle.checked = !!state.coverArtFilteringEnabled;
+  }
+  if (els.setCoverArtFilterOptions) {
+    els.setCoverArtFilterOptions.classList.toggle("sp-visible", !!state.coverArtFilteringEnabled);
   }
   syncInput(els.setCoverArtConditions, state.coverArtAttributeConditions || "");
 }

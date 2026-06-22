@@ -128,8 +128,10 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "garage": "docs/card-types/garage-doors.md",
     "internal": "docs/card-types/internal-relays.md",
     "light_brightness": "docs/card-types/lights.md",
+    "light_control": "docs/card-types/lights.md",
     "light_switch": "docs/card-types/lights.md",
     "light_temperature": "docs/card-types/lights.md",
+    "local_sensor": "docs/card-types/local-sensors.md",
     "lock": "docs/card-types/locks.md",
     "media": "docs/card-types/media.md",
     "option_select": "docs/card-types/option-select.md",
@@ -140,6 +142,8 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "slider": "docs/card-types/sliders.md",
     "subpage": "docs/features/subpages.md",
     "timezone": "docs/card-types/timezones.md",
+    "vacuum": "docs/card-types/vacuum.md",
+    "lawn_mower": "docs/card-types/lawn-mower.md",
     "weather": "docs/card-types/weather.md",
     "image": "docs/card-types/cameras.md",
     "weather_forecast": "docs/card-types/weather-forecast.md",
@@ -333,7 +337,7 @@ def generated_card_map() -> str:
 
         domains = ", ".join(f"`{domain}`" for domain in card.get("domains", [])) or "None"
         subpages = "Yes" if card.get("allowInSubpage") else "No"
-        status = "Hidden" if card.get("hidden") else ("Experimental" if card.get("experimental") else "Visible")
+        status = "Hidden" if card.get("hidden") else "Visible"
         firmware = ", ".join(f"`{path}`" for path in firmware_files.get(card_type, [])) or "No direct match"
         web = f"`{web_files[card_type]}`" if card_type in web_files else "No current web type"
         checks = ["Contract", "Codec", "Parser"]

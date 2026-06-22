@@ -82,6 +82,33 @@ lvgl:
 
       # Network status (tappable, right side of clock bar)
       - obj:
+          id: voice_clock_bar_mute_button
+          align: top_right
+          x: -72
+          y: 10
+          width: 44
+          height: 42
+          bg_opa: 0%
+          border_width: 0
+          pad_all: 0
+          scrollable: false
+          scrollbar_mode: "off"
+          clickable: true
+          hidden: true
+          widgets:
+            - label:
+                id: voice_clock_bar_mute_icon_label
+                text: "\U000F036C"
+                text_font: font_icon_status
+                align: center
+                text_align: center
+                text_color: 0xFFFFFF
+          on_press:
+            then:
+              - script.execute: open_device_volume_control
+
+      # Network status (tappable, right side of clock bar)
+      - obj:
           id: network_status_button
           align: top_right
           x: -20

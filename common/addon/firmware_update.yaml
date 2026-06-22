@@ -20,32 +20,6 @@ esphome:
         - text_sensor.template.publish:
             id: firmware_version_sensor
             state: "${firmware_version}"
-    - priority: 190
-      then:
-        - lambda: |-
-            auto network_status_firmware_update_state = []() -> NetworkStatusUpdateState {
-              switch (id(firmware_update).state) {
-                case esphome::update::UPDATE_STATE_NO_UPDATE:
-                  return NETWORK_STATUS_UPDATE_LATEST;
-                case esphome::update::UPDATE_STATE_AVAILABLE:
-                  return NETWORK_STATUS_UPDATE_AVAILABLE;
-                case esphome::update::UPDATE_STATE_INSTALLING:
-                  return NETWORK_STATUS_UPDATE_INSTALLING;
-                case esphome::update::UPDATE_STATE_UNKNOWN:
-                default:
-                  return NETWORK_STATUS_UPDATE_HIDDEN;
-              }
-            };
-            network_status_set_update_callback([]() {
-              id(firmware_update_from_screen).execute();
-            });
-            network_status_set_update_check_callback([]() {
-              id(firmware_update_check_for_network_status).execute();
-            });
-            network_status_set_update_state(network_status_firmware_update_state());
-            id(firmware_update).add_on_state_callback([network_status_firmware_update_state]() {
-              network_status_set_update_state(network_status_firmware_update_state());
-            });
     - priority: -50
       then:
         - if:
@@ -170,7 +144,7 @@ script:
       - delay: 8s
       - script.execute: navigate_after_api
 
-  - id: firmware_update_from_screen
+  - id: firmware_install_update
     mode: single
     then:
       - lambda: 'id(manual_check_only) = true;'
@@ -190,20 +164,6 @@ script:
             - update.perform: firmware_update
       - delay: 15s
       - lambda: 'id(manual_check_only) = false;'
-
-  - id: firmware_update_check_for_network_status
-    mode: single
-    then:
-      - lambda: |-
-          id(manual_check_only) = true;
-          network_status_set_update_state(NETWORK_STATUS_UPDATE_CHECKING);
-      - component.update: firmware_update
-      - delay: 15s
-      - lambda: |-
-          id(manual_check_only) = false;
-          if (id(firmware_update).state == esphome::update::UPDATE_STATE_UNKNOWN) {
-            network_status_set_update_state(NETWORK_STATUS_UPDATE_HIDDEN);
-          }
 
 update:
   - platform: http_request
@@ -292,4 +252,4 @@ button:
     web_server:
       sorting_group_id: sg_firmware
     on_press:
-      - script.execute: firmware_update_from_screen
+      - script.execute: firmware_install_update

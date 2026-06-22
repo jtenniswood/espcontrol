@@ -18,6 +18,8 @@ These are configured from the **Settings** tab in the [Setup](/features/setup) u
 - **Install Version** — choose the latest stable firmware or one of up to four previous stable versions when more than one version is available.
 - **Check for Update** — press this button to check for a new version right now, regardless of the automatic schedule.
 
+Manual Ethernet builds can be different. If you used the advanced Ethernet setup with `disable_updates: "true"`, these built-in GitHub update controls are removed from the panel firmware. Use ESPHome OTA or USB from your ESPHome setup to update that display instead.
+
 ## What Happens During an Update
 
 1. The panel checks the update server for a newer version.
@@ -46,3 +48,20 @@ Some features, especially new card types, need both the web setup page and the p
 You can also manage updates from Home Assistant. The **Auto Update** toggle, **Update Frequency** selector, and **Check for Update** button all appear as entities that you can control from the Home Assistant dashboard or use in automations.
 
 The standard Home Assistant **Update** entity may also appear, depending on your Home Assistant version.
+
+Displays built with `disable_updates: "true"` do not expose EspControl's built-in GitHub update controls. They can still be updated manually through ESPHome.
+
+## ESP32-C6 WiFi Co-processor Updates
+
+Some ESP32-P4 displays use a separate ESP32-C6 chip for WiFi. EspControl exposes separate Home Assistant entities for that co-processor firmware on the supported P4 WiFi builds:
+
+- **7-inch JC1060P470**
+- **10.1-inch JC8012P4A1**
+- **4.3-inch JC4880P443**
+- **4-inch ESP32-P4-86**
+
+These entities are separate from the main EspControl display firmware controls. The normal **Firmware: Check for Update** and **Firmware: Install Update** controls update the panel firmware. The ESP32-C6 controls check and install compatible WiFi co-processor firmware from ESPHome's hosted firmware manifest.
+
+In Home Assistant, look for ESP32-C6 diagnostic entities showing the current version, latest version, and whether an update is available. When an update is available, use the ESP32-C6 check/install buttons for the co-processor, and continue using the regular EspControl firmware controls for normal panel updates.
+
+Advanced Ethernet-only builds keep the ESP32-C6 WiFi co-processor off, so they do not expose these ESP32-C6 update controls.

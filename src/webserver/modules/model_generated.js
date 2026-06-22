@@ -63,6 +63,7 @@ var EspControlModel = (() => {
     normalizeBackupScreenSettings: () => normalizeBackupScreenSettings,
     normalizeClockBrightness: () => normalizeClockBrightness,
     normalizeHexColor: () => normalizeHexColor,
+    normalizeHomeAssistantArtworkPort: () => normalizeHomeAssistantArtworkPort,
     normalizeHour: () => normalizeHour,
     normalizeLanguage: () => normalizeLanguage,
     normalizeNtpServer: () => normalizeNtpServer,
@@ -921,6 +922,13 @@ var EspControlModel = (() => {
     if (n > 100) return 100;
     return Math.round(n);
   }
+  function normalizeHomeAssistantArtworkPort(value) {
+    const port = parseInt(String(value), 10);
+    if (!Number.isFinite(port)) return 8123;
+    if (port < 1) return 1;
+    if (port > 65535) return 65535;
+    return port;
+  }
   function normalizeNtpServer(value, fallback) {
     const server = String(value == null ? "" : value).trim();
     return server || fallback;
@@ -974,7 +982,6 @@ var EspControlModel = (() => {
     const hasNtpServer1 = objectValue(settings, "ntp_server_1") !== void 0;
     const hasNtpServer2 = objectValue(settings, "ntp_server_2") !== void 0;
     const hasNtpServer3 = objectValue(settings, "ntp_server_3") !== void 0;
-    const hasDeveloperExperimentalFeatures = objectValue(settings, "developer_experimental_features") !== void 0;
     const hasOutdoorTempEnable = objectValue(settings, "outdoor_temp_enable") !== void 0;
     const clockFormat = current.clockFormatOptions.indexOf(String(settings.clock_format || "")) !== -1 ? String(settings.clock_format) : current.clockFormat;
     const screensaverAction = normalizeScreensaverAction(
@@ -1008,6 +1015,7 @@ var EspControlModel = (() => {
       clockBarLayout: CLOCK_BAR_FIXED_LAYOUT,
       clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
       networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
+      voiceServices: objectValue(settings, "voice_services") != null ? !!settings.voice_services : false,
       temperatureDegreeSymbol: objectValue(settings, "temperature_degree_symbol") != null ? !!settings.temperature_degree_symbol : true,
       subpageChevron: objectValue(settings, "subpage_chevron") != null ? !!settings.subpage_chevron : true,
       timezone: String(settings.timezone || current.timezone),
@@ -1017,8 +1025,6 @@ var EspControlModel = (() => {
       hasNtpServer1,
       hasNtpServer2,
       hasNtpServer3,
-      hasDeveloperExperimentalFeatures,
-      developerExperimentalFeatures: hasDeveloperExperimentalFeatures ? !!settings.developer_experimental_features : current.developerExperimentalFeatures,
       ntpServer1: hasNtpServer1 ? normalizeNtpServer(settings.ntp_server_1, current.ntpDefaults[0] || "") : current.ntpServer1,
       ntpServer2: hasNtpServer2 ? normalizeNtpServer(settings.ntp_server_2, current.ntpDefaults[1] || "") : current.ntpServer2,
       ntpServer3: hasNtpServer3 ? normalizeNtpServer(settings.ntp_server_3, current.ntpDefaults[2] || "") : current.ntpServer3,
@@ -1032,6 +1038,7 @@ var EspControlModel = (() => {
       coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
       coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
       coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null ? !!settings.cover_art_hide_external_input : true,
+      coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port) : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
       screensaverAction,
       clockScreensaver: screensaverAction === "clock",
       clockBrightnessDay,

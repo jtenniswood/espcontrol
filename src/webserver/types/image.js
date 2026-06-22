@@ -104,7 +104,6 @@ registerButtonType("image", {
   label: function () { return cardContractCardLabel("image"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("image"); },
   pickerKey: function () { return cardContractPickerKey("image"); },
-  experimental: function () { return cardContractExperimental("image"); },
   hidden: function () { return cardContractHidden("image"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("image"); },
