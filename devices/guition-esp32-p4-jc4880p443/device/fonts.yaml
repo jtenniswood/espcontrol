@@ -30,7 +30,7 @@ font:
   # Main labels and setup body text
   - file: "gfonts://Roboto"
     id: font_text_body
-    size: 31
+    size: 29
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:
