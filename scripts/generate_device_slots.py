@@ -279,6 +279,27 @@ def include_line(key: str, include: str) -> str:
     return key_text.ljust(19) + include if len(key_text) < 19 else f"{key_text} {include}"
 
 
+def package_global_lines(device: dict) -> list[str]:
+    if device["slug"] != "guition-esp32-s3-4848s040":
+        return []
+    return [
+        "globals:",
+        "  - id: voice_interaction_active",
+        "    type: bool",
+        "    restore_value: no",
+        "    initial_value: 'false'",
+        "  - id: master_mute_switch",
+        "    type: bool",
+        "    restore_value: no",
+        "    initial_value: 'false'",
+        "  - id: voice_media_player",
+        "    type: bool",
+        "    restore_value: no",
+        "    initial_value: 'false'",
+        "",
+    ]
+
+
 def package_file_text(device: dict) -> str:
     package = package_data(device)
     network_suffix = "${network_package_suffix}" if package.get("ethernetSelectable") else ""
@@ -316,6 +337,7 @@ def package_file_text(device: dict) -> str:
             "substitutions:",
             *package_substitution_lines(device),
             "",
+            *package_global_lines(device),
             "packages:",
             "  # ---------------------------------------------------------------------------",
             "  # Device, assets, and LVGL base",

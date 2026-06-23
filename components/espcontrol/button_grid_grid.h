@@ -342,6 +342,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_weather_card(s, palette.has_sensor_color, palette.sensor_val);
     return;
   }
+  if (p.type == "timer") {
+    setup_timer_card(s, p, display_sensor_font(display));
+    return;
+  }
   if (p.type == "garage") {
     setup_garage_card(s, p);
     return;
@@ -1195,6 +1199,14 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "timer") {
+      if (!p.entity.empty()) {
+        create_timer_card_context(s, p);
+        if (p.label.empty())
+          subscribe_friendly_name(s.text_lbl, p.entity);
+      }
+      continue;
+    }
     if (p.type == "climate") {
       if (!p.entity.empty()) {
         ClimateControlCtx *ctx = create_climate_control_context(
@@ -1887,6 +1899,30 @@ inline void grid_phase2(
               subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
           }
           add_parent_indicator(sb_cfg.entity);
+        }
+        continue;
+      }
+      if (sb_cfg.type == "timer") {
+        if (!sb_cfg.entity.empty()) {
+          TimerCardCtx *ctx = create_timer_card_context(sub_slot, sb_cfg);
+          if (sb_cfg.label.empty())
+            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
+          if (sp_indicator) {
+            int cwi = sp_child_alloc_idx++;
+            if (cwi >= MAX_SUBPAGE_ITEMS) {
+              ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", sb_cfg.entity.c_str());
+            } else {
+              sp_child_was_on[cwi] = false;
+              subscribe_timer_subpage_parent_indicator(
+                sb_cfg.entity, slots[si].btn, slots[si].icon_lbl, si,
+                &sp_child_was_on[cwi], sp_has_icon_on,
+                sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count);
+            }
+          }
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            TimerCardCtx *ctx = static_cast<TimerCardCtx *>(lv_event_get_user_data(e));
+            if (ctx) handle_timer_card_click(ctx);
+          }, LV_EVENT_CLICKED, ctx);
         }
         continue;
       }

@@ -425,6 +425,7 @@ export default defineConfig({
           { text: 'Slider', link: '/card-types/sliders' },
           { text: 'Subpage', link: '/features/subpages' },
           { text: 'Switch', link: '/card-types/switches' },
+          { text: 'Timer', link: '/card-types/timers' },
           { text: 'Trigger', link: '/card-types/buttons' },
           { text: 'Weather', link: '/card-types/weather' },
           { text: 'Webhook', link: '/card-types/webhooks' },
