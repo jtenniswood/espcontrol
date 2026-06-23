@@ -399,6 +399,17 @@ int main() {
   auto light_control_bad_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=bad%7Cpower%7Cpower");
   assert(light_control_bad_tabs.options == "light_tabs=power");
 
+  auto cover_default_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=position%7Ccontrols%7Ctilt");
+  assert(cover_default_tabs.type == "cover");
+  assert(cover_default_tabs.options == "");
+  auto cover_custom_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=controls%7Cposition");
+  assert(cover_custom_tabs.options == "cover_tabs=controls%7Cposition");
+  assert(cfg_option_value(cover_custom_tabs.options, "cover_tabs") == "controls|position");
+  auto cover_bad_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=bad%7Cposition%7Cposition");
+  assert(cover_bad_tabs.options == "cover_tabs=position");
+  auto cover_non_modal_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;toggle;;cover;;cover_tabs=controls%7Cposition");
+  assert(cover_non_modal_tabs.options == "");
+
   set_display_temperature_unit("\u00B0F", "UTC (GMT+0)");
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 50);
   assert(convert_temperature_value_for_display(10, "\u00B0F") == 10);

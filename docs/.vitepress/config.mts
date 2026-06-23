@@ -452,6 +452,7 @@ export default defineConfig({
           { text: 'Backup', link: '/features/backup' },
           { text: 'Firmware', link: '/features/firmware-updates' },
           { text: 'Built-in Relays', link: '/features/relays' },
+          { text: 'Voice Control', link: '/features/voice-control' },
         ],
       },
       {

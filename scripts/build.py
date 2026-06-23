@@ -312,13 +312,46 @@ def gen_i18n_header():
             f"inline const char *espcontrol_i18n_{fn}(const char *text) {{",
             "  if (!text) return \"\";",
         ])
+        seen_sources = set()
         for key, source in english.items():
+            if source in seen_sources:
+                continue
+            seen_sources.add(source)
             target = translated[key]
             if target == source:
                 continue
             lines.append(f"  if (std::strcmp(text, {cpp_string(source)}) == 0) return {cpp_string(target)};")
         lines.extend([
             "  return text;",
+            "}",
+            "",
+        ])
+
+    lines.extend([
+        "inline const char *espcontrol_i18n_key_en(const char *key) {",
+        "  if (!key) return \"\";",
+    ])
+    for key, source in english.items():
+        lines.append(f"  if (std::strcmp(key, {cpp_string(key)}) == 0) return {cpp_string(source)};")
+    lines.extend([
+        "  return key;",
+        "}",
+        "",
+    ])
+
+    for code, translated in languages:
+        fn = re.sub(r"[^A-Za-z0-9_]", "_", code)
+        lines.extend([
+            f"inline const char *espcontrol_i18n_key_{fn}(const char *key) {{",
+            "  if (!key) return \"\";",
+        ])
+        for key, target in translated.items():
+            source = english[key]
+            if target == source:
+                continue
+            lines.append(f"  if (std::strcmp(key, {cpp_string(key)}) == 0) return {cpp_string(target)};")
+        lines.extend([
+            "  return espcontrol_i18n_key_en(key);",
             "}",
             "",
         ])
@@ -336,6 +369,20 @@ def gen_i18n_header():
         "",
         "inline std::string espcontrol_i18n(const std::string &text) {",
         "  return std::string(espcontrol_i18n(text.c_str()));",
+        "}",
+        "",
+        "inline const char *espcontrol_i18n_key(const char *key) {",
+        "  if (!key) return \"\";",
+    ])
+    for code, _translated in languages:
+        fn = re.sub(r"[^A-Za-z0-9_]", "_", code)
+        lines.append(f"  if (espcontrol_language_code() == {cpp_string(code)}) return espcontrol_i18n_key_{fn}(key);")
+    lines.extend([
+        "  return espcontrol_i18n_key_en(key);",
+        "}",
+        "",
+        "inline std::string espcontrol_i18n_key(const std::string &key) {",
+        "  return std::string(espcontrol_i18n_key(key.c_str()));",
         "}",
         "",
     ])

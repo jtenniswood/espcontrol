@@ -114,6 +114,10 @@ function normalizeButtonConfig(b) {
     if (b.sensor === "open" || b.sensor === "close") b.icon_on = "Auto";
     b.options = normalizeGarageOptions(b.options, b.sensor);
   }
+  if (b && b.type === "cover") {
+    b.sensor = normalizeCoverMode(b.sensor, true);
+    b.options = normalizeCoverOptionsForMode(b.options, b.sensor);
+  }
   if (b && b.type === "alarm") {
     b.sensor = "";
     b.unit = "";
@@ -229,7 +233,7 @@ function normalizeButtonConfig(b) {
     b.options = normalizePresenceOptions(b.options);
   } else if (b && b.type === "solar") {
     b.options = normalizeSolarOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "solar" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "solar" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -281,6 +285,7 @@ var IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
 var IMAGE_REFRESH_OPTION = "image_refresh";
 var IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
 var LIGHT_CONTROL_TABS_OPTION = "light_tabs";
+var COVER_CONTROL_TABS_OPTION = "cover_tabs";
 var IMAGE_CARD_LIMIT = Math.max(0, parseInt(CFG && CFG.imageCardLimit != null ? CFG.imageCardLimit : 4, 10) || 0);
 var ALARM_ACTIONS = [
   { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Shield Lock" },
@@ -695,6 +700,239 @@ function setLightControlTabs(b, tabs) {
     : setConfigOptionValue(b.options, LIGHT_CONTROL_TABS_OPTION, tabs.join("|"));
   b.options = normalizeLightControlOptions(b.options);
   return b.options;
+}
+
+function coverControlTabDefinitions() {
+  return [
+    { value: "position", label: "Position" },
+    { value: "controls", label: "Controls" },
+    { value: "tilt", label: "Tilt" },
+  ];
+}
+
+function coverControlDefaultTabs() {
+  return coverControlTabDefinitions().map(function (tab) { return tab.value; });
+}
+
+function normalizeTabList(value, definitions, defaults, fallback) {
+  var raw = String(value || "").trim();
+  var parts = raw ? raw.split("|") : defaults;
+  var valid = {};
+  definitions.forEach(function (tab) { valid[tab.value] = true; });
+  var out = [];
+  parts.forEach(function (part) {
+    part = String(part || "").trim();
+    if (valid[part] && out.indexOf(part) < 0) out.push(part);
+  });
+  return out.length ? out : [fallback];
+}
+
+function tabListIsDefault(tabs, defaults) {
+  tabs = tabs || [];
+  if (tabs.length !== defaults.length) return false;
+  for (var i = 0; i < defaults.length; i++) {
+    if (tabs[i] !== defaults[i]) return false;
+  }
+  return true;
+}
+
+function normalizeCoverControlTabs(value) {
+  return normalizeTabList(
+    value,
+    coverControlTabDefinitions(),
+    coverControlDefaultTabs(),
+    "position"
+  );
+}
+
+function coverControlTabs(b) {
+  return normalizeCoverControlTabs(configOptionValue(b && b.options, COVER_CONTROL_TABS_OPTION));
+}
+
+function coverControlTabsAreDefault(tabs) {
+  return tabListIsDefault(
+    normalizeCoverControlTabs((tabs || []).join("|")),
+    coverControlDefaultTabs()
+  );
+}
+
+function normalizeCoverOptions(options) {
+  var tabs = normalizeCoverControlTabs(configOptionValue(options, COVER_CONTROL_TABS_OPTION));
+  return coverControlTabsAreDefault(tabs)
+    ? ""
+    : setConfigOptionValue("", COVER_CONTROL_TABS_OPTION, tabs.join("|"));
+}
+
+function normalizeCoverOptionsForMode(options, mode) {
+  return normalizeCoverMode(mode, true) === "modal" ? normalizeCoverOptions(options) : "";
+}
+
+function setCoverControlTabs(b, tabs) {
+  if (!b) return "";
+  tabs = normalizeCoverControlTabs((tabs || []).join("|"));
+  b.options = coverControlTabsAreDefault(tabs)
+    ? setConfigOptionValue(b.options, COVER_CONTROL_TABS_OPTION, "")
+    : setConfigOptionValue(b.options, COVER_CONTROL_TABS_OPTION, tabs.join("|"));
+  b.options = normalizeCoverOptions(b.options);
+  return b.options;
+}
+
+function renderModalTabSettings(panel, b, helpers, config) {
+  var section = document.createElement("div");
+  panel.appendChild(section);
+
+  b.options = config.normalizeOptions(b.options);
+  var tabs = config.tabs(b);
+  var definitions = config.definitions();
+  var definitionByValue = {};
+  definitions.forEach(function (definition) {
+    definitionByValue[definition.value] = definition;
+  });
+  var orderedDefinitions = [];
+  tabs.forEach(function (tab) {
+    if (definitionByValue[tab]) orderedDefinitions.push(definitionByValue[tab]);
+  });
+  definitions.forEach(function (definition) {
+    if (tabs.indexOf(definition.value) < 0) orderedDefinitions.push(definition);
+  });
+
+  var heading = document.createElement("div");
+  heading.className = "sp-field";
+  heading.appendChild(helpers.fieldLabel("Modal Tabs"));
+  section.appendChild(heading);
+
+  var list = document.createElement("div");
+  list.className = "sp-light-tab-list";
+  section.appendChild(list);
+
+  function listRows() {
+    return Array.prototype.slice.call(list.querySelectorAll(".sp-light-tab-row"));
+  }
+
+  function saveTabsFromRows() {
+    var nextTabs = [];
+    listRows().forEach(function (row) {
+      var input = row.querySelector("input[type=checkbox]");
+      if (input && input.checked) nextTabs.push(row.getAttribute("data-tab"));
+    });
+    if (!nextTabs.length) return false;
+    saveTabs(nextTabs);
+    return true;
+  }
+
+  function saveTabs(nextTabs) {
+    config.setTabs(b, nextTabs);
+    helpers.saveField("options", b.options);
+    renderButtonSettings();
+  }
+
+  function updateMoveButtons() {
+    var rows = listRows();
+    rows.forEach(function (row, index) {
+      var down = row.querySelector(".sp-light-tab-move-down");
+      if (down) down.disabled = index === rows.length - 1;
+    });
+  }
+
+  function moveRow(row, direction) {
+    if (!row) return;
+    if (direction < 0 && row.previousElementSibling) {
+      list.insertBefore(row, row.previousElementSibling);
+      saveTabsFromRows();
+    } else if (direction > 0 && row.nextElementSibling) {
+      list.insertBefore(row.nextElementSibling, row);
+      saveTabsFromRows();
+    }
+  }
+
+  orderedDefinitions.forEach(function (definition) {
+    var tabIndex = tabs.indexOf(definition.value);
+    var visible = tabIndex >= 0;
+
+    var row = document.createElement("div");
+    row.className = "sp-light-tab-row";
+    row.setAttribute("data-tab", definition.value);
+    row.draggable = true;
+
+    var controls = document.createElement("div");
+    controls.className = "sp-light-tab-controls";
+
+    var drag = document.createElement("button");
+    drag.type = "button";
+    drag.className = "sp-light-tab-drag mdi mdi-drag";
+    drag.setAttribute("aria-label", "Drag " + definition.label);
+    drag.tabIndex = -1;
+
+    var downBtn = document.createElement("button");
+    downBtn.type = "button";
+    downBtn.className = "sp-light-tab-move sp-light-tab-move-down mdi mdi-chevron-down";
+    downBtn.setAttribute("aria-label", "Move " + definition.label + " down");
+    downBtn.addEventListener("click", function () {
+      moveRow(row, 1);
+    });
+
+    controls.appendChild(drag);
+    controls.appendChild(downBtn);
+    row.appendChild(controls);
+
+    var label = document.createElement("label");
+    label.className = "sp-light-tab-label";
+    label.htmlFor = helpers.idPrefix + config.idPrefix + definition.value;
+    label.textContent = definition.label;
+    row.appendChild(label);
+
+    var toggle = document.createElement("label");
+    toggle.className = "sp-toggle";
+    var input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = helpers.idPrefix + config.idPrefix + definition.value;
+    input.checked = visible;
+    var track = document.createElement("span");
+    track.className = "sp-toggle-track";
+    toggle.appendChild(input);
+    toggle.appendChild(track);
+    row.appendChild(toggle);
+
+    input.addEventListener("change", function () {
+      if (!this.checked) {
+        var visibleCount = listRows().filter(function (item) {
+          var itemInput = item.querySelector("input[type=checkbox]");
+          return itemInput && itemInput.checked;
+        }).length;
+        if (visibleCount < 1) {
+          this.checked = true;
+          return;
+        }
+      }
+      saveTabsFromRows();
+    });
+
+    row.addEventListener("dragstart", function (event) {
+      row.classList.add("sp-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", definition.value);
+    });
+    row.addEventListener("dragend", function () {
+      row.classList.remove("sp-dragging");
+    });
+    row.addEventListener("dragover", function (event) {
+      var dragging = list.querySelector(".sp-dragging");
+      if (!dragging || dragging === row) return;
+      event.preventDefault();
+      var rect = row.getBoundingClientRect();
+      var after = event.clientY > rect.top + rect.height / 2;
+      list.insertBefore(dragging, after ? row.nextSibling : row);
+    });
+    row.addEventListener("drop", function (event) {
+      event.preventDefault();
+      saveTabsFromRows();
+    });
+
+    list.appendChild(row);
+  });
+
+  updateMoveButtons();
+  return section;
 }
 
 function normalizeSubpageKind(value) {
@@ -1566,6 +1804,9 @@ function buttonConfigFields(b) {
     options = normalizeAlarmOptions(options);
   } else if (type === "garage") {
     options = normalizeGarageOptions(options, sensor);
+  } else if (type === "cover") {
+    sensor = normalizeCoverMode(sensor, true);
+    options = normalizeCoverOptionsForMode(options, sensor);
   } else if (type === "climate") {
     options = normalizeClimateOptions(options);
   } else if (type === "media") {
@@ -1600,7 +1841,7 @@ function buttonConfigFields(b) {
     options = "";
   } else if (type === "solar") {
     options = b && b.options || "";
-  } else if (type !== "action" && type !== "alarm_action" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "solar" && type !== "light_control" && type !== "vacuum" && type !== "lawn_mower" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
+  } else if (type !== "action" && type !== "alarm_action" && type !== "cover" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "solar" && type !== "light_control" && type !== "vacuum" && type !== "lawn_mower" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
   }
   if (type === "image") {

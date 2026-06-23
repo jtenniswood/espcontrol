@@ -58,6 +58,9 @@ globals:
   - id: screensaver_fade_start_level
     type: float
     initial_value: '1.0'
+  - id: backlight_force_next_write
+    type: bool
+    initial_value: 'false'
   - id: screensaver_clock_target_level
     type: float
     initial_value: '0.35'
@@ -648,6 +651,9 @@ script:
             - globals.set:
                 id: screen_schedule_asleep
                 value: 'false'
+            - globals.set:
+                id: backlight_force_next_write
+                value: 'true'
             - lvgl.resume:
             - lvgl.widget.hide: dim_screensaver_touch_guard
             - script.execute: hide_cover_art_view

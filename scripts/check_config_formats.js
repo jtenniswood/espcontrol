@@ -453,6 +453,21 @@ assert.strictEqual(hooks.normalizeCoverMode("set_position", false), "", "cover c
 assert.strictEqual(hooks.normalizeCoverPosition("-1"), "0", "cover position spec clamps minimum");
 assert.strictEqual(hooks.normalizeCoverPosition("101"), "100", "cover position spec clamps maximum");
 assert.strictEqual(hooks.normalizeCoverPosition("bad"), "50", "cover position spec provides fallback");
+assert.deepStrictEqual(
+  Array.from(hooks.coverControlTabs({ options: "cover_tabs=controls%7Cposition" })),
+  ["controls", "position"],
+  "cover control tabs preserve custom order"
+);
+assert.strictEqual(
+  hooks.normalizeCoverOptions("cover_tabs=position%7Ccontrols%7Ctilt"),
+  "",
+  "default cover control tab order is omitted"
+);
+assert.strictEqual(
+  hooks.normalizeCoverOptions("cover_tabs=bad%7Cposition%7Cposition"),
+  "cover_tabs=position",
+  "invalid and duplicate cover control tabs are removed"
+);
 assert.strictEqual(hooks.lightTempDefaultRange(), "2000-6500", "light temperature spec exposes default range");
 assert.deepStrictEqual(Array.from(hooks.lightTempParseRange("")), [2000, 6500], "light temperature default range is spec-backed");
 assert.deepStrictEqual(Array.from(hooks.lightTempParseRange("500-900")), [2000, 6500], "light temperature invalid range falls back to spec defaults");
@@ -1178,6 +1193,30 @@ assertButtonRoundTrip(hooks, "cover tilt button", {
   type: "cover",
   precision: "",
 }, false);
+
+assertButtonRoundTrip(hooks, "cover modal custom tabs", {
+  entity: "cover.office_blind",
+  label: "Office Blind",
+  icon: "Blinds",
+  icon_on: "Blinds Open",
+  sensor: "modal",
+  unit: "",
+  type: "cover",
+  precision: "",
+  options: "cover_tabs=controls%7Cposition",
+}, false);
+
+assertButtonMigration(hooks, "cover non-modal clears modal tabs", "cover.office_blind;Office Blind;Blinds;Blinds Open;toggle;;cover;;cover_tabs=controls%7Cposition", {
+  entity: "cover.office_blind",
+  label: "Office Blind",
+  icon: "Blinds",
+  icon_on: "Blinds Open",
+  sensor: "toggle",
+  unit: "",
+  type: "cover",
+  precision: "",
+  options: "",
+});
 
 assertButtonRoundTrip(hooks, "cover open command button", {
   entity: "cover.office_blind",
