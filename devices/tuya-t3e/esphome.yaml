@@ -13,6 +13,13 @@ substitutions:
   name: "tuya-t3e-panel"          # Der interne Name (wichtig für die URL im Netzwerk)
   friendly_name: "Tuya T3E Panel" # Der Name, wie er in Home Assistant angezeigt wird
 
+esphome:
+  name: ${name}
+  platformio_options:
+    build_flags:
+      - -mlongcalls
+      - -mtext-section-literals
+
 # ---------------------------------------------------------------------------
 # WiFi credentials (stored in secrets.yaml)
 # ---------------------------------------------------------------------------
