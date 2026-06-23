@@ -1,16 +1,28 @@
 # =============================================================================
-# LVGL MAIN PAGE - Top-layer HUD and button grid
+# DEVICE & UI LVGL - Tuya T3E Display Binding & HUD Layout
 # =============================================================================
-# Defines the primary UI: a top-layer overlay with temperature and clock
-# labels, and the main page containing a 3x3 grid of 9 button widgets.
-# Uses LVGL grid layout for sparse cell placement on the 480x480 display.
-# pad_top clears the top-layer clock bar with a little breathing room.
-# sensors.yaml unhides and places active ones at boot via grid cell coords.
+# Combines the technical T3E hardware binding with the 480x480 espcontrol HUD.
+# Defines the status bar overlay (clock, temp) and the 3x3 button grid.
 # =============================================================================
 
 lvgl:
+  id: main_lvgl
+  setup_priority: 230
+  buffer_size: 12%
+  
+  # KORREKTUR 1: Keine Fehlermeldungen im Text, saubere Liste
+  displays:
+    - display_id: my_display
+      
+  rotation: 180
+  
+  # KORREKTUR 2: 'touchscreens' statt 'touchscreen' als Liste formatieren
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
   # ---------------------------------------------------------------------------
-  # Top layer (always visible above all pages)
+  # Top layer (always visible above all pages - Status-Bar)
   # ---------------------------------------------------------------------------
   top_layer:
     widgets:
