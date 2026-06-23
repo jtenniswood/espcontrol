@@ -10,13 +10,11 @@ lvgl:
   setup_priority: 230
   buffer_size: 12%
   
-  # KORREKTUR 1: Keine Fehlermeldungen im Text, saubere Liste
   displays:
     - display_id: my_display
       
   rotation: 180
   
-  # KORREKTUR 2: 'touchscreens' statt 'touchscreen' als Liste formatieren
   touchscreens:
     - touchscreen_id: my_touchscreen
       long_press_time: 3s
