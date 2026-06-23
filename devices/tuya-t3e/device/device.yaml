@@ -7,7 +7,7 @@
 # =============================================================================
 
 substitutions:
-  espcontrol_component_url: "https://github.com/txptr/espcontrol"
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
   espcontrol_component_ref: "main"
 
 # ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ external_components:
 espcontrol:
 
 # ---------------------------------------------------------------------------
-# ESPHome core & Boot-Logik
+# ESPHome core & Boot-Logic
 # ---------------------------------------------------------------------------
 esphome:
   name: ${name}
@@ -388,7 +388,7 @@ display:
       mirror_y: false
 
 # ---------------------------------------------------------------------------
-# Hilfsskripte
+# Helpers
 # ---------------------------------------------------------------------------
 script:
   - id: relay_1_push
