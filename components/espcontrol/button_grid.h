@@ -53,4 +53,5 @@
 #include "button_grid_subpages.h"
 #include "button_grid_alarm.h"
 #include "button_grid_navigation.h"
+#include "button_grid_solar.h"
 #include "button_grid_grid.h"

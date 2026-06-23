@@ -423,6 +423,7 @@ export default defineConfig({
           { text: 'Sensor', link: '/card-types/sensors' },
           { text: 'Local Sensor', link: '/card-types/local-sensors' },
           { text: 'Slider', link: '/card-types/sliders' },
+          { text: 'Solar', link: '/card-types/solar' },
           { text: 'Subpage', link: '/features/subpages' },
           { text: 'Switch', link: '/card-types/switches' },
           { text: 'Trigger', link: '/card-types/buttons' },

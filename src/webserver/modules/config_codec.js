@@ -231,7 +231,9 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type === "solar") {
+    b.options = normalizeSolarOptions(b.options);
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "solar" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -368,6 +370,33 @@ function setConfigOptionValue(options, name, value) {
   }
   value = String(value || "").trim();
   if (value) out.push(prefix + encodeConfigField(value));
+  return out.join(",");
+}
+
+var SOLAR_KEY_LONG_TO_SHORT = {
+  mode: "m", production: "p", consumption: "c", net: "n",
+  battery: "b", from_grid: "fg", to_grid: "tg", invert_production: "inv"
+};
+
+function normalizeSolarOptions(opts) {
+  var result = opts || "";
+  for (var longKey in SOLAR_KEY_LONG_TO_SHORT) {
+    var val = configOptionValue(result, longKey);
+    if (val) {
+      result = deleteConfigOptionValue(result, longKey);
+      result = setConfigOptionValue(result, SOLAR_KEY_LONG_TO_SHORT[longKey], val);
+    }
+  }
+  return result;
+}
+
+function deleteConfigOptionValue(options, name) {
+  var prefix = name + "=";
+  var parts = String(options || "").split(",");
+  var out = [];
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] && parts[i].indexOf(prefix) !== 0) out.push(parts[i]);
+  }
   return out.join(",");
 }
 
@@ -1810,7 +1839,9 @@ function buttonConfigFields(b) {
     options = sensor === ACTION_CARD_LOCAL_ACTION ? "" : normalizeActionOptions(options, sensor);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
-  } else if (type !== "action" && type !== "alarm_action" && type !== "cover" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "light_control" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
+  } else if (type === "solar") {
+    options = b && b.options || "";
+  } else if (type !== "action" && type !== "alarm_action" && type !== "cover" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "solar" && type !== "light_control" && type !== "vacuum" && type !== "lawn_mower" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
   }
   if (type === "image") {

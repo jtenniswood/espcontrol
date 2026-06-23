@@ -226,7 +226,7 @@
     "Stop", "String Lights", "String Lights Off", "Stove", "Swap Horizontal", "Swap Vertical",
     "Power Socket UK", "Power Socket EU", "Power Socket US", "Sun", "Table", "Table Chair",
     "Television", "Television Off", "Thermometer", "Thermometer Alert", "Thermometer High", "Thermometer Low",
-    "Thermometer Off", "Thermostat", "Thermostat Box", "Home-Thermostat", "Thermostat Auto", "Thermometer Water",
+    "Thermometer Off", "Thermostat", "Thermostat Box", "Home-Thermostat", "Home Lightning Bolt", "Thermostat Auto", "Thermometer Water",
     "Timer", "Toilet", "Transmission Tower", "Trash Can", "Trash Can Outline", "Vacuum",
     "Vacuum Outline", "View Headline", "Volume High", "Volume Off", "Wall Outlet", "Wall Sconce",
     "Washing Machine", "Washing Machine Off", "Water", "Water Boiler", "Water Boiler Off", "Water Percent",

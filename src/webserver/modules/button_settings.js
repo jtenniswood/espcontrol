@@ -387,6 +387,31 @@ function renderButtonSettings(forceOpen) {
     markDraftDirty();
   }
 
+  function requestCardSize(targetSize) {
+    if (c.isSub) return;
+    var currentSize = c.sizes[slot] || 1;
+    if (currentSize === targetSize) return;
+
+    var pos = c.grid.indexOf(slot);
+    if (pos < 0) return;
+
+    // Build a temp grid with this slot's cells zeroed for the placement check
+    var tempGrid = c.grid.slice();
+    tempGrid[pos] = 0;
+    var currentCells = coveredCells(pos, currentSize, c.maxSlots, false);
+    for (var ci = 0; ci < currentCells.length; ci++) tempGrid[currentCells[ci]] = 0;
+
+    if (!canPlaceSlotAt(tempGrid, pos, targetSize, c.maxSlots)) {
+      showBanner("Flow works best at 2×2 — free up adjacent tiles to expand.", "info");
+      return;
+    }
+
+    if (targetSize === 1) delete c.sizes[slot]; else c.sizes[slot] = targetSize;
+    placeSlotAt(c.grid, slot, pos, targetSize);
+    postText(entityName("button_order"), serializeGrid(c.grid));
+    scheduleRender();
+  }
+
   function fieldContainer(input) {
     return input && input.closest ? input.closest(".sp-field") : null;
   }
@@ -754,6 +779,7 @@ function renderButtonSettings(forceOpen) {
     entityInput: entityInput,
     bindField: bindField,
     saveField: saveField,
+    requestCardSize: requestCardSize,
     applyCardMetadataFields: applyCardMetadataFields,
     renderCardModeSelector: renderCardModeSelector,
     renderCardLargeNumbersToggle: renderCardLargeNumbersToggle,
