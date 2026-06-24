@@ -720,6 +720,34 @@ script:
             - lvgl.widget.hide: cover_art_progress_bar
       - script.execute: cover_art_refresh_progress
 
+  - id: cover_art_show_artwork_transition
+    mode: restart
+    then:
+      - script.execute: cover_art_apply_responsive_layout
+      - globals.set:
+          id: cover_art_image_available
+          value: 'false'
+      - lambda: |-
+          lv_color_t black = lv_color_make(0, 0, 0);
+          lv_obj_set_style_bg_color(id(cover_art_backdrop), black, 0);
+          lv_obj_set_style_bg_color(id(cover_art_accent_overlay), black, 0);
+      - script.execute: cover_art_sync_track_text
+      - lambda: |-
+          lv_obj_set_style_text_line_space(id(cover_art_title_label), ${cover_art_title_line_space}, 0);
+      - lvgl.widget.hide: cover_art_image_widget
+      - if:
+          condition:
+            lambda: 'return id(cover_art_screensaver_active) && id(cover_art_media_playing);'
+          then:
+            - lvgl.widget.show: cover_art_accent_overlay
+            - lvgl.widget.show: cover_art_track_panel
+            - lvgl.widget.show: cover_art_progress_bar
+          else:
+            - lvgl.widget.hide: cover_art_accent_overlay
+            - lvgl.widget.hide: cover_art_track_panel
+            - lvgl.widget.hide: cover_art_progress_bar
+      - script.execute: cover_art_refresh_progress
+
   - id: cover_art_download_failed
     mode: restart
     then:
@@ -862,13 +890,12 @@ script:
                            id(cover_art_refresh_needed) &&
                            !${cover_art_live_image_updates};
                 then:
-                  - script.execute: cover_art_show_black_screen
+                  - script.execute: cover_art_show_artwork_transition
                   - script.execute: cover_art_clear_image_source
                   - script.wait: cover_art_clear_image_source
                   - artwork_image.release: cover_art_downloaded_image
                   - lambda: |-
-                      ESP_LOGI("cover_art", "Released current artwork before replacement download");
-                      id(cover_art_loaded_url).clear();
+                      ESP_LOGI("cover_art", "Hid current artwork before replacement download");
             - lambda: |-
                 if (!id(cover_art_active_download_source_url).empty() &&
                     !id(cover_art_download_url).empty()) {

@@ -667,6 +667,24 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
             or "id(cover_art_refresh_needed) || !id(cover_art_image_available)" not in download_body
         ):
             errors.append(f"{rel}: refresh Home Assistant media proxy artwork when no image is currently available")
+        replacement_match = re.search(
+            r"(?ms)id\(cover_art_screensaver_active\).*?"
+            r"id\(cover_art_image_available\).*?"
+            r"id\(cover_art_refresh_needed\).*?"
+            r"!\$\{cover_art_live_image_updates\}.*?"
+            r"then:\n(?P<body>.*?)(?=^\s+- lambda: |\Z)",
+            download_body,
+        )
+        if not replacement_match:
+            errors.append(f"{rel}: keep a dedicated replacement artwork transition path")
+        else:
+            replacement_body = replacement_match.group("body")
+            if "script.execute: cover_art_show_artwork_transition" not in replacement_body:
+                errors.append(f"{rel}: hide stale artwork without blanking the track overlay during replacement downloads")
+            if "script.execute: cover_art_show_black_screen" in replacement_body:
+                errors.append(f"{rel}: do not use the full black fallback for replacement artwork downloads")
+            if "id(cover_art_loaded_url).clear()" in replacement_body:
+                errors.append(f"{rel}: keep the previous loaded artwork marker until replacement artwork applies")
 
     for script_id in ("cover_art_deferred_download", "cover_art_prepare_download"):
         body = yaml_script_body(text, script_id)
@@ -2844,6 +2862,15 @@ def run_self_test() -> int:
         "script:\n"
         "  - id: cover_art_download\n"
         "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_active) &&\n"
+        "                     id(cover_art_image_available) &&\n"
+        "                     id(cover_art_refresh_needed) &&\n"
+        "                     !${cover_art_live_image_updates};\n"
+        "          then:\n"
+        "            - script.execute: cover_art_show_artwork_transition\n"
         "      - lambda: |-\n"
         "          if (url.find(\"/api/media_player_proxy/\") != std::string::npos) {\n"
         "            url += url.find('?') == std::string::npos ? \"?time=\" : \"&time=\";\n"
