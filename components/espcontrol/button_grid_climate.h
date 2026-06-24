@@ -24,7 +24,8 @@ constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_VALUE_DOWN_REF_PX = 24;
 constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_OPTION_CHIP_BOTTOM_PX = 48;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_STEP_BUTTONS_UP_REF_PX = 18;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_VALUE_DOWN_REF_PX = 12;
-constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 4;
+constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 16;
+constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_CONTROLS_DOWN_REF_PX = 12;
 constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_STEP_BUTTONS_UP_REF_PX = 14;
 constexpr lv_coord_t CLIMATE_MODAL_SQUARE_STEP_BUTTONS_UP_REF_PX = 18;
 constexpr lv_coord_t CLIMATE_MODAL_4848_STEP_BUTTONS_UP_REF_PX = 18;
@@ -622,6 +623,10 @@ inline ControlModalLayout climate_control_calc_layout(ClimateControlCtx *ctx) {
     ? CLIMATE_MODAL_SQUARE_ARC_UP_REF_PX
     : CLIMATE_MODAL_ARC_UP_REF_PX;
   layout.arc_center_y = -control_modal_scaled_px(arc_up_ref, layout.short_side);
+  if (climate_control_uses_large_landscape_modal_tuning(layout)) {
+    layout.arc_center_y += control_modal_scaled_px(
+      CLIMATE_MODAL_LARGE_LANDSCAPE_CONTROLS_DOWN_REF_PX, layout.short_side);
+  }
   layout.value_center_y = layout.arc_center_y + layout.arc_stroke / 2;
   layout.controls_center_y = layout.arc_center_y + layout.arc_size / 2 -
     layout.btn_size / 2 - layout.inset +
