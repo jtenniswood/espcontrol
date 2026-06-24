@@ -657,6 +657,28 @@ inline void climate_raise_arc_markers() {
   if (ui.handle_dot) lv_obj_move_foreground(ui.handle_dot);
 }
 
+inline bool climate_uses_cooling_arc(ClimateControlCtx *ctx) {
+  return ctx && ctx->available && ctx->hvac_mode == "cool";
+}
+
+inline bool climate_has_active_arc_mode(ClimateControlCtx *ctx) {
+  return ctx && ctx->available && ctx->hvac_mode != "off" &&
+         !climate_unavailable_value(ctx->hvac_mode);
+}
+
+inline uint32_t climate_modal_arc_color(ClimateControlCtx *ctx) {
+  if (!climate_has_active_arc_mode(ctx)) return DARK_BACKGROUND_SECONDARY;
+  if (climate_uses_cooling_arc(ctx)) return CLIMATE_COOLING_COLOR;
+  return ctx ? ctx->accent_color : DEFAULT_SLIDER_COLOR;
+}
+
+inline int climate_modal_arc_value(ClimateControlCtx *ctx, bool temp_enabled, int target) {
+  if (!ctx) return CLIMATE_DEFAULT_TARGET_TENTHS;
+  int value = temp_enabled ? climate_clamp_tenths(ctx, target) : ctx->min_tenths;
+  if (climate_uses_cooling_arc(ctx)) return ctx->min_tenths + ctx->max_tenths - value;
+  return value;
+}
+
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
   if (!ctx) return DEFAULT_SLIDER_COLOR;
   if (ctx->hvac_action == "heating") return CLIMATE_HEATING_COLOR;
@@ -1330,8 +1352,9 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
     if (show_dial && !ui.dragging_arc) {
       ui.updating_arc = true;
       lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
-      lv_arc_set_value(ui.arc, temp_enabled ? climate_clamp_tenths(ctx, target) : ctx->min_tenths);
-      lv_obj_set_style_arc_color(ui.arc, lv_color_hex(climate_is_active(ctx) ? climate_active_color(ctx) : DARK_BACKGROUND_SECONDARY), LV_PART_INDICATOR);
+      lv_arc_set_mode(ui.arc, climate_uses_cooling_arc(ctx) ? LV_ARC_MODE_REVERSE : LV_ARC_MODE_NORMAL);
+      lv_arc_set_value(ui.arc, climate_modal_arc_value(ctx, temp_enabled, target));
+      lv_obj_set_style_arc_color(ui.arc, lv_color_hex(climate_modal_arc_color(ctx)), LV_PART_INDICATOR);
       ui.updating_arc = false;
     }
   }
