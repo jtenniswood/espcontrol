@@ -1176,14 +1176,21 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_set_width(ui.arming_countdown, layout.panel_w - layout.inset * 2);
   lv_obj_align(ui.arming_countdown, LV_ALIGN_CENTER, 0, countdown_y);
   lv_obj_add_flag(ui.arming_countdown, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_update_layout(ui.arming_countdown);
+  lv_coord_t countdown_h = lv_obj_get_height(ui.arming_countdown);
+  if (countdown_h <= 0 && countdown_font) countdown_h = countdown_font->line_height;
+  if (countdown_h <= 0) countdown_h = control_modal_scaled_px(28, layout.short_side);
 
   lv_coord_t progress_h = control_modal_scaled_px(12, layout.short_side);
   if (progress_h < 8) progress_h = 8;
   if (progress_h > 16) progress_h = 16;
   lv_coord_t progress_w = layout.panel_w - layout.inset * 3;
   if (progress_w < layout.panel_w / 2) progress_w = layout.panel_w / 2;
-  lv_coord_t progress_gap = control_modal_scaled_px(18, layout.short_side);
-  if (jc4880p443_layout) progress_gap = control_modal_scaled_px(20, layout.short_side);
+  lv_coord_t progress_gap = control_modal_scaled_px(8, layout.short_side);
+  if (progress_gap < 6) progress_gap = 6;
+  if (jc4880p443_layout) progress_gap = control_modal_scaled_px(10, layout.short_side);
+  if (jc4880p443_layout && progress_gap < 8) progress_gap = 8;
+  lv_coord_t progress_center_y = countdown_y + countdown_h / 2 + progress_gap + progress_h / 2;
 
   ui.arming_progress = lv_obj_create(ui.arming_view);
   lv_obj_set_size(ui.arming_progress, progress_w, progress_h);
@@ -1196,7 +1203,7 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_clear_flag(ui.arming_progress, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_clear_flag(ui.arming_progress, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.arming_progress, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_align(ui.arming_progress, LV_ALIGN_CENTER, 0, countdown_y + progress_gap);
+  lv_obj_align(ui.arming_progress, LV_ALIGN_CENTER, 0, progress_center_y);
 
   ui.arming_progress_fill = lv_obj_create(ui.arming_progress);
   lv_obj_set_size(ui.arming_progress_fill, 0, progress_h);
