@@ -402,8 +402,8 @@ inline const char *card_runtime_vacuum_default_icon_name(const std::string &mode
 }
 
 inline std::string card_runtime_lawn_mower_mode(const std::string &mode) {
-  if (mode == "status" || mode == "start_mowing" || mode == "dock" ||
-      mode == "pause_resume") {
+  if (mode == "status" || mode == "control_panel" || mode == "start_mowing" ||
+      mode == "dock" || mode == "pause_resume") {
     return mode;
   }
   return "start_mowing";
@@ -412,7 +412,8 @@ inline std::string card_runtime_lawn_mower_mode(const std::string &mode) {
 inline bool card_runtime_lawn_mower_state_mode(const std::string &mode) {
   std::string normalized = card_runtime_lawn_mower_mode(mode);
   return normalized == "status" || normalized == "start_mowing" ||
-         normalized == "dock" || normalized == "pause_resume";
+         normalized == "dock" || normalized == "pause_resume" ||
+         normalized == "control_panel";
 }
 
 inline const char *card_runtime_lawn_mower_default_icon_name(const std::string &mode) {

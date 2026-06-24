@@ -164,7 +164,7 @@
           "name": "lawn_mower_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["status", "start_mowing", "dock", "pause_resume"],
+          "values": ["status", "control_panel", "start_mowing", "dock", "pause_resume"],
           "defaultValue": "start_mowing"
         }
       ],

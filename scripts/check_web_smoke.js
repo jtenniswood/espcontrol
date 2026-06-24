@@ -1233,7 +1233,7 @@ assert.deepStrictEqual(plain(hooks.buttonTypeDefaultConfig("lawn_mower")), {
 }, "lawn mower default config matches the shared contract");
 assert.deepStrictEqual(
   Array.from(hooks.cardContractOptions("lawn_mower").find((option) => option.name === "lawn_mower_mode").values),
-  ["status", "start_mowing", "dock", "pause_resume"],
+  ["status", "control_panel", "start_mowing", "dock", "pause_resume"],
   "lawn mower mode values match the scoped service set"
 );
 const lawnMowerPreview = hooks.buttonTypePreviewFor("lawn_mower", {

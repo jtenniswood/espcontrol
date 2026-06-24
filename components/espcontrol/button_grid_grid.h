@@ -1434,7 +1434,9 @@ inline void grid_phase2(
     if (p.type == "lawn_mower") {
       lv_obj_set_user_data(s.btn, nullptr);
       if (!p.entity.empty() && lawn_mower_card_mode_needs_state(p.sensor)) {
-        LawnMowerCardCtx *ctx = create_lawn_mower_card_context(s, p);
+        LawnMowerCardCtx *ctx = create_lawn_mower_card_context(
+          s, p, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+          display_icon_font(display), display_main_width_percent(display));
         grid_track_runtime_allocation(s.btn, ctx);
         subscribe_lawn_mower_card_state(ctx);
         lv_obj_set_user_data(s.btn, ctx);
@@ -2153,7 +2155,9 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "lawn_mower") {
         if (!sb_cfg.entity.empty()) {
-          LawnMowerCardCtx *ctx = create_lawn_mower_card_context(sub_slot, sb_cfg);
+          LawnMowerCardCtx *ctx = create_lawn_mower_card_context(
+            sub_slot, sb_cfg, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_icon_font(display), display_main_width_percent(display));
           grid_delete_with_owner(sb_btn, ctx);
           if (lawn_mower_card_mode_needs_state(sb_cfg.sensor)) {
             subscribe_lawn_mower_card_state(ctx);
@@ -2162,7 +2166,11 @@ inline void grid_phase2(
           if (!lawn_mower_card_read_only(sb_cfg)) {
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               LawnMowerCardCtx *ctx = (LawnMowerCardCtx *)lv_event_get_user_data(e);
-              send_lawn_mower_card_action(ctx);
+              if (ctx && ctx->mode == "control_panel") {
+                lawn_mower_control_open_modal(ctx);
+              } else {
+                send_lawn_mower_card_action(ctx);
+              }
             }, LV_EVENT_CLICKED, ctx);
           }
         }

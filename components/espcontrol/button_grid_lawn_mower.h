@@ -10,8 +10,32 @@ struct LawnMowerCardCtx {
   std::string mode;
   std::string state;
   std::string label;
+  const lv_font_t *label_font = nullptr;
+  const lv_font_t *icon_font = nullptr;
+  int width_compensation_percent = 100;
   bool status_card = false;
+  bool available = true;
 };
+
+struct LawnMowerControlModalUi {
+  lv_obj_t *overlay = nullptr;
+  lv_obj_t *panel = nullptr;
+  lv_obj_t *back_btn = nullptr;
+  lv_obj_t *title_lbl = nullptr;
+  lv_obj_t *state_icon_lbl = nullptr;
+  lv_obj_t *state_lbl = nullptr;
+  lv_obj_t *start_btn = nullptr;
+  lv_obj_t *pause_btn = nullptr;
+  lv_obj_t *dock_btn = nullptr;
+  LawnMowerCardCtx *active = nullptr;
+};
+
+inline LawnMowerControlModalUi &lawn_mower_control_modal_ui() {
+  static LawnMowerControlModalUi ui;
+  return ui;
+}
+
+inline void lawn_mower_control_update_modal(LawnMowerCardCtx *ctx);
 
 inline std::string lawn_mower_card_mode(const std::string &mode) {
   return card_runtime_lawn_mower_mode(mode);
@@ -32,6 +56,7 @@ inline const char *lawn_mower_card_default_icon_name(const std::string &mode) {
 inline const char *lawn_mower_card_mode_label(const std::string &mode) {
   std::string normalized = lawn_mower_card_mode(mode);
   if (normalized == "status") return "Lawn Mower";
+  if (normalized == "control_panel") return "Control Panel";
   if (normalized == "dock") return "Dock";
   if (normalized == "pause_resume") return "Pause";
   return "Start";
@@ -84,7 +109,10 @@ inline void setup_lawn_mower_card(BtnSlot &s, const ParsedCfg &p) {
 }
 
 inline LawnMowerCardCtx *create_lawn_mower_card_context(const BtnSlot &s,
-                                                        const ParsedCfg &p) {
+                                                        const ParsedCfg &p,
+                                                        const lv_font_t *label_font = nullptr,
+                                                        const lv_font_t *icon_font = nullptr,
+                                                        int width_compensation_percent = 100) {
   LawnMowerCardCtx *ctx = new LawnMowerCardCtx();
   ctx->btn = s.btn;
   ctx->icon_lbl = s.icon_lbl;
@@ -94,6 +122,9 @@ inline LawnMowerCardCtx *create_lawn_mower_card_context(const BtnSlot &s,
   ctx->label = p.label.empty()
     ? espcontrol_i18n(std::string(lawn_mower_card_mode_label(ctx->mode)))
     : p.label;
+  ctx->label_font = label_font;
+  ctx->icon_font = icon_font;
+  ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);
   ctx->status_card = ctx->mode == "status";
   return ctx;
 }
@@ -103,6 +134,7 @@ inline void apply_lawn_mower_card_state(LawnMowerCardCtx *ctx,
                                         bool unavailable) {
   if (!ctx) return;
   ctx->state = unavailable ? "unavailable" : std::string(state.c_str(), state.size());
+  ctx->available = !(ctx->state == "unavailable" || ctx->state == "unknown");
   if (ctx->icon_lbl) {
     lv_label_set_text(ctx->icon_lbl, find_icon(lawn_mower_state_icon_name(ctx->state)));
   }
@@ -112,6 +144,10 @@ inline void apply_lawn_mower_card_state(LawnMowerCardCtx *ctx,
       : ctx->label;
     set_wrapped_button_label_text(ctx->text_lbl, label);
   }
+  if (ctx->btn) {
+    apply_control_availability(ctx->btn, ctx->btn, ctx->available, !ctx->status_card);
+  }
+  lawn_mower_control_update_modal(ctx);
 }
 
 inline void subscribe_lawn_mower_card_state(LawnMowerCardCtx *ctx) {
@@ -146,4 +182,192 @@ inline void send_lawn_mower_card_action(LawnMowerCardCtx *ctx) {
   if (!ha_action_begin(req, service, false, 1)) return;
   ha_action_add_entity(req, ctx->entity_id);
   ha_action_send(req);
+}
+
+inline void send_lawn_mower_control_action(LawnMowerCardCtx *ctx, const char *service) {
+  if (!ctx || !service || ctx->entity_id.empty() || !ctx->available) return;
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, service, false, 1)) return;
+  ha_action_add_entity(req, ctx->entity_id);
+  ha_action_send(req);
+}
+
+inline bool lawn_mower_control_button_active(const std::string &state,
+                                             const char *service) {
+  if (!service) return false;
+  if (std::strcmp(service, "lawn_mower.pause") == 0) return state == "mowing";
+  if (std::strcmp(service, "lawn_mower.start_mowing") == 0)
+    return state == "paused" || state == "docked";
+  if (std::strcmp(service, "lawn_mower.dock") == 0)
+    return state == "returning" || state == "docked";
+  return false;
+}
+
+inline void lawn_mower_control_style_action_button(lv_obj_t *btn,
+                                                   LawnMowerCardCtx *ctx,
+                                                   const char *service) {
+  if (!btn || !ctx) return;
+  bool enabled = ctx->available;
+  bool active = enabled && lawn_mower_control_button_active(ctx->state, service);
+  uint32_t bg = active ? DEFAULT_SLIDER_COLOR : DARK_BACKGROUND_TERTIARY;
+  uint32_t border = active ? DEFAULT_SLIDER_COLOR : DARK_CONTROL_NEUTRAL;
+  lv_obj_set_style_bg_color(btn, lv_color_hex(bg), LV_PART_MAIN);
+  lv_obj_set_style_border_color(btn, lv_color_hex(border), LV_PART_MAIN);
+  lv_obj_set_style_opa(btn, enabled ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
+  if (enabled) lv_obj_clear_state(btn, LV_STATE_DISABLED);
+  else lv_obj_add_state(btn, LV_STATE_DISABLED);
+}
+
+inline lv_obj_t *lawn_mower_control_create_action_button(lv_obj_t *parent,
+                                                        LawnMowerCardCtx *ctx,
+                                                        const char *icon,
+                                                        const char *label,
+                                                        const char *service) {
+  lv_obj_t *btn = lv_obj_create(parent);
+  if (!btn) return nullptr;
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 2, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(btn, 18, LV_PART_MAIN);
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  control_modal_apply_pressed_fill(btn);
+
+  lv_obj_t *icon_lbl = lv_label_create(btn);
+  if (icon_lbl) {
+    lv_label_set_text(icon_lbl, icon);
+    if (ctx && ctx->icon_font) lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(icon_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_align(icon_lbl, LV_ALIGN_CENTER, 0, -12);
+  }
+  lv_obj_t *text_lbl = lv_label_create(btn);
+  if (text_lbl) {
+    lv_label_set_text(text_lbl, espcontrol_i18n(label));
+    if (ctx && ctx->label_font) lv_obj_set_style_text_font(text_lbl, ctx->label_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(text_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_width(text_lbl, lv_pct(90));
+    lv_obj_set_style_text_align(text_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(text_lbl, LV_ALIGN_CENTER, 0, 22);
+  }
+
+  lawn_mower_control_style_action_button(btn, ctx, service);
+  lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+    const char *service = static_cast<const char *>(lv_event_get_user_data(e));
+    LawnMowerControlModalUi &ui = lawn_mower_control_modal_ui();
+    send_lawn_mower_control_action(ui.active, service);
+  }, LV_EVENT_CLICKED, const_cast<char *>(service));
+  return btn;
+}
+
+inline void lawn_mower_control_layout_modal(LawnMowerCardCtx *ctx,
+                                            const ControlModalLayout &layout) {
+  LawnMowerControlModalUi &ui = lawn_mower_control_modal_ui();
+  if (!ctx || !ui.panel) return;
+
+  lv_coord_t content_w = layout.panel_w - layout.inset * 2;
+  if (content_w < 120) content_w = layout.panel_w;
+  lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
+  if (gap < 8) gap = 8;
+  lv_coord_t title_y = layout.inset + layout.back_size / 2;
+  lv_coord_t status_y = title_y + layout.back_size + gap;
+  lv_coord_t button_y = status_y + control_modal_scaled_px(84, layout.short_side);
+  lv_coord_t button_h = control_modal_scaled_px(104, layout.short_side);
+  if (button_h < 72) button_h = 72;
+  lv_coord_t available_h = layout.panel_h - button_y - layout.inset;
+  if (button_h > available_h) button_h = available_h;
+  if (button_h < 56) button_h = 56;
+  lv_coord_t button_w = (content_w - gap * 2) / 3;
+  if (button_w < 56) button_w = 56;
+  lv_coord_t start_x = layout.inset + (content_w - (button_w * 3 + gap * 2)) / 2;
+
+  if (ui.title_lbl) {
+    lv_obj_set_width(ui.title_lbl, content_w - layout.back_size - gap);
+    apply_width_compensation(ui.title_lbl, ctx->width_compensation_percent);
+    lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
+  }
+  if (ui.state_icon_lbl) {
+    lv_obj_align(ui.state_icon_lbl, LV_ALIGN_TOP_MID, 0, status_y);
+  }
+  if (ui.state_lbl) {
+    lv_obj_set_width(ui.state_lbl, content_w);
+    apply_width_compensation(ui.state_lbl, ctx->width_compensation_percent);
+    lv_obj_align(ui.state_lbl, LV_ALIGN_TOP_MID, 0, status_y + control_modal_scaled_px(42, layout.short_side));
+  }
+
+  lv_obj_t *buttons[] = {ui.start_btn, ui.pause_btn, ui.dock_btn};
+  for (int i = 0; i < 3; i++) {
+    if (!buttons[i]) continue;
+    lv_obj_set_size(buttons[i], button_w, button_h);
+    apply_width_compensation(buttons[i], ctx->width_compensation_percent);
+    lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT,
+                 start_x + i * (button_w + gap), button_y);
+  }
+  if (ui.back_btn) lv_obj_move_foreground(ui.back_btn);
+}
+
+inline void lawn_mower_control_update_modal(LawnMowerCardCtx *ctx) {
+  LawnMowerControlModalUi &ui = lawn_mower_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.overlay) return;
+  std::string fallback = ctx->state.empty() ? ctx->label : ctx->state;
+  std::string state_label = lawn_mower_state_label(ctx->state, fallback);
+  if (ui.state_icon_lbl) {
+    lv_label_set_text(ui.state_icon_lbl, find_icon(lawn_mower_state_icon_name(ctx->state)));
+  }
+  if (ui.state_lbl) {
+    lv_label_set_text(ui.state_lbl, state_label.c_str());
+  }
+  lawn_mower_control_style_action_button(ui.start_btn, ctx, "lawn_mower.start_mowing");
+  lawn_mower_control_style_action_button(ui.pause_btn, ctx, "lawn_mower.pause");
+  lawn_mower_control_style_action_button(ui.dock_btn, ctx, "lawn_mower.dock");
+}
+
+inline void lawn_mower_control_hide_modal() {
+  LawnMowerControlModalUi &ui = lawn_mower_control_modal_ui();
+  lv_obj_t *overlay = ui.overlay;
+  ui = LawnMowerControlModalUi();
+  control_modal_delete_overlay(ControlModalKind::LAWN_MOWER_CONTROL, overlay);
+}
+
+inline void lawn_mower_control_open_modal(LawnMowerCardCtx *ctx) {
+  if (!ctx || !ctx->available) return;
+  ControlModalShell shell = control_modal_open_shell(
+    ControlModalKind::LAWN_MOWER_CONTROL, ctx->btn, ctx->width_compensation_percent,
+    ctx->icon_font, "\U000F0141", false, lawn_mower_control_hide_modal);
+  LawnMowerControlModalUi &ui = lawn_mower_control_modal_ui();
+  ui.active = ctx;
+  ui.overlay = shell.overlay;
+  ui.panel = shell.panel;
+  ui.back_btn = shell.close_btn;
+  if (!ui.panel) return;
+
+  ControlModalLayout &layout = shell.layout;
+  ui.title_lbl = control_modal_create_title(
+    ui.panel, ctx->label.c_str(), shell.content_w, ctx->label_font,
+    ctx->width_compensation_percent);
+
+  ui.state_icon_lbl = lv_label_create(ui.panel);
+  if (ui.state_icon_lbl) {
+    if (ctx->icon_font) lv_obj_set_style_text_font(ui.state_icon_lbl, ctx->icon_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui.state_icon_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_label_set_text(ui.state_icon_lbl, find_icon(lawn_mower_state_icon_name(ctx->state)));
+  }
+
+  ui.state_lbl = lv_label_create(ui.panel);
+  if (ui.state_lbl) {
+    if (ctx->label_font) lv_obj_set_style_text_font(ui.state_lbl, ctx->label_font, LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui.state_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.state_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  }
+
+  ui.start_btn = lawn_mower_control_create_action_button(
+    ui.panel, ctx, find_icon("Play"), "Start / Resume", "lawn_mower.start_mowing");
+  ui.pause_btn = lawn_mower_control_create_action_button(
+    ui.panel, ctx, find_icon("Pause"), "Pause", "lawn_mower.pause");
+  ui.dock_btn = lawn_mower_control_create_action_button(
+    ui.panel, ctx, find_icon("Home"), "Dock", "lawn_mower.dock");
+
+  lawn_mower_control_layout_modal(ctx, layout);
+  lawn_mower_control_update_modal(ctx);
+  lv_obj_move_foreground(ui.overlay);
 }

@@ -193,6 +193,7 @@ var CARD_CONTRACT_CARDS = {
         "kind": "choice",
         "values": [
           "status",
+          "control_panel",
           "start_mowing",
           "dock",
           "pause_resume"

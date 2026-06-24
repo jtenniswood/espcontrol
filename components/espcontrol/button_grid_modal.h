@@ -32,6 +32,7 @@ enum class ControlModalKind {
   COVER_CONTROL,
   LIGHT_CONTROL,
   MEDIA_CONTROL,
+  LAWN_MOWER_CONTROL,
 };
 
 using ControlModalCloseCallback = void (*)();

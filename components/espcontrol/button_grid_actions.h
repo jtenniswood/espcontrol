@@ -816,6 +816,8 @@ struct CoverControlCtx;
 inline void cover_control_open_modal(CoverControlCtx *ctx);
 struct LightControlCtx;
 inline void light_control_open_modal(LightControlCtx *ctx);
+struct LawnMowerCardCtx;
+inline void lawn_mower_control_open_modal(LawnMowerCardCtx *ctx);
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
@@ -926,7 +928,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     }
   } else if (p.type == "lawn_mower") {
     LawnMowerCardCtx *ctx = (LawnMowerCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) {
+    if (ctx && ctx->mode == "control_panel") {
+      lawn_mower_control_open_modal(ctx);
+    } else if (ctx) {
       send_lawn_mower_card_action(ctx);
     } else if (!lawn_mower_card_read_only(p)) {
       LawnMowerCardCtx fallback;
