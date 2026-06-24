@@ -34,6 +34,8 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Zpět";
   if (std::strcmp(text, "Clear Night") == 0) return "Jasná noc";
   if (std::strcmp(text, "Climate") == 0) return "Klima";
+  if (std::strcmp(text, "Clean Area") == 0) return "Uklidit oblast";
+  if (std::strcmp(text, "Cleaning") == 0) return "Uklízí";
   if (std::strcmp(text, "Clock") == 0) return "Hodiny";
   if (std::strcmp(text, "Close") == 0) return "Zavřít";
   if (std::strcmp(text, "Closed") == 0) return "Zavřeno";
@@ -54,10 +56,13 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Odzajištěno";
   if (std::strcmp(text, "Door") == 0) return "Dveře";
   if (std::strcmp(text, "Door Open") == 0) return "Dveře otevřeny";
+  if (std::strcmp(text, "Dock") == 0) return "Dokovat";
+  if (std::strcmp(text, "Docked") == 0) return "V dokovací stanici";
   if (std::strcmp(text, "Dry") == 0) return "Vysoušet";
   if (std::strcmp(text, "Drying") == 0) return "Vysouší";
   if (std::strcmp(text, "Dust") == 0) return "Prach";
   if (std::strcmp(text, "Enter Pin") == 0) return "Zadejte PIN";
+  if (std::strcmp(text, "Error") == 0) return "Chyba";
   if (std::strcmp(text, "Exceptional") == 0) return "Výjimečné";
   if (std::strcmp(text, "Fan") == 0) return "Ventilátor";
   if (std::strcmp(text, "Fog") == 0) return "Mlha";
@@ -78,6 +83,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Blesky a déšť";
   if (std::strcmp(text, "Light") == 0) return "Světlo";
   if (std::strcmp(text, "Loading") == 0) return "Načítání";
+  if (std::strcmp(text, "Locate") == 0) return "Najít";
   if (std::strcmp(text, "Lock") == 0) return "Zamknout";
   if (std::strcmp(text, "Low") == 0) return "Nízké";
   if (std::strcmp(text, "Low target") == 0) return "Nízký cíl";
@@ -115,6 +121,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Částečně deštivo";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Částečně sníh a déšť";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Částečně sněží";
+  if (std::strcmp(text, "Pause") == 0) return "Pozastavit";
   if (std::strcmp(text, "Paused") == 0) return "Pozastaveno";
   if (std::strcmp(text, "Pending") == 0) return "Čeká";
   if (std::strcmp(text, "PIN was not accepted") == 0) return "PIN nebyl přijat";
@@ -128,6 +135,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Stisknout";
   if (std::strcmp(text, "Rainy") == 0) return "Deštivo";
   if (std::strcmp(text, "Relay") == 0) return "Relé";
+  if (std::strcmp(text, "Returning") == 0) return "Vrací se";
   if (std::strcmp(text, "Run this script?") == 0) return "Spustit tento skript?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Obrazovka ztlumena";
   if (std::strcmp(text, "Screen Locked") == 0) return "Obrazovka uzamčena";
@@ -136,6 +144,8 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Přeskočit předchozí";
   if (std::strcmp(text, "Snowy") == 0) return "Sněží";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Sníh a déšť";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Bodové čištění";
+  if (std::strcmp(text, "Start") == 0) return "Spustit";
   if (std::strcmp(text, "Still") == 0) return "Stojí";
   if (std::strcmp(text, "Subpage") == 0) return "Podstránka";
   if (std::strcmp(text, "Sunny") == 0) return "Slunečno";
@@ -158,6 +168,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Neznámé";
   if (std::strcmp(text, "Unlock") == 0) return "Odemknout";
   if (std::strcmp(text, "Unsupported") == 0) return "Nepodporováno";
+  if (std::strcmp(text, "Vacuum") == 0) return "Vysavač";
   if (std::strcmp(text, "Version unknown") == 0) return "Verze neznámá";
   if (std::strcmp(text, "Volume") == 0) return "Hlasitost";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Čekání na Home Assistant";
@@ -225,6 +236,8 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Tilbage";
   if (std::strcmp(text, "Clear Night") == 0) return "Klar nat";
   if (std::strcmp(text, "Climate") == 0) return "Klima";
+  if (std::strcmp(text, "Clean Area") == 0) return "Rengør område";
+  if (std::strcmp(text, "Cleaning") == 0) return "Rengør";
   if (std::strcmp(text, "Clock") == 0) return "Ur";
   if (std::strcmp(text, "Close") == 0) return "Luk";
   if (std::strcmp(text, "Closed") == 0) return "Lukket";
@@ -245,10 +258,12 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Deaktiveret";
   if (std::strcmp(text, "Door") == 0) return "Dør";
   if (std::strcmp(text, "Door Open") == 0) return "Dør åben";
+  if (std::strcmp(text, "Docked") == 0) return "Docket";
   if (std::strcmp(text, "Dry") == 0) return "Tør";
   if (std::strcmp(text, "Drying") == 0) return "Tørrer";
   if (std::strcmp(text, "Dust") == 0) return "Støv";
   if (std::strcmp(text, "Enter Pin") == 0) return "Indtast PIN";
+  if (std::strcmp(text, "Error") == 0) return "Fejl";
   if (std::strcmp(text, "Exceptional") == 0) return "Ekstraordinær";
   if (std::strcmp(text, "Fan") == 0) return "Ventilator";
   if (std::strcmp(text, "Fog") == 0) return "Tåge";
@@ -269,6 +284,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Lyn og regn";
   if (std::strcmp(text, "Light") == 0) return "Lys";
   if (std::strcmp(text, "Loading") == 0) return "Indlæser";
+  if (std::strcmp(text, "Locate") == 0) return "Find";
   if (std::strcmp(text, "Lock") == 0) return "Lås";
   if (std::strcmp(text, "Low") == 0) return "Lav";
   if (std::strcmp(text, "Low target") == 0) return "Lavt mål";
@@ -317,6 +333,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Tryk";
   if (std::strcmp(text, "Rainy") == 0) return "Regnfuldt";
   if (std::strcmp(text, "Relay") == 0) return "Relæ";
+  if (std::strcmp(text, "Returning") == 0) return "Vender tilbage";
   if (std::strcmp(text, "Run this script?") == 0) return "Kør dette script?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Skærm neddæmpet";
   if (std::strcmp(text, "Screen Locked") == 0) return "Skærm låst";
@@ -325,6 +342,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Spring til forrige";
   if (std::strcmp(text, "Snowy") == 0) return "Sne";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Sne og regn";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Pletrengøring";
   if (std::strcmp(text, "Still") == 0) return "Stille";
   if (std::strcmp(text, "Subpage") == 0) return "Underside";
   if (std::strcmp(text, "Sunny") == 0) return "Solrigt";
@@ -346,6 +364,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Ukendt";
   if (std::strcmp(text, "Unlock") == 0) return "Lås op";
   if (std::strcmp(text, "Unsupported") == 0) return "Ikke understøttet";
+  if (std::strcmp(text, "Vacuum") == 0) return "Støvsuger";
   if (std::strcmp(text, "Version unknown") == 0) return "Version ukendt";
   if (std::strcmp(text, "Volume") == 0) return "Lydstyrke";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Venter på Home Assistant";
@@ -413,6 +432,8 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Zurück";
   if (std::strcmp(text, "Clear Night") == 0) return "Klare Nacht";
   if (std::strcmp(text, "Climate") == 0) return "Klima";
+  if (std::strcmp(text, "Clean Area") == 0) return "Bereich reinigen";
+  if (std::strcmp(text, "Cleaning") == 0) return "Reinigt";
   if (std::strcmp(text, "Clock") == 0) return "Uhr";
   if (std::strcmp(text, "Close") == 0) return "Schließen";
   if (std::strcmp(text, "Closed") == 0) return "Geschlossen";
@@ -434,10 +455,13 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Entschärft";
   if (std::strcmp(text, "Door") == 0) return "Tür";
   if (std::strcmp(text, "Door Open") == 0) return "Tür offen";
+  if (std::strcmp(text, "Dock") == 0) return "Andocken";
+  if (std::strcmp(text, "Docked") == 0) return "Angedockt";
   if (std::strcmp(text, "Dry") == 0) return "Trocknen";
   if (std::strcmp(text, "Drying") == 0) return "Trocknet";
   if (std::strcmp(text, "Dust") == 0) return "Staub";
   if (std::strcmp(text, "Enter Pin") == 0) return "PIN eingeben";
+  if (std::strcmp(text, "Error") == 0) return "Fehler";
   if (std::strcmp(text, "Exceptional") == 0) return "Außergewöhnlich";
   if (std::strcmp(text, "Fan") == 0) return "Lüfter";
   if (std::strcmp(text, "Fog") == 0) return "Nebel";
@@ -458,6 +482,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Gewitter und Regen";
   if (std::strcmp(text, "Light") == 0) return "Licht";
   if (std::strcmp(text, "Loading") == 0) return "Laden";
+  if (std::strcmp(text, "Locate") == 0) return "Orten";
   if (std::strcmp(text, "Lock") == 0) return "Sperren";
   if (std::strcmp(text, "Low") == 0) return "Niedrig";
   if (std::strcmp(text, "Low target") == 0) return "Niedriger Zielwert";
@@ -502,6 +527,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Drücken";
   if (std::strcmp(text, "Rainy") == 0) return "Regnerisch";
   if (std::strcmp(text, "Relay") == 0) return "Relais";
+  if (std::strcmp(text, "Returning") == 0) return "Kehrt zurück";
   if (std::strcmp(text, "Run this script?") == 0) return "Dieses Skript ausführen?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Bildschirm gedimmt";
   if (std::strcmp(text, "Screen Locked") == 0) return "Bildschirm gesperrt";
@@ -510,6 +536,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Zurück springen";
   if (std::strcmp(text, "Snowy") == 0) return "Schneereich";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Schnee und Regen";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Punktreinigung";
   if (std::strcmp(text, "Subpage") == 0) return "Unterseite";
   if (std::strcmp(text, "Sunny") == 0) return "Sonnig";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Sonnenwarnung";
@@ -530,6 +557,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Unbekannt";
   if (std::strcmp(text, "Unlock") == 0) return "Entsperren";
   if (std::strcmp(text, "Unsupported") == 0) return "Nicht unterstützt";
+  if (std::strcmp(text, "Vacuum") == 0) return "Staubsauger";
   if (std::strcmp(text, "Version unknown") == 0) return "Version unbekannt";
   if (std::strcmp(text, "Volume") == 0) return "Lautstärke";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Warten auf Home Assistant";
@@ -598,6 +626,8 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Atrás";
   if (std::strcmp(text, "Clear Night") == 0) return "Noche despejada";
   if (std::strcmp(text, "Climate") == 0) return "Climatización";
+  if (std::strcmp(text, "Clean Area") == 0) return "Limpiar zona";
+  if (std::strcmp(text, "Cleaning") == 0) return "Limpiando";
   if (std::strcmp(text, "Clock") == 0) return "Reloj";
   if (std::strcmp(text, "Close") == 0) return "Cerrar";
   if (std::strcmp(text, "Closed") == 0) return "Cerrado";
@@ -618,6 +648,8 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Desarmada";
   if (std::strcmp(text, "Door") == 0) return "Puerta";
   if (std::strcmp(text, "Door Open") == 0) return "Puerta abierta";
+  if (std::strcmp(text, "Dock") == 0) return "Acoplar";
+  if (std::strcmp(text, "Docked") == 0) return "Acoplado";
   if (std::strcmp(text, "Dry") == 0) return "Seco";
   if (std::strcmp(text, "Drying") == 0) return "Secando";
   if (std::strcmp(text, "Dust") == 0) return "Polvo";
@@ -642,6 +674,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Rayos y lluvia";
   if (std::strcmp(text, "Light") == 0) return "Luz";
   if (std::strcmp(text, "Loading") == 0) return "Cargando";
+  if (std::strcmp(text, "Locate") == 0) return "Localizar";
   if (std::strcmp(text, "Lock") == 0) return "Bloquear";
   if (std::strcmp(text, "Low") == 0) return "Bajo";
   if (std::strcmp(text, "Low target") == 0) return "Objetivo bajo";
@@ -678,6 +711,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Parcialmente lluvioso";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Nieve y lluvia parciales";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Parcialmente nevado";
+  if (std::strcmp(text, "Pause") == 0) return "Pausa";
   if (std::strcmp(text, "Paused") == 0) return "En pausa";
   if (std::strcmp(text, "Pending") == 0) return "Pendiente";
   if (std::strcmp(text, "PIN was not accepted") == 0) return "PIN no aceptado";
@@ -691,6 +725,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Pulsar";
   if (std::strcmp(text, "Rainy") == 0) return "Lluvioso";
   if (std::strcmp(text, "Relay") == 0) return "Relé";
+  if (std::strcmp(text, "Returning") == 0) return "Volviendo";
   if (std::strcmp(text, "Run this script?") == 0) return "¿Ejecutar este script?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Pantalla atenuada";
   if (std::strcmp(text, "Screen Locked") == 0) return "Pantalla bloqueada";
@@ -699,6 +734,8 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Saltar anterior";
   if (std::strcmp(text, "Snowy") == 0) return "Nevado";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Nieve y lluvia";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Limpieza localizada";
+  if (std::strcmp(text, "Start") == 0) return "Iniciar";
   if (std::strcmp(text, "Still") == 0) return "Quieto";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
   if (std::strcmp(text, "Sunny") == 0) return "Soleado";
@@ -720,6 +757,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Desconocido";
   if (std::strcmp(text, "Unlock") == 0) return "Desbloquear";
   if (std::strcmp(text, "Unsupported") == 0) return "No compatible";
+  if (std::strcmp(text, "Vacuum") == 0) return "Aspiradora";
   if (std::strcmp(text, "Version unknown") == 0) return "Versión desconocida";
   if (std::strcmp(text, "Volume") == 0) return "Volumen";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Esperando a Home Assistant";
@@ -789,6 +827,8 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Takaisin";
   if (std::strcmp(text, "Clear Night") == 0) return "Selkeä yö";
   if (std::strcmp(text, "Climate") == 0) return "Ilmastointi";
+  if (std::strcmp(text, "Clean Area") == 0) return "Siivoa alue";
+  if (std::strcmp(text, "Cleaning") == 0) return "Siivoaa";
   if (std::strcmp(text, "Clock") == 0) return "Kello";
   if (std::strcmp(text, "Close") == 0) return "Sulje";
   if (std::strcmp(text, "Closed") == 0) return "Suljettu";
@@ -810,10 +850,13 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Poistettu käytöstä";
   if (std::strcmp(text, "Door") == 0) return "Ovi";
   if (std::strcmp(text, "Door Open") == 0) return "Ovi auki";
+  if (std::strcmp(text, "Dock") == 0) return "Telakoi";
+  if (std::strcmp(text, "Docked") == 0) return "Telakoitu";
   if (std::strcmp(text, "Dry") == 0) return "Kuivaus";
   if (std::strcmp(text, "Drying") == 0) return "Kuivaa";
   if (std::strcmp(text, "Dust") == 0) return "Pöly";
   if (std::strcmp(text, "Enter Pin") == 0) return "Syötä PIN";
+  if (std::strcmp(text, "Error") == 0) return "Virhe";
   if (std::strcmp(text, "Exceptional") == 0) return "Poikkeuksellinen";
   if (std::strcmp(text, "Fan") == 0) return "Tuuletin";
   if (std::strcmp(text, "Fog") == 0) return "Sumu";
@@ -835,6 +878,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Ukkosta ja sadetta";
   if (std::strcmp(text, "Light") == 0) return "Valo";
   if (std::strcmp(text, "Loading") == 0) return "Ladataan";
+  if (std::strcmp(text, "Locate") == 0) return "Paikanna";
   if (std::strcmp(text, "Lock") == 0) return "Lukko";
   if (std::strcmp(text, "Low") == 0) return "Matala";
   if (std::strcmp(text, "Low target") == 0) return "Alaraja";
@@ -873,6 +917,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Paikoin sadetta";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Paikoin lunta ja sadetta";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Paikoin lumisadetta";
+  if (std::strcmp(text, "Pause") == 0) return "Tauko";
   if (std::strcmp(text, "Paused") == 0) return "Keskeytetty";
   if (std::strcmp(text, "Pending") == 0) return "Odottaa";
   if (std::strcmp(text, "Permanenthold") == 0) return "Pysyvä pito";
@@ -888,6 +933,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Quiet") == 0) return "Hiljainen";
   if (std::strcmp(text, "Rainy") == 0) return "Sateista";
   if (std::strcmp(text, "Relay") == 0) return "Rele";
+  if (std::strcmp(text, "Returning") == 0) return "Palaa";
   if (std::strcmp(text, "Run this script?") == 0) return "Suoritetaanko tämä skripti?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Näyttö himmennetty";
   if (std::strcmp(text, "Screen Locked") == 0) return "Näyttö lukittu";
@@ -896,6 +942,8 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Edellinen kappale";
   if (std::strcmp(text, "Snowy") == 0) return "Lumisadetta";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Lunta ja sadetta";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Pistepuhdistus";
+  if (std::strcmp(text, "Start") == 0) return "Käynnistä";
   if (std::strcmp(text, "Still") == 0) return "Paikallaan";
   if (std::strcmp(text, "Subpage") == 0) return "Alisivu";
   if (std::strcmp(text, "Sunny") == 0) return "Aurinkoista";
@@ -919,6 +967,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Unlock") == 0) return "Avaa lukitus";
   if (std::strcmp(text, "Unsupported") == 0) return "Ei tuettu";
   if (std::strcmp(text, "Vacationhold") == 0) return "Lomapito";
+  if (std::strcmp(text, "Vacuum") == 0) return "Imuri";
   if (std::strcmp(text, "Version unknown") == 0) return "Versio tuntematon";
   if (std::strcmp(text, "Volume") == 0) return "Äänenvoimakkuus";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Odotetaan Home Assistantia";
@@ -986,6 +1035,8 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Retour";
   if (std::strcmp(text, "Clear Night") == 0) return "Nuit dégagée";
   if (std::strcmp(text, "Climate") == 0) return "Climat";
+  if (std::strcmp(text, "Clean Area") == 0) return "Nettoyer la zone";
+  if (std::strcmp(text, "Cleaning") == 0) return "Nettoyage";
   if (std::strcmp(text, "Clock") == 0) return "Horloge";
   if (std::strcmp(text, "Close") == 0) return "Fermer";
   if (std::strcmp(text, "Closed") == 0) return "Fermé";
@@ -1004,10 +1055,13 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Désarmé";
   if (std::strcmp(text, "Door") == 0) return "Porte";
   if (std::strcmp(text, "Door Open") == 0) return "Porte ouverte";
+  if (std::strcmp(text, "Dock") == 0) return "Station";
+  if (std::strcmp(text, "Docked") == 0) return "À la station";
   if (std::strcmp(text, "Dry") == 0) return "Déshumidifier";
   if (std::strcmp(text, "Drying") == 0) return "Déshumidification";
   if (std::strcmp(text, "Dust") == 0) return "Poussière";
   if (std::strcmp(text, "Enter Pin") == 0) return "Saisir le PIN";
+  if (std::strcmp(text, "Error") == 0) return "Erreur";
   if (std::strcmp(text, "Exceptional") == 0) return "Exceptionnel";
   if (std::strcmp(text, "Fan") == 0) return "Ventilateur";
   if (std::strcmp(text, "Fog") == 0) return "Brouillard";
@@ -1028,6 +1082,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Orage et pluie";
   if (std::strcmp(text, "Light") == 0) return "Lumière";
   if (std::strcmp(text, "Loading") == 0) return "Chargement";
+  if (std::strcmp(text, "Locate") == 0) return "Localiser";
   if (std::strcmp(text, "Lock") == 0) return "Verrouiller";
   if (std::strcmp(text, "Low") == 0) return "Bas";
   if (std::strcmp(text, "Low target") == 0) return "Cible basse";
@@ -1074,6 +1129,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Appuyer";
   if (std::strcmp(text, "Rainy") == 0) return "Pluvieux";
   if (std::strcmp(text, "Relay") == 0) return "Relais";
+  if (std::strcmp(text, "Returning") == 0) return "Retour";
   if (std::strcmp(text, "Run this script?") == 0) return "Exécuter ce script ?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Écran tamisé";
   if (std::strcmp(text, "Screen Locked") == 0) return "Écran verrouillé";
@@ -1082,6 +1138,8 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Passer au précédent";
   if (std::strcmp(text, "Snowy") == 0) return "Neigeux";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Neige et pluie";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Nettoyage ciblé";
+  if (std::strcmp(text, "Start") == 0) return "Démarrer";
   if (std::strcmp(text, "Still") == 0) return "Fixe";
   if (std::strcmp(text, "Subpage") == 0) return "Sous-page";
   if (std::strcmp(text, "Sunny") == 0) return "Ensoleillé";
@@ -1104,6 +1162,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Inconnu";
   if (std::strcmp(text, "Unlock") == 0) return "Déverrouiller";
   if (std::strcmp(text, "Unsupported") == 0) return "Non pris en charge";
+  if (std::strcmp(text, "Vacuum") == 0) return "Aspirateur";
   if (std::strcmp(text, "Version unknown") == 0) return "Version inconnue";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "En attente de Home Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Météo";
@@ -1172,6 +1231,8 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Vissza";
   if (std::strcmp(text, "Clear Night") == 0) return "Tiszta éjszaka";
   if (std::strcmp(text, "Climate") == 0) return "Klíma";
+  if (std::strcmp(text, "Clean Area") == 0) return "Terület tisztítása";
+  if (std::strcmp(text, "Cleaning") == 0) return "Takarítás";
   if (std::strcmp(text, "Clock") == 0) return "Óra";
   if (std::strcmp(text, "Close") == 0) return "Bezárás";
   if (std::strcmp(text, "Closed") == 0) return "Zárva";
@@ -1193,10 +1254,13 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Hatástalanítva";
   if (std::strcmp(text, "Door") == 0) return "Ajtó";
   if (std::strcmp(text, "Door Open") == 0) return "Ajtó nyitva";
+  if (std::strcmp(text, "Dock") == 0) return "Dokkolás";
+  if (std::strcmp(text, "Docked") == 0) return "Dokkolva";
   if (std::strcmp(text, "Dry") == 0) return "Szárítás";
   if (std::strcmp(text, "Drying") == 0) return "Szárítás folyamatban";
   if (std::strcmp(text, "Dust") == 0) return "Por";
   if (std::strcmp(text, "Enter Pin") == 0) return "PIN megadása";
+  if (std::strcmp(text, "Error") == 0) return "Hiba";
   if (std::strcmp(text, "Exceptional") == 0) return "Rendkívüli";
   if (std::strcmp(text, "Fan") == 0) return "Ventilátor";
   if (std::strcmp(text, "Fog") == 0) return "Köd";
@@ -1218,6 +1282,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Villámlás és eső";
   if (std::strcmp(text, "Light") == 0) return "Fény";
   if (std::strcmp(text, "Loading") == 0) return "Betöltés";
+  if (std::strcmp(text, "Locate") == 0) return "Keresés";
   if (std::strcmp(text, "Lock") == 0) return "Zár";
   if (std::strcmp(text, "Low") == 0) return "Alacsony";
   if (std::strcmp(text, "Low target") == 0) return "Alacsony célérték";
@@ -1255,6 +1320,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Helyenként eső";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Helyenként hó és eső";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Helyenként havazás";
+  if (std::strcmp(text, "Pause") == 0) return "Szünet";
   if (std::strcmp(text, "Paused") == 0) return "Szüneteltetve";
   if (std::strcmp(text, "Pending") == 0) return "Függőben";
   if (std::strcmp(text, "Permanenthold") == 0) return "Állandó tartás";
@@ -1270,6 +1336,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Quiet") == 0) return "Csendes";
   if (std::strcmp(text, "Rainy") == 0) return "Esős";
   if (std::strcmp(text, "Relay") == 0) return "Relé";
+  if (std::strcmp(text, "Returning") == 0) return "Visszatérés";
   if (std::strcmp(text, "Run this script?") == 0) return "Futtatja ezt a szkriptet?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Képernyő halványítva";
   if (std::strcmp(text, "Screen Locked") == 0) return "Képernyő lezárva";
@@ -1278,6 +1345,8 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Ugrás az előzőre";
   if (std::strcmp(text, "Snowy") == 0) return "Havas";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Hó és eső";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Folttisztítás";
+  if (std::strcmp(text, "Start") == 0) return "Indítás";
   if (std::strcmp(text, "Still") == 0) return "Álló";
   if (std::strcmp(text, "Subpage") == 0) return "Aloldal";
   if (std::strcmp(text, "Sunny") == 0) return "Napos";
@@ -1302,6 +1371,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Unlock") == 0) return "Feloldás";
   if (std::strcmp(text, "Unsupported") == 0) return "Nem támogatott";
   if (std::strcmp(text, "Vacationhold") == 0) return "Vakációs tartás";
+  if (std::strcmp(text, "Vacuum") == 0) return "Porszívó";
   if (std::strcmp(text, "Version unknown") == 0) return "Ismeretlen verzió";
   if (std::strcmp(text, "Volume") == 0) return "Hangerő";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Várakozás a Home Assistantra";
@@ -1370,6 +1440,8 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Indietro";
   if (std::strcmp(text, "Clear Night") == 0) return "Notte serena";
   if (std::strcmp(text, "Climate") == 0) return "Clima";
+  if (std::strcmp(text, "Clean Area") == 0) return "Pulisci area";
+  if (std::strcmp(text, "Cleaning") == 0) return "Pulizia";
   if (std::strcmp(text, "Clock") == 0) return "Orologio";
   if (std::strcmp(text, "Close") == 0) return "Chiudi";
   if (std::strcmp(text, "Closed") == 0) return "Chiuso";
@@ -1390,10 +1462,12 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Disinserito";
   if (std::strcmp(text, "Door") == 0) return "Porta";
   if (std::strcmp(text, "Door Open") == 0) return "Porta aperta";
+  if (std::strcmp(text, "Docked") == 0) return "In base";
   if (std::strcmp(text, "Dry") == 0) return "Deumidifica";
   if (std::strcmp(text, "Drying") == 0) return "Deumidificazione";
   if (std::strcmp(text, "Dust") == 0) return "Polvere";
   if (std::strcmp(text, "Enter Pin") == 0) return "Inserisci PIN";
+  if (std::strcmp(text, "Error") == 0) return "Errore";
   if (std::strcmp(text, "Exceptional") == 0) return "Eccezionale";
   if (std::strcmp(text, "Fan") == 0) return "Ventola";
   if (std::strcmp(text, "Fog") == 0) return "Nebbia";
@@ -1415,6 +1489,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Fulmini e pioggia";
   if (std::strcmp(text, "Light") == 0) return "Luce";
   if (std::strcmp(text, "Loading") == 0) return "Caricamento";
+  if (std::strcmp(text, "Locate") == 0) return "Localizza";
   if (std::strcmp(text, "Lock") == 0) return "Blocca";
   if (std::strcmp(text, "Low") == 0) return "Basso";
   if (std::strcmp(text, "Low target") == 0) return "Target basso";
@@ -1452,6 +1527,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Pioggia a tratti";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Neve e pioggia a tratti";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Neve a tratti";
+  if (std::strcmp(text, "Pause") == 0) return "Pausa";
   if (std::strcmp(text, "Paused") == 0) return "In pausa";
   if (std::strcmp(text, "Pending") == 0) return "In attesa";
   if (std::strcmp(text, "Permanenthold") == 0) return "Fisso";
@@ -1466,6 +1542,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Quiet") == 0) return "Silenzioso";
   if (std::strcmp(text, "Rainy") == 0) return "Piovoso";
   if (std::strcmp(text, "Relay") == 0) return "Relè";
+  if (std::strcmp(text, "Returning") == 0) return "Ritorno";
   if (std::strcmp(text, "Run this script?") == 0) return "Eseguire questo script?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Schermo attenuato";
   if (std::strcmp(text, "Screen Locked") == 0) return "Schermo bloccato";
@@ -1474,6 +1551,8 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Salta indietro";
   if (std::strcmp(text, "Snowy") == 0) return "Nevoso";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Neve e pioggia";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Pulizia spot";
+  if (std::strcmp(text, "Start") == 0) return "Avvia";
   if (std::strcmp(text, "Still") == 0) return "Fermo";
   if (std::strcmp(text, "Subpage") == 0) return "Sottopagina";
   if (std::strcmp(text, "Sunny") == 0) return "Soleggiato";
@@ -1496,6 +1575,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Unlock") == 0) return "Sblocca";
   if (std::strcmp(text, "Unsupported") == 0) return "Non supportato";
   if (std::strcmp(text, "Vacationhold") == 0) return "Vacanza";
+  if (std::strcmp(text, "Vacuum") == 0) return "Aspirapolvere";
   if (std::strcmp(text, "Version unknown") == 0) return "Versione sconosciuta";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "In attesa di Home Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Meteo";
@@ -1562,6 +1642,8 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Tilbake";
   if (std::strcmp(text, "Clear Night") == 0) return "Klar natt";
   if (std::strcmp(text, "Climate") == 0) return "Klima";
+  if (std::strcmp(text, "Clean Area") == 0) return "Rengjør område";
+  if (std::strcmp(text, "Cleaning") == 0) return "Rengjør";
   if (std::strcmp(text, "Clock") == 0) return "Klokke";
   if (std::strcmp(text, "Close") == 0) return "Lukk";
   if (std::strcmp(text, "Closed") == 0) return "Lukket";
@@ -1582,10 +1664,13 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Deaktivert";
   if (std::strcmp(text, "Door") == 0) return "Dør";
   if (std::strcmp(text, "Door Open") == 0) return "Dør åpen";
+  if (std::strcmp(text, "Dock") == 0) return "Dokking";
+  if (std::strcmp(text, "Docked") == 0) return "Dokket";
   if (std::strcmp(text, "Dry") == 0) return "Tørk";
   if (std::strcmp(text, "Drying") == 0) return "Tørker";
   if (std::strcmp(text, "Dust") == 0) return "Støv";
   if (std::strcmp(text, "Enter Pin") == 0) return "Skriv inn PIN";
+  if (std::strcmp(text, "Error") == 0) return "Feil";
   if (std::strcmp(text, "Exceptional") == 0) return "Eksepsjonelt";
   if (std::strcmp(text, "Fan") == 0) return "Vifte";
   if (std::strcmp(text, "Fog") == 0) return "Tåke";
@@ -1606,6 +1691,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Lyn og regn";
   if (std::strcmp(text, "Light") == 0) return "Lys";
   if (std::strcmp(text, "Loading") == 0) return "Laster";
+  if (std::strcmp(text, "Locate") == 0) return "Finn";
   if (std::strcmp(text, "Lock") == 0) return "Lås";
   if (std::strcmp(text, "Low") == 0) return "Lav";
   if (std::strcmp(text, "Low target") == 0) return "Lavt mål";
@@ -1655,6 +1741,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Trykk";
   if (std::strcmp(text, "Rainy") == 0) return "Regn";
   if (std::strcmp(text, "Relay") == 0) return "Relé";
+  if (std::strcmp(text, "Returning") == 0) return "Returnerer";
   if (std::strcmp(text, "Run this script?") == 0) return "Kjør dette skriptet?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Skjerm neddimmet";
   if (std::strcmp(text, "Screen Locked") == 0) return "Skjerm låst";
@@ -1663,6 +1750,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Hopp til forrige";
   if (std::strcmp(text, "Snowy") == 0) return "Snø";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Snø og regn";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Punktrengjøring";
   if (std::strcmp(text, "Still") == 0) return "Stille";
   if (std::strcmp(text, "Subpage") == 0) return "Underside";
   if (std::strcmp(text, "Sunny") == 0) return "Sol";
@@ -1684,6 +1772,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Ukjent";
   if (std::strcmp(text, "Unlock") == 0) return "Lås opp";
   if (std::strcmp(text, "Unsupported") == 0) return "Støttes ikke";
+  if (std::strcmp(text, "Vacuum") == 0) return "Støvsuger";
   if (std::strcmp(text, "Version unknown") == 0) return "Ukjent versjon";
   if (std::strcmp(text, "Volume") == 0) return "Volum";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Venter på Home Assistant";
@@ -1752,6 +1841,8 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Terug";
   if (std::strcmp(text, "Clear Night") == 0) return "Heldere nacht";
   if (std::strcmp(text, "Climate") == 0) return "Klimaat";
+  if (std::strcmp(text, "Clean Area") == 0) return "Gebied reinigen";
+  if (std::strcmp(text, "Cleaning") == 0) return "Reinigt";
   if (std::strcmp(text, "Clock") == 0) return "Klok";
   if (std::strcmp(text, "Close") == 0) return "Sluiten";
   if (std::strcmp(text, "Closed") == 0) return "Gesloten";
@@ -1773,10 +1864,13 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Uitgeschakeld";
   if (std::strcmp(text, "Door") == 0) return "Deur";
   if (std::strcmp(text, "Door Open") == 0) return "Deur open";
+  if (std::strcmp(text, "Dock") == 0) return "Docken";
+  if (std::strcmp(text, "Docked") == 0) return "Gedockt";
   if (std::strcmp(text, "Dry") == 0) return "Droog";
   if (std::strcmp(text, "Drying") == 0) return "Drogen";
   if (std::strcmp(text, "Dust") == 0) return "Stof";
   if (std::strcmp(text, "Enter Pin") == 0) return "Voer pincode in";
+  if (std::strcmp(text, "Error") == 0) return "Fout";
   if (std::strcmp(text, "Exceptional") == 0) return "Uitzonderlijk";
   if (std::strcmp(text, "Fan") == 0) return "Ventilator";
   if (std::strcmp(text, "Fog") == 0) return "Mist";
@@ -1797,6 +1891,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Bliksem en regen";
   if (std::strcmp(text, "Light") == 0) return "Licht";
   if (std::strcmp(text, "Loading") == 0) return "Laden";
+  if (std::strcmp(text, "Locate") == 0) return "Lokaliseren";
   if (std::strcmp(text, "Lock") == 0) return "Vergrendelen";
   if (std::strcmp(text, "Low") == 0) return "Laag";
   if (std::strcmp(text, "Low target") == 0) return "Laag doel";
@@ -1833,6 +1928,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Plaatselijk regen";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Plaatselijk sneeuw en regen";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Plaatselijk sneeuw";
+  if (std::strcmp(text, "Pause") == 0) return "Pauze";
   if (std::strcmp(text, "Paused") == 0) return "Gepauzeerd";
   if (std::strcmp(text, "Pending") == 0) return "In afwachting";
   if (std::strcmp(text, "PIN was not accepted") == 0) return "Pincode is niet geaccepteerd";
@@ -1846,6 +1942,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Drukken";
   if (std::strcmp(text, "Rainy") == 0) return "Regenachtig";
   if (std::strcmp(text, "Relay") == 0) return "Relais";
+  if (std::strcmp(text, "Returning") == 0) return "Keert terug";
   if (std::strcmp(text, "Run this script?") == 0) return "Dit script uitvoeren?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Scherm gedimd";
   if (std::strcmp(text, "Screen Locked") == 0) return "Scherm vergrendeld";
@@ -1854,6 +1951,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Vorige overslaan";
   if (std::strcmp(text, "Snowy") == 0) return "Sneeuwachtig";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Sneeuw en regen";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Plaatselijk reinigen";
   if (std::strcmp(text, "Still") == 0) return "Vast";
   if (std::strcmp(text, "Subpage") == 0) return "Subpagina";
   if (std::strcmp(text, "Sunny") == 0) return "Zonnig";
@@ -1875,6 +1973,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Onbekend";
   if (std::strcmp(text, "Unlock") == 0) return "Ontgrendelen";
   if (std::strcmp(text, "Unsupported") == 0) return "Niet ondersteund";
+  if (std::strcmp(text, "Vacuum") == 0) return "Stofzuiger";
   if (std::strcmp(text, "Version unknown") == 0) return "Versie onbekend";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Wachten op Home Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Weer";
@@ -1940,6 +2039,8 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Wstecz";
   if (std::strcmp(text, "Clear Night") == 0) return "Bezchmurna noc";
   if (std::strcmp(text, "Climate") == 0) return "Klimat";
+  if (std::strcmp(text, "Clean Area") == 0) return "Wyczyść obszar";
+  if (std::strcmp(text, "Cleaning") == 0) return "Sprząta";
   if (std::strcmp(text, "Clock") == 0) return "Zegar";
   if (std::strcmp(text, "Close") == 0) return "Zamknij";
   if (std::strcmp(text, "Closed") == 0) return "Zamknięte";
@@ -1960,10 +2061,13 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Rozbrojony";
   if (std::strcmp(text, "Door") == 0) return "Drzwi";
   if (std::strcmp(text, "Door Open") == 0) return "Drzwi otwarte";
+  if (std::strcmp(text, "Dock") == 0) return "Dokuj";
+  if (std::strcmp(text, "Docked") == 0) return "Zadokowany";
   if (std::strcmp(text, "Dry") == 0) return "Osuszanie";
   if (std::strcmp(text, "Drying") == 0) return "Osusza";
   if (std::strcmp(text, "Dust") == 0) return "Pył";
   if (std::strcmp(text, "Enter Pin") == 0) return "Wpisz PIN";
+  if (std::strcmp(text, "Error") == 0) return "Błąd";
   if (std::strcmp(text, "Exceptional") == 0) return "Wyjątkowe";
   if (std::strcmp(text, "Fan") == 0) return "Wentylator";
   if (std::strcmp(text, "Fog") == 0) return "Mgła";
@@ -1984,6 +2088,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Błyskawice i deszcz";
   if (std::strcmp(text, "Light") == 0) return "Światło";
   if (std::strcmp(text, "Loading") == 0) return "Ładowanie";
+  if (std::strcmp(text, "Locate") == 0) return "Zlokalizuj";
   if (std::strcmp(text, "Lock") == 0) return "Zablokuj";
   if (std::strcmp(text, "Low") == 0) return "Niski";
   if (std::strcmp(text, "Low target") == 0) return "Niski cel";
@@ -2020,6 +2125,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Częściowo deszczowo";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Częściowo śnieg i deszcz";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Częściowo śnieżnie";
+  if (std::strcmp(text, "Pause") == 0) return "Pauza";
   if (std::strcmp(text, "Paused") == 0) return "Wstrzymane";
   if (std::strcmp(text, "Pending") == 0) return "Oczekujące";
   if (std::strcmp(text, "PIN was not accepted") == 0) return "PIN nie został zaakceptowany";
@@ -2032,6 +2138,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Naciśnij";
   if (std::strcmp(text, "Rainy") == 0) return "Deszczowo";
   if (std::strcmp(text, "Relay") == 0) return "Przekaźnik";
+  if (std::strcmp(text, "Returning") == 0) return "Powraca";
   if (std::strcmp(text, "Run this script?") == 0) return "Uruchomić ten skrypt?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Ekran przyciemniony";
   if (std::strcmp(text, "Screen Locked") == 0) return "Ekran zablokowany";
@@ -2040,6 +2147,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Pomiń poprzedni";
   if (std::strcmp(text, "Snowy") == 0) return "Śnieżnie";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Śnieg i deszcz";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Czyszczenie punktowe";
   if (std::strcmp(text, "Still") == 0) return "Stabilny";
   if (std::strcmp(text, "Subpage") == 0) return "Podstrona";
   if (std::strcmp(text, "Sunny") == 0) return "Słonecznie";
@@ -2061,6 +2169,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Nieznane";
   if (std::strcmp(text, "Unlock") == 0) return "Odblokuj";
   if (std::strcmp(text, "Unsupported") == 0) return "Nieobsługiwane";
+  if (std::strcmp(text, "Vacuum") == 0) return "Odkurzacz";
   if (std::strcmp(text, "Version unknown") == 0) return "Wersja nieznana";
   if (std::strcmp(text, "Volume") == 0) return "Głośność";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Oczekiwanie na Home Assistant";
@@ -2129,6 +2238,8 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Voltar";
   if (std::strcmp(text, "Clear Night") == 0) return "Noite limpa";
   if (std::strcmp(text, "Climate") == 0) return "Climatização";
+  if (std::strcmp(text, "Clean Area") == 0) return "Limpar área";
+  if (std::strcmp(text, "Cleaning") == 0) return "Limpando";
   if (std::strcmp(text, "Clock") == 0) return "Relógio";
   if (std::strcmp(text, "Close") == 0) return "Fechar";
   if (std::strcmp(text, "Closed") == 0) return "Fechado";
@@ -2149,10 +2260,12 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Desarmado";
   if (std::strcmp(text, "Door") == 0) return "Porta";
   if (std::strcmp(text, "Door Open") == 0) return "Porta aberta";
+  if (std::strcmp(text, "Docked") == 0) return "Na base";
   if (std::strcmp(text, "Dry") == 0) return "Secar";
   if (std::strcmp(text, "Drying") == 0) return "Secando";
   if (std::strcmp(text, "Dust") == 0) return "Poeira";
   if (std::strcmp(text, "Enter Pin") == 0) return "Inserir PIN";
+  if (std::strcmp(text, "Error") == 0) return "Erro";
   if (std::strcmp(text, "Exceptional") == 0) return "Excepcional";
   if (std::strcmp(text, "Fan") == 0) return "Ventilador";
   if (std::strcmp(text, "Fog") == 0) return "Névoa";
@@ -2173,6 +2286,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Raios e chuva";
   if (std::strcmp(text, "Light") == 0) return "Luz";
   if (std::strcmp(text, "Loading") == 0) return "Carregando";
+  if (std::strcmp(text, "Locate") == 0) return "Localizar";
   if (std::strcmp(text, "Lock") == 0) return "Bloquear";
   if (std::strcmp(text, "Low") == 0) return "Baixo";
   if (std::strcmp(text, "Low target") == 0) return "Alvo baixo";
@@ -2210,6 +2324,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Parcialmente chuvoso";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Neve e chuva parciais";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Parcialmente nevado";
+  if (std::strcmp(text, "Pause") == 0) return "Pausa";
   if (std::strcmp(text, "Paused") == 0) return "Pausado";
   if (std::strcmp(text, "Pending") == 0) return "Pendente";
   if (std::strcmp(text, "PIN was not accepted") == 0) return "PIN não aceito";
@@ -2223,6 +2338,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Pressionar";
   if (std::strcmp(text, "Rainy") == 0) return "Chuvoso";
   if (std::strcmp(text, "Relay") == 0) return "Relé";
+  if (std::strcmp(text, "Returning") == 0) return "Retornando";
   if (std::strcmp(text, "Run this script?") == 0) return "Executar este script?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Tela escurecida";
   if (std::strcmp(text, "Screen Locked") == 0) return "Tela bloqueada";
@@ -2231,6 +2347,8 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Pular anterior";
   if (std::strcmp(text, "Snowy") == 0) return "Nevado";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Neve e chuva";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Limpeza localizada";
+  if (std::strcmp(text, "Start") == 0) return "Iniciar";
   if (std::strcmp(text, "Still") == 0) return "Parado";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
   if (std::strcmp(text, "Sunny") == 0) return "Ensolarado";
@@ -2252,6 +2370,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Desconhecido";
   if (std::strcmp(text, "Unlock") == 0) return "Desbloquear";
   if (std::strcmp(text, "Unsupported") == 0) return "Não suportado";
+  if (std::strcmp(text, "Vacuum") == 0) return "Aspirador";
   if (std::strcmp(text, "Version unknown") == 0) return "Versão desconhecida";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Aguardando o Home Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Tempo";
@@ -2319,6 +2438,8 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Voltar";
   if (std::strcmp(text, "Clear Night") == 0) return "Noite limpa";
   if (std::strcmp(text, "Climate") == 0) return "Climatização";
+  if (std::strcmp(text, "Clean Area") == 0) return "Limpar área";
+  if (std::strcmp(text, "Cleaning") == 0) return "A limpar";
   if (std::strcmp(text, "Clock") == 0) return "Relógio";
   if (std::strcmp(text, "Close") == 0) return "Fechar";
   if (std::strcmp(text, "Closed") == 0) return "Fechado";
@@ -2339,10 +2460,13 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Desarmado";
   if (std::strcmp(text, "Door") == 0) return "Porta";
   if (std::strcmp(text, "Door Open") == 0) return "Porta aberta";
+  if (std::strcmp(text, "Dock") == 0) return "Ancorar";
+  if (std::strcmp(text, "Docked") == 0) return "Ancorado";
   if (std::strcmp(text, "Dry") == 0) return "Secar";
   if (std::strcmp(text, "Drying") == 0) return "A secar";
   if (std::strcmp(text, "Dust") == 0) return "Pó";
   if (std::strcmp(text, "Enter Pin") == 0) return "Introduzir PIN";
+  if (std::strcmp(text, "Error") == 0) return "Erro";
   if (std::strcmp(text, "Exceptional") == 0) return "Excecional";
   if (std::strcmp(text, "Fan") == 0) return "Ventoinha";
   if (std::strcmp(text, "Fog") == 0) return "Nevoeiro";
@@ -2363,6 +2487,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Relâmpagos e chuva";
   if (std::strcmp(text, "Light") == 0) return "Luz";
   if (std::strcmp(text, "Loading") == 0) return "A carregar";
+  if (std::strcmp(text, "Locate") == 0) return "Localizar";
   if (std::strcmp(text, "Lock") == 0) return "Bloquear";
   if (std::strcmp(text, "Low") == 0) return "Baixo";
   if (std::strcmp(text, "Low target") == 0) return "Alvo baixo";
@@ -2400,6 +2525,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Parcialmente chuvoso";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Neve e chuva parciais";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Parcialmente nevado";
+  if (std::strcmp(text, "Pause") == 0) return "Pausa";
   if (std::strcmp(text, "Paused") == 0) return "Em pausa";
   if (std::strcmp(text, "Pending") == 0) return "Pendente";
   if (std::strcmp(text, "PIN was not accepted") == 0) return "PIN não aceite";
@@ -2413,6 +2539,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Premir";
   if (std::strcmp(text, "Rainy") == 0) return "Chuvoso";
   if (std::strcmp(text, "Relay") == 0) return "Relé";
+  if (std::strcmp(text, "Returning") == 0) return "A regressar";
   if (std::strcmp(text, "Run this script?") == 0) return "Executar este script?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Ecrã escurecido";
   if (std::strcmp(text, "Screen Locked") == 0) return "Ecrã bloqueado";
@@ -2421,6 +2548,8 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Saltar anterior";
   if (std::strcmp(text, "Snowy") == 0) return "Nevado";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Neve e chuva";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Limpeza localizada";
+  if (std::strcmp(text, "Start") == 0) return "Iniciar";
   if (std::strcmp(text, "Still") == 0) return "Parado";
   if (std::strcmp(text, "Subpage") == 0) return "Subpágina";
   if (std::strcmp(text, "Sunny") == 0) return "Solarengo";
@@ -2442,6 +2571,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Desconhecido";
   if (std::strcmp(text, "Unlock") == 0) return "Desbloquear";
   if (std::strcmp(text, "Unsupported") == 0) return "Não suportado";
+  if (std::strcmp(text, "Vacuum") == 0) return "Aspirador";
   if (std::strcmp(text, "Version unknown") == 0) return "Versão desconhecida";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "À espera do Home Assistant";
   if (std::strcmp(text, "Weather") == 0) return "Meteorologia";
@@ -2510,6 +2640,8 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Înapoi";
   if (std::strcmp(text, "Clear Night") == 0) return "Noapte senină";
   if (std::strcmp(text, "Climate") == 0) return "Climatizare";
+  if (std::strcmp(text, "Clean Area") == 0) return "Curăță zona";
+  if (std::strcmp(text, "Cleaning") == 0) return "Curăță";
   if (std::strcmp(text, "Clock") == 0) return "Ceas";
   if (std::strcmp(text, "Close") == 0) return "Închide";
   if (std::strcmp(text, "Closed") == 0) return "Închis";
@@ -2531,10 +2663,13 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Dezarmat";
   if (std::strcmp(text, "Door") == 0) return "Ușă";
   if (std::strcmp(text, "Door Open") == 0) return "Ușă deschisă";
+  if (std::strcmp(text, "Dock") == 0) return "Andocare";
+  if (std::strcmp(text, "Docked") == 0) return "Andocat";
   if (std::strcmp(text, "Dry") == 0) return "Uscare";
   if (std::strcmp(text, "Drying") == 0) return "Se usucă";
   if (std::strcmp(text, "Dust") == 0) return "Praf";
   if (std::strcmp(text, "Enter Pin") == 0) return "Introdu PIN";
+  if (std::strcmp(text, "Error") == 0) return "Eroare";
   if (std::strcmp(text, "Exceptional") == 0) return "Excepțional";
   if (std::strcmp(text, "Fan") == 0) return "Ventilator";
   if (std::strcmp(text, "Fog") == 0) return "Ceață";
@@ -2556,6 +2691,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Fulger și ploaie";
   if (std::strcmp(text, "Light") == 0) return "Lumină";
   if (std::strcmp(text, "Loading") == 0) return "Se încarcă";
+  if (std::strcmp(text, "Locate") == 0) return "Localizare";
   if (std::strcmp(text, "Lock") == 0) return "Încuietoare";
   if (std::strcmp(text, "Low") == 0) return "Scăzut";
   if (std::strcmp(text, "Low target") == 0) return "Țintă scăzută";
@@ -2593,6 +2729,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Parțial ploios";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Parțial ninsoare și ploaie";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Parțial ninsoare";
+  if (std::strcmp(text, "Pause") == 0) return "Pauză";
   if (std::strcmp(text, "Paused") == 0) return "În pauză";
   if (std::strcmp(text, "Pending") == 0) return "În așteptare";
   if (std::strcmp(text, "Permanenthold") == 0) return "Menținere permanentă";
@@ -2608,6 +2745,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Quiet") == 0) return "Silențios";
   if (std::strcmp(text, "Rainy") == 0) return "Ploios";
   if (std::strcmp(text, "Relay") == 0) return "Releu";
+  if (std::strcmp(text, "Returning") == 0) return "Revine";
   if (std::strcmp(text, "Run this script?") == 0) return "Rulați acest script?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Ecran estompat";
   if (std::strcmp(text, "Screen Locked") == 0) return "Ecran blocat";
@@ -2616,6 +2754,8 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Anteriorul";
   if (std::strcmp(text, "Snowy") == 0) return "Ninsoare";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Ninsoare și ploaie";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Curățare locală";
+  if (std::strcmp(text, "Start") == 0) return "Pornire";
   if (std::strcmp(text, "Still") == 0) return "Nemișcat";
   if (std::strcmp(text, "Subpage") == 0) return "Subpagină";
   if (std::strcmp(text, "Sunny") == 0) return "Însorit";
@@ -2640,6 +2780,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Unlock") == 0) return "Deblochează";
   if (std::strcmp(text, "Unsupported") == 0) return "Neacceptat";
   if (std::strcmp(text, "Vacationhold") == 0) return "Menținere vacanță";
+  if (std::strcmp(text, "Vacuum") == 0) return "Aspirator";
   if (std::strcmp(text, "Version unknown") == 0) return "Versiune necunoscută";
   if (std::strcmp(text, "Volume") == 0) return "Volum";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Se așteaptă Home Assistant";
@@ -2707,6 +2848,8 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Späť";
   if (std::strcmp(text, "Clear Night") == 0) return "Jasná noc";
   if (std::strcmp(text, "Climate") == 0) return "Klíma";
+  if (std::strcmp(text, "Clean Area") == 0) return "Vyčistiť oblasť";
+  if (std::strcmp(text, "Cleaning") == 0) return "Čistí";
   if (std::strcmp(text, "Clock") == 0) return "Hodiny";
   if (std::strcmp(text, "Close") == 0) return "Zavrieť";
   if (std::strcmp(text, "Closed") == 0) return "Zatvorené";
@@ -2727,10 +2870,13 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Odzbrojené";
   if (std::strcmp(text, "Door") == 0) return "Dvere";
   if (std::strcmp(text, "Door Open") == 0) return "Dvere otvorené";
+  if (std::strcmp(text, "Dock") == 0) return "Dokovať";
+  if (std::strcmp(text, "Docked") == 0) return "V dokovacej stanici";
   if (std::strcmp(text, "Dry") == 0) return "Sušiť";
   if (std::strcmp(text, "Drying") == 0) return "Suší";
   if (std::strcmp(text, "Dust") == 0) return "Prach";
   if (std::strcmp(text, "Enter Pin") == 0) return "Zadajte PIN";
+  if (std::strcmp(text, "Error") == 0) return "Chyba";
   if (std::strcmp(text, "Exceptional") == 0) return "Výnimočné";
   if (std::strcmp(text, "Fan") == 0) return "Ventilátor";
   if (std::strcmp(text, "Fog") == 0) return "Hmla";
@@ -2751,6 +2897,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Blesky a dážď";
   if (std::strcmp(text, "Light") == 0) return "Svetlo";
   if (std::strcmp(text, "Loading") == 0) return "Načítanie";
+  if (std::strcmp(text, "Locate") == 0) return "Nájsť";
   if (std::strcmp(text, "Lock") == 0) return "Zamknúť";
   if (std::strcmp(text, "Low") == 0) return "Nízke";
   if (std::strcmp(text, "Low target") == 0) return "Nízky cieľ";
@@ -2788,6 +2935,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Čiastočne daždivo";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Čiastočne sneh a dážď";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Čiastočne sneží";
+  if (std::strcmp(text, "Pause") == 0) return "Pozastaviť";
   if (std::strcmp(text, "Paused") == 0) return "Pozastavené";
   if (std::strcmp(text, "Pending") == 0) return "Čaká";
   if (std::strcmp(text, "PIN was not accepted") == 0) return "PIN nebol prijatý";
@@ -2801,6 +2949,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Stlačiť";
   if (std::strcmp(text, "Rainy") == 0) return "Daždivo";
   if (std::strcmp(text, "Relay") == 0) return "Relé";
+  if (std::strcmp(text, "Returning") == 0) return "Vracia sa";
   if (std::strcmp(text, "Run this script?") == 0) return "Spustiť tento skript?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Obrazovka stlmená";
   if (std::strcmp(text, "Screen Locked") == 0) return "Obrazovka uzamknutá";
@@ -2809,6 +2958,8 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Preskočiť predchádzajúce";
   if (std::strcmp(text, "Snowy") == 0) return "Sneží";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Sneh a dážď";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Bodové čistenie";
+  if (std::strcmp(text, "Start") == 0) return "Spustiť";
   if (std::strcmp(text, "Still") == 0) return "Stojí";
   if (std::strcmp(text, "Subpage") == 0) return "Podstránka";
   if (std::strcmp(text, "Sunny") == 0) return "Slnečno";
@@ -2831,6 +2982,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Neznáme";
   if (std::strcmp(text, "Unlock") == 0) return "Odomknúť";
   if (std::strcmp(text, "Unsupported") == 0) return "Nepodporované";
+  if (std::strcmp(text, "Vacuum") == 0) return "Vysávač";
   if (std::strcmp(text, "Version unknown") == 0) return "Verzia neznáma";
   if (std::strcmp(text, "Volume") == 0) return "Hlasitosť";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Čakanie na Home Assistant";
@@ -2899,6 +3051,8 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Nazaj";
   if (std::strcmp(text, "Clear Night") == 0) return "Jasna noč";
   if (std::strcmp(text, "Climate") == 0) return "Klima";
+  if (std::strcmp(text, "Clean Area") == 0) return "Očisti območje";
+  if (std::strcmp(text, "Cleaning") == 0) return "Čisti";
   if (std::strcmp(text, "Clock") == 0) return "Ura";
   if (std::strcmp(text, "Close") == 0) return "Zapri";
   if (std::strcmp(text, "Closed") == 0) return "Zaprto";
@@ -2920,10 +3074,13 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Varovanje izklopljeno";
   if (std::strcmp(text, "Door") == 0) return "Vrata";
   if (std::strcmp(text, "Door Open") == 0) return "Vrata odprta";
+  if (std::strcmp(text, "Dock") == 0) return "Priklop";
+  if (std::strcmp(text, "Docked") == 0) return "Priklopljen";
   if (std::strcmp(text, "Dry") == 0) return "Sušenje";
   if (std::strcmp(text, "Drying") == 0) return "Suši";
   if (std::strcmp(text, "Dust") == 0) return "Prah";
   if (std::strcmp(text, "Enter Pin") == 0) return "Vnesi PIN";
+  if (std::strcmp(text, "Error") == 0) return "Napaka";
   if (std::strcmp(text, "Exceptional") == 0) return "Izjemno";
   if (std::strcmp(text, "Fan") == 0) return "Ventilator";
   if (std::strcmp(text, "Fog") == 0) return "Megla";
@@ -2945,6 +3102,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Strele in dež";
   if (std::strcmp(text, "Light") == 0) return "Luč";
   if (std::strcmp(text, "Loading") == 0) return "Nalaganje";
+  if (std::strcmp(text, "Locate") == 0) return "Poišči";
   if (std::strcmp(text, "Lock") == 0) return "Ključavnica";
   if (std::strcmp(text, "Low") == 0) return "Nizko";
   if (std::strcmp(text, "Low target") == 0) return "Nizka ciljna vrednost";
@@ -2980,6 +3138,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Delno deževno";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Delno s snegom in dežjem";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Delno snežno";
+  if (std::strcmp(text, "Pause") == 0) return "Premor";
   if (std::strcmp(text, "Paused") == 0) return "Zaustavljeno";
   if (std::strcmp(text, "Pending") == 0) return "V teku";
   if (std::strcmp(text, "Permanenthold") == 0) return "Trajno zadržanje";
@@ -2995,6 +3154,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Quiet") == 0) return "Tiho";
   if (std::strcmp(text, "Rainy") == 0) return "Deževno";
   if (std::strcmp(text, "Relay") == 0) return "Rele";
+  if (std::strcmp(text, "Returning") == 0) return "Vračanje";
   if (std::strcmp(text, "Run this script?") == 0) return "Zagnati ta skript?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Zaslon zatemnjen";
   if (std::strcmp(text, "Screen Locked") == 0) return "Zaslon zaklenjen";
@@ -3003,6 +3163,8 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Preskoči nazaj";
   if (std::strcmp(text, "Snowy") == 0) return "Snežno";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Sneg in dež";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Točkovno čiščenje";
+  if (std::strcmp(text, "Start") == 0) return "Začni";
   if (std::strcmp(text, "Still") == 0) return "Mirovanje";
   if (std::strcmp(text, "Subpage") == 0) return "Podstran";
   if (std::strcmp(text, "Sunny") == 0) return "Sončno";
@@ -3026,6 +3188,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Unlock") == 0) return "Odkleni";
   if (std::strcmp(text, "Unsupported") == 0) return "Ni podprto";
   if (std::strcmp(text, "Vacationhold") == 0) return "Počitniško zadržanje";
+  if (std::strcmp(text, "Vacuum") == 0) return "Sesalnik";
   if (std::strcmp(text, "Version unknown") == 0) return "Različica neznana";
   if (std::strcmp(text, "Volume") == 0) return "Glasnost";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Čakanje na Home Assistant";
@@ -3094,6 +3257,8 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Tillbaka";
   if (std::strcmp(text, "Clear Night") == 0) return "Klar natt";
   if (std::strcmp(text, "Climate") == 0) return "Klimat";
+  if (std::strcmp(text, "Clean Area") == 0) return "Städa område";
+  if (std::strcmp(text, "Cleaning") == 0) return "Städar";
   if (std::strcmp(text, "Clock") == 0) return "Klocka";
   if (std::strcmp(text, "Close") == 0) return "Stäng";
   if (std::strcmp(text, "Closed") == 0) return "Stängd";
@@ -3114,10 +3279,13 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Avlarmat";
   if (std::strcmp(text, "Door") == 0) return "Dörr";
   if (std::strcmp(text, "Door Open") == 0) return "Dörr öppen";
+  if (std::strcmp(text, "Dock") == 0) return "Docka";
+  if (std::strcmp(text, "Docked") == 0) return "Dockad";
   if (std::strcmp(text, "Dry") == 0) return "Torka";
   if (std::strcmp(text, "Drying") == 0) return "Torkar";
   if (std::strcmp(text, "Dust") == 0) return "Damm";
   if (std::strcmp(text, "Enter Pin") == 0) return "Ange PIN";
+  if (std::strcmp(text, "Error") == 0) return "Fel";
   if (std::strcmp(text, "Exceptional") == 0) return "Exceptionellt";
   if (std::strcmp(text, "Fan") == 0) return "Fläkt";
   if (std::strcmp(text, "Fog") == 0) return "Dimma";
@@ -3138,6 +3306,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Blixtar och regn";
   if (std::strcmp(text, "Light") == 0) return "Ljus";
   if (std::strcmp(text, "Loading") == 0) return "Laddar";
+  if (std::strcmp(text, "Locate") == 0) return "Hitta";
   if (std::strcmp(text, "Lock") == 0) return "Lås";
   if (std::strcmp(text, "Low") == 0) return "Låg";
   if (std::strcmp(text, "Low target") == 0) return "Lågt mål";
@@ -3173,6 +3342,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Delvis regnigt";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Delvis snö och regn";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Delvis snöigt";
+  if (std::strcmp(text, "Pause") == 0) return "Paus";
   if (std::strcmp(text, "Paused") == 0) return "Pausad";
   if (std::strcmp(text, "Pending") == 0) return "Väntar";
   if (std::strcmp(text, "PIN was not accepted") == 0) return "PIN accepterades inte";
@@ -3185,6 +3355,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Push") == 0) return "Tryck";
   if (std::strcmp(text, "Rainy") == 0) return "Regnigt";
   if (std::strcmp(text, "Relay") == 0) return "Relä";
+  if (std::strcmp(text, "Returning") == 0) return "Återvänder";
   if (std::strcmp(text, "Run this script?") == 0) return "Kör detta skript?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Skärm nedtonad";
   if (std::strcmp(text, "Screen Locked") == 0) return "Skärm låst";
@@ -3193,6 +3364,8 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Hoppa till föregående";
   if (std::strcmp(text, "Snowy") == 0) return "Snöigt";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Snö och regn";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Punktstädning";
+  if (std::strcmp(text, "Start") == 0) return "Starta";
   if (std::strcmp(text, "Subpage") == 0) return "Undersida";
   if (std::strcmp(text, "Sunny") == 0) return "Soligt";
   if (std::strcmp(text, "Sunny Alert") == 0) return "Solvarning";
@@ -3213,6 +3386,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Unknown") == 0) return "Okänd";
   if (std::strcmp(text, "Unlock") == 0) return "Lås upp";
   if (std::strcmp(text, "Unsupported") == 0) return "Stöds inte";
+  if (std::strcmp(text, "Vacuum") == 0) return "Dammsugare";
   if (std::strcmp(text, "Version unknown") == 0) return "Version okänd";
   if (std::strcmp(text, "Volume") == 0) return "Volym";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Väntar på Home Assistant";
@@ -3281,6 +3455,8 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Geri";
   if (std::strcmp(text, "Clear Night") == 0) return "Açık gece";
   if (std::strcmp(text, "Climate") == 0) return "İklim";
+  if (std::strcmp(text, "Clean Area") == 0) return "Alanı temizle";
+  if (std::strcmp(text, "Cleaning") == 0) return "Temizliyor";
   if (std::strcmp(text, "Clock") == 0) return "Saat";
   if (std::strcmp(text, "Close") == 0) return "Kapat";
   if (std::strcmp(text, "Closed") == 0) return "Kapalı";
@@ -3302,10 +3478,13 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Devre dışı";
   if (std::strcmp(text, "Door") == 0) return "Kapı";
   if (std::strcmp(text, "Door Open") == 0) return "Kapı açık";
+  if (std::strcmp(text, "Dock") == 0) return "Yuvaya dön";
+  if (std::strcmp(text, "Docked") == 0) return "Yuvada";
   if (std::strcmp(text, "Dry") == 0) return "Kurut";
   if (std::strcmp(text, "Drying") == 0) return "Kurutuyor";
   if (std::strcmp(text, "Dust") == 0) return "Toz";
   if (std::strcmp(text, "Enter Pin") == 0) return "PIN gir";
+  if (std::strcmp(text, "Error") == 0) return "Hata";
   if (std::strcmp(text, "Exceptional") == 0) return "Olağanüstü";
   if (std::strcmp(text, "Fog") == 0) return "Sis";
   if (std::strcmp(text, "Garage Door") == 0) return "Garaj kapısı";
@@ -3326,6 +3505,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Şimşek ve yağmur";
   if (std::strcmp(text, "Light") == 0) return "Işık";
   if (std::strcmp(text, "Loading") == 0) return "Yükleniyor";
+  if (std::strcmp(text, "Locate") == 0) return "Bul";
   if (std::strcmp(text, "Lock") == 0) return "Kilit";
   if (std::strcmp(text, "Low") == 0) return "Düşük";
   if (std::strcmp(text, "Low target") == 0) return "Düşük hedef";
@@ -3365,6 +3545,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Yer yer yağmurlu";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Yer yer kar ve yağmur";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Yer yer karlı";
+  if (std::strcmp(text, "Pause") == 0) return "Duraklat";
   if (std::strcmp(text, "Paused") == 0) return "Duraklatıldı";
   if (std::strcmp(text, "Pending") == 0) return "Beklemede";
   if (std::strcmp(text, "Permanenthold") == 0) return "Kalıcı tutma";
@@ -3380,6 +3561,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Quiet") == 0) return "Sessiz";
   if (std::strcmp(text, "Rainy") == 0) return "Yağmurlu";
   if (std::strcmp(text, "Relay") == 0) return "Röle";
+  if (std::strcmp(text, "Returning") == 0) return "Geri dönüyor";
   if (std::strcmp(text, "Run this script?") == 0) return "Bu betik çalıştırılsın mı?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Ekran kısılmış";
   if (std::strcmp(text, "Screen Locked") == 0) return "Ekran kilitli";
@@ -3388,6 +3570,8 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Öncekine geç";
   if (std::strcmp(text, "Snowy") == 0) return "Karlı";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Kar ve yağmur";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Nokta temizliği";
+  if (std::strcmp(text, "Start") == 0) return "Başlat";
   if (std::strcmp(text, "Still") == 0) return "Durgun";
   if (std::strcmp(text, "Subpage") == 0) return "Alt sayfa";
   if (std::strcmp(text, "Sunny") == 0) return "Güneşli";
@@ -3412,6 +3596,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Unlock") == 0) return "Kilidi aç";
   if (std::strcmp(text, "Unsupported") == 0) return "Desteklenmiyor";
   if (std::strcmp(text, "Vacationhold") == 0) return "Tatil tutması";
+  if (std::strcmp(text, "Vacuum") == 0) return "Süpürge";
   if (std::strcmp(text, "Version unknown") == 0) return "Sürüm bilinmiyor";
   if (std::strcmp(text, "Volume") == 0) return "Ses";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Home Assistant bekleniyor";
@@ -3481,6 +3666,8 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Back") == 0) return "Назад";
   if (std::strcmp(text, "Clear Night") == 0) return "Ясна ніч";
   if (std::strcmp(text, "Climate") == 0) return "Клімат";
+  if (std::strcmp(text, "Clean Area") == 0) return "Прибрати зону";
+  if (std::strcmp(text, "Cleaning") == 0) return "Прибирає";
   if (std::strcmp(text, "Clock") == 0) return "Годинник";
   if (std::strcmp(text, "Close") == 0) return "Закрити";
   if (std::strcmp(text, "Closed") == 0) return "Закрито";
@@ -3502,10 +3689,13 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Disarmed") == 0) return "Охорону вимкнено";
   if (std::strcmp(text, "Door") == 0) return "Двері";
   if (std::strcmp(text, "Door Open") == 0) return "Двері відчинені";
+  if (std::strcmp(text, "Dock") == 0) return "До бази";
+  if (std::strcmp(text, "Docked") == 0) return "На базі";
   if (std::strcmp(text, "Dry") == 0) return "Осушення";
   if (std::strcmp(text, "Drying") == 0) return "Осушується";
   if (std::strcmp(text, "Dust") == 0) return "Пил";
   if (std::strcmp(text, "Enter Pin") == 0) return "Введіть PIN";
+  if (std::strcmp(text, "Error") == 0) return "Помилка";
   if (std::strcmp(text, "Exceptional") == 0) return "Винятково";
   if (std::strcmp(text, "Fan") == 0) return "Вентилятор";
   if (std::strcmp(text, "Fog") == 0) return "Туман";
@@ -3527,6 +3717,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Блискавка і дощ";
   if (std::strcmp(text, "Light") == 0) return "Світло";
   if (std::strcmp(text, "Loading") == 0) return "Завантаження";
+  if (std::strcmp(text, "Locate") == 0) return "Знайти";
   if (std::strcmp(text, "Lock") == 0) return "Замок";
   if (std::strcmp(text, "Low") == 0) return "Низько";
   if (std::strcmp(text, "Low target") == 0) return "Низька ціль";
@@ -3566,6 +3757,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Partly Rainy") == 0) return "Місцями дощ";
   if (std::strcmp(text, "Partly Snow And Rain") == 0) return "Місцями сніг і дощ";
   if (std::strcmp(text, "Partly Snowy") == 0) return "Місцями сніг";
+  if (std::strcmp(text, "Pause") == 0) return "Пауза";
   if (std::strcmp(text, "Paused") == 0) return "Призупинено";
   if (std::strcmp(text, "Pending") == 0) return "Очікується";
   if (std::strcmp(text, "Permanenthold") == 0) return "Постійне утримання";
@@ -3581,6 +3773,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Quiet") == 0) return "Тихо";
   if (std::strcmp(text, "Rainy") == 0) return "Дощ";
   if (std::strcmp(text, "Relay") == 0) return "Реле";
+  if (std::strcmp(text, "Returning") == 0) return "Повертається";
   if (std::strcmp(text, "Run this script?") == 0) return "Запустити цей скрипт?";
   if (std::strcmp(text, "Screen Dimmed") == 0) return "Екран приглушено";
   if (std::strcmp(text, "Screen Locked") == 0) return "Екран заблоковано";
@@ -3589,6 +3782,8 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Skip Previous") == 0) return "Попередній";
   if (std::strcmp(text, "Snowy") == 0) return "Сніг";
   if (std::strcmp(text, "Snowy And Rain") == 0) return "Сніг і дощ";
+  if (std::strcmp(text, "Spot Clean") == 0) return "Локальне прибирання";
+  if (std::strcmp(text, "Start") == 0) return "Старт";
   if (std::strcmp(text, "Still") == 0) return "Нерухомо";
   if (std::strcmp(text, "Subpage") == 0) return "Підсторінка";
   if (std::strcmp(text, "Sunny") == 0) return "Сонячно";
@@ -3613,6 +3808,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Unlock") == 0) return "Розблокувати";
   if (std::strcmp(text, "Unsupported") == 0) return "Не підтримується";
   if (std::strcmp(text, "Vacationhold") == 0) return "Утримання на відпустку";
+  if (std::strcmp(text, "Vacuum") == 0) return "Пилосос";
   if (std::strcmp(text, "Version unknown") == 0) return "Версія невідома";
   if (std::strcmp(text, "Volume") == 0) return "Гучність";
   if (std::strcmp(text, "Waiting for Home Assistant") == 0) return "Очікування Home Assistant";
@@ -3685,6 +3881,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Back";
   if (std::strcmp(key, "clear_night") == 0) return "Clear Night";
   if (std::strcmp(key, "climate") == 0) return "Climate";
+  if (std::strcmp(key, "clean_area") == 0) return "Clean Area";
+  if (std::strcmp(key, "cleaning") == 0) return "Cleaning";
   if (std::strcmp(key, "clock") == 0) return "Clock";
   if (std::strcmp(key, "close") == 0) return "Close";
   if (std::strcmp(key, "closed") == 0) return "Closed";
@@ -3706,10 +3904,13 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Disarmed";
   if (std::strcmp(key, "door") == 0) return "Door";
   if (std::strcmp(key, "door_open") == 0) return "Door Open";
+  if (std::strcmp(key, "dock") == 0) return "Dock";
+  if (std::strcmp(key, "docked") == 0) return "Docked";
   if (std::strcmp(key, "dry") == 0) return "Dry";
   if (std::strcmp(key, "drying") == 0) return "Drying";
   if (std::strcmp(key, "dust") == 0) return "Dust";
   if (std::strcmp(key, "enter_pin") == 0) return "Enter Pin";
+  if (std::strcmp(key, "error") == 0) return "Error";
   if (std::strcmp(key, "exceptional") == 0) return "Exceptional";
   if (std::strcmp(key, "fan") == 0) return "Fan";
   if (std::strcmp(key, "fog") == 0) return "Fog";
@@ -3731,6 +3932,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Lightning And Rain";
   if (std::strcmp(key, "light") == 0) return "Light";
   if (std::strcmp(key, "loading") == 0) return "Loading";
+  if (std::strcmp(key, "locate") == 0) return "Locate";
   if (std::strcmp(key, "lock") == 0) return "Lock";
   if (std::strcmp(key, "low") == 0) return "Low";
   if (std::strcmp(key, "low_target") == 0) return "Low target";
@@ -3772,6 +3974,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Partly Rainy";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Partly Snow And Rain";
   if (std::strcmp(key, "partly_snowy") == 0) return "Partly Snowy";
+  if (std::strcmp(key, "pause") == 0) return "Pause";
   if (std::strcmp(key, "paused") == 0) return "Paused";
   if (std::strcmp(key, "pending") == 0) return "Pending";
   if (std::strcmp(key, "permanenthold") == 0) return "Permanenthold";
@@ -3787,6 +3990,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "quiet") == 0) return "Quiet";
   if (std::strcmp(key, "rainy") == 0) return "Rainy";
   if (std::strcmp(key, "relay") == 0) return "Relay";
+  if (std::strcmp(key, "returning") == 0) return "Returning";
   if (std::strcmp(key, "run_this_script") == 0) return "Run this script?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Screen Dimmed";
   if (std::strcmp(key, "screen_locked") == 0) return "Screen Locked";
@@ -3795,6 +3999,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Skip Previous";
   if (std::strcmp(key, "snowy") == 0) return "Snowy";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Snowy And Rain";
+  if (std::strcmp(key, "spot_clean") == 0) return "Spot Clean";
+  if (std::strcmp(key, "start") == 0) return "Start";
   if (std::strcmp(key, "still") == 0) return "Still";
   if (std::strcmp(key, "subpage") == 0) return "Subpage";
   if (std::strcmp(key, "sunny") == 0) return "Sunny";
@@ -3820,6 +4026,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "unsupported") == 0) return "Unsupported";
   if (std::strcmp(key, "vacation") == 0) return "Vacation";
   if (std::strcmp(key, "vacationhold") == 0) return "Vacationhold";
+  if (std::strcmp(key, "vacuum") == 0) return "Vacuum";
   if (std::strcmp(key, "version_unknown") == 0) return "Version unknown";
   if (std::strcmp(key, "volume") == 0) return "Volume";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Waiting for Home Assistant";
@@ -3888,6 +4095,8 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Zpět";
   if (std::strcmp(key, "clear_night") == 0) return "Jasná noc";
   if (std::strcmp(key, "climate") == 0) return "Klima";
+  if (std::strcmp(key, "clean_area") == 0) return "Uklidit oblast";
+  if (std::strcmp(key, "cleaning") == 0) return "Uklízí";
   if (std::strcmp(key, "clock") == 0) return "Hodiny";
   if (std::strcmp(key, "close") == 0) return "Zavřít";
   if (std::strcmp(key, "closed") == 0) return "Zavřeno";
@@ -3908,10 +4117,13 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Odzajištěno";
   if (std::strcmp(key, "door") == 0) return "Dveře";
   if (std::strcmp(key, "door_open") == 0) return "Dveře otevřeny";
+  if (std::strcmp(key, "dock") == 0) return "Dokovat";
+  if (std::strcmp(key, "docked") == 0) return "V dokovací stanici";
   if (std::strcmp(key, "dry") == 0) return "Vysoušet";
   if (std::strcmp(key, "drying") == 0) return "Vysouší";
   if (std::strcmp(key, "dust") == 0) return "Prach";
   if (std::strcmp(key, "enter_pin") == 0) return "Zadejte PIN";
+  if (std::strcmp(key, "error") == 0) return "Chyba";
   if (std::strcmp(key, "exceptional") == 0) return "Výjimečné";
   if (std::strcmp(key, "fan") == 0) return "Ventilátor";
   if (std::strcmp(key, "fog") == 0) return "Mlha";
@@ -3932,6 +4144,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Blesky a déšť";
   if (std::strcmp(key, "light") == 0) return "Světlo";
   if (std::strcmp(key, "loading") == 0) return "Načítání";
+  if (std::strcmp(key, "locate") == 0) return "Najít";
   if (std::strcmp(key, "lock") == 0) return "Zamknout";
   if (std::strcmp(key, "low") == 0) return "Nízké";
   if (std::strcmp(key, "low_target") == 0) return "Nízký cíl";
@@ -3970,6 +4183,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Částečně deštivo";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Částečně sníh a déšť";
   if (std::strcmp(key, "partly_snowy") == 0) return "Částečně sněží";
+  if (std::strcmp(key, "pause") == 0) return "Pozastavit";
   if (std::strcmp(key, "paused") == 0) return "Pozastaveno";
   if (std::strcmp(key, "pending") == 0) return "Čeká";
   if (std::strcmp(key, "pin_was_not_accepted") == 0) return "PIN nebyl přijat";
@@ -3983,6 +4197,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Stisknout";
   if (std::strcmp(key, "rainy") == 0) return "Deštivo";
   if (std::strcmp(key, "relay") == 0) return "Relé";
+  if (std::strcmp(key, "returning") == 0) return "Vrací se";
   if (std::strcmp(key, "run_this_script") == 0) return "Spustit tento skript?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Obrazovka ztlumena";
   if (std::strcmp(key, "screen_locked") == 0) return "Obrazovka uzamčena";
@@ -3991,6 +4206,8 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Přeskočit předchozí";
   if (std::strcmp(key, "snowy") == 0) return "Sněží";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Sníh a déšť";
+  if (std::strcmp(key, "spot_clean") == 0) return "Bodové čištění";
+  if (std::strcmp(key, "start") == 0) return "Spustit";
   if (std::strcmp(key, "still") == 0) return "Stojí";
   if (std::strcmp(key, "subpage") == 0) return "Podstránka";
   if (std::strcmp(key, "sunny") == 0) return "Slunečno";
@@ -4013,6 +4230,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Neznámé";
   if (std::strcmp(key, "unlock") == 0) return "Odemknout";
   if (std::strcmp(key, "unsupported") == 0) return "Nepodporováno";
+  if (std::strcmp(key, "vacuum") == 0) return "Vysavač";
   if (std::strcmp(key, "version_unknown") == 0) return "Verze neznámá";
   if (std::strcmp(key, "volume") == 0) return "Hlasitost";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Čekání na Home Assistant";
@@ -4080,6 +4298,8 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Tilbage";
   if (std::strcmp(key, "clear_night") == 0) return "Klar nat";
   if (std::strcmp(key, "climate") == 0) return "Klima";
+  if (std::strcmp(key, "clean_area") == 0) return "Rengør område";
+  if (std::strcmp(key, "cleaning") == 0) return "Rengør";
   if (std::strcmp(key, "clock") == 0) return "Ur";
   if (std::strcmp(key, "close") == 0) return "Luk";
   if (std::strcmp(key, "closed") == 0) return "Lukket";
@@ -4100,10 +4320,12 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Deaktiveret";
   if (std::strcmp(key, "door") == 0) return "Dør";
   if (std::strcmp(key, "door_open") == 0) return "Dør åben";
+  if (std::strcmp(key, "docked") == 0) return "Docket";
   if (std::strcmp(key, "dry") == 0) return "Tør";
   if (std::strcmp(key, "drying") == 0) return "Tørrer";
   if (std::strcmp(key, "dust") == 0) return "Støv";
   if (std::strcmp(key, "enter_pin") == 0) return "Indtast PIN";
+  if (std::strcmp(key, "error") == 0) return "Fejl";
   if (std::strcmp(key, "exceptional") == 0) return "Ekstraordinær";
   if (std::strcmp(key, "fan") == 0) return "Ventilator";
   if (std::strcmp(key, "fog") == 0) return "Tåge";
@@ -4124,6 +4346,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Lyn og regn";
   if (std::strcmp(key, "light") == 0) return "Lys";
   if (std::strcmp(key, "loading") == 0) return "Indlæser";
+  if (std::strcmp(key, "locate") == 0) return "Find";
   if (std::strcmp(key, "lock") == 0) return "Lås";
   if (std::strcmp(key, "low") == 0) return "Lav";
   if (std::strcmp(key, "low_target") == 0) return "Lavt mål";
@@ -4173,6 +4396,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Tryk";
   if (std::strcmp(key, "rainy") == 0) return "Regnfuldt";
   if (std::strcmp(key, "relay") == 0) return "Relæ";
+  if (std::strcmp(key, "returning") == 0) return "Vender tilbage";
   if (std::strcmp(key, "run_this_script") == 0) return "Kør dette script?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Skærm neddæmpet";
   if (std::strcmp(key, "screen_locked") == 0) return "Skærm låst";
@@ -4181,6 +4405,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Spring til forrige";
   if (std::strcmp(key, "snowy") == 0) return "Sne";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Sne og regn";
+  if (std::strcmp(key, "spot_clean") == 0) return "Pletrengøring";
   if (std::strcmp(key, "still") == 0) return "Stille";
   if (std::strcmp(key, "subpage") == 0) return "Underside";
   if (std::strcmp(key, "sunny") == 0) return "Solrigt";
@@ -4202,6 +4427,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Ukendt";
   if (std::strcmp(key, "unlock") == 0) return "Lås op";
   if (std::strcmp(key, "unsupported") == 0) return "Ikke understøttet";
+  if (std::strcmp(key, "vacuum") == 0) return "Støvsuger";
   if (std::strcmp(key, "version_unknown") == 0) return "Version ukendt";
   if (std::strcmp(key, "volume") == 0) return "Lydstyrke";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Venter på Home Assistant";
@@ -4269,6 +4495,8 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Zurück";
   if (std::strcmp(key, "clear_night") == 0) return "Klare Nacht";
   if (std::strcmp(key, "climate") == 0) return "Klima";
+  if (std::strcmp(key, "clean_area") == 0) return "Bereich reinigen";
+  if (std::strcmp(key, "cleaning") == 0) return "Reinigt";
   if (std::strcmp(key, "clock") == 0) return "Uhr";
   if (std::strcmp(key, "close") == 0) return "Schließen";
   if (std::strcmp(key, "closed") == 0) return "Geschlossen";
@@ -4290,10 +4518,13 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Entschärft";
   if (std::strcmp(key, "door") == 0) return "Tür";
   if (std::strcmp(key, "door_open") == 0) return "Tür offen";
+  if (std::strcmp(key, "dock") == 0) return "Andocken";
+  if (std::strcmp(key, "docked") == 0) return "Angedockt";
   if (std::strcmp(key, "dry") == 0) return "Trocknen";
   if (std::strcmp(key, "drying") == 0) return "Trocknet";
   if (std::strcmp(key, "dust") == 0) return "Staub";
   if (std::strcmp(key, "enter_pin") == 0) return "PIN eingeben";
+  if (std::strcmp(key, "error") == 0) return "Fehler";
   if (std::strcmp(key, "exceptional") == 0) return "Außergewöhnlich";
   if (std::strcmp(key, "fan") == 0) return "Lüfter";
   if (std::strcmp(key, "fog") == 0) return "Nebel";
@@ -4314,6 +4545,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Gewitter und Regen";
   if (std::strcmp(key, "light") == 0) return "Licht";
   if (std::strcmp(key, "loading") == 0) return "Laden";
+  if (std::strcmp(key, "locate") == 0) return "Orten";
   if (std::strcmp(key, "lock") == 0) return "Sperren";
   if (std::strcmp(key, "low") == 0) return "Niedrig";
   if (std::strcmp(key, "low_target") == 0) return "Niedriger Zielwert";
@@ -4359,6 +4591,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Drücken";
   if (std::strcmp(key, "rainy") == 0) return "Regnerisch";
   if (std::strcmp(key, "relay") == 0) return "Relais";
+  if (std::strcmp(key, "returning") == 0) return "Kehrt zurück";
   if (std::strcmp(key, "run_this_script") == 0) return "Dieses Skript ausführen?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Bildschirm gedimmt";
   if (std::strcmp(key, "screen_locked") == 0) return "Bildschirm gesperrt";
@@ -4367,6 +4600,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Zurück springen";
   if (std::strcmp(key, "snowy") == 0) return "Schneereich";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Schnee und Regen";
+  if (std::strcmp(key, "spot_clean") == 0) return "Punktreinigung";
   if (std::strcmp(key, "subpage") == 0) return "Unterseite";
   if (std::strcmp(key, "sunny") == 0) return "Sonnig";
   if (std::strcmp(key, "sunny_alert") == 0) return "Sonnenwarnung";
@@ -4387,6 +4621,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Unbekannt";
   if (std::strcmp(key, "unlock") == 0) return "Entsperren";
   if (std::strcmp(key, "unsupported") == 0) return "Nicht unterstützt";
+  if (std::strcmp(key, "vacuum") == 0) return "Staubsauger";
   if (std::strcmp(key, "version_unknown") == 0) return "Version unbekannt";
   if (std::strcmp(key, "volume") == 0) return "Lautstärke";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Warten auf Home Assistant";
@@ -4455,6 +4690,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Atrás";
   if (std::strcmp(key, "clear_night") == 0) return "Noche despejada";
   if (std::strcmp(key, "climate") == 0) return "Climatización";
+  if (std::strcmp(key, "clean_area") == 0) return "Limpiar zona";
+  if (std::strcmp(key, "cleaning") == 0) return "Limpiando";
   if (std::strcmp(key, "clock") == 0) return "Reloj";
   if (std::strcmp(key, "close") == 0) return "Cerrar";
   if (std::strcmp(key, "closed") == 0) return "Cerrado";
@@ -4475,6 +4712,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Desarmada";
   if (std::strcmp(key, "door") == 0) return "Puerta";
   if (std::strcmp(key, "door_open") == 0) return "Puerta abierta";
+  if (std::strcmp(key, "dock") == 0) return "Acoplar";
+  if (std::strcmp(key, "docked") == 0) return "Acoplado";
   if (std::strcmp(key, "dry") == 0) return "Seco";
   if (std::strcmp(key, "drying") == 0) return "Secando";
   if (std::strcmp(key, "dust") == 0) return "Polvo";
@@ -4499,6 +4738,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Rayos y lluvia";
   if (std::strcmp(key, "light") == 0) return "Luz";
   if (std::strcmp(key, "loading") == 0) return "Cargando";
+  if (std::strcmp(key, "locate") == 0) return "Localizar";
   if (std::strcmp(key, "lock") == 0) return "Bloquear";
   if (std::strcmp(key, "low") == 0) return "Bajo";
   if (std::strcmp(key, "low_target") == 0) return "Objetivo bajo";
@@ -4536,6 +4776,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Parcialmente lluvioso";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Nieve y lluvia parciales";
   if (std::strcmp(key, "partly_snowy") == 0) return "Parcialmente nevado";
+  if (std::strcmp(key, "pause") == 0) return "Pausa";
   if (std::strcmp(key, "paused") == 0) return "En pausa";
   if (std::strcmp(key, "pending") == 0) return "Pendiente";
   if (std::strcmp(key, "pin_was_not_accepted") == 0) return "PIN no aceptado";
@@ -4549,6 +4790,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Pulsar";
   if (std::strcmp(key, "rainy") == 0) return "Lluvioso";
   if (std::strcmp(key, "relay") == 0) return "Relé";
+  if (std::strcmp(key, "returning") == 0) return "Volviendo";
   if (std::strcmp(key, "run_this_script") == 0) return "¿Ejecutar este script?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Pantalla atenuada";
   if (std::strcmp(key, "screen_locked") == 0) return "Pantalla bloqueada";
@@ -4557,6 +4799,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Saltar anterior";
   if (std::strcmp(key, "snowy") == 0) return "Nevado";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Nieve y lluvia";
+  if (std::strcmp(key, "spot_clean") == 0) return "Limpieza localizada";
+  if (std::strcmp(key, "start") == 0) return "Iniciar";
   if (std::strcmp(key, "still") == 0) return "Quieto";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
   if (std::strcmp(key, "sunny") == 0) return "Soleado";
@@ -4578,6 +4822,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Desconocido";
   if (std::strcmp(key, "unlock") == 0) return "Desbloquear";
   if (std::strcmp(key, "unsupported") == 0) return "No compatible";
+  if (std::strcmp(key, "vacuum") == 0) return "Aspiradora";
   if (std::strcmp(key, "version_unknown") == 0) return "Versión desconocida";
   if (std::strcmp(key, "volume") == 0) return "Volumen";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Esperando a Home Assistant";
@@ -4647,6 +4892,8 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Takaisin";
   if (std::strcmp(key, "clear_night") == 0) return "Selkeä yö";
   if (std::strcmp(key, "climate") == 0) return "Ilmastointi";
+  if (std::strcmp(key, "clean_area") == 0) return "Siivoa alue";
+  if (std::strcmp(key, "cleaning") == 0) return "Siivoaa";
   if (std::strcmp(key, "clock") == 0) return "Kello";
   if (std::strcmp(key, "close") == 0) return "Sulje";
   if (std::strcmp(key, "closed") == 0) return "Suljettu";
@@ -4668,10 +4915,13 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Poistettu käytöstä";
   if (std::strcmp(key, "door") == 0) return "Ovi";
   if (std::strcmp(key, "door_open") == 0) return "Ovi auki";
+  if (std::strcmp(key, "dock") == 0) return "Telakoi";
+  if (std::strcmp(key, "docked") == 0) return "Telakoitu";
   if (std::strcmp(key, "dry") == 0) return "Kuivaus";
   if (std::strcmp(key, "drying") == 0) return "Kuivaa";
   if (std::strcmp(key, "dust") == 0) return "Pöly";
   if (std::strcmp(key, "enter_pin") == 0) return "Syötä PIN";
+  if (std::strcmp(key, "error") == 0) return "Virhe";
   if (std::strcmp(key, "exceptional") == 0) return "Poikkeuksellinen";
   if (std::strcmp(key, "fan") == 0) return "Tuuletin";
   if (std::strcmp(key, "fog") == 0) return "Sumu";
@@ -4693,6 +4943,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Ukkosta ja sadetta";
   if (std::strcmp(key, "light") == 0) return "Valo";
   if (std::strcmp(key, "loading") == 0) return "Ladataan";
+  if (std::strcmp(key, "locate") == 0) return "Paikanna";
   if (std::strcmp(key, "lock") == 0) return "Lukko";
   if (std::strcmp(key, "low") == 0) return "Matala";
   if (std::strcmp(key, "low_target") == 0) return "Alaraja";
@@ -4732,6 +4983,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Paikoin sadetta";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Paikoin lunta ja sadetta";
   if (std::strcmp(key, "partly_snowy") == 0) return "Paikoin lumisadetta";
+  if (std::strcmp(key, "pause") == 0) return "Tauko";
   if (std::strcmp(key, "paused") == 0) return "Keskeytetty";
   if (std::strcmp(key, "pending") == 0) return "Odottaa";
   if (std::strcmp(key, "permanenthold") == 0) return "Pysyvä pito";
@@ -4747,6 +4999,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "quiet") == 0) return "Hiljainen";
   if (std::strcmp(key, "rainy") == 0) return "Sateista";
   if (std::strcmp(key, "relay") == 0) return "Rele";
+  if (std::strcmp(key, "returning") == 0) return "Palaa";
   if (std::strcmp(key, "run_this_script") == 0) return "Suoritetaanko tämä skripti?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Näyttö himmennetty";
   if (std::strcmp(key, "screen_locked") == 0) return "Näyttö lukittu";
@@ -4755,6 +5008,8 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Edellinen kappale";
   if (std::strcmp(key, "snowy") == 0) return "Lumisadetta";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Lunta ja sadetta";
+  if (std::strcmp(key, "spot_clean") == 0) return "Pistepuhdistus";
+  if (std::strcmp(key, "start") == 0) return "Käynnistä";
   if (std::strcmp(key, "still") == 0) return "Paikallaan";
   if (std::strcmp(key, "subpage") == 0) return "Alisivu";
   if (std::strcmp(key, "sunny") == 0) return "Aurinkoista";
@@ -4778,6 +5033,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "unlock") == 0) return "Avaa lukitus";
   if (std::strcmp(key, "unsupported") == 0) return "Ei tuettu";
   if (std::strcmp(key, "vacationhold") == 0) return "Lomapito";
+  if (std::strcmp(key, "vacuum") == 0) return "Imuri";
   if (std::strcmp(key, "version_unknown") == 0) return "Versio tuntematon";
   if (std::strcmp(key, "volume") == 0) return "Äänenvoimakkuus";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Odotetaan Home Assistantia";
@@ -4845,6 +5101,8 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Retour";
   if (std::strcmp(key, "clear_night") == 0) return "Nuit dégagée";
   if (std::strcmp(key, "climate") == 0) return "Climat";
+  if (std::strcmp(key, "clean_area") == 0) return "Nettoyer la zone";
+  if (std::strcmp(key, "cleaning") == 0) return "Nettoyage";
   if (std::strcmp(key, "clock") == 0) return "Horloge";
   if (std::strcmp(key, "close") == 0) return "Fermer";
   if (std::strcmp(key, "closed") == 0) return "Fermé";
@@ -4863,10 +5121,13 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Désarmé";
   if (std::strcmp(key, "door") == 0) return "Porte";
   if (std::strcmp(key, "door_open") == 0) return "Porte ouverte";
+  if (std::strcmp(key, "dock") == 0) return "Station";
+  if (std::strcmp(key, "docked") == 0) return "À la station";
   if (std::strcmp(key, "dry") == 0) return "Déshumidifier";
   if (std::strcmp(key, "drying") == 0) return "Déshumidification";
   if (std::strcmp(key, "dust") == 0) return "Poussière";
   if (std::strcmp(key, "enter_pin") == 0) return "Saisir le PIN";
+  if (std::strcmp(key, "error") == 0) return "Erreur";
   if (std::strcmp(key, "exceptional") == 0) return "Exceptionnel";
   if (std::strcmp(key, "fan") == 0) return "Ventilateur";
   if (std::strcmp(key, "fog") == 0) return "Brouillard";
@@ -4887,6 +5148,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Orage et pluie";
   if (std::strcmp(key, "light") == 0) return "Lumière";
   if (std::strcmp(key, "loading") == 0) return "Chargement";
+  if (std::strcmp(key, "locate") == 0) return "Localiser";
   if (std::strcmp(key, "lock") == 0) return "Verrouiller";
   if (std::strcmp(key, "low") == 0) return "Bas";
   if (std::strcmp(key, "low_target") == 0) return "Cible basse";
@@ -4934,6 +5196,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Appuyer";
   if (std::strcmp(key, "rainy") == 0) return "Pluvieux";
   if (std::strcmp(key, "relay") == 0) return "Relais";
+  if (std::strcmp(key, "returning") == 0) return "Retour";
   if (std::strcmp(key, "run_this_script") == 0) return "Exécuter ce script ?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Écran tamisé";
   if (std::strcmp(key, "screen_locked") == 0) return "Écran verrouillé";
@@ -4942,6 +5205,8 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Passer au précédent";
   if (std::strcmp(key, "snowy") == 0) return "Neigeux";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Neige et pluie";
+  if (std::strcmp(key, "spot_clean") == 0) return "Nettoyage ciblé";
+  if (std::strcmp(key, "start") == 0) return "Démarrer";
   if (std::strcmp(key, "still") == 0) return "Fixe";
   if (std::strcmp(key, "subpage") == 0) return "Sous-page";
   if (std::strcmp(key, "sunny") == 0) return "Ensoleillé";
@@ -4964,6 +5229,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Inconnu";
   if (std::strcmp(key, "unlock") == 0) return "Déverrouiller";
   if (std::strcmp(key, "unsupported") == 0) return "Non pris en charge";
+  if (std::strcmp(key, "vacuum") == 0) return "Aspirateur";
   if (std::strcmp(key, "version_unknown") == 0) return "Version inconnue";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "En attente de Home Assistant";
   if (std::strcmp(key, "weather") == 0) return "Météo";
@@ -5032,6 +5298,8 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Vissza";
   if (std::strcmp(key, "clear_night") == 0) return "Tiszta éjszaka";
   if (std::strcmp(key, "climate") == 0) return "Klíma";
+  if (std::strcmp(key, "clean_area") == 0) return "Terület tisztítása";
+  if (std::strcmp(key, "cleaning") == 0) return "Takarítás";
   if (std::strcmp(key, "clock") == 0) return "Óra";
   if (std::strcmp(key, "close") == 0) return "Bezárás";
   if (std::strcmp(key, "closed") == 0) return "Zárva";
@@ -5053,10 +5321,13 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Hatástalanítva";
   if (std::strcmp(key, "door") == 0) return "Ajtó";
   if (std::strcmp(key, "door_open") == 0) return "Ajtó nyitva";
+  if (std::strcmp(key, "dock") == 0) return "Dokkolás";
+  if (std::strcmp(key, "docked") == 0) return "Dokkolva";
   if (std::strcmp(key, "dry") == 0) return "Szárítás";
   if (std::strcmp(key, "drying") == 0) return "Szárítás folyamatban";
   if (std::strcmp(key, "dust") == 0) return "Por";
   if (std::strcmp(key, "enter_pin") == 0) return "PIN megadása";
+  if (std::strcmp(key, "error") == 0) return "Hiba";
   if (std::strcmp(key, "exceptional") == 0) return "Rendkívüli";
   if (std::strcmp(key, "fan") == 0) return "Ventilátor";
   if (std::strcmp(key, "fog") == 0) return "Köd";
@@ -5078,6 +5349,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Villámlás és eső";
   if (std::strcmp(key, "light") == 0) return "Fény";
   if (std::strcmp(key, "loading") == 0) return "Betöltés";
+  if (std::strcmp(key, "locate") == 0) return "Keresés";
   if (std::strcmp(key, "lock") == 0) return "Zár";
   if (std::strcmp(key, "low") == 0) return "Alacsony";
   if (std::strcmp(key, "low_target") == 0) return "Alacsony célérték";
@@ -5116,6 +5388,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Helyenként eső";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Helyenként hó és eső";
   if (std::strcmp(key, "partly_snowy") == 0) return "Helyenként havazás";
+  if (std::strcmp(key, "pause") == 0) return "Szünet";
   if (std::strcmp(key, "paused") == 0) return "Szüneteltetve";
   if (std::strcmp(key, "pending") == 0) return "Függőben";
   if (std::strcmp(key, "permanenthold") == 0) return "Állandó tartás";
@@ -5131,6 +5404,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "quiet") == 0) return "Csendes";
   if (std::strcmp(key, "rainy") == 0) return "Esős";
   if (std::strcmp(key, "relay") == 0) return "Relé";
+  if (std::strcmp(key, "returning") == 0) return "Visszatérés";
   if (std::strcmp(key, "run_this_script") == 0) return "Futtatja ezt a szkriptet?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Képernyő halványítva";
   if (std::strcmp(key, "screen_locked") == 0) return "Képernyő lezárva";
@@ -5139,6 +5413,8 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Ugrás az előzőre";
   if (std::strcmp(key, "snowy") == 0) return "Havas";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Hó és eső";
+  if (std::strcmp(key, "spot_clean") == 0) return "Folttisztítás";
+  if (std::strcmp(key, "start") == 0) return "Indítás";
   if (std::strcmp(key, "still") == 0) return "Álló";
   if (std::strcmp(key, "subpage") == 0) return "Aloldal";
   if (std::strcmp(key, "sunny") == 0) return "Napos";
@@ -5163,6 +5439,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "unlock") == 0) return "Feloldás";
   if (std::strcmp(key, "unsupported") == 0) return "Nem támogatott";
   if (std::strcmp(key, "vacationhold") == 0) return "Vakációs tartás";
+  if (std::strcmp(key, "vacuum") == 0) return "Porszívó";
   if (std::strcmp(key, "version_unknown") == 0) return "Ismeretlen verzió";
   if (std::strcmp(key, "volume") == 0) return "Hangerő";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Várakozás a Home Assistantra";
@@ -5231,6 +5508,8 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Indietro";
   if (std::strcmp(key, "clear_night") == 0) return "Notte serena";
   if (std::strcmp(key, "climate") == 0) return "Clima";
+  if (std::strcmp(key, "clean_area") == 0) return "Pulisci area";
+  if (std::strcmp(key, "cleaning") == 0) return "Pulizia";
   if (std::strcmp(key, "clock") == 0) return "Orologio";
   if (std::strcmp(key, "close") == 0) return "Chiudi";
   if (std::strcmp(key, "closed") == 0) return "Chiuso";
@@ -5251,10 +5530,12 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Disinserito";
   if (std::strcmp(key, "door") == 0) return "Porta";
   if (std::strcmp(key, "door_open") == 0) return "Porta aperta";
+  if (std::strcmp(key, "docked") == 0) return "In base";
   if (std::strcmp(key, "dry") == 0) return "Deumidifica";
   if (std::strcmp(key, "drying") == 0) return "Deumidificazione";
   if (std::strcmp(key, "dust") == 0) return "Polvere";
   if (std::strcmp(key, "enter_pin") == 0) return "Inserisci PIN";
+  if (std::strcmp(key, "error") == 0) return "Errore";
   if (std::strcmp(key, "exceptional") == 0) return "Eccezionale";
   if (std::strcmp(key, "fan") == 0) return "Ventola";
   if (std::strcmp(key, "fog") == 0) return "Nebbia";
@@ -5276,6 +5557,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Fulmini e pioggia";
   if (std::strcmp(key, "light") == 0) return "Luce";
   if (std::strcmp(key, "loading") == 0) return "Caricamento";
+  if (std::strcmp(key, "locate") == 0) return "Localizza";
   if (std::strcmp(key, "lock") == 0) return "Blocca";
   if (std::strcmp(key, "low") == 0) return "Basso";
   if (std::strcmp(key, "low_target") == 0) return "Target basso";
@@ -5314,6 +5596,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Pioggia a tratti";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Neve e pioggia a tratti";
   if (std::strcmp(key, "partly_snowy") == 0) return "Neve a tratti";
+  if (std::strcmp(key, "pause") == 0) return "Pausa";
   if (std::strcmp(key, "paused") == 0) return "In pausa";
   if (std::strcmp(key, "pending") == 0) return "In attesa";
   if (std::strcmp(key, "permanenthold") == 0) return "Fisso";
@@ -5328,6 +5611,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "quiet") == 0) return "Silenzioso";
   if (std::strcmp(key, "rainy") == 0) return "Piovoso";
   if (std::strcmp(key, "relay") == 0) return "Relè";
+  if (std::strcmp(key, "returning") == 0) return "Ritorno";
   if (std::strcmp(key, "run_this_script") == 0) return "Eseguire questo script?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Schermo attenuato";
   if (std::strcmp(key, "screen_locked") == 0) return "Schermo bloccato";
@@ -5336,6 +5620,8 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Salta indietro";
   if (std::strcmp(key, "snowy") == 0) return "Nevoso";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Neve e pioggia";
+  if (std::strcmp(key, "spot_clean") == 0) return "Pulizia spot";
+  if (std::strcmp(key, "start") == 0) return "Avvia";
   if (std::strcmp(key, "still") == 0) return "Fermo";
   if (std::strcmp(key, "subpage") == 0) return "Sottopagina";
   if (std::strcmp(key, "sunny") == 0) return "Soleggiato";
@@ -5358,6 +5644,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "unlock") == 0) return "Sblocca";
   if (std::strcmp(key, "unsupported") == 0) return "Non supportato";
   if (std::strcmp(key, "vacationhold") == 0) return "Vacanza";
+  if (std::strcmp(key, "vacuum") == 0) return "Aspirapolvere";
   if (std::strcmp(key, "version_unknown") == 0) return "Versione sconosciuta";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "In attesa di Home Assistant";
   if (std::strcmp(key, "weather") == 0) return "Meteo";
@@ -5424,6 +5711,8 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Tilbake";
   if (std::strcmp(key, "clear_night") == 0) return "Klar natt";
   if (std::strcmp(key, "climate") == 0) return "Klima";
+  if (std::strcmp(key, "clean_area") == 0) return "Rengjør område";
+  if (std::strcmp(key, "cleaning") == 0) return "Rengjør";
   if (std::strcmp(key, "clock") == 0) return "Klokke";
   if (std::strcmp(key, "close") == 0) return "Lukk";
   if (std::strcmp(key, "closed") == 0) return "Lukket";
@@ -5444,10 +5733,13 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Deaktivert";
   if (std::strcmp(key, "door") == 0) return "Dør";
   if (std::strcmp(key, "door_open") == 0) return "Dør åpen";
+  if (std::strcmp(key, "dock") == 0) return "Dokking";
+  if (std::strcmp(key, "docked") == 0) return "Dokket";
   if (std::strcmp(key, "dry") == 0) return "Tørk";
   if (std::strcmp(key, "drying") == 0) return "Tørker";
   if (std::strcmp(key, "dust") == 0) return "Støv";
   if (std::strcmp(key, "enter_pin") == 0) return "Skriv inn PIN";
+  if (std::strcmp(key, "error") == 0) return "Feil";
   if (std::strcmp(key, "exceptional") == 0) return "Eksepsjonelt";
   if (std::strcmp(key, "fan") == 0) return "Vifte";
   if (std::strcmp(key, "fog") == 0) return "Tåke";
@@ -5468,6 +5760,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Lyn og regn";
   if (std::strcmp(key, "light") == 0) return "Lys";
   if (std::strcmp(key, "loading") == 0) return "Laster";
+  if (std::strcmp(key, "locate") == 0) return "Finn";
   if (std::strcmp(key, "lock") == 0) return "Lås";
   if (std::strcmp(key, "low") == 0) return "Lav";
   if (std::strcmp(key, "low_target") == 0) return "Lavt mål";
@@ -5518,6 +5811,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Trykk";
   if (std::strcmp(key, "rainy") == 0) return "Regn";
   if (std::strcmp(key, "relay") == 0) return "Relé";
+  if (std::strcmp(key, "returning") == 0) return "Returnerer";
   if (std::strcmp(key, "run_this_script") == 0) return "Kjør dette skriptet?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Skjerm neddimmet";
   if (std::strcmp(key, "screen_locked") == 0) return "Skjerm låst";
@@ -5526,6 +5820,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Hopp til forrige";
   if (std::strcmp(key, "snowy") == 0) return "Snø";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Snø og regn";
+  if (std::strcmp(key, "spot_clean") == 0) return "Punktrengjøring";
   if (std::strcmp(key, "still") == 0) return "Stille";
   if (std::strcmp(key, "subpage") == 0) return "Underside";
   if (std::strcmp(key, "sunny") == 0) return "Sol";
@@ -5547,6 +5842,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Ukjent";
   if (std::strcmp(key, "unlock") == 0) return "Lås opp";
   if (std::strcmp(key, "unsupported") == 0) return "Støttes ikke";
+  if (std::strcmp(key, "vacuum") == 0) return "Støvsuger";
   if (std::strcmp(key, "version_unknown") == 0) return "Ukjent versjon";
   if (std::strcmp(key, "volume") == 0) return "Volum";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Venter på Home Assistant";
@@ -5615,6 +5911,8 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Terug";
   if (std::strcmp(key, "clear_night") == 0) return "Heldere nacht";
   if (std::strcmp(key, "climate") == 0) return "Klimaat";
+  if (std::strcmp(key, "clean_area") == 0) return "Gebied reinigen";
+  if (std::strcmp(key, "cleaning") == 0) return "Reinigt";
   if (std::strcmp(key, "clock") == 0) return "Klok";
   if (std::strcmp(key, "close") == 0) return "Sluiten";
   if (std::strcmp(key, "closed") == 0) return "Gesloten";
@@ -5636,10 +5934,13 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Uitgeschakeld";
   if (std::strcmp(key, "door") == 0) return "Deur";
   if (std::strcmp(key, "door_open") == 0) return "Deur open";
+  if (std::strcmp(key, "dock") == 0) return "Docken";
+  if (std::strcmp(key, "docked") == 0) return "Gedockt";
   if (std::strcmp(key, "dry") == 0) return "Droog";
   if (std::strcmp(key, "drying") == 0) return "Drogen";
   if (std::strcmp(key, "dust") == 0) return "Stof";
   if (std::strcmp(key, "enter_pin") == 0) return "Voer pincode in";
+  if (std::strcmp(key, "error") == 0) return "Fout";
   if (std::strcmp(key, "exceptional") == 0) return "Uitzonderlijk";
   if (std::strcmp(key, "fan") == 0) return "Ventilator";
   if (std::strcmp(key, "fog") == 0) return "Mist";
@@ -5660,6 +5961,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Bliksem en regen";
   if (std::strcmp(key, "light") == 0) return "Licht";
   if (std::strcmp(key, "loading") == 0) return "Laden";
+  if (std::strcmp(key, "locate") == 0) return "Lokaliseren";
   if (std::strcmp(key, "lock") == 0) return "Vergrendelen";
   if (std::strcmp(key, "low") == 0) return "Laag";
   if (std::strcmp(key, "low_target") == 0) return "Laag doel";
@@ -5696,6 +5998,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Plaatselijk regen";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Plaatselijk sneeuw en regen";
   if (std::strcmp(key, "partly_snowy") == 0) return "Plaatselijk sneeuw";
+  if (std::strcmp(key, "pause") == 0) return "Pauze";
   if (std::strcmp(key, "paused") == 0) return "Gepauzeerd";
   if (std::strcmp(key, "pending") == 0) return "In afwachting";
   if (std::strcmp(key, "pin_was_not_accepted") == 0) return "Pincode is niet geaccepteerd";
@@ -5709,6 +6012,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Drukken";
   if (std::strcmp(key, "rainy") == 0) return "Regenachtig";
   if (std::strcmp(key, "relay") == 0) return "Relais";
+  if (std::strcmp(key, "returning") == 0) return "Keert terug";
   if (std::strcmp(key, "run_this_script") == 0) return "Dit script uitvoeren?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Scherm gedimd";
   if (std::strcmp(key, "screen_locked") == 0) return "Scherm vergrendeld";
@@ -5717,6 +6021,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Vorige overslaan";
   if (std::strcmp(key, "snowy") == 0) return "Sneeuwachtig";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Sneeuw en regen";
+  if (std::strcmp(key, "spot_clean") == 0) return "Plaatselijk reinigen";
   if (std::strcmp(key, "still") == 0) return "Vast";
   if (std::strcmp(key, "subpage") == 0) return "Subpagina";
   if (std::strcmp(key, "sunny") == 0) return "Zonnig";
@@ -5738,6 +6043,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Onbekend";
   if (std::strcmp(key, "unlock") == 0) return "Ontgrendelen";
   if (std::strcmp(key, "unsupported") == 0) return "Niet ondersteund";
+  if (std::strcmp(key, "vacuum") == 0) return "Stofzuiger";
   if (std::strcmp(key, "version_unknown") == 0) return "Versie onbekend";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Wachten op Home Assistant";
   if (std::strcmp(key, "weather") == 0) return "Weer";
@@ -5803,6 +6109,8 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Wstecz";
   if (std::strcmp(key, "clear_night") == 0) return "Bezchmurna noc";
   if (std::strcmp(key, "climate") == 0) return "Klimat";
+  if (std::strcmp(key, "clean_area") == 0) return "Wyczyść obszar";
+  if (std::strcmp(key, "cleaning") == 0) return "Sprząta";
   if (std::strcmp(key, "clock") == 0) return "Zegar";
   if (std::strcmp(key, "close") == 0) return "Zamknij";
   if (std::strcmp(key, "closed") == 0) return "Zamknięte";
@@ -5823,10 +6131,13 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Rozbrojony";
   if (std::strcmp(key, "door") == 0) return "Drzwi";
   if (std::strcmp(key, "door_open") == 0) return "Drzwi otwarte";
+  if (std::strcmp(key, "dock") == 0) return "Dokuj";
+  if (std::strcmp(key, "docked") == 0) return "Zadokowany";
   if (std::strcmp(key, "dry") == 0) return "Osuszanie";
   if (std::strcmp(key, "drying") == 0) return "Osusza";
   if (std::strcmp(key, "dust") == 0) return "Pył";
   if (std::strcmp(key, "enter_pin") == 0) return "Wpisz PIN";
+  if (std::strcmp(key, "error") == 0) return "Błąd";
   if (std::strcmp(key, "exceptional") == 0) return "Wyjątkowe";
   if (std::strcmp(key, "fan") == 0) return "Wentylator";
   if (std::strcmp(key, "fog") == 0) return "Mgła";
@@ -5847,6 +6158,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Błyskawice i deszcz";
   if (std::strcmp(key, "light") == 0) return "Światło";
   if (std::strcmp(key, "loading") == 0) return "Ładowanie";
+  if (std::strcmp(key, "locate") == 0) return "Zlokalizuj";
   if (std::strcmp(key, "lock") == 0) return "Zablokuj";
   if (std::strcmp(key, "low") == 0) return "Niski";
   if (std::strcmp(key, "low_target") == 0) return "Niski cel";
@@ -5884,6 +6196,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Częściowo deszczowo";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Częściowo śnieg i deszcz";
   if (std::strcmp(key, "partly_snowy") == 0) return "Częściowo śnieżnie";
+  if (std::strcmp(key, "pause") == 0) return "Pauza";
   if (std::strcmp(key, "paused") == 0) return "Wstrzymane";
   if (std::strcmp(key, "pending") == 0) return "Oczekujące";
   if (std::strcmp(key, "pin_was_not_accepted") == 0) return "PIN nie został zaakceptowany";
@@ -5896,6 +6209,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Naciśnij";
   if (std::strcmp(key, "rainy") == 0) return "Deszczowo";
   if (std::strcmp(key, "relay") == 0) return "Przekaźnik";
+  if (std::strcmp(key, "returning") == 0) return "Powraca";
   if (std::strcmp(key, "run_this_script") == 0) return "Uruchomić ten skrypt?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Ekran przyciemniony";
   if (std::strcmp(key, "screen_locked") == 0) return "Ekran zablokowany";
@@ -5904,6 +6218,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Pomiń poprzedni";
   if (std::strcmp(key, "snowy") == 0) return "Śnieżnie";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Śnieg i deszcz";
+  if (std::strcmp(key, "spot_clean") == 0) return "Czyszczenie punktowe";
   if (std::strcmp(key, "still") == 0) return "Stabilny";
   if (std::strcmp(key, "subpage") == 0) return "Podstrona";
   if (std::strcmp(key, "sunny") == 0) return "Słonecznie";
@@ -5925,6 +6240,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Nieznane";
   if (std::strcmp(key, "unlock") == 0) return "Odblokuj";
   if (std::strcmp(key, "unsupported") == 0) return "Nieobsługiwane";
+  if (std::strcmp(key, "vacuum") == 0) return "Odkurzacz";
   if (std::strcmp(key, "version_unknown") == 0) return "Wersja nieznana";
   if (std::strcmp(key, "volume") == 0) return "Głośność";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Oczekiwanie na Home Assistant";
@@ -5993,6 +6309,8 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Voltar";
   if (std::strcmp(key, "clear_night") == 0) return "Noite limpa";
   if (std::strcmp(key, "climate") == 0) return "Climatização";
+  if (std::strcmp(key, "clean_area") == 0) return "Limpar área";
+  if (std::strcmp(key, "cleaning") == 0) return "Limpando";
   if (std::strcmp(key, "clock") == 0) return "Relógio";
   if (std::strcmp(key, "close") == 0) return "Fechar";
   if (std::strcmp(key, "closed") == 0) return "Fechado";
@@ -6013,10 +6331,12 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Desarmado";
   if (std::strcmp(key, "door") == 0) return "Porta";
   if (std::strcmp(key, "door_open") == 0) return "Porta aberta";
+  if (std::strcmp(key, "docked") == 0) return "Na base";
   if (std::strcmp(key, "dry") == 0) return "Secar";
   if (std::strcmp(key, "drying") == 0) return "Secando";
   if (std::strcmp(key, "dust") == 0) return "Poeira";
   if (std::strcmp(key, "enter_pin") == 0) return "Inserir PIN";
+  if (std::strcmp(key, "error") == 0) return "Erro";
   if (std::strcmp(key, "exceptional") == 0) return "Excepcional";
   if (std::strcmp(key, "fan") == 0) return "Ventilador";
   if (std::strcmp(key, "fog") == 0) return "Névoa";
@@ -6037,6 +6357,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Raios e chuva";
   if (std::strcmp(key, "light") == 0) return "Luz";
   if (std::strcmp(key, "loading") == 0) return "Carregando";
+  if (std::strcmp(key, "locate") == 0) return "Localizar";
   if (std::strcmp(key, "lock") == 0) return "Bloquear";
   if (std::strcmp(key, "low") == 0) return "Baixo";
   if (std::strcmp(key, "low_target") == 0) return "Alvo baixo";
@@ -6075,6 +6396,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Parcialmente chuvoso";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Neve e chuva parciais";
   if (std::strcmp(key, "partly_snowy") == 0) return "Parcialmente nevado";
+  if (std::strcmp(key, "pause") == 0) return "Pausa";
   if (std::strcmp(key, "paused") == 0) return "Pausado";
   if (std::strcmp(key, "pending") == 0) return "Pendente";
   if (std::strcmp(key, "pin_was_not_accepted") == 0) return "PIN não aceito";
@@ -6088,6 +6410,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Pressionar";
   if (std::strcmp(key, "rainy") == 0) return "Chuvoso";
   if (std::strcmp(key, "relay") == 0) return "Relé";
+  if (std::strcmp(key, "returning") == 0) return "Retornando";
   if (std::strcmp(key, "run_this_script") == 0) return "Executar este script?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Tela escurecida";
   if (std::strcmp(key, "screen_locked") == 0) return "Tela bloqueada";
@@ -6096,6 +6419,8 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Pular anterior";
   if (std::strcmp(key, "snowy") == 0) return "Nevado";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Neve e chuva";
+  if (std::strcmp(key, "spot_clean") == 0) return "Limpeza localizada";
+  if (std::strcmp(key, "start") == 0) return "Iniciar";
   if (std::strcmp(key, "still") == 0) return "Parado";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
   if (std::strcmp(key, "sunny") == 0) return "Ensolarado";
@@ -6117,6 +6442,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Desconhecido";
   if (std::strcmp(key, "unlock") == 0) return "Desbloquear";
   if (std::strcmp(key, "unsupported") == 0) return "Não suportado";
+  if (std::strcmp(key, "vacuum") == 0) return "Aspirador";
   if (std::strcmp(key, "version_unknown") == 0) return "Versão desconhecida";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Aguardando o Home Assistant";
   if (std::strcmp(key, "weather") == 0) return "Tempo";
@@ -6184,6 +6510,8 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Voltar";
   if (std::strcmp(key, "clear_night") == 0) return "Noite limpa";
   if (std::strcmp(key, "climate") == 0) return "Climatização";
+  if (std::strcmp(key, "clean_area") == 0) return "Limpar área";
+  if (std::strcmp(key, "cleaning") == 0) return "A limpar";
   if (std::strcmp(key, "clock") == 0) return "Relógio";
   if (std::strcmp(key, "close") == 0) return "Fechar";
   if (std::strcmp(key, "closed") == 0) return "Fechado";
@@ -6204,10 +6532,13 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Desarmado";
   if (std::strcmp(key, "door") == 0) return "Porta";
   if (std::strcmp(key, "door_open") == 0) return "Porta aberta";
+  if (std::strcmp(key, "dock") == 0) return "Ancorar";
+  if (std::strcmp(key, "docked") == 0) return "Ancorado";
   if (std::strcmp(key, "dry") == 0) return "Secar";
   if (std::strcmp(key, "drying") == 0) return "A secar";
   if (std::strcmp(key, "dust") == 0) return "Pó";
   if (std::strcmp(key, "enter_pin") == 0) return "Introduzir PIN";
+  if (std::strcmp(key, "error") == 0) return "Erro";
   if (std::strcmp(key, "exceptional") == 0) return "Excecional";
   if (std::strcmp(key, "fan") == 0) return "Ventoinha";
   if (std::strcmp(key, "fog") == 0) return "Nevoeiro";
@@ -6228,6 +6559,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Relâmpagos e chuva";
   if (std::strcmp(key, "light") == 0) return "Luz";
   if (std::strcmp(key, "loading") == 0) return "A carregar";
+  if (std::strcmp(key, "locate") == 0) return "Localizar";
   if (std::strcmp(key, "lock") == 0) return "Bloquear";
   if (std::strcmp(key, "low") == 0) return "Baixo";
   if (std::strcmp(key, "low_target") == 0) return "Alvo baixo";
@@ -6266,6 +6598,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Parcialmente chuvoso";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Neve e chuva parciais";
   if (std::strcmp(key, "partly_snowy") == 0) return "Parcialmente nevado";
+  if (std::strcmp(key, "pause") == 0) return "Pausa";
   if (std::strcmp(key, "paused") == 0) return "Em pausa";
   if (std::strcmp(key, "pending") == 0) return "Pendente";
   if (std::strcmp(key, "pin_was_not_accepted") == 0) return "PIN não aceite";
@@ -6279,6 +6612,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Premir";
   if (std::strcmp(key, "rainy") == 0) return "Chuvoso";
   if (std::strcmp(key, "relay") == 0) return "Relé";
+  if (std::strcmp(key, "returning") == 0) return "A regressar";
   if (std::strcmp(key, "run_this_script") == 0) return "Executar este script?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Ecrã escurecido";
   if (std::strcmp(key, "screen_locked") == 0) return "Ecrã bloqueado";
@@ -6287,6 +6621,8 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Saltar anterior";
   if (std::strcmp(key, "snowy") == 0) return "Nevado";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Neve e chuva";
+  if (std::strcmp(key, "spot_clean") == 0) return "Limpeza localizada";
+  if (std::strcmp(key, "start") == 0) return "Iniciar";
   if (std::strcmp(key, "still") == 0) return "Parado";
   if (std::strcmp(key, "subpage") == 0) return "Subpágina";
   if (std::strcmp(key, "sunny") == 0) return "Solarengo";
@@ -6308,6 +6644,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Desconhecido";
   if (std::strcmp(key, "unlock") == 0) return "Desbloquear";
   if (std::strcmp(key, "unsupported") == 0) return "Não suportado";
+  if (std::strcmp(key, "vacuum") == 0) return "Aspirador";
   if (std::strcmp(key, "version_unknown") == 0) return "Versão desconhecida";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "À espera do Home Assistant";
   if (std::strcmp(key, "weather") == 0) return "Meteorologia";
@@ -6376,6 +6713,8 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Înapoi";
   if (std::strcmp(key, "clear_night") == 0) return "Noapte senină";
   if (std::strcmp(key, "climate") == 0) return "Climatizare";
+  if (std::strcmp(key, "clean_area") == 0) return "Curăță zona";
+  if (std::strcmp(key, "cleaning") == 0) return "Curăță";
   if (std::strcmp(key, "clock") == 0) return "Ceas";
   if (std::strcmp(key, "close") == 0) return "Închide";
   if (std::strcmp(key, "closed") == 0) return "Închis";
@@ -6397,10 +6736,13 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Dezarmat";
   if (std::strcmp(key, "door") == 0) return "Ușă";
   if (std::strcmp(key, "door_open") == 0) return "Ușă deschisă";
+  if (std::strcmp(key, "dock") == 0) return "Andocare";
+  if (std::strcmp(key, "docked") == 0) return "Andocat";
   if (std::strcmp(key, "dry") == 0) return "Uscare";
   if (std::strcmp(key, "drying") == 0) return "Se usucă";
   if (std::strcmp(key, "dust") == 0) return "Praf";
   if (std::strcmp(key, "enter_pin") == 0) return "Introdu PIN";
+  if (std::strcmp(key, "error") == 0) return "Eroare";
   if (std::strcmp(key, "exceptional") == 0) return "Excepțional";
   if (std::strcmp(key, "fan") == 0) return "Ventilator";
   if (std::strcmp(key, "fog") == 0) return "Ceață";
@@ -6422,6 +6764,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Fulger și ploaie";
   if (std::strcmp(key, "light") == 0) return "Lumină";
   if (std::strcmp(key, "loading") == 0) return "Se încarcă";
+  if (std::strcmp(key, "locate") == 0) return "Localizare";
   if (std::strcmp(key, "lock") == 0) return "Încuietoare";
   if (std::strcmp(key, "low") == 0) return "Scăzut";
   if (std::strcmp(key, "low_target") == 0) return "Țintă scăzută";
@@ -6460,6 +6803,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Parțial ploios";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Parțial ninsoare și ploaie";
   if (std::strcmp(key, "partly_snowy") == 0) return "Parțial ninsoare";
+  if (std::strcmp(key, "pause") == 0) return "Pauză";
   if (std::strcmp(key, "paused") == 0) return "În pauză";
   if (std::strcmp(key, "pending") == 0) return "În așteptare";
   if (std::strcmp(key, "permanenthold") == 0) return "Menținere permanentă";
@@ -6475,6 +6819,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "quiet") == 0) return "Silențios";
   if (std::strcmp(key, "rainy") == 0) return "Ploios";
   if (std::strcmp(key, "relay") == 0) return "Releu";
+  if (std::strcmp(key, "returning") == 0) return "Revine";
   if (std::strcmp(key, "run_this_script") == 0) return "Rulați acest script?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Ecran estompat";
   if (std::strcmp(key, "screen_locked") == 0) return "Ecran blocat";
@@ -6483,6 +6828,8 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Anteriorul";
   if (std::strcmp(key, "snowy") == 0) return "Ninsoare";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Ninsoare și ploaie";
+  if (std::strcmp(key, "spot_clean") == 0) return "Curățare locală";
+  if (std::strcmp(key, "start") == 0) return "Pornire";
   if (std::strcmp(key, "still") == 0) return "Nemișcat";
   if (std::strcmp(key, "subpage") == 0) return "Subpagină";
   if (std::strcmp(key, "sunny") == 0) return "Însorit";
@@ -6507,6 +6854,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "unlock") == 0) return "Deblochează";
   if (std::strcmp(key, "unsupported") == 0) return "Neacceptat";
   if (std::strcmp(key, "vacationhold") == 0) return "Menținere vacanță";
+  if (std::strcmp(key, "vacuum") == 0) return "Aspirator";
   if (std::strcmp(key, "version_unknown") == 0) return "Versiune necunoscută";
   if (std::strcmp(key, "volume") == 0) return "Volum";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Se așteaptă Home Assistant";
@@ -6574,6 +6922,8 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Späť";
   if (std::strcmp(key, "clear_night") == 0) return "Jasná noc";
   if (std::strcmp(key, "climate") == 0) return "Klíma";
+  if (std::strcmp(key, "clean_area") == 0) return "Vyčistiť oblasť";
+  if (std::strcmp(key, "cleaning") == 0) return "Čistí";
   if (std::strcmp(key, "clock") == 0) return "Hodiny";
   if (std::strcmp(key, "close") == 0) return "Zavrieť";
   if (std::strcmp(key, "closed") == 0) return "Zatvorené";
@@ -6594,10 +6944,13 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Odzbrojené";
   if (std::strcmp(key, "door") == 0) return "Dvere";
   if (std::strcmp(key, "door_open") == 0) return "Dvere otvorené";
+  if (std::strcmp(key, "dock") == 0) return "Dokovať";
+  if (std::strcmp(key, "docked") == 0) return "V dokovacej stanici";
   if (std::strcmp(key, "dry") == 0) return "Sušiť";
   if (std::strcmp(key, "drying") == 0) return "Suší";
   if (std::strcmp(key, "dust") == 0) return "Prach";
   if (std::strcmp(key, "enter_pin") == 0) return "Zadajte PIN";
+  if (std::strcmp(key, "error") == 0) return "Chyba";
   if (std::strcmp(key, "exceptional") == 0) return "Výnimočné";
   if (std::strcmp(key, "fan") == 0) return "Ventilátor";
   if (std::strcmp(key, "fog") == 0) return "Hmla";
@@ -6618,6 +6971,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Blesky a dážď";
   if (std::strcmp(key, "light") == 0) return "Svetlo";
   if (std::strcmp(key, "loading") == 0) return "Načítanie";
+  if (std::strcmp(key, "locate") == 0) return "Nájsť";
   if (std::strcmp(key, "lock") == 0) return "Zamknúť";
   if (std::strcmp(key, "low") == 0) return "Nízke";
   if (std::strcmp(key, "low_target") == 0) return "Nízky cieľ";
@@ -6656,6 +7010,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Čiastočne daždivo";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Čiastočne sneh a dážď";
   if (std::strcmp(key, "partly_snowy") == 0) return "Čiastočne sneží";
+  if (std::strcmp(key, "pause") == 0) return "Pozastaviť";
   if (std::strcmp(key, "paused") == 0) return "Pozastavené";
   if (std::strcmp(key, "pending") == 0) return "Čaká";
   if (std::strcmp(key, "pin_was_not_accepted") == 0) return "PIN nebol prijatý";
@@ -6669,6 +7024,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Stlačiť";
   if (std::strcmp(key, "rainy") == 0) return "Daždivo";
   if (std::strcmp(key, "relay") == 0) return "Relé";
+  if (std::strcmp(key, "returning") == 0) return "Vracia sa";
   if (std::strcmp(key, "run_this_script") == 0) return "Spustiť tento skript?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Obrazovka stlmená";
   if (std::strcmp(key, "screen_locked") == 0) return "Obrazovka uzamknutá";
@@ -6677,6 +7033,8 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Preskočiť predchádzajúce";
   if (std::strcmp(key, "snowy") == 0) return "Sneží";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Sneh a dážď";
+  if (std::strcmp(key, "spot_clean") == 0) return "Bodové čistenie";
+  if (std::strcmp(key, "start") == 0) return "Spustiť";
   if (std::strcmp(key, "still") == 0) return "Stojí";
   if (std::strcmp(key, "subpage") == 0) return "Podstránka";
   if (std::strcmp(key, "sunny") == 0) return "Slnečno";
@@ -6699,6 +7057,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Neznáme";
   if (std::strcmp(key, "unlock") == 0) return "Odomknúť";
   if (std::strcmp(key, "unsupported") == 0) return "Nepodporované";
+  if (std::strcmp(key, "vacuum") == 0) return "Vysávač";
   if (std::strcmp(key, "version_unknown") == 0) return "Verzia neznáma";
   if (std::strcmp(key, "volume") == 0) return "Hlasitosť";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Čakanie na Home Assistant";
@@ -6767,6 +7126,8 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Nazaj";
   if (std::strcmp(key, "clear_night") == 0) return "Jasna noč";
   if (std::strcmp(key, "climate") == 0) return "Klima";
+  if (std::strcmp(key, "clean_area") == 0) return "Očisti območje";
+  if (std::strcmp(key, "cleaning") == 0) return "Čisti";
   if (std::strcmp(key, "clock") == 0) return "Ura";
   if (std::strcmp(key, "close") == 0) return "Zapri";
   if (std::strcmp(key, "closed") == 0) return "Zaprto";
@@ -6788,10 +7149,13 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Varovanje izklopljeno";
   if (std::strcmp(key, "door") == 0) return "Vrata";
   if (std::strcmp(key, "door_open") == 0) return "Vrata odprta";
+  if (std::strcmp(key, "dock") == 0) return "Priklop";
+  if (std::strcmp(key, "docked") == 0) return "Priklopljen";
   if (std::strcmp(key, "dry") == 0) return "Sušenje";
   if (std::strcmp(key, "drying") == 0) return "Suši";
   if (std::strcmp(key, "dust") == 0) return "Prah";
   if (std::strcmp(key, "enter_pin") == 0) return "Vnesi PIN";
+  if (std::strcmp(key, "error") == 0) return "Napaka";
   if (std::strcmp(key, "exceptional") == 0) return "Izjemno";
   if (std::strcmp(key, "fan") == 0) return "Ventilator";
   if (std::strcmp(key, "fog") == 0) return "Megla";
@@ -6813,6 +7177,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Strele in dež";
   if (std::strcmp(key, "light") == 0) return "Luč";
   if (std::strcmp(key, "loading") == 0) return "Nalaganje";
+  if (std::strcmp(key, "locate") == 0) return "Poišči";
   if (std::strcmp(key, "lock") == 0) return "Ključavnica";
   if (std::strcmp(key, "low") == 0) return "Nizko";
   if (std::strcmp(key, "low_target") == 0) return "Nizka ciljna vrednost";
@@ -6849,6 +7214,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Delno deževno";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Delno s snegom in dežjem";
   if (std::strcmp(key, "partly_snowy") == 0) return "Delno snežno";
+  if (std::strcmp(key, "pause") == 0) return "Premor";
   if (std::strcmp(key, "paused") == 0) return "Zaustavljeno";
   if (std::strcmp(key, "pending") == 0) return "V teku";
   if (std::strcmp(key, "permanenthold") == 0) return "Trajno zadržanje";
@@ -6864,6 +7230,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "quiet") == 0) return "Tiho";
   if (std::strcmp(key, "rainy") == 0) return "Deževno";
   if (std::strcmp(key, "relay") == 0) return "Rele";
+  if (std::strcmp(key, "returning") == 0) return "Vračanje";
   if (std::strcmp(key, "run_this_script") == 0) return "Zagnati ta skript?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Zaslon zatemnjen";
   if (std::strcmp(key, "screen_locked") == 0) return "Zaslon zaklenjen";
@@ -6872,6 +7239,8 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Preskoči nazaj";
   if (std::strcmp(key, "snowy") == 0) return "Snežno";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Sneg in dež";
+  if (std::strcmp(key, "spot_clean") == 0) return "Točkovno čiščenje";
+  if (std::strcmp(key, "start") == 0) return "Začni";
   if (std::strcmp(key, "still") == 0) return "Mirovanje";
   if (std::strcmp(key, "subpage") == 0) return "Podstran";
   if (std::strcmp(key, "sunny") == 0) return "Sončno";
@@ -6895,6 +7264,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "unlock") == 0) return "Odkleni";
   if (std::strcmp(key, "unsupported") == 0) return "Ni podprto";
   if (std::strcmp(key, "vacationhold") == 0) return "Počitniško zadržanje";
+  if (std::strcmp(key, "vacuum") == 0) return "Sesalnik";
   if (std::strcmp(key, "version_unknown") == 0) return "Različica neznana";
   if (std::strcmp(key, "volume") == 0) return "Glasnost";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Čakanje na Home Assistant";
@@ -6963,6 +7333,8 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Tillbaka";
   if (std::strcmp(key, "clear_night") == 0) return "Klar natt";
   if (std::strcmp(key, "climate") == 0) return "Klimat";
+  if (std::strcmp(key, "clean_area") == 0) return "Städa område";
+  if (std::strcmp(key, "cleaning") == 0) return "Städar";
   if (std::strcmp(key, "clock") == 0) return "Klocka";
   if (std::strcmp(key, "close") == 0) return "Stäng";
   if (std::strcmp(key, "closed") == 0) return "Stängd";
@@ -6983,10 +7355,13 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Avlarmat";
   if (std::strcmp(key, "door") == 0) return "Dörr";
   if (std::strcmp(key, "door_open") == 0) return "Dörr öppen";
+  if (std::strcmp(key, "dock") == 0) return "Docka";
+  if (std::strcmp(key, "docked") == 0) return "Dockad";
   if (std::strcmp(key, "dry") == 0) return "Torka";
   if (std::strcmp(key, "drying") == 0) return "Torkar";
   if (std::strcmp(key, "dust") == 0) return "Damm";
   if (std::strcmp(key, "enter_pin") == 0) return "Ange PIN";
+  if (std::strcmp(key, "error") == 0) return "Fel";
   if (std::strcmp(key, "exceptional") == 0) return "Exceptionellt";
   if (std::strcmp(key, "fan") == 0) return "Fläkt";
   if (std::strcmp(key, "fog") == 0) return "Dimma";
@@ -7007,6 +7382,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Blixtar och regn";
   if (std::strcmp(key, "light") == 0) return "Ljus";
   if (std::strcmp(key, "loading") == 0) return "Laddar";
+  if (std::strcmp(key, "locate") == 0) return "Hitta";
   if (std::strcmp(key, "lock") == 0) return "Lås";
   if (std::strcmp(key, "low") == 0) return "Låg";
   if (std::strcmp(key, "low_target") == 0) return "Lågt mål";
@@ -7043,6 +7419,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Delvis regnigt";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Delvis snö och regn";
   if (std::strcmp(key, "partly_snowy") == 0) return "Delvis snöigt";
+  if (std::strcmp(key, "pause") == 0) return "Paus";
   if (std::strcmp(key, "paused") == 0) return "Pausad";
   if (std::strcmp(key, "pending") == 0) return "Väntar";
   if (std::strcmp(key, "pin_was_not_accepted") == 0) return "PIN accepterades inte";
@@ -7055,6 +7432,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "push") == 0) return "Tryck";
   if (std::strcmp(key, "rainy") == 0) return "Regnigt";
   if (std::strcmp(key, "relay") == 0) return "Relä";
+  if (std::strcmp(key, "returning") == 0) return "Återvänder";
   if (std::strcmp(key, "run_this_script") == 0) return "Kör detta skript?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Skärm nedtonad";
   if (std::strcmp(key, "screen_locked") == 0) return "Skärm låst";
@@ -7063,6 +7441,8 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Hoppa till föregående";
   if (std::strcmp(key, "snowy") == 0) return "Snöigt";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Snö och regn";
+  if (std::strcmp(key, "spot_clean") == 0) return "Punktstädning";
+  if (std::strcmp(key, "start") == 0) return "Starta";
   if (std::strcmp(key, "subpage") == 0) return "Undersida";
   if (std::strcmp(key, "sunny") == 0) return "Soligt";
   if (std::strcmp(key, "sunny_alert") == 0) return "Solvarning";
@@ -7083,6 +7463,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "unknown") == 0) return "Okänd";
   if (std::strcmp(key, "unlock") == 0) return "Lås upp";
   if (std::strcmp(key, "unsupported") == 0) return "Stöds inte";
+  if (std::strcmp(key, "vacuum") == 0) return "Dammsugare";
   if (std::strcmp(key, "version_unknown") == 0) return "Version okänd";
   if (std::strcmp(key, "volume") == 0) return "Volym";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Väntar på Home Assistant";
@@ -7151,6 +7532,8 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Geri";
   if (std::strcmp(key, "clear_night") == 0) return "Açık gece";
   if (std::strcmp(key, "climate") == 0) return "İklim";
+  if (std::strcmp(key, "clean_area") == 0) return "Alanı temizle";
+  if (std::strcmp(key, "cleaning") == 0) return "Temizliyor";
   if (std::strcmp(key, "clock") == 0) return "Saat";
   if (std::strcmp(key, "close") == 0) return "Kapat";
   if (std::strcmp(key, "closed") == 0) return "Kapalı";
@@ -7172,10 +7555,13 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Devre dışı";
   if (std::strcmp(key, "door") == 0) return "Kapı";
   if (std::strcmp(key, "door_open") == 0) return "Kapı açık";
+  if (std::strcmp(key, "dock") == 0) return "Yuvaya dön";
+  if (std::strcmp(key, "docked") == 0) return "Yuvada";
   if (std::strcmp(key, "dry") == 0) return "Kurut";
   if (std::strcmp(key, "drying") == 0) return "Kurutuyor";
   if (std::strcmp(key, "dust") == 0) return "Toz";
   if (std::strcmp(key, "enter_pin") == 0) return "PIN gir";
+  if (std::strcmp(key, "error") == 0) return "Hata";
   if (std::strcmp(key, "exceptional") == 0) return "Olağanüstü";
   if (std::strcmp(key, "fog") == 0) return "Sis";
   if (std::strcmp(key, "garage_door") == 0) return "Garaj kapısı";
@@ -7196,6 +7582,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Şimşek ve yağmur";
   if (std::strcmp(key, "light") == 0) return "Işık";
   if (std::strcmp(key, "loading") == 0) return "Yükleniyor";
+  if (std::strcmp(key, "locate") == 0) return "Bul";
   if (std::strcmp(key, "lock") == 0) return "Kilit";
   if (std::strcmp(key, "low") == 0) return "Düşük";
   if (std::strcmp(key, "low_target") == 0) return "Düşük hedef";
@@ -7236,6 +7623,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Yer yer yağmurlu";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Yer yer kar ve yağmur";
   if (std::strcmp(key, "partly_snowy") == 0) return "Yer yer karlı";
+  if (std::strcmp(key, "pause") == 0) return "Duraklat";
   if (std::strcmp(key, "paused") == 0) return "Duraklatıldı";
   if (std::strcmp(key, "pending") == 0) return "Beklemede";
   if (std::strcmp(key, "permanenthold") == 0) return "Kalıcı tutma";
@@ -7251,6 +7639,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "quiet") == 0) return "Sessiz";
   if (std::strcmp(key, "rainy") == 0) return "Yağmurlu";
   if (std::strcmp(key, "relay") == 0) return "Röle";
+  if (std::strcmp(key, "returning") == 0) return "Geri dönüyor";
   if (std::strcmp(key, "run_this_script") == 0) return "Bu betik çalıştırılsın mı?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Ekran kısılmış";
   if (std::strcmp(key, "screen_locked") == 0) return "Ekran kilitli";
@@ -7259,6 +7648,8 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Öncekine geç";
   if (std::strcmp(key, "snowy") == 0) return "Karlı";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Kar ve yağmur";
+  if (std::strcmp(key, "spot_clean") == 0) return "Nokta temizliği";
+  if (std::strcmp(key, "start") == 0) return "Başlat";
   if (std::strcmp(key, "still") == 0) return "Durgun";
   if (std::strcmp(key, "subpage") == 0) return "Alt sayfa";
   if (std::strcmp(key, "sunny") == 0) return "Güneşli";
@@ -7283,6 +7674,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "unlock") == 0) return "Kilidi aç";
   if (std::strcmp(key, "unsupported") == 0) return "Desteklenmiyor";
   if (std::strcmp(key, "vacationhold") == 0) return "Tatil tutması";
+  if (std::strcmp(key, "vacuum") == 0) return "Süpürge";
   if (std::strcmp(key, "version_unknown") == 0) return "Sürüm bilinmiyor";
   if (std::strcmp(key, "volume") == 0) return "Ses";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Home Assistant bekleniyor";
@@ -7352,6 +7744,8 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "back") == 0) return "Назад";
   if (std::strcmp(key, "clear_night") == 0) return "Ясна ніч";
   if (std::strcmp(key, "climate") == 0) return "Клімат";
+  if (std::strcmp(key, "clean_area") == 0) return "Прибрати зону";
+  if (std::strcmp(key, "cleaning") == 0) return "Прибирає";
   if (std::strcmp(key, "clock") == 0) return "Годинник";
   if (std::strcmp(key, "close") == 0) return "Закрити";
   if (std::strcmp(key, "closed") == 0) return "Закрито";
@@ -7373,10 +7767,13 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "disarmed") == 0) return "Охорону вимкнено";
   if (std::strcmp(key, "door") == 0) return "Двері";
   if (std::strcmp(key, "door_open") == 0) return "Двері відчинені";
+  if (std::strcmp(key, "dock") == 0) return "До бази";
+  if (std::strcmp(key, "docked") == 0) return "На базі";
   if (std::strcmp(key, "dry") == 0) return "Осушення";
   if (std::strcmp(key, "drying") == 0) return "Осушується";
   if (std::strcmp(key, "dust") == 0) return "Пил";
   if (std::strcmp(key, "enter_pin") == 0) return "Введіть PIN";
+  if (std::strcmp(key, "error") == 0) return "Помилка";
   if (std::strcmp(key, "exceptional") == 0) return "Винятково";
   if (std::strcmp(key, "fan") == 0) return "Вентилятор";
   if (std::strcmp(key, "fog") == 0) return "Туман";
@@ -7398,6 +7795,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Блискавка і дощ";
   if (std::strcmp(key, "light") == 0) return "Світло";
   if (std::strcmp(key, "loading") == 0) return "Завантаження";
+  if (std::strcmp(key, "locate") == 0) return "Знайти";
   if (std::strcmp(key, "lock") == 0) return "Замок";
   if (std::strcmp(key, "low") == 0) return "Низько";
   if (std::strcmp(key, "low_target") == 0) return "Низька ціль";
@@ -7438,6 +7836,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "partly_rainy") == 0) return "Місцями дощ";
   if (std::strcmp(key, "partly_snow_and_rain") == 0) return "Місцями сніг і дощ";
   if (std::strcmp(key, "partly_snowy") == 0) return "Місцями сніг";
+  if (std::strcmp(key, "pause") == 0) return "Пауза";
   if (std::strcmp(key, "paused") == 0) return "Призупинено";
   if (std::strcmp(key, "pending") == 0) return "Очікується";
   if (std::strcmp(key, "permanenthold") == 0) return "Постійне утримання";
@@ -7453,6 +7852,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "quiet") == 0) return "Тихо";
   if (std::strcmp(key, "rainy") == 0) return "Дощ";
   if (std::strcmp(key, "relay") == 0) return "Реле";
+  if (std::strcmp(key, "returning") == 0) return "Повертається";
   if (std::strcmp(key, "run_this_script") == 0) return "Запустити цей скрипт?";
   if (std::strcmp(key, "screen_dimmed") == 0) return "Екран приглушено";
   if (std::strcmp(key, "screen_locked") == 0) return "Екран заблоковано";
@@ -7461,6 +7861,8 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "skip_previous") == 0) return "Попередній";
   if (std::strcmp(key, "snowy") == 0) return "Сніг";
   if (std::strcmp(key, "snowy_and_rain") == 0) return "Сніг і дощ";
+  if (std::strcmp(key, "spot_clean") == 0) return "Локальне прибирання";
+  if (std::strcmp(key, "start") == 0) return "Старт";
   if (std::strcmp(key, "still") == 0) return "Нерухомо";
   if (std::strcmp(key, "subpage") == 0) return "Підсторінка";
   if (std::strcmp(key, "sunny") == 0) return "Сонячно";
@@ -7485,6 +7887,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "unlock") == 0) return "Розблокувати";
   if (std::strcmp(key, "unsupported") == 0) return "Не підтримується";
   if (std::strcmp(key, "vacationhold") == 0) return "Утримання на відпустку";
+  if (std::strcmp(key, "vacuum") == 0) return "Пилосос";
   if (std::strcmp(key, "version_unknown") == 0) return "Версія невідома";
   if (std::strcmp(key, "volume") == 0) return "Гучність";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Очікування Home Assistant";
