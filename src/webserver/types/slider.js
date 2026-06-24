@@ -21,7 +21,7 @@ function normalizeCoverMode(mode, allowCommands) {
 
 function coverModeOptionsForSettings(currentMode) {
   return [
-    ["modal", "Modal"],
+    ["modal", "All Controls"],
     ["", "Slider: Position"],
     ["tilt", "Slider: Tilt"],
     ["toggle", "Toggle"],

@@ -441,12 +441,12 @@ assert.strictEqual(hooks.normalizeCoverMode("modal", true), "modal", "cover moda
 assert.strictEqual(hooks.normalizeCoverMode("set_position", true), "set_position", "cover command mode normalizes from spec");
 assert.deepStrictEqual(
   Array.from(hooks.coverModeOptionLabels("")),
-  ["modal:Modal", ":Slider: Position", "tilt:Slider: Tilt", "toggle:Toggle", "open:Open", "close:Close", "stop:Stop", "set_position:Set Position"],
+  ["modal:All Controls", ":Slider: Position", "tilt:Slider: Tilt", "toggle:Toggle", "open:Open", "close:Close", "stop:Stop", "set_position:Set Position"],
   "cover modal option is visible"
 );
 assert.deepStrictEqual(
   Array.from(hooks.coverModeOptionLabels("modal")),
-  ["modal:Modal", ":Slider: Position", "tilt:Slider: Tilt", "toggle:Toggle", "open:Open", "close:Close", "stop:Stop", "set_position:Set Position"],
+  ["modal:All Controls", ":Slider: Position", "tilt:Slider: Tilt", "toggle:Toggle", "open:Open", "close:Close", "stop:Stop", "set_position:Set Position"],
   "saved cover modal cards use the normal modal label"
 );
 assert.strictEqual(hooks.normalizeCoverMode("set_position", false), "", "cover command mode is rejected when commands are disabled");
