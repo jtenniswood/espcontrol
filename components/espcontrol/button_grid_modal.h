@@ -31,6 +31,7 @@ enum class ControlModalKind {
   TODO_LIST,
   COVER_CONTROL,
   LIGHT_CONTROL,
+  VACUUM_CONTROL,
   MEDIA_CONTROL,
 };
 

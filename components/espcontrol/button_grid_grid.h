@@ -1424,7 +1424,13 @@ inline void grid_phase2(
     if (p.type == "vacuum") {
       lv_obj_set_user_data(s.btn, nullptr);
       if (!p.entity.empty() && vacuum_card_mode_needs_state(p.sensor)) {
-        VacuumCardCtx *ctx = create_vacuum_card_context(s, p);
+        VacuumCardCtx *ctx = create_vacuum_card_context(
+          s, p,
+          display_volume_label_font(display)
+            ? display_volume_label_font(display)
+            : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+          display_icon_font(display),
+          display_volume_width_percent(display));
         grid_track_runtime_allocation(s.btn, ctx);
         subscribe_vacuum_card_state(ctx);
         lv_obj_set_user_data(s.btn, ctx);
@@ -2135,7 +2141,13 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "vacuum") {
         if (!sb_cfg.entity.empty()) {
-          VacuumCardCtx *ctx = create_vacuum_card_context(sub_slot, sb_cfg);
+          VacuumCardCtx *ctx = create_vacuum_card_context(
+            sub_slot, sb_cfg,
+            display_volume_label_font(display)
+              ? display_volume_label_font(display)
+              : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_icon_font(display),
+            display_volume_width_percent(display));
           grid_delete_with_owner(sb_btn, ctx);
           register_subpage_vacuum_card_text(sub_slot.text_lbl, ctx, sb_cfg);
           if (vacuum_card_mode_needs_state(sb_cfg.sensor)) {
@@ -2145,7 +2157,8 @@ inline void grid_phase2(
           if (!vacuum_card_read_only(sb_cfg)) {
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               VacuumCardCtx *ctx = (VacuumCardCtx *)lv_event_get_user_data(e);
-              send_vacuum_card_action(ctx);
+              if (ctx && ctx->mode == "modal") vacuum_control_open_modal(ctx);
+              else send_vacuum_card_action(ctx);
             }, LV_EVENT_CLICKED, ctx);
           }
         }

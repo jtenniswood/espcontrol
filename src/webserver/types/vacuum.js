@@ -1,5 +1,6 @@
 // Vacuum card: touchscreen-friendly controls for Home Assistant vacuum entities.
 var VACUUM_CARD_MODES = [
+  ["modal", "All Controls"],
   ["status", "Status"],
   ["start_stop", "Start / Stop"],
   ["dock", "Dock"],
@@ -14,11 +15,15 @@ function vacuumModeValues() {
 }
 
 function normalizeVacuumMode(mode) {
-  return normalizeEntityMode(mode, vacuumModeValues(), "start_stop");
+  return normalizeEntityMode(mode, vacuumModeValues(), "modal");
 }
 
 function vacuumModeNeedsArea(mode) {
   return normalizeVacuumMode(mode) === "clean_area";
+}
+
+function vacuumModalMode(mode) {
+  return normalizeVacuumMode(mode) === "modal";
 }
 
 function vacuumModeDefaultIcon(mode) {
@@ -32,6 +37,7 @@ function vacuumModeDefaultIcon(mode) {
 
 function vacuumModeBadgeIcon(mode) {
   mode = normalizeVacuumMode(mode);
+  if (mode === "modal") return "dots-grid";
   if (mode === "dock") return "home-import-outline";
   if (mode === "pause_resume") return "play-pause";
   if (mode === "clean_spot") return "vacuum";
@@ -57,8 +63,113 @@ function normalizeVacuumConfig(b) {
   normalizeEntityModeCardConfig(b, {
     normalizeMode: normalizeVacuumMode,
     defaultIcon: vacuumModeDefaultIcon,
-    keepUnit: vacuumModeNeedsArea,
+    keepUnit: function (mode) {
+      mode = normalizeVacuumMode(mode);
+      return mode === "clean_area" || mode === "modal";
+    },
   });
+  b.options = normalizeVacuumOptions(b.options, b.sensor);
+}
+
+function vacuumControlTabDefinitions() {
+  return [
+    { value: "controls", label: "Controls" },
+    { value: "rooms", label: "Rooms" },
+    { value: "fan", label: "Fan Speed" },
+  ];
+}
+
+function vacuumControlDefaultTabs() {
+  return vacuumControlTabDefinitions().map(function (tab) { return tab.value; });
+}
+
+function normalizeVacuumControlTabs(value) {
+  return normalizeTabList(
+    value,
+    vacuumControlTabDefinitions(),
+    vacuumControlDefaultTabs(),
+    "controls"
+  );
+}
+
+function vacuumControlTabs(b) {
+  return normalizeVacuumControlTabs(configOptionValue(b && b.options, "vacuum_tabs"));
+}
+
+function vacuumControlTabsAreDefault(tabs) {
+  return tabListIsDefault(
+    normalizeVacuumControlTabs((tabs || []).join("|")),
+    vacuumControlDefaultTabs()
+  );
+}
+
+function normalizeVacuumRooms(value) {
+  var rows = String(value || "").split(/\r?\n/);
+  var out = [];
+  rows.forEach(function (row) {
+    row = String(row || "").trim();
+    if (!row) return;
+    var sep = row.indexOf("=");
+    if (sep <= 0 || sep >= row.length - 1) return;
+    var label = row.slice(0, sep).trim();
+    var area = row.slice(sep + 1).trim();
+    if (!label || !area) return;
+    out.push(label + "=" + area);
+  });
+  return out.join("\n");
+}
+
+function vacuumRoomsValue(b) {
+  return normalizeVacuumRooms(configOptionValue(b && b.options, "vacuum_rooms"));
+}
+
+function normalizeVacuumOptions(options, mode) {
+  if (!vacuumModalMode(mode)) return "";
+  var out = "";
+  var tabs = normalizeVacuumControlTabs(configOptionValue(options, "vacuum_tabs"));
+  if (!vacuumControlTabsAreDefault(tabs)) {
+    out = setConfigOptionValue(out, "vacuum_tabs", tabs.join("|"));
+  }
+  var rooms = normalizeVacuumRooms(configOptionValue(options, "vacuum_rooms"));
+  if (rooms) out = setConfigOptionValue(out, "vacuum_rooms", rooms);
+  return out;
+}
+
+function setVacuumControlTabs(b, tabs) {
+  if (!b) return "";
+  tabs = normalizeVacuumControlTabs((tabs || []).join("|"));
+  b.options = vacuumControlTabsAreDefault(tabs)
+    ? setConfigOptionValue(b.options, "vacuum_tabs", "")
+    : setConfigOptionValue(b.options, "vacuum_tabs", tabs.join("|"));
+  b.options = normalizeVacuumOptions(b.options, b.sensor);
+  return b.options;
+}
+
+function setVacuumRooms(b, rooms) {
+  if (!b) return "";
+  rooms = normalizeVacuumRooms(rooms);
+  b.options = setConfigOptionValue(b.options, "vacuum_rooms", rooms);
+  b.options = normalizeVacuumOptions(b.options, b.sensor);
+  return b.options;
+}
+
+function renderVacuumRoomsSettings(panel, b, helpers) {
+  var field = document.createElement("div");
+  field.className = "sp-field";
+  var inputId = helpers.idPrefix + "vacuum-rooms";
+  field.appendChild(helpers.fieldLabel("Rooms", inputId));
+  var area = document.createElement("textarea");
+  area.className = "sp-input";
+  area.id = inputId;
+  area.rows = 4;
+  area.placeholder = "Kitchen=kitchen\nLiving Room=living_room";
+  area.value = vacuumRoomsValue(b);
+  area.addEventListener("change", function () {
+    helpers.saveField("options", setVacuumRooms(b, area.value));
+    renderButtonSettings();
+  });
+  field.appendChild(area);
+  panel.appendChild(field);
 }
 
 var VACUUM_CARD_METADATA = {
@@ -109,9 +220,9 @@ registerButtonType("vacuum", {
       helpers.saveField("sensor", mode);
     }
     b.precision = "";
-    b.options = "";
     b.icon_on = "Auto";
-    if (!vacuumModeNeedsArea(mode) && b.unit) {
+    b.options = normalizeVacuumOptions(b.options, mode);
+    if (!(vacuumModeNeedsArea(mode) || vacuumModalMode(mode)) && b.unit) {
       b.unit = "";
       helpers.saveField("unit", "");
     }
@@ -128,9 +239,14 @@ registerButtonType("vacuum", {
           mode = normalizeVacuumMode(this.value);
           applyEntityModeCardModeChange(b, helpers, oldMode, mode, {
             defaultIcon: vacuumModeDefaultIcon,
-            keepUnit: vacuumModeNeedsArea,
+            keepUnit: function (nextMode) {
+              nextMode = normalizeVacuumMode(nextMode);
+              return nextMode === "clean_area" || nextMode === "modal";
+            },
             usesDefaultIcon: vacuumUsesDefaultIcon,
           });
+          b.options = normalizeVacuumOptions(b.options, mode);
+          helpers.saveField("options", b.options);
           renderButtonSettings();
         },
       }),
@@ -150,6 +266,27 @@ registerButtonType("vacuum", {
         placeholder: "e.g. kitchen",
         rerender: false,
       });
+    }
+
+    if (vacuumModalMode(mode)) {
+      renderModalTabSettings(panel, b, helpers, {
+        definitions: vacuumControlTabDefinitions,
+        tabs: vacuumControlTabs,
+        setTabs: setVacuumControlTabs,
+        normalizeOptions: function (options) {
+          return normalizeVacuumOptions(options, mode);
+        },
+      });
+
+      helpers.renderCardTextField(panel, b, helpers, {
+        label: "Fallback Area ID",
+        idSuffix: "vacuum-fallback-area-id",
+        field: "unit",
+        placeholder: "e.g. kitchen",
+        rerender: false,
+      });
+
+      renderVacuumRoomsSettings(panel, b, helpers);
     }
 
     helpers.renderCardIconPicker(panel, b, helpers, {

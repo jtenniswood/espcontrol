@@ -5,6 +5,7 @@
 // ── Home Assistant-driven home-screen navigation ─────────────────────
 
 inline void image_card_hide_modal();
+inline void vacuum_control_hide_modal();
 
 struct NavigationHomeTargetEntry {
   int slot = 0;
@@ -62,6 +63,7 @@ inline void navigation_hide_modals() {
   fan_control_hide_modal();
   cover_control_hide_modal();
   light_control_hide_modal();
+  vacuum_control_hide_modal();
   option_select_hide_modal();
   switch_confirmation_hide_modal();
   alarm_pin_hide_modal();
@@ -78,6 +80,7 @@ inline void navigation_close_modals_for_display_takeover() {
   fan_control_hide_modal();
   cover_control_hide_modal();
   light_control_hide_modal();
+  vacuum_control_hide_modal();
   option_select_hide_modal();
   switch_confirmation_hide_modal();
   alarm_pin_hide_modal();

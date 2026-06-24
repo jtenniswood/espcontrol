@@ -62,6 +62,9 @@ constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
+constexpr const char *VACUUM_CONTROL_TABS_OPTION = "vacuum_tabs";
+constexpr const char *VACUUM_CONTROL_DEFAULT_TABS_VALUE = "controls|rooms|fan";
+constexpr const char *VACUUM_ROOMS_OPTION = "vacuum_rooms";
 constexpr const char *CLIMATE_CONTROL_TABS_OPTION = "climate_tabs";
 constexpr const char *CLIMATE_CONTROL_DEFAULT_TABS_VALUE = "temperature|mode|preset|fan|swing";
 constexpr const char *FAN_CONTROL_TABS_OPTION = "fan_tabs";
@@ -440,6 +443,43 @@ inline std::string normalize_climate_control_tabs_value(const std::string &value
   return out;
 }
 
+inline bool vacuum_control_tab_token_valid(const std::string &value) {
+  return value == "controls" || value == "rooms" || value == "fan";
+}
+
+inline std::string vacuum_trim_copy(const std::string &value) {
+  size_t start = 0;
+  while (start < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[start]))) {
+    start++;
+  }
+  size_t end = value.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+    end--;
+  }
+  return value.substr(start, end - start);
+}
+
+inline std::string normalize_vacuum_control_tabs_value(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(
+    value.empty() ? std::string(VACUUM_CONTROL_DEFAULT_TABS_VALUE) : value, '|');
+  std::vector<std::string> tabs;
+  for (const auto &part : parts) {
+    if (!vacuum_control_tab_token_valid(part)) continue;
+    if (std::find(tabs.begin(), tabs.end(), part) == tabs.end()) {
+      tabs.push_back(part);
+    }
+  }
+  if (tabs.empty()) tabs.push_back("controls");
+  std::string out;
+  for (const auto &tab : tabs) {
+    if (!out.empty()) out += "|";
+    out += tab;
+  }
+  return out;
+}
+
 inline bool fan_control_tab_token_valid(const std::string &value) {
   return value == "power" || value == "speed" || value == "preset" ||
          value == "oscillation" || value == "direction";
@@ -464,11 +504,46 @@ inline std::string normalize_fan_control_tabs_value(const std::string &value) {
   return out;
 }
 
+inline std::string normalize_vacuum_rooms_value(const std::string &value) {
+  std::vector<std::string> rows = split_config_fields(value, '\n');
+  std::string out;
+  for (const auto &raw : rows) {
+    std::string row = vacuum_trim_copy(raw);
+    if (row.empty()) continue;
+    size_t sep = row.find('=');
+    if (sep == std::string::npos || sep == 0 || sep >= row.size() - 1) continue;
+    std::string label = vacuum_trim_copy(row.substr(0, sep));
+    std::string area = vacuum_trim_copy(row.substr(sep + 1));
+    if (label.empty() || area.empty()) continue;
+    if (!out.empty()) out += "\n";
+    out += label + "=" + area;
+  }
+  return out;
+}
+
 inline std::string fan_control_card_options_normalized(const std::string &options) {
   std::string tabs = normalize_fan_control_tabs_value(
     cfg_option_value(options, FAN_CONTROL_TABS_OPTION));
   if (tabs == FAN_CONTROL_DEFAULT_TABS_VALUE) return "";
   return std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+}
+
+inline std::string vacuum_card_options_normalized(const std::string &options,
+                                                  const std::string &mode) {
+  if (card_runtime_vacuum_mode(mode) != "modal") return "";
+  std::string out;
+  std::string tabs = normalize_vacuum_control_tabs_value(
+    cfg_option_value(options, VACUUM_CONTROL_TABS_OPTION));
+  if (tabs != VACUUM_CONTROL_DEFAULT_TABS_VALUE) {
+    out = std::string(VACUUM_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+  }
+  std::string rooms = normalize_vacuum_rooms_value(
+    cfg_option_value(options, VACUUM_ROOMS_OPTION));
+  if (!rooms.empty()) {
+    if (!out.empty()) out += ",";
+    out += std::string(VACUUM_ROOMS_OPTION) + "=" + encode_compact_field(rooms);
+  }
+  return out;
 }
 
 inline uint32_t image_card_refresh_interval_ms(const ParsedCfg &p) {
@@ -1217,9 +1292,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   }
   if (p.type == "vacuum") {
     p.sensor = card_runtime_vacuum_mode(p.sensor);
-    if (p.sensor != "clean_area") p.unit.clear();
+    if (p.sensor != "clean_area" && p.sensor != "modal") p.unit.clear();
     p.precision.clear();
-    p.options.clear();
+    p.options = vacuum_card_options_normalized(p.options, p.sensor);
     p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_vacuum_default_icon_name(p.sensor);
   }
