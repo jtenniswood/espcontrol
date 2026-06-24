@@ -384,6 +384,12 @@
           "name": "large_numbers",
           "label": "Large Temperature Numbers",
           "kind": "flag"
+        },
+        {
+          "name": "climate_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "defaultValue": "temperature|mode|preset|fan|swing"
         }
       ],
       "behavior": {

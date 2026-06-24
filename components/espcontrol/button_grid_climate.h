@@ -64,6 +64,7 @@ struct ClimateControlCtx {
   std::vector<std::string> swing_modes;
   std::string preset_mode;
   std::vector<std::string> preset_modes;
+  std::string options;
   bool available = true;
   bool has_target = false;
   bool has_current = false;
@@ -116,10 +117,47 @@ struct ClimateOptionClick {
   std::string value;
 };
 
+enum class ClimateControlTab : uint8_t {
+  TEMPERATURE = 0,
+  MODE = 1,
+  PRESET = 2,
+  FAN = 3,
+  SWING = 4,
+};
+
+struct ClimateControlVisibleTabs {
+  ClimateControlTab tabs[5] = {
+    ClimateControlTab::TEMPERATURE,
+    ClimateControlTab::MODE,
+    ClimateControlTab::PRESET,
+    ClimateControlTab::FAN,
+    ClimateControlTab::SWING,
+  };
+  uint8_t count = 0;
+
+  bool contains(ClimateControlTab tab) const {
+    for (uint8_t i = 0; i < count; i++) {
+      if (tabs[i] == tab) return true;
+    }
+    return false;
+  }
+
+  void add(ClimateControlTab tab) {
+    if (count >= 5 || contains(tab)) return;
+    tabs[count++] = tab;
+  }
+};
+
 struct ClimateControlModalUi {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *panel = nullptr;
   lv_obj_t *back_btn = nullptr;
+  lv_obj_t *tab_row = nullptr;
+  lv_obj_t *temperature_tab = nullptr;
+  lv_obj_t *mode_tab = nullptr;
+  lv_obj_t *preset_tab = nullptr;
+  lv_obj_t *fan_tab = nullptr;
+  lv_obj_t *swing_tab = nullptr;
   lv_obj_t *mode_btn = nullptr;
   lv_obj_t *menu_view = nullptr;
   lv_obj_t *menu_close_btn = nullptr;
@@ -150,6 +188,7 @@ struct ClimateControlModalUi {
   bool has_drag_preview = false;
   int drag_preview_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
   bool action_menu_open = false;
+  ClimateControlTab tab = ClimateControlTab::TEMPERATURE;
 };
 
 inline ClimateControlModalUi &climate_control_modal_ui() {
@@ -449,6 +488,111 @@ inline bool climate_temperature_controls_enabled(ClimateControlCtx *ctx) {
 
 inline bool climate_modal_temperature_controls_enabled(ClimateControlCtx *ctx) {
   return ctx && ctx->available;
+}
+
+inline bool climate_control_tab_from_token(const std::string &value, ClimateControlTab &tab) {
+  if (value == "temperature") {
+    tab = ClimateControlTab::TEMPERATURE;
+    return true;
+  }
+  if (value == "mode") {
+    tab = ClimateControlTab::MODE;
+    return true;
+  }
+  if (value == "preset") {
+    tab = ClimateControlTab::PRESET;
+    return true;
+  }
+  if (value == "fan") {
+    tab = ClimateControlTab::FAN;
+    return true;
+  }
+  if (value == "swing") {
+    tab = ClimateControlTab::SWING;
+    return true;
+  }
+  return false;
+}
+
+inline bool climate_control_tab_supported(ClimateControlCtx *ctx, ClimateControlTab tab) {
+  if (!ctx || !ctx->available) return false;
+  switch (tab) {
+    case ClimateControlTab::TEMPERATURE:
+      return climate_modal_temperature_controls_enabled(ctx);
+    case ClimateControlTab::MODE:
+      return !ctx->hvac_modes.empty();
+    case ClimateControlTab::PRESET:
+      return !ctx->preset_modes.empty();
+    case ClimateControlTab::FAN:
+      return !ctx->fan_modes.empty();
+    case ClimateControlTab::SWING:
+      return !ctx->swing_modes.empty();
+  }
+  return false;
+}
+
+inline ClimateControlVisibleTabs climate_control_visible_tabs(ClimateControlCtx *ctx) {
+  ClimateControlVisibleTabs visible;
+  std::string value = cfg_option_value(ctx ? ctx->options : "", CLIMATE_CONTROL_TABS_OPTION);
+  if (value.empty()) value = CLIMATE_CONTROL_DEFAULT_TABS_VALUE;
+
+  size_t start = 0;
+  while (start <= value.size()) {
+    size_t end = value.find('|', start);
+    std::string token = value.substr(start, end == std::string::npos ? std::string::npos : end - start);
+    ClimateControlTab tab = ClimateControlTab::TEMPERATURE;
+    if (climate_control_tab_from_token(token, tab) &&
+        climate_control_tab_supported(ctx, tab)) {
+      visible.add(tab);
+    }
+    if (end == std::string::npos) break;
+    start = end + 1;
+  }
+  if (visible.count == 0 && climate_control_tab_supported(ctx, ClimateControlTab::TEMPERATURE)) {
+    visible.add(ClimateControlTab::TEMPERATURE);
+  }
+  if (visible.count == 0) {
+    ClimateControlTab fallbacks[4] = {
+      ClimateControlTab::MODE,
+      ClimateControlTab::PRESET,
+      ClimateControlTab::FAN,
+      ClimateControlTab::SWING,
+    };
+    for (ClimateControlTab fallback : fallbacks) {
+      if (climate_control_tab_supported(ctx, fallback)) {
+        visible.add(fallback);
+        break;
+      }
+    }
+  }
+  return visible;
+}
+
+inline bool climate_control_tab_visible(ClimateControlCtx *ctx, ClimateControlTab tab) {
+  ClimateControlVisibleTabs tabs = climate_control_visible_tabs(ctx);
+  return tabs.contains(tab);
+}
+
+inline ClimateControlTab climate_control_first_visible_tab(ClimateControlCtx *ctx) {
+  ClimateControlVisibleTabs tabs = climate_control_visible_tabs(ctx);
+  return tabs.count == 0 ? ClimateControlTab::TEMPERATURE : tabs.tabs[0];
+}
+
+inline void climate_control_ensure_visible_tab(ClimateControlCtx *ctx) {
+  ClimateControlModalUi &ui = climate_control_modal_ui();
+  if (climate_control_tab_visible(ctx, ui.tab)) return;
+  ui.tab = climate_control_first_visible_tab(ctx);
+}
+
+inline lv_obj_t *climate_control_tab_button(ClimateControlModalUi &ui, ClimateControlTab tab) {
+  switch (tab) {
+    case ClimateControlTab::TEMPERATURE: return ui.temperature_tab;
+    case ClimateControlTab::MODE: return ui.mode_tab;
+    case ClimateControlTab::PRESET: return ui.preset_tab;
+    case ClimateControlTab::FAN: return ui.fan_tab;
+    case ClimateControlTab::SWING: return ui.swing_tab;
+  }
+  return nullptr;
 }
 
 inline float climate_arc_angle_for_tenths(ClimateControlCtx *ctx, int value) {
@@ -941,8 +1085,6 @@ inline void climate_hide_inline_option_list() {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   if (ui.option_list_view) lv_obj_del(ui.option_list_view);
   ui.option_list_view = nullptr;
-  climate_set_obj_visible(ui.menu_mode_btn, ui.action_menu_open);
-  climate_set_obj_visible(ui.menu_preset_btn, ui.action_menu_open);
 }
 
 inline void climate_update_chip(lv_obj_t *chip, const char *title, const std::string &value,
@@ -1121,16 +1263,17 @@ inline void climate_set_dial_controls_visible(bool visible) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   bool show_current = visible && ui.active && ui.active->available && ui.active->has_current;
   bool show_handle = visible && ui.active && climate_modal_temperature_controls_enabled(ui.active);
-  climate_set_obj_visible(ui.back_btn, visible);
   climate_set_obj_visible(ui.arc, visible);
   climate_set_obj_visible(ui.current_dot, show_current);
   climate_set_obj_visible(ui.handle_dot, show_handle);
   climate_set_obj_visible(ui.target_row, visible);
   climate_set_obj_visible(ui.status_lbl, visible);
-  climate_set_obj_visible(ui.target_chip, visible);
   climate_set_obj_visible(ui.minus_btn, visible);
   climate_set_obj_visible(ui.plus_btn, visible);
-  climate_set_obj_visible(ui.chips, visible);
+  bool show_target_selector = visible && ui.active &&
+    climate_modal_temperature_controls_enabled(ui.active) && climate_dual_target(ui.active);
+  climate_set_obj_visible(ui.target_chip, show_target_selector);
+  climate_set_obj_visible(ui.chips, show_target_selector);
 }
 
 inline void climate_set_step_button_enabled(lv_obj_t *btn, bool enabled) {
@@ -1162,6 +1305,57 @@ inline void climate_set_step_button_enabled(lv_obj_t *btn, bool enabled) {
   }
 }
 
+inline void climate_control_style_tab(lv_obj_t *btn, bool active, uint32_t accent_color) {
+  if (!btn) return;
+  (void) accent_color;
+  lv_obj_set_style_bg_color(
+    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_t *label = lv_obj_get_child(btn, 0);
+  if (label) {
+    lv_obj_set_style_text_color(
+      label, lv_color_hex(active ? DEFAULT_TERTIARY_COLOR : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  }
+}
+
+inline void climate_control_layout_modal(ClimateControlCtx *ctx);
+inline void climate_control_apply_tab_visibility();
+
+inline lv_obj_t *climate_control_create_tab_button(lv_obj_t *parent, const char *icon,
+                                                   const lv_font_t *font,
+                                                   ClimateControlTab tab,
+                                                   int width_compensation_percent) {
+  lv_obj_t *btn = lv_btn_create(parent);
+  if (!btn) return nullptr;
+  apply_width_compensation(btn, width_compensation_percent);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
+  control_modal_apply_pressed_fill(btn);
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_t *label = lv_label_create(btn);
+  if (label) {
+    lv_label_set_text(label, icon);
+    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_obj_set_style_transform_zoom(label, 210, LV_PART_MAIN);
+    lv_obj_center(label);
+  }
+  lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+    ClimateControlTab tab = static_cast<ClimateControlTab>(
+      reinterpret_cast<uintptr_t>(lv_event_get_user_data(e)));
+    ClimateControlModalUi &ui = climate_control_modal_ui();
+    ui.tab = tab;
+    climate_control_apply_tab_visibility();
+    climate_control_layout_modal(ui.active);
+  }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(tab)));
+  return btn;
+}
+
 inline lv_obj_t *climate_create_menu_tile(lv_obj_t *parent, const char *icon,
                                           const char *title,
                                           const lv_font_t *icon_font,
@@ -1185,27 +1379,25 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
   ClimateControlModalUi &ui = climate_control_modal_ui();
   const std::vector<std::string> *options = nullptr;
   const char *title = nullptr;
-  bool combined = kind == "all";
   if (kind == "hvac") {
     options = &ctx->hvac_modes;
     title = "Mode";
   } else if (kind == "preset") {
     options = &ctx->preset_modes;
     title = "Preset";
+  } else if (kind == "fan") {
+    options = &ctx->fan_modes;
+    title = "Fan";
+  } else if (kind == "swing") {
+    options = &ctx->swing_modes;
+    title = "Swing";
   }
-  if (!ui.menu_view) return;
-  if (combined) {
-    if (ctx->hvac_modes.empty()) return;
-  } else if (!options || options->empty()) {
-    return;
-  }
+  if (!ui.panel || !options || options->empty()) return;
 
   climate_hide_inline_option_list();
   ui.option_click_count = 0;
-  climate_set_obj_visible(ui.menu_mode_btn, false);
-  climate_set_obj_visible(ui.menu_preset_btn, false);
 
-  ui.option_list_view = lv_obj_create(ui.menu_view);
+  ui.option_list_view = lv_obj_create(ui.panel);
   lv_obj_set_size(ui.option_list_view, lv_pct(100), lv_pct(100));
   lv_obj_set_style_bg_opa(ui.option_list_view, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.option_list_view, 0, LV_PART_MAIN);
@@ -1266,18 +1458,64 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_add_event_cb(btn, [](lv_event_t *e) {
         ClimateOptionClick *click = (ClimateOptionClick *)lv_event_get_user_data(e);
         if (click) climate_send_option(click->ctx, click->kind, click->value);
-        climate_hide_action_menu();
+        if (click) climate_open_inline_option_list(click->ctx, click->kind);
       }, LV_EVENT_CLICKED, click);
     }
   };
 
-  if (combined) {
-    add_section(ui.option_list_view, "", "hvac", ctx->hvac_modes);
-  } else {
-    add_section(ui.option_list_view, title, kind, *options);
-  }
+  add_section(ui.option_list_view, title, kind, *options);
   lv_obj_move_foreground(ui.option_list_view);
   climate_control_layout_modal(ctx);
+}
+
+inline const char *climate_control_tab_kind(ClimateControlTab tab) {
+  switch (tab) {
+    case ClimateControlTab::MODE: return "hvac";
+    case ClimateControlTab::PRESET: return "preset";
+    case ClimateControlTab::FAN: return "fan";
+    case ClimateControlTab::SWING: return "swing";
+    case ClimateControlTab::TEMPERATURE: return "";
+  }
+  return "";
+}
+
+inline void climate_control_apply_tab_visibility() {
+  ClimateControlModalUi &ui = climate_control_modal_ui();
+  ClimateControlCtx *ctx = ui.active;
+  if (!ctx) return;
+  climate_control_ensure_visible_tab(ctx);
+  ClimateControlVisibleTabs visible_tabs = climate_control_visible_tabs(ctx);
+  bool show_tab_bar = visible_tabs.count > 1;
+  bool show_temperature = ui.tab == ClimateControlTab::TEMPERATURE;
+  bool show_mode = ui.tab == ClimateControlTab::MODE;
+  bool show_preset = ui.tab == ClimateControlTab::PRESET;
+  bool show_fan = ui.tab == ClimateControlTab::FAN;
+  bool show_swing = ui.tab == ClimateControlTab::SWING;
+
+  climate_set_obj_visible(ui.tab_row, show_tab_bar);
+  climate_set_obj_visible(ui.temperature_tab,
+    show_tab_bar && visible_tabs.contains(ClimateControlTab::TEMPERATURE));
+  climate_set_obj_visible(ui.mode_tab,
+    show_tab_bar && visible_tabs.contains(ClimateControlTab::MODE));
+  climate_set_obj_visible(ui.preset_tab,
+    show_tab_bar && visible_tabs.contains(ClimateControlTab::PRESET));
+  climate_set_obj_visible(ui.fan_tab,
+    show_tab_bar && visible_tabs.contains(ClimateControlTab::FAN));
+  climate_set_obj_visible(ui.swing_tab,
+    show_tab_bar && visible_tabs.contains(ClimateControlTab::SWING));
+
+  climate_control_style_tab(ui.temperature_tab, show_temperature, ctx->accent_color);
+  climate_control_style_tab(ui.mode_tab, show_mode, ctx->accent_color);
+  climate_control_style_tab(ui.preset_tab, show_preset, ctx->accent_color);
+  climate_control_style_tab(ui.fan_tab, show_fan, ctx->accent_color);
+  climate_control_style_tab(ui.swing_tab, show_swing, ctx->accent_color);
+
+  climate_set_dial_controls_visible(show_temperature);
+  if (show_temperature) {
+    climate_hide_inline_option_list();
+  } else {
+    climate_open_inline_option_list(ctx, climate_control_tab_kind(ui.tab));
+  }
 }
 
 inline void climate_show_action_menu(ClimateControlCtx *ctx);
@@ -1395,25 +1633,9 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   }
   bool dual = temp_enabled && climate_dual_target(ctx);
   climate_update_target_chip(ui.target_chip, ctx, dual);
-  climate_set_obj_visible(ui.minus_btn, true);
-  climate_set_obj_visible(ui.plus_btn, true);
   climate_set_step_button_enabled(ui.minus_btn, temp_enabled);
   climate_set_step_button_enabled(ui.plus_btn, temp_enabled);
-  bool show_chips = ctx->available &&
-    (dual || !ctx->hvac_modes.empty() || !ctx->preset_modes.empty() ||
-     !ctx->fan_modes.empty() || !ctx->swing_modes.empty());
-  climate_update_option_chip(ui.mode_chip, "Mode", ctx->hvac_mode, ctx->available && !ctx->hvac_modes.empty());
-  climate_update_option_chip(ui.preset_chip, "Preset", ctx->preset_mode, ctx->available && !ctx->preset_modes.empty());
-  climate_update_option_chip(ui.fan_chip, "Fan", ctx->fan_mode, ctx->available && !ctx->fan_modes.empty());
-  climate_update_option_chip(ui.swing_chip, "Swing", ctx->swing_mode, ctx->available && !ctx->swing_modes.empty());
-  climate_set_obj_visible(ui.chips, show_chips);
-  climate_update_menu_tile(ui.menu_mode_btn, "Mode", ctx->hvac_mode, !ctx->hvac_modes.empty());
-  climate_update_menu_tile(ui.menu_preset_btn, "Preset", ctx->preset_mode, !ctx->preset_modes.empty());
-  if (ui.option_list_view) {
-    climate_set_obj_visible(ui.menu_mode_btn, false);
-    climate_set_obj_visible(ui.menu_preset_btn, false);
-  }
-  if (ui.action_menu_open) climate_set_dial_controls_visible(false);
+  climate_control_apply_tab_visibility();
 }
 
 inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
@@ -1449,6 +1671,55 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   control_modal_apply_panel_layout(ui.overlay, ui.panel, layout,
     control_modal_card_radius(ctx->btn));
   control_modal_apply_back_button_layout(ui.back_btn, layout);
+  ClimateControlVisibleTabs visible_tabs = climate_control_visible_tabs(ctx);
+  int tab_count = static_cast<int>(visible_tabs.count);
+  if (tab_count < 1) tab_count = 1;
+  bool show_tab_bar = tab_count > 1;
+  lv_coord_t tab_size = layout.back_size * 7 / 10;
+  if (tab_size < 48) tab_size = 48;
+  if (tab_size > 68) tab_size = 68;
+  lv_coord_t selected_tab_size = tab_size + tab_size / 8;
+  lv_coord_t tab_frame_pad = tab_size / 5;
+  lv_coord_t tab_gap = tab_size / 4;
+  lv_coord_t tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
+  lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
+  lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
+  lv_coord_t tab_safe_left = layout.back_inset_x + layout.back_size + layout.inset / 2;
+  lv_coord_t centered_left = (layout.panel_w - tab_frame_w) / 2;
+  while (show_tab_bar && centered_left < tab_safe_left && tab_size > 42) {
+    tab_size--;
+    selected_tab_size = tab_size + tab_size / 8;
+    tab_frame_pad = tab_size / 5;
+    tab_gap = tab_size / 4;
+    tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
+    tab_frame_w = tabs_total_w + tab_frame_pad * 2;
+    tab_frame_h = tab_size + tab_frame_pad * 2;
+    centered_left = (layout.panel_w - tab_frame_w) / 2;
+  }
+  if (ui.tab_row) {
+    if (show_tab_bar) {
+      lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_set_size(ui.tab_row, tab_frame_w, tab_frame_h);
+      lv_obj_set_style_radius(ui.tab_row, tab_frame_h / 2, LV_PART_MAIN);
+      if (centered_left < tab_safe_left) centered_left = tab_safe_left;
+      lv_obj_align(ui.tab_row, LV_ALIGN_TOP_LEFT, centered_left, layout.inset + 2);
+    } else {
+      lv_obj_add_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  lv_coord_t first_tab_x = (tab_frame_w - tabs_total_w) / 2;
+  for (int i = 0; show_tab_bar && i < tab_count; i++) {
+    lv_obj_t *tab_btn = climate_control_tab_button(ui, visible_tabs.tabs[i]);
+    if (!tab_btn) continue;
+    bool active = visible_tabs.tabs[i] == ui.tab;
+    lv_coord_t tab_btn_size = active ? selected_tab_size : tab_size;
+    lv_obj_set_size(tab_btn, tab_btn_size, tab_btn_size);
+    lv_obj_set_style_radius(tab_btn, tab_btn_size / 2, LV_PART_MAIN);
+    lv_coord_t tab_x = first_tab_x + i * (tab_size + tab_gap);
+    lv_obj_align(tab_btn, LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
+    lv_obj_t *label = lv_obj_get_child(tab_btn, 0);
+    if (label) lv_obj_center(label);
+  }
   if (ui.mode_btn) {
     lv_obj_set_size(ui.mode_btn, layout.back_size, layout.back_size);
     lv_obj_set_style_radius(ui.mode_btn, layout.back_size / 2, LV_PART_MAIN);
@@ -1485,10 +1756,6 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   lv_obj_set_scrollbar_mode(ui.chips, LV_SCROLLBAR_MODE_OFF);
   uint8_t visible_chip_count = 0;
   if (climate_modal_temperature_controls_enabled(ctx) && climate_dual_target(ctx)) visible_chip_count++;
-  if (ctx->available && !ctx->hvac_modes.empty()) visible_chip_count++;
-  if (ctx->available && !ctx->preset_modes.empty()) visible_chip_count++;
-  if (ctx->available && !ctx->fan_modes.empty()) visible_chip_count++;
-  if (ctx->available && !ctx->swing_modes.empty()) visible_chip_count++;
   lv_coord_t chip_row_w = layout.panel_w * CLIMATE_OPTION_ROW_WIDTH_PERCENT / 100;
   bool p4_86_square = climate_control_uses_p4_86_modal_tuning(layout);
   lv_coord_t option_chip_w = compensated_width(
@@ -1508,10 +1775,6 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     climate_apply_bottom_chip_padding(chip, layout);
   };
   layout_option_chip(ui.target_chip);
-  layout_option_chip(ui.mode_chip);
-  layout_option_chip(ui.preset_chip);
-  layout_option_chip(ui.fan_chip);
-  layout_option_chip(ui.swing_chip);
   lv_coord_t chip_content_w = visible_chip_count == 0 ? 0 :
     visible_chip_count * option_chip_w + (visible_chip_count - 1) * chip_gap;
   if (chip_content_w > chip_row_w) {
@@ -1541,7 +1804,9 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     lv_obj_align(ui.menu_mode_btn, LV_ALIGN_CENTER, 0, -(tile_h + menu_gap) / 2);
     lv_obj_align(ui.menu_preset_btn, LV_ALIGN_CENTER, 0, (tile_h + menu_gap) / 2);
     if (ui.option_list_view) {
-      lv_coord_t list_top = layout.inset + layout.back_size + 8;
+      lv_coord_t list_top = show_tab_bar
+        ? layout.inset + tab_frame_h + 16
+        : layout.inset + layout.back_size + 8;
       lv_coord_t list_bottom = layout.inset;
       lv_coord_t list_content_h = layout.panel_h - list_top - list_bottom;
       if (list_content_h < 120) list_content_h = 120;
@@ -1604,6 +1869,8 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
       }
     }
   }
+  if (ui.option_list_view) lv_obj_move_foreground(ui.option_list_view);
+  if (ui.tab_row) lv_obj_move_foreground(ui.tab_row);
   lv_obj_move_foreground(ui.back_btn);
   if (ui.mode_btn) lv_obj_move_foreground(ui.mode_btn);
   if (ui.menu_view) lv_obj_move_foreground(ui.menu_view);
@@ -1646,6 +1913,30 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
+  ui.tab = climate_control_first_visible_tab(ctx);
+
+  ui.tab_row = lv_obj_create(ui.panel);
+  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
+  ui.temperature_tab = climate_control_create_tab_button(
+    ui.tab_row, find_icon("Thermometer"), ctx->icon_font,
+    ClimateControlTab::TEMPERATURE, ctx->width_compensation_percent);
+  ui.mode_tab = climate_control_create_tab_button(
+    ui.tab_row, find_icon("Fire"), ctx->icon_font,
+    ClimateControlTab::MODE, ctx->width_compensation_percent);
+  ui.preset_tab = climate_control_create_tab_button(
+    ui.tab_row, find_icon("Air Filter"), ctx->icon_font,
+    ClimateControlTab::PRESET, ctx->width_compensation_percent);
+  ui.fan_tab = climate_control_create_tab_button(
+    ui.tab_row, find_icon("Fan"), ctx->icon_font,
+    ClimateControlTab::FAN, ctx->width_compensation_percent);
+  ui.swing_tab = climate_control_create_tab_button(
+    ui.tab_row, find_icon("Swap Horizontal"), ctx->icon_font,
+    ClimateControlTab::SWING, ctx->width_compensation_percent);
 
   ui.menu_view = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.menu_view, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -1815,6 +2106,10 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.swing_chip = climate_create_option_chip(ui.chips, find_icon("Swap Horizontal"), "Swing",
     chip_icon_font, ctx->option_title_font, ctx->option_value_font,
     ctx->width_compensation_percent);
+  lv_obj_add_flag(ui.mode_chip, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui.preset_chip, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui.fan_chip, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ui.swing_chip, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_event_cb(ui.target_chip, [](lv_event_t *) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (ui.active) climate_open_option_menu(ui.active, "target");
@@ -1895,6 +2190,7 @@ inline ClimateControlCtx *create_climate_control_context(
     cfg_option_value(p.options, "temperature_step")) == "0.5"
       ? CLIMATE_DEFAULT_STEP_TENTHS
       : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
+  ctx->options = p.options;
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;

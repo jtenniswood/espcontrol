@@ -423,6 +423,21 @@ assert.strictEqual(hooks.normalizeClimateTemperatureStep("bad"), "1", "climate i
 assert.deepStrictEqual(Array.from(hooks.climatePrecisionValues()), ["", "1", "2", "3"], "climate precision values are spec-backed");
 assert.strictEqual(hooks.normalizeClimatePrecisionConfig("3:-1.24:5.05"), "3:-1.2:5.1", "climate precision range cleanup is spec-backed");
 assert.strictEqual(hooks.normalizeClimatePrecisionConfig("bad:-25:5"), "0:-25:5", "climate invalid precision preserves custom range with fallback precision");
+assert.deepStrictEqual(
+  Array.from(hooks.climateControlTabs({ options: "climate_tabs=fan%7Ctemperature%7Cmode" })),
+  ["fan", "temperature", "mode"],
+  "climate control tabs preserve custom order"
+);
+assert.strictEqual(
+  hooks.normalizeClimateOptions("climate_tabs=temperature%7Cmode%7Cpreset%7Cfan%7Cswing"),
+  "",
+  "default climate control tab order is omitted"
+);
+assert.strictEqual(
+  hooks.normalizeClimateOptions("climate_tabs=bad%7Cfan%7Cfan"),
+  "climate_tabs=fan",
+  "invalid and duplicate climate control tabs are removed"
+);
 const coverOptionSpecs = hooks.cardContractOptions("cover");
 const coverOptionByName = Object.fromEntries(coverOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
@@ -1634,6 +1649,18 @@ assertButtonRoundTrip(hooks, "climate card icon display", {
   type: "climate",
   precision: "1",
   options: "number_display=icon",
+}, false);
+
+assertButtonRoundTrip(hooks, "climate card custom tabs", {
+  entity: "climate.hallway",
+  label: "Hallway",
+  icon: "Thermostat",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate",
+  precision: "1",
+  options: "climate_tabs=mode%7Ctemperature",
 }, false);
 
 assertButtonMigration(hooks, "climate clears ignored fields", "climate.living_room;Living;Thermostat;Radiator;sensor.temp;deg C;climate;bad", {

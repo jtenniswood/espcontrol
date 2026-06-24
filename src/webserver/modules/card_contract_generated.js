@@ -469,6 +469,12 @@ var CARD_CONTRACT_CARDS = {
         "name": "large_numbers",
         "label": "Large Temperature Numbers",
         "kind": "flag"
+      },
+      {
+        "name": "climate_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "defaultValue": "temperature|mode|preset|fan|swing"
       }
     ],
     "behavior": {
@@ -1524,6 +1530,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",
   "confirm_no": "confirm_no",
   "confirm_off": "confirm_off",

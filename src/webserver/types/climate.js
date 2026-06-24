@@ -81,6 +81,13 @@ registerButtonType("climate", {
     }
 
     helpers.renderCardEntityField(panel, b, helpers, CLIMATE_CARD_METADATA);
+    renderModalTabSettings(panel, b, helpers, {
+      definitions: climateControlTabDefinitions,
+      tabs: climateControlTabs,
+      normalizeOptions: normalizeClimateOptions,
+      setTabs: setClimateControlTabs,
+      idPrefix: "climate-tab-",
+    });
 
     var labelField = condField();
     labelField.classList.add("sp-climate-settings-gap");

@@ -279,6 +279,7 @@ var GARAGE_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
 var CLIMATE_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
 var CLIMATE_NUMBER_DISPLAY_OPTION = cardContractOptionName("number_display");
 var CLIMATE_TEMPERATURE_STEP_OPTION = cardContractOptionName("temperature_step");
+var CLIMATE_CONTROL_TABS_OPTION = cardContractOptionName("climate_tabs");
 var MEDIA_VOLUME_MAX_OPTION = cardContractOptionName("volume_max");
 var SUBPAGE_KIND_OPTION = cardContractOptionName("subpage_kind");
 var IMAGE_LABEL_OPTION = cardContractOptionName("image_label");
@@ -685,8 +686,22 @@ function coverControlTabDefinitions() {
   ];
 }
 
+function climateControlTabDefinitions() {
+  return [
+    { value: "temperature", label: "Temperature" },
+    { value: "mode", label: "Mode" },
+    { value: "preset", label: "Preset" },
+    { value: "fan", label: "Fan" },
+    { value: "swing", label: "Swing" },
+  ];
+}
+
 function coverControlDefaultTabs() {
   return coverControlTabDefinitions().map(function (tab) { return tab.value; });
+}
+
+function climateControlDefaultTabs() {
+  return climateControlTabDefinitions().map(function (tab) { return tab.value; });
 }
 
 function normalizeTabList(value, definitions, defaults, fallback) {
@@ -724,10 +739,30 @@ function coverControlTabs(b) {
   return normalizeCoverControlTabs(configOptionValue(b && b.options, COVER_CONTROL_TABS_OPTION));
 }
 
+function normalizeClimateControlTabs(value) {
+  return normalizeTabList(
+    value,
+    climateControlTabDefinitions(),
+    climateControlDefaultTabs(),
+    "temperature"
+  );
+}
+
+function climateControlTabs(b) {
+  return normalizeClimateControlTabs(configOptionValue(b && b.options, CLIMATE_CONTROL_TABS_OPTION));
+}
+
 function coverControlTabsAreDefault(tabs) {
   return tabListIsDefault(
     normalizeCoverControlTabs((tabs || []).join("|")),
     coverControlDefaultTabs()
+  );
+}
+
+function climateControlTabsAreDefault(tabs) {
+  return tabListIsDefault(
+    normalizeClimateControlTabs((tabs || []).join("|")),
+    climateControlDefaultTabs()
   );
 }
 
@@ -736,6 +771,13 @@ function normalizeCoverOptions(options) {
   return coverControlTabsAreDefault(tabs)
     ? ""
     : setConfigOptionValue("", COVER_CONTROL_TABS_OPTION, tabs.join("|"));
+}
+
+function normalizeClimateTabOptions(options) {
+  var tabs = normalizeClimateControlTabs(configOptionValue(options, CLIMATE_CONTROL_TABS_OPTION));
+  return climateControlTabsAreDefault(tabs)
+    ? ""
+    : setConfigOptionValue("", CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
 }
 
 function normalizeCoverOptionsForMode(options, mode) {
@@ -749,6 +791,16 @@ function setCoverControlTabs(b, tabs) {
     ? setConfigOptionValue(b.options, COVER_CONTROL_TABS_OPTION, "")
     : setConfigOptionValue(b.options, COVER_CONTROL_TABS_OPTION, tabs.join("|"));
   b.options = normalizeCoverOptions(b.options);
+  return b.options;
+}
+
+function setClimateControlTabs(b, tabs) {
+  if (!b) return "";
+  tabs = normalizeClimateControlTabs((tabs || []).join("|"));
+  b.options = climateControlTabsAreDefault(tabs)
+    ? setConfigOptionValue(b.options, CLIMATE_CONTROL_TABS_OPTION, "")
+    : setConfigOptionValue(b.options, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
+  b.options = normalizeClimateOptions(b.options);
   return b.options;
 }
 
@@ -1478,6 +1530,10 @@ function normalizeClimateOptions(options) {
   }
   if (numberMode !== "icon") {
     out = copyLargeNumbersOption(out, options);
+  }
+  var tabs = normalizeClimateControlTabs(configOptionValue(options, CLIMATE_CONTROL_TABS_OPTION));
+  if (!climateControlTabsAreDefault(tabs)) {
+    out = setConfigOptionValue(out, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
   }
   return out;
 }
