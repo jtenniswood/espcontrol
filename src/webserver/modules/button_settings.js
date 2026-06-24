@@ -552,11 +552,18 @@ function renderButtonSettings(forceOpen) {
     var picker = document.createElement("div");
     picker.className = "sp-icon-picker";
     if (pickerId) picker.id = pickerId;
-    picker.innerHTML =
-      '<span class="sp-icon-picker-preview mdi mdi-' + iconSlug(currentVal) + '"></span>' +
-      '<input class="sp-icon-picker-input"' + (inputId ? ' id="' + inputId + '"' : '') +
-      ' type="text" placeholder="Search icons\u2026" value="' + escAttr(currentVal) + '" autocomplete="off">' +
-      '<div class="sp-icon-dropdown"></div>';
+    picker.appendChild(mdiIcon(currentVal, "sp-icon-picker-preview mdi"));
+    var input = document.createElement("input");
+    input.className = "sp-icon-picker-input";
+    if (inputId) input.id = inputId;
+    input.type = "text";
+    input.placeholder = "Search icons\u2026";
+    input.value = currentVal || "";
+    input.autocomplete = "off";
+    picker.appendChild(input);
+    var dropdown = document.createElement("div");
+    dropdown.className = "sp-icon-dropdown";
+    picker.appendChild(dropdown);
     icf.appendChild(picker);
     initIconPicker(picker, currentVal, onSelect);
     return icf;
@@ -687,12 +694,12 @@ function renderButtonSettings(forceOpen) {
       item.disabled = !!o.disabled;
       item.setAttribute("data-card-type", o.key);
       item.setAttribute("aria-label", o.label + " card type");
-      item.innerHTML =
-        '<span class="sp-card-type-icon mdi mdi-' + escAttr(o.icon || "card-outline") + '"></span>' +
-        '<span class="sp-card-type-copy">' +
-        '<span class="sp-card-type-title">' + escHtml(o.label) + '</span>' +
-        '<span class="sp-card-type-description">' + escHtml(o.description || "") + '</span>' +
-        '</span>';
+      item.appendChild(mdiIcon(o.icon || "card-outline", "sp-card-type-icon mdi"));
+      var copy = document.createElement("span");
+      copy.className = "sp-card-type-copy";
+      copy.appendChild(textSpan(o.label, "sp-card-type-title"));
+      copy.appendChild(textSpan(o.description || "", "sp-card-type-description"));
+      item.appendChild(copy);
       item.addEventListener("click", function () {
         if (item.disabled) return;
         selectCardType(o.key);
@@ -855,11 +862,18 @@ function renderButtonSettings(forceOpen) {
     var iconOnPicker = document.createElement("div");
     iconOnPicker.className = "sp-icon-picker";
     iconOnPicker.id = idPrefix + "icon-on-picker";
-    iconOnPicker.innerHTML =
-      '<span class="sp-icon-picker-preview mdi mdi-' + iconSlug(iconOnVal) + '"></span>' +
-      '<input class="sp-icon-picker-input" id="' + idPrefix + 'icon-on" type="text" ' +
-      'placeholder="Search icons\u2026" value="' + escAttr(iconOnVal) + '" autocomplete="off">' +
-      '<div class="sp-icon-dropdown"></div>';
+    iconOnPicker.appendChild(mdiIcon(iconOnVal, "sp-icon-picker-preview mdi"));
+    var iconOnInput = document.createElement("input");
+    iconOnInput.className = "sp-icon-picker-input";
+    iconOnInput.id = idPrefix + "icon-on";
+    iconOnInput.type = "text";
+    iconOnInput.placeholder = "Search icons\u2026";
+    iconOnInput.value = iconOnVal || "";
+    iconOnInput.autocomplete = "off";
+    iconOnPicker.appendChild(iconOnInput);
+    var iconOnDropdown = document.createElement("div");
+    iconOnDropdown.className = "sp-icon-dropdown";
+    iconOnPicker.appendChild(iconOnDropdown);
     iconOnSection.appendChild(iconOnPicker);
     whenOnCond.appendChild(iconOnSection);
 
@@ -1074,9 +1088,8 @@ function initIconPicker(picker, currentIcon, onSelect) {
     ICON_OPTIONS.forEach(function (opt) {
       var row = document.createElement("div");
       row.className = "sp-icon-option" + (opt === currentIcon ? " sp-active" : "");
-      row.innerHTML =
-        '<span class="sp-icon-option-icon mdi mdi-' + iconSlug(opt) + '"></span>' +
-        '<span class="sp-icon-option-label">' + escHtml(opt) + '</span>';
+      row.appendChild(mdiIcon(opt, "sp-icon-option-icon mdi"));
+      row.appendChild(textSpan(opt, "sp-icon-option-label"));
       row._lcName = opt.toLowerCase();
       row._optName = opt;
       row.addEventListener("mousedown", function (e) {

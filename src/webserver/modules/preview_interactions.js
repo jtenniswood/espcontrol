@@ -723,7 +723,8 @@ function positionMenu(menu, e) {
 function addCtxItem(icon, text, handler, danger) {
   var item = document.createElement("div");
   item.className = "sp-ctx-item" + (danger ? " sp-ctx-danger" : "");
-  item.innerHTML = '<span class="mdi mdi-' + icon + '"></span>' + escHtml(text);
+  item.appendChild(mdiIcon(icon));
+  item.appendChild(document.createTextNode(text));
   item.addEventListener("mousedown", function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
@@ -742,7 +743,8 @@ function addCtxDivider() {
 function addCtxSubmenu(icon, text, buildFn) {
   var wrapper = document.createElement("div");
   wrapper.className = "sp-ctx-item sp-ctx-sub";
-  wrapper.innerHTML = '<span class="mdi mdi-' + icon + '"></span>' + escHtml(text);
+  wrapper.appendChild(mdiIcon(icon));
+  wrapper.appendChild(document.createTextNode(text));
   var sub = document.createElement("div");
   sub.className = "sp-ctx-submenu";
   buildFn(sub);
@@ -759,7 +761,14 @@ function addCtxSubmenu(icon, text, buildFn) {
 function addSubItem(container, icon, text, handler, active) {
   var item = document.createElement("div");
   item.className = "sp-ctx-item";
-  item.innerHTML = (active ? '<span class="sp-ctx-check mdi mdi-check"></span>' : '<span style="width:18px"></span>') + escHtml(text);
+  if (active) {
+    item.appendChild(mdiIcon("check", "sp-ctx-check mdi"));
+  } else {
+    var spacer = document.createElement("span");
+    spacer.style.width = "18px";
+    item.appendChild(spacer);
+  }
+  item.appendChild(document.createTextNode(text));
   item.addEventListener("mousedown", function (ev) {
     ev.preventDefault();
     ev.stopPropagation();

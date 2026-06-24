@@ -309,18 +309,10 @@ function post(url, fallbackUrl, errorMessage) {
   var urls = Array.isArray(url) ? url.slice() : [url];
   if (fallbackUrl) urls.push(fallbackUrl);
   _postQueue = _postQueue.then(function () {
-    var index = 0;
-    function tryNext() {
-      return fetch(urls[index], { method: "POST" }).then(function (r) {
-        if (r.ok || index >= urls.length - 1) {
-          if (!r.ok) showBanner(errorMessage || ("Request failed: " + r.status), "error");
-          return r;
-        }
-        index++;
-        return tryNext();
-      });
-    }
-    return tryNext().catch(function () {
+    return postFirstAvailable(urls).then(function (r) {
+      if (r && !r.ok) showBanner(errorMessage || ("Request failed: " + r.status), "error");
+      return r;
+    }).catch(function () {
       setConfigLocked(true, "Reconnecting to device\u2026");
       showBanner("Cannot reach device \u2014 is it connected?", "error");
       setTimeout(connectEvents, 5000);
@@ -332,21 +324,25 @@ function post(url, fallbackUrl, errorMessage) {
 function postOptional(url) {
   var urls = Array.isArray(url) ? url.slice() : [url];
   _postQueue = _postQueue.then(function () {
-    var index = 0;
-    function tryNext() {
-      return fetch(urls[index], { method: "POST" }).then(function (r) {
-        if (r.ok || index >= urls.length - 1) return r;
-        index++;
-        return tryNext();
-      });
-    }
-    return tryNext().catch(function () {
+    return postFirstAvailable(urls).catch(function () {
       setConfigLocked(true, "Reconnecting to device\u2026");
       showBanner("Cannot reach device \u2014 is it connected?", "error");
       setTimeout(connectEvents, 5000);
     });
   });
   return _postQueue;
+}
+
+function postFirstAvailable(urls) {
+  var index = 0;
+  function tryNext() {
+    return fetch(urls[index], { method: "POST" }).then(function (r) {
+      if (r.ok || index >= urls.length - 1) return r;
+      index++;
+      return tryNext();
+    });
+  }
+  return tryNext();
 }
 
 function postText(name, value) {
