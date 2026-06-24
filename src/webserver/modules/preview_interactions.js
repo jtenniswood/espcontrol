@@ -864,6 +864,9 @@ function addClockBarMenuItems(item) {
   if (isClockBarTemperatureItem(item)) {
     addCtxItem("pencil", "Edit Temperature", function () { openClockBarTemperatureSettings(); });
     addCtxDivider();
+  } else if (item === "voice") {
+    addCtxItem("pencil", "Edit Voice Services", function () { openVoiceServicesSettings(); });
+    addCtxDivider();
   }
 
   var visible = clockBarItemActive(item);

@@ -4,6 +4,12 @@
 
 // Home Assistant todo card controls.
 
+constexpr uint32_t TODO_CARD_CTX_MAGIC = 0x544F444F;  // TODO
+
+inline bool todo_request_timed_out(uint32_t started_ms, uint32_t timeout_ms) {
+  return esphome::millis() - started_ms >= timeout_ms;
+}
+
 #if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO
 
 struct TodoCardCtx {};
@@ -61,7 +67,6 @@ inline void subscribe_todo_friendly_name(TodoCardCtx *ctx) { (void) ctx; }
 
 #elif defined(ESPCONTROL_TODO_LITE) && ESPCONTROL_TODO_LITE
 
-constexpr uint32_t TODO_CARD_CTX_MAGIC = 0x544F444F;  // TODO
 constexpr int TODO_LITE_MAX_ITEMS = 5;
 constexpr size_t TODO_LITE_KEY_MAX_LEN = 64;
 constexpr size_t TODO_LITE_SUMMARY_MAX_LEN = 64;
@@ -229,7 +234,7 @@ inline void todo_cancel_pending_request(const char *reason, bool keep_modal_wait
 inline bool todo_lite_cancel_stale_request() {
   TodoLiteModalUi &ui = todo_lite_modal_ui();
   if (ui.call_id == 0) return false;
-  if (esphome::millis() - ui.started_ms >= TODO_LITE_REQUEST_TIMEOUT_MS) {
+  if (todo_request_timed_out(ui.started_ms, TODO_LITE_REQUEST_TIMEOUT_MS)) {
     uint32_t call_id = ui.call_id;
     todo_lite_cancel_request(call_id, "timeout");
     return true;
@@ -402,7 +407,8 @@ inline void todo_lite_render_items(TodoCardCtx *ctx) {
 
   if (ui.more_count > 0) {
     char more_label[32];
-    std::snprintf(more_label, sizeof(more_label), "%d more", ui.more_count);
+    std::snprintf(
+      more_label, sizeof(more_label), "%d %s", ui.more_count, espcontrol_i18n("more"));
     todo_lite_create_note_row(ctx, more_label, row_h, content_w);
   }
 }
@@ -684,7 +690,6 @@ inline void subscribe_todo_friendly_name(TodoCardCtx *ctx) {
 
 #else
 
-constexpr uint32_t TODO_CARD_CTX_MAGIC = 0x544F444F;  // TODO
 constexpr int TODO_MAX_ITEMS = 8;
 constexpr size_t TODO_RESPONSE_TEXT_MAX_LEN = 1536;
 constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;
@@ -781,7 +786,7 @@ inline void todo_cancel_pending_request(const char *reason, bool keep_modal_wait
 inline bool todo_cancel_stale_request() {
   TodoRequestState &state = todo_request_state();
   if (state.call_id == 0) return false;
-  if (esphome::millis() - state.started_ms >= TODO_REQUEST_TIMEOUT_MS) {
+  if (todo_request_timed_out(state.started_ms, TODO_REQUEST_TIMEOUT_MS)) {
     uint32_t call_id = state.call_id;
     todo_cancel_request(call_id, "timeout");
     return true;
@@ -1102,7 +1107,9 @@ inline void todo_modal_render_items(TodoCardCtx *ctx, const std::vector<TodoItem
   for (const auto &item : items) {
     if (item.more) {
       ui.more_items_visible = true;
-      std::string label = item.summary.empty() ? "More items" : item.summary + " more";
+      std::string label = item.summary.empty()
+        ? espcontrol_i18n(std::string("More items"))
+        : item.summary + " " + espcontrol_i18n(std::string("more"));
       todo_modal_create_list_item_row(
         ui.list, label, false, false, false, row_h, content_w,
         checkbox_size, item_gap, ctx->label_font,

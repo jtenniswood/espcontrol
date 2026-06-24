@@ -489,6 +489,7 @@ function installPublicFirmwareViaWebOta(info) {
     state.firmwareInstallPostPending = false;
     state.firmwareChecking = false;
     state.firmwareUpdateState = "INSTALLING";
+    state.firmwareInstallError = "";
     state.firmwareInstallStatus = state.firmwareInstallTargetVersion ?
       "Uploading firmware " + state.firmwareInstallTargetVersion + "\u2026" :
       "Uploading firmware update\u2026";
@@ -535,6 +536,7 @@ function installPublicFirmwareViaWebOta(info) {
 }
 
 function waitForFirmwareRestart() {
+  state.firmwareInstallError = "";
   state.firmwareInstallStatus = "Waiting for device to restart\u2026";
   renderFirmwareUpdateStatus();
   setConfigLocked(true, "Waiting for device to restart\u2026");
@@ -543,10 +545,12 @@ function waitForFirmwareRestart() {
 }
 
 function failPublicFirmwareUpload(message) {
+  var reason = message || "Could not upload firmware update.";
   stopFirmwareInstallRefresh();
   state.firmwareUpdateState = "";
+  state.firmwareInstallError = "Firmware update failed: " + reason;
   renderFirmwareUpdateStatus();
-  showBanner(message || "Could not upload firmware update.", "error");
+  showBanner(reason, "error");
 }
 
 function postSwitch(name, on) {

@@ -75,6 +75,7 @@ const ICON_GROUPS = {
   'Outdoor Lamp': 'Lighting',
   'Palette': 'Lighting',
   'Spotlight': 'Lighting',
+  'Spotlight Beam': 'Lighting',
   'String Lights': 'Lighting',
   'String Lights Off': 'Lighting',
   'Wall Sconce': 'Lighting',

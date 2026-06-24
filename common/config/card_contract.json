@@ -10,6 +10,12 @@
     "precision",
     "options"
   ],
+  "optionNames": [
+    "state_low_label",
+    "state_high_label",
+    "image_refresh",
+    "image_refresh_mode"
+  ],
   "cards": {
     "": {
       "label": "Switch",

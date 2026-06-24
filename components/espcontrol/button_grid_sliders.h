@@ -143,6 +143,8 @@ struct LightControlCtx {
   int kelvin_max = 6500;
   bool available = true;
   bool on = false;
+  bool color_modes_known = false;
+  bool rgb_color_supported = true;
   bool updating_slider = false;
   bool updating_temp_slider = false;
   bool dragging_slider = false;
@@ -180,10 +182,12 @@ struct LightControlVisibleTabs {
 
 struct LightColorPresetClick {
   uint32_t color = 0;
+  int kelvin_pct = -1;
 };
 
 struct LightColorPreset {
   uint32_t color;
+  int kelvin_pct = -1;
 };
 
 struct LightControlModalUi {
@@ -257,6 +261,14 @@ inline bool light_control_tab_visible(LightControlCtx *ctx, LightControlTab tab)
   return tabs.contains(tab);
 }
 
+inline bool light_control_use_temperature_swatches(LightControlCtx *ctx) {
+  return ctx && ctx->color_modes_known && !ctx->rgb_color_supported;
+}
+
+inline uint32_t light_control_swatch_count(LightControlCtx *ctx) {
+  return light_control_use_temperature_swatches(ctx) ? 4 : 16;
+}
+
 inline LightControlTab light_control_first_visible_tab(LightControlCtx *ctx) {
   LightControlVisibleTabs tabs = light_control_visible_tabs(ctx);
   return tabs.count == 0 ? LightControlTab::POWER : tabs.tabs[0];
@@ -282,6 +294,7 @@ inline void light_control_update_slider_handle(lv_obj_t *slider, lv_obj_t *handl
 inline void light_control_update_slider_fill(lv_obj_t *slider, lv_obj_t *fill,
                                              lv_obj_t *handle, int pct,
                                              lv_color_t fill_color);
+inline void light_control_rebuild_color_grid(LightControlCtx *ctx);
 
 inline std::string light_control_title(LightControlCtx *ctx) {
   if (!ctx) return espcontrol_i18n(std::string("Light"));
@@ -374,13 +387,20 @@ inline int light_control_kelvin_to_pct(LightControlCtx *ctx, int kelvin) {
   if (!ctx || ctx->kelvin_max <= ctx->kelvin_min) return 50;
   if (kelvin < ctx->kelvin_min) kelvin = ctx->kelvin_min;
   if (kelvin > ctx->kelvin_max) kelvin = ctx->kelvin_max;
+  return 100 - ((kelvin - ctx->kelvin_min) * 100 / (ctx->kelvin_max - ctx->kelvin_min));
+}
+
+inline int light_control_kelvin_to_command_pct(LightControlCtx *ctx, int kelvin) {
+  if (!ctx || ctx->kelvin_max <= ctx->kelvin_min) return 50;
+  if (kelvin < ctx->kelvin_min) kelvin = ctx->kelvin_min;
+  if (kelvin > ctx->kelvin_max) kelvin = ctx->kelvin_max;
   return (kelvin - ctx->kelvin_min) * 100 / (ctx->kelvin_max - ctx->kelvin_min);
 }
 
 inline int light_control_pct_to_kelvin(LightControlCtx *ctx, int pct) {
   if (!ctx || ctx->kelvin_max <= ctx->kelvin_min) return 3500;
   pct = slider_clamp_pct(pct);
-  return ctx->kelvin_min + pct * (ctx->kelvin_max - ctx->kelvin_min) / 100;
+  return ctx->kelvin_min + (100 - pct) * (ctx->kelvin_max - ctx->kelvin_min) / 100;
 }
 
 inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin) {
@@ -422,24 +442,29 @@ inline void light_control_apply_tab_visibility() {
   if (!ctx) return;
   LightControlVisibleTabs visible_tabs = light_control_visible_tabs(ctx);
   if (!visible_tabs.contains(ui.tab)) ui.tab = visible_tabs.tabs[0];
+  bool show_tab_bar = visible_tabs.count > 1;
   bool show_power = ui.tab == LightControlTab::POWER;
   bool show_brightness = ui.tab == LightControlTab::BRIGHTNESS;
   bool show_temperature = ui.tab == LightControlTab::TEMPERATURE;
   bool show_color = ui.tab == LightControlTab::COLOR;
+  if (ui.tab_row) {
+    if (show_tab_bar) lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
+  }
   if (ui.power_tab) {
-    if (visible_tabs.contains(LightControlTab::POWER)) lv_obj_clear_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
+    if (show_tab_bar && visible_tabs.contains(LightControlTab::POWER)) lv_obj_clear_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.power_tab, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.brightness_tab) {
-    if (visible_tabs.contains(LightControlTab::BRIGHTNESS)) lv_obj_clear_flag(ui.brightness_tab, LV_OBJ_FLAG_HIDDEN);
+    if (show_tab_bar && visible_tabs.contains(LightControlTab::BRIGHTNESS)) lv_obj_clear_flag(ui.brightness_tab, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.brightness_tab, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.temperature_tab) {
-    if (visible_tabs.contains(LightControlTab::TEMPERATURE)) lv_obj_clear_flag(ui.temperature_tab, LV_OBJ_FLAG_HIDDEN);
+    if (show_tab_bar && visible_tabs.contains(LightControlTab::TEMPERATURE)) lv_obj_clear_flag(ui.temperature_tab, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.temperature_tab, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.color_tab) {
-    if (visible_tabs.contains(LightControlTab::COLOR)) lv_obj_clear_flag(ui.color_tab, LV_OBJ_FLAG_HIDDEN);
+    if (show_tab_bar && visible_tabs.contains(LightControlTab::COLOR)) lv_obj_clear_flag(ui.color_tab, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.color_tab, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.power_group) {
@@ -466,6 +491,33 @@ inline void light_control_apply_tab_visibility() {
 }
 
 inline void light_control_layout_modal(LightControlCtx *ctx);
+
+inline lv_coord_t control_modal_control_tab_size(const ControlModalLayout &layout) {
+  lv_coord_t size = layout.back_size * (control_modal_uses_large_landscape_tuning(layout) ? 4 : 7) /
+                    (control_modal_uses_large_landscape_tuning(layout) ? 5 : 10);
+  lv_coord_t min_size = control_modal_uses_large_landscape_tuning(layout) ? 64 : 48;
+  lv_coord_t max_size = control_modal_uses_large_landscape_tuning(layout) ? 88 : 68;
+  if (size < min_size) size = min_size;
+  if (size > max_size) size = max_size;
+  return size;
+}
+
+inline lv_coord_t control_modal_control_tab_gap(const ControlModalLayout &layout,
+                                                lv_coord_t tab_size) {
+  lv_coord_t gap = control_modal_uses_large_landscape_tuning(layout)
+    ? tab_size * 2 / 5
+    : tab_size / 4;
+  lv_coord_t min_gap = control_modal_uses_large_landscape_tuning(layout) ? 24 : 12;
+  if (gap < min_gap) gap = min_gap;
+  return gap;
+}
+
+inline lv_coord_t control_modal_control_tab_content_gap(const ControlModalLayout &layout) {
+  if (!control_modal_uses_large_landscape_tuning(layout)) return 16;
+  lv_coord_t gap = control_modal_scaled_px(22, layout.short_side);
+  if (gap < 28) gap = 28;
+  return gap;
+}
 
 inline void light_control_center_icon_label(lv_obj_t *label) {
   if (!label) return;
@@ -714,6 +766,19 @@ inline void light_control_layout_power(lv_obj_t *group, lv_obj_t *on_btn,
   }
 }
 
+inline lv_coord_t light_control_modal_control_width(const ControlModalLayout &layout,
+                                                    lv_coord_t card_width,
+                                                    lv_coord_t content_height) {
+  lv_coord_t width = card_width;
+  if (control_modal_uses_jc1060p470_tuning(layout)) {
+    lv_coord_t max_width = content_height * 9 / 16;
+    if (max_width < control_modal_scaled_px(160, layout.short_side))
+      max_width = control_modal_scaled_px(160, layout.short_side);
+    if (width > max_width) width = max_width;
+  }
+  return width;
+}
+
 inline void light_control_layout_modal(LightControlCtx *ctx) {
   LightControlModalUi &ui = light_control_modal_ui();
   if (!ctx || !ui.panel) return;
@@ -723,36 +788,40 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
 
   int tab_count = static_cast<int>(visible_tabs.count);
   if (tab_count < 1) tab_count = 1;
-  lv_coord_t tab_size = layout.back_size * 7 / 10;
-  if (tab_size < 48) tab_size = 48;
-  if (tab_size > 68) tab_size = 68;
+  bool show_tab_bar = tab_count > 1;
+  lv_coord_t tab_size = control_modal_control_tab_size(layout);
   lv_coord_t selected_tab_size = tab_size + tab_size / 8;
   lv_coord_t tab_frame_pad = tab_size / 5;
-  lv_coord_t tab_gap = tab_size / 4;
+  lv_coord_t tab_gap = control_modal_control_tab_gap(layout, tab_size);
   lv_coord_t tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
   lv_coord_t tab_safe_left = layout.back_inset_x + layout.back_size + layout.inset / 2;
   lv_coord_t centered_left = (layout.panel_w - tab_frame_w) / 2;
-  while (centered_left < tab_safe_left && tab_size > 48) {
+  while (show_tab_bar && centered_left < tab_safe_left && tab_size > 48) {
     tab_size--;
     selected_tab_size = tab_size + tab_size / 8;
     tab_frame_pad = tab_size / 5;
-    tab_gap = tab_size / 4;
+    tab_gap = control_modal_control_tab_gap(layout, tab_size);
     tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
     tab_frame_w = tabs_total_w + tab_frame_pad * 2;
     tab_frame_h = tab_size + tab_frame_pad * 2;
     centered_left = (layout.panel_w - tab_frame_w) / 2;
   }
-  lv_coord_t slider_w = control_modal_home_card_width(ctx->btn, layout);
+  if (!show_tab_bar) tab_frame_h = 0;
   if (ui.tab_row) {
-    lv_obj_set_size(ui.tab_row, tab_frame_w, tab_frame_h);
-    lv_obj_set_style_radius(ui.tab_row, tab_frame_h / 2, LV_PART_MAIN);
-    if (centered_left < tab_safe_left) centered_left = tab_safe_left;
-    lv_obj_align(ui.tab_row, LV_ALIGN_TOP_LEFT, centered_left, layout.inset + 2);
+    if (show_tab_bar) {
+      lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_set_size(ui.tab_row, tab_frame_w, tab_frame_h);
+      lv_obj_set_style_radius(ui.tab_row, tab_frame_h / 2, LV_PART_MAIN);
+      if (centered_left < tab_safe_left) centered_left = tab_safe_left;
+      lv_obj_align(ui.tab_row, LV_ALIGN_TOP_LEFT, centered_left, layout.inset + 2);
+    } else {
+      lv_obj_add_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
+    }
   }
   lv_coord_t first_tab_x = (tab_frame_w - tabs_total_w) / 2;
-  for (int i = 0; i < tab_count; i++) {
+  for (int i = 0; show_tab_bar && i < tab_count; i++) {
     lv_obj_t *tab_btn = light_control_tab_button(ui, visible_tabs.tabs[i]);
     if (!tab_btn) continue;
     bool active = (visible_tabs.tabs[i] == ui.tab);
@@ -765,9 +834,15 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     light_control_center_icon_label(label);
   }
 
-  lv_coord_t content_center_y = tab_frame_h / 2 + 12;
-  lv_coord_t slider_h = layout.panel_h - layout.inset * 3 - tab_frame_h - 16;
+  lv_coord_t content_top = show_tab_bar
+    ? layout.inset + tab_frame_h + control_modal_control_tab_content_gap(layout)
+    : layout.inset * 2;
+  lv_coord_t content_bottom = layout.panel_h - layout.inset;
+  lv_coord_t slider_h = content_bottom - content_top;
   if (slider_h < 160) slider_h = layout.panel_h / 2;
+  lv_coord_t slider_w = light_control_modal_control_width(
+    layout, control_modal_home_card_width(ctx->btn, layout), slider_h);
+  lv_coord_t content_center_y = content_top + slider_h / 2 - layout.panel_h / 2;
   light_control_layout_power(
     ui.power_group, ui.power_on_btn, ui.power_off_btn, slider_w, slider_h, content_center_y);
   light_control_apply_modal_power(ctx);
@@ -788,21 +863,43 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     ui.temp_slider, ui.temp_slider_handle, light_control_kelvin_to_pct(ctx, ctx->current_kelvin));
   if (ui.color_grid) {
     lv_coord_t grid_side = layout.panel_w - layout.inset * 3;
-    lv_coord_t max_grid_h = layout.panel_h - layout.inset * 4 - tab_frame_h - 24;
+    lv_coord_t color_safe_top = content_top;
+    if (!show_tab_bar) {
+      lv_coord_t chrome_safe_top = layout.back_inset_y + layout.back_size + layout.inset / 2;
+      if (color_safe_top < chrome_safe_top) color_safe_top = chrome_safe_top;
+    }
+    lv_coord_t max_grid_h = content_bottom - color_safe_top;
     if (grid_side > max_grid_h) grid_side = max_grid_h;
     if (grid_side < 180) grid_side = 180;
     lv_obj_set_size(ui.color_grid, grid_side, grid_side);
-    lv_obj_align(ui.color_grid, LV_ALIGN_CENTER, 0, content_center_y);
+    lv_coord_t color_center_y = content_center_y;
+    lv_coord_t color_top = layout.panel_h / 2 + color_center_y - grid_side / 2;
+    if (!show_tab_bar && color_top < color_safe_top) color_center_y += color_safe_top - color_top;
+    lv_obj_align(ui.color_grid, LV_ALIGN_CENTER, 0, color_center_y);
+    uint32_t swatch_count = light_control_swatch_count(ctx);
+    uint32_t columns = swatch_count <= 4 ? swatch_count : 4;
+    uint32_t rows = (swatch_count + columns - 1) / columns;
     lv_coord_t gap = 14;
-    lv_coord_t swatch = (grid_side - gap * 3) / 4;
-    for (uint32_t i = 0; i < 16; i++) {
+    lv_coord_t swatch = (grid_side - gap * static_cast<lv_coord_t>(columns - 1)) /
+      static_cast<lv_coord_t>(columns);
+    if (swatch_count <= 4) {
+      lv_coord_t max_swatch = control_modal_scaled_px(80, layout.short_side);
+      if (swatch > max_swatch) swatch = max_swatch;
+    }
+    lv_coord_t used_w = swatch * static_cast<lv_coord_t>(columns) +
+      gap * static_cast<lv_coord_t>(columns - 1);
+    lv_coord_t used_h = swatch * static_cast<lv_coord_t>(rows) +
+      gap * static_cast<lv_coord_t>(rows - 1);
+    lv_coord_t start_x = (grid_side - used_w) / 2;
+    lv_coord_t start_y = (grid_side - used_h) / 2;
+    for (uint32_t i = 0; i < swatch_count; i++) {
       lv_obj_t *btn = lv_obj_get_child(ui.color_grid, i);
       if (!btn) continue;
       lv_obj_set_size(btn, swatch, swatch);
       apply_width_compensation(btn, ctx->width_compensation_percent);
       lv_obj_align(btn, LV_ALIGN_TOP_LEFT,
-        static_cast<lv_coord_t>((i % 4) * (swatch + gap)),
-        static_cast<lv_coord_t>((i / 4) * (swatch + gap)));
+        start_x + static_cast<lv_coord_t>((i % columns) * (swatch + gap)),
+        start_y + static_cast<lv_coord_t>((i / columns) * (swatch + gap)));
       lv_obj_set_style_radius(btn, swatch / 2, LV_PART_MAIN);
     }
   }
@@ -932,14 +1029,13 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     if (!ui.active->available) return;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int pct = lv_slider_get_value(slider);
+    int kelvin = light_control_pct_to_kelvin(ui.active, pct);
     light_control_update_slider_fill(
       slider, ui.temp_slider_fill, ui.temp_slider_handle, pct,
-      kelvin_to_fill_color(
-        light_control_pct_to_kelvin(ui.active, pct),
-        ui.active->kelvin_min, ui.active->kelvin_max));
+      kelvin_to_fill_color(kelvin, ui.active->kelvin_min, ui.active->kelvin_max));
     light_control_update_slider_handle(slider, ui.temp_slider_handle, lv_slider_get_value(slider));
     send_light_temp_action(
-      ui.active->entity_id, lv_slider_get_value(slider),
+      ui.active->entity_id, light_control_kelvin_to_command_pct(ui.active, kelvin),
       ui.active->kelvin_min, ui.active->kelvin_max);
   }, LV_EVENT_RELEASED, nullptr);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
@@ -947,36 +1043,13 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     if (ui.active) ui.active->dragging_temp_slider = false;
   }, LV_EVENT_PRESS_LOST, nullptr);
 
-  static constexpr LightColorPreset COLOR_PRESETS[16] = {
-    {0xFFE6B3}, {0xFFFFFF}, {0xDCEBFF}, {0xFFD400},
-    {0xFF7A00}, {0xFF2600}, {0xFF1744}, {0xFF4081},
-    {0xD500F9}, {0x7C4DFF}, {0x2979FF}, {0x00E5FF},
-    {0x00B8D4}, {0x00C853}, {0x7ED321}, {0xAEEA00},
-  };
   ui.color_grid = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.color_grid, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.color_grid, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.color_grid, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.color_grid, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.color_grid, LV_OBJ_FLAG_SCROLLABLE);
-  for (uint32_t i = 0; i < 16; i++) {
-    lv_obj_t *swatch = lv_btn_create(ui.color_grid);
-    if (!swatch) continue;
-    lv_obj_set_style_bg_color(swatch, lv_color_hex(COLOR_PRESETS[i].color), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(swatch, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_border_width(swatch, 0, LV_PART_MAIN);
-    lv_obj_set_style_shadow_width(swatch, 0, LV_PART_MAIN);
-    control_modal_apply_pressed_fill(swatch);
-    lv_obj_clear_flag(swatch, LV_OBJ_FLAG_SCROLLABLE);
-    LightColorPresetClick *click = new LightColorPresetClick();
-    click->color = COLOR_PRESETS[i].color;
-    lv_obj_add_event_cb(swatch, [](lv_event_t *e) {
-      LightColorPresetClick *click = static_cast<LightColorPresetClick *>(lv_event_get_user_data(e));
-      LightControlModalUi &ui = light_control_modal_ui();
-      if (!click || !ui.active || !ui.active->available) return;
-      send_light_rgb_action(ui.active->entity_id, click->color);
-    }, LV_EVENT_CLICKED, click);
-  }
+  light_control_rebuild_color_grid(ctx);
 
   light_control_layout_modal(ctx);
   light_control_set_modal_value(ctx, light_control_display_pct(ctx));
@@ -984,6 +1057,56 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   light_control_apply_modal_power(ctx);
   light_control_apply_tab_visibility();
   lv_obj_move_foreground(ui.overlay);
+}
+
+inline void light_control_rebuild_color_grid(LightControlCtx *ctx) {
+  LightControlModalUi &ui = light_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.color_grid) return;
+  lv_obj_clean(ui.color_grid);
+
+  static constexpr LightColorPreset RGB_PRESETS[16] = {
+    {0xFFE6B3}, {0xFFFFFF}, {0xDCEBFF}, {0xFFD400},
+    {0xFF7A00}, {0xFF2600}, {0xFF1744}, {0xFF4081},
+    {0xD500F9}, {0x7C4DFF}, {0x2979FF}, {0x00E5FF},
+    {0x00B8D4}, {0x00C853}, {0x7ED321}, {0xAEEA00},
+  };
+  static constexpr LightColorPreset TEMPERATURE_PRESETS[4] = {
+    {0xFF972C, 0},
+    {0xF8D7BC, 30},
+    {0xDDE6FF, 68},
+    {0xBDD1F7, 100},
+  };
+  const LightColorPreset *presets = light_control_use_temperature_swatches(ctx)
+    ? TEMPERATURE_PRESETS
+    : RGB_PRESETS;
+  uint32_t count = light_control_swatch_count(ctx);
+  for (uint32_t i = 0; i < count; i++) {
+    lv_obj_t *swatch = lv_btn_create(ui.color_grid);
+    if (!swatch) continue;
+    lv_obj_set_style_bg_color(swatch, lv_color_hex(presets[i].color), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(swatch, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(swatch, 0, LV_PART_MAIN);
+    lv_obj_set_style_shadow_width(swatch, 0, LV_PART_MAIN);
+    control_modal_apply_pressed_fill(swatch);
+    lv_obj_clear_flag(swatch, LV_OBJ_FLAG_SCROLLABLE);
+    LightColorPresetClick *click = new LightColorPresetClick();
+    click->color = presets[i].color;
+    click->kelvin_pct = presets[i].kelvin_pct;
+    lv_obj_add_event_cb(swatch, [](lv_event_t *e) {
+      LightColorPresetClick *click = static_cast<LightColorPresetClick *>(lv_event_get_user_data(e));
+      LightControlModalUi &ui = light_control_modal_ui();
+      if (!click || !ui.active || !ui.active->available) return;
+      if (click->kelvin_pct >= 0) {
+        int pct = slider_clamp_pct(click->kelvin_pct);
+        ui.active->current_kelvin = light_control_pct_to_kelvin(ui.active, pct);
+        light_control_set_temp_modal_value(ui.active, ui.active->current_kelvin);
+        send_light_temp_action(ui.active->entity_id, pct, ui.active->kelvin_min, ui.active->kelvin_max);
+      } else {
+        send_light_rgb_action(ui.active->entity_id, click->color);
+      }
+    }, LV_EVENT_CLICKED, click);
+  }
+  light_control_layout_modal(ctx);
 }
 
 inline void setup_light_control_card(BtnSlot &s, const ParsedCfg &p) {
@@ -1059,6 +1182,29 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
             ui.temp_slider, ui.temp_slider_fill, ui.temp_slider_handle, pct,
             kelvin_to_fill_color(kelvin, ctx->kelvin_min, ctx->kelvin_max));
           light_control_update_slider_handle(ui.temp_slider, ui.temp_slider_handle, pct);
+        }
+      })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("supported_color_modes"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef value) {
+        std::string modes = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+        for (char &c : modes) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+        if (modes.empty() || modes == "unknown" || modes == "unavailable") return;
+        bool rgb_supported =
+          modes.find("hs") != std::string::npos ||
+          modes.find("xy") != std::string::npos ||
+          modes.find("rgb") != std::string::npos;
+        bool temperature_supported = modes.find("color_temp") != std::string::npos;
+        bool show_rgb_palette = rgb_supported || !temperature_supported;
+        bool changed = !ctx->color_modes_known || ctx->rgb_color_supported != show_rgb_palette;
+        ctx->color_modes_known = true;
+        ctx->rgb_color_supported = show_rgb_palette;
+        LightControlModalUi &ui = light_control_modal_ui();
+        if (changed && ui.active == ctx && ui.color_grid) {
+          light_control_rebuild_color_grid(ctx);
+          light_control_apply_tab_visibility();
         }
       })
   );
@@ -1710,13 +1856,11 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
   int tab_count = static_cast<int>(visible_tabs.count);
   if (tab_count < 1) tab_count = 1;
   bool show_tab_bar = tab_count > 1;
-  lv_coord_t tab_size = layout.back_size * 7 / 10;
-  if (tab_size < 48) tab_size = 48;
-  if (tab_size > 68) tab_size = 68;
+  lv_coord_t tab_size = control_modal_control_tab_size(layout);
   lv_coord_t selected_tab_size = tab_size + tab_size / 8;
   lv_coord_t tab_frame_pad = tab_size / 5;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
-  lv_coord_t tab_gap = tab_size / 4;
+  lv_coord_t tab_gap = control_modal_control_tab_gap(layout, tab_size);
   lv_coord_t tabs_total_w = tab_size * tab_count + tab_gap * (tab_count - 1);
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
   lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
@@ -1741,7 +1885,7 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
   }
 
   lv_coord_t content_top = show_tab_bar
-    ? layout.inset + tab_frame_h + 16
+    ? layout.inset + tab_frame_h + control_modal_control_tab_content_gap(layout)
     : layout.inset * 2;
   lv_coord_t content_bottom = layout.panel_h - layout.inset;
   lv_coord_t content_h = content_bottom - content_top;
@@ -1779,6 +1923,7 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
       if (label) lv_obj_center(label);
     }
   }
+  lv_obj_move_foreground(ui.back_btn);
 }
 
 inline void cover_control_hide_modal() {

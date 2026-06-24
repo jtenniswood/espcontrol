@@ -14,6 +14,21 @@ struct VacuumCardCtx {
   bool status_card = false;
 };
 
+struct VacuumCardTextRef {
+  lv_obj_t *text_lbl = nullptr;
+  VacuumCardCtx *ctx = nullptr;
+  ParsedCfg cfg;
+};
+
+inline std::vector<VacuumCardTextRef> &subpage_vacuum_card_text_refs() {
+  static std::vector<VacuumCardTextRef> refs;
+  return refs;
+}
+
+inline void clear_subpage_vacuum_card_text_refs() {
+  subpage_vacuum_card_text_refs().clear();
+}
+
 inline std::string vacuum_card_mode(const std::string &mode) {
   return card_runtime_vacuum_mode(mode);
 }
@@ -50,14 +65,14 @@ inline const char *vacuum_state_icon_name(const std::string &state) {
 
 inline std::string vacuum_state_label(const std::string &state,
                                       const std::string &fallback) {
-  if (state == "cleaning") return "Cleaning";
-  if (state == "docked") return "Docked";
-  if (state == "error") return "Error";
-  if (state == "idle") return "Idle";
-  if (state == "paused") return "Paused";
-  if (state == "returning") return "Returning";
-  if (state == "unavailable") return "Unavailable";
-  if (state == "unknown") return "Unknown";
+  if (state == "cleaning") return espcontrol_i18n(std::string("Cleaning"));
+  if (state == "docked") return espcontrol_i18n(std::string("Docked"));
+  if (state == "error") return espcontrol_i18n(std::string("Error"));
+  if (state == "idle") return espcontrol_i18n(std::string("Idle"));
+  if (state == "paused") return espcontrol_i18n(std::string("Paused"));
+  if (state == "returning") return espcontrol_i18n(std::string("Returning"));
+  if (state == "unavailable") return espcontrol_i18n(std::string("Unavailable"));
+  if (state == "unknown") return espcontrol_i18n(std::string("Unknown"));
   return fallback;
 }
 
@@ -117,6 +132,37 @@ inline void apply_vacuum_card_state(VacuumCardCtx *ctx,
   }
   if (ctx->btn) {
     apply_control_availability(ctx->btn, ctx->btn, !unavailable, !ctx->status_card);
+  }
+}
+
+inline void refresh_vacuum_card_translated_text(lv_obj_t *text_lbl,
+                                                VacuumCardCtx *ctx,
+                                                const ParsedCfg &p) {
+  if (!text_lbl) return;
+  std::string label = p.label.empty()
+    ? espcontrol_i18n(std::string(vacuum_card_mode_label(p.sensor)))
+    : p.label;
+  if (ctx && p.label.empty()) {
+    ctx->label = espcontrol_i18n(std::string(vacuum_card_mode_label(ctx->mode)));
+  }
+  if (ctx && ctx->status_card && !ctx->state.empty()) {
+    label = vacuum_state_label(ctx->state, ctx->label);
+  } else if (ctx) {
+    label = ctx->label;
+  }
+  set_wrapped_button_label_text(text_lbl, label);
+}
+
+inline void register_subpage_vacuum_card_text(lv_obj_t *text_lbl,
+                                              VacuumCardCtx *ctx,
+                                              const ParsedCfg &p) {
+  if (!text_lbl) return;
+  subpage_vacuum_card_text_refs().push_back({text_lbl, ctx, p});
+}
+
+inline void refresh_subpage_vacuum_card_translated_text() {
+  for (auto &ref : subpage_vacuum_card_text_refs()) {
+    refresh_vacuum_card_translated_text(ref.text_lbl, ref.ctx, ref.cfg);
   }
 }
 

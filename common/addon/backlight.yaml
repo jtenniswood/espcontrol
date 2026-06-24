@@ -370,23 +370,34 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return !id(display_takeover_suspended);'
+            lambda: 'return id(display_takeover_suspended);'
           then:
-            - script.execute: backlight_force_display_off
-            - delay: 100ms
+            - lambda: 'ESP_LOGD("backlight", "Skipping LVGL pause while image modal is active");'
+          else:
             - if:
                 condition:
                   lambda: |-
-                    return id(screen_rotation_select).current_option() == "90" ||
-                           id(screen_rotation_select).current_option() == "270";
+                    #ifdef ESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF
+                    return false;
+                    #else
+                    return true;
+                    #endif
                 then:
-                  - lvgl.pause:
+                  - script.execute: backlight_force_display_off
+                  - delay: 100ms
+                  - if:
+                      condition:
+                        lambda: |-
+                          return id(screen_rotation_select).current_option() == "90" ||
+                                 id(screen_rotation_select).current_option() == "270";
+                      then:
+                        - lvgl.pause:
+                      else:
+                        - lvgl.pause:
+                            show_snow: true
+                  - script.execute: backlight_force_display_off
                 else:
-                  - lvgl.pause:
-                      show_snow: true
-            - script.execute: backlight_force_display_off
-          else:
-            - lambda: 'ESP_LOGD("backlight", "Skipping LVGL pause while image modal is active");'
+                  - lambda: 'ESP_LOGD("backlight", "Keeping LVGL active during display-off so touch can wake the screen");'
 
   - id: backlight_fade_current_ui_to_black
     mode: restart

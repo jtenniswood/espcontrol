@@ -7,13 +7,11 @@ var LAWN_MOWER_CARD_MODES = [
 ];
 
 function lawnMowerModeValues() {
-  var spec = cardContractOptionSpec("lawn_mower", "lawn_mower_mode");
-  return spec && spec.values ? spec.values.slice() : LAWN_MOWER_CARD_MODES.map(function (entry) { return entry[0]; });
+  return entityModeValues("lawn_mower", "lawn_mower_mode", LAWN_MOWER_CARD_MODES);
 }
 
 function normalizeLawnMowerMode(mode) {
-  mode = String(mode || "");
-  return lawnMowerModeValues().indexOf(mode) >= 0 ? mode : "start_mowing";
+  return normalizeEntityMode(mode, lawnMowerModeValues(), "start_mowing");
 }
 
 function lawnMowerModeDefaultIcon(mode) {
@@ -31,20 +29,18 @@ function lawnMowerModeBadgeIcon(mode) {
 }
 
 function lawnMowerUsesDefaultIcon(icon) {
-  return !icon || icon === "Auto" ||
-    icon === "Lawnmower" ||
-    icon === "Robot Mower" ||
-    icon === "Robot Mower Outline";
+  return entityModeCardUsesDefaultIcon(icon, [
+    "Lawnmower",
+    "Robot Mower",
+    "Robot Mower Outline",
+  ]);
 }
 
 function normalizeLawnMowerConfig(b) {
-  if (!b) return;
-  b.sensor = normalizeLawnMowerMode(b.sensor);
-  b.unit = "";
-  b.precision = "";
-  b.options = "";
-  b.icon_on = "Auto";
-  if (!b.icon || b.icon === "Auto") b.icon = lawnMowerModeDefaultIcon(b.sensor);
+  normalizeEntityModeCardConfig(b, {
+    normalizeMode: normalizeLawnMowerMode,
+    defaultIcon: lawnMowerModeDefaultIcon,
+  });
 }
 
 var LAWN_MOWER_CARD_METADATA = {
@@ -82,6 +78,7 @@ registerButtonType("lawn_mower", {
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("lawn_mower"); },
   cardMetadata: LAWN_MOWER_CARD_METADATA,
+  normalizeConfig: normalizeLawnMowerConfig,
   onSelect: function (b) {
     b.label = "";
     b.sensor = "start_mowing";
@@ -111,22 +108,11 @@ registerButtonType("lawn_mower", {
         value: function () { return mode; },
         onChange: function () {
           var oldMode = mode;
-          var hadDefaultIcon = lawnMowerUsesDefaultIcon(b.icon);
           mode = normalizeLawnMowerMode(this.value);
-          b.sensor = mode;
-          b.unit = "";
-          b.precision = "";
-          b.options = "";
-          b.icon_on = "Auto";
-          helpers.saveField("sensor", mode);
-          helpers.saveField("unit", "");
-          helpers.saveField("precision", "");
-          helpers.saveField("options", "");
-          helpers.saveField("icon_on", "Auto");
-          if (hadDefaultIcon || b.icon === lawnMowerModeDefaultIcon(oldMode)) {
-            b.icon = lawnMowerModeDefaultIcon(mode);
-            helpers.saveField("icon", b.icon);
-          }
+          applyEntityModeCardModeChange(b, helpers, oldMode, mode, {
+            defaultIcon: lawnMowerModeDefaultIcon,
+            usesDefaultIcon: lawnMowerUsesDefaultIcon,
+          });
           renderButtonSettings();
         },
       }),

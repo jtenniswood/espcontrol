@@ -162,6 +162,11 @@ assert.strictEqual(hooks.removedLegacyStateEvent({
   id: "text-screen_saver__cover_art_entity",
   state: "media_player.living_room",
 }), false, "current cover art entity events are not treated as removed legacy events");
+assert.deepStrictEqual(plain(hooks.firmwareFailureStatusFor("Could not download firmware file (404).")), {
+  error: "Firmware update failed: Could not download firmware file (404).",
+  updateState: "",
+  installStatus: "",
+}, "firmware update failures leave a visible status reason");
 
 const manifest = JSON.parse(fs.readFileSync(DEVICE_MANIFEST, "utf8"));
 for (const [slug, device] of Object.entries(manifest.devices || {})) {

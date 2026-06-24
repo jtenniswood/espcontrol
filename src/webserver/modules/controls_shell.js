@@ -1,5 +1,29 @@
 // ── Build UI ───────────────────────────────────────────────────────────
 
+function createMdiIcon(name, className) {
+  var icon = document.createElement("span");
+  icon.className = (className || "mdi") + " mdi-" + name;
+  icon.setAttribute("aria-hidden", "true");
+  return icon;
+}
+
+function createDisclosureChevron(className) {
+  var wrap = document.createElement("span");
+  wrap.className = className;
+  var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M6 9l6 6 6-6");
+  svg.appendChild(path);
+  wrap.appendChild(svg);
+  return wrap;
+}
+
 function showBanner(msg, type) {
   if (!els.banner) return;
   els.banner.textContent = msg;
@@ -69,7 +93,8 @@ function buildHeader(parent) {
   docsLink.href = "https://jtenniswood.github.io/espcontrol/";
   docsLink.target = "_blank";
   docsLink.rel = "noopener";
-  docsLink.innerHTML = 'Docs <span class="mdi mdi-arrow-top-right"></span>';
+  docsLink.appendChild(document.createTextNode("Docs "));
+  docsLink.appendChild(createMdiIcon("arrow-top-right"));
   nav.appendChild(docsLink);
 
   header.appendChild(nav);
@@ -122,7 +147,8 @@ function buildScreenPage(parent) {
   modal.className = "sp-settings-modal";
   var closeBtn = document.createElement("button");
   closeBtn.className = "sp-settings-close";
-  closeBtn.innerHTML = "&times;";
+  closeBtn.textContent = "x";
+  closeBtn.setAttribute("aria-label", "Close settings");
   closeBtn.addEventListener("click", closeSettings);
   modal.appendChild(closeBtn);
   var config = document.createElement("div");

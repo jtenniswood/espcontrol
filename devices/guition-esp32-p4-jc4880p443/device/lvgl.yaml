@@ -21,7 +21,7 @@ lvgl:
           text_font: font_text_body
           align: top_left
           x: 8
-          y: 8
+          y: 5
           text_color: 0xFFFFFF
           hidden: true
 
@@ -78,7 +78,7 @@ lvgl:
           text_font: font_text_body
           align: top_mid
           x: 0
-          y: 8
+          y: 3
           text_align: center
           text_color: 0xFFFFFF
           hidden: true

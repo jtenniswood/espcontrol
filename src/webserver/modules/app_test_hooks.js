@@ -486,6 +486,25 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareVersionIndexLoaded = oldIndexLoaded;
       return result;
     },
+    firmwareFailureStatusFor: function (message) {
+      var oldError = state.firmwareInstallError;
+      var oldStatus = state.firmwareInstallStatus;
+      var oldUpdateState = state.firmwareUpdateState;
+      var oldTarget = state.firmwareInstallTargetVersion;
+      var oldPostPending = state.firmwareInstallPostPending;
+      failPublicFirmwareUpload(message);
+      var result = {
+        error: state.firmwareInstallError,
+        updateState: state.firmwareUpdateState,
+        installStatus: state.firmwareInstallStatus,
+      };
+      state.firmwareInstallError = oldError;
+      state.firmwareInstallStatus = oldStatus;
+      state.firmwareUpdateState = oldUpdateState;
+      state.firmwareInstallTargetVersion = oldTarget;
+      state.firmwareInstallPostPending = oldPostPending;
+      return result;
+    },
     findDuplicatePlacementFor: function (grid, start, size, maxSlots) {
       return findDuplicatePlacement(grid.slice(), start, size, maxSlots || NUM_SLOTS);
     },

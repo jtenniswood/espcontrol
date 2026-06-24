@@ -82,7 +82,8 @@ script:
               ${screen_width} == 480 && ${screen_height} == 480;
           int clock_bar_label_y = ${main_page_pad_top} / 5;
           int clock_bar_icon_y =
-              (${screen_width} == 1024 || clock_bar_device_480_square) ? 1 : clock_bar_label_y;
+              (${main_page_pad_top} - lv_obj_get_height(id(network_status_button))) / 2;
+          if (clock_bar_icon_y < 0) clock_bar_icon_y = 0;
           int clock_bar_item_width = ${clock_bar_item_gap};
           int clock_bar_visual_gap = ${clock_bar_visual_gap};
           int clock_bar_right_x =

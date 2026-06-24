@@ -58,6 +58,20 @@ def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
                 errors.append(
                     f"{rel}:{line_no}: delete modal overlays through button_grid_modal.h lifecycle helpers"
                 )
+    sliders_path = firmware_dir / "button_grid_sliders.h"
+    if not sliders_path.exists():
+        errors.append("components/espcontrol/button_grid_sliders.h: keep cover modal back button accessible")
+    else:
+        text = sliders_path.read_text(encoding="utf-8")
+        cover_layout = re.search(
+            r"inline\s+void\s+cover_control_layout_modal\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+            text,
+            re.S,
+        )
+        if cover_layout is None or "lv_obj_move_foreground(ui.back_btn);" not in cover_layout.group("body"):
+            errors.append(
+                "components/espcontrol/button_grid_sliders.h: keep the cover modal back button above tab and slider controls"
+            )
     return errors
 
 
@@ -109,6 +123,13 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         if hide_modals is None or "control_modal_close_active();" not in hide_modals.group("body"):
             errors.append(
                 "components/espcontrol/button_grid_navigation.h: return-home navigation must close active shared modals"
+            )
+        elif (
+            "cover_control_hide_modal();" not in hide_modals.group("body")
+            or "light_control_hide_modal();" not in hide_modals.group("body")
+        ):
+            errors.append(
+                "components/espcontrol/button_grid_navigation.h: return-home navigation must explicitly clear cover and light modals"
             )
         if return_home is None or "navigation_hide_modals();" not in return_home.group("body"):
             errors.append(
@@ -319,6 +340,27 @@ def firmware_cover_control_tab_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_light_control_tab_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_sliders.h"
+    errors: list[str] = []
+
+    if not path.exists():
+        errors.append("components/espcontrol/button_grid_sliders.h: hide light modal tabs when only one control is visible")
+        return errors
+
+    text = path.read_text(encoding="utf-8")
+    if "inline void light_control_apply_tab_visibility()" not in text:
+        errors.append("components/espcontrol/button_grid_sliders.h: keep light modal tab visibility helper")
+    if text.count("bool show_tab_bar = visible_tabs.count > 1;") < 2:
+        errors.append("components/espcontrol/button_grid_sliders.h: hide light and cover modal tabs when only one control is visible")
+    if text.count("if (show_tab_bar) lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);") < 2:
+        errors.append("components/espcontrol/button_grid_sliders.h: keep single-tab modal rows hidden on the device")
+    if "lv_coord_t content_top = show_tab_bar" not in text:
+        errors.append("components/espcontrol/button_grid_sliders.h: let single-control modals use the tab row space")
+
+    return errors
+
+
 def firmware_network_status_version_errors(root: Path) -> list[str]:
     path = root / "components" / "espcontrol" / "network_status.h"
     errors: list[str] = []
@@ -355,6 +397,7 @@ def run_scan() -> int:
     errors.extend(firmware_modal_sleep_takeover_errors(ROOT))
     errors.extend(firmware_subpage_modal_wiring_errors(ROOT))
     errors.extend(firmware_light_control_brightness_errors(ROOT))
+    errors.extend(firmware_light_control_tab_errors(ROOT))
     errors.extend(firmware_cover_control_tab_errors(ROOT))
     errors.extend(firmware_network_status_version_errors(ROOT))
 
@@ -375,6 +418,14 @@ def expect_errors(name: str, files: dict[str, str], expected: tuple[str, ...]) -
         firmware_dir.mkdir(parents=True)
         for filename, text in files.items():
             (firmware_dir / filename).write_text(text, encoding="utf-8")
+        sliders_path = firmware_dir / "button_grid_sliders.h"
+        if not sliders_path.exists():
+            sliders_path.write_text(
+                "inline void cover_control_layout_modal(CoverControlCtx *ctx) {\n"
+                "  lv_obj_move_foreground(ui.back_btn);\n"
+                "}\n",
+                encoding="utf-8",
+            )
 
         errors = firmware_modal_errors(firmware_dir, root)
         for item in expected:
@@ -448,6 +499,8 @@ def valid_sleep_takeover_files() -> dict[str, str]:
         "components/espcontrol/button_grid_navigation.h": (
             "inline void navigation_hide_modals() {\n"
             "  control_modal_close_active();\n"
+            "  cover_control_hide_modal();\n"
+            "  light_control_hide_modal();\n"
             "}\n"
             "inline bool navigation_return_home(lv_obj_t *main_page_obj) {\n"
             "  navigation_hide_modals();\n"

@@ -62,6 +62,7 @@ substitutions:
   screen_schedule_clock_default_brightness: "10"
   voice_wake_chime_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac"
   voice_timer_alert_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac"
+  voice_stt_failure_chime_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
   network_transport: "wifi"
   disable_updates: "false"
   network_package_suffix: ${ "_ethernet" if network_transport == "ethernet" else "" }

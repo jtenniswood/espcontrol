@@ -32,6 +32,17 @@ npm run check:product               # product-level safety net
 npm run check:fast                  # broader pre-commit check
 ```
 
+For broad review scans, prefer:
+
+```bash
+rg --files
+```
+
+It respects ignore rules and avoids noisy local folders such as `.cache/`,
+`.esphome/`, `.pio-core/`, `.uv-cache/`, and `.worktrees/`. If `find` is
+needed, prune those folders explicitly so temporary build output does not hide
+source files.
+
 ## Most Common Tasks
 
 | If you need to... | Start here |

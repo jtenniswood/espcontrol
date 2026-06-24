@@ -116,12 +116,16 @@ function clockBarTemperatureItemIds() {
 }
 
 function clockBarItems() {
-  return ["temperature", "time", "network"];
+  var items = ["temperature", "time"];
+  if (voiceServicesSupported()) items.push("voice");
+  items.push("network");
+  return items;
 }
 
 function clockBarDefaultSection(item) {
   if (isClockBarTemperatureItem(item)) return "left";
   if (item === "time") return "middle";
+  if (item === "voice") return "right";
   if (item === "network") return "right";
   return "left";
 }
@@ -130,6 +134,7 @@ function clockBarItemActive(item) {
   var tempIndex = clockBarTemperatureItemIndex(item);
   if (tempIndex >= 0) return clockBarTemperatureVisible();
   if (item === "time") return !!state.clockBarTimeOn;
+  if (item === "voice") return voiceServicesSupported() && !!state.voiceServicesOn;
   if (item === "network") return !!state.networkStatusOn;
   return false;
 }
@@ -141,6 +146,7 @@ function clockBarItemElement(item) {
 function clockBarItemLabel(item) {
   if (isClockBarTemperatureItem(item)) return "Temperature";
   if (item === "time") return "Clock";
+  if (item === "voice") return "Voice Services";
   if (item === "network") return "Connectivity";
   return "Clock Bar";
 }
@@ -213,12 +219,7 @@ function saveClockBarLayout(postDevice) {
 }
 
 function normalizeClockBarLayout() {
-  var next = { left: [], middle: [], right: [] };
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
-    (CLOCK_BAR_DEFAULT_LAYOUT[section] || []).forEach(function (item) {
-      if (next[section].indexOf(item) === -1) next[section].push(item);
-    });
-  });
+  var next = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
   state.clockBarLayout = next;
   return next;
 }
@@ -250,6 +251,11 @@ function createClockBarItemElement(item, section) {
     network.className = "sp-network-preview mdi mdi-wifi-strength-4";
     button.appendChild(network);
     els.networkPreview = network;
+  } else if (item === "voice") {
+    var voice = document.createElement("span");
+    voice.className = "sp-voice-preview mdi mdi-microphone";
+    button.appendChild(voice);
+    els.voicePreview = voice;
   }
   return button;
 }
@@ -261,6 +267,7 @@ function renderClockBarLayout() {
   els.temps = {};
   els.clock = null;
   els.networkPreview = null;
+  els.voicePreview = null;
   CLOCK_BAR_SECTIONS.forEach(function (section) {
     var container = els.clockBarSections[section];
     if (!container) return;
@@ -277,6 +284,7 @@ function renderClockBarLayout() {
   updateTempPreview();
   updateClockText();
   updateNetworkPreview();
+  updateVoicePreview();
 }
 
 function syncClockBarItemElement(item) {
@@ -385,4 +393,11 @@ function updateNetworkPreview() {
   els.networkPreview.className = "sp-network-preview mdi mdi-" +
     networkPreviewIconSlug(state.networkTransport, state.wifiStrengthPercent) +
     (show ? " sp-visible" : "");
+}
+
+function updateVoicePreview() {
+  if (!els.voicePreview) return;
+  var show = clockBarVisibleInPreview();
+  els.voicePreview.className = "sp-voice-preview mdi mdi-microphone" +
+    (show && voiceServicesSupported() && state.voiceServicesOn ? " sp-visible" : "");
 }

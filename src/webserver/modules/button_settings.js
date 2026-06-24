@@ -22,6 +22,8 @@ function updatePreviewHint(c) {
 function renderClockBarSelectionBar() {
   if (!els.selectionBar || !state.clockBarSelectedItem) return false;
   els.selectionBar.className = "sp-selection-bar sp-visible";
+  var canEditClockBarItem = isClockBarTemperatureItem(state.clockBarSelectedItem) ||
+    state.clockBarSelectedItem === "voice";
 
   var label = document.createElement("span");
   label.className = "sp-selection-label";
@@ -35,11 +37,16 @@ function renderClockBarSelectionBar() {
   editBtn.type = "button";
   editBtn.className = "sp-selection-btn sp-selection-btn-primary";
   editBtn.innerHTML = '<span class="mdi mdi-pencil"></span>Edit';
-  editBtn.disabled = !isClockBarTemperatureItem(state.clockBarSelectedItem);
+  editBtn.disabled = !canEditClockBarItem;
   editBtn.addEventListener("click", function (e) {
     e.preventDefault();
     e.stopPropagation();
-    if (!editBtn.disabled) openClockBarTemperatureSettings();
+    if (editBtn.disabled) return;
+    if (isClockBarTemperatureItem(state.clockBarSelectedItem)) {
+      openClockBarTemperatureSettings();
+    } else if (state.clockBarSelectedItem === "voice") {
+      openVoiceServicesSettings();
+    }
   });
   actions.appendChild(editBtn);
 
@@ -155,6 +162,7 @@ function openSelectedCardSettings() {
   if (isConfigLocked()) return;
   if (state.clockBarSelectedItem) {
     if (isClockBarTemperatureItem(state.clockBarSelectedItem)) openClockBarTemperatureSettings();
+    if (state.clockBarSelectedItem === "voice") openVoiceServicesSettings();
     return;
   }
   var c = ctx();

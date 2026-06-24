@@ -242,7 +242,7 @@ def firmware_todo_request_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: wait for Home Assistant state subscription before todo actions")
     callback_sections = [text]
     lite_marker = "#elif defined(ESPCONTROL_TODO_LITE) && ESPCONTROL_TODO_LITE"
-    full_marker = "#else\n\nconstexpr uint32_t TODO_CARD_CTX_MAGIC"
+    full_marker = "#else\n\nconstexpr int TODO_MAX_ITEMS"
     if lite_marker in text and full_marker in text:
         before_lite, lite_and_full = text.split(lite_marker, 1)
         lite, full = lite_and_full.split(full_marker, 1)

@@ -80,6 +80,33 @@ constexpr uint32_t DARK_BORDER = correct_display_color(0x3A3A3A);
 constexpr uint32_t DARK_CONTROL_NEUTRAL = correct_display_color(0x424242);
 constexpr uint32_t DARK_OVERLAY = 0x000000;
 constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x2F2F2F);
+
+constexpr uint32_t readable_text_color_for_bg(uint32_t bg_color) {
+  uint32_t red = (bg_color >> 16) & 0xFF;
+  uint32_t green = (bg_color >> 8) & 0xFF;
+  uint32_t blue = bg_color & 0xFF;
+  uint32_t brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+  return brightness > 186 ? DEFAULT_TERTIARY_COLOR : DARK_TEXT_PRIMARY;
+}
+
+static_assert(readable_text_color_for_bg(0xFFFFFF) == DEFAULT_TERTIARY_COLOR,
+              "light backgrounds need dark text");
+static_assert(readable_text_color_for_bg(0x000000) == DARK_TEXT_PRIMARY,
+              "dark backgrounds need light text");
+
+inline uint32_t &current_button_primary_color_ref() {
+  static uint32_t color = DEFAULT_SLIDER_COLOR;
+  return color;
+}
+
+inline void set_current_button_primary_color(uint32_t color) {
+  current_button_primary_color_ref() = color;
+}
+
+inline uint32_t current_button_primary_color() {
+  return current_button_primary_color_ref();
+}
+
 #ifndef ESPCONTROL_MAX_GRID_SLOTS
 #define ESPCONTROL_MAX_GRID_SLOTS 25
 #endif
@@ -87,26 +114,26 @@ constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x2F2F2F);
 constexpr int MAX_GRID_SLOTS = ESPCONTROL_MAX_GRID_SLOTS;
 static_assert(MAX_GRID_SLOTS > 0, "ESPCONTROL_MAX_GRID_SLOTS must be positive");
 constexpr int MAX_SUBPAGE_ITEMS = MAX_GRID_SLOTS * MAX_GRID_SLOTS;
-constexpr const char *SENSOR_STATE_LABELS_OPTION = "state_labels";
-constexpr const char *SENSOR_STATE_INPUT_OPTION = "state_input";
-constexpr const char *SENSOR_STATE_OUTPUT_OPTION = "state_output";
-constexpr const char *SENSOR_STATE_INPUT_2_OPTION = "state_input_2";
-constexpr const char *SENSOR_STATE_OUTPUT_2_OPTION = "state_output_2";
-constexpr const char *SENSOR_STATE_LOW_LABEL_OPTION = "state_low_label";
-constexpr const char *SENSOR_STATE_HIGH_LABEL_OPTION = "state_high_label";
-constexpr const char *IMAGE_LABEL_OPTION = "image_label";
-constexpr const char *IMAGE_ICON_OPTION = "image_icon";
-constexpr const char *IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
-constexpr const char *IMAGE_REFRESH_OPTION = "image_refresh";
-constexpr const char *IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
+#include "button_grid_contract_generated.h"
+#include "button_grid_card_runtime.h"
+#include <cstdlib>
+
+constexpr const char *SENSOR_STATE_LABELS_OPTION = card_runtime_option_name_state_labels();
+constexpr const char *SENSOR_STATE_INPUT_OPTION = card_runtime_option_name_state_input();
+constexpr const char *SENSOR_STATE_OUTPUT_OPTION = card_runtime_option_name_state_output();
+constexpr const char *SENSOR_STATE_INPUT_2_OPTION = card_runtime_option_name_state_input_2();
+constexpr const char *SENSOR_STATE_OUTPUT_2_OPTION = card_runtime_option_name_state_output_2();
+constexpr const char *SENSOR_STATE_LOW_LABEL_OPTION = card_runtime_option_name_state_low_label();
+constexpr const char *SENSOR_STATE_HIGH_LABEL_OPTION = card_runtime_option_name_state_high_label();
+constexpr const char *IMAGE_LABEL_OPTION = card_runtime_option_name_image_label();
+constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
+constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
+constexpr const char *IMAGE_REFRESH_OPTION = card_runtime_option_name_image_refresh();
+constexpr const char *IMAGE_REFRESH_MODE_OPTION = card_runtime_option_name_image_refresh_mode();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = "light_tabs";
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = "cover_tabs";
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
-
-#include "button_grid_contract_generated.h"
-#include "button_grid_card_runtime.h"
-#include <cstdlib>
 
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
@@ -1308,7 +1335,7 @@ inline std::string switch_confirmation_yes_text(const ParsedCfg &p) {
 
 inline std::string switch_confirmation_no_text(const ParsedCfg &p) {
   std::string value = cfg_option_value(p.options, "confirm_no");
-  return value.empty() ? std::string("No") : value;
+  return value.empty() ? espcontrol_i18n(std::string("No")) : value;
 }
 
 inline int parse_precision(const std::string &s) {

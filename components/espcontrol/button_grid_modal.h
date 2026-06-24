@@ -236,6 +236,10 @@ inline bool control_modal_uses_large_landscape_tuning(const ControlModalLayout &
   return display_modal_is_large_landscape_size(layout.sw, layout.sh);
 }
 
+inline bool control_modal_uses_jc1060p470_tuning(const ControlModalLayout &layout) {
+  return display_modal_is_jc1060p470_size(layout.sw, layout.sh);
+}
+
 inline lv_coord_t control_modal_screen_width(lv_coord_t fallback = 480) {
   lv_disp_t *disp = lv_disp_get_default();
   return disp ? lv_disp_get_hor_res(disp) : fallback;

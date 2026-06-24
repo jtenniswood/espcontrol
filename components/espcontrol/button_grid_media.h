@@ -657,7 +657,7 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
     });
   }
   ctx->entity_id.clear();
-  ctx->label = "Device Volume";
+  ctx->label = espcontrol_i18n(std::string("Device Volume"));
   ctx->btn = anchor;
   ctx->current_pct = media_clamp_percent((int)(player->volume * 100.0f + 0.5f));
   ctx->pending_pct = -1;

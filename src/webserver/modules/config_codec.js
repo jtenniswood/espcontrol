@@ -1,13 +1,21 @@
 // ── Subpage helpers ────────────────────────────────────────────────────
 
-var SENSOR_STATE_LABELS_OPTION = "state_labels";
-var SENSOR_STATE_INPUT_OPTION = "state_input";
-var SENSOR_STATE_OUTPUT_OPTION = "state_output";
-var SENSOR_STATE_INPUT_2_OPTION = "state_input_2";
-var SENSOR_STATE_OUTPUT_2_OPTION = "state_output_2";
-var SENSOR_STATE_LOW_LABEL_OPTION = "state_low_label";
-var SENSOR_STATE_HIGH_LABEL_OPTION = "state_high_label";
-var CARD_ON_PATTERN_OPTION = "on_pattern";
+var SENSOR_STATE_LABELS_OPTION = cardContractOptionName("state_labels");
+var SENSOR_STATE_INPUT_OPTION = cardContractOptionName("state_input");
+var SENSOR_STATE_OUTPUT_OPTION = cardContractOptionName("state_output");
+var SENSOR_STATE_INPUT_2_OPTION = cardContractOptionName("state_input_2");
+var SENSOR_STATE_OUTPUT_2_OPTION = cardContractOptionName("state_output_2");
+var SENSOR_STATE_LOW_LABEL_OPTION = cardContractOptionName("state_low_label");
+var SENSOR_STATE_HIGH_LABEL_OPTION = cardContractOptionName("state_high_label");
+var CARD_ON_PATTERN_OPTION = cardContractOptionName("on_pattern");
+
+function normalizeWithRegisteredCardType(b) {
+  if (!b || typeof BUTTON_TYPES === "undefined") return false;
+  var typeDef = BUTTON_TYPES[b.type || ""];
+  if (!typeDef || typeof typeDef.normalizeConfig !== "function") return false;
+  typeDef.normalizeConfig(b);
+  return true;
+}
 
 function normalizeButtonConfig(b) {
   if (b) b.options = b.options || "";
@@ -140,12 +148,7 @@ function normalizeButtonConfig(b) {
   if (b && b.type === "webhook") {
     if (typeof normalizeWebhookConfig === "function") normalizeWebhookConfig(b);
   }
-  if (b && b.type === "vacuum") {
-    normalizeVacuumConfig(b);
-  }
-  if (b && b.type === "lawn_mower") {
-    normalizeLawnMowerConfig(b);
-  }
+  normalizeWithRegisteredCardType(b);
   if (b && b.type === "screen_lock") {
     b.entity = "";
     b.label = "";
@@ -253,37 +256,37 @@ function fanCardDefaultIcon(type) {
   return cardContractFanDefaultIcon(type);
 }
 
-var SENSOR_LARGE_NUMBERS_OPTION = "large_numbers";
+var SENSOR_LARGE_NUMBERS_OPTION = cardContractOptionName("large_numbers");
 var SENSOR_LARGE_NUMBERS_OFF_VALUE = "off";
-var SENSOR_ACTIVE_COLOR_OPTION = "active_color";
-var SWITCH_CONFIRM_OFF_OPTION = "confirm_off";
-var SWITCH_CONFIRM_ON_OPTION = "confirm_on";
-var SWITCH_CONFIRM_MESSAGE_OPTION = "confirm_message";
-var SWITCH_CONFIRM_YES_OPTION = "confirm_yes";
-var SWITCH_CONFIRM_NO_OPTION = "confirm_no";
+var SENSOR_ACTIVE_COLOR_OPTION = cardContractOptionName("active_color");
+var SWITCH_CONFIRM_OFF_OPTION = cardContractOptionName("confirm_off");
+var SWITCH_CONFIRM_ON_OPTION = cardContractOptionName("confirm_on");
+var SWITCH_CONFIRM_MESSAGE_OPTION = cardContractOptionName("confirm_message");
+var SWITCH_CONFIRM_YES_OPTION = cardContractOptionName("confirm_yes");
+var SWITCH_CONFIRM_NO_OPTION = cardContractOptionName("confirm_no");
 var SWITCH_CONFIRM_DEFAULT_MESSAGE = "Turn off this device?";
 var SWITCH_CONFIRM_ON_DEFAULT_MESSAGE = "Turn on this device?";
 var SWITCH_CONFIRM_BOTH_DEFAULT_MESSAGE = "Toggle this device?";
 var SWITCH_CONFIRM_DEFAULT_YES = "Yes";
 var SWITCH_CONFIRM_DEFAULT_NO = "No";
 var ACTION_SCRIPT_CONFIRM_DEFAULT_MESSAGE = "Run this script?";
-var ALARM_PIN_ARM_OPTION = "pin_arm";
-var ALARM_PIN_DISARM_OPTION = "pin_disarm";
-var ALARM_ACTIONS_OPTION = "actions";
-var ALARM_ICON_DISPLAY_OPTION = "icon_display";
-var ALARM_LABEL_DISPLAY_OPTION = "label_display";
-var GARAGE_LABEL_DISPLAY_OPTION = "label_display";
-var CLIMATE_LABEL_DISPLAY_OPTION = "label_display";
-var CLIMATE_NUMBER_DISPLAY_OPTION = "number_display";
-var MEDIA_VOLUME_MAX_OPTION = "volume_max";
-var SUBPAGE_KIND_OPTION = "subpage_kind";
-var IMAGE_LABEL_OPTION = "image_label";
-var IMAGE_ICON_OPTION = "image_icon";
-var IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
-var IMAGE_REFRESH_OPTION = "image_refresh";
-var IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
-var LIGHT_CONTROL_TABS_OPTION = "light_tabs";
-var COVER_CONTROL_TABS_OPTION = "cover_tabs";
+var ALARM_PIN_ARM_OPTION = cardContractOptionName("pin_arm");
+var ALARM_PIN_DISARM_OPTION = cardContractOptionName("pin_disarm");
+var ALARM_ACTIONS_OPTION = cardContractOptionName("actions");
+var ALARM_ICON_DISPLAY_OPTION = cardContractOptionName("icon_display");
+var ALARM_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
+var GARAGE_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
+var CLIMATE_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
+var CLIMATE_NUMBER_DISPLAY_OPTION = cardContractOptionName("number_display");
+var MEDIA_VOLUME_MAX_OPTION = cardContractOptionName("volume_max");
+var SUBPAGE_KIND_OPTION = cardContractOptionName("subpage_kind");
+var IMAGE_LABEL_OPTION = cardContractOptionName("image_label");
+var IMAGE_ICON_OPTION = cardContractOptionName("image_icon");
+var IMAGE_MODAL_MODE_OPTION = cardContractOptionName("image_modal_mode");
+var IMAGE_REFRESH_OPTION = cardContractOptionName("image_refresh");
+var IMAGE_REFRESH_MODE_OPTION = cardContractOptionName("image_refresh_mode");
+var LIGHT_CONTROL_TABS_OPTION = cardContractOptionName("light_tabs");
+var COVER_CONTROL_TABS_OPTION = cardContractOptionName("cover_tabs");
 var IMAGE_CARD_LIMIT = Math.max(0, parseInt(CFG && CFG.imageCardLimit != null ? CFG.imageCardLimit : 4, 10) || 0);
 var ALARM_ACTIONS = [
   { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Shield Lock" },

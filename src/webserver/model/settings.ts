@@ -15,7 +15,7 @@ export function normalizeClockBarTemperatureEntities(value: unknown): string[] {
   return out.slice(0, 1);
 }
 
-export const CLOCK_BAR_FIXED_LAYOUT = "left:temperature|middle:time|right:network";
+export const CLOCK_BAR_FIXED_LAYOUT = "left:temperature|middle:time|right:voice,network";
 
 export function normalizeLanguage(value: unknown): string {
   const language = String(value == null ? "" : value).trim().toLowerCase();

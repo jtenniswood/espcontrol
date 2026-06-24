@@ -529,6 +529,61 @@ async function assertSettingsPage(page, label, options = {}) {
   assert(!overflow, `${label}: settings page has horizontal overflow`);
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
+  await assertVoiceClockBarPreview(page, label, options.slug === "esp32-p4-86");
+}
+
+async function assertVoiceClockBarPreview(page, label, supported) {
+  const voiceItem = page.locator('[data-clockbar-item="voice"]');
+  if (!supported) {
+    assert.strictEqual(await voiceItem.count(), 0, `${label}: voice services clock bar item is not rendered on panels without local voice`);
+    return;
+  }
+
+  assert.strictEqual(await voiceItem.count(), 1, `${label}: voice services clock bar item is rendered on the voice-capable panel`);
+  await page.evaluate(() => window.__seedEspState([
+    { id: "switch-voice_services", state: "ON", value: true },
+    { id: "switch-screen__network_status_icon", state: "OFF", value: false },
+  ]));
+  await page.waitForFunction(() => {
+    var voice = document.querySelector('[data-clockbar-item="voice"] .sp-voice-preview');
+    return voice && voice.className.indexOf("sp-visible") !== -1;
+  });
+
+  const preview = await page.evaluate(() => {
+    function box(selector) {
+      var el = document.querySelector(selector);
+      if (!el) return null;
+      var rect = el.getBoundingClientRect();
+      return {
+        className: el.className,
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        height: rect.height,
+      };
+    }
+    return {
+      voice: box('[data-clockbar-item="voice"]'),
+      network: box('[data-clockbar-item="network"]'),
+      voiceIcon: box('[data-clockbar-item="voice"] .sp-voice-preview'),
+      networkIcon: box('[data-clockbar-item="network"] .sp-network-preview'),
+    };
+  });
+  assert(preview.voice && preview.network, `${label}: voice and network clock bar items are measurable`);
+  assert(
+    preview.voice.right <= preview.network.left + 1,
+    `${label}: voice mic is positioned to the left of connectivity`
+  );
+  assert(!preview.voice.className.includes("sp-clockbar-hidden"), `${label}: voice item stays active when connectivity is hidden`);
+  assert(preview.network.className.includes("sp-clockbar-hidden"), `${label}: network item is hidden independently of voice`);
+  assert(preview.voiceIcon.className.includes("sp-visible"), `${label}: voice mic remains visible when connectivity is hidden`);
+  assert(preview.voiceIcon.width > 0 && preview.voiceIcon.height > 0, `${label}: voice mic remains measurable when connectivity is hidden`);
+  assert(preview.networkIcon.className.includes("sp-visible"), `${label}: hidden connectivity keeps its placeholder icon visible`);
+
+  await page.evaluate(() => window.__seedEspState([
+    { id: "switch-voice_services", state: "OFF", value: false },
+    { id: "switch-screen__network_status_icon", state: "ON", value: true },
+  ]));
 }
 
 async function assertMobileTabLayout(page, label, restoreViewport) {

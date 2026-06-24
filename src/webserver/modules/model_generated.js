@@ -821,7 +821,7 @@ var EspControlModel = (() => {
     }
     return out.slice(0, 1);
   }
-  var CLOCK_BAR_FIXED_LAYOUT = "left:temperature|middle:time|right:network";
+  var CLOCK_BAR_FIXED_LAYOUT = "left:temperature|middle:time|right:voice,network";
   function normalizeLanguage(value) {
     const language = String(value == null ? "" : value).trim().toLowerCase();
     return language || "en";

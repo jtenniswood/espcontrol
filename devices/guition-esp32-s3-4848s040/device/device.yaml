@@ -66,6 +66,10 @@ esphome:
     build_flags:
       - "-DESPCONTROL_DISABLE_TODO=1"
       - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+    build_src_flags:
+      # Keep C++ literals close to their functions on the S3 firmware image;
+      # the modal code is large enough to otherwise trip Xtensa l32r range limits.
+      - "-mtext-section-literals"
   on_boot:
     - priority: 800
       then:

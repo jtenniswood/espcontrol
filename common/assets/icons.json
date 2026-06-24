@@ -1247,6 +1247,11 @@
     },
     {
       "name": "Spotlight",
+      "codepoint": "F04C8",
+      "mdi": "spotlight"
+    },
+    {
+      "name": "Spotlight Beam",
       "codepoint": "F04C9",
       "mdi": "spotlight-beam"
     },

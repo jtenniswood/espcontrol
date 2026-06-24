@@ -163,3 +163,7 @@ inline bool display_modal_is_4848_size(lv_coord_t width, lv_coord_t height) {
 inline bool display_modal_is_large_landscape_size(lv_coord_t width, lv_coord_t height) {
   return (width == 1280 && height == 800) || (width == 800 && height == 1280);
 }
+
+inline bool display_modal_is_jc1060p470_size(lv_coord_t width, lv_coord_t height) {
+  return (width == 1024 && height == 600) || (width == 600 && height == 1024);
+}

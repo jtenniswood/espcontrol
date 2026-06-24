@@ -113,9 +113,15 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
   ui.no_btn = control_modal_create_text_button(
     ui.panel, switch_confirmation_no_text(p), button_max_w, button_min_w, button_h,
     button_h / 2, DARK_BORDER, button_font);
+  uint32_t confirm_color = current_button_primary_color();
   ui.confirm_btn = control_modal_create_text_button(
     ui.panel, switch_confirmation_yes_text(p), button_max_w, button_min_w, button_h,
-    button_h / 2, DEFAULT_SLIDER_COLOR, button_font);
+    button_h / 2, confirm_color, button_font);
+  lv_obj_t *confirm_label = lv_obj_get_child(ui.confirm_btn, 0);
+  if (confirm_label) {
+    lv_obj_set_style_text_color(
+      confirm_label, lv_color_hex(readable_text_color_for_bg(confirm_color)), LV_PART_MAIN);
+  }
 
   lv_obj_update_layout(ui.message_lbl);
   lv_obj_update_layout(ui.no_btn);

@@ -1509,6 +1509,54 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
   "subpage": true,
   "timezone": true
 };
+var CARD_CONTRACT_OPTION_NAMES = {
+  "actions": "actions",
+  "active_color": "active_color",
+  "alarm_card_type": "alarm_card_type",
+  "confirm_message": "confirm_message",
+  "confirm_no": "confirm_no",
+  "confirm_off": "confirm_off",
+  "confirm_on": "confirm_on",
+  "confirm_yes": "confirm_yes",
+  "confirmation_mode": "confirmation_mode",
+  "confirmation_required": "confirmation_required",
+  "cover_mode": "cover_mode",
+  "cover_position": "cover_position",
+  "cover_tabs": "cover_tabs",
+  "date_time_mode": "date_time_mode",
+  "garage_mode": "garage_mode",
+  "icon_display": "icon_display",
+  "image_icon": "image_icon",
+  "image_label": "image_label",
+  "image_modal_mode": "image_modal_mode",
+  "image_refresh": "image_refresh",
+  "image_refresh_mode": "image_refresh_mode",
+  "internal_mode": "internal_mode",
+  "label_display": "label_display",
+  "large_numbers": "large_numbers",
+  "lawn_mower_mode": "lawn_mower_mode",
+  "light_tabs": "light_tabs",
+  "lock_mode": "lock_mode",
+  "media_display": "media_display",
+  "media_mode": "media_mode",
+  "media_now_playing_controls": "media_now_playing_controls",
+  "number_display": "number_display",
+  "on_pattern": "on_pattern",
+  "pin_arm": "pin_arm",
+  "pin_disarm": "pin_disarm",
+  "state_high_label": "state_high_label",
+  "state_input": "state_input",
+  "state_input_2": "state_input_2",
+  "state_labels": "state_labels",
+  "state_low_label": "state_low_label",
+  "state_output": "state_output",
+  "state_output_2": "state_output_2",
+  "subpage_kind": "subpage_kind",
+  "vacuum_mode": "vacuum_mode",
+  "volume_max": "volume_max",
+  "weather_mode": "weather_mode",
+  "webhook_headers": "webhook_headers"
+};
 
 function cardContractListContains(list, value) {
   return (list || []).indexOf(value) >= 0;
@@ -1602,4 +1650,8 @@ function cardContractLargeNumbersSupported(type, precision) {
   if (rule.excludedPrecisions) return !cardContractListContains(rule.excludedPrecisions, precision || "");
   if (rule.precisions) return cardContractListContains(rule.precisions, precision || "");
   return false;
+}
+
+function cardContractOptionName(name) {
+  return CARD_CONTRACT_OPTION_NAMES[name] || name || "";
 }

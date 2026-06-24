@@ -10,13 +10,11 @@ var VACUUM_CARD_MODES = [
 ];
 
 function vacuumModeValues() {
-  var spec = cardContractOptionSpec("vacuum", "vacuum_mode");
-  return spec && spec.values ? spec.values.slice() : VACUUM_CARD_MODES.map(function (entry) { return entry[0]; });
+  return entityModeValues("vacuum", "vacuum_mode", VACUUM_CARD_MODES);
 }
 
 function normalizeVacuumMode(mode) {
-  mode = String(mode || "");
-  return vacuumModeValues().indexOf(mode) >= 0 ? mode : "start_stop";
+  return normalizeEntityMode(mode, vacuumModeValues(), "start_stop");
 }
 
 function vacuumModeNeedsArea(mode) {
@@ -43,25 +41,24 @@ function vacuumModeBadgeIcon(mode) {
 }
 
 function vacuumUsesDefaultIcon(icon) {
-  return !icon || icon === "Auto" ||
-    icon === "Robot Vacuum" ||
-    icon === "Robot Vacuum Alert" ||
-    icon === "Robot Vacuum Off" ||
-    icon === "Robot Vacuum Variant" ||
-    icon === "Robot Vacuum Variant Alert" ||
-    icon === "Robot Vacuum Variant Off" ||
-    icon === "Vacuum" ||
-    icon === "Vacuum Outline";
+  return entityModeCardUsesDefaultIcon(icon, [
+    "Robot Vacuum",
+    "Robot Vacuum Alert",
+    "Robot Vacuum Off",
+    "Robot Vacuum Variant",
+    "Robot Vacuum Variant Alert",
+    "Robot Vacuum Variant Off",
+    "Vacuum",
+    "Vacuum Outline",
+  ]);
 }
 
 function normalizeVacuumConfig(b) {
-  if (!b) return;
-  b.sensor = normalizeVacuumMode(b.sensor);
-  if (!vacuumModeNeedsArea(b.sensor)) b.unit = "";
-  b.precision = "";
-  b.options = "";
-  b.icon_on = "Auto";
-  if (!b.icon || b.icon === "Auto") b.icon = vacuumModeDefaultIcon(b.sensor);
+  normalizeEntityModeCardConfig(b, {
+    normalizeMode: normalizeVacuumMode,
+    defaultIcon: vacuumModeDefaultIcon,
+    keepUnit: vacuumModeNeedsArea,
+  });
 }
 
 var VACUUM_CARD_METADATA = {
@@ -98,6 +95,7 @@ registerButtonType("vacuum", {
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("vacuum"); },
   cardMetadata: VACUUM_CARD_METADATA,
+  normalizeConfig: normalizeVacuumConfig,
   onSelect: function (b) {
     b.label = "";
     b.sensor = "start_stop";
@@ -130,24 +128,12 @@ registerButtonType("vacuum", {
         value: function () { return mode; },
         onChange: function () {
           var oldMode = mode;
-          var hadDefaultIcon = vacuumUsesDefaultIcon(b.icon);
           mode = normalizeVacuumMode(this.value);
-          b.sensor = mode;
-          helpers.saveField("sensor", mode);
-          b.precision = "";
-          b.options = "";
-          b.icon_on = "Auto";
-          helpers.saveField("precision", "");
-          helpers.saveField("options", "");
-          helpers.saveField("icon_on", "Auto");
-          if (!vacuumModeNeedsArea(mode)) {
-            b.unit = "";
-            helpers.saveField("unit", "");
-          }
-          if (hadDefaultIcon || b.icon === vacuumModeDefaultIcon(oldMode)) {
-            b.icon = vacuumModeDefaultIcon(mode);
-            helpers.saveField("icon", b.icon);
-          }
+          applyEntityModeCardModeChange(b, helpers, oldMode, mode, {
+            defaultIcon: vacuumModeDefaultIcon,
+            keepUnit: vacuumModeNeedsArea,
+            usesDefaultIcon: vacuumUsesDefaultIcon,
+          });
           renderButtonSettings();
         },
       }),

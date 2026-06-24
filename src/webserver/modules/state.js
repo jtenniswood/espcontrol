@@ -39,6 +39,10 @@ function isEpaperPreview() {
   return CFG && CFG.previewTheme === "epaper";
 }
 
+function voiceServicesSupported() {
+  return !!(CFG.features && CFG.features.voiceServices);
+}
+
 function epaperPreviewFillColor() {
   return normalizeTheme(state.theme) === "Light" ? "FFFFFF" : "000000";
 }
@@ -169,6 +173,7 @@ var state = {
   firmwareInstallTargetVersion: "",
   firmwareInstallPostPending: false,
   firmwareInstallStatus: "",
+  firmwareInstallError: "",
   firmwareUpdateControlsSupported: false,
   firmwareInstallControlsSupported: false,
   firmwareOtaUrl: "",
@@ -342,11 +347,11 @@ function clockBarTemperatureUnitSymbol() {
 }
 
 var MAX_CLOCK_BAR_TEMPERATURES = 1;
-var CLOCK_BAR_FIXED_LAYOUT_STRING = "left:temperature|middle:time|right:network";
+var CLOCK_BAR_FIXED_LAYOUT_STRING = "left:temperature|middle:time|right:voice,network";
 var CLOCK_BAR_FIXED_LAYOUT = {
   left: ["temperature"],
   middle: ["time"],
-  right: ["network"],
+  right: ["voice", "network"],
 };
 
 function defaultClockBarTemperatureEntity(index) {
@@ -462,6 +467,9 @@ function setClockBarItemVisible(item, visible) {
   } else if (item === "time") {
     state.clockBarTimeOn = visible;
     postClockBarTime(state.clockBarTimeOn);
+  } else if (item === "voice" && voiceServicesSupported()) {
+    state.voiceServicesOn = visible;
+    postVoiceServices(state.voiceServicesOn);
   } else if (item === "network") {
     state.networkStatusOn = visible;
     postNetworkStatusIcon(state.networkStatusOn);
@@ -857,6 +865,7 @@ function syncClockBarUi() {
   updateClockBarItemUi();
   renderSelectionBar(ctx());
   updateNetworkPreview();
+  updateVoicePreview();
   updateTempPreview();
 }
 
@@ -1231,6 +1240,9 @@ function renderFirmwareUpdateStatus() {
   if (state.firmwareUpdateState === "INSTALLING") {
     status = state.firmwareInstallStatus || "Installing update\u2026";
     cls += " sp-update-installing";
+  } else if (state.firmwareInstallError) {
+    status = escHtml(state.firmwareInstallError);
+    cls += " sp-update-error";
   } else if (firmwareInstallAvailable()) {
     status = publicFirmwareStatusHtml();
     cls += " sp-update-available";
@@ -1306,6 +1318,7 @@ function setFirmwareUpdateInfo(d) {
     updateState = "INSTALLING";
   }
   state.firmwareUpdateState = updateState;
+  if (state.firmwareUpdateState) state.firmwareInstallError = "";
   state.firmwareReleaseUrl = d.release_url || state.firmwareReleaseUrl || "";
   if (state.firmwareUpdateState === "NO UPDATE" &&
       !isSpecificFirmwareVersion(state.firmwareVersion) &&
