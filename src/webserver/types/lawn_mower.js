@@ -1,6 +1,7 @@
 // Lawn Mower card: touchscreen-friendly controls for Home Assistant mower entities.
 var LAWN_MOWER_CARD_MODES = [
   ["status", "Status"],
+  ["control_panel", "Control Panel"],
   ["start_mowing", "Start Mowing"],
   ["dock", "Dock"],
   ["pause_resume", "Pause / Resume"],
@@ -23,6 +24,7 @@ function lawnMowerModeDefaultIcon(mode) {
 function lawnMowerModeBadgeIcon(mode) {
   mode = normalizeLawnMowerMode(mode);
   if (mode === "status") return "format-text";
+  if (mode === "control_panel") return "tune-vertical";
   if (mode === "dock") return "home-import-outline";
   if (mode === "pause_resume") return "play-pause";
   return "robot-mower";
