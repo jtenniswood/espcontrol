@@ -152,6 +152,7 @@ var CARD_CONTRACT_CARDS = {
         "label": "Type",
         "kind": "choice",
         "values": [
+          "modal",
           "status",
           "start_stop",
           "dock",
@@ -160,7 +161,24 @@ var CARD_CONTRACT_CARDS = {
           "locate",
           "clean_area"
         ],
-        "defaultValue": "start_stop"
+        "defaultValue": "modal"
+      },
+      {
+        "name": "vacuum_tabs",
+        "label": "Modal Tabs",
+        "kind": "choice",
+        "values": [
+          "controls",
+          "rooms",
+          "fan"
+        ],
+        "defaultValue": "controls|rooms|fan"
+      },
+      {
+        "name": "vacuum_rooms",
+        "label": "Rooms",
+        "kind": "text",
+        "defaultValue": ""
       }
     ],
     "default": {
@@ -168,7 +186,7 @@ var CARD_CONTRACT_CARDS = {
       "label": "",
       "icon": "Robot Vacuum",
       "icon_on": "Auto",
-      "sensor": "start_stop",
+      "sensor": "modal",
       "unit": "",
       "type": "vacuum",
       "precision": "",
@@ -1553,6 +1571,8 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "state_output_2": "state_output_2",
   "subpage_kind": "subpage_kind",
   "vacuum_mode": "vacuum_mode",
+  "vacuum_rooms": "vacuum_rooms",
+  "vacuum_tabs": "vacuum_tabs",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",
   "webhook_headers": "webhook_headers"
