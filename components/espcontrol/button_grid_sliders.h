@@ -374,13 +374,20 @@ inline int light_control_kelvin_to_pct(LightControlCtx *ctx, int kelvin) {
   if (!ctx || ctx->kelvin_max <= ctx->kelvin_min) return 50;
   if (kelvin < ctx->kelvin_min) kelvin = ctx->kelvin_min;
   if (kelvin > ctx->kelvin_max) kelvin = ctx->kelvin_max;
+  return 100 - ((kelvin - ctx->kelvin_min) * 100 / (ctx->kelvin_max - ctx->kelvin_min));
+}
+
+inline int light_control_kelvin_to_command_pct(LightControlCtx *ctx, int kelvin) {
+  if (!ctx || ctx->kelvin_max <= ctx->kelvin_min) return 50;
+  if (kelvin < ctx->kelvin_min) kelvin = ctx->kelvin_min;
+  if (kelvin > ctx->kelvin_max) kelvin = ctx->kelvin_max;
   return (kelvin - ctx->kelvin_min) * 100 / (ctx->kelvin_max - ctx->kelvin_min);
 }
 
 inline int light_control_pct_to_kelvin(LightControlCtx *ctx, int pct) {
   if (!ctx || ctx->kelvin_max <= ctx->kelvin_min) return 3500;
   pct = slider_clamp_pct(pct);
-  return ctx->kelvin_min + pct * (ctx->kelvin_max - ctx->kelvin_min) / 100;
+  return ctx->kelvin_min + (100 - pct) * (ctx->kelvin_max - ctx->kelvin_min) / 100;
 }
 
 inline void light_control_set_temp_modal_value(LightControlCtx *ctx, int kelvin) {
@@ -956,14 +963,13 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     if (!ui.active->available) return;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int pct = lv_slider_get_value(slider);
+    int kelvin = light_control_pct_to_kelvin(ui.active, pct);
     light_control_update_slider_fill(
       slider, ui.temp_slider_fill, ui.temp_slider_handle, pct,
-      kelvin_to_fill_color(
-        light_control_pct_to_kelvin(ui.active, pct),
-        ui.active->kelvin_min, ui.active->kelvin_max));
+      kelvin_to_fill_color(kelvin, ui.active->kelvin_min, ui.active->kelvin_max));
     light_control_update_slider_handle(slider, ui.temp_slider_handle, lv_slider_get_value(slider));
     send_light_temp_action(
-      ui.active->entity_id, lv_slider_get_value(slider),
+      ui.active->entity_id, light_control_kelvin_to_command_pct(ui.active, kelvin),
       ui.active->kelvin_min, ui.active->kelvin_max);
   }, LV_EVENT_RELEASED, nullptr);
   lv_obj_add_event_cb(ui.temp_slider, [](lv_event_t *e) {
