@@ -1202,8 +1202,9 @@ const calendarCurrentPreview = hooks.buttonTypePreviewFor("ha_calendar", {
 });
 assert(calendarCurrentPreview.buttonClass.includes("sp-ha-calendar-current"), "calendar current preview uses device-like card layout");
 assert(!calendarCurrentPreview.iconHtml.includes("sp-ha-calendar-progress"), "calendar current preview does not show background progress");
-assert(calendarCurrentPreview.iconHtml.includes("mdi-calendar-clock"), "calendar current preview shows the active meeting icon");
-assert(calendarCurrentPreview.labelHtml.includes("sp-ha-calendar-title"), "calendar current preview pins the title to the bottom");
+assert(!calendarCurrentPreview.iconHtml.includes("mdi-calendar-clock"), "calendar current preview does not place an icon over the event title");
+assert(calendarCurrentPreview.labelHtml.includes("sp-ha-calendar-title"), "calendar current preview places the title like now playing");
+assert(calendarCurrentPreview.labelHtml.includes("sp-ha-calendar-status"), "calendar current preview includes the bottom-left status label");
 assert(calendarCurrentPreview.labelHtml.includes("Now"), "calendar current preview uses the short fallback label");
 assert(!calendarCurrentPreview.iconHtml.includes("sp-sensor-preview"), "calendar current preview does not use the generic sensor number layout");
 
@@ -1214,9 +1215,11 @@ const calendarNextEventPreview = hooks.buttonTypePreviewFor("ha_calendar", {
   precision: "next_event",
 });
 assert(calendarNextEventPreview.buttonClass.includes("sp-ha-calendar-current"), "calendar next-event preview uses event-card layout");
-assert(calendarNextEventPreview.iconHtml.includes("mdi-calendar-month"), "calendar next-event preview shows the calendar month icon");
-assert(calendarNextEventPreview.labelHtml.includes("sp-ha-calendar-title"), "calendar next-event preview pins the title to the bottom");
+assert(!calendarNextEventPreview.iconHtml.includes("mdi-calendar-month"), "calendar next-event preview does not place an icon over the event title");
+assert(calendarNextEventPreview.labelHtml.includes("sp-ha-calendar-title"), "calendar next-event preview places the title like now playing");
+assert(calendarNextEventPreview.labelHtml.includes("sp-ha-calendar-status"), "calendar next-event preview includes the bottom-left status label");
 assert(calendarNextEventPreview.labelHtml.includes("Next"), "calendar next-event preview uses the short fallback label");
+assert(calendarNextEventPreview.labelHtml.includes("In 12m"), "calendar next-event preview shows time until the event");
 assert(!calendarNextEventPreview.iconHtml.includes("sp-sensor-preview"), "calendar next-event preview does not use the generic sensor number layout");
 
 const issue243Backup = {
