@@ -1206,6 +1206,17 @@ assert(calendarCurrentPreview.iconHtml.includes("mdi-calendar-clock"), "calendar
 assert(calendarCurrentPreview.labelHtml.includes("sp-ha-calendar-title"), "calendar current preview pins the title to the bottom");
 assert(!calendarCurrentPreview.iconHtml.includes("sp-sensor-preview"), "calendar current preview does not use the generic sensor number layout");
 
+const calendarNextEventPreview = hooks.buttonTypePreviewFor("ha_calendar", {
+  entity: "calendar.office",
+  label: "Next event",
+  type: "ha_calendar",
+  precision: "next_event",
+});
+assert(calendarNextEventPreview.buttonClass.includes("sp-ha-calendar-current"), "calendar next-event preview uses event-card layout");
+assert(calendarNextEventPreview.iconHtml.includes("mdi-calendar-month"), "calendar next-event preview shows the calendar month icon");
+assert(calendarNextEventPreview.labelHtml.includes("sp-ha-calendar-title"), "calendar next-event preview pins the title to the bottom");
+assert(!calendarNextEventPreview.iconHtml.includes("sp-sensor-preview"), "calendar next-event preview does not use the generic sensor number layout");
+
 const issue243Backup = {
   version: 1,
   device: "guition-esp32-p4-jc4880p443",

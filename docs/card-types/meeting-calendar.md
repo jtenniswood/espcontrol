@@ -20,7 +20,7 @@ shows the clock and date.
 1. Select a card and change its type to **Calendar**.
 2. In **Entity**, enter one or more `calendar.*` entities
    (comma-separated for multiple — events from all of them are merged).
-3. Choose a **Type**: **Time to next event** or **Current meeting progress** (see below).
+3. Choose a **Type**: **Time to next event**, **Current meeting progress**, or **Next event** (see below).
 4. Optionally set a **Label** (defaults to "Calendar").
 5. Apply the configuration so the panel restarts with the new card.
 

@@ -115,6 +115,13 @@ function normalizeButtonConfig(b) {
     b.precision = normalizeClimatePrecisionConfig(b.precision);
     b.options = normalizeClimateOptions(b.options);
   }
+  if (b && b.type === "ha_calendar") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = normalizeHaCalendarDisplayMode(b.precision || haCalendarDisplayMode(b));
+    if (b.precision === "current" && !b.label) b.label = "Now";
+    b.options = normalizeHaCalendarOptions(b.options);
+  }
   if (b && b.type === "garage") {
     if (b.sensor !== "open" && b.sensor !== "close") b.sensor = "";
     b.unit = "";
@@ -234,7 +241,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && b.type !== "ha_calendar" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "ha_calendar" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -354,6 +361,14 @@ function setConfigOption(options, name, enabled) {
   }
   if (enabled && !found) out.push(name);
   return out.join(",");
+}
+
+function hasConfigOption(options, name) {
+  var parts = String(options || "").split(",");
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] === name) return true;
+  }
+  return false;
 }
 
 function configOptionValue(options, name) {
@@ -1521,23 +1536,6 @@ function setClimateNumberDisplayMode(b, mode) {
   return b.options;
 }
 
-function climateTemperatureStep(b) {
-  return normalizeClimateTemperatureStep(
-    configOptionValue(b && b.options, CLIMATE_TEMPERATURE_STEP_OPTION));
-}
-
-function setClimateTemperatureStep(b, step) {
-  if (!b) return "";
-  var normalized = normalizeClimateTemperatureStep(step);
-  b.options = setConfigOptionValue(
-    b.options,
-    CLIMATE_TEMPERATURE_STEP_OPTION,
-    normalized === climateDefaultTemperatureStep() ? "" : normalized
-  );
-  b.options = normalizeClimateOptions(b.options);
-  return b.options;
-}
-
 // ── ha_calendar option helpers ──────────────────────────────────────────────
 
 function normalizeHaCalendarDisplayMode(value) {
@@ -1669,6 +1667,23 @@ function setHaCalendarNextNowMinutes(b, minutes) {
   b.options = setConfigOptionValue(
     b.options, HA_CALENDAR_NEXT_NOW_MINUTES_OPTION, String(normalized));
   b.options = normalizeHaCalendarOptions(b.options);
+}
+
+function climateTemperatureStep(b) {
+  return normalizeClimateTemperatureStep(
+    configOptionValue(b && b.options, CLIMATE_TEMPERATURE_STEP_OPTION));
+}
+
+function setClimateTemperatureStep(b, step) {
+  if (!b) return "";
+  var normalized = normalizeClimateTemperatureStep(step);
+  b.options = setConfigOptionValue(
+    b.options,
+    CLIMATE_TEMPERATURE_STEP_OPTION,
+    normalized === climateDefaultTemperatureStep() ? "" : normalized
+  );
+  b.options = normalizeClimateOptions(b.options);
+  return b.options;
 }
 
 function alarmActionInfo(value) {
@@ -1945,6 +1960,7 @@ function buttonConfigFields(b) {
     if (!imageLabelEnabled(b)) label = "";
   }
   if (type === "door_window") precision = normalizeDoorWindowSubtype(precision);
+  if (type === "ha_calendar") precision = normalizeHaCalendarDisplayMode(precision || haCalendarDisplayMode(b));
   var options = b && b.options || "";
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options);
@@ -1981,12 +1997,12 @@ function buttonConfigFields(b) {
     options = normalizePresenceOptions(options);
   } else if (type === "image") {
     options = normalizeImageOptions(options);
+  } else if (type === "ha_calendar") {
+    options = normalizeHaCalendarOptions(options);
   } else if (type === "light_control") {
     options = normalizeLightControlOptions(options);
   } else if (type === "action") {
     options = sensor === ACTION_CARD_LOCAL_ACTION ? "" : normalizeActionOptions(options, sensor);
-  } else if (type === "ha_calendar") {
-    options = normalizeHaCalendarOptions(options);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
   } else if (type !== "action" && type !== "alarm_action" && type !== "cover" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "light_control" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
