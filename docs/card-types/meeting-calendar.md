@@ -35,7 +35,7 @@ are currently in another meeting.
 - Normally: muted tile, white countdown + event name.
 - When the event starts: shows that event as **Now** for the configured
   **Show Now for** time, then moves on to the following event.
-- If **Next Event Highlighting** is enabled: the whole tile turns your **primary colour**
+- If **Next event highlight** is enabled: the whole tile turns your **primary colour**
   during the configured warning window, while keeping the text white.
 - Nothing upcoming but a meeting is on now: shows **Now**.
 - Nothing left today: shows a relaxed glyph and **Done for the day**.
