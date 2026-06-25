@@ -405,6 +405,39 @@ assert.strictEqual(
   "",
   "media volume max option is removed outside volume mode"
 );
+assert.strictEqual(
+  hooks.normalizeHaCalendarOptions("urgent_color,urgent_minutes=12"),
+  "urgent_color,urgent_minutes=12",
+  "calendar warning colour keeps custom warning time"
+);
+assert.strictEqual(
+  hooks.normalizeHaCalendarOptions("urgent_color,urgent_minutes=5"),
+  "urgent_color",
+  "calendar warning colour omits default warning time"
+);
+assert.strictEqual(
+  hooks.normalizeHaCalendarOptions("urgent_minutes=12"),
+  "",
+  "calendar warning time is removed when warning colour is off"
+);
+const calendarWarningButton = {
+  entity: "calendar.office",
+  label: "Office",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "ha_calendar",
+  precision: "",
+  options: "",
+};
+hooks.setHaCalendarUrgentColorEnabled(calendarWarningButton, true);
+assert.strictEqual(calendarWarningButton.options, "urgent_color", "calendar warning colour enables with default time");
+hooks.setHaCalendarUrgentMinutes(calendarWarningButton, 12);
+assert.strictEqual(calendarWarningButton.options, "urgent_color,urgent_minutes=12", "calendar warning time saves custom minutes");
+assert.strictEqual(hooks.haCalendarUrgentMinutes(calendarWarningButton), 12, "calendar warning time reads custom minutes");
+hooks.setHaCalendarUrgentColorEnabled(calendarWarningButton, false);
+assert.strictEqual(calendarWarningButton.options, "", "calendar warning colour clears warning options when disabled");
 assert.strictEqual(hooks.alarmControlPanelValue(), "control_panel", "alarm combined-control value is spec-backed");
 assert.deepStrictEqual(Array.from(hooks.alarmActionValues()), ["away", "home", "disarm"], "alarm default actions are spec-backed");
 assert.strictEqual(hooks.normalizeAlarmIconDisplayMode("static"), "static", "alarm static icon mode is spec-backed");

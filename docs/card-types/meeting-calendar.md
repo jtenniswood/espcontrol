@@ -22,7 +22,9 @@ shows the clock and date.
    (comma-separated for multiple — events from all of them are merged).
 3. Choose a **Type**: **Time to next event**, **Current event**, or **Next event** (see below).
 4. Optionally set a **Label** (defaults to "Calendar").
-5. Apply the configuration so the panel restarts with the new card.
+5. Optionally enable **Warning colour** and choose how many minutes before the
+   event it should turn on.
+6. Apply the configuration so the panel restarts with the new card.
 
 ## Types
 
@@ -30,9 +32,9 @@ shows the clock and date.
 start of the next upcoming event (showing `min`, `hr`, or `days`), even while you
 are currently in another meeting.
 
-- More than 5 minutes away: muted tile, white countdown + event name.
-- 5 minutes or less away: the whole tile turns your **primary colour** to get
-  your attention.
+- Normally: muted tile, white countdown + event name.
+- If **Warning colour** is enabled: the whole tile turns your **primary colour**
+  during the configured warning window, while keeping the text white.
 - Nothing upcoming but a meeting is on now: shows **Now**.
 - Nothing left today: shows a relaxed glyph and **Done for the day**.
 
