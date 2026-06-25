@@ -183,7 +183,7 @@ function renderPreview() {
       var iconName = resolveIcon(b);
       var label = b.label || b.entity || "Configure";
       var color = isEpaperPreview() ? epaperPreviewFillColor() :
-        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
+        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "ha_calendar" || b.type === "clock" || b.type === "timezone")
         ? state.sensorColor : state.offColor;
       var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
       if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
