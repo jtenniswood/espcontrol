@@ -1196,7 +1196,7 @@ assert(mediaNowPlayingPreview.labelHtml.includes("sp-media-now-artist"), "media 
 
 const calendarCurrentPreview = hooks.buttonTypePreviewFor("ha_calendar", {
   entity: "calendar.office",
-  label: "Calendar",
+  label: "",
   type: "ha_calendar",
   precision: "current",
 });
@@ -1204,6 +1204,7 @@ assert(calendarCurrentPreview.buttonClass.includes("sp-ha-calendar-current"), "c
 assert(!calendarCurrentPreview.iconHtml.includes("sp-ha-calendar-progress"), "calendar current preview does not show background progress");
 assert(calendarCurrentPreview.iconHtml.includes("mdi-calendar-clock"), "calendar current preview shows the active meeting icon");
 assert(calendarCurrentPreview.labelHtml.includes("sp-ha-calendar-title"), "calendar current preview pins the title to the bottom");
+assert(calendarCurrentPreview.labelHtml.includes("Now"), "calendar current preview uses the short fallback label");
 assert(!calendarCurrentPreview.iconHtml.includes("sp-sensor-preview"), "calendar current preview does not use the generic sensor number layout");
 
 const calendarNextEventPreview = hooks.buttonTypePreviewFor("ha_calendar", {
