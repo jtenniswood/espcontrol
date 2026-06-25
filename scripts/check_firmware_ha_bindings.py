@@ -1033,6 +1033,11 @@ def firmware_calendar_request_errors(firmware_dir: Path, root: Path) -> list[str
         or "ha_calendar_ctx_current(ctx, generation)" not in text
     ):
         errors.append(f"{rel}: ignore stale calendar callbacks after grid rebuild")
+    if (
+        "HA_CALENDAR_MODAL_INTERNAL_FREE_MIN_BYTES = HA_ACTION_INTERNAL_FREE_MIN_BYTES" not in text
+        or "HA_CALENDAR_MODAL_INTERNAL_LARGEST_MIN_BYTES = HA_ACTION_INTERNAL_LARGEST_MIN_BYTES" not in text
+    ):
+        errors.append(f"{rel}: keep calendar modal heap guard aligned with shared HA action threshold")
     return errors
 
 
@@ -3574,6 +3579,8 @@ def run_self_test() -> int:
         "inline bool ha_calendar_ctx_current(HaCalendarCardCtx *ctx, uint32_t generation) {\n"
         "  return generation == ha_subscription_generation() && lv_obj_get_user_data(ctx->btn) == ctx;\n"
         "}\n"
+        "constexpr size_t HA_CALENDAR_MODAL_INTERNAL_FREE_MIN_BYTES = HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
+        "constexpr size_t HA_CALENDAR_MODAL_INTERNAL_LARGEST_MIN_BYTES = HA_ACTION_INTERNAL_LARGEST_MIN_BYTES;\n"
         "inline void ha_calendar_request_events_for_entity() {\n"
         "  const uint32_t generation = ha_subscription_generation();\n"
         "  std::string start_dt = ha_calendar_local_datetime_str(ha_calendar_today_midnight_epoch());\n"
