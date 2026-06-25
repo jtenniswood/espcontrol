@@ -468,6 +468,10 @@ assert.strictEqual(hooks.haCalendarNextNowEnabled(calendarWarningButton), false,
 hooks.setHaCalendarNextNowEnabled(calendarWarningButton, true);
 assert.strictEqual(calendarWarningButton.options, "", "calendar next-event now state re-enables with default minutes");
 assert.strictEqual(hooks.haCalendarNextNowMinutes(calendarWarningButton), 5, "calendar next-event now state restores default minutes");
+calendarWarningButton.options = "urgent_color,urgent_minutes=3,next_now_minutes=10";
+hooks.setHaCalendarDisplayMode(calendarWarningButton, "current");
+assert.strictEqual(calendarWarningButton.precision, "current", "calendar current event mode is saved");
+assert.strictEqual(calendarWarningButton.options, "", "calendar current event mode clears next-event-only options");
 assert.strictEqual(hooks.alarmControlPanelValue(), "control_panel", "alarm combined-control value is spec-backed");
 assert.deepStrictEqual(Array.from(hooks.alarmActionValues()), ["away", "home", "disarm"], "alarm default actions are spec-backed");
 assert.strictEqual(hooks.normalizeAlarmIconDisplayMode("static"), "static", "alarm static icon mode is spec-backed");

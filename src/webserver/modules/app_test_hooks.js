@@ -90,6 +90,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     mediaVolumeMax: mediaVolumeMax,
     setMediaVolumeMax: setMediaVolumeMax,
     normalizeHaCalendarOptions: normalizeHaCalendarOptions,
+    haCalendarDisplayMode: haCalendarDisplayMode,
+    setHaCalendarDisplayMode: setHaCalendarDisplayMode,
     haCalendarUrgentColorEnabled: haCalendarUrgentColorEnabled,
     haCalendarUrgentMinutes: haCalendarUrgentMinutes,
     setHaCalendarUrgentColorEnabled: setHaCalendarUrgentColorEnabled,
