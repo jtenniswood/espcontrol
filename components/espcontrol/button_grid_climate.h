@@ -1410,33 +1410,30 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
   lv_obj_set_style_pad_row(ui.option_list_view, 8, LV_PART_MAIN);
   lv_obj_set_style_pad_column(ui.option_list_view, 10, LV_PART_MAIN);
   lv_obj_set_layout(ui.option_list_view, LV_LAYOUT_FLEX);
-  lv_obj_set_style_flex_flow(ui.option_list_view, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.option_list_view, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_flex_flow(ui.option_list_view, LV_FLEX_FLOW_ROW_WRAP, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(ui.option_list_view, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(ui.option_list_view, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_add_flag(ui.option_list_view, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scroll_dir(ui.option_list_view, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(ui.option_list_view, LV_SCROLLBAR_MODE_OFF);
 
   auto add_section = [&](lv_obj_t *parent,
                          const char *section_title,
                          const std::string &section_kind,
                          const std::vector<std::string> &section_options) {
     if (section_options.empty()) return;
-
-    if (section_title && section_title[0]) {
-      lv_obj_t *title_lbl = lv_label_create(parent);
-      lv_label_set_text(title_lbl, espcontrol_i18n(section_title));
-      lv_obj_set_style_text_color(title_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
-      lv_obj_set_style_text_align(title_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-      if (ctx->label_font) lv_obj_set_style_text_font(title_lbl, ctx->label_font, LV_PART_MAIN);
-      lv_obj_set_width(title_lbl, lv_pct(100));
-    }
+    (void) section_title;
 
     for (const auto &option : section_options) {
       ClimateOptionClick *click = climate_next_option_click(ui, ctx, section_kind, option);
       if (!click) break;
       bool selected = climate_option_selected(ctx, section_kind, option);
       lv_obj_t *btn = lv_btn_create(parent);
-      lv_obj_set_width(btn, lv_pct(100));
-      lv_obj_set_height(btn, 86);
-      lv_obj_set_style_radius(btn, 0, LV_PART_MAIN);
-      lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
+      lv_obj_set_size(btn, 160, 86);
+      lv_obj_set_style_radius(btn, 18, LV_PART_MAIN);
+      lv_obj_set_style_bg_color(btn, lv_color_hex(selected ? ctx->accent_color : DARK_BACKGROUND_TERTIARY),
+        LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
       lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
       lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
       lv_obj_set_style_pad_top(btn, 12, LV_PART_MAIN);
@@ -1452,7 +1449,10 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
 
       lv_obj_t *label = lv_label_create(btn);
       lv_label_set_text(label, climate_option_label(option).c_str());
-      lv_obj_set_style_text_color(label, lv_color_hex(selected ? ctx->accent_color : DARK_TEXT_SOFT), LV_PART_MAIN);
+      lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+      lv_obj_set_width(label, lv_pct(100));
+      lv_obj_set_style_text_color(label,
+        lv_color_hex(selected ? DEFAULT_TERTIARY_COLOR : DARK_TEXT_SOFT), LV_PART_MAIN);
       lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->option_menu_font) lv_obj_set_style_text_font(label, ctx->option_menu_font, LV_PART_MAIN);
 
@@ -1828,64 +1828,39 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
         ? layout.inset + tab_frame_h + 16
         : layout.inset + layout.back_size + 8;
       lv_coord_t list_bottom = layout.inset;
-      lv_coord_t list_content_h = layout.panel_h - list_top - list_bottom;
-      if (list_content_h < 120) list_content_h = 120;
       lv_obj_set_size(ui.option_list_view, layout.panel_w, layout.panel_h);
       lv_obj_set_style_pad_top(ui.option_list_view, list_top, LV_PART_MAIN);
       lv_obj_set_style_pad_left(ui.option_list_view, layout.inset, LV_PART_MAIN);
       lv_obj_set_style_pad_right(ui.option_list_view, layout.inset, LV_PART_MAIN);
       lv_obj_set_style_pad_bottom(ui.option_list_view, list_bottom, LV_PART_MAIN);
-      lv_coord_t title_row_h = ctx->option_title_font ? ctx->option_title_font->line_height : 28;
-      lv_coord_t row_gap = layout.short_side < 520 ? 6 : 8;
-      lv_coord_t option_row_pad_y = control_modal_scaled_px(12, layout.short_side);
-      if (option_row_pad_y < 10) option_row_pad_y = 10;
-      lv_coord_t option_text_h = ctx->option_menu_font ? ctx->option_menu_font->line_height : title_row_h;
-      lv_coord_t default_row_h = layout.short_side < 520 ? 72 : 86;
-      lv_coord_t min_row_h = option_text_h + option_row_pad_y * 2;
-      lv_obj_set_style_pad_row(ui.option_list_view, row_gap, LV_PART_MAIN);
-
-      auto fit_option_rows = [&](lv_obj_t *container, lv_coord_t available_h) {
-        uint32_t child_count = lv_obj_get_child_count(container);
-        uint32_t clickable_count = 0;
-        uint32_t title_count = 0;
-        for (uint32_t i = 0; i < child_count; i++) {
-          lv_obj_t *child = lv_obj_get_child(container, i);
-          if (lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE)) clickable_count++;
-          else title_count++;
-        }
-        if (clickable_count == 0) return;
-        lv_coord_t gaps_h = row_gap * (child_count > 0 ? child_count - 1 : 0);
-        lv_coord_t fixed_h = title_row_h * title_count + gaps_h;
-        lv_coord_t fitted_row_h = default_row_h;
-        lv_coord_t candidate = available_h > fixed_h
-          ? (available_h - fixed_h) / clickable_count
-          : min_row_h;
-        if (candidate < fitted_row_h) fitted_row_h = candidate;
-        if (fitted_row_h < min_row_h) fitted_row_h = min_row_h;
-        lv_obj_set_style_pad_row(container, row_gap, LV_PART_MAIN);
-        for (uint32_t i = 0; i < child_count; i++) {
-          lv_obj_t *child = lv_obj_get_child(container, i);
-          if (lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE)) {
-            lv_obj_set_height(child, fitted_row_h);
-            lv_obj_set_style_radius(child, 0, LV_PART_MAIN);
-          } else {
-            lv_obj_set_height(child, title_row_h);
-          }
-        }
-      };
+      lv_coord_t tile_gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12, layout.short_side);
+      if (tile_gap < 8) tile_gap = 8;
+      lv_coord_t content_w = layout.panel_w - layout.inset * 2;
+      lv_coord_t tile_min_w = compensated_width(layout.short_side < 520 ? 138 : 168,
+        ctx->width_compensation_percent);
+      if (tile_min_w < 118) tile_min_w = 118;
+      int column_count = content_w >= tile_min_w * 3 + tile_gap * 2 ? 3 : 2;
+      if (content_w < tile_min_w * 2 + tile_gap) column_count = 1;
+      lv_coord_t tile_w = (content_w - tile_gap * (column_count - 1)) / column_count;
+      lv_coord_t option_text_h = ctx->option_menu_font
+        ? ctx->option_menu_font->line_height
+        : (ctx->label_font ? ctx->label_font->line_height : 26);
+      lv_coord_t tile_h = option_text_h + control_modal_scaled_px(36, layout.short_side);
+      lv_coord_t min_tile_h = layout.short_side < 520 ? 68 : 78;
+      if (tile_h < min_tile_h) tile_h = min_tile_h;
+      lv_obj_set_style_pad_row(ui.option_list_view, tile_gap, LV_PART_MAIN);
+      lv_obj_set_style_pad_column(ui.option_list_view, tile_gap, LV_PART_MAIN);
+      lv_obj_set_style_flex_main_place(ui.option_list_view, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+      lv_obj_set_style_flex_cross_place(ui.option_list_view, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
 
       uint32_t child_count = lv_obj_get_child_count(ui.option_list_view);
       for (uint32_t i = 0; i < child_count; i++) {
-        lv_obj_t *row = lv_obj_get_child(ui.option_list_view, i);
-        if (lv_obj_has_flag(row, LV_OBJ_FLAG_CLICKABLE)) {
-          fit_option_rows(ui.option_list_view, list_content_h);
-          continue;
-        }
-        uint32_t row_child_count = lv_obj_get_child_count(row);
-        if (row_child_count > 0) {
-          lv_obj_set_height(row, list_content_h);
-          fit_option_rows(row, list_content_h);
-        }
+        lv_obj_t *tile = lv_obj_get_child(ui.option_list_view, i);
+        if (!lv_obj_has_flag(tile, LV_OBJ_FLAG_CLICKABLE)) continue;
+        lv_obj_set_size(tile, tile_w, tile_h);
+        lv_obj_set_style_radius(tile, tile_h / 4, LV_PART_MAIN);
+        lv_obj_t *label = lv_obj_get_child(tile, 0);
+        if (label) lv_obj_set_width(label, lv_pct(100));
       }
     }
   }
