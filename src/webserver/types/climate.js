@@ -183,7 +183,7 @@ registerButtonType("climate", {
     syncIconFields();
     cardSettings.appendChild(iconFields);
 
-    var precisionField = helpers.selectField("Temperature Display", helpers.idPrefix + "climate-precision", [
+    var precisionField = helpers.selectField("Temperature Settings", helpers.idPrefix + "climate-precision", [
       ["", "10"],
       ["1", "10.2"],
     ], climateConfig.precision);
@@ -205,19 +205,20 @@ registerButtonType("climate", {
       helpers.saveField("options", b.options);
       scheduleRender();
     });
-    cardSettings.appendChild(precisionField.field);
     helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
     panel.appendChild(cardSettingsDisclosure.panel);
 
     var hasRange = !!(climateConfig.min || climateConfig.max);
+    var hasCustomPrecision = !!climateConfig.precision;
     var hasCustomStep = climateTemperatureStep(b) !== climateDefaultTemperatureStep();
-    var hasAdvanced = hasRange || hasCustomStep;
+    var hasAdvanced = hasRange || hasCustomPrecision || hasCustomStep;
     var advancedDisclosure = helpers.disclosureSection(
       "Advanced",
       helpers.idPrefix + "climate-advanced",
       hasAdvanced
     );
     var advanced = advancedDisclosure.section;
+    advanced.appendChild(precisionField.field);
     advanced.appendChild(stepField.field);
 
     var minField = helpers.textField(
