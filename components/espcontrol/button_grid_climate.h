@@ -1703,6 +1703,19 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     tab_frame_h = tab_size + tab_frame_pad * 2;
     centered_left = (layout.panel_w - tab_frame_w) / 2;
   }
+  if (show_tab_bar) {
+    lv_coord_t tab_bottom = layout.inset + 2 + tab_frame_h;
+    lv_coord_t desired_control_top = tab_bottom + control_modal_scaled_px(8, layout.short_side);
+    lv_coord_t current_control_top = layout.panel_h / 2 + layout.arc_center_y - layout.arc_size / 2;
+    if (current_control_top < desired_control_top) {
+      lv_coord_t control_shift = desired_control_top - current_control_top;
+      layout.arc_center_y += control_shift;
+      value_center_y += control_shift;
+      controls_center_y += control_shift;
+      step_buttons_center_y += control_shift;
+      title_center_y += control_shift;
+    }
+  }
   if (ui.tab_row) {
     if (show_tab_bar) {
       lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_HIDDEN);
