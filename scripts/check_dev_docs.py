@@ -147,6 +147,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "weather": "docs/card-types/weather.md",
     "image": "docs/card-types/cameras.md",
     "weather_forecast": "docs/card-types/weather-forecast.md",
+    "ha_calendar": "docs/card-types/meeting-calendar.md",
 }
 
 
