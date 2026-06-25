@@ -810,7 +810,18 @@ function setClimateControlTabs(b, tabs) {
 
 function renderModalTabSettings(panel, b, helpers, config) {
   var section = document.createElement("div");
-  panel.appendChild(section);
+  var disclosure = null;
+  if (config.groupLabel) {
+    disclosure = helpers.disclosureSection(
+      config.groupLabel,
+      helpers.idPrefix + (config.groupIdSuffix || config.idPrefix + "controls"),
+      config.groupOpen !== false
+    );
+    disclosure.section.appendChild(section);
+    panel.appendChild(disclosure.panel);
+  } else {
+    panel.appendChild(section);
+  }
 
   b.options = config.normalizeOptions(b.options);
   var tabs = config.tabs(b);

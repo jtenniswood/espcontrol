@@ -110,6 +110,8 @@ registerButtonType("climate", {
         normalizeOptions: function (options) { return normalizeClimateOptions(options, true); },
         setTabs: setClimateControlTabs,
         idPrefix: "climate-tab-",
+        groupLabel: "Modal Controls",
+        groupIdSuffix: "climate-modal-controls",
       });
     }
 
