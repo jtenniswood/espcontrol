@@ -406,9 +406,14 @@ assert.strictEqual(
   "media volume max option is removed outside volume mode"
 );
 assert.strictEqual(
+  hooks.normalizeHaCalendarOptions("urgent_color,urgent_minutes=10"),
+  "urgent_color,urgent_minutes=10",
+  "calendar warning colour keeps selected warning time"
+);
+assert.strictEqual(
   hooks.normalizeHaCalendarOptions("urgent_color,urgent_minutes=12"),
-  "urgent_color,urgent_minutes=12",
-  "calendar warning colour keeps custom warning time"
+  "urgent_color",
+  "calendar warning colour normalizes unsupported warning time"
 );
 assert.strictEqual(
   hooks.normalizeHaCalendarOptions("urgent_color,urgent_minutes=5"),
@@ -421,9 +426,14 @@ assert.strictEqual(
   "calendar warning time is removed when warning colour is off"
 );
 assert.strictEqual(
+  hooks.normalizeHaCalendarOptions("next_now_minutes=10"),
+  "next_now_minutes=10",
+  "calendar next-event now window keeps selected minutes"
+);
+assert.strictEqual(
   hooks.normalizeHaCalendarOptions("next_now_minutes=12"),
-  "next_now_minutes=12",
-  "calendar next-event now window keeps custom minutes"
+  "",
+  "calendar next-event now window normalizes unsupported minutes"
 );
 assert.strictEqual(
   hooks.normalizeHaCalendarOptions("next_now_minutes=5"),
@@ -443,14 +453,14 @@ const calendarWarningButton = {
 };
 hooks.setHaCalendarUrgentColorEnabled(calendarWarningButton, true);
 assert.strictEqual(calendarWarningButton.options, "urgent_color", "calendar warning colour enables with default time");
-hooks.setHaCalendarUrgentMinutes(calendarWarningButton, 12);
-assert.strictEqual(calendarWarningButton.options, "urgent_color,urgent_minutes=12", "calendar warning time saves custom minutes");
-assert.strictEqual(hooks.haCalendarUrgentMinutes(calendarWarningButton), 12, "calendar warning time reads custom minutes");
+hooks.setHaCalendarUrgentMinutes(calendarWarningButton, 3);
+assert.strictEqual(calendarWarningButton.options, "urgent_color,urgent_minutes=3", "calendar warning time saves selected minutes");
+assert.strictEqual(hooks.haCalendarUrgentMinutes(calendarWarningButton), 3, "calendar warning time reads selected minutes");
 hooks.setHaCalendarUrgentColorEnabled(calendarWarningButton, false);
 assert.strictEqual(calendarWarningButton.options, "", "calendar warning colour clears warning options when disabled");
-hooks.setHaCalendarNextNowMinutes(calendarWarningButton, 12);
-assert.strictEqual(calendarWarningButton.options, "next_now_minutes=12", "calendar next-event now window saves custom minutes");
-assert.strictEqual(hooks.haCalendarNextNowMinutes(calendarWarningButton), 12, "calendar next-event now window reads custom minutes");
+hooks.setHaCalendarNextNowMinutes(calendarWarningButton, 10);
+assert.strictEqual(calendarWarningButton.options, "next_now_minutes=10", "calendar next-event now window saves selected minutes");
+assert.strictEqual(hooks.haCalendarNextNowMinutes(calendarWarningButton), 10, "calendar next-event now window reads selected minutes");
 assert.strictEqual(hooks.haCalendarNextNowEnabled(calendarWarningButton), true, "calendar next-event now state is enabled with positive minutes");
 hooks.setHaCalendarNextNowEnabled(calendarWarningButton, false);
 assert.strictEqual(calendarWarningButton.options, "next_now_minutes=0", "calendar next-event now state can be disabled");
