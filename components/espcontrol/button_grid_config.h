@@ -1856,47 +1856,9 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
   lv_label_set_text(ref.unit_lbl, normalized_unit.c_str());
 }
 
-inline bool weather_forecast_card_ref_ready(const WeatherForecastCardRef &ref) {
-  if (!esphome::App.is_setup_complete()) return false;
-  if (!lv_display_get_default()) return false;
-  if (!ref.btn || !ref.value_lbl || !ref.unit_lbl) return false;
-  if (!lv_obj_is_valid(ref.btn)) return false;
-  if (!lv_obj_is_valid(ref.value_lbl)) return false;
-  if (!lv_obj_is_valid(ref.unit_lbl)) return false;
-  if (ref.label_lbl && !lv_obj_is_valid(ref.label_lbl)) return false;
-  return true;
-}
-
-inline void refresh_weather_forecast_card_visuals() {
-  WeatherForecastCardRef *refs = weather_forecast_card_refs();
-  int count = weather_forecast_card_count();
-  bool updated = false;
-  for (int i = 0; i < count; i++) {
-    if (!weather_forecast_card_ref_ready(refs[i])) continue;
-    apply_control_availability(refs[i].btn, refs[i].btn, refs[i].valid, false);
-    apply_weather_forecast_card_text(refs[i], refs[i].valid, refs[i].high,
-                                     refs[i].low, refs[i].source_unit);
-    updated = true;
-  }
-  if (updated) notify_dashboard_content_changed();
-}
-
-inline lv_timer_t *&weather_forecast_visual_refresh_timer() {
-  static lv_timer_t *timer = nullptr;
-  return timer;
-}
-
-inline void weather_forecast_apply_visuals_cb(lv_timer_t *timer) {
-  lv_timer_t *&active_timer = weather_forecast_visual_refresh_timer();
-  if (active_timer == timer) active_timer = nullptr;
-  lv_timer_del(timer);
-  refresh_weather_forecast_card_visuals();
-}
-
 inline void weather_forecast_schedule_visual_refresh() {
-  lv_timer_t *&timer = weather_forecast_visual_refresh_timer();
-  if (timer) lv_timer_reset(timer);
-  else timer = lv_timer_create(weather_forecast_apply_visuals_cb, 25, nullptr);
+  // Forecast responses can arrive while the dashboard is rebuilding. Keep the
+  // parsed forecast cached, but avoid touching LVGL objects from this async path.
 }
 
 inline void apply_weather_forecast_to_entity(const std::string &entity_id,
@@ -2472,7 +2434,6 @@ inline void refresh_temperature_unit_labels() {
     climate_update_card(climate_refs[i]);
     climate_control_set_modal_value(climate_refs[i]);
   }
-  refresh_weather_forecast_card_visuals();
   if (climate_count > 0) notify_dashboard_content_changed();
 }
 
