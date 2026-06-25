@@ -224,8 +224,9 @@ void GSL3680::update_touches() {
 
     ESP_LOGV(TAG, "update_touches: touch [%d] %dx%d (%d)", cinfo.finger_num, cinfo.x[0], cinfo.y[0], mask);
 
-    if (cinfo.finger_num == 1) {
-        // Report only first finger for now
+    if (cinfo.finger_num >= 1) {
+        // Report the first contact even when the controller sees a noisy or
+        // multi-touch wake tap; the screensaver wake path only needs one touch.
         this->add_raw_touch_position_(0, cinfo.x[0], cinfo.y[0]);
     }
 }
