@@ -186,7 +186,6 @@ registerButtonType("climate", {
       scheduleRender();
     }
     precision.addEventListener("change", saveClimateAdvancedSettings);
-    panel.appendChild(precisionField.field);
     var stepField = helpers.selectField(
       CLIMATE_CARD_METADATA.temperatureStep.label,
       helpers.idPrefix + "climate-temperature-step",
@@ -198,19 +197,22 @@ registerButtonType("climate", {
       helpers.saveField("options", b.options);
       scheduleRender();
     });
-    panel.appendChild(stepField.field);
+    panel.appendChild(precisionField.field);
     helpers.renderCardLargeNumbersToggle(panel, b, helpers, CLIMATE_CARD_METADATA);
 
     var hasRange = !!(climateConfig.min || climateConfig.max);
+    var hasCustomStep = climateTemperatureStep(b) !== climateDefaultTemperatureStep();
+    var hasAdvanced = hasRange || hasCustomStep;
     var advancedToggleSection = helpers.toggleSection(
       "Advanced",
       helpers.idPrefix + "climate-advanced-toggle",
-      hasRange
+      hasAdvanced
     );
     var advancedToggle = advancedToggleSection.toggle;
     var advanced = advancedToggleSection.section;
     panel.appendChild(advancedToggle.row);
-    if (hasRange) advanced.classList.add("sp-visible");
+    if (hasAdvanced) advanced.classList.add("sp-visible");
+    advanced.appendChild(stepField.field);
 
     var minField = helpers.textField(
       "Minimum Temperature", helpers.idPrefix + "climate-min", climateConfig.min, "e.g. -25");
