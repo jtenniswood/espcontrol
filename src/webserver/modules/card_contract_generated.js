@@ -1401,34 +1401,62 @@ var CARD_CONTRACT_CARDS = {
     "options": [
       {
         "name": "display_mode",
-        "label": "Display Mode",
+        "label": "Type",
         "kind": "choice",
         "values": [
-          "",
-          "current"
+          "current",
+          "next_event"
         ],
+        "defaultValue": "current"
+      },
+      {
+        "name": "urgent_color",
+        "label": "Next event highlight",
+        "kind": "flag",
         "defaultValue": ""
       },
       {
-        "name": "modal_layout",
-        "label": "Modal Layout",
+        "name": "current_progress",
+        "label": "Progress indicator",
+        "kind": "flag",
+        "defaultValue": ""
+      },
+      {
+        "name": "urgent_minutes",
+        "label": "Minutes before event",
         "kind": "choice",
         "values": [
-          "",
-          "column"
+          "1",
+          "2",
+          "3",
+          "5",
+          "10"
+        ],
+        "defaultValue": "5"
+      },
+      {
+        "name": "next_now_minutes",
+        "label": "Next event now time",
+        "kind": "choice",
+        "values": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "10"
         ],
         "defaultValue": ""
       }
     ],
     "default": {
       "entity": "",
-      "label": "",
+      "label": "Now",
       "icon": "Auto",
       "icon_on": "Auto",
       "sensor": "",
       "unit": "",
       "type": "ha_calendar",
-      "precision": "",
+      "precision": "current",
       "options": ""
     }
   }
@@ -1574,7 +1602,9 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "cover_mode": "cover_mode",
   "cover_position": "cover_position",
   "cover_tabs": "cover_tabs",
+  "current_progress": "current_progress",
   "date_time_mode": "date_time_mode",
+  "display_mode": "display_mode",
   "garage_mode": "garage_mode",
   "icon_display": "icon_display",
   "image_icon": "image_icon",
@@ -1591,6 +1621,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "media_display": "media_display",
   "media_mode": "media_mode",
   "media_now_playing_controls": "media_now_playing_controls",
+  "next_now_minutes": "next_now_minutes",
   "number_display": "number_display",
   "on_pattern": "on_pattern",
   "pin_arm": "pin_arm",
@@ -1604,6 +1635,8 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "state_output_2": "state_output_2",
   "subpage_kind": "subpage_kind",
   "temperature_step": "temperature_step",
+  "urgent_color": "urgent_color",
+  "urgent_minutes": "urgent_minutes",
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",

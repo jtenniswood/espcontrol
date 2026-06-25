@@ -1170,28 +1170,47 @@
       "options": [
         {
           "name": "display_mode",
-          "label": "Display Mode",
+          "label": "Type",
           "kind": "choice",
-          "values": ["", "current"],
+          "values": ["current", "next_event"],
+          "defaultValue": "current"
+        },
+        {
+          "name": "urgent_color",
+          "label": "Next event highlight",
+          "kind": "flag",
           "defaultValue": ""
         },
         {
-          "name": "modal_layout",
-          "label": "Modal Layout",
+          "name": "current_progress",
+          "label": "Progress indicator",
+          "kind": "flag",
+          "defaultValue": ""
+        },
+        {
+          "name": "urgent_minutes",
+          "label": "Minutes before event",
           "kind": "choice",
-          "values": ["", "column"],
+          "values": ["1", "2", "3", "5", "10"],
+          "defaultValue": "5"
+        },
+        {
+          "name": "next_now_minutes",
+          "label": "Next event now time",
+          "kind": "choice",
+          "values": ["1", "2", "3", "5", "10"],
           "defaultValue": ""
         }
       ],
       "default": {
         "entity": "",
-        "label": "",
+        "label": "Now",
         "icon": "Auto",
         "icon_on": "Auto",
         "sensor": "",
         "unit": "",
         "type": "ha_calendar",
-        "precision": "",
+        "precision": "current",
         "options": ""
       }
     }
