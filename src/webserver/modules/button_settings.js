@@ -659,6 +659,34 @@ function renderButtonSettings(forceOpen) {
     };
   }
 
+  function disclosureSection(labelText, inputId, open) {
+    var panel = document.createElement("div");
+    panel.className = "sp-disclosure" + (open ? " sp-open" : "");
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "sp-disclosure-button";
+    if (inputId) button.id = inputId;
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+    var label = document.createElement("span");
+    label.textContent = labelText;
+    button.appendChild(label);
+    button.appendChild(createDisclosureChevron("sp-disclosure-chevron"));
+    var section = document.createElement("div");
+    section.className = "sp-disclosure-body";
+    button.addEventListener("click", function () {
+      open = !panel.classList.contains("sp-open");
+      panel.classList.toggle("sp-open", open);
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    panel.appendChild(button);
+    panel.appendChild(section);
+    return {
+      panel: panel,
+      button: button,
+      section: section,
+    };
+  }
+
   function precisionField(inputId, value, onChange) {
     return selectField("Unit Precision", inputId, [
       ["0", "10"],
@@ -764,6 +792,7 @@ function renderButtonSettings(forceOpen) {
     textField: textField,
     segmentControl: segmentControl,
     toggleSection: toggleSection,
+    disclosureSection: disclosureSection,
     precisionField: precisionField,
     fieldLabel: fieldLabel,
     textInput: textInput,

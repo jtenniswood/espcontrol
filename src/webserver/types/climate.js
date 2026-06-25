@@ -203,15 +203,12 @@ registerButtonType("climate", {
     var hasRange = !!(climateConfig.min || climateConfig.max);
     var hasCustomStep = climateTemperatureStep(b) !== climateDefaultTemperatureStep();
     var hasAdvanced = hasRange || hasCustomStep;
-    var advancedToggleSection = helpers.toggleSection(
+    var advancedDisclosure = helpers.disclosureSection(
       "Advanced",
-      helpers.idPrefix + "climate-advanced-toggle",
+      helpers.idPrefix + "climate-advanced",
       hasAdvanced
     );
-    var advancedToggle = advancedToggleSection.toggle;
-    var advanced = advancedToggleSection.section;
-    panel.appendChild(advancedToggle.row);
-    if (hasAdvanced) advanced.classList.add("sp-visible");
+    var advanced = advancedDisclosure.section;
     advanced.appendChild(stepField.field);
 
     var minField = helpers.textField(
@@ -228,17 +225,7 @@ registerButtonType("climate", {
 
     minInp.addEventListener("change", saveClimateAdvancedSettings);
     maxInp.addEventListener("change", saveClimateAdvancedSettings);
-    advancedToggle.input.addEventListener("change", function () {
-      if (this.checked) {
-        advanced.classList.add("sp-visible");
-      } else {
-        advanced.classList.remove("sp-visible");
-        minInp.value = "";
-        maxInp.value = "";
-        saveClimateAdvancedSettings();
-      }
-    });
-    panel.appendChild(advanced);
+    panel.appendChild(advancedDisclosure.panel);
   },
   renderPreview: function (b, helpers) {
     var climateConfig = parseClimatePrecisionConfig(b.precision);
