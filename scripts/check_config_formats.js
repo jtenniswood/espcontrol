@@ -432,13 +432,13 @@ assert.strictEqual(
 );
 assert.strictEqual(
   hooks.normalizeHaCalendarOptions("next_now_minutes=12"),
-  "",
+  "next_now_minutes=5",
   "calendar next-event now window normalizes unsupported minutes"
 );
 assert.strictEqual(
-  hooks.normalizeHaCalendarOptions("next_now_minutes=5"),
+  hooks.normalizeHaCalendarOptions("next_now_minutes=0"),
   "",
-  "calendar next-event now window omits default minutes"
+  "calendar next-event now window omits disabled state"
 );
 const calendarWarningButton = {
   entity: "calendar.office",
@@ -451,6 +451,7 @@ const calendarWarningButton = {
   precision: "",
   options: "",
 };
+assert.strictEqual(hooks.haCalendarNextNowEnabled(calendarWarningButton), false, "calendar next-event now state is disabled by default");
 hooks.setHaCalendarUrgentColorEnabled(calendarWarningButton, true);
 assert.strictEqual(calendarWarningButton.options, "urgent_color", "calendar warning colour enables with default time");
 hooks.setHaCalendarUrgentMinutes(calendarWarningButton, 3);
@@ -463,10 +464,10 @@ assert.strictEqual(calendarWarningButton.options, "next_now_minutes=10", "calend
 assert.strictEqual(hooks.haCalendarNextNowMinutes(calendarWarningButton), 10, "calendar next-event now window reads selected minutes");
 assert.strictEqual(hooks.haCalendarNextNowEnabled(calendarWarningButton), true, "calendar next-event now state is enabled with positive minutes");
 hooks.setHaCalendarNextNowEnabled(calendarWarningButton, false);
-assert.strictEqual(calendarWarningButton.options, "next_now_minutes=0", "calendar next-event now state can be disabled");
+assert.strictEqual(calendarWarningButton.options, "", "calendar next-event now state can be disabled");
 assert.strictEqual(hooks.haCalendarNextNowEnabled(calendarWarningButton), false, "calendar next-event now state reads disabled");
 hooks.setHaCalendarNextNowEnabled(calendarWarningButton, true);
-assert.strictEqual(calendarWarningButton.options, "", "calendar next-event now state re-enables with default minutes");
+assert.strictEqual(calendarWarningButton.options, "next_now_minutes=5", "calendar next-event now state re-enables with default minutes");
 assert.strictEqual(hooks.haCalendarNextNowMinutes(calendarWarningButton), 5, "calendar next-event now state restores default minutes");
 calendarWarningButton.options = "urgent_color,urgent_minutes=3,next_now_minutes=10";
 hooks.setHaCalendarDisplayMode(calendarWarningButton, "current");
