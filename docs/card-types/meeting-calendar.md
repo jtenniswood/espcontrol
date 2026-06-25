@@ -49,7 +49,7 @@ split at how much is left — and shows the phase:
 
 Tapping the tile opens today's remaining events, merged from every configured
 calendar and sorted by start time. Active events are highlighted, with the event
-name on top and the time range and countdown beneath it.
+name on top and the time range beneath it.
 
 ## Notes
 
