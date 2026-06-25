@@ -433,7 +433,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     return;
   }
   if (p.type == "ha_calendar") {
-    setup_ha_calendar_card(s, p, palette.off_val);
+    setup_ha_calendar_card(s, p, palette.sensor_val);
     return;
   }
   if (p.type == "media") {
@@ -2090,7 +2090,7 @@ inline void grid_phase2(
           HaCalendarCardCtx *ctx = create_ha_calendar_card_context(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
+            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
             display_sensor_font(display),
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             display_media_title_font_or(
