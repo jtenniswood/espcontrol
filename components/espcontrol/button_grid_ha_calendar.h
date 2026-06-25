@@ -11,7 +11,6 @@ constexpr size_t   HA_CALENDAR_TIME_DISPLAY_MAX_LEN = 8;  // "H:MM\0"
 constexpr size_t   HA_CALENDAR_RESPONSE_MAX_LEN = 2048;
 constexpr uint32_t HA_CALENDAR_REQUEST_TIMEOUT_MS = 15000;
 constexpr int      HA_CALENDAR_URGENT_SECS = 300;  // 5 minutes
-constexpr size_t   HA_CALENDAR_TITLE_SMALL_LEN = 18;  // titles longer than this use the smaller font
 constexpr size_t   HA_CALENDAR_MODAL_INTERNAL_FREE_MIN_BYTES = 24 * 1024;
 constexpr size_t   HA_CALENDAR_MODAL_INTERNAL_LARGEST_MIN_BYTES = 8 * 1024;
 // Spacing for the dual "1h 51m" countdown: negative pulls each tiny unit tight
@@ -59,10 +58,7 @@ struct HaCalendarCardCtx {
   const lv_font_t *label_font = nullptr;
   const lv_font_t *list_font = nullptr;
   const lv_font_t *icon_font = nullptr;
-  const lv_font_t *chrome_icon_font = nullptr;  // smaller icon font for the modal back button
   const lv_font_t *unit_font = nullptr;   // original unit-label font (for restore)
-  const lv_font_t *small_font = nullptr;  // smaller font for long event titles
-  const lv_font_t *tiny_font = nullptr;   // smallest font for modal secondary text
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
   uint32_t off_color = DEFAULT_OFF_COLOR;
   int width_compensation_percent = 100;
@@ -206,13 +202,11 @@ inline void ha_calendar_set_countdown_labels(HaCalendarCardCtx *ctx, int64_t sec
     int mins = (int)((secs % 3600) / 60);
     char hbuf[8] = {};
     std::snprintf(hbuf, sizeof(hbuf), "%d", hrs);
-    const lv_font_t *hm_unit_font = ctx->tiny_font ? ctx->tiny_font
-                                    : (ctx->small_font ? ctx->small_font : ctx->unit_font);
     lv_obj_clear_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ctx->value_lbl, hbuf);
     if (ctx->unit_lbl) {
       lv_label_set_text(ctx->unit_lbl, "h");
-      if (hm_unit_font) lv_obj_set_style_text_font(ctx->unit_lbl, hm_unit_font, LV_PART_MAIN);
+      if (ctx->unit_font) lv_obj_set_style_text_font(ctx->unit_lbl, ctx->unit_font, LV_PART_MAIN);
       // Pull the "h" tight against the hours digit (cancel its glyph side bearing).
       lv_obj_set_style_margin_left(ctx->unit_lbl, ha_calendar_unit_gap(hbuf), LV_PART_MAIN);
     }
@@ -240,17 +234,10 @@ inline void ha_calendar_set_countdown_labels(HaCalendarCardCtx *ctx, int64_t sec
   }
 }
 
-// Set the bottom event title, choosing a smaller font for long names so they
-// fit better before ellipsizing. Re-applies the 2-line clamp for the chosen font.
+// Set the bottom event title, keeping the same label font as other card text.
 inline void ha_calendar_set_title(HaCalendarCardCtx *ctx, const char *text) {
   if (!ctx->label_lbl) return;
   const lv_font_t *font = ctx->label_font;
-  size_t len = text ? std::strlen(text) : 0;
-  if (len > HA_CALENDAR_TITLE_SMALL_LEN && ctx->small_font &&
-      ctx->small_font->line_height > 0 &&
-      (!font || ctx->small_font->line_height < font->line_height)) {
-    font = ctx->small_font;  // long title → smaller font
-  }
   if (font) lv_obj_set_style_text_font(ctx->label_lbl, font, LV_PART_MAIN);
   lv_coord_t lh = (font && font->line_height > 0) ? font->line_height : 16;
   lv_label_set_long_mode(ctx->label_lbl, LV_LABEL_LONG_DOT);
@@ -524,9 +511,6 @@ inline HaCalendarCardCtx *create_ha_calendar_card_context(
     const lv_font_t *label_font,
     const lv_font_t *list_font,
     const lv_font_t *icon_font,
-    const lv_font_t *small_font,
-    const lv_font_t *tiny_font,
-    const lv_font_t *chrome_icon_font,
     int width_compensation_percent) {
   HaCalendarCardCtx *ctx = new HaCalendarCardCtx();
   ctx->configured_label = p.label;
@@ -548,7 +532,6 @@ inline HaCalendarCardCtx *create_ha_calendar_card_context(
   // is active. The minutes group gets a small left margin so "1h" and "51m" hug
   // their own units but keep a gap between the two groups.
   if (s.sensor_container) {
-    const lv_font_t *hm_unit_font = tiny_font ? tiny_font : (small_font ? small_font : ctx->unit_font);
     ctx->value2_lbl = lv_label_create(s.sensor_container);
     if (value_font) lv_obj_set_style_text_font(ctx->value2_lbl, value_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->value2_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -557,7 +540,7 @@ inline HaCalendarCardCtx *create_ha_calendar_card_context(
     lv_obj_add_flag(ctx->value2_lbl, LV_OBJ_FLAG_HIDDEN);
 
     ctx->unit2_lbl = lv_label_create(s.sensor_container);
-    if (hm_unit_font) lv_obj_set_style_text_font(ctx->unit2_lbl, hm_unit_font, LV_PART_MAIN);
+    if (ctx->unit_font) lv_obj_set_style_text_font(ctx->unit2_lbl, ctx->unit_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->unit2_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_pad_bottom(ctx->unit2_lbl, 6, LV_PART_MAIN);
     lv_label_set_text(ctx->unit2_lbl, "");
@@ -567,9 +550,6 @@ inline HaCalendarCardCtx *create_ha_calendar_card_context(
   ctx->label_font = label_font;
   ctx->list_font = list_font ? list_font : label_font;
   ctx->icon_font = icon_font;
-  ctx->chrome_icon_font = chrome_icon_font;
-  ctx->small_font = small_font;
-  ctx->tiny_font = tiny_font;
   ctx->width_compensation_percent = width_compensation_percent;
   lv_obj_set_user_data(s.btn, ctx);
 
@@ -857,8 +837,7 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
       lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
     }
 
-    const lv_font_t *small_f = ctx->small_font ? ctx->small_font : ctx->label_font;
-    const lv_font_t *tiny_f = ctx->tiny_font ? ctx->tiny_font : small_f;
+    const lv_font_t *list_f = ctx->list_font ? ctx->list_font : ctx->label_font;
 
     // Countdown text
     char cd[24] = {};
@@ -883,7 +862,7 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
     lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
     lv_obj_set_width(title_lbl, lv_pct(100));
     lv_obj_set_style_text_color(title_lbl, lv_color_hex(title_col), LV_PART_MAIN);
-    if (small_f) lv_obj_set_style_text_font(title_lbl, small_f, LV_PART_MAIN);
+    if (list_f) lv_obj_set_style_text_font(title_lbl, list_f, LV_PART_MAIN);
     apply_width_compensation(title_lbl, ctx->width_compensation_percent);
 
     // Line 2: time range (left) + countdown (right), on the same baseline.
@@ -915,7 +894,7 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
     }
     lv_label_set_text(time_lbl, time_range);
     lv_obj_set_style_text_color(time_lbl, lv_color_hex(time_col), LV_PART_MAIN);
-    if (tiny_f) lv_obj_set_style_text_font(time_lbl, tiny_f, LV_PART_MAIN);
+    if (list_f) lv_obj_set_style_text_font(time_lbl, list_f, LV_PART_MAIN);
 
     lv_obj_t *cd_lbl = lv_label_create(bottom);
     if (!cd_lbl) {
@@ -925,7 +904,7 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
     }
     lv_label_set_text(cd_lbl, cd);
     lv_obj_set_style_text_color(cd_lbl, lv_color_hex(title_col), LV_PART_MAIN);
-    if (tiny_f) lv_obj_set_style_text_font(cd_lbl, tiny_f, LV_PART_MAIN);
+    if (list_f) lv_obj_set_style_text_font(cd_lbl, list_f, LV_PART_MAIN);
     lv_obj_set_style_margin_right(cd_lbl, 5, LV_PART_MAIN);  // nudge countdown left
 
     // Divider

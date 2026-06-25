@@ -17,7 +17,6 @@ struct DisplayFontRoles {
   const lv_font_t *climate_option_title = nullptr;
   const lv_font_t *climate_option_value = nullptr;
   const lv_font_t *volume_icon = nullptr;
-  const lv_font_t *tiny = nullptr;
 };
 
 struct DisplayWidthTokens {
@@ -143,11 +142,6 @@ inline const lv_font_t *display_climate_option_title_font(
 inline const lv_font_t *display_climate_option_value_font(
     const DisplayProfile &profile, const lv_font_t *fallback = nullptr) {
   return profile.fonts.climate_option_value ? profile.fonts.climate_option_value : fallback;
-}
-
-inline const lv_font_t *display_tiny_font(const DisplayProfile &profile,
-                                          const lv_font_t *fallback = nullptr) {
-  return profile.fonts.tiny ? profile.fonts.tiny : fallback;
 }
 
 inline lv_coord_t display_modal_scaled_px(lv_coord_t px, lv_coord_t short_side) {
