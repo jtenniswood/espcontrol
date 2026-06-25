@@ -126,7 +126,13 @@ registerButtonType("climate", {
       labelField.classList.toggle("sp-visible", climateLabelDisplayMode(b) === "label");
     }
 
-    var labelDisplayField = helpers.renderCardSegmentControl(panel, b, helpers, {
+    var cardSettingsDisclosure = helpers.disclosureSection(
+      "Card Settings",
+      helpers.idPrefix + "climate-card-settings",
+      true
+    );
+    var cardSettings = cardSettingsDisclosure.section;
+    helpers.renderCardSegmentControl(cardSettings, b, helpers, {
       segment: Object.assign({}, CLIMATE_CARD_METADATA.labelDisplay, {
         value: function () { return climateLabelDisplayMode(b); },
         onSelect: function (button, cardHelpers, value) {
@@ -138,9 +144,9 @@ registerButtonType("climate", {
       }),
     });
     syncLabelField();
-    panel.appendChild(labelField);
+    cardSettings.appendChild(labelField);
 
-    var numberDisplayField = helpers.renderCardSegmentControl(panel, b, helpers, {
+    helpers.renderCardSegmentControl(cardSettings, b, helpers, {
       segment: Object.assign({}, CLIMATE_CARD_METADATA.numberDisplay, {
         value: function () { return climateNumberDisplayMode(b); },
         onSelect: function (button, cardHelpers, value) {
@@ -173,7 +179,7 @@ registerButtonType("climate", {
       iconFields.classList.toggle("sp-visible", climateNumberDisplayMode(b) === "icon");
     }
     syncIconFields();
-    panel.appendChild(iconFields);
+    cardSettings.appendChild(iconFields);
 
     var precisionField = helpers.selectField("Temperature Display", helpers.idPrefix + "climate-precision", [
       ["", "10"],
@@ -197,8 +203,9 @@ registerButtonType("climate", {
       helpers.saveField("options", b.options);
       scheduleRender();
     });
-    panel.appendChild(precisionField.field);
-    helpers.renderCardLargeNumbersToggle(panel, b, helpers, CLIMATE_CARD_METADATA);
+    cardSettings.appendChild(precisionField.field);
+    helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
+    panel.appendChild(cardSettingsDisclosure.panel);
 
     var hasRange = !!(climateConfig.min || climateConfig.max);
     var hasCustomStep = climateTemperatureStep(b) !== climateDefaultTemperatureStep();
