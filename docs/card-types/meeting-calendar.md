@@ -9,8 +9,8 @@ description:
 
 A Calendar card shows what's on your schedule from one or more Home Assistant
 `calendar.*` entities (Google Calendar, CalDAV, Local Calendar, etc.). The tile
-counts down to your next event — or shows how long is left in the one you're in —
-and tapping it opens an agenda of today's remaining events.
+shows either your current meeting or your next event, and tapping it opens an
+agenda of today's remaining events.
 
 This is different from the [Date & Time](/card-types/calendar) card, which just
 shows the clock and date.
@@ -20,13 +20,11 @@ shows the clock and date.
 1. Select a card and change its type to **Calendar**.
 2. In **Entity**, enter one or more `calendar.*` entities
    (comma-separated for multiple — events from all of them are merged).
-3. Choose a **Type**: **Time to next event**, **Current event**, or **Next event** (see below).
+3. Choose a **Type**: **Current event** or **Next event** (see below).
 4. Optionally set a **Label** (defaults to "Calendar").
-5. Optionally enable **Warning colour** and choose how many minutes before the
-   event it should turn on.
-6. Optionally set **Show Now for** to control how long the **Next event** card
+5. Optionally set **Show Now for** to control how long the **Next event** card
    shows a just-started event before moving on.
-7. Apply the configuration so the panel restarts with the new card.
+6. Apply the configuration so the panel restarts with the new card.
 
 ## Types
 
