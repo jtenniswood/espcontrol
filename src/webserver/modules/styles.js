@@ -117,7 +117,6 @@ var CSS =
   "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
   ".sp-media-now-artist{font-size:var(--btn-label);line-height:1.2;color:#fff}" +
   ".sp-ha-calendar-current{justify-content:space-between}" +
-  ".sp-ha-calendar-progress{position:absolute;left:0;top:0;bottom:0;border-radius:var(--btn-r);z-index:0;pointer-events:none}" +
   ".sp-ha-calendar-icon{position:relative;z-index:1;font-size:var(--btn-icon);line-height:1;color:#fff}" +
   ".sp-ha-calendar-title{position:relative;z-index:1;font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400);" +
   "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +

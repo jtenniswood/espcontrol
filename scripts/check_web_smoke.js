@@ -1201,7 +1201,7 @@ const calendarCurrentPreview = hooks.buttonTypePreviewFor("ha_calendar", {
   precision: "current",
 });
 assert(calendarCurrentPreview.buttonClass.includes("sp-ha-calendar-current"), "calendar current preview uses device-like card layout");
-assert(calendarCurrentPreview.iconHtml.includes("sp-ha-calendar-progress"), "calendar current preview shows progress behind content");
+assert(!calendarCurrentPreview.iconHtml.includes("sp-ha-calendar-progress"), "calendar current preview does not show background progress");
 assert(calendarCurrentPreview.iconHtml.includes("mdi-calendar-clock"), "calendar current preview shows the active meeting icon");
 assert(calendarCurrentPreview.labelHtml.includes("sp-ha-calendar-title"), "calendar current preview pins the title to the bottom");
 assert(!calendarCurrentPreview.iconHtml.includes("sp-sensor-preview"), "calendar current preview does not use the generic sensor number layout");
