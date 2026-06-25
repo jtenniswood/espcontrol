@@ -12,6 +12,8 @@ constexpr size_t   HA_CALENDAR_RESPONSE_MAX_LEN = 2048;
 constexpr uint32_t HA_CALENDAR_REQUEST_TIMEOUT_MS = 15000;
 constexpr int      HA_CALENDAR_URGENT_SECS = 300;  // 5 minutes
 constexpr size_t   HA_CALENDAR_TITLE_SMALL_LEN = 18;  // titles longer than this use the smaller font
+constexpr size_t   HA_CALENDAR_MODAL_INTERNAL_FREE_MIN_BYTES = 24 * 1024;
+constexpr size_t   HA_CALENDAR_MODAL_INTERNAL_LARGEST_MIN_BYTES = 8 * 1024;
 // Spacing for the dual "1h 51m" countdown: negative pulls each tiny unit tight
 // against its number; the group gap is the breathing room between "1h" and "51m".
 constexpr int      HA_CALENDAR_HM_UNIT_GAP = -6;
@@ -115,6 +117,13 @@ inline bool ha_calendar_ctx_current(HaCalendarCardCtx *ctx, uint32_t generation)
          generation == ha_subscription_generation() &&
          ctx->btn != nullptr &&
          lv_obj_get_user_data(ctx->btn) == ctx;
+}
+
+inline bool ha_calendar_modal_heap_available(const char *stage) {
+  return ha_internal_heap_available(
+    stage ? stage : "calendar modal",
+    HA_CALENDAR_MODAL_INTERNAL_FREE_MIN_BYTES,
+    HA_CALENDAR_MODAL_INTERNAL_LARGEST_MIN_BYTES);
 }
 
 // ── Card face helpers ────────────────────────────────────────────────────────
@@ -704,6 +713,7 @@ inline void ha_calendar_modal_set_status(const char *text) {
   if (!wants && !ui.status_lbl) return;
   if (!ui.status_lbl && ui.list) {
     ui.status_lbl = lv_label_create(ui.list);
+    if (!ui.status_lbl) return;
     lv_label_set_long_mode(ui.status_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(ui.status_lbl, lv_pct(100));
     lv_obj_set_style_text_color(ui.status_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
@@ -824,6 +834,11 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
     uint32_t time_col  = is_active ? ctx->accent_color : DARK_TEXT_MUTED;
 
     lv_obj_t *row = lv_obj_create(ui.list);
+    if (!row) {
+      ESP_LOGW("ha_calendar", "Unable to create calendar modal row");
+      ha_calendar_modal_set_status("Not enough memory");
+      return;
+    }
     lv_obj_set_width(row, lv_pct(100));
     lv_obj_set_height(row, LV_SIZE_CONTENT);
     lv_obj_set_style_radius(row, 0, LV_PART_MAIN);
@@ -859,6 +874,11 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
     // Line 1: meeting name on its own, full width (so it isn't squeezed by the
     // countdown and the scrollbar can't sit on top of the countdown).
     lv_obj_t *title_lbl = lv_label_create(row);
+    if (!title_lbl) {
+      ESP_LOGW("ha_calendar", "Unable to create calendar modal title");
+      ha_calendar_modal_set_status("Not enough memory");
+      return;
+    }
     lv_label_set_text(title_lbl, ev.title[0] ? ev.title : espcontrol_i18n("(untitled)"));
     lv_label_set_long_mode(title_lbl, LV_LABEL_LONG_DOT);
     lv_obj_set_width(title_lbl, lv_pct(100));
@@ -868,6 +888,11 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
 
     // Line 2: time range (left) + countdown (right), on the same baseline.
     lv_obj_t *bottom = lv_obj_create(row);
+    if (!bottom) {
+      ESP_LOGW("ha_calendar", "Unable to create calendar modal metadata row");
+      ha_calendar_modal_set_status("Not enough memory");
+      return;
+    }
     lv_obj_set_size(bottom, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_style_bg_opa(bottom, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(bottom, 0, LV_PART_MAIN);
@@ -883,11 +908,21 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
     std::snprintf(time_range, sizeof(time_range), "%s \xe2\x80\x93 %s",
       ev.start_display, ev.end_display);
     lv_obj_t *time_lbl = lv_label_create(bottom);
+    if (!time_lbl) {
+      ESP_LOGW("ha_calendar", "Unable to create calendar modal time label");
+      ha_calendar_modal_set_status("Not enough memory");
+      return;
+    }
     lv_label_set_text(time_lbl, time_range);
     lv_obj_set_style_text_color(time_lbl, lv_color_hex(time_col), LV_PART_MAIN);
     if (tiny_f) lv_obj_set_style_text_font(time_lbl, tiny_f, LV_PART_MAIN);
 
     lv_obj_t *cd_lbl = lv_label_create(bottom);
+    if (!cd_lbl) {
+      ESP_LOGW("ha_calendar", "Unable to create calendar modal countdown label");
+      ha_calendar_modal_set_status("Not enough memory");
+      return;
+    }
     lv_label_set_text(cd_lbl, cd);
     lv_obj_set_style_text_color(cd_lbl, lv_color_hex(title_col), LV_PART_MAIN);
     if (tiny_f) lv_obj_set_style_text_font(cd_lbl, tiny_f, LV_PART_MAIN);
@@ -896,6 +931,11 @@ inline void ha_calendar_render_compact(HaCalendarCardCtx *ctx, lv_coord_t conten
     // Divider
     if (i + 1 < ui.event_count) {
       lv_obj_t *div = lv_obj_create(ui.list);
+      if (!div) {
+        ESP_LOGW("ha_calendar", "Unable to create calendar modal divider");
+        ha_calendar_modal_set_status("Not enough memory");
+        return;
+      }
       lv_obj_set_size(div, lv_pct(90), 1);
       lv_obj_set_style_bg_color(div, lv_color_hex(DARK_BORDER), LV_PART_MAIN);
       lv_obj_set_style_bg_opa(div, LV_OPA_COVER, LV_PART_MAIN);
@@ -1314,11 +1354,13 @@ inline void ha_calendar_modal_refresh_cb(lv_timer_t *) {
 
 inline void ha_calendar_open_modal(HaCalendarCardCtx *ctx) {
   if (!ha_calendar_ctx_valid(ctx) || ctx->entities.empty()) return;
+  if (!ha_calendar_modal_heap_available("calendar modal open")) return;
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::HA_CALENDAR, ctx->btn, ctx->width_compensation_percent,
     ctx->chrome_icon_font ? ctx->chrome_icon_font : ctx->icon_font,
     "\U000F0141", false, ha_calendar_modal_hide);
+  if (!shell.overlay || !shell.panel) return;
 
   HaCalendarModalUi &ui = ha_calendar_modal_ui();
   ui.active = ctx;
@@ -1357,6 +1399,11 @@ inline void ha_calendar_open_modal(HaCalendarCardCtx *ctx) {
   lv_coord_t row_gap = control_modal_scaled_px(6, layout.short_side);
   if (row_gap < 4) row_gap = 4;
   ui.list = control_modal_create_scroll_list(ui.panel, list_w, list_h, row_gap);
+  if (!ui.list) {
+    ESP_LOGW("ha_calendar", "Unable to create calendar modal list");
+    ha_calendar_modal_hide();
+    return;
+  }
   // Right gutter so the scrollbar sits beside the rows instead of over the
   // right-most content (countdowns).
   lv_coord_t sb_gutter = control_modal_scaled_px(10, layout.short_side);
