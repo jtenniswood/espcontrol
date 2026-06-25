@@ -94,6 +94,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     haCalendarUrgentMinutes: haCalendarUrgentMinutes,
     setHaCalendarUrgentColorEnabled: setHaCalendarUrgentColorEnabled,
     setHaCalendarUrgentMinutes: setHaCalendarUrgentMinutes,
+    haCalendarNextNowMinutes: haCalendarNextNowMinutes,
+    setHaCalendarNextNowMinutes: setHaCalendarNextNowMinutes,
     imageRefreshIntervalValues: imageRefreshIntervalValues,
     imageRefreshModeValues: imageRefreshModeValues,
     imageModalModeValues: imageModalModeValues,

@@ -420,6 +420,16 @@ assert.strictEqual(
   "",
   "calendar warning time is removed when warning colour is off"
 );
+assert.strictEqual(
+  hooks.normalizeHaCalendarOptions("next_now_minutes=12"),
+  "next_now_minutes=12",
+  "calendar next-event now window keeps custom minutes"
+);
+assert.strictEqual(
+  hooks.normalizeHaCalendarOptions("next_now_minutes=5"),
+  "",
+  "calendar next-event now window omits default minutes"
+);
 const calendarWarningButton = {
   entity: "calendar.office",
   label: "Office",
@@ -438,6 +448,11 @@ assert.strictEqual(calendarWarningButton.options, "urgent_color,urgent_minutes=1
 assert.strictEqual(hooks.haCalendarUrgentMinutes(calendarWarningButton), 12, "calendar warning time reads custom minutes");
 hooks.setHaCalendarUrgentColorEnabled(calendarWarningButton, false);
 assert.strictEqual(calendarWarningButton.options, "", "calendar warning colour clears warning options when disabled");
+hooks.setHaCalendarNextNowMinutes(calendarWarningButton, 12);
+assert.strictEqual(calendarWarningButton.options, "next_now_minutes=12", "calendar next-event now window saves custom minutes");
+assert.strictEqual(hooks.haCalendarNextNowMinutes(calendarWarningButton), 12, "calendar next-event now window reads custom minutes");
+hooks.setHaCalendarNextNowMinutes(calendarWarningButton, 0);
+assert.strictEqual(calendarWarningButton.options, "next_now_minutes=0", "calendar next-event now window can be disabled");
 assert.strictEqual(hooks.alarmControlPanelValue(), "control_panel", "alarm combined-control value is spec-backed");
 assert.deepStrictEqual(Array.from(hooks.alarmActionValues()), ["away", "home", "disarm"], "alarm default actions are spec-backed");
 assert.strictEqual(hooks.normalizeAlarmIconDisplayMode("static"), "static", "alarm static icon mode is spec-backed");

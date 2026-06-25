@@ -24,7 +24,9 @@ shows the clock and date.
 4. Optionally set a **Label** (defaults to "Calendar").
 5. Optionally enable **Warning colour** and choose how many minutes before the
    event it should turn on.
-6. Apply the configuration so the panel restarts with the new card.
+6. Optionally set **Show Now for** to control how long the **Next event** card
+   shows a just-started event before moving on.
+7. Apply the configuration so the panel restarts with the new card.
 
 ## Types
 
@@ -33,6 +35,8 @@ start of the next upcoming event (showing `min`, `hr`, or `days`), even while yo
 are currently in another meeting.
 
 - Normally: muted tile, white countdown + event name.
+- When the event starts: shows that event as **Now** for the configured
+  **Show Now for** time, then moves on to the following event.
 - If **Warning colour** is enabled: the whole tile turns your **primary colour**
   during the configured warning window, while keeping the text white.
 - Nothing upcoming but a meeting is on now: shows **Now**.
