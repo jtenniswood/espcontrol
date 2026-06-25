@@ -96,6 +96,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Další položky";
   if (std::strcmp(text, "Mowing") == 0) return "Seká";
   if (std::strcmp(text, "January") == 0) return "leden";
+  if (std::strcmp(text, "left") == 0) return "zbývá";
   if (std::strcmp(text, "February") == 0) return "únor";
   if (std::strcmp(text, "March") == 0) return "březen";
   if (std::strcmp(text, "April") == 0) return "duben";
@@ -108,6 +109,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "November") == 0) return "listopad";
   if (std::strcmp(text, "December") == 0) return "prosinec";
   if (std::strcmp(text, "Next") == 0) return "Další";
+  if (std::strcmp(text, "No events") == 0) return "Žádné události";
   if (std::strcmp(text, "No") == 0) return "Ne";
   if (std::strcmp(text, "None") == 0) return "Žádné";
   if (std::strcmp(text, "No options") == 0) return "Žádné možnosti";
@@ -303,6 +305,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Flere elementer";
   if (std::strcmp(text, "Mowing") == 0) return "Slår græs";
   if (std::strcmp(text, "January") == 0) return "januar";
+  if (std::strcmp(text, "left") == 0) return "tilbage";
   if (std::strcmp(text, "February") == 0) return "februar";
   if (std::strcmp(text, "March") == 0) return "marts";
   if (std::strcmp(text, "April") == 0) return "april";
@@ -315,6 +318,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "November") == 0) return "november";
   if (std::strcmp(text, "December") == 0) return "december";
   if (std::strcmp(text, "Next") == 0) return "Næste";
+  if (std::strcmp(text, "No events") == 0) return "Ingen begivenheder";
   if (std::strcmp(text, "No") == 0) return "Nej";
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Ingen muligheder";
@@ -507,6 +511,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Weitere Elemente";
   if (std::strcmp(text, "Mowing") == 0) return "Mäht";
   if (std::strcmp(text, "January") == 0) return "Januar";
+  if (std::strcmp(text, "left") == 0) return "übrig";
   if (std::strcmp(text, "February") == 0) return "Februar";
   if (std::strcmp(text, "March") == 0) return "März";
   if (std::strcmp(text, "May") == 0) return "Mai";
@@ -515,6 +520,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "October") == 0) return "Oktober";
   if (std::strcmp(text, "December") == 0) return "Dezember";
   if (std::strcmp(text, "Next") == 0) return "Weiter";
+  if (std::strcmp(text, "No events") == 0) return "Keine Ereignisse";
   if (std::strcmp(text, "No") == 0) return "Nein";
   if (std::strcmp(text, "None") == 0) return "Keine";
   if (std::strcmp(text, "No options") == 0) return "Keine Optionen";
@@ -705,6 +711,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Más elementos";
   if (std::strcmp(text, "Mowing") == 0) return "Cortando";
   if (std::strcmp(text, "January") == 0) return "enero";
+  if (std::strcmp(text, "left") == 0) return "restantes";
   if (std::strcmp(text, "February") == 0) return "febrero";
   if (std::strcmp(text, "March") == 0) return "marzo";
   if (std::strcmp(text, "April") == 0) return "abril";
@@ -717,6 +724,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "November") == 0) return "noviembre";
   if (std::strcmp(text, "December") == 0) return "diciembre";
   if (std::strcmp(text, "Next") == 0) return "Siguiente";
+  if (std::strcmp(text, "No events") == 0) return "Sin eventos";
   if (std::strcmp(text, "None") == 0) return "Ninguno";
   if (std::strcmp(text, "No options") == 0) return "Sin opciones";
   if (std::strcmp(text, "No presets") == 0) return "Sin preajustes";
@@ -915,6 +923,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Lisää kohteita";
   if (std::strcmp(text, "Mowing") == 0) return "Leikkaa";
   if (std::strcmp(text, "January") == 0) return "Tammikuu";
+  if (std::strcmp(text, "left") == 0) return "jäljellä";
   if (std::strcmp(text, "February") == 0) return "Helmikuu";
   if (std::strcmp(text, "March") == 0) return "Maaliskuu";
   if (std::strcmp(text, "April") == 0) return "Huhtikuu";
@@ -927,6 +936,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "November") == 0) return "Marraskuu";
   if (std::strcmp(text, "December") == 0) return "Joulukuu";
   if (std::strcmp(text, "Next") == 0) return "Seuraava";
+  if (std::strcmp(text, "No events") == 0) return "Ei tapahtumia";
   if (std::strcmp(text, "No") == 0) return "Ei";
   if (std::strcmp(text, "Nohold") == 0) return "Ei pitoa";
   if (std::strcmp(text, "None") == 0) return "Ei mitään";
@@ -1084,6 +1094,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Dimmed") == 0) return "Tamisé";
   if (std::strcmp(text, "Disarm") == 0) return "Désarmer";
   if (std::strcmp(text, "Disarmed") == 0) return "Désarmé";
+  if (std::strcmp(text, "Done for the day") == 0) return "Terminé";
   if (std::strcmp(text, "Door") == 0) return "Porte";
   if (std::strcmp(text, "Door Open") == 0) return "Porte ouverte";
   if (std::strcmp(text, "Dock") == 0) return "Station";
@@ -1096,6 +1107,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Exceptional") == 0) return "Exceptionnel";
   if (std::strcmp(text, "Fan") == 0) return "Ventilateur";
   if (std::strcmp(text, "Fog") == 0) return "Brouillard";
+  if (std::strcmp(text, "Free") == 0) return "Libre";
   if (std::strcmp(text, "Garage Door") == 0) return "Porte de garage";
   if (std::strcmp(text, "Hail") == 0) return "Grêle";
   if (std::strcmp(text, "Hazy") == 0) return "Brumeux";
@@ -1109,6 +1121,9 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Hourly") == 0) return "Toutes les heures";
   if (std::strcmp(text, "Hurricane") == 0) return "Ouragan";
   if (std::strcmp(text, "Idle") == 0) return "Inactif";
+  if (std::strcmp(text, "In") == 0) return "Dans";
+  if (std::strcmp(text, "In progress") == 0) return "En cours";
+  if (std::strcmp(text, "Just started") == 0) return "Commencé";
   if (std::strcmp(text, "Lightning") == 0) return "Orage";
   if (std::strcmp(text, "Lightning And Rain") == 0) return "Orage et pluie";
   if (std::strcmp(text, "Light") == 0) return "Lumière";
@@ -1124,6 +1139,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Plus d’éléments";
   if (std::strcmp(text, "Mowing") == 0) return "Tonte";
   if (std::strcmp(text, "January") == 0) return "janvier";
+  if (std::strcmp(text, "left") == 0) return "restantes";
   if (std::strcmp(text, "February") == 0) return "février";
   if (std::strcmp(text, "March") == 0) return "mars";
   if (std::strcmp(text, "April") == 0) return "avril";
@@ -1136,6 +1152,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "November") == 0) return "novembre";
   if (std::strcmp(text, "December") == 0) return "décembre";
   if (std::strcmp(text, "Next") == 0) return "Suivant";
+  if (std::strcmp(text, "No events") == 0) return "Aucun événement";
   if (std::strcmp(text, "No") == 0) return "Non";
   if (std::strcmp(text, "None") == 0) return "Aucun";
   if (std::strcmp(text, "No options") == 0) return "Aucune option";
@@ -1332,6 +1349,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "További elemek";
   if (std::strcmp(text, "Mowing") == 0) return "Nyírás";
   if (std::strcmp(text, "January") == 0) return "Január";
+  if (std::strcmp(text, "left") == 0) return "hátra";
   if (std::strcmp(text, "February") == 0) return "Február";
   if (std::strcmp(text, "March") == 0) return "Március";
   if (std::strcmp(text, "April") == 0) return "Április";
@@ -1342,6 +1360,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "September") == 0) return "Szeptember";
   if (std::strcmp(text, "October") == 0) return "Október";
   if (std::strcmp(text, "Next") == 0) return "Következő";
+  if (std::strcmp(text, "No events") == 0) return "Nincs esemény";
   if (std::strcmp(text, "No") == 0) return "Nem";
   if (std::strcmp(text, "Nohold") == 0) return "Nincs tartás";
   if (std::strcmp(text, "None") == 0) return "Nincs";
@@ -1544,6 +1563,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Altri elementi";
   if (std::strcmp(text, "Mowing") == 0) return "Taglio in corso";
   if (std::strcmp(text, "January") == 0) return "Gennaio";
+  if (std::strcmp(text, "left") == 0) return "rimanenti";
   if (std::strcmp(text, "February") == 0) return "Febbraio";
   if (std::strcmp(text, "March") == 0) return "Marzo";
   if (std::strcmp(text, "April") == 0) return "Aprile";
@@ -1556,6 +1576,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "November") == 0) return "Novembre";
   if (std::strcmp(text, "December") == 0) return "Dicembre";
   if (std::strcmp(text, "Next") == 0) return "Avanti";
+  if (std::strcmp(text, "No events") == 0) return "Nessun evento";
   if (std::strcmp(text, "Nohold") == 0) return "Auto";
   if (std::strcmp(text, "None") == 0) return "Nessuno";
   if (std::strcmp(text, "No options") == 0) return "Nessuna opzione";
@@ -1751,6 +1772,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Flere elementer";
   if (std::strcmp(text, "Mowing") == 0) return "Klipper";
   if (std::strcmp(text, "January") == 0) return "januar";
+  if (std::strcmp(text, "left") == 0) return "igjen";
   if (std::strcmp(text, "February") == 0) return "februar";
   if (std::strcmp(text, "March") == 0) return "mars";
   if (std::strcmp(text, "April") == 0) return "april";
@@ -1763,6 +1785,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "November") == 0) return "november";
   if (std::strcmp(text, "December") == 0) return "desember";
   if (std::strcmp(text, "Next") == 0) return "Neste";
+  if (std::strcmp(text, "No events") == 0) return "Ingen hendelser";
   if (std::strcmp(text, "No") == 0) return "Nei";
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Ingen alternativer";
@@ -1957,6 +1980,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Meer items";
   if (std::strcmp(text, "Mowing") == 0) return "Maaien";
   if (std::strcmp(text, "January") == 0) return "januari";
+  if (std::strcmp(text, "left") == 0) return "over";
   if (std::strcmp(text, "February") == 0) return "februari";
   if (std::strcmp(text, "March") == 0) return "maart";
   if (std::strcmp(text, "April") == 0) return "april";
@@ -1969,6 +1993,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "November") == 0) return "november";
   if (std::strcmp(text, "December") == 0) return "december";
   if (std::strcmp(text, "Next") == 0) return "Volgende";
+  if (std::strcmp(text, "No events") == 0) return "Geen evenementen";
   if (std::strcmp(text, "No") == 0) return "Nee";
   if (std::strcmp(text, "None") == 0) return "Geen";
   if (std::strcmp(text, "No options") == 0) return "Geen opties";
@@ -2160,6 +2185,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Więcej elementów";
   if (std::strcmp(text, "Mowing") == 0) return "Koszenie";
   if (std::strcmp(text, "January") == 0) return "styczeń";
+  if (std::strcmp(text, "left") == 0) return "pozostało";
   if (std::strcmp(text, "February") == 0) return "luty";
   if (std::strcmp(text, "March") == 0) return "marzec";
   if (std::strcmp(text, "April") == 0) return "kwiecień";
@@ -2172,6 +2198,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "November") == 0) return "listopad";
   if (std::strcmp(text, "December") == 0) return "grudzień";
   if (std::strcmp(text, "Next") == 0) return "Dalej";
+  if (std::strcmp(text, "No events") == 0) return "Brak wydarzeń";
   if (std::strcmp(text, "No") == 0) return "Nie";
   if (std::strcmp(text, "None") == 0) return "Brak";
   if (std::strcmp(text, "No options") == 0) return "Brak opcji";
@@ -2365,6 +2392,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Mais itens";
   if (std::strcmp(text, "Mowing") == 0) return "Cortando";
   if (std::strcmp(text, "January") == 0) return "janeiro";
+  if (std::strcmp(text, "left") == 0) return "restantes";
   if (std::strcmp(text, "February") == 0) return "fevereiro";
   if (std::strcmp(text, "March") == 0) return "março";
   if (std::strcmp(text, "April") == 0) return "abril";
@@ -2377,6 +2405,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "November") == 0) return "novembro";
   if (std::strcmp(text, "December") == 0) return "dezembro";
   if (std::strcmp(text, "Next") == 0) return "Próximo";
+  if (std::strcmp(text, "No events") == 0) return "Sem eventos";
   if (std::strcmp(text, "No") == 0) return "Não";
   if (std::strcmp(text, "None") == 0) return "Nenhum";
   if (std::strcmp(text, "No options") == 0) return "Sem opções";
@@ -2572,6 +2601,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Mais itens";
   if (std::strcmp(text, "Mowing") == 0) return "A cortar";
   if (std::strcmp(text, "January") == 0) return "janeiro";
+  if (std::strcmp(text, "left") == 0) return "restantes";
   if (std::strcmp(text, "February") == 0) return "fevereiro";
   if (std::strcmp(text, "March") == 0) return "março";
   if (std::strcmp(text, "April") == 0) return "abril";
@@ -2584,6 +2614,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "November") == 0) return "novembro";
   if (std::strcmp(text, "December") == 0) return "dezembro";
   if (std::strcmp(text, "Next") == 0) return "Seguinte";
+  if (std::strcmp(text, "No events") == 0) return "Sem eventos";
   if (std::strcmp(text, "No") == 0) return "Não";
   if (std::strcmp(text, "None") == 0) return "Nenhum";
   if (std::strcmp(text, "No options") == 0) return "Sem opções";
@@ -2782,6 +2813,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Mai multe elemente";
   if (std::strcmp(text, "Mowing") == 0) return "Tunde iarba";
   if (std::strcmp(text, "January") == 0) return "Ianuarie";
+  if (std::strcmp(text, "left") == 0) return "rămase";
   if (std::strcmp(text, "February") == 0) return "Februarie";
   if (std::strcmp(text, "March") == 0) return "Martie";
   if (std::strcmp(text, "April") == 0) return "Aprilie";
@@ -2793,6 +2825,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "November") == 0) return "Noiembrie";
   if (std::strcmp(text, "December") == 0) return "Decembrie";
   if (std::strcmp(text, "Next") == 0) return "Următor";
+  if (std::strcmp(text, "No events") == 0) return "Niciun eveniment";
   if (std::strcmp(text, "No") == 0) return "Nu";
   if (std::strcmp(text, "Nohold") == 0) return "Fără menținere";
   if (std::strcmp(text, "None") == 0) return "Niciunul";
@@ -2994,6 +3027,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Ďalšie položky";
   if (std::strcmp(text, "Mowing") == 0) return "Kosí";
   if (std::strcmp(text, "January") == 0) return "január";
+  if (std::strcmp(text, "left") == 0) return "zostáva";
   if (std::strcmp(text, "February") == 0) return "február";
   if (std::strcmp(text, "March") == 0) return "marec";
   if (std::strcmp(text, "April") == 0) return "apríl";
@@ -3006,6 +3040,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "November") == 0) return "november";
   if (std::strcmp(text, "December") == 0) return "december";
   if (std::strcmp(text, "Next") == 0) return "Ďalej";
+  if (std::strcmp(text, "No events") == 0) return "Žiadne udalosti";
   if (std::strcmp(text, "No") == 0) return "Nie";
   if (std::strcmp(text, "None") == 0) return "Žiadne";
   if (std::strcmp(text, "No options") == 0) return "Žiadne možnosti";
@@ -3206,6 +3241,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Več elementov";
   if (std::strcmp(text, "Mowing") == 0) return "Košnja";
   if (std::strcmp(text, "January") == 0) return "Januar";
+  if (std::strcmp(text, "left") == 0) return "preostalo";
   if (std::strcmp(text, "February") == 0) return "Februar";
   if (std::strcmp(text, "March") == 0) return "Marec";
   if (std::strcmp(text, "May") == 0) return "Maj";
@@ -3214,6 +3250,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "August") == 0) return "Avgust";
   if (std::strcmp(text, "October") == 0) return "Oktober";
   if (std::strcmp(text, "Next") == 0) return "Naslednje";
+  if (std::strcmp(text, "No events") == 0) return "Ni dogodkov";
   if (std::strcmp(text, "No") == 0) return "Ne";
   if (std::strcmp(text, "Nohold") == 0) return "Brez zadržanja";
   if (std::strcmp(text, "None") == 0) return "Brez";
@@ -3414,6 +3451,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Fler objekt";
   if (std::strcmp(text, "Mowing") == 0) return "Klipper";
   if (std::strcmp(text, "January") == 0) return "januari";
+  if (std::strcmp(text, "left") == 0) return "kvar";
   if (std::strcmp(text, "February") == 0) return "februari";
   if (std::strcmp(text, "March") == 0) return "mars";
   if (std::strcmp(text, "April") == 0) return "april";
@@ -3426,6 +3464,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "November") == 0) return "november";
   if (std::strcmp(text, "December") == 0) return "december";
   if (std::strcmp(text, "Next") == 0) return "Nästa";
+  if (std::strcmp(text, "No events") == 0) return "Inga händelser";
   if (std::strcmp(text, "No") == 0) return "Nej";
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Inga alternativ";
@@ -3621,6 +3660,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Daha fazla öğe";
   if (std::strcmp(text, "Mowing") == 0) return "Biçiyor";
   if (std::strcmp(text, "January") == 0) return "Ocak";
+  if (std::strcmp(text, "left") == 0) return "kaldı";
   if (std::strcmp(text, "February") == 0) return "Şubat";
   if (std::strcmp(text, "March") == 0) return "Mart";
   if (std::strcmp(text, "April") == 0) return "Nisan";
@@ -3633,6 +3673,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "November") == 0) return "Kasım";
   if (std::strcmp(text, "December") == 0) return "Aralık";
   if (std::strcmp(text, "Next") == 0) return "Sonraki";
+  if (std::strcmp(text, "No events") == 0) return "Etkinlik yok";
   if (std::strcmp(text, "No") == 0) return "Hayır";
   if (std::strcmp(text, "Nohold") == 0) return "Tutma yok";
   if (std::strcmp(text, "None") == 0) return "Yok";
@@ -3839,6 +3880,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "More items") == 0) return "Більше елементів";
   if (std::strcmp(text, "Mowing") == 0) return "Косить";
   if (std::strcmp(text, "January") == 0) return "Січень";
+  if (std::strcmp(text, "left") == 0) return "залишилось";
   if (std::strcmp(text, "February") == 0) return "Лютий";
   if (std::strcmp(text, "March") == 0) return "Березень";
   if (std::strcmp(text, "April") == 0) return "Квітень";
@@ -3851,6 +3893,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "November") == 0) return "Листопад";
   if (std::strcmp(text, "December") == 0) return "Грудень";
   if (std::strcmp(text, "Next") == 0) return "Далі";
+  if (std::strcmp(text, "No events") == 0) return "Немає подій";
   if (std::strcmp(text, "No") == 0) return "Ні";
   if (std::strcmp(text, "Nohold") == 0) return "Без утримання";
   if (std::strcmp(text, "None") == 0) return "Немає";
@@ -4017,6 +4060,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Direction";
   if (std::strcmp(key, "disarm") == 0) return "Disarm";
   if (std::strcmp(key, "disarmed") == 0) return "Disarmed";
+  if (std::strcmp(key, "done_for_the_day") == 0) return "Done for the day";
   if (std::strcmp(key, "door") == 0) return "Door";
   if (std::strcmp(key, "door_open") == 0) return "Door Open";
   if (std::strcmp(key, "dock") == 0) return "Dock";
@@ -4029,6 +4073,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Exceptional";
   if (std::strcmp(key, "fan") == 0) return "Fan";
   if (std::strcmp(key, "fog") == 0) return "Fog";
+  if (std::strcmp(key, "free") == 0) return "Free";
   if (std::strcmp(key, "garage_door") == 0) return "Garage Door";
   if (std::strcmp(key, "hail") == 0) return "Hail";
   if (std::strcmp(key, "hazy") == 0) return "Hazy";
@@ -4043,6 +4088,9 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "hourly") == 0) return "Hourly";
   if (std::strcmp(key, "hurricane") == 0) return "Hurricane";
   if (std::strcmp(key, "idle") == 0) return "Idle";
+  if (std::strcmp(key, "in") == 0) return "In";
+  if (std::strcmp(key, "in_progress") == 0) return "In progress";
+  if (std::strcmp(key, "just_started") == 0) return "Just started";
   if (std::strcmp(key, "lightning") == 0) return "Lightning";
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Lightning And Rain";
   if (std::strcmp(key, "light") == 0) return "Light";
@@ -4060,6 +4108,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "More items";
   if (std::strcmp(key, "mowing") == 0) return "Mowing";
   if (std::strcmp(key, "january") == 0) return "January";
+  if (std::strcmp(key, "left") == 0) return "left";
   if (std::strcmp(key, "february") == 0) return "February";
   if (std::strcmp(key, "march") == 0) return "March";
   if (std::strcmp(key, "april") == 0) return "April";
@@ -4072,6 +4121,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "november") == 0) return "November";
   if (std::strcmp(key, "december") == 0) return "December";
   if (std::strcmp(key, "next") == 0) return "Next";
+  if (std::strcmp(key, "no_events") == 0) return "No events";
   if (std::strcmp(key, "night") == 0) return "Night";
   if (std::strcmp(key, "no") == 0) return "No";
   if (std::strcmp(key, "nohold") == 0) return "Nohold";
@@ -4277,6 +4327,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Další položky";
   if (std::strcmp(key, "mowing") == 0) return "Seká";
   if (std::strcmp(key, "january") == 0) return "leden";
+  if (std::strcmp(key, "left") == 0) return "zbývá";
   if (std::strcmp(key, "february") == 0) return "únor";
   if (std::strcmp(key, "march") == 0) return "březen";
   if (std::strcmp(key, "april") == 0) return "duben";
@@ -4402,6 +4453,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizace selhala";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi odpojena";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavení WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Žádné události";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -4485,6 +4537,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Flere elementer";
   if (std::strcmp(key, "mowing") == 0) return "Slår græs";
   if (std::strcmp(key, "january") == 0) return "januar";
+  if (std::strcmp(key, "left") == 0) return "tilbage";
   if (std::strcmp(key, "february") == 0) return "februar";
   if (std::strcmp(key, "march") == 0) return "marts";
   if (std::strcmp(key, "april") == 0) return "april";
@@ -4605,6 +4658,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Opdatering mislykkedes";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi afbrudt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-opsætning";
+  if (std::strcmp(key, "no_events") == 0) return "Ingen begivenheder";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -4690,6 +4744,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Weitere Elemente";
   if (std::strcmp(key, "mowing") == 0) return "Mäht";
   if (std::strcmp(key, "january") == 0) return "Januar";
+  if (std::strcmp(key, "left") == 0) return "übrig";
   if (std::strcmp(key, "february") == 0) return "Februar";
   if (std::strcmp(key, "march") == 0) return "März";
   if (std::strcmp(key, "may") == 0) return "Mai";
@@ -4805,6 +4860,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update fehlgeschlagen";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi getrennt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-Einrichtung";
+  if (std::strcmp(key, "no_events") == 0) return "Keine Ereignisse";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -4889,6 +4945,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Más elementos";
   if (std::strcmp(key, "mowing") == 0) return "Cortando";
   if (std::strcmp(key, "january") == 0) return "enero";
+  if (std::strcmp(key, "left") == 0) return "restantes";
   if (std::strcmp(key, "february") == 0) return "febrero";
   if (std::strcmp(key, "march") == 0) return "marzo";
   if (std::strcmp(key, "april") == 0) return "abril";
@@ -5012,6 +5069,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Error en la actualización";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuración WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Sin eventos";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5100,6 +5158,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Lisää kohteita";
   if (std::strcmp(key, "mowing") == 0) return "Leikkaa";
   if (std::strcmp(key, "january") == 0) return "Tammikuu";
+  if (std::strcmp(key, "left") == 0) return "jäljellä";
   if (std::strcmp(key, "february") == 0) return "Helmikuu";
   if (std::strcmp(key, "march") == 0) return "Maaliskuu";
   if (std::strcmp(key, "april") == 0) return "Huhtikuu";
@@ -5229,6 +5288,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Päivitys epäonnistui";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi katkaistu";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-asennus";
+  if (std::strcmp(key, "no_events") == 0) return "Ei tapahtumia";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5270,6 +5330,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "dimmed") == 0) return "Tamisé";
   if (std::strcmp(key, "disarm") == 0) return "Désarmer";
   if (std::strcmp(key, "disarmed") == 0) return "Désarmé";
+  if (std::strcmp(key, "done_for_the_day") == 0) return "Terminé";
   if (std::strcmp(key, "door") == 0) return "Porte";
   if (std::strcmp(key, "door_open") == 0) return "Porte ouverte";
   if (std::strcmp(key, "dock") == 0) return "Station";
@@ -5282,6 +5343,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Exceptionnel";
   if (std::strcmp(key, "fan") == 0) return "Ventilateur";
   if (std::strcmp(key, "fog") == 0) return "Brouillard";
+  if (std::strcmp(key, "free") == 0) return "Libre";
   if (std::strcmp(key, "garage_door") == 0) return "Porte de garage";
   if (std::strcmp(key, "hail") == 0) return "Grêle";
   if (std::strcmp(key, "hazy") == 0) return "Brumeux";
@@ -5295,6 +5357,9 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "hourly") == 0) return "Toutes les heures";
   if (std::strcmp(key, "hurricane") == 0) return "Ouragan";
   if (std::strcmp(key, "idle") == 0) return "Inactif";
+  if (std::strcmp(key, "in") == 0) return "Dans";
+  if (std::strcmp(key, "in_progress") == 0) return "En cours";
+  if (std::strcmp(key, "just_started") == 0) return "Commencé";
   if (std::strcmp(key, "lightning") == 0) return "Orage";
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Orage et pluie";
   if (std::strcmp(key, "light") == 0) return "Lumière";
@@ -5310,6 +5375,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Plus d’éléments";
   if (std::strcmp(key, "mowing") == 0) return "Tonte";
   if (std::strcmp(key, "january") == 0) return "janvier";
+  if (std::strcmp(key, "left") == 0) return "restantes";
   if (std::strcmp(key, "february") == 0) return "février";
   if (std::strcmp(key, "march") == 0) return "mars";
   if (std::strcmp(key, "april") == 0) return "avril";
@@ -5430,6 +5496,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Échec de la mise à jour";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi déconnecté";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuration WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Aucun événement";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5519,6 +5586,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "További elemek";
   if (std::strcmp(key, "mowing") == 0) return "Nyírás";
   if (std::strcmp(key, "january") == 0) return "Január";
+  if (std::strcmp(key, "left") == 0) return "hátra";
   if (std::strcmp(key, "february") == 0) return "Február";
   if (std::strcmp(key, "march") == 0) return "Március";
   if (std::strcmp(key, "april") == 0) return "Április";
@@ -5647,6 +5715,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Frissítés sikertelen";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi megszakadt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi beállítás";
+  if (std::strcmp(key, "no_events") == 0) return "Nincs esemény";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5732,6 +5801,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Altri elementi";
   if (std::strcmp(key, "mowing") == 0) return "Taglio in corso";
   if (std::strcmp(key, "january") == 0) return "Gennaio";
+  if (std::strcmp(key, "left") == 0) return "rimanenti";
   if (std::strcmp(key, "february") == 0) return "Febbraio";
   if (std::strcmp(key, "march") == 0) return "Marzo";
   if (std::strcmp(key, "april") == 0) return "Aprile";
@@ -5857,6 +5927,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aggiornamento non riuscito";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi disconnesso";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurazione WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Nessun evento";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5940,6 +6011,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Flere elementer";
   if (std::strcmp(key, "mowing") == 0) return "Klipper";
   if (std::strcmp(key, "january") == 0) return "januar";
+  if (std::strcmp(key, "left") == 0) return "igjen";
   if (std::strcmp(key, "february") == 0) return "februar";
   if (std::strcmp(key, "march") == 0) return "mars";
   if (std::strcmp(key, "april") == 0) return "april";
@@ -6062,6 +6134,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Oppdatering mislyktes";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi frakoblet";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-oppsett";
+  if (std::strcmp(key, "no_events") == 0) return "Ingen hendelser";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6147,6 +6220,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Meer items";
   if (std::strcmp(key, "mowing") == 0) return "Maaien";
   if (std::strcmp(key, "january") == 0) return "januari";
+  if (std::strcmp(key, "left") == 0) return "over";
   if (std::strcmp(key, "february") == 0) return "februari";
   if (std::strcmp(key, "march") == 0) return "maart";
   if (std::strcmp(key, "april") == 0) return "april";
@@ -6267,6 +6341,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update mislukt";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi verbroken";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installatie";
+  if (std::strcmp(key, "no_events") == 0) return "Geen evenementen";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6350,6 +6425,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Więcej elementów";
   if (std::strcmp(key, "mowing") == 0) return "Koszenie";
   if (std::strcmp(key, "january") == 0) return "styczeń";
+  if (std::strcmp(key, "left") == 0) return "pozostało";
   if (std::strcmp(key, "february") == 0) return "luty";
   if (std::strcmp(key, "march") == 0) return "marzec";
   if (std::strcmp(key, "april") == 0) return "kwiecień";
@@ -6472,6 +6548,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizacja nieudana";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi rozłączone";
   if (std::strcmp(key, "wifi_setup") == 0) return "Konfiguracja WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Brak wydarzeń";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6556,6 +6633,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Mais itens";
   if (std::strcmp(key, "mowing") == 0) return "Cortando";
   if (std::strcmp(key, "january") == 0) return "janeiro";
+  if (std::strcmp(key, "left") == 0) return "restantes";
   if (std::strcmp(key, "february") == 0) return "fevereiro";
   if (std::strcmp(key, "march") == 0) return "março";
   if (std::strcmp(key, "april") == 0) return "abril";
@@ -6679,6 +6757,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Falha na atualização";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Sem eventos";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6764,6 +6843,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Mais itens";
   if (std::strcmp(key, "mowing") == 0) return "A cortar";
   if (std::strcmp(key, "january") == 0) return "janeiro";
+  if (std::strcmp(key, "left") == 0) return "restantes";
   if (std::strcmp(key, "february") == 0) return "fevereiro";
   if (std::strcmp(key, "march") == 0) return "março";
   if (std::strcmp(key, "april") == 0) return "abril";
@@ -6887,6 +6967,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Falha na atualização";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desligado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Sem eventos";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6975,6 +7056,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Mai multe elemente";
   if (std::strcmp(key, "mowing") == 0) return "Tunde iarba";
   if (std::strcmp(key, "january") == 0) return "Ianuarie";
+  if (std::strcmp(key, "left") == 0) return "rămase";
   if (std::strcmp(key, "february") == 0) return "Februarie";
   if (std::strcmp(key, "march") == 0) return "Martie";
   if (std::strcmp(key, "april") == 0) return "Aprilie";
@@ -7104,6 +7186,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Actualizare eșuată";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi deconectat";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurare WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Niciun eveniment";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7188,6 +7271,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Ďalšie položky";
   if (std::strcmp(key, "mowing") == 0) return "Kosí";
   if (std::strcmp(key, "january") == 0) return "január";
+  if (std::strcmp(key, "left") == 0) return "zostáva";
   if (std::strcmp(key, "february") == 0) return "február";
   if (std::strcmp(key, "march") == 0) return "marec";
   if (std::strcmp(key, "april") == 0) return "apríl";
@@ -7313,6 +7397,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizácia zlyhala";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi odpojené";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavenie WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Žiadne udalosti";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7401,6 +7486,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Več elementov";
   if (std::strcmp(key, "mowing") == 0) return "Košnja";
   if (std::strcmp(key, "january") == 0) return "Januar";
+  if (std::strcmp(key, "left") == 0) return "preostalo";
   if (std::strcmp(key, "february") == 0) return "Februar";
   if (std::strcmp(key, "march") == 0) return "Marec";
   if (std::strcmp(key, "may") == 0) return "Maj";
@@ -7526,6 +7612,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Posodobitev ni uspela";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi prekinjen";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavitev WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Ni dogodkov";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7610,6 +7697,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Fler objekt";
   if (std::strcmp(key, "mowing") == 0) return "Klipper";
   if (std::strcmp(key, "january") == 0) return "januari";
+  if (std::strcmp(key, "left") == 0) return "kvar";
   if (std::strcmp(key, "february") == 0) return "februari";
   if (std::strcmp(key, "march") == 0) return "mars";
   if (std::strcmp(key, "april") == 0) return "april";
@@ -7731,6 +7819,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Uppdatering misslyckades";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi frånkopplat";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installation";
+  if (std::strcmp(key, "no_events") == 0) return "Inga händelser";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7818,6 +7907,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Daha fazla öğe";
   if (std::strcmp(key, "mowing") == 0) return "Biçiyor";
   if (std::strcmp(key, "january") == 0) return "Ocak";
+  if (std::strcmp(key, "left") == 0) return "kaldı";
   if (std::strcmp(key, "february") == 0) return "Şubat";
   if (std::strcmp(key, "march") == 0) return "Mart";
   if (std::strcmp(key, "april") == 0) return "Nisan";
@@ -7948,6 +8038,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Güncelleme başarısız";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi bağlantısı kesildi";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi Kurulumu";
+  if (std::strcmp(key, "no_events") == 0) return "Etkinlik yok";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8037,6 +8128,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "more_items") == 0) return "Більше елементів";
   if (std::strcmp(key, "mowing") == 0) return "Косить";
   if (std::strcmp(key, "january") == 0) return "Січень";
+  if (std::strcmp(key, "left") == 0) return "залишилось";
   if (std::strcmp(key, "february") == 0) return "Лютий";
   if (std::strcmp(key, "march") == 0) return "Березень";
   if (std::strcmp(key, "april") == 0) return "Квітень";
@@ -8167,6 +8259,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Помилка оновлення";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi від’єднано";
   if (std::strcmp(key, "wifi_setup") == 0) return "Налаштування WiFi";
+  if (std::strcmp(key, "no_events") == 0) return "Немає подій";
   return espcontrol_i18n_key_en(key);
 }
 

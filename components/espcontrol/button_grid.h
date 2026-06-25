@@ -50,6 +50,7 @@
 #include "button_grid_todo.h"
 #include "network_status.h"
 #include "button_grid_media.h"
+#include "button_grid_ha_calendar.h"
 #include "button_grid_subpages.h"
 #include "button_grid_alarm.h"
 #include "button_grid_navigation.h"

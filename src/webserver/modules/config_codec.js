@@ -115,6 +115,13 @@ function normalizeButtonConfig(b) {
     b.precision = normalizeClimatePrecisionConfig(b.precision);
     b.options = normalizeClimateOptions(b.options);
   }
+  if (b && b.type === "ha_calendar") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = normalizeHaCalendarDisplayMode(b.precision || haCalendarDisplayMode(b));
+    if (b.precision === "current" && !b.label) b.label = "Now";
+    b.options = normalizeHaCalendarOptions(b.options);
+  }
   if (b && b.type === "garage") {
     if (b.sensor !== "open" && b.sensor !== "close") b.sensor = "";
     b.unit = "";
@@ -234,7 +241,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "ha_calendar" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -279,6 +286,11 @@ var GARAGE_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
 var CLIMATE_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
 var CLIMATE_NUMBER_DISPLAY_OPTION = cardContractOptionName("number_display");
 var CLIMATE_TEMPERATURE_STEP_OPTION = cardContractOptionName("temperature_step");
+var HA_CALENDAR_DISPLAY_MODE_OPTION = cardContractOptionName("display_mode");
+var HA_CALENDAR_URGENT_COLOR_OPTION = cardContractOptionName("urgent_color");
+var HA_CALENDAR_CURRENT_PROGRESS_OPTION = cardContractOptionName("current_progress");
+var HA_CALENDAR_URGENT_MINUTES_OPTION = cardContractOptionName("urgent_minutes");
+var HA_CALENDAR_NEXT_NOW_MINUTES_OPTION = cardContractOptionName("next_now_minutes");
 var MEDIA_VOLUME_MAX_OPTION = cardContractOptionName("volume_max");
 var SUBPAGE_KIND_OPTION = cardContractOptionName("subpage_kind");
 var IMAGE_LABEL_OPTION = cardContractOptionName("image_label");
@@ -349,6 +361,14 @@ function setConfigOption(options, name, enabled) {
   }
   if (enabled && !found) out.push(name);
   return out.join(",");
+}
+
+function hasConfigOption(options, name) {
+  var parts = String(options || "").split(",");
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] === name) return true;
+  }
+  return false;
 }
 
 function configOptionValue(options, name) {
@@ -1516,6 +1536,139 @@ function setClimateNumberDisplayMode(b, mode) {
   return b.options;
 }
 
+// ── ha_calendar option helpers ──────────────────────────────────────────────
+
+function normalizeHaCalendarDisplayMode(value) {
+  value = String(value || "").trim();
+  var spec = cardContractOptionSpec("ha_calendar", HA_CALENDAR_DISPLAY_MODE_OPTION);
+  var values = spec && spec.values ? spec.values : ["current", "next_event"];
+  var fallback = (spec && spec.defaultValue) || "current";
+  return values.indexOf(value) >= 0 ? value : fallback;
+}
+
+function normalizeHaCalendarOptions(options) {
+  var out = "";
+  if (hasConfigOption(options, HA_CALENDAR_CURRENT_PROGRESS_OPTION)) {
+    out = setConfigOption(out, HA_CALENDAR_CURRENT_PROGRESS_OPTION, true);
+  }
+  var urgentColor = hasConfigOption(options, HA_CALENDAR_URGENT_COLOR_OPTION);
+  if (urgentColor) {
+    out = setConfigOption(out, HA_CALENDAR_URGENT_COLOR_OPTION, true);
+    var minutes = normalizeHaCalendarUrgentMinutes(
+      configOptionValue(options, HA_CALENDAR_URGENT_MINUTES_OPTION));
+    if (minutes !== 5) {
+      out = setConfigOptionValue(out, HA_CALENDAR_URGENT_MINUTES_OPTION, String(minutes));
+    }
+  }
+  var nextNowMinutes = normalizeHaCalendarNextNowMinutes(
+    configOptionValue(options, HA_CALENDAR_NEXT_NOW_MINUTES_OPTION));
+  if (nextNowMinutes > 0) {
+    out = setConfigOptionValue(out, HA_CALENDAR_NEXT_NOW_MINUTES_OPTION, String(nextNowMinutes));
+  }
+  return out;
+}
+
+function haCalendarDisplayMode(b) {
+  return normalizeHaCalendarDisplayMode(
+    b && (b.precision || configOptionValue(b.options, HA_CALENDAR_DISPLAY_MODE_OPTION)));
+}
+
+function setHaCalendarDisplayMode(b, mode) {
+  if (!b) return "";
+  var normalized = normalizeHaCalendarDisplayMode(mode);
+  b.precision = normalized;
+  if (normalized === "current") {
+    var currentProgress = haCalendarCurrentProgressEnabled(b);
+    b.options = "";
+    if (currentProgress) b.options = setConfigOption(b.options, HA_CALENDAR_CURRENT_PROGRESS_OPTION, true);
+  } else {
+    b.options = setConfigOption(b.options, HA_CALENDAR_CURRENT_PROGRESS_OPTION, false);
+    b.options = normalizeHaCalendarOptions(b.options);
+  }
+  return b.precision;
+}
+
+function haCalendarCurrentProgressEnabled(b) {
+  return hasConfigOption(b && b.options, HA_CALENDAR_CURRENT_PROGRESS_OPTION);
+}
+
+function setHaCalendarCurrentProgressEnabled(b, enabled) {
+  if (!b) return;
+  b.options = setConfigOption(b.options, HA_CALENDAR_CURRENT_PROGRESS_OPTION, !!enabled);
+  b.options = normalizeHaCalendarOptions(b.options);
+}
+
+function normalizeHaCalendarUrgentMinutes(value) {
+  var parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed)) parsed = 5;
+  return [1, 2, 3, 5, 10].indexOf(parsed) >= 0 ? parsed : 5;
+}
+
+function haCalendarUrgentColorEnabled(b) {
+  return hasConfigOption(b && b.options, HA_CALENDAR_URGENT_COLOR_OPTION);
+}
+
+function haCalendarUrgentMinutes(b) {
+  return normalizeHaCalendarUrgentMinutes(
+    configOptionValue(b && b.options, HA_CALENDAR_URGENT_MINUTES_OPTION));
+}
+
+function setHaCalendarUrgentColorEnabled(b, enabled) {
+  if (!b) return;
+  b.options = setConfigOption(b.options, HA_CALENDAR_URGENT_COLOR_OPTION, !!enabled);
+  if (!enabled) {
+    b.options = setConfigOptionValue(b.options, HA_CALENDAR_URGENT_MINUTES_OPTION, "");
+  } else if (!configOptionValue(b.options, HA_CALENDAR_URGENT_MINUTES_OPTION)) {
+    b.options = setConfigOptionValue(b.options, HA_CALENDAR_URGENT_MINUTES_OPTION, "5");
+  }
+  b.options = normalizeHaCalendarOptions(b.options);
+}
+
+function setHaCalendarUrgentMinutes(b, minutes) {
+  if (!b) return;
+  var normalized = normalizeHaCalendarUrgentMinutes(minutes);
+  b.options = setConfigOptionValue(
+    b.options, HA_CALENDAR_URGENT_MINUTES_OPTION, String(normalized));
+  b.options = normalizeHaCalendarOptions(b.options);
+}
+
+function normalizeHaCalendarNextNowMinutes(value) {
+  var parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed)) parsed = 0;
+  if (parsed === 0) return 0;
+  if ([1, 2, 3, 5, 10].indexOf(parsed) < 0) parsed = 5;
+  return parsed;
+}
+
+function haCalendarNextNowMinutes(b) {
+  return normalizeHaCalendarNextNowMinutes(
+    configOptionValue(b && b.options, HA_CALENDAR_NEXT_NOW_MINUTES_OPTION));
+}
+
+function haCalendarNextNowEnabled(b) {
+  return haCalendarNextNowMinutes(b) > 0;
+}
+
+function setHaCalendarNextNowEnabled(b, enabled) {
+  if (!b) return;
+  if (enabled) {
+    if (haCalendarNextNowMinutes(b) <= 0) {
+      b.options = setConfigOptionValue(b.options, HA_CALENDAR_NEXT_NOW_MINUTES_OPTION, "5");
+    }
+  } else {
+    b.options = setConfigOptionValue(b.options, HA_CALENDAR_NEXT_NOW_MINUTES_OPTION, "");
+  }
+  b.options = normalizeHaCalendarOptions(b.options);
+}
+
+function setHaCalendarNextNowMinutes(b, minutes) {
+  if (!b) return;
+  var normalized = normalizeHaCalendarNextNowMinutes(minutes);
+  b.options = setConfigOptionValue(
+    b.options, HA_CALENDAR_NEXT_NOW_MINUTES_OPTION, String(normalized));
+  b.options = normalizeHaCalendarOptions(b.options);
+}
+
 function climateTemperatureStep(b) {
   return normalizeClimateTemperatureStep(
     configOptionValue(b && b.options, CLIMATE_TEMPERATURE_STEP_OPTION));
@@ -1807,6 +1960,7 @@ function buttonConfigFields(b) {
     if (!imageLabelEnabled(b)) label = "";
   }
   if (type === "door_window") precision = normalizeDoorWindowSubtype(precision);
+  if (type === "ha_calendar") precision = normalizeHaCalendarDisplayMode(precision || haCalendarDisplayMode(b));
   var options = b && b.options || "";
   if (type === "") {
     options = normalizeSwitchConfirmationOptions(options);
@@ -1843,6 +1997,8 @@ function buttonConfigFields(b) {
     options = normalizePresenceOptions(options);
   } else if (type === "image") {
     options = normalizeImageOptions(options);
+  } else if (type === "ha_calendar") {
+    options = normalizeHaCalendarOptions(options);
   } else if (type === "light_control") {
     options = normalizeLightControlOptions(options);
   } else if (type === "action") {

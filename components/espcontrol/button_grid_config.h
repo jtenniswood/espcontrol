@@ -82,6 +82,51 @@ constexpr uint32_t DARK_CONTROL_NEUTRAL = correct_display_color(0x424242);
 constexpr uint32_t DARK_OVERLAY = 0x000000;
 constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x2F2F2F);
 
+// Derive a lighter shade of an RGB color by moving each channel toward white by
+// `percent`. Used to compute an accent tint from the user's chosen primary
+// color at runtime, so the accent tracks whatever primary is configured instead
+// of being a hardcoded literal.
+inline uint32_t lighten_color(uint32_t rgb, int percent) {
+  if (percent <= 0) return rgb;
+  if (percent > 100) percent = 100;
+  int r = (rgb >> 16) & 0xFF;
+  int g = (rgb >> 8) & 0xFF;
+  int b = rgb & 0xFF;
+  r += (255 - r) * percent / 100;
+  g += (255 - g) * percent / 100;
+  b += (255 - b) * percent / 100;
+  return (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) |
+         static_cast<uint32_t>(b);
+}
+
+// Darken an RGB color by reducing each channel toward black by `percent`
+// (e.g. a darkened-primary fill behind primary-colored text).
+inline uint32_t darken_color(uint32_t rgb, int percent) {
+  if (percent <= 0) return rgb;
+  if (percent > 100) percent = 100;
+  int r = (rgb >> 16) & 0xFF;
+  int g = (rgb >> 8) & 0xFF;
+  int b = rgb & 0xFF;
+  r -= r * percent / 100;
+  g -= g * percent / 100;
+  b -= b * percent / 100;
+  return (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) |
+         static_cast<uint32_t>(b);
+}
+
+// Mix `percent` of `over` into `base` (e.g. a faint accent tint over a surface).
+inline uint32_t blend_color(uint32_t base, uint32_t over, int percent) {
+  if (percent <= 0) return base;
+  if (percent > 100) percent = 100;
+  int br = (base >> 16) & 0xFF, bg = (base >> 8) & 0xFF, bb = base & 0xFF;
+  int orr = (over >> 16) & 0xFF, og = (over >> 8) & 0xFF, ob = over & 0xFF;
+  int r = br + (orr - br) * percent / 100;
+  int g = bg + (og - bg) * percent / 100;
+  int b = bb + (ob - bb) * percent / 100;
+  return (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) |
+         static_cast<uint32_t>(b);
+}
+
 constexpr uint32_t readable_text_color_for_bg(uint32_t bg_color) {
   uint32_t red = (bg_color >> 16) & 0xFF;
   uint32_t green = (bg_color >> 8) & 0xFF;
@@ -107,7 +152,6 @@ inline void set_current_button_primary_color(uint32_t color) {
 inline uint32_t current_button_primary_color() {
   return current_button_primary_color_ref();
 }
-
 #ifndef ESPCONTROL_MAX_GRID_SLOTS
 #define ESPCONTROL_MAX_GRID_SLOTS 25
 #endif
@@ -683,6 +727,46 @@ inline std::string todo_card_options_normalized(const std::string &options) {
   return out;
 }
 
+inline int normalize_ha_calendar_urgent_minutes(const std::string &value) {
+  char *end = nullptr;
+  long parsed = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) return 5;
+  if (parsed != 1 && parsed != 2 && parsed != 3 && parsed != 5 && parsed != 10) return 5;
+  return static_cast<int>(parsed);
+}
+
+inline int normalize_ha_calendar_next_now_minutes(const std::string &value) {
+  char *end = nullptr;
+  long parsed = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) return 0;
+  if (parsed == 0) return 0;
+  if (parsed != 1 && parsed != 2 && parsed != 3 && parsed != 5 && parsed != 10) return 5;
+  return static_cast<int>(parsed);
+}
+
+inline std::string ha_calendar_card_options_normalized(const std::string &options) {
+  std::string out;
+  if (cfg_option_token_present(options, "current_progress")) {
+    out = "current_progress";
+  }
+  if (cfg_option_token_present(options, "urgent_color")) {
+    if (!out.empty()) out += ",";
+    out += "urgent_color";
+    int minutes = normalize_ha_calendar_urgent_minutes(
+      cfg_option_value(options, "urgent_minutes"));
+    if (minutes != 5) {
+      out += ",urgent_minutes=" + std::to_string(minutes);
+    }
+  }
+  int next_now_minutes = normalize_ha_calendar_next_now_minutes(
+    cfg_option_value(options, "next_now_minutes"));
+  if (next_now_minutes > 0) {
+    if (!out.empty()) out += ",";
+    out += "next_now_minutes=" + std::to_string(next_now_minutes);
+  }
+  return out;
+}
+
 inline bool todo_card_show_count(const ParsedCfg &p) {
   return normalize_todo_count_display(cfg_option_value(p.options, "count_display")) == "count";
 }
@@ -1179,7 +1263,14 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (p.type == "ha_calendar") {
+    p.sensor.clear();
+    p.unit.clear();
+    if (p.precision != "current" && p.precision != "next_event") p.precision = "current";
+    if (p.precision == "current" && p.label.empty()) p.label = "Now";
+    p.options = ha_calendar_card_options_normalized(p.options);
+  }
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "ha_calendar" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (sensor_card_local_sensor(p)) {

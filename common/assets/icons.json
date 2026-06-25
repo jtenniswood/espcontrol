@@ -331,6 +331,21 @@
       "mdi": "broom"
     },
     {
+      "name": "Calendar Check",
+      "codepoint": "F00EF",
+      "mdi": "calendar-check"
+    },
+    {
+      "name": "Calendar Clock",
+      "codepoint": "F00F0",
+      "mdi": "calendar-clock"
+    },
+    {
+      "name": "Calendar Month",
+      "codepoint": "F0E17",
+      "mdi": "calendar-month"
+    },
+    {
       "name": "Camera",
       "codepoint": "F0100",
       "mdi": "camera"

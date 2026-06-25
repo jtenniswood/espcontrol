@@ -39,7 +39,9 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRMATION_REQUIRED = "confirm
 constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_MODE = "cover_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_POSITION = "cover_position";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_TABS = "cover_tabs";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_CURRENT_PROGRESS = "current_progress";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_DATE_TIME_MODE = "date_time_mode";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_DISPLAY_MODE = "display_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_GARAGE_MODE = "garage_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ICON_DISPLAY = "icon_display";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_ICON = "image_icon";
@@ -56,6 +58,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_LOCK_MODE = "lock_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_MEDIA_DISPLAY = "media_display";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_MEDIA_MODE = "media_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_MEDIA_NOW_PLAYING_CONTROLS = "media_now_playing_controls";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_NEXT_NOW_MINUTES = "next_now_minutes";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_NUMBER_DISPLAY = "number_display";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ON_PATTERN = "on_pattern";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PIN_ARM = "pin_arm";
@@ -69,6 +72,8 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_OUTPUT = "state_output";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_OUTPUT_2 = "state_output_2";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_SUBPAGE_KIND = "subpage_kind";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TEMPERATURE_STEP = "temperature_step";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_URGENT_COLOR = "urgent_color";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_URGENT_MINUTES = "urgent_minutes";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_VACUUM_MODE = "vacuum_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_VOLUME_MAX = "volume_max";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_WEATHER_MODE = "weather_mode";
@@ -269,6 +274,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "weather") return "Weather";
   if (type == "image") return "Camera Card";
   if (type == "weather_forecast") return "Weather Forecast";
+  if (type == "ha_calendar") return "Calendar";
   return type.empty() ? "Switch" : type.c_str();
 }
 
@@ -310,6 +316,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "weather") return true;
   if (type == "image") return true;
   if (type == "weather_forecast") return true;
+  if (type == "ha_calendar") return true;
   return false;
 }
 
@@ -351,6 +358,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "ha_calendar") return "Auto";
   return "Auto";
 }
 
@@ -392,6 +400,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "weather") return "Auto";
   if (type == "image") return "Auto";
   if (type == "weather_forecast") return "Auto";
+  if (type == "ha_calendar") return "Auto";
   return "Auto";
 }
 

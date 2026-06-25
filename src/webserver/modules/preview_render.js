@@ -59,6 +59,8 @@ var CARD_TYPE_PICKER_DETAILS = {
   webhook: { icon: "webhook", description: "Send a direct HTTP request." },
   vacuum: { icon: "robot-vacuum", description: "Show or control a vacuum cleaner." },
   weather: { icon: "weather-partly-cloudy", description: "Show weather or forecast data." },
+  solar: { icon: "solar-power", description: "Show solar production, consumption, or net energy data." },
+  ha_calendar: { icon: "calendar-heart", description: "Show upcoming or in-progress calendar events." },
 };
 
 var CARD_TYPE_PICKER_DEFAULTS = {
@@ -181,7 +183,7 @@ function renderPreview() {
       var iconName = resolveIcon(b);
       var label = b.label || b.entity || "Configure";
       var color = isEpaperPreview() ? epaperPreviewFillColor() :
-        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
+        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "ha_calendar" || b.type === "clock" || b.type === "timezone")
         ? state.sensorColor : state.offColor;
       var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
       if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
