@@ -4023,6 +4023,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "direction") == 0) return "Direction";
   if (std::strcmp(key, "disarm") == 0) return "Disarm";
   if (std::strcmp(key, "disarmed") == 0) return "Disarmed";
+  if (std::strcmp(key, "done_for_the_day") == 0) return "Done for the day";
   if (std::strcmp(key, "door") == 0) return "Door";
   if (std::strcmp(key, "door_open") == 0) return "Door Open";
   if (std::strcmp(key, "dock") == 0) return "Dock";
@@ -4035,6 +4036,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Exceptional";
   if (std::strcmp(key, "fan") == 0) return "Fan";
   if (std::strcmp(key, "fog") == 0) return "Fog";
+  if (std::strcmp(key, "free") == 0) return "Free";
   if (std::strcmp(key, "garage_door") == 0) return "Garage Door";
   if (std::strcmp(key, "hail") == 0) return "Hail";
   if (std::strcmp(key, "hazy") == 0) return "Hazy";
@@ -4049,6 +4051,9 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "hourly") == 0) return "Hourly";
   if (std::strcmp(key, "hurricane") == 0) return "Hurricane";
   if (std::strcmp(key, "idle") == 0) return "Idle";
+  if (std::strcmp(key, "in") == 0) return "In";
+  if (std::strcmp(key, "in_progress") == 0) return "In progress";
+  if (std::strcmp(key, "just_started") == 0) return "Just started";
   if (std::strcmp(key, "lightning") == 0) return "Lightning";
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Lightning And Rain";
   if (std::strcmp(key, "light") == 0) return "Light";
@@ -4073,6 +4078,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "june") == 0) return "June";
   if (std::strcmp(key, "july") == 0) return "July";
   if (std::strcmp(key, "august") == 0) return "August";
+  if (std::strcmp(key, "now") == 0) return "Now";
   if (std::strcmp(key, "september") == 0) return "September";
   if (std::strcmp(key, "october") == 0) return "October";
   if (std::strcmp(key, "november") == 0) return "November";
@@ -5276,6 +5282,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "dimmed") == 0) return "Tamisé";
   if (std::strcmp(key, "disarm") == 0) return "Désarmer";
   if (std::strcmp(key, "disarmed") == 0) return "Désarmé";
+  if (std::strcmp(key, "done_for_the_day") == 0) return "Terminé";
   if (std::strcmp(key, "door") == 0) return "Porte";
   if (std::strcmp(key, "door_open") == 0) return "Porte ouverte";
   if (std::strcmp(key, "dock") == 0) return "Station";
@@ -5288,6 +5295,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "exceptional") == 0) return "Exceptionnel";
   if (std::strcmp(key, "fan") == 0) return "Ventilateur";
   if (std::strcmp(key, "fog") == 0) return "Brouillard";
+  if (std::strcmp(key, "free") == 0) return "Libre";
   if (std::strcmp(key, "garage_door") == 0) return "Porte de garage";
   if (std::strcmp(key, "hail") == 0) return "Grêle";
   if (std::strcmp(key, "hazy") == 0) return "Brumeux";
@@ -5301,6 +5309,9 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "hourly") == 0) return "Toutes les heures";
   if (std::strcmp(key, "hurricane") == 0) return "Ouragan";
   if (std::strcmp(key, "idle") == 0) return "Inactif";
+  if (std::strcmp(key, "in") == 0) return "Dans";
+  if (std::strcmp(key, "in_progress") == 0) return "En cours";
+  if (std::strcmp(key, "just_started") == 0) return "Commencé";
   if (std::strcmp(key, "lightning") == 0) return "Orage";
   if (std::strcmp(key, "lightning_and_rain") == 0) return "Orage et pluie";
   if (std::strcmp(key, "light") == 0) return "Lumière";
@@ -5323,6 +5334,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "june") == 0) return "juin";
   if (std::strcmp(key, "july") == 0) return "juillet";
   if (std::strcmp(key, "august") == 0) return "août";
+  if (std::strcmp(key, "now") == 0) return "Maintenant";
   if (std::strcmp(key, "september") == 0) return "septembre";
   if (std::strcmp(key, "october") == 0) return "octobre";
   if (std::strcmp(key, "november") == 0) return "novembre";
