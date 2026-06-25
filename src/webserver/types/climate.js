@@ -1,5 +1,12 @@
 // Climate card: thermostat status plus full-screen climate controls.
 var CLIMATE_CARD_METADATA = {
+  type: {
+    label: "Type",
+    options: [
+      ["climate", "Climate"],
+      ["climate_control", "All Controls"],
+    ],
+  },
   entity: {
     label: "Climate Entity",
     idSuffix: "entity",
@@ -69,6 +76,21 @@ registerButtonType("climate", {
     b.unit = "";
     if (!b.icon) b.icon = "Thermostat";
     if (!b.icon_on) b.icon_on = "Auto";
+    var typeField = helpers.selectField(
+      CLIMATE_CARD_METADATA.type.label,
+      helpers.idPrefix + "climate-card-type",
+      CLIMATE_CARD_METADATA.type.options,
+      b.type === "climate_control" ? "climate_control" : "climate"
+    );
+    typeField.select.addEventListener("change", function () {
+      b.type = this.value === "climate_control" ? "climate_control" : "climate";
+      helpers.saveField("type", b.type);
+      b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
+      helpers.saveField("options", b.options);
+      scheduleRender();
+    });
+    panel.appendChild(typeField.field);
+
     var climateConfig = parseClimatePrecisionConfig(b.precision);
     var normalizedPrecision = climatePrecisionConfig(
       climateConfig.precision,
@@ -81,13 +103,15 @@ registerButtonType("climate", {
     }
 
     helpers.renderCardEntityField(panel, b, helpers, CLIMATE_CARD_METADATA);
-    renderModalTabSettings(panel, b, helpers, {
-      definitions: climateControlTabDefinitions,
-      tabs: climateControlTabs,
-      normalizeOptions: normalizeClimateOptions,
-      setTabs: setClimateControlTabs,
-      idPrefix: "climate-tab-",
-    });
+    if (b.type === "climate_control") {
+      renderModalTabSettings(panel, b, helpers, {
+        definitions: climateControlTabDefinitions,
+        tabs: climateControlTabs,
+        normalizeOptions: function (options) { return normalizeClimateOptions(options, true); },
+        setTabs: setClimateControlTabs,
+        idPrefix: "climate-tab-",
+      });
+    }
 
     var labelField = condField();
     labelField.classList.add("sp-climate-settings-gap");
@@ -248,3 +272,11 @@ registerButtonType("climate", {
     };
   },
 });
+
+registerButtonType("climate_control", Object.assign({}, BUTTON_TYPES.climate, {
+  label: function () { return cardContractCardLabel("climate_control"); },
+  allowInSubpage: function () { return cardContractAllowInSubpage("climate_control"); },
+  pickerKey: function () { return cardContractPickerKey("climate_control"); },
+  hidden: function () { return cardContractHidden("climate_control"); },
+  defaultConfig: function () { return cardContractDefaultConfig("climate_control"); },
+}));

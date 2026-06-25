@@ -242,6 +242,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "calendar") return "Date & Time";
   if (type == "clock") return "Date & Time";
   if (type == "climate") return "Climate";
+  if (type == "climate_control") return "All Controls";
   if (type == "cover") return "Cover";
   if (type == "door_window") return "Doors & Windows";
   if (type == "presence") return "Presence";
@@ -283,6 +284,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "calendar") return true;
   if (type == "clock") return true;
   if (type == "climate") return true;
+  if (type == "climate_control") return true;
   if (type == "cover") return true;
   if (type == "door_window") return true;
   if (type == "presence") return true;
@@ -324,6 +326,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "calendar") return "Auto";
   if (type == "clock") return "Auto";
   if (type == "climate") return "Thermostat";
+  if (type == "climate_control") return "Thermostat";
   if (type == "cover") return "Blinds";
   if (type == "door_window") return "Door";
   if (type == "presence") return "Motion Sensor Off";
@@ -365,6 +368,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "calendar") return "Auto";
   if (type == "clock") return "Auto";
   if (type == "climate") return "Auto";
+  if (type == "climate_control") return "Auto";
   if (type == "cover") return "Blinds Open";
   if (type == "door_window") return "Door Open";
   if (type == "presence") return "Motion Sensor";
@@ -457,6 +461,7 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "lock") return "K";
   if (type == "media") return "M";
   if (type == "climate") return "H";
+  if (type == "climate_control") return "HC";
   if (type == "push") return "P";
   if (type == "screen_lock") return "SL";
   if (type == "webhook") return "WH";
@@ -496,6 +501,7 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "K") return "lock";
   if (code == "M") return "media";
   if (code == "H") return "climate";
+  if (code == "HC") return "climate_control";
   if (code == "P") return "push";
   if (code == "SL") return "screen_lock";
   if (code == "WH") return "webhook";

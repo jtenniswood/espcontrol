@@ -431,10 +431,15 @@ assert.deepStrictEqual(
 assert.strictEqual(
   hooks.normalizeClimateOptions("climate_tabs=temperature%7Cmode%7Cpreset%7Cfan%7Cswing"),
   "",
+  "plain climate cards omit climate control tabs"
+);
+assert.strictEqual(
+  hooks.normalizeClimateOptions("climate_tabs=temperature%7Cmode%7Cpreset%7Cfan%7Cswing", true),
+  "",
   "default climate control tab order is omitted"
 );
 assert.strictEqual(
-  hooks.normalizeClimateOptions("climate_tabs=bad%7Cfan%7Cfan"),
+  hooks.normalizeClimateOptions("climate_tabs=bad%7Cfan%7Cfan", true),
   "climate_tabs=fan",
   "invalid and duplicate climate control tabs are removed"
 );
@@ -1651,7 +1656,7 @@ assertButtonRoundTrip(hooks, "climate card icon display", {
   options: "number_display=icon",
 }, false);
 
-assertButtonRoundTrip(hooks, "climate card custom tabs", {
+assertButtonMigration(hooks, "plain climate drops all-controls tabs", "climate.hallway;Hallway;Thermostat;Auto;;;climate;1;climate_tabs=mode%7Ctemperature", {
   entity: "climate.hallway",
   label: "Hallway",
   icon: "Thermostat",
@@ -1659,6 +1664,17 @@ assertButtonRoundTrip(hooks, "climate card custom tabs", {
   sensor: "",
   unit: "",
   type: "climate",
+  precision: "1",
+});
+
+assertButtonRoundTrip(hooks, "climate all controls custom tabs", {
+  entity: "climate.hallway",
+  label: "Hallway",
+  icon: "Thermostat",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate_control",
   precision: "1",
   options: "climate_tabs=mode%7Ctemperature",
 }, false);
@@ -1762,6 +1778,11 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_temperature", true)
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_control", false), false, "full light control subtype hidden from top-level picker");
 assert.strictEqual(hooks.buttonTypeRuntimeSpec("light_control").hidden, true, "full light control is grouped under Lights");
 assert.strictEqual(hooks.defaultButtonTypeForPicker("light_brightness"), "light_control", "lights picker defaults to all controls");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("climate", false), true, "climate picker visible on parent page");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("climate_control", false), false, "all controls climate subtype hidden from top-level picker");
+assert.strictEqual(hooks.buttonTypeRuntimeSpec("climate_control").label, "All Controls", "all controls climate subtype has its own label");
+assert.strictEqual(hooks.buttonTypeRuntimeSpec("climate_control").pickerKey, "climate", "all controls climate subtype is grouped under Climate");
+assert.strictEqual(hooks.defaultButtonTypeForPicker("climate"), "climate", "climate picker defaults to the normal climate card");
 assert.strictEqual(hooks.defaultButtonTypeForPicker("cover"), "cover", "ungrouped picker entries keep their own type");
 assert.strictEqual(
   hooks.buttonTypePickerKeysFor(false, "light_brightness").indexOf("light_brightness") >= 0,

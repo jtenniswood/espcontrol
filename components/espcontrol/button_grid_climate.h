@@ -86,6 +86,7 @@ struct ClimateControlCtx {
   int precision = 0;
   std::string label_display = "label";
   std::string number_display = "target";
+  bool all_controls = false;
   int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
   bool pending_temp_send = false;
   lv_timer_t *debounce_timer = nullptr;
@@ -1483,6 +1484,12 @@ inline void climate_control_apply_tab_visibility() {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   ClimateControlCtx *ctx = ui.active;
   if (!ctx) return;
+  if (!ctx->all_controls) {
+    climate_set_obj_visible(ui.tab_row, false);
+    climate_set_dial_controls_visible(true);
+    climate_hide_inline_option_list();
+    return;
+  }
   climate_control_ensure_visible_tab(ctx);
   ClimateControlVisibleTabs visible_tabs = climate_control_visible_tabs(ctx);
   bool show_tab_bar = visible_tabs.count > 1;
@@ -1674,7 +1681,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   ClimateControlVisibleTabs visible_tabs = climate_control_visible_tabs(ctx);
   int tab_count = static_cast<int>(visible_tabs.count);
   if (tab_count < 1) tab_count = 1;
-  bool show_tab_bar = tab_count > 1;
+  bool show_tab_bar = ctx->all_controls && tab_count > 1;
   lv_coord_t tab_size = layout.back_size * 7 / 10;
   if (tab_size < 48) tab_size = 48;
   if (tab_size > 68) tab_size = 68;
@@ -2191,6 +2198,7 @@ inline ClimateControlCtx *create_climate_control_context(
       ? CLIMATE_DEFAULT_STEP_TENTHS
       : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
   ctx->options = p.options;
+  ctx->all_controls = p.type == "climate_control";
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;

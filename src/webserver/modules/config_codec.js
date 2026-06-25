@@ -107,13 +107,13 @@ function normalizeButtonConfig(b) {
     }
     b.options = normalizeMediaOptions(b.options, b.sensor);
   }
-  if (b && b.type === "climate") {
+  if (b && isClimateCardType(b.type)) {
     b.sensor = "";
     b.unit = "";
     if (!b.icon) b.icon = "Thermostat";
     if (!b.icon_on) b.icon_on = "Auto";
     b.precision = normalizeClimatePrecisionConfig(b.precision);
-    b.options = normalizeClimateOptions(b.options);
+    b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
   }
   if (b && b.type === "garage") {
     if (b.sensor !== "open" && b.sensor !== "close") b.sensor = "";
@@ -234,7 +234,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && !isClimateCardType(b.type) && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -246,6 +246,10 @@ function isBrightnessSliderType(type) {
 
 function isFanCardType(type) {
   return cardContractIsFanCardType(type);
+}
+
+function isClimateCardType(type) {
+  return type === "climate" || type === "climate_control";
 }
 
 function isOptionSelectType(type) {
@@ -800,7 +804,7 @@ function setClimateControlTabs(b, tabs) {
   b.options = climateControlTabsAreDefault(tabs)
     ? setConfigOptionValue(b.options, CLIMATE_CONTROL_TABS_OPTION, "")
     : setConfigOptionValue(b.options, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
-  b.options = normalizeClimateOptions(b.options);
+  b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
   return b.options;
 }
 
@@ -1511,7 +1515,7 @@ function normalizeClimateTemperatureStep(value) {
   return values.indexOf(value) >= 0 ? value : climateDefaultTemperatureStep();
 }
 
-function normalizeClimateOptions(options) {
+function normalizeClimateOptions(options, includeControlTabs) {
   var labelMode = normalizeClimateLabelDisplayMode(
     configOptionValue(options, CLIMATE_LABEL_DISPLAY_OPTION));
   var numberMode = normalizeClimateNumberDisplayMode(
@@ -1531,9 +1535,11 @@ function normalizeClimateOptions(options) {
   if (numberMode !== "icon") {
     out = copyLargeNumbersOption(out, options);
   }
-  var tabs = normalizeClimateControlTabs(configOptionValue(options, CLIMATE_CONTROL_TABS_OPTION));
-  if (!climateControlTabsAreDefault(tabs)) {
-    out = setConfigOptionValue(out, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
+  if (includeControlTabs) {
+    var tabs = normalizeClimateControlTabs(configOptionValue(options, CLIMATE_CONTROL_TABS_OPTION));
+    if (!climateControlTabsAreDefault(tabs)) {
+      out = setConfigOptionValue(out, CLIMATE_CONTROL_TABS_OPTION, tabs.join("|"));
+    }
   }
   return out;
 }
@@ -1551,7 +1557,7 @@ function setClimateLabelDisplayMode(b, mode) {
     CLIMATE_LABEL_DISPLAY_OPTION,
     normalized === climateDefaultLabelDisplayMode() ? "" : normalized
   );
-  b.options = normalizeClimateOptions(b.options);
+  b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
   return b.options;
 }
 
@@ -1568,7 +1574,7 @@ function setClimateNumberDisplayMode(b, mode) {
     CLIMATE_NUMBER_DISPLAY_OPTION,
     normalized === climateDefaultNumberDisplayMode() ? "" : normalized
   );
-  b.options = normalizeClimateOptions(b.options);
+  b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
   return b.options;
 }
 
@@ -1585,7 +1591,7 @@ function setClimateTemperatureStep(b, step) {
     CLIMATE_TEMPERATURE_STEP_OPTION,
     normalized === climateDefaultTemperatureStep() ? "" : normalized
   );
-  b.options = normalizeClimateOptions(b.options);
+  b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
   return b.options;
 }
 
@@ -1814,11 +1820,11 @@ function buttonConfigFields(b) {
   var label = b && b.label || "";
   if (type === "screen_lock") label = "";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
-    (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+    (isBrightnessSliderType(type) || isClimateCardType(type) || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.sensor || "");
   if (b && b.type === "local") sensor = ACTION_CARD_LOCAL_ACTION;
   if (b && (b.type === "local_sensor" || sensorCardIsLocal(b))) sensor = SENSOR_CARD_LOCAL_SENSOR;
   var isLocalAction = type === "action" && sensor === ACTION_CARD_LOCAL_ACTION;
-  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.unit || "");
+  var unit = (isActionOptionSelect || isClimateCardType(type) || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.unit || "");
   if (isLocalAction) unit = "";
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
@@ -1854,7 +1860,7 @@ function buttonConfigFields(b) {
     iconOn = "Auto";
     if (!icon || icon === "Auto") icon = lawnMowerModeDefaultIcon(sensor);
   }
-  if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
+  if (isClimateCardType(type)) precision = normalizeClimatePrecisionConfig(precision);
   if (type === "image") {
     iconOn = "Auto";
     sensor = "";
@@ -1873,8 +1879,8 @@ function buttonConfigFields(b) {
   } else if (type === "cover") {
     sensor = normalizeCoverMode(sensor, true);
     options = normalizeCoverOptionsForMode(options, sensor);
-  } else if (type === "climate") {
-    options = normalizeClimateOptions(options);
+  } else if (isClimateCardType(type)) {
+    options = normalizeClimateOptions(options, type === "climate_control");
   } else if (type === "media") {
     options = normalizeMediaOptions(options, sensor);
   } else if (type === "subpage") {
@@ -1905,7 +1911,7 @@ function buttonConfigFields(b) {
     options = sensor === ACTION_CARD_LOCAL_ACTION ? "" : normalizeActionOptions(options, sensor);
   } else if (isActionOptionSelect || isFanCardType(type)) {
     options = "";
-  } else if (type !== "action" && type !== "alarm_action" && type !== "cover" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "light_control" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
+  } else if (type !== "action" && type !== "alarm_action" && !isClimateCardType(type) && type !== "cover" && type !== "garage" && type !== "webhook" && type !== "screen_lock" && type !== "media" && type !== "presence" && type !== "light_control" && !cardLargeNumbersSupported({ type: type, precision: precision })) {
     options = "";
   }
   if (type === "image") {
