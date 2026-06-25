@@ -119,7 +119,7 @@ var CSS =
   ".sp-ha-calendar-current{justify-content:flex-start;position:relative}" +
   ".sp-ha-calendar-title{font-size:calc(var(--btn-label)*1.75);line-height:1.08;color:#fff;font-weight:300;z-index:1;" +
   "display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-word}" +
-  ".sp-ha-calendar-status{position:absolute;left:0;right:0;bottom:0;" +
+  ".sp-ha-calendar-status{position:absolute;left:var(--btn-pad);right:var(--btn-pad);bottom:var(--btn-pad);" +
   "font-size:var(--btn-label);line-height:1.2;color:#fff;font-weight:var(--btn-label-weight,400);z-index:1;" +
   "overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
   ".sp-btn-double{grid-row:span 2}" +
