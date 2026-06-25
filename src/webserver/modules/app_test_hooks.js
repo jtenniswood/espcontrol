@@ -96,6 +96,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     haCalendarUrgentMinutes: haCalendarUrgentMinutes,
     setHaCalendarUrgentColorEnabled: setHaCalendarUrgentColorEnabled,
     setHaCalendarUrgentMinutes: setHaCalendarUrgentMinutes,
+    haCalendarCurrentProgressEnabled: haCalendarCurrentProgressEnabled,
+    setHaCalendarCurrentProgressEnabled: setHaCalendarCurrentProgressEnabled,
     haCalendarNextNowEnabled: haCalendarNextNowEnabled,
     setHaCalendarNextNowEnabled: setHaCalendarNextNowEnabled,
     haCalendarNextNowMinutes: haCalendarNextNowMinutes,
