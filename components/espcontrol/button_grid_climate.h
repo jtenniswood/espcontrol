@@ -1500,11 +1500,11 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       ClimateOptionClick *click = climate_next_option_click(ui, ctx, section_kind, option);
       if (!click) break;
       bool selected = climate_option_selected(ctx, section_kind, option);
+      uint32_t bg_color = selected ? ctx->accent_color : ctx->secondary_color;
       lv_obj_t *btn = lv_btn_create(parent);
       lv_obj_set_size(btn, 118, 118);
       lv_obj_set_style_radius(btn, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
-      lv_obj_set_style_bg_color(btn, lv_color_hex(selected ? ctx->accent_color : DARK_BACKGROUND_TERTIARY),
-        LV_PART_MAIN);
+      lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
       lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
       lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
       lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -1524,7 +1524,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, lv_pct(100));
       lv_obj_set_style_text_color(label,
-        lv_color_hex(selected ? DARK_TEXT_PRIMARY : DARK_TEXT_SOFT), LV_PART_MAIN);
+        lv_color_hex(selected ? DARK_TEXT_PRIMARY : readable_text_color_for_bg(bg_color)), LV_PART_MAIN);
       lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->option_menu_font) lv_obj_set_style_text_font(label, ctx->option_menu_font, LV_PART_MAIN);
 
