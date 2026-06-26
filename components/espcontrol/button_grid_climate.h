@@ -1237,9 +1237,33 @@ inline bool climate_option_selected(ClimateControlCtx *ctx,
 }
 
 inline const char *climate_option_icon(const std::string &kind, const std::string &value) {
-  if (kind == "preset") return find_icon("Air Filter");
-  if (kind == "fan") return find_icon("Fan");
   std::string mode = kind == "hvac" ? climate_hvac_service_value(value) : climate_lower(value);
+  if (kind == "preset") {
+    if (mode == "none" || mode == "off") return find_icon("Power");
+    if (mode == "home") return find_icon("Home");
+    if (mode == "away" || mode == "vacation") return find_icon("Remote Home");
+    if (mode == "eco" || mode == "energy" || mode == "energy_saving") return find_icon("Leaf");
+    if (mode == "sleep" || mode == "night") return find_icon("Clock");
+    if (mode == "boost" || mode == "turbo") return find_icon("Gauge Full");
+    if (mode == "comfort") return find_icon("Home-Thermostat");
+    if (mode == "activity" || mode == "presence") return find_icon("Motion Sensor");
+    return find_icon("Air Filter");
+  }
+  if (kind == "fan") {
+    if (mode == "off") return find_icon("Fan Off");
+    if (mode == "auto") return find_icon("Fan Auto");
+    if (mode == "low" || mode == "min" || mode == "1") return find_icon("Fan Speed 1");
+    if (mode == "medium" || mode == "med" || mode == "2") return find_icon("Fan Speed 2");
+    if (mode == "high" || mode == "max" || mode == "3" || mode == "turbo") return find_icon("Fan Speed 3");
+    return find_icon("Fan");
+  }
+  if (kind == "swing") {
+    if (mode == "off") return find_icon("Motion Sensor Off");
+    if (mode == "vertical" || mode == "up_down") return find_icon("Swap Vertical");
+    if (mode == "horizontal" || mode == "left_right") return find_icon("Swap Horizontal");
+    if (mode == "both" || mode == "auto") return find_icon("Swap Horizontal");
+    return find_icon("Swap Horizontal");
+  }
   if (mode == "off") return find_icon("Power");
   if (mode == "heat") return find_icon("Fire");
   if (mode == "cool") return find_icon("Snowflake");
@@ -1501,6 +1525,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       if (!click) break;
       bool selected = climate_option_selected(ctx, section_kind, option);
       uint32_t bg_color = selected ? ctx->accent_color : ctx->secondary_color;
+      uint32_t text_color = selected ? DARK_TEXT_PRIMARY : readable_text_color_for_bg(bg_color);
       lv_obj_t *btn = lv_btn_create(parent);
       lv_obj_set_size(btn, 118, 118);
       lv_obj_set_style_radius(btn, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
@@ -1512,19 +1537,24 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_pad_bottom(btn, 12, LV_PART_MAIN);
       lv_obj_set_style_pad_left(btn, 14, LV_PART_MAIN);
       lv_obj_set_style_pad_right(btn, 14, LV_PART_MAIN);
-      lv_obj_set_style_pad_column(btn, 0, LV_PART_MAIN);
+      lv_obj_set_style_pad_row(btn, 8, LV_PART_MAIN);
       lv_obj_set_layout(btn, LV_LAYOUT_FLEX);
-      lv_obj_set_style_flex_flow(btn, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+      lv_obj_set_style_flex_flow(btn, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
       lv_obj_set_style_flex_main_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
       lv_obj_set_style_flex_cross_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
       control_modal_apply_pressed_fill(btn);
+
+      lv_obj_t *icon_lbl = lv_label_create(btn);
+      lv_label_set_text(icon_lbl, climate_option_icon(section_kind, option));
+      lv_obj_set_style_text_color(icon_lbl, lv_color_hex(text_color), LV_PART_MAIN);
+      lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+      if (ctx->icon_font) lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
 
       lv_obj_t *label = lv_label_create(btn);
       lv_label_set_text(label, climate_option_label(option).c_str());
       lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, lv_pct(100));
-      lv_obj_set_style_text_color(label,
-        lv_color_hex(selected ? DARK_TEXT_PRIMARY : readable_text_color_for_bg(bg_color)), LV_PART_MAIN);
+      lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->option_menu_font) lv_obj_set_style_text_font(label, ctx->option_menu_font, LV_PART_MAIN);
 
@@ -1899,7 +1929,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
         if (!lv_obj_has_flag(tile, LV_OBJ_FLAG_CLICKABLE)) continue;
         lv_obj_set_size(tile, tile_w, tile_w);
         lv_obj_set_style_radius(tile, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
-        lv_obj_t *label = lv_obj_get_child(tile, 0);
+        lv_obj_t *label = lv_obj_get_child(tile, 1);
         if (label) lv_obj_set_width(label, lv_pct(100));
       }
     }
