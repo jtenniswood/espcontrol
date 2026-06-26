@@ -45,6 +45,7 @@ constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_CHIP_ICON_GAP_PX = 14
 constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_STEP_BUTTON_REF_PX = 96;
 constexpr lv_coord_t CLIMATE_MODAL_STEP_BUTTON_GAP_REF_PX = 16;
 constexpr uint16_t CLIMATE_MODAL_STEP_ICON_ZOOM = 214;
+constexpr uint16_t CLIMATE_MODAL_TAB_ICON_ZOOM = 210;
 constexpr int CLIMATE_OPTION_ROW_WIDTH_PERCENT = 88;
 constexpr int CLIMATE_OPTION_MAX_OPTIONS = 32;
 constexpr lv_coord_t CLIMATE_OPTION_MENU_ROW_MIN_H_PX = 52;
@@ -1386,6 +1387,15 @@ inline void climate_control_style_tab(lv_obj_t *btn, bool active, uint32_t accen
 inline void climate_control_layout_modal(ClimateControlCtx *ctx);
 inline void climate_control_apply_tab_visibility();
 
+inline void climate_center_tab_icon(lv_obj_t *label) {
+  if (!label) return;
+  lv_obj_update_layout(label);
+  lv_coord_t offset_x = lv_obj_get_width(label) * (256 - CLIMATE_MODAL_TAB_ICON_ZOOM) / 512;
+  lv_coord_t offset_y = lv_obj_get_height(label) * (256 - CLIMATE_MODAL_TAB_ICON_ZOOM) / 512;
+  lv_obj_set_style_transform_zoom(label, CLIMATE_MODAL_TAB_ICON_ZOOM, LV_PART_MAIN);
+  lv_obj_align(label, LV_ALIGN_CENTER, offset_x, offset_y);
+}
+
 inline lv_obj_t *climate_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                    const lv_font_t *font,
                                                    ClimateControlTab tab,
@@ -1406,8 +1416,7 @@ inline lv_obj_t *climate_control_create_tab_button(lv_obj_t *parent, const char 
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
-    lv_obj_set_style_transform_zoom(label, 210, LV_PART_MAIN);
-    lv_obj_center(label);
+    climate_center_tab_icon(label);
   }
   lv_obj_add_event_cb(btn, [](lv_event_t *e) {
     ClimateControlTab tab = static_cast<ClimateControlTab>(
@@ -1775,7 +1784,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     lv_coord_t tab_x = first_tab_x + i * (tab_size + tab_gap);
     lv_obj_align(tab_btn, LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
     lv_obj_t *label = lv_obj_get_child(tab_btn, 0);
-    if (label) lv_obj_center(label);
+    climate_center_tab_icon(label);
   }
   if (ui.mode_btn) {
     lv_obj_set_size(ui.mode_btn, layout.back_size, layout.back_size);
