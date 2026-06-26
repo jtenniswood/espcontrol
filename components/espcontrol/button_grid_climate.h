@@ -1590,7 +1590,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_pad_left(btn, jc4880p443_layout ? 16 : 14, LV_PART_MAIN);
       lv_obj_set_style_pad_right(btn, jc4880p443_layout ? 16 : 14, LV_PART_MAIN);
       lv_obj_set_style_pad_row(btn, jc4880p443_layout ? 0 : 8, LV_PART_MAIN);
-      lv_obj_set_style_pad_column(btn, jc4880p443_layout ? 8 : 0, LV_PART_MAIN);
+      lv_obj_set_style_pad_column(btn, 0, LV_PART_MAIN);
       lv_obj_set_layout(btn, jc4880p443_layout ? LV_LAYOUT_NONE : LV_LAYOUT_FLEX);
       lv_obj_set_style_flex_flow(btn,
         jc4880p443_layout ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
@@ -1606,9 +1606,10 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
         lv_obj_set_style_border_width(content_parent, 0, LV_PART_MAIN);
         lv_obj_set_style_shadow_width(content_parent, 0, LV_PART_MAIN);
         lv_obj_set_style_pad_all(content_parent, 0, LV_PART_MAIN);
-        lv_obj_set_style_pad_column(content_parent, 8, LV_PART_MAIN);
+        lv_obj_set_style_pad_row(content_parent, 2, LV_PART_MAIN);
+        lv_obj_set_style_pad_column(content_parent, 0, LV_PART_MAIN);
         lv_obj_set_layout(content_parent, LV_LAYOUT_FLEX);
-        lv_obj_set_style_flex_flow(content_parent, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+        lv_obj_set_style_flex_flow(content_parent, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
         lv_obj_set_style_flex_main_place(content_parent, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_set_style_flex_cross_place(content_parent, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_clear_flag(content_parent, LV_OBJ_FLAG_SCROLLABLE);
