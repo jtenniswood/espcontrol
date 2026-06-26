@@ -423,7 +423,8 @@ var CSS =
   ".sp-disclosure-button:hover{background:rgba(255,255,255,.03)}" +
   ".sp-disclosure-chevron{display:inline-flex;width:20px;height:20px;color:var(--text3);transition:transform .25s ease;flex-shrink:0}" +
   ".sp-disclosure-chevron svg{width:100%;height:100%}" +
-  ".sp-disclosure-body{display:none;padding:4px 14px 14px}" +
+  ".sp-disclosure-body{display:none;padding:16px 14px 4px}" +
+  ".sp-disclosure-body>.sp-field:last-child,.sp-disclosure-body>.sp-cond-field:last-child{margin-bottom:0;padding-bottom:0}" +
   ".sp-disclosure.sp-open .sp-disclosure-chevron{transform:rotate(180deg)}" +
   ".sp-disclosure.sp-open .sp-disclosure-body{display:block}" +
   ".sp-schedule-times.sp-hidden{display:none}" +
