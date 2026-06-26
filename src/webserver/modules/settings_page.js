@@ -530,7 +530,7 @@ function buildSettingsPage(parent) {
   syncNtpServerUi();
   clockBody.appendChild(ntpField);
 
-  var timeSettingsCard = makeCollapsibleCard("Time Settings", clockBody, true);
+  var timeSettingsCard = makeCollapsibleCard("Time", clockBody, true);
 
   var clockBarBody = document.createElement("div");
 
@@ -620,7 +620,7 @@ function buildSettingsPage(parent) {
   els.setTemperatureUnit = unitSelect;
 
   syncTemperatureUi();
-  var temperatureCard = makeCollapsibleCard("Temperature Settings", tempBody, true);
+  var temperatureCard = makeCollapsibleCard("Temperature", tempBody, true);
 
   var ssBody = document.createElement("div");
   var ssMode = getActiveScreensaverMode();

@@ -1265,7 +1265,9 @@ async function assertClockBarEditorSmoke(page, posts, label) {
 
   await page.getByRole("tab", { name: "Settings" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
-  const timeSettingsCard = page.locator("#sp-settings .card").filter({ hasText: "Time Settings" }).first();
+  const timeSettingsCard = page.locator("#sp-settings .card").filter({
+    has: page.locator(".card-header h3", { hasText: /^Time$/ }),
+  }).first();
   const timeSettingsText = await timeSettingsCard.textContent();
   assert(timeSettingsText.includes("Timezone"), `${label}: timezone remains in global time settings`);
   assert(timeSettingsText.includes("Clock Format"), `${label}: clock format remains in global time settings`);
