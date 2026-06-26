@@ -846,7 +846,7 @@ inline ControlModalLayout climate_control_calc_layout(ClimateControlCtx *ctx) {
   ClimateControlTabLayout tabs_layout = climate_control_calc_tab_layout(ctx, layout);
   if (tabs_layout.show_tab_bar) {
     lv_coord_t tab_bottom = layout.inset + 2 + tabs_layout.tab_frame_h;
-    lv_coord_t desired_control_top = tab_bottom + control_modal_scaled_px(8, layout.short_side);
+    lv_coord_t desired_control_top = tab_bottom + control_modal_scaled_px(18, layout.short_side);
     lv_coord_t current_control_top = layout.panel_h / 2 + layout.arc_center_y - layout.arc_size / 2;
     if (current_control_top < desired_control_top) {
       lv_coord_t control_shift = desired_control_top - current_control_top;
