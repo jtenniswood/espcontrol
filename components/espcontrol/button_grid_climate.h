@@ -44,6 +44,7 @@ constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_OPTION_TILE_MIN_PX = 124;
 constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_MAX_PX = 126;
 constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_MIN_PX = 104;
 constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_H_PX = 94;
+constexpr int CLIMATE_MODAL_JC4880P443_OPTION_ICON_ZOOM = 178;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_MIN_H_PX = 56;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_PAD_Y_REF_PX = 6;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_TEXT_GAP_PX = 2;
@@ -1523,6 +1524,8 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx);
 inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::string &kind) {
   if (!ctx) return;
   ClimateControlModalUi &ui = climate_control_modal_ui();
+  ControlModalLayout layout = climate_control_calc_layout(ctx);
+  bool jc4880p443_layout = control_modal_is_jc4880p443_size(layout);
   const std::vector<std::string> *options = nullptr;
   const char *title = nullptr;
   if (kind == "hvac") {
@@ -1586,9 +1589,11 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_pad_bottom(btn, 12, LV_PART_MAIN);
       lv_obj_set_style_pad_left(btn, 14, LV_PART_MAIN);
       lv_obj_set_style_pad_right(btn, 14, LV_PART_MAIN);
-      lv_obj_set_style_pad_row(btn, 8, LV_PART_MAIN);
+      lv_obj_set_style_pad_row(btn, jc4880p443_layout ? 0 : 8, LV_PART_MAIN);
+      lv_obj_set_style_pad_column(btn, jc4880p443_layout ? 4 : 0, LV_PART_MAIN);
       lv_obj_set_layout(btn, LV_LAYOUT_FLEX);
-      lv_obj_set_style_flex_flow(btn, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
+      lv_obj_set_style_flex_flow(btn,
+        jc4880p443_layout ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
       lv_obj_set_style_flex_main_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
       lv_obj_set_style_flex_cross_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
       control_modal_apply_pressed_fill(btn);
@@ -1598,11 +1603,13 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_text_color(icon_lbl, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->icon_font) lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
+      if (jc4880p443_layout) lv_obj_set_style_transform_zoom(
+        icon_lbl, CLIMATE_MODAL_JC4880P443_OPTION_ICON_ZOOM, LV_PART_MAIN);
 
       lv_obj_t *label = lv_label_create(btn);
       lv_label_set_text(label, climate_option_label(option).c_str());
-      lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-      lv_obj_set_width(label, lv_pct(100));
+      lv_label_set_long_mode(label, jc4880p443_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
+      lv_obj_set_width(label, jc4880p443_layout ? LV_SIZE_CONTENT : lv_pct(100));
       lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->option_menu_font) lv_obj_set_style_text_font(label, ctx->option_menu_font, LV_PART_MAIN);
@@ -2024,7 +2031,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
         lv_obj_set_size(tile, tile_w, climate_control_option_tile_height(layout, tile_w));
         lv_obj_set_style_radius(tile, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
         lv_obj_t *label = lv_obj_get_child(tile, 1);
-        if (label) lv_obj_set_width(label, lv_pct(100));
+        if (label && !control_modal_is_jc4880p443_size(layout)) lv_obj_set_width(label, lv_pct(100));
       }
     }
   }
