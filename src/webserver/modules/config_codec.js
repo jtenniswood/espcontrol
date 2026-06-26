@@ -845,6 +845,11 @@ function renderModalTabSettings(panel, b, helpers, config) {
     section.appendChild(heading);
   }
 
+  var supportBanner = document.createElement("div");
+  supportBanner.className = "sp-control-support-banner";
+  supportBanner.textContent = "Unsupported controls will be hidden on device.";
+  section.appendChild(supportBanner);
+
   var list = document.createElement("div");
   list.className = "sp-light-tab-list";
   section.appendChild(list);

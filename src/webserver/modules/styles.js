@@ -386,7 +386,10 @@ var CSS =
   "box-shadow:0 1px 3px rgba(0,0,0,.3)}" +
   ".sp-toggle input:checked+.sp-toggle-track{background:var(--accent);border-color:var(--accent)}" +
   ".sp-toggle input:checked+.sp-toggle-track:before{transform:translateX(20px)}" +
-  ".sp-light-tab-list{display:grid;gap:0;margin:-6px 0 18px}" +
+  ".sp-control-support-banner{margin:2px 0 14px;padding:10px 12px;border-radius:8px;" +
+  "background:rgba(91,120,230,.18);border:1px solid rgba(91,120,230,.35);color:#aebdff;" +
+  "font-size:.78rem;font-weight:600;line-height:1.3}" +
+  ".sp-light-tab-list{display:grid;gap:0;margin:0 0 18px}" +
   ".sp-light-tab-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;" +
   "gap:10px;min-height:42px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08)}" +
   ".sp-light-tab-row:last-child{border-bottom:0}" +
