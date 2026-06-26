@@ -921,6 +921,14 @@
           }
         },
         {
+          "name": "thresholds",
+          "label": "Conditional Colors",
+          "kind": "color_thresholds",
+          "supportedWhen": {
+            "precisionNot": ["icon", "text"]
+          }
+        },
+        {
           "name": "active_color",
           "label": "Active Color",
           "kind": "flag",

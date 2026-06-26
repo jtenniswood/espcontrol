@@ -117,6 +117,9 @@ struct CardPalette {
   uint32_t on_val = DEFAULT_SLIDER_COLOR;
   uint32_t off_val = DEFAULT_OFF_COLOR;
   uint32_t sensor_val = DEFAULT_TERTIARY_COLOR;
+  // Borrowed for the duration of card setup so per-card colours (e.g. sensor
+  // thresholds) can be display-corrected. Never retained past setup.
+  const DisplayProfile *display = nullptr;
 };
 
 inline lv_coord_t large_sensor_unit_offset_px(const lv_font_t *large_font, int percent) {
@@ -476,9 +479,15 @@ inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p,
       if (p.precision == "icon") {
         subscribe_sensor_icon_state(s.btn, s.icon_lbl, p);
       } else {
+        SensorThresholds thresholds = parse_sensor_thresholds(p.options);
+        if (palette.display) {
+          for (auto &entry : thresholds)
+            entry.second = display_correct_color(entry.second, *palette.display);
+        }
         subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision),
           s.unit_lbl, p.unit, s.btn,
-          sensor_active_color_enabled(p), palette.on_val, palette.sensor_val);
+          sensor_active_color_enabled(p), palette.on_val, palette.sensor_val,
+          thresholds);
       }
       if (p.label.empty())
         subscribe_friendly_name(s.text_lbl, p.sensor);
@@ -787,6 +796,7 @@ inline void grid_phase1(
   palette.on_val = has_on ? on_val : DEFAULT_SLIDER_COLOR;
   palette.off_val = has_off ? off_val : DEFAULT_OFF_COLOR;
   palette.sensor_val = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
+  palette.display = &display;
   set_current_button_primary_color(palette.on_val);
 
   bump_ha_subscription_generation();
@@ -1093,6 +1103,7 @@ inline void grid_phase2(
   palette.on_val = has_on ? on_val : DEFAULT_SLIDER_COLOR;
   palette.off_val = has_off ? off_val : DEFAULT_OFF_COLOR;
   palette.sensor_val = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
+  palette.display = &display;
   set_current_button_primary_color(palette.on_val);
 
   OrderResult parsed, order;

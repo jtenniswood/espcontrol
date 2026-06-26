@@ -580,6 +580,13 @@ inline std::string sensor_card_options_normalized(const std::string &options,
     if (!out.empty()) out += ",";
     out += "active_color";
   }
+  if (precision != "icon" && precision != "text") {
+    std::string thresholds = cfg_option_value(options, "thresholds");
+    if (!thresholds.empty()) {
+      if (!out.empty()) out += ",";
+      out += "thresholds=" + encode_compact_field(thresholds);
+    }
+  }
   if (precision == "text" && cfg_option_token_present(options, SENSOR_STATE_LABELS_OPTION)) {
     if (!out.empty()) out += ",";
     out += SENSOR_STATE_LABELS_OPTION;

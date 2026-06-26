@@ -259,6 +259,7 @@ function fanCardDefaultIcon(type) {
 var SENSOR_LARGE_NUMBERS_OPTION = cardContractOptionName("large_numbers");
 var SENSOR_LARGE_NUMBERS_OFF_VALUE = "off";
 var SENSOR_ACTIVE_COLOR_OPTION = cardContractOptionName("active_color");
+var SENSOR_THRESHOLDS_OPTION = cardContractOptionName("thresholds");
 var SWITCH_CONFIRM_OFF_OPTION = cardContractOptionName("confirm_off");
 var SWITCH_CONFIRM_ON_OPTION = cardContractOptionName("confirm_on");
 var SWITCH_CONFIRM_MESSAGE_OPTION = cardContractOptionName("confirm_message");
@@ -1150,6 +1151,57 @@ function setSensorStateTranslations(b, enabled, inputText, outputText, inputText
   return b.options;
 }
 
+function sensorThresholdHexValid(hex) {
+  return /^[0-9A-F]{6}$/.test(hex);
+}
+
+// Decodes the packed "thresholds" option value into a sorted list of
+// { value: Number, color: "RRGGBB" } rows. Invalid pairs are dropped.
+function parseSensorThresholds(options) {
+  var raw = configOptionValue(options, SENSOR_THRESHOLDS_OPTION);
+  if (!raw) return [];
+  var rows = [];
+  var parts = String(raw).split(",");
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i];
+    if (!part) continue;
+    var sep = part.indexOf(":");
+    if (sep < 0) continue;
+    var valStr = part.substring(0, sep).trim();
+    var hex = part.substring(sep + 1).replace(/^#/, "").trim().toUpperCase();
+    if (valStr === "" || !sensorThresholdHexValid(hex)) continue;
+    var num = parseFloat(valStr);
+    if (!isFinite(num)) continue;
+    rows.push({ value: num, color: hex });
+  }
+  rows.sort(function (a, b) { return a.value - b.value; });
+  return rows;
+}
+
+// Packs threshold rows back into a "value:RRGGBB,value:RRGGBB" payload,
+// sorted ascending with invalid rows dropped. Returns "" when none remain.
+function serializeSensorThresholds(rows) {
+  if (!rows || !rows.length) return "";
+  var valid = [];
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (!row) continue;
+    var num = parseFloat(row.value);
+    var hex = String(row.color || "").replace(/^#/, "").trim().toUpperCase();
+    if (!isFinite(num) || !sensorThresholdHexValid(hex)) continue;
+    valid.push({ value: num, color: hex });
+  }
+  valid.sort(function (a, b) { return a.value - b.value; });
+  return valid.map(function (row) { return String(row.value) + ":" + row.color; }).join(",");
+}
+
+function setSensorThresholds(b, rows) {
+  if (!b) return "";
+  b.options = setConfigOptionValue(b.options, SENSOR_THRESHOLDS_OPTION, serializeSensorThresholds(rows));
+  b.options = normalizeSensorOptions(b.options, b.precision);
+  return b.options;
+}
+
 function normalizeSensorOptions(options, precision) {
   var out = "";
   if (configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION) &&
@@ -1162,6 +1214,12 @@ function normalizeSensorOptions(options, precision) {
   if (configOptionEnabled(options, SENSOR_ACTIVE_COLOR_OPTION) &&
       cardContractOptionSupportedFor("sensor", SENSOR_ACTIVE_COLOR_OPTION, { precision: precision })) {
     out = setConfigOption(out, SENSOR_ACTIVE_COLOR_OPTION, true);
+  }
+  if (cardContractOptionSupportedFor("sensor", SENSOR_THRESHOLDS_OPTION, { precision: precision })) {
+    var normalizedThresholds = serializeSensorThresholds(parseSensorThresholds(options));
+    if (normalizedThresholds) {
+      out = setConfigOptionValue(out, SENSOR_THRESHOLDS_OPTION, normalizedThresholds);
+    }
   }
   if (precision === "text" && configOptionEnabled(options, SENSOR_STATE_LABELS_OPTION)) {
     out = setConfigOption(out, SENSOR_STATE_LABELS_OPTION, true);
