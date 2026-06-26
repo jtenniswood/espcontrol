@@ -2476,6 +2476,7 @@ inline void refresh_temperature_unit_labels() {
   ClimateControlCtx **climate_refs = climate_control_refs();
   int climate_count = climate_control_ref_count();
   for (int i = 0; i < climate_count; i++) {
+    if (!climate_refs[i]) continue;
     climate_update_card(climate_refs[i]);
     climate_control_set_modal_value(climate_refs[i]);
   }

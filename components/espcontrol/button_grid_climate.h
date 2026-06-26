@@ -1924,15 +1924,21 @@ inline ClimateControlCtx *create_climate_control_context(
 
 inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
+  const uint32_t generation = ha_subscription_generation();
+  auto active = [generation]() {
+    return generation == ha_subscription_generation();
+  };
   register_ha_control_availability(ctx->btn, ctx->btn);
-  auto refresh = [ctx]() {
+  auto refresh = [ctx, active]() {
+    if (!active()) return;
     climate_update_card(ctx);
     climate_control_set_modal_value(ctx);
   };
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef state) {
+      [ctx, refresh, active](esphome::StringRef state) {
+        if (!active()) return;
         ctx->hvac_mode = climate_hvac_service_value(string_ref_limited(state, HA_SHORT_STATE_MAX_LEN));
         ctx->available = !climate_unavailable_value(ctx->hvac_mode);
         if (!ctx->available) ctx->hvac_mode = "off";
@@ -1944,7 +1950,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("friendly_name"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         ctx->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
         refresh();
       })
@@ -1952,16 +1959,18 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("hvac_action"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         ctx->hvac_action = climate_lower(climate_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
         refresh();
       })
   );
-  auto subscribe_temp = [ctx, refresh](const char *attr, int ClimateControlCtx::*field, bool ClimateControlCtx::*has_field) {
+  auto subscribe_temp = [ctx, refresh, active](const char *attr, int ClimateControlCtx::*field, bool ClimateControlCtx::*has_field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
       std::function<void(esphome::StringRef)>(
-        [ctx, refresh, field, has_field](esphome::StringRef value) {
+        [ctx, refresh, active, field, has_field](esphome::StringRef value) {
+          if (!active()) return;
           int tenths = 0;
           if (climate_parse_tenths(value, tenths)) {
             // Home Assistant can send temperatures before min/max attributes on boot.
@@ -1982,7 +1991,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("min_temp"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         int tenths = 0;
         if (!ctx->custom_min && climate_parse_tenths(value, tenths)) {
           ctx->min_tenths = tenths;
@@ -1995,7 +2005,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("max_temp"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         int tenths = 0;
         if (!ctx->custom_max && climate_parse_tenths(value, tenths)) {
           ctx->max_tenths = tenths;
@@ -2008,7 +2019,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("target_temp_step"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         int tenths = 0;
         if (climate_parse_tenths(value, tenths) && tenths > 0 && tenths <= 100)
           ctx->step_tenths = tenths;
@@ -2017,11 +2029,12 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         refresh();
       })
   );
-  auto subscribe_text = [ctx, refresh](const char *attr, std::string ClimateControlCtx::*field) {
+  auto subscribe_text = [ctx, refresh, active](const char *attr, std::string ClimateControlCtx::*field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
       std::function<void(esphome::StringRef)>(
-        [ctx, refresh, field](esphome::StringRef value) {
+        [ctx, refresh, active, field](esphome::StringRef value) {
+          if (!active()) return;
           ctx->*field = climate_lower(climate_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
           refresh();
         })
@@ -2030,11 +2043,12 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   subscribe_text("fan_mode", &ClimateControlCtx::fan_mode);
   subscribe_text("swing_mode", &ClimateControlCtx::swing_mode);
   subscribe_text("preset_mode", &ClimateControlCtx::preset_mode);
-  auto subscribe_list = [ctx, refresh](const char *attr, std::vector<std::string> ClimateControlCtx::*field) {
+  auto subscribe_list = [ctx, refresh, active](const char *attr, std::vector<std::string> ClimateControlCtx::*field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
       std::function<void(esphome::StringRef)>(
-        [ctx, refresh, field](esphome::StringRef value) {
+        [ctx, refresh, active, field](esphome::StringRef value) {
+          if (!active()) return;
           ctx->*field = climate_parse_options(value);
           refresh();
         })

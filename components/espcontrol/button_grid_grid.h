@@ -1080,6 +1080,7 @@ inline void grid_phase2(
   memset(has_icon_on, 0, sizeof(has_icon_on));
   bump_ha_subscription_generation();
   weather_forecast_cancel_pending_requests();
+  reset_climate_control_refs();
   reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
