@@ -1782,7 +1782,7 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("climate", false), true, "
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("climate_control", false), false, "all controls climate subtype hidden from top-level picker");
 assert.strictEqual(hooks.buttonTypeRuntimeSpec("climate_control").label, "All Controls", "all controls climate subtype has its own label");
 assert.strictEqual(hooks.buttonTypeRuntimeSpec("climate_control").pickerKey, "climate", "all controls climate subtype is grouped under Climate");
-assert.strictEqual(hooks.defaultButtonTypeForPicker("climate"), "climate", "climate picker defaults to the normal climate card");
+assert.strictEqual(hooks.defaultButtonTypeForPicker("climate"), "climate_control", "climate picker defaults to all controls");
 assert.strictEqual(hooks.defaultButtonTypeForPicker("cover"), "cover", "ungrouped picker entries keep their own type");
 assert.strictEqual(
   hooks.buttonTypePickerKeysFor(false, "light_brightness").indexOf("light_brightness") >= 0,

@@ -3,8 +3,8 @@ var CLIMATE_CARD_METADATA = {
   type: {
     label: "Type",
     options: [
-      ["climate", "Climate"],
       ["climate_control", "All Controls"],
+      ["climate", "Legacy Controls"],
     ],
   },
   entity: {

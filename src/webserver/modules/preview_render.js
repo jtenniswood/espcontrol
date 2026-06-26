@@ -62,6 +62,7 @@ var CARD_TYPE_PICKER_DETAILS = {
 };
 
 var CARD_TYPE_PICKER_DEFAULTS = {
+  climate: "climate_control",
   light_brightness: "light_control",
 };
 
