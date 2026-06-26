@@ -838,10 +838,12 @@ function renderModalTabSettings(panel, b, helpers, config) {
     if (tabs.indexOf(definition.value) < 0) orderedDefinitions.push(definition);
   });
 
-  var heading = document.createElement("div");
-  heading.className = "sp-field";
-  heading.appendChild(helpers.fieldLabel("Modal Tabs"));
-  section.appendChild(heading);
+  if (!config.groupLabel) {
+    var heading = document.createElement("div");
+    heading.className = "sp-field";
+    heading.appendChild(helpers.fieldLabel("Modal Tabs"));
+    section.appendChild(heading);
+  }
 
   var list = document.createElement("div");
   list.className = "sp-light-tab-list";
