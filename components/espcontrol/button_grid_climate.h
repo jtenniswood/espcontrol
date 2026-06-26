@@ -1501,8 +1501,8 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       if (!click) break;
       bool selected = climate_option_selected(ctx, section_kind, option);
       lv_obj_t *btn = lv_btn_create(parent);
-      lv_obj_set_size(btn, 160, 86);
-      lv_obj_set_style_radius(btn, 18, LV_PART_MAIN);
+      lv_obj_set_size(btn, 118, 118);
+      lv_obj_set_style_radius(btn, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
       lv_obj_set_style_bg_color(btn, lv_color_hex(selected ? ctx->accent_color : DARK_BACKGROUND_TERTIARY),
         LV_PART_MAIN);
       lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
@@ -1888,12 +1888,6 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
       int column_count = content_w >= tile_min_w * 3 + tile_gap * 2 ? 3 : 2;
       if (content_w < tile_min_w * 2 + tile_gap) column_count = 1;
       lv_coord_t tile_w = (content_w - tile_gap * (column_count - 1)) / column_count;
-      lv_coord_t option_text_h = ctx->option_menu_font
-        ? ctx->option_menu_font->line_height
-        : (ctx->label_font ? ctx->label_font->line_height : 26);
-      lv_coord_t tile_h = option_text_h + control_modal_scaled_px(36, layout.short_side);
-      lv_coord_t min_tile_h = layout.short_side < 520 ? 68 : 78;
-      if (tile_h < min_tile_h) tile_h = min_tile_h;
       lv_obj_set_style_pad_row(ui.option_list_view, tile_gap, LV_PART_MAIN);
       lv_obj_set_style_pad_column(ui.option_list_view, tile_gap, LV_PART_MAIN);
       lv_obj_set_style_flex_main_place(ui.option_list_view, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
@@ -1903,8 +1897,8 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
       for (uint32_t i = 0; i < child_count; i++) {
         lv_obj_t *tile = lv_obj_get_child(ui.option_list_view, i);
         if (!lv_obj_has_flag(tile, LV_OBJ_FLAG_CLICKABLE)) continue;
-        lv_obj_set_size(tile, tile_w, tile_h);
-        lv_obj_set_style_radius(tile, tile_h / 4, LV_PART_MAIN);
+        lv_obj_set_size(tile, tile_w, tile_w);
+        lv_obj_set_style_radius(tile, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
         lv_obj_t *label = lv_obj_get_child(tile, 0);
         if (label) lv_obj_set_width(label, lv_pct(100));
       }
