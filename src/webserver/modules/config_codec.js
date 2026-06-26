@@ -815,7 +815,7 @@ function renderModalTabSettings(panel, b, helpers, config) {
     disclosure = helpers.disclosureSection(
       config.groupLabel,
       helpers.idPrefix + (config.groupIdSuffix || config.idPrefix + "controls"),
-      config.groupOpen !== false
+      config.groupOpen === true
     );
     disclosure.section.appendChild(section);
     panel.appendChild(disclosure.panel);

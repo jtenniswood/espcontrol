@@ -131,7 +131,7 @@ registerButtonType("climate", {
     var cardSettingsDisclosure = helpers.disclosureSection(
       "Card Settings",
       helpers.idPrefix + "climate-card-settings",
-      true
+      false
     );
     var cardSettings = cardSettingsDisclosure.section;
     helpers.renderCardSegmentControl(cardSettings, b, helpers, {
@@ -208,14 +208,10 @@ registerButtonType("climate", {
     helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
     panel.appendChild(cardSettingsDisclosure.panel);
 
-    var hasRange = !!(climateConfig.min || climateConfig.max);
-    var hasCustomPrecision = !!climateConfig.precision;
-    var hasCustomStep = climateTemperatureStep(b) !== climateDefaultTemperatureStep();
-    var hasAdvanced = hasRange || hasCustomPrecision || hasCustomStep;
     var advancedDisclosure = helpers.disclosureSection(
       "Advanced",
       helpers.idPrefix + "climate-advanced",
-      hasAdvanced
+      false
     );
     var advanced = advancedDisclosure.section;
     advanced.appendChild(precisionField.field);

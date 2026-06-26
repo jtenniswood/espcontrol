@@ -304,7 +304,7 @@ registerButtonType("light_control", {
     var cardSettingsDisclosure = helpers.disclosureSection(
       "Card Settings",
       helpers.idPrefix + "light-card-settings",
-      true
+      false
     );
     var cardSettings = cardSettingsDisclosure.section;
     helpers.renderCardTextField(cardSettings, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA.labelField);
