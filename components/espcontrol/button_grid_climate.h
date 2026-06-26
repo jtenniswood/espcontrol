@@ -1524,7 +1524,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, lv_pct(100));
       lv_obj_set_style_text_color(label,
-        lv_color_hex(selected ? DEFAULT_TERTIARY_COLOR : DARK_TEXT_SOFT), LV_PART_MAIN);
+        lv_color_hex(selected ? DARK_TEXT_PRIMARY : DARK_TEXT_SOFT), LV_PART_MAIN);
       lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->option_menu_font) lv_obj_set_style_text_font(label, ctx->option_menu_font, LV_PART_MAIN);
 
