@@ -1598,7 +1598,23 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_flex_cross_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
       control_modal_apply_pressed_fill(btn);
 
-      lv_obj_t *icon_lbl = lv_label_create(btn);
+      lv_obj_t *content_parent = btn;
+      if (jc4880p443_layout) {
+        content_parent = lv_obj_create(btn);
+        lv_obj_set_size(content_parent, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        lv_obj_set_style_bg_opa(content_parent, LV_OPA_TRANSP, LV_PART_MAIN);
+        lv_obj_set_style_border_width(content_parent, 0, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(content_parent, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(content_parent, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_column(content_parent, 8, LV_PART_MAIN);
+        lv_obj_set_layout(content_parent, LV_LAYOUT_FLEX);
+        lv_obj_set_style_flex_flow(content_parent, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
+        lv_obj_set_style_flex_main_place(content_parent, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_set_style_flex_cross_place(content_parent, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_clear_flag(content_parent, LV_OBJ_FLAG_SCROLLABLE);
+      }
+
+      lv_obj_t *icon_lbl = lv_label_create(content_parent);
       lv_label_set_text(icon_lbl, climate_option_icon(section_kind, option));
       lv_obj_set_style_text_color(icon_lbl, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
@@ -1610,7 +1626,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       if (jc4880p443_layout && !ctx->card_icon_font) lv_obj_set_style_transform_zoom(
         icon_lbl, CLIMATE_MODAL_JC4880P443_OPTION_ICON_ZOOM, LV_PART_MAIN);
 
-      lv_obj_t *label = lv_label_create(btn);
+      lv_obj_t *label = lv_label_create(content_parent);
       lv_label_set_text(label, climate_option_label(option).c_str());
       lv_label_set_long_mode(label, jc4880p443_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
       lv_obj_set_width(label, jc4880p443_layout ? LV_SIZE_CONTENT : lv_pct(100));
