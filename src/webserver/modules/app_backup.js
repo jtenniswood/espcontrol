@@ -113,6 +113,7 @@ function importConfig() {
   input.type = "file";
   input.accept = ".json";
   input.style.display = "none";
+  var importPostThrottleMs = 75;
 
   function cleanupInput() {
     if (input.parentNode) input.parentNode.removeChild(input);
@@ -149,6 +150,8 @@ function importConfig() {
         showBanner(backupPlan.warnings[warningIdx], "warning");
       }
 
+      setPostThrottle(importPostThrottleMs);
+      resetPostQueueError();
       postText(entityName("button_on_color"), backupPlan.config.button_on_color);
       postText(entityName("button_off_color"), backupPlan.config.button_off_color);
       postText(entityName("sensor_card_color"), backupPlan.config.sensor_card_color);
@@ -383,7 +386,10 @@ function importConfig() {
       renderPreview();
       renderButtonSettings();
       switchTab("screen");
-      showBanner("Configuration imported successfully", "success");
+      setPostThrottle(0);
+      postQueueIdle().then(function () {
+        if (!postQueueHadError()) showBanner("Configuration imported successfully", "success");
+      });
       cleanupInput();
     };
     reader.readAsText(input.files[0]);

@@ -550,26 +550,27 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("              id(backlight_sleep_display_off).stop();")
     lines.append("              id(backlight_fade_current_ui_to_black).stop();")
     lines.append("              id(backlight_schedule_display_off).stop();")
+    lines.append("              id(show_cover_art_view).stop();")
+    lines.append("              id(cover_art_delay_timer).stop();")
+    lines.append("              id(cover_art_show_track_overlay).stop();")
     lines.append("              id(show_clock_view).stop();")
     lines.append("              id(show_dimmed_view).stop();")
     lines.append("              id(clock_screensaver_refresh_brightness).stop();")
     lines.append("              id(screensaver_dimmed_refresh_brightness).stop();")
     lines.append("              id(display_asleep) = false;")
+    lines.append("              id(cover_art_screensaver_active) = false;")
     lines.append("              id(screensaver_display_off_active) = false;")
     lines.append("              id(screensaver_dimmed_active) = false;")
+    lines.append("              lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);")
+    lines.append("              lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);")
+    lines.append("              lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);")
+    lines.append("              lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);")
     lines.append("              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);")
     lines.append("              id(backlight_apply_brightness).execute();")
     lines.append("            };")
     lines.append("            cfg.resume_display_takeover = []() {")
     lines.append("              id(display_takeover_suspended) = false;")
-    lines.append("              if (id(screensaver_sensor_sleep_pending) &&")
-    lines.append("                  id(screensaver_mode).state == \"sensor\" &&")
-    lines.append("                  !id(presence_detected)) {")
-    lines.append("                id(screensaver_sleep_sensor).execute();")
-    lines.append("                return;")
-    lines.append("              }")
-    lines.append("              id(home_screen_idle_check).execute();")
-    lines.append("              id(screensaver_idle_check).execute();")
+    lines.append("              id(display_takeover_resume_restore).execute();")
     lines.append("            };")
     if image_card_count > 0:
         lines.append("            static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {")
@@ -778,7 +779,9 @@ def script_block(device: dict) -> str:
             [
                 "script:",
                 "  - id: refresh_button_grid",
+                "    mode: restart",
                 "    then:",
+                "      - delay: 3s",
                 "      - lambda: |-",
                 refresh_block(device),
                 *refresh_subpage_arrays(device),
@@ -795,7 +798,9 @@ def script_block(device: dict) -> str:
         [
             "script:",
             "  - id: refresh_button_grid",
+            "    mode: restart",
             "    then:",
+            "      - delay: 3s",
             "      - lambda: |-",
             refresh_block(device),
             "          grid_refresh_layout(slots, cfg,",

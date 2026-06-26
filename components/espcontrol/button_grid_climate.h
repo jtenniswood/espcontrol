@@ -679,6 +679,13 @@ inline int climate_modal_arc_value(ClimateControlCtx *ctx, bool temp_enabled, in
   return value;
 }
 
+inline int climate_target_from_modal_arc_value(ClimateControlCtx *ctx, int value) {
+  if (!ctx) return CLIMATE_DEFAULT_TARGET_TENTHS;
+  value = climate_clamp_tenths(ctx, value);
+  if (climate_uses_cooling_arc(ctx)) return ctx->min_tenths + ctx->max_tenths - value;
+  return value;
+}
+
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
   if (!ctx) return DEFAULT_SLIDER_COLOR;
   if (ctx->hvac_action == "heating") return CLIMATE_HEATING_COLOR;
@@ -1692,13 +1699,16 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     if (ui.updating_arc || !ui.active) return;
     ui.dragging_arc = true;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    climate_preview_selected_target(ui.active, lv_arc_get_value(arc));
+    climate_preview_selected_target(ui.active,
+      climate_target_from_modal_arc_value(ui.active, lv_arc_get_value(arc)));
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (ui.updating_arc || !ui.active) return;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    int value = ui.has_drag_preview ? ui.drag_preview_tenths : lv_arc_get_value(arc);
+    int value = ui.has_drag_preview
+      ? ui.drag_preview_tenths
+      : climate_target_from_modal_arc_value(ui.active, lv_arc_get_value(arc));
     ui.dragging_arc = false;
     ui.has_drag_preview = false;
     climate_apply_selected_target(ui.active, value, true, false);

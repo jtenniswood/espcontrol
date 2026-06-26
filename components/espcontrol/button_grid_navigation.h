@@ -67,7 +67,7 @@ inline void navigation_close_modals_for_display_takeover() {
   option_select_hide_modal();
   switch_confirmation_hide_modal();
   alarm_pin_hide_modal();
-  alarm_control_hide_modal();
+  if (!alarm_display_takeover_active()) alarm_control_hide_modal();
   network_status_hide_modal();
 }
 

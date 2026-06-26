@@ -855,6 +855,16 @@ inline AlarmActionCtx *grid_delete_alarm_action_with_owner(lv_obj_t *owner,
   return ctx;
 }
 
+inline AlarmCardCtx *grid_delete_alarm_card_with_owner(lv_obj_t *owner,
+                                                       AlarmCardCtx *ctx) {
+  if (owner != nullptr && ctx != nullptr) {
+    lv_obj_add_event_cb(owner, [](lv_event_t *e) {
+      grid_delete_alarm_card_runtime_ptr(lv_event_get_user_data(e));
+    }, LV_EVENT_DELETE, ctx);
+  }
+  return ctx;
+}
+
 struct GridRuntimeAllocation {
   lv_obj_t *owner = nullptr;
   void *ptr = nullptr;
@@ -888,6 +898,7 @@ inline void grid_delete_transient_status_label_runtime_ptr(void *ptr) {
 inline void grid_delete_alarm_card_runtime_ptr(void *ptr) {
   AlarmCardCtx *ctx = static_cast<AlarmCardCtx *>(ptr);
   if (ctx != nullptr) {
+    alarm_release_arming_takeover(ctx);
     if (ctx->arm_delay_timer != nullptr) {
       lv_timer_del(ctx->arm_delay_timer);
       ctx->arm_delay_timer = nullptr;
@@ -1195,7 +1206,9 @@ inline void grid_phase2(
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           lv_obj_get_style_text_color(s.text_lbl, LV_PART_MAIN),
           display_main_width_percent(display),
-          false);
+          false,
+          cfg.suspend_display_takeover,
+          cfg.resume_display_takeover);
         grid_track_alarm_card_runtime(s.btn, ctx);
         lv_obj_set_user_data(s.btn, ctx);
         subscribe_alarm_state(ctx);
@@ -1225,6 +1238,8 @@ inline void grid_phase2(
         alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
         alarm_action_card->width_compensation_percent = display_main_width_percent(display);
         alarm_action_card->grid_cols = COLS;
+        alarm_action_card->suspend_display_takeover = cfg.suspend_display_takeover;
+        alarm_action_card->resume_display_takeover = cfg.resume_display_takeover;
         alarm_set_card_state_colors(alarm_action_card, alarm_action_card->on_color);
 
         AlarmActionCtx *action_ctx = grid_track_alarm_action_runtime(s.btn, new AlarmActionCtx());
@@ -1464,7 +1479,7 @@ inline void grid_phase2(
         has_on ? on_val : DEFAULT_SLIDER_COLOR,
         has_off ? off_val : DEFAULT_OFF_COLOR,
         display_icon_font(display),
-        display_main_width_percent(display));
+        display_volume_width_percent(display));
       grid_track_runtime_allocation(s.btn, ctx);
       subscribe_cover_control_state(ctx);
       continue;
@@ -1731,7 +1746,7 @@ inline void grid_phase2(
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
             has_off ? off_val : DEFAULT_OFF_COLOR,
             display_icon_font(display),
-            display_main_width_percent(display));
+            display_volume_width_percent(display));
           grid_delete_with_owner(sb_btn, ctx);
           subscribe_cover_control_state(ctx);
           add_parent_indicator(sb_cfg.entity);
@@ -1834,8 +1849,10 @@ inline void grid_phase2(
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             lv_obj_get_style_text_color(sub_slot.text_lbl, LV_PART_MAIN),
             display_main_width_percent(display),
-            false);
-          grid_delete_with_owner(sb_btn, ctx);
+            false,
+            cfg.suspend_display_takeover,
+            cfg.resume_display_takeover);
+          grid_delete_alarm_card_with_owner(sb_btn, ctx);
           ctx->grid_page = sub_scr;
           lv_obj_set_user_data(sb_btn, ctx);
           subscribe_alarm_state(ctx);
@@ -1871,6 +1888,8 @@ inline void grid_phase2(
           alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
           alarm_action_card->width_compensation_percent = display_main_width_percent(display);
           alarm_action_card->grid_cols = COLS;
+          alarm_action_card->suspend_display_takeover = cfg.suspend_display_takeover;
+          alarm_action_card->resume_display_takeover = cfg.resume_display_takeover;
           AlarmActionCtx *action_ctx = grid_delete_alarm_action_with_owner(sb_btn, new AlarmActionCtx());
           action_ctx->card = alarm_action_card;
           action_ctx->mode = alarm_action_valid(sb_cfg.sensor) ? sb_cfg.sensor : "away";

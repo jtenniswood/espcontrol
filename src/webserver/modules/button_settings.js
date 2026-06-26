@@ -548,6 +548,7 @@ function renderButtonSettings(forceOpen) {
   function makeIconPicker(pickerId, inputId, currentVal, onSelect, labelText) {
     var icf = document.createElement("div");
     icf.className = "sp-field";
+    if (labelText === "On Icon") icf.classList.add("sp-icon-on-field");
     icf.appendChild(fieldLabel(labelText || "Icon", inputId));
     var picker = document.createElement("div");
     picker.className = "sp-icon-picker";

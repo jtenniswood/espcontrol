@@ -822,6 +822,7 @@ function postRecord(requestUrl) {
   const url = new URL(requestUrl);
   const parts = url.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
   return {
+    time: Date.now(),
     domain: parts[0] || "",
     name: parts[1] || "",
     action: parts.slice(2).join("/"),
@@ -875,7 +876,7 @@ function backupFixture(device, slots) {
     sensor_card_color: "202020",
     buttons: backupButtons(slots),
     subpages: {
-      3: "1,B|media_player.living:Living:Speaker:Auto:play_pause::media",
+      3: "~B,1,2,6,5,3,4,7|,switch.office_filament_heater_893b,Heater,Movie Roll,,sensor.office_filament_heater_sensor_humidity,%25,,confirm_off%2Cconfirm_on|,switch.office_3d_printer_power,Printer,Printer 3D,,sensor.centauri_carbon_percent_complete_helper,%25|,switch.battery_charger,Battery,Battery 30%25,Battery Charging|H,climate.central_heating,Heating|C,cover.office_blind,Blind,Blinds Open,Blinds,modal,,,cover_tabs=controls%257Cposition%257Ctilt|Y,alarm_control_panel.alarmo,Alarm,Security|H,climate.office_air_conditioner,Aircon",
     },
     settings: {
       indoor_temp_enable: true,
@@ -989,11 +990,17 @@ async function assertBackupImportSmoke(page, posts, testCase) {
   await waitForPost(posts, { domain: "text", name: "button_on_color", action: "set", value: "AA5500" }, "backup color import", before);
   await waitForPost(posts, { domain: "text", name: "button_3_config", action: "set" }, "backup subpage button config", before);
   await waitForPost(posts, { domain: "text", name: "Subpage 3 Config", action: "set" }, "backup subpage config", before);
+  await waitForPost(posts, { domain: "text", name: "Subpage 3 Config Ext", action: "set" }, "backup subpage config extension", before);
   await waitForPost(posts, { domain: "select", name: "screen__timezone", action: "set", option: "Europe/London (GMT+0)" }, "backup timezone import", before);
   await waitForPost(posts, { domain: "select", name: "screen__language", action: "set", option: "en" }, "backup language import", before);
   await waitForPost(posts, { domain: "switch", name: "screen__clock_bar_time", action: "turn_on" }, "backup clock bar time reset", before);
   await waitForPost(posts, { domain: "number", name: "Screen: Daytime Brightness", action: "set", value: "88" }, "backup brightness import", before);
   await waitForPost(posts, { domain: "select", name: "screen__rotation", action: "set", option: "90" }, "backup rotation import", before);
+  const importPosts = posts.slice(before);
+  assert(
+    importPosts.length >= 3 && importPosts[1].time - importPosts[0].time >= 40,
+    `backup import posts should be throttled for device stability: ${JSON.stringify(importPosts.slice(0, 3), null, 2)}`
+  );
 
   await importBackup(page, "{", "invalid-backup");
   await page.waitForSelector(".sp-banner.sp-error");

@@ -98,6 +98,8 @@ esphome:
       # Keep LVGL active while the backlight is off so the GSL3680 touch
       # controller can still deliver the wake tap from display-off screensaver.
       - "-DESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1"
+      # Rebuild marker for noisy/multi-contact wake taps on the GSL3680 panel.
+      - "-DESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1"
     build_src_flags:
       - "-Wno-literal-suffix"
   on_boot:
