@@ -41,8 +41,8 @@ constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX = 178;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX = 132;
 constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_OPTION_TILE_MAX_PX = 162;
 constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_OPTION_TILE_MIN_PX = 124;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_MAX_PX = 126;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_MIN_PX = 104;
+constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_MAX_PX = 156;
+constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_MIN_PX = 132;
 constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_H_PX = 94;
 constexpr int CLIMATE_MODAL_JC4880P443_OPTION_ICON_ZOOM = 178;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_MIN_H_PX = 56;
@@ -1590,7 +1590,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_pad_left(btn, 14, LV_PART_MAIN);
       lv_obj_set_style_pad_right(btn, 14, LV_PART_MAIN);
       lv_obj_set_style_pad_row(btn, jc4880p443_layout ? 0 : 8, LV_PART_MAIN);
-      lv_obj_set_style_pad_column(btn, jc4880p443_layout ? 4 : 0, LV_PART_MAIN);
+      lv_obj_set_style_pad_column(btn, jc4880p443_layout ? 8 : 0, LV_PART_MAIN);
       lv_obj_set_layout(btn, LV_LAYOUT_FLEX);
       lv_obj_set_style_flex_flow(btn,
         jc4880p443_layout ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
@@ -1602,8 +1602,12 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_label_set_text(icon_lbl, climate_option_icon(section_kind, option));
       lv_obj_set_style_text_color(icon_lbl, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-      if (ctx->icon_font) lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
-      if (jc4880p443_layout) lv_obj_set_style_transform_zoom(
+      if (jc4880p443_layout && ctx->card_icon_font) {
+        lv_obj_set_style_text_font(icon_lbl, ctx->card_icon_font, LV_PART_MAIN);
+      } else if (ctx->icon_font) {
+        lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
+      }
+      if (jc4880p443_layout && !ctx->card_icon_font) lv_obj_set_style_transform_zoom(
         icon_lbl, CLIMATE_MODAL_JC4880P443_OPTION_ICON_ZOOM, LV_PART_MAIN);
 
       lv_obj_t *label = lv_label_create(btn);
