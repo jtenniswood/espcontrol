@@ -395,7 +395,7 @@ def firmware_climate_control_tab_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_climate.h: filter climate tabs using Home Assistant capabilities")
     if "ui.tab = climate_control_first_visible_tab(ctx);" not in text:
         errors.append("components/espcontrol/button_grid_climate.h: fall back when the active climate tab disappears")
-    if "bool show_tab_bar = ctx->all_controls && tab_count > 1;" not in text:
+    if "tabs_layout.show_tab_bar = ctx && ctx->all_controls && tabs_layout.tab_count > 1;" not in text:
         errors.append("components/espcontrol/button_grid_climate.h: hide climate modal tabs unless All Controls has multiple visible controls")
     if 'ctx->all_controls = p.type == "climate_control";' not in text:
         errors.append("components/espcontrol/button_grid_climate.h: keep climate tabs scoped to the All Controls subtype")
