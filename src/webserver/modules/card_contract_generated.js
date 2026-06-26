@@ -1096,6 +1096,17 @@ var CARD_CONTRACT_CARDS = {
         }
       },
       {
+        "name": "thresholds",
+        "label": "Conditional Colors",
+        "kind": "color_thresholds",
+        "supportedWhen": {
+          "precisionNot": [
+            "icon",
+            "text"
+          ]
+        }
+      },
+      {
         "name": "active_color",
         "label": "Active Color",
         "kind": "flag",
@@ -1564,6 +1575,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "state_output_2": "state_output_2",
   "subpage_kind": "subpage_kind",
   "temperature_step": "temperature_step",
+  "thresholds": "thresholds",
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",

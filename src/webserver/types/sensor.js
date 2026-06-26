@@ -52,6 +52,82 @@ var SENSOR_CARD_METADATA = {
   },
 };
 
+// Renders the "Conditional Colors" editor: a list of value/colour thresholds
+// that recolour the sensor value text by the live reading. Stored in the
+// packed "thresholds" option via setSensorThresholds().
+function renderSensorThresholdsEditor(section, b, helpers) {
+  var wrap = document.createElement("div");
+  wrap.className = "sp-field sp-sensor-thresholds";
+  wrap.appendChild(helpers.fieldLabel("Conditional Colors"));
+
+  var hint = document.createElement("div");
+  hint.className = "sp-hint";
+  hint.textContent = "Colour the value text by reading. Each colour applies at or above its threshold.";
+  wrap.appendChild(hint);
+
+  var list = document.createElement("div");
+  list.className = "sp-threshold-list";
+  wrap.appendChild(list);
+
+  function persist() {
+    var collected = [];
+    var rowEls = list.querySelectorAll(".sp-threshold-row");
+    for (var i = 0; i < rowEls.length; i++) {
+      var valInp = rowEls[i].querySelector(".sp-threshold-value");
+      var valStr = valInp ? valInp.value.trim() : "";
+      if (valStr === "") continue;
+      collected.push({ value: valStr, color: rowEls[i]._hex || "" });
+    }
+    setSensorThresholds(b, collected);
+    helpers.saveField("options", b.options);
+  }
+
+  function addRow(value, color) {
+    var row = document.createElement("div");
+    row.className = "sp-threshold-row";
+    row._hex = String(color || "808080").replace(/^#/, "").toUpperCase();
+
+    var valInp = document.createElement("input");
+    valInp.type = "number";
+    valInp.className = "sp-input sp-threshold-value";
+    valInp.placeholder = "e.g. 1000";
+    if (value !== undefined && value !== null && value !== "") valInp.value = value;
+    valInp.addEventListener("change", persist);
+    row.appendChild(valInp);
+
+    var colorCtl = colorField("", row._hex, function (hex) {
+      row._hex = hex;
+      persist();
+    });
+    row.appendChild(colorCtl);
+
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "sp-threshold-remove";
+    remove.title = "Remove threshold";
+    remove.innerHTML = '<span class="mdi mdi-close"></span>';
+    remove.addEventListener("click", function () {
+      list.removeChild(row);
+      persist();
+    });
+    row.appendChild(remove);
+
+    list.appendChild(row);
+  }
+
+  var rows = parseSensorThresholds(b.options);
+  for (var i = 0; i < rows.length; i++) addRow(rows[i].value, rows[i].color);
+
+  var addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "sp-secondary-btn";
+  addBtn.textContent = "+ Add threshold";
+  addBtn.addEventListener("click", function () { addRow("", "808080"); });
+  wrap.appendChild(addBtn);
+
+  section.appendChild(wrap);
+}
+
 registerButtonType("sensor", {
   label: function () { return cardContractCardLabel("sensor"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("sensor"); },
@@ -154,6 +230,7 @@ registerButtonType("sensor", {
     numericSection.appendChild(precisionField.field);
 
     helpers.renderCardLargeNumbersToggle(numericSection, b, helpers, SENSOR_CARD_METADATA);
+    renderSensorThresholdsEditor(numericSection, b, helpers);
     panel.appendChild(numericSection);
 
     var textSection = condField();

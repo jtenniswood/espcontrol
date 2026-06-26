@@ -510,7 +510,7 @@ const sensorOptionSpecs = hooks.cardContractOptions("sensor");
 const sensorOptionByName = Object.fromEntries(sensorOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(sensorOptionSpecs, (option) => option.name),
-  ["large_numbers", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+  ["large_numbers", "thresholds", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
   "sensor option specs preserve current option order"
 );
 assert.deepStrictEqual(
@@ -532,6 +532,46 @@ assert.strictEqual(
   hooks.cardContractOptionSupportedFor("sensor", "large_numbers", { precision: "icon" }),
   false,
   "sensor large-number option blocks icon mode"
+);
+assert.strictEqual(
+  sensorOptionByName.thresholds.kind,
+  "color_thresholds",
+  "sensor thresholds option uses the color_thresholds kind"
+);
+assert.deepStrictEqual(
+  Array.from(sensorOptionByName.thresholds.supportedWhen.precisionNot),
+  ["icon", "text"],
+  "sensor thresholds option is numeric-only"
+);
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("sensor", "thresholds", { precision: "icon" }),
+  false,
+  "sensor thresholds option blocks icon mode"
+);
+// Threshold codec round-trips, sorts ascending, and drops invalid rows.
+const thresholdsOptions = hooks.setSensorThresholds(
+  { type: "sensor", precision: "", options: "" },
+  [
+    { value: 1600, color: "#FF0000" },
+    { value: 800, color: "00ff00" },
+    { value: "", color: "ABCDEF" },
+    { value: 1200, color: "zzzzzz" },
+  ]
+);
+assert.deepStrictEqual(
+  Array.from(hooks.parseSensorThresholds(thresholdsOptions), (row) => ({ value: row.value, color: row.color })),
+  [
+    { value: 800, color: "00FF00" },
+    { value: 1600, color: "FF0000" },
+  ],
+  "sensor thresholds round-trip sorts ascending and drops invalid rows"
+);
+assert.strictEqual(
+  hooks.parseSensorThresholds(
+    hooks.normalizeSensorOptions(thresholdsOptions, "text")
+  ).length,
+  0,
+  "sensor thresholds are dropped when switching to an unsupported mode"
 );
 assert.strictEqual(sensorOptionByName.active_color.hidden, true, "sensor active-colour option spec remains hidden");
 assert.strictEqual(sensorOptionByName.active_color.migration, "drop", "sensor active-colour option spec documents cleanup");

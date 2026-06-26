@@ -453,6 +453,16 @@ var CSS =
   "height:calc(100% + 16px);cursor:pointer;opacity:0}" +
   ".sp-color-row .sp-input{flex:1}" +
 
+  ".sp-threshold-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}" +
+  ".sp-threshold-row{display:flex;align-items:center;gap:8px}" +
+  ".sp-threshold-row .sp-color-row{flex:1;margin-bottom:0}" +
+  ".sp-threshold-value{width:88px;flex-shrink:0;text-align:center}" +
+  ".sp-threshold-remove{display:inline-flex;align-items:center;justify-content:center;" +
+  "width:38px;height:38px;flex-shrink:0;border:1px solid var(--border);border-radius:8px;" +
+  "background:var(--surface2);color:var(--text2);cursor:pointer;font-size:1.1rem;line-height:1;" +
+  "transition:background .25s,border-color .25s,color .25s}" +
+  ".sp-threshold-remove:hover{border-color:var(--danger);color:var(--danger)}" +
+
   ".sp-number-row{display:flex;align-items:center;gap:8px;margin-bottom:16px}" +
   ".sp-number-row:last-child{margin-bottom:0}" +
   ".sp-number{width:80px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);" +

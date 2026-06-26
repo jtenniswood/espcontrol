@@ -32,6 +32,55 @@ inline void apply_sensor_active_color(lv_obj_t *btn, bool active_color,
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
 }
 
+// Conditional value-text colour by sensor value. Each entry is a
+// (threshold value, RGB colour) pair kept sorted ascending.
+using SensorThreshold = std::pair<float, uint32_t>;
+using SensorThresholds = std::vector<SensorThreshold>;
+
+// Parses the packed "thresholds" option value ("800:00ff00,1200:ffaa00") into
+// a sorted list. Invalid pairs are skipped. Colours are returned raw (no
+// display correction); callers apply that when building the palette.
+inline SensorThresholds parse_sensor_thresholds(const std::string &options) {
+  SensorThresholds out;
+  std::string raw = cfg_option_value(options, "thresholds");
+  if (raw.empty()) return out;
+  size_t start = 0;
+  while (start <= raw.length()) {
+    size_t comma = raw.find(',', start);
+    if (comma == std::string::npos) comma = raw.length();
+    std::string part = raw.substr(start, comma - start);
+    start = comma + 1;
+    if (part.empty()) continue;
+    size_t colon = part.find(':');
+    if (colon == std::string::npos) continue;
+    std::string val_str = part.substr(0, colon);
+    std::string hex = part.substr(colon + 1);
+    if (val_str.empty() || hex.size() != 6) continue;
+    char *end = nullptr;
+    float value = std::strtof(val_str.c_str(), &end);
+    if (end == val_str.c_str() || !std::isfinite(value)) continue;
+    bool valid = false;
+    uint32_t color = parse_hex_color(hex, valid);
+    if (!valid) continue;
+    out.emplace_back(value, color);
+  }
+  std::sort(out.begin(), out.end(),
+    [](const SensorThreshold &a, const SensorThreshold &b) { return a.first < b.first; });
+  return out;
+}
+
+// Returns the colour of the highest threshold whose value is <= val, or the
+// fallback when val is below every threshold.
+inline uint32_t resolve_threshold_color(float val, const SensorThresholds &thresholds,
+                                        uint32_t fallback) {
+  uint32_t color = fallback;
+  for (const auto &entry : thresholds) {
+    if (val >= entry.first) color = entry.second;
+    else break;
+  }
+  return color;
+}
+
 // Subscribe to a HA sensor entity and update an LVGL label with its numeric value.
 inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sensor_id,
                                    int precision = 0,
@@ -40,23 +89,38 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
                                    lv_obj_t *availability_obj = nullptr,
                                    bool active_color = false,
                                    uint32_t on_color = DEFAULT_SLIDER_COLOR,
-                                   uint32_t sensor_color = DEFAULT_TERTIARY_COLOR) {
+                                   uint32_t sensor_color = DEFAULT_TERTIARY_COLOR,
+                                   SensorThresholds thresholds = SensorThresholds()) {
   if (availability_obj) register_ha_control_availability(availability_obj, availability_obj, false);
   std::string display_unit = trim_display_unit(unit);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
       [sensor_lbl, precision, unit_lbl, display_unit, availability_obj,
-       active_color, on_color, sensor_color](esphome::StringRef state) {
+       active_color, on_color, sensor_color, thresholds](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       if (availability_obj) {
         apply_control_availability(availability_obj, availability_obj, !unavailable, false);
       }
-      apply_sensor_active_color(availability_obj, active_color, state,
-        on_color, sensor_color, unavailable);
 
       float val = 0.0f;
-      if (!unavailable && parse_float_ref(state, val) && std::isfinite(val)) {
+      bool have_val = !unavailable && parse_float_ref(state, val) && std::isfinite(val);
+
+      if (!thresholds.empty()) {
+        // Threshold colouring recolours the sensor value text on every state
+        // update, so a CO2 sensor (etc.) shifts green/amber/red as it changes.
+        uint32_t color = have_val ? resolve_threshold_color(val, thresholds, sensor_color)
+                                  : sensor_color;
+        if (sensor_lbl) lv_obj_set_style_text_color(sensor_lbl, lv_color_hex(color),
+          static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+        if (unit_lbl) lv_obj_set_style_text_color(unit_lbl, lv_color_hex(color),
+          static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+      } else {
+        apply_sensor_active_color(availability_obj, active_color, state,
+          on_color, sensor_color, unavailable);
+      }
+
+      if (have_val) {
         char buf[16];
         format_fixed_decimal(buf, sizeof(buf), val, precision);
         lv_label_set_text(sensor_lbl, buf);
