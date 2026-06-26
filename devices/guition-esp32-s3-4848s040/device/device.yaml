@@ -34,6 +34,10 @@ esp32:
       # and LVGL buffers are initialized.
       CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
       CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      # Prefer IRAM headroom over maximum WiFi throughput on this display.
+      CONFIG_ESP_WIFI_IRAM_OPT: "n"
+      CONFIG_ESP_WIFI_RX_IRAM_OPT: "n"
+      CONFIG_ESP_PHY_IRAM_OPT: "n"
 
 # ---------------------------------------------------------------------------
 # External component
