@@ -1591,7 +1591,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_pad_right(btn, jc4880p443_layout ? 16 : 14, LV_PART_MAIN);
       lv_obj_set_style_pad_row(btn, jc4880p443_layout ? 0 : 8, LV_PART_MAIN);
       lv_obj_set_style_pad_column(btn, jc4880p443_layout ? 8 : 0, LV_PART_MAIN);
-      lv_obj_set_layout(btn, LV_LAYOUT_FLEX);
+      lv_obj_set_layout(btn, jc4880p443_layout ? LV_LAYOUT_NONE : LV_LAYOUT_FLEX);
       lv_obj_set_style_flex_flow(btn,
         jc4880p443_layout ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
       lv_obj_set_style_flex_main_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
@@ -1633,6 +1633,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->option_menu_font) lv_obj_set_style_text_font(label, ctx->option_menu_font, LV_PART_MAIN);
+      if (jc4880p443_layout) lv_obj_center(content_parent);
 
       lv_obj_add_event_cb(btn, [](lv_event_t *e) {
         ClimateOptionClick *click = (ClimateOptionClick *)lv_event_get_user_data(e);
@@ -2050,8 +2051,13 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
         if (!lv_obj_has_flag(tile, LV_OBJ_FLAG_CLICKABLE)) continue;
         lv_obj_set_size(tile, tile_w, climate_control_option_tile_height(layout, tile_w));
         lv_obj_set_style_radius(tile, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
-        lv_obj_t *label = lv_obj_get_child(tile, 1);
-        if (label && !control_modal_is_jc4880p443_size(layout)) lv_obj_set_width(label, lv_pct(100));
+        if (control_modal_is_jc4880p443_size(layout)) {
+          lv_obj_t *content = lv_obj_get_child(tile, 0);
+          if (content) lv_obj_center(content);
+        } else {
+          lv_obj_t *label = lv_obj_get_child(tile, 1);
+          if (label) lv_obj_set_width(label, lv_pct(100));
+        }
       }
     }
   }
