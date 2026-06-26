@@ -34,6 +34,8 @@ constexpr lv_coord_t CLIMATE_MODAL_4848_LABELS_DOWN_REF_PX = 12;
 constexpr lv_coord_t CLIMATE_MODAL_4848_OPTION_CHIP_W_REF_PX = 200;
 constexpr lv_coord_t CLIMATE_MODAL_4848_OPTION_CHIP_GAP_REF_PX = 12;
 constexpr lv_coord_t CLIMATE_MODAL_P4_86_OPTION_CHIP_W_REF_PX = 280;
+constexpr lv_coord_t CLIMATE_MODAL_P4_86_TAB_REF_PX = 58;
+constexpr lv_coord_t CLIMATE_MODAL_P4_86_TAB_CONTENT_GAP_REF_PX = 30;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 4;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_MIN_H_PX = 56;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_PAD_Y_REF_PX = 6;
@@ -603,7 +605,9 @@ inline ClimateControlTabLayout climate_control_calc_tab_layout(
   tabs_layout.tab_count = static_cast<int>(visible_tabs.count);
   if (tabs_layout.tab_count < 1) tabs_layout.tab_count = 1;
   tabs_layout.show_tab_bar = ctx && ctx->all_controls && tabs_layout.tab_count > 1;
-  tabs_layout.tab_size = control_modal_prominent_card_tab_size(layout);
+  tabs_layout.tab_size = control_modal_uses_p4_86_tuning(layout)
+    ? control_modal_scaled_px(CLIMATE_MODAL_P4_86_TAB_REF_PX, layout.short_side)
+    : control_modal_prominent_card_tab_size(layout);
   tabs_layout.selected_tab_size = tabs_layout.tab_size + tabs_layout.tab_size / 8;
   tabs_layout.tab_frame_pad = tabs_layout.tab_size / 5;
   tabs_layout.tab_gap = control_modal_control_tab_gap(layout, tabs_layout.tab_size);
@@ -616,6 +620,7 @@ inline ClimateControlTabLayout climate_control_calc_tab_layout(
   lv_coord_t min_tab_size = control_modal_control_tab_min_size(layout);
   while (tabs_layout.show_tab_bar &&
          !control_modal_uses_compact_portrait_tuning(layout) &&
+         !control_modal_uses_p4_86_tuning(layout) &&
          tabs_layout.centered_left < tabs_layout.tab_safe_left &&
          tabs_layout.tab_size > min_tab_size) {
     tabs_layout.tab_size--;
@@ -769,6 +774,12 @@ inline lv_coord_t climate_control_labels_down_ref(const ControlModalLayout &layo
   return 0;
 }
 
+inline lv_coord_t climate_control_tab_content_gap(const ControlModalLayout &layout) {
+  if (climate_control_uses_p4_86_modal_tuning(layout))
+    return control_modal_scaled_px(CLIMATE_MODAL_P4_86_TAB_CONTENT_GAP_REF_PX, layout.short_side);
+  return control_modal_prominent_card_tab_content_gap(layout);
+}
+
 inline lv_coord_t climate_font_line_height(const lv_font_t *font, lv_coord_t fallback) {
   return font && font->line_height > 0 ? font->line_height : fallback;
 }
@@ -847,8 +858,7 @@ inline ControlModalLayout climate_control_calc_layout(ClimateControlCtx *ctx) {
   ClimateControlTabLayout tabs_layout = climate_control_calc_tab_layout(ctx, layout);
   if (tabs_layout.show_tab_bar) {
     lv_coord_t tab_bottom = layout.inset + 2 + tabs_layout.tab_frame_h;
-    lv_coord_t desired_control_top =
-      tab_bottom + control_modal_prominent_card_tab_content_gap(layout);
+    lv_coord_t desired_control_top = tab_bottom + climate_control_tab_content_gap(layout);
     lv_coord_t current_control_top = layout.panel_h / 2 + layout.arc_center_y - layout.arc_size / 2;
     if (current_control_top < desired_control_top) {
       lv_coord_t control_shift = desired_control_top - current_control_top;
@@ -1832,7 +1842,8 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     lv_obj_t *label = lv_obj_get_child(tab_btn, 0);
     if (label) {
       lv_obj_set_style_transform_zoom(label,
-        control_modal_uses_compact_portrait_tuning(layout) ? 220 : 180,
+        (control_modal_uses_compact_portrait_tuning(layout) ||
+         climate_control_uses_p4_86_modal_tuning(layout)) ? 220 : 180,
         LV_PART_MAIN);
     }
     climate_center_tab_icon(label);
@@ -1930,7 +1941,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     lv_obj_align(ui.menu_preset_btn, LV_ALIGN_CENTER, 0, (tile_h + menu_gap) / 2);
     if (ui.option_list_view) {
       lv_coord_t list_top = show_tab_bar
-        ? layout.inset + tab_frame_h + control_modal_prominent_card_tab_content_gap(layout)
+        ? layout.inset + tab_frame_h + climate_control_tab_content_gap(layout)
         : layout.inset + layout.back_size + 8;
       lv_coord_t list_bottom = layout.inset;
       lv_obj_set_size(ui.option_list_view, layout.panel_w, layout.panel_h);
