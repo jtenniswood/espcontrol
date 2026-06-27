@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const SENSOR_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "sensor_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const sensorNormalizationFixtures = JSON.parse(fs.readFileSync(SENSOR_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -776,6 +778,16 @@ const legacyStateLabelSensor = hooks.parseButtonConfig(";;;;sensor.bin_level;;se
 assert.strictEqual(legacyStateLabelSensor.options, "state_labels,state_input=high,state_output=Please empty", "legacy high label migrates to status translation");
 const numericStateLabelSensor = hooks.parseButtonConfig(";;;;sensor.bin_level;;sensor;0;state_labels,state_high_label=Please%20empty");
 assert.strictEqual(numericStateLabelSensor.options, "", "sensor state labels are text-mode only");
+for (const fixture of sensorNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `sensor fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `sensor fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 
 assertButtonMigration(
   hooks,

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,7 @@ BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
 CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
 DEVICES_DIR = ROOT / "devices"
+SENSOR_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "sensor_card_normalization_fixtures.json"
 
 
 CPP_SOURCE = r'''
@@ -629,6 +631,24 @@ def check_clock_bar_visual_gaps() -> None:
             raise RuntimeError(f"{packages} must define {needle}")
 
 
+def cpp_string(value: str) -> str:
+    return json.dumps(value)
+
+
+def generated_sensor_normalization_assertions() -> str:
+    fixtures = json.loads(SENSOR_NORMALIZATION_FIXTURES.read_text(encoding="utf-8"))
+    lines = ["  // Shared sensor saved-card normalization fixtures."]
+    for fixture in fixtures:
+        name = fixture["name"]
+        input_value = fixture["input"]
+        expected = fixture["expected"]
+        var_name = "sensor_fixture_" + "".join(ch if ch.isalnum() else "_" for ch in name.lower())
+        lines.append(f"  auto {var_name} = parse_cfg({cpp_string(input_value)});")
+        for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
+            lines.append(f"  assert({var_name}.{field} == {cpp_string(expected[field])});")
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     check_clock_bar_visual_gaps()
     cxx = compiler()
@@ -666,7 +686,13 @@ def main() -> int:
         )
         source = tmp_path / "check_firmware_parser.cpp"
         binary = tmp_path / "check_firmware_parser"
-        source.write_text(CPP_SOURCE, encoding="utf-8")
+        source.write_text(
+            CPP_SOURCE.replace(
+                "  return 0;\n}",
+                generated_sensor_normalization_assertions() + "\n  return 0;\n}",
+            ),
+            encoding="utf-8",
+        )
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
     print("Firmware parser checks passed.")
