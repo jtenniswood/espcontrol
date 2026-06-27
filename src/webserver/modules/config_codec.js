@@ -1427,14 +1427,15 @@ function setActionScriptFields(b, fields) {
 function normalizeGarageLabelDisplayMode(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("garage", GARAGE_LABEL_DISPLAY_OPTION);
-  var values = spec && spec.values ? spec.values : ["label", "status"];
-  return values.indexOf(value) >= 0 ? value : "label";
+  var values = spec && spec.values ? spec.values : [];
+  var fallback = cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label");
+  return values.indexOf(value) >= 0 ? value : fallback;
 }
 
 function normalizeGarageOptions(options, mode) {
   var labelMode = normalizeGarageLabelDisplayMode(
     configOptionValue(options, GARAGE_LABEL_DISPLAY_OPTION));
-  return labelMode === "status"
+  return labelMode !== cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label")
     ? setConfigOptionValue("", GARAGE_LABEL_DISPLAY_OPTION, labelMode)
     : "";
 }

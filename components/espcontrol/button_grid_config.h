@@ -135,6 +135,7 @@ constexpr const char *LIGHT_CONTROL_TABS_OPTION = "light_tabs";
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = "cover_tabs";
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
+constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_display();
 
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
@@ -765,8 +766,8 @@ inline std::string normalize_garage_label_display(const std::string &value) {
 inline std::string garage_card_options_normalized(const std::string &options,
                                                   const std::string &sensor) {
   (void)sensor;
-  return normalize_garage_label_display(cfg_option_value(options, "label_display")) == "status"
-    ? "label_display=status"
+  return normalize_garage_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION)) == "status"
+    ? std::string(LABEL_DISPLAY_OPTION) + "=status"
     : "";
 }
 
@@ -1025,7 +1026,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (!card_runtime_garage_mode_valid(p.sensor)) p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
-    if (!p.sensor.empty()) p.icon_on.clear();
+    if (!p.sensor.empty()) p.icon_on = "Auto";
     p.options = garage_card_options_normalized(p.options, p.sensor);
   }
   if (p.type == "cover") {
