@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const DATE_TIME_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "date_time_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const dateTimeNormalizationFixtures = JSON.parse(fs.readFileSync(DATE_TIME_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -1344,6 +1346,16 @@ assertButtonRoundTrip(hooks, "timezone large numbers option", {
   precision: "",
   options: "large_numbers",
 }, false);
+for (const fixture of dateTimeNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `date/time fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `date/time fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 
 assertButtonRoundTrip(hooks, "weather current conditions card", {
   entity: "weather.forecast_home",
@@ -2824,7 +2836,7 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|X,,Kitchen%20
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|D")), {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ type: "calendar" }),
+    buttonShape({ entity: "sensor.date", type: "calendar" }),
   ],
 }, "compact calendar subpage parse");
 

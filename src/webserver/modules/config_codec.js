@@ -159,6 +159,36 @@ function normalizeButtonConfig(b) {
     b.icon = "Lock";
     b.icon_on = "Lock Open";
   }
+  if (b && b.type === "calendar") {
+    if (!b.entity) b.entity = cardContractDefaultConfig("calendar").entity;
+    b.label = "";
+    b.icon = "Auto";
+    b.icon_on = "Auto";
+    b.sensor = "";
+    b.unit = "";
+    b.precision = b.precision === "datetime" ? "datetime" : "";
+    b.options = normalizeDateTimeOptions("calendar", b.options, b.precision);
+  }
+  if (b && b.type === "clock") {
+    b.entity = "";
+    b.label = "";
+    b.icon = "Auto";
+    b.icon_on = "Auto";
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = normalizeDateTimeOptions("clock", b.options, b.precision);
+  }
+  if (b && b.type === "timezone") {
+    if (!b.entity) b.entity = cardContractDefaultConfig("timezone").entity;
+    b.label = "";
+    b.icon = "Auto";
+    b.icon_on = "Auto";
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = normalizeDateTimeOptions("timezone", b.options, b.precision);
+  }
   if (b && b.type === "image") {
     b.icon_on = "Auto";
     b.sensor = "";
@@ -1178,6 +1208,18 @@ function normalizeSensorOptions(options, precision) {
   return out;
 }
 
+function normalizeDateTimeOptions(type, options, precision) {
+  if (configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION) &&
+      cardContractOptionSupportedFor(type, SENSOR_LARGE_NUMBERS_OPTION, { precision: precision })) {
+    return copyLargeNumbersOption("", options);
+  }
+  if (largeNumbersExplicitlyDisabled(options) &&
+      cardContractOptionSupportedFor(type, SENSOR_LARGE_NUMBERS_OPTION, { precision: precision })) {
+    return copyLargeNumbersOption("", options);
+  }
+  return "";
+}
+
 function normalizeDoorWindowSubtype(value) {
   value = String(value || "").trim();
   return value === "window" ? "window" : "door";
@@ -1773,26 +1815,29 @@ function buttonConfigFields(b) {
   if (type === "local") type = "action";
   if (type === "local_sensor") type = "sensor";
   var label = b && b.label || "";
+  if (type === "calendar" || type === "clock" || type === "timezone") label = "";
   if (type === "screen_lock") label = "";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
-    (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+    (isBrightnessSliderType(type) || type === "calendar" || type === "clock" || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.sensor || "");
   if (b && b.type === "local") sensor = ACTION_CARD_LOCAL_ACTION;
   if (b && (b.type === "local_sensor" || sensorCardIsLocal(b))) sensor = SENSOR_CARD_LOCAL_SENSOR;
   var isLocalAction = type === "action" && sensor === ACTION_CARD_LOCAL_ACTION;
-  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.unit || "");
+  var unit = (isActionOptionSelect || type === "calendar" || type === "clock" || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.unit || "");
   if (isLocalAction) unit = "";
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
   if (isLocalAction && (!icon || icon === "Auto" || icon === "Flash")) icon = "Gesture Tap";
   if (type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
+  if (type === "calendar" || type === "clock" || type === "timezone") icon = "Auto";
   if (type === "screen_lock") icon = "Lock";
   if (type === "alarm_action" && (!icon || icon === "Auto")) icon = (alarmActionInfo(sensor) || alarmActionSpecs()[0]).icon;
   if (isFanCardType(type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(type);
   var iconOn = (isActionOptionSelect || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
+  if (type === "calendar" || type === "clock" || type === "timezone") iconOn = "Auto";
   if (isLocalAction) iconOn = "Auto";
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
   if (type === "screen_lock") iconOn = "Lock Open";
-  var precision = (isActionOptionSelect || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  var precision = (isActionOptionSelect || type === "clock" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.precision || "");
   if (isLocalAction) precision = "";
   if (sensor === SENSOR_CARD_LOCAL_SENSOR && precision !== "text" && precision !== "1" && precision !== "2") precision = "";
   if (type === "media") {
@@ -1816,6 +1861,7 @@ function buttonConfigFields(b) {
     if (!icon || icon === "Auto") icon = lawnMowerModeDefaultIcon(sensor);
   }
   if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
+  if (type === "calendar" && precision !== "datetime") precision = "";
   if (type === "image") {
     iconOn = "Auto";
     sensor = "";
@@ -1850,6 +1896,8 @@ function buttonConfigFields(b) {
     options = webhookButton.options || "";
   } else if (type === "screen_lock") {
     options = "";
+  } else if (type === "calendar" || type === "clock" || type === "timezone") {
+    options = normalizeDateTimeOptions(type, options, precision);
   } else if (type === "vacuum" || type === "lawn_mower") {
     options = "";
   } else if (type === "sensor") {
@@ -1888,6 +1936,18 @@ function buttonConfigFields(b) {
     precision = "";
     if (!icon || icon === "Auto") icon = "Motion Sensor Off";
     if (!iconOn || iconOn === "Auto") iconOn = "Motion Sensor";
+  }
+  if (type === "calendar") {
+    b = b || {};
+    if (!b.entity) b.entity = cardContractDefaultConfig("calendar").entity;
+  }
+  if (type === "clock") {
+    b = b || {};
+    b.entity = "";
+  }
+  if (type === "timezone") {
+    b = b || {};
+    if (!b.entity) b.entity = cardContractDefaultConfig("timezone").entity;
   }
   if (!type && !sensor) {
     unit = "";

@@ -758,6 +758,18 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   return card_runtime_large_numbers_supported(p.type, p.precision);
 }
 
+inline std::string date_time_card_options_normalized(const std::string &options,
+                                                     const ParsedCfg &p) {
+  if (!card_large_numbers_supported(p)) return "";
+  if (cfg_option_token_present(options, "large_numbers") ||
+      large_numbers_explicitly_disabled(options)) {
+    std::string out;
+    append_large_numbers_option(out, options);
+    return out;
+  }
+  return "";
+}
+
 inline std::string normalize_garage_label_display(const std::string &value) {
   return card_runtime_garage_label_display(value);
 }
@@ -1080,6 +1092,36 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options.clear();
     p.icon = "Lock";
     p.icon_on = "Lock Open";
+  }
+  if (p.type == "calendar") {
+    if (p.entity.empty()) p.entity = "sensor.date";
+    p.label.clear();
+    p.icon = "Auto";
+    p.icon_on = "Auto";
+    p.sensor.clear();
+    p.unit.clear();
+    if (p.precision != "datetime") p.precision.clear();
+    p.options = date_time_card_options_normalized(p.options, p);
+  }
+  if (p.type == "clock") {
+    p.entity.clear();
+    p.label.clear();
+    p.icon = "Auto";
+    p.icon_on = "Auto";
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options = date_time_card_options_normalized(p.options, p);
+  }
+  if (p.type == "timezone") {
+    if (p.entity.empty()) p.entity = "UTC (GMT+0)";
+    p.label.clear();
+    p.icon = "Auto";
+    p.icon_on = "Auto";
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options = date_time_card_options_normalized(p.options, p);
   }
   if (p.type == "todo") {
     p.sensor.clear();
