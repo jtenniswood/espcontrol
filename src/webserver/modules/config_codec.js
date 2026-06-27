@@ -1458,21 +1458,21 @@ function setGarageLabelDisplayMode(b, mode) {
 function normalizeClimateLabelDisplayMode(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("climate", CLIMATE_LABEL_DISPLAY_OPTION);
-  var values = spec && spec.values ? spec.values : ["label", "status", "actual", "target"];
+  var values = spec && spec.values ? spec.values : [];
   return values.indexOf(value) >= 0 ? value : climateDefaultLabelDisplayMode();
 }
 
 function normalizeClimateNumberDisplayMode(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("climate", CLIMATE_NUMBER_DISPLAY_OPTION);
-  var values = spec && spec.values ? spec.values : ["icon", "actual", "target"];
+  var values = spec && spec.values ? spec.values : [];
   return values.indexOf(value) >= 0 ? value : climateDefaultNumberDisplayMode();
 }
 
 function normalizeClimateTemperatureStep(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("climate", CLIMATE_TEMPERATURE_STEP_OPTION);
-  var values = spec && spec.values ? spec.values : ["1", "0.5"];
+  var values = spec && spec.values ? spec.values : [];
   return values.indexOf(value) >= 0 ? value : climateDefaultTemperatureStep();
 }
 

@@ -106,6 +106,18 @@ constexpr const char *card_runtime_option_name_cover_tabs() {
   return CARD_CONTRACT_OPTION_NAME_COVER_TABS;
 }
 
+constexpr const char *card_runtime_option_name_label_display() {
+  return CARD_CONTRACT_OPTION_NAME_LABEL_DISPLAY;
+}
+
+constexpr const char *card_runtime_option_name_number_display() {
+  return CARD_CONTRACT_OPTION_NAME_NUMBER_DISPLAY;
+}
+
+constexpr const char *card_runtime_option_name_temperature_step() {
+  return CARD_CONTRACT_OPTION_NAME_TEMPERATURE_STEP;
+}
+
 inline bool card_runtime_large_numbers_supported(const std::string &type,
                                                  const std::string &precision) {
   return card_contract_large_numbers_supported(type, precision);
@@ -239,16 +251,32 @@ inline std::string card_runtime_climate_label_display(const std::string &value) 
     : CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT;
 }
 
+inline const char *card_runtime_climate_label_display_default() {
+  return CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT;
+}
+
 inline std::string card_runtime_climate_number_display(const std::string &value) {
   return card_contract_climate_number_display_valid(value)
     ? value
     : CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_DEFAULT;
 }
 
+inline const char *card_runtime_climate_number_display_default() {
+  return CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_DEFAULT;
+}
+
 inline std::string card_runtime_climate_temperature_step(const std::string &value) {
   return card_contract_climate_temperature_step_valid(value)
     ? value
     : CARD_CONTRACT_CLIMATE_TEMPERATURE_STEP_DEFAULT;
+}
+
+inline const char *card_runtime_climate_temperature_step_default() {
+  return CARD_CONTRACT_CLIMATE_TEMPERATURE_STEP_DEFAULT;
+}
+
+inline bool card_runtime_climate_precision_valid(const std::string &precision) {
+  return card_contract_climate_precision_valid(precision);
 }
 
 inline bool card_runtime_weather_forecast_precision(const std::string &precision) {

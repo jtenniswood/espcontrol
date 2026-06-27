@@ -135,6 +135,9 @@ constexpr const char *LIGHT_CONTROL_TABS_OPTION = "light_tabs";
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = "cover_tabs";
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
+constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_display();
+constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
+constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_temperature_step();
 
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
@@ -714,19 +717,51 @@ inline std::string normalize_climate_temperature_step(const std::string &value) 
   return card_runtime_climate_temperature_step(value);
 }
 
-inline std::string climate_card_options_normalized(const std::string &options) {
-  std::string label_display = normalize_climate_label_display(cfg_option_value(options, "label_display"));
-  std::string number_display = normalize_climate_number_display(cfg_option_value(options, "number_display"));
-  std::string temperature_step = normalize_climate_temperature_step(cfg_option_value(options, "temperature_step"));
-  std::string out;
-  if (label_display != "label") out += "label_display=" + label_display;
-  if (number_display != "target") {
-    if (!out.empty()) out += ",";
-    out += "number_display=" + number_display;
+inline std::string sanitize_climate_range_value(const std::string &value) {
+  const char *start = value.c_str();
+  char *end = nullptr;
+  double parsed = std::strtod(start, &end);
+  if (end == start) return "";
+  while (*end != '\0') {
+    if (!std::isspace(static_cast<unsigned char>(*end))) return "";
+    end++;
   }
-  if (temperature_step != "1") {
+  double rounded = std::round(parsed * 10.0) / 10.0;
+  char buffer[24];
+  std::snprintf(buffer, sizeof(buffer), "%.1f", rounded);
+  std::string out(buffer);
+  if (out.size() > 2 && out.substr(out.size() - 2) == ".0") {
+    out.erase(out.size() - 2);
+  }
+  return out;
+}
+
+inline std::string normalize_climate_precision_config(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(value, ':');
+  std::string precision = parts.empty() ? "" : parts[0];
+  if (precision == "0") precision.clear();
+  if (!card_runtime_climate_precision_valid(precision)) precision.clear();
+  std::string min = parts.size() > 1 ? sanitize_climate_range_value(parts[1]) : "";
+  std::string max = parts.size() > 2 ? sanitize_climate_range_value(parts[2]) : "";
+  if (min.empty() && max.empty()) return precision;
+  return (precision.empty() ? std::string("0") : precision) + ":" + min + ":" + max;
+}
+
+inline std::string climate_card_options_normalized(const std::string &options) {
+  std::string label_display = normalize_climate_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION));
+  std::string number_display = normalize_climate_number_display(cfg_option_value(options, NUMBER_DISPLAY_OPTION));
+  std::string temperature_step = normalize_climate_temperature_step(cfg_option_value(options, TEMPERATURE_STEP_OPTION));
+  std::string out;
+  if (label_display != card_runtime_climate_label_display_default()) {
+    out += std::string(LABEL_DISPLAY_OPTION) + "=" + label_display;
+  }
+  if (number_display != card_runtime_climate_number_display_default()) {
     if (!out.empty()) out += ",";
-    out += "temperature_step=" + temperature_step;
+    out += std::string(NUMBER_DISPLAY_OPTION) + "=" + number_display;
+  }
+  if (temperature_step != card_runtime_climate_temperature_step_default()) {
+    if (!out.empty()) out += ",";
+    out += std::string(TEMPERATURE_STEP_OPTION) + "=" + temperature_step;
   }
   if (number_display != "icon" &&
       (cfg_option_token_present(options, "large_numbers") ||
@@ -1019,6 +1054,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     if (p.icon.empty()) p.icon = "Thermostat";
+    p.precision = normalize_climate_precision_config(p.precision);
     p.options = climate_card_options_normalized(p.options);
   }
   if (p.type == "garage") {
