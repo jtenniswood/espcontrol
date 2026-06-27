@@ -392,11 +392,13 @@ function copyLargeNumbersOption(out, options) {
 
 function normalizeMediaVolumeMax(value) {
   value = String(value || "").trim();
-  if (!value) return "100";
+  var spec = cardContractOptionSpec("media", MEDIA_VOLUME_MAX_OPTION) || {};
+  var fallback = cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100");
+  if (!value) return fallback;
   var parsed = parseInt(value, 10);
-  if (!isFinite(parsed)) return "100";
-  if (parsed < 1) parsed = 1;
-  if (parsed > 100) parsed = 100;
+  if (!isFinite(parsed)) return fallback;
+  if (typeof spec.min === "number" && parsed < spec.min) parsed = spec.min;
+  if (typeof spec.max === "number" && parsed > spec.max) parsed = spec.max;
   return String(parsed);
 }
 
@@ -405,7 +407,7 @@ function normalizeMediaOptions(options, mode) {
   if (mode !== "volume" && mode !== "position") return "";
   var out = "";
   var maxVolume = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
-  if (mode === "volume" && maxVolume !== "100") {
+  if (mode === "volume" && maxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
     out = setConfigOptionValue(out, MEDIA_VOLUME_MAX_OPTION, maxVolume);
   }
   out = copyLargeNumbersOption(out, options);

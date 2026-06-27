@@ -106,6 +106,10 @@ constexpr const char *card_runtime_option_name_cover_tabs() {
   return CARD_CONTRACT_OPTION_NAME_COVER_TABS;
 }
 
+constexpr const char *card_runtime_option_name_volume_max() {
+  return CARD_CONTRACT_OPTION_NAME_VOLUME_MAX;
+}
+
 inline bool card_runtime_large_numbers_supported(const std::string &type,
                                                  const std::string &precision) {
   return card_contract_large_numbers_supported(type, precision);
@@ -192,6 +196,18 @@ inline bool card_runtime_media_state_display_mode(const std::string &mode) {
 inline bool card_runtime_media_now_playing_control(const std::string &precision) {
   return card_contract_string_in(precision, CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS,
     sizeof(CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS) / sizeof(CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS[0]));
+}
+
+inline int card_runtime_media_volume_max_min() {
+  return CARD_CONTRACT_MEDIA_VOLUME_MAX_MIN;
+}
+
+inline int card_runtime_media_volume_max_max() {
+  return CARD_CONTRACT_MEDIA_VOLUME_MAX_MAX;
+}
+
+inline int card_runtime_media_volume_max_default() {
+  return CARD_CONTRACT_MEDIA_VOLUME_MAX_DEFAULT;
 }
 
 inline bool card_runtime_alarm_action_mode_valid(const std::string &mode) {
