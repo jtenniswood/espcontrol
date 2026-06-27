@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const WEBHOOK_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "webhook_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const webhookNormalizationFixtures = JSON.parse(fs.readFileSync(WEBHOOK_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -902,6 +904,16 @@ assertButtonRoundTrip(hooks, "webhook post json", {
   precision: "",
   options: "webhook_headers=Content-Type%3A application/json%3B Authorization%3A Bearer token",
 }, false);
+for (const fixture of webhookNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `webhook fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `webhook fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 
 assertButtonRoundTrip(hooks, "garage label button", {
   entity: "cover.garage",

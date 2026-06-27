@@ -68,13 +68,8 @@ registerButtonType("webhook", {
   defaultConfig: function () { return cardContractDefaultConfig("webhook"); },
   cardMetadata: WEBHOOK_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = "";
-    b.sensor = "GET";
-    b.unit = "";
-    b.icon = "Auto";
-    b.icon_on = "Auto";
-    b.precision = "";
-    b.options = "";
+    var defaults = cardContractDefaultConfig("webhook");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
   },
   renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     normalizeWebhookConfig(b);

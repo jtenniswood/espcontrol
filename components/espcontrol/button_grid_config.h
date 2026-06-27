@@ -1056,7 +1056,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor = normalize_webhook_method(p.sensor);
     if (p.sensor == "GET" || p.sensor == "DELETE") p.unit.clear();
     p.precision.clear();
-    p.icon_on.clear();
+    p.icon_on = "Auto";
     if (p.icon.empty()) p.icon = "Auto";
     p.options = webhook_card_options_normalized(p.options);
   }
