@@ -450,6 +450,14 @@ inline std::string media_card_options_normalized(const std::string &options,
   return out;
 }
 
+inline std::string weather_card_options_normalized(const std::string &options,
+                                                   const ParsedCfg &p) {
+  if (!card_runtime_weather_forecast_precision(p.precision)) return "";
+  std::string out;
+  append_large_numbers_option(out, options);
+  return out;
+}
+
 inline std::string normalize_image_refresh_interval(const std::string &value) {
   return value == "10" || value == "30" || value == "60" || value == "300"
     ? value
@@ -989,6 +997,10 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   }
   if (p.type == "weather" && !card_runtime_weather_forecast_precision(p.precision)) {
     p.precision.clear();
+  }
+  if (p.type == "weather") {
+    p.sensor.clear();
+    p.options = weather_card_options_normalized(p.options, p);
   }
   if (p.type == "media") {
     if (p.sensor == "controls") {

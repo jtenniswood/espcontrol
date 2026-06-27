@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const WEATHER_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "weather_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const weatherNormalizationFixtures = JSON.parse(fs.readFileSync(WEATHER_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -1409,6 +1411,16 @@ assert.strictEqual(
   buttonShape(hooks.parseButtonConfig("weather.forecast_home;;;;;;weather;;large_numbers")).options,
   "",
   "weather current conditions clears large numbers option");
+for (const fixture of weatherNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `weather fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `weather fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 
 assertButtonRoundTrip(hooks, "media play pause card", {
   entity: "media_player.living_room",
