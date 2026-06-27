@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const LIGHT_CONTROL_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "light_control_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const lightControlNormalizationFixtures = JSON.parse(fs.readFileSync(LIGHT_CONTROL_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -1726,6 +1728,16 @@ assert.strictEqual(
   hooks.normalizeLightControlOptions("light_tabs=bad%7Cpower%7Cpower"),
   "light_tabs=power",
   "invalid and duplicate light control tabs are removed");
+for (const fixture of lightControlNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `light control fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `light control fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_brightness", false), true, "lights picker visible on parent page");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_brightness", true), true, "lights picker visible in subpages");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_switch", false), false, "light switch subtype hidden from top-level picker");

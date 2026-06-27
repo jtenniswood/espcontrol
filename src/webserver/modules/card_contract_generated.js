@@ -854,6 +854,12 @@ var CARD_CONTRACT_CARDS = {
         "name": "light_tabs",
         "label": "Visible Tabs",
         "kind": "text",
+        "values": [
+          "power",
+          "brightness",
+          "temperature",
+          "color"
+        ],
         "defaultValue": "power|brightness|temperature|color"
       }
     ],

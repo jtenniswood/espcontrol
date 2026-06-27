@@ -233,6 +233,14 @@ inline std::string card_runtime_alarm_label_display(const std::string &value) {
     : CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT;
 }
 
+inline bool card_runtime_light_control_tab_valid(const std::string &tab) {
+  return card_contract_light_control_tab_valid(tab);
+}
+
+inline const char *card_runtime_light_control_tabs_default() {
+  return CARD_CONTRACT_LIGHT_CONTROL_TABS_DEFAULT;
+}
+
 inline std::string card_runtime_climate_label_display(const std::string &value) {
   return card_contract_climate_label_display_valid(value)
     ? value

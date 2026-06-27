@@ -131,8 +131,7 @@ constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
 constexpr const char *IMAGE_REFRESH_OPTION = card_runtime_option_name_image_refresh();
 constexpr const char *IMAGE_REFRESH_MODE_OPTION = card_runtime_option_name_image_refresh_mode();
-constexpr const char *LIGHT_CONTROL_TABS_OPTION = "light_tabs";
-constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
+constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
 constexpr const char *COVER_CONTROL_TABS_OPTION = "cover_tabs";
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
 
@@ -483,13 +482,12 @@ inline std::string image_card_options_normalized(const std::string &options) {
 }
 
 inline bool light_control_tab_token_valid(const std::string &value) {
-  return value == "power" || value == "brightness" ||
-         value == "temperature" || value == "color";
+  return card_runtime_light_control_tab_valid(value);
 }
 
 inline std::string normalize_light_control_tabs_value(const std::string &value) {
   std::vector<std::string> parts = split_config_fields(
-    value.empty() ? std::string(LIGHT_CONTROL_DEFAULT_TABS_VALUE) : value, '|');
+    value.empty() ? std::string(card_runtime_light_control_tabs_default()) : value, '|');
   std::vector<std::string> tabs;
   for (const auto &part : parts) {
     if (!light_control_tab_token_valid(part)) continue;
@@ -509,7 +507,7 @@ inline std::string normalize_light_control_tabs_value(const std::string &value) 
 inline std::string light_control_card_options_normalized(const std::string &options) {
   std::string tabs = normalize_light_control_tabs_value(
     cfg_option_value(options, LIGHT_CONTROL_TABS_OPTION));
-  if (tabs == LIGHT_CONTROL_DEFAULT_TABS_VALUE) return "";
+  if (tabs == card_runtime_light_control_tabs_default()) return "";
   return std::string(LIGHT_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
 }
 

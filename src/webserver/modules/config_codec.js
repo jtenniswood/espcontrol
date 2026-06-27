@@ -621,16 +621,25 @@ function setImageRefreshMode(b, value) {
 }
 
 function lightControlTabDefinitions() {
-  return [
-    { value: "power", label: "Power" },
-    { value: "brightness", label: "Brightness" },
-    { value: "temperature", label: "Colour Temperature" },
-    { value: "color", label: "Colour Presets" },
-  ];
+  var labels = {
+    power: "Power",
+    brightness: "Brightness",
+    temperature: "Colour Temperature",
+    color: "Colour Presets",
+  };
+  var spec = cardContractOptionSpec("light_control", LIGHT_CONTROL_TABS_OPTION);
+  var values = spec && spec.values ? spec.values : [];
+  return values.map(function (value) {
+    return { value: value, label: labels[value] || value };
+  });
 }
 
 function lightControlDefaultTabs() {
-  return lightControlTabDefinitions().map(function (tab) { return tab.value; });
+  return cardContractOptionDefaultValue(
+    "light_control",
+    LIGHT_CONTROL_TABS_OPTION,
+    "power|brightness|temperature|color"
+  ).split("|");
 }
 
 function normalizeLightControlTabs(value) {
