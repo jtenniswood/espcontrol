@@ -790,6 +790,14 @@ inline std::string normalize_alarm_label_display(const std::string &value) {
   return card_runtime_alarm_label_display(value);
 }
 
+inline bool alarm_action_list_is_default(const std::vector<std::string> &actions) {
+  if (actions.size() != card_runtime_alarm_default_action_count()) return false;
+  for (size_t i = 0; i < actions.size(); i++) {
+    if (actions[i] != card_runtime_alarm_default_action_at(i)) return false;
+  }
+  return true;
+}
+
 inline std::string alarm_card_options_normalized(const std::string &options) {
   std::string out;
   if (cfg_option_value(options, "pin_arm") == "0") out = "pin_arm=0";
@@ -799,23 +807,27 @@ inline std::string alarm_card_options_normalized(const std::string &options) {
   }
   std::string actions = cfg_option_value(options, "actions");
   if (!actions.empty()) {
-    std::string filtered;
-    bool saw_valid = false;
+    std::vector<std::string> filtered;
     size_t start = 0;
     while (start <= actions.length()) {
       size_t end = actions.find('|', start);
       if (end == std::string::npos) end = actions.length();
       std::string action = actions.substr(start, end - start);
-      if (alarm_action_mode_valid(action)) {
-        if (!filtered.empty()) filtered += "|";
-        filtered += action;
-        saw_valid = true;
+      if (alarm_action_mode_valid(action) &&
+          std::find(filtered.begin(), filtered.end(), action) == filtered.end()) {
+        filtered.push_back(action);
+        if (filtered.size() >= card_runtime_alarm_max_visible_actions()) break;
       }
       start = end + 1;
     }
-    if (saw_valid && filtered != "away|home|disarm") {
+    if (!filtered.empty() && !alarm_action_list_is_default(filtered)) {
+      std::string joined;
+      for (const auto &action : filtered) {
+        if (!joined.empty()) joined += "|";
+        joined += action;
+      }
       if (!out.empty()) out += ",";
-      out += "actions=" + filtered;
+      out += "actions=" + encode_compact_field(joined);
     }
   }
   std::string icon_display = normalize_alarm_icon_display(
@@ -1038,7 +1050,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
-    p.icon_on.clear();
+    p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto") p.icon = "Security";
     p.options = alarm_card_options_normalized(p.options);
   }
@@ -1046,7 +1058,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (!alarm_action_mode_valid(p.sensor)) p.sensor = "away";
     p.unit.clear();
     p.precision.clear();
-    p.icon_on.clear();
+    p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto" || alarm_action_legacy_icon_name(p.sensor, p.icon)) {
       p.icon = alarm_action_icon_name(p.sensor);
     }

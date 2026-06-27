@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const cardNormalizationFixtures = JSON.parse(fs.readFileSync(CARD_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -411,6 +413,16 @@ assert.strictEqual(hooks.normalizeAlarmIconDisplayMode("static"), "static", "ala
 assert.strictEqual(hooks.normalizeAlarmIconDisplayMode("bad"), "status", "alarm invalid icon mode falls back to status");
 assert.strictEqual(hooks.normalizeAlarmLabelDisplayMode("name"), "name", "alarm name label mode is spec-backed");
 assert.strictEqual(hooks.normalizeAlarmLabelDisplayMode("bad"), "status", "alarm invalid label mode falls back to status");
+for (const fixture of cardNormalizationFixtures.alarm) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `alarm fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `alarm fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 assert.strictEqual(hooks.climateDefaultLabelDisplayMode(), "label", "climate default label display is spec-backed");
 assert.strictEqual(hooks.climateDefaultNumberDisplayMode(), "target", "climate default number display is spec-backed");
 assert.strictEqual(hooks.climateDefaultTemperatureStep(), "1", "climate default temperature step is spec-backed");

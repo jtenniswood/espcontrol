@@ -287,6 +287,7 @@ var CARD_CONTRACT_CARDS = {
           "home",
           "disarm"
         ],
+        "maxVisibleActions": 3,
         "actions": [
           {
             "value": "away",

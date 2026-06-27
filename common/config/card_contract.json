@@ -230,6 +230,7 @@
         "alarm": {
           "controlPanelValue": "control_panel",
           "defaultActions": ["away", "home", "disarm"],
+          "maxVisibleActions": 3,
           "actions": [
             {
               "value": "away",

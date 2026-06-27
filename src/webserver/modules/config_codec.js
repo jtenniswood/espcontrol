@@ -290,16 +290,6 @@ var IMAGE_REFRESH_MODE_OPTION = cardContractOptionName("image_refresh_mode");
 var LIGHT_CONTROL_TABS_OPTION = cardContractOptionName("light_tabs");
 var COVER_CONTROL_TABS_OPTION = cardContractOptionName("cover_tabs");
 var IMAGE_CARD_LIMIT = Math.max(0, parseInt(CFG && CFG.imageCardLimit != null ? CFG.imageCardLimit : 4, 10) || 0);
-var ALARM_ACTIONS = [
-  { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Shield Lock" },
-  { value: "home", label: "Arm Home", service: "alarm_control_panel.alarm_arm_home", icon: "Shield Home" },
-  { value: "night", label: "Arm Night", service: "alarm_control_panel.alarm_arm_night", icon: "Weather Night" },
-  { value: "vacation", label: "Arm Vacation", service: "alarm_control_panel.alarm_arm_vacation", icon: "Airplane" },
-  { value: "disarm", label: "Disarm", service: "alarm_control_panel.alarm_disarm", icon: "Shield Off" },
-];
-var ALARM_DEFAULT_ACTIONS = ["away", "home", "disarm"];
-var ALARM_MAX_VISIBLE_ACTIONS = 3;
-
 function alarmBehaviorSpec() {
   var card = cardContractCard("alarm");
   return card && card.behavior && card.behavior.alarm || {};
@@ -307,12 +297,17 @@ function alarmBehaviorSpec() {
 
 function alarmActionSpecs() {
   var actions = alarmBehaviorSpec().actions;
-  return actions && actions.length ? actions : ALARM_ACTIONS;
+  return actions && actions.length ? actions : [];
 }
 
 function alarmDefaultActions() {
   var actions = alarmBehaviorSpec().defaultActions;
-  return actions && actions.length ? actions.slice() : ALARM_DEFAULT_ACTIONS.slice();
+  return actions && actions.length ? actions.slice() : [];
+}
+
+function alarmMaxVisibleActions() {
+  var max = parseInt(alarmBehaviorSpec().maxVisibleActions, 10);
+  return isFinite(max) && max > 0 ? max : alarmDefaultActions().length;
 }
 
 function alarmActionLegacyIcon(value) {
@@ -1584,7 +1579,7 @@ function normalizeAlarmActionList(value) {
     var action = parts[i];
     if (!alarmActionInfo(action) || out.indexOf(action) >= 0) continue;
     out.push(action);
-    if (out.length >= ALARM_MAX_VISIBLE_ACTIONS) break;
+    if (out.length >= alarmMaxVisibleActions()) break;
   }
   return out.length ? out : alarmDefaultActions();
 }

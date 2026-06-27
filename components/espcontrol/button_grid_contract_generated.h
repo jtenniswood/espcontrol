@@ -19,6 +19,7 @@ inline const char *const CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS[] = {"", "prog
 inline const char *const CARD_CONTRACT_MEDIA_LEGACY_MODES[] = {"controls"};
 inline const char *const CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES[] = {"play_pause", "position"};
 inline const char *const CARD_CONTRACT_ALARM_ACTION_MODES[] = {"away", "home", "night", "vacation", "disarm"};
+inline const char *const CARD_CONTRACT_ALARM_DEFAULT_ACTIONS[] = {"away", "home", "disarm"};
 inline const char *const CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES[] = {"static", "status"};
 inline const char *const CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES[] = {"name", "status"};
 inline const char *const CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES[] = {"label", "status", "actual", "target"};
@@ -76,6 +77,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_WEATHER_MODE = "weather_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_WEBHOOK_HEADERS = "webhook_headers";
 constexpr const char *CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT = "label";
 constexpr const char *CARD_CONTRACT_MEDIA_DEFAULT_MODE = "play_pause";
+constexpr size_t CARD_CONTRACT_ALARM_MAX_VISIBLE_ACTIONS = 3;
 constexpr const char *CARD_CONTRACT_ALARM_ICON_DISPLAY_DEFAULT = "status";
 constexpr const char *CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT = "status";
 constexpr const char *CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT = "label";
@@ -142,6 +144,16 @@ inline bool card_contract_media_state_display_mode(const std::string &mode) {
 inline bool card_contract_alarm_action_mode_valid(const std::string &mode) {
   return card_contract_string_in(mode, CARD_CONTRACT_ALARM_ACTION_MODES,
     sizeof(CARD_CONTRACT_ALARM_ACTION_MODES) / sizeof(CARD_CONTRACT_ALARM_ACTION_MODES[0]));
+}
+
+inline size_t card_contract_alarm_default_action_count() {
+  return sizeof(CARD_CONTRACT_ALARM_DEFAULT_ACTIONS) / sizeof(CARD_CONTRACT_ALARM_DEFAULT_ACTIONS[0]);
+}
+
+inline const char *card_contract_alarm_default_action_at(size_t index) {
+  return index < card_contract_alarm_default_action_count()
+    ? CARD_CONTRACT_ALARM_DEFAULT_ACTIONS[index]
+    : "";
 }
 
 inline bool card_contract_alarm_icon_display_valid(const std::string &mode) {
