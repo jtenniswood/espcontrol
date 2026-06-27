@@ -51,6 +51,23 @@ function handleWebServerPingEvent(e) {
   }
 }
 
+function loadPageTitleFromEventStream() {
+  if (eventStreamEnabled() || typeof EventSource !== "function") return;
+  var source = new EventSource("/events");
+  var closeTimer = setTimeout(function () {
+    source.close();
+  }, 5000);
+  source.addEventListener("ping", function (e) {
+    handleWebServerPingEvent(e);
+    clearTimeout(closeTimer);
+    source.close();
+  });
+  source.addEventListener("error", function () {
+    clearTimeout(closeTimer);
+    source.close();
+  });
+}
+
 function applyClockBarStateValue(val, d, matchedKey) {
   var keys = entityStateKeys(d);
   uniquePush(keys, matchedKey);

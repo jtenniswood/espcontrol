@@ -353,6 +353,25 @@ async function assertPageTitleEvents(browser) {
   } finally {
     await context.close();
   }
+
+  const normalContext = await browser.newContext({ viewport: { width: 1100, height: 1000 } });
+  await installRoutes(normalContext, slug);
+  const normalPage = await normalContext.newPage();
+  await installFakeEventSource(normalPage);
+  try {
+    await normalPage.goto(`http://espcontrol.test/${slug}`, { waitUntil: "domcontentloaded" });
+    await normalPage.waitForSelector("#sp-app");
+    await normalPage.waitForFunction(() => window.__eventSources && window.__eventSources.length > 0);
+    await normalPage.evaluate(() => window.__seedEspPing({ title: "EspControl 4inch S3" }));
+    assert.strictEqual(await normalPage.title(), "EspControl 4inch S3", "normal page should read title from one-shot event stream");
+    assert.strictEqual(
+      await normalPage.evaluate(() => window.__eventSources[0].readyState),
+      2,
+      "normal page title probe should close event stream after title ping"
+    );
+  } finally {
+    await normalContext.close();
+  }
 }
 
 async function assertRotationStartupOrdering(browser) {
