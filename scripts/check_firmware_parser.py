@@ -6,6 +6,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -18,6 +19,7 @@ BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
 CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
 DEVICES_DIR = ROOT / "devices"
+VACUUM_MOWER_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "vacuum_mower_card_normalization_fixtures.json"
 
 
 CPP_SOURCE = r'''
@@ -596,6 +598,30 @@ int main() {
 '''
 
 
+def cpp_string(value: str) -> str:
+    return json.dumps(value)
+
+
+def generated_vacuum_mower_normalization_assertions() -> str:
+    fixtures = json.loads(VACUUM_MOWER_NORMALIZATION_FIXTURES.read_text(encoding="utf-8"))
+    lines = ["  // Shared vacuum/lawn mower saved-card normalization fixtures."]
+    for index, fixture in enumerate(fixtures):
+        expected = fixture["expected"]
+        lines.extend([
+            f"  auto vacuum_mower_fixture_{index} = parse_cfg({cpp_string(fixture['input'])});",
+            f"  assert(vacuum_mower_fixture_{index}.entity == {cpp_string(expected.get('entity', ''))});",
+            f"  assert(vacuum_mower_fixture_{index}.label == {cpp_string(expected.get('label', ''))});",
+            f"  assert(vacuum_mower_fixture_{index}.icon == {cpp_string(expected.get('icon', 'Auto'))});",
+            f"  assert(vacuum_mower_fixture_{index}.icon_on == {cpp_string(expected.get('icon_on', 'Auto'))});",
+            f"  assert(vacuum_mower_fixture_{index}.sensor == {cpp_string(expected.get('sensor', ''))});",
+            f"  assert(vacuum_mower_fixture_{index}.unit == {cpp_string(expected.get('unit', ''))});",
+            f"  assert(vacuum_mower_fixture_{index}.type == {cpp_string(expected.get('type', ''))});",
+            f"  assert(vacuum_mower_fixture_{index}.precision == {cpp_string(expected.get('precision', ''))});",
+            f"  assert(vacuum_mower_fixture_{index}.options == {cpp_string(expected.get('options', ''))});",
+        ])
+    return "\n".join(lines)
+
+
 def compiler() -> str | None:
     for name in ("c++", "g++", "clang++"):
         found = shutil.which(name)
@@ -666,7 +692,10 @@ def main() -> int:
         )
         source = tmp_path / "check_firmware_parser.cpp"
         binary = tmp_path / "check_firmware_parser"
-        source.write_text(CPP_SOURCE, encoding="utf-8")
+        source.write_text(
+            CPP_SOURCE.replace("  return 0;\n}", generated_vacuum_mower_normalization_assertions() + "\n\n  return 0;\n}"),
+            encoding="utf-8",
+        )
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
     print("Firmware parser checks passed.")

@@ -10,6 +10,12 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const VACUUM_MOWER_NORMALIZATION_FIXTURES = path.join(
+  ROOT,
+  "common",
+  "config",
+  "vacuum_mower_card_normalization_fixtures.json"
+);
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +209,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const vacuumMowerNormalizationFixtures = JSON.parse(fs.readFileSync(VACUUM_MOWER_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -2386,6 +2393,17 @@ assertButtonMigration(hooks, "invalid lawn mower mode normalizes to start mowing
   type: "lawn_mower",
   precision: "",
 });
+
+for (const fixture of vacuumMowerNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `vacuum/mower fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `vacuum/mower fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 
 assertButtonRoundTrip(hooks, "input button action card", {
   entity: "input_button.doorbell",
