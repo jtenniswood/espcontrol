@@ -159,6 +159,14 @@ function normalizeButtonConfig(b) {
     b.icon = "Lock";
     b.icon_on = "Lock Open";
   }
+  if (b && b.type === "todo") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.icon_on = "Auto";
+    if (!b.icon || b.icon === "Auto") b.icon = "Check";
+    b.options = normalizeTodoOptions(b.options);
+  }
   if (b && b.type === "image") {
     b.icon_on = "Auto";
     b.sensor = "";
@@ -234,7 +242,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "todo" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -1229,6 +1237,18 @@ function normalizePresenceOptions(options) {
   return out;
 }
 
+function normalizeTodoCountDisplay(value) {
+  value = String(value || "").trim();
+  return value === "icon" ? "icon" : "count";
+}
+
+function normalizeTodoOptions(options) {
+  var showCount = normalizeTodoCountDisplay(configOptionValue(options, "count_display")) === "count";
+  var out = showCount ? "" : setConfigOptionValue("", "count_display", "icon");
+  if (showCount) out = copyLargeNumbersOption(out, options);
+  return out;
+}
+
 function switchConfirmationEnabled(b) {
   return !!switchConfirmationMode(b);
 }
@@ -1816,6 +1836,13 @@ function buttonConfigFields(b) {
     if (!icon || icon === "Auto") icon = lawnMowerModeDefaultIcon(sensor);
   }
   if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
+  if (type === "todo") {
+    sensor = "";
+    unit = "";
+    precision = "";
+    iconOn = "Auto";
+    if (!icon || icon === "Auto") icon = "Check";
+  }
   if (type === "image") {
     iconOn = "Auto";
     sensor = "";
@@ -1852,6 +1879,8 @@ function buttonConfigFields(b) {
     options = "";
   } else if (type === "vacuum" || type === "lawn_mower") {
     options = "";
+  } else if (type === "todo") {
+    options = normalizeTodoOptions(options);
   } else if (type === "sensor") {
     options = sensor === SENSOR_CARD_LOCAL_SENSOR ? "" : normalizeSensorOptions(options, precision);
   } else if (type === "door_window") {

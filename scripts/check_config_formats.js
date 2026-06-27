@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const TODO_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "todo_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const todoNormalizationFixtures = JSON.parse(fs.readFileSync(TODO_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -1965,6 +1967,16 @@ assert.strictEqual(hooks.buttonTypeRuntimeSpec("todo"), null, "todo card type is
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("todo", false), false, "todo picker is removed");
 assert.deepStrictEqual(Array.from(hooks.cardContractDomains("todo")), [], "todo card has no webserver entity contract");
 assert.strictEqual(hooks.cardLargeNumbersEnabled({ type: "todo", options: "large_numbers" }), false, "todo no longer supports webserver large numbers");
+for (const fixture of todoNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `todo fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `todo fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 
 const subpageStateOff = buttonShape({
   label: "Windows",
