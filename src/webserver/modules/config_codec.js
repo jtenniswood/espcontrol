@@ -679,15 +679,24 @@ function setLightControlTabs(b, tabs) {
 }
 
 function coverControlTabDefinitions() {
-  return [
-    { value: "position", label: "Position" },
-    { value: "controls", label: "Controls" },
-    { value: "tilt", label: "Tilt" },
-  ];
+  var labels = {
+    position: "Position",
+    controls: "Controls",
+    tilt: "Tilt",
+  };
+  var spec = cardContractOptionSpec("cover", COVER_CONTROL_TABS_OPTION);
+  var values = spec && spec.values ? spec.values : [];
+  return values.map(function (value) {
+    return { value: value, label: labels[value] || value };
+  });
 }
 
 function coverControlDefaultTabs() {
-  return coverControlTabDefinitions().map(function (tab) { return tab.value; });
+  return cardContractOptionDefaultValue(
+    "cover",
+    COVER_CONTROL_TABS_OPTION,
+    "position|controls|tilt"
+  ).split("|");
 }
 
 function normalizeTabList(value, definitions, defaults, fallback) {
