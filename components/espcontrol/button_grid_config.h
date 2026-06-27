@@ -1028,6 +1028,17 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (!p.sensor.empty()) p.icon_on.clear();
     p.options = garage_card_options_normalized(p.options, p.sensor);
   }
+  if (p.type == "lock") {
+    if (!card_runtime_lock_mode_valid(p.sensor)) p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    if (!p.sensor.empty()) {
+      p.icon_on = "Auto";
+    } else if (p.icon_on.empty() || p.icon_on == "Auto") {
+      p.icon_on = "Lock Open";
+    }
+  }
   if (p.type == "cover") {
     if (!card_runtime_cover_mode_valid(p.sensor)) p.sensor.clear();
     p.precision.clear();
