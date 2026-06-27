@@ -233,6 +233,16 @@ inline std::string card_runtime_alarm_label_display(const std::string &value) {
     : CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT;
 }
 
+inline std::string card_runtime_image_modal_mode(const std::string &value) {
+  return card_contract_image_modal_mode_valid(value)
+    ? value
+    : CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT;
+}
+
+inline const char *card_runtime_image_modal_mode_default() {
+  return CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT;
+}
+
 inline std::string card_runtime_climate_label_display(const std::string &value) {
   return card_contract_climate_label_display_valid(value)
     ? value

@@ -424,7 +424,7 @@ function imageRefreshModeValues() {
 
 function imageModalModeValues() {
   var spec = cardContractOptionSpec("image", IMAGE_MODAL_MODE_OPTION);
-  return spec && spec.values ? spec.values.slice() : ["fill", "fit"];
+  return spec && spec.values ? spec.values.slice() : [];
 }
 
 function normalizeImageRefreshInterval(value) {
@@ -439,7 +439,8 @@ function normalizeImageRefreshMode(value) {
 
 function normalizeImageModalMode(value) {
   value = String(value || "").trim();
-  return imageModalModeValues().indexOf(value) >= 0 ? value : "fill";
+  var fallback = cardContractOptionDefaultValue("image", IMAGE_MODAL_MODE_OPTION, "fill");
+  return imageModalModeValues().indexOf(value) >= 0 ? value : fallback;
 }
 
 function imageRefreshInterval(b) {
@@ -571,7 +572,7 @@ function normalizeImageOptions(options) {
     out = setConfigOption(out, IMAGE_ICON_OPTION, true);
   }
   var modalMode = normalizeImageModalMode(configOptionValue(options, IMAGE_MODAL_MODE_OPTION));
-  if (modalMode !== "fill") {
+  if (modalMode !== cardContractOptionDefaultValue("image", IMAGE_MODAL_MODE_OPTION, "fill")) {
     out = setConfigOptionValue(out, IMAGE_MODAL_MODE_OPTION, modalMode);
   }
   return out;

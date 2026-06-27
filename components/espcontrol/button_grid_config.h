@@ -461,7 +461,7 @@ inline std::string normalize_image_refresh_mode(const std::string &value) {
 }
 
 inline std::string normalize_image_modal_mode(const std::string &value) {
-  return value == "fit" ? "fit" : "fill";
+  return card_runtime_image_modal_mode(value);
 }
 
 inline std::string image_card_options_normalized(const std::string &options) {
@@ -475,7 +475,7 @@ inline std::string image_card_options_normalized(const std::string &options) {
   }
   std::string modal_mode = normalize_image_modal_mode(
     cfg_option_value(options, IMAGE_MODAL_MODE_OPTION));
-  if (modal_mode != "fill") {
+  if (modal_mode != card_runtime_image_modal_mode_default()) {
     if (!out.empty()) out += ",";
     out += std::string(IMAGE_MODAL_MODE_OPTION) + "=" + modal_mode;
   }

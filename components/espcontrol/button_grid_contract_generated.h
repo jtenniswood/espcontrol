@@ -21,6 +21,7 @@ inline const char *const CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES[] = {"play_paus
 inline const char *const CARD_CONTRACT_ALARM_ACTION_MODES[] = {"away", "home", "night", "vacation", "disarm"};
 inline const char *const CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES[] = {"static", "status"};
 inline const char *const CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES[] = {"name", "status"};
+inline const char *const CARD_CONTRACT_IMAGE_MODAL_MODES[] = {"fill", "fit"};
 inline const char *const CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES[] = {"label", "status", "actual", "target"};
 inline const char *const CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES[] = {"icon", "actual", "target"};
 inline const char *const CARD_CONTRACT_CLIMATE_TEMPERATURE_STEPS[] = {"1", "0.5"};
@@ -78,6 +79,7 @@ constexpr const char *CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT = "label";
 constexpr const char *CARD_CONTRACT_MEDIA_DEFAULT_MODE = "play_pause";
 constexpr const char *CARD_CONTRACT_ALARM_ICON_DISPLAY_DEFAULT = "status";
 constexpr const char *CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT = "status";
+constexpr const char *CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT = "fill";
 constexpr const char *CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT = "label";
 constexpr const char *CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_DEFAULT = "target";
 constexpr const char *CARD_CONTRACT_CLIMATE_TEMPERATURE_STEP_DEFAULT = "1";
@@ -152,6 +154,11 @@ inline bool card_contract_alarm_icon_display_valid(const std::string &mode) {
 inline bool card_contract_alarm_label_display_valid(const std::string &mode) {
   return card_contract_string_in(mode, CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES,
     sizeof(CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES[0]));
+}
+
+inline bool card_contract_image_modal_mode_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_IMAGE_MODAL_MODES,
+    sizeof(CARD_CONTRACT_IMAGE_MODAL_MODES) / sizeof(CARD_CONTRACT_IMAGE_MODAL_MODES[0]));
 }
 
 inline bool card_contract_climate_label_display_valid(const std::string &mode) {

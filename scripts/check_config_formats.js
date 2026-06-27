@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "image_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const imageCardNormalizationFixtures = JSON.parse(fs.readFileSync(IMAGE_CARD_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -1833,6 +1835,16 @@ assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fit,image_refre
 assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fill,image_refresh=30"), "", "image modal fill and legacy refresh options are omitted");
 assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=bad,image_refresh=30"), "", "invalid image modal mode and legacy refresh options are dropped");
 assert.strictEqual(hooks.normalizeImageOptions("image_label,image_refresh=5,image_refresh_mode=bad"), "image_label", "image label option survives invalid legacy refresh values");
+for (const fixture of imageCardNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `image fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `image fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 const imageCardForLimit = {
   entity: "camera.front_door",
   label: "",
