@@ -10,6 +10,7 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const CONFIRMATION_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "confirmation_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -203,6 +204,7 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
 
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const confirmationNormalizationFixtures = JSON.parse(fs.readFileSync(CONFIRMATION_NORMALIZATION_FIXTURES, "utf8"));
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -708,6 +710,16 @@ assert.strictEqual(patternedSwitch.options, "", "switch on pattern can be cleare
 const confirmBothSwitch = hooks.parseButtonConfig("switch.printer;Printer;Printer 3D;Auto;;;;;confirm_off,confirm_on");
 assert.strictEqual(hooks.switchConfirmationMode(confirmBothSwitch), "both", "switch both confirmation mode");
 assert.strictEqual(hooks.switchConfirmationMessage(confirmBothSwitch), "Toggle this device?", "switch both confirmation default message");
+for (const fixture of confirmationNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `confirmation fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `confirmation fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 
 assertButtonRoundTrip(hooks, "delimiter button", {
   entity: "sensor.kitchen_temperature",

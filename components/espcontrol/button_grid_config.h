@@ -855,9 +855,12 @@ inline std::string normalize_card_on_pattern(const std::string &value) {
 
 inline std::string switch_card_options_normalized(const std::string &options) {
   std::string out;
-  std::string pattern = normalize_card_on_pattern(cfg_option_value(options, "on_pattern"));
-  if (!pattern.empty()) out = "on_pattern=" + pattern;
   append_large_numbers_option(out, options);
+  std::string pattern = normalize_card_on_pattern(cfg_option_value(options, "on_pattern"));
+  if (!pattern.empty()) {
+    if (!out.empty()) out += ",";
+    out += "on_pattern=" + pattern;
+  }
   if (cfg_option_token_present(options, "confirm_off")) {
     if (!out.empty()) out += ",";
     out += "confirm_off";
@@ -925,6 +928,13 @@ inline std::string action_card_options_normalized(const std::string &options,
     }
   }
 
+  if (action == "script.turn_on") {
+    std::string fields = cfg_option_value(options, "script_fields");
+    if (!fields.empty()) {
+      append_config_token(out, "script_fields=" + encode_compact_field(fields));
+    }
+  }
+
   if (action == "script.turn_on" && cfg_option_token_present(options, "confirm_on")) {
     append_config_token(out, "confirm_on");
     std::string message = cfg_option_value(options, "confirm_message");
@@ -938,12 +948,6 @@ inline std::string action_card_options_normalized(const std::string &options,
     }
     if (!no.empty() && no != "No") {
       append_config_token(out, "confirm_no=" + encode_compact_field(no));
-    }
-  }
-  if (action == "script.turn_on") {
-    std::string fields = cfg_option_value(options, "script_fields");
-    if (!fields.empty()) {
-      append_config_token(out, "script_fields=" + encode_compact_field(fields));
     }
   }
   return out;
