@@ -764,8 +764,8 @@ var CARD_CONTRACT_CARDS = {
     "default": {
       "entity": "",
       "label": "",
-      "icon": "Power",
-      "icon_on": "Flash",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
       "sensor": "",
       "unit": "",
       "type": "internal",
