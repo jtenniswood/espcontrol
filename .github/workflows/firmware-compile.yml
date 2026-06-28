@@ -1,23 +1,6 @@
 name: Firmware Compile
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/firmware-compile.yml"
-      - ".github/workflows/nightly-firmware.yml"
-      - ".github/workflows/release.yml"
-      - "common/**"
-      - "components/**"
-      - "devices/**"
-      - "builds/**"
-      - "src/webserver/**"
-      - "docs/public/webserver/**"
-      - "scripts/build.py"
-      - "scripts/device_matrix.py"
-      - "scripts/device_profiles.py"
-      - "scripts/generate_device_slots.py"
-      - "package.json"
-      - "package-lock.json"
   workflow_dispatch:
 
 env:
