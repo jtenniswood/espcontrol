@@ -69,45 +69,6 @@ inline void notify_dashboard_content_changed() {
 static_assert(correct_display_color(0xF0F0F0, 200, 200, 200) == 0xFFFFFF,
               "colour correction must clamp channels at 255");
 
-constexpr uint32_t DEFAULT_SLIDER_COLOR = correct_display_color(0xFF8C00);
-constexpr uint32_t DEFAULT_OFF_COLOR = correct_display_color(0x313131);
-constexpr uint32_t DEFAULT_TERTIARY_COLOR = correct_display_color(0x212121);
-constexpr uint32_t DARK_BACKGROUND_SECONDARY = DEFAULT_OFF_COLOR;
-constexpr uint32_t DARK_BACKGROUND_TERTIARY = DEFAULT_TERTIARY_COLOR;
-constexpr uint32_t DARK_TEXT_PRIMARY = 0xFFFFFF;
-constexpr uint32_t DARK_TEXT_MUTED = 0xB0B0B0;
-constexpr uint32_t DARK_TEXT_SOFT = 0xEFEFEF;
-constexpr uint32_t DARK_BORDER = correct_display_color(0x3A3A3A);
-constexpr uint32_t DARK_CONTROL_NEUTRAL = correct_display_color(0x424242);
-constexpr uint32_t DARK_OVERLAY = 0x000000;
-constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x2F2F2F);
-
-constexpr uint32_t readable_text_color_for_bg(uint32_t bg_color) {
-  uint32_t red = (bg_color >> 16) & 0xFF;
-  uint32_t green = (bg_color >> 8) & 0xFF;
-  uint32_t blue = bg_color & 0xFF;
-  uint32_t brightness = (red * 299 + green * 587 + blue * 114) / 1000;
-  return brightness > 186 ? DEFAULT_TERTIARY_COLOR : DARK_TEXT_PRIMARY;
-}
-
-static_assert(readable_text_color_for_bg(0xFFFFFF) == DEFAULT_TERTIARY_COLOR,
-              "light backgrounds need dark text");
-static_assert(readable_text_color_for_bg(0x000000) == DARK_TEXT_PRIMARY,
-              "dark backgrounds need light text");
-
-inline uint32_t &current_button_primary_color_ref() {
-  static uint32_t color = DEFAULT_SLIDER_COLOR;
-  return color;
-}
-
-inline void set_current_button_primary_color(uint32_t color) {
-  current_button_primary_color_ref() = color;
-}
-
-inline uint32_t current_button_primary_color() {
-  return current_button_primary_color_ref();
-}
-
 #ifndef ESPCONTROL_MAX_GRID_SLOTS
 #define ESPCONTROL_MAX_GRID_SLOTS 25
 #endif
@@ -135,6 +96,8 @@ constexpr const char *LIGHT_CONTROL_TABS_OPTION = "light_tabs";
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = "cover_tabs";
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
+constexpr const char *FAN_CONTROL_TABS_OPTION = "fan_tabs";
+constexpr const char *FAN_CONTROL_DEFAULT_TABS_VALUE = "power|speed|preset|oscillation|direction";
 
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
@@ -543,6 +506,37 @@ inline std::string cover_card_options_normalized(const std::string &options,
     cfg_option_value(options, COVER_CONTROL_TABS_OPTION));
   if (tabs == COVER_CONTROL_DEFAULT_TABS_VALUE) return "";
   return std::string(COVER_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+}
+
+inline bool fan_control_tab_token_valid(const std::string &value) {
+  return value == "power" || value == "speed" || value == "preset" ||
+         value == "oscillation" || value == "direction";
+}
+
+inline std::string normalize_fan_control_tabs_value(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(
+    value.empty() ? std::string(FAN_CONTROL_DEFAULT_TABS_VALUE) : value, '|');
+  std::vector<std::string> tabs;
+  for (const auto &part : parts) {
+    if (!fan_control_tab_token_valid(part)) continue;
+    if (std::find(tabs.begin(), tabs.end(), part) == tabs.end()) {
+      tabs.push_back(part);
+    }
+  }
+  if (tabs.empty()) tabs.push_back("power");
+  std::string out;
+  for (const auto &tab : tabs) {
+    if (!out.empty()) out += "|";
+    out += tab;
+  }
+  return out;
+}
+
+inline std::string fan_control_card_options_normalized(const std::string &options) {
+  std::string tabs = normalize_fan_control_tabs_value(
+    cfg_option_value(options, FAN_CONTROL_TABS_OPTION));
+  if (tabs == FAN_CONTROL_DEFAULT_TABS_VALUE) return "";
+  return std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
 }
 
 inline uint32_t image_card_refresh_interval_ms(const ParsedCfg &p) {
@@ -986,7 +980,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
-    p.options.clear();
+    p.options = p.type == "fan_control" ? fan_control_card_options_normalized(p.options) : "";
     if (p.icon.empty() || p.icon == "Auto") p.icon = fan_card_default_icon_name(p.type);
     if (p.type == "fan_switch") {
       if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Fan";

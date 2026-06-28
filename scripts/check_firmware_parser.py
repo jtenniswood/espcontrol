@@ -13,6 +13,7 @@ from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config.h"
+STYLE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_style.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
 BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
@@ -612,7 +613,7 @@ def pure_config_header() -> str:
     index = text.find(marker)
     if index < 0:
         raise RuntimeError(f"Could not find pure parser boundary in {CONFIG_HEADER}")
-    return text[:index]
+    return text[:index] + "\n" + STYLE_HEADER.read_text(encoding="utf-8")
 
 
 def check_clock_bar_visual_gaps() -> None:

@@ -66,6 +66,7 @@ function subpageTypeFromCode(code) {
     F: "weather_forecast",
     B: "fan_switch",
     J: "fan_speed",
+    FC: "fan_control",
     O: "fan_oscillate",
     E: "fan_direction",
     Z: "fan_preset",
@@ -1789,6 +1790,36 @@ assertButtonRoundTrip(hooks, "fan speed card", {
   options: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "fan control modal card", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "fan_control",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "fan control modal custom tabs", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "fan_control",
+  precision: "",
+  options: "fan_tabs=speed%7Cpower%7Cdirection",
+}, false);
+
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_tabs=bad%7Cspeed%7Cpower%7Cspeed"),
+  "fan_tabs=speed%7Cpower",
+  "fan control tabs normalize invalid and duplicate values"
+);
+
 assertButtonRoundTrip(hooks, "fan oscillation card", {
   entity: "fan.bedroom",
   label: "Oscillation",
@@ -1965,6 +1996,8 @@ assertButtonMigration(hooks, "image card clears label without overlay option", "
   options: "",
 });
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", false), false, "fan subtype hidden from top-level picker");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", false), false, "fan modal subtype hidden from top-level picker");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", true), false, "fan modal subtype hidden from subpage picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", true), false, "fan switch subtype hidden from subpage picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_oscillate", true), false, "fan oscillation subtype hidden from subpage picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_direction", true), false, "fan direction subtype hidden from subpage picker");
@@ -2746,6 +2779,13 @@ assertSubpageRoundTrip(hooks, "fan speed subpage", {
   order: ["1", "B"],
   buttons: [
     buttonShape({ entity: "fan.bedroom", label: "Bedroom Fan", icon: "Fan Speed 2", icon_on: "Auto", type: "fan_speed" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "fan control modal subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Bedroom Fan", icon: "Fan", icon_on: "Auto", type: "fan_control", options: "fan_tabs=speed%7Cpower" }),
   ],
 }, true);
 

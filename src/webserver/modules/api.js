@@ -993,10 +993,7 @@ function eventStreamEnabled() {
 }
 
 function cardStateEntities() {
-  var cardEntities = ENTITY_CATALOG.groups.card.filter(function (key) {
-    return key !== "screen_theme" || isEpaperPreview();
-  });
-  return entityStateItems(cardEntities)
+  return entityStateItems(ENTITY_CATALOG.groups.card)
     .concat(entityStateItemsForSlots(ENTITY_CATALOG.groups.card_slot));
 }
 

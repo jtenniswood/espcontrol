@@ -5,10 +5,7 @@
 
 substitutions:
   entity_button_order: "Button Order"
-  entity_screen_theme: "Screen: Theme"
   entity_button_on_color: "Button On Color"
-  entity_button_off_color: "Button Off Color"
-  entity_sensor_card_color: "Sensor Card Color"
   entity_button_config_prefix: "Button "
   entity_button_config_suffix: " Config"
   entity_subpage_config_prefix: "Subpage "
