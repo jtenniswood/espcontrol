@@ -39,6 +39,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set +e
           MARKER="<!-- espcontrol-pr-testing-guidance -->"
           COMMENT_ID="$(
             gh api \
@@ -59,3 +60,9 @@ jobs:
               "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
               -F body=@pr-testing-guidance.md
           fi
+
+          STATUS=$?
+          if [ "${STATUS}" -ne 0 ]; then
+            echo "::warning::Could not post PR testing guidance as a comment. The guidance is still available in the workflow summary."
+          fi
+          exit 0
