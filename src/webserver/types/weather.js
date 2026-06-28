@@ -65,7 +65,6 @@ registerButtonType("weather", {
   label: function () { return cardContractCardLabel("weather"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("weather"); },
   pickerKey: function () { return cardContractPickerKey("weather"); },
-  experimental: function () { return cardContractExperimental("weather"); },
   hidden: function () { return cardContractHidden("weather"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("weather"); },

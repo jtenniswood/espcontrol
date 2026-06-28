@@ -1,0 +1,62 @@
+[
+  {
+    "name": "get webhook clears body and keeps headers",
+    "input": "https://example.test/hook;Door Alert;Flash;Bell;get;{\"ignored\":true};webhook;2;webhook_headers=Content-Type%3A application/json,ignored=1",
+    "expected": {
+      "entity": "https://example.test/hook",
+      "label": "Door Alert",
+      "icon": "Flash",
+      "icon_on": "Auto",
+      "sensor": "GET",
+      "unit": "",
+      "type": "webhook",
+      "precision": "",
+      "options": "webhook_headers=Content-Type%3A application/json"
+    }
+  },
+  {
+    "name": "invalid method falls back to get",
+    "input": "https://example.test/hook;Door Alert;Auto;Auto;bad;payload;webhook;2;webhook_headers=X-Test%3A yes",
+    "expected": {
+      "entity": "https://example.test/hook",
+      "label": "Door Alert",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "GET",
+      "unit": "",
+      "type": "webhook",
+      "precision": "",
+      "options": "webhook_headers=X-Test%3A yes"
+    }
+  },
+  {
+    "name": "post webhook preserves body and headers",
+    "input": "https://example.test/hook;Door Alert;Auto;Auto;post;{\"value\":true};webhook;2;webhook_headers=Content-Type%3A application/json%3B Authorization%3A Bearer token",
+    "expected": {
+      "entity": "https://example.test/hook",
+      "label": "Door Alert",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "POST",
+      "unit": "{\"value\":true}",
+      "type": "webhook",
+      "precision": "",
+      "options": "webhook_headers=Content-Type%3A application/json%3B Authorization%3A Bearer token"
+    }
+  },
+  {
+    "name": "delete webhook clears body",
+    "input": "https://example.test/hook;Delete;Auto;Auto;DELETE;payload;webhook;text;",
+    "expected": {
+      "entity": "https://example.test/hook",
+      "label": "Delete",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "DELETE",
+      "unit": "",
+      "type": "webhook",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

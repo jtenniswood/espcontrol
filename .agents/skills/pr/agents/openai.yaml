@@ -1,4 +1,4 @@
 interface:
-  display_name: "/pr"
+  display_name: "pr"
   short_description: "Check a new PR for merge-blocking issues and malicious code risk"
   default_prompt: "Use $pr when I say /pr to inspect the latest open PR for bugs, malicious code, suspicious changes, and reasons not to merge it yet."

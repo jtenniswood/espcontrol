@@ -3,13 +3,7 @@ var SUBPAGE_CARD_METADATA = {
   kind: {
     label: "Type",
     idSuffix: "subpage-kind",
-    options: [
-      ["", "Generic"],
-      ["lights", "Lights"],
-      ["climate", "Climate"],
-      ["presence", "Presence"],
-      ["media", "Media"],
-    ],
+    options: function () { return subpageKindOptions(); },
   },
   labelField: {
     label: "Label",
@@ -43,41 +37,26 @@ var SUBPAGE_CARD_METADATA = {
       return subpageStateDisplayMode(b) === "icon" ? (b.entity || "") : "";
     },
   },
-  lightsEntity: {
-    label: "Light Entity",
-    idSuffix: "lights-state-entity",
-    placeholder: "e.g. light.living_room",
-    domains: ["light"],
+  presetEntity: {
+    label: function (b) {
+      var defaults = subpagePresetDefaults(subpageKind(b));
+      return defaults ? defaults.label + " Entity" : "Entity";
+    },
+    idSuffix: "preset-state-entity",
+    placeholder: function (b) {
+      var defaults = subpagePresetDefaults(subpageKind(b));
+      return defaults ? defaults.placeholder : "e.g. light.living_room";
+    },
+    domains: function (b) {
+      var defaults = subpagePresetDefaults(subpageKind(b));
+      return defaults && defaults.entityDomains ? defaults.entityDomains : [];
+    },
     bindName: "entity",
     rerender: true,
-    requiredMessage: "Add a light entity before saving.",
-  },
-  mediaEntity: {
-    label: "Media Entity",
-    idSuffix: "media-state-entity",
-    placeholder: "e.g. media_player.living_room",
-    domains: ["media_player"],
-    bindName: "entity",
-    rerender: true,
-    requiredMessage: "Add a media entity before saving.",
-  },
-  climateEntity: {
-    label: "Climate Entity",
-    idSuffix: "climate-state-entity",
-    placeholder: "e.g. climate.living_room",
-    domains: ["climate"],
-    bindName: "entity",
-    rerender: true,
-    requiredMessage: "Add a climate entity before saving.",
-  },
-  presenceEntity: {
-    label: "Presence Entity",
-    idSuffix: "presence-state-entity",
-    placeholder: "e.g. person.jane",
-    domains: ["person", "device_tracker", "binary_sensor", "input_boolean"],
-    bindName: "entity",
-    rerender: true,
-    requiredMessage: "Add a presence entity before saving.",
+    requiredMessage: function (b) {
+      var defaults = subpagePresetDefaults(subpageKind(b));
+      return "Add a " + (defaults ? defaults.label.toLowerCase() : "status") + " entity before saving.";
+    },
   },
   sensorEntity: {
     label: "Sensor Entity",
@@ -144,17 +123,11 @@ registerButtonType("subpage", {
       }),
     });
 
-    if (kind === "lights" || kind === "media" || kind === "climate" || kind === "presence") {
+    if (subpagePresetDefaults(kind)) {
       helpers.renderCardTextField(panel, b, helpers, SUBPAGE_CARD_METADATA.labelField);
       helpers.renderCardIconPicker(panel, b, helpers, SUBPAGE_CARD_METADATA.icon);
       helpers.renderCardEntityField(panel, b, helpers, {
-        entity: kind === "lights"
-          ? SUBPAGE_CARD_METADATA.lightsEntity
-          : (kind === "media"
-            ? SUBPAGE_CARD_METADATA.mediaEntity
-            : (kind === "climate"
-              ? SUBPAGE_CARD_METADATA.climateEntity
-              : SUBPAGE_CARD_METADATA.presenceEntity)),
+        entity: SUBPAGE_CARD_METADATA.presetEntity,
       });
       appendEditSubpageButton(panel, slot);
       return;

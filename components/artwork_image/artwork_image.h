@@ -71,9 +71,15 @@ class ArtworkImage : public PollingComponent,
       this->url_ = url;
     }
   }
-  /** Set the URL and start an update, queuing the latest request if a download/decode is already active. */
-  void request_update_url(const std::string &url);
+  /** Set the URL and start an update, returning the effective URL after any downloader rewrite. */
+  std::string request_update_url(const std::string &url, int max_source_dim = 0);
+  /** Stop any in-flight download/decode while keeping the last completed image buffer available. */
+  void cancel_update();
   const std::string &get_url() const { return this->url_; }
+  int get_last_http_status() const { return this->last_http_status_; }
+  bool last_error_was_ha_media_proxy_not_found() const {
+    return this->last_http_status_ == HTTP_CODE_NOT_FOUND && this->last_error_was_ha_media_proxy_;
+  }
 
   void set_target_size(int width, int height) {
     if (width <= 0 || height <= 0) return;
@@ -109,10 +115,12 @@ class ArtworkImage : public PollingComponent,
   size_t resize_download_buffer(size_t size) { return this->download_buffer_.resize(size); }
 
   template<typename F> void add_on_finished_callback(F &&callback) {
-    this->download_finished_callback_.add(std::forward<F>(callback));
+    std::function<void(bool)> cb(std::forward<F>(callback));
+    if (cb) this->download_finished_callback_.add(std::move(cb));
   }
   template<typename F> void add_on_error_callback(F &&callback) {
-    this->download_error_callback_.add(std::forward<F>(callback));
+    std::function<void()> cb(std::forward<F>(callback));
+    if (cb) this->download_error_callback_.add(std::move(cb));
   }
 
   bool is_big_endian() const { return this->is_big_endian_; }
@@ -136,6 +144,9 @@ class ArtworkImage : public PollingComponent,
   bool detect_heic_();
   bool create_decoder_(ImageFormat format, size_t total_size);
   bool is_busy_() const { return this->downloader_ != nullptr || this->decoder_ != nullptr; }
+  bool has_newer_pending_update_() const {
+    return this->update_pending_ && !this->pending_url_.empty() && this->pending_url_ != this->url_;
+  }
   void queue_pending_update_(const std::string &url);
   void start_pending_update_();
   void log_state_(const char *stage);
@@ -168,6 +179,9 @@ class ArtworkImage : public PollingComponent,
   bool promote_decode_buffer_();
   void retire_active_buffer_();
   void cleanup_retired_buffers_(bool force);
+  void limit_retired_buffers_();
+  size_t retired_buffer_bytes_() const;
+  void invalidate_lvgl_cache_();
   bool ensure_download_buffer_capacity_();
   bool decode_buffered_data_();
   void finish_download_();
@@ -209,6 +223,8 @@ class ArtworkImage : public PollingComponent,
   image::Image *placeholder_{nullptr};
 
   std::string url_{""};
+  int last_http_status_{0};
+  bool last_error_was_ha_media_proxy_{false};
 
   std::vector<std::pair<std::string, TemplatableValue<std::string> > > request_headers_;
 

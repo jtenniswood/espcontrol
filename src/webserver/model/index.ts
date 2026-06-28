@@ -24,7 +24,16 @@ export {
 } from "./card";
 
 export {
+  CARD_SIZE_DEFINITIONS,
+  CARD_SIZE_EXTRA_TALL,
+  CARD_SIZE_EXTRA_WIDE,
+  CARD_SIZE_LARGE,
+  CARD_SIZE_SINGLE,
+  CARD_SIZE_TALL,
+  CARD_SIZE_WIDE,
   applySpans,
+  cardSizeClass,
+  cardSizeDefinition,
   clearSpans,
   coveredCells,
   markSpannedCells,
@@ -64,6 +73,7 @@ export {
   normalizeClockBrightness,
   normalizeHexColor,
   normalizeHour,
+  normalizeHomeAssistantArtworkPort,
   normalizeLanguage,
   normalizeNtpServer,
   normalizeScheduleClockBrightness,
@@ -75,6 +85,7 @@ export {
   normalizeScreensaverAction,
   normalizeScreensaverDimmedBrightness,
   normalizeTemperatureUnit,
+  normalizeTimeOfDay,
   scheduleModeOption,
   screensaverActionOption,
 } from "./settings";

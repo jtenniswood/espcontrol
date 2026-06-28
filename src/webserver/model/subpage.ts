@@ -256,16 +256,44 @@ export function chooseSerializedSubpageConfig(
   return compact.length < legacy.length ? compact : legacy;
 }
 
+function utf8ByteLength(str: string): number {
+  let bytes = 0;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code < 0x80) bytes += 1;
+    else if (code >= 0xd800 && code <= 0xdbff) { bytes += 4; i += 1; } // surrogate pair → U+10000+
+    else if (code < 0x800) bytes += 2;
+    else bytes += 3;
+  }
+  return bytes;
+}
+
 export function splitSubpageConfigChunks(
   value: string | null | undefined,
   chunkCount: number,
   chunkSize = 255,
 ): string[] | null {
   const full = String(value || "");
-  if (chunkCount < 1 || chunkSize < 1 || full.length > chunkCount * chunkSize) return null;
+  // Device text entities enforce max_length in BYTES, not characters.
+  // Split on character boundaries so each chunk's UTF-8 byte count ≤ chunkSize.
+  if (chunkCount < 1 || chunkSize < 1 || utf8ByteLength(full) > chunkCount * chunkSize) return null;
   const chunks: string[] = [];
+  let charPos = 0;
   for (let i = 0; i < chunkCount; i += 1) {
-    chunks.push(full.substring(i * chunkSize, (i + 1) * chunkSize));
+    let bytes = 0;
+    let end = charPos;
+    while (end < full.length) {
+      const code = full.charCodeAt(end);
+      const charBytes =
+        code < 0x80 ? 1 :
+        (code >= 0xd800 && code <= 0xdbff) ? 4 :
+        code < 0x800 ? 2 : 3;
+      if (bytes + charBytes > chunkSize) break;
+      bytes += charBytes;
+      end += code >= 0xd800 && code <= 0xdbff ? 2 : 1; // surrogate pairs use 2 JS chars
+    }
+    chunks.push(full.substring(charPos, end));
+    charPos = end;
   }
   return chunks;
 }

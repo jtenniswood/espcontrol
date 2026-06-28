@@ -94,6 +94,9 @@ script:
       - lvgl.resume:
       - script.execute: clock_bar_hide
       - lvgl.page.show: loading_page
+      # Expected during firmware writes: blanking the backlight reduces power
+      # and avoids drawing while flash is busy. Do not treat this as a modal
+      # screensaver blank.
       - script.execute: backlight_force_display_off
       - script.wait: backlight_force_display_off
 
@@ -140,6 +143,27 @@ script:
           transition_length: 200ms
       - delay: 8s
       - script.execute: navigate_after_api
+
+  - id: firmware_install_update
+    mode: single
+    then:
+      - lambda: 'id(manual_check_only) = true;'
+      - component.update: firmware_update
+      - wait_until:
+          condition:
+            update.is_available: firmware_update
+          timeout: 30s
+      - if:
+          condition:
+            update.is_available: firmware_update
+          then:
+            - script.execute: show_update_starting
+            - script.wait: show_update_starting
+            - script.execute: show_update_writing
+            - script.wait: show_update_writing
+            - update.perform: firmware_update
+      - delay: 15s
+      - lambda: 'id(manual_check_only) = false;'
 
 update:
   - platform: http_request
@@ -228,20 +252,4 @@ button:
     web_server:
       sorting_group_id: sg_firmware
     on_press:
-      - lambda: 'id(manual_check_only) = true;'
-      - component.update: firmware_update
-      - wait_until:
-          condition:
-            update.is_available: firmware_update
-          timeout: 30s
-      - if:
-          condition:
-            update.is_available: firmware_update
-          then:
-            - script.execute: show_update_starting
-            - script.wait: show_update_starting
-            - script.execute: show_update_writing
-            - script.wait: show_update_writing
-            - update.perform: firmware_update
-      - delay: 15s
-      - lambda: 'id(manual_check_only) = false;'
+      - script.execute: firmware_install_update

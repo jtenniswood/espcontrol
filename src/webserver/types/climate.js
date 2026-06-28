@@ -26,6 +26,13 @@ var CLIMATE_CARD_METADATA = {
       ["target", "Target Temp"],
     ],
   },
+  temperatureStep: {
+    label: "Temperature Step",
+    options: [
+      ["1", "1 degree"],
+      ["0.5", "0.5 degree"],
+    ],
+  },
   largeNumbers: {
     label: "Large Temperature Numbers",
     idSuffix: "large-temperature-numbers",
@@ -42,7 +49,6 @@ registerButtonType("climate", {
   label: function () { return cardContractCardLabel("climate"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("climate"); },
   pickerKey: function () { return cardContractPickerKey("climate"); },
-  experimental: function () { return cardContractExperimental("climate"); },
   hidden: function () { return cardContractHidden("climate"); },
   hideLabel: true,
   labelPlaceholder: "e.g. Living Room",
@@ -138,7 +144,7 @@ registerButtonType("climate", {
     syncIconFields();
     panel.appendChild(iconFields);
 
-    var precisionField = helpers.selectField("Unit Precision", helpers.idPrefix + "climate-precision", [
+    var precisionField = helpers.selectField("Temperature Display", helpers.idPrefix + "climate-precision", [
       ["", "10"],
       ["1", "10.2"],
     ], climateConfig.precision);
@@ -150,6 +156,18 @@ registerButtonType("climate", {
     }
     precision.addEventListener("change", saveClimateAdvancedSettings);
     panel.appendChild(precisionField.field);
+    var stepField = helpers.selectField(
+      CLIMATE_CARD_METADATA.temperatureStep.label,
+      helpers.idPrefix + "climate-temperature-step",
+      CLIMATE_CARD_METADATA.temperatureStep.options,
+      climateTemperatureStep(b)
+    );
+    stepField.select.addEventListener("change", function () {
+      setClimateTemperatureStep(b, stepField.select.value);
+      helpers.saveField("options", b.options);
+      scheduleRender();
+    });
+    panel.appendChild(stepField.field);
     helpers.renderCardLargeNumbersToggle(panel, b, helpers, CLIMATE_CARD_METADATA);
 
     var hasRange = !!(climateConfig.min || climateConfig.max);

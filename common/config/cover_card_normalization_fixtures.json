@@ -1,0 +1,62 @@
+[
+  {
+    "name": "default cover tabs are omitted for modal covers",
+    "input": "cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=position%7Ccontrols%7Ctilt",
+    "expected": {
+      "entity": "cover.office",
+      "label": "Office Blind",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "modal",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "custom cover tabs are preserved for modal covers",
+    "input": "cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=controls%7Cposition",
+    "expected": {
+      "entity": "cover.office",
+      "label": "Office Blind",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "modal",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": "cover_tabs=controls%7Cposition"
+    }
+  },
+  {
+    "name": "invalid and duplicate cover tabs are cleaned",
+    "input": "cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=bad%7Cposition%7Cposition%7Ctilt",
+    "expected": {
+      "entity": "cover.office",
+      "label": "Office Blind",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "modal",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": "cover_tabs=position%7Ctilt"
+    }
+  },
+  {
+    "name": "non-modal covers drop tabs",
+    "input": "cover.office;Office Blind;Blinds;Blinds Open;toggle;;cover;;cover_tabs=controls%7Cposition",
+    "expected": {
+      "entity": "cover.office",
+      "label": "Office Blind",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "toggle",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

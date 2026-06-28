@@ -104,7 +104,6 @@ registerButtonType("internal", {
   label: function () { return cardContractCardLabel("internal"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("internal"); },
   pickerKey: function () { return cardContractPickerKey("internal"); },
-  experimental: function () { return cardContractExperimental("internal"); },
   hidden: function () { return cardContractHidden("internal"); },
   hideLabel: true,
   labelPlaceholder: "e.g. Porch Light",
@@ -114,12 +113,9 @@ registerButtonType("internal", {
     return internalRelayOptions().length > 0;
   },
   onSelect: function (b) {
+    var defaults = cardContractDefaultConfig("internal");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
     ensureInternalRelaySelection(b);
-    b.sensor = "";
-    b.unit = "";
-    b.precision = "";
-    b.icon = internalRelayDefaultIcon("switch");
-    b.icon_on = internalRelayDefaultOnIcon();
   },
   renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     renderInternalRelayField(panel, b, helpers);

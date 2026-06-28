@@ -9,6 +9,7 @@
 substitutions:
   device_slug: "esp32-p4-86"
   firmware_manifest_slug: "esp32-p4-86"
+  firmware_version: "dev"
   screen_width: "720"
   screen_height: "720"
   content_width: "570"
@@ -28,17 +29,48 @@ substitutions:
   sensor_value_font: font_number_value
   padding: 21px
   radius: 12px
+  main_page_card_gap: "15"
   main_page_pad_top: "60"
   main_page_compact_pad_top: "6"
+  clock_bar_item_gap: "96"
+  clock_bar_visual_gap: "12"
+  voice_clock_bar_hide_code: |-
+    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
+  voice_clock_bar_apply_code: |-
+    if (id(voice_services_enabled).state) {
+      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,
+                   -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);
+      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
+      const bool microphone_muted = id(master_mute_switch).state;
+      const bool output_muted = id(voice_media_player).is_muted();
+      lv_label_set_text(id(voice_clock_bar_mute_icon_label),
+                        microphone_muted ? "\U000F036D" :
+                        output_muted ? "\U000F04C4" : "\U000F036C");
+      lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),
+                                  lv_color_hex(0xFFFFFF),
+                                  LV_PART_MAIN);
+    } else {
+      lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);
+    }
+  voice_interaction_active_condition: "id(voice_interaction_active)"
   clock_font_size: "224"
   clock_cx: "360"
   clock_cy: "360"
+  screen_saver_clock_min_brightness: "1"
+  screen_saver_clock_default_brightness: "35"
+  screen_schedule_clock_min_brightness: "1"
+  screen_schedule_clock_default_brightness: "10"
+  voice_wake_chime_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac"
+  voice_timer_alert_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac"
+  voice_stt_failure_chime_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
   network_transport: "wifi"
   disable_updates: "false"
   network_package_suffix: ${ "_ethernet" if network_transport == "ethernet" else "" }
   firmware_update_package_suffix: ${ "_disabled" if disable_updates == "true" else "" }
+  esp32_c6_firmware_update_package_suffix: ${ "_disabled" if network_transport == "ethernet" else "" }
   backlight_pwm_frequency: ${ "20000Hz" if network_transport == "ethernet" else "100Hz" }
   cover_art_size: "720"
+  cover_art_decode_size: "720"
   cover_art_x: "0"
   cover_art_y: "0"
   cover_art_accent_x: "0"
@@ -68,6 +100,7 @@ substitutions:
   cover_art_progress_height: "4"
   cover_art_text_color: "0xFFFFFF"
   cover_art_square_overlay: "true"
+  cover_art_live_image_updates: "false"
 
 packages:
   # ---------------------------------------------------------------------------
@@ -77,6 +110,7 @@ packages:
   device:          !include device/device.yaml
   touchscreen:     !include device/touchscreen${network_package_suffix}.yaml
   network_coprocessor: !include device/network_coprocessor${network_package_suffix}.yaml
+  esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update${esp32_c6_firmware_update_package_suffix}.yaml
   icons:           !include ../../common/assets/icons.yaml
   fonts_device:    !include device/fonts.yaml
   button_theme:    !include ../../common/theme/button.yaml
@@ -110,6 +144,8 @@ packages:
   network:         !include ../../common/addon/network${network_package_suffix}.yaml
   memory_diag:     !include ../../common/addon/memory_diagnostics.yaml
   fw_update:       !include ../../common/addon/firmware_update${firmware_update_package_suffix}.yaml
+  voice_assistant: !include device/voice_assistant.yaml
+  physical_volume_button: !include device/physical_volume_button${network_package_suffix}.yaml
 
   # ---------------------------------------------------------------------------
   # Screens (loading must be first page for LVGL startup)
@@ -121,7 +157,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
-  image_cards:     !include ../../common/device/image_cards.yaml
+  image_cards:     !include ../../common/device/image_cards_6.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)
   # ---------------------------------------------------------------------------

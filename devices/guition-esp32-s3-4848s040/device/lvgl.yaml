@@ -80,25 +80,14 @@ lvgl:
           text_align: center
           text_color: 0xFFFFFF
           hidden: true
-      # Weather status (small icon in the clock bar)
-      - label:
-          text: "\U000F0590"
-          id: clock_bar_weather_icon_label
-          text_font: font_icon_status
-          align: top_right
-          x: -14
-          y: 3
-          text_align: center
-          text_color: 0xFFFFFF
-          hidden: true
       # Network status (tappable, right side of clock bar)
       - obj:
           id: network_status_button
           align: top_right
-          x: -14
-          y: 3
-          width: 36
-          height: 32
+          x: -8
+          y: 1
+          width: 48
+          height: 44
           bg_opa: 0%
           border_width: 0
           pad_all: 0
@@ -128,8 +117,8 @@ lvgl:
         type: grid
         grid_columns: [FR(1), FR(1), FR(1)]
         grid_rows: [FR(1), FR(1), FR(1)]
-        pad_row: 10
-        pad_column: 10
+        pad_row: ${main_page_card_gap}
+        pad_column: ${main_page_card_gap}
       width: 100%
       bg_color: Black
       bg_opa: cover

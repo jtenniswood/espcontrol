@@ -37,13 +37,17 @@ inline std::string decode_compact_subpage_field(const std::string &value) {
   return decode_compact_field(value);
 }
 
+inline std::string decode_compact_subpage_field(const std::string &value, size_t start, size_t len) {
+  return decode_compact_field(value, start, len);
+}
+
 inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   if (brightness_slider_type(b.type) && !b.sensor.empty()) b.sensor.clear();
   if (fan_card_type(b.type)) {
     b.sensor.clear();
     b.unit.clear();
     b.precision.clear();
-    b.options.clear();
+    b.options = b.type == "fan_control" ? fan_control_card_options_normalized(b.options) : "";
     if (b.icon.empty() || b.icon == "Auto") b.icon = fan_card_default_icon_name(b.type);
     if (b.type == "fan_switch") {
       if (b.icon_on.empty() || b.icon_on == "Auto") b.icon_on = "Fan";
@@ -96,6 +100,12 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     if (!b.sensor.empty()) b.icon_on.clear();
     b.options = garage_card_options_normalized(b.options, b.sensor);
+  }
+  if (b.type == "cover") {
+    if (!card_runtime_cover_mode_valid(b.sensor)) b.sensor.clear();
+    b.precision.clear();
+    if (b.sensor != "set_position") b.unit.clear();
+    b.options = cover_card_options_normalized(b.options, b.sensor);
   }
   if (b.type == "alarm") {
     b.sensor.clear();
@@ -151,6 +161,12 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     b.options.clear();
   }
+  if (b.type == "light_control") {
+    b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    b.options = light_control_card_options_normalized(b.options);
+  }
   if (b.type == "subpage") {
     b.options = subpage_card_options_normalized(b.options, b.sensor, b.precision);
   }
@@ -184,11 +200,11 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   p.precision = b.precision;
   if (!b.type.empty() && b.type != "action" && b.type != "alarm" &&
       b.type != "alarm_action" &&
-      b.type != "climate" && b.type != "garage" &&
+      b.type != "climate" && b.type != "cover" && b.type != "garage" &&
       b.type != "webhook" &&
       b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
-      b.type != "subpage" &&
+      b.type != "subpage" && b.type != "light_control" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }
@@ -349,17 +365,19 @@ inline std::string get_subpage_order(const std::string &sp_cfg) {
   return sp_cfg.substr(start, pe - start);
 }
 
-inline std::string subpage_back_token_base(std::string token) {
-  size_t eq = token.find('=');
-  if (eq != std::string::npos) token = token.substr(0, eq);
-  return token;
-}
-
-inline std::string subpage_back_label_from_order_token(const std::string &token) {
-  size_t eq = token.find('=');
-  if (eq == std::string::npos) return espcontrol_i18n(std::string("Back"));
-  std::string label = decode_compact_subpage_field(token.substr(eq + 1));
-  return label.empty() ? espcontrol_i18n(std::string("Back")) : label;
+inline bool subpage_back_token_span(const std::string &order_str, size_t start, size_t end, char &suffix,
+                                    size_t *label_start = nullptr) {
+  while (start < end && std::isspace(static_cast<unsigned char>(order_str[start]))) start++;
+  while (end > start && std::isspace(static_cast<unsigned char>(order_str[end - 1]))) end--;
+  size_t eq = order_str.find('=', start);
+  size_t base_end = (eq == std::string::npos || eq > end) ? end : eq;
+  while (base_end > start && std::isspace(static_cast<unsigned char>(order_str[base_end - 1]))) base_end--;
+  size_t len = base_end - start;
+  if (len < 1 || len > 2 || order_str[start] != 'B') return false;
+  suffix = len == 2 ? order_str[start + 1] : '\0';
+  if (suffix != '\0' && !grid_token_has_span_suffix(suffix)) return false;
+  if (label_start) *label_start = (eq == std::string::npos || eq >= end) ? std::string::npos : eq + 1;
+  return true;
 }
 
 inline std::string get_subpage_back_label(const std::string &order_str) {
@@ -369,11 +387,14 @@ inline std::string get_subpage_back_label(const std::string &order_str) {
     size_t cm = order_str.find(',', st);
     if (cm == std::string::npos) cm = order_str.length();
     if (cm > st) {
-      std::string tk = order_str.substr(st, cm - st);
-      std::string base = subpage_back_token_base(tk);
-      if (base == "B" || base == "Bd" || base == "Bw" || base == "Bb" ||
-          base == "Bt" || base == "Bx") {
-        return subpage_back_label_from_order_token(tk);
+      char suffix = '\0';
+      size_t label_start = std::string::npos;
+      if (subpage_back_token_span(order_str, st, cm, suffix, &label_start)) {
+        if (label_start != std::string::npos) {
+          std::string label = decode_compact_subpage_field(order_str, label_start, cm - label_start);
+          return label.empty() ? espcontrol_i18n(std::string("Back")) : label;
+        }
+        return espcontrol_i18n(std::string("Back"));
       }
     }
     st = cm + 1;
@@ -397,13 +418,15 @@ inline void subscribe_subpage_parent_indicator(
     lv_obj_t *parent_btn, lv_obj_t *parent_icon,
     int parent_idx, bool *child_was_on,
     bool has_alt_icon, const char *off_glyph, const char *on_glyph,
-    int *sp_on_count) {
+    int *sp_on_count,
+    bool (*is_active_state)(esphome::StringRef) = is_entity_on_ref) {
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
       [parent_btn, parent_icon, parent_idx, child_was_on,
-       has_alt_icon, off_glyph, on_glyph, sp_on_count](esphome::StringRef state) {
-        bool is_on = is_entity_on_ref(state);
+       has_alt_icon, off_glyph, on_glyph, sp_on_count,
+       is_active_state](esphome::StringRef state) {
+        bool is_on = is_active_state(state);
         if (is_on && !*child_was_on) {
           sp_on_count[parent_idx]++;
           *child_was_on = true;
@@ -433,20 +456,9 @@ struct ClimateSubpageParentIndicatorCtx {
   const char *on_glyph = nullptr;
 };
 
-inline bool climate_subpage_mode_can_work(const std::string &mode) {
-  return mode == "cool" || mode == "heat" || mode == "auto" ||
-         mode == "heat_cool" || mode == "fan_only" || mode == "fan";
-}
-
-inline bool climate_subpage_action_is_working(const std::string &action) {
-  return action == "cooling" || action == "heating" || action == "fan";
-}
-
 inline void apply_climate_subpage_parent_indicator(ClimateSubpageParentIndicatorCtx *ctx) {
   if (!ctx) return;
-  bool working = ctx->available &&
-                 climate_subpage_mode_can_work(ctx->hvac_mode) &&
-                 climate_subpage_action_is_working(ctx->hvac_action);
+  bool working = ctx->available && climate_action_is_working(ctx->hvac_action);
   set_card_checked_state(ctx->parent_btn, working);
   if (ctx->has_alt_icon && ctx->parent_icon)
     lv_label_set_text(ctx->parent_icon, working ? ctx->on_glyph : ctx->off_glyph);
@@ -500,19 +512,22 @@ inline void parse_subpage_order(const std::string &order_str, int num_slots, int
     size_t cm = order_str.find(',', st2);
     if (cm == std::string::npos) cm = order_str.length();
     if (cm > st2) {
-      std::string tk = order_str.substr(st2, cm - st2);
-      tk = subpage_back_token_base(tk);
-      if (tk == "B" || tk == "Bd" || tk == "Bw" || tk == "Bb" || tk == "Bt" || tk == "Bx") {
+      char back_suffix = '\0';
+      if (subpage_back_token_span(order_str, st2, cm, back_suffix)) {
         result.back_pos = gp2;
-        grid_token_spans(tk.length() > 1 ? tk[1] : '\0', result.back_row_span, result.back_col_span);
+        grid_token_spans(back_suffix, result.back_row_span, result.back_col_span);
         result.has_back_token = true;
       } else {
+        size_t token_end = cm;
         int row_span = 1, col_span = 1;
-        if (!tk.empty() && grid_token_has_span_suffix(tk.back())) {
-          grid_token_spans(tk.back(), row_span, col_span);
-          tk.pop_back();
+        while (token_end > st2 && std::isspace(static_cast<unsigned char>(order_str[token_end - 1]))) {
+          token_end--;
         }
-        int v = atoi(tk.c_str());
+        if (token_end > st2 && grid_token_has_span_suffix(order_str[token_end - 1])) {
+          grid_token_spans(order_str[token_end - 1], row_span, col_span);
+          token_end--;
+        }
+        int v = parse_positive_int_span(order_str, st2, token_end);
         if (v >= 1 && v <= btn_limit) {
           result.positions[gp2] = v;
           result.row_span[v - 1] = row_span;

@@ -24,3 +24,7 @@ text:
     update_interval: never
     web_server:
       sorting_group_id: sg_button
+    on_value:
+      then:
+        - delay: 750ms
+        - script.execute: refresh_button_grid

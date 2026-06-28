@@ -63,19 +63,15 @@ registerButtonType("webhook", {
   label: function () { return cardContractCardLabel("webhook"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("webhook"); },
   pickerKey: function () { return cardContractPickerKey("webhook"); },
-  experimental: function () { return cardContractExperimental("webhook"); },
   hidden: function () { return cardContractHidden("webhook"); },
   labelPlaceholder: "e.g. Gate Open",
   defaultConfig: function () { return cardContractDefaultConfig("webhook"); },
   cardMetadata: WEBHOOK_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = "";
-    b.sensor = "GET";
-    b.unit = "";
-    b.icon = "Auto";
-    b.icon_on = "Auto";
-    b.precision = "";
-    b.options = "";
+    var defaults = cardContractDefaultConfig("webhook");
+    Object.keys(defaults).forEach(function (key) {
+      if (key !== "label") b[key] = defaults[key];
+    });
   },
   renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     normalizeWebhookConfig(b);
@@ -142,7 +138,10 @@ registerButtonType("webhook", {
       }
     });
 
-    helpers.renderCardIconPicker(panel, b, helpers, WEBHOOK_CARD_METADATA.icon);
+    helpers.renderBasicCardFields(panel, b, helpers, WEBHOOK_CARD_METADATA, {
+      entity: false,
+      label: false,
+    });
 
     function saveHeaders() {
       helpers.saveField("options", setWebhookHeaders(b, headersField.input.value));
@@ -150,10 +149,10 @@ registerButtonType("webhook", {
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Webhook";
-    var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "flash";
-    return {
-      iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
-      labelHtml: cardBadgeLabelHtml(helpers, label, WEBHOOK_CARD_METADATA.preview.badge),
-    };
+    return cardBadgePreview(b, helpers, {
+      label: label,
+      iconFallback: "Flash",
+      badge: WEBHOOK_CARD_METADATA.preview.badge,
+    });
   },
 });

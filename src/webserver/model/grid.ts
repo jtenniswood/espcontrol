@@ -1,5 +1,37 @@
 export type SlotSizeMap = Record<string, number>;
 
+export const CARD_SIZE_SINGLE = 1;
+export const CARD_SIZE_TALL = 2;
+export const CARD_SIZE_WIDE = 3;
+export const CARD_SIZE_LARGE = 4;
+export const CARD_SIZE_EXTRA_TALL = 5;
+export const CARD_SIZE_EXTRA_WIDE = 6;
+
+export interface CardSizeDefinition {
+  size: number;
+  token: string;
+  rowSpan: number;
+  colSpan: number;
+  className: string;
+}
+
+const CARD_SIZE_SINGLE_DEFINITION: CardSizeDefinition = {
+  size: CARD_SIZE_SINGLE,
+  token: "",
+  rowSpan: 1,
+  colSpan: 1,
+  className: "",
+};
+
+export const CARD_SIZE_DEFINITIONS: readonly CardSizeDefinition[] = [
+  CARD_SIZE_SINGLE_DEFINITION,
+  { size: CARD_SIZE_TALL, token: "d", rowSpan: 2, colSpan: 1, className: "sp-btn-double" },
+  { size: CARD_SIZE_WIDE, token: "w", rowSpan: 1, colSpan: 2, className: "sp-btn-wide" },
+  { size: CARD_SIZE_LARGE, token: "b", rowSpan: 2, colSpan: 2, className: "sp-btn-big" },
+  { size: CARD_SIZE_EXTRA_TALL, token: "t", rowSpan: 3, colSpan: 1, className: "sp-btn-extra-tall" },
+  { size: CARD_SIZE_EXTRA_WIDE, token: "x", rowSpan: 1, colSpan: 3, className: "sp-btn-extra-wide" },
+];
+
 export interface ParsedGridOrder {
   grid: number[];
   sizes: SlotSizeMap;
@@ -9,22 +41,36 @@ function copySizes(sizes: SlotSizeMap | undefined): SlotSizeMap {
   return { ...(sizes || {}) };
 }
 
+export function cardSizeDefinition(size: number | null | undefined): CardSizeDefinition {
+  const normalized = size || CARD_SIZE_SINGLE;
+  for (const definition of CARD_SIZE_DEFINITIONS) {
+    if (definition.size === normalized) return definition;
+  }
+  return CARD_SIZE_SINGLE_DEFINITION;
+}
+
 export function sizeFromToken(token: string | null | undefined): number {
-  return token === "d" ? 2 : token === "w" ? 3 : token === "b" ? 4 :
-    token === "t" ? 5 : token === "x" ? 6 : 1;
+  const normalized = token || "";
+  for (const definition of CARD_SIZE_DEFINITIONS) {
+    if (definition.token === normalized) return definition.size;
+  }
+  return CARD_SIZE_SINGLE;
 }
 
 export function sizeToken(size: number | null | undefined): string {
-  return size === 4 ? "b" : size === 2 ? "d" : size === 3 ? "w" :
-    size === 5 ? "t" : size === 6 ? "x" : "";
+  return cardSizeDefinition(size).token;
 }
 
 export function sizeRowSpan(size: number | null | undefined): number {
-  return size === 5 ? 3 : (size === 2 || size === 4) ? 2 : 1;
+  return cardSizeDefinition(size).rowSpan;
 }
 
 export function sizeColSpan(size: number | null | undefined): number {
-  return size === 6 ? 3 : (size === 3 || size === 4) ? 2 : 1;
+  return cardSizeDefinition(size).colSpan;
+}
+
+export function cardSizeClass(size: number | null | undefined): string {
+  return cardSizeDefinition(size).className;
 }
 
 export function coveredCells(

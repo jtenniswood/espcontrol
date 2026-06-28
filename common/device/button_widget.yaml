@@ -50,7 +50,7 @@ button:
     - label:
         align: bottom_left
         id: button_${num}_text_label
-        text: "Configure"
+        text: !lambda 'return std::string(espcontrol_i18n("Configure"));'
         long_mode: wrap
         width: 100%
     # Subpage marker (shown only for subpage cards by the shared grid code)
@@ -102,4 +102,12 @@ button:
               value: 'false'
           - lambda: 'ESP_LOGD("screensaver", "Ignored button long press after screensaver wake");'
         else:
-          - script.execute: screen_schedule_manual_sleep
+          - if:
+              condition:
+                lambda: 'return id(display_asleep) || id(screen_schedule_asleep) || id(screensaver_display_off_active) || id(screensaver_dimmed_active) || id(cover_art_screensaver_active);'
+              then:
+                - script.execute: screensaver_wake
+              else:
+                - lambda: |-
+                    ESP_LOGD("button", "Treating grid card long press as normal tap for slot ${num}");
+                    handle_button_click(id(button_${num}_config).state, ${num}, id(button_${num}));

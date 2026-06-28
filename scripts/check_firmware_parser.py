@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -11,14 +12,22 @@ from tempfile import TemporaryDirectory
 
 
 ROOT = Path(__file__).resolve().parent.parent
+CONFIG_DIR = ROOT / "common" / "config"
 CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config.h"
+STYLE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_style.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
+BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
+CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
+CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "card_normalization_fixtures.json"
+DEVICES_DIR = ROOT / "devices"
+IMAGE_CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "image_card_normalization_fixtures.json"
 
 
 CPP_SOURCE = r'''
 #include <cassert>
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -26,6 +35,11 @@ CPP_SOURCE = r'''
 #include <functional>
 #include <string>
 #include <vector>
+
+template <typename... Args>
+inline void esp_log_ignore(Args&&...) {}
+#define ESP_LOGW(...) esp_log_ignore(__VA_ARGS__)
+#define ESP_LOGI(...) esp_log_ignore(__VA_ARGS__)
 
 namespace esphome {
 namespace text { class Text {}; }
@@ -39,10 +53,23 @@ class StringRef {
 };
 }
 
-struct lv_obj_t {};
+struct lv_obj_t {
+  int flags = 0;
+  std::string text;
+};
+struct lv_disp_t {};
+struct lv_font_t {};
 using lv_coord_t = int;
 using lv_style_selector_t = int;
 using lv_color_t = int;
+using lv_grid_align_t = int;
+using lv_text_align_t = int;
+static lv_disp_t lv_test_default_disp;
+static bool lv_test_disp_available = false;
+static int lv_test_hor_res = 480;
+static int lv_test_ver_res = 480;
+static int lv_obj_move_background_calls = 0;
+static lv_obj_t *lv_active_screen = nullptr;
 inline const char *espcontrol_i18n(const char *text) { return text ? text : ""; }
 inline std::string espcontrol_i18n(const std::string &text) { return text; }
 constexpr int LV_PART_MAIN = 0;
@@ -51,8 +78,17 @@ constexpr int LV_STATE_PRESSED = 2;
 constexpr int LV_STATE_DEFAULT = 0;
 constexpr int LV_STATE_DISABLED = 4;
 constexpr int LV_LABEL_LONG_WRAP = 0;
+constexpr int LV_LABEL_LONG_CLIP = 1;
+constexpr int LV_TEXT_ALIGN_LEFT = 0;
+constexpr int LV_TEXT_ALIGN_CENTER = 1;
+constexpr int LV_TEXT_ALIGN_RIGHT = 2;
+constexpr int LV_ALIGN_TOP_LEFT = 0;
+constexpr int LV_ALIGN_TOP_MID = 1;
+constexpr int LV_ALIGN_TOP_RIGHT = 2;
 constexpr int LV_ALIGN_BOTTOM_LEFT = 0;
-constexpr int LV_ALIGN_BOTTOM_RIGHT = 1;
+[[maybe_unused]] constexpr int LV_ALIGN_BOTTOM_RIGHT = 1;
+constexpr int LV_GRID_ALIGN_START = 0;
+constexpr int LV_GRID_ALIGN_STRETCH = 1;
 constexpr int LV_OPA_COVER = 255;
 constexpr int LV_OPA_50 = 128;
 constexpr int LV_OBJ_FLAG_CLICKABLE = 1;
@@ -60,33 +96,182 @@ constexpr int LV_OBJ_FLAG_HIDDEN = 2;
 constexpr int LV_GRAD_DIR_HOR = 1;
 inline int lv_color_hex(uint32_t value) { return static_cast<int>(value); }
 inline int lv_pct(int value) { return value; }
+inline lv_obj_t *lv_scr_act() { return lv_active_screen; }
 inline void lv_obj_set_style_transform_scale_x(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_transform_scale_y(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_bg_color(lv_obj_t *, int, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
 inline void lv_obj_set_style_bg_grad_dir(lv_obj_t *, int, lv_style_selector_t) {}
 inline void lv_obj_set_style_text_color(lv_obj_t *, lv_color_t, lv_style_selector_t) {}
+inline void lv_obj_set_style_text_align(lv_obj_t *, int, lv_style_selector_t) {}
 inline lv_color_t lv_obj_get_style_text_color(lv_obj_t *, lv_style_selector_t) { return 0; }
 inline void lv_obj_set_style_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_set_style_text_opa(lv_obj_t *, int, int) {}
 inline void lv_obj_add_state(lv_obj_t *, int) {}
 inline void lv_obj_clear_state(lv_obj_t *, int) {}
 inline bool lv_obj_has_state(lv_obj_t *, int) { return false; }
-inline void lv_obj_add_flag(lv_obj_t *, int) {}
-inline void lv_obj_clear_flag(lv_obj_t *, int) {}
+inline void lv_obj_add_flag(lv_obj_t *obj, int flag) { if (obj) obj->flags |= flag; }
+inline void lv_obj_clear_flag(lv_obj_t *obj, int flag) { if (obj) obj->flags &= ~flag; }
+inline bool lv_obj_has_flag(lv_obj_t *obj, int flag) { return obj && (obj->flags & flag); }
 inline uint32_t lv_obj_get_child_cnt(lv_obj_t *) { return 0; }
 inline lv_obj_t *lv_obj_get_child(lv_obj_t *, uint32_t) { return nullptr; }
+inline int lv_obj_get_width(lv_obj_t *) { return 480; }
+inline int lv_obj_get_height(lv_obj_t *) { return 480; }
+inline int lv_obj_get_style_pad_left(lv_obj_t *, int) { return 0; }
+inline int lv_obj_get_style_pad_right(lv_obj_t *, int) { return 0; }
+inline int lv_obj_get_style_pad_top(lv_obj_t *, int) { return 0; }
+inline int lv_obj_get_style_pad_bottom(lv_obj_t *, int) { return 0; }
+inline int lv_obj_get_style_pad_column(lv_obj_t *, int) { return 0; }
+inline int lv_obj_get_style_pad_row(lv_obj_t *, int) { return 0; }
+inline lv_obj_t *lv_obj_get_parent(lv_obj_t *) { return nullptr; }
+inline lv_disp_t *lv_disp_get_default() { return lv_test_disp_available ? &lv_test_default_disp : nullptr; }
+inline int lv_disp_get_hor_res(lv_disp_t *) { return lv_test_hor_res; }
+inline int lv_disp_get_ver_res(lv_disp_t *) { return lv_test_ver_res; }
 inline void lv_label_set_long_mode(lv_obj_t *, int) {}
+inline void lv_obj_set_size(lv_obj_t *, int, int) {}
 inline void lv_obj_set_width(lv_obj_t *, int) {}
-inline void lv_label_set_text(lv_obj_t *, const char *) {}
+inline void lv_obj_set_height(lv_obj_t *, int) {}
+inline void lv_obj_set_pos(lv_obj_t *, int, int) {}
+inline void lv_obj_set_grid_cell(lv_obj_t *, int, int, int, int, int, int) {}
+inline void lv_obj_set_style_pad_top(lv_obj_t *, int, int) {}
+inline void lv_obj_update_layout(lv_obj_t *) {}
+inline void lv_label_set_text(lv_obj_t *obj, const char *text) { if (obj) obj->text = text ? text : ""; }
 inline void lv_obj_align(lv_obj_t *, int, int, int) {}
 inline void lv_obj_move_foreground(lv_obj_t *) {}
+inline void lv_obj_move_background(lv_obj_t *) { lv_obj_move_background_calls++; }
 
 #include "temperature_unit.h"
 #include "button_grid_config_pure.h"
+#include "backlight.h"
 #include "button_grid_layout.h"
 
 int main() {
+  int row_span = 0;
+  int col_span = 0;
+  grid_token_spans('\0', row_span, col_span);
+  assert(row_span == 1 && col_span == 1);
+  grid_token_spans('d', row_span, col_span);
+  assert(row_span == 2 && col_span == 1);
+  grid_token_spans('w', row_span, col_span);
+  assert(row_span == 1 && col_span == 2);
+  grid_token_spans('b', row_span, col_span);
+  assert(row_span == 2 && col_span == 2);
+  grid_token_spans('t', row_span, col_span);
+  assert(row_span == 3 && col_span == 1);
+  grid_token_spans('x', row_span, col_span);
+  assert(row_span == 1 && col_span == 3);
+
+  assert(clock_bar_equal_fr_track_size(434, 3, 0) == 145);
+  assert(clock_bar_equal_fr_track_size(434, 3, 1) == 145);
+  assert(clock_bar_equal_fr_track_size(434, 3, 2) == 144);
+  assert(clock_bar_grid_track_span_size(480, 8, 8, 15, 3, 0, 1) == 145);
+  assert(clock_bar_grid_track_span_size(480, 8, 8, 15, 3, 0, 2) == 305);
+  assert(clock_bar_grid_track_span_size(480, 8, 8, 15, 3, 1, 2) == 304);
+  assert(clock_bar_grid_track_span_size(480, 8, 8, 15, 3, 0, 3) == 464);
+  assert(clock_bar_grid_track_span_size(1024, 5, 5, 10, 5, 0, 2) == 400);
+  assert(clock_bar_grid_track_span_size(1024, 5, 5, 10, 5, 3, 2) == 399);
+  assert(clock_bar_grid_track_span_size(600, 42, 5, 10, 3, 0, 2) == 366);
+  lv_test_disp_available = false;
+  assert(clock_bar_current_screen_width(1024) == 1024);
+  assert(clock_bar_current_screen_height(600) == 600);
+  lv_test_hor_res = 800;
+  lv_test_ver_res = 1280;
+  lv_test_disp_available = true;
+  assert(clock_bar_current_screen_width(1024) == 800);
+  assert(clock_bar_current_screen_height(600) == 1280);
+  lv_test_disp_available = false;
+
+  lv_obj_t main_page;
+  lv_active_screen = &main_page;
+  auto awake_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, false, false, false, false, false, false);
+  assert(awake_clock_bar.reserve_space);
+  assert(awake_clock_bar.visible);
+
+  auto clock_screensaver_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, false, false, true, false, false, false);
+  assert(clock_screensaver_clock_bar.reserve_space);
+  assert(!clock_screensaver_clock_bar.visible);
+
+  auto dismissing_screensaver_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, true, false, false, false, false, false);
+  assert(dismissing_screensaver_clock_bar.reserve_space);
+  assert(!dismissing_screensaver_clock_bar.visible);
+
+  auto screen_schedule_clock_bar = clock_bar_resolve_visibility(
+    true, &main_page, true, true, true, false, false, false);
+  assert(!screen_schedule_clock_bar.reserve_space);
+  assert(!screen_schedule_clock_bar.visible);
+
+  auto fallback_clock_bar = parse_clock_bar_layout("bad|unknown:time");
+  assert(fallback_clock_bar.section[CLOCK_BAR_ITEM_TEMPERATURE] == CLOCK_BAR_SECTION_LEFT);
+  assert(fallback_clock_bar.order[CLOCK_BAR_ITEM_TEMPERATURE] == 0);
+  assert(fallback_clock_bar.section[CLOCK_BAR_ITEM_TIME] == CLOCK_BAR_SECTION_MIDDLE);
+  assert(fallback_clock_bar.section[CLOCK_BAR_ITEM_NETWORK] == CLOCK_BAR_SECTION_RIGHT);
+  assert(fallback_clock_bar.order[CLOCK_BAR_ITEM_NETWORK] == 0);
+
+  auto duplicate_clock_bar = parse_clock_bar_layout(
+    " left : temperature , temperature | middle: time | right: network,network,weather ");
+  assert(duplicate_clock_bar.section[CLOCK_BAR_ITEM_TEMPERATURE] == CLOCK_BAR_SECTION_LEFT);
+  assert(duplicate_clock_bar.order[CLOCK_BAR_ITEM_TEMPERATURE] == 0);
+  assert(duplicate_clock_bar.section[CLOCK_BAR_ITEM_TIME] == CLOCK_BAR_SECTION_MIDDLE);
+  assert(duplicate_clock_bar.order[CLOCK_BAR_ITEM_TIME] == 0);
+  assert(duplicate_clock_bar.section[CLOCK_BAR_ITEM_NETWORK] == CLOCK_BAR_SECTION_RIGHT);
+  assert(duplicate_clock_bar.order[CLOCK_BAR_ITEM_NETWORK] == 0);
+
+  auto compact_clock_bar = compact_clock_bar_layout(
+    duplicate_clock_bar, 1, true, false);
+  assert(compact_clock_bar.section[CLOCK_BAR_ITEM_TEMPERATURE] == CLOCK_BAR_SECTION_LEFT);
+  assert(compact_clock_bar.section[CLOCK_BAR_ITEM_NETWORK] == -1);
+  assert(compact_clock_bar.count[CLOCK_BAR_SECTION_LEFT] == 1);
+  assert(compact_clock_bar.count[CLOCK_BAR_SECTION_RIGHT] == 0);
+
+  auto clock_bar_entities = parse_clock_bar_temperature_entities(
+    " sensor.outdoor | sensor.indoor, sensor.outdoor\nsensor.loft,, ");
+  assert(clock_bar_entities.size() == 1);
+  assert(clock_bar_entities[0] == "sensor.outdoor");
+
+  set_clock_bar_temperature_value_count(6);
+  lv_obj_t temperature_1;
+  lv_obj_t temperature_2;
+  lv_obj_t temperature_3;
+  lv_obj_t temperature_4;
+  lv_obj_t temperature_5;
+  lv_obj_t temperature_6;
+  lv_obj_t display_time;
+  lv_obj_t network_status_button;
+  lv_obj_t *temperature_labels[] = {
+    &temperature_1,
+    &temperature_2,
+    &temperature_3,
+    &temperature_4,
+    &temperature_5,
+    &temperature_6,
+  };
+  lv_obj_move_background_calls = 0;
+  apply_clock_bar_layout(
+    "left:temperature,temperature_2,temperature_3,temperature_4,temperature_5,temperature_6|middle:time|right:network,weather",
+    temperature_labels,
+    6,
+    &display_time,
+    &network_status_button,
+    true, true, true, true,
+    1024, 12, 17, 20, 10, 80, 10);
+  assert(lv_obj_move_background_calls == 3);
+  assert(lv_obj_has_flag(&temperature_2, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_has_flag(&temperature_6, LV_OBJ_FLAG_HIDDEN));
+  hide_clock_bar_top_layer_widgets(
+    temperature_labels, 6, &display_time, &network_status_button);
+  assert(lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_has_flag(&temperature_2, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_has_flag(&temperature_3, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_has_flag(&temperature_4, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_has_flag(&temperature_5, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_has_flag(&temperature_6, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_has_flag(&display_time, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_obj_has_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN));
+  set_clock_bar_temperature_value_count(0);
+
   assert(cfg_field("light.kitchen;Kitchen;Auto;Lightbulb", 0) == "light.kitchen");
   assert(cfg_field("light.kitchen;Kitchen;Auto;Lightbulb", 3) == "Lightbulb");
   assert(cfg_field("light.kitchen;Kitchen", 4) == "");
@@ -147,40 +332,88 @@ int main() {
   assert(image_card_refresh_interval_ms(image_default) == 0);
   assert(!image_card_timer_only_refresh(image_default));
   assert(!image_card_modal_fit_enabled(image_default));
+  auto lawn_mower = parse_cfg("lawn_mower.backyard;Backyard Mower;Auto;Bell;pause_resume;ignored;lawn_mower;2;large_numbers");
+  assert(lawn_mower.type == "lawn_mower");
+  assert(lawn_mower.entity == "lawn_mower.backyard");
+  assert(lawn_mower.sensor == "pause_resume");
+  assert(lawn_mower.unit == "");
+  assert(lawn_mower.precision == "");
+  assert(lawn_mower.options == "");
+  assert(lawn_mower.icon == "Robot Mower");
+  assert(lawn_mower.icon_on == "Auto");
+  auto lawn_mower_dock = parse_cfg("lawn_mower.backyard;Dock;Auto;Auto;dock;;lawn_mower");
+  assert(lawn_mower_dock.sensor == "dock");
+  assert(lawn_mower_dock.icon == "Robot Mower Outline");
+  auto lawn_mower_invalid = parse_cfg("lawn_mower.backyard;Start;Auto;Auto;bad_mode;;lawn_mower");
+  assert(lawn_mower_invalid.sensor == "start_mowing");
+  assert(lawn_mower_invalid.icon == "Robot Mower");
+  assert(card_runtime_lawn_mower_state_mode("status"));
+  assert(card_runtime_lawn_mower_state_mode("start_mowing"));
+  assert(card_runtime_lawn_mower_state_mode("dock"));
+  assert(card_runtime_lawn_mower_state_mode("pause_resume"));
   auto image_label = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;image_label");
   assert(image_label.type == "image");
   assert(image_label.label == "Front Door");
   assert(image_label.options == "image_label");
   assert(image_card_label_enabled(image_label));
+  auto image_icon = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_icon");
+  assert(image_icon.type == "image");
+  assert(image_icon.options == "image_icon");
+  assert(image_card_icon_enabled(image_icon));
+  auto image_label_icon = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;image_label,image_icon");
+  assert(image_label_icon.label == "Front Door");
+  assert(image_label_icon.options == "image_label,image_icon");
+  assert(image_card_label_enabled(image_label_icon));
+  assert(image_card_icon_enabled(image_label_icon));
   auto image_label_refresh = parse_cfg("~camera.front_door,Front%20Door,Auto,Auto,,,image,,image_label%2Cimage_refresh=30%2Cimage_refresh_mode=timer");
   assert(image_label_refresh.label == "Front Door");
-  assert(image_label_refresh.options == "image_label,image_refresh=30,image_refresh_mode=timer");
-  assert(image_card_refresh_interval_ms(image_label_refresh) == 30000);
-  assert(image_card_timer_only_refresh(image_label_refresh));
+  assert(image_label_refresh.options == "image_label");
+  assert(image_card_refresh_interval_ms(image_label_refresh) == 0);
+  assert(!image_card_timer_only_refresh(image_label_refresh));
   auto image_fit_refresh = parse_cfg("~camera.front_door,,Auto,Auto,,,image,,image_modal_mode=fit%2Cimage_refresh=30%2Cimage_refresh_mode=timer");
-  assert(image_fit_refresh.options == "image_modal_mode=fit,image_refresh=30,image_refresh_mode=timer");
+  assert(image_fit_refresh.options == "image_modal_mode=fit");
   assert(image_card_modal_fit_enabled(image_fit_refresh));
   auto image_fill_default = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_modal_mode=fill,image_refresh=30");
-  assert(image_fill_default.options == "image_refresh=30");
+  assert(image_fill_default.options == "");
   assert(!image_card_modal_fit_enabled(image_fill_default));
   auto image_bad_modal = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_modal_mode=stretch,image_refresh=30");
-  assert(image_bad_modal.options == "image_refresh=30");
+  assert(image_bad_modal.options == "");
   assert(!image_card_modal_fit_enabled(image_bad_modal));
   auto image_ignored_label = parse_cfg("camera.front_door;Front Door;Auto;Auto;;;image;;");
   assert(image_ignored_label.label == "");
   assert(!image_card_label_enabled(image_ignored_label));
   auto image_refresh = parse_cfg("~camera.front_door,,Auto,Auto,,,image,,image_refresh=30%2Cimage_refresh_mode=timer");
   assert(image_refresh.type == "image");
-  assert(image_refresh.options == "image_refresh=30,image_refresh_mode=timer");
-  assert(image_card_refresh_interval_ms(image_refresh) == 30000);
-  assert(image_card_timer_only_refresh(image_refresh));
+  assert(image_refresh.options == "");
+  assert(image_card_refresh_interval_ms(image_refresh) == 0);
+  assert(!image_card_timer_only_refresh(image_refresh));
   auto image_refresh_default_mode = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_refresh=60,image_refresh_mode=bad");
-  assert(image_refresh_default_mode.options == "image_refresh=60");
-  assert(image_card_refresh_interval_ms(image_refresh_default_mode) == 60000);
+  assert(image_refresh_default_mode.options == "");
+  assert(image_card_refresh_interval_ms(image_refresh_default_mode) == 0);
   assert(!image_card_timer_only_refresh(image_refresh_default_mode));
   auto image_refresh_invalid = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_refresh=5,image_refresh_mode=timer");
   assert(image_refresh_invalid.options == "");
   assert(image_card_refresh_interval_ms(image_refresh_invalid) == 0);
+
+  auto light_control_default_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=power%7Cbrightness%7Ctemperature%7Ccolor");
+  assert(light_control_default_tabs.type == "light_control");
+  assert(light_control_default_tabs.options == "");
+  auto light_control_custom_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=brightness%7Cpower");
+  assert(light_control_custom_tabs.options == "light_tabs=brightness%7Cpower");
+  assert(cfg_option_value(light_control_custom_tabs.options, "light_tabs") == "brightness|power");
+  auto light_control_bad_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=bad%7Cpower%7Cpower");
+  assert(light_control_bad_tabs.options == "light_tabs=power");
+
+  auto cover_default_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=position%7Ccontrols%7Ctilt");
+  assert(cover_default_tabs.type == "cover");
+  assert(cover_default_tabs.options == "");
+  auto cover_custom_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=controls%7Cposition");
+  assert(cover_custom_tabs.options == "cover_tabs=controls%7Cposition");
+  assert(cfg_option_value(cover_custom_tabs.options, "cover_tabs") == "controls|position");
+  auto cover_bad_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=bad%7Cposition%7Cposition");
+  assert(cover_bad_tabs.options == "cover_tabs=position");
+  auto cover_non_modal_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;toggle;;cover;;cover_tabs=controls%7Cposition");
+  assert(cover_non_modal_tabs.options == "");
 
   set_display_temperature_unit("\u00B0F", "UTC (GMT+0)");
   assert(convert_temperature_value_for_display(10, "\u00B0C") == 50);
@@ -225,6 +458,17 @@ int main() {
   assert(action_card_state_icon_mode(action_icon));
   assert(!action_card_state_numeric_mode(action_icon));
   assert(!action_card_state_text_mode(action_icon));
+  auto action_confirm = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F,confirm_yes=Run,confirm_no=Cancel");
+  assert(action_script_confirmation_enabled(action_confirm));
+  assert(switch_confirmation_message(action_confirm) == "Run bedtime?");
+  assert(switch_confirmation_yes_text(action_confirm) == "Run");
+  assert(switch_confirmation_no_text(action_confirm) == "Cancel");
+  auto action_confirm_default = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on");
+  assert(action_script_confirmation_enabled(action_confirm_default));
+  assert(switch_confirmation_message(action_confirm_default) == "Run this script?");
+  auto scene_confirm = parse_cfg("scene.goodnight;Goodnight;Movie Open;Auto;scene.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F");
+  assert(!action_script_confirmation_enabled(scene_confirm));
+  assert(scene_confirm.options == "");
 
   auto climate_large = parse_cfg("climate.living_room;Living;Thermostat;Auto;;;climate;1;large_numbers");
   assert(climate_large.options == "large_numbers");
@@ -254,6 +498,14 @@ int main() {
   assert(subpage_climate.options == "subpage_kind=climate");
   auto subpage_presence = parse_cfg("person.jane;Presence;Account;Auto;indicator;;subpage;;subpage_kind=presence");
   assert(subpage_presence.options == "subpage_kind=presence");
+  auto subpage_alarm = parse_cfg("alarm_control_panel.home;Alarm;Security;Auto;indicator;;subpage;;subpage_kind=alarm");
+  assert(subpage_alarm.options == "subpage_kind=alarm");
+  auto subpage_vacuum = parse_cfg("vacuum.downstairs;Vacuum;Robot Vacuum;Auto;indicator;;subpage;;subpage_kind=vacuum");
+  assert(subpage_vacuum.options == "subpage_kind=vacuum");
+  auto subpage_lawn_mower = parse_cfg("lawn_mower.backyard;Lawn Mower;Robot Mower;Auto;indicator;;subpage;;subpage_kind=lawn_mower");
+  assert(subpage_lawn_mower.options == "subpage_kind=lawn_mower");
+  auto subpage_weather = parse_cfg("weather.home;Weather;Weather Partly Cloudy;Auto;indicator;;subpage;;subpage_kind=weather");
+  assert(subpage_weather.options == "subpage_kind=weather");
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 
@@ -310,6 +562,21 @@ int main() {
   assert(light_brightness_to_percent(128.0f, brightness_pct) && brightness_pct == 50);
   assert(light_brightness_to_percent(255.0f, brightness_pct) && brightness_pct == 100);
   assert(!light_brightness_to_percent(NAN, brightness_pct));
+  int hour = 0;
+  int minute = 0;
+  assert(parse_time_of_day("05:30", hour, minute) && hour == 5 && minute == 30);
+  assert(parse_time_of_day("5:30", hour, minute) && hour == 5 && minute == 30);
+  assert(!parse_time_of_day("24:00", hour, minute));
+  int rise_h = 0;
+  int rise_m = 0;
+  int set_h = 0;
+  int set_m = 0;
+  assert(brightness_schedule_times(true, true, 7, 15, 20, 45, "06:00", "18:00", rise_h, rise_m, set_h, set_m));
+  assert(rise_h == 7 && rise_m == 15 && set_h == 20 && set_m == 45);
+  assert(brightness_schedule_times(false, true, 7, 15, 20, 45, "06:30", "21:05", rise_h, rise_m, set_h, set_m));
+  assert(rise_h == 6 && rise_m == 30 && set_h == 21 && set_m == 5);
+  assert(!brightness_schedule_times(false, true, 7, 15, 20, 45, "bad", "25:00", rise_h, rise_m, set_h, set_m));
+  assert(rise_h == 6 && rise_m == 0 && set_h == 18 && set_m == 0);
 
   OrderResult parsed;
   parse_order_string("1,2d,3w,4b,5t,6x,99", 9, parsed);
@@ -348,10 +615,62 @@ def pure_config_header() -> str:
     index = text.find(marker)
     if index < 0:
         raise RuntimeError(f"Could not find pure parser boundary in {CONFIG_HEADER}")
-    return text[:index]
+    return text[:index] + "\n" + STYLE_HEADER.read_text(encoding="utf-8")
+
+
+def check_clock_bar_visual_gaps() -> None:
+    expected = {
+        "esp32-p4-86": '"12"',
+        "guition-esp32-p4-jc1060p470": '"10"',
+        "guition-esp32-p4-jc4880p443": '"12"',
+        "guition-esp32-p4-jc8012p4a1": '"10"',
+        "guition-esp32-s3-4848s040": '"8"',
+    }
+    for device, value in expected.items():
+        packages = DEVICES_DIR / device / "packages.yaml"
+        text = packages.read_text(encoding="utf-8")
+        needle = f"clock_bar_visual_gap: {value}"
+        if needle not in text:
+            raise RuntimeError(f"{packages} must define {needle}")
+
+
+def cpp_string(value: str) -> str:
+    return json.dumps(value)
+
+
+def generated_fixture_assertions(fixtures: list[dict], comment: str, prefix: str) -> str:
+    lines = [f"  // {comment}"]
+    for fixture in fixtures:
+        name = fixture["name"]
+        input_value = fixture["input"]
+        expected = fixture["expected"]
+        var_name = prefix + "".join(ch if ch.isalnum() else "_" for ch in name.lower())
+        lines.append(f"  auto {var_name} = parse_cfg({cpp_string(input_value)});")
+        for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
+            lines.append(f"  assert({var_name}.{field} == {cpp_string(expected[field])});")
+    return "\n".join(lines) + "\n"
+
+
+def remove_suffix(value: str, suffix: str) -> str:
+    return value[: -len(suffix)] if suffix and value.endswith(suffix) else value
+
+
+def generated_card_normalization_assertions() -> str:
+    shared_fixtures = json.loads(CARD_NORMALIZATION_FIXTURES.read_text(encoding="utf-8"))
+    chunks = []
+    for label, fixtures in sorted(shared_fixtures.items()):
+        prefix = "fixture_" + "".join(ch if ch.isalnum() else "_" for ch in label.lower()) + "_"
+        chunks.append(generated_fixture_assertions(fixtures, f"Shared {label} saved-card normalization fixtures.", prefix))
+    for path in sorted(CONFIG_DIR.glob("*_card_normalization_fixtures.json")):
+        label = remove_suffix(path.name, "_card_normalization_fixtures.json").replace("_", " ")
+        prefix = "fixture_" + remove_suffix(path.stem, "_card_normalization_fixtures") + "_"
+        fixtures = json.loads(path.read_text(encoding="utf-8"))
+        chunks.append(generated_fixture_assertions(fixtures, f"Shared {label} saved-card normalization fixtures.", prefix))
+    return "".join(chunks)
 
 
 def main() -> int:
+    check_clock_bar_visual_gaps()
     cxx = compiler()
     if not cxx:
         print("::error::No C++ compiler found for firmware parser checks", file=sys.stderr)
@@ -360,12 +679,37 @@ def main() -> int:
         tmp_path = Path(tmp)
         (tmp_path / "button_grid_config_pure.h").write_text(pure_config_header(), encoding="utf-8")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
+        shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")
         shutil.copy2(CARD_RUNTIME_HEADER, tmp_path / "button_grid_card_runtime.h")
+        shutil.copy2(CLOCK_BAR_HEADER, tmp_path / "clock_bar.h")
+        shutil.copy2(BACKLIGHT_HEADER, tmp_path / "backlight.h")
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
+        lvgl_stub = tmp_path / "esphome" / "components" / "lvgl" / "lvgl_esphome.h"
+        lvgl_stub.parent.mkdir(parents=True, exist_ok=True)
+        lvgl_stub.write_text("", encoding="utf-8")
+        app_stub = tmp_path / "esphome" / "core" / "application.h"
+        app_stub.parent.mkdir(parents=True, exist_ok=True)
+        app_stub.write_text(
+            "namespace esphome { struct AppClass { bool is_setup_complete() const { return true; } }; inline AppClass App; }\n",
+            encoding="utf-8",
+        )
+        defines_stub = tmp_path / "esphome" / "core" / "defines.h"
+        defines_stub.write_text("", encoding="utf-8")
+        log_stub = tmp_path / "esphome" / "core" / "log.h"
+        log_stub.write_text("", encoding="utf-8")
+        network_stub = tmp_path / "esphome" / "components" / "network" / "util.h"
+        network_stub.parent.mkdir(parents=True, exist_ok=True)
+        network_stub.write_text(
+            "#include <vector>\nnamespace esphome { namespace network { inline std::vector<int> get_ip_addresses() { return {1}; } } }\n",
+            encoding="utf-8",
+        )
         source = tmp_path / "check_firmware_parser.cpp"
         binary = tmp_path / "check_firmware_parser"
-        source.write_text(CPP_SOURCE, encoding="utf-8")
+        source.write_text(
+            CPP_SOURCE.replace("  return 0;\n}", generated_card_normalization_assertions() + "\n  return 0;\n}"),
+            encoding="utf-8",
+        )
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
     print("Firmware parser checks passed.")

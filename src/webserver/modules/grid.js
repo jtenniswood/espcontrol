@@ -26,6 +26,13 @@ function ctx() {
 
 // ── Grid helpers ───────────────────────────────────────────────────────
 
+var CARD_SIZE_SINGLE = EspControlModel.CARD_SIZE_SINGLE;
+var CARD_SIZE_TALL = EspControlModel.CARD_SIZE_TALL;
+var CARD_SIZE_WIDE = EspControlModel.CARD_SIZE_WIDE;
+var CARD_SIZE_LARGE = EspControlModel.CARD_SIZE_LARGE;
+var CARD_SIZE_EXTRA_TALL = EspControlModel.CARD_SIZE_EXTRA_TALL;
+var CARD_SIZE_EXTRA_WIDE = EspControlModel.CARD_SIZE_EXTRA_WIDE;
+
 function sizeFromToken(token) {
   return EspControlModel.sizeFromToken(token);
 }
@@ -42,10 +49,13 @@ function sizeColSpan(size) {
   return EspControlModel.sizeColSpan(size);
 }
 
+function cardSizeClass(size) {
+  return EspControlModel.cardSizeClass(size);
+}
+
 function sizeClass(size) {
-  return size === 4 ? " sp-btn-big" : size === 2 ? " sp-btn-double" :
-    size === 3 ? " sp-btn-wide" : size === 5 ? " sp-btn-extra-tall" :
-    size === 6 ? " sp-btn-extra-wide" : "";
+  var className = cardSizeClass(size);
+  return className ? " " + className : "";
 }
 
 function coveredCells(pos, size, maxSlots, includeOrigin) {
@@ -64,6 +74,16 @@ function parseOrder(str) {
   var parsed = EspControlModel.parseGridOrder(str, NUM_SLOTS, GRID_COLS, state.sizes);
   state.sizes = parsed.sizes;
   return parsed.grid;
+}
+
+function applyButtonOrderValue(val, skipRender) {
+  orderReceived = !!(val && val.trim());
+  state.sizes = {};
+  state.grid = parseOrder(val);
+  state.selectedSlots = state.selectedSlots.filter(function (s) {
+    return state.grid.indexOf(s) !== -1;
+  });
+  if (!skipRender) scheduleRender();
 }
 
 function applySpans(grid, sizes, maxSlots) {

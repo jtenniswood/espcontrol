@@ -7,6 +7,10 @@
 #include "esphome/core/log.h"
 #include "esp_heap_caps.h"
 
+#include <climits>
+#include <cstdint>
+#include <cstdlib>
+
 #include "artwork_image.h"
 static const char *const TAG = "artwork_image.jpeg";
 
@@ -90,28 +94,43 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
   // and avoids pulling in the float IDCT code path.
   cinfo.dct_method = JDCT_IFAST;
 
-  // Use IDCT scaling to downscale during decode
+  // Use IDCT scaling to downscale during decode.
   int target_w = this->image_->get_fixed_width();
   int target_h = this->image_->get_fixed_height();
   if (target_w > 0 && target_h > 0) {
-    // Use the smallest IDCT downscale that is still at least the configured
-    // target size. Decoding slightly smaller saves work once, but makes LVGL
-    // rescale the artwork on every redraw, which hurts full-screen updates.
-    int min_w = target_w;
-    int min_h = target_h;
-    constexpr unsigned int denoms[] = {8, 4, 2, 1};
+    // Choose the IDCT output closest to the target artwork size. When two
+    // options are equally close, prefer the smaller decode to reduce libjpeg's
+    // temporary memory peak on ESP32-S3.
+    constexpr unsigned int denoms[] = {1, 2, 4, 8};
+    unsigned int best_denom = 1;
+    int best_w = 0;
+    int best_h = 0;
+    long best_score = LONG_MAX;
+    uint64_t best_area = UINT64_MAX;
     for (unsigned int denom : denoms) {
       cinfo.scale_num = 1;
       cinfo.scale_denom = denom;
       jpeg_calc_output_dimensions(&cinfo);
-      if (static_cast<int>(cinfo.output_width) >= min_w &&
-          static_cast<int>(cinfo.output_height) >= min_h) {
-        break;
+      int candidate_w = static_cast<int>(cinfo.output_width);
+      int candidate_h = static_cast<int>(cinfo.output_height);
+      long score = std::labs(candidate_w - target_w) + std::labs(candidate_h - target_h);
+      uint64_t area = static_cast<uint64_t>(candidate_w) * static_cast<uint64_t>(candidate_h);
+      if (score < best_score || (score == best_score && area < best_area)) {
+        best_score = score;
+        best_area = area;
+        best_denom = denom;
+        best_w = candidate_w;
+        best_h = candidate_h;
       }
     }
-    if (static_cast<int>(cinfo.output_width) < min_w ||
-        static_cast<int>(cinfo.output_height) < min_h) {
-      cinfo.scale_num = 1;
+    cinfo.scale_num = 1;
+    cinfo.scale_denom = best_denom;
+    jpeg_calc_output_dimensions(&cinfo);
+    if (best_denom > 1 && (best_w < target_w || best_h < target_h)) {
+      ESP_LOGD(TAG, "Using smaller JPEG decode to reduce memory peak: target=%dx%d",
+               target_w, target_h);
+    }
+    if (cinfo.output_width == 0 || cinfo.output_height == 0) {
       cinfo.scale_denom = 1;
       jpeg_calc_output_dimensions(&cinfo);
     }

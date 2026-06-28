@@ -18,9 +18,11 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
-    version: 5.5.2
-    source: https://github.com/pioarduino/esp-idf/releases/download/v5.5.2/esp-idf-v5.5.2.tar.xz
-    platform_version: 55.03.37
+    # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
+    #version: 5.5.2
+    # pioarduino 55.03.38-1 pulls tool-esptoolpy 5.2.0, which can install
+    # incompletely in ESPHome containers and then fail while creating .bin files.
+    #platform_version: 55.03.37
     sdkconfig_options:
       # The S3 display stack leaves little internal RAM for HTTPS OTA checks.
       # Allocate mbedTLS buffers from PSRAM so firmware downloads can connect.
@@ -42,7 +44,7 @@ external_components:
       url: ${espcontrol_component_url}
       ref: ${espcontrol_component_ref}
       path: components
-    components: [espcontrol, web_server_idf, artwork_image]
+    components: [espcontrol, web_server_idf, artwork_image, mipi_rgb]
     refresh: 1s
 
 espcontrol:
@@ -64,6 +66,10 @@ esphome:
     build_flags:
       - "-DESPCONTROL_DISABLE_TODO=1"
       - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+    build_src_flags:
+      # Keep C++ literals close to their functions on the S3 firmware image;
+      # the modal code is large enough to otherwise trip Xtensa l32r range limits.
+      - "-mtext-section-literals"
   on_boot:
     - priority: 800
       then:
@@ -118,6 +124,7 @@ esphome:
       then:
         - lambda: 'id(screen_rotation_ready) = true;'
         - script.execute: apply_screen_rotation
+        - script.execute: clock_bar_apply
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)
@@ -203,6 +210,9 @@ output:
   - platform: ledc
     pin: GPIO38
     id: gpio_backlight_pwm
+    # The 4848S040 backlight driver needs a low PWM rate; high rates make
+    # brightness levels below roughly 85% appear off on some boards. Keep the
+    # pulses long, but avoid the more visible shimmer seen at 100Hz.
     frequency: 150Hz
     min_power: 0.01
     zero_means_zero: true
@@ -222,7 +232,8 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return id(screen_schedule_asleep) ||
+                return (id(screen_schedule_asleep) &&
+                        !id(schedule_mode_clock)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
@@ -316,6 +327,18 @@ button:
       then:
         - script.execute: relay_3_push
 
+  - platform: template
+    name: Backlight Sweep Test
+    internal: true
+    disabled_by_default: true
+    entity_category: diagnostic
+    icon: mdi:brightness-percent
+    web_server:
+      sorting_group_id: sg_brightness
+    on_press:
+      then:
+        - script.execute: s3_backlight_sweep_test
+
 # ---------------------------------------------------------------------------
 # SPI bus (used by MIPI RGB driver for ST7701S init sequence)
 # ---------------------------------------------------------------------------
@@ -354,7 +377,10 @@ display:
     # Start WiFi before the RGB panel allocates its frame buffers; otherwise the
     # WiFi driver can fail to claim enough internal RX buffers on fresh boots.
     setup_priority: 240
-    pclk_frequency: 8MHz
+    # Keep the S3 RGB clock conservative while lifting the panel scan rate above
+    # the visibly shimmery 8MHz setting. Higher clocks have caused screen shifts
+    # and pixel breakup when WiFi, flash, and web traffic compete for PSRAM.
+    pclk_frequency: 10MHz
     update_interval: never
     auto_clear_enabled: False
     # Keep the ST7701S panel init sequence on the non-mirrored path. The
@@ -399,6 +425,36 @@ script:
       - switch.turn_on: relay_3
       - delay: 200ms
       - switch.turn_off: relay_3
+
+  - id: s3_backlight_sweep_test
+    mode: restart
+    then:
+      - script.execute: screensaver_wake
+      - script.wait: screensaver_wake
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 60%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 30%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 10%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+          transition_length: 0s
 
   - id: apply_screen_rotation
     then:
@@ -445,3 +501,4 @@ select:
               lambda: 'return id(screen_rotation_ready);'
             then:
               - script.execute: apply_screen_rotation
+              - script.execute: clock_bar_apply

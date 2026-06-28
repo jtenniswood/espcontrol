@@ -4,31 +4,68 @@ var SSE_ALIAS_GROUPS = {
   clockBar: ["switch-screen__clock_bar", "switch-screen_clock_bar", "switch-clock_bar_enabled"],
   clockBarLayout: ["text-screen__clock_bar_layout", "text-screen_clock_bar_layout", "text-clock_bar_layout"],
   clockBarTime: ["switch-screen__clock_bar_time", "switch-screen_clock_bar_time", "switch-clock_bar_time_enabled"],
-  clockBarWeather: ["switch-screen__clock_bar_weather_icon", "switch-screen_clock_bar_weather_icon", "switch-clock_bar_weather_icon_enabled"],
-  clockBarWeatherEntity: ["text-clock_bar_weather_entity", "text-clock_bar__weather_entity"],
   clockBarTemperatureEntities: ["text-clock_bar_temperature_entities", "text-clock_bar__temperature_entities"],
   networkStatus: ["switch-screen__network_status_icon", "switch-screen_network_status_icon", "switch-network_status_enabled"],
+  voiceServices: ["switch-voice_services", "switch-voice_services_enabled"],
   temperatureDegreeSymbol: ["switch-screen__temperature_degree_symbol", "switch-screen_temperature_degree_symbol", "switch-temperature_degree_symbol_enabled"],
   subpageChevron: ["switch-screen__subpage_chevron", "switch-screen_subpage_chevron", "switch-subpage_chevrons_enabled"],
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
   coverArt: ["switch-screen_saver__cover_art", "switch-screen_saver_cover_art", "switch-screensaver_cover_art"],
   coverArtEntity: ["text-screen_saver__cover_art_entity", "text-screen_saver_cover_art_entity", "text-cover_art_media_player_entity"],
+  coverArtConditions: ["text-screen_saver__cover_art_conditions", "text-screen_saver_cover_art_conditions", "text-cover_art_attribute_conditions"],
   coverArtDelay: ["number-screen_saver__cover_art_delay", "number-screen_saver_cover_art_delay", "number-cover_art_delay"],
-  trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration"],
-  coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input"],
+  coverArtTouchPause: ["number-screen_saver__cover_art_touch_pause", "number-screen_saver_cover_art_touch_pause", "number-cover_art_touch_pause"],
+  trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration", "number-screen_saver__show_track_overlay"],
+  coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
+  homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
+  homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
   scheduleWakeBrightness: ["number-screen__schedule_wake_brightness", "number-screen_schedule_wake_brightness", "number-schedule_wake_brightness"],
   scheduleDimmedBrightness: ["number-screen__schedule_dimmed_brightness", "number-screen_schedule_dimmed_brightness", "number-schedule_dimmed_brightness"],
   scheduleClockBrightness: ["number-screen__schedule_clock_brightness", "number-screen_schedule_clock_brightness", "number-schedule_clock_brightness"],
   scheduleClockTextColor: ["text-screen__schedule_clock_text_color", "text-screen_schedule_clock_text_color", "text-schedule_clock_text_color"],
-  screenTheme: ["select-screen__theme", "select-screen_theme"],
+  screenActiveTimezone: ["text_sensor-screen__active_timezone", "text_sensor-screen_active_timezone", "text_sensor:Screen: Active Timezone"],
   screenLanguage: ["select-screen__language", "select-screen_language"],
   ntpServer1: ["text-screen__ntp_server_1", "text-ntp_server_1"],
   ntpServer2: ["text-screen__ntp_server_2", "text-ntp_server_2"],
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
-  developerExperimentalFeatures: ["switch-developer__experimental_features", "switch-developer_experimental_features"],
 };
+
+function applyPageTitle(title) {
+  var text = typeof title === "string" ? title.trim() : "";
+  document.title = text || "EspControl";
+}
+
+function handleWebServerPingEvent(e) {
+  var data = null;
+  try {
+    data = e && e.data ? JSON.parse(e.data) : null;
+  } catch (_) {
+    applyPageTitle("");
+    return;
+  }
+  if (data && Object.prototype.hasOwnProperty.call(data, "title")) {
+    applyPageTitle(data.title);
+  }
+}
+
+function loadPageTitleFromEventStream() {
+  if (eventStreamEnabled() || typeof EventSource !== "function") return;
+  var source = new EventSource("/events");
+  var closeTimer = setTimeout(function () {
+    source.close();
+  }, 5000);
+  source.addEventListener("ping", function (e) {
+    handleWebServerPingEvent(e);
+    clearTimeout(closeTimer);
+    source.close();
+  });
+  source.addEventListener("error", function () {
+    clearTimeout(closeTimer);
+    source.close();
+  });
+}
 
 function applyClockBarStateValue(val, d, matchedKey) {
   var keys = entityStateKeys(d);
@@ -43,6 +80,14 @@ function applyClockBarStateValue(val, d, matchedKey) {
     return state._clockBarStateValues[key] === true;
   });
   return state.clockBarOn !== previous;
+}
+
+function isRemovedLegacyStateEvent(id, d) {
+  var keys = entityStateKeys(d || {});
+  uniquePush(keys, id);
+  return keys.indexOf("text-screen_saver__cover_art_fallback_server") !== -1 ||
+    keys.indexOf("text-screen_saver_cover_art_fallback_server") !== -1 ||
+    keys.indexOf("text-cover_art_fallback_server") !== -1;
 }
 
 function connectEvents() {
@@ -85,47 +130,39 @@ function connectEvents() {
 
   var sseHandlers = {
     "text-button_order": function (val) {
-      orderReceived = !!(val && val.trim());
-      state.sizes = {};
-      state.grid = parseOrder(val);
-      state.selectedSlots = state.selectedSlots.filter(function (s) {
-        return state.grid.indexOf(s) !== -1;
-      });
-      scheduleRender();
-    },
-    "select-screen__theme": function (val, d) {
-      syncThemeFromDevice(d.value || val, d.option);
+      if (gridPreviewBlockedByRotationStartup()) {
+        orderReceived = !!(val && val.trim());
+        state.pendingButtonOrderRaw = val;
+        return;
+      }
+      applyButtonOrderValue(val);
     },
     "text-button_on_color": function (val) {
       state.onColor = val;
       syncColorUi();
       renderPreview();
     },
-    "text-button_off_color": function (val) {
-      state.offColor = val;
-      syncColorUi();
-      renderPreview();
-    },
-    "text-sensor_card_color": function (val) {
-      state.sensorColor = val;
-      syncColorUi();
-      renderPreview();
-    },
+    "text-button_off_color": function () {},
+    "text-sensor_card_color": function () {},
     "switch-indoor_temp_enable": function (val, d) {
+      state._clockBarTemperatureVisibilityReceived = true;
       state._indoorOn = d.value === true || val === "ON";
       syncTemperatureUi();
       updateTempPreview();
+      updateClockBarItemUi();
     },
     "switch-outdoor_temp_enable": function (val, d) {
+      state._clockBarTemperatureVisibilityReceived = true;
       state._outdoorOn = d.value === true || val === "ON";
       syncTemperatureUi();
       updateTempPreview();
+      updateClockBarItemUi();
     },
     "switch-screen__clock_bar": function (val, d, key) {
       if (applyClockBarStateValue(val, d, key)) syncClockBarUi();
     },
     "text-screen__clock_bar_layout": function (val) {
-      applyClockBarLayoutValue(val);
+      applyClockBarLayoutValue(CLOCK_BAR_FIXED_LAYOUT_STRING);
     },
     "text-clock_bar_temperature_entities": function (val) {
       applyClockBarTemperatureEntities(normalizeClockBarTemperatureEntities(val), false);
@@ -134,17 +171,12 @@ function connectEvents() {
       state.clockBarTimeOn = d.value === true || val === "ON";
       syncClockBarUi();
     },
-    "switch-screen__clock_bar_weather_icon": function (val, d) {
-      state.clockBarWeatherOn = d.value === true || val === "ON";
-      syncClockBarUi();
-    },
-    "text-clock_bar_weather_entity": function (val) {
-      state.clockBarWeatherEntity = String(val || "").trim();
-      syncClockBarWeatherUi();
-      updateWeatherPreview();
-    },
     "switch-screen__network_status_icon": function (val, d) {
       state.networkStatusOn = d.value === true || val === "ON";
+      syncClockBarUi();
+    },
+    "switch-voice_services": function (val, d) {
+      state.voiceServicesOn = d.value === true || val === "ON";
       syncClockBarUi();
     },
     "switch-screen__temperature_degree_symbol": function (val, d) {
@@ -159,12 +191,20 @@ function connectEvents() {
     "text-indoor_temp_entity": function (val) {
       state.indoorEntity = val;
       syncInput(els.setIndoorEntity, val);
-      if (!state._clockBarTemperatureEntitiesReceived) syncTemperatureUi();
+      if (!state._clockBarTemperatureEntitiesReceived) {
+        syncTemperatureUi();
+        updateTempPreview();
+        updateClockBarItemUi();
+      }
     },
     "text-outdoor_temp_entity": function (val) {
       state.outdoorEntity = val;
       syncInput(els.setOutdoorEntity, val);
-      if (!state._clockBarTemperatureEntitiesReceived) syncTemperatureUi();
+      if (!state._clockBarTemperatureEntitiesReceived) {
+        syncTemperatureUi();
+        updateTempPreview();
+        updateClockBarItemUi();
+      }
     },
     "select-screen__temperature_unit": function (val, d) {
       state.temperatureUnit = normalizeTemperatureUnit(d.value || val);
@@ -244,12 +284,28 @@ function connectEvents() {
       state.coverArtMediaPlayerEntity = val;
       syncInput(els.setCoverArtMediaPlayer, val);
     },
+    "text-screen_saver__cover_art_conditions": function (val) {
+      state.coverArtAttributeConditions = val;
+      syncInput(els.setCoverArtConditions, val);
+    },
     "number-screen_saver__cover_art_delay": function (val) {
       state.coverArtDelay = parseFloat(val) || 0;
       syncCoverArtScreensaverUi();
     },
+    "number-screen_saver__cover_art_touch_pause": function (val) {
+      state.coverArtTouchPause = parseFloat(val) || 0;
+      syncCoverArtScreensaverUi();
+    },
     "number-screen_saver__track_overlay_duration": function (val) {
       state.coverArtTrackOverlayDuration = parseFloat(val) || 0;
+      syncCoverArtScreensaverUi();
+    },
+    "select-home_assistant_artwork_protocol": function (val, d) {
+      state.homeAssistantArtworkProtocol = normalizeHomeAssistantArtworkProtocol(d.value || val);
+      syncCoverArtScreensaverUi();
+    },
+    "number-home_assistant_artwork_port": function (val) {
+      state.coverArtHomeAssistantPort = normalizeHomeAssistantArtworkPort(val);
       syncCoverArtScreensaverUi();
     },
     "text-screensaver_mode": function (val) {
@@ -273,6 +329,14 @@ function connectEvents() {
     },
     "switch-screen__automatic_brightness": function (val, d) {
       state.automaticBrightnessEnabled = d.value === true || val === "ON";
+      syncScreenScheduleUi();
+    },
+    "text-screen__brightness_dawn_time": function (val) {
+      state.brightnessDawnTime = normalizeTimeOfDay(val, "06:00");
+      syncScreenScheduleUi();
+    },
+    "text-screen__brightness_dusk_time": function (val) {
+      state.brightnessDuskTime = normalizeTimeOfDay(val, "18:00");
       syncScreenScheduleUi();
     },
     "switch-screen__schedule_enabled": function (val, d) {
@@ -323,7 +387,7 @@ function connectEvents() {
     "select-screen__timezone": function (val, d) {
       state.timezone = d.value || val || state.timezone;
       if (Array.isArray(d.option)) {
-        state.timezoneOptions = timezoneOptionsWithFallback(d.option, state.timezone);
+        state.timezoneOptions = timezoneOptionsWithFallback(d.option, state.timezone, true);
         if (els.setTimezone) {
           els.setTimezone.innerHTML = "";
           state.timezoneOptions.forEach(function (opt) {
@@ -337,6 +401,14 @@ function connectEvents() {
         renderPreview();
       }
       updateClock();
+    },
+    "text_sensor-screen__active_timezone": function (val, d) {
+      state.activeTimezone = d.value || val || FALLBACK_TIMEZONE_OPTION;
+      if (isHomeAssistantAutoTimezone(state.timezone)) {
+        if (normalizeTemperatureUnit(state.temperatureUnit) === "Auto") updateTempPreview();
+        renderPreview();
+        updateClock();
+      }
     },
     "select-screen__language": function (val, d) {
       state.language = normalizeLanguage(d.value || val || state.language);
@@ -386,6 +458,7 @@ function connectEvents() {
       }
       syncScreenRotationSelect();
       syncPreviewOrientation();
+      resolveInitialScreenRotationCheck();
       renderPreview();
     },
     "text_sensor-screen__sunrise": function (val) {
@@ -422,14 +495,6 @@ function connectEvents() {
       if (els.setAutoUpdate) els.setAutoUpdate.checked = state.autoUpdate;
       syncFirmwareUpdateUi();
     },
-    "switch-developer__experimental_features": function (val, d) {
-      state.developerExperimentalFeatures = d.value === true || val === "ON";
-      if (els.setDeveloperExperimentalFeatures) {
-        els.setDeveloperExperimentalFeatures.checked = state.developerExperimentalFeatures;
-      }
-      syncScreenRotationSelect();
-      scheduleRender();
-    },
     "select-firmware__update_frequency": function (val, d) {
       state.firmwareUpdateControlsSupported = true;
       state.updateFrequency = d.value || val || state.updateFrequency;
@@ -444,30 +509,32 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBar, sseHandlers["switch-screen__clock_bar"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarLayout, sseHandlers["text-screen__clock_bar_layout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarTime, sseHandlers["switch-screen__clock_bar_time"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarWeather, sseHandlers["switch-screen__clock_bar_weather_icon"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarWeatherEntity, sseHandlers["text-clock_bar_weather_entity"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarTemperatureEntities, sseHandlers["text-clock_bar_temperature_entities"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.networkStatus, sseHandlers["switch-screen__network_status_icon"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.voiceServices, sseHandlers["switch-voice_services"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.temperatureDegreeSymbol, sseHandlers["switch-screen__temperature_degree_symbol"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.subpageChevron, sseHandlers["switch-screen__subpage_chevron"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screensaverTimeout, sseHandlers["number-screensaver_timeout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArt, sseHandlers["switch-screen_saver__cover_art"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtEntity, sseHandlers["text-screen_saver__cover_art_entity"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtConditions, sseHandlers["text-screen_saver__cover_art_conditions"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtDelay, sseHandlers["number-screen_saver__cover_art_delay"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtTouchPause, sseHandlers["number-screen_saver__cover_art_touch_pause"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.trackOverlayDuration, sseHandlers["number-screen_saver__track_overlay_duration"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, sseHandlers["switch-screen_saver__hide_cover_art_on_external_input"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, sseHandlers["select-home_assistant_artwork_protocol"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, sseHandlers["number-home_assistant_artwork_port"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleTrigger, sseHandlers["text-screen__schedule_trigger"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, sseHandlers["number-screen__schedule_wake_timeout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeBrightness, sseHandlers["number-screen__schedule_wake_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleDimmedBrightness, sseHandlers["number-screen__schedule_dimmed_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleClockBrightness, sseHandlers["number-screen__schedule_clock_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleClockTextColor, sseHandlers["text-screen__schedule_clock_text_color"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenTheme, sseHandlers["select-screen__theme"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenActiveTimezone, sseHandlers["text_sensor-screen__active_timezone"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenLanguage, sseHandlers["select-screen__language"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer1, sseHandlers["text-screen__ntp_server_1"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer2, sseHandlers["text-screen__ntp_server_2"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer3, sseHandlers["text-screen__ntp_server_3"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.developerExperimentalFeatures, sseHandlers["switch-developer__experimental_features"]);
 
   var ssePatterns = [
     {
@@ -601,6 +668,7 @@ function connectEvents() {
       renderFirmwareUpdateStatus();
       return;
     }
+    if (isRemovedLegacyStateEvent(id, d)) return;
 
     for (var i = 0; i < ssePatterns.length; i++) {
       for (var pk = 0; pk < keys.length; pk++) {
@@ -624,6 +692,7 @@ function connectEvents() {
   source.addEventListener("error", function () {
     handleDisconnected(source);
   });
+  source.addEventListener("ping", handleWebServerPingEvent);
   source.addEventListener("state", function (e) {
     var d;
     try { d = JSON.parse(e.data); } catch (_) { return; }

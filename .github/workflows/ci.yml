@@ -3,25 +3,15 @@ name: CI
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/nightly-firmware.yml'
-      - '.github/workflows/release.yml'
-      - 'common/**'
-      - 'components/**'
-      - 'devices/**'
-      - 'builds/**'
-      - 'src/**'
-      - 'scripts/**'
-      - 'docs/**'
-      - 'package.json'
-      - 'package-lock.json'
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
     paths:
       - '.github/workflows/ci.yml'
       - '.github/workflows/nightly-firmware.yml'
+      - '.github/workflows/pr-testing-guidance.yml'
       - '.github/workflows/release.yml'
+      - '.github/pull_request_template.md'
       - 'common/**'
       - 'components/**'
       - 'devices/**'
@@ -44,6 +34,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-process:
+    name: PR Process
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - name: Check PR documentation decision
+        run: python3 scripts/check_pr_process.py
+
   sync-icons:
     name: Sync Generated Icons
     if: github.event_name != 'pull_request'
@@ -58,11 +57,40 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
       - name: Generate icon outputs
         run: python3 scripts/build.py icons
+
+      - name: Check for generated icon changes
+        id: icon_changes
+        run: |
+          if git diff --quiet -- \
+            common/assets/icon_glyphs.yaml \
+            components/espcontrol/icons.h \
+            src/webserver/entry.js; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v6
+        if: steps.icon_changes.outputs.changed == 'true'
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        if: steps.icon_changes.outputs.changed == 'true'
+        run: |
+          NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"
+          mkdir -p "${NPM_CACHE}"
+          npm ci --prefer-offline --cache "${NPM_CACHE}"
+          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
+
+      - name: Build generated web bundles
+        if: steps.icon_changes.outputs.changed == 'true'
+        run: python3 scripts/build.py www
 
       - name: Commit generated icon outputs
         id: commit
@@ -70,7 +98,8 @@ jobs:
           if git diff --quiet -- \
             common/assets/icon_glyphs.yaml \
             components/espcontrol/icons.h \
-            src/webserver/www.js; then
+            src/webserver/entry.js \
+            docs/public/webserver/*/www.js; then
             echo "Generated icon files are already up to date."
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -81,7 +110,8 @@ jobs:
           git add \
             common/assets/icon_glyphs.yaml \
             components/espcontrol/icons.h \
-            src/webserver/www.js
+            src/webserver/entry.js \
+            docs/public/webserver/*/www.js
           git commit -m "Build generated icon files"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -99,7 +129,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
       - uses: actions/setup-node@v6
@@ -132,7 +162,7 @@ jobs:
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
       - uses: actions/setup-node@v6
@@ -147,3 +177,21 @@ jobs:
           bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
       - run: npm run docs:build
+
+  ci-gate:
+    name: CI Gate
+    needs: [pr-process, validate, docs]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required CI jobs passed
+        run: |
+          if [ "${{ needs.pr-process.result }}" != "success" ] ||
+             [ "${{ needs.validate.result }}" != "success" ] ||
+             [ "${{ needs.docs.result }}" != "success" ]; then
+            echo "::error::Required CI jobs did not pass."
+            echo "PR Process: ${{ needs.pr-process.result }}"
+            echo "Validate Generated Files: ${{ needs.validate.result }}"
+            echo "Build Docs: ${{ needs.docs.result }}"
+            exit 1
+          fi

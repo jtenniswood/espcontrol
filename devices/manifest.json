@@ -220,7 +220,7 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
@@ -229,10 +229,11 @@
         },
         "display": {
           "wrapTallLabels": true,
+          "imageCardDownloaders": 6,
           "volumeWidthCompensationPercent": 95
         },
         "package": {
-          "firmwareVersion": "dev-jc1060p470-20260526-alarmfix2",
+          "firmwareVersion": "dev",
           "substitutions": {
             "screen_width": "\"1024\"",
             "screen_height": "\"600\"",
@@ -253,14 +254,22 @@
             "sensor_value_font": "font_number_value",
             "padding": "16px",
             "radius": "10px",
+            "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"42\"",
             "main_page_compact_pad_top": "\"5\"",
+            "clock_bar_item_gap": "\"80\"",
+            "clock_bar_visual_gap": "\"10\"",
             "clock_font_size": "\"200\"",
             "clock_cx": "\"512\"",
-            "clock_cy": "\"300\""
+            "clock_cy": "\"300\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "networkCoprocessor": true,
+          "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
           "backlightPwmFrequency": {
             "wifi": "1000Hz",
@@ -295,7 +304,6 @@
         "displayOffset": 180
       },
       "web": {
-        "coverArtSquareOverlay": true,
         "dragMode": "displace",
         "dragAnimation": true,
         "screen": {
@@ -355,21 +363,23 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_small"
+          "climateOptionValue": "font_text_body"
         },
         "display": {
           "wrapTallLabels": false,
+          "imageCardDownloaders": 6,
+          "refreshRebuildsSubpages": true,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
           "subpageChevronTextWidthPercent": 96
         },
         "package": {
-          "firmwareVersion": "dev-jc4880p443-20260522-otawdt",
+          "firmwareVersion": "dev",
           "substitutions": {
             "screen_width": "\"480\"",
             "screen_height": "\"800\"",
@@ -390,13 +400,21 @@
             "sensor_value_font": "font_number_value",
             "padding": "21px",
             "radius": "10px",
-            "main_page_pad_top": "\"62\"",
+            "main_page_card_gap": "\"14\"",
+            "main_page_pad_top": "\"50\"",
             "main_page_compact_pad_top": "\"5\"",
+            "clock_bar_item_gap": "\"96\"",
+            "clock_bar_visual_gap": "\"12\"",
             "clock_font_size": "\"160\"",
             "clock_cx": "\"240\"",
-            "clock_cy": "\"400\""
+            "clock_cy": "\"400\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
-          "deviceFontPackageKey": "fonts_lg"
+          "deviceFontPackageKey": "fonts_lg",
+          "esp32C6FirmwareUpdate": true
         }
       }
     },
@@ -422,7 +440,8 @@
           "90",
           "180",
           "270"
-        ]
+        ],
+        "displayOffset": 180
       },
       "web": {
         "dragMode": "swap",
@@ -484,7 +503,7 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_large",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
@@ -493,10 +512,13 @@
         },
         "display": {
           "wrapTallLabels": true,
+          "imageCardDownloaders": 6,
+          "imageCardDiagnostics": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2
         },
         "package": {
+          "firmwareVersion": "dev",
           "substitutions": {
             "screen_width": "\"1280\"",
             "screen_height": "\"800\"",
@@ -517,13 +539,21 @@
             "sensor_value_font": "font_number_value",
             "padding": "18px",
             "radius": "11px",
+            "main_page_card_gap": "\"10\"",
             "main_page_pad_top": "\"46\"",
             "main_page_compact_pad_top": "\"5\"",
+            "clock_bar_item_gap": "\"78\"",
+            "clock_bar_visual_gap": "\"10\"",
             "clock_font_size": "\"220\"",
             "clock_cx": "\"640\"",
-            "clock_cy": "\"400\""
+            "clock_cy": "\"400\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
-          "deviceFontPackageKey": "fonts_device"
+          "deviceFontPackageKey": "fonts_device",
+          "esp32C6FirmwareUpdate": true
         }
       }
     },
@@ -613,8 +643,8 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
-          "volumeLabel": "font_text_large",
+          "volumeNumber": "font_number_value_large",
+          "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
@@ -626,9 +656,11 @@
             "greenPercent": 100,
             "bluePercent": 104
           },
+          "imageCardDownloaders": 6,
           "wrapTallLabels": false
         },
         "package": {
+          "firmwareVersion": "dev",
           "substitutions": {
             "screen_width": "\"720\"",
             "screen_height": "\"720\"",
@@ -649,16 +681,31 @@
             "sensor_value_font": "font_number_value",
             "padding": "21px",
             "radius": "12px",
+            "main_page_card_gap": "\"15\"",
             "main_page_pad_top": "\"60\"",
             "main_page_compact_pad_top": "\"6\"",
+            "clock_bar_item_gap": "\"96\"",
+            "clock_bar_visual_gap": "\"12\"",
             "clock_font_size": "\"224\"",
             "clock_cx": "\"360\"",
-            "clock_cy": "\"360\""
+            "clock_cy": "\"360\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\"",
+            "voice_wake_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac\"",
+            "voice_timer_alert_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac\"",
+            "voice_stt_failure_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac\""
           },
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,
           "networkCoprocessor": true,
+          "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,
+          "extraPackages": {
+            "voice_assistant": "!include device/voice_assistant.yaml",
+            "physical_volume_button": "!include device/physical_volume_button${network_package_suffix}.yaml"
+          },
           "backlightPwmFrequency": {
             "wifi": "100Hz",
             "ethernet": "20000Hz"
@@ -706,6 +753,7 @@
         }
       ],
       "web": {
+        "coverArtSquareOverlay": true,
         "dragMode": "displace",
         "dragAnimation": true,
         "screen": {
@@ -718,7 +766,7 @@
           "fontSize": 3.75
         },
         "grid": {
-          "top": 9.33,
+          "top": 8.33,
           "compactTop": 0.83,
           "left": 1.04,
           "right": 1.04,
@@ -757,20 +805,22 @@
           "sensor": "font_number_value",
           "largeSensor": "font_number_value_large",
           "mediaTitle": "font_text_title",
-          "volumeNumber": "font_number_modal",
+          "volumeNumber": "font_number_value_large",
           "volumeLabel": "font_text_body",
           "climateCardIcon": "font_icon_card",
           "subpageChevron": "font_icon_status",
           "climateOptionTitle": "font_text_body",
-          "climateOptionValue": "font_text_small"
+          "climateOptionValue": "font_text_body"
         },
         "display": {
           "wrapTallLabels": false,
+          "imageCardDownloaders": 0,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
           "subpageChevronTextWidthPercent": 96
         },
         "package": {
+          "firmwareVersion": "dev",
           "subpageConfigChunks": 4,
           "substitutions": {
             "screen_width": "\"480\"",
@@ -792,11 +842,18 @@
             "sensor_value_font": "font_number_value",
             "padding": "14px",
             "radius": "8px",
-            "main_page_pad_top": "\"42\"",
+            "main_page_card_gap": "\"10\"",
+            "main_page_pad_top": "\"40\"",
             "main_page_compact_pad_top": "\"4\"",
+            "clock_bar_item_gap": "\"60\"",
+            "clock_bar_visual_gap": "\"8\"",
             "clock_font_size": "\"160\"",
             "clock_cx": "\"240\"",
-            "clock_cy": "\"240\""
+            "clock_cy": "\"240\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
           "apiNavigateAction": false

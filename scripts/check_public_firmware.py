@@ -11,10 +11,12 @@ from __future__ import annotations
 import argparse
 from contextlib import redirect_stdout
 from functools import partial
+import hashlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
 from pathlib import Path
+import re
 import sys
 import time
 from tempfile import TemporaryDirectory
@@ -26,6 +28,8 @@ from urllib.parse import urljoin
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = ROOT / "devices" / "manifest.json"
+STABLE_VERSION_RE = re.compile(r"^v[0-9]+(\.[0-9]+){2}$")
+MD5_RE = re.compile(r"^[0-9a-f]{32}$", re.IGNORECASE)
 
 
 class PublicFirmwareError(RuntimeError):
@@ -83,11 +87,52 @@ def manifest_url(base_url: str, slug: str, beta: bool = False) -> str:
     return base_url.rstrip("/") + f"/firmware/{slug}/{'beta/' if beta else ''}manifest.json"
 
 
+def versions_url(base_url: str, slug: str) -> str:
+    return base_url.rstrip("/") + f"/firmware/{slug}/versions.json"
+
+
 def require_build(manifest: dict, url: str) -> dict:
     builds = manifest.get("builds")
     if not isinstance(builds, list) or not builds or not isinstance(builds[0], dict):
         raise PublicFirmwareError(f"{url} has no firmware build")
     return builds[0]
+
+
+def verify_versions_index(base_url: str, slug: str, latest_version: str) -> None:
+    url = versions_url(base_url, slug)
+    data = fetch_json(url)
+    entries = data.get("versions")
+    if not isinstance(entries, list) or not entries:
+        raise PublicFirmwareError(f"{url} must contain a non-empty versions list")
+    if len(entries) > 5:
+        raise PublicFirmwareError(f"{url} must contain at most latest plus four previous versions")
+
+    seen: set[str] = set()
+    for idx, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise PublicFirmwareError(f"{url} version entry {idx + 1} must be an object")
+        version = str(entry.get("version", "")).strip()
+        if not STABLE_VERSION_RE.fullmatch(version):
+            raise PublicFirmwareError(f"{url} version entry {idx + 1} has invalid stable version {version!r}")
+        key = version.lower()
+        if key in seen:
+            raise PublicFirmwareError(f"{url} lists {version} more than once")
+        seen.add(key)
+        if idx == 0 and version != latest_version:
+            raise PublicFirmwareError(f"{url} first version {version!r} must match latest {latest_version!r}")
+        release_url = str(entry.get("release_url", "")).strip()
+        if not release_url:
+            raise PublicFirmwareError(f"{url} version {version} is missing release_url")
+        ota = entry.get("ota")
+        if not isinstance(ota, dict):
+            raise PublicFirmwareError(f"{url} version {version} is missing ota")
+        ota_path = str(ota.get("path", "")).strip()
+        if not ota_path or ota_path.rsplit("/", 1)[-1] != f"{slug}.ota.bin":
+            raise PublicFirmwareError(f"{url} version {version} must reference {slug}.ota.bin")
+        md5 = str(ota.get("md5", "")).strip()
+        if not MD5_RE.fullmatch(md5):
+            raise PublicFirmwareError(f"{url} version {version} has invalid ota.md5")
+        assert_url_non_empty(urljoin(url, ota_path))
 
 
 def verify_public_slug(base_url: str, slug: str, beta: bool = False) -> None:
@@ -113,6 +158,9 @@ def verify_public_slug(base_url: str, slug: str, beta: bool = False) -> None:
     if parts[0].get("path") != f"{slug}.factory.bin":
         raise PublicFirmwareError(f"{url} must reference {slug}.factory.bin")
     assert_url_non_empty(urljoin(url, parts[0]["path"]))
+
+    if not beta:
+        verify_versions_index(base_url, slug, version)
 
 
 def load_slugs(path: Path) -> list[str]:
@@ -158,7 +206,8 @@ def verify_public_firmware(
 
 def write_manifest(directory: Path, slug: str, include_factory: bool = True) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / f"{slug}.ota.bin").write_bytes(b"ota")
+    ota_bytes = b"ota"
+    (directory / f"{slug}.ota.bin").write_bytes(ota_bytes)
     parts = []
     if include_factory:
         (directory / f"{slug}.factory.bin").write_bytes(b"factory")
@@ -170,8 +219,40 @@ def write_manifest(directory: Path, slug: str, include_factory: bool = True) -> 
         "builds": [{
             "chipFamily": "ESP32-S3",
             "parts": parts,
-            "ota": {"path": f"{slug}.ota.bin", "md5": "not-used"},
+            "ota": {
+                "path": f"{slug}.ota.bin",
+                "md5": hashlib.md5(ota_bytes).hexdigest(),
+                "release_url": "https://example.invalid/releases/v1.2.3",
+            },
         }],
+    }), encoding="utf-8")
+
+
+def write_versions_index(directory: Path, slug: str) -> None:
+    old_dir = directory / "versions" / "v1.2.2"
+    old_dir.mkdir(parents=True, exist_ok=True)
+    old_bytes = b"old-ota"
+    (old_dir / f"{slug}.ota.bin").write_bytes(old_bytes)
+    (directory / "versions.json").write_text(json.dumps({
+        "device": slug,
+        "versions": [
+            {
+                "version": "v1.2.3",
+                "release_url": "https://example.invalid/releases/v1.2.3",
+                "ota": {
+                    "path": f"{slug}.ota.bin",
+                    "md5": hashlib.md5(b"ota").hexdigest(),
+                },
+            },
+            {
+                "version": "v1.2.2",
+                "release_url": "https://example.invalid/releases/v1.2.2",
+                "ota": {
+                    "path": f"versions/v1.2.2/{slug}.ota.bin",
+                    "md5": hashlib.md5(old_bytes).hexdigest(),
+                },
+            },
+        ],
     }), encoding="utf-8")
 
 
@@ -179,6 +260,7 @@ def self_test() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
         write_manifest(base / "firmware" / "required-panel", "required-panel")
+        write_versions_index(base / "firmware" / "required-panel", "required-panel")
         write_manifest(base / "firmware" / "required-panel" / "beta", "required-panel", include_factory=False)
         handler = partial(QuietHandler, directory=str(base))
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)

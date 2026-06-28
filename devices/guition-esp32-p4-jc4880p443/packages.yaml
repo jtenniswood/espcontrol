@@ -9,7 +9,7 @@
 substitutions:
   device_slug: "guition-esp32-p4-jc4880p443"
   firmware_manifest_slug: "guition-esp32-p4-jc4880p443"
-  firmware_version: "dev-jc4880p443-20260522-otawdt"
+  firmware_version: "dev"
   screen_width: "480"
   screen_height: "800"
   content_width: "440"
@@ -29,12 +29,23 @@ substitutions:
   sensor_value_font: font_number_value
   padding: 21px
   radius: 10px
-  main_page_pad_top: "62"
+  main_page_card_gap: "14"
+  main_page_pad_top: "50"
   main_page_compact_pad_top: "5"
+  clock_bar_item_gap: "96"
+  clock_bar_visual_gap: "12"
+  voice_clock_bar_hide_code: ""
+  voice_clock_bar_apply_code: ""
+  voice_interaction_active_condition: "false"
   clock_font_size: "160"
   clock_cx: "240"
   clock_cy: "400"
+  screen_saver_clock_min_brightness: "1"
+  screen_saver_clock_default_brightness: "35"
+  screen_schedule_clock_min_brightness: "1"
+  screen_schedule_clock_default_brightness: "10"
   cover_art_size: "480"
+  cover_art_decode_size: "480"
   cover_art_x: "0"
   cover_art_y: "0"
   cover_art_accent_x: "0"
@@ -64,6 +75,7 @@ substitutions:
   cover_art_progress_height: "4"
   cover_art_text_color: "0xFFFFFF"
   cover_art_square_overlay: "false"
+  cover_art_live_image_updates: "false"
 
 packages:
   # ---------------------------------------------------------------------------
@@ -71,6 +83,7 @@ packages:
   # ---------------------------------------------------------------------------
   entity_names:    !include ../../common/config/entity_names.yaml
   device:          !include device/device.yaml
+  esp32_c6_firmware_update: !include ../../common/device/esp32_c6_firmware_update.yaml
   icons:           !include ../../common/assets/icons.yaml
   fonts_lg:        !include device/fonts.yaml
   button_theme:    !include ../../common/theme/button.yaml
@@ -112,7 +125,7 @@ packages:
   screen_setup:    !include ../../common/device/screen_button_setup.yaml
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
-  image_cards:     !include ../../common/device/image_cards.yaml
+  image_cards:     !include ../../common/device/image_cards_6.yaml
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)
   # ---------------------------------------------------------------------------

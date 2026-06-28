@@ -85,8 +85,16 @@ export function encodeConfigField(value: string | number | boolean | null | unde
 }
 
 export function decodeConfigField(value: string | number | boolean | null | undefined): string {
-  return String(value || "").replace(/%([0-9a-fA-F]{2})/g, (_match, hex: string) => {
-    return String.fromCharCode(parseInt(hex, 16));
+  const str = String(value || "");
+  // Decode %XX sequences as UTF-8 using decodeURIComponent, which correctly
+  // handles multi-byte sequences like %C2%B0 → ° (instead of byte-by-byte
+  // String.fromCharCode which produces Mojibake: Â°).
+  return str.replace(/(%[0-9a-fA-F]{2})+/g, (run) => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      return run;
+    }
   });
 }
 

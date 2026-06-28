@@ -1,6 +1,7 @@
 // ── Clock (minute-aligned) ─────────────────────────────────────────────
 
 function getTzId(tz) {
+  if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(tz)) return "UTC";
   var idx = tz.indexOf(" (");
   return idx > 0 ? tz.substring(0, idx) : tz;
 }
@@ -44,8 +45,9 @@ function timezoneOffsetMinutes(tzId, date) {
 }
 
 function formatTimezoneOption(opt) {
+  if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(opt)) return opt;
   var tzId = getTzId(opt);
-  var offset = timezoneOffsetMinutes(tzId, new Date());
+  var offset = timezoneOffsetMinutes(tzId, webserverNow());
   if (offset == null || !isFinite(offset)) return opt;
   return tzId + " (" + formatGmtOffset(offset) + ")";
 }
@@ -59,8 +61,8 @@ function appendTimezoneOption(select, opt) {
 
 function updateClockText() {
   if (!els.clock) return;
-  var now = new Date();
-  var tzId = getTzId(state.timezone);
+  var now = webserverNow();
+  var tzId = getTzId(effectiveTimezoneOptionForWeb(state.timezone));
   try {
     var parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tzId, hour: "numeric", minute: "2-digit",
@@ -82,21 +84,17 @@ function updateClockText() {
 
 function updateClock() {
   updateClockText();
-  var now = new Date();
+  var now = webserverNow();
   var msToNext = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
   setTimeout(updateClock, msToNext + 50);
 }
 
 function clockBarTemperatureActive() {
-  return clockBarTemperatureEntries().length > 0;
+  return clockBarTemperatureVisible();
 }
 
 var CLOCK_BAR_SECTIONS = ["left", "middle", "right"];
-var CLOCK_BAR_DEFAULT_LAYOUT = {
-  left: ["temperature"],
-  middle: ["time"],
-  right: ["network"],
-};
+var CLOCK_BAR_DEFAULT_LAYOUT = CLOCK_BAR_FIXED_LAYOUT;
 var CLOCK_BAR_LAYOUT_STORAGE_PREFIX = "espcontrol.clockBarLayout.";
 var clockBarLayoutLoaded = false;
 
@@ -106,43 +104,37 @@ function clockBarTemperatureItemId(index) {
 
 function clockBarTemperatureItemIndex(item) {
   if (item === "temperature") return 0;
-  var match = String(item || "").match(/^temperature_(\d+)$/);
-  if (!match) return -1;
-  var index = parseInt(match[1], 10) - 1;
-  return index >= 1 && index < MAX_CLOCK_BAR_TEMPERATURES ? index : -1;
+  return -1;
 }
 
 function isClockBarTemperatureItem(item) {
   return clockBarTemperatureItemIndex(item) >= 0;
 }
 
-function clockBarTemperatureItemIds(includeNext) {
-  var count = clockBarTemperatureEntries().length;
-  if (includeNext && count < MAX_CLOCK_BAR_TEMPERATURES) count++;
-  var out = [];
-  for (var i = 0; i < count && i < MAX_CLOCK_BAR_TEMPERATURES; i++) {
-    out.push(clockBarTemperatureItemId(i));
-  }
-  return out;
+function clockBarTemperatureItemIds() {
+  return ["temperature"];
 }
 
-function clockBarItems(includeNextTemperature) {
-  return clockBarTemperatureItemIds(!!includeNextTemperature).concat(["time", "weather", "network"]);
+function clockBarItems() {
+  var items = ["temperature", "time"];
+  if (voiceServicesSupported()) items.push("voice");
+  items.push("network");
+  return items;
 }
 
 function clockBarDefaultSection(item) {
   if (isClockBarTemperatureItem(item)) return "left";
   if (item === "time") return "middle";
-  if (item === "weather") return "right";
+  if (item === "voice") return "right";
   if (item === "network") return "right";
   return "left";
 }
 
 function clockBarItemActive(item) {
   var tempIndex = clockBarTemperatureItemIndex(item);
-  if (tempIndex >= 0) return tempIndex < clockBarTemperatureEntries().length;
+  if (tempIndex >= 0) return clockBarTemperatureVisible();
   if (item === "time") return !!state.clockBarTimeOn;
-  if (item === "weather") return !!state.clockBarWeatherOn;
+  if (item === "voice") return voiceServicesSupported() && !!state.voiceServicesOn;
   if (item === "network") return !!state.networkStatusOn;
   return false;
 }
@@ -153,22 +145,10 @@ function clockBarItemElement(item) {
 
 function clockBarItemLabel(item) {
   if (isClockBarTemperatureItem(item)) return "Temperature";
-  if (item === "time") return "Time";
-  if (item === "weather") return "Weather";
-  if (item === "network") return "Network Status";
+  if (item === "time") return "Clock";
+  if (item === "voice") return "Voice Services";
+  if (item === "network") return "Connectivity";
   return "Clock Bar";
-}
-
-function clockBarItemHasSettings(item) {
-  return isClockBarTemperatureItem(item) || item === "weather";
-}
-
-function clockBarItemIcon(item) {
-  if (isClockBarTemperatureItem(item)) return "thermometer";
-  if (item === "time") return "clock-outline";
-  if (item === "weather") return "weather-partly-cloudy";
-  if (item === "network") return "wifi-strength-4";
-  return "plus";
 }
 
 function clockBarLayoutStorageKey() {
@@ -177,7 +157,7 @@ function clockBarLayoutStorageKey() {
 
 function cloneClockBarLayout(layout) {
   var out = { left: [], middle: [], right: [] };
-  var allowed = clockBarItems(true);
+  var allowed = clockBarItems();
   CLOCK_BAR_SECTIONS.forEach(function (section) {
     (layout && layout[section] || []).forEach(function (item) {
       if (allowed.indexOf(item) !== -1 && out[section].indexOf(item) === -1) out[section].push(item);
@@ -196,7 +176,7 @@ function serializeClockBarLayout(layout) {
 function parseClockBarLayout(value) {
   var out = { left: [], middle: [], right: [] };
   var seen = {};
-  var allowed = clockBarItems(true);
+  var allowed = clockBarItems();
   String(value || "").split("|").forEach(function (segment) {
     var parts = segment.split(":");
     if (parts.length < 2) return;
@@ -213,7 +193,7 @@ function parseClockBarLayout(value) {
 }
 
 function applyClockBarLayoutValue(value) {
-  state.clockBarLayout = cloneClockBarLayout(parseClockBarLayout(value));
+  state.clockBarLayout = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
   clockBarLayoutLoaded = true;
   saveClockBarLayout(false);
   updateClockBarItemUi();
@@ -221,13 +201,7 @@ function applyClockBarLayoutValue(value) {
 
 function loadClockBarLayout() {
   if (clockBarLayoutLoaded && state.clockBarLayout) return state.clockBarLayout;
-  var loaded = null;
-  try {
-    if (window.localStorage) loaded = JSON.parse(window.localStorage.getItem(clockBarLayoutStorageKey()) || "null");
-  } catch (_) {
-    loaded = null;
-  }
-  state.clockBarLayout = cloneClockBarLayout(loaded || state.clockBarLayout || CLOCK_BAR_DEFAULT_LAYOUT);
+  state.clockBarLayout = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
   clockBarLayoutLoaded = true;
   return state.clockBarLayout;
 }
@@ -238,90 +212,26 @@ function saveClockBarLayout(postDevice) {
   var serialized = serializeClockBarLayout(state.clockBarLayout);
   try {
     if (window.localStorage) {
-      window.localStorage.setItem(clockBarLayoutStorageKey(), JSON.stringify(cloneClockBarLayout(state.clockBarLayout)));
+      window.localStorage.setItem(clockBarLayoutStorageKey(), JSON.stringify(cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT)));
     }
   } catch (_) {}
-  if (postDevice) postClockBarLayout(serialized);
+  // Layout customization has been removed; keep this as a local compatibility cache only.
 }
 
 function normalizeClockBarLayout() {
-  var current = loadClockBarLayout();
-  var next = { left: [], middle: [], right: [] };
-  var seen = {};
-  var allowed = clockBarItems(true);
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
-    (current[section] || []).forEach(function (item) {
-      if (allowed.indexOf(item) === -1 || seen[item]) return;
-      seen[item] = true;
-      next[section].push(item);
-    });
-  });
-  clockBarItems(false).forEach(function (item) {
-    if (seen[item] || !clockBarItemActive(item)) return;
-    next[clockBarDefaultSection(item)].push(item);
-  });
+  var next = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
   state.clockBarLayout = next;
   return next;
 }
 
-function moveClockBarItem(item, section) {
-  if (isConfigLocked() || clockBarItems(true).indexOf(item) === -1 || CLOCK_BAR_SECTIONS.indexOf(section) === -1) return;
-  var layout = normalizeClockBarLayout();
-  CLOCK_BAR_SECTIONS.forEach(function (name) {
-    layout[name] = layout[name].filter(function (entry) { return entry !== item; });
-  });
-  layout[section].push(item);
-  state.clockBarLayout = layout;
-  saveClockBarLayout(true);
-  updateClockBarItemUi();
-}
-
-function removeClockBarItemFromLayout(item) {
-  var layout = normalizeClockBarLayout();
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
-    layout[section] = layout[section].filter(function (entry) { return entry !== item; });
-  });
-  state.clockBarLayout = layout;
-  saveClockBarLayout(true);
-}
-
-function removeClockBarTemperatureItemFromLayout(index) {
-  var layout = normalizeClockBarLayout();
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
-    var next = [];
-    (layout[section] || []).forEach(function (entry) {
-      var tempIndex = clockBarTemperatureItemIndex(entry);
-      if (tempIndex < 0) {
-        next.push(entry);
-      } else if (tempIndex < index) {
-        next.push(entry);
-      } else if (tempIndex > index) {
-        next.push(clockBarTemperatureItemId(tempIndex - 1));
-      }
-    });
-    layout[section] = next;
-  });
-  state.clockBarLayout = layout;
-  saveClockBarLayout(true);
-}
-
-function clockBarItemsAvailableToAdd(section) {
-  normalizeClockBarLayout();
-  var out = [];
-  clockBarItems(true).forEach(function (item) {
-    if (!clockBarItemActive(item) || !clockBarItemElement(item)) out.push(item);
-  });
-  return out;
-}
-
 function createClockBarItemElement(item, section) {
-  var button = document.createElement("button");
-  button.type = "button";
+  var button = document.createElement("div");
   button.className = "sp-clockbar-item sp-clockbar-" + (isClockBarTemperatureItem(item) ? "temperature" : item);
   button.setAttribute("data-clockbar-item", item);
   button.setAttribute("data-clockbar-section", section);
-  button.setAttribute("aria-label", "Edit " + clockBarItemLabel(item).toLowerCase());
-  button.draggable = true;
+  button.setAttribute("aria-label", clockBarItemLabel(item));
+  button.setAttribute("role", "button");
+  button.setAttribute("tabindex", "0");
 
   if (isClockBarTemperatureItem(item)) {
     var temp = document.createElement("span");
@@ -336,27 +246,17 @@ function createClockBarItemElement(item, section) {
     clock.textContent = "--:--";
     button.appendChild(clock);
     els.clock = clock;
-  } else if (item === "weather") {
-    var weather = document.createElement("span");
-    weather.className = "sp-weather-preview mdi mdi-weather-partly-cloudy";
-    button.appendChild(weather);
-    els.weatherPreview = weather;
   } else if (item === "network") {
     var network = document.createElement("span");
     network.className = "sp-network-preview mdi mdi-wifi-strength-4";
     button.appendChild(network);
     els.networkPreview = network;
+  } else if (item === "voice") {
+    var voice = document.createElement("span");
+    voice.className = "sp-voice-preview mdi mdi-microphone";
+    button.appendChild(voice);
+    els.voicePreview = voice;
   }
-  return button;
-}
-
-function createClockBarAddElement(section) {
-  var button = document.createElement("button");
-  button.type = "button";
-  button.className = "sp-clockbar-section-add";
-  button.setAttribute("data-clockbar-add", section);
-  button.setAttribute("aria-label", "Add Clock Bar item to " + section);
-  button.innerHTML = '<span class="mdi mdi-plus"></span>';
   return button;
 }
 
@@ -366,28 +266,25 @@ function renderClockBarLayout() {
   els.clockBarItems = {};
   els.temps = {};
   els.clock = null;
-  els.weatherPreview = null;
   els.networkPreview = null;
+  els.voicePreview = null;
   CLOCK_BAR_SECTIONS.forEach(function (section) {
     var container = els.clockBarSections[section];
     if (!container) return;
     container.innerHTML = "";
     var rendered = 0;
-    if (section === "right") container.appendChild(createClockBarAddElement(section));
     layout[section].forEach(function (item) {
-      if (!clockBarItemActive(item)) return;
       var itemEl = createClockBarItemElement(item, section);
       container.appendChild(itemEl);
       els.clockBarItems[item] = itemEl;
       rendered++;
     });
     container.className = "sp-clockbar-section sp-clockbar-" + section + (rendered ? "" : " sp-clockbar-section-empty");
-    if (section !== "right") container.appendChild(createClockBarAddElement(section));
   });
   updateTempPreview();
   updateClockText();
-  updateWeatherPreview();
   updateNetworkPreview();
+  updateVoicePreview();
 }
 
 function syncClockBarItemElement(item) {
@@ -395,95 +292,17 @@ function syncClockBarItemElement(item) {
   if (!el) return;
   var active = clockBarItemActive(item);
   el.className = el.className
-    .replace(/\s?sp-clockbar-inactive/g, "")
+    .replace(/\s?sp-clockbar-hidden/g, "")
     .replace(/\s?sp-selected/g, "");
-  if (!active) el.className += " sp-clockbar-inactive";
+  if (!active) el.className += " sp-clockbar-hidden";
   if (state.clockBarSelectedItem === item) el.className += " sp-selected";
+  el.setAttribute("title", clockBarItemLabel(item));
   el.setAttribute("aria-pressed", state.clockBarSelectedItem === item ? "true" : "false");
-  el.setAttribute("title", active ? "Edit " + clockBarItemLabel(item) : "Add " + clockBarItemLabel(item));
 }
 
 function updateClockBarItemUi() {
   renderClockBarLayout();
-  clockBarTemperatureItemIds(true).forEach(syncClockBarItemElement);
-  syncClockBarItemElement("time");
-  syncClockBarItemElement("weather");
-  syncClockBarItemElement("network");
-}
-
-function setClockBarItemSelected(item, open) {
-  state.clockBarSelectedItem = item || "";
-  if (item) {
-    ctx().setSelected([]);
-    ctx().setLastClicked(-1);
-  }
-  updateClockBarItemUi();
-  renderPreview();
-  renderButtonSettings(!!open);
-}
-
-function addClockBarItem(item) {
-  if (isConfigLocked()) return;
-  if (isClockBarTemperatureItem(item)) {
-    var tempIndex = clockBarTemperatureItemIndex(item);
-    var restore = normalizeClockBarTemperatureEntities(state.clockBarTempRestoreEntities);
-    var next = clockBarTemperatureEntries();
-    if (tempIndex >= next.length) {
-      while (next.length < tempIndex) next.push("");
-      next[tempIndex] = restore[tempIndex] || "";
-      if (!next[tempIndex] && tempIndex === 0) next[tempIndex] = "sensor.outdoor_temperature";
-    }
-    applyClockBarTemperatureEntities(next, false);
-    updateTempPreview();
-  } else if (item === "time") {
-    state.clockBarTimeOn = true;
-    postClockBarTime(true);
-    syncClockBarUi();
-  } else if (item === "weather") {
-    state.clockBarWeatherOn = true;
-    postClockBarWeatherIcon(true);
-    syncClockBarUi();
-  } else if (item === "network") {
-    state.networkStatusOn = true;
-    postNetworkStatusIcon(true);
-    syncClockBarUi();
-  }
-  normalizeClockBarLayout();
-  saveClockBarLayout(true);
-}
-
-function deleteClockBarItem(item) {
-  if (isConfigLocked()) return;
-  if (isClockBarTemperatureItem(item)) {
-    var tempIndex = clockBarTemperatureItemIndex(item);
-    removeClockBarTemperatureItemFromLayout(tempIndex);
-    state.clockBarTempRestoreIndoor = !!state._indoorOn;
-    state.clockBarTempRestoreOutdoor = !!state._outdoorOn;
-    state.clockBarTempRestoreEntities = clockBarTemperatureEntities();
-    var next = clockBarTemperatureEntries();
-    if (tempIndex >= 0) next.splice(tempIndex, 1);
-    applyClockBarTemperatureEntities(next, true);
-    updateTempPreview();
-  } else if (item === "time") {
-    removeClockBarItemFromLayout(item);
-    state.clockBarTimeOn = false;
-    postClockBarTime(false);
-    syncClockBarUi();
-  } else if (item === "weather") {
-    removeClockBarItemFromLayout(item);
-    state.clockBarWeatherOn = false;
-    postClockBarWeatherIcon(false);
-    syncClockBarUi();
-  } else if (item === "network") {
-    removeClockBarItemFromLayout(item);
-    state.networkStatusOn = false;
-    postNetworkStatusIcon(false);
-    syncClockBarUi();
-  }
-  state.clockBarSelectedItem = "";
-  hideSettingsOverlay();
-  updateClockBarItemUi();
-  renderPreview();
+  clockBarItems().forEach(syncClockBarItemElement);
 }
 
 function syncInput(el, val) {
@@ -523,11 +342,10 @@ function updateSunInfo() {
     return;
   }
   el.classList.add("sp-visible");
-  var t = "";
-  if (state.sunrise) t += "Sunrise: " + escHtml(state.sunrise);
-  if (state.sunrise && state.sunset) t += " \u00a0/\u00a0 ";
-  if (state.sunset) t += "Sunset: " + escHtml(state.sunset);
-  el.innerHTML = t;
+  var parts = [];
+  if (state.sunrise) parts.push("Sunrise: " + state.sunrise);
+  if (state.sunset) parts.push("Sunset: " + state.sunset);
+  el.textContent = parts.join(" \u00a0/\u00a0 ");
 }
 
 function updateTempPreview() {
@@ -535,13 +353,12 @@ function updateTempPreview() {
   var show = clockBarVisibleInPreview();
   var unit = clockBarTemperatureUnitSymbol();
   var sampleValues = ["17", "24", "21", "19", "22", "18"];
-  clockBarTemperatureEntries().forEach(function (_, index) {
-    var item = clockBarTemperatureItemId(index);
+  clockBarTemperatureItemIds().forEach(function (item, index) {
     var el = els.temps[item];
     if (!el) return;
-    var value = sampleValues[index] || "--";
+    var configured = primaryClockBarTemperatureEntity();
+    var value = configured ? (sampleValues[index] || "--") : "--";
     if (index === 0 && state._outdoorVal != null) value = state._outdoorVal;
-    if (index === 1 && state._indoorVal != null) value = state._indoorVal;
     el.className = "sp-temp" + (show ? " sp-visible" : "");
     el.textContent = value + unit;
   });
@@ -571,15 +388,15 @@ function networkPreviewIconSlug(transport, strengthPercent) {
 
 function updateNetworkPreview() {
   if (!els.networkPreview) return;
-  var show = clockBarVisibleInPreview() && state.networkStatusOn;
+  var show = clockBarVisibleInPreview();
   els.networkPreview.className = "sp-network-preview mdi mdi-" +
     networkPreviewIconSlug(state.networkTransport, state.wifiStrengthPercent) +
     (show ? " sp-visible" : "");
 }
 
-function updateWeatherPreview() {
-  if (!els.weatherPreview) return;
-  var show = clockBarVisibleInPreview() && state.clockBarWeatherOn;
-  els.weatherPreview.className = "sp-weather-preview mdi mdi-weather-partly-cloudy" +
-    (show ? " sp-visible" : "");
+function updateVoicePreview() {
+  if (!els.voicePreview) return;
+  var show = clockBarVisibleInPreview();
+  els.voicePreview.className = "sp-voice-preview mdi mdi-microphone" +
+    (show && voiceServicesSupported() && state.voiceServicesOn ? " sp-visible" : "");
 }

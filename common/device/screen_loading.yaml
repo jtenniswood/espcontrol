@@ -113,6 +113,8 @@ esphome:
                           id(schedule_enabled).state,
                           panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid()));
             then:
+              # Expected on boot when schedule logic says the panel should
+              # remain dark, or while time is not ready enough to decide.
               - script.execute: backlight_force_display_off
             else:
               - light.turn_on:

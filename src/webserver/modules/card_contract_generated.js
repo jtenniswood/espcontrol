@@ -89,7 +89,6 @@ var CARD_CONTRACT_CARDS = {
       "script",
       "automation",
       "button",
-      "vacuum",
       "input_button",
       "input_boolean",
       "input_number",
@@ -101,6 +100,37 @@ var CARD_CONTRACT_CARDS = {
         "name": "large_numbers",
         "label": "Large State Numbers",
         "kind": "flag"
+      },
+      {
+        "name": "confirmation_required",
+        "label": "Confirmation Required",
+        "kind": "flag",
+        "storage": [
+          "confirm_on"
+        ]
+      },
+      {
+        "name": "script_fields",
+        "label": "Fields",
+        "kind": "text"
+      },
+      {
+        "name": "confirm_message",
+        "label": "Message",
+        "kind": "text",
+        "defaultValue": "Run this script?"
+      },
+      {
+        "name": "confirm_yes",
+        "label": "Confirm Button",
+        "kind": "text",
+        "defaultValue": "Yes"
+      },
+      {
+        "name": "confirm_no",
+        "label": "Cancel Button",
+        "kind": "text",
+        "defaultValue": "No"
       }
     ],
     "default": {
@@ -111,6 +141,73 @@ var CARD_CONTRACT_CARDS = {
       "sensor": "scene.turn_on",
       "unit": "",
       "type": "action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  "vacuum": {
+    "label": "Vacuum",
+    "allowInSubpage": true,
+    "domains": [
+      "vacuum"
+    ],
+    "options": [
+      {
+        "name": "vacuum_mode",
+        "label": "Type",
+        "kind": "choice",
+        "values": [
+          "status",
+          "start_stop",
+          "dock",
+          "pause_resume",
+          "clean_spot",
+          "locate",
+          "clean_area"
+        ],
+        "defaultValue": "start_stop"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "start_stop",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  "lawn_mower": {
+    "label": "Lawn Mower",
+    "allowInSubpage": true,
+    "domains": [
+      "lawn_mower"
+    ],
+    "options": [
+      {
+        "name": "lawn_mower_mode",
+        "label": "Type",
+        "kind": "choice",
+        "values": [
+          "status",
+          "start_mowing",
+          "dock",
+          "pause_resume"
+        ],
+        "defaultValue": "start_mowing"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Robot Mower",
+      "icon_on": "Auto",
+      "sensor": "start_mowing",
+      "unit": "",
+      "type": "lawn_mower",
       "precision": "",
       "options": ""
     }
@@ -130,6 +227,8 @@ var CARD_CONTRACT_CARDS = {
           "control_panel",
           "away",
           "home",
+          "night",
+          "vacation",
           "disarm"
         ],
         "defaultValue": "control_panel"
@@ -153,6 +252,8 @@ var CARD_CONTRACT_CARDS = {
         "values": [
           "away",
           "home",
+          "night",
+          "vacation",
           "disarm"
         ],
         "defaultValue": "away|home|disarm"
@@ -186,6 +287,7 @@ var CARD_CONTRACT_CARDS = {
           "home",
           "disarm"
         ],
+        "maxVisibleActions": 3,
         "actions": [
           {
             "value": "away",
@@ -200,6 +302,20 @@ var CARD_CONTRACT_CARDS = {
             "service": "alarm_control_panel.alarm_arm_home",
             "icon": "Shield Home",
             "legacyIcon": "Home"
+          },
+          {
+            "value": "night",
+            "label": "Arm Night",
+            "service": "alarm_control_panel.alarm_arm_night",
+            "icon": "Weather Night",
+            "legacyIcon": "Weather Night"
+          },
+          {
+            "value": "vacation",
+            "label": "Arm Vacation",
+            "service": "alarm_control_panel.alarm_arm_vacation",
+            "icon": "Airplane",
+            "legacyIcon": "Airplane"
           },
           {
             "value": "disarm",
@@ -346,6 +462,16 @@ var CARD_CONTRACT_CARDS = {
         "defaultValue": "target"
       },
       {
+        "name": "temperature_step",
+        "label": "Temperature Step",
+        "kind": "choice",
+        "values": [
+          "1",
+          "0.5"
+        ],
+        "defaultValue": "1"
+      },
+      {
         "name": "large_numbers",
         "label": "Large Temperature Numbers",
         "kind": "flag"
@@ -355,6 +481,7 @@ var CARD_CONTRACT_CARDS = {
       "climate": {
         "defaultLabelDisplay": "label",
         "defaultNumberDisplay": "target",
+        "defaultTemperatureStep": "1",
         "precisionValues": [
           "",
           "1",
@@ -387,6 +514,7 @@ var CARD_CONTRACT_CARDS = {
         "label": "Type",
         "kind": "choice",
         "values": [
+          "modal",
           "",
           "tilt",
           "toggle",
@@ -395,7 +523,7 @@ var CARD_CONTRACT_CARDS = {
           "stop",
           "set_position"
         ],
-        "defaultValue": ""
+        "defaultValue": "modal"
       },
       {
         "name": "cover_position",
@@ -405,6 +533,17 @@ var CARD_CONTRACT_CARDS = {
         "min": 0,
         "max": 100,
         "step": 1
+      },
+      {
+        "name": "cover_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "values": [
+          "position",
+          "controls",
+          "tilt"
+        ],
+        "defaultValue": "position|controls|tilt"
       }
     ],
     "behavior": {
@@ -422,7 +561,7 @@ var CARD_CONTRACT_CARDS = {
       "label": "",
       "icon": "Blinds",
       "icon_on": "Blinds Open",
-      "sensor": "",
+      "sensor": "modal",
       "unit": "",
       "type": "cover",
       "precision": "",
@@ -472,7 +611,6 @@ var CARD_CONTRACT_CARDS = {
     "label": "Fans",
     "allowInSubpage": true,
     "pickerKey": "fan_speed",
-    "experimental": "developer",
     "domains": [
       "fan"
     ],
@@ -492,7 +630,6 @@ var CARD_CONTRACT_CARDS = {
     "label": "Fans",
     "allowInSubpage": true,
     "pickerKey": "fan_speed",
-    "experimental": "developer",
     "domains": [
       "fan"
     ],
@@ -512,7 +649,6 @@ var CARD_CONTRACT_CARDS = {
     "label": "Fans",
     "allowInSubpage": true,
     "pickerKey": "fan_speed",
-    "experimental": "developer",
     "domains": [
       "fan"
     ],
@@ -531,7 +667,6 @@ var CARD_CONTRACT_CARDS = {
   "fan_speed": {
     "label": "Fans",
     "allowInSubpage": true,
-    "experimental": "developer",
     "domains": [
       "fan"
     ],
@@ -547,11 +682,37 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "fan_control": {
+    "label": "Fans",
+    "allowInSubpage": true,
+    "pickerKey": "fan_speed",
+    "domains": [
+      "fan"
+    ],
+    "options": [
+      {
+        "name": "fan_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "defaultValue": "power|speed|preset|oscillation|direction"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Fan",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_control",
+      "precision": "",
+      "options": ""
+    }
+  },
   "fan_switch": {
     "label": "Fans",
     "allowInSubpage": true,
     "pickerKey": "fan_speed",
-    "experimental": "developer",
     "domains": [
       "fan"
     ],
@@ -636,8 +797,8 @@ var CARD_CONTRACT_CARDS = {
     "default": {
       "entity": "",
       "label": "",
-      "icon": "Power",
-      "icon_on": "Flash",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
       "sensor": "",
       "unit": "",
       "type": "internal",
@@ -709,6 +870,40 @@ var CARD_CONTRACT_CARDS = {
       "sensor": "",
       "unit": "2000-6500",
       "type": "light_temperature",
+      "precision": "",
+      "options": ""
+    }
+  },
+  "light_control": {
+    "label": "Lights",
+    "allowInSubpage": true,
+    "pickerKey": "light_brightness",
+    "hidden": true,
+    "domains": [
+      "light"
+    ],
+    "options": [
+      {
+        "name": "light_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "values": [
+          "power",
+          "brightness",
+          "temperature",
+          "color"
+        ],
+        "defaultValue": "power|brightness|temperature|color"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "light_control",
       "precision": "",
       "options": ""
     }
@@ -884,6 +1079,22 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "screen_lock": {
+    "label": "Screen Lock",
+    "allowInSubpage": true,
+    "domains": [],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Lock",
+      "icon_on": "Lock Open",
+      "sensor": "",
+      "unit": "",
+      "type": "screen_lock",
+      "precision": "",
+      "options": ""
+    }
+  },
   "webhook": {
     "label": "Webhook",
     "allowInSubpage": true,
@@ -1001,6 +1212,27 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "local_sensor": {
+    "label": "Local Sensor",
+    "allowInSubpage": true,
+    "pickerKey": "sensor",
+    "hidden": true,
+    "domains": [
+      "sensor",
+      "text_sensor"
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "local",
+      "unit": "",
+      "type": "sensor",
+      "precision": "",
+      "options": ""
+    }
+  },
   "slider": {
     "label": "Slider",
     "allowInSubpage": true,
@@ -1031,10 +1263,20 @@ var CARD_CONTRACT_CARDS = {
         "kind": "choice",
         "values": [
           "",
+          "switch",
           "lights",
           "climate",
           "presence",
-          "media"
+          "media",
+          "alarm",
+          "cover",
+          "garage",
+          "lock",
+          "vacuum",
+          "lawn_mower",
+          "weather",
+          "sensor",
+          "image"
         ],
         "defaultValue": ""
       },
@@ -1135,11 +1377,11 @@ var CARD_CONTRACT_CARDS = {
     }
   },
   "image": {
-    "label": "Image",
+    "label": "Camera Card",
     "allowInSubpage": true,
-    "experimental": "developer",
     "domains": [
-      "camera"
+      "camera",
+      "image"
     ],
     "options": [
       {
@@ -1148,37 +1390,19 @@ var CARD_CONTRACT_CARDS = {
         "kind": "flag"
       },
       {
+        "name": "image_icon",
+        "label": "Show Icon",
+        "kind": "flag"
+      },
+      {
         "name": "image_modal_mode",
-        "label": "Modal Image Size",
+        "label": "Expanded Image",
         "kind": "choice",
         "values": [
           "fill",
           "fit"
         ],
         "defaultValue": "fill"
-      },
-      {
-        "name": "image_refresh",
-        "label": "Refresh Interval",
-        "kind": "choice",
-        "values": [
-          "off",
-          "10",
-          "30",
-          "60",
-          "300"
-        ],
-        "defaultValue": "off"
-      },
-      {
-        "name": "image_refresh_mode",
-        "label": "Refresh Mode",
-        "kind": "choice",
-        "values": [
-          "changes_timer",
-          "timer"
-        ],
-        "defaultValue": "changes_timer"
       }
     ],
     "default": {
@@ -1225,12 +1449,17 @@ var CARD_CONTRACT_MIGRATION_ALIASES = {
   "weather_forecast": {
     "type": "weather",
     "precision": "tomorrow"
+  },
+  "local_sensor": {
+    "type": "sensor",
+    "sensor": "local"
   }
 };
 var CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES = ["slider", "light_brightness", "fan_speed"];
 var CARD_CONTRACT_FAN_DEFAULT_ICONS = {
   "fan_switch": "Fan Off",
   "fan_speed": "Fan Speed 2",
+  "fan_control": "Fan",
   "fan_oscillate": "Fan",
   "fan_direction": "Swap Horizontal",
   "fan_preset": "Fan Auto"
@@ -1246,6 +1475,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "clock": "CK",
   "timezone": "T",
   "sensor": "S",
+  "local_sensor": "LS",
   "door_window": "X",
   "presence": "PR",
   "weather": "W",
@@ -1253,21 +1483,26 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "option_select": "U",
   "fan_switch": "B",
   "fan_speed": "J",
+  "fan_control": "FC",
   "fan_oscillate": "O",
   "fan_direction": "E",
   "fan_preset": "Z",
   "light_brightness": "V",
   "light_switch": "Q",
+  "light_control": "LC",
   "alarm": "Y",
   "alarm_action": "AA",
   "slider": "L",
   "cover": "C",
+  "vacuum": "VC",
+  "lawn_mower": "LM",
   "light_temperature": "N",
   "garage": "R",
   "lock": "K",
   "media": "M",
   "climate": "H",
   "push": "P",
+  "screen_lock": "SL",
   "webhook": "WH",
   "internal": "I",
   "subpage": "G"
@@ -1278,6 +1513,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "CK": "clock",
   "T": "timezone",
   "S": "sensor",
+  "LS": "local_sensor",
   "X": "door_window",
   "PR": "presence",
   "W": "weather",
@@ -1285,21 +1521,26 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "U": "option_select",
   "B": "fan_switch",
   "J": "fan_speed",
+  "FC": "fan_control",
   "O": "fan_oscillate",
   "E": "fan_direction",
   "Z": "fan_preset",
   "V": "light_brightness",
   "Q": "light_switch",
+  "LC": "light_control",
   "Y": "alarm",
   "AA": "alarm_action",
   "L": "slider",
   "C": "cover",
+  "VC": "vacuum",
+  "LM": "lawn_mower",
   "N": "light_temperature",
   "R": "garage",
   "K": "lock",
   "M": "media",
   "H": "climate",
   "P": "push",
+  "SL": "screen_lock",
   "WH": "webhook",
   "I": "internal",
   "G": "subpage"
@@ -1325,6 +1566,57 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
   "media": true,
   "subpage": true,
   "timezone": true
+};
+var CARD_CONTRACT_OPTION_NAMES = {
+  "actions": "actions",
+  "active_color": "active_color",
+  "alarm_card_type": "alarm_card_type",
+  "confirm_message": "confirm_message",
+  "confirm_no": "confirm_no",
+  "confirm_off": "confirm_off",
+  "confirm_on": "confirm_on",
+  "confirm_yes": "confirm_yes",
+  "confirmation_mode": "confirmation_mode",
+  "confirmation_required": "confirmation_required",
+  "cover_mode": "cover_mode",
+  "cover_position": "cover_position",
+  "cover_tabs": "cover_tabs",
+  "date_time_mode": "date_time_mode",
+  "fan_tabs": "fan_tabs",
+  "garage_mode": "garage_mode",
+  "icon_display": "icon_display",
+  "image_icon": "image_icon",
+  "image_label": "image_label",
+  "image_modal_mode": "image_modal_mode",
+  "image_refresh": "image_refresh",
+  "image_refresh_mode": "image_refresh_mode",
+  "internal_mode": "internal_mode",
+  "label_display": "label_display",
+  "large_numbers": "large_numbers",
+  "lawn_mower_mode": "lawn_mower_mode",
+  "light_tabs": "light_tabs",
+  "lock_mode": "lock_mode",
+  "media_display": "media_display",
+  "media_mode": "media_mode",
+  "media_now_playing_controls": "media_now_playing_controls",
+  "number_display": "number_display",
+  "on_pattern": "on_pattern",
+  "pin_arm": "pin_arm",
+  "pin_disarm": "pin_disarm",
+  "script_fields": "script_fields",
+  "state_high_label": "state_high_label",
+  "state_input": "state_input",
+  "state_input_2": "state_input_2",
+  "state_labels": "state_labels",
+  "state_low_label": "state_low_label",
+  "state_output": "state_output",
+  "state_output_2": "state_output_2",
+  "subpage_kind": "subpage_kind",
+  "temperature_step": "temperature_step",
+  "vacuum_mode": "vacuum_mode",
+  "volume_max": "volume_max",
+  "weather_mode": "weather_mode",
+  "webhook_headers": "webhook_headers"
 };
 
 function cardContractListContains(list, value) {
@@ -1352,11 +1644,6 @@ function cardContractAllowInSubpage(type) {
 function cardContractPickerKey(type) {
   var card = cardContractCard(type);
   return card && card.pickerKey ? card.pickerKey : "";
-}
-
-function cardContractExperimental(type) {
-  var card = cardContractCard(type);
-  return card && card.experimental ? card.experimental : "";
 }
 
 function cardContractHidden(type) {
@@ -1424,4 +1711,8 @@ function cardContractLargeNumbersSupported(type, precision) {
   if (rule.excludedPrecisions) return !cardContractListContains(rule.excludedPrecisions, precision || "");
   if (rule.precisions) return cardContractListContains(rule.precisions, precision || "");
   return false;
+}
+
+function cardContractOptionName(name) {
+  return CARD_CONTRACT_OPTION_NAMES[name] || name || "";
 }

@@ -15,7 +15,7 @@ var DOOR_WINDOW_CARD_METADATA = {
     label: "Sensor Entity",
     idSuffix: "sensor",
     placeholder: "e.g. binary_sensor.patio_door",
-    domains: ["binary_sensor", "sensor"],
+    domains: function () { return cardContractDomains("door_window"); },
     bindName: "sensor",
     rerender: true,
     requiredMessage: "Add a door or window sensor before saving.",
@@ -35,18 +35,16 @@ var DOOR_WINDOW_CARD_METADATA = {
 };
 
 registerButtonType("door_window", {
-  label: "Doors & Windows",
-  allowInSubpage: true,
+  label: function () { return cardContractCardLabel("door_window"); },
+  allowInSubpage: function () { return cardContractAllowInSubpage("door_window"); },
+  pickerKey: function () { return cardContractPickerKey("door_window"); },
+  hidden: function () { return cardContractHidden("door_window"); },
   hideLabel: true,
+  defaultConfig: function () { return cardContractDefaultConfig("door_window"); },
   cardMetadata: DOOR_WINDOW_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = "";
-    b.sensor = "";
-    b.unit = "";
-    b.precision = "door";
-    b.icon = doorWindowClosedIcon(b.precision);
-    b.icon_on = doorWindowOpenIcon(b.precision);
-    b.options = setConfigOption("", SENSOR_ACTIVE_COLOR_OPTION, true);
+    var defaults = cardContractDefaultConfig("door_window");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
   },
   renderSettings: function (panel, b, slot, helpers) {
     b.entity = "";
@@ -65,32 +63,26 @@ registerButtonType("door_window", {
     }));
     var subtypeSelect = subtypeField.select;
 
-    helpers.renderCardEntityField(panel, b, helpers, DOOR_WINDOW_CARD_METADATA);
+    helpers.renderBasicCardFields(panel, b, helpers, DOOR_WINDOW_CARD_METADATA);
 
-    helpers.renderCardTextField(panel, b, helpers, DOOR_WINDOW_CARD_METADATA.labelField);
-
-    var closedIconPicker = helpers.renderCardIconPicker(panel, b, helpers, {
+    var iconPickers = helpers.renderCardIconPair(panel, b, helpers, {
       pickerIdSuffix: "closed-icon-picker",
       idSuffix: "icon",
       field: "icon",
       label: "Closed Icon",
       fallback: function () { return doorWindowClosedIcon(b.precision); },
-    });
-
-    var openIconPicker = helpers.renderCardIconPicker(panel, b, helpers, {
+    }, {
       pickerIdSuffix: "open-icon-picker",
       idSuffix: "icon-on",
       field: "icon_on",
       label: "Open Icon",
       fallback: function () { return doorWindowOpenIcon(b.precision); },
     });
+    var closedIconPicker = iconPickers.off;
+    var openIconPicker = iconPickers.on;
 
-    helpers.renderCardOptionToggle(panel, b, helpers, Object.assign({}, DOOR_WINDOW_CARD_METADATA.activeColor, {
-      onChange: function (button, cardHelpers, checked) {
-        setDoorWindowActiveColorEnabled(button, checked);
-        cardHelpers.saveField("options", button.options);
-      },
-    }));
+    helpers.renderCardActiveColorToggle(panel, b, helpers,
+      DOOR_WINDOW_CARD_METADATA.activeColor, setDoorWindowActiveColorEnabled);
 
     function syncIconPicker(picker, value) {
       var preview = picker.querySelector(".sp-icon-picker-preview");
@@ -123,11 +115,11 @@ registerButtonType("door_window", {
   },
   renderPreview: function (b, helpers) {
     var subtype = normalizeDoorWindowSubtype(b.precision);
-    var icon = b.icon && b.icon !== "Auto" ? b.icon : doorWindowClosedIcon(subtype);
     var label = b.label || b.sensor || (subtype === "window" ? "Window" : "Door");
-    return {
-      iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconSlug(icon) + '"></span>',
-      labelHtml: cardBadgeLabelHtml(helpers, label, subtype === "window" ? "window-closed" : "door"),
-    };
+    return cardBadgePreview(b, helpers, {
+      label: label,
+      iconFallback: doorWindowClosedIcon(subtype),
+      badge: subtype === "window" ? "window-closed" : "door",
+    });
   },
 });

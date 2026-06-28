@@ -16,3 +16,5 @@ substitutions:
   icon_check: "\U000F012C"
   icon_chevron_left: "\U000F0141"
   icon_chevron_right: "\U000F0142"
+  icon_image_card_loading: "\U000F02E9"
+  icon_image_card_unavailable: "\U000F02ED"

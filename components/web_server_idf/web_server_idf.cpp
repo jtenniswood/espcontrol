@@ -208,6 +208,7 @@ void AsyncWebServer::begin() {
   // Use custom close function that shuts down before closing to prevent lwIP race conditions
   config.close_fn = AsyncWebServer::safe_close_with_shutdown;
   if (httpd_start(&this->server_, &config) == ESP_OK) {
+    global_async_web_server() = this;
     const httpd_uri_t handler_get = {
         .uri = "",
         .method = HTTP_GET,
@@ -273,12 +274,21 @@ esp_err_t AsyncWebServer::request_post_handler(httpd_req_t *r) {
   std::string post_query;
   if (r->content_len > 0) {
     post_query.resize(r->content_len);
-    const int ret = httpd_req_recv(r, &post_query[0], r->content_len + 1);
-    if (ret <= 0) {  // 0 return value indicates connection closed
-      if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-        httpd_resp_send_err(r, HTTPD_408_REQ_TIMEOUT, nullptr);
-        return ESP_ERR_TIMEOUT;
+    size_t received = 0;
+    while (received < r->content_len) {
+      const int ret = httpd_req_recv(r, &post_query[received], r->content_len - received);
+      if (ret <= 0) {  // 0 return value indicates connection closed
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+          httpd_resp_send_err(r, HTTPD_408_REQ_TIMEOUT, nullptr);
+          return ESP_ERR_TIMEOUT;
+        }
+        httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, nullptr);
+        return ESP_FAIL;
       }
+      received += static_cast<size_t>(ret);
+    }
+    if (received != r->content_len) {
+      ESP_LOGW(TAG, "Incomplete POST body for %s: got %zu of %zu bytes", r->uri, received, r->content_len);
       httpd_resp_send_err(r, HTTPD_400_BAD_REQUEST, nullptr);
       return ESP_FAIL;
     }
@@ -535,13 +545,17 @@ void AsyncResponseStream::printf(const char *fmt, ...) {
   va_start(args, fmt);
   const int length = vsnprintf(nullptr, 0, fmt, args);
   va_end(args);
+  if (length < 0) {
+    return;
+  }
 
   std::string str;
-  str.resize(length);
+  str.resize(length + 1);
 
   va_start(args, fmt);
-  vsnprintf(&str[0], length + 1, fmt, args);
+  vsnprintf(str.data(), str.size(), fmt, args);
   va_end(args);
+  str.resize(length);
 
   this->print(str);
 }

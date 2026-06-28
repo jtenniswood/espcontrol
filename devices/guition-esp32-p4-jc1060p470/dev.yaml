@@ -14,5 +14,9 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
+web_server:
+  js_url: ""
+  js_include: "../../docs/public/webserver/guition-esp32-p4-jc1060p470/www.js"
+
 packages:
   espcontrol: !include packages.yaml

@@ -114,13 +114,8 @@ inline void apply_calendar_card_text(const CalendarCardRef &ref,
         state.month >= 1 && state.month <= 12 &&
         state.hour >= 0 && state.hour <= 23 &&
         state.minute >= 0 && state.minute <= 59) {
-      if (state.use_12h) {
-        int hour12 = state.hour % 12;
-        if (hour12 == 0) hour12 = 12;
-        snprintf(value_buf, sizeof(value_buf), "%d:%02d", hour12, state.minute);
-      } else {
-        snprintf(value_buf, sizeof(value_buf), "%02d:%02d", state.hour, state.minute);
-      }
+      format_clock_time_without_suffix(value_buf, sizeof(value_buf),
+                                       state.hour, state.minute, state.use_12h);
       value_text = value_buf;
       snprintf(label_buf, sizeof(label_buf), "%d %s", state.day, calendar_month_name(state.month));
       label_text = label_buf;
@@ -276,7 +271,7 @@ inline void reset_timezone_cards() {
 }
 
 inline std::string timezone_city_label(const std::string &tz_option) {
-  std::string tz_id = timezone_id_from_option(tz_option);
+  std::string tz_id = timezone_id_from_option(effective_timezone_option(tz_option));
   if (tz_id.empty()) return espcontrol_i18n("World Clock");
   if (tz_id == "UTC") return "UTC";
   size_t slash = tz_id.rfind('/');
@@ -287,18 +282,9 @@ inline std::string timezone_city_label(const std::string &tz_option) {
   return city.empty() ? espcontrol_i18n(std::string("World Clock")) : city;
 }
 
-inline void set_posix_timezone_for_epoch(const std::string &tz_option, time_t epoch) {
-  std::string tz_id = timezone_id_from_option(tz_option);
-  struct tm utc_tm;
-  gmtime_r(&epoch, &utc_tm);
-  const char *posix = resolve_posix_tz_at_utc(tz_id, utc_point_from_tm(utc_tm));
-  setenv("TZ", posix, 1);
-  tzset();
-}
-
 inline bool timezone_localtime(const std::string &tz_option, time_t epoch, struct tm &out) {
   int offset_minutes = 0;
-  if (!timezone_offset_minutes_at_utc(tz_option, epoch, offset_minutes)) return false;
+  if (!timezone_offset_minutes_at_utc(effective_timezone_option(tz_option), epoch, offset_minutes)) return false;
   time_t local_epoch = epoch + static_cast<time_t>(offset_minutes) * 60;
   return gmtime_r(&local_epoch, &out) != nullptr;
 }
@@ -321,13 +307,8 @@ inline void apply_timezone_card_text(const TimezoneCardRef &ref,
     if (timezone_localtime(tz_option, epoch, local_tm)) {
       int hour = local_tm.tm_hour;
       int minute = local_tm.tm_min;
-      if (use_12h) {
-        int hour12 = hour % 12;
-        if (hour12 == 0) hour12 = 12;
-        snprintf(value_buf, sizeof(value_buf), "%d:%02d", hour12, minute);
-      } else {
-        snprintf(value_buf, sizeof(value_buf), "%02d:%02d", hour, minute);
-      }
+      format_clock_time_without_suffix(value_buf, sizeof(value_buf),
+                                       hour, minute, use_12h);
       value_text = value_buf;
     }
   }
@@ -359,10 +340,6 @@ inline void update_timezone_cards(bool valid,
   int count = timezone_card_count();
   for (int i = 0; i < count; i++) {
     apply_timezone_card_text(refs[i], valid, epoch, active_timezone, use_12h);
-  }
-  if (count > 0) {
-    if (valid) set_posix_timezone_for_epoch(active_timezone, epoch);
-    else apply_timezone(active_timezone);
   }
 }
 
@@ -459,11 +436,12 @@ inline void setup_weather_forecast_card(BtnSlot &s, const ParsedCfg &p,
 }
 
 inline void apply_push_button_transition(lv_obj_t *btn);
+inline void clear_push_button_transition(lv_obj_t *btn);
 
 inline void setup_garage_card(BtnSlot &s, const ParsedCfg &p) {
   if (garage_command_mode(p.sensor)) {
     lv_label_set_text(s.icon_lbl, garage_command_icon(p));
-    lv_label_set_text(s.text_lbl, garage_card_label(p));
+    lv_label_set_text(s.text_lbl, garage_card_show_status(p) ? "--" : garage_card_label(p));
     apply_push_button_transition(s.btn);
     return;
   }
@@ -482,7 +460,44 @@ inline void setup_lock_card(BtnSlot &s, const ParsedCfg &p) {
   lv_label_set_text(s.text_lbl, lock_card_label(p));
 }
 
+inline const char *screen_lock_locked_icon(const ParsedCfg &p) {
+  (void) p;
+  return find_icon("Lock");
+}
+
+inline const char *screen_lock_unlocked_icon(const ParsedCfg &p) {
+  (void) p;
+  return find_icon("Lock Open");
+}
+
+inline std::string screen_lock_card_label() {
+  return screen_lock_enabled()
+    ? espcontrol_i18n(std::string("Screen Locked"))
+    : espcontrol_i18n(std::string("Screen Unlocked"));
+}
+
+inline void screen_lock_register_card(const BtnSlot &s, const ParsedCfg &p) {
+  ScreenLockCardRef ref;
+  ref.btn = s.btn;
+  ref.icon_lbl = s.icon_lbl;
+  ref.text_lbl = s.text_lbl;
+  ref.locked_icon = screen_lock_locked_icon(p);
+  ref.unlocked_icon = screen_lock_unlocked_icon(p);
+  screen_lock_card_refs().push_back(ref);
+  screen_lock_register_controlled_button(s.btn);
+}
+
+inline void setup_screen_lock_card(BtnSlot &s, const ParsedCfg &p) {
+  lv_label_set_text(s.icon_lbl,
+    screen_lock_enabled() ? screen_lock_locked_icon(p) : screen_lock_unlocked_icon(p));
+  std::string label = screen_lock_card_label();
+  lv_label_set_text(s.text_lbl, label.c_str());
+  screen_lock_register_card(s, p);
+  apply_push_button_transition(s.btn);
+}
+
 inline void apply_push_button_transition(lv_obj_t *btn) {
+  if (!btn) return;
   static const lv_style_prop_t push_props[] = {LV_STYLE_BG_COLOR, LV_STYLE_PROP_INV};
   static lv_style_transition_dsc_t push_trans;
   static bool push_trans_inited = false;
@@ -491,6 +506,12 @@ inline void apply_push_button_transition(lv_obj_t *btn) {
     push_trans_inited = true;
   }
   lv_obj_set_style_transition(btn, &push_trans,
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DEFAULT);
+}
+
+inline void clear_push_button_transition(lv_obj_t *btn) {
+  if (!btn) return;
+  lv_obj_remove_local_style_prop(btn, LV_STYLE_TRANSITION,
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | LV_STATE_DEFAULT);
 }
 
@@ -547,7 +568,13 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
   }
 }
 
+inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
+
 inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
+  if (action_card_local_action(p)) {
+    setup_local_action_card(s, p);
+    return;
+  }
   std::string action_label = p.label.empty()
     ? (p.entity.empty() ? espcontrol_i18n(std::string("Action")) : p.entity)
     : p.label;
@@ -567,6 +594,36 @@ inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
   apply_push_button_transition(s.btn);
 }
 
+inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p) {
+  std::string label = p.label.empty() ? (p.entity.empty() ? "Local Action" : sentence_cap_text(p.entity)) : p.label;
+  lv_label_set_text(s.text_lbl, label.c_str());
+  const char *icon_cp = (p.icon.empty() || p.icon == "Auto") ? find_icon("Gesture Tap") : find_icon(p.icon.c_str());
+  lv_label_set_text(s.icon_lbl, icon_cp);
+  apply_push_button_transition(s.btn);
+}
+
+inline void send_local_sensor_update(const std::string &key, float value) {
+  for (auto &s : local_sensor_registry()) {
+    if (s.key != key || s.is_text) continue;
+    char buf[32];
+    if (s.precision == 1) snprintf(buf, sizeof(buf), "%.1f", value);
+    else if (s.precision == 2) snprintf(buf, sizeof(buf), "%.2f", value);
+    else snprintf(buf, sizeof(buf), "%.0f", value);
+    if (s.sensor_lbl) lv_label_set_text(s.sensor_lbl, buf);
+    return;
+  }
+  ESP_LOGW("espcontrol", "Local sensor '%s' not registered", key.c_str());
+}
+
+inline void send_local_sensor_update(const std::string &key, const char *value) {
+  for (auto &s : local_sensor_registry()) {
+    if (s.key != key || !s.is_text) continue;
+    if (s.text_lbl) set_wrapped_button_label_text(s.text_lbl, value ? value : "--");
+    return;
+  }
+  ESP_LOGW("espcontrol", "Local sensor '%s' not registered", key.c_str());
+}
+
 inline void setup_text_sensor_card(BtnSlot &s, const ParsedCfg &p,
                                    bool has_sensor_color, uint32_t sensor_val) {
   if (has_sensor_color) {
@@ -578,6 +635,89 @@ inline void setup_text_sensor_card(BtnSlot &s, const ParsedCfg &p,
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   set_wrapped_button_label_text(s.text_lbl, "--");
+}
+
+inline void setup_local_sensor_card(BtnSlot &s, const ParsedCfg &p,
+                                    bool has_sensor_color, uint32_t sensor_val) {
+  if (has_sensor_color) {
+    lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
+      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
+  }
+  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
+
+  bool is_text = (p.precision == "text");
+  LocalSensorControl ctrl;
+  ctrl.key = p.entity;
+  ctrl.is_text = is_text;
+  ctrl.precision = 0;
+  ctrl.sensor_lbl = nullptr;
+  ctrl.text_lbl = nullptr;
+
+  if (is_text) {
+    setup_toggle_visual(s, p);
+    lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    set_wrapped_button_label_text(s.text_lbl, "--");
+    ctrl.text_lbl = s.text_lbl;
+  } else {
+    lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(s.sensor_lbl, "--");
+    if (!p.unit.empty()) lv_label_set_text(s.unit_lbl, trim_display_unit(p.unit).c_str());
+    if (!p.label.empty()) lv_label_set_text(s.text_lbl, p.label.c_str());
+    ctrl.sensor_lbl = s.sensor_lbl;
+    if (!p.precision.empty()) ctrl.precision = atoi(p.precision.c_str());
+  }
+
+  auto &reg = local_sensor_registry();
+  bool found = false;
+  for (auto &existing : reg) {
+    if (existing.key == ctrl.key) { existing = ctrl; found = true; break; }
+  }
+  if (!found) reg.push_back(ctrl);
+
+#ifdef USE_SENSOR
+  if (!is_text) {
+    for (auto *esp_s : esphome::App.get_sensors()) {
+      char oid_buf[128];
+      if (std::string(esp_s->get_object_id_to(oid_buf).c_str()) != ctrl.key) continue;
+      auto *lbl = ctrl.sensor_lbl;
+      int prec = ctrl.precision;
+      esp_s->add_on_state_callback([lbl, prec](float val) {
+        if (!lbl || std::isnan(val)) return;
+        char buf[32];
+        if (prec == 1) snprintf(buf, sizeof(buf), "%.1f", val);
+        else if (prec == 2) snprintf(buf, sizeof(buf), "%.2f", val);
+        else snprintf(buf, sizeof(buf), "%.0f", val);
+        lv_label_set_text(lbl, buf);
+      });
+      if (!std::isnan(esp_s->state) && ctrl.sensor_lbl) {
+        char buf[32];
+        if (ctrl.precision == 1) snprintf(buf, sizeof(buf), "%.1f", esp_s->state);
+        else if (ctrl.precision == 2) snprintf(buf, sizeof(buf), "%.2f", esp_s->state);
+        else snprintf(buf, sizeof(buf), "%.0f", esp_s->state);
+        lv_label_set_text(ctrl.sensor_lbl, buf);
+      }
+      break;
+    }
+  }
+#endif
+#ifdef USE_TEXT_SENSOR
+  if (is_text) {
+    for (auto *esp_ts : esphome::App.get_text_sensors()) {
+      char oid_buf[128];
+      if (std::string(esp_ts->get_object_id_to(oid_buf).c_str()) != ctrl.key) continue;
+      auto *lbl = ctrl.text_lbl;
+      esp_ts->add_on_state_callback([lbl](std::string val) {
+        if (!lbl) return;
+        set_wrapped_button_label_text(lbl, val);
+      });
+      if (!esp_ts->state.empty() && ctrl.text_lbl)
+        set_wrapped_button_label_text(ctrl.text_lbl, esp_ts->state);
+      break;
+    }
+  }
+#endif
 }
 
 inline const char *door_window_closed_icon(const ParsedCfg &p) {

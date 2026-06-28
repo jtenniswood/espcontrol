@@ -16,17 +16,17 @@ substitutions:
 # ---------------------------------------------------------------------------
 esp32:
   variant: esp32p4
-  # Keep OTA app slots inside the first 16MB. Some existing ESP32-P4 86
-  # bootloaders cannot boot OTA images that cross the 16MB flash boundary.
-  flash_size: 16MB
+  # Waveshare documents this panel with 32MB external NOR flash.
+  flash_size: 32MB
   cpu_frequency: 360MHZ
   engineering_sample: true
   framework:
     type: esp-idf
-    version: 5.5.2
+    # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
+    #version: 5.5.2
     # pioarduino 55.03.38-1 pulls tool-esptoolpy 5.2.0, which can install
     # incompletely in ESPHome containers and then fail while creating .bin files.
-    platform_version: 55.03.37
+    #platform_version: 55.03.37
     advanced:
       enable_idf_experimental_features: true
       execute_from_psram: true
@@ -194,7 +194,8 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return id(screen_schedule_asleep) ||
+                return (id(screen_schedule_asleep) &&
+                        !id(schedule_mode_clock)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,

@@ -8,6 +8,10 @@
 #include "esphome/core/log.h"
 #include "esphome/core/version.h"
 
+#if defined(USE_LVGL) && ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+#include "src/misc/cache/instance/lv_image_cache.h"
+#endif
+
 #ifdef USE_ESP32
 #include "esp_heap_caps.h"
 #endif
@@ -18,8 +22,8 @@
 
 static const char *const TAG = "artwork_image";
 static const char *const CONTENT_TYPE_HEADER_NAME = "content-type";
-static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 1000;
-static constexpr size_t MAX_RETIRED_BUFFERS = 2;
+static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 3000;
+static constexpr size_t MAX_RETIRED_IMAGE_BUFFERS = 1;
 static constexpr size_t MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
 static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 
@@ -43,9 +47,13 @@ static std::string sanitize_artwork_url_for_log(const std::string &url) {
   return url.substr(0, query) + "?...";
 }
 
+static bool is_ha_media_proxy_url(const std::string &url) {
+  return url.find("/api/media_player_proxy/") != std::string::npos;
+}
+
 static const char *classify_artwork_url_for_log(const std::string &url) {
   if (url.find("mzstatic.com") != std::string::npos) return "apple-cdn";
-  if (url.find("/api/media_player_proxy/") != std::string::npos) return "ha-media-proxy";
+  if (is_ha_media_proxy_url(url)) return "ha-media-proxy";
   if (url.rfind("http://", 0) == 0) return "http";
   if (url.rfind("https://", 0) == 0) return "https";
   return "unknown";
@@ -157,10 +165,7 @@ void ArtworkImage::release() {
   this->pending_url_.clear();
   this->end_connection_();
   this->retire_active_buffer_();
-  this->cleanup_retired_buffers_(false);
-  if (!this->retired_buffers_.empty()) {
-    this->enable_loop();
-  }
+  this->cleanup_retired_buffers_(true);
 }
 
 size_t ArtworkImage::resize_(int width_in, int height_in) {
@@ -193,6 +198,11 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
     }
   }
   size_t new_size = this->get_buffer_size_(width, height);
+  if (!this->retired_buffers_.empty()) {
+    ESP_LOGI(TAG, "Freeing retired artwork buffers before next decode: need=%zu retired_bytes=%zu",
+             new_size, this->retired_buffer_bytes_());
+    this->cleanup_retired_buffers_(true);
+  }
   if (this->decode_buffer_) {
     if (new_size <= this->get_decode_buffer_size_()) {
       this->decode_buffer_width_ = width;
@@ -235,28 +245,35 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
   return new_size;
 }
 
-void ArtworkImage::request_update_url(const std::string &url) {
-  int max_dim = this->fixed_width_ > 0 ? this->fixed_width_ : 600;
+std::string ArtworkImage::request_update_url(const std::string &url, int max_source_dim) {
+  int max_dim = max_source_dim > 0 ? max_source_dim : (this->fixed_width_ > 0 ? this->fixed_width_ : 600);
   std::string effective_url = cap_artwork_url(url, max_dim);
   if (effective_url != url) {
     ESP_LOGI(TAG, "Rewrote artwork URL to a capped JPEG (%dpx)", max_dim);
   }
   if (!this->validate_url_(effective_url)) {
-    return;
+    return "";
   }
   if (this->is_busy_()) {
     if (effective_url == this->url_) {
       ESP_LOGI(TAG, "Artwork update already in progress for URL; ignoring duplicate request");
-      return;
+      return effective_url;
     }
     this->queue_pending_update_(effective_url);
-    ESP_LOGI(TAG, "Cancelling in-flight artwork update for newer URL");
-    this->end_connection_();
-    this->start_pending_update_();
-    return;
+    return effective_url;
   }
   this->url_ = effective_url;
   this->update();
+  return effective_url;
+}
+
+void ArtworkImage::cancel_update() {
+  this->update_pending_ = false;
+  this->pending_url_.clear();
+  if (this->is_busy_()) {
+    ESP_LOGW(TAG, "Cancelling in-flight artwork update");
+    this->end_connection_();
+  }
 }
 
 void ArtworkImage::update() {
@@ -264,6 +281,8 @@ void ArtworkImage::update() {
     this->queue_pending_update_(this->url_);
     return;
   }
+  this->last_http_status_ = 0;
+  this->last_error_was_ha_media_proxy_ = false;
   ESP_LOGI(TAG, "Updating image %s", sanitize_artwork_url_for_log(this->url_).c_str());
   ESP_LOGD(TAG, "Artwork URL source: %s", classify_artwork_url_for_log(this->url_));
   this->log_state_("request-start");
@@ -305,11 +324,10 @@ void ArtworkImage::update() {
   }
 
   if (this->downloader_ == nullptr) {
+    this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
     ESP_LOGE(TAG, "Download failed before response; source=%s url=%s",
              classify_artwork_url_for_log(this->url_), sanitize_artwork_url_for_log(this->url_).c_str());
-    this->end_connection_();
-    this->download_error_callback_.call();
-    this->start_pending_update_();
+    this->fail_download_();
     return;
   }
 
@@ -319,18 +337,22 @@ void ArtworkImage::update() {
     // Image hasn't changed on server. Skip download.
     ESP_LOGI(TAG, "Server returned HTTP 304 (Not Modified). Download skipped.");
     this->end_connection_();
+    if (this->has_newer_pending_update_()) {
+      this->start_pending_update_();
+      return;
+    }
     this->download_finished_callback_.call(true);
     this->start_pending_update_();
     return;
   }
   if (http_code != HTTP_CODE_OK) {
+    this->last_http_status_ = http_code;
+    this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
     ESP_LOGE(TAG, "Artwork HTTP result: status=%d content_length=%zu content_type=%s source=%s url=%s",
              http_code, this->downloader_->content_length,
              response_header_for_log(this->downloader_.get(), CONTENT_TYPE_HEADER_NAME).c_str(),
              classify_artwork_url_for_log(this->url_), sanitize_artwork_url_for_log(this->url_).c_str());
-    this->end_connection_();
-    this->download_error_callback_.call();
-    this->start_pending_update_();
+    this->fail_download_();
     return;
   }
 
@@ -348,9 +370,7 @@ void ArtworkImage::update() {
 
   ImageFormat resolved = this->detect_format_();
   if (!this->create_decoder_(resolved, total_size)) {
-    this->end_connection_();
-    this->download_error_callback_.call();
-    this->start_pending_update_();
+    this->fail_download_();
     return;
   }
   this->log_state_("decoder-ready");
@@ -434,7 +454,7 @@ std::shared_ptr<http_request::HttpContainer> ArtworkImage::get_local_idf_(
   config.timeout_ms = std::min<int>(this->parent_->get_timeout(), LOCAL_ARTWORK_HTTP_TIMEOUT_MS);
   config.disable_auto_redirect = false;
   config.max_redirection_count = 3;
-  config.auth_type = HTTP_AUTH_TYPE_BASIC;
+  config.auth_type = HTTP_AUTH_TYPE_NONE;
   config.event_handler = insecure_local_http_event_handler;
 
   esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -469,6 +489,10 @@ std::shared_ptr<http_request::HttpContainer> ArtworkImage::get_local_idf_(
   container->set_content_length_known(content_length > 0);
   container->set_chunked(esp_http_client_is_chunked_response(client));
   container->status_code = esp_http_client_get_status_code(client);
+  if (container->status_code <= 0 && is_ha_media_proxy_url(url)) {
+    ESP_LOGW(TAG, "Home Assistant media proxy returned an unknown HTTP status; trying artwork bytes anyway");
+    container->status_code = HTTP_CODE_OK;
+  }
   container->duration_ms = millis() - start;
   return container;
 #else
@@ -526,9 +550,7 @@ void ArtworkImage::loop() {
     if (this->download_buffer_.unread() < 12) {
       if (millis() - this->last_data_millis_ > DOWNLOAD_STALL_TIMEOUT_MS) {
         ESP_LOGE(TAG, "Download stalled waiting for format detection bytes");
-        this->end_connection_();
-        this->download_error_callback_.call();
-        this->start_pending_update_();
+        this->fail_download_();
       }
       return;
     }
@@ -538,9 +560,7 @@ void ArtworkImage::loop() {
       ESP_LOGE(TAG, "Could not determine image format from headers or file content; content_type=%s bytes=%zu source=%s",
                response_header_for_log(this->downloader_.get(), CONTENT_TYPE_HEADER_NAME).c_str(),
                this->download_buffer_.unread(), classify_artwork_url_for_log(this->url_));
-      this->end_connection_();
-      this->download_error_callback_.call();
-      this->start_pending_update_();
+      this->fail_download_();
       return;
     }
 
@@ -549,9 +569,7 @@ void ArtworkImage::loop() {
       total_size = this->downloader_->get_bytes_read();
     }
     if (!this->create_decoder_(resolved, total_size)) {
-      this->end_connection_();
-      this->download_error_callback_.call();
-      this->start_pending_update_();
+      this->fail_download_();
       return;
     }
     this->log_state_("decoder-ready");
@@ -859,6 +877,16 @@ void ArtworkImage::discard_decode_buffer_() {
   this->decode_offset_y_ = 0;
 }
 
+void ArtworkImage::invalidate_lvgl_cache_() {
+#ifdef USE_LVGL
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
+  lv_image_cache_drop(&this->dsc_);
+#else
+  lv_img_cache_invalidate_src(&this->dsc_);
+#endif
+#endif
+}
+
 bool ArtworkImage::promote_decode_buffer_() {
   if (!this->decode_buffer_) {
     ESP_LOGE(TAG, "Decode finished without a decoded image buffer");
@@ -892,6 +920,7 @@ bool ArtworkImage::promote_decode_buffer_() {
   this->data_start_ = this->buffer_;
   this->width_ = this->buffer_width_;
   this->height_ = this->buffer_height_;
+  this->invalidate_lvgl_cache_();
 #ifdef USE_LVGL
   memset(&this->dsc_, 0, sizeof(this->dsc_));
 #endif
@@ -913,23 +942,55 @@ void ArtworkImage::retire_active_buffer_() {
   this->buffer_offset_y_ = 0;
   this->width_ = 0;
   this->height_ = 0;
+  this->invalidate_lvgl_cache_();
 #ifdef USE_LVGL
   memset(&this->dsc_, 0, sizeof(this->dsc_));
 #endif
+  this->limit_retired_buffers_();
   this->cleanup_retired_buffers_(false);
+  if (!this->retired_buffers_.empty()) {
+    this->enable_loop();
+  }
 }
 
 void ArtworkImage::cleanup_retired_buffers_(bool force) {
   uint32_t now = millis();
   auto it = this->retired_buffers_.begin();
+  size_t freed_bytes = 0;
   while (it != this->retired_buffers_.end()) {
-    if (force || now - it->retired_at >= RETIRED_BUFFER_GRACE_MS ||
-        this->retired_buffers_.size() > MAX_RETIRED_BUFFERS) {
+    if (force || now - it->retired_at >= RETIRED_BUFFER_GRACE_MS) {
+      freed_bytes += it->size;
       this->allocator_.deallocate(it->data, it->size);
       it = this->retired_buffers_.erase(it);
     } else {
       ++it;
     }
+  }
+  if (freed_bytes > 0) {
+    size_t remaining_bytes = 0;
+    for (const auto &buffer : this->retired_buffers_) {
+      remaining_bytes += buffer.size;
+    }
+    ESP_LOGI(TAG, "Freed retired artwork buffers: freed=%zu remaining=%zu remaining_bytes=%zu",
+             freed_bytes, this->retired_buffers_.size(), remaining_bytes);
+  }
+}
+
+size_t ArtworkImage::retired_buffer_bytes_() const {
+  size_t retired_bytes = 0;
+  for (const auto &buffer : this->retired_buffers_) {
+    retired_bytes += buffer.size;
+  }
+  return retired_bytes;
+}
+
+void ArtworkImage::limit_retired_buffers_() {
+  while (this->retired_buffers_.size() > MAX_RETIRED_IMAGE_BUFFERS) {
+    auto it = this->retired_buffers_.begin();
+    ESP_LOGW(TAG, "Forcing retired artwork buffer cleanup: size=%zu remaining=%zu",
+             it->size, this->retired_buffers_.size() - 1);
+    this->allocator_.deallocate(it->data, it->size);
+    this->retired_buffers_.erase(it);
   }
 }
 
@@ -972,14 +1033,23 @@ bool ArtworkImage::decode_buffered_data_() {
 }
 
 void ArtworkImage::finish_download_() {
+  if (this->has_newer_pending_update_()) {
+    ESP_LOGI(TAG, "Discarding completed artwork because a newer URL is queued");
+    this->end_connection_();
+    this->start_pending_update_();
+    return;
+  }
   if (!this->promote_decode_buffer_()) {
     this->fail_download_();
     return;
   }
+  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   this->log_state_("download-complete");
   ESP_LOGD(TAG, "Image fully downloaded, read %zu bytes, width/height = %d/%d",
-           this->downloader_ ? this->downloader_->get_bytes_read() : 0, this->width_, this->height_);
+           bytes_read, this->width_, this->height_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
+  this->end_connection_();
+  this->log_state_("download-resources-released");
   App.feed_wdt();
 #ifdef USE_LVGL
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
@@ -990,7 +1060,6 @@ void ArtworkImage::finish_download_() {
 #endif
   this->log_state_("lvgl-descriptor-ready");
   App.feed_wdt();
-  this->end_connection_();
   this->download_finished_callback_.call(false);
   App.feed_wdt();
   this->log_state_("download-callback-finished");
@@ -998,6 +1067,12 @@ void ArtworkImage::finish_download_() {
 }
 
 void ArtworkImage::fail_download_() {
+  if (this->has_newer_pending_update_()) {
+    ESP_LOGW(TAG, "Skipping stale artwork failure because a newer URL is queued");
+    this->end_connection_();
+    this->start_pending_update_();
+    return;
+  }
   this->end_connection_();
   this->download_error_callback_.call();
   this->start_pending_update_();
@@ -1036,14 +1111,15 @@ void ArtworkImage::log_state_(const char *stage) {
 #endif
   size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   size_t content_length = this->downloader_ ? this->downloader_->content_length : 0;
+  size_t retired_bytes = this->retired_buffer_bytes_();
   ESP_LOGD(TAG,
-           "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu heap_free=%zu heap_largest=%zu pending=%s",
+           "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu retired_bytes=%zu heap_free=%zu heap_largest=%zu pending=%s",
            stage, this->url_.size(), bytes_read, content_length, this->download_buffer_.unread(),
            this->download_buffer_.size(), this->buffer_width_, this->buffer_height_, this->buffer_content_width_,
            this->buffer_content_height_, this->buffer_offset_x_, this->buffer_offset_y_, this->decode_buffer_width_,
            this->decode_buffer_height_, this->decode_content_width_, this->decode_content_height_,
-           this->decode_offset_x_, this->decode_offset_y_, this->retired_buffers_.size(), heap_free, heap_largest,
-           this->update_pending_ ? "yes" : "no");
+           this->decode_offset_x_, this->decode_offset_y_, this->retired_buffers_.size(), retired_bytes, heap_free,
+           heap_largest, this->update_pending_ ? "yes" : "no");
 }
 
 void ArtworkImage::end_connection_() {
@@ -1054,6 +1130,7 @@ void ArtworkImage::end_connection_() {
   this->decoder_.reset();
   this->discard_decode_buffer_();
   this->download_buffer_.reset();
+  this->download_buffer_.shrink_to(this->download_buffer_initial_size_);
 }
 
 bool ArtworkImage::validate_url_(const std::string &url) {
