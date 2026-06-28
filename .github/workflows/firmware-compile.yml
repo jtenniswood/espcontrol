@@ -152,6 +152,7 @@ jobs:
       - name: Compile firmware
         working-directory: espcontrol-${{ matrix.slug }}
         run: |
+          SOURCE_DIR="${PWD}"
           CONTAINER=$(${DOCKER} create \
             --user "$(id -u):$(id -g)" \
             -e HOME=/config \
@@ -165,7 +166,7 @@ jobs:
             ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
-          ${DOCKER} cp . "${CONTAINER}:/config"
+          ${DOCKER} cp "${SOURCE_DIR}/." "${CONTAINER}:/config"
           ${DOCKER} start -a "${CONTAINER}"
 
       - name: Clean firmware caches
