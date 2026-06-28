@@ -1,0 +1,92 @@
+[
+  {
+    "name": "default climate options are omitted",
+    "input": "climate.living_room;Living;Thermostat;Radiator;;;climate;1;label_display=label,number_display=target,temperature_step=1",
+    "expected": {
+      "entity": "climate.living_room",
+      "label": "Living",
+      "icon": "Thermostat",
+      "icon_on": "Radiator",
+      "sensor": "",
+      "unit": "",
+      "type": "climate",
+      "precision": "1",
+      "options": ""
+    }
+  },
+  {
+    "name": "display options are preserved",
+    "input": "climate.hallway;Hallway;Thermostat;Radiator;;;climate;1;label_display=status,number_display=actual",
+    "expected": {
+      "entity": "climate.hallway",
+      "label": "Hallway",
+      "icon": "Thermostat",
+      "icon_on": "Radiator",
+      "sensor": "",
+      "unit": "",
+      "type": "climate",
+      "precision": "1",
+      "options": "label_display=status,number_display=actual"
+    }
+  },
+  {
+    "name": "temperature step is preserved",
+    "input": "climate.hallway;Hallway;Thermostat;Radiator;;;climate;1;temperature_step=0.5",
+    "expected": {
+      "entity": "climate.hallway",
+      "label": "Hallway",
+      "icon": "Thermostat",
+      "icon_on": "Radiator",
+      "sensor": "",
+      "unit": "",
+      "type": "climate",
+      "precision": "1",
+      "options": "temperature_step=0.5"
+    }
+  },
+  {
+    "name": "icon number display drops large numbers",
+    "input": "climate.hallway;Hallway;Thermostat;Radiator;;;climate;1;number_display=icon,large_numbers",
+    "expected": {
+      "entity": "climate.hallway",
+      "label": "Hallway",
+      "icon": "Thermostat",
+      "icon_on": "Radiator",
+      "sensor": "",
+      "unit": "",
+      "type": "climate",
+      "precision": "1",
+      "options": "number_display=icon"
+    }
+  },
+  {
+    "name": "invalid options fall back to defaults",
+    "input": "climate.hallway;Hallway;Thermostat;Radiator;;;climate;bad;label_display=bad,number_display=bad,temperature_step=bad,large_numbers",
+    "expected": {
+      "entity": "climate.hallway",
+      "label": "Hallway",
+      "icon": "Thermostat",
+      "icon_on": "Radiator",
+      "sensor": "",
+      "unit": "",
+      "type": "climate",
+      "precision": "",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "ignored fields are cleared",
+    "input": "climate.living_room;Living;Thermostat;Radiator;sensor.temp;deg C;climate;bad",
+    "expected": {
+      "entity": "climate.living_room",
+      "label": "Living",
+      "icon": "Thermostat",
+      "icon_on": "Radiator",
+      "sensor": "",
+      "unit": "",
+      "type": "climate",
+      "precision": "",
+      "options": ""
+    }
+  }
+]
