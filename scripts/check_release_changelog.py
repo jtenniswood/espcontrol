@@ -66,6 +66,10 @@ def test_future_release_uses_latest_tag() -> None:
         tmp.cleanup()
 
     assert "Changes since `v1.0.0`." in text
+    assert "## What changed?" in text
+    assert "- Controls and setup page: 1 change. Notable: Add light brightness card type." in text
+    assert "## Update guidance" in text
+    assert "Recommended for users who want the latest firmware, setup page, device fixes, or documented behavior." in text
     assert "### Controls and setup page" in text
     assert "Add light brightness card type" in text
     assert f"[{short_hash}]" in text
@@ -93,6 +97,7 @@ def test_existing_tag_uses_previous_tag() -> None:
         tmp.cleanup()
 
     assert "Changes since `v1.0.0`." in text
+    assert "Affected devices: All supported displays may be affected" in text
     assert "Release range: `v1.0.0` to `v1.1.0`." in text
     assert "### Firmware and device behavior" in text
     assert "Fix relay card behavior" in text

@@ -318,6 +318,85 @@ def breaking_changes(commits: list[Commit]) -> list[Commit]:
     ]
 
 
+def touches_any(commit: Commit, prefixes: tuple[str, ...]) -> bool:
+    for path in commit.files:
+        for prefix in prefixes:
+            if path == prefix.rstrip("/") or path.startswith(prefix):
+                return True
+    return False
+
+
+def release_affects_all_devices(commits: list[Commit]) -> bool:
+    all_device_paths = (
+        "builds/",
+        "common/",
+        "components/",
+        "docs/public/webserver/",
+        "src/webserver/",
+    )
+    return any(touches_any(commit, all_device_paths) for commit in commits)
+
+
+def affected_device_slugs(commits: list[Commit]) -> list[str]:
+    slugs: set[str] = set()
+    patterns = (
+        re.compile(r"^devices/([^/]+)/"),
+        re.compile(r"^docs/public/webserver/([^/]+)/"),
+        re.compile(r"^builds/([^/.]+)(?:\.factory)?\.yaml$"),
+    )
+    for commit in commits:
+        for path in commit.files:
+            for pattern in patterns:
+                match = pattern.match(path)
+                if match:
+                    slugs.add(match.group(1))
+    return sorted(slugs)
+
+
+def notable_subjects(commits: list[Commit], limit: int = 2) -> list[str]:
+    subjects: list[str] = []
+    for commit in commits:
+        if commit.subject.startswith("Merge "):
+            continue
+        subject = re.sub(r"\s+\(#\d+\)$", "", commit.subject).strip()
+        if subject not in subjects:
+            subjects.append(subject)
+        if len(subjects) == limit:
+            break
+    return subjects
+
+
+def release_focus_lines(groups: dict[str, list[Commit]]) -> list[str]:
+    lines: list[str] = []
+    for category in [category.title for category in CATEGORIES] + [FALLBACK_CATEGORY]:
+        entries = groups.get(category)
+        if not entries:
+            continue
+        notable = notable_subjects(entries)
+        suffix = f" Notable: {'; '.join(notable)}." if notable else ""
+        lines.append(f"- {category}: {len(entries)} change{'s' if len(entries) != 1 else ''}.{suffix}")
+    return lines
+
+
+def update_guidance(commits: list[Commit], breaking: list[Commit]) -> str:
+    if breaking:
+        return "Review the important upgrade notes before updating production displays."
+    if release_affects_all_devices(commits) or affected_device_slugs(commits):
+        return "Recommended for users who want the latest firmware, setup page, device fixes, or documented behavior."
+    return "Optional update. This release does not appear to change device firmware or setup behavior."
+
+
+def affected_devices_text(commits: list[Commit]) -> str:
+    if release_affects_all_devices(commits):
+        return "All supported displays may be affected because shared firmware, setup, or build files changed."
+
+    slugs = affected_device_slugs(commits)
+    if slugs:
+        return ", ".join(f"`{slug}`" for slug in slugs)
+
+    return "No device-specific firmware or setup-page changes were detected."
+
+
 def build_changelog(version: str, from_ref: str | None, to_ref: str, repo_url: str | None) -> str:
     commits = load_commits(from_ref, to_ref)
     title = f"# EspControl {version}"
@@ -342,6 +421,21 @@ def build_changelog(version: str, from_ref: str | None, to_ref: str, repo_url: s
         lines.extend([f"[Full comparison]({comparison})", ""])
 
     breaking = breaking_changes(commits)
+    groups = grouped_commits(commits)
+    lines.extend(["## What changed?", ""])
+    lines.extend(release_focus_lines(groups))
+    lines.append("")
+
+    lines.extend(["## Update guidance", ""])
+    lines.append(f"- {update_guidance(commits, breaking)}")
+    lines.append(f"- Affected devices: {affected_devices_text(commits)}")
+    lines.append("")
+
+    lines.extend(["## Known issues", ""])
+    lines.append("- No release-specific known issues are listed automatically for this release.")
+    lines.append("- Check open GitHub issues before updating devices you rely on every day.")
+    lines.append("")
+
     if breaking:
         lines.extend(["## Important upgrade notes", ""])
         for commit in breaking:
@@ -353,7 +447,6 @@ def build_changelog(version: str, from_ref: str | None, to_ref: str, repo_url: s
     lines.append(f"- Release range: `{from_ref or 'start'}` to `{to_label}`.")
     lines.append("")
 
-    groups = grouped_commits(commits)
     lines.extend(["## Detailed changes", ""])
     for category in [category.title for category in CATEGORIES] + [FALLBACK_CATEGORY]:
         entries = groups.get(category)
