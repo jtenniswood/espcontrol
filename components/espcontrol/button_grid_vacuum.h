@@ -250,6 +250,16 @@ inline VacuumControlTab vacuum_control_first_visible_tab(VacuumCardCtx *ctx) {
   return tabs.count == 0 ? VacuumControlTab::CONTROLS : tabs.tabs[0];
 }
 
+inline VacuumControlTab vacuum_control_first_available_tab(VacuumCardCtx *ctx) {
+  VacuumControlVisibleTabs tabs = vacuum_control_visible_tabs(ctx);
+  bool fan_available = ctx && !ctx->fan_speeds.empty();
+  for (uint8_t i = 0; i < tabs.count; i++) {
+    if (tabs.tabs[i] == VacuumControlTab::FAN && !fan_available) continue;
+    return tabs.tabs[i];
+  }
+  return VacuumControlTab::CONTROLS;
+}
+
 inline lv_obj_t *vacuum_control_tab_button(VacuumControlModalUi &ui,
                                            VacuumControlTab tab) {
   switch (tab) {
@@ -678,10 +688,9 @@ inline void vacuum_control_apply_tab_visibility() {
   VacuumControlVisibleTabs visible_tabs = vacuum_control_visible_tabs(ctx);
   bool fan_available = !ctx->fan_speeds.empty();
   if (ui.tab == VacuumControlTab::FAN && !fan_available) {
-    ui.tab = vacuum_control_first_visible_tab(ctx);
-    if (ui.tab == VacuumControlTab::FAN) ui.tab = VacuumControlTab::CONTROLS;
+    ui.tab = vacuum_control_first_available_tab(ctx);
   }
-  if (!visible_tabs.contains(ui.tab)) ui.tab = vacuum_control_first_visible_tab(ctx);
+  if (!visible_tabs.contains(ui.tab)) ui.tab = vacuum_control_first_available_tab(ctx);
   int tab_count = 0;
   for (uint8_t i = 0; i < visible_tabs.count; i++) {
     if (visible_tabs.tabs[i] == VacuumControlTab::FAN && !fan_available) continue;
@@ -800,7 +809,7 @@ inline void vacuum_control_open_modal(VacuumCardCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
-  ui.tab = vacuum_control_first_visible_tab(ctx);
+  ui.tab = vacuum_control_first_available_tab(ctx);
   ui.rooms = vacuum_parse_rooms(ctx->options, ctx->area_id);
   if (!ui.panel) return;
 
