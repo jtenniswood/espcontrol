@@ -161,7 +161,7 @@ function renderAlarmVisibleActionsField(panel, b, helpers) {
     var selectedCount = values.length;
     for (var i = 0; i < inputs.length; i++) {
       inputs[i].input.checked = values.indexOf(inputs[i].value) >= 0;
-      inputs[i].input.disabled = !inputs[i].input.checked && selectedCount >= ALARM_MAX_VISIBLE_ACTIONS;
+      inputs[i].input.disabled = !inputs[i].input.checked && selectedCount >= alarmMaxVisibleActions();
     }
   }
 

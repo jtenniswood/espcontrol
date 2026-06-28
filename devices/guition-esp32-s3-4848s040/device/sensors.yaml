@@ -226,8 +226,6 @@ esphome:
             grid_phase1(slots, cfg,
               id(button_order).state,
               id(button_on_color).state,
-              id(button_off_color).state,
-              id(sensor_card_color).state,
               id(main_page)->obj);
         - delay: 100ms
 
@@ -360,8 +358,6 @@ esphome:
             grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,
               id(button_order).state,
               id(button_on_color).state,
-              id(button_off_color).state,
-              id(sensor_card_color).state,
               id(main_page)->obj);
         - script.execute: clock_bar_apply
         - script.execute: time_update
