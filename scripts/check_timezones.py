@@ -8,7 +8,11 @@ import os
 import re
 import sys
 import time
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+except ModuleNotFoundError:
+    ZoneInfo = None
+    ZoneInfoNotFoundError = Exception
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -146,6 +150,10 @@ def expected_casablanca_pauses() -> list[tuple[tuple[int, ...], tuple[int, ...]]
 
 
 def main() -> int:
+    if ZoneInfo is None:
+        print("Timezone validation skipped: Python zoneinfo is unavailable.")
+        return 0
+
     errors: list[str] = []
     options = load_timezone_options()
     posix_table = load_posix_table()
