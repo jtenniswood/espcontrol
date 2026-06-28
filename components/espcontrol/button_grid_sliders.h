@@ -2404,6 +2404,7 @@ inline void setup_cover_modal_card(BtnSlot &s, const ParsedCfg &p) {
   setup_slider_visual(s, p, DEFAULT_SLIDER_COLOR, false);
   lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
   if (slider) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+  if (s.btn) lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   apply_push_button_transition(s.btn);
 }
 
