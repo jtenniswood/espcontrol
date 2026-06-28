@@ -1,0 +1,61 @@
+name: PR Testing Guidance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: pr-testing-guidance-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  guidance:
+    name: Post Testing Guidance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.0
+
+      - name: Collect changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate \
+            --jq '.[].filename' > changed-files.txt
+
+      - name: Generate testing guidance
+        run: python3 scripts/pr_testing_guidance.py --changed-files changed-files.txt --output pr-testing-guidance.md
+
+      - name: Add guidance to workflow summary
+        run: cat pr-testing-guidance.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post or update PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MARKER="<!-- espcontrol-pr-testing-guidance -->"
+          COMMENT_ID="$(
+            gh api \
+              "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              --paginate \
+              --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" \
+              | tail -n 1
+          )"
+
+          if [ -n "${COMMENT_ID}" ]; then
+            gh api \
+              --method PATCH \
+              "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
+              -F body=@pr-testing-guidance.md
+          else
+            gh api \
+              --method POST \
+              "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              -F body=@pr-testing-guidance.md
+          fi

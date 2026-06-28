@@ -2,6 +2,10 @@
 
 -
 
+## Practical impact
+
+-
+
 ## Documentation decision
 
 - [ ] Updated public docs or release-facing notes for user-visible behavior/configuration.
@@ -14,13 +18,27 @@ Docs notes:
 
 ## Testing
 
-- [ ] I checked the change locally where practical.
-- [ ] User testing is still needed before merge.
-- [ ] Affected display/device, if applicable:
+- [ ] Automated/local checks passed or were run where practical.
+- [ ] Device testing is required before merge.
+- [ ] Device testing is not required; explain why in Notes for testing.
+- [ ] Device tested by user.
+
+Affected display/device, if applicable:
+
+-
 
 ## Notes for testing
 
 -
+
+## PR status
+
+- [ ] Checks running or waiting.
+- [ ] Needs automated fix.
+- [ ] Ready for device test.
+- [ ] Device test failed; details below.
+- [ ] Device tested successfully.
+- [ ] Ready to merge after user confirmation.
 
 ## Issue handling
 
