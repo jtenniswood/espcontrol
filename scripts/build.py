@@ -1188,9 +1188,11 @@ def check_firmware_icon_literals(data):
 def check_mdi_versions():
     """Make sure the browser CSS and device font URLs stay on the same MDI version."""
     files = [
-        ROOT / "src" / "webserver" / "entry.js",
+        ROOT / "src" / "webserver" / "modules" / "app.js",
         ROOT / "common" / "assets" / "icons.yaml",
-        *sorted(ROOT.glob("devices/*/device/fonts.yaml")),
+        *sorted(ROOT.glob("devices/*/device/device.yaml")),
+        *sorted(ROOT.glob("devices/*/dev.yaml")),
+        *sorted(ROOT.glob("builds/*.yaml")),
     ]
     version_re = re.compile(
         r"(?:@mdi/font@|MaterialDesign-Webfont/raw/v|materialdesignicons\.com/cdn/|materialdesignicons-webfont-)"
