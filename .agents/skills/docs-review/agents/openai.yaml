@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentation Review"
+  short_description: "Review whether changes need concise docs"
+  default_prompt: "Use $docs-review to check whether this change needs concise documentation updates."
