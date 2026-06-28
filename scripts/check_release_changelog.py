@@ -53,7 +53,7 @@ def test_future_release_uses_latest_tag() -> None:
     try:
         release_changelog.ROOT = repo
         write(repo, "src/webserver/types/light_temperature.js", "export const type = 'light';\n")
-        short_hash = commit(repo, "Add light brightness card type (#12)")
+        commit(repo, "Add light brightness card type (#12)")
         full_hash = git(repo, "rev-parse", "HEAD")
         text = release_changelog.build_changelog(
             "v1.1.0",
@@ -67,14 +67,14 @@ def test_future_release_uses_latest_tag() -> None:
 
     assert "Changes since `v1.0.0`." in text
     assert "## What changed?" in text
-    assert "- Controls and setup page: 1 change. Notable: Add light brightness card type." in text
+    assert "- User-facing features: 1 change. Notable: Add light brightness card type." in text
     assert "## Update guidance" in text
     assert "Recommended for users who want the latest firmware, setup page, device fixes, or documented behavior." in text
-    assert "### Controls and setup page" in text
+    assert "### User-facing features" in text
     assert "Add light brightness card type" in text
-    assert f"[{short_hash}]" in text
     assert "[#12](https://github.com/example/espcontrol/pull/12)" in text
-    assert f"Release range: `v1.0.0` to `{short_hash} (HEAD)`." in text
+    assert "1 user-facing change is included in this release." in text
+    assert "Release range: `v1.0.0` to `" in text
     assert f"[Full comparison](https://github.com/example/espcontrol/compare/v1.0.0...{full_hash})" in text
 
 
@@ -99,13 +99,39 @@ def test_existing_tag_uses_previous_tag() -> None:
     assert "Changes since `v1.0.0`." in text
     assert "Affected devices: All supported displays may be affected" in text
     assert "Release range: `v1.0.0` to `v1.1.0`." in text
-    assert "### Firmware and device behavior" in text
+    assert "### User-facing bug fixes" in text
     assert "Fix relay card behavior" in text
+
+
+def test_internal_changes_are_not_listed_as_user_facing() -> None:
+    tmp, repo = with_temp_repo()
+    original_root = release_changelog.ROOT
+    try:
+        release_changelog.ROOT = repo
+        write(repo, ".github/workflows/ci.yml", "name: CI\n")
+        commit(repo, "ci: tighten release checks")
+        write(repo, "scripts/check_release_changelog.py", "# test\n")
+        commit(repo, "Update release changelog tests")
+        text = release_changelog.build_changelog(
+            "v1.1.0",
+            release_changelog.default_from_ref("v1.1.0", "HEAD"),
+            "HEAD",
+            None,
+        )
+    finally:
+        release_changelog.ROOT = original_root
+        tmp.cleanup()
+
+    assert "No user-facing features or bug fixes were detected" in text
+    assert "0 user-facing changes are included in this release." in text
+    assert "ci: tighten release checks" not in text
+    assert "Update release changelog tests" not in text
 
 
 def main() -> int:
     test_future_release_uses_latest_tag()
     test_existing_tag_uses_previous_tag()
+    test_internal_changes_are_not_listed_as_user_facing()
     print("Release changelog tests passed.")
     return 0
 
