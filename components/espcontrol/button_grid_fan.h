@@ -857,7 +857,8 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
       lv_obj_align(ui.speed_value_lbl, LV_ALIGN_TOP_MID, 0, 0);
     }
     light_control_layout_slider(ui.speed_slider, slider_w, slider_h,
-      -content_h / 2 + value_h + gap + slider_h / 2);
+      -content_h / 2 + value_h + gap + slider_h / 2,
+      ctx->width_compensation_percent);
     light_control_update_slider_fill(
       ui.speed_slider, ui.speed_fill, ui.speed_handle, ctx->on ? ctx->percentage : 0,
       lv_color_hex(ctx->on_color));
