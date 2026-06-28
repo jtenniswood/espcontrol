@@ -789,25 +789,25 @@ inline lv_coord_t climate_control_labels_down_ref(const ControlModalLayout &layo
 inline lv_coord_t climate_control_tab_content_gap(const ControlModalLayout &layout) {
   if (climate_control_uses_p4_86_modal_tuning(layout))
     return control_modal_scaled_px(CLIMATE_MODAL_P4_86_TAB_CONTENT_GAP_REF_PX, layout.short_side);
-  if (control_modal_is_jc4880p443_size(layout))
+  if (climate_control_uses_compact_portrait_modal_tuning(layout))
     return control_modal_scaled_px(CLIMATE_MODAL_JC4880P443_TAB_CONTENT_GAP_REF_PX, layout.short_side);
   return control_modal_prominent_card_tab_content_gap(layout);
 }
 
 inline lv_coord_t climate_control_unit_y_ref(const ControlModalLayout &layout) {
-  return control_modal_is_jc4880p443_size(layout)
+  return climate_control_uses_compact_portrait_modal_tuning(layout)
     ? CLIMATE_MODAL_JC4880P443_UNIT_Y_REF_PX
     : MEDIA_VOLUME_UNIT_Y_REF_PX;
 }
 
 inline lv_coord_t climate_control_status_translate_y(const ControlModalLayout &layout) {
-  return control_modal_is_jc4880p443_size(layout)
+  return climate_control_uses_compact_portrait_modal_tuning(layout)
     ? control_modal_scaled_px(CLIMATE_MODAL_JC4880P443_STATUS_DOWN_REF_PX, layout.short_side)
     : 0;
 }
 
 inline uint16_t climate_control_target_zoom(const ControlModalLayout &layout) {
-  return control_modal_is_jc4880p443_size(layout)
+  return climate_control_uses_compact_portrait_modal_tuning(layout)
     ? CLIMATE_MODAL_JC4880P443_TARGET_ZOOM
     : 256;
 }
@@ -843,11 +843,11 @@ inline lv_coord_t climate_option_chip_height(ClimateControlCtx *ctx,
 inline bool climate_control_uses_wide_landscape_option_fit(const ControlModalLayout &layout) {
   return climate_control_uses_large_landscape_modal_tuning(layout) ||
          climate_control_uses_jc1060p470_modal_tuning(layout) ||
-         control_modal_is_jc4880p443_size(layout);
+         climate_control_uses_compact_portrait_modal_tuning(layout);
 }
 
 inline lv_coord_t climate_control_wide_option_tile_max(const ControlModalLayout &layout) {
-  if (control_modal_is_jc4880p443_size(layout))
+  if (climate_control_uses_compact_portrait_modal_tuning(layout))
     return CLIMATE_MODAL_JC4880P443_OPTION_TILE_MAX_PX;
   return climate_control_uses_jc1060p470_modal_tuning(layout)
     ? CLIMATE_MODAL_JC1060P470_OPTION_TILE_MAX_PX
@@ -855,7 +855,7 @@ inline lv_coord_t climate_control_wide_option_tile_max(const ControlModalLayout 
 }
 
 inline lv_coord_t climate_control_wide_option_tile_min(const ControlModalLayout &layout) {
-  if (control_modal_is_jc4880p443_size(layout))
+  if (climate_control_uses_compact_portrait_modal_tuning(layout))
     return CLIMATE_MODAL_JC4880P443_OPTION_TILE_MIN_PX;
   return climate_control_uses_jc1060p470_modal_tuning(layout)
     ? CLIMATE_MODAL_JC1060P470_OPTION_TILE_MIN_PX
@@ -864,7 +864,7 @@ inline lv_coord_t climate_control_wide_option_tile_min(const ControlModalLayout 
 
 inline lv_coord_t climate_control_option_tile_height(const ControlModalLayout &layout,
                                                      lv_coord_t tile_w) {
-  return control_modal_is_jc4880p443_size(layout)
+  return climate_control_uses_compact_portrait_modal_tuning(layout)
     ? CLIMATE_MODAL_JC4880P443_OPTION_TILE_H_PX
     : tile_w;
 }
@@ -1549,7 +1549,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
   if (!ctx) return;
   ClimateControlModalUi &ui = climate_control_modal_ui();
   ControlModalLayout layout = climate_control_calc_layout(ctx);
-  bool jc4880p443_layout = control_modal_is_jc4880p443_size(layout);
+  bool compact_portrait_layout = climate_control_uses_compact_portrait_modal_tuning(layout);
   const std::vector<std::string> *options = nullptr;
   const char *title = nullptr;
   if (kind == "hvac") {
@@ -1609,21 +1609,21 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
       lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
       lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
-      lv_obj_set_style_pad_top(btn, jc4880p443_layout ? 0 : 12, LV_PART_MAIN);
-      lv_obj_set_style_pad_bottom(btn, jc4880p443_layout ? 0 : 12, LV_PART_MAIN);
-      lv_obj_set_style_pad_left(btn, jc4880p443_layout ? 16 : 14, LV_PART_MAIN);
-      lv_obj_set_style_pad_right(btn, jc4880p443_layout ? 16 : 14, LV_PART_MAIN);
-      lv_obj_set_style_pad_row(btn, jc4880p443_layout ? 0 : 8, LV_PART_MAIN);
+      lv_obj_set_style_pad_top(btn, compact_portrait_layout ? 0 : 12, LV_PART_MAIN);
+      lv_obj_set_style_pad_bottom(btn, compact_portrait_layout ? 0 : 12, LV_PART_MAIN);
+      lv_obj_set_style_pad_left(btn, compact_portrait_layout ? 16 : 14, LV_PART_MAIN);
+      lv_obj_set_style_pad_right(btn, compact_portrait_layout ? 16 : 14, LV_PART_MAIN);
+      lv_obj_set_style_pad_row(btn, compact_portrait_layout ? 0 : 8, LV_PART_MAIN);
       lv_obj_set_style_pad_column(btn, 0, LV_PART_MAIN);
-      lv_obj_set_layout(btn, jc4880p443_layout ? LV_LAYOUT_NONE : LV_LAYOUT_FLEX);
+      lv_obj_set_layout(btn, compact_portrait_layout ? LV_LAYOUT_NONE : LV_LAYOUT_FLEX);
       lv_obj_set_style_flex_flow(btn,
-        jc4880p443_layout ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
+        compact_portrait_layout ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
       lv_obj_set_style_flex_main_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
       lv_obj_set_style_flex_cross_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
       control_modal_apply_pressed_fill(btn);
 
       lv_obj_t *content_parent = btn;
-      if (jc4880p443_layout) {
+      if (compact_portrait_layout) {
         content_parent = lv_obj_create(btn);
         lv_obj_set_size(content_parent, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
         lv_obj_set_style_bg_opa(content_parent, LV_OPA_TRANSP, LV_PART_MAIN);
@@ -1643,22 +1643,22 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
       lv_label_set_text(icon_lbl, climate_option_icon(section_kind, option));
       lv_obj_set_style_text_color(icon_lbl, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-      if (jc4880p443_layout && ctx->card_icon_font) {
+      if (compact_portrait_layout && ctx->card_icon_font) {
         lv_obj_set_style_text_font(icon_lbl, ctx->card_icon_font, LV_PART_MAIN);
       } else if (ctx->icon_font) {
         lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
       }
-      if (jc4880p443_layout && !ctx->card_icon_font) lv_obj_set_style_transform_zoom(
+      if (compact_portrait_layout && !ctx->card_icon_font) lv_obj_set_style_transform_zoom(
         icon_lbl, CLIMATE_MODAL_JC4880P443_OPTION_ICON_ZOOM, LV_PART_MAIN);
 
       lv_obj_t *label = lv_label_create(content_parent);
       lv_label_set_text(label, climate_option_label(option).c_str());
-      lv_label_set_long_mode(label, jc4880p443_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
-      lv_obj_set_width(label, jc4880p443_layout ? LV_SIZE_CONTENT : lv_pct(100));
+      lv_label_set_long_mode(label, compact_portrait_layout ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_WRAP);
+      lv_obj_set_width(label, compact_portrait_layout ? LV_SIZE_CONTENT : lv_pct(100));
       lv_obj_set_style_text_color(label, lv_color_hex(text_color), LV_PART_MAIN);
       lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
       if (ctx->option_menu_font) lv_obj_set_style_text_font(label, ctx->option_menu_font, LV_PART_MAIN);
-      if (jc4880p443_layout) lv_obj_center(content_parent);
+      if (compact_portrait_layout) lv_obj_center(content_parent);
 
       lv_obj_add_event_cb(btn, [](lv_event_t *e) {
         ClimateOptionClick *click = (ClimateOptionClick *)lv_event_get_user_data(e);
@@ -2084,7 +2084,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
         if (!lv_obj_has_flag(tile, LV_OBJ_FLAG_CLICKABLE)) continue;
         lv_obj_set_size(tile, tile_w, climate_control_option_tile_height(layout, tile_w));
         lv_obj_set_style_radius(tile, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
-        if (control_modal_is_jc4880p443_size(layout)) {
+        if (climate_control_uses_compact_portrait_modal_tuning(layout)) {
           lv_obj_t *content = lv_obj_get_child(tile, 0);
           if (content) lv_obj_center(content);
         } else {
