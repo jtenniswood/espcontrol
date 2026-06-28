@@ -109,6 +109,11 @@ INTERNAL_PATHS = (
     "scripts/",
 )
 PUBLIC_DOC_PATHS = ("docs/public/webserver/",)
+PUBLIC_RELEASE_SCRIPT_PATHS = (
+    "scripts/firmware_release.py",
+    "scripts/check_firmware_release.py",
+    "scripts/check_public_firmware.py",
+)
 INTERNAL_SUBJECT_PREFIXES = (
     "add review",
     "ci:",
@@ -315,6 +320,20 @@ def touches_any_path(path: str, prefixes: tuple[str, ...]) -> bool:
 
 def is_internal_change(commit: Commit) -> bool:
     subject = commit.subject.lower()
+    if touches_any(commit, PUBLIC_RELEASE_SCRIPT_PATHS) and any(
+        keyword in subject
+        for keyword in (
+            "asset",
+            "firmware",
+            "manifest",
+            "metadata",
+            "ota",
+            "release",
+            "update",
+            "url",
+        )
+    ):
+        return False
     if any(subject.startswith(prefix) for prefix in INTERNAL_SUBJECT_PREFIXES):
         return True
     if any(keyword in subject for keyword in INTERNAL_SUBJECT_KEYWORDS):
@@ -421,6 +440,8 @@ def release_affects_all_devices(commits: list[Commit]) -> bool:
     all_device_paths = (
         "common/",
         "components/",
+        "devices/manifest.json",
+        *PUBLIC_RELEASE_SCRIPT_PATHS,
         "src/webserver/",
     )
     generated_device_paths = ("builds/", "docs/public/webserver/")
