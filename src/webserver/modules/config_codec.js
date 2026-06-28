@@ -1957,7 +1957,7 @@ function buttonConfigFields(b) {
   }
   if (type === "vacuum") {
     sensor = normalizeVacuumMode(sensor);
-    unit = vacuumModeNeedsArea(sensor) ? unit : "";
+    unit = (vacuumModeNeedsArea(sensor) || vacuumModalMode(sensor)) ? unit : "";
     precision = "";
     iconOn = "Auto";
     if (!icon || icon === "Auto") icon = vacuumModeDefaultIcon(sensor);
@@ -2018,9 +2018,13 @@ function buttonConfigFields(b) {
     options = webhookButton.options || "";
   } else if (type === "lock" || type === "screen_lock") {
     options = "";
+  } else if (type === "vacuum") {
+    options = normalizeVacuumOptions(options, sensor);
   } else if (type === "calendar" || type === "clock" || type === "timezone") {
     options = normalizeDateTimeOptions(type, options, precision);
-  } else if (type === "vacuum" || type === "lawn_mower") {
+  } else if (type === "vacuum") {
+    options = normalizeVacuumOptions(options, sensor);
+  } else if (type === "lawn_mower") {
     options = "";
   } else if (type === "todo") {
     options = normalizeTodoOptions(options);

@@ -11,7 +11,7 @@ This generated reference lists stable setup facts from the shared card contract.
 |---|---|---|---|---|---|---|
 | Switch | switch | light, switch, input_boolean, fan | Yes | Own picker item | Large Active Display Numbers; Confirmation Required: default, off, on, both; On State Pattern: default, stripes; Message; Confirm Button; Cancel Button | Visible |
 | Action | action | scene, script, automation, button, input_button, input_boolean, input_number, input_select, select | Yes | Own picker item | Large State Numbers; Confirmation Required; Fields; Message; Confirm Button; Cancel Button | Visible |
-| Vacuum | vacuum | vacuum | Yes | Own picker item | Type: status, start_stop, dock, pause_resume, clean_spot, locate, clean_area | Visible |
+| Vacuum | vacuum | vacuum | Yes | Own picker item | Type: modal, status, start_stop, dock, pause_resume, clean_spot, locate, clean_area; Modal Tabs: controls, rooms, fan; Rooms | Visible |
 | Lawn Mower | lawn_mower | lawn_mower | Yes | Own picker item | Type: status, start_mowing, dock, pause_resume | Visible |
 | Alarm | alarm | alarm_control_panel | Yes | Own picker item | Type: control_panel, away, home, night, vacation, disarm; PIN required for arming; PIN required for disarming; Visible Actions: away, home, night, vacation, disarm; Icon Display: static, status; Label Display: name, status | Visible |
 | Alarm | alarm_action | alarm_control_panel | Yes | Alarm (alarm) | None | Visible |
