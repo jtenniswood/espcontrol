@@ -13,11 +13,13 @@ from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config.h"
+STYLE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_style.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
 BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
 CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
+CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "card_normalization_fixtures.json"
 DEVICES_DIR = ROOT / "devices"
 IMAGE_CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "image_card_normalization_fixtures.json"
 
@@ -612,7 +614,7 @@ def pure_config_header() -> str:
     index = text.find(marker)
     if index < 0:
         raise RuntimeError(f"Could not find pure parser boundary in {CONFIG_HEADER}")
-    return text[:index]
+    return text[:index] + "\n" + STYLE_HEADER.read_text(encoding="utf-8")
 
 
 def check_clock_bar_visual_gaps() -> None:
@@ -635,18 +637,26 @@ def cpp_string(value: str) -> str:
     return json.dumps(value)
 
 
-def generated_image_card_normalization_assertions() -> str:
-    fixtures = json.loads(IMAGE_CARD_NORMALIZATION_FIXTURES.read_text(encoding="utf-8"))
-    lines = ["  // Shared image saved-card normalization fixtures."]
+def generated_fixture_assertions(fixtures: list[dict], comment: str, prefix: str) -> str:
+    lines = [f"  // {comment}"]
     for fixture in fixtures:
         name = fixture["name"]
         input_value = fixture["input"]
         expected = fixture["expected"]
-        var_name = "image_fixture_" + "".join(ch if ch.isalnum() else "_" for ch in name.lower())
+        var_name = prefix + "".join(ch if ch.isalnum() else "_" for ch in name.lower())
         lines.append(f"  auto {var_name} = parse_cfg({cpp_string(input_value)});")
         for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
             lines.append(f"  assert({var_name}.{field} == {cpp_string(expected[field])});")
     return "\n".join(lines) + "\n"
+
+
+def generated_card_normalization_assertions() -> str:
+    shared_fixtures = json.loads(CARD_NORMALIZATION_FIXTURES.read_text(encoding="utf-8"))
+    image_fixtures = json.loads(IMAGE_CARD_NORMALIZATION_FIXTURES.read_text(encoding="utf-8"))
+    return (
+        generated_fixture_assertions(shared_fixtures["alarm"], "Shared alarm saved-card normalization fixtures.", "fixture_")
+        + generated_fixture_assertions(image_fixtures, "Shared image saved-card normalization fixtures.", "image_fixture_")
+    )
 
 
 def main() -> int:
@@ -687,7 +697,7 @@ def main() -> int:
         source = tmp_path / "check_firmware_parser.cpp"
         binary = tmp_path / "check_firmware_parser"
         source.write_text(
-            CPP_SOURCE.replace("  return 0;\n}", generated_image_card_normalization_assertions() + "\n  return 0;\n}"),
+            CPP_SOURCE.replace("  return 0;\n}", generated_card_normalization_assertions() + "\n  return 0;\n}"),
             encoding="utf-8",
         )
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)

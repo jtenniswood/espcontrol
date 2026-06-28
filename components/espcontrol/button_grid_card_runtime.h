@@ -106,6 +106,10 @@ constexpr const char *card_runtime_option_name_cover_tabs() {
   return CARD_CONTRACT_OPTION_NAME_COVER_TABS;
 }
 
+constexpr const char *card_runtime_option_name_fan_tabs() {
+  return CARD_CONTRACT_OPTION_NAME_FAN_TABS;
+}
+
 inline bool card_runtime_large_numbers_supported(const std::string &type,
                                                  const std::string &precision) {
   return card_contract_large_numbers_supported(type, precision);
@@ -206,6 +210,18 @@ inline const char *card_runtime_alarm_action_mode_at(size_t index) {
   return index < card_runtime_alarm_action_mode_count()
     ? CARD_CONTRACT_ALARM_ACTION_MODES[index]
     : "";
+}
+
+inline size_t card_runtime_alarm_default_action_count() {
+  return card_contract_alarm_default_action_count();
+}
+
+inline const char *card_runtime_alarm_default_action_at(size_t index) {
+  return card_contract_alarm_default_action_at(index);
+}
+
+inline size_t card_runtime_alarm_max_visible_actions() {
+  return CARD_CONTRACT_ALARM_MAX_VISIBLE_ACTIONS;
 }
 
 inline const char *card_runtime_alarm_action_service(const std::string &mode) {

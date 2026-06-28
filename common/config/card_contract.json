@@ -230,6 +230,7 @@
         "alarm": {
           "controlPanelValue": "control_panel",
           "defaultActions": ["away", "home", "disarm"],
+          "maxVisibleActions": 3,
           "actions": [
             {
               "value": "away",
@@ -556,6 +557,31 @@
         "sensor": "",
         "unit": "",
         "type": "fan_speed",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "fan_control": {
+      "label": "Fans",
+      "allowInSubpage": true,
+      "pickerKey": "fan_speed",
+      "domains": ["fan"],
+      "options": [
+        {
+          "name": "fan_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "defaultValue": "power|speed|preset|oscillation|direction"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Fan",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "fan_control",
         "precision": "",
         "options": ""
       }
@@ -1208,6 +1234,9 @@
       "fan_speed": {
         "defaultIcon": "Fan Speed 2"
       },
+      "fan_control": {
+        "defaultIcon": "Fan"
+      },
       "fan_oscillate": {
         "defaultIcon": "Fan"
       },
@@ -1255,6 +1284,7 @@
     "option_select": "U",
     "fan_switch": "B",
     "fan_speed": "J",
+    "fan_control": "FC",
     "fan_oscillate": "O",
     "fan_direction": "E",
     "fan_preset": "Z",
