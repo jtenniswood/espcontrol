@@ -2,6 +2,16 @@
 
 -
 
+## Documentation decision
+
+- [ ] Updated public docs or release-facing notes for user-visible behavior/configuration.
+- [ ] No docs needed because this does not change user-visible behavior/configuration.
+- [ ] Docs follow-up needed before merge; explain below.
+
+Docs notes:
+
+-
+
 ## Testing
 
 - [ ] I checked the change locally where practical.
