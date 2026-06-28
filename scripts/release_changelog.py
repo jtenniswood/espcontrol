@@ -207,13 +207,21 @@ def comparison_ref(ref: str) -> str:
     return ref if tag_exists(ref) else resolve_commit(ref)
 
 
+def strip_prefix(value: str, prefix: str) -> str:
+    return value[len(prefix) :] if value.startswith(prefix) else value
+
+
+def strip_suffix(value: str, suffix: str) -> str:
+    return value[: -len(suffix)] if value.endswith(suffix) else value
+
+
 def remote_url() -> str:
     configured = run_git(["config", "--get", "remote.origin.url"], check=False).strip()
     if not configured:
         return DEFAULT_REPO_URL
     if configured.startswith("git@github.com:"):
-        return "https://github.com/" + configured.removeprefix("git@github.com:").removesuffix(".git")
-    return configured.removesuffix(".git")
+        return "https://github.com/" + strip_suffix(strip_prefix(configured, "git@github.com:"), ".git")
+    return strip_suffix(configured, ".git")
 
 
 def stable_tags() -> list[str]:
