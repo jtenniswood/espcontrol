@@ -226,3 +226,7 @@ update_complete=Posodobitev končana
 update_failed=Posodobitev ni uspela
 wifi_disconnected=WiFi prekinjen
 wifi_setup=Nastavitev WiFi
+choose_rooms=Izberi sobe
+rooms=Sobe
+no_rooms_selected=Nobena soba ni izbrana
+no_rooms_configured=Nobena soba ni nastavljena

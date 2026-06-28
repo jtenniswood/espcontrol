@@ -226,3 +226,7 @@ update_complete=Оновлення завершено
 update_failed=Помилка оновлення
 wifi_disconnected=WiFi від’єднано
 wifi_setup=Налаштування WiFi
+choose_rooms=Вибрати кімнати
+rooms=Кімнати
+no_rooms_selected=Кімнати не вибрано
+no_rooms_configured=Кімнати не налаштовано

@@ -226,3 +226,7 @@ update_complete=Oppdatering fullført
 update_failed=Oppdatering mislyktes
 wifi_disconnected=WiFi frakoblet
 wifi_setup=WiFi-oppsett
+choose_rooms=Velg rom
+rooms=Rom
+no_rooms_selected=Ingen rom valgt
+no_rooms_configured=Ingen rom konfigurert

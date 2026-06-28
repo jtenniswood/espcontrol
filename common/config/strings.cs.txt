@@ -226,3 +226,7 @@ update_complete=Aktualizace dokončena
 update_failed=Aktualizace selhala
 wifi_disconnected=WiFi odpojena
 wifi_setup=Nastavení WiFi
+choose_rooms=Vybrat místnosti
+rooms=Místnosti
+no_rooms_selected=Nejsou vybrány žádné místnosti
+no_rooms_configured=Nejsou nakonfigurovány žádné místnosti

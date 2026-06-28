@@ -15,7 +15,7 @@ function vacuumModeValues() {
 }
 
 function normalizeVacuumMode(mode) {
-  return normalizeEntityMode(mode, vacuumModeValues(), "modal");
+  return normalizeEntityMode(mode, vacuumModeValues(), "start_stop");
 }
 
 function vacuumModeNeedsArea(mode) {

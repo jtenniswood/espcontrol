@@ -226,3 +226,7 @@ update_complete=Päivitys valmis
 update_failed=Päivitys epäonnistui
 wifi_disconnected=WiFi katkaistu
 wifi_setup=WiFi-asennus
+choose_rooms=Valitse huoneet
+rooms=Huoneet
+no_rooms_selected=Huoneita ei ole valittu
+no_rooms_configured=Huoneita ei ole määritetty

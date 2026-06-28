@@ -226,3 +226,7 @@ update_complete=Update voltooid
 update_failed=Update mislukt
 wifi_disconnected=WiFi verbroken
 wifi_setup=WiFi-installatie
+choose_rooms=Kamers kiezen
+rooms=Kamers
+no_rooms_selected=Geen kamers geselecteerd
+no_rooms_configured=Geen kamers geconfigureerd

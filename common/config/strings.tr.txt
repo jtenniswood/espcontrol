@@ -226,3 +226,7 @@ update_complete=Güncelleme tamamlandı
 update_failed=Güncelleme başarısız
 wifi_disconnected=WiFi bağlantısı kesildi
 wifi_setup=WiFi Kurulumu
+choose_rooms=Odaları seç
+rooms=Odalar
+no_rooms_selected=Seçili oda yok
+no_rooms_configured=Yapılandırılmış oda yok

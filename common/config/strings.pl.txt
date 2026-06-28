@@ -226,3 +226,7 @@ update_complete=Aktualizacja ukończona
 update_failed=Aktualizacja nieudana
 wifi_disconnected=WiFi rozłączone
 wifi_setup=Konfiguracja WiFi
+choose_rooms=Wybierz pokoje
+rooms=Pokoje
+no_rooms_selected=Nie wybrano pokoi
+no_rooms_configured=Brak skonfigurowanych pokoi

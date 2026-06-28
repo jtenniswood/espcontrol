@@ -226,3 +226,7 @@ update_complete=Atualização concluída
 update_failed=Falha na atualização
 wifi_disconnected=WiFi desconectado
 wifi_setup=Configuração WiFi
+choose_rooms=Escolher cômodos
+rooms=Cômodos
+no_rooms_selected=Nenhum cômodo selecionado
+no_rooms_configured=Nenhum cômodo configurado

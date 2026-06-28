@@ -226,3 +226,7 @@ update_complete=Opdatering fuldført
 update_failed=Opdatering mislykkedes
 wifi_disconnected=WiFi afbrudt
 wifi_setup=WiFi-opsætning
+choose_rooms=Vælg rum
+rooms=Rum
+no_rooms_selected=Ingen rum valgt
+no_rooms_configured=Ingen rum konfigureret

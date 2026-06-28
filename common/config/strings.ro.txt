@@ -226,3 +226,7 @@ update_complete=Actualizare finalizată
 update_failed=Actualizare eșuată
 wifi_disconnected=WiFi deconectat
 wifi_setup=Configurare WiFi
+choose_rooms=Alege camerele
+rooms=Camere
+no_rooms_selected=Nicio cameră selectată
+no_rooms_configured=Nicio cameră configurată

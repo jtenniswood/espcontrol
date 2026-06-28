@@ -226,3 +226,7 @@ update_complete=Frissítés kész
 update_failed=Frissítés sikertelen
 wifi_disconnected=WiFi megszakadt
 wifi_setup=WiFi beállítás
+choose_rooms=Szobák kiválasztása
+rooms=Szobák
+no_rooms_selected=Nincsenek kiválasztott szobák
+no_rooms_configured=Nincsenek beállított szobák

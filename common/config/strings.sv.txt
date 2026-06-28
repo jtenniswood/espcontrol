@@ -226,3 +226,7 @@ update_complete=Uppdatering slutförd
 update_failed=Uppdatering misslyckades
 wifi_disconnected=WiFi frånkopplat
 wifi_setup=WiFi-installation
+choose_rooms=Välj rum
+rooms=Rum
+no_rooms_selected=Inga rum valda
+no_rooms_configured=Inga rum konfigurerade
