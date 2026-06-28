@@ -145,6 +145,28 @@ def test_generated_web_bundle_change_reports_specific_device() -> None:
     assert "All supported displays may be affected" not in text
 
 
+def test_shared_display_assets_are_user_facing() -> None:
+    tmp, repo = with_temp_repo()
+    original_root = release_changelog.ROOT
+    try:
+        release_changelog.ROOT = repo
+        write(repo, "common/assets/icon_glyphs.yaml", "thermostat: '\\ue000'\n")
+        commit(repo, "Add thermostat icon glyphs")
+        text = release_changelog.build_changelog(
+            "v1.1.0",
+            release_changelog.default_from_ref("v1.1.0", "HEAD"),
+            "HEAD",
+            None,
+        )
+    finally:
+        release_changelog.ROOT = original_root
+        tmp.cleanup()
+
+    assert "Add thermostat icon glyphs" in text
+    assert "1 user-facing change is included in this release." in text
+    assert "Affected devices: All supported displays may be affected" in text
+
+
 def test_internal_changes_are_not_listed_as_user_facing() -> None:
     tmp, repo = with_temp_repo()
     original_root = release_changelog.ROOT
@@ -175,6 +197,7 @@ def main() -> int:
     test_existing_tag_uses_previous_tag()
     test_device_build_change_reports_specific_device()
     test_generated_web_bundle_change_reports_specific_device()
+    test_shared_display_assets_are_user_facing()
     test_internal_changes_are_not_listed_as_user_facing()
     print("Release changelog tests passed.")
     return 0
