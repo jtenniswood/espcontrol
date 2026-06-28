@@ -1271,8 +1271,8 @@ inline void grid_phase2(
         FanCardCtx *ctx = create_fan_card_context(
           s, p,
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          has_off ? off_val : DEFAULT_OFF_COLOR,
-          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
+          palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           display_icon_font(display),
           display_main_width_percent(display));
@@ -1948,8 +1948,8 @@ inline void grid_phase2(
           FanCardCtx *ctx = create_fan_card_context(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
-            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
+            palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             display_icon_font(display),
             display_main_width_percent(display));
