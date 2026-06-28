@@ -1,0 +1,62 @@
+[
+  {
+    "name": "default light tabs are omitted",
+    "input": "light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=power%7Cbrightness%7Ctemperature%7Ccolor",
+    "expected": {
+      "entity": "light.kitchen",
+      "label": "Kitchen",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "light_control",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "custom light tabs are preserved",
+    "input": "light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=brightness%7Cpower",
+    "expected": {
+      "entity": "light.kitchen",
+      "label": "Kitchen",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "light_control",
+      "precision": "",
+      "options": "light_tabs=brightness%7Cpower"
+    }
+  },
+  {
+    "name": "invalid and duplicate light tabs are cleaned",
+    "input": "light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=bad%7Cpower%7Cpower%7Ccolor",
+    "expected": {
+      "entity": "light.kitchen",
+      "label": "Kitchen",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "light_control",
+      "precision": "",
+      "options": "light_tabs=power%7Ccolor"
+    }
+  },
+  {
+    "name": "empty light tabs fall back to power",
+    "input": "light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=bad",
+    "expected": {
+      "entity": "light.kitchen",
+      "label": "Kitchen",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "light_control",
+      "precision": "",
+      "options": "light_tabs=power"
+    }
+  }
+]
