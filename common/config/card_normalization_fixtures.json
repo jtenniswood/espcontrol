@@ -1,0 +1,109 @@
+{
+  "alarm": [
+    {
+      "name": "default alarm options are omitted",
+      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;actions=away%7Chome%7Cdisarm,icon_display=status,label_display=status",
+      "expected": {
+        "entity": "alarm_control_panel.house",
+        "label": "House",
+        "icon": "Security",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "alarm",
+        "precision": "",
+        "options": ""
+      }
+    },
+    {
+      "name": "custom pin options are preserved",
+      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;pin_arm=0,pin_disarm=0",
+      "expected": {
+        "entity": "alarm_control_panel.house",
+        "label": "House",
+        "icon": "Security",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "alarm",
+        "precision": "",
+        "options": "pin_arm=0,pin_disarm=0"
+      }
+    },
+    {
+      "name": "invalid actions are dropped",
+      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;actions=bad%7Caway%7Cinvalid",
+      "expected": {
+        "entity": "alarm_control_panel.house",
+        "label": "House",
+        "icon": "Security",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "alarm",
+        "precision": "",
+        "options": "actions=away"
+      }
+    },
+    {
+      "name": "duplicate actions collapse to default",
+      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;actions=away%7Chome%7Caway%7Cdisarm",
+      "expected": {
+        "entity": "alarm_control_panel.house",
+        "label": "House",
+        "icon": "Security",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "alarm",
+        "precision": "",
+        "options": ""
+      }
+    },
+    {
+      "name": "visible actions are capped",
+      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;actions=away%7Chome%7Cnight%7Cvacation%7Cdisarm",
+      "expected": {
+        "entity": "alarm_control_panel.house",
+        "label": "House",
+        "icon": "Security",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "alarm",
+        "precision": "",
+        "options": "actions=away%7Chome%7Cnight"
+      }
+    },
+    {
+      "name": "non-default display options are preserved",
+      "input": "alarm_control_panel.house;House;Security;Auto;;;alarm;;pin_arm=0,pin_disarm=0,actions=night%7Cvacation,icon_display=static,label_display=name",
+      "expected": {
+        "entity": "alarm_control_panel.house",
+        "label": "House",
+        "icon": "Security",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "alarm",
+        "precision": "",
+        "options": "pin_arm=0,pin_disarm=0,actions=night%7Cvacation,icon_display=static,label_display=name"
+      }
+    },
+    {
+      "name": "legacy alarm action icon is updated",
+      "input": "alarm_control_panel.house;Arm Home;Home;Auto;home;;alarm_action;;pin_arm=0",
+      "expected": {
+        "entity": "alarm_control_panel.house",
+        "label": "Arm Home",
+        "icon": "Shield Home",
+        "icon_on": "Auto",
+        "sensor": "home",
+        "unit": "",
+        "type": "alarm_action",
+        "precision": "",
+        "options": "pin_arm=0"
+      }
+    }
+  ]
+}
