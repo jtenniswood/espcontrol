@@ -27,15 +27,13 @@ The screensaver turns on after the panel hasn't been touched for a set amount of
 
 If the 10 or 30 second choices are not shown, update the panel firmware first. The web page checks what range the installed firmware supports before showing the shorter timer values.
 
-You can also enable **Override for Media Cover Art**. It uses the **Media Player** selected in [Media Cover Art](/features/media-cover-art), and when that media player is in the `playing` state, the timer keeps waiting instead of putting the screen to sleep.
-
 ### What Happens
 
 When the screensaver activates, you can choose what happens:
 
 - **Screen Dimmed** — keeps the normal screen visible, but lowers the backlight. The first tap wakes the screen instead of pressing a card.
 - **Clock** — shows a large drifting clock at reduced brightness (the default). The clock repositions itself periodically to prevent burn-in.
-- **Display Off** — switches to a black screen and turns the backlight off completely.
+- **Display Off** — switches to a black screen and turns the backlight off completely. While the backlight is off, EspControl can exercise the LCD pixels in the background to reduce burn-in risk; this should not be visible.
 
 When Screen Dimmed is selected, set **Dimmed Screen Brightness**. When Clock is selected, set separate **Daytime Clock Brightness** and **Nighttime Clock Brightness** values. Clock brightness uses the same sunrise and sunset calculation as the main screen brightness.
 
@@ -45,7 +43,7 @@ Instead of a timer, the screensaver is controlled by a motion or presence sensor
 
 To use this, enter the name of your motion or presence sensor from Home Assistant (for example, `binary_sensor.hallway_presence`).
 
-Below the presence entity, use **Then** to choose whether the panel dims the screen, shows the clock, or turns the display off when nobody is detected. This uses the same options as Timer mode, including **Override for Media Cover Art**.
+Below the presence entity, use **Then** to choose whether the panel dims the screen, shows the clock, or turns the display off when nobody is detected. This uses the same options as Timer mode.
 
 Switching back to Timer keeps the sensor name saved, so you can return to Sensor mode later without typing it in again.
 
@@ -55,6 +53,8 @@ Touching the screen always wakes it up, no matter which mode you're using.
 
 ## Screen Schedule
 
-The [screen schedule](/features/screen-schedule) is separate from the screensaver. Use it when you want the panel to be fully dark during fixed hours, such as overnight.
+The [screen schedule](/features/screen-schedule) is separate from the screensaver. Use it when you want the panel to be fully dark, dimmed, or showing a clock overnight.
 
-When the screen schedule is in **Screen Off** or **Clock** mode, the presence sensor does not wake the panel outside the scheduled daytime hours. Tap wake still works, and uses the temporary wake settings from the screen schedule.
+When Night Schedule is using fixed **Time** hours, it has priority over screensaver sensor wake during night time. The screensaver presence sensor still keeps the panel awake and wakes it during normal daytime operation, but it does not override scheduled night time. Tap wake still works, and uses the temporary wake settings from the screen schedule.
+
+If you want presence to control when the panel is in night mode, set Night Schedule to **Sensor** mode instead of **Time** mode.

@@ -3,6 +3,10 @@
 This directory documents EspControl's product sources while the repo keeps the
 existing file locations for compatibility with generators, docs, and workflows.
 
+The hard internal edit/rebuild/check contract lives in
+[`dev-docs/source-of-truth.md`](../dev-docs/source-of-truth.md). Use that page
+when deciding what to edit and what must be regenerated.
+
 ## Authored Product Sources
 
 Edit these files when changing product behavior or supported hardware:

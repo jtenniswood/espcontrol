@@ -84,6 +84,18 @@ esphome:
                     wifi.connected:
                 - lambda: 'return !wifi::global_wifi_component->has_sta();'
             then:
+              - globals.set:
+                  id: display_asleep
+                  value: 'false'
+              - globals.set:
+                  id: screen_schedule_asleep
+                  value: 'false'
+              - globals.set:
+                  id: screensaver_display_off_active
+                  value: 'false'
+              - globals.set:
+                  id: screensaver_dimmed_active
+                  value: 'false'
               - lambda: |-
                   lv_label_set_text(id(loading_status_icon), "${icon_wifi}");
                   lv_label_set_text(id(loading_status_title), espcontrol_i18n("WiFi Setup"));
@@ -94,9 +106,15 @@ esphome:
         - if:
             condition:
               lambda: |-
-                return id(screen_schedule_asleep) ||
-                       (id(schedule_enabled).state && !panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+                return wifi::global_wifi_component->has_sta() &&
+                       (id(screen_schedule_asleep) ||
+                        screen_schedule_waiting_for_time(
+                          id(screen_schedule_trigger).state,
+                          id(schedule_enabled).state,
+                          panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid()));
             then:
+              # Expected on boot when schedule logic says the panel should
+              # remain dark, or while time is not ready enough to decide.
               - script.execute: backlight_force_display_off
             else:
               - light.turn_on:

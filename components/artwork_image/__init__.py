@@ -49,12 +49,14 @@ CONF_ALLOW_INSECURE_LOCAL_URLS = "allow_insecure_local_urls"
 CONF_PLACEHOLDER = "placeholder"
 CONF_TRANSPARENCY = "transparency"
 CONF_UPDATE = "update"
+CONF_RESIZE_MODE = "resize_mode"
 
 _LOGGER = logging.getLogger(__name__)
 
 artwork_image_ns = cg.esphome_ns.namespace("artwork_image")
 
 ImageFormat = artwork_image_ns.enum("ImageFormat")
+ImageResizeMode = artwork_image_ns.enum("ImageResizeMode")
 
 
 class Format:
@@ -79,8 +81,7 @@ class JPEGFormat(Format):
         from esphome.core import CORE
 
         # Copy libjpeg-turbo as an IDF component into the build directory.
-        # Skip if dest already exists and CMakeLists.txt mtimes match (avoid
-        # redundant copies on incremental builds).
+        # Skip only when the generated copy is newer than all source files.
         src_path = os.path.join(
             os.path.dirname(__file__), "..", "libjpeg-turbo-esp32"
         )
@@ -94,13 +95,23 @@ class JPEGFormat(Format):
         )
         src_cmake = os.path.join(src_path, "CMakeLists.txt")
         dest_cmake = os.path.join(dest_path, "CMakeLists.txt")
+
+        def newest_mtime(path):
+            newest = 0
+            if os.path.isfile(path):
+                return os.path.getmtime(path)
+            for dirpath, _, filenames in os.walk(path):
+                for filename in filenames:
+                    newest = max(newest, os.path.getmtime(os.path.join(dirpath, filename)))
+            return newest
+
         missing_required_file = any(
             not os.path.exists(os.path.join(dest_path, file_name))
             for file_name in required_files
         )
         needs_copy = missing_required_file or (
             os.path.exists(dest_cmake)
-            and os.path.getmtime(src_cmake) > os.path.getmtime(dest_cmake)
+            and newest_mtime(src_path) > newest_mtime(dest_path)
         )
         if needs_copy:
             if os.path.exists(dest_path):
@@ -152,6 +163,9 @@ ARTWORK_IMAGE_SCHEMA = (
             cv.Required(CONF_ID): cv.declare_id(ArtworkImage),
             cv.Required(CONF_TYPE): validate_type(IMAGE_TYPE),
             cv.Optional(CONF_RESIZE): cv.dimensions,
+            cv.Optional(CONF_RESIZE_MODE, default="FIT"): cv.one_of(
+                "FIT", "COVER", upper=True
+            ),
             cv.Optional(CONF_BYTE_ORDER): cv.one_of(
                 "BIG_ENDIAN", "LITTLE_ENDIAN", upper=True
             ),
@@ -255,7 +269,7 @@ async def to_code(config):
         try:
             from esphome.core import CORE
 
-            if CORE.is_esp32 and CORE.using_esp_idf:
+            if CORE.is_esp32 and not CORE.using_arduino:
                 esp32.add_idf_sdkconfig_option("CONFIG_ESP_TLS_INSECURE", True)
                 esp32.add_idf_sdkconfig_option(
                     "CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY", True
@@ -283,6 +297,7 @@ async def to_code(config):
         width,
         height,
         image_format.enum,
+        getattr(ImageResizeMode, config[CONF_RESIZE_MODE]),
         get_image_type_enum(config[CONF_TYPE]),
         transparent,
         config[CONF_BUFFER_SIZE],

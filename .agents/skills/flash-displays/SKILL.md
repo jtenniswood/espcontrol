@@ -1,5 +1,5 @@
 ---
-name: flash-displays
+name: Flash Display
 description: Flash EspControl display firmware from this repository using ESPHome. Use when the user invokes /flash-displays with no extra display name, or asks to flash, reflash, update, or upload firmware to all known displays in sequence, or to a specific display such as 7inch, 7-inch P4, 10inch, 10-inch P4, P4-86, 4.3-inch P4, 4-inch P4, or 4-inch S3, over an explicitly supplied OTA target or USB.
 ---
 

@@ -2,6 +2,8 @@
 # BUILD PROFILE - Waveshare ESP32-P4 86 Panel (4" square)
 # =============================================================================
 # CI/local build entry point for the 720x720 square ESP32-P4 panel.
+# Bundles the matching web UI so branch/release builds do not load the shared
+# GitHub Pages copy from main.
 # =============================================================================
 
 substitutions:
@@ -9,6 +11,7 @@ substitutions:
   friendly_name: "EspControl P4 86 Panel"
   espcontrol_component_url: "file:///config"
   espcontrol_component_ref: "HEAD"
+  voice_stt_failure_chime_file: "../devices/esp32-p4-86/device/voice_stt_failure_chime.flac"
 
 esphome:
   name_add_mac_suffix: true
@@ -21,3 +24,7 @@ wifi:
     ssid: "${friendly_name}"
 
 captive_portal:
+
+web_server:
+  js_url: ""
+  js_include: "../docs/public/webserver/esp32-p4-86/www.js"

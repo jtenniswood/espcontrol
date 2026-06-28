@@ -16,3 +16,7 @@ wifi:
 
 packages:
   espcontrol: !include packages.yaml
+
+web_server:
+  js_url: ""
+  js_include: "../../docs/public/webserver/guition-esp32-s3-4848s040/www.js"

@@ -36,8 +36,10 @@ void ImageDecoder::draw(int x, int y, int w, int h, const Color &color) {
                         this->x_offset_ + static_cast<int>(std::ceil((x + w) * this->x_scale_)));
   auto height = std::min(this->image_->decode_buffer_height_,
                          this->y_offset_ + static_cast<int>(std::ceil((y + h) * this->y_scale_)));
-  for (int i = this->x_offset_ + static_cast<int>(x * this->x_scale_); i < width; i++) {
-    for (int j = this->y_offset_ + static_cast<int>(y * this->y_scale_); j < height; j++) {
+  int start_x = std::max(0, this->x_offset_ + static_cast<int>(x * this->x_scale_));
+  int start_y = std::max(0, this->y_offset_ + static_cast<int>(y * this->y_scale_));
+  for (int i = start_x; i < width; i++) {
+    for (int j = start_y; j < height; j++) {
       this->image_->draw_pixel_(i, j, color);
     }
   }
@@ -72,12 +74,14 @@ void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *
       int src_y = y + row;
       int src_offset = (row * w + col) * 2;
 
+      int target_x0 = std::max(0, this->x_offset_ + static_cast<int>(src_x * this->x_scale_));
+      int target_y0 = std::max(0, this->y_offset_ + static_cast<int>(src_y * this->y_scale_));
       auto target_w = std::min(this->image_->decode_buffer_width_,
                                this->x_offset_ + static_cast<int>(std::ceil((src_x + 1) * this->x_scale_)));
       auto target_h = std::min(this->image_->decode_buffer_height_,
                                this->y_offset_ + static_cast<int>(std::ceil((src_y + 1) * this->y_scale_)));
-      for (int dy = this->y_offset_ + static_cast<int>(src_y * this->y_scale_); dy < target_h; dy++) {
-        for (int dx = this->x_offset_ + static_cast<int>(src_x * this->x_scale_); dx < target_w; dx++) {
+      for (int dy = target_y0; dy < target_h; dy++) {
+        for (int dx = target_x0; dx < target_w; dx++) {
           int dst_pos = this->image_->get_position_(dx, dy);
           memcpy(this->image_->decode_buffer_ + dst_pos, data + src_offset, 2);
           if (bpp_bytes > 2) {
@@ -140,6 +144,25 @@ size_t DownloadBuffer::resize(size_t size) {
     this->reset();
     return 0;
   }
+}
+
+void DownloadBuffer::shrink_to(size_t size) {
+  this->reset();
+  if (this->size_ <= size) {
+    return;
+  }
+  this->allocator_.deallocate(this->buffer_, this->size_);
+  this->buffer_ = nullptr;
+  this->size_ = 0;
+  if (size == 0) {
+    return;
+  }
+  this->buffer_ = this->allocator_.allocate(size);
+  if (!this->buffer_) {
+    ESP_LOGW(TAG, "allocation of shrunken download buffer failed: %zu bytes", size);
+    return;
+  }
+  this->size_ = size;
 }
 
 }  // namespace artwork_image

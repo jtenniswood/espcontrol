@@ -4,9 +4,10 @@
 
 // ── Option select card helpers ───────────────────────────────────────
 
-constexpr int OPTION_SELECT_MAX_OPTIONS = 32;
+constexpr int OPTION_SELECT_MAX_OPTIONS = 64;
 constexpr size_t OPTION_SELECT_OPTION_MAX_LEN = 96;
-constexpr size_t OPTION_SELECT_OPTIONS_TEXT_MAX_LEN = 1024;
+constexpr size_t OPTION_SELECT_OPTIONS_TEXT_MAX_LEN =
+  OPTION_SELECT_MAX_OPTIONS * (OPTION_SELECT_OPTION_MAX_LEN + 4);
 
 struct OptionSelectCtx {
   std::string entity_id;

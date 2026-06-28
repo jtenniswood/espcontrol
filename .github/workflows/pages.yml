@@ -37,7 +37,7 @@ jobs:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
       - uses: actions/setup-node@v6
@@ -70,7 +70,7 @@ jobs:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
         with:
           sparse-checkout: devices/manifest.json
           sparse-checkout-cone-mode: false
@@ -80,24 +80,32 @@ jobs:
           DEVICE_SLUGS=$(jq -r '.devices | keys | join(" ")' devices/manifest.json)
           echo "DEVICE_SLUGS=${DEVICE_SLUGS}" >> "$GITHUB_ENV"
 
-      - name: Download firmware from latest release
+      - name: Download firmware from stable releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest"
-          RELEASE_JSON=$(curl -fsSL \
+          RELEASES_JSON=$(curl -fsSL \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "${API_URL}")
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=30")
+          STABLE_RELEASES_JSON=$(printf '%s' "${RELEASES_JSON}" | jq -c '[.[] | select((.draft | not) and (.prerelease | not))][0:5]')
+          RELEASE_COUNT=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq 'length')
+
+          if [ "${RELEASE_COUNT}" -eq 0 ]; then
+            echo "::warning::No stable firmware releases found"
+            exit 0
+          fi
 
           download_asset() {
-            ASSET_NAME="$1"
-            OUTPUT_PATH="$2"
+            RELEASE_JSON="$1"
+            ASSET_NAME="$2"
+            OUTPUT_PATH="$3"
             ASSET_URL=$(printf '%s' "${RELEASE_JSON}" | jq -r --arg name "${ASSET_NAME}" \
-              '.assets[] | select(.name == $name) | .url' | head -n 1)
+              '.assets[]? | select(.name == $name) | .url' | head -n 1)
             if [ -z "${ASSET_URL}" ]; then
-              return 0
+              return 1
             fi
+            mkdir -p "$(dirname "${OUTPUT_PATH}")"
             curl -fsSL \
               -H "Authorization: Bearer ${GH_TOKEN}" \
               -H "Accept: application/octet-stream" \
@@ -105,15 +113,79 @@ jobs:
               -o "${OUTPUT_PATH}"
           }
 
+          ota_md5() {
+            MANIFEST_PATH="$1"
+            jq -r --arg path "$2" \
+              'first((.builds // [])[]?.ota | select((.path // "") == $path) | (.md5 // "")) // ""' \
+              "${MANIFEST_PATH}"
+          }
+
+          ota_release_url() {
+            MANIFEST_PATH="$1"
+            jq -r --arg path "$2" \
+              'first((.builds // [])[]?.ota | select((.path // "") == $path) | (.release_url // "")) // ""' \
+              "${MANIFEST_PATH}"
+          }
+
           for SLUG in $DEVICE_SLUGS; do
-            (
-              mkdir -p "firmware/${SLUG}"
-              download_asset "${SLUG}.manifest.json" "firmware/${SLUG}/manifest.json"
-              download_asset "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin"
-              download_asset "${SLUG}.ota.bin" "firmware/${SLUG}/${SLUG}.ota.bin"
-            ) &
+            mkdir -p "firmware/${SLUG}"
+            INDEX_ENTRIES=$(mktemp)
+            : > "${INDEX_ENTRIES}"
+
+            for IDX in $(seq 0 $((RELEASE_COUNT - 1))); do
+              RELEASE_JSON=$(printf '%s' "${STABLE_RELEASES_JSON}" | jq -c ".[$IDX]")
+              RELEASE_TAG=$(printf '%s' "${RELEASE_JSON}" | jq -r '.tag_name')
+              RELEASE_HTML_URL=$(printf '%s' "${RELEASE_JSON}" | jq -r '.html_url')
+              MANIFEST_TMP=$(mktemp)
+
+              if ! download_asset "${RELEASE_JSON}" "${SLUG}.manifest.json" "${MANIFEST_TMP}"; then
+                continue
+              fi
+
+              VERSION=$(jq -r '.version // ""' "${MANIFEST_TMP}")
+              if [ -z "${VERSION}" ] || [ "${VERSION}" = "null" ]; then
+                VERSION="${RELEASE_TAG}"
+              fi
+              VERSION_PATH=$(printf '%s' "${VERSION}" | sed 's/[^A-Za-z0-9._-]/_/g')
+
+              if [ "${IDX}" -eq 0 ]; then
+                cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
+                OTA_OUTPUT="firmware/${SLUG}/${SLUG}.ota.bin"
+                OTA_INDEX_PATH="${SLUG}.ota.bin"
+                download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
+              else
+                OTA_OUTPUT="firmware/${SLUG}/versions/${VERSION_PATH}/${SLUG}.ota.bin"
+                OTA_INDEX_PATH="versions/${VERSION_PATH}/${SLUG}.ota.bin"
+              fi
+
+              if ! download_asset "${RELEASE_JSON}" "${SLUG}.ota.bin" "${OTA_OUTPUT}"; then
+                continue
+              fi
+
+              OTA_MD5=$(ota_md5 "${MANIFEST_TMP}" "${SLUG}.ota.bin")
+              if [ -z "${OTA_MD5}" ]; then
+                echo "::warning::${SLUG} ${VERSION} manifest does not include an OTA md5"
+                continue
+              fi
+              ENTRY_RELEASE_URL=$(ota_release_url "${MANIFEST_TMP}" "${SLUG}.ota.bin")
+              if [ -z "${ENTRY_RELEASE_URL}" ]; then
+                ENTRY_RELEASE_URL="${RELEASE_HTML_URL}"
+              fi
+
+              jq -n \
+                --arg version "${VERSION}" \
+                --arg release_url "${ENTRY_RELEASE_URL}" \
+                --arg ota_path "${OTA_INDEX_PATH}" \
+                --arg ota_md5 "${OTA_MD5}" \
+                '{version:$version, release_url:$release_url, ota:{path:$ota_path, md5:$ota_md5}}' \
+                >> "${INDEX_ENTRIES}"
+            done
+
+            if [ -s "${INDEX_ENTRIES}" ]; then
+              jq -s --arg device "${SLUG}" '{device:$device, versions:.}' \
+                "${INDEX_ENTRIES}" > "firmware/${SLUG}/versions.json"
+            fi
           done
-          wait
 
       - name: Download firmware from latest pre-release
         env:
@@ -182,7 +254,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.0
         with:
           sparse-checkout: |
             devices/manifest.json

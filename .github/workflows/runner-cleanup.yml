@@ -1,0 +1,45 @@
+name: Runner Disk Cleanup
+
+on:
+  schedule:
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runner-disk-cleanup
+  cancel-in-progress: true
+
+jobs:
+  cleanup:
+    name: Reclaim Runner Disk
+    runs-on: self-hosted
+    steps:
+      - name: Prepare self-hosted workspace
+        run: |
+          rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
+            sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
+
+      - uses: actions/checkout@v7.0.0
+        with:
+          sparse-checkout: |
+            scripts/reclaim_actions_disk.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Select Docker command
+        run: |
+          if docker info >/dev/null 2>&1; then
+            echo "DOCKER=docker" >> "$GITHUB_ENV"
+          elif sudo -n docker info >/dev/null 2>&1; then
+            echo "DOCKER=sudo docker" >> "$GITHUB_ENV"
+          else
+            echo "Docker is not available to the self-hosted runner user."
+          fi
+
+      - name: Reclaim runner disk
+        env:
+          ESPCONTROL_DOCKER_PRUNE_ALL_IMAGES: true
+          ESPCONTROL_DOCKER_PRUNE_VOLUMES: true
+        run: bash scripts/reclaim_actions_disk.sh

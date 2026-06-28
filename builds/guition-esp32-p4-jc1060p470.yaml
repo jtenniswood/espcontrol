@@ -2,8 +2,8 @@
 # BUILD PROFILE - Guition ESP32-P4 JC1060P470 (7" landscape)
 # =============================================================================
 # CI/local build entry point. Includes the full device package and adds
-# MAC suffix for unique naming. Used by the release workflow; the .factory
-# variant bundles the web UI JS inline for initial flash images.
+# MAC suffix for unique naming. Bundles the matching web UI so branch/release
+# builds do not load the shared GitHub Pages copy from main.
 # =============================================================================
 
 substitutions:
@@ -23,3 +23,7 @@ wifi:
     ssid: "${friendly_name}"
 
 captive_portal:
+
+web_server:
+  js_url: ""
+  js_include: "../docs/public/webserver/guition-esp32-p4-jc1060p470/www.js"

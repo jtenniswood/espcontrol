@@ -22,10 +22,14 @@ var DATE_TIME_CARD_METADATA = {
     },
     idSuffix: "large-date-time-numbers",
     supportedCardSize: function (b, helpers) {
-      var cardSize = (helpers && helpers.cardSize) || 1;
-      return dateTimeCardMode(b) === "clock" ? cardSize === 3 || cardSize === 4 : cardSize === 4;
+      var cardSize = (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
+      return dateTimeCardMode(b) === "clock"
+        ? cardSize === CARD_SIZE_WIDE || cardSize === CARD_SIZE_LARGE
+        : cardSize === CARD_SIZE_LARGE;
     },
-    hideLabelCardSizes: [3],
+    hideLabel: function (_b, helpers) {
+      return ((helpers && helpers.cardSize) || CARD_SIZE_SINGLE) === CARD_SIZE_WIDE;
+    },
   },
   preview: {
     dateBadge: "calendar-month",
@@ -53,7 +57,7 @@ function defaultTimezoneCardEntity() {
 
 function dateTimeModeOptionValues() {
   var spec = cardContractOptionSpec("calendar", "date_time_mode");
-  return spec && spec.values ? spec.values.slice() : ["clock", "datetime", "", "timezone"];
+  return spec && spec.values ? spec.values.slice() : [];
 }
 
 function normalizeDateTimeCardMode(mode) {
@@ -120,10 +124,10 @@ function setDateTimeCardMode(b, mode, helpers) {
 }
 
 function dateTimeCardTimeParts() {
-  var now = new Date();
+  var now = webserverNow();
   var use12h = typeof state !== "undefined" && state.clockFormat === "12h";
-  var hour = now.getHours();
-  var minute = String(now.getMinutes()).padStart(2, "0");
+  var hour = now.getUTCHours();
+  var minute = String(now.getUTCMinutes()).padStart(2, "0");
   var timeValue = "";
 
   if (use12h) {
@@ -144,19 +148,13 @@ registerButtonType("calendar", {
   label: function () { return cardContractCardLabel("calendar"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("calendar"); },
   pickerKey: function () { return cardContractPickerKey("calendar"); },
-  experimental: function () { return cardContractExperimental("calendar"); },
   hidden: function () { return cardContractHidden("calendar"); },
   hideLabel: true,
   defaultConfig: function () { return cardContractDefaultConfig("calendar"); },
   cardMetadata: DATE_TIME_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = "sensor.date";
-    b.label = "";
-    b.icon = "Auto";
-    b.icon_on = "Auto";
-    b.sensor = "";
-    b.unit = "";
-    b.options = "";
+    var defaults = cardContractDefaultConfig("calendar");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
     b.precision = b.precision === "datetime" ? "datetime" : "";
   },
   renderSettings: function (panel, b, slot, helpers) {
@@ -167,16 +165,16 @@ registerButtonType("calendar", {
     helpers.renderCardLargeNumbersToggle(panel, b, helpers, DATE_TIME_CARD_METADATA);
   },
   renderPreview: function (b, helpers) {
-    var now = new Date();
+    var now = webserverNow();
     var isDateTime = b.precision === "datetime";
     var hideLabel = cardLargeNumbersHidePreviewLabel(b, helpers, DATE_TIME_CARD_METADATA);
     var buttonClass = hideLabel
       ? (isDateTime ? "sp-clock-wide-large" : "sp-date-time-wide-large")
       : undefined;
-    var day = String(now.getDate());
+    var day = String(now.getUTCDate());
     var month = typeof monthNameForIndex === "function"
-      ? monthNameForIndex(now.getMonth())
-      : now.toLocaleString("en", { month: "long" });
+      ? monthNameForIndex(now.getUTCMonth())
+      : now.toLocaleString("en", { month: "long", timeZone: "UTC" });
 
     if (isDateTime) {
       var time = dateTimeCardTimeParts();

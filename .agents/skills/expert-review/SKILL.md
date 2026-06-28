@@ -1,14 +1,14 @@
 ---
-name: expertreview
+name: Expert Review
 description: >-
   Provide an expert codebase review for this repository. Use when the user says
-  "/expertreview", asks for an expert review, wants refactoring or codebase
-  improvement recommendations, wants consistency and quality assessed, or asks
-  how to reduce duplication, improve component use, preserve the end-user
-  experience, and keep upgrades cleanly migratable.
+  "Expert Review" or "/expert-review", asks for an expert review, wants
+  refactoring or codebase improvement recommendations, wants consistency and
+  quality assessed, or asks how to reduce duplication, improve component use,
+  preserve the end-user experience, and keep upgrades cleanly migratable.
 ---
 
-# /expertreview
+# Expert Review
 
 ## Overview
 

@@ -9,6 +9,9 @@ substitutions:
   friendly_name: "EspControl P4-86"
   espcontrol_component_url: "../.."
   espcontrol_component_ref: "HEAD"
+  voice_wake_chime_file: "device/voice_wake_chime.flac"
+  voice_timer_alert_file: "device/voice_timer_alert.flac"
+  voice_stt_failure_chime_file: "device/voice_stt_failure_chime.flac"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -16,3 +19,7 @@ wifi:
 
 packages:
   espcontrol: !include packages.yaml
+
+web_server:
+  js_url: ""
+  js_include: "../../docs/public/webserver/esp32-p4-86/www.js"

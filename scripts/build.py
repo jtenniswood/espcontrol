@@ -312,13 +312,46 @@ def gen_i18n_header():
             f"inline const char *espcontrol_i18n_{fn}(const char *text) {{",
             "  if (!text) return \"\";",
         ])
+        seen_sources = set()
         for key, source in english.items():
+            if source in seen_sources:
+                continue
+            seen_sources.add(source)
             target = translated[key]
             if target == source:
                 continue
             lines.append(f"  if (std::strcmp(text, {cpp_string(source)}) == 0) return {cpp_string(target)};")
         lines.extend([
             "  return text;",
+            "}",
+            "",
+        ])
+
+    lines.extend([
+        "inline const char *espcontrol_i18n_key_en(const char *key) {",
+        "  if (!key) return \"\";",
+    ])
+    for key, source in english.items():
+        lines.append(f"  if (std::strcmp(key, {cpp_string(key)}) == 0) return {cpp_string(source)};")
+    lines.extend([
+        "  return key;",
+        "}",
+        "",
+    ])
+
+    for code, translated in languages:
+        fn = re.sub(r"[^A-Za-z0-9_]", "_", code)
+        lines.extend([
+            f"inline const char *espcontrol_i18n_key_{fn}(const char *key) {{",
+            "  if (!key) return \"\";",
+        ])
+        for key, target in translated.items():
+            source = english[key]
+            if target == source:
+                continue
+            lines.append(f"  if (std::strcmp(key, {cpp_string(key)}) == 0) return {cpp_string(target)};")
+        lines.extend([
+            "  return espcontrol_i18n_key_en(key);",
             "}",
             "",
         ])
@@ -336,6 +369,20 @@ def gen_i18n_header():
         "",
         "inline std::string espcontrol_i18n(const std::string &text) {",
         "  return std::string(espcontrol_i18n(text.c_str()));",
+        "}",
+        "",
+        "inline const char *espcontrol_i18n_key(const char *key) {",
+        "  if (!key) return \"\";",
+    ])
+    for code, _translated in languages:
+        fn = re.sub(r"[^A-Za-z0-9_]", "_", code)
+        lines.append(f"  if (espcontrol_language_code() == {cpp_string(code)}) return espcontrol_i18n_key_{fn}(key);")
+    lines.extend([
+        "  return espcontrol_i18n_key_en(key);",
+        "}",
+        "",
+        "inline std::string espcontrol_i18n_key(const std::string &key) {",
+        "  return std::string(espcontrol_i18n_key(key.c_str()));",
         "}",
         "",
     ])
@@ -370,6 +417,25 @@ def js_string_list(values):
     return "[" + ", ".join(json.dumps(v) for v in values) + "]"
 
 
+def contract_option_names(data):
+    names = {}
+    for name in data.get("optionNames", []):
+        if name:
+            names[name] = name
+    for card in data["cards"].values():
+        for option in card.get("options", []):
+            name = option.get("name")
+            if name:
+                names[name] = name
+            for storage_name in option.get("storage", []):
+                names[storage_name] = storage_name
+    return dict(sorted(names.items()))
+
+
+def option_constant_name(option_name):
+    return "CARD_CONTRACT_OPTION_NAME_" + re.sub(r"[^A-Za-z0-9]+", "_", option_name).strip("_").upper()
+
+
 def gen_card_contract_js(data):
     groups = data["cardGroups"]
     fan = groups["fan"]
@@ -380,6 +446,7 @@ def gen_card_contract_js(data):
     large = data["largeNumbers"]
     cards = data["cards"]
     aliases = data.get("migrationAliases", {})
+    option_names = contract_option_names(data)
     return (
         "// =============================================================================\n"
         "// GENERATED CARD CONFIG CONTRACT - do not edit by hand\n"
@@ -396,6 +463,7 @@ def gen_card_contract_js(data):
         f"var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {json.dumps(codes, indent=2)};\n"
         f"var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {json.dumps(code_to_type, indent=2)};\n"
         f"var CARD_CONTRACT_LARGE_NUMBERS = {json.dumps(large, indent=2)};\n"
+        f"var CARD_CONTRACT_OPTION_NAMES = {json.dumps(option_names, indent=2)};\n"
         "\n"
         "function cardContractListContains(list, value) {\n"
         "  return (list || []).indexOf(value) >= 0;\n"
@@ -422,11 +490,6 @@ def gen_card_contract_js(data):
         "function cardContractPickerKey(type) {\n"
         "  var card = cardContractCard(type);\n"
         "  return card && card.pickerKey ? card.pickerKey : \"\";\n"
-        "}\n"
-        "\n"
-        "function cardContractExperimental(type) {\n"
-        "  var card = cardContractCard(type);\n"
-        "  return card && card.experimental ? card.experimental : \"\";\n"
         "}\n"
         "\n"
         "function cardContractHidden(type) {\n"
@@ -495,6 +558,10 @@ def gen_card_contract_js(data):
         "  if (rule.precisions) return cardContractListContains(rule.precisions, precision || \"\");\n"
         "  return false;\n"
         "}\n"
+        "\n"
+        "function cardContractOptionName(name) {\n"
+        "  return CARD_CONTRACT_OPTION_NAMES[name] || name || \"\";\n"
+        "}\n"
     )
 
 
@@ -518,6 +585,10 @@ def contract_card_option_default(cards, card_type, option_name):
     return contract_card_option(cards, card_type, option_name).get("defaultValue", "")
 
 
+def contract_card_option_int(cards, card_type, option_name, key):
+    return int(contract_card_option(cards, card_type, option_name).get(key, 0))
+
+
 def gen_card_contract_h(data):
     groups = data["cardGroups"]
     fan = groups["fan"]
@@ -530,6 +601,7 @@ def gen_card_contract_h(data):
     media_behavior = cards["media"]["behavior"]["media"]
     climate_behavior = cards["climate"]["behavior"]["climate"]
     large_numbers = data["largeNumbers"]
+    option_names = contract_option_names(data)
     lines = [
         "#pragma once\n",
         "\n",
@@ -542,6 +614,7 @@ def gen_card_contract_h(data):
         cpp_string_array("CARD_CONTRACT_OPTION_SELECT_ACTIONS", option_actions),
         cpp_string_array("CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES", groups["brightnessSlider"]),
         cpp_string_array("CARD_CONTRACT_COVER_MODES", contract_card_option_values(cards, "cover", "cover_mode")),
+        cpp_string_array("CARD_CONTRACT_COVER_CONTROL_TABS", contract_card_option_values(cards, "cover", "cover_tabs")),
         cpp_string_array("CARD_CONTRACT_GARAGE_MODES", contract_card_option_values(cards, "garage", "garage_mode")),
         cpp_string_array("CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES", contract_card_option_values(cards, "garage", "label_display")),
         cpp_string_array("CARD_CONTRACT_INTERNAL_MODES", contract_card_option_values(cards, "internal", "internal_mode")),
@@ -552,18 +625,34 @@ def gen_card_contract_h(data):
         cpp_string_array("CARD_CONTRACT_MEDIA_LEGACY_MODES", media_behavior["legacyModes"].keys()),
         cpp_string_array("CARD_CONTRACT_MEDIA_STATE_DISPLAY_MODES", media_behavior["stateDisplayModes"]),
         cpp_string_array("CARD_CONTRACT_ALARM_ACTION_MODES", [item["value"] for item in alarm_behavior["actions"]]),
+        cpp_string_array("CARD_CONTRACT_ALARM_DEFAULT_ACTIONS", alarm_behavior["defaultActions"]),
         cpp_string_array("CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES", contract_card_option_values(cards, "alarm", "icon_display")),
         cpp_string_array("CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES", contract_card_option_values(cards, "alarm", "label_display")),
+        cpp_string_array("CARD_CONTRACT_IMAGE_MODAL_MODES", contract_card_option_values(cards, "image", "image_modal_mode")),
+        cpp_string_array("CARD_CONTRACT_LIGHT_CONTROL_TABS", contract_card_option_values(cards, "light_control", "light_tabs")),
         cpp_string_array("CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES", contract_card_option_values(cards, "climate", "label_display")),
         cpp_string_array("CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES", contract_card_option_values(cards, "climate", "number_display")),
+        cpp_string_array("CARD_CONTRACT_CLIMATE_TEMPERATURE_STEPS", contract_card_option_values(cards, "climate", "temperature_step")),
         cpp_string_array("CARD_CONTRACT_CLIMATE_PRECISION_VALUES", climate_behavior["precisionValues"]),
         cpp_string_array("CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS", large_numbers["weather"]["precisions"]),
+        "".join(
+            f"constexpr const char *{option_constant_name(name)} = {json.dumps(value)};\n"
+            for name, value in option_names.items()
+        ),
         f'constexpr const char *CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT = {json.dumps(contract_card_option_default(cards, "garage", "label_display"))};\n',
+        f'constexpr const char *CARD_CONTRACT_COVER_CONTROL_TABS_DEFAULT = {json.dumps(contract_card_option_default(cards, "cover", "cover_tabs"))};\n',
         f'constexpr const char *CARD_CONTRACT_MEDIA_DEFAULT_MODE = {json.dumps(media_behavior["defaultMode"])};\n',
+        f'constexpr int CARD_CONTRACT_MEDIA_VOLUME_MAX_MIN = {contract_card_option_int(cards, "media", "volume_max", "min")};\n',
+        f'constexpr int CARD_CONTRACT_MEDIA_VOLUME_MAX_MAX = {contract_card_option_int(cards, "media", "volume_max", "max")};\n',
+        f'constexpr int CARD_CONTRACT_MEDIA_VOLUME_MAX_DEFAULT = {int(contract_card_option_default(cards, "media", "volume_max"))};\n',
+        f'constexpr size_t CARD_CONTRACT_ALARM_MAX_VISIBLE_ACTIONS = {int(alarm_behavior.get("maxVisibleActions", 3))};\n',
         f'constexpr const char *CARD_CONTRACT_ALARM_ICON_DISPLAY_DEFAULT = {json.dumps(contract_card_option_default(cards, "alarm", "icon_display"))};\n',
         f'constexpr const char *CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT = {json.dumps(contract_card_option_default(cards, "alarm", "label_display"))};\n',
+        f'constexpr const char *CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT = {json.dumps(contract_card_option_default(cards, "image", "image_modal_mode"))};\n',
+        f'constexpr const char *CARD_CONTRACT_LIGHT_CONTROL_TABS_DEFAULT = {json.dumps(contract_card_option_default(cards, "light_control", "light_tabs"))};\n',
         f'constexpr const char *CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT = {json.dumps(climate_behavior["defaultLabelDisplay"])};\n',
         f'constexpr const char *CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_DEFAULT = {json.dumps(climate_behavior["defaultNumberDisplay"])};\n',
+        f'constexpr const char *CARD_CONTRACT_CLIMATE_TEMPERATURE_STEP_DEFAULT = {json.dumps(climate_behavior["defaultTemperatureStep"])};\n',
         "\n",
         "inline bool card_contract_string_in(const std::string &value, const char *const *items, size_t count) {\n",
         "  for (size_t i = 0; i < count; i++) {\n",
@@ -585,6 +674,11 @@ def gen_card_contract_h(data):
         "inline bool card_contract_cover_mode_valid(const std::string &mode) {\n",
         "  return card_contract_string_in(mode, CARD_CONTRACT_COVER_MODES,\n",
         "    sizeof(CARD_CONTRACT_COVER_MODES) / sizeof(CARD_CONTRACT_COVER_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_cover_control_tab_valid(const std::string &tab) {\n",
+        "  return card_contract_string_in(tab, CARD_CONTRACT_COVER_CONTROL_TABS,\n",
+        "    sizeof(CARD_CONTRACT_COVER_CONTROL_TABS) / sizeof(CARD_CONTRACT_COVER_CONTROL_TABS[0]));\n",
         "}\n",
         "\n",
         "inline bool card_contract_garage_mode_valid(const std::string &mode) {\n",
@@ -627,6 +721,16 @@ def gen_card_contract_h(data):
         "    sizeof(CARD_CONTRACT_ALARM_ACTION_MODES) / sizeof(CARD_CONTRACT_ALARM_ACTION_MODES[0]));\n",
         "}\n",
         "\n",
+        "inline size_t card_contract_alarm_default_action_count() {\n",
+        "  return sizeof(CARD_CONTRACT_ALARM_DEFAULT_ACTIONS) / sizeof(CARD_CONTRACT_ALARM_DEFAULT_ACTIONS[0]);\n",
+        "}\n",
+        "\n",
+        "inline const char *card_contract_alarm_default_action_at(size_t index) {\n",
+        "  return index < card_contract_alarm_default_action_count()\n",
+        "    ? CARD_CONTRACT_ALARM_DEFAULT_ACTIONS[index]\n",
+        "    : \"\";\n",
+        "}\n",
+        "\n",
         "inline bool card_contract_alarm_icon_display_valid(const std::string &mode) {\n",
         "  return card_contract_string_in(mode, CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES,\n",
         "    sizeof(CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES) / sizeof(CARD_CONTRACT_ALARM_ICON_DISPLAY_MODES[0]));\n",
@@ -637,6 +741,16 @@ def gen_card_contract_h(data):
         "    sizeof(CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_ALARM_LABEL_DISPLAY_MODES[0]));\n",
         "}\n",
         "\n",
+        "inline bool card_contract_image_modal_mode_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_IMAGE_MODAL_MODES,\n",
+        "    sizeof(CARD_CONTRACT_IMAGE_MODAL_MODES) / sizeof(CARD_CONTRACT_IMAGE_MODAL_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_light_control_tab_valid(const std::string &tab) {\n",
+        "  return card_contract_string_in(tab, CARD_CONTRACT_LIGHT_CONTROL_TABS,\n",
+        "    sizeof(CARD_CONTRACT_LIGHT_CONTROL_TABS) / sizeof(CARD_CONTRACT_LIGHT_CONTROL_TABS[0]));\n",
+        "}\n",
+        "\n",
         "inline bool card_contract_climate_label_display_valid(const std::string &mode) {\n",
         "  return card_contract_string_in(mode, CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES,\n",
         "    sizeof(CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_MODES[0]));\n",
@@ -645,6 +759,11 @@ def gen_card_contract_h(data):
         "inline bool card_contract_climate_number_display_valid(const std::string &mode) {\n",
         "  return card_contract_string_in(mode, CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES,\n",
         "    sizeof(CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES) / sizeof(CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_climate_temperature_step_valid(const std::string &step) {\n",
+        "  return card_contract_string_in(step, CARD_CONTRACT_CLIMATE_TEMPERATURE_STEPS,\n",
+        "    sizeof(CARD_CONTRACT_CLIMATE_TEMPERATURE_STEPS) / sizeof(CARD_CONTRACT_CLIMATE_TEMPERATURE_STEPS[0]));\n",
         "}\n",
         "\n",
         "inline bool card_contract_climate_precision_valid(const std::string &precision) {\n",
@@ -839,12 +958,9 @@ def summarize_card_options(card):
 
 
 def summarize_card_status(card):
-    status = []
     if card.get("hidden"):
-        status.append("Hidden")
-    if card.get("experimental"):
-        status.append("Experimental")
-    return ", ".join(status) if status else "Visible"
+        return "Hidden"
+    return "Visible"
 
 
 def summarize_picker_group(card_type, card, cards):
@@ -1042,6 +1158,33 @@ def check_duplicate_icon_fields(data):
     return errors
 
 
+def normalize_icon_codepoint(value):
+    return value.upper().lstrip("0") or "0"
+
+
+def check_firmware_icon_literals(data):
+    """Catch raw firmware icon literals that are missing from the device font subset."""
+    known_codepoints = {
+        normalize_icon_codepoint(item["codepoint"])
+        for item in icon_items(data)
+    }
+    errors = []
+    for path in sorted((ROOT / "components" / "espcontrol").glob("*.h")):
+        if path.name == "icons.h":
+            continue
+        text = path.read_text()
+        for match in re.finditer(r"\\U([0-9A-Fa-f]{8})", text):
+            codepoint = normalize_icon_codepoint(match.group(1))
+            if codepoint in known_codepoints:
+                continue
+            line_no = text.count("\n", 0, match.start()) + 1
+            errors.append(
+                f"{path.relative_to(ROOT)}:{line_no} uses U+{codepoint:0>8s} "
+                f"but it is not in {ICONS_JSON.relative_to(ROOT)}"
+            )
+    return errors
+
+
 def check_mdi_versions():
     """Make sure the browser CSS and device font URLs stay on the same MDI version."""
     files = [
@@ -1067,6 +1210,7 @@ def validate_icon_data(data):
     errors = []
     errors.extend(check_duplicate_icon_fields(data))
     errors.extend(check_mdi_versions())
+    errors.extend(check_firmware_icon_literals(data))
 
     mdi_codepoints = load_mdi_codepoints()
     for item in icon_items(data):
@@ -1279,7 +1423,9 @@ def load_timezone_options():
     options = []
     for match in re.finditer(r'^\s+- "([^"]+)"$', TIME_YAML.read_text(), re.M):
         option = match.group(1)
-        if " (GMT" in option and ("/" in option or option.startswith("UTC ")):
+        if option == "Auto (Home Assistant)" or (
+            " (GMT" in option and ("/" in option or option.startswith("UTC "))
+        ):
             options.append(option)
     if not options:
         raise BuildError(f"No timezone options found in {TIME_YAML.relative_to(ROOT)}")

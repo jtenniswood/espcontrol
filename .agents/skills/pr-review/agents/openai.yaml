@@ -1,4 +1,4 @@
 interface:
-  display_name: "/pr-review"
-  short_description: "Alias for /pr pull request review"
-  default_prompt: "Use $pr-review when I say /pr-review to review the latest submitted PR with the same workflow as /pr, including quality, security, and merge-risk checks."
+  display_name: "pr-review"
+  short_description: "Address PR feedback and resolve review threads"
+  default_prompt: "Use $pr-review when I say /pr-review to inspect unresolved feedback on an open pull request, make the requested fixes, push the branch, and mark addressed review threads as resolved."

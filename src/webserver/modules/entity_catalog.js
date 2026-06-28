@@ -8,25 +8,9 @@ var ENTITY_CATALOG = {
       "domain": "text",
       "name": "Button Order"
     },
-    "screen_theme": {
-      "domain": "select",
-      "name": "Screen: Theme",
-      "objectIds": [
-        "screen__theme",
-        "screen_theme"
-      ]
-    },
     "button_on_color": {
       "domain": "text",
       "name": "Button On Color"
-    },
-    "button_off_color": {
-      "domain": "text",
-      "name": "Button Off Color"
-    },
-    "sensor_card_color": {
-      "domain": "text",
-      "name": "Sensor Card Color"
     },
     "button_config": {
       "domain": "text",
@@ -106,22 +90,6 @@ var ENTITY_CATALOG = {
         "clock_bar__temperature_entities"
       ]
     },
-    "screen_clock_bar_weather_icon": {
-      "domain": "switch",
-      "name": "Screen: Clock Bar Weather Icon",
-      "objectIds": [
-        "screen__clock_bar_weather_icon",
-        "screen_clock_bar_weather_icon",
-        "clock_bar_weather_icon_enabled"
-      ]
-    },
-    "clock_bar_weather_entity": {
-      "domain": "text",
-      "name": "Clock Bar: Weather Entity",
-      "objectIds": [
-        "clock_bar__weather_entity"
-      ]
-    },
     "screen_network_status_icon": {
       "domain": "switch",
       "name": "Screen: Network Status Icon",
@@ -129,6 +97,14 @@ var ENTITY_CATALOG = {
         "screen__network_status_icon",
         "screen_network_status_icon",
         "network_status_enabled"
+      ]
+    },
+    "voice_services": {
+      "domain": "switch",
+      "name": "Voice Services",
+      "objectIds": [
+        "voice_services",
+        "voice_services_enabled"
       ]
     },
     "screen_temperature_degree_symbol": {
@@ -204,13 +180,13 @@ var ENTITY_CATALOG = {
         "cover_art_media_player_entity"
       ]
     },
-    "screen_saver_cover_art_ha_url": {
+    "screen_saver_cover_art_conditions": {
       "domain": "text",
-      "name": "Screen Saver: Cover Art Fallback Server",
+      "name": "Screen Saver: Cover Art Conditions",
       "objectIds": [
-        "screen_saver__home_assistant_url",
-        "screen_saver_cover_art_ha_url",
-        "cover_art_home_assistant_url"
+        "screen_saver__cover_art_conditions",
+        "screen_saver_cover_art_conditions",
+        "cover_art_attribute_conditions"
       ]
     },
     "screen_saver_cover_art_delay": {
@@ -222,13 +198,23 @@ var ENTITY_CATALOG = {
         "cover_art_delay"
       ]
     },
+    "screen_saver_cover_art_touch_pause": {
+      "domain": "number",
+      "name": "Screen Saver: Cover Art Touch Pause",
+      "objectIds": [
+        "screen_saver__cover_art_touch_pause",
+        "screen_saver_cover_art_touch_pause",
+        "cover_art_touch_pause"
+      ]
+    },
     "screen_saver_track_overlay_duration": {
       "domain": "number",
       "name": "Screen Saver: Show Track Overlay",
       "objectIds": [
         "screen_saver__track_overlay_duration",
         "screen_saver_track_overlay_duration",
-        "track_overlay_duration"
+        "track_overlay_duration",
+        "screen_saver__show_track_overlay"
       ]
     },
     "screen_saver_hide_cover_art_external_input": {
@@ -238,27 +224,23 @@ var ENTITY_CATALOG = {
         "screen_saver__hide_cover_art_on_external_input",
         "screen_saver_hide_cover_art_on_external_input",
         "hide_cover_art_on_external_input",
-        "cover_art_hide_external_input"
+        "cover_art_hide_external_input",
+        "screen_saver__hide_for_external_sources"
       ]
     },
-    "screen_saver_open_media_subpage": {
-      "domain": "switch",
-      "name": "Screen Saver: Open Media Subpage While Playing",
+    "home_assistant_artwork_protocol": {
+      "domain": "select",
+      "name": "Home Assistant Artwork Protocol",
       "objectIds": [
-        "screen_saver__open_media_subpage_while_playing",
-        "screen_saver_open_media_subpage_while_playing",
-        "screen_saver__open_media_subpage",
-        "screen_saver_open_media_subpage",
-        "open_media_subpage_while_playing"
+        "home_assistant_artwork_protocol",
+        "cover_art_home_assistant_artwork_protocol"
       ]
     },
-    "screen_saver_media_subpage": {
-      "domain": "text",
-      "name": "Screen Saver: Media Subpage",
+    "home_assistant_artwork_port": {
+      "domain": "number",
+      "name": "Home Assistant Artwork Port",
       "objectIds": [
-        "screen_saver__media_subpage",
-        "screen_saver_media_subpage",
-        "cover_art_media_subpage"
+        "home_assistant_artwork_port"
       ]
     },
     "screen_saver_daytime_clock_brightness": {
@@ -308,6 +290,10 @@ var ENTITY_CATALOG = {
     "screen_timezone": {
       "domain": "select",
       "name": "Screen: Timezone"
+    },
+    "screen_active_timezone": {
+      "domain": "text_sensor",
+      "name": "Screen: Active Timezone"
     },
     "screen_language": {
       "domain": "select",
@@ -361,6 +347,15 @@ var ENTITY_CATALOG = {
       "name": "Screen: Schedule Enabled",
       "objectIds": [
         "screen__schedule_enabled"
+      ]
+    },
+    "screen_schedule_trigger": {
+      "domain": "text",
+      "name": "Screen: Schedule Trigger",
+      "objectIds": [
+        "screen__schedule_trigger",
+        "screen_schedule_trigger",
+        "schedule_trigger"
       ]
     },
     "screen_schedule_mode": {
@@ -437,6 +432,24 @@ var ENTITY_CATALOG = {
       "domain": "number",
       "name": "Screen: Nighttime Brightness"
     },
+    "screen_brightness_dawn_time": {
+      "domain": "text",
+      "name": "Screen: Brightness Dawn Time",
+      "objectIds": [
+        "screen__brightness_dawn_time",
+        "screen_brightness_dawn_time",
+        "brightness_dawn_time"
+      ]
+    },
+    "screen_brightness_dusk_time": {
+      "domain": "text",
+      "name": "Screen: Brightness Dusk Time",
+      "objectIds": [
+        "screen__brightness_dusk_time",
+        "screen_brightness_dusk_time",
+        "brightness_dusk_time"
+      ]
+    },
     "firmware_version": {
       "domain": "text_sensor",
       "name": "Firmware: Version",
@@ -478,14 +491,6 @@ var ENTITY_CATALOG = {
       "domain": "select",
       "name": "Firmware: Update Frequency"
     },
-    "developer_experimental_features": {
-      "domain": "switch",
-      "name": "Developer: Experimental Features",
-      "objectIds": [
-        "developer__experimental_features",
-        "developer_experimental_features"
-      ]
-    },
     "screen_rotation": {
       "domain": "select",
       "name": "Screen: Rotation"
@@ -494,10 +499,7 @@ var ENTITY_CATALOG = {
   "groups": {
     "card": [
       "button_order",
-      "screen_theme",
-      "button_on_color",
-      "button_off_color",
-      "sensor_card_color"
+      "button_on_color"
     ],
     "card_slot": [
       "button_config"
@@ -519,8 +521,6 @@ var ENTITY_CATALOG = {
       "screen_clock_bar_layout",
       "screen_clock_bar_time",
       "clock_bar_temperature_entities",
-      "screen_clock_bar_weather_icon",
-      "clock_bar_weather_entity",
       "screen_network_status_icon",
       "screen_temperature_degree_symbol",
       "screen_subpage_chevron",
@@ -534,12 +534,13 @@ var ENTITY_CATALOG = {
       "media_player_sleep_prevention_entity",
       "screen_saver_cover_art",
       "screen_saver_cover_art_entity",
-      "screen_saver_cover_art_ha_url",
+      "screen_saver_cover_art_conditions",
       "screen_saver_cover_art_delay",
+      "screen_saver_cover_art_touch_pause",
       "screen_saver_track_overlay_duration",
       "screen_saver_hide_cover_art_external_input",
-      "screen_saver_open_media_subpage",
-      "screen_saver_media_subpage",
+      "home_assistant_artwork_protocol",
+      "home_assistant_artwork_port",
       "screen_saver_daytime_clock_brightness",
       "screen_saver_nighttime_clock_brightness",
       "screen_saver_clock_brightness",
@@ -548,6 +549,7 @@ var ENTITY_CATALOG = {
       "home_screen_timeout",
       "screen_saver_clock",
       "screen_timezone",
+      "screen_active_timezone",
       "screen_language",
       "screen_clock_format",
       "screen_ntp_server_1",
@@ -559,6 +561,7 @@ var ENTITY_CATALOG = {
       "wifi_strength",
       "screen_automatic_brightness",
       "screen_schedule_enabled",
+      "screen_schedule_trigger",
       "screen_schedule_mode",
       "screen_schedule_on_hour",
       "screen_schedule_off_hour",
@@ -569,13 +572,17 @@ var ENTITY_CATALOG = {
       "screen_schedule_clock_text_color",
       "screen_daytime_brightness",
       "screen_nighttime_brightness",
+      "screen_brightness_dawn_time",
+      "screen_brightness_dusk_time",
       "firmware_version",
       "firmware_update",
       "firmware_check_for_update",
       "firmware_install_update",
       "firmware_auto_update",
-      "firmware_update_frequency",
-      "developer_experimental_features"
+      "firmware_update_frequency"
+    ],
+    "settings_voice": [
+      "voice_services"
     ],
     "settings_optional": [
       "screen_rotation"

@@ -9,6 +9,7 @@
 substitutions:
   device_slug: "guition-esp32-s3-4848s040"
   firmware_manifest_slug: "guition-esp32-s3-4848s040"
+  firmware_version: "dev"
   screen_width: "480"
   screen_height: "480"
   content_width: "380"
@@ -28,12 +29,23 @@ substitutions:
   sensor_value_font: font_number_value
   padding: 14px
   radius: 8px
-  main_page_pad_top: "42"
+  main_page_card_gap: "10"
+  main_page_pad_top: "40"
   main_page_compact_pad_top: "4"
+  clock_bar_item_gap: "60"
+  clock_bar_visual_gap: "8"
+  voice_clock_bar_hide_code: ""
+  voice_clock_bar_apply_code: ""
+  voice_interaction_active_condition: "false"
   clock_font_size: "160"
   clock_cx: "240"
   clock_cy: "240"
+  screen_saver_clock_min_brightness: "1"
+  screen_saver_clock_default_brightness: "35"
+  screen_schedule_clock_min_brightness: "1"
+  screen_schedule_clock_default_brightness: "10"
   cover_art_size: "480"
+  cover_art_decode_size: "320"
   cover_art_x: "0"
   cover_art_y: "0"
   cover_art_accent_x: "0"
@@ -63,6 +75,7 @@ substitutions:
   cover_art_progress_height: "4"
   cover_art_text_color: "0xFFFFFF"
   cover_art_square_overlay: "true"
+  cover_art_live_image_updates: "false"
 
 packages:
   # ---------------------------------------------------------------------------
@@ -100,6 +113,7 @@ packages:
   backlight:       !include ../../common/addon/backlight.yaml
   bl_schedule:     !include ../../common/addon/backlight_schedule.yaml
   network:         !include ../../common/addon/network.yaml
+  memory_diag:     !include ../../common/addon/memory_diagnostics.yaml
   fw_update:       !include ../../common/addon/firmware_update.yaml
 
   # ---------------------------------------------------------------------------

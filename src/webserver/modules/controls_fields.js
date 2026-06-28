@@ -1,6 +1,6 @@
 // ── Settings helpers ───────────────────────────────────────────────────
 
-function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement) {
+function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement, actionElement) {
   var card = document.createElement("div");
   card.className = "card";
   var header = document.createElement("div");
@@ -9,10 +9,9 @@ function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement)
   h3.textContent = title;
   var rightWrap = document.createElement("div");
   rightWrap.className = "card-header-right";
-  var chevron = document.createElement("span");
-  chevron.className = "card-chevron";
-  chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  var chevron = createDisclosureChevron("card-chevron");
   if (badgeElement) rightWrap.appendChild(badgeElement);
+  if (actionElement) rightWrap.appendChild(actionElement);
   rightWrap.appendChild(chevron);
   header.appendChild(h3);
   header.appendChild(rightWrap);
@@ -95,8 +94,9 @@ function colorField(id, value, onChange) {
 function toggleRow(label, id, checked) {
   var row = document.createElement("div");
   row.className = "sp-toggle-row";
-  var lbl = document.createElement("span");
+  var lbl = document.createElement("label");
   lbl.className = "sp-toggle-label";
+  lbl.htmlFor = id;
   lbl.textContent = label;
   row.appendChild(lbl);
   var toggle = document.createElement("label");
@@ -128,7 +128,7 @@ function cardLargeNumbersSupportsCardSize(b, helpers, metadata) {
   if (large.supportedCardSize) {
     return !!cardMetadataValue(large.supportedCardSize, b, helpers);
   }
-  return cardSize === 4;
+  return cardSize === CARD_SIZE_LARGE;
 }
 
 function cardLargeNumbersMetadata(b) {
@@ -143,7 +143,7 @@ function cardLargeNumbersActiveForCardSize(b, helpers, metadata) {
     return false;
   }
   if (largeNumbersExplicitlyDisabled(b && b.options)) return false;
-  return (helpers.cardSize || 1) === 4 || cardLargeNumbersEnabled(b);
+  return (helpers.cardSize || CARD_SIZE_SINGLE) === CARD_SIZE_LARGE || cardLargeNumbersEnabled(b);
 }
 
 function cardLargeNumbersHidePreviewLabel(b, helpers, metadata) {
@@ -171,7 +171,7 @@ function renderCardModeSelector(panel, b, helpers, metadata) {
   var field = helpers.selectField(
     mode.label || "Type",
     helpers.idPrefix + (mode.idSuffix || "mode"),
-    mode.options || [],
+    cardMetadataValue(mode.options, b, helpers) || [],
     cardMetadataValue(mode.value, b, helpers) || "",
     function () {
       if (mode.onChange) mode.onChange.call(this, b, helpers);
@@ -218,14 +218,14 @@ function renderCardEntityField(panel, b, helpers, metadata) {
   var value = entity.value != null ? cardMetadataValue(entity.value, b, helpers) : (bindName ? b[bindName] : "");
   var domains = cardMetadataValue(entity.domains, b, helpers) || [];
   var field = helpers.entityField(
-    entity.label || "Entity",
+    cardMetadataValue(entity.label, b, helpers) || "Entity",
     helpers.idPrefix + (entity.idSuffix || "entity"),
     value || "",
-    entity.placeholder || "",
+    cardMetadataValue(entity.placeholder, b, helpers) || "",
     domains,
     bindName,
     entity.rerender !== false,
-    entity.requiredMessage || ""
+    cardMetadataValue(entity.requiredMessage, b, helpers) || ""
   );
   panel.appendChild(field.field);
   return field;
@@ -306,6 +306,38 @@ function renderCardOptionToggle(panel, b, helpers, metadata) {
   return row;
 }
 
+function renderCardIconPair(panel, b, helpers, offMetadata, onMetadata) {
+  return {
+    off: helpers.renderCardIconPicker(panel, b, helpers, offMetadata),
+    on: helpers.renderCardIconPicker(panel, b, helpers, onMetadata),
+  };
+}
+
+function renderCardActiveColorToggle(panel, b, helpers, metadata, setEnabled) {
+  return helpers.renderCardOptionToggle(panel, b, helpers, Object.assign({}, metadata, {
+    onChange: function (button, cardHelpers, checked) {
+      setEnabled(button, checked);
+      cardHelpers.saveField("options", button.options);
+    },
+  }));
+}
+
+function renderBasicCardFields(panel, b, helpers, metadata, options) {
+  options = options || {};
+  if (options.entity !== false && metadata.entity) {
+    helpers.renderCardEntityField(panel, b, helpers, metadata);
+  }
+  if (options.label !== false && metadata.labelField) {
+    helpers.renderCardTextField(panel, b, helpers, metadata.labelField);
+  }
+  if (options.icon !== false && metadata.icon) {
+    helpers.renderCardIconPicker(panel, b, helpers, metadata.icon);
+  }
+  if (options.iconPair !== false && (metadata.iconOff || metadata.iconOn)) {
+    renderCardIconPair(panel, b, helpers, metadata.iconOff, metadata.iconOn);
+  }
+}
+
 function renderCardSegmentControl(panel, b, helpers, metadata) {
   metadata = metadata || {};
   var segment = metadata.segment || metadata;
@@ -333,6 +365,28 @@ function cardBadgeLabelHtml(helpers, label, badgeIcon) {
   return '<span class="sp-btn-label-row"><span class="sp-btn-label">' +
     helpers.escHtml(label) +
   '</span><span class="sp-type-badge mdi mdi-' + badgeIcon + '"></span></span>';
+}
+
+function cardIconHtml(iconSlugName, extraHtml) {
+  return '<span class="sp-btn-icon mdi mdi-' + iconSlugName + '"></span>' + (extraHtml || "");
+}
+
+function cardIconSlug(b, helpers, fallback, field) {
+  field = field || "icon";
+  var value = b && b[field];
+  if (value && value !== "Auto") return iconSlug(value);
+  return iconSlug(cardMetadataValue(fallback, b, helpers) || "Auto");
+}
+
+function cardBadgePreview(b, helpers, options) {
+  options = options || {};
+  return {
+    iconHtml: cardIconHtml(
+      cardIconSlug(b, helpers, options.iconFallback, options.iconField),
+      options.iconExtraHtml || ""
+    ),
+    labelHtml: cardBadgeLabelHtml(helpers, options.label || "Configure", options.badge),
+  };
 }
 
 function condField() {

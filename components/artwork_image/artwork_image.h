@@ -32,6 +32,11 @@ enum ImageFormat {
   HEIC,
 };
 
+enum ImageResizeMode {
+  FIT,
+  COVER,
+};
+
 /**
  * @brief Download an image from a given URL, and decode it using the specified decoder.
  * The image will then be stored in a buffer, so that it can be re-displayed without the
@@ -50,8 +55,8 @@ class ArtworkImage : public PollingComponent,
    * @param format Format that the image is encoded in (@see ImageFormat).
    * @param buffer_size Size of the buffer used to download the image.
    */
-  ArtworkImage(const std::string &url, int width, int height, ImageFormat format, image::ImageType type,
-              image::Transparency transparency, uint32_t buffer_size, bool is_big_endian,
+  ArtworkImage(const std::string &url, int width, int height, ImageFormat format, ImageResizeMode resize_mode,
+              image::ImageType type, image::Transparency transparency, uint32_t buffer_size, bool is_big_endian,
               bool allow_insecure_local_urls);
 
   void draw(int x, int y, display::Display *display, Color color_on, Color color_off) override;
@@ -66,9 +71,22 @@ class ArtworkImage : public PollingComponent,
       this->url_ = url;
     }
   }
-  /** Set the URL and start an update, queuing the latest request if a download/decode is already active. */
-  void request_update_url(const std::string &url);
+  /** Set the URL and start an update, returning the effective URL after any downloader rewrite. */
+  std::string request_update_url(const std::string &url, int max_source_dim = 0);
+  /** Stop any in-flight download/decode while keeping the last completed image buffer available. */
+  void cancel_update();
   const std::string &get_url() const { return this->url_; }
+  int get_last_http_status() const { return this->last_http_status_; }
+  bool last_error_was_ha_media_proxy_not_found() const {
+    return this->last_http_status_ == HTTP_CODE_NOT_FOUND && this->last_error_was_ha_media_proxy_;
+  }
+
+  void set_target_size(int width, int height) {
+    if (width <= 0 || height <= 0) return;
+    this->fixed_width_ = width;
+    this->fixed_height_ = height;
+  }
+  void set_resize_mode(ImageResizeMode resize_mode) { this->resize_mode_ = resize_mode; }
 
   /** Add the request header */
   template<typename V> void add_request_header(const std::string &header, V value) {
@@ -97,10 +115,12 @@ class ArtworkImage : public PollingComponent,
   size_t resize_download_buffer(size_t size) { return this->download_buffer_.resize(size); }
 
   template<typename F> void add_on_finished_callback(F &&callback) {
-    this->download_finished_callback_.add(std::forward<F>(callback));
+    std::function<void(bool)> cb(std::forward<F>(callback));
+    if (cb) this->download_finished_callback_.add(std::move(cb));
   }
   template<typename F> void add_on_error_callback(F &&callback) {
-    this->download_error_callback_.add(std::forward<F>(callback));
+    std::function<void()> cb(std::forward<F>(callback));
+    if (cb) this->download_error_callback_.add(std::move(cb));
   }
 
   bool is_big_endian() const { return this->is_big_endian_; }
@@ -124,6 +144,9 @@ class ArtworkImage : public PollingComponent,
   bool detect_heic_();
   bool create_decoder_(ImageFormat format, size_t total_size);
   bool is_busy_() const { return this->downloader_ != nullptr || this->decoder_ != nullptr; }
+  bool has_newer_pending_update_() const {
+    return this->update_pending_ && !this->pending_url_.empty() && this->pending_url_ != this->url_;
+  }
   void queue_pending_update_(const std::string &url);
   void start_pending_update_();
   void log_state_(const char *stage);
@@ -156,6 +179,9 @@ class ArtworkImage : public PollingComponent,
   bool promote_decode_buffer_();
   void retire_active_buffer_();
   void cleanup_retired_buffers_(bool force);
+  void limit_retired_buffers_();
+  size_t retired_buffer_bytes_() const;
+  void invalidate_lvgl_cache_();
   bool ensure_download_buffer_capacity_();
   bool decode_buffered_data_();
   void finish_download_();
@@ -193,16 +219,19 @@ class ArtworkImage : public PollingComponent,
   size_t download_buffer_initial_size_;
 
   const ImageFormat format_;
+  ImageResizeMode resize_mode_;
   image::Image *placeholder_{nullptr};
 
   std::string url_{""};
+  int last_http_status_{0};
+  bool last_error_was_ha_media_proxy_{false};
 
   std::vector<std::pair<std::string, TemplatableValue<std::string> > > request_headers_;
 
   /** width requested on configuration, or 0 if non specified. */
-  const int fixed_width_;
+  int fixed_width_;
   /** height requested on configuration, or 0 if non specified. */
-  const int fixed_height_;
+  int fixed_height_;
   /**
    * Whether the image is stored in big-endian format.
    * This is used to determine how to store 16 bit colors in the buffer.

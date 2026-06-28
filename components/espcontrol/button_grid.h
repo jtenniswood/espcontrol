@@ -22,6 +22,7 @@
 #include <functional>
 #include "esphome/components/api/homeassistant_service.h"
 #include "esphome/components/http_request/http_request.h"
+#include "esphome/components/artwork_image/artwork_image.h"
 #include "esphome/components/lvgl/lvgl_esphome.h"
 #include "esphome/core/string_ref.h"
 #include "i18n_generated.h"
@@ -32,12 +33,15 @@
 // implementation is split into focused headers below for easier review.
 #include "button_grid_ha.h"
 #include "button_grid_config.h"
+#include "button_grid_style.h"
 #include "button_grid_card_runtime.h"
 #include "button_grid_layout.h"
 #include "button_grid_display.h"
 #include "button_grid_cards.h"
 #include "button_grid_modal.h"
 #include "button_grid_subscriptions.h"
+#include "button_grid_vacuum.h"
+#include "button_grid_lawn_mower.h"
 #include "button_grid_actions.h"
 #include "button_grid_sliders.h"
 #include "button_grid_fan.h"

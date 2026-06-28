@@ -1,0 +1,78 @@
+# =============================================================================
+# ESP32-C6 CO-PROCESSOR FIRMWARE UPDATE
+# =============================================================================
+# Adds Home Assistant entities for checking and installing ESP32-C6 hosted
+# firmware updates on ESP32-P4 devices that use an ESP32-C6 Wi-Fi co-processor.
+# =============================================================================
+
+update:
+  - platform: esp32_hosted
+    id: esp32_c6_update
+    type: http
+    http_request_id: http_req
+    source: https://esphome.github.io/esp-hosted-firmware/manifest/esp32c6.json
+    update_interval: 24h
+
+text_sensor:
+  - platform: template
+    name: "ESP32-C6: Update Available"
+    entity_category: DIAGNOSTIC
+    id: c6_update_available
+    lambda: |-
+      auto upd = id(esp32_c6_update);
+      if (!upd) return std::string(espcontrol_i18n("Unknown"));
+      if (upd->state == esphome::update::UpdateState::UPDATE_STATE_AVAILABLE)
+        return std::string(espcontrol_i18n("Update available"));
+      return std::string(espcontrol_i18n("Up-to-date"));
+    update_interval: 60s
+
+  - platform: template
+    name: "ESP32-C6: Current Firmware"
+    entity_category: DIAGNOSTIC
+    id: c6_update_current_firmware
+    icon: mdi:chip
+    lambda: |-
+      auto upd = id(esp32_c6_update);
+      if (!upd) return std::string(espcontrol_i18n("Unknown"));
+      auto &cur = upd->update_info.current_version;
+      if (cur.empty()) return std::string(espcontrol_i18n("Unknown"));
+      return cur;
+    update_interval: 60s
+
+  - platform: template
+    name: "ESP32-C6: Latest Firmware"
+    entity_category: DIAGNOSTIC
+    id: c6_update_latest_firmware
+    icon: mdi:chip
+    lambda: |-
+      auto upd = id(esp32_c6_update);
+      if (!upd) return std::string(espcontrol_i18n("Unknown"));
+      auto &lat = upd->update_info.latest_version;
+      if (lat.empty()) return std::string(espcontrol_i18n("Unknown"));
+      return lat;
+    update_interval: 60s
+
+button:
+  - platform: template
+    name: "Firmware ESP32-C6: Install Update"
+    entity_category: CONFIG
+    icon: mdi:download
+    on_press:
+      then:
+        - logger.log:
+            level: WARN
+            format: "Installing ESP32-C6 firmware update..."
+        - update.perform:
+            id: esp32_c6_update
+
+  - platform: template
+    name: "Firmware ESP32-C6: Check for Update"
+    entity_category: CONFIG
+    icon: mdi:update
+    on_press:
+      then:
+        - logger.log:
+            level: WARN
+            format: "Checking if ESP32-C6 firmware update is available..."
+        - update.check:
+            id: esp32_c6_update

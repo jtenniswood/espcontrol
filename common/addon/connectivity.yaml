@@ -101,6 +101,22 @@ script:
   - id: wifi_show_hotspot_setup
     mode: restart
     then:
+      - lvgl.resume:
+      - globals.set:
+          id: display_asleep
+          value: 'false'
+      - globals.set:
+          id: screen_schedule_asleep
+          value: 'false'
+      - globals.set:
+          id: screensaver_display_off_active
+          value: 'false'
+      - globals.set:
+          id: screensaver_dimmed_active
+          value: 'false'
+      - globals.set:
+          id: backlight_manual_off
+          value: 'false'
       - script.execute: clock_bar_hide
       - lambda: |-
           std::string msg = std::string(espcontrol_i18n("Connect to WiFi")) +
@@ -109,6 +125,10 @@ script:
           lv_label_set_text(id(wifi_setup_title), espcontrol_i18n("WiFi Setup"));
           lv_label_set_text(id(wifi_setup_instructions), msg.c_str());
       - lvgl.page.show: wifi_setup_page
+      - light.turn_on:
+          id: display_backlight
+          brightness: 90%
+          transition_length: 500ms
       - script.execute: setup_screen_dim
 
   - id: wifi_reconnect_flow

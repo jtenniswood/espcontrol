@@ -25,6 +25,12 @@ globals:
   - id: sunrise_sunset_valid
     type: bool
     initial_value: 'false'
+  - id: schedule_mode_always_on
+    type: bool
+    initial_value: 'false'
+  - id: schedule_mode_clock
+    type: bool
+    initial_value: 'false'
 
 # =============================================================================
 # SUNRISE / SUNSET DISPLAY
@@ -53,6 +59,18 @@ esphome:
   on_boot:
     priority: -250
     then:
+      - lambda: |-
+          std::string mode = id(schedule_mode).current_option();
+          id(schedule_mode_always_on) = screen_schedule_always_on_mode(mode);
+          id(schedule_mode_clock) = screen_schedule_clock_mode(mode);
+      - if:
+          condition:
+            lambda: 'return id(schedule_enabled).state && screen_schedule_disabled_trigger(id(screen_schedule_trigger).state);'
+          then:
+            - lambda: |-
+                auto call = id(screen_schedule_trigger).make_call();
+                call.set_value("time");
+                call.perform();
       - script.execute: screen_schedule_boot_guard
 
 # =============================================================================
@@ -83,8 +101,25 @@ switch:
     web_server:
       sorting_group_id: sg_brightness
     on_turn_on:
-      - script.execute: screen_schedule_check
+      - if:
+          condition:
+            lambda: 'return screen_schedule_disabled_trigger(id(screen_schedule_trigger).state);'
+          then:
+            - lambda: |-
+                auto call = id(screen_schedule_trigger).make_call();
+                call.set_value("time");
+                call.perform();
+          else:
+            - script.execute: screen_schedule_check
     on_turn_off:
+      - if:
+          condition:
+            lambda: 'return !screen_schedule_disabled_trigger(id(screen_schedule_trigger).state);'
+          then:
+            - lambda: |-
+                auto call = id(screen_schedule_trigger).make_call();
+                call.set_value("disabled");
+                call.perform();
       - globals.set:
           id: backlight_manual_off
           value: 'false'
@@ -118,9 +153,39 @@ select:
       sorting_group_id: sg_brightness
     on_value:
       then:
+        - lambda: |-
+            std::string mode = id(schedule_mode).current_option();
+            id(schedule_mode_always_on) = screen_schedule_always_on_mode(mode);
+            id(schedule_mode_clock) = screen_schedule_clock_mode(mode);
         - script.execute: screen_schedule_check
 
 text:
+  - platform: template
+    name: "${entity_screen_schedule_trigger}"
+    internal: true
+    id: screen_schedule_trigger
+    optimistic: true
+    restore_value: true
+    initial_value: "disabled"
+    min_length: 0
+    max_length: 10
+    mode: text
+    entity_category: config
+    icon: "mdi:calendar-sync"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return screen_schedule_disabled_trigger(id(screen_schedule_trigger).state);'
+            then:
+              - switch.turn_off: schedule_enabled
+            else:
+              - switch.turn_on: schedule_enabled
+        - script.execute: screen_schedule_check
+
   - platform: template
     name: "${entity_screen_schedule_clock_text_color}"
     internal: true
@@ -143,6 +208,44 @@ text:
               lambda: 'return id(is_clock_showing);'
             then:
               - lambda: 'apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);'
+
+  - platform: template
+    name: "${entity_screen_brightness_dawn_time}"
+    internal: true
+    id: brightness_dawn_time
+    optimistic: true
+    restore_value: true
+    initial_value: "06:00"
+    min_length: 5
+    max_length: 5
+    mode: text
+    entity_category: config
+    icon: "mdi:weather-sunset-up"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - script.execute: backlight_apply_brightness
+
+  - platform: template
+    name: "${entity_screen_brightness_dusk_time}"
+    internal: true
+    id: brightness_dusk_time
+    optimistic: true
+    restore_value: true
+    initial_value: "18:00"
+    min_length: 5
+    max_length: 5
+    mode: text
+    entity_category: config
+    icon: "mdi:weather-sunset-down"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - script.execute: backlight_apply_brightness
 
 number:
   - platform: template
@@ -247,14 +350,17 @@ number:
         - if:
             condition:
               lambda: |-
-                if (!id(schedule_enabled).state || id(display_asleep)) return false;
+                if (id(display_asleep)) return false;
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return now.is_valid() &&
-                       !screen_schedule_in_window(
-                         now.hour,
+                return screen_schedule_night_active(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         id(presence_detected),
+                         now.is_valid(),
+                         now.is_valid() ? now.hour : 0,
                          (int) id(schedule_on_hour).state,
                          (int) id(schedule_off_hour).state) &&
-                       screen_schedule_always_on_mode(id(schedule_mode).current_option());
+                       id(schedule_mode_always_on);
             then:
               - script.execute: backlight_apply_brightness
 
@@ -262,10 +368,10 @@ number:
     name: "${entity_screen_schedule_clock_brightness}"
     internal: true
     id: schedule_clock_brightness
-    min_value: 1
+    min_value: ${screen_schedule_clock_min_brightness}
     max_value: 100
     step: 1
-    initial_value: 10
+    initial_value: ${screen_schedule_clock_default_brightness}
     optimistic: true
     restore_value: true
     unit_of_measurement: "%"
@@ -332,7 +438,23 @@ script:
     then:
       - if:
           condition:
-            switch.is_on: schedule_enabled
+            lambda: |-
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+              bool waiting_for_time = screen_schedule_waiting_for_time(
+                       id(screen_schedule_trigger).state,
+                       id(schedule_enabled).state,
+                       now.is_valid());
+              bool night_active = screen_schedule_night_active(
+                       id(screen_schedule_trigger).state,
+                       id(schedule_enabled).state,
+                       id(presence_detected),
+                       now.is_valid(),
+                       now.is_valid() ? now.hour : 0,
+                       (int) id(schedule_on_hour).state,
+                       (int) id(schedule_off_hour).state);
+              if (!waiting_for_time && !night_active) return false;
+              return waiting_for_time ||
+                     (!id(schedule_mode_always_on) && !id(schedule_mode_clock));
           then:
             - globals.set:
                 id: display_asleep
@@ -354,6 +476,7 @@ script:
             - globals.set:
                 id: screen_schedule_asleep
                 value: 'false'
+            - script.execute: screen_schedule_check
 
   # ---------------------------------------------------------------------------
   # Force the screen asleep because it is outside schedule hours
@@ -361,9 +484,12 @@ script:
   - id: screen_schedule_sleep
     mode: restart
     then:
+      - lambda: 'backlight_close_modals_for_display_takeover();'
       - script.stop: screensaver_idle_check
       - script.stop: home_screen_idle_check
       - script.stop: screen_schedule_wake_timeout_check
+      - script.execute: clock_bar_hide
+      - script.wait: clock_bar_hide
       - script.execute: hide_cover_art_view
       - globals.set:
           id: backlight_manual_off
@@ -404,6 +530,9 @@ script:
       - globals.set:
           id: manual_wake_ms
           value: '0'
+      - globals.set:
+          id: backlight_force_next_write
+          value: 'true'
       - lambda: 'global_preferences->sync();'
       - lvgl.resume:
       - script.execute: hide_clock_view
@@ -418,6 +547,7 @@ script:
       - globals.set:
           id: display_asleep
           value: 'false'
+      - script.execute: clock_bar_apply
       - script.execute: backlight_apply_brightness
       - script.execute: screensaver_idle_check
       - script.execute: home_screen_idle_check
@@ -448,6 +578,9 @@ script:
       - globals.set:
           id: manual_wake_ms
           value: '0'
+      - globals.set:
+          id: backlight_force_next_write
+          value: 'true'
       - lvgl.resume:
       - script.execute: hide_clock_view
       - script.execute: hide_cover_art_view
@@ -461,6 +594,7 @@ script:
       - globals.set:
           id: display_asleep
           value: 'false'
+      - script.execute: clock_bar_apply
       - script.execute: backlight_apply_brightness
       - script.execute: home_screen_idle_check
 
@@ -470,6 +604,7 @@ script:
   - id: screen_schedule_show_clock
     mode: restart
     then:
+      - lambda: 'backlight_close_modals_for_display_takeover();'
       - script.stop: screensaver_idle_check
       - script.stop: home_screen_idle_check
       - script.stop: screen_schedule_wake_timeout_check
@@ -507,17 +642,25 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (!id(schedule_enabled).state) return;
+          if (!id(schedule_enabled).state ||
+              screen_schedule_disabled_trigger(id(screen_schedule_trigger).state)) {
+            return;
+          }
 
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          if (!now.is_valid()) return;
+          if (screen_schedule_time_trigger(id(screen_schedule_trigger).state) &&
+              !now.is_valid()) {
+            return;
+          }
 
-          bool in_window = screen_schedule_in_window(
-            now.hour,
-            (int) id(schedule_on_hour).state,
-            (int) id(schedule_off_hour).state);
-
-          if (in_window) {
+          if (screen_schedule_normal_active(
+                id(screen_schedule_trigger).state,
+                id(schedule_enabled).state,
+                id(presence_detected),
+                now.is_valid(),
+                now.is_valid() ? now.hour : 0,
+                (int) id(schedule_on_hour).state,
+                (int) id(schedule_off_hour).state)) {
             id(manual_wake_ms) = 0;
             if (id(display_asleep) && id(screen_schedule_asleep) &&
                 !id(backlight_manual_off)) {
@@ -526,8 +669,7 @@ script:
             return;
           }
 
-          std::string mode = id(schedule_mode).current_option();
-          if (screen_schedule_always_on_mode(mode)) {
+          if (id(schedule_mode_always_on)) {
             id(manual_wake_ms) = 0;
             if (id(backlight_manual_off)) {
               id(backlight_schedule_display_off).execute();
@@ -537,7 +679,7 @@ script:
             return;
           }
 
-          if (screen_schedule_clock_mode(mode)) {
+          if (id(schedule_mode_clock)) {
             if (id(backlight_manual_off)) {
               id(backlight_schedule_display_off).execute();
               return;
@@ -596,12 +738,19 @@ script:
           }
 
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          if (!now.is_valid()) return;
+          if (screen_schedule_time_trigger(id(screen_schedule_trigger).state) &&
+              !now.is_valid()) {
+            return;
+          }
 
-          if (screen_schedule_in_window(
-              now.hour,
-              (int) id(schedule_on_hour).state,
-              (int) id(schedule_off_hour).state)) {
+          if (screen_schedule_normal_active(
+                id(screen_schedule_trigger).state,
+                id(schedule_enabled).state,
+                id(presence_detected),
+                now.is_valid(),
+                now.is_valid() ? now.hour : 0,
+                (int) id(schedule_on_hour).state,
+                (int) id(schedule_off_hour).state)) {
             id(manual_wake_ms) = 0;
             return;
           }
@@ -614,7 +763,7 @@ script:
           uint32_t elapsed = (uint32_t) (millis() - id(manual_wake_ms));
           if (elapsed >= timeout_ms && !id(screen_schedule_asleep)) {
             id(manual_wake_ms) = 0;
-            if (screen_schedule_clock_mode(id(schedule_mode).current_option())) {
+            if (id(schedule_mode_clock)) {
               id(screen_schedule_show_clock).execute();
             } else {
               id(screen_schedule_sleep).execute();
@@ -628,47 +777,72 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (id(display_asleep)) return;
+          if (id(display_asleep) && !id(cover_art_screensaver_active)) return;
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (id(screen_schedule_asleep)) {
-            if (screen_schedule_clock_mode(id(schedule_mode).current_option())) return;
+            if (id(schedule_mode_clock)) return;
             id(backlight_force_display_off).execute();
             return;
           }
-          if (id(schedule_enabled).state && !now.is_valid()) {
+          if (screen_schedule_waiting_for_time(
+                id(screen_schedule_trigger).state,
+                id(schedule_enabled).state,
+                now.is_valid())) {
             id(backlight_force_display_off).execute();
             return;
           }
-          if (!id(automatic_brightness_enabled).state) return;
           float pct;
           if (id(manual_wake_ms) != 0) {
             pct = id(schedule_wake_brightness).state;
             if (std::isnan(pct) || pct <= 0) pct = 10;
             if (pct < 10) pct = 10;
             if (pct > 100) pct = 100;
-          } else if (id(schedule_enabled).state && now.is_valid() &&
-                     !screen_schedule_in_window(
-                       now.hour,
+          } else if (screen_schedule_night_active(
+                       id(screen_schedule_trigger).state,
+                       id(schedule_enabled).state,
+                       id(presence_detected),
+                       now.is_valid(),
+                       now.is_valid() ? now.hour : 0,
                        (int) id(schedule_on_hour).state,
                        (int) id(schedule_off_hour).state) &&
-                     screen_schedule_always_on_mode(id(schedule_mode).current_option())) {
+                     id(schedule_mode_always_on)) {
             pct = id(schedule_dimmed_brightness).state;
             if (std::isnan(pct) || pct <= 0) pct = 10;
             if (pct < 1) pct = 1;
             if (pct > 100) pct = 100;
           } else {
             bool is_day = id(last_is_daytime);
-            pct = calc_brightness_pct(
+            int rise_h = id(sunrise_hour);
+            int rise_m = id(sunrise_minute);
+            int set_h = id(sunset_hour);
+            int set_m = id(sunset_minute);
+            bool times_valid = brightness_schedule_times(
+              id(automatic_brightness_enabled).state,
               id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
               id(sunset_hour), id(sunset_minute),
+              id(brightness_dawn_time).state, id(brightness_dusk_time).state,
+              rise_h, rise_m, set_h, set_m);
+            pct = calc_brightness_pct(
+              times_valid, rise_h, rise_m, set_h, set_m,
               now.is_valid() ? now.hour : 12, now.is_valid() ? now.minute : 0,
               &is_day, id(brightness_day).state, id(brightness_night).state);
             id(last_is_daytime) = is_day;
           }
+          float target = pct / 100.0f;
+          if (target < 0.01f) target = 0.01f;
+          if (target > 1.0f) target = 1.0f;
+          float current = 0.0f;
+          id(display_backlight).current_values_as_brightness(&current);
+          if (!id(backlight_force_next_write) &&
+              id(display_backlight).current_values.is_on() &&
+              std::fabs(current - target) < 0.005f) {
+            return;
+          }
           auto call = id(display_backlight).turn_on();
-          call.set_brightness(pct / 100.0f);
+          call.set_brightness(target);
           call.set_transition_length(400);
           call.perform();
+          id(backlight_force_next_write) = false;
 
   # ---------------------------------------------------------------------------
   # Recalculate sunrise/sunset from timezone coordinates and current date
@@ -677,12 +851,9 @@ script:
     mode: single
     then:
       - lambda: |-
-          const char *posix = apply_timezone(id(timezone_select).current_option());
-          id(panel_time).set_timezone(posix);
-          id(homeassistant_time).set_timezone(posix);
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (!now.is_valid()) return;
-          bool use_12h = id(clock_format_select).current_option() == "12h";
+          bool use_12h = id(clock_format_12h);
           auto r = recalc_sunrise_sunset(now.year, now.month, now.day_of_month,
                                          id(timezone_select).current_option(),
                                          use_12h);
@@ -708,8 +879,11 @@ interval:
           condition:
             lambda: |-
               return (id(screen_schedule_asleep) &&
-                      !screen_schedule_clock_mode(id(schedule_mode).current_option())) ||
-                     (id(schedule_enabled).state && !panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+                      !id(schedule_mode_clock)) ||
+                     screen_schedule_waiting_for_time(
+                       id(screen_schedule_trigger).state,
+                       id(schedule_enabled).state,
+                       panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
           then:
             - script.execute: backlight_force_display_off
 
@@ -721,10 +895,19 @@ interval:
             lambda: |-
               auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               if (!now.is_valid()) return false;
-              bool changed = check_daylight_transition(
+              int rise_h = id(sunrise_hour);
+              int rise_m = id(sunrise_minute);
+              int set_h = id(sunset_hour);
+              int set_m = id(sunset_minute);
+              bool times_valid = brightness_schedule_times(
+                id(automatic_brightness_enabled).state,
                 id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
-                id(sunset_hour), id(sunset_minute), now.hour, now.minute,
-                id(last_is_daytime));
+                id(sunset_hour), id(sunset_minute),
+                id(brightness_dawn_time).state, id(brightness_dusk_time).state,
+                rise_h, rise_m, set_h, set_m);
+              bool changed = check_daylight_transition(
+                times_valid, rise_h, rise_m, set_h, set_m,
+                now.hour, now.minute, id(last_is_daytime));
               if (changed) id(last_is_daytime) = !id(last_is_daytime);
               return changed;
           then:

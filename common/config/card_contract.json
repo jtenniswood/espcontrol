@@ -10,6 +10,12 @@
     "precision",
     "options"
   ],
+  "optionNames": [
+    "state_low_label",
+    "state_high_label",
+    "image_refresh",
+    "image_refresh_mode"
+  ],
   "cards": {
     "": {
       "label": "Switch",
@@ -75,12 +81,41 @@
     "action": {
       "label": "Action",
       "allowInSubpage": true,
-      "domains": ["scene", "script", "automation", "button", "vacuum", "input_button", "input_boolean", "input_number", "input_select", "select"],
+      "domains": ["scene", "script", "automation", "button", "input_button", "input_boolean", "input_number", "input_select", "select"],
       "options": [
         {
           "name": "large_numbers",
           "label": "Large State Numbers",
           "kind": "flag"
+        },
+        {
+          "name": "confirmation_required",
+          "label": "Confirmation Required",
+          "kind": "flag",
+          "storage": ["confirm_on"]
+        },
+        {
+          "name": "script_fields",
+          "label": "Fields",
+          "kind": "text"
+        },
+        {
+          "name": "confirm_message",
+          "label": "Message",
+          "kind": "text",
+          "defaultValue": "Run this script?"
+        },
+        {
+          "name": "confirm_yes",
+          "label": "Confirm Button",
+          "kind": "text",
+          "defaultValue": "Yes"
+        },
+        {
+          "name": "confirm_no",
+          "label": "Cancel Button",
+          "kind": "text",
+          "defaultValue": "No"
         }
       ],
       "default": {
@@ -95,6 +130,56 @@
         "options": ""
       }
     },
+    "vacuum": {
+      "label": "Vacuum",
+      "allowInSubpage": true,
+      "domains": ["vacuum"],
+      "options": [
+        {
+          "name": "vacuum_mode",
+          "label": "Type",
+          "kind": "choice",
+          "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"],
+          "defaultValue": "start_stop"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Robot Vacuum",
+        "icon_on": "Auto",
+        "sensor": "start_stop",
+        "unit": "",
+        "type": "vacuum",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "lawn_mower": {
+      "label": "Lawn Mower",
+      "allowInSubpage": true,
+      "domains": ["lawn_mower"],
+      "options": [
+        {
+          "name": "lawn_mower_mode",
+          "label": "Type",
+          "kind": "choice",
+          "values": ["status", "start_mowing", "dock", "pause_resume"],
+          "defaultValue": "start_mowing"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Robot Mower",
+        "icon_on": "Auto",
+        "sensor": "start_mowing",
+        "unit": "",
+        "type": "lawn_mower",
+        "precision": "",
+        "options": ""
+      }
+    },
     "alarm": {
       "label": "Alarm",
       "allowInSubpage": true,
@@ -104,7 +189,7 @@
           "name": "alarm_card_type",
           "label": "Type",
           "kind": "choice",
-          "values": ["control_panel", "away", "home", "disarm"],
+          "values": ["control_panel", "away", "home", "night", "vacation", "disarm"],
           "defaultValue": "control_panel"
         },
         {
@@ -123,7 +208,7 @@
           "name": "actions",
           "label": "Visible Actions",
           "kind": "choice",
-          "values": ["away", "home", "disarm"],
+          "values": ["away", "home", "night", "vacation", "disarm"],
           "defaultValue": "away|home|disarm"
         },
         {
@@ -145,6 +230,7 @@
         "alarm": {
           "controlPanelValue": "control_panel",
           "defaultActions": ["away", "home", "disarm"],
+          "maxVisibleActions": 3,
           "actions": [
             {
               "value": "away",
@@ -159,6 +245,20 @@
               "service": "alarm_control_panel.alarm_arm_home",
               "icon": "Shield Home",
               "legacyIcon": "Home"
+            },
+            {
+              "value": "night",
+              "label": "Arm Night",
+              "service": "alarm_control_panel.alarm_arm_night",
+              "icon": "Weather Night",
+              "legacyIcon": "Weather Night"
+            },
+            {
+              "value": "vacation",
+              "label": "Arm Vacation",
+              "service": "alarm_control_panel.alarm_arm_vacation",
+              "icon": "Airplane",
+              "legacyIcon": "Airplane"
             },
             {
               "value": "disarm",
@@ -280,6 +380,13 @@
           "defaultValue": "target"
         },
         {
+          "name": "temperature_step",
+          "label": "Temperature Step",
+          "kind": "choice",
+          "values": ["1", "0.5"],
+          "defaultValue": "1"
+        },
+        {
           "name": "large_numbers",
           "label": "Large Temperature Numbers",
           "kind": "flag"
@@ -289,6 +396,7 @@
         "climate": {
           "defaultLabelDisplay": "label",
           "defaultNumberDisplay": "target",
+          "defaultTemperatureStep": "1",
           "precisionValues": ["", "1", "2", "3"]
         }
       },
@@ -313,8 +421,8 @@
           "name": "cover_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["", "tilt", "toggle", "open", "close", "stop", "set_position"],
-          "defaultValue": ""
+          "values": ["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"],
+          "defaultValue": "modal"
         },
         {
           "name": "cover_position",
@@ -324,6 +432,13 @@
           "min": 0,
           "max": 100,
           "step": 1
+        },
+        {
+          "name": "cover_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "values": ["position", "controls", "tilt"],
+          "defaultValue": "position|controls|tilt"
         }
       ],
       "behavior": {
@@ -341,7 +456,7 @@
         "label": "",
         "icon": "Blinds",
         "icon_on": "Blinds Open",
-        "sensor": "",
+        "sensor": "modal",
         "unit": "",
         "type": "cover",
         "precision": "",
@@ -384,7 +499,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -402,7 +516,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -420,7 +533,6 @@
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -437,7 +549,6 @@
     "fan_speed": {
       "label": "Fans",
       "allowInSubpage": true,
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -451,11 +562,35 @@
         "options": ""
       }
     },
+    "fan_control": {
+      "label": "Fans",
+      "allowInSubpage": true,
+      "pickerKey": "fan_speed",
+      "domains": ["fan"],
+      "options": [
+        {
+          "name": "fan_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "defaultValue": "power|speed|preset|oscillation|direction"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Fan",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "fan_control",
+        "precision": "",
+        "options": ""
+      }
+    },
     "fan_switch": {
       "label": "Fans",
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
-      "experimental": "developer",
       "domains": ["fan"],
       "default": {
         "entity": "",
@@ -526,8 +661,8 @@
       "default": {
         "entity": "",
         "label": "",
-        "icon": "Power",
-        "icon_on": "Flash",
+        "icon": "Lightbulb Outline",
+        "icon_on": "Lightbulb",
         "sensor": "",
         "unit": "",
         "type": "internal",
@@ -591,6 +726,33 @@
         "sensor": "",
         "unit": "2000-6500",
         "type": "light_temperature",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "light_control": {
+      "label": "Lights",
+      "allowInSubpage": true,
+      "pickerKey": "light_brightness",
+      "hidden": true,
+      "domains": ["light"],
+      "options": [
+        {
+          "name": "light_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "values": ["power", "brightness", "temperature", "color"],
+          "defaultValue": "power|brightness|temperature|color"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Lightbulb Outline",
+        "icon_on": "Lightbulb",
+        "sensor": "",
+        "unit": "",
+        "type": "light_control",
         "precision": "",
         "options": ""
       }
@@ -738,6 +900,22 @@
         "options": ""
       }
     },
+    "screen_lock": {
+      "label": "Screen Lock",
+      "allowInSubpage": true,
+      "domains": [],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Lock",
+        "icon_on": "Lock Open",
+        "sensor": "",
+        "unit": "",
+        "type": "screen_lock",
+        "precision": "",
+        "options": ""
+      }
+    },
     "webhook": {
       "label": "Webhook",
       "allowInSubpage": true,
@@ -838,6 +1016,24 @@
         "options": ""
       }
     },
+    "local_sensor": {
+      "label": "Local Sensor",
+      "allowInSubpage": true,
+      "pickerKey": "sensor",
+      "hidden": true,
+      "domains": ["sensor", "text_sensor"],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "local",
+        "unit": "",
+        "type": "sensor",
+        "precision": "",
+        "options": ""
+      }
+    },
     "slider": {
       "label": "Slider",
       "allowInSubpage": true,
@@ -863,7 +1059,7 @@
           "name": "subpage_kind",
           "label": "Subpage Type",
           "kind": "choice",
-          "values": ["", "lights", "climate", "presence", "media"],
+          "values": ["", "switch", "lights", "climate", "presence", "media", "alarm", "cover", "garage", "lock", "vacuum", "lawn_mower", "weather", "sensor", "image"],
           "defaultValue": ""
         },
         {
@@ -948,6 +1144,41 @@
         "options": ""
       }
     },
+    "image": {
+      "label": "Camera Card",
+      "allowInSubpage": true,
+      "domains": ["camera", "image"],
+      "options": [
+        {
+          "name": "image_label",
+          "label": "Show Label",
+          "kind": "flag"
+        },
+        {
+          "name": "image_icon",
+          "label": "Show Icon",
+          "kind": "flag"
+        },
+        {
+          "name": "image_modal_mode",
+          "label": "Expanded Image",
+          "kind": "choice",
+          "values": ["fill", "fit"],
+          "defaultValue": "fill"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "image",
+        "precision": "",
+        "options": ""
+      }
+    },
     "weather_forecast": {
       "label": "Weather Forecast",
       "allowInSubpage": true,
@@ -978,6 +1209,10 @@
     "weather_forecast": {
       "type": "weather",
       "precision": "tomorrow"
+    },
+    "local_sensor": {
+      "type": "sensor",
+      "sensor": "local"
     }
   },
   "optionSelect": {
@@ -1000,6 +1235,9 @@
       },
       "fan_speed": {
         "defaultIcon": "Fan Speed 2"
+      },
+      "fan_control": {
+        "defaultIcon": "Fan"
       },
       "fan_oscillate": {
         "defaultIcon": "Fan"
@@ -1040,6 +1278,7 @@
     "clock": "CK",
     "timezone": "T",
     "sensor": "S",
+    "local_sensor": "LS",
     "door_window": "X",
     "presence": "PR",
     "weather": "W",
@@ -1047,21 +1286,26 @@
     "option_select": "U",
     "fan_switch": "B",
     "fan_speed": "J",
+    "fan_control": "FC",
     "fan_oscillate": "O",
     "fan_direction": "E",
     "fan_preset": "Z",
     "light_brightness": "V",
     "light_switch": "Q",
+    "light_control": "LC",
     "alarm": "Y",
     "alarm_action": "AA",
     "slider": "L",
     "cover": "C",
+    "vacuum": "VC",
+    "lawn_mower": "LM",
     "light_temperature": "N",
     "garage": "R",
     "lock": "K",
     "media": "M",
     "climate": "H",
     "push": "P",
+    "screen_lock": "SL",
     "webhook": "WH",
     "internal": "I",
     "subpage": "G"

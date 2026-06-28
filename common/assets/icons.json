@@ -24,6 +24,12 @@
       "comment": "Modal close button"
     },
     {
+      "name": "Folder",
+      "codepoint": "F024B",
+      "mdi": "folder",
+      "comment": "Default subpage indicator"
+    },
+    {
       "name": "Download",
       "codepoint": "F01DA",
       "mdi": "download",
@@ -94,6 +100,18 @@
       "codepoint": "F07D0",
       "mdi": "home-assistant",
       "comment": "Setup screens"
+    },
+    {
+      "name": "Image Card Loading",
+      "codepoint": "F02E9",
+      "mdi": "image",
+      "comment": "Image card loading state"
+    },
+    {
+      "name": "Image Card Unavailable",
+      "codepoint": "F02ED",
+      "mdi": "image-broken",
+      "comment": "Image card unavailable state"
     }
   ],
   "icons": [
@@ -278,6 +296,11 @@
       "mdi": "bell"
     },
     {
+      "name": "Bird",
+      "codepoint": "F15C6",
+      "mdi": "bird"
+    },
+    {
       "name": "Blinds",
       "codepoint": "F00AC",
       "mdi": "blinds"
@@ -376,6 +399,11 @@
       "name": "Clock",
       "codepoint": "F0150",
       "mdi": "clock-outline"
+    },
+    {
+      "name": "Circle Outline",
+      "codepoint": "F0766",
+      "mdi": "circle-outline"
     },
     {
       "name": "Coffee Maker",
@@ -718,6 +746,16 @@
       "mdi": "robot-mower"
     },
     {
+      "name": "Robot Mower",
+      "codepoint": "F11F7",
+      "mdi": "robot-mower"
+    },
+    {
+      "name": "Robot Mower Outline",
+      "codepoint": "F11F3",
+      "mdi": "robot-mower-outline"
+    },
+    {
       "name": "Leaf",
       "codepoint": "F032A",
       "mdi": "leaf"
@@ -863,6 +901,16 @@
       "mdi": "meter-gas"
     },
     {
+      "name": "Microphone",
+      "codepoint": "F036C",
+      "mdi": "microphone"
+    },
+    {
+      "name": "Microphone Off",
+      "codepoint": "F036D",
+      "mdi": "microphone-off"
+    },
+    {
       "name": "Microsoft Xbox",
       "codepoint": "F05B9",
       "mdi": "microsoft-xbox"
@@ -903,6 +951,11 @@
       "mdi": "music"
     },
     {
+      "name": "Nintendo Switch",
+      "codepoint": "F07E1",
+      "mdi": "nintendo-switch"
+    },
+    {
       "name": "Outdoor Lamp",
       "codepoint": "F1054",
       "mdi": "outdoor-lamp"
@@ -911,6 +964,11 @@
       "name": "Oven",
       "codepoint": "F04DE",
       "mdi": "stove"
+    },
+    {
+      "name": "Palette",
+      "codepoint": "F03D8",
+      "mdi": "palette"
     },
     {
       "name": "Package",
@@ -951,6 +1009,11 @@
       "name": "Play Pause",
       "codepoint": "F040E",
       "mdi": "play-pause"
+    },
+    {
+      "name": "PlayStation",
+      "codepoint": "F0414",
+      "mdi": "sony-playstation"
     },
     {
       "name": "Pool",
@@ -998,9 +1061,69 @@
       "mdi": "recycle"
     },
     {
+      "name": "Remote Back",
+      "codepoint": "F030D",
+      "mdi": "keyboard-backspace"
+    },
+    {
+      "name": "Remote Down",
+      "codepoint": "F0047",
+      "mdi": "arrow-down-bold-circle"
+    },
+    {
+      "name": "Remote Home",
+      "codepoint": "F07D2",
+      "mdi": "home-circle"
+    },
+    {
+      "name": "Remote Left",
+      "codepoint": "F004F",
+      "mdi": "arrow-left-bold-circle"
+    },
+    {
+      "name": "Remote OK",
+      "codepoint": "F05E0",
+      "mdi": "check-circle"
+    },
+    {
+      "name": "Remote Right",
+      "codepoint": "F0056",
+      "mdi": "arrow-right-bold-circle"
+    },
+    {
+      "name": "Remote Up",
+      "codepoint": "F005F",
+      "mdi": "arrow-up-bold-circle"
+    },
+    {
       "name": "Robot Vacuum",
       "codepoint": "F070D",
       "mdi": "robot-vacuum"
+    },
+    {
+      "name": "Robot Vacuum Alert",
+      "codepoint": "F1B5D",
+      "mdi": "robot-vacuum-alert"
+    },
+    {
+      "name": "Robot Vacuum Off",
+      "codepoint": "F1C01",
+      "mdi": "robot-vacuum-off"
+    },
+    {
+      "name": "Robot Vacuum Variant",
+      "codepoint": "F0908",
+      "mdi": "robot-vacuum-variant"
+    },
+    {
+      "name": "Robot Vacuum Variant Alert",
+      "codepoint": "F1B5E",
+      "mdi": "robot-vacuum-variant-alert"
+    },
+    {
+      "name": "Robot Vacuum Variant Off",
+      "codepoint": "F1C02",
+      "mdi": "robot-vacuum-variant-off"
     },
     {
       "name": "Roller Shade",
@@ -1124,6 +1247,11 @@
     },
     {
       "name": "Spotlight",
+      "codepoint": "F04C8",
+      "mdi": "spotlight"
+    },
+    {
+      "name": "Spotlight Beam",
       "codepoint": "F04C9",
       "mdi": "spotlight-beam"
     },
@@ -1156,6 +1284,11 @@
       "name": "Swap Horizontal",
       "codepoint": "F04E1",
       "mdi": "swap-horizontal"
+    },
+    {
+      "name": "Swap Vertical",
+      "codepoint": "F04E2",
+      "mdi": "swap-vertical"
     },
     {
       "name": "Power Socket UK",
@@ -1273,9 +1406,29 @@
       "mdi": "trash-can-outline"
     },
     {
+      "name": "Vacuum",
+      "codepoint": "F19A1",
+      "mdi": "vacuum"
+    },
+    {
+      "name": "Vacuum Outline",
+      "codepoint": "F19A2",
+      "mdi": "vacuum-outline"
+    },
+    {
+      "name": "View Headline",
+      "codepoint": "F0571",
+      "mdi": "view-headline"
+    },
+    {
       "name": "Volume High",
       "codepoint": "F057E",
       "mdi": "volume-high"
+    },
+    {
+      "name": "Volume Off",
+      "codepoint": "F0581",
+      "mdi": "volume-off"
     },
     {
       "name": "Wall Outlet",
