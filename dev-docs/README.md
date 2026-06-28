@@ -58,7 +58,6 @@ or upstream project instead.
 | Work out which check to run | [Check Matrix](check-matrix.md) |
 | Diagnose a broken behavior | [Failure Cookbook](failure-cookbook.md) |
 | Understand why the repo is shaped this way | [Architecture Decision Records](adr/README.md) |
-| Review whether a change needs concise docs updates | [Documentation Review Prompt](prompts/docs-review.md) |
 
 ## Fast Orientation
 
@@ -111,8 +110,6 @@ start in the contract and flow outward from there.
 - [Check Matrix](check-matrix.md) - generated path-to-check routing table.
 - [Architecture Decision Records](adr/README.md) - accepted structural decisions
   that should not be undone casually.
-- [Review Prompts](prompts/README.md) - reusable review prompts for checking
-  documentation coverage and other maintainer concerns.
 - [Card Contract](card-contract.md) - how card metadata moves from JSON into the
   web UI and firmware.
 - [Card Type Map](card-type-map.md) - per-card starting points for web files,
