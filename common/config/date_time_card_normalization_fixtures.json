@@ -1,0 +1,92 @@
+[
+  {
+    "name": "calendar default fills date entity",
+    "input": ";;;;;;calendar;;",
+    "expected": {
+      "entity": "sensor.date",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "calendar",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "calendar datetime preserves large numbers",
+    "input": "sensor.date;Date;Calendar;Calendar;ignored;%;calendar;datetime;large_numbers,ignored=1",
+    "expected": {
+      "entity": "sensor.date",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "calendar",
+      "precision": "datetime",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "calendar invalid precision becomes date",
+    "input": "sensor.date;Date;Auto;Auto;ignored;%;calendar;bad;large_numbers=off",
+    "expected": {
+      "entity": "sensor.date",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "calendar",
+      "precision": "",
+      "options": "large_numbers=off"
+    }
+  },
+  {
+    "name": "clock strips non clock fields",
+    "input": "sensor.time;Clock;Clock;Clock;ignored;%;clock;datetime;large_numbers,ignored=1",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "clock",
+      "precision": "",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "timezone preserves city and strips display fields",
+    "input": "America/New_York (GMT-5);New York;Clock;Clock;ignored;%;timezone;datetime;large_numbers,ignored=1",
+    "expected": {
+      "entity": "America/New_York (GMT-5)",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "timezone",
+      "precision": "",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "timezone default uses contract fallback",
+    "input": ";;;;;;timezone;;ignored=1",
+    "expected": {
+      "entity": "UTC (GMT+0)",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "timezone",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

@@ -1,0 +1,107 @@
+[
+  {
+    "name": "door window default normalizes to door",
+    "input": "binary_sensor.front_door;Front Door;Auto;Auto;binary_sensor.front_door;ignored;door_window;;active_color,ignored=1",
+    "expected": {
+      "entity": "",
+      "label": "Front Door",
+      "icon": "Door",
+      "icon_on": "Door Open",
+      "sensor": "binary_sensor.front_door",
+      "unit": "",
+      "type": "door_window",
+      "precision": "door",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "door window preserves custom icon pair",
+    "input": "binary_sensor.front_door;Front Door;Garage;Garage Open;binary_sensor.front_door;ignored;door_window;door;active_color",
+    "expected": {
+      "entity": "",
+      "label": "Front Door",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "binary_sensor.front_door",
+      "unit": "",
+      "type": "door_window",
+      "precision": "door",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "window subtype uses window defaults",
+    "input": "binary_sensor.kitchen_window;Kitchen Window;Auto;Auto;binary_sensor.kitchen_window;ignored;door_window;window;large_numbers,active_color",
+    "expected": {
+      "entity": "",
+      "label": "Kitchen Window",
+      "icon": "Window Closed",
+      "icon_on": "Window Open",
+      "sensor": "binary_sensor.kitchen_window",
+      "unit": "",
+      "type": "door_window",
+      "precision": "window",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "door window can disable active color",
+    "input": "binary_sensor.front_door;Front Door;Door;Door Open;binary_sensor.front_door;ignored;door_window;door;ignored=1",
+    "expected": {
+      "entity": "",
+      "label": "Front Door",
+      "icon": "Door",
+      "icon_on": "Door Open",
+      "sensor": "binary_sensor.front_door",
+      "unit": "",
+      "type": "door_window",
+      "precision": "door",
+      "options": ""
+    }
+  },
+  {
+    "name": "presence defaults icons and strips ignored fields",
+    "input": "binary_sensor.living_room;Living Room;Auto;Auto;binary_sensor.living_room;ignored;presence;text;large_numbers,active_color",
+    "expected": {
+      "entity": "",
+      "label": "Living Room",
+      "icon": "Motion Sensor Off",
+      "icon_on": "Motion Sensor",
+      "sensor": "binary_sensor.living_room",
+      "unit": "",
+      "type": "presence",
+      "precision": "",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "presence preserves custom icon pair",
+    "input": "binary_sensor.living_room;Living Room;Account Off;Account;binary_sensor.living_room;ignored;presence;icon;active_color,ignored=1",
+    "expected": {
+      "entity": "",
+      "label": "Living Room",
+      "icon": "Account Off",
+      "icon_on": "Account",
+      "sensor": "binary_sensor.living_room",
+      "unit": "",
+      "type": "presence",
+      "precision": "",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "presence can disable active color",
+    "input": "binary_sensor.living_room;Living Room;Motion Sensor Off;Motion Sensor;binary_sensor.living_room;ignored;presence;;ignored=1",
+    "expected": {
+      "entity": "",
+      "label": "Living Room",
+      "icon": "Motion Sensor Off",
+      "icon_on": "Motion Sensor",
+      "sensor": "binary_sensor.living_room",
+      "unit": "",
+      "type": "presence",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

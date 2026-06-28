@@ -366,8 +366,8 @@ registerButtonType("media", {
       };
     }
     if (mode === "position") {
-      var bgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
-      var progressColor = "444444";
+      var bgColor = WEB_UI_COLORS.secondary;
+      var progressColor = WEB_UI_COLORS.secondary;
       var positionLabel = b.precision === "state" ? "Paused" : label;
       var positionClass = "sp-sensor-preview sp-media-position-time" +
         (cardLargeNumbersActiveForCardSize(b, helpers, MEDIA_CARD_METADATA) ? " sp-sensor-preview-large" : "");
@@ -384,13 +384,13 @@ registerButtonType("media", {
     if (mode === "now_playing") {
       var progressBg = "";
       if (mediaNowPlayingProgressEnabled(b)) {
-        var nowBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
+        var nowBgColor = WEB_UI_COLORS.secondary;
         progressBg =
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(nowBgColor) + '">' +
-          '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#444444">' +
+          '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + WEB_UI_COLORS.secondary + '">' +
           '</span></span></span>';
       } else if (mediaNowPlayingPlayPauseEnabled(b)) {
-        var playBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
+        var playBgColor = WEB_UI_COLORS.secondary;
         progressBg =
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(playBgColor) + '">' +
           '</span>';

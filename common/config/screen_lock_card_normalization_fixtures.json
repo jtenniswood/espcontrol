@@ -1,0 +1,47 @@
+[
+  {
+    "name": "default screen lock card stays canonical",
+    "input": ";;;;;;screen_lock;;",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Lock",
+      "icon_on": "Lock Open",
+      "sensor": "",
+      "unit": "",
+      "type": "screen_lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "screen lock strips non local fields",
+    "input": "switch.should_not_save;Screen Lock;Auto;Auto;sensor.should_not_save;%;screen_lock;2;large_numbers",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Lock",
+      "icon_on": "Lock Open",
+      "sensor": "",
+      "unit": "",
+      "type": "screen_lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "screen lock forces contract icons",
+    "input": "light.kitchen;Custom Label;Security;Auto;lock;ignored;screen_lock;text;ignored=1",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Lock",
+      "icon_on": "Lock Open",
+      "sensor": "",
+      "unit": "",
+      "type": "screen_lock",
+      "precision": "",
+      "options": ""
+    }
+  }
+]
