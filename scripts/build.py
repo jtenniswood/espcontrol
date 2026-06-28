@@ -1193,7 +1193,7 @@ def check_mdi_versions():
         *sorted(ROOT.glob("devices/*/device/fonts.yaml")),
     ]
     version_re = re.compile(
-        r"(?:@mdi/font@|MaterialDesign-Webfont/raw/v|materialdesignicons\.com/cdn/)"
+        r"(?:@mdi/font@|MaterialDesign-Webfont/raw/v|materialdesignicons\.com/cdn/|materialdesignicons-webfont-)"
         r"([0-9]+(?:\.[0-9]+)+)"
     )
     errors = []

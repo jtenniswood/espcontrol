@@ -25,6 +25,7 @@ jobs:
         with:
           sparse-checkout: |
             common/assets/*.yaml
+            common/assets/fonts/*
             devices/manifest.json
             devices/*/device/fonts.yaml
             scripts/device_matrix.py
