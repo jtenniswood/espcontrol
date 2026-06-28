@@ -132,6 +132,7 @@ constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_m
 constexpr const char *IMAGE_REFRESH_OPTION = card_runtime_option_name_image_refresh();
 constexpr const char *IMAGE_REFRESH_MODE_OPTION = card_runtime_option_name_image_refresh_mode();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
+constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = "cover_tabs";
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
 
