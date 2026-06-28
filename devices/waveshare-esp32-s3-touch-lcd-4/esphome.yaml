@@ -1,0 +1,17 @@
+# =============================================================================
+# ESPHOME ENTRY POINT - Waveshare ESP32-S3-Touch-LCD-4
+# =============================================================================
+
+substitutions:
+  name: "your-device-name"
+  friendly_name: "Your Device Name"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+packages:
+  setup:
+    url: https://github.com/jtenniswood/espcontrol/
+    file: devices/waveshare-esp32-s3-touch-lcd-4/packages.yaml
+    refresh: 1s

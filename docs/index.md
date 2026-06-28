@@ -63,6 +63,7 @@ See [Card Types](/card-types/) for examples and setup notes.
 | 4.3-inch JC4880P443 | [AliExpress ~£24](https://s.click.aliexpress.com/e/_c32jr3eN) | [Stand page](/reference/3d-printable-stands) |
 | 4-inch ESP32-P4 86 Panel | [AliExpress ~£45](https://s.click.aliexpress.com/e/_c3O6ndAX) | [Stand page](/reference/3d-printable-stands) |
 | 4-inch 4848S040 | [AliExpress ~£16](https://s.click.aliexpress.com/e/_c3sIhvBv) | [Stand page](/reference/3d-printable-stands) |
+| 4-inch Waveshare LCD-4 | [Waveshare ~£30](https://www.waveshare.com/esp32-s3-touch-lcd-4.htm) | — |
 
 ## Support This Project
 

@@ -1,0 +1,382 @@
+# =============================================================================
+# DEVICE - Waveshare ESP32-S3-Touch-LCD-4 hardware definition
+# =============================================================================
+# 4" 480x480 ST7701S RGB panel, GT911 touch, CH32V003 I/O expander (Rev 4).
+# Check the board silkscreen: Rev 4 is marked "V4.0". Rev 3 boards use a
+# different I/O expander and are not supported by this profile yet.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"
+      CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      CONFIG_SPIRAM_XIP_FROM_PSRAM: "y"
+
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [espcontrol, web_server_idf, artwork_image, mipi_rgb]
+    refresh: 1s
+  - source: github://pr#10071
+    components: [waveshare_io_ch32v003]
+    refresh: 1h
+
+espcontrol:
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-DESPCONTROL_DISABLE_TODO=1"
+      - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+    build_src_flags:
+      - "-mtext-section-literals"
+  on_boot:
+    - priority: 950
+      then:
+        - switch.turn_off: board_buzzer
+    - priority: 800
+      then:
+        - lambda: |-
+            auto reason = esp_reset_reason();
+            if (reason == ESP_RST_SW) {
+              esp_ota_img_states_t ota_state;
+              const esp_partition_t *running = esp_ota_get_running_partition();
+              if (running != nullptr &&
+                  esp_ota_get_state_partition(running, &ota_state) == ESP_OK &&
+                  ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+                ESP_LOGI("waveshare_reset", "Marking OTA image valid before hardware-reset workaround");
+                id(waveshare_lcd4_safe_mode).mark_successful();
+                global_preferences->sync();
+                esp_sleep_enable_timer_wakeup(100000);
+                esp_deep_sleep_start();
+                return;
+              }
+            }
+            if (reason == ESP_RST_USB || reason == ESP_RST_SW) {
+              esp_sleep_enable_timer_wakeup(100000);
+              esp_deep_sleep_start();
+            }
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: apply_screen_rotation
+        - script.execute: clock_bar_apply
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+    on_error:
+      then:
+        - script.execute: show_update_failed
+  - platform: http_request
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+        - lambda: |-
+            esp_sleep_enable_timer_wakeup(100000);
+            esp_deep_sleep_start();
+    on_error:
+      then:
+        - script.execute: show_update_failed
+
+safe_mode:
+  id: waveshare_lcd4_safe_mode
+  boot_is_good_after: 10s
+
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+api:
+  listen_backlog: 4
+  max_connections: 3
+  max_send_queue: 12
+
+logger:
+  hardware_uart: UART0
+
+wifi:
+  use_psram: true
+
+i2c:
+  - id: board_i2c
+    setup_priority: 1000
+    sda: GPIO15
+    scl: GPIO7
+    scan: true
+    frequency: 400kHz
+
+spi:
+  - id: lcd_spi
+    clk_pin: GPIO2
+    mosi_pin: GPIO1
+    miso_pin: GPIO4
+
+waveshare_io_ch32v003:
+  - id: io_hub
+    setup_priority: 900
+    address: 0x24
+    i2c_id: board_i2c
+
+output:
+  - platform: waveshare_io_ch32v003
+    waveshare_io_ch32v003_id: io_hub
+    id: gpio_backlight_pwm
+    inverted: true
+    zero_means_zero: true
+    safe_pwm_levels:
+      min_value: 0
+      max_value: 247
+
+switch:
+  - platform: gpio
+    id: board_buzzer
+    name: "Board Buzzer"
+    setup_priority: 850
+    restore_mode: ALWAYS_OFF
+    internal: true
+    pin:
+      waveshare_io_ch32v003: io_hub
+      number: 6
+      mode:
+        output: true
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                return (id(screen_schedule_asleep) &&
+                        !id(schedule_mode_clock)) ||
+                       screen_schedule_waiting_for_time(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         now.is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(screensaver_display_off_active);'
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return !id(display_asleep) &&
+                       !id(screen_schedule_asleep) &&
+                       !id(screensaver_display_off_active) &&
+                       !id(screensaver_dimmed_active);
+            then:
+              - script.execute: screen_schedule_manual_sleep
+
+button:
+  - platform: template
+    name: Backlight Sweep Test
+    internal: true
+    disabled_by_default: true
+    entity_category: diagnostic
+    icon: mdi:brightness-percent
+    web_server:
+      sorting_group_id: sg_brightness
+    on_press:
+      then:
+        - script.execute: s3_backlight_sweep_test
+
+touchscreen:
+  - platform: gt911
+    setup_priority: 600
+    id: my_touchscreen
+    i2c_id: board_i2c
+    display: my_display
+    update_interval: 20ms
+    interrupt_pin:
+      waveshare_io_ch32v003: io_hub
+      number: 2
+    reset_pin:
+      waveshare_io_ch32v003: io_hub
+      number: 1
+    on_touch:
+      - script.execute: screensaver_wake
+
+display:
+  - platform: mipi_rgb
+    setup_priority: 750
+    model: WAVESHARE-4-480X480
+    id: my_display
+    update_interval: never
+    auto_clear_enabled: false
+    reset_pin:
+      waveshare_io_ch32v003: io_hub
+      number: 3
+    pixel_mode: 18bit
+    init_sequence:
+      - [0x11, 0x00]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]
+      - [0xC0, 0x3B, 0x00]
+      - [0xC1, 0x0D, 0x02]
+      - [0xC2, 0x21, 0x08]
+      - [0xCD, 0x08]
+      - [0xB0, 0x00, 0x11, 0x18, 0x0E, 0x11, 0x06, 0x07, 0x08, 0x07, 0x22, 0x04, 0x12, 0x0F, 0xAA, 0x31, 0x18]
+      - [0xB1, 0x00, 0x11, 0x19, 0x0E, 0x12, 0x07, 0x08, 0x08, 0x08, 0x22, 0x04, 0x11, 0x11, 0xA9, 0x32, 0x18]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x11]
+      - [0xB0, 0x60]
+      - [0xB1, 0x30]
+      - [0xB2, 0x87]
+      - [0xB3, 0x80]
+      - [0xB5, 0x49]
+      - [0xB7, 0x85]
+      - [0xB8, 0x21]
+      - [0xC1, 0x78]
+      - [0xC2, 0x78]
+      - delay 20ms
+      - [0xE0, 0x00, 0x1B, 0x02]
+      - [0xE1, 0x08, 0xA0, 0x00, 0x00, 0x07, 0xA0, 0x00, 0x00, 0x00, 0x44, 0x44]
+      - [0xE2, 0x11, 0x11, 0x44, 0x44, 0xED, 0xA0, 0x00, 0x00, 0xEC, 0xA0, 0x00, 0x00]
+      - [0xE3, 0x00, 0x00, 0x11, 0x11]
+      - [0xE4, 0x44, 0x44]
+      - [0xE5, 0x0A, 0xE9, 0xD8, 0xA0, 0x0C, 0xEB, 0xD8, 0xA0, 0x0E, 0xED, 0xD8, 0xA0, 0x10, 0xEF, 0xD8, 0xA0]
+      - [0xE6, 0x00, 0x00, 0x11, 0x11]
+      - [0xE7, 0x44, 0x44]
+      - [0xE8, 0x09, 0xE8, 0xD8, 0xA0, 0x0B, 0xEA, 0xD8, 0xA0, 0x0D, 0xEC, 0xD8, 0xA0, 0x0F, 0xEE, 0xD8, 0xA0]
+      - [0xEB, 0x02, 0x00, 0xE4, 0xE4, 0x88, 0x00, 0x40]
+      - [0xEC, 0x3C, 0x00]
+      - [0xED, 0xAB, 0x89, 0x76, 0x54, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x20, 0x45, 0x67, 0x98, 0xBA]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x00]
+
+lvgl:
+  id: main_lvgl
+  setup_priority: 700
+  buffer_size: 12%
+  displays: my_display
+  rotation: 180
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  - id: s3_backlight_sweep_test
+    mode: restart
+    then:
+      - script.execute: screensaver_wake
+      - script.wait: screensaver_wake
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 60%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 30%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 10%
+          transition_length: 0s
+      - delay: 3s
+      - light.turn_on:
+          id: display_backlight
+          brightness: 100%
+          transition_length: 0s
+
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 270
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 0
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 90
+                      else:
+                        - lvgl.display.set_rotation: 180
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "180"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screen_rotation_ready);'
+            then:
+              - script.execute: apply_screen_rotation
+              - script.execute: clock_bar_apply
