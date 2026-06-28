@@ -726,7 +726,7 @@ inline std::string sanitize_climate_range_value(const std::string &value) {
     if (!std::isspace(static_cast<unsigned char>(*end))) return "";
     end++;
   }
-  double rounded = std::round(parsed * 10.0) / 10.0;
+  double rounded = std::floor(parsed * 10.0 + 0.5) / 10.0;
   char buffer[24];
   std::snprintf(buffer, sizeof(buffer), "%.1f", rounded);
   std::string out(buffer);
