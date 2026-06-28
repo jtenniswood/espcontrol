@@ -1,0 +1,62 @@
+[
+  {
+    "name": "toggle lock card keeps icon pair",
+    "input": "lock.front_door;Front Door;Lock;Lock Open;;;lock;;ignored=1",
+    "expected": {
+      "entity": "lock.front_door",
+      "label": "Front Door",
+      "icon": "Lock",
+      "icon_on": "Lock Open",
+      "sensor": "",
+      "unit": "",
+      "type": "lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lock command clears ignored fields",
+    "input": "lock.front_door;Lock;Lock;Lock Open;lock;W;lock;2;ignored=1",
+    "expected": {
+      "entity": "lock.front_door",
+      "label": "Lock",
+      "icon": "Lock",
+      "icon_on": "Auto",
+      "sensor": "lock",
+      "unit": "",
+      "type": "lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "unlock command clears ignored fields",
+    "input": "lock.front_door;Unlock;Lock Open;Lock;unlock;W;lock;2;ignored=1",
+    "expected": {
+      "entity": "lock.front_door",
+      "label": "Unlock",
+      "icon": "Lock Open",
+      "icon_on": "Auto",
+      "sensor": "unlock",
+      "unit": "",
+      "type": "lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "invalid lock mode becomes toggle",
+    "input": "lock.front_door;Front Door;Lock;Auto;bad;W;lock;2;ignored=1",
+    "expected": {
+      "entity": "lock.front_door",
+      "label": "Front Door",
+      "icon": "Lock",
+      "icon_on": "Lock Open",
+      "sensor": "",
+      "unit": "",
+      "type": "lock",
+      "precision": "",
+      "options": ""
+    }
+  }
+]
