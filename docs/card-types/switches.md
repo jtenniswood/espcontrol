@@ -8,11 +8,11 @@ description:
 
 A Switch card is the default on/off card. It controls one Home Assistant entity from the touchscreen and shows whether that entity is currently active.
 
-Use Switch cards for common Home Assistant entities such as lights, switches, fans, media players, covers, and button entities. The entity needs to support a Home Assistant toggle or button press action to respond when tapped.
+Use Switch cards for common Home Assistant entities such as lights, switches, fans, and input booleans. The entity needs to support a Home Assistant toggle action to respond when tapped.
 
 For light-only controls, the [Lights](/card-types/lights) card gives you a more guided setup with Switch, Brightness, and Colour Temperature options.
 
-Use a [Lock](/card-types/locks) card for door locks. Lock cards use Home Assistant's lock and unlock actions directly and avoid unlocking when the current state is unknown.
+Use [Action](/card-types/actions) for Home Assistant button entities, [Media](/card-types/media) for media players, [Cover](/card-types/covers) for blinds and shutters, and [Lock](/card-types/locks) for door locks. Those card types use the matching Home Assistant actions and show more useful controls.
 
 ![Switch card showing a Heater icon](/images/card-toggle.png)
 
@@ -28,8 +28,7 @@ Use a [Lock](/card-types/locks) card for door locks. Lock cards use Home Assista
 
 ## How It Works on the Panel
 
-- Tapping most Switch cards sends a Home Assistant toggle action for the entity.
-- If the entity starts with `button.`, tapping the card sends a button press instead.
+- Tapping a Switch card sends a Home Assistant toggle action for the entity.
 - If **Confirmation Required** is on, the panel asks before changing the entity in the direction you choose: off, on, or both.
 - The card lights up when Home Assistant reports an active state such as `on`, `open`, `opening`, `closing`, `playing`, `home`, or `unlocked`.
 - If the entity is changed somewhere else, such as in Home Assistant or by an automation, the card updates to match.
