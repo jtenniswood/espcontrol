@@ -312,6 +312,108 @@ inline const char *cover_command_service(const std::string &sensor) {
   return card_runtime_cover_command_service(sensor);
 }
 
+constexpr int COVER_SUPPORT_OPEN = 1;
+constexpr int COVER_SUPPORT_CLOSE = 2;
+constexpr int COVER_SUPPORT_SET_POSITION = 4;
+constexpr int COVER_SUPPORT_STOP = 8;
+constexpr int COVER_SUPPORT_OPEN_TILT = 16;
+constexpr int COVER_SUPPORT_CLOSE_TILT = 32;
+constexpr int COVER_SUPPORT_STOP_TILT = 64;
+constexpr int COVER_SUPPORT_SET_TILT_POSITION = 128;
+
+inline bool cover_parse_supported_features(esphome::StringRef val, int &features) {
+  std::string value = normalized_state_text(val);
+  if (value.empty() || value == "none" || value == "null" ||
+      value == "unknown" || value == "unavailable") {
+    return false;
+  }
+  char *end = nullptr;
+  long parsed = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) return false;
+  features = static_cast<int>(parsed);
+  return true;
+}
+
+inline const char *cover_tilt_command_service(const std::string &sensor) {
+  if (sensor == "open") return "cover.open_cover_tilt";
+  if (sensor == "close") return "cover.close_cover_tilt";
+  if (sensor == "stop") return "cover.stop_cover_tilt";
+  if (sensor == "set_position") return "cover.set_cover_tilt_position";
+  return nullptr;
+}
+
+inline int cover_command_normal_feature(const std::string &sensor) {
+  if (sensor == "open") return COVER_SUPPORT_OPEN;
+  if (sensor == "close") return COVER_SUPPORT_CLOSE;
+  if (sensor == "stop") return COVER_SUPPORT_STOP;
+  if (sensor == "set_position") return COVER_SUPPORT_SET_POSITION;
+  return 0;
+}
+
+inline int cover_command_tilt_feature(const std::string &sensor) {
+  if (sensor == "open") return COVER_SUPPORT_OPEN_TILT;
+  if (sensor == "close") return COVER_SUPPORT_CLOSE_TILT;
+  if (sensor == "stop") return COVER_SUPPORT_STOP_TILT;
+  if (sensor == "set_position") return COVER_SUPPORT_SET_TILT_POSITION;
+  return 0;
+}
+
+struct CoverCommandCtx {
+  ParsedCfg config;
+  bool supported_features_known = false;
+  int supported_features = 0;
+};
+
+inline bool cover_command_use_tilt(const std::string &sensor,
+                                   bool supported_features_known,
+                                   int supported_features) {
+  if (!supported_features_known) return false;
+  int normal_feature = cover_command_normal_feature(sensor);
+  int tilt_feature = cover_command_tilt_feature(sensor);
+  return normal_feature != 0 && tilt_feature != 0 &&
+         (supported_features & normal_feature) == 0 &&
+         (supported_features & tilt_feature) != 0;
+}
+
+inline bool cover_command_supported(const std::string &sensor,
+                                    bool supported_features_known,
+                                    int supported_features) {
+  if (!supported_features_known) return true;
+  int normal_feature = cover_command_normal_feature(sensor);
+  int tilt_feature = cover_command_tilt_feature(sensor);
+  return (normal_feature != 0 && (supported_features & normal_feature) != 0) ||
+         (tilt_feature != 0 && (supported_features & tilt_feature) != 0);
+}
+
+inline void cover_command_apply_supported_features(CoverCommandCtx *ctx, int features) {
+  if (!ctx) return;
+  ctx->supported_features_known = true;
+  ctx->supported_features = features;
+}
+
+inline CoverCommandCtx *create_cover_command_context(const ParsedCfg &p) {
+  CoverCommandCtx *ctx = new CoverCommandCtx();
+  ctx->config = p;
+  return ctx;
+}
+
+inline void subscribe_cover_command_features(CoverCommandCtx *ctx) {
+  if (!ctx || ctx->config.entity.empty()) return;
+  ha_subscribe_attribute(
+    ctx->config.entity, std::string("supported_features"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef val) {
+        int features = 0;
+        if (cover_parse_supported_features(val, features)) {
+          cover_command_apply_supported_features(ctx, features);
+        } else {
+          ctx->supported_features_known = false;
+          ctx->supported_features = 0;
+        }
+      })
+  );
+}
+
 inline int cover_position_value(const std::string &value) {
   char *end = nullptr;
   long pos = std::strtol(value.c_str(), &end, 10);
@@ -348,12 +450,14 @@ inline void cover_stop_cancel_pending_request() {
   ha_cancel_action_response_callback(call_id, "api disconnected");
 }
 
-inline void send_cover_command_action(const ParsedCfg &p) {
-  const char *service = cover_command_service(p.sensor);
+inline void send_cover_command_action(const ParsedCfg &p, bool tilt_command = false) {
+  const char *service = tilt_command
+    ? cover_tilt_command_service(p.sensor)
+    : cover_command_service(p.sensor);
   if (p.entity.empty() || service == nullptr) return;
 
   bool has_position = p.sensor == "set_position";
-  bool wants_stop_response = p.sensor == "stop";
+  bool wants_stop_response = p.sensor == "stop" && !tilt_command;
   esphome::api::HomeassistantActionRequest req;
   uint32_t call_id = wants_stop_response ? next_cover_stop_call_id() : 0;
   if (!ha_action_begin(req, service, false, has_position ? 2 : 1, call_id)) return;
@@ -364,7 +468,7 @@ inline void send_cover_command_action(const ParsedCfg &p) {
   if (has_position) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", cover_position_value(p.unit));
-    ha_action_add_data(req, "position", buf);
+    ha_action_add_data(req, tilt_command ? "tilt_position" : "position", buf);
   }
   bool cover_stop_tracked = false;
   if (wants_stop_response) {
@@ -392,11 +496,24 @@ inline void send_cover_command_action(const ParsedCfg &p) {
 }
 
 inline void send_cover_command_action(const std::string &entity_id,
-                                      const std::string &mode) {
+                                      const std::string &mode,
+                                      bool tilt_command = false) {
   ParsedCfg p;
   p.entity = entity_id;
   p.sensor = mode;
-  send_cover_command_action(p);
+  send_cover_command_action(p, tilt_command);
+}
+
+inline void send_cover_command_action(const CoverCommandCtx &ctx) {
+  const ParsedCfg &p = ctx.config;
+  if (!cover_command_supported(p.sensor, ctx.supported_features_known, ctx.supported_features)) {
+    ESP_LOGW("cover", "Cover command %s is not supported for %s",
+             p.sensor.c_str(), p.entity.c_str());
+    return;
+  }
+  send_cover_command_action(
+    p,
+    cover_command_use_tilt(p.sensor, ctx.supported_features_known, ctx.supported_features));
 }
 
 // Send HA action for a slider change: toggle (value<0), brightness, or cover position/tilt
@@ -620,6 +737,7 @@ inline bool alarm_action_context_valid(AlarmActionCtx *action);
 struct FanCardCtx;
 inline bool fan_non_speed_card_type(const std::string &type);
 inline void fan_card_handle_click(FanCardCtx *ctx);
+inline void fan_control_open_modal(FanCardCtx *ctx);
 struct CoverControlCtx;
 inline void cover_control_open_modal(CoverControlCtx *ctx);
 struct LightControlCtx;
@@ -666,6 +784,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (fan_non_speed_card_type(p.type)) {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_card_handle_click(ctx);
+  } else if (p.type == "fan_control") {
+    FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) fan_control_open_modal(ctx);
   } else if (p.type == "cover" && cover_modal_mode(p.sensor)) {
     CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) cover_control_open_modal(ctx);
@@ -690,7 +811,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       else send_lock_action(p.entity, "");
     }
   } else if (p.type == "cover" && cover_command_mode(p.sensor)) {
-    send_cover_command_action(p);
+    CoverCommandCtx *ctx = (CoverCommandCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) send_cover_command_action(*ctx);
+    else send_cover_command_action(p);
   } else if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
     if (!p.entity.empty()) {
       set_card_checked_state(btn_obj, true);

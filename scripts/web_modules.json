@@ -1,4 +1,5 @@
 [
+  "style_tokens",
   "styles",
   "state",
   "model_generated",
@@ -20,5 +21,9 @@
   "app_events",
   "app",
   "app_test_hooks",
+  "app_test_hooks_config",
+  "app_test_hooks_preview",
+  "app_test_hooks_backup",
+  "app_test_hooks_settings",
   "app_start"
 ]
