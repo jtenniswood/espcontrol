@@ -1,6 +1,6 @@
 ---
 name: docs-review
-description: Review EspControl repository changes for missing, stale, excessive, or misplaced documentation. Use when reviewing a pull request, branch, local diff, feature change, behavior change, supported-device change, setup workflow, compatibility impact, release workflow, maintainer workflow, README/docs/dev-docs change, or when the user asks whether new features or changes are concisely documented.
+description: Review EspControl repository changes specifically for missing, stale, excessive, or misplaced documentation. Use when the user asks for a documentation coverage review, asks whether a feature or behavior change is concisely documented, invokes $docs-review, or explicitly wants docs checked as a secondary pass during a pull request, branch, or local diff review.
 ---
 
 # Docs Review
