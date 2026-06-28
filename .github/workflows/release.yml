@@ -135,13 +135,7 @@ jobs:
         working-directory: espcontrol-${{ matrix.slug }}
         run: |
           RUN_CACHE_ROOT="${RUNNER_TEMP}/espcontrol-esphome/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.slug }}"
-          if [ -d /github/runner_temp ]; then
-            RUN_CACHE_ROOT="/github/runner_temp/espcontrol-esphome/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.slug }}"
-          fi
-          DOCKER_CONFIG_ROOT="${PWD}"
-          if [ -d "/github/workspace/espcontrol-${{ matrix.slug }}" ]; then
-            DOCKER_CONFIG_ROOT="/github/workspace/espcontrol-${{ matrix.slug }}"
-          fi
+          DOCKER_CONFIG_ROOT="/github/workspace/espcontrol-${{ matrix.slug }}"
           PLATFORMIO_CACHE="${RUN_CACHE_ROOT}/platformio-${ESPHOME_VERSION}"
           BUILD_CACHE="${RUN_CACHE_ROOT}/build"
           BUILD_INPUT_DIR=".firmware-builds"
