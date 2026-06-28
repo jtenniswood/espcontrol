@@ -18,7 +18,7 @@ DEVICES_DIR = ROOT / "devices"
 VALID_CHIP_FAMILIES = {"ESP32-P4", "ESP32-S3"}
 VALID_DRAG_MODES = {"swap", "displace"}
 VALID_ROTATIONS = {"0", "90", "180", "270"}
-VALID_DISPLAY_MODES = {"color", "monochrome"}
+VALID_DISPLAY_MODES = {"color"}
 REQUIRED_FONT_ROLES = (
     "icon",
     "sensor",
@@ -382,9 +382,6 @@ def validate_web(slug: str, device: dict[str, Any], errors: list[str]) -> None:
         errors.append(device_error(slug, "web.infoOnly must be true or false when set"))
     if "coverArtSquareOverlay" in web and not isinstance(web["coverArtSquareOverlay"], bool):
         errors.append(device_error(slug, "web.coverArtSquareOverlay must be true or false when set"))
-    preview_theme = web.get("previewTheme", "default")
-    if preview_theme not in ("default", "epaper"):
-        errors.append(device_error(slug, "web.previewTheme must be default or epaper"))
     disabled_card_types = web.get("disabledCardTypes", [])
     if not isinstance(disabled_card_types, list) or not all(
         isinstance(value, str) and value for value in disabled_card_types
@@ -631,8 +628,6 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "subpages": "subpage" not in profile["web"].get("disabledCardTypes", []),
     }
     display = profile["firmware"].get("display") or {}
-    if display.get("mode") == "monochrome":
-        capability["monochrome"] = True
     return capability
 
 

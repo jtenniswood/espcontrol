@@ -47,7 +47,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.sensor.clear();
     b.unit.clear();
     b.precision.clear();
-    b.options.clear();
+    b.options = b.type == "fan_control" ? fan_control_card_options_normalized(b.options) : "";
     if (b.icon.empty() || b.icon == "Auto") b.icon = fan_card_default_icon_name(b.type);
     if (b.type == "fan_switch") {
       if (b.icon_on.empty() || b.icon_on == "Auto") b.icon_on = "Fan";
