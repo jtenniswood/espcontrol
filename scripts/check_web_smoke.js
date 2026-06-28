@@ -911,7 +911,7 @@ const coverModalPreview = hooks.buttonTypePreviewFor("cover", {
   sensor: "modal",
   type: "cover",
 });
-assert(!coverModalPreview.iconHtml.includes("sp-slider-preview"), "cover modal preview uses icon-only layout");
+assert(coverModalPreview.iconHtml.includes("sp-slider-preview"), "cover modal preview shows read-only position track");
 assert(coverModalPreview.iconHtml.includes("mdi-blinds"), "cover modal preview uses the cover icon");
 assert(coverModalPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover modal preview uses the cover badge");
 
