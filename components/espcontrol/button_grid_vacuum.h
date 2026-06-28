@@ -380,6 +380,8 @@ inline void vacuum_send_selected_rooms(VacuumCardCtx *ctx) {
       if (!rooms.empty()) rooms += "|";
       rooms += area;
     }
+    req.variables.init(1);
+    req.data_template.init(1);
     ha_action_add_variable(req, "rooms", rooms.c_str());
     ha_action_add_data_template(req, "cleaning_area_id", "{{ rooms.split('|') }}");
   }
