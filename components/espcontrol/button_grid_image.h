@@ -945,6 +945,7 @@ inline void refresh_card_background_image(lv_obj_t *btn, const GridConfig &cfg) 
           refresh_card_background_image(btn, cfg);
           return;
         }
+        return;
       }
       ctx->image->set_target_size(width, height);
       if ((previous_width != width || previous_height != height) && !ctx->url.empty()) {
