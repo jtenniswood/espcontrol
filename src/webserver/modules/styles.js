@@ -392,12 +392,12 @@ var CSS =
   ".sp-light-tab-row:last-child{border-bottom:0}" +
   ".sp-light-tab-row.sp-dragging{opacity:.55}" +
   ".sp-light-tab-controls{display:inline-flex;align-items:center;gap:2px;color:var(--text3)}" +
-  ".sp-light-tab-drag{width:28px;height:28px;border:0;background:transparent;" +
+  ".sp-light-tab-drag,.sp-light-tab-move{width:28px;height:28px;border:0;background:transparent;" +
   "color:var(--text3);display:inline-flex;align-items:center;justify-content:center;border-radius:8px;" +
   "font-size:18px;line-height:1;font-family:inherit;cursor:pointer;transition:background .2s,color .2s}" +
   ".sp-light-tab-drag{cursor:grab;font-size:20px}" +
   ".sp-light-tab-row.sp-dragging .sp-light-tab-drag{cursor:grabbing}" +
-  ".sp-light-tab-drag:hover{background:var(--surface2);color:var(--text)}" +
+  ".sp-light-tab-drag:hover,.sp-light-tab-move:hover{background:var(--surface2);color:var(--text)}" +
   ".sp-light-tab-label{min-width:0;color:var(--text);font-size:.9rem;line-height:1.25;cursor:pointer}" +
 
   ".sp-segment{display:flex;border-radius:var(--action-r);overflow:hidden;border:1px solid var(--border);margin-bottom:14px}" +
@@ -415,7 +415,7 @@ var CSS =
   ".sp-cond-field.sp-visible{display:block}" +
   ".sp-action-confirm-section.sp-visible{margin-bottom:28px}" +
   ".sp-cond-field.sp-climate-settings-gap.sp-visible{margin-bottom:24px}" +
-  ".sp-disclosure{border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02);overflow:hidden;margin-top:4px}" +
+  ".sp-disclosure{border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02);margin-top:4px}" +
   ".sp-disclosure+.sp-disclosure{margin-top:14px}" +
   ".sp-disclosure-button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;" +
   "padding:12px 14px;background:transparent;border:0;color:var(--text);font:inherit;font-size:.875rem;font-weight:500;cursor:pointer;text-align:left}" +

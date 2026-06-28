@@ -799,8 +799,20 @@ function renderModalTabSettings(panel, b, helpers, config) {
 
   function saveTabs(nextTabs) {
     config.setTabs(b, nextTabs);
+    b._modalSettingsOpen = true;
     helpers.saveField("options", b.options);
     renderButtonSettings();
+  }
+
+  function moveRow(row, direction) {
+    var sibling = direction < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!sibling) return;
+    if (direction < 0) {
+      list.insertBefore(row, sibling);
+    } else {
+      list.insertBefore(sibling, row);
+    }
+    saveTabsFromRows();
   }
 
   orderedDefinitions.forEach(function (definition) {
@@ -821,7 +833,19 @@ function renderModalTabSettings(panel, b, helpers, config) {
     drag.setAttribute("aria-label", "Drag " + definition.label);
     drag.tabIndex = -1;
 
+    var moveUp = document.createElement("button");
+    moveUp.type = "button";
+    moveUp.className = "sp-light-tab-move mdi mdi-chevron-up";
+    moveUp.setAttribute("aria-label", "Move " + definition.label + " up");
+
+    var moveDown = document.createElement("button");
+    moveDown.type = "button";
+    moveDown.className = "sp-light-tab-move mdi mdi-chevron-down";
+    moveDown.setAttribute("aria-label", "Move " + definition.label + " down");
+
     controls.appendChild(drag);
+    controls.appendChild(moveUp);
+    controls.appendChild(moveDown);
     row.appendChild(controls);
 
     var label = document.createElement("label");
@@ -855,6 +879,9 @@ function renderModalTabSettings(panel, b, helpers, config) {
       }
       saveTabsFromRows();
     });
+
+    moveUp.addEventListener("click", function () { moveRow(row, -1); });
+    moveDown.addEventListener("click", function () { moveRow(row, 1); });
 
     row.addEventListener("dragstart", function (event) {
       row.classList.add("sp-dragging");

@@ -275,7 +275,7 @@ function sliderTypeFactory(opts) {
         cardSettingsPanel = document.createElement("div");
         modalSettingsPanel = document.createElement("div");
         panel.appendChild(inlineDisclosure("Card Settings", cardSettingsPanel, false));
-        modalSettingsDisclosure = inlineDisclosure("Modal Settings", modalSettingsPanel, false);
+        modalSettingsDisclosure = inlineDisclosure("Modal Settings", modalSettingsPanel, b._modalSettingsOpen === true);
         panel.appendChild(modalSettingsDisclosure);
         panel = cardSettingsPanel;
       }
