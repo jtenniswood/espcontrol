@@ -60,6 +60,7 @@ function vacuumUsesDefaultIcon(icon) {
 }
 
 function normalizeVacuumConfig(b) {
+  var previousOptions = b && b.options;
   normalizeEntityModeCardConfig(b, {
     normalizeMode: normalizeVacuumMode,
     defaultIcon: vacuumModeDefaultIcon,
@@ -68,7 +69,7 @@ function normalizeVacuumConfig(b) {
       return mode === "clean_area" || mode === "modal";
     },
   });
-  b.options = normalizeVacuumOptions(b.options, b.sensor);
+  b.options = normalizeVacuumOptions(previousOptions, b.sensor);
 }
 
 function vacuumControlTabDefinitions() {
