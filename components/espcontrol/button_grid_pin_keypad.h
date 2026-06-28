@@ -342,6 +342,9 @@ inline bool screensaver_pin_lock_and_open(
     screen_lock_apply();
     return false;
   }
+  if (control_modal_active().kind == ControlModalKind::SCREENSAVER_PIN) {
+    pin_keypad_ui().close_callback = nullptr;
+  }
   control_modal_force_close_active();
   ScreensaverPinKeypadOpenArgs &args = screensaver_pin_keypad_open_args();
   args.source_btn = source_btn;
