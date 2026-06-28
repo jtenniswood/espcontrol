@@ -81,7 +81,9 @@ registerButtonType("lawn_mower", {
   normalizeConfig: normalizeLawnMowerConfig,
   onSelect: function (b) {
     var defaults = cardContractDefaultConfig("lawn_mower");
-    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
+    Object.keys(defaults).forEach(function (key) {
+      if (key !== "entity") b[key] = defaults[key];
+    });
   },
   renderSettings: function (panel, b, slot, helpers) {
     var mode = normalizeLawnMowerMode(b.sensor);

@@ -98,7 +98,9 @@ registerButtonType("vacuum", {
   normalizeConfig: normalizeVacuumConfig,
   onSelect: function (b) {
     var defaults = cardContractDefaultConfig("vacuum");
-    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
+    Object.keys(defaults).forEach(function (key) {
+      if (key !== "entity") b[key] = defaults[key];
+    });
   },
   renderSettings: function (panel, b, slot, helpers) {
     var mode = normalizeVacuumMode(b.sensor);
