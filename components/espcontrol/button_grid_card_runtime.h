@@ -106,6 +106,10 @@ constexpr const char *card_runtime_option_name_cover_tabs() {
   return CARD_CONTRACT_OPTION_NAME_COVER_TABS;
 }
 
+constexpr const char *card_runtime_option_name_fan_tabs() {
+  return CARD_CONTRACT_OPTION_NAME_FAN_TABS;
+}
+
 constexpr const char *card_runtime_option_name_label_display() {
   return CARD_CONTRACT_OPTION_NAME_LABEL_DISPLAY;
 }
@@ -129,6 +133,14 @@ inline bool card_runtime_cover_tilt_mode(const std::string &mode) {
 
 inline bool card_runtime_cover_modal_mode(const std::string &mode) {
   return mode == "modal" && card_runtime_cover_mode_valid(mode);
+}
+
+inline bool card_runtime_cover_control_tab_valid(const std::string &tab) {
+  return card_contract_cover_control_tab_valid(tab);
+}
+
+inline const char *card_runtime_cover_control_tabs_default() {
+  return CARD_CONTRACT_COVER_CONTROL_TABS_DEFAULT;
 }
 
 inline bool card_runtime_cover_command_mode(const std::string &mode) {
@@ -212,6 +224,18 @@ inline const char *card_runtime_alarm_action_mode_at(size_t index) {
     : "";
 }
 
+inline size_t card_runtime_alarm_default_action_count() {
+  return card_contract_alarm_default_action_count();
+}
+
+inline const char *card_runtime_alarm_default_action_at(size_t index) {
+  return card_contract_alarm_default_action_at(index);
+}
+
+inline size_t card_runtime_alarm_max_visible_actions() {
+  return CARD_CONTRACT_ALARM_MAX_VISIBLE_ACTIONS;
+}
+
 inline const char *card_runtime_alarm_action_service(const std::string &mode) {
   return card_contract_alarm_action_service(mode);
 }
@@ -235,6 +259,24 @@ inline std::string card_runtime_alarm_label_display(const std::string &value) {
   return card_contract_alarm_label_display_valid(value)
     ? value
     : CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT;
+}
+
+inline std::string card_runtime_image_modal_mode(const std::string &value) {
+  return card_contract_image_modal_mode_valid(value)
+    ? value
+    : CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT;
+}
+
+inline const char *card_runtime_image_modal_mode_default() {
+  return CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT;
+}
+
+inline bool card_runtime_light_control_tab_valid(const std::string &tab) {
+  return card_contract_light_control_tab_valid(tab);
+}
+
+inline const char *card_runtime_light_control_tabs_default() {
+  return CARD_CONTRACT_LIGHT_CONTROL_TABS_DEFAULT;
 }
 
 inline std::string card_runtime_climate_label_display(const std::string &value) {

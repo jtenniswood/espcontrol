@@ -5,6 +5,10 @@ node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 .esphome/
+.platformio/
+.platformio-run/
+.pio-core/
+.tmp-pr*/
 __pycache__/
 builds/.esphome/
 
