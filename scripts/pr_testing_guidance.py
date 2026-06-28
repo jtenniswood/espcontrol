@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIRMWARE_WIDE_PREFIXES = (
     "common/",
     "components/",
+    "docs/public/webserver/",
     "src/webserver/",
 )
 FIRMWARE_WIDE_FILES = {
@@ -223,6 +224,11 @@ def run_self_test() -> None:
     wide = analyze(["common/device/screen_clock.yaml"])
     assert wide.firmware_related
     assert len(wide.devices) >= 5
+
+    generated_web = analyze(["docs/public/webserver/espcontrol/www.js"])
+    assert generated_web.firmware_related
+    assert not generated_web.docs_only
+    assert len(generated_web.devices) >= 5
 
     docs = analyze(["docs/reference/contributing.md"])
     assert docs.docs_only or docs.process_only

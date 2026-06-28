@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
   pull-requests: read
 
 concurrency:
@@ -15,10 +14,15 @@ concurrency:
 
 jobs:
   guidance:
-    name: Post Testing Guidance
+    name: Generate Testing Guidance
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Collect changed files
         env:
@@ -31,6 +35,28 @@ jobs:
 
       - name: Generate testing guidance
         run: python3 scripts/pr_testing_guidance.py --changed-files changed-files.txt --output pr-testing-guidance.md
+
+      - name: Add guidance to workflow summary
+        run: cat pr-testing-guidance.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pr-testing-guidance
+          path: pr-testing-guidance.md
+          if-no-files-found: error
+
+  comment:
+    name: Post Testing Guidance
+    needs: guidance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: pr-testing-guidance
 
       - name: Add guidance to workflow summary
         run: cat pr-testing-guidance.md >> "$GITHUB_STEP_SUMMARY"
