@@ -69,7 +69,9 @@ registerButtonType("webhook", {
   cardMetadata: WEBHOOK_CARD_METADATA,
   onSelect: function (b) {
     var defaults = cardContractDefaultConfig("webhook");
-    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
+    Object.keys(defaults).forEach(function (key) {
+      if (key !== "label") b[key] = defaults[key];
+    });
   },
   renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     normalizeWebhookConfig(b);
