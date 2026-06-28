@@ -76,6 +76,7 @@ struct TimerCardCtx {
   int remaining_secs = 0;
   uint32_t remaining_anchor_ms = 0;
   uint32_t finished_at_ms = 0;
+  uint32_t generation = 0;
   time_t finishes_at_epoch = 0;
   lv_timer_t *tick_timer = nullptr;
   bool confirm_enabled = false;
@@ -175,6 +176,7 @@ inline void timer_card_refresh(TimerCardCtx *ctx) {
 
 inline void timer_card_tick_cb(lv_timer_t *timer) {
   TimerCardCtx *ctx = static_cast<TimerCardCtx *>(lv_timer_get_user_data(timer));
+  if (!ctx || ctx->generation != ha_subscription_generation()) return;
   timer_card_refresh(ctx);
 }
 
@@ -276,6 +278,7 @@ inline TimerCardCtx *create_timer_card_context(BtnSlot &slot, const ParsedCfg &c
   ctx->btn = slot.btn;
   ctx->value_lbl = slot.sensor_lbl;
   ctx->text_lbl = slot.text_lbl;
+  ctx->generation = ha_subscription_generation();
   ctx->confirm_enabled = cfg.sensor == "confirm";
   ctx->confirm_timeout_secs = timer_parse_confirm_timeout(cfg.unit);
   lv_obj_set_user_data(slot.btn, ctx);
