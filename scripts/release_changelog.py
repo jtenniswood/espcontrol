@@ -93,6 +93,7 @@ INTERNAL_PATHS = (
     "renovate.json",
     "scripts/",
 )
+PUBLIC_DOC_PATHS = ("docs/public/webserver/",)
 INTERNAL_SUBJECT_PREFIXES = (
     "add review",
     "ci:",
@@ -123,6 +124,11 @@ BUG_FIX_SUBJECT_PREFIXES = (
     "reduce ",
     "reset ",
     "stabilize ",
+)
+DEVICE_SPECIFIC_PATH_PATTERNS = (
+    re.compile(r"^devices/([^/]+)/"),
+    re.compile(r"^docs/public/webserver/([^/]+)/"),
+    re.compile(r"^builds/([^/.]+)(?:\.factory)?\.yaml$"),
 )
 FEATURE_SECTION = "User-facing features"
 FIX_SECTION = "User-facing bug fixes"
@@ -298,7 +304,10 @@ def is_internal_change(commit: Commit) -> bool:
         return True
     if any(keyword in subject for keyword in INTERNAL_SUBJECT_KEYWORDS):
         return True
-    return bool(commit.files) and all(touches_any_path(path, INTERNAL_PATHS) for path in commit.files)
+    return bool(commit.files) and all(
+        touches_any_path(path, INTERNAL_PATHS) and not touches_any_path(path, PUBLIC_DOC_PATHS)
+        for path in commit.files
+    )
 
 
 def user_facing_commits(commits: list[Commit]) -> list[Commit]:
@@ -385,30 +394,39 @@ def touches_any(commit: Commit, prefixes: tuple[str, ...]) -> bool:
     return False
 
 
+def device_slug_from_path(path: str) -> str | None:
+    for pattern in DEVICE_SPECIFIC_PATH_PATTERNS:
+        match = pattern.match(path)
+        if match:
+            return match.group(1)
+    return None
+
+
 def release_affects_all_devices(commits: list[Commit]) -> bool:
     all_device_paths = (
-        "builds/",
         "common/",
         "components/",
-        "docs/public/webserver/",
         "src/webserver/",
     )
-    return any(touches_any(commit, all_device_paths) for commit in commits)
+    generated_device_paths = ("builds/", "docs/public/webserver/")
+    for commit in commits:
+        if touches_any(commit, all_device_paths):
+            return True
+        if any(
+            touches_any_path(path, generated_device_paths) and not device_slug_from_path(path)
+            for path in commit.files
+        ):
+            return True
+    return False
 
 
 def affected_device_slugs(commits: list[Commit]) -> list[str]:
     slugs: set[str] = set()
-    patterns = (
-        re.compile(r"^devices/([^/]+)/"),
-        re.compile(r"^docs/public/webserver/([^/]+)/"),
-        re.compile(r"^builds/([^/.]+)(?:\.factory)?\.yaml$"),
-    )
     for commit in commits:
         for path in commit.files:
-            for pattern in patterns:
-                match = pattern.match(path)
-                if match:
-                    slugs.add(match.group(1))
+            slug = device_slug_from_path(path)
+            if slug:
+                slugs.add(slug)
     return sorted(slugs)
 
 
