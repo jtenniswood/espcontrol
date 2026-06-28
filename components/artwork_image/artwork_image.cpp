@@ -281,6 +281,8 @@ void ArtworkImage::update() {
     this->queue_pending_update_(this->url_);
     return;
   }
+  this->last_http_status_ = 0;
+  this->last_error_was_ha_media_proxy_ = false;
   ESP_LOGI(TAG, "Updating image %s", sanitize_artwork_url_for_log(this->url_).c_str());
   ESP_LOGD(TAG, "Artwork URL source: %s", classify_artwork_url_for_log(this->url_));
   this->log_state_("request-start");
@@ -322,6 +324,7 @@ void ArtworkImage::update() {
   }
 
   if (this->downloader_ == nullptr) {
+    this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
     ESP_LOGE(TAG, "Download failed before response; source=%s url=%s",
              classify_artwork_url_for_log(this->url_), sanitize_artwork_url_for_log(this->url_).c_str());
     this->fail_download_();
@@ -343,6 +346,8 @@ void ArtworkImage::update() {
     return;
   }
   if (http_code != HTTP_CODE_OK) {
+    this->last_http_status_ = http_code;
+    this->last_error_was_ha_media_proxy_ = is_ha_media_proxy_url(this->url_);
     ESP_LOGE(TAG, "Artwork HTTP result: status=%d content_length=%zu content_type=%s source=%s url=%s",
              http_code, this->downloader_->content_length,
              response_header_for_log(this->downloader_.get(), CONTENT_TYPE_HEADER_NAME).c_str(),

@@ -76,6 +76,10 @@ class ArtworkImage : public PollingComponent,
   /** Stop any in-flight download/decode while keeping the last completed image buffer available. */
   void cancel_update();
   const std::string &get_url() const { return this->url_; }
+  int get_last_http_status() const { return this->last_http_status_; }
+  bool last_error_was_ha_media_proxy_not_found() const {
+    return this->last_http_status_ == HTTP_CODE_NOT_FOUND && this->last_error_was_ha_media_proxy_;
+  }
 
   void set_target_size(int width, int height) {
     if (width <= 0 || height <= 0) return;
@@ -219,6 +223,8 @@ class ArtworkImage : public PollingComponent,
   image::Image *placeholder_{nullptr};
 
   std::string url_{""};
+  int last_http_status_{0};
+  bool last_error_was_ha_media_proxy_{false};
 
   std::vector<std::pair<std::string, TemplatableValue<std::string> > > request_headers_;
 

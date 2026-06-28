@@ -95,6 +95,11 @@
           "storage": ["confirm_on"]
         },
         {
+          "name": "script_fields",
+          "label": "Fields",
+          "kind": "text"
+        },
+        {
           "name": "confirm_message",
           "label": "Message",
           "kind": "text",
@@ -238,6 +243,7 @@
         "alarm": {
           "controlPanelValue": "control_panel",
           "defaultActions": ["away", "home", "disarm"],
+          "maxVisibleActions": 3,
           "actions": [
             {
               "value": "away",
@@ -387,6 +393,13 @@
           "defaultValue": "target"
         },
         {
+          "name": "temperature_step",
+          "label": "Temperature Step",
+          "kind": "choice",
+          "values": ["1", "0.5"],
+          "defaultValue": "1"
+        },
+        {
           "name": "large_numbers",
           "label": "Large Temperature Numbers",
           "kind": "flag"
@@ -396,6 +409,7 @@
         "climate": {
           "defaultLabelDisplay": "label",
           "defaultNumberDisplay": "target",
+          "defaultTemperatureStep": "1",
           "precisionValues": ["", "1", "2", "3"]
         }
       },
@@ -436,6 +450,7 @@
           "name": "cover_tabs",
           "label": "Visible Tabs",
           "kind": "text",
+          "values": ["position", "controls", "tilt"],
           "defaultValue": "position|controls|tilt"
         }
       ],
@@ -560,6 +575,31 @@
         "options": ""
       }
     },
+    "fan_control": {
+      "label": "Fans",
+      "allowInSubpage": true,
+      "pickerKey": "fan_speed",
+      "domains": ["fan"],
+      "options": [
+        {
+          "name": "fan_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "defaultValue": "power|speed|preset|oscillation|direction"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Fan",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "fan_control",
+        "precision": "",
+        "options": ""
+      }
+    },
     "fan_switch": {
       "label": "Fans",
       "allowInSubpage": true,
@@ -634,8 +674,8 @@
       "default": {
         "entity": "",
         "label": "",
-        "icon": "Power",
-        "icon_on": "Flash",
+        "icon": "Lightbulb Outline",
+        "icon_on": "Lightbulb",
         "sensor": "",
         "unit": "",
         "type": "internal",
@@ -714,6 +754,7 @@
           "name": "light_tabs",
           "label": "Visible Tabs",
           "kind": "text",
+          "values": ["power", "brightness", "temperature", "color"],
           "defaultValue": "power|brightness|temperature|color"
         }
       ],
@@ -1208,6 +1249,9 @@
       "fan_speed": {
         "defaultIcon": "Fan Speed 2"
       },
+      "fan_control": {
+        "defaultIcon": "Fan"
+      },
       "fan_oscillate": {
         "defaultIcon": "Fan"
       },
@@ -1255,6 +1299,7 @@
     "option_select": "U",
     "fan_switch": "B",
     "fan_speed": "J",
+    "fan_control": "FC",
     "fan_oscillate": "O",
     "fan_direction": "E",
     "fan_preset": "Z",

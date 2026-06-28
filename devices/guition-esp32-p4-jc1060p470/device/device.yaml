@@ -112,27 +112,6 @@ esphome:
       then:
         - lambda: |-
             ESP_LOGI("jc1060p470", "Bootfix marker 2026-05-22 active");
-    - priority: -50
-      then:
-        - lambda: |-
-            if (id(button_on_color).state == "000000" &&
-                id(button_off_color).state == "FFFFFF" &&
-                id(sensor_card_color).state == "FFFFFF") {
-              auto on = id(button_on_color).make_call();
-              on.set_value("FF8C00");
-              on.perform();
-
-              auto off = id(button_off_color).make_call();
-              off.set_value("313131");
-              off.perform();
-
-              auto sensor = id(sensor_card_color).make_call();
-              sensor.set_value("212121");
-              sensor.perform();
-
-              global_preferences->sync();
-              ESP_LOGI("jc1060p470", "Reset e-paper color defaults to color display colors");
-            }
     - priority: -100
       then:
         - lambda: 'id(screen_rotation_ready) = true;'

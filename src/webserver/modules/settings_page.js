@@ -51,6 +51,14 @@ function infoPanel(id, text) {
   return panel;
 }
 
+function statusBadge(label) {
+  var badge = document.createElement("span");
+  badge.setAttribute("aria-label", label);
+  badge.appendChild(textSpan("", "sp-card-badge-dot"));
+  badge.appendChild(textSpan("ON"));
+  return badge;
+}
+
 function inlineDisclosure(title, bodyElement, defaultOpen) {
   var panel = document.createElement("div");
   panel.className = "sp-disclosure" + (defaultOpen ? " sp-open" : "");
@@ -86,62 +94,23 @@ function buildSettingsPage(parent) {
 
   var appearBody = document.createElement("div");
 
-  if (isEpaperPreview()) {
-    var themeField = document.createElement("div");
-    themeField.className = "sp-field";
-    themeField.appendChild(fieldLabel("Theme", "sp-set-theme"));
-    var themeSelect = document.createElement("select");
-    themeSelect.className = "sp-select";
-    themeSelect.id = "sp-set-theme";
-    state.themeOptions.forEach(function (opt) {
-      var o = document.createElement("option");
-      o.value = opt;
-      o.textContent = opt;
-      themeSelect.appendChild(o);
-    });
-    themeSelect.value = normalizeTheme(state.theme);
-    themeSelect.addEventListener("change", function () {
-      applyThemePreset(this.value, true);
-    });
-    themeField.appendChild(themeSelect);
-    appearBody.appendChild(themeField);
-    els.setTheme = themeSelect;
-  } else {
-    appearBody.appendChild(fieldLabel("Primary"));
-    var onColor = colorField("sp-set-on-color", DEFAULT_COLOR_PRESET.on, function (hex) {
-      postText(entityName("button_on_color"), hex);
-    });
-    appearBody.appendChild(onColor);
-    els.setOnColor = onColor;
+  appearBody.appendChild(fieldLabel("Primary"));
+  var onColor = colorField("sp-set-on-color", DEFAULT_COLOR_PRESET.on, function (hex) {
+    postText(entityName("button_on_color"), hex);
+  });
+  appearBody.appendChild(onColor);
+  els.setOnColor = onColor;
 
-    appearBody.appendChild(fieldLabel("Secondary"));
-    var offColor = colorField("sp-set-off-color", DEFAULT_COLOR_PRESET.off, function (hex) {
-      postText(entityName("button_off_color"), hex);
-    });
-    appearBody.appendChild(offColor);
-    els.setOffColor = offColor;
-
-    appearBody.appendChild(fieldLabel("Tertiary"));
-    var sensorColor = colorField("sp-set-sensor-color", DEFAULT_COLOR_PRESET.sensor, function (hex) {
-      postText(entityName("sensor_card_color"), hex);
-    });
-    appearBody.appendChild(sensorColor);
-    els.setSensorColor = sensorColor;
-  }
-
-  var appearanceResetButton = null;
-  if (!isEpaperPreview()) {
-    appearanceResetButton = document.createElement("button");
-    appearanceResetButton.type = "button";
-    appearanceResetButton.className = "sp-icon-button sp-card-header-action";
-    appearanceResetButton.title = "Reset colours";
-    appearanceResetButton.setAttribute("aria-label", "Reset colours to defaults");
-    appearanceResetButton.innerHTML = '<span class="mdi mdi-restore" aria-hidden="true"></span>';
-    appearanceResetButton.addEventListener("click", function (event) {
-      event.stopPropagation();
-      resetAppearanceColors(true);
-    });
-  }
+  var appearanceResetButton = document.createElement("button");
+  appearanceResetButton.type = "button";
+  appearanceResetButton.className = "sp-icon-button sp-card-header-action";
+  appearanceResetButton.title = "Reset colours";
+  appearanceResetButton.setAttribute("aria-label", "Reset colours to defaults");
+  appearanceResetButton.innerHTML = '<span class="mdi mdi-restore" aria-hidden="true"></span>';
+  appearanceResetButton.addEventListener("click", function (event) {
+    event.stopPropagation();
+    resetAppearanceColors(true);
+  });
   var appearanceCard = makeCollapsibleCard("Appearance", appearBody, true, null, appearanceResetButton);
 
   var languageBody = document.createElement("div");
@@ -418,9 +387,7 @@ function buildSettingsPage(parent) {
     setScheduleTrigger("sensor");
   });
 
-  var scheduleBadge = document.createElement("span");
-  scheduleBadge.setAttribute("aria-label", "Schedule on");
-  scheduleBadge.innerHTML = '<span class="sp-card-badge-dot"></span><span>ON</span>';
+  var scheduleBadge = statusBadge("Schedule on");
   els.setScheduleBadge = scheduleBadge;
   syncScreenScheduleUi();
   var scheduleCard = makeCollapsibleCard("Night Schedule", scheduleBody, true, scheduleBadge);
@@ -524,7 +491,7 @@ function buildSettingsPage(parent) {
   syncNtpServerUi();
   clockBody.appendChild(ntpField);
 
-  var timeSettingsCard = makeCollapsibleCard("Time Settings", clockBody, true);
+  var timeSettingsCard = makeCollapsibleCard("Time", clockBody, true);
 
   var clockBarBody = document.createElement("div");
 
@@ -538,9 +505,7 @@ function buildSettingsPage(parent) {
     postClockBar(state.clockBarOn);
   });
 
-  var clockBarBadge = document.createElement("span");
-  clockBarBadge.setAttribute("aria-label", "Clock bar on");
-  clockBarBadge.innerHTML = '<span class="sp-card-badge-dot"></span><span>ON</span>';
+  var clockBarBadge = statusBadge("Clock bar on");
   els.setClockBarBadge = clockBarBadge;
   syncClockBarUi();
   syncTemperatureUi();
@@ -616,7 +581,7 @@ function buildSettingsPage(parent) {
   els.setTemperatureUnit = unitSelect;
 
   syncTemperatureUi();
-  var temperatureCard = makeCollapsibleCard("Temperature Settings", tempBody, true);
+  var temperatureCard = makeCollapsibleCard("Temperature", tempBody, true);
 
   var ssBody = document.createElement("div");
   var ssMode = getActiveScreensaverMode();
@@ -670,8 +635,7 @@ function buildSettingsPage(parent) {
   els.setClockBrightnessField = timerClockControls.brightnessField;
 
   var coverArtBody = document.createElement("div");
-  if (!isEpaperPreview()) {
-    var coverArtToggle = toggleRow(
+  var coverArtToggle = toggleRow(
       "Show Cover Art",
       "sp-set-ss-cover-art-enable",
       state.coverArtScreensaverOn);
@@ -683,11 +647,15 @@ function buildSettingsPage(parent) {
     });
     els.setCoverArtToggle = coverArtToggle.input;
 
+    var coverArtOptions = condField();
+    var coverArtOnlyOptions = condField();
+    var coverArtAdvancedBody = document.createElement("div");
+
     var sleepPreventionToggle = toggleRow(
       "Keep Screen Awake During Playback",
       "sp-set-ss-media-sleep-prevention",
       state.mediaPlayerSleepPreventionOn);
-    coverArtBody.appendChild(sleepPreventionToggle.row);
+    coverArtOptions.appendChild(sleepPreventionToggle.row);
     sleepPreventionToggle.input.addEventListener("change", function () {
       state.mediaPlayerSleepPreventionOn = this.checked;
       syncMediaPlayerSleepPreventionUi();
@@ -695,10 +663,6 @@ function buildSettingsPage(parent) {
       postSwitch(entityName("screen_saver_media_player_sleep_prevention"), state.mediaPlayerSleepPreventionOn);
     });
     els.setMediaPlayerSleepPreventionToggle = sleepPreventionToggle.input;
-
-    var coverArtOptions = condField();
-    var coverArtOnlyOptions = condField();
-    var coverArtAdvancedBody = document.createElement("div");
 
     var coverArtEntityField = document.createElement("div");
     coverArtEntityField.className = "sp-field";
@@ -709,7 +673,7 @@ function buildSettingsPage(parent) {
       "e.g. media_player.living_room",
       ["media_player"]);
     coverArtEntityField.appendChild(coverArtEntityInp);
-    coverArtOptions.appendChild(coverArtEntityField);
+    coverArtOnlyOptions.appendChild(coverArtEntityField);
     bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
       onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
     });
@@ -741,6 +705,32 @@ function buildSettingsPage(parent) {
     coverArtDelayField.appendChild(coverArtDelaySelect);
     coverArtOnlyOptions.appendChild(coverArtDelayField);
     els.setCoverArtDelay = coverArtDelaySelect;
+
+    var coverArtTouchPauseField = document.createElement("div");
+    coverArtTouchPauseField.className = "sp-field";
+    coverArtTouchPauseField.appendChild(fieldLabel("After Touch, Show Again", "sp-set-ss-cover-art-touch-pause"));
+    var coverArtTouchPauseSelect = document.createElement("select");
+    coverArtTouchPauseSelect.className = "sp-select";
+    coverArtTouchPauseSelect.id = "sp-set-ss-cover-art-touch-pause";
+    [
+      { label: "Immediately", value: 0 },
+      { label: "1 minute", value: 60 },
+      { label: "2 minutes", value: 120 },
+      { label: "3 minutes", value: 180 },
+      { label: "5 minutes", value: 300 },
+    ].forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      coverArtTouchPauseSelect.appendChild(o);
+    });
+    coverArtTouchPauseSelect.addEventListener("change", function () {
+      state.coverArtTouchPause = parseFloat(this.value) || 0;
+      postCoverArtTouchPause(state.coverArtTouchPause);
+    });
+    coverArtTouchPauseField.appendChild(coverArtTouchPauseSelect);
+    coverArtOnlyOptions.appendChild(coverArtTouchPauseField);
+    els.setCoverArtTouchPause = coverArtTouchPauseSelect;
 
     if (coverArtTrackOverlayDurationSupported()) {
       var trackOverlayField = document.createElement("div");
@@ -835,7 +825,6 @@ function buildSettingsPage(parent) {
     coverArtOptions.appendChild(coverArtOnlyOptions);
     els.setCoverArtOptions = coverArtOptions;
     coverArtBody.appendChild(coverArtOptions);
-  }
 
   ssBody.appendChild(timerPanel);
   els.setSSTimeout = timeoutSelect;
@@ -869,9 +858,7 @@ function buildSettingsPage(parent) {
   syncMediaPlayerSleepPreventionUi();
   syncCoverArtScreensaverUi();
 
-  var ssBadge = document.createElement("span");
-  ssBadge.setAttribute("aria-label", "Screensaver on");
-  ssBadge.innerHTML = '<span class="sp-card-badge-dot"></span><span>ON</span>';
+  var ssBadge = statusBadge("Screensaver on");
   els.setScreensaverBadge = ssBadge;
 
   function setSsMode(mode) {
@@ -933,21 +920,14 @@ function buildSettingsPage(parent) {
   });
   idleBody.appendChild(hsSelect);
   els.setHSTimeout = hsSelect;
-  var idleBadge = document.createElement("span");
-  idleBadge.setAttribute("aria-label", "Idle on");
-  idleBadge.innerHTML = '<span class="sp-card-badge-dot"></span><span>ON</span>';
+  var idleBadge = statusBadge("Idle on");
   els.setIdleBadge = idleBadge;
   syncIdleUi();
   var idleCard = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
-  var coverArtCard = null;
-  if (!isEpaperPreview()) {
-    var coverArtBadge = document.createElement("span");
-    coverArtBadge.setAttribute("aria-label", "Media cover art on");
-    coverArtBadge.innerHTML = '<span class="sp-card-badge-dot"></span><span>ON</span>';
-    els.setCoverArtBadge = coverArtBadge;
-    syncCoverArtScreensaverUi();
-    coverArtCard = makeCollapsibleCard("Media Cover Art", coverArtBody, true, coverArtBadge);
-  }
+  var coverArtBadge = statusBadge("Media cover art on");
+  els.setCoverArtBadge = coverArtBadge;
+  syncCoverArtScreensaverUi();
+  var coverArtCard = makeCollapsibleCard("Cover Art", coverArtBody, true, coverArtBadge);
 
   var backupBody = document.createElement("div");
 
@@ -1156,19 +1136,21 @@ function buildSettingsPage(parent) {
     appearanceCard,
     backlightCard,
     clockBarCard,
+    coverArtCard,
     voiceServicesCard,
     rotationCard,
   ]);
   appendSettingsSection(config, "Sleep & Schedule", [
     idleCard,
     screensaverCard,
-    coverArtCard,
     scheduleCard,
   ]);
-  appendSettingsSection(config, "System", [
+  appendSettingsSection(config, "Preferences", [
     languageCard,
     timeSettingsCard,
     temperatureCard,
+  ]);
+  appendSettingsSection(config, "System", [
     backupCard,
     firmwareCard,
     homeAssistantSettingsCard,
@@ -1242,7 +1224,7 @@ function syncCoverArtScreensaverUi() {
   if (els.setCoverArtOptions) {
     els.setCoverArtOptions.classList.toggle(
       "sp-visible",
-      !!state.coverArtScreensaverOn || !!state.mediaPlayerSleepPreventionOn);
+      !!state.coverArtScreensaverOn);
   }
   if (els.setCoverArtOnlyOptions) {
     els.setCoverArtOnlyOptions.classList.toggle(
@@ -1259,6 +1241,14 @@ function syncCoverArtScreensaverUi() {
       els.setCoverArtDelay,
       coverArtDelay,
       coverArtDelay > 0 ? formatDuration(coverArtDelay) : "Immediately");
+  }
+  if (els.setCoverArtTouchPause) {
+    var coverArtTouchPause = Math.max(0, parseFloat(state.coverArtTouchPause) || 0);
+    state.coverArtTouchPause = coverArtTouchPause;
+    setSelectValue(
+      els.setCoverArtTouchPause,
+      coverArtTouchPause,
+      coverArtTouchPause > 0 ? formatDuration(coverArtTouchPause) : "Immediately");
   }
   if (els.setCoverArtTrackOverlayDuration) {
     var value = state.coverArtTrackOverlayDuration;

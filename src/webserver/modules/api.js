@@ -1,6 +1,30 @@
 // ── POST queue ─────────────────────────────────────────────────────────
 
 var _postQueue = Promise.resolve();
+var _postThrottleMs = 0;
+var _postQueueHadError = false;
+
+function postDelay(ms) {
+  ms = parseInt(ms, 10) || 0;
+  if (ms <= 0) return Promise.resolve();
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
+function setPostThrottle(ms) {
+  _postThrottleMs = Math.max(0, parseInt(ms, 10) || 0);
+}
+
+function postQueueIdle() {
+  return _postQueue;
+}
+
+function resetPostQueueError() {
+  _postQueueHadError = false;
+}
+
+function postQueueHadError() {
+  return _postQueueHadError;
+}
 
 function uniquePush(list, value) {
   if (value && list.indexOf(value) === -1) list.push(value);
@@ -308,19 +332,16 @@ function entityPostUrls(domain, name, objectIds, action) {
 function post(url, fallbackUrl, errorMessage) {
   var urls = Array.isArray(url) ? url.slice() : [url];
   if (fallbackUrl) urls.push(fallbackUrl);
+  var throttleMs = _postThrottleMs;
   _postQueue = _postQueue.then(function () {
-    var index = 0;
-    function tryNext() {
-      return fetch(urls[index], { method: "POST" }).then(function (r) {
-        if (r.ok || index >= urls.length - 1) {
-          if (!r.ok) showBanner(errorMessage || ("Request failed: " + r.status), "error");
-          return r;
-        }
-        index++;
-        return tryNext();
-      });
-    }
-    return tryNext().catch(function () {
+    return postFirstAvailable(urls).then(function (r) {
+      if (r && !r.ok) {
+        _postQueueHadError = true;
+        showBanner(errorMessage || ("Request failed: " + r.status), "error");
+      }
+      return postDelay(throttleMs).then(function () { return r; });
+    }).catch(function () {
+      _postQueueHadError = true;
       setConfigLocked(true, "Reconnecting to device\u2026");
       showBanner("Cannot reach device \u2014 is it connected?", "error");
       setTimeout(connectEvents, 5000);
@@ -331,22 +352,30 @@ function post(url, fallbackUrl, errorMessage) {
 
 function postOptional(url) {
   var urls = Array.isArray(url) ? url.slice() : [url];
+  var throttleMs = _postThrottleMs;
   _postQueue = _postQueue.then(function () {
-    var index = 0;
-    function tryNext() {
-      return fetch(urls[index], { method: "POST" }).then(function (r) {
-        if (r.ok || index >= urls.length - 1) return r;
-        index++;
-        return tryNext();
-      });
-    }
-    return tryNext().catch(function () {
+    return postFirstAvailable(urls).then(function (r) {
+      return postDelay(throttleMs).then(function () { return r; });
+    }).catch(function () {
+      _postQueueHadError = true;
       setConfigLocked(true, "Reconnecting to device\u2026");
       showBanner("Cannot reach device \u2014 is it connected?", "error");
       setTimeout(connectEvents, 5000);
     });
   });
   return _postQueue;
+}
+
+function postFirstAvailable(urls) {
+  var index = 0;
+  function tryNext() {
+    return fetch(urls[index], { method: "POST" }).then(function (r) {
+      if (r.ok || index >= urls.length - 1) return r;
+      index++;
+      return tryNext();
+    });
+  }
+  return tryNext();
 }
 
 function postText(name, value) {
@@ -581,6 +610,19 @@ function coverArtDelayPostUrls(value) {
 
 function postCoverArtDelay(value) {
   return post(coverArtDelayPostUrls(value));
+}
+
+function coverArtTouchPausePostUrls(value) {
+  return entityPostUrls(
+    "number",
+    entityName("screen_saver_cover_art_touch_pause"),
+    entityObjectIds("screen_saver_cover_art_touch_pause"),
+    "set?value=" + encodeURIComponent(value)
+  );
+}
+
+function postCoverArtTouchPause(value) {
+  return post(coverArtTouchPausePostUrls(value));
 }
 
 function coverArtTrackOverlayDurationPostUrls(value) {
@@ -951,10 +993,7 @@ function eventStreamEnabled() {
 }
 
 function cardStateEntities() {
-  var cardEntities = ENTITY_CATALOG.groups.card.filter(function (key) {
-    return key !== "screen_theme" || isEpaperPreview();
-  });
-  return entityStateItems(cardEntities)
+  return entityStateItems(ENTITY_CATALOG.groups.card)
     .concat(entityStateItemsForSlots(ENTITY_CATALOG.groups.card_slot));
 }
 

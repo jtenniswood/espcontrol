@@ -110,6 +110,11 @@ var CARD_CONTRACT_CARDS = {
         ]
       },
       {
+        "name": "script_fields",
+        "label": "Fields",
+        "kind": "text"
+      },
+      {
         "name": "confirm_message",
         "label": "Message",
         "kind": "text",
@@ -300,6 +305,7 @@ var CARD_CONTRACT_CARDS = {
           "home",
           "disarm"
         ],
+        "maxVisibleActions": 3,
         "actions": [
           {
             "value": "away",
@@ -474,6 +480,16 @@ var CARD_CONTRACT_CARDS = {
         "defaultValue": "target"
       },
       {
+        "name": "temperature_step",
+        "label": "Temperature Step",
+        "kind": "choice",
+        "values": [
+          "1",
+          "0.5"
+        ],
+        "defaultValue": "1"
+      },
+      {
         "name": "large_numbers",
         "label": "Large Temperature Numbers",
         "kind": "flag"
@@ -483,6 +499,7 @@ var CARD_CONTRACT_CARDS = {
       "climate": {
         "defaultLabelDisplay": "label",
         "defaultNumberDisplay": "target",
+        "defaultTemperatureStep": "1",
         "precisionValues": [
           "",
           "1",
@@ -539,6 +556,11 @@ var CARD_CONTRACT_CARDS = {
         "name": "cover_tabs",
         "label": "Visible Tabs",
         "kind": "text",
+        "values": [
+          "position",
+          "controls",
+          "tilt"
+        ],
         "defaultValue": "position|controls|tilt"
       }
     ],
@@ -678,6 +700,33 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "fan_control": {
+    "label": "Fans",
+    "allowInSubpage": true,
+    "pickerKey": "fan_speed",
+    "domains": [
+      "fan"
+    ],
+    "options": [
+      {
+        "name": "fan_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "defaultValue": "power|speed|preset|oscillation|direction"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Fan",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_control",
+      "precision": "",
+      "options": ""
+    }
+  },
   "fan_switch": {
     "label": "Fans",
     "allowInSubpage": true,
@@ -766,8 +815,8 @@ var CARD_CONTRACT_CARDS = {
     "default": {
       "entity": "",
       "label": "",
-      "icon": "Power",
-      "icon_on": "Flash",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
       "sensor": "",
       "unit": "",
       "type": "internal",
@@ -856,6 +905,12 @@ var CARD_CONTRACT_CARDS = {
         "name": "light_tabs",
         "label": "Visible Tabs",
         "kind": "text",
+        "values": [
+          "power",
+          "brightness",
+          "temperature",
+          "color"
+        ],
         "defaultValue": "power|brightness|temperature|color"
       }
     ],
@@ -1422,6 +1477,7 @@ var CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES = ["slider", "light_brightness", "fan_
 var CARD_CONTRACT_FAN_DEFAULT_ICONS = {
   "fan_switch": "Fan Off",
   "fan_speed": "Fan Speed 2",
+  "fan_control": "Fan",
   "fan_oscillate": "Fan",
   "fan_direction": "Swap Horizontal",
   "fan_preset": "Fan Auto"
@@ -1445,6 +1501,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "option_select": "U",
   "fan_switch": "B",
   "fan_speed": "J",
+  "fan_control": "FC",
   "fan_oscillate": "O",
   "fan_direction": "E",
   "fan_preset": "Z",
@@ -1482,6 +1539,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "U": "option_select",
   "B": "fan_switch",
   "J": "fan_speed",
+  "FC": "fan_control",
   "O": "fan_oscillate",
   "E": "fan_direction",
   "Z": "fan_preset",
@@ -1542,6 +1600,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "cover_position": "cover_position",
   "cover_tabs": "cover_tabs",
   "date_time_mode": "date_time_mode",
+  "fan_tabs": "fan_tabs",
   "garage_mode": "garage_mode",
   "icon_display": "icon_display",
   "image_icon": "image_icon",
@@ -1562,6 +1621,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "on_pattern": "on_pattern",
   "pin_arm": "pin_arm",
   "pin_disarm": "pin_disarm",
+  "script_fields": "script_fields",
   "state_high_label": "state_high_label",
   "state_input": "state_input",
   "state_input_2": "state_input_2",
@@ -1570,6 +1630,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "state_output": "state_output",
   "state_output_2": "state_output_2",
   "subpage_kind": "subpage_kind",
+  "temperature_step": "temperature_step",
   "vacuum_mode": "vacuum_mode",
   "vacuum_rooms": "vacuum_rooms",
   "vacuum_tabs": "vacuum_tabs",

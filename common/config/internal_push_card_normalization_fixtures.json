@@ -1,0 +1,62 @@
+[
+  {
+    "name": "push card drops unsupported saved options",
+    "input": ";Doorbell;Gesture Tap;Auto;;;push;;large_numbers",
+    "expected": {
+      "entity": "",
+      "label": "Doorbell",
+      "icon": "Gesture Tap",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "push",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "internal switch card drops unsupported saved options",
+    "input": "relay_1;Relay;Lightbulb Outline;Lightbulb;;;internal;;large_numbers",
+    "expected": {
+      "entity": "relay_1",
+      "label": "Relay",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "internal",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "internal push card preserves push mode",
+    "input": "relay_2;Bell;Gesture Tap;Auto;push;;internal;;large_numbers",
+    "expected": {
+      "entity": "relay_2",
+      "label": "Bell",
+      "icon": "Gesture Tap",
+      "icon_on": "Auto",
+      "sensor": "push",
+      "unit": "",
+      "type": "internal",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "internal switch custom icons are preserved",
+    "input": "relay_1;Relay;Power Plug;Power;;;internal;;large_numbers",
+    "expected": {
+      "entity": "relay_1",
+      "label": "Relay",
+      "icon": "Power Plug",
+      "icon_on": "Power",
+      "sensor": "",
+      "unit": "",
+      "type": "internal",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

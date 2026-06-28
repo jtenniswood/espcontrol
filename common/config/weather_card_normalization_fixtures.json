@@ -1,0 +1,62 @@
+[
+  {
+    "name": "current weather clears forecast-only options",
+    "input": "weather.home;Weather;Auto;Auto;ignored;unit;weather;bad;large_numbers,ignored=1",
+    "expected": {
+      "entity": "weather.home",
+      "label": "Weather",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "unit",
+      "type": "weather",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "today forecast preserves large numbers",
+    "input": "weather.home;Today;Auto;Auto;ignored;unit;weather;today;large_numbers,ignored=1",
+    "expected": {
+      "entity": "weather.home",
+      "label": "Today",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "unit",
+      "type": "weather",
+      "precision": "today",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "tomorrow forecast preserves explicit large number off",
+    "input": "weather.home;Tomorrow;Auto;Auto;ignored;unit;weather;tomorrow;large_numbers=off",
+    "expected": {
+      "entity": "weather.home",
+      "label": "Tomorrow",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "unit",
+      "type": "weather",
+      "precision": "tomorrow",
+      "options": "large_numbers=off"
+    }
+  },
+  {
+    "name": "legacy forecast card migrates to tomorrow",
+    "input": "weather.home;Weather;Auto;Auto;ignored;unit;weather_forecast;bad;large_numbers",
+    "expected": {
+      "entity": "weather.home",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "unit",
+      "type": "weather",
+      "precision": "tomorrow",
+      "options": "large_numbers"
+    }
+  }
+]

@@ -19,6 +19,27 @@ env:
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
 jobs:
+  release-notes:
+    name: Update Release Notes
+    if: github.event_name == 'release' || inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+
+      - name: Generate what changed notes
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+        run: python3 scripts/release_changelog.py "${RELEASE_TAG}" --output release-notes.md
+
+      - name: Update GitHub release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+        run: gh release edit "${RELEASE_TAG}" --notes-file release-notes.md
+
   preflight:
     name: Product Preflight
     runs-on: self-hosted

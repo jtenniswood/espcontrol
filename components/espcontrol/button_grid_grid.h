@@ -369,6 +369,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_fan_card(s, p);
     return;
   }
+  if (p.type == "fan_control") {
+    setup_fan_control_card(s, p);
+    return;
+  }
   if (p.type == "cover" && cover_modal_mode(p.sensor)) {
     setup_cover_modal_card(s, p);
     return;
@@ -433,8 +437,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   if (p.type == "media") {
     setup_media_card(s, p,
       palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
-      palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
-      palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+      palette.off_val,
+      palette.sensor_val,
       display_sensor_font(display),
       display_media_title_font(display),
       display_main_width_percent(display),
@@ -735,8 +739,7 @@ inline void grid_refresh_layout(
 inline void grid_phase1(
     BtnSlot *slots, const GridConfig &cfg,
     const std::string &order_str,
-    const std::string &on_hex, const std::string &off_hex,
-    const std::string &sensor_hex,
+    const std::string &on_hex,
     lv_obj_t *main_page_obj = nullptr) {
   ESP_LOGI("sensors", "Phase 1: visual setup start (%lu ms)", esphome::millis());
   set_backlight_display_takeover_callback(navigation_close_modals_for_display_takeover);
@@ -772,21 +775,19 @@ inline void grid_phase1(
   clear_spanned_cells(parsed, NS, COLS, order);
   clock_bar_clear_responsive_grid_cards(main_page_obj);
 
-  bool has_on, has_off, has_sensor_color;
+  bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
-  uint32_t off_val = parse_hex_color(off_hex, has_off);
-  uint32_t sensor_val = parse_hex_color(sensor_hex, has_sensor_color);
+  uint32_t off_val = display_correct_color(DEFAULT_SECONDARY_COLOR_RAW, display);
+  uint32_t sensor_val = display_correct_color(DEFAULT_TERTIARY_COLOR_RAW, display);
   if (has_on) on_val = display_correct_color(on_val, display);
-  if (has_off) off_val = display_correct_color(off_val, display);
-  if (has_sensor_color) sensor_val = display_correct_color(sensor_val, display);
 
   CardPalette palette;
   palette.has_on = has_on;
-  palette.has_off = has_off;
-  palette.has_sensor_color = has_sensor_color;
+  palette.has_off = true;
+  palette.has_sensor_color = true;
   palette.on_val = has_on ? on_val : DEFAULT_SLIDER_COLOR;
-  palette.off_val = has_off ? off_val : DEFAULT_OFF_COLOR;
-  palette.sensor_val = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
+  palette.off_val = off_val;
+  palette.sensor_val = sensor_val;
   set_current_button_primary_color(palette.on_val);
 
   bump_ha_subscription_generation();
@@ -855,6 +856,16 @@ inline AlarmActionCtx *grid_delete_alarm_action_with_owner(lv_obj_t *owner,
   return ctx;
 }
 
+inline AlarmCardCtx *grid_delete_alarm_card_with_owner(lv_obj_t *owner,
+                                                       AlarmCardCtx *ctx) {
+  if (owner != nullptr && ctx != nullptr) {
+    lv_obj_add_event_cb(owner, [](lv_event_t *e) {
+      grid_delete_alarm_card_runtime_ptr(lv_event_get_user_data(e));
+    }, LV_EVENT_DELETE, ctx);
+  }
+  return ctx;
+}
+
 struct GridRuntimeAllocation {
   lv_obj_t *owner = nullptr;
   void *ptr = nullptr;
@@ -888,6 +899,7 @@ inline void grid_delete_transient_status_label_runtime_ptr(void *ptr) {
 inline void grid_delete_alarm_card_runtime_ptr(void *ptr) {
   AlarmCardCtx *ctx = static_cast<AlarmCardCtx *>(ptr);
   if (ctx != nullptr) {
+    alarm_release_arming_takeover(ctx);
     if (ctx->arm_delay_timer != nullptr) {
       lv_timer_del(ctx->arm_delay_timer);
       ctx->arm_delay_timer = nullptr;
@@ -1023,8 +1035,7 @@ inline void grid_phase2(
     esphome::text::Text **sp_ext6_configs,
     esphome::text::Text **sp_ext7_configs,
     const std::string &order_str,
-    const std::string &on_hex, const std::string &off_hex,
-    const std::string &sensor_hex,
+    const std::string &on_hex,
     lv_obj_t *main_page_obj) {
   ESP_LOGI("sensors", "Phase 2: subscriptions + subpages start (%lu ms)", esphome::millis());
   grid_log_memory("start");
@@ -1059,6 +1070,7 @@ inline void grid_phase2(
   memset(has_icon_on, 0, sizeof(has_icon_on));
   bump_ha_subscription_generation();
   weather_forecast_cancel_pending_requests();
+  reset_climate_control_refs();
   reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
@@ -1067,21 +1079,19 @@ inline void grid_phase2(
   clear_subpage_vacuum_card_text_refs();
   reset_image_card_pool(cfg);
 
-  bool has_on, has_off, has_sensor_color;
+  bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
-  uint32_t off_val = parse_hex_color(off_hex, has_off);
-  uint32_t sensor_val = parse_hex_color(sensor_hex, has_sensor_color);
+  uint32_t off_val = display_correct_color(DEFAULT_SECONDARY_COLOR_RAW, display);
+  uint32_t sensor_val = display_correct_color(DEFAULT_TERTIARY_COLOR_RAW, display);
   if (has_on) on_val = display_correct_color(on_val, display);
-  if (has_off) off_val = display_correct_color(off_val, display);
-  if (has_sensor_color) sensor_val = display_correct_color(sensor_val, display);
 
   CardPalette palette;
   palette.has_on = has_on;
-  palette.has_off = has_off;
-  palette.has_sensor_color = has_sensor_color;
+  palette.has_off = true;
+  palette.has_sensor_color = true;
   palette.on_val = has_on ? on_val : DEFAULT_SLIDER_COLOR;
-  palette.off_val = has_off ? off_val : DEFAULT_OFF_COLOR;
-  palette.sensor_val = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
+  palette.off_val = off_val;
+  palette.sensor_val = sensor_val;
   set_current_button_primary_color(palette.on_val);
 
   OrderResult parsed, order;
@@ -1186,8 +1196,8 @@ inline void grid_phase2(
         AlarmCardCtx *ctx = create_alarm_card_context(
           s, p, main_page_obj, NS, COLS,
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          has_off ? off_val : DEFAULT_OFF_COLOR,
-          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          off_val,
+          sensor_val,
           display_icon_font(display),
           display_media_title_font_or(display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
           display_sensor_font(display),
@@ -1195,7 +1205,9 @@ inline void grid_phase2(
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           lv_obj_get_style_text_color(s.text_lbl, LV_PART_MAIN),
           display_main_width_percent(display),
-          false);
+          false,
+          cfg.suspend_display_takeover,
+          cfg.resume_display_takeover);
         grid_track_alarm_card_runtime(s.btn, ctx);
         lv_obj_set_user_data(s.btn, ctx);
         subscribe_alarm_state(ctx);
@@ -1221,10 +1233,12 @@ inline void grid_phase2(
         alarm_action_card->icon_font = display_icon_font(display);
         alarm_action_card->arming_title_font = alarm_action_card->key_label_font;
         alarm_action_card->on_color = has_on ? on_val : DEFAULT_SLIDER_COLOR;
-        alarm_action_card->off_color = has_off ? off_val : DEFAULT_OFF_COLOR;
-        alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
+        alarm_action_card->off_color = off_val;
+        alarm_action_card->tertiary_color = sensor_val;
         alarm_action_card->width_compensation_percent = display_main_width_percent(display);
         alarm_action_card->grid_cols = COLS;
+        alarm_action_card->suspend_display_takeover = cfg.suspend_display_takeover;
+        alarm_action_card->resume_display_takeover = cfg.resume_display_takeover;
         alarm_set_card_state_colors(alarm_action_card, alarm_action_card->on_color);
 
         AlarmActionCtx *action_ctx = grid_track_alarm_action_runtime(s.btn, new AlarmActionCtx());
@@ -1242,8 +1256,8 @@ inline void grid_phase2(
         FanCardCtx *ctx = create_fan_card_context(
           s, p,
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          has_off ? off_val : DEFAULT_OFF_COLOR,
-          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          off_val,
+          sensor_val,
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           display_icon_font(display),
           display_main_width_percent(display));
@@ -1252,11 +1266,30 @@ inline void grid_phase2(
       }
       continue;
     }
+    if (p.type == "fan_control") {
+      if (!p.entity.empty()) {
+        FanCardCtx *ctx = create_fan_card_context(
+          s, p,
+          has_on ? on_val : DEFAULT_SLIDER_COLOR,
+          palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
+          palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+          lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+          display_icon_font(display),
+          display_main_width_percent(display));
+        subscribe_fan_card_state(ctx);
+      }
+      continue;
+    }
     if (p.type == "cover" && cover_command_mode(p.sensor)) {
+      lv_obj_set_user_data(s.btn, nullptr);
       if (!p.entity.empty()) {
         if (p.label.empty())
           subscribe_friendly_name(s.text_lbl, p.entity);
         subscribe_control_availability(s.btn, s.btn, p.entity);
+        CoverCommandCtx *ctx = create_cover_command_context(p);
+        grid_track_runtime_allocation(s.btn, ctx);
+        lv_obj_set_user_data(s.btn, ctx);
+        subscribe_cover_command_features(ctx);
       }
       continue;
     }
@@ -1287,8 +1320,8 @@ inline void grid_phase2(
           OptionSelectCtx *ctx = create_option_select_context(
             s, p,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
-            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            off_val,
+            sensor_val,
             display_main_width_percent(display));
           grid_track_runtime_allocation(s.btn, ctx);
           subscribe_option_select_state(ctx);
@@ -1339,8 +1372,8 @@ inline void grid_phase2(
         OptionSelectCtx *ctx = create_option_select_context(
           s, p,
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          has_off ? off_val : DEFAULT_OFF_COLOR,
-          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          off_val,
+          sensor_val,
           display_main_width_percent(display));
         grid_track_runtime_allocation(s.btn, ctx);
         subscribe_option_select_state(ctx);
@@ -1353,7 +1386,7 @@ inline void grid_phase2(
         TodoCardCtx *ctx = create_todo_card_context(
           s, p,
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          has_off ? off_val : DEFAULT_OFF_COLOR,
+          off_val,
           large_number_square_card_layout(row_span, col_span) &&
               card_large_numbers_active_for_layout(p, row_span, col_span) &&
               display_large_sensor_font(display)
@@ -1384,8 +1417,8 @@ inline void grid_phase2(
         } else if (mode == "volume") {
           MediaVolumeCtx *ctx = create_media_volume_context(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
-            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            off_val,
+            sensor_val,
             display_sensor_font(display),
             display_volume_number_font(display),
             display_volume_label_font(display)
@@ -1418,8 +1451,8 @@ inline void grid_phase2(
         ClimateControlCtx *ctx = create_climate_control_context(
           s.btn, s.icon_lbl, s.text_lbl, p,
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          has_off ? off_val : DEFAULT_OFF_COLOR,
-          has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+          off_val,
+          sensor_val,
           display_volume_number_font(display),
           display_volume_label_font(display)
             ? display_volume_label_font(display)
@@ -1468,9 +1501,9 @@ inline void grid_phase2(
       CoverControlCtx *ctx = create_cover_control_context(
         s, p,
         has_on ? on_val : DEFAULT_SLIDER_COLOR,
-        has_off ? off_val : DEFAULT_OFF_COLOR,
+        off_val,
         display_icon_font(display),
-        display_main_width_percent(display));
+        display_volume_width_percent(display));
       grid_track_runtime_allocation(s.btn, ctx);
       subscribe_cover_control_state(ctx);
       continue;
@@ -1637,7 +1670,7 @@ inline void grid_phase2(
 
     lv_obj_t *back_btn = create_grid_card_button(
       sub_scr, sp_radius, sp_pad, sp_btn_fnt, sp_txt_color);
-    apply_button_colors(back_btn, false, DEFAULT_SLIDER_COLOR, has_off, off_val);
+    apply_button_colors(back_btn, false, DEFAULT_SLIDER_COLOR, true, off_val);
     set_grid_card_cell(
       back_btn, sub_scr,
       sp_ord.back_pos % COLS, sp_ord.back_pos / COLS,
@@ -1735,9 +1768,9 @@ inline void grid_phase2(
           CoverControlCtx *ctx = create_cover_control_context(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
+            off_val,
             display_icon_font(display),
-            display_main_width_percent(display));
+            display_volume_width_percent(display));
           grid_delete_with_owner(sb_btn, ctx);
           subscribe_cover_control_state(ctx);
           add_parent_indicator(sb_cfg.entity);
@@ -1755,9 +1788,10 @@ inline void grid_phase2(
           if (sb_cfg.label.empty())
             subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
           subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
-          ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
+          CoverCommandCtx *ctx = grid_delete_with_owner(sb_btn, create_cover_command_context(sb_cfg));
+          subscribe_cover_command_features(ctx);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
+            CoverCommandCtx *c = (CoverCommandCtx *)lv_event_get_user_data(e);
             if (c) send_cover_command_action(*c);
           }, LV_EVENT_CLICKED, ctx);
         }
@@ -1831,8 +1865,8 @@ inline void grid_phase2(
           AlarmCardCtx *ctx = create_alarm_card_context(
             sub_slot, alarm_cfg, sub_scr, NS, COLS,
             palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
-            palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
-            palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+            palette.off_val,
+            palette.sensor_val,
             display_icon_font(display),
             display_media_title_font_or(display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
             display_sensor_font(display),
@@ -1840,8 +1874,10 @@ inline void grid_phase2(
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             lv_obj_get_style_text_color(sub_slot.text_lbl, LV_PART_MAIN),
             display_main_width_percent(display),
-            false);
-          grid_delete_with_owner(sb_btn, ctx);
+            false,
+            cfg.suspend_display_takeover,
+            cfg.resume_display_takeover);
+          grid_delete_alarm_card_with_owner(sb_btn, ctx);
           ctx->grid_page = sub_scr;
           lv_obj_set_user_data(sb_btn, ctx);
           subscribe_alarm_state(ctx);
@@ -1873,10 +1909,12 @@ inline void grid_phase2(
           alarm_action_card->icon_font = display_icon_font(display);
           alarm_action_card->arming_title_font = alarm_action_card->key_label_font;
           alarm_action_card->on_color = has_on ? on_val : DEFAULT_SLIDER_COLOR;
-          alarm_action_card->off_color = has_off ? off_val : DEFAULT_OFF_COLOR;
-          alarm_action_card->tertiary_color = has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR;
+          alarm_action_card->off_color = off_val;
+          alarm_action_card->tertiary_color = sensor_val;
           alarm_action_card->width_compensation_percent = display_main_width_percent(display);
           alarm_action_card->grid_cols = COLS;
+          alarm_action_card->suspend_display_takeover = cfg.suspend_display_takeover;
+          alarm_action_card->resume_display_takeover = cfg.resume_display_takeover;
           AlarmActionCtx *action_ctx = grid_delete_alarm_action_with_owner(sb_btn, new AlarmActionCtx());
           action_ctx->card = alarm_action_card;
           action_ctx->mode = alarm_action_valid(sb_cfg.sensor) ? sb_cfg.sensor : "away";
@@ -1896,8 +1934,8 @@ inline void grid_phase2(
           FanCardCtx *ctx = create_fan_card_context(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
-            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            off_val,
+            sensor_val,
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             display_icon_font(display),
             display_main_width_percent(display));
@@ -1907,6 +1945,25 @@ inline void grid_phase2(
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             FanCardCtx *ctx = (FanCardCtx *)lv_event_get_user_data(e);
             if (ctx) fan_card_handle_click(ctx);
+          }, LV_EVENT_CLICKED, ctx);
+        }
+        continue;
+      }
+      if (sb_cfg.type == "fan_control") {
+        if (!sb_cfg.entity.empty()) {
+          FanCardCtx *ctx = create_fan_card_context(
+            sub_slot, sb_cfg,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
+            palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+            lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_icon_font(display),
+            display_main_width_percent(display));
+          subscribe_fan_card_state(ctx);
+          add_parent_indicator(sb_cfg.entity);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            FanCardCtx *ctx = (FanCardCtx *)lv_event_get_user_data(e);
+            if (ctx) fan_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
         }
         continue;
@@ -1937,8 +1994,8 @@ inline void grid_phase2(
             OptionSelectCtx *ctx = create_option_select_context(
               sub_slot, sb_cfg,
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
-              has_off ? off_val : DEFAULT_OFF_COLOR,
-              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+              off_val,
+              sensor_val,
               display_main_width_percent(display));
             grid_delete_with_owner(sb_btn, ctx);
             subscribe_option_select_state(ctx);
@@ -2028,7 +2085,7 @@ inline void grid_phase2(
           TodoCardCtx *ctx = create_todo_card_context(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
+            off_val,
             large_number_square_card_layout(rs, cs) &&
                 card_large_numbers_active_for_layout(sb_cfg, rs, cs) &&
                 display_large_sensor_font(display)
@@ -2054,8 +2111,8 @@ inline void grid_phase2(
           OptionSelectCtx *ctx = create_option_select_context(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
-            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            off_val,
+            sensor_val,
             display_main_width_percent(display));
           grid_delete_with_owner(sb_btn, ctx);
           subscribe_option_select_state(ctx);
@@ -2089,8 +2146,8 @@ inline void grid_phase2(
             MediaVolumeCtx *ctx = create_media_volume_context(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
-              has_off ? off_val : DEFAULT_OFF_COLOR,
-              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+              off_val,
+              sensor_val,
               display_sensor_font(display),
               display_volume_number_font(display),
               display_volume_label_font(display)
@@ -2135,8 +2192,8 @@ inline void grid_phase2(
           ClimateControlCtx *ctx = create_climate_control_context(
             sub_slot.btn, sub_slot.icon_lbl, sub_slot.text_lbl, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
-            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            off_val,
+            sensor_val,
             display_volume_number_font(display),
             display_volume_label_font(display)
               ? display_volume_label_font(display)
@@ -2189,6 +2246,7 @@ inline void grid_phase2(
             display_volume_width_percent(display));
           grid_delete_with_owner(sb_btn, ctx);
           subscribe_light_control_state(ctx);
+          add_parent_indicator(sb_cfg.entity);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
             if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
@@ -2348,12 +2406,11 @@ inline void grid_phase2(
     esphome::text::Text **sp_ext2_configs,
     esphome::text::Text **sp_ext3_configs,
     const std::string &order_str,
-    const std::string &on_hex, const std::string &off_hex,
-    const std::string &sensor_hex,
+    const std::string &on_hex,
     lv_obj_t *main_page_obj) {
   grid_phase2(slots, cfg, sp_configs, sp_ext_configs, sp_ext2_configs, sp_ext3_configs,
     nullptr, nullptr, nullptr, nullptr,
-    order_str, on_hex, off_hex, sensor_hex, main_page_obj);
+    order_str, on_hex, main_page_obj);
 }
 
 inline void grid_phase2(
@@ -2361,11 +2418,10 @@ inline void grid_phase2(
     esphome::text::Text **sp_configs,
     esphome::text::Text **sp_ext_configs,
     const std::string &order_str,
-    const std::string &on_hex, const std::string &off_hex,
-    const std::string &sensor_hex,
+    const std::string &on_hex,
     lv_obj_t *main_page_obj) {
   grid_phase2(slots, cfg, sp_configs, sp_ext_configs, nullptr, nullptr,
-    order_str, on_hex, off_hex, sensor_hex, main_page_obj);
+    order_str, on_hex, main_page_obj);
 }
 
 // ── Phase 3: Temperature + presence/media subscriptions ───────────────
