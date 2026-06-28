@@ -10,28 +10,29 @@ This generated reference lists stable setup facts from the shared card contract.
 | Card | Type | Entity domains | Subpages | Picker grouping | Main modes and options | Status |
 |---|---|---|---|---|---|---|
 | Switch | switch | light, switch, input_boolean, fan | Yes | Own picker item | Large Active Display Numbers; Confirmation Required: default, off, on, both; On State Pattern: default, stripes; Message; Confirm Button; Cancel Button | Visible |
-| Action | action | scene, script, automation, button, input_button, input_boolean, input_number, input_select, select | Yes | Own picker item | Large State Numbers; Confirmation Required; Message; Confirm Button; Cancel Button | Visible |
+| Action | action | scene, script, automation, button, input_button, input_boolean, input_number, input_select, select | Yes | Own picker item | Large State Numbers; Confirmation Required; Fields; Message; Confirm Button; Cancel Button | Visible |
 | Vacuum | vacuum | vacuum | Yes | Own picker item | Type: status, start_stop, dock, pause_resume, clean_spot, locate, clean_area | Visible |
 | Lawn Mower | lawn_mower | lawn_mower | Yes | Own picker item | Type: status, start_mowing, dock, pause_resume | Visible |
 | Alarm | alarm | alarm_control_panel | Yes | Own picker item | Type: control_panel, away, home, night, vacation, disarm; PIN required for arming; PIN required for disarming; Visible Actions: away, home, night, vacation, disarm; Icon Display: static, status; Label Display: name, status | Visible |
 | Alarm | alarm_action | alarm_control_panel | Yes | Alarm (alarm) | None | Visible |
 | Date & Time | calendar | sensor | Yes | Own picker item | Type: clock, datetime, default, timezone; Large Clock | Visible |
 | Date & Time | clock | None | Yes | Date & Time (calendar) | Type: clock, datetime, default, timezone; Large Clock | Visible |
-| Climate | climate | climate | Yes | Own picker item | Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Large Temperature Numbers | Visible |
-| Cover | cover | cover | Yes | Own picker item | Type: modal, default, tilt, toggle, open, close, stop, set_position; Position: 0-100; Visible Tabs | Visible |
+| Climate | climate | climate | Yes | Own picker item | Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers | Visible |
+| Cover | cover | cover | Yes | Own picker item | Type: modal, default, tilt, toggle, open, close, stop, set_position; Position: 0-100; Visible Tabs: position, controls, tilt | Visible |
 | Doors & Windows | door_window | binary_sensor, sensor | Yes | Own picker item | None | Visible |
 | Presence | presence | binary_sensor, sensor, text_sensor | Yes | Own picker item | None | Visible |
 | Fans | fan_direction | fan | Yes | Fans (fan_speed) | None | Visible |
 | Fans | fan_oscillate | fan | Yes | Fans (fan_speed) | None | Visible |
 | Fans | fan_preset | fan | Yes | Fans (fan_speed) | None | Visible |
 | Fans | fan_speed | fan | Yes | Own picker item | None | Visible |
+| Fans | fan_control | fan | Yes | Fans (fan_speed) | Visible Tabs | Visible |
 | Fans | fan_switch | fan | Yes | Fans (fan_speed) | None | Visible |
 | Garage Door | garage | cover | Yes | Own picker item | Interaction: default, open, close; Display: label, status | Visible |
 | Internal Switches | internal | None | Yes | Own picker item | Mode: switch, push | Visible |
 | Lights | light_brightness | light | Yes | Own picker item | None | Visible |
 | Lights | light_switch | light | Yes | Lights (light_brightness) | None | Visible |
 | Lights | light_temperature | light | Yes | Lights (light_brightness) | None | Visible |
-| Lights | light_control | light | Yes | Lights (light_brightness) | Visible Tabs | Hidden |
+| Lights | light_control | light | Yes | Lights (light_brightness) | Visible Tabs: power, brightness, temperature, color | Hidden |
 | Lock | lock | lock | Yes | Own picker item | Type: default, lock, unlock | Visible |
 | Media | media | media_player | Yes | Own picker item | Type: play_pause, previous, next, volume, position, now_playing; Type: default, state; Controls: default, progress, play_pause; Maximum Volume: 1-100; Large Media Numbers | Visible |
 | Option Select | option_select | select, input_select | Yes | Own picker item | None | Hidden |

@@ -26,8 +26,8 @@ var LANGUAGE_LABELS = {
   uk: "Українська (Ukrainian)"
 };
 var THEME_PRESETS = {
-  Light: { on: "0073FF", off: "CECECE", sensor: "DEDEDE" },
-  Dark: { on: "FF8C00", off: "313131", sensor: "212121" },
+  Light: { on: "0073FF" },
+  Dark: { on: WEB_UI_COLORS.primary },
 };
 var DEFAULT_COLOR_PRESET = THEME_PRESETS[defaultTheme()];
 
@@ -35,16 +35,8 @@ function defaultTheme() {
   return "Dark";
 }
 
-function isEpaperPreview() {
-  return CFG && CFG.previewTheme === "epaper";
-}
-
 function voiceServicesSupported() {
   return !!(CFG.features && CFG.features.voiceServices);
-}
-
-function epaperPreviewFillColor() {
-  return normalizeTheme(state.theme) === "Light" ? "FFFFFF" : "000000";
 }
 
 function defaultTimezoneOptions() {
@@ -77,10 +69,7 @@ var state = {
   sizes: {},
   buttons: [],
   theme: defaultTheme(),
-  themeOptions: ["Light", "Dark"],
   onColor: DEFAULT_COLOR_PRESET.on,
-  offColor: DEFAULT_COLOR_PRESET.off,
-  sensorColor: DEFAULT_COLOR_PRESET.sensor,
   selectedSlots: [],
   lastClickedSlot: -1,
   clockBarSelectedItem: "",
@@ -112,6 +101,7 @@ var state = {
   coverArtAttributeConditions: "",
   coverArtFilteringEnabled: false,
   coverArtDelay: 10,
+  coverArtTouchPause: 120,
   coverArtTrackOverlayDuration: 5,
   coverArtHideExternalInputOn: true,
   homeAssistantArtworkProtocol: "http",
@@ -783,58 +773,20 @@ function normalizeTheme(value) {
 }
 
 function syncThemeUi() {
-  if (els.setTheme) els.setTheme.value = normalizeTheme(state.theme);
   if (els.root) els.root.setAttribute("data-screen-theme", normalizeTheme(state.theme).toLowerCase());
 }
 
 function syncColorUi() {
   if (els.setOnColor && els.setOnColor._syncColor) els.setOnColor._syncColor(state.onColor);
-  if (els.setOffColor && els.setOffColor._syncColor) els.setOffColor._syncColor(state.offColor);
-  if (els.setSensorColor && els.setSensorColor._syncColor) els.setSensorColor._syncColor(state.sensorColor);
-}
-
-function applyThemePreset(theme, postChanges) {
-  state.theme = normalizeTheme(theme);
-  var preset = THEME_PRESETS[state.theme];
-  state.onColor = preset.on;
-  state.offColor = preset.off;
-  state.sensorColor = preset.sensor;
-  syncThemeUi();
-  syncColorUi();
-  renderPreview();
-  if (postChanges) {
-    postSelect(entityName("screen_theme"), state.theme);
-    if (!isEpaperPreview()) {
-      postText(entityName("button_on_color"), state.onColor);
-      postText(entityName("button_off_color"), state.offColor);
-      postText(entityName("sensor_card_color"), state.sensorColor);
-    }
-  }
 }
 
 function resetAppearanceColors(postChanges) {
   state.onColor = DEFAULT_COLOR_PRESET.on;
-  state.offColor = DEFAULT_COLOR_PRESET.off;
-  state.sensorColor = DEFAULT_COLOR_PRESET.sensor;
   syncColorUi();
   renderPreview();
   if (postChanges) {
     postText(entityName("button_on_color"), state.onColor);
-    postText(entityName("button_off_color"), state.offColor);
-    postText(entityName("sensor_card_color"), state.sensorColor);
   }
-}
-
-function syncThemeFromDevice(theme, options) {
-  state.theme = normalizeTheme(theme);
-  if (options && Array.isArray(options)) state.themeOptions = options;
-  var preset = THEME_PRESETS[state.theme];
-  state.onColor = preset.on;
-  state.offColor = preset.off;
-  state.sensorColor = preset.sensor;
-  syncThemeUi();
-  syncColorUi();
-  renderPreview();
 }
 
 function syncClockBarUi() {
@@ -908,6 +860,21 @@ var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unknown";
 function escHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function mdiIcon(icon, className) {
+  var iconName = String(icon || "cog").trim();
+  var span = document.createElement("span");
+  span.className = className || "mdi";
+  span.classList.add("mdi-" + (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(iconName) ? iconName : iconSlug(iconName)));
+  return span;
+}
+
+function textSpan(text, className) {
+  var span = document.createElement("span");
+  if (className) span.className = className;
+  span.textContent = text == null ? "" : String(text);
+  return span;
 }
 
 function screenRotationStartupRequired() {
@@ -1438,7 +1405,7 @@ function isFirmwareInstallButtonEvent(id, d) {
 }
 
 function escAttr(s) {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;")
     .replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 

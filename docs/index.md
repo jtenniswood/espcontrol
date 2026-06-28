@@ -60,7 +60,7 @@ See [Card Types](/card-types/) for examples and setup notes.
 |---|---|---|
 | 10.1-inch JC8012P4A1 | [AliExpress ~£40](https://s.click.aliexpress.com/e/_c4W6TYvp) | [Stand page](/reference/3d-printable-stands) |
 | 7-inch JC1060P470 | [AliExpress ~£40](https://s.click.aliexpress.com/e/_c335W0r5) | [Stand page](/reference/3d-printable-stands) |
-| 4.3-inch JC4880P443 | [AliExpress ~£24](https://s.click.aliexpress.com/e/_c32jr3eN) | - |
+| 4.3-inch JC4880P443 | [AliExpress ~£24](https://s.click.aliexpress.com/e/_c32jr3eN) | [Stand page](/reference/3d-printable-stands) |
 | 4-inch ESP32-P4 86 Panel | [AliExpress ~£45](https://s.click.aliexpress.com/e/_c3O6ndAX) | [Stand page](/reference/3d-printable-stands) |
 | 4-inch 4848S040 | [AliExpress ~£16](https://s.click.aliexpress.com/e/_c3sIhvBv) | [Stand page](/reference/3d-printable-stands) |
 

@@ -329,6 +329,34 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
     return errors
 
 
+def firmware_action_card_script_fields_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_actions.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    if "script_fields" not in text:
+        return errors
+    if "std::vector<ActionCardScriptField> script_fields" not in text:
+        errors.append(f"{rel}: keep parsed script field strings alive until the action is sent")
+    if "req.variables.init(script_fields.size())" not in text:
+        errors.append(f"{rel}: initialize script field variables separately from service data")
+    if "ha_action_add_variable(req, field.key.c_str(), field.value.c_str())" not in text:
+        errors.append(f"{rel}: send script fields through Home Assistant action variables")
+    if "req.data_template.init(1)" not in text or 'ha_action_add_data_template(req, "variables"' not in text:
+        errors.append(f"{rel}: send script fields in the script.turn_on variables service payload")
+    add_fields_match = re.search(
+        r"inline\s+void\s+action_card_add_script_field_variables\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        text,
+        re.DOTALL,
+    )
+    if add_fields_match and "ha_action_add_data(req, key.c_str(), value.c_str())" in add_fields_match.group("body"):
+        errors.append(f"{rel}: do not send script fields as top-level script.turn_on service data")
+    return errors
+
+
 def firmware_local_sensor_binding_order_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_grid.h"
     if not path.exists():
@@ -667,6 +695,28 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
             or "id(cover_art_refresh_needed) || !id(cover_art_image_available)" not in download_body
         ):
             errors.append(f"{rel}: refresh Home Assistant media proxy artwork when no image is currently available")
+        replacement_match = re.search(
+            r"(?ms)id\(cover_art_screensaver_active\).*?"
+            r"id\(cover_art_image_available\).*?"
+            r"id\(cover_art_refresh_needed\).*?"
+            r"!\$\{cover_art_live_image_updates\}.*?"
+            r"then:\n(?P<body>.*?)(?=^\s+- lambda: |\Z)",
+            download_body,
+        )
+        if not replacement_match:
+            errors.append(f"{rel}: keep a dedicated replacement artwork transition path")
+        else:
+            replacement_body = replacement_match.group("body")
+            if "script.execute: cover_art_show_track_overlay" not in replacement_body:
+                errors.append(f"{rel}: keep the current artwork visible with updated track text during replacement downloads")
+            if "script.execute: cover_art_show_black_screen" in replacement_body:
+                errors.append(f"{rel}: do not use the full black fallback for replacement artwork downloads")
+            if "script.execute: cover_art_clear_image_source" in replacement_body:
+                errors.append(f"{rel}: do not detach visible artwork before replacement artwork is ready")
+            if "artwork_image.release: cover_art_downloaded_image" in replacement_body:
+                errors.append(f"{rel}: do not release visible artwork before replacement artwork is ready")
+            if "id(cover_art_loaded_url).clear()" in replacement_body:
+                errors.append(f"{rel}: keep the previous loaded artwork marker until replacement artwork applies")
 
     for script_id in ("cover_art_deferred_download", "cover_art_prepare_download"):
         body = yaml_script_body(text, script_id)
@@ -1235,14 +1285,17 @@ def firmware_climate_step_errors(firmware_dir: Path, root: Path) -> list[str]:
         if (
             "CLIMATE_DEFAULT_STEP_TENTHS" not in body
             or "CLIMATE_WHOLE_NUMBER_STEP_TENTHS" not in body
-            or "ctx->precision <= 0" not in body
-            or "ctx->step_tenths > minimum" not in body
+            or "ctx->configured_step_tenths" not in body
+            or "return ctx->configured_step_tenths" not in body
+            or "ctx->step_tenths > minimum" in body
         ):
-            errors.append(f"{rel}: keep climate temperature changes at a display-appropriate minimum")
+            errors.append(f"{rel}: use the configured climate temperature step")
     if "int step = climate_effective_step_tenths(ctx);" not in text:
         errors.append(f"{rel}: round climate targets using the display-appropriate minimum step")
     if "int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;" not in text:
         errors.append(f"{rel}: round whole-number climate targets to whole-degree boundaries")
+    if 'cfg_option_value(p.options, "temperature_step")' not in text:
+        errors.append(f"{rel}: use the configured climate temperature step")
     if "climate_selected_target(ui.active) - ui.active->step_tenths" in text:
         errors.append(f"{rel}: use the display-appropriate minimum step for the climate minus button")
     if "climate_selected_target(ui.active) + ui.active->step_tenths" in text:
@@ -1341,6 +1394,7 @@ def run_scan() -> int:
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_action_card_script_fields_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
     errors.extend(firmware_ntp_startup_errors(TIME_ADDON_PATH, SUN_CALC_PATH, CONNECTIVITY_PATHS, ROOT))
@@ -1482,6 +1536,20 @@ def expect_action_card_availability_errors(name: str, text: str, expected: tuple
         (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
 
         errors = firmware_action_card_availability_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_action_card_script_fields_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_actions.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_action_card_script_fields_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -2478,6 +2546,56 @@ def run_self_test() -> int:
         "}\n",
         (),
     )
+    expect_action_card_script_fields_errors(
+        "script fields sent as service data",
+        "inline void action_card_add_script_field_variables(esphome::api::HomeassistantActionRequest &req) {\n"
+        "  std::string fields = cfg_option_value(options, \"script_fields\");\n"
+        "  ha_action_add_data(req, key.c_str(), value.c_str());\n"
+        "}\n"
+        "inline void send_action_card_action(const ParsedCfg &p) {\n"
+        "  size_t script_field_count = action_card_script_field_count(p.options);\n"
+        "  ha_action_begin(req, p.sensor.c_str(), false, 1 + script_field_count);\n"
+        "}\n",
+        (
+            "keep parsed script field strings alive",
+            "initialize script field variables separately",
+            "send script fields through Home Assistant action variables",
+            "do not send script fields as top-level",
+        ),
+    )
+    expect_action_card_script_fields_errors(
+        "script fields sent as template context only",
+        "inline void action_card_add_script_field_variables(esphome::api::HomeassistantActionRequest &req) {\n"
+        "  std::string fields = cfg_option_value(options, \"script_fields\");\n"
+        "  ha_action_add_variable(req, key.c_str(), value.c_str());\n"
+        "}\n"
+        "inline void send_action_card_action(const ParsedCfg &p) {\n"
+        "  std::vector<ActionCardScriptField> script_fields = action_card_script_fields(p.options);\n"
+        "  ha_action_begin(req, p.sensor.c_str(), false, 1);\n"
+        "  req.variables.init(script_fields.size());\n"
+        "}\n",
+        (
+            "send script fields in the script.turn_on variables service payload",
+            "send script fields through Home Assistant action variables",
+        ),
+    )
+    expect_action_card_script_fields_errors(
+        "script fields sent in variables payload",
+        "inline void action_card_add_script_field_variables(esphome::api::HomeassistantActionRequest &req) {\n"
+        "  std::string fields = cfg_option_value(options, \"script_fields\");\n"
+        "  for (const auto &field : fields) {\n"
+        "    ha_action_add_variable(req, field.key.c_str(), field.value.c_str());\n"
+        "  }\n"
+        "}\n"
+        "inline void send_action_card_action(const ParsedCfg &p) {\n"
+        "  std::vector<ActionCardScriptField> script_fields = action_card_script_fields(p.options);\n"
+        "  ha_action_begin(req, p.sensor.c_str(), false, 1);\n"
+        "  req.data_template.init(1);\n"
+        "  req.variables.init(script_fields.size());\n"
+        "  ha_action_add_data_template(req, \"variables\", script_fields_template.c_str());\n"
+        "}\n",
+        (),
+    )
     expect_local_sensor_binding_order_errors(
         "local sensor subtype reaches HA binding",
         "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const CardPalette &palette) {\n"
@@ -2844,6 +2962,15 @@ def run_self_test() -> int:
         "script:\n"
         "  - id: cover_art_download\n"
         "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_active) &&\n"
+        "                     id(cover_art_image_available) &&\n"
+        "                     id(cover_art_refresh_needed) &&\n"
+        "                     !${cover_art_live_image_updates};\n"
+        "          then:\n"
+        "            - script.execute: cover_art_show_track_overlay\n"
         "      - lambda: |-\n"
         "          if (url.find(\"/api/media_player_proxy/\") != std::string::npos) {\n"
         "            url += url.find('?') == std::string::npos ? \"?time=\" : \"&time=\";\n"
@@ -3545,20 +3672,27 @@ def run_self_test() -> int:
         ),
     )
     expect_climate_step_errors(
-        "climate enforces display-appropriate minimum step",
+        "climate uses configured step increment",
         "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
         "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;\n"
+        "int configured_step_tenths = CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
         "inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {\n"
         "  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;\n"
-        "  int minimum = ctx->precision <= 0 ? CLIMATE_WHOLE_NUMBER_STEP_TENTHS : CLIMATE_DEFAULT_STEP_TENTHS;\n"
-        "  if (ctx->step_tenths > minimum && ctx->step_tenths <= 100)\n"
-        "    return ctx->step_tenths;\n"
-        "  return minimum;\n"
+        "  if (ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS ||\n"
+        "      ctx->configured_step_tenths == CLIMATE_WHOLE_NUMBER_STEP_TENTHS)\n"
+        "    return ctx->configured_step_tenths;\n"
+        "  return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
         "}\n"
         "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
         "  int step = climate_effective_step_tenths(ctx);\n"
         "  int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;\n"
         "  return value + step;\n"
+        "}\n"
+        "inline ClimateControlCtx *create_climate_control_context(const ParsedCfg &p) {\n"
+        "  ctx->configured_step_tenths = normalize_climate_temperature_step(\n"
+        "    cfg_option_value(p.options, \"temperature_step\")) == \"0.5\"\n"
+        "      ? CLIMATE_DEFAULT_STEP_TENTHS\n"
+        "      : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
         "}\n"
         "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
         "  climate_selected_target(ui.active) - climate_effective_step_tenths(ui.active);\n"

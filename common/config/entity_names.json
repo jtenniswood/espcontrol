@@ -1,10 +1,7 @@
 {
   "entities": [
     { "key": "button_order", "domain": "text", "name": "Button Order", "groups": ["card"] },
-    { "key": "screen_theme", "domain": "select", "name": "Screen: Theme", "objectIds": ["screen__theme", "screen_theme"], "groups": ["card"] },
     { "key": "button_on_color", "domain": "text", "name": "Button On Color", "groups": ["card"] },
-    { "key": "button_off_color", "domain": "text", "name": "Button Off Color", "groups": ["card"] },
-    { "key": "sensor_card_color", "domain": "text", "name": "Sensor Card Color", "groups": ["card"] },
     { "key": "button_config", "domain": "text", "template": "Button {slot} Config", "groups": ["card_slot"] },
     { "key": "subpage_config", "domain": "text", "template": "Subpage {slot} Config", "groups": ["subpage_slot"] },
     { "key": "subpage_config_ext", "domain": "text", "template": "Subpage {slot} Config Ext", "groups": ["subpage_slot"] },
@@ -37,6 +34,7 @@
     { "key": "screen_saver_cover_art_entity", "domain": "text", "name": "Screen Saver: Cover Art Entity", "objectIds": ["screen_saver__cover_art_entity", "screen_saver_cover_art_entity", "cover_art_media_player_entity"], "groups": ["settings"] },
     { "key": "screen_saver_cover_art_conditions", "domain": "text", "name": "Screen Saver: Cover Art Conditions", "objectIds": ["screen_saver__cover_art_conditions", "screen_saver_cover_art_conditions", "cover_art_attribute_conditions"], "groups": ["settings"] },
     { "key": "screen_saver_cover_art_delay", "domain": "number", "name": "Screen Saver: Cover Art Delay", "objectIds": ["screen_saver__cover_art_delay", "screen_saver_cover_art_delay", "cover_art_delay"], "groups": ["settings"] },
+    { "key": "screen_saver_cover_art_touch_pause", "domain": "number", "name": "Screen Saver: Cover Art Touch Pause", "objectIds": ["screen_saver__cover_art_touch_pause", "screen_saver_cover_art_touch_pause", "cover_art_touch_pause"], "groups": ["settings"] },
     { "key": "screen_saver_track_overlay_duration", "domain": "number", "name": "Screen Saver: Show Track Overlay", "objectIds": ["screen_saver__track_overlay_duration", "screen_saver_track_overlay_duration", "track_overlay_duration", "screen_saver__show_track_overlay"], "groups": ["settings"] },
     { "key": "screen_saver_hide_cover_art_external_input", "domain": "switch", "name": "Screen Saver: Hide for external sources", "objectIds": ["screen_saver__hide_cover_art_on_external_input", "screen_saver_hide_cover_art_on_external_input", "hide_cover_art_on_external_input", "cover_art_hide_external_input", "screen_saver__hide_for_external_sources"], "groups": ["settings"] },
     { "key": "home_assistant_artwork_protocol", "domain": "select", "name": "Home Assistant Artwork Protocol", "objectIds": ["home_assistant_artwork_protocol", "cover_art_home_assistant_artwork_protocol"], "groups": ["settings"] },

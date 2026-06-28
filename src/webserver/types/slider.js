@@ -21,7 +21,7 @@ function normalizeCoverMode(mode, allowCommands) {
 
 function coverModeOptionsForSettings(currentMode) {
   return [
-    ["modal", "Modal"],
+    ["modal", "All Controls"],
     ["", "Slider: Position"],
     ["tilt", "Slider: Tilt"],
     ["toggle", "Toggle"],
@@ -52,6 +52,7 @@ function renderCoverControlTabSettings(panel, b, helpers) {
     normalizeOptions: normalizeCoverOptions,
     setTabs: setCoverControlTabs,
     idPrefix: "cover-tab-",
+    hideHeading: true,
   });
 }
 
@@ -118,6 +119,10 @@ function sliderTypeFactory(opts) {
       b.icon_on = opts.defaultIconOn;
     },
     renderSettings: function (panel, b, slot, helpers) {
+      var cardSettingsPanel = null;
+      var modalSettingsPanel = null;
+      var modalSettingsDisclosure = null;
+
       function labelField() {
         helpers.renderCardTextField(panel, b, helpers, metadata.labelField);
       }
@@ -140,9 +145,11 @@ function sliderTypeFactory(opts) {
         if (!opts.coverControlTabs || !coverTabsSection) return;
         coverTabsSection.innerHTML = "";
         if (coverMode === "modal") {
+          if (modalSettingsDisclosure) modalSettingsDisclosure.style.display = "";
           renderCoverControlTabSettings(coverTabsSection, b, helpers);
           return;
         }
+        if (modalSettingsDisclosure) modalSettingsDisclosure.style.display = "none";
         var previousOptions = b.options || "";
         b.options = "";
         if (b.options !== previousOptions) helpers.saveField("options", b.options);
@@ -260,15 +267,24 @@ function sliderTypeFactory(opts) {
         coverPositionInput.addEventListener("blur", function () { setCoverPosition(this.value); });
       }
 
-      if (opts.renderLabelInSettings && !opts.labelAfterEntity) labelField();
+      if (opts.renderLabelInSettings && !opts.labelAfterEntity && !opts.coverControlTabs) labelField();
 
       helpers.renderCardEntityField(panel, b, helpers, metadata);
 
-      if (opts.renderLabelInSettings && opts.labelAfterEntity) labelField();
+      if (opts.coverControlTabs) {
+        cardSettingsPanel = document.createElement("div");
+        modalSettingsPanel = document.createElement("div");
+        panel.appendChild(inlineDisclosure("Card Settings", cardSettingsPanel, false));
+        modalSettingsDisclosure = inlineDisclosure("Modal Settings", modalSettingsPanel, b._modalSettingsOpen === true);
+        panel.appendChild(modalSettingsDisclosure);
+        panel = cardSettingsPanel;
+      }
+
+      if (opts.renderLabelInSettings && (opts.labelAfterEntity || opts.coverControlTabs)) labelField();
 
       if (opts.coverControlTabs) {
         coverTabsSection = document.createElement("div");
-        panel.appendChild(coverTabsSection);
+        modalSettingsPanel.appendChild(coverTabsSection);
       }
 
       function iconField(label, inputSuffix, field, currentVal, defaultVal) {
@@ -360,7 +376,7 @@ function sliderTypeFactory(opts) {
     renderPreview: function (b, helpers) {
       var label = b.label || b.entity || opts.fallbackLabel;
       var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : opts.fallbackIcon;
-      if (opts.interactionMode && (b.sensor === "modal" || b.sensor === "toggle" || coverCommandMode(b.sensor))) {
+      if (opts.interactionMode && (b.sensor === "toggle" || coverCommandMode(b.sensor))) {
         return {
           iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
           labelHtml: cardBadgeLabelHtml(helpers, label, metadata.preview.badge),

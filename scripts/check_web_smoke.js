@@ -12,6 +12,7 @@ const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const DEVICE_MANIFEST = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = path.join(ROOT, "docs", "public", "webserver");
 const ALL_ROTATIONS = ["0", "90", "180", "270"];
+const REQUIRED_HOOK_GROUPS = ["config", "preview", "backup", "settings"];
 
 function createWebSandbox() {
   const domEvents = [];
@@ -39,7 +40,15 @@ function loadHooks() {
   const sandbox = createWebSandbox();
   vm.createContext(sandbox);
   vm.runInContext(loadBundledWebSource(), sandbox, { filename: SOURCE });
+  assertRequiredHookGroups(sandbox.__ESPCONTROL_TEST_HOOKS__.groups);
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
+}
+
+function assertRequiredHookGroups(groups, prefix = "web test hooks") {
+  assert(groups, `${prefix} must expose grouped hook registrations`);
+  for (const group of REQUIRED_HOOK_GROUPS) {
+    assert(groups[group], `${prefix} must include the ${group} hook group`);
+  }
 }
 
 function plain(value) {
@@ -179,6 +188,7 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
     sandbox.__ESPCONTROL_TEST_HOOKS__.config,
     `${slug}: generated web UI must export the same test hooks used by local checks`
   );
+  assertRequiredHookGroups(sandbox.__ESPCONTROL_TEST_HOOKS__.groups, `${slug}: generated web UI`);
   const generatedHooks = sandbox.__ESPCONTROL_TEST_HOOKS__.config;
   const expectedScreenSize = String(device.public.screenSize)
     .toLowerCase()
@@ -385,6 +395,8 @@ assert.deepStrictEqual(Array.from(hooks.alarmVisibleActions(hooks.parseButtonCon
 ))), ["away", "home", "night"]);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_speed", false), true);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_speed", true), true);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", false), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_oscillate", true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("option_select", false), false);
@@ -792,6 +804,15 @@ const fanSpeedPreview = hooks.buttonTypePreviewFor("fan_speed", {
 assert(fanSpeedPreview.iconHtml.includes("sp-slider-preview"), "fan speed preview keeps the slider preview");
 assert(fanSpeedPreview.labelHtml.includes("mdi-fan-speed-2"), "fan speed preview uses the speed badge");
 
+const fanControlPreview = hooks.buttonTypePreviewFor("fan_control", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan",
+  type: "fan_control",
+});
+assert(!fanControlPreview.iconHtml.includes("sp-slider-preview"), "fan control preview is not an inline slider");
+assert(fanControlPreview.labelHtml.includes("mdi-fan"), "fan control preview uses the fan badge");
+
 const fanSwitchPreview = hooks.buttonTypePreviewFor("fan_switch", {
   entity: "fan.bedroom",
   label: "Bedroom Fan",
@@ -890,7 +911,7 @@ const coverModalPreview = hooks.buttonTypePreviewFor("cover", {
   sensor: "modal",
   type: "cover",
 });
-assert(!coverModalPreview.iconHtml.includes("sp-slider-preview"), "cover modal preview uses icon-only layout");
+assert(coverModalPreview.iconHtml.includes("sp-slider-preview"), "cover modal preview shows read-only position track");
 assert(coverModalPreview.iconHtml.includes("mdi-blinds"), "cover modal preview uses the cover icon");
 assert(coverModalPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover modal preview uses the cover badge");
 

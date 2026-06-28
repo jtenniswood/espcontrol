@@ -5,7 +5,6 @@
 // ── Climate control card helpers ─────────────────────────────────────
 
 constexpr uint32_t CLIMATE_HEATING_COLOR = 0xA44A1C;
-constexpr uint32_t CLIMATE_COOLING_COLOR = 0x1565C0;
 constexpr int CLIMATE_DEFAULT_TARGET_TENTHS = 200;
 constexpr int CLIMATE_DEFAULT_LOW_TENTHS = 180;
 constexpr int CLIMATE_DEFAULT_HIGH_TENTHS = 220;
@@ -34,6 +33,7 @@ constexpr lv_coord_t CLIMATE_MODAL_SQUARE_LABELS_DOWN_REF_PX = 18;
 constexpr lv_coord_t CLIMATE_MODAL_4848_LABELS_DOWN_REF_PX = 12;
 constexpr lv_coord_t CLIMATE_MODAL_4848_OPTION_CHIP_W_REF_PX = 200;
 constexpr lv_coord_t CLIMATE_MODAL_4848_OPTION_CHIP_GAP_REF_PX = 12;
+constexpr lv_coord_t CLIMATE_MODAL_P4_86_OPTION_CHIP_W_REF_PX = 280;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 4;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_MIN_H_PX = 56;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_PAD_Y_REF_PX = 6;
@@ -81,6 +81,7 @@ struct ClimateControlCtx {
   bool received_min = false;
   bool received_max = false;
   int step_tenths = CLIMATE_DEFAULT_STEP_TENTHS;
+  int configured_step_tenths = CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
   int precision = 0;
   std::string label_display = "label";
   std::string number_display = "target";
@@ -256,10 +257,10 @@ inline int climate_clamp_tenths(ClimateControlCtx *ctx, int value) {
 
 inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {
   if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;
-  int minimum = ctx->precision <= 0 ? CLIMATE_WHOLE_NUMBER_STEP_TENTHS : CLIMATE_DEFAULT_STEP_TENTHS;
-  if (ctx->step_tenths > minimum && ctx->step_tenths <= 100)
-    return ctx->step_tenths;
-  return minimum;
+  if (ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS ||
+      ctx->configured_step_tenths == CLIMATE_WHOLE_NUMBER_STEP_TENTHS)
+    return ctx->configured_step_tenths;
+  return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
 }
 
 inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {
@@ -306,8 +307,8 @@ inline int climate_constrain_selected_target(ClimateControlCtx *ctx, int value) 
 inline std::string climate_format_tenths(int value, int precision) {
   char buf[20];
   if (precision <= 0) {
-    int whole = value >= 0 ? (value + 5) / 10 : (value - 5) / 10;
-    snprintf(buf, sizeof(buf), "%d", whole);
+    int rounded = (value >= 0 ? value + 5 : value - 5) / 10;
+    snprintf(buf, sizeof(buf), "%d", rounded);
   } else {
     int sign = value < 0 ? -1 : 1;
     int abs_v = value < 0 ? -value : value;
@@ -318,6 +319,13 @@ inline std::string climate_format_tenths(int value, int precision) {
     else snprintf(buf, sizeof(buf), "%s%d.%d00", sign < 0 ? "-" : "", whole, tenth);
   }
   return buf;
+}
+
+inline int climate_target_display_precision(ClimateControlCtx *ctx) {
+  if (!ctx) return 0;
+  return ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS && ctx->precision <= 0
+    ? 1
+    : ctx->precision;
 }
 
 inline std::string climate_option_label(const std::string &raw) {
@@ -511,7 +519,11 @@ inline bool climate_control_uses_square_modal_tuning(const ControlModalLayout &l
 }
 
 inline bool climate_control_uses_4848_modal_tuning(const ControlModalLayout &layout) {
-  return control_modal_uses_4848_tuning(layout);
+  return control_modal_uses_4848_control_tuning(layout);
+}
+
+inline bool climate_control_uses_p4_86_modal_tuning(const ControlModalLayout &layout) {
+  return control_modal_uses_p4_86_tuning(layout);
 }
 
 inline bool climate_control_uses_large_landscape_modal_tuning(const ControlModalLayout &layout) {
@@ -523,7 +535,9 @@ inline bool climate_control_uses_jc1060p470_modal_tuning(const ControlModalLayou
 }
 
 inline bool climate_control_uses_compact_portrait_modal_tuning(const ControlModalLayout &layout) {
-  return control_modal_uses_compact_portrait_tuning(layout) && layout.sh > layout.sw;
+  return control_modal_uses_compact_portrait_tuning(layout) &&
+         !climate_control_uses_4848_modal_tuning(layout) &&
+         layout.sh > layout.sw;
 }
 
 inline lv_coord_t climate_control_step_buttons_up_ref(const ControlModalLayout &layout) {
@@ -531,7 +545,7 @@ inline lv_coord_t climate_control_step_buttons_up_ref(const ControlModalLayout &
     return CLIMATE_MODAL_JC1060P470_STEP_BUTTONS_UP_REF_PX;
   if (climate_control_uses_large_landscape_modal_tuning(layout))
     return CLIMATE_MODAL_LARGE_LANDSCAPE_STEP_BUTTONS_UP_REF_PX;
-  if (control_modal_uses_compact_portrait_tuning(layout))
+  if (climate_control_uses_compact_portrait_modal_tuning(layout))
     return CLIMATE_MODAL_JC4880P443_STEP_BUTTONS_UP_REF_PX;
   if (climate_control_uses_4848_modal_tuning(layout))
     return CLIMATE_MODAL_4848_STEP_BUTTONS_UP_REF_PX;
@@ -549,7 +563,7 @@ inline lv_coord_t climate_control_labels_down_ref(const ControlModalLayout &layo
     return CLIMATE_MODAL_JC1060P470_VALUE_DOWN_REF_PX;
   if (climate_control_uses_large_landscape_modal_tuning(layout))
     return CLIMATE_MODAL_LARGE_LANDSCAPE_VALUE_DOWN_REF_PX;
-  if (control_modal_uses_compact_portrait_tuning(layout))
+  if (climate_control_uses_compact_portrait_modal_tuning(layout))
     return CLIMATE_MODAL_JC4880P443_LABELS_DOWN_REF_PX;
   if (climate_control_uses_4848_modal_tuning(layout))
     return CLIMATE_MODAL_4848_LABELS_DOWN_REF_PX;
@@ -609,8 +623,10 @@ inline void climate_apply_bottom_chip_padding(lv_obj_t *chip,
 }
 
 inline ControlModalLayout climate_control_calc_layout(ClimateControlCtx *ctx) {
-  ControlModalLayout layout = control_modal_calc_layout(ctx ? ctx->width_compensation_percent : 100);
-  int arc_size_percent = control_modal_uses_compact_portrait_tuning(layout)
+  ControlModalLayout layout = control_modal_calc_layout(
+    ctx ? ctx->width_compensation_percent : 100,
+    false);
+  int arc_size_percent = climate_control_uses_compact_portrait_modal_tuning(layout)
     ? CLIMATE_MODAL_JC4880P443_ARC_SIZE_PERCENT
     : CLIMATE_MODAL_ARC_SIZE_PERCENT;
   layout.arc_size = layout.arc_size * arc_size_percent / 100;
@@ -640,10 +656,37 @@ inline void climate_raise_arc_markers() {
   if (ui.handle_dot) lv_obj_move_foreground(ui.handle_dot);
 }
 
+inline bool climate_uses_cooling_arc(ClimateControlCtx *ctx) {
+  return ctx && ctx->available && ctx->hvac_mode == "cool";
+}
+
+inline bool climate_has_active_arc_mode(ClimateControlCtx *ctx) {
+  return ctx && ctx->available && ctx->hvac_mode != "off" &&
+         !climate_unavailable_value(ctx->hvac_mode);
+}
+
+inline uint32_t climate_modal_arc_color(ClimateControlCtx *ctx) {
+  if (!climate_has_active_arc_mode(ctx)) return DARK_BACKGROUND_SECONDARY;
+  return ctx ? ctx->accent_color : DEFAULT_SLIDER_COLOR;
+}
+
+inline int climate_modal_arc_value(ClimateControlCtx *ctx, bool temp_enabled, int target) {
+  if (!ctx) return CLIMATE_DEFAULT_TARGET_TENTHS;
+  int value = temp_enabled ? climate_clamp_tenths(ctx, target) : ctx->min_tenths;
+  if (climate_uses_cooling_arc(ctx)) return ctx->min_tenths + ctx->max_tenths - value;
+  return value;
+}
+
+inline int climate_target_from_modal_arc_value(ClimateControlCtx *ctx, int value) {
+  if (!ctx) return CLIMATE_DEFAULT_TARGET_TENTHS;
+  value = climate_clamp_tenths(ctx, value);
+  if (climate_uses_cooling_arc(ctx)) return ctx->min_tenths + ctx->max_tenths - value;
+  return value;
+}
+
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
   if (!ctx) return DEFAULT_SLIDER_COLOR;
   if (ctx->hvac_action == "heating") return CLIMATE_HEATING_COLOR;
-  if (ctx->hvac_action == "cooling") return CLIMATE_COOLING_COLOR;
   return ctx->accent_color;
 }
 
@@ -660,12 +703,13 @@ inline void climate_apply_step_button_icon_size(lv_obj_t *btn) {
 
 inline std::string climate_card_target_value(ClimateControlCtx *ctx) {
   if (!ctx || !ctx->available) return "--";
+  int precision = climate_target_display_precision(ctx);
   if (ctx->has_low && ctx->has_high)
-    return climate_format_tenths(ctx->low_tenths, ctx->precision) + "-" +
-           climate_format_tenths(ctx->high_tenths, ctx->precision);
-  if (ctx->has_target) return climate_format_tenths(ctx->target_tenths, ctx->precision);
-  if (ctx->has_low) return climate_format_tenths(ctx->low_tenths, ctx->precision);
-  if (ctx->has_high) return climate_format_tenths(ctx->high_tenths, ctx->precision);
+    return climate_format_tenths(ctx->low_tenths, precision) + "-" +
+           climate_format_tenths(ctx->high_tenths, precision);
+  if (ctx->has_target) return climate_format_tenths(ctx->target_tenths, precision);
+  if (ctx->has_low) return climate_format_tenths(ctx->low_tenths, precision);
+  if (ctx->has_high) return climate_format_tenths(ctx->high_tenths, precision);
   return "--";
 }
 
@@ -761,7 +805,8 @@ inline void climate_send_action(const std::string &entity_id,
 
 inline std::string climate_service_temp_value(int tenths) {
   char buf[16];
-  snprintf(buf, sizeof(buf), "%d.%d", tenths / 10, std::abs(tenths % 10));
+  int abs_tenths = std::abs(tenths);
+  snprintf(buf, sizeof(buf), "%s%d.%d", tenths < 0 ? "-" : "", abs_tenths / 10, abs_tenths % 10);
   return buf;
 }
 
@@ -808,7 +853,8 @@ inline void climate_update_drag_preview(ClimateControlCtx *ctx) {
   if (!ctx || ui.active != ctx) return;
   int target = climate_display_target(ctx);
   if (ui.target_lbl)
-    lv_label_set_text(ui.target_lbl, climate_format_tenths(target, ctx->precision).c_str());
+    lv_label_set_text(ui.target_lbl, climate_format_tenths(
+      target, climate_target_display_precision(ctx)).c_str());
   if (ui.handle_dot && ui.panel) {
     ControlModalLayout layout = climate_control_calc_layout(ctx);
     climate_layout_handle_dot(ctx, layout);
@@ -1310,8 +1356,9 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
     if (show_dial && !ui.dragging_arc) {
       ui.updating_arc = true;
       lv_arc_set_range(ui.arc, ctx->min_tenths, ctx->max_tenths);
-      lv_arc_set_value(ui.arc, temp_enabled ? climate_clamp_tenths(ctx, target) : ctx->min_tenths);
-      lv_obj_set_style_arc_color(ui.arc, lv_color_hex(climate_is_active(ctx) ? climate_active_color(ctx) : DARK_BACKGROUND_SECONDARY), LV_PART_INDICATOR);
+      lv_arc_set_mode(ui.arc, climate_uses_cooling_arc(ctx) ? LV_ARC_MODE_REVERSE : LV_ARC_MODE_NORMAL);
+      lv_arc_set_value(ui.arc, climate_modal_arc_value(ctx, temp_enabled, target));
+      lv_obj_set_style_arc_color(ui.arc, lv_color_hex(climate_modal_arc_color(ctx)), LV_PART_INDICATOR);
       ui.updating_arc = false;
     }
   }
@@ -1328,7 +1375,8 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   if (ui.target_row) climate_set_obj_visible(ui.target_row, true);
   if (ui.target_lbl) {
     if (!ctx->available) lv_label_set_text(ui.target_lbl, "--");
-    else lv_label_set_text(ui.target_lbl, climate_format_tenths(target, ctx->precision).c_str());
+    else lv_label_set_text(ui.target_lbl, climate_format_tenths(
+      target, climate_target_display_precision(ctx)).c_str());
     lv_obj_clear_flag(ui.target_lbl, LV_OBJ_FLAG_CLICKABLE);
   }
   if (ui.unit_lbl) {
@@ -1442,10 +1490,12 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   if (ctx->available && !ctx->fan_modes.empty()) visible_chip_count++;
   if (ctx->available && !ctx->swing_modes.empty()) visible_chip_count++;
   lv_coord_t chip_row_w = layout.panel_w * CLIMATE_OPTION_ROW_WIDTH_PERCENT / 100;
+  bool p4_86_square = climate_control_uses_p4_86_modal_tuning(layout);
   lv_coord_t option_chip_w = compensated_width(
     tune_4848 ? CLIMATE_MODAL_4848_OPTION_CHIP_W_REF_PX :
-      (compact_portrait ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_CHIP_W_PX :
-        (layout.short_side < 520 ? (roomy_landscape ? 224 : (medium_landscape ? 240 : 180)) : 240)),
+      (p4_86_square ? CLIMATE_MODAL_P4_86_OPTION_CHIP_W_REF_PX :
+        (compact_portrait ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_CHIP_W_PX :
+          (layout.short_side < 520 ? (roomy_landscape ? 224 : (medium_landscape ? 240 : 180)) : 240))),
     ctx->width_compensation_percent);
   if (compact_portrait && visible_chip_count == 2) {
     lv_coord_t fitted_w = (chip_row_w - chip_gap) / 2;
@@ -1646,13 +1696,16 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     if (ui.updating_arc || !ui.active) return;
     ui.dragging_arc = true;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    climate_preview_selected_target(ui.active, lv_arc_get_value(arc));
+    climate_preview_selected_target(ui.active,
+      climate_target_from_modal_arc_value(ui.active, lv_arc_get_value(arc)));
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *e) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
     if (ui.updating_arc || !ui.active) return;
     lv_obj_t *arc = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    int value = ui.has_drag_preview ? ui.drag_preview_tenths : lv_arc_get_value(arc);
+    int value = ui.has_drag_preview
+      ? ui.drag_preview_tenths
+      : climate_target_from_modal_arc_value(ui.active, lv_arc_get_value(arc));
     ui.dragging_arc = false;
     ui.has_drag_preview = false;
     climate_apply_selected_target(ui.active, value, true, false);
@@ -1838,6 +1891,10 @@ inline ClimateControlCtx *create_climate_control_context(
   climate_apply_saved_range(ctx, p.precision);
   ctx->label_display = normalize_climate_label_display(cfg_option_value(p.options, "label_display"));
   ctx->number_display = normalize_climate_number_display(cfg_option_value(p.options, "number_display"));
+  ctx->configured_step_tenths = normalize_climate_temperature_step(
+    cfg_option_value(p.options, "temperature_step")) == "0.5"
+      ? CLIMATE_DEFAULT_STEP_TENTHS
+      : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;
@@ -1867,15 +1924,21 @@ inline ClimateControlCtx *create_climate_control_context(
 
 inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
+  const uint32_t generation = ha_subscription_generation();
+  auto active = [generation]() {
+    return generation == ha_subscription_generation();
+  };
   register_ha_control_availability(ctx->btn, ctx->btn);
-  auto refresh = [ctx]() {
+  auto refresh = [ctx, active]() {
+    if (!active()) return;
     climate_update_card(ctx);
     climate_control_set_modal_value(ctx);
   };
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef state) {
+      [ctx, refresh, active](esphome::StringRef state) {
+        if (!active()) return;
         ctx->hvac_mode = climate_hvac_service_value(string_ref_limited(state, HA_SHORT_STATE_MAX_LEN));
         ctx->available = !climate_unavailable_value(ctx->hvac_mode);
         if (!ctx->available) ctx->hvac_mode = "off";
@@ -1887,7 +1950,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("friendly_name"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         ctx->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
         refresh();
       })
@@ -1895,16 +1959,18 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("hvac_action"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         ctx->hvac_action = climate_lower(climate_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
         refresh();
       })
   );
-  auto subscribe_temp = [ctx, refresh](const char *attr, int ClimateControlCtx::*field, bool ClimateControlCtx::*has_field) {
+  auto subscribe_temp = [ctx, refresh, active](const char *attr, int ClimateControlCtx::*field, bool ClimateControlCtx::*has_field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
       std::function<void(esphome::StringRef)>(
-        [ctx, refresh, field, has_field](esphome::StringRef value) {
+        [ctx, refresh, active, field, has_field](esphome::StringRef value) {
+          if (!active()) return;
           int tenths = 0;
           if (climate_parse_tenths(value, tenths)) {
             // Home Assistant can send temperatures before min/max attributes on boot.
@@ -1925,7 +1991,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("min_temp"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         int tenths = 0;
         if (!ctx->custom_min && climate_parse_tenths(value, tenths)) {
           ctx->min_tenths = tenths;
@@ -1938,7 +2005,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("max_temp"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         int tenths = 0;
         if (!ctx->custom_max && climate_parse_tenths(value, tenths)) {
           ctx->max_tenths = tenths;
@@ -1951,7 +2019,8 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   ha_subscribe_attribute(
     ctx->entity_id, std::string("target_temp_step"),
     std::function<void(esphome::StringRef)>(
-      [ctx, refresh](esphome::StringRef value) {
+      [ctx, refresh, active](esphome::StringRef value) {
+        if (!active()) return;
         int tenths = 0;
         if (climate_parse_tenths(value, tenths) && tenths > 0 && tenths <= 100)
           ctx->step_tenths = tenths;
@@ -1960,11 +2029,12 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         refresh();
       })
   );
-  auto subscribe_text = [ctx, refresh](const char *attr, std::string ClimateControlCtx::*field) {
+  auto subscribe_text = [ctx, refresh, active](const char *attr, std::string ClimateControlCtx::*field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
       std::function<void(esphome::StringRef)>(
-        [ctx, refresh, field](esphome::StringRef value) {
+        [ctx, refresh, active, field](esphome::StringRef value) {
+          if (!active()) return;
           ctx->*field = climate_lower(climate_trim(string_ref_limited(value, HA_SHORT_STATE_MAX_LEN)));
           refresh();
         })
@@ -1973,11 +2043,12 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   subscribe_text("fan_mode", &ClimateControlCtx::fan_mode);
   subscribe_text("swing_mode", &ClimateControlCtx::swing_mode);
   subscribe_text("preset_mode", &ClimateControlCtx::preset_mode);
-  auto subscribe_list = [ctx, refresh](const char *attr, std::vector<std::string> ClimateControlCtx::*field) {
+  auto subscribe_list = [ctx, refresh, active](const char *attr, std::vector<std::string> ClimateControlCtx::*field) {
     ha_subscribe_attribute(
       ctx->entity_id, std::string(attr),
       std::function<void(esphome::StringRef)>(
-        [ctx, refresh, field](esphome::StringRef value) {
+        [ctx, refresh, active, field](esphome::StringRef value) {
+          if (!active()) return;
           ctx->*field = climate_parse_options(value);
           refresh();
         })

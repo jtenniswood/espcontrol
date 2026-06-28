@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -11,13 +12,17 @@ from tempfile import TemporaryDirectory
 
 
 ROOT = Path(__file__).resolve().parent.parent
+CONFIG_DIR = ROOT / "common" / "config"
 CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config.h"
+STYLE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_style.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
 BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
 CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
+CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "card_normalization_fixtures.json"
 DEVICES_DIR = ROOT / "devices"
+IMAGE_CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "image_card_normalization_fixtures.json"
 
 
 CPP_SOURCE = r'''
@@ -610,7 +615,7 @@ def pure_config_header() -> str:
     index = text.find(marker)
     if index < 0:
         raise RuntimeError(f"Could not find pure parser boundary in {CONFIG_HEADER}")
-    return text[:index]
+    return text[:index] + "\n" + STYLE_HEADER.read_text(encoding="utf-8")
 
 
 def check_clock_bar_visual_gaps() -> None:
@@ -627,6 +632,41 @@ def check_clock_bar_visual_gaps() -> None:
         needle = f"clock_bar_visual_gap: {value}"
         if needle not in text:
             raise RuntimeError(f"{packages} must define {needle}")
+
+
+def cpp_string(value: str) -> str:
+    return json.dumps(value)
+
+
+def generated_fixture_assertions(fixtures: list[dict], comment: str, prefix: str) -> str:
+    lines = [f"  // {comment}"]
+    for fixture in fixtures:
+        name = fixture["name"]
+        input_value = fixture["input"]
+        expected = fixture["expected"]
+        var_name = prefix + "".join(ch if ch.isalnum() else "_" for ch in name.lower())
+        lines.append(f"  auto {var_name} = parse_cfg({cpp_string(input_value)});")
+        for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
+            lines.append(f"  assert({var_name}.{field} == {cpp_string(expected[field])});")
+    return "\n".join(lines) + "\n"
+
+
+def remove_suffix(value: str, suffix: str) -> str:
+    return value[: -len(suffix)] if suffix and value.endswith(suffix) else value
+
+
+def generated_card_normalization_assertions() -> str:
+    shared_fixtures = json.loads(CARD_NORMALIZATION_FIXTURES.read_text(encoding="utf-8"))
+    chunks = []
+    for label, fixtures in sorted(shared_fixtures.items()):
+        prefix = "fixture_" + "".join(ch if ch.isalnum() else "_" for ch in label.lower()) + "_"
+        chunks.append(generated_fixture_assertions(fixtures, f"Shared {label} saved-card normalization fixtures.", prefix))
+    for path in sorted(CONFIG_DIR.glob("*_card_normalization_fixtures.json")):
+        label = remove_suffix(path.name, "_card_normalization_fixtures.json").replace("_", " ")
+        prefix = "fixture_" + remove_suffix(path.stem, "_card_normalization_fixtures") + "_"
+        fixtures = json.loads(path.read_text(encoding="utf-8"))
+        chunks.append(generated_fixture_assertions(fixtures, f"Shared {label} saved-card normalization fixtures.", prefix))
+    return "".join(chunks)
 
 
 def main() -> int:
@@ -666,7 +706,10 @@ def main() -> int:
         )
         source = tmp_path / "check_firmware_parser.cpp"
         binary = tmp_path / "check_firmware_parser"
-        source.write_text(CPP_SOURCE, encoding="utf-8")
+        source.write_text(
+            CPP_SOURCE.replace("  return 0;\n}", generated_card_normalization_assertions() + "\n  return 0;\n}"),
+            encoding="utf-8",
+        )
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
     print("Firmware parser checks passed.")

@@ -21,6 +21,7 @@ using HomeAssistantActionResponseCallback =
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_ALL = 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1u << 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_PHASE3 = 1u << 2;
 #define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
 #endif
 

@@ -14,6 +14,7 @@ var SSE_ALIAS_GROUPS = {
   coverArtEntity: ["text-screen_saver__cover_art_entity", "text-screen_saver_cover_art_entity", "text-cover_art_media_player_entity"],
   coverArtConditions: ["text-screen_saver__cover_art_conditions", "text-screen_saver_cover_art_conditions", "text-cover_art_attribute_conditions"],
   coverArtDelay: ["number-screen_saver__cover_art_delay", "number-screen_saver_cover_art_delay", "number-cover_art_delay"],
+  coverArtTouchPause: ["number-screen_saver__cover_art_touch_pause", "number-screen_saver_cover_art_touch_pause", "number-cover_art_touch_pause"],
   trackOverlayDuration: ["number-screen_saver__track_overlay_duration", "number-screen_saver_track_overlay_duration", "number-track_overlay_duration", "number-screen_saver__show_track_overlay"],
   coverArtHideExternalInput: ["switch-screen_saver__hide_cover_art_on_external_input", "switch-screen_saver_hide_cover_art_on_external_input", "switch-hide_cover_art_on_external_input", "switch-cover_art_hide_external_input", "switch-screen_saver__hide_for_external_sources"],
   homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
@@ -24,13 +25,47 @@ var SSE_ALIAS_GROUPS = {
   scheduleDimmedBrightness: ["number-screen__schedule_dimmed_brightness", "number-screen_schedule_dimmed_brightness", "number-schedule_dimmed_brightness"],
   scheduleClockBrightness: ["number-screen__schedule_clock_brightness", "number-screen_schedule_clock_brightness", "number-schedule_clock_brightness"],
   scheduleClockTextColor: ["text-screen__schedule_clock_text_color", "text-screen_schedule_clock_text_color", "text-schedule_clock_text_color"],
-  screenTheme: ["select-screen__theme", "select-screen_theme"],
   screenActiveTimezone: ["text_sensor-screen__active_timezone", "text_sensor-screen_active_timezone", "text_sensor:Screen: Active Timezone"],
   screenLanguage: ["select-screen__language", "select-screen_language"],
   ntpServer1: ["text-screen__ntp_server_1", "text-ntp_server_1"],
   ntpServer2: ["text-screen__ntp_server_2", "text-ntp_server_2"],
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
 };
+
+function applyPageTitle(title) {
+  var text = typeof title === "string" ? title.trim() : "";
+  document.title = text || "EspControl";
+}
+
+function handleWebServerPingEvent(e) {
+  var data = null;
+  try {
+    data = e && e.data ? JSON.parse(e.data) : null;
+  } catch (_) {
+    applyPageTitle("");
+    return;
+  }
+  if (data && Object.prototype.hasOwnProperty.call(data, "title")) {
+    applyPageTitle(data.title);
+  }
+}
+
+function loadPageTitleFromEventStream() {
+  if (eventStreamEnabled() || typeof EventSource !== "function") return;
+  var source = new EventSource("/events");
+  var closeTimer = setTimeout(function () {
+    source.close();
+  }, 5000);
+  source.addEventListener("ping", function (e) {
+    handleWebServerPingEvent(e);
+    clearTimeout(closeTimer);
+    source.close();
+  });
+  source.addEventListener("error", function () {
+    clearTimeout(closeTimer);
+    source.close();
+  });
+}
 
 function applyClockBarStateValue(val, d, matchedKey) {
   var keys = entityStateKeys(d);
@@ -102,24 +137,13 @@ function connectEvents() {
       }
       applyButtonOrderValue(val);
     },
-    "select-screen__theme": function (val, d) {
-      syncThemeFromDevice(d.value || val, d.option);
-    },
     "text-button_on_color": function (val) {
       state.onColor = val;
       syncColorUi();
       renderPreview();
     },
-    "text-button_off_color": function (val) {
-      state.offColor = val;
-      syncColorUi();
-      renderPreview();
-    },
-    "text-sensor_card_color": function (val) {
-      state.sensorColor = val;
-      syncColorUi();
-      renderPreview();
-    },
+    "text-button_off_color": function () {},
+    "text-sensor_card_color": function () {},
     "switch-indoor_temp_enable": function (val, d) {
       state._clockBarTemperatureVisibilityReceived = true;
       state._indoorOn = d.value === true || val === "ON";
@@ -266,6 +290,10 @@ function connectEvents() {
     },
     "number-screen_saver__cover_art_delay": function (val) {
       state.coverArtDelay = parseFloat(val) || 0;
+      syncCoverArtScreensaverUi();
+    },
+    "number-screen_saver__cover_art_touch_pause": function (val) {
+      state.coverArtTouchPause = parseFloat(val) || 0;
       syncCoverArtScreensaverUi();
     },
     "number-screen_saver__track_overlay_duration": function (val) {
@@ -491,6 +519,7 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtEntity, sseHandlers["text-screen_saver__cover_art_entity"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtConditions, sseHandlers["text-screen_saver__cover_art_conditions"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtDelay, sseHandlers["number-screen_saver__cover_art_delay"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtTouchPause, sseHandlers["number-screen_saver__cover_art_touch_pause"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.trackOverlayDuration, sseHandlers["number-screen_saver__track_overlay_duration"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, sseHandlers["switch-screen_saver__hide_cover_art_on_external_input"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, sseHandlers["select-home_assistant_artwork_protocol"]);
@@ -501,7 +530,6 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleDimmedBrightness, sseHandlers["number-screen__schedule_dimmed_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleClockBrightness, sseHandlers["number-screen__schedule_clock_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleClockTextColor, sseHandlers["text-screen__schedule_clock_text_color"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenTheme, sseHandlers["select-screen__theme"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenActiveTimezone, sseHandlers["text_sensor-screen__active_timezone"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screenLanguage, sseHandlers["select-screen__language"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer1, sseHandlers["text-screen__ntp_server_1"]);
@@ -664,6 +692,7 @@ function connectEvents() {
   source.addEventListener("error", function () {
     handleDisconnected(source);
   });
+  source.addEventListener("ping", handleWebServerPingEvent);
   source.addEventListener("state", function (e) {
     var d;
     try { d = JSON.parse(e.data); } catch (_) { return; }

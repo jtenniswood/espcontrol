@@ -127,9 +127,10 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         elif (
             "cover_control_hide_modal();" not in hide_modals.group("body")
             or "light_control_hide_modal();" not in hide_modals.group("body")
+            or "fan_control_hide_modal();" not in hide_modals.group("body")
         ):
             errors.append(
-                "components/espcontrol/button_grid_navigation.h: return-home navigation must explicitly clear cover and light modals"
+                "components/espcontrol/button_grid_navigation.h: return-home navigation must explicitly clear fan, cover, and light modals"
             )
         if return_home is None or "navigation_hide_modals();" not in return_home.group("body"):
             errors.append(
@@ -181,6 +182,30 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
             errors.append("common/addon/backlight.yaml: track display-takeover suspension explicitly")
         if "screensaver_sensor_sleep_pending" not in text:
             errors.append("common/addon/backlight.yaml: preserve pending sensor-mode sleep while image modals are active")
+        resume_restore_body = yaml_script_body(text, "display_takeover_resume_restore")
+        if resume_restore_body is None:
+            errors.append("common/addon/backlight.yaml: restore deferred display takeover targets after modal close")
+        else:
+            if (
+                "id(screensaver_sensor_sleep_pending)" not in resume_restore_body
+                or "script.execute: screensaver_sleep_sensor" not in resume_restore_body
+                or "!id(presence_detected)" not in resume_restore_body
+            ):
+                errors.append(
+                    "common/addon/backlight.yaml: re-check pending sensor-mode sleep when display takeover resumes"
+                )
+            if (
+                "id(cover_art_media_playing)" not in resume_restore_body
+                or "show_cover_art_view" not in resume_restore_body
+            ):
+                errors.append("common/addon/backlight.yaml: restore cover art when display takeover resumes")
+            if (
+                "home_screen_idle_restore" not in resume_restore_body
+                or "screensaver_idle_check" not in resume_restore_body
+            ):
+                errors.append(
+                    "common/addon/backlight.yaml: restore home and screensaver timers when display takeover resumes"
+                )
         sleep_timer_body = yaml_script_body(text, "screensaver_sleep_timer")
         if sleep_timer_body is None:
             errors.append("common/addon/backlight.yaml: keep the screensaver sleep timer script")
@@ -221,18 +246,11 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
                 "scripts/generate_device_slots.py: image modal display guard must not stop the home-return timer"
             )
         if (
-            "id(screensaver_sensor_sleep_pending)" not in text
-            or "id(screensaver_sleep_sensor).execute();" not in text
-            or "!id(presence_detected)" not in text
-        ):
-            errors.append(
-                "scripts/generate_device_slots.py: re-check pending sensor-mode sleep when image modals close"
-            )
-        if (
             "cfg.suspend_display_takeover" not in text
             or "cfg.resume_display_takeover" not in text
             or "id(display_takeover_suspended) = true;" not in text
             or "id(display_takeover_suspended) = false;" not in text
+            or "id(display_takeover_resume_restore).execute();" not in text
         ):
             errors.append("scripts/generate_device_slots.py: generate explicit display-takeover guard hooks")
 
@@ -276,6 +294,23 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
     ):
         errors.append("components/espcontrol/button_grid_grid.h: open light control modals from subpage cards")
 
+    fan_block = re.search(
+        r'if\s*\(\s*sb_cfg\.type\s*==\s*"fan_control"\s*\)\s*\{(?P<body>.*?)\n      \}',
+        text,
+        re.S,
+    )
+    if fan_block is None:
+        errors.append("components/espcontrol/button_grid_grid.h: keep fan control modal cards available in subpages")
+    else:
+        body = fan_block.group("body")
+        if (
+            "create_fan_card_context" not in body
+            or "subscribe_fan_card_state(ctx);" not in body
+            or "fan_control_open_modal(ctx);" not in body
+            or "LV_EVENT_CLICKED" not in body
+        ):
+            errors.append("components/espcontrol/button_grid_grid.h: open fan control modals from subpage cards")
+
     if not subpages_path.exists():
         errors.append("components/espcontrol/button_grid_subpages.h: preserve light control tab options in subpages")
         return errors
@@ -284,8 +319,10 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
     if (
         'b.type == "light_control"' not in subpages_text
         or "light_control_card_options_normalized(b.options)" not in subpages_text
+        or 'b.type == "fan_control"' not in subpages_text
+        or "fan_control_card_options_normalized(b.options)" not in subpages_text
     ):
-        errors.append("components/espcontrol/button_grid_subpages.h: preserve light control tab options in subpages")
+        errors.append("components/espcontrol/button_grid_subpages.h: preserve light and fan control tab options in subpages")
     unsupported_block = re.search(
         r'if\s*\(\s*!b\.type\.empty\(\)(?P<body>.*?)\)\s*\{\s*\n\s*b\.options\.clear\(\);',
         subpages_text,
@@ -392,10 +429,80 @@ def firmware_network_status_version_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_climate_step_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_climate.h"
+    if not path.exists():
+        return []
+
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    helper = re.search(
+        r"inline\s+int\s+climate_effective_step_tenths\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        text,
+        re.S,
+    )
+    if helper is None:
+        errors.append(f"{rel}: keep climate controls at a 0.5C minimum step")
+    else:
+        body = helper.group("body")
+        if (
+            "CLIMATE_DEFAULT_STEP_TENTHS" not in body
+            or "CLIMATE_WHOLE_NUMBER_STEP_TENTHS" not in body
+            or "ctx->configured_step_tenths" not in body
+            or "return ctx->configured_step_tenths" not in body
+            or "ctx->step_tenths > minimum" in body
+        ):
+            errors.append(f"{rel}: use the configured climate temperature step")
+
+    required = (
+        "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;",
+        "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;",
+        "int configured_step_tenths = CLIMATE_WHOLE_NUMBER_STEP_TENTHS;",
+        'cfg_option_value(p.options, "temperature_step")',
+        "int step = climate_effective_step_tenths(ctx);",
+        "int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;",
+        "climate_round_to_step(ctx, climate_constrain_selected_target(ctx, value))",
+        "climate_preview_selected_target(ui.active,",
+        "climate_target_from_modal_arc_value(ui.active, lv_arc_get_value(arc))",
+        "climate_apply_selected_target(ui.active, value, true, false);",
+        "climate_selected_target(ui.active) - climate_effective_step_tenths(ui.active)",
+        "climate_selected_target(ui.active) + climate_effective_step_tenths(ui.active)",
+    )
+    for needle in required:
+        if needle not in text:
+            errors.append(f"{rel}: route climate modal temperature changes through step rounding")
+            break
+
+    forbidden = (
+        "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 1;",
+        "climate_selected_target(ui.active) - ui.active->step_tenths",
+        "climate_selected_target(ui.active) + ui.active->step_tenths",
+    )
+    for needle in forbidden:
+        if needle in text:
+            errors.append(f"{rel}: do not allow 0.1C climate modal temperature steps")
+            break
+
+    cooling_drag_required = (
+        "inline int climate_target_from_modal_arc_value(ClimateControlCtx *ctx, int value)",
+        "if (climate_uses_cooling_arc(ctx)) return ctx->min_tenths + ctx->max_tenths - value;",
+        "climate_target_from_modal_arc_value(ui.active, lv_arc_get_value(arc))",
+    )
+    for needle in cooling_drag_required:
+        if needle not in text:
+            errors.append(f"{rel}: keep cooling-mode climate arc drags aligned with the touch direction")
+            break
+
+    return errors
+
+
 def run_scan() -> int:
     errors = firmware_modal_errors(FIRMWARE_DIR, ROOT)
     errors.extend(firmware_modal_sleep_takeover_errors(ROOT))
     errors.extend(firmware_subpage_modal_wiring_errors(ROOT))
+    errors.extend(firmware_climate_step_errors(ROOT))
     errors.extend(firmware_light_control_brightness_errors(ROOT))
     errors.extend(firmware_light_control_tab_errors(ROOT))
     errors.extend(firmware_cover_control_tab_errors(ROOT))
@@ -454,18 +561,51 @@ def expect_subpage_modal_wiring_errors(name: str, grid_text: str, expected: tupl
         root = Path(tmp)
         path = root / "components" / "espcontrol" / "button_grid_grid.h"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(grid_text, encoding="utf-8")
+        path.write_text(
+            grid_text +
+            '      if (sb_cfg.type == "fan_control") {\n'
+            "        if (!sb_cfg.entity.empty()) {\n"
+            "          FanCardCtx *ctx = create_fan_card_context(\n"
+            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, DEFAULT_OFF_COLOR, DEFAULT_TERTIARY_COLOR, nullptr, nullptr, 100);\n"
+            "          subscribe_fan_card_state(ctx);\n"
+            "          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {\n"
+            "            FanCardCtx *ctx = (FanCardCtx *)lv_event_get_user_data(e);\n"
+            "            if (ctx) fan_control_open_modal(ctx);\n"
+            "          }, LV_EVENT_CLICKED, ctx);\n"
+            "        }\n"
+            "        continue;\n"
+            "      }\n",
+            encoding="utf-8",
+        )
         (path.parent / "button_grid_subpages.h").write_text(
             'if (b.type == "light_control") {\n'
             "  b.options = light_control_card_options_normalized(b.options);\n"
             "}\n"
-            'if (!b.type.empty() && b.type != "light_control") {\n'
+            'if (b.type == "fan_control") {\n'
+            "  b.options = fan_control_card_options_normalized(b.options);\n"
+            "}\n"
+            'if (!b.type.empty() && b.type != "light_control" && !fan_card_type(b.type)) {\n'
             "  b.options.clear();\n"
             "}\n",
             encoding="utf-8",
         )
 
         errors = firmware_subpage_modal_wiring_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_climate_step_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_climate.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_climate_step_errors(root)
+
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -499,6 +639,7 @@ def valid_sleep_takeover_files() -> dict[str, str]:
         "components/espcontrol/button_grid_navigation.h": (
             "inline void navigation_hide_modals() {\n"
             "  control_modal_close_active();\n"
+            "  fan_control_hide_modal();\n"
             "  cover_control_hide_modal();\n"
             "  light_control_hide_modal();\n"
             "}\n"
@@ -524,6 +665,22 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "  - id: display_takeover_suspended\n"
             "  - id: screensaver_sensor_sleep_pending\n"
             "script:\n"
+            "  - id: display_takeover_resume_restore\n"
+            "    then:\n"
+            "      - if:\n"
+            "          condition:\n"
+            "            lambda: |-\n"
+            "              return id(screensaver_sensor_sleep_pending) && !id(presence_detected);\n"
+            "          then:\n"
+            "            - script.execute: screensaver_sleep_sensor\n"
+            "      - if:\n"
+            "          condition:\n"
+            "            lambda: 'return id(cover_art_media_playing);'\n"
+            "          then:\n"
+            "            - script.execute: show_cover_art_view\n"
+            "          else:\n"
+            "            - script.execute: home_screen_idle_restore\n"
+            "            - script.execute: screensaver_idle_check\n"
             "  - id: screensaver_sleep_timer\n"
             "    then:\n"
             "      - if:\n"
@@ -549,10 +706,7 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "};\n"
             "cfg.resume_display_takeover = []() {\n"
             "  id(display_takeover_suspended) = false;\n"
-            "  if (id(screensaver_sensor_sleep_pending) && !id(presence_detected)) {\n"
-            "    id(screensaver_sleep_sensor).execute();\n"
-            "  }\n"
-            "  id(home_screen_idle_check).execute();\n"
+            "  id(display_takeover_resume_restore).execute();\n"
             "};\n"
         ),
     }
@@ -640,6 +794,72 @@ def run_self_test() -> int:
         ),
         (),
     )
+    expect_climate_step_errors(
+        "climate modal allows 0.1C steps",
+        (
+            "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 1;\n"
+            "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;\n"
+            "inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {\n"
+            "  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;\n"
+            "  return ctx->step_tenths;\n"
+            "}\n"
+            "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
+            "  int step = ctx->step_tenths;\n"
+            "  int base = ctx->min_tenths;\n"
+            "  return value;\n"
+            "}\n"
+            "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
+            "  climate_selected_target(ui.active) - ui.active->step_tenths;\n"
+            "  climate_selected_target(ui.active) + ui.active->step_tenths;\n"
+            "}\n"
+        ),
+        (
+            "use the configured climate temperature step",
+            "route climate modal temperature changes through step rounding",
+            "do not allow 0.1C climate modal temperature steps",
+        ),
+    )
+    expect_climate_step_errors(
+        "climate modal uses configured step increment",
+        (
+            "constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;\n"
+            "constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;\n"
+            "int configured_step_tenths = CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
+            "inline int climate_effective_step_tenths(ClimateControlCtx *ctx) {\n"
+            "  if (!ctx) return CLIMATE_DEFAULT_STEP_TENTHS;\n"
+            "  if (ctx->configured_step_tenths == CLIMATE_DEFAULT_STEP_TENTHS ||\n"
+            "      ctx->configured_step_tenths == CLIMATE_WHOLE_NUMBER_STEP_TENTHS)\n"
+            "    return ctx->configured_step_tenths;\n"
+            "  return CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
+            "}\n"
+            "inline int climate_round_to_step(ClimateControlCtx *ctx, int value) {\n"
+            "  int step = climate_effective_step_tenths(ctx);\n"
+            "  int base = ctx->precision <= 0 ? 0 : ctx->min_tenths;\n"
+            "  return value + step;\n"
+            "}\n"
+            "inline void climate_apply_selected_target(ClimateControlCtx *ctx, int value, bool send_now, bool debounce) {\n"
+            "  value = climate_round_to_step(ctx, climate_constrain_selected_target(ctx, value));\n"
+            "}\n"
+            "inline ClimateControlCtx *create_climate_control_context(const ParsedCfg &p) {\n"
+            "  ctx->configured_step_tenths = normalize_climate_temperature_step(\n"
+            "    cfg_option_value(p.options, \"temperature_step\")) == \"0.5\"\n"
+            "      ? CLIMATE_DEFAULT_STEP_TENTHS\n"
+            "      : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;\n"
+            "}\n"
+            "inline int climate_target_from_modal_arc_value(ClimateControlCtx *ctx, int value) {\n"
+            "  if (climate_uses_cooling_arc(ctx)) return ctx->min_tenths + ctx->max_tenths - value;\n"
+            "  return value;\n"
+            "}\n"
+            "inline void climate_control_open_modal(ClimateControlCtx *ctx) {\n"
+            "  climate_preview_selected_target(ui.active,\n"
+            "    climate_target_from_modal_arc_value(ui.active, lv_arc_get_value(arc)));\n"
+            "  climate_apply_selected_target(ui.active, value, true, false);\n"
+            "  climate_selected_target(ui.active) - climate_effective_step_tenths(ui.active);\n"
+            "  climate_selected_target(ui.active) + climate_effective_step_tenths(ui.active);\n"
+            "}\n"
+        ),
+        (),
+    )
     expect_network_status_version_errors(
         "raw local firmware version leaks",
         (
@@ -704,10 +924,7 @@ def run_self_test() -> int:
         "};\n"
         "cfg.resume_display_takeover = []() {\n"
         "  id(display_takeover_suspended) = false;\n"
-        "  if (id(screensaver_sensor_sleep_pending) && !id(presence_detected)) {\n"
-        "    id(screensaver_sleep_sensor).execute();\n"
-        "  }\n"
-        "  id(home_screen_idle_check).execute();\n"
+        "  id(display_takeover_resume_restore).execute();\n"
         "};\n"
     )
     expect_sleep_takeover_errors(
@@ -716,15 +933,10 @@ def run_self_test() -> int:
         ("must not stop the home-return timer",),
     )
     missing_sensor_resume = valid_sleep_takeover_files()
-    missing_sensor_resume["scripts/generate_device_slots.py"] = (
-        "cfg.suspend_display_takeover = []() {\n"
-        "  id(display_takeover_suspended) = true;\n"
-        "  id(screensaver_idle_check).stop();\n"
-        "};\n"
-        "cfg.resume_display_takeover = []() {\n"
-        "  id(display_takeover_suspended) = false;\n"
-        "  id(home_screen_idle_check).execute();\n"
-        "};\n"
+    missing_sensor_resume["common/addon/backlight.yaml"] = (
+        missing_sensor_resume["common/addon/backlight.yaml"]
+        .replace("              return id(screensaver_sensor_sleep_pending) && !id(presence_detected);\n", "              return false;\n")
+        .replace("            - script.execute: screensaver_sleep_sensor\n", "")
     )
     expect_sleep_takeover_errors(
         "image modal close misses pending sensor sleep",

@@ -168,8 +168,6 @@ def test_square_s3_reapplies_clock_bar_layout() -> None:
         "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
         "              id(button_order).state,\n"
         "              id(button_on_color).state,\n"
-        "              id(button_off_color).state,\n"
-        "              id(sensor_card_color).state,\n"
         "              id(main_page)->obj);\n"
         "        - script.execute: clock_bar_apply"
     ) in sensors, "S3 boot setup must reapply clock-bar layout after subpages are created"
@@ -181,6 +179,25 @@ def test_square_s3_reapplies_clock_bar_layout() -> None:
         "- script.execute: apply_screen_rotation\n"
         "              - script.execute: clock_bar_apply"
     ) in device, "S3 rotation changes must reapply clock-bar layout"
+
+
+def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
+    slug = "guition-esp32-p4-jc4880p443"
+    sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+    assert (
+        "grid_refresh_layout(slots, cfg,\n"
+        "            id(button_order).state,\n"
+        "            id(main_page)->obj);\n"
+        "          navigation_return_home(id(main_page)->obj);"
+    ) in sensors, (
+        "4.3-inch P4 rotation refresh must refresh the home grid before rebuilding subpages"
+    )
+    assert "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7," in sensors, (
+        "4.3-inch P4 rotation refresh must rebuild subpage grids with the current column count"
+    )
+    assert "id(button_on_color).state" in sensors and "id(button_off_color).state" not in sensors, (
+        "4.3-inch P4 subpage rebuild must keep the configured primary color only"
+    )
 
 
 def test_setup_icon_glyphs() -> None:
@@ -416,7 +433,7 @@ def test_temperature_unit_changes_refresh_weather_cards() -> None:
     assert match, "temperature unit label refresh helper is missing"
     body = match.group(0)
     assert "notify_dashboard_content_changed()" in body, (
-        "temperature unit changes must refresh e-paper weather cards"
+        "temperature unit changes must refresh weather cards"
     )
 
 
@@ -478,6 +495,7 @@ def main() -> int:
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
     test_square_s3_reapplies_clock_bar_layout()
+    test_p4_43_rotation_refresh_rebuilds_subpages()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
     test_weather_card_mode_visibility_reset()

@@ -8,25 +8,9 @@ var ENTITY_CATALOG = {
       "domain": "text",
       "name": "Button Order"
     },
-    "screen_theme": {
-      "domain": "select",
-      "name": "Screen: Theme",
-      "objectIds": [
-        "screen__theme",
-        "screen_theme"
-      ]
-    },
     "button_on_color": {
       "domain": "text",
       "name": "Button On Color"
-    },
-    "button_off_color": {
-      "domain": "text",
-      "name": "Button Off Color"
-    },
-    "sensor_card_color": {
-      "domain": "text",
-      "name": "Sensor Card Color"
     },
     "button_config": {
       "domain": "text",
@@ -212,6 +196,15 @@ var ENTITY_CATALOG = {
         "screen_saver__cover_art_delay",
         "screen_saver_cover_art_delay",
         "cover_art_delay"
+      ]
+    },
+    "screen_saver_cover_art_touch_pause": {
+      "domain": "number",
+      "name": "Screen Saver: Cover Art Touch Pause",
+      "objectIds": [
+        "screen_saver__cover_art_touch_pause",
+        "screen_saver_cover_art_touch_pause",
+        "cover_art_touch_pause"
       ]
     },
     "screen_saver_track_overlay_duration": {
@@ -506,10 +499,7 @@ var ENTITY_CATALOG = {
   "groups": {
     "card": [
       "button_order",
-      "screen_theme",
-      "button_on_color",
-      "button_off_color",
-      "sensor_card_color"
+      "button_on_color"
     ],
     "card_slot": [
       "button_config"
@@ -546,6 +536,7 @@ var ENTITY_CATALOG = {
       "screen_saver_cover_art_entity",
       "screen_saver_cover_art_conditions",
       "screen_saver_cover_art_delay",
+      "screen_saver_cover_art_touch_pause",
       "screen_saver_track_overlay_duration",
       "screen_saver_hide_cover_art_external_input",
       "home_assistant_artwork_protocol",

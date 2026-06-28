@@ -342,11 +342,10 @@ function updateSunInfo() {
     return;
   }
   el.classList.add("sp-visible");
-  var t = "";
-  if (state.sunrise) t += "Sunrise: " + escHtml(state.sunrise);
-  if (state.sunrise && state.sunset) t += " \u00a0/\u00a0 ";
-  if (state.sunset) t += "Sunset: " + escHtml(state.sunset);
-  el.innerHTML = t;
+  var parts = [];
+  if (state.sunrise) parts.push("Sunrise: " + state.sunrise);
+  if (state.sunset) parts.push("Sunset: " + state.sunset);
+  el.textContent = parts.join(" \u00a0/\u00a0 ");
 }
 
 function updateTempPreview() {

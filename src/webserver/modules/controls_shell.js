@@ -39,7 +39,6 @@ function showBanner(msg, type) {
 function buildUI() {
   var root = document.createElement("div");
   root.id = "sp-app";
-  root.setAttribute("data-preview-theme", CFG.previewTheme || "default");
 
   var banner = document.createElement("div");
   banner.className = "sp-banner";
@@ -147,7 +146,9 @@ function buildScreenPage(parent) {
   modal.className = "sp-settings-modal";
   var closeBtn = document.createElement("button");
   closeBtn.className = "sp-settings-close";
-  closeBtn.textContent = "x";
+  closeBtn.innerHTML = '<svg class="sp-settings-close-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"></path>' +
+    '</svg>';
   closeBtn.setAttribute("aria-label", "Close settings");
   closeBtn.addEventListener("click", closeSettings);
   modal.appendChild(closeBtn);

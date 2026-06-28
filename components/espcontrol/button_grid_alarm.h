@@ -25,6 +25,8 @@ struct AlarmCardCtx {
   lv_obj_t *page = nullptr;
   TransientStatusLabel *status_label = nullptr;
   lv_timer_t *pending_action_timer = nullptr;
+  std::function<void()> suspend_display_takeover;
+  std::function<void()> resume_display_takeover;
   uint32_t arm_delay_started_ms = 0;
   int arm_delay_seconds = -1;
   int arm_delay_total_seconds = -1;
@@ -42,6 +44,8 @@ struct AlarmCardCtx {
   bool show_status_icon = false;
   bool show_status_label = false;
   bool pending_action_had_code = false;
+  bool display_takeover_suspended = false;
+  bool arming_modal_auto_opened = false;
 };
 
 struct AlarmActionCtx {
@@ -338,6 +342,14 @@ inline std::string alarm_control_button_label_for_state(const std::string &mode,
 }
 
 inline void alarm_control_update_modal(AlarmCardCtx *ctx);
+inline void alarm_control_open_modal(AlarmCardCtx *ctx);
+inline void alarm_control_hide_modal();
+inline void alarm_refresh_arming_takeover(AlarmCardCtx *ctx);
+
+inline AlarmCardCtx *&alarm_arming_takeover_ctx() {
+  static AlarmCardCtx *ctx = nullptr;
+  return ctx;
+}
 
 inline int alarm_parse_delay_seconds(const std::string &value) {
   if (value.empty()) return -1;
@@ -418,6 +430,7 @@ inline void alarm_arm_delay_timer_cb(lv_timer_t *timer) {
   if (!ctx) return;
   alarm_control_update_modal(ctx);
   if (!alarm_state_is_delay(ctx->state) || alarm_remaining_delay_seconds(ctx) <= 0) {
+    alarm_refresh_arming_takeover(ctx);
     lv_timer_pause(timer);
   }
 }
@@ -439,6 +452,64 @@ inline void alarm_arm_delay_refresh_timer(AlarmCardCtx *ctx) {
 
 inline bool alarm_control_modal_shows_arming(AlarmCardCtx *ctx) {
   return ctx && alarm_state_is_delay(ctx->state);
+}
+
+inline bool alarm_delay_takeover_active(AlarmCardCtx *ctx) {
+  return ctx && alarm_card_context_valid(ctx) && alarm_state_is_delay(ctx->state) &&
+         alarm_remaining_delay_seconds(ctx) > 0;
+}
+
+inline bool alarm_display_takeover_active(AlarmCardCtx *ctx) {
+  return alarm_delay_takeover_active(ctx) ||
+         (ctx && alarm_card_context_valid(ctx) && ctx->state == "triggered");
+}
+
+inline bool alarm_arming_takeover_active() {
+  return alarm_delay_takeover_active(alarm_arming_takeover_ctx());
+}
+
+inline bool alarm_display_takeover_active() {
+  return alarm_display_takeover_active(alarm_arming_takeover_ctx());
+}
+
+inline void alarm_release_arming_takeover(AlarmCardCtx *ctx) {
+  if (!ctx) return;
+  if (alarm_arming_takeover_ctx() == ctx) alarm_arming_takeover_ctx() = nullptr;
+  if (ctx->display_takeover_suspended) {
+    ctx->display_takeover_suspended = false;
+    if (ctx->resume_display_takeover) ctx->resume_display_takeover();
+  }
+  AlarmControlModalUi &ui = alarm_control_modal_ui();
+  if (ctx->arming_modal_auto_opened && ui.active == ctx) {
+    alarm_control_hide_modal();
+  }
+  ctx->arming_modal_auto_opened = false;
+}
+
+inline void alarm_refresh_arming_takeover(AlarmCardCtx *ctx) {
+  bool should_take_over = ctx && alarm_card_context_valid(ctx) && ctx->available &&
+                          alarm_display_takeover_active(ctx);
+  if (!should_take_over) {
+    alarm_release_arming_takeover(ctx);
+    return;
+  }
+
+  AlarmCardCtx *active = alarm_arming_takeover_ctx();
+  if (active && active != ctx) alarm_release_arming_takeover(active);
+  alarm_arming_takeover_ctx() = ctx;
+
+  AlarmControlModalUi &ui = alarm_control_modal_ui();
+  if (ui.active != ctx || !ui.overlay) {
+    alarm_control_open_modal(ctx);
+    ctx->arming_modal_auto_opened = true;
+  } else {
+    lv_obj_move_foreground(ui.overlay);
+  }
+
+  if (!ctx->display_takeover_suspended) {
+    ctx->display_takeover_suspended = true;
+    if (ctx->suspend_display_takeover) ctx->suspend_display_takeover();
+  }
 }
 
 inline void alarm_control_set_hidden(lv_obj_t *obj, bool hidden) {
@@ -501,6 +572,7 @@ inline void alarm_apply_home_state(AlarmCardCtx *ctx, const std::string &state) 
   alarm_clear_pending_action_if_progressed(ctx);
   alarm_control_update_modal(ctx);
   alarm_arm_delay_refresh_timer(ctx);
+  alarm_refresh_arming_takeover(ctx);
 }
 
 inline void alarm_apply_home_arm_mode(AlarmCardCtx *ctx, const std::string &arm_mode) {
@@ -523,6 +595,7 @@ inline void alarm_apply_home_arm_delay(AlarmCardCtx *ctx, const std::string &del
   ctx->arm_delay_started_ms = lv_tick_get();
   alarm_control_update_modal(ctx);
   alarm_arm_delay_refresh_timer(ctx);
+  alarm_refresh_arming_takeover(ctx);
 }
 
 inline void subscribe_alarm_state(AlarmCardCtx *ctx) {
@@ -564,6 +637,9 @@ inline void alarm_apply_action_state(AlarmCardCtx *ctx, const std::string &mode,
   bool active = !unavailable && alarm_action_state_matches(mode, state, ctx->arm_mode);
   set_card_checked_state(ctx->btn, active);
   alarm_clear_pending_action_if_progressed(ctx);
+  alarm_control_update_modal(ctx);
+  alarm_arm_delay_refresh_timer(ctx);
+  alarm_refresh_arming_takeover(ctx);
 }
 
 inline void alarm_apply_action_arm_mode(AlarmCardCtx *ctx, const std::string &mode,
@@ -574,6 +650,8 @@ inline void alarm_apply_action_arm_mode(AlarmCardCtx *ctx, const std::string &mo
   bool active = !unavailable && alarm_action_state_matches(mode, ctx->state, ctx->arm_mode);
   set_card_checked_state(ctx->btn, active);
   alarm_clear_pending_action_if_progressed(ctx);
+  alarm_control_update_modal(ctx);
+  alarm_refresh_arming_takeover(ctx);
 }
 
 inline void subscribe_alarm_action_availability(AlarmCardCtx *ctx) {
@@ -602,6 +680,12 @@ inline void subscribe_alarm_action_state(AlarmCardCtx *ctx, const std::string &m
     ctx->entity_id, std::string("arm_mode"),
     std::function<void(esphome::StringRef)>([ctx, mode](esphome::StringRef arm_mode) {
       alarm_apply_action_arm_mode(ctx, mode, string_ref_limited(arm_mode, HA_SHORT_STATE_MAX_LEN));
+    })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("delay"),
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef delay) {
+      alarm_apply_home_arm_delay(ctx, string_ref_limited(delay, HA_SHORT_STATE_MAX_LEN));
     })
   );
 }
@@ -819,8 +903,12 @@ inline void alarm_control_update_modal(AlarmCardCtx *ctx) {
 
 inline void alarm_control_hide_modal() {
   AlarmControlModalUi &ui = alarm_control_modal_ui();
+  AlarmCardCtx *active = ui.active;
+  bool release_takeover = active && active->arming_modal_auto_opened &&
+                          alarm_arming_takeover_ctx() == active;
   control_modal_delete_overlay(ControlModalKind::ALARM_CONTROL, ui.overlay);
   ui = AlarmControlModalUi();
+  if (release_takeover) alarm_release_arming_takeover(active);
 }
 
 inline void alarm_pin_hide_modal() {
@@ -1146,13 +1234,15 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_clear_flag(ui.arming_view, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.arming_view, LV_OBJ_FLAG_HIDDEN);
 
+  uint32_t primary_color = alarm_control_active_color(ctx, "");
+  uint32_t primary_text_color = readable_text_color_for_bg(primary_color);
   bool jc4880p443_layout = control_modal_uses_compact_portrait_tuning(layout);
   lv_coord_t status_center_y = -control_modal_scaled_px(64, layout.short_side);
-  lv_coord_t countdown_gap = control_modal_scaled_px(18, layout.short_side);
+  lv_coord_t countdown_gap = control_modal_scaled_px(28, layout.short_side);
   lv_coord_t disarm_extra_padding = 0;
   if (jc4880p443_layout) {
     status_center_y = -control_modal_scaled_px(56, layout.short_side);
-    countdown_gap = control_modal_scaled_px(24, layout.short_side);
+    countdown_gap = control_modal_scaled_px(34, layout.short_side);
     disarm_extra_padding = control_modal_scaled_px(24, layout.short_side);
   }
 
@@ -1176,19 +1266,26 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_set_width(ui.arming_countdown, layout.panel_w - layout.inset * 2);
   lv_obj_align(ui.arming_countdown, LV_ALIGN_CENTER, 0, countdown_y);
   lv_obj_add_flag(ui.arming_countdown, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_update_layout(ui.arming_countdown);
+  lv_coord_t countdown_h = lv_obj_get_height(ui.arming_countdown);
+  if (countdown_h <= 0 && countdown_font) countdown_h = countdown_font->line_height;
+  if (countdown_h <= 0) countdown_h = control_modal_scaled_px(28, layout.short_side);
 
   lv_coord_t progress_h = control_modal_scaled_px(12, layout.short_side);
   if (progress_h < 8) progress_h = 8;
   if (progress_h > 16) progress_h = 16;
-  lv_coord_t progress_w = layout.panel_w - layout.inset * 3;
-  if (progress_w < layout.panel_w / 2) progress_w = layout.panel_w / 2;
-  lv_coord_t progress_gap = control_modal_scaled_px(18, layout.short_side);
-  if (jc4880p443_layout) progress_gap = control_modal_scaled_px(20, layout.short_side);
+  lv_coord_t progress_w = layout.panel_w / 3;
+  if (progress_w < progress_h * 4) progress_w = progress_h * 4;
+  lv_coord_t progress_gap = control_modal_scaled_px(20, layout.short_side);
+  if (progress_gap < 14) progress_gap = 14;
+  if (jc4880p443_layout) progress_gap = control_modal_scaled_px(24, layout.short_side);
+  if (jc4880p443_layout && progress_gap < 16) progress_gap = 16;
+  lv_coord_t progress_center_y = countdown_y + countdown_h / 2 + progress_gap + progress_h / 2;
 
   ui.arming_progress = lv_obj_create(ui.arming_view);
   lv_obj_set_size(ui.arming_progress, progress_w, progress_h);
-  lv_obj_set_style_bg_color(ui.arming_progress, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.arming_progress, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.arming_progress, lv_color_hex(primary_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ui.arming_progress, LV_OPA_50, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arming_progress, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.arming_progress, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(ui.arming_progress, 0, LV_PART_MAIN);
@@ -1196,12 +1293,11 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   lv_obj_clear_flag(ui.arming_progress, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_clear_flag(ui.arming_progress, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(ui.arming_progress, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_align(ui.arming_progress, LV_ALIGN_CENTER, 0, countdown_y + progress_gap);
+  lv_obj_align(ui.arming_progress, LV_ALIGN_CENTER, 0, progress_center_y);
 
   ui.arming_progress_fill = lv_obj_create(ui.arming_progress);
   lv_obj_set_size(ui.arming_progress_fill, 0, progress_h);
-  lv_obj_set_style_bg_color(ui.arming_progress_fill,
-    lv_color_hex(ctx ? ctx->on_color : DEFAULT_SLIDER_COLOR), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.arming_progress_fill, lv_color_hex(primary_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.arming_progress_fill, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arming_progress_fill, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.arming_progress_fill, 0, LV_PART_MAIN);
@@ -1217,14 +1313,14 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   if (disarm_h > layout.panel_h / 8) disarm_h = layout.panel_h / 8;
   ui.arming_disarm_btn = control_modal_create_round_button(
     ui.arming_view, disarm_h, espcontrol_i18n("Disarm"), label_font,
-    ctx ? ctx->on_color : DEFAULT_SLIDER_COLOR,
-    ctx ? ctx->on_color : DEFAULT_SLIDER_COLOR,
+    primary_color,
+    primary_color,
     ctx ? ctx->width_compensation_percent : 100);
   lv_obj_set_style_radius(ui.arming_disarm_btn, disarm_h / 2, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.arming_disarm_btn, 0, LV_PART_MAIN);
   ui.arming_disarm_label = lv_obj_get_child(ui.arming_disarm_btn, 0);
   if (ui.arming_disarm_label) {
-    lv_obj_set_style_text_color(ui.arming_disarm_label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui.arming_disarm_label, lv_color_hex(primary_text_color), LV_PART_MAIN);
     lv_obj_update_layout(ui.arming_disarm_label);
     lv_coord_t disarm_w = lv_obj_get_width(ui.arming_disarm_label) + disarm_h + disarm_extra_padding;
     lv_coord_t max_disarm_w = layout.panel_w - layout.inset * 2;
@@ -1358,7 +1454,9 @@ inline AlarmCardCtx *create_alarm_card_context(
     const lv_font_t *label_font,
     lv_color_t text_color,
     int width_compensation_percent,
-    bool build_default_page = false) {
+    bool build_default_page = false,
+    std::function<void()> suspend_display_takeover = nullptr,
+    std::function<void()> resume_display_takeover = nullptr) {
   AlarmCardCtx *ctx = new AlarmCardCtx();
   ctx->entity_id = p.entity;
   ctx->label = p.label.empty() ? espcontrol_i18n(std::string("Alarm")) : p.label;
@@ -1377,6 +1475,8 @@ inline AlarmCardCtx *create_alarm_card_context(
   ctx->tertiary_color = tertiary_color;
   ctx->width_compensation_percent = width_compensation_percent;
   ctx->grid_cols = cols > 0 ? cols : 1;
+  ctx->suspend_display_takeover = suspend_display_takeover;
+  ctx->resume_display_takeover = resume_display_takeover;
   ctx->status_label = create_transient_status_label(
     slot.text_lbl, ctx->show_status_label ? "--" : ctx->label);
   alarm_set_card_state_colors(ctx, ctx->on_color);
