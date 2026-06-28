@@ -97,6 +97,13 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route mower subpage parent indicators through mower active-state handling"
             )
+        if (
+            'if (sb_cfg.type == "light_control")' not in text
+            or "subscribe_light_control_state(ctx);\n          add_parent_indicator(sb_cfg.entity);" not in text
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: include full light controls in generic subpage parent indicators"
+            )
     return failures
 
 
@@ -157,6 +164,17 @@ def run_self_test() -> None:
         (
             {"button_grid_grid.h": 'if (parent_subpage_kind == "climate") {}\n'},
             ("route mower subpage parent indicators through mower active-state handling",),
+        ),
+        (
+            {
+                "button_grid_grid.h": (
+                    'if (parent_subpage_kind == "lawn_mower") { lawn_mower_state_active_ref(state); }\n'
+                    'if (sb_cfg.type == "light_control") {\n'
+                    '  subscribe_light_control_state(ctx);\n'
+                    '}\n'
+                )
+            },
+            ("include full light controls in generic subpage parent indicators",),
         ),
     )
     for files, expected in cases:

@@ -75,6 +75,11 @@ function normalizeButtonConfig(b) {
     b.precision = weatherAlias && weatherAlias.precision || "tomorrow";
     if (b.label === "Weather") b.label = "";
   }
+  if (b && b.type === "weather") {
+    b.sensor = "";
+    b.precision = normalizeWeatherCardMode(b.precision);
+    b.options = cardLargeNumbersSupported(b) ? copyLargeNumbersOption("", b.options) : "";
+  }
   if (b && b.type === "text_sensor") {
     var textSensorAlias = cardContractMigrationAlias(b.type);
     b.type = textSensorAlias && textSensorAlias.type || "sensor";
@@ -126,6 +131,13 @@ function normalizeButtonConfig(b) {
     b.sensor = normalizeCoverMode(b.sensor, true);
     b.options = normalizeCoverOptionsForMode(b.options, b.sensor);
   }
+  if (b && b.type === "lock") {
+    b.sensor = (b.sensor === "lock" || b.sensor === "unlock") ? b.sensor : "";
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    b.icon_on = b.sensor ? "Auto" : ((!b.icon_on || b.icon_on === "Auto") ? "Lock Open" : b.icon_on);
+  }
   if (b && b.type === "alarm") {
     b.sensor = "";
     b.unit = "";
@@ -158,6 +170,44 @@ function normalizeButtonConfig(b) {
     b.options = "";
     b.icon = "Lock";
     b.icon_on = "Lock Open";
+  }
+  if (b && b.type === "calendar") {
+    if (!b.entity) b.entity = cardContractDefaultConfig("calendar").entity;
+    b.label = "";
+    b.icon = "Auto";
+    b.icon_on = "Auto";
+    b.sensor = "";
+    b.unit = "";
+    b.precision = b.precision === "datetime" ? "datetime" : "";
+    b.options = normalizeDateTimeOptions("calendar", b.options, b.precision);
+  }
+  if (b && b.type === "clock") {
+    b.entity = "";
+    b.label = "";
+    b.icon = "Auto";
+    b.icon_on = "Auto";
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = normalizeDateTimeOptions("clock", b.options, b.precision);
+  }
+  if (b && b.type === "timezone") {
+    if (!b.entity) b.entity = cardContractDefaultConfig("timezone").entity;
+    b.label = "";
+    b.icon = "Auto";
+    b.icon_on = "Auto";
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.options = normalizeDateTimeOptions("timezone", b.options, b.precision);
+  }
+  if (b && b.type === "todo") {
+    b.sensor = "";
+    b.unit = "";
+    b.precision = "";
+    b.icon_on = "Auto";
+    if (!b.icon || b.icon === "Auto") b.icon = "Check";
+    b.options = normalizeTodoOptions(b.options);
   }
   if (b && b.type === "image") {
     b.icon_on = "Auto";
@@ -240,7 +290,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !isFanCardType(b.type) && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "todo" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !isFanCardType(b.type) && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -297,16 +347,6 @@ var LIGHT_CONTROL_TABS_OPTION = cardContractOptionName("light_tabs");
 var COVER_CONTROL_TABS_OPTION = cardContractOptionName("cover_tabs");
 var FAN_CONTROL_TABS_OPTION = cardContractOptionName("fan_tabs");
 var IMAGE_CARD_LIMIT = Math.max(0, parseInt(CFG && CFG.imageCardLimit != null ? CFG.imageCardLimit : 4, 10) || 0);
-var ALARM_ACTIONS = [
-  { value: "away", label: "Arm Away", service: "alarm_control_panel.alarm_arm_away", icon: "Shield Lock" },
-  { value: "home", label: "Arm Home", service: "alarm_control_panel.alarm_arm_home", icon: "Shield Home" },
-  { value: "night", label: "Arm Night", service: "alarm_control_panel.alarm_arm_night", icon: "Weather Night" },
-  { value: "vacation", label: "Arm Vacation", service: "alarm_control_panel.alarm_arm_vacation", icon: "Airplane" },
-  { value: "disarm", label: "Disarm", service: "alarm_control_panel.alarm_disarm", icon: "Shield Off" },
-];
-var ALARM_DEFAULT_ACTIONS = ["away", "home", "disarm"];
-var ALARM_MAX_VISIBLE_ACTIONS = 3;
-
 function alarmBehaviorSpec() {
   var card = cardContractCard("alarm");
   return card && card.behavior && card.behavior.alarm || {};
@@ -314,12 +354,17 @@ function alarmBehaviorSpec() {
 
 function alarmActionSpecs() {
   var actions = alarmBehaviorSpec().actions;
-  return actions && actions.length ? actions : ALARM_ACTIONS;
+  return actions && actions.length ? actions : [];
 }
 
 function alarmDefaultActions() {
   var actions = alarmBehaviorSpec().defaultActions;
-  return actions && actions.length ? actions.slice() : ALARM_DEFAULT_ACTIONS.slice();
+  return actions && actions.length ? actions.slice() : [];
+}
+
+function alarmMaxVisibleActions() {
+  var max = parseInt(alarmBehaviorSpec().maxVisibleActions, 10);
+  return isFinite(max) && max > 0 ? max : alarmDefaultActions().length;
 }
 
 function alarmActionLegacyIcon(value) {
@@ -399,11 +444,13 @@ function copyLargeNumbersOption(out, options) {
 
 function normalizeMediaVolumeMax(value) {
   value = String(value || "").trim();
-  if (!value) return "100";
+  var spec = cardContractOptionSpec("media", MEDIA_VOLUME_MAX_OPTION) || {};
+  var fallback = cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100");
+  if (!value) return fallback;
   var parsed = parseInt(value, 10);
-  if (!isFinite(parsed)) return "100";
-  if (parsed < 1) parsed = 1;
-  if (parsed > 100) parsed = 100;
+  if (!isFinite(parsed)) return fallback;
+  if (typeof spec.min === "number" && parsed < spec.min) parsed = spec.min;
+  if (typeof spec.max === "number" && parsed > spec.max) parsed = spec.max;
   return String(parsed);
 }
 
@@ -412,7 +459,7 @@ function normalizeMediaOptions(options, mode) {
   if (mode !== "volume" && mode !== "position") return "";
   var out = "";
   var maxVolume = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
-  if (mode === "volume" && maxVolume !== "100") {
+  if (mode === "volume" && maxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
     out = setConfigOptionValue(out, MEDIA_VOLUME_MAX_OPTION, maxVolume);
   }
   out = copyLargeNumbersOption(out, options);
@@ -431,7 +478,7 @@ function imageRefreshModeValues() {
 
 function imageModalModeValues() {
   var spec = cardContractOptionSpec("image", IMAGE_MODAL_MODE_OPTION);
-  return spec && spec.values ? spec.values.slice() : ["fill", "fit"];
+  return spec && spec.values ? spec.values.slice() : [];
 }
 
 function normalizeImageRefreshInterval(value) {
@@ -446,7 +493,8 @@ function normalizeImageRefreshMode(value) {
 
 function normalizeImageModalMode(value) {
   value = String(value || "").trim();
-  return imageModalModeValues().indexOf(value) >= 0 ? value : "fill";
+  var fallback = cardContractOptionDefaultValue("image", IMAGE_MODAL_MODE_OPTION, "fill");
+  return imageModalModeValues().indexOf(value) >= 0 ? value : fallback;
 }
 
 function imageRefreshInterval(b) {
@@ -578,7 +626,7 @@ function normalizeImageOptions(options) {
     out = setConfigOption(out, IMAGE_ICON_OPTION, true);
   }
   var modalMode = normalizeImageModalMode(configOptionValue(options, IMAGE_MODAL_MODE_OPTION));
-  if (modalMode !== "fill") {
+  if (modalMode !== cardContractOptionDefaultValue("image", IMAGE_MODAL_MODE_OPTION, "fill")) {
     out = setConfigOptionValue(out, IMAGE_MODAL_MODE_OPTION, modalMode);
   }
   return out;
@@ -628,16 +676,25 @@ function setImageRefreshMode(b, value) {
 }
 
 function lightControlTabDefinitions() {
-  return [
-    { value: "power", label: "Power" },
-    { value: "brightness", label: "Brightness" },
-    { value: "temperature", label: "Colour Temperature" },
-    { value: "color", label: "Colour Presets" },
-  ];
+  var labels = {
+    power: "Power",
+    brightness: "Brightness",
+    temperature: "Colour Temperature",
+    color: "Colour Presets",
+  };
+  var spec = cardContractOptionSpec("light_control", LIGHT_CONTROL_TABS_OPTION);
+  var values = spec && spec.values ? spec.values : [];
+  return values.map(function (value) {
+    return { value: value, label: labels[value] || value };
+  });
 }
 
 function lightControlDefaultTabs() {
-  return lightControlTabDefinitions().map(function (tab) { return tab.value; });
+  return cardContractOptionDefaultValue(
+    "light_control",
+    LIGHT_CONTROL_TABS_OPTION,
+    "power|brightness|temperature|color"
+  ).split("|");
 }
 
 function normalizeLightControlTabs(value) {
@@ -686,15 +743,24 @@ function setLightControlTabs(b, tabs) {
 }
 
 function coverControlTabDefinitions() {
-  return [
-    { value: "position", label: "Position" },
-    { value: "controls", label: "Controls" },
-    { value: "tilt", label: "Tilt" },
-  ];
+  var labels = {
+    position: "Position",
+    controls: "Controls",
+    tilt: "Tilt",
+  };
+  var spec = cardContractOptionSpec("cover", COVER_CONTROL_TABS_OPTION);
+  var values = spec && spec.values ? spec.values : [];
+  return values.map(function (value) {
+    return { value: value, label: labels[value] || value };
+  });
 }
 
 function coverControlDefaultTabs() {
-  return coverControlTabDefinitions().map(function (tab) { return tab.value; });
+  return cardContractOptionDefaultValue(
+    "cover",
+    COVER_CONTROL_TABS_OPTION,
+    "position|controls|tilt"
+  ).split("|");
 }
 
 function normalizeTabList(value, definitions, defaults, fallback) {
@@ -1236,6 +1302,18 @@ function normalizeSensorOptions(options, precision) {
   return out;
 }
 
+function normalizeDateTimeOptions(type, options, precision) {
+  if (configOptionEnabled(options, SENSOR_LARGE_NUMBERS_OPTION) &&
+      cardContractOptionSupportedFor(type, SENSOR_LARGE_NUMBERS_OPTION, { precision: precision })) {
+    return copyLargeNumbersOption("", options);
+  }
+  if (largeNumbersExplicitlyDisabled(options) &&
+      cardContractOptionSupportedFor(type, SENSOR_LARGE_NUMBERS_OPTION, { precision: precision })) {
+    return copyLargeNumbersOption("", options);
+  }
+  return "";
+}
+
 function normalizeDoorWindowSubtype(value) {
   value = String(value || "").trim();
   return value === "window" ? "window" : "door";
@@ -1284,6 +1362,18 @@ function normalizePresenceOptions(options) {
   if (configOptionEnabled(options, SENSOR_ACTIVE_COLOR_OPTION)) {
     out = setConfigOption(out, SENSOR_ACTIVE_COLOR_OPTION, true);
   }
+  return out;
+}
+
+function normalizeTodoCountDisplay(value) {
+  value = String(value || "").trim();
+  return value === "icon" ? "icon" : "count";
+}
+
+function normalizeTodoOptions(options) {
+  var showCount = normalizeTodoCountDisplay(configOptionValue(options, "count_display")) === "count";
+  var out = showCount ? "" : setConfigOptionValue("", "count_display", "icon");
+  if (showCount) out = copyLargeNumbersOption(out, options);
   return out;
 }
 
@@ -1485,14 +1575,15 @@ function setActionScriptFields(b, fields) {
 function normalizeGarageLabelDisplayMode(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("garage", GARAGE_LABEL_DISPLAY_OPTION);
-  var values = spec && spec.values ? spec.values : ["label", "status"];
-  return values.indexOf(value) >= 0 ? value : "label";
+  var values = spec && spec.values ? spec.values : [];
+  var fallback = cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label");
+  return values.indexOf(value) >= 0 ? value : fallback;
 }
 
 function normalizeGarageOptions(options, mode) {
   var labelMode = normalizeGarageLabelDisplayMode(
     configOptionValue(options, GARAGE_LABEL_DISPLAY_OPTION));
-  return labelMode === "status"
+  return labelMode !== cardContractOptionDefaultValue("garage", GARAGE_LABEL_DISPLAY_OPTION, "label")
     ? setConfigOptionValue("", GARAGE_LABEL_DISPLAY_OPTION, labelMode)
     : "";
 }
@@ -1516,21 +1607,21 @@ function setGarageLabelDisplayMode(b, mode) {
 function normalizeClimateLabelDisplayMode(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("climate", CLIMATE_LABEL_DISPLAY_OPTION);
-  var values = spec && spec.values ? spec.values : ["label", "status", "actual", "target"];
+  var values = spec && spec.values ? spec.values : [];
   return values.indexOf(value) >= 0 ? value : climateDefaultLabelDisplayMode();
 }
 
 function normalizeClimateNumberDisplayMode(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("climate", CLIMATE_NUMBER_DISPLAY_OPTION);
-  var values = spec && spec.values ? spec.values : ["icon", "actual", "target"];
+  var values = spec && spec.values ? spec.values : [];
   return values.indexOf(value) >= 0 ? value : climateDefaultNumberDisplayMode();
 }
 
 function normalizeClimateTemperatureStep(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("climate", CLIMATE_TEMPERATURE_STEP_OPTION);
-  var values = spec && spec.values ? spec.values : ["1", "0.5"];
+  var values = spec && spec.values ? spec.values : [];
   return values.indexOf(value) >= 0 ? value : climateDefaultTemperatureStep();
 }
 
@@ -1642,7 +1733,7 @@ function normalizeAlarmActionList(value) {
     var action = parts[i];
     if (!alarmActionInfo(action) || out.indexOf(action) >= 0) continue;
     out.push(action);
-    if (out.length >= ALARM_MAX_VISIBLE_ACTIONS) break;
+    if (out.length >= alarmMaxVisibleActions()) break;
   }
   return out.length ? out : alarmDefaultActions();
 }
@@ -1831,26 +1922,31 @@ function buttonConfigFields(b) {
   if (type === "local") type = "action";
   if (type === "local_sensor") type = "sensor";
   var label = b && b.label || "";
+  if (type === "calendar" || type === "clock" || type === "timezone") label = "";
   if (type === "screen_lock") label = "";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
-    (isBrightnessSliderType(type) || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+    (isBrightnessSliderType(type) || type === "calendar" || type === "clock" || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+  if (type === "lock" && sensor !== "lock" && sensor !== "unlock") sensor = "";
   if (b && b.type === "local") sensor = ACTION_CARD_LOCAL_ACTION;
   if (b && (b.type === "local_sensor" || sensorCardIsLocal(b))) sensor = SENSOR_CARD_LOCAL_SENSOR;
   var isLocalAction = type === "action" && sensor === ACTION_CARD_LOCAL_ACTION;
-  var unit = (isActionOptionSelect || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.unit || "");
+  var unit = (isActionOptionSelect || type === "calendar" || type === "clock" || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "lock" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.unit || "");
   if (isLocalAction) unit = "";
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
   if (isLocalAction && (!icon || icon === "Auto" || icon === "Flash")) icon = "Gesture Tap";
   if (type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
+  if (type === "calendar" || type === "clock" || type === "timezone") icon = "Auto";
   if (type === "screen_lock") icon = "Lock";
   if (type === "alarm_action" && (!icon || icon === "Auto")) icon = (alarmActionInfo(sensor) || alarmActionSpecs()[0]).icon;
   if (isFanCardType(type) && (!icon || icon === "Auto")) icon = fanCardDefaultIcon(type);
   var iconOn = (isActionOptionSelect || type === "alarm" || type === "alarm_action" || (isFanCardType(type) && type !== "fan_switch")) ? "Auto" : (b && b.icon_on || "Auto");
+  if (type === "calendar" || type === "clock" || type === "timezone") iconOn = "Auto";
   if (isLocalAction) iconOn = "Auto";
   if (type === "fan_switch" && (!iconOn || iconOn === "Auto")) iconOn = "Fan";
+  if (type === "lock") iconOn = sensor ? "Auto" : ((!iconOn || iconOn === "Auto") ? "Lock Open" : iconOn);
   if (type === "screen_lock") iconOn = "Lock Open";
-  var precision = (isActionOptionSelect || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "screen_lock" || isFanCardType(type)) ? "" : (b && b.precision || "");
+  var precision = (isActionOptionSelect || type === "clock" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "lock" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.precision || "");
   if (isLocalAction) precision = "";
   if (sensor === SENSOR_CARD_LOCAL_SENSOR && precision !== "text" && precision !== "1" && precision !== "2") precision = "";
   if (type === "media") {
@@ -1874,6 +1970,18 @@ function buttonConfigFields(b) {
     if (!icon || icon === "Auto") icon = lawnMowerModeDefaultIcon(sensor);
   }
   if (type === "climate") precision = normalizeClimatePrecisionConfig(precision);
+  if (type === "calendar" && precision !== "datetime") precision = "";
+  if (type === "weather") {
+    sensor = "";
+    precision = normalizeWeatherCardMode(precision);
+  }
+  if (type === "todo") {
+    sensor = "";
+    unit = "";
+    precision = "";
+    iconOn = "Auto";
+    if (!icon || icon === "Auto") icon = "Check";
+  }
   if (type === "image") {
     iconOn = "Auto";
     sensor = "";
@@ -1896,6 +2004,8 @@ function buttonConfigFields(b) {
     options = normalizeClimateOptions(options);
   } else if (type === "media") {
     options = normalizeMediaOptions(options, sensor);
+  } else if (type === "weather") {
+    options = cardLargeNumbersSupported({ type: type, precision: precision }) ? copyLargeNumbersOption("", options) : "";
   } else if (type === "subpage") {
     options = normalizeSubpageOptions(options, sensor, precision);
   } else if (type === "webhook" && typeof normalizeWebhookConfig === "function") {
@@ -1906,10 +2016,14 @@ function buttonConfigFields(b) {
     iconOn = webhookButton.icon_on || "Auto";
     precision = webhookButton.precision || "";
     options = webhookButton.options || "";
-  } else if (type === "screen_lock") {
+  } else if (type === "lock" || type === "screen_lock") {
     options = "";
+  } else if (type === "calendar" || type === "clock" || type === "timezone") {
+    options = normalizeDateTimeOptions(type, options, precision);
   } else if (type === "vacuum" || type === "lawn_mower") {
     options = "";
+  } else if (type === "todo") {
+    options = normalizeTodoOptions(options);
   } else if (type === "sensor") {
     options = sensor === SENSOR_CARD_LOCAL_SENSOR ? "" : normalizeSensorOptions(options, precision);
   } else if (type === "door_window") {
@@ -1948,6 +2062,18 @@ function buttonConfigFields(b) {
     precision = "";
     if (!icon || icon === "Auto") icon = "Motion Sensor Off";
     if (!iconOn || iconOn === "Auto") iconOn = "Motion Sensor";
+  }
+  if (type === "calendar") {
+    b = b || {};
+    if (!b.entity) b.entity = cardContractDefaultConfig("calendar").entity;
+  }
+  if (type === "clock") {
+    b = b || {};
+    b.entity = "";
+  }
+  if (type === "timezone") {
+    b = b || {};
+    if (!b.entity) b.entity = cardContractDefaultConfig("timezone").entity;
   }
   if (!type && !sensor) {
     unit = "";
@@ -2034,8 +2160,13 @@ function subpageSerializedOrder(sp) {
 function parseSubpageConfig(str, raw) {
   var parsed = EspControlModel.parseRawSubpageConfig(str, subpageTypeFromCode);
   if (raw) return parsed;
-  parsed.buttons = parsed.buttons.map(function (button) {
-    return normalizeButtonConfig(button);
+  var compactButtonTokens = String(str || "").charAt(0) === "~"
+    ? String(str || "").split("|").slice(1)
+    : [];
+  parsed.buttons = parsed.buttons.map(function (button, index) {
+    var normalized = normalizeButtonConfig(button);
+    if (button && button.type === "calendar" && (!button.entity || compactButtonTokens[index] === "D")) normalized.entity = "";
+    return normalized;
   });
   return parsed;
 }
@@ -2059,8 +2190,11 @@ function decodeSubpageField(value) {
 function parseCompactSubpageConfig(str, raw) {
   var parsed = EspControlModel.parseCompactSubpageConfig(str, subpageTypeFromCode);
   if (raw) return parsed;
-  parsed.buttons = parsed.buttons.map(function (button) {
-    return normalizeButtonConfig(button);
+  var compactButtonTokens = String(str || "").split("|").slice(1);
+  parsed.buttons = parsed.buttons.map(function (button, index) {
+    var normalized = normalizeButtonConfig(button);
+    if (button && button.type === "calendar" && compactButtonTokens[index] === "D") normalized.entity = "";
+    return normalized;
   });
   return parsed;
 }

@@ -287,6 +287,7 @@ var CARD_CONTRACT_CARDS = {
           "home",
           "disarm"
         ],
+        "maxVisibleActions": 3,
         "actions": [
           {
             "value": "away",
@@ -537,6 +538,11 @@ var CARD_CONTRACT_CARDS = {
         "name": "cover_tabs",
         "label": "Visible Tabs",
         "kind": "text",
+        "values": [
+          "position",
+          "controls",
+          "tilt"
+        ],
         "defaultValue": "position|controls|tilt"
       }
     ],
@@ -791,8 +797,8 @@ var CARD_CONTRACT_CARDS = {
     "default": {
       "entity": "",
       "label": "",
-      "icon": "Power",
-      "icon_on": "Flash",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
       "sensor": "",
       "unit": "",
       "type": "internal",
@@ -881,6 +887,12 @@ var CARD_CONTRACT_CARDS = {
         "name": "light_tabs",
         "label": "Visible Tabs",
         "kind": "text",
+        "values": [
+          "power",
+          "brightness",
+          "temperature",
+          "color"
+        ],
         "defaultValue": "power|brightness|temperature|color"
       }
     ],

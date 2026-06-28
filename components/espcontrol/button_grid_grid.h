@@ -2233,6 +2233,7 @@ inline void grid_phase2(
             display_volume_width_percent(display));
           grid_delete_with_owner(sb_btn, ctx);
           subscribe_light_control_state(ctx);
+          add_parent_indicator(sb_cfg.entity);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
             if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
