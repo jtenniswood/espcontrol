@@ -25,6 +25,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Fans | fan_oscillate | fan | Yes | Fans (fan_speed) | None | Visible |
 | Fans | fan_preset | fan | Yes | Fans (fan_speed) | None | Visible |
 | Fans | fan_speed | fan | Yes | Own picker item | None | Visible |
+| Fans | fan_control | fan | Yes | Fans (fan_speed) | Visible Tabs | Visible |
 | Fans | fan_switch | fan | Yes | Fans (fan_speed) | None | Visible |
 | Garage Door | garage | cover | Yes | Own picker item | Interaction: default, open, close; Display: label, status | Visible |
 | Internal Switches | internal | None | Yes | Own picker item | Mode: switch, push | Visible |
