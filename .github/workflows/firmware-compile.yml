@@ -123,7 +123,6 @@ jobs:
         working-directory: espcontrol-${{ matrix.slug }}
         run: |
           RUN_CACHE_ROOT="${RUNNER_TEMP}/espcontrol-esphome/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.slug }}"
-          DOCKER_CONFIG_ROOT="/github/workspace/espcontrol-${{ matrix.slug }}"
           PLATFORMIO_CACHE="${RUN_CACHE_ROOT}/platformio-${ESPHOME_VERSION}"
           BUILD_CACHE="${RUN_CACHE_ROOT}/build"
           BUILD_INPUT_DIR=".firmware-builds"
@@ -137,7 +136,6 @@ jobs:
           echo "PLATFORMIO_CACHE=${PLATFORMIO_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_CACHE=${BUILD_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_INPUT_DIR=${BUILD_INPUT_DIR}" >> "$GITHUB_ENV"
-          echo "DOCKER_CONFIG_ROOT=${DOCKER_CONFIG_ROOT}" >> "$GITHUB_ENV"
 
       - name: Pull ESPHome image
         working-directory: espcontrol-${{ matrix.slug }}
@@ -153,17 +151,22 @@ jobs:
 
       - name: Compile firmware
         working-directory: espcontrol-${{ matrix.slug }}
-        run: >-
-          ${DOCKER} run --rm
-          --user "$(id -u):$(id -g)"
-          -e HOME=/config
-          -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio
-          -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false
-          -v "${DOCKER_CONFIG_ROOT}:/config"
-          -v "${PLATFORMIO_CACHE}:/config/.esphome"
-          -v "${BUILD_CACHE}:/config/${BUILD_INPUT_DIR}/.esphome"
-          "${ESPHOME_IMAGE}"
-          compile /config/${BUILD_INPUT_DIR}/${{ matrix.slug }}.factory.yaml
+        run: |
+          CONTAINER=$(${DOCKER} create \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/config \
+            -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio \
+            -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
+            -v "${PLATFORMIO_CACHE}:/config/.esphome" \
+            -v "${BUILD_CACHE}:/config/${BUILD_INPUT_DIR}/.esphome" \
+            "${ESPHOME_IMAGE}" \
+            compile /config/${BUILD_INPUT_DIR}/${{ matrix.slug }}.factory.yaml)
+          cleanup() {
+            ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          ${DOCKER} cp . "${CONTAINER}:/config"
+          ${DOCKER} start -a "${CONTAINER}"
 
       - name: Clean firmware caches
         if: always()
