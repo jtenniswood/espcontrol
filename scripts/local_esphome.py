@@ -142,11 +142,9 @@ class LocalEsphomeTests(unittest.TestCase):
 
     def test_invokes_esphome_from_yaml_directory(self) -> None:
         path = ROOT / "devices" / "esp32-p4-86" / "dev.yaml"
-        with (
-            mock.patch(__name__ + ".parse_args", return_value=(False, path, "run", [])),
-            mock.patch(__name__ + ".local_version_for", return_value="local-version"),
-            mock.patch(__name__ + ".subprocess.run") as run_mock,
-        ):
+        with mock.patch(__name__ + ".parse_args", return_value=(False, path, "run", [])), \
+            mock.patch(__name__ + ".local_version_for", return_value="local-version"), \
+            mock.patch(__name__ + ".subprocess.run") as run_mock:
             run_mock.return_value.returncode = 0
             self.assertEqual(run(["devices/esp32-p4-86/dev.yaml", "run"]), 0)
             self.assertEqual(run_mock.call_args.kwargs["cwd"], path.parent)
