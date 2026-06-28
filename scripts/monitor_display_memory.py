@@ -66,7 +66,7 @@ class MonitorError(RuntimeError):
     pass
 
 
-def strip_prefix(value: str, prefix: str) -> str:
+def remove_prefix(value: str, prefix: str) -> str:
     return value[len(prefix) :] if value.startswith(prefix) else value
 
 
@@ -75,7 +75,7 @@ def parse_target(value: str) -> Target:
         raise argparse.ArgumentTypeError("targets must use name=host")
     name, host = value.split("=", 1)
     name = name.strip()
-    host = strip_prefix(strip_prefix(host.strip(), "http://"), "https://").rstrip("/")
+    host = remove_prefix(remove_prefix(host.strip(), "http://"), "https://").rstrip("/")
     if not name or not host:
         raise argparse.ArgumentTypeError("targets must use name=host")
     return Target(name=name, host=host)

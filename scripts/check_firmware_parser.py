@@ -651,8 +651,8 @@ def generated_fixture_assertions(fixtures: list[dict], comment: str, prefix: str
     return "\n".join(lines) + "\n"
 
 
-def strip_suffix(value: str, suffix: str) -> str:
-    return value[: -len(suffix)] if value.endswith(suffix) else value
+def remove_suffix(value: str, suffix: str) -> str:
+    return value[: -len(suffix)] if suffix and value.endswith(suffix) else value
 
 
 def generated_card_normalization_assertions() -> str:
@@ -662,8 +662,8 @@ def generated_card_normalization_assertions() -> str:
         prefix = "fixture_" + "".join(ch if ch.isalnum() else "_" for ch in label.lower()) + "_"
         chunks.append(generated_fixture_assertions(fixtures, f"Shared {label} saved-card normalization fixtures.", prefix))
     for path in sorted(CONFIG_DIR.glob("*_card_normalization_fixtures.json")):
-        label = strip_suffix(path.name, "_card_normalization_fixtures.json").replace("_", " ")
-        prefix = "fixture_" + strip_suffix(path.stem, "_card_normalization_fixtures") + "_"
+        label = remove_suffix(path.name, "_card_normalization_fixtures.json").replace("_", " ")
+        prefix = "fixture_" + remove_suffix(path.stem, "_card_normalization_fixtures") + "_"
         fixtures = json.loads(path.read_text(encoding="utf-8"))
         chunks.append(generated_fixture_assertions(fixtures, f"Shared {label} saved-card normalization fixtures.", prefix))
     return "".join(chunks)
