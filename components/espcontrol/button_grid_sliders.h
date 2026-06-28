@@ -145,6 +145,8 @@ struct LightControlCtx {
   bool on = false;
   bool color_modes_known = false;
   bool rgb_color_supported = true;
+  uint32_t current_light_color = DEFAULT_SLIDER_COLOR;
+  bool has_current_light_color = false;
   bool updating_slider = false;
   bool updating_temp_slider = false;
   bool dragging_slider = false;
@@ -295,6 +297,7 @@ inline void light_control_update_slider_fill(lv_obj_t *slider, lv_obj_t *fill,
                                              lv_obj_t *handle, int pct,
                                              lv_color_t fill_color);
 inline void light_control_rebuild_color_grid(LightControlCtx *ctx);
+inline void light_control_refresh_brightness_fill(LightControlCtx *ctx);
 
 inline std::string light_control_title(LightControlCtx *ctx) {
   if (!ctx) return espcontrol_i18n(std::string("Light"));
@@ -331,6 +334,71 @@ inline int light_control_display_pct(LightControlCtx *ctx) {
   return ctx && ctx->on ? ctx->current_pct : 0;
 }
 
+inline uint32_t light_control_brightness_fill_color(LightControlCtx *ctx) {
+  if (ctx && ctx->has_current_light_color) return ctx->current_light_color;
+  return ctx ? ctx->accent_color : DEFAULT_SLIDER_COLOR;
+}
+
+inline bool light_control_parse_rgb_triplet(esphome::StringRef value, uint32_t &color) {
+  std::string raw = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+  int channels[3] = {0, 0, 0};
+  int count = 0;
+  const char *cursor = raw.c_str();
+  while (*cursor && count < 3) {
+    while (*cursor && !std::isdigit(static_cast<unsigned char>(*cursor))) cursor++;
+    if (!*cursor) break;
+    char *end = nullptr;
+    long parsed = std::strtol(cursor, &end, 10);
+    if (end == cursor) break;
+    if (parsed < 0) parsed = 0;
+    if (parsed > 255) parsed = 255;
+    channels[count++] = static_cast<int>(parsed);
+    cursor = end;
+  }
+  if (count != 3) return false;
+  color = (static_cast<uint32_t>(channels[0]) << 16) |
+          (static_cast<uint32_t>(channels[1]) << 8) |
+          static_cast<uint32_t>(channels[2]);
+  return true;
+}
+
+inline uint32_t light_control_kelvin_fill_color_hex(int k) {
+  constexpr int KELVIN_REF_MIN = 2000;
+  constexpr int KELVIN_REF_MAX = 6500;
+  float t = (float)(k - KELVIN_REF_MIN) /
+            (float)(KELVIN_REF_MAX - KELVIN_REF_MIN);
+  if (t < 0.0f) t = 0.0f;
+  if (t > 1.0f) t = 1.0f;
+  uint8_t r = (uint8_t)(0xFF + t * (float)(0xB8 - 0xFF) + 0.5f);
+  uint8_t g = (uint8_t)(0x80 + t * (float)(0xCC - 0x80) + 0.5f);
+  uint8_t b = (uint8_t)(0x12 + t * (float)(0xFF - 0x12) + 0.5f);
+  return (static_cast<uint32_t>(r) << 16) |
+         (static_cast<uint32_t>(g) << 8) |
+         static_cast<uint32_t>(b);
+}
+
+inline void light_control_set_current_light_color(LightControlCtx *ctx, uint32_t color) {
+  if (!ctx) return;
+  ctx->current_light_color = color & 0xFFFFFF;
+  ctx->has_current_light_color = true;
+  light_control_refresh_brightness_fill(ctx);
+}
+
+inline void light_control_clear_current_light_color(LightControlCtx *ctx) {
+  if (!ctx) return;
+  ctx->has_current_light_color = false;
+  light_control_refresh_brightness_fill(ctx);
+}
+
+inline void light_control_refresh_brightness_fill(LightControlCtx *ctx) {
+  LightControlModalUi &ui = light_control_modal_ui();
+  if (!ctx || ui.active != ctx) return;
+  light_control_update_slider_fill(
+    ui.slider, ui.slider_fill, ui.slider_handle, light_control_display_pct(ctx),
+    lv_color_hex(light_control_brightness_fill_color(ctx)));
+  light_control_update_slider_handle(ui.slider, ui.slider_handle, light_control_display_pct(ctx));
+}
+
 inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
   LightControlModalUi &ui = light_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
@@ -342,7 +410,8 @@ inline void light_control_set_modal_value(LightControlCtx *ctx, int pct) {
     ctx->updating_slider = false;
   }
   light_control_update_slider_fill(
-    ui.slider, ui.slider_fill, ui.slider_handle, pct, lv_color_hex(ctx->accent_color));
+    ui.slider, ui.slider_fill, ui.slider_handle, pct,
+    lv_color_hex(light_control_brightness_fill_color(ctx)));
   light_control_update_slider_handle(ui.slider, ui.slider_handle, pct);
 }
 
@@ -904,7 +973,7 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
   int display_pct = light_control_display_pct(ctx);
   light_control_update_slider_fill(
     ui.slider, ui.slider_fill, ui.slider_handle, display_pct,
-    lv_color_hex(ctx->accent_color));
+    lv_color_hex(light_control_brightness_fill_color(ctx)));
   light_control_update_slider_handle(ui.slider, ui.slider_handle, display_pct);
   light_control_layout_slider(
     ui.temp_slider, slider_w, slider_h, content_center_y, ctx->width_compensation_percent);
@@ -1014,7 +1083,8 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.slider = lv_slider_create(ui.panel);
   light_control_style_slider(ui.slider, ctx->accent_color);
   lv_slider_set_value(ui.slider, slider_clamp_pct(ctx->current_pct), LV_ANIM_OFF);
-  ui.slider_fill = light_control_create_slider_fill(ui.slider, lv_color_hex(ctx->accent_color));
+  ui.slider_fill = light_control_create_slider_fill(
+    ui.slider, lv_color_hex(light_control_brightness_fill_color(ctx)));
   ui.slider_handle = light_control_create_slider_handle(ui.slider);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
     LightControlModalUi &ui = light_control_modal_ui();
@@ -1029,7 +1099,8 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     if (ui.active->current_pct == pct) return;
     ui.active->current_pct = pct;
     light_control_update_slider_fill(
-      slider, ui.slider_fill, ui.slider_handle, pct, lv_color_hex(ui.active->accent_color));
+      slider, ui.slider_fill, ui.slider_handle, pct,
+      lv_color_hex(light_control_brightness_fill_color(ui.active)));
     light_control_update_slider_handle(slider, ui.slider_handle, pct);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.slider, [](lv_event_t *e) {
@@ -1041,7 +1112,8 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
     int pct = lv_slider_get_value(slider);
     ui.active->current_pct = pct;
     light_control_update_slider_fill(
-      slider, ui.slider_fill, ui.slider_handle, pct, lv_color_hex(ui.active->accent_color));
+      slider, ui.slider_fill, ui.slider_handle, pct,
+      lv_color_hex(light_control_brightness_fill_color(ui.active)));
     light_control_update_slider_handle(slider, ui.slider_handle, pct);
     send_slider_action(ui.active->entity_id, pct);
   }, LV_EVENT_RELEASED, nullptr);
@@ -1153,9 +1225,11 @@ inline void light_control_rebuild_color_grid(LightControlCtx *ctx) {
       if (click->kelvin_pct >= 0) {
         int pct = slider_clamp_pct(click->kelvin_pct);
         ui.active->current_kelvin = light_control_pct_to_kelvin(ui.active, pct);
+        light_control_set_current_light_color(ui.active, click->color);
         light_control_set_temp_modal_value(ui.active, ui.active->current_kelvin);
         send_light_temp_action(ui.active->entity_id, pct, ui.active->kelvin_min, ui.active->kelvin_max);
       } else {
+        light_control_set_current_light_color(ui.active, click->color);
         send_light_rgb_action(ui.active->entity_id, click->color);
       }
     }, LV_EVENT_CLICKED, click);
@@ -1228,6 +1302,7 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
         int kelvin = atoi(s.c_str());
         if (kelvin <= 0) return;
         ctx->current_kelvin = kelvin;
+        light_control_set_current_light_color(ctx, light_control_kelvin_fill_color_hex(kelvin));
         light_control_set_temp_modal_value(ctx, kelvin);
         LightControlModalUi &ui = light_control_modal_ui();
         if (ui.active == ctx) {
@@ -1236,6 +1311,18 @@ inline void subscribe_light_control_state(LightControlCtx *ctx) {
             ui.temp_slider, ui.temp_slider_fill, ui.temp_slider_handle, pct,
             kelvin_to_fill_color(kelvin, ctx->kelvin_min, ctx->kelvin_max));
           light_control_update_slider_handle(ui.temp_slider, ui.temp_slider_handle, pct);
+        }
+      })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("rgb_color"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef value) {
+        uint32_t color = 0;
+        if (light_control_parse_rgb_triplet(value, color)) {
+          light_control_set_current_light_color(ctx, color);
+        } else {
+          light_control_clear_current_light_color(ctx);
         }
       })
   );
