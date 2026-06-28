@@ -329,6 +329,34 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
     return errors
 
 
+def firmware_action_card_script_fields_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_actions.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    if "script_fields" not in text:
+        return errors
+    if "std::vector<ActionCardScriptField> script_fields" not in text:
+        errors.append(f"{rel}: keep parsed script field strings alive until the action is sent")
+    if "req.variables.init(script_fields.size())" not in text:
+        errors.append(f"{rel}: initialize script field variables separately from service data")
+    if "ha_action_add_variable(req, field.key.c_str(), field.value.c_str())" not in text:
+        errors.append(f"{rel}: send script fields through Home Assistant action variables")
+    if "req.data_template.init(1)" not in text or 'ha_action_add_data_template(req, "variables"' not in text:
+        errors.append(f"{rel}: send script fields in the script.turn_on variables service payload")
+    add_fields_match = re.search(
+        r"inline\s+void\s+action_card_add_script_field_variables\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        text,
+        re.DOTALL,
+    )
+    if add_fields_match and "ha_action_add_data(req, key.c_str(), value.c_str())" in add_fields_match.group("body"):
+        errors.append(f"{rel}: do not send script fields as top-level script.turn_on service data")
+    return errors
+
+
 def firmware_local_sensor_binding_order_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_grid.h"
     if not path.exists():
@@ -1366,6 +1394,7 @@ def run_scan() -> int:
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_action_card_script_fields_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
     errors.extend(firmware_ntp_startup_errors(TIME_ADDON_PATH, SUN_CALC_PATH, CONNECTIVITY_PATHS, ROOT))
@@ -1507,6 +1536,20 @@ def expect_action_card_availability_errors(name: str, text: str, expected: tuple
         (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
 
         errors = firmware_action_card_availability_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_action_card_script_fields_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_actions.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_action_card_script_fields_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -2500,6 +2543,56 @@ def run_self_test() -> int:
         "if (sb_cfg.type == \"push\") {\n"
         "  std::string push_label = sb_cfg.label.empty() ? espcontrol_i18n(std::string(\"Push\")) : sb_cfg.label;\n"
         "  continue;\n"
+        "}\n",
+        (),
+    )
+    expect_action_card_script_fields_errors(
+        "script fields sent as service data",
+        "inline void action_card_add_script_field_variables(esphome::api::HomeassistantActionRequest &req) {\n"
+        "  std::string fields = cfg_option_value(options, \"script_fields\");\n"
+        "  ha_action_add_data(req, key.c_str(), value.c_str());\n"
+        "}\n"
+        "inline void send_action_card_action(const ParsedCfg &p) {\n"
+        "  size_t script_field_count = action_card_script_field_count(p.options);\n"
+        "  ha_action_begin(req, p.sensor.c_str(), false, 1 + script_field_count);\n"
+        "}\n",
+        (
+            "keep parsed script field strings alive",
+            "initialize script field variables separately",
+            "send script fields through Home Assistant action variables",
+            "do not send script fields as top-level",
+        ),
+    )
+    expect_action_card_script_fields_errors(
+        "script fields sent as template context only",
+        "inline void action_card_add_script_field_variables(esphome::api::HomeassistantActionRequest &req) {\n"
+        "  std::string fields = cfg_option_value(options, \"script_fields\");\n"
+        "  ha_action_add_variable(req, key.c_str(), value.c_str());\n"
+        "}\n"
+        "inline void send_action_card_action(const ParsedCfg &p) {\n"
+        "  std::vector<ActionCardScriptField> script_fields = action_card_script_fields(p.options);\n"
+        "  ha_action_begin(req, p.sensor.c_str(), false, 1);\n"
+        "  req.variables.init(script_fields.size());\n"
+        "}\n",
+        (
+            "send script fields in the script.turn_on variables service payload",
+            "send script fields through Home Assistant action variables",
+        ),
+    )
+    expect_action_card_script_fields_errors(
+        "script fields sent in variables payload",
+        "inline void action_card_add_script_field_variables(esphome::api::HomeassistantActionRequest &req) {\n"
+        "  std::string fields = cfg_option_value(options, \"script_fields\");\n"
+        "  for (const auto &field : fields) {\n"
+        "    ha_action_add_variable(req, field.key.c_str(), field.value.c_str());\n"
+        "  }\n"
+        "}\n"
+        "inline void send_action_card_action(const ParsedCfg &p) {\n"
+        "  std::vector<ActionCardScriptField> script_fields = action_card_script_fields(p.options);\n"
+        "  ha_action_begin(req, p.sensor.c_str(), false, 1);\n"
+        "  req.data_template.init(1);\n"
+        "  req.variables.init(script_fields.size());\n"
+        "  ha_action_add_data_template(req, \"variables\", script_fields_template.c_str());\n"
         "}\n",
         (),
     )

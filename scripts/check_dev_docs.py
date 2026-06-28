@@ -121,6 +121,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "cover": "docs/card-types/covers.md",
     "door_window": "docs/card-types/doors-windows.md",
     "presence": "docs/card-types/presence.md",
+    "fan_control": "docs/card-types/fans.md",
     "fan_direction": "docs/card-types/fans.md",
     "fan_oscillate": "docs/card-types/fans.md",
     "fan_preset": "docs/card-types/fans.md",

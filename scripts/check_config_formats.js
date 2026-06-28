@@ -10,6 +10,9 @@ const { loadBundledWebSource } = require("./web_source");
 const ROOT = path.resolve(__dirname, "..");
 const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
+const CONFIG_DIR = path.join(ROOT, "common", "config");
+const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
+const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "image_card_normalization_fixtures.json");
 
 function loadHooks(search) {
   const sandbox = {
@@ -65,6 +68,7 @@ function subpageTypeFromCode(code) {
     F: "weather_forecast",
     B: "fan_switch",
     J: "fan_speed",
+    FC: "fan_control",
     O: "fan_oscillate",
     E: "fan_direction",
     Z: "fan_preset",
@@ -201,8 +205,46 @@ function assertSubpageMigration(hooks, name, encoded, expected) {
   assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig(canonical)), subpageShape(expected), `${name}: canonical round-trip`);
 }
 
+function fixtureLabelFromFile(fileName) {
+  return fileName
+    .replace(/_card_normalization_fixtures\.json$/, "")
+    .replace(/_/g, " ");
+}
+
+function loadNormalizationFixtureGroups() {
+  const groups = [];
+  const shared = JSON.parse(fs.readFileSync(CARD_NORMALIZATION_FIXTURES, "utf8"));
+  for (const [label, fixtures] of Object.entries(shared)) {
+    groups.push({ label, fixtures });
+  }
+  for (const fileName of fs.readdirSync(CONFIG_DIR).sort()) {
+    if (!fileName.endsWith("_card_normalization_fixtures.json")) continue;
+    const fixtures = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, fileName), "utf8"));
+    groups.push({ label: fixtureLabelFromFile(fileName), fixtures });
+  }
+  return groups;
+}
+
+function assertNormalizationFixtures(hooks, groups) {
+  for (const group of groups) {
+    for (const fixture of group.fixtures) {
+      const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+      assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `${group.label} fixture ${fixture.name}: web parse`);
+      const canonical = hooks.serializeButtonConfig(parsed);
+      assert.deepStrictEqual(
+        buttonShape(hooks.parseButtonConfig(canonical)),
+        buttonShape(fixture.expected),
+        `${group.label} fixture ${fixture.name}: web canonical round-trip`
+      );
+    }
+  }
+}
+
 const hooks = loadHooks();
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
+const cardNormalizationFixtures = JSON.parse(fs.readFileSync(CARD_NORMALIZATION_FIXTURES, "utf8"));
+const imageCardNormalizationFixtures = JSON.parse(fs.readFileSync(IMAGE_CARD_NORMALIZATION_FIXTURES, "utf8"));
+const normalizationFixtureGroups = loadNormalizationFixtureGroups();
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
@@ -222,6 +264,7 @@ assert.strictEqual(hooks.cardContractLargeNumbersSupported("weather", "tomorrow"
 current.generatedContract.requiredCards.forEach((type) => {
   assert(hooks.cardContractCardKeys().includes(type), `generated contract exposes ${type || "switch"} card identity`);
 });
+assertNormalizationFixtures(hooks, normalizationFixtureGroups);
 assert.strictEqual(hooks.cardContractCardLabel("media"), "Media", "generated contract exposes card labels");
 assert.strictEqual(hooks.cardContractAllowInSubpage("subpage"), false, "generated contract exposes subpage placement rules");
 const subpageKindOption = Array.from(hooks.cardContractOptions("subpage"))
@@ -411,6 +454,16 @@ assert.strictEqual(hooks.normalizeAlarmIconDisplayMode("static"), "static", "ala
 assert.strictEqual(hooks.normalizeAlarmIconDisplayMode("bad"), "status", "alarm invalid icon mode falls back to status");
 assert.strictEqual(hooks.normalizeAlarmLabelDisplayMode("name"), "name", "alarm name label mode is spec-backed");
 assert.strictEqual(hooks.normalizeAlarmLabelDisplayMode("bad"), "status", "alarm invalid label mode falls back to status");
+for (const fixture of cardNormalizationFixtures.alarm) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `alarm fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `alarm fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 assert.strictEqual(hooks.climateDefaultLabelDisplayMode(), "label", "climate default label display is spec-backed");
 assert.strictEqual(hooks.climateDefaultNumberDisplayMode(), "target", "climate default number display is spec-backed");
 assert.strictEqual(hooks.climateDefaultTemperatureStep(), "1", "climate default temperature step is spec-backed");
@@ -1825,6 +1878,36 @@ assertButtonRoundTrip(hooks, "fan speed card", {
   options: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "fan control modal card", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "fan_control",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "fan control modal custom tabs", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "fan_control",
+  precision: "",
+  options: "fan_tabs=speed%7Cpower%7Cdirection",
+}, false);
+
+assert.strictEqual(
+  hooks.normalizeFanControlOptions("fan_tabs=bad%7Cspeed%7Cpower%7Cspeed"),
+  "fan_tabs=speed%7Cpower",
+  "fan control tabs normalize invalid and duplicate values"
+);
+
 assertButtonRoundTrip(hooks, "fan oscillation card", {
   entity: "fan.bedroom",
   label: "Oscillation",
@@ -1881,6 +1964,16 @@ assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fit,image_refre
 assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=fill,image_refresh=30"), "", "image modal fill and legacy refresh options are omitted");
 assert.strictEqual(hooks.normalizeImageOptions("image_modal_mode=bad,image_refresh=30"), "", "invalid image modal mode and legacy refresh options are dropped");
 assert.strictEqual(hooks.normalizeImageOptions("image_label,image_refresh=5,image_refresh_mode=bad"), "image_label", "image label option survives invalid legacy refresh values");
+for (const fixture of imageCardNormalizationFixtures) {
+  const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
+  assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `image fixture ${fixture.name}: web parse`);
+  const canonical = hooks.serializeButtonConfig(parsed);
+  assert.deepStrictEqual(
+    buttonShape(hooks.parseButtonConfig(canonical)),
+    buttonShape(fixture.expected),
+    `image fixture ${fixture.name}: web canonical round-trip`
+  );
+}
 const imageCardForLimit = {
   entity: "camera.front_door",
   label: "",
@@ -2001,6 +2094,8 @@ assertButtonMigration(hooks, "image card clears label without overlay option", "
   options: "",
 });
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", false), false, "fan subtype hidden from top-level picker");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", false), false, "fan modal subtype hidden from top-level picker");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", true), false, "fan modal subtype hidden from subpage picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", true), false, "fan switch subtype hidden from subpage picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_oscillate", true), false, "fan oscillation subtype hidden from subpage picker");
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_direction", true), false, "fan direction subtype hidden from subpage picker");
@@ -2289,6 +2384,31 @@ assertButtonRoundTrip(hooks, "script action card with icon state display", scrip
 const parsedActionIconState = hooks.parseButtonConfig(hooks.serializeButtonConfig(scriptActionIconStateCard));
 assert.strictEqual(hooks.actionCardStateDisplayMode(parsedActionIconState), "icon", "action card icon state mode");
 assert.strictEqual(hooks.actionCardStatePrecision(parsedActionIconState), "icon", "action card icon state precision");
+
+const scriptActionFieldsCard = {
+  entity: "script.goodnight",
+  label: "Goodnight",
+  icon: "Flash",
+  icon_on: "Auto",
+  sensor: "script.turn_on",
+  unit: "",
+  type: "action",
+  precision: "",
+  options: "script_fields=room%3A kitchen\nmode=night",
+};
+assertButtonRoundTrip(hooks, "script action card with fields", scriptActionFieldsCard, false);
+const parsedScriptActionFields = hooks.parseButtonConfig(hooks.serializeButtonConfig(scriptActionFieldsCard));
+assert.strictEqual(
+  hooks.actionScriptFields(parsedScriptActionFields),
+  "room: kitchen\nmode=night",
+  "script action fields round-trip"
+);
+hooks.setActionScriptFields(parsedScriptActionFields, "level: 4");
+assert.strictEqual(hooks.actionScriptFields(parsedScriptActionFields), "level: 4", "script action fields update");
+parsedScriptActionFields.options = "script_fields=level: 4,confirm_on,confirm_message=Run level?";
+parsedScriptActionFields.sensor = "scene.turn_on";
+const parsedNonScriptActionFields = hooks.parseButtonConfig(hooks.serializeButtonConfig(parsedScriptActionFields));
+assert.strictEqual(parsedNonScriptActionFields.options || "", "", "script-only options are removed from non-script actions");
 
 assertButtonRoundTrip(hooks, "automation action card", {
   entity: "automation.goodnight",
@@ -2757,6 +2877,13 @@ assertSubpageRoundTrip(hooks, "fan speed subpage", {
   order: ["1", "B"],
   buttons: [
     buttonShape({ entity: "fan.bedroom", label: "Bedroom Fan", icon: "Fan Speed 2", icon_on: "Auto", type: "fan_speed" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "fan control modal subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "fan.bedroom", label: "Bedroom Fan", icon: "Fan", icon_on: "Auto", type: "fan_control", options: "fan_tabs=speed%7Cpower" }),
   ],
 }, true);
 

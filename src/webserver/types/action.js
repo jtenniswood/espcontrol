@@ -151,6 +151,12 @@ var ACTION_CARD_METADATA = {
     idSuffix: "script-confirm-toggle",
     checked: function (b) { return actionScriptConfirmationEnabled(b); },
   },
+  scriptFields: {
+    label: "Fields",
+    idSuffix: "script-fields",
+    placeholder: "e.g. mode: night",
+    value: function (b) { return actionScriptFields(b); },
+  },
   confirmationMessage: {
     label: "Message",
     idSuffix: "script-confirm-message",
@@ -286,6 +292,32 @@ registerButtonType("action", {
     if (isOptionSelect) return;
 
     if (actionCardIsScript(b)) {
+      var fieldsInput = document.createElement("textarea");
+      fieldsInput.className = "sp-input sp-textarea";
+      fieldsInput.id = helpers.idPrefix + ACTION_CARD_METADATA.scriptFields.idSuffix;
+      fieldsInput.placeholder = ACTION_CARD_METADATA.scriptFields.placeholder;
+      fieldsInput.value = actionScriptFields(b);
+      fieldsInput.rows = 3;
+      fieldsInput.spellcheck = false;
+
+      var fieldsWrapper = document.createElement("div");
+      fieldsWrapper.className = "sp-field";
+      fieldsWrapper.appendChild(helpers.fieldLabel(
+        ACTION_CARD_METADATA.scriptFields.label,
+        fieldsInput.id
+      ));
+      fieldsWrapper.appendChild(fieldsInput);
+      panel.appendChild(fieldsWrapper);
+
+      function saveScriptFields() {
+        setActionScriptFields(b, fieldsInput.value);
+        helpers.saveField("options", b.options);
+      }
+
+      fieldsInput.addEventListener("input", saveScriptFields);
+      fieldsInput.addEventListener("change", saveScriptFields);
+      fieldsInput.addEventListener("blur", saveScriptFields);
+
       var confirmOn = actionScriptConfirmationEnabled(b);
       var confirmToggle = helpers.renderCardOptionToggle(panel, b, helpers, ACTION_CARD_METADATA.confirmationToggle);
       var confirmSection = condField();

@@ -17,8 +17,8 @@ Choose the stand that matches your exact screen model. The cases are shaped arou
 | [10.1-inch JC8012P4A1](/screens/jc8012p4a1) | Desk stand | [MakerWorld](https://makerworld.com/en/models/2490049-guition-p4-10inch-screen-stand#profileId-2736046) |
 | [7-inch JC1060P470](/screens/jc1060p470) | Desk stand | [MakerWorld](https://makerworld.com/en/models/2387421-guition-esp32p4-jc1060p470-7inch-screen-desk-mount#profileId-2614995) |
 | [4-inch ESP32-P4 86 Panel](/screens/p4-86) | Desk stand | [MakerWorld](https://makerworld.com/en/models/2720366-waveshare-esp32-p4-smart-86-box-screen-desk-stand#profileId-3013481) |
+| [4.3-inch JC4880P443](/screens/jc4880p443) | Desk stand | [MakerWorld](https://makerworld.com/en/models/2982320-desk-stand-for-4-3-inch-jc4880p443-esp32-screen#profileId-3346161) |
 | [4-inch 4848S040](/screens/4848s040) | Case stand | [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301) |
-| [4.3-inch JC4880P443](/screens/jc4880p443) | Not available yet | - |
 
 ## Before Printing
 

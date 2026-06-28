@@ -14,7 +14,7 @@ Use this page when you know what you want the panel to do but are not sure which
 
 | Goal | Use this card | Entity or target |
 |---|---|---|
-| Toggle a light, switch, fan, helper, or button-style entity | [Switch](/card-types/switches) | `light`, `switch`, `input_boolean`, `fan`, or `button` |
+| Toggle a light, switch, fan, or helper | [Switch](/card-types/switches) | `light`, `switch`, `input_boolean`, or `fan` |
 | Control a light as on/off, brightness, colour temperature, or colour presets | [Lights](/card-types/lights) | `light` |
 | Run a scene, script, automation, helper action, button press, or local panel action | [Action](/card-types/actions) | Depends on the selected action |
 | Show or control a robot vacuum | [Vacuum](/card-types/vacuum) | `vacuum` |
@@ -69,7 +69,7 @@ Some names in the setup page group several related modes:
 | **Date & Time** | Clock, Date, Time & Date, World Clock |
 | **Media** | Play/Pause, Previous, Next, Volume, Track Position, Now Playing |
 | **Cover** | All Controls, Position, Tilt, Toggle, Open, Close, Stop, Set Position |
-| **Subpage** | Generic, Switch, Lights, Climate, Presence, Media, Alarm, Cover, Garage Door, Lock, Vacuum, Weather, Sensor, Camera / Image |
+| **Subpage** | Generic, Switch, Lights, Climate, Presence, Media, Alarm, Cover, Garage Door, Lock, Vacuum, Lawn Mower, Weather, Sensor, Camera / Image |
 
 ## Permissions
 

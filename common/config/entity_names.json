@@ -1,10 +1,7 @@
 {
   "entities": [
     { "key": "button_order", "domain": "text", "name": "Button Order", "groups": ["card"] },
-    { "key": "screen_theme", "domain": "select", "name": "Screen: Theme", "objectIds": ["screen__theme", "screen_theme"], "groups": ["card"] },
     { "key": "button_on_color", "domain": "text", "name": "Button On Color", "groups": ["card"] },
-    { "key": "button_off_color", "domain": "text", "name": "Button Off Color", "groups": ["card"] },
-    { "key": "sensor_card_color", "domain": "text", "name": "Sensor Card Color", "groups": ["card"] },
     { "key": "button_config", "domain": "text", "template": "Button {slot} Config", "groups": ["card_slot"] },
     { "key": "subpage_config", "domain": "text", "template": "Subpage {slot} Config", "groups": ["subpage_slot"] },
     { "key": "subpage_config_ext", "domain": "text", "template": "Subpage {slot} Config Ext", "groups": ["subpage_slot"] },

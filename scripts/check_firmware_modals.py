@@ -127,9 +127,10 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         elif (
             "cover_control_hide_modal();" not in hide_modals.group("body")
             or "light_control_hide_modal();" not in hide_modals.group("body")
+            or "fan_control_hide_modal();" not in hide_modals.group("body")
         ):
             errors.append(
-                "components/espcontrol/button_grid_navigation.h: return-home navigation must explicitly clear cover and light modals"
+                "components/espcontrol/button_grid_navigation.h: return-home navigation must explicitly clear fan, cover, and light modals"
             )
         if return_home is None or "navigation_hide_modals();" not in return_home.group("body"):
             errors.append(
@@ -293,6 +294,23 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
     ):
         errors.append("components/espcontrol/button_grid_grid.h: open light control modals from subpage cards")
 
+    fan_block = re.search(
+        r'if\s*\(\s*sb_cfg\.type\s*==\s*"fan_control"\s*\)\s*\{(?P<body>.*?)\n      \}',
+        text,
+        re.S,
+    )
+    if fan_block is None:
+        errors.append("components/espcontrol/button_grid_grid.h: keep fan control modal cards available in subpages")
+    else:
+        body = fan_block.group("body")
+        if (
+            "create_fan_card_context" not in body
+            or "subscribe_fan_card_state(ctx);" not in body
+            or "fan_control_open_modal(ctx);" not in body
+            or "LV_EVENT_CLICKED" not in body
+        ):
+            errors.append("components/espcontrol/button_grid_grid.h: open fan control modals from subpage cards")
+
     if not subpages_path.exists():
         errors.append("components/espcontrol/button_grid_subpages.h: preserve light control tab options in subpages")
         return errors
@@ -301,8 +319,10 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
     if (
         'b.type == "light_control"' not in subpages_text
         or "light_control_card_options_normalized(b.options)" not in subpages_text
+        or 'b.type == "fan_control"' not in subpages_text
+        or "fan_control_card_options_normalized(b.options)" not in subpages_text
     ):
-        errors.append("components/espcontrol/button_grid_subpages.h: preserve light control tab options in subpages")
+        errors.append("components/espcontrol/button_grid_subpages.h: preserve light and fan control tab options in subpages")
     unsupported_block = re.search(
         r'if\s*\(\s*!b\.type\.empty\(\)(?P<body>.*?)\)\s*\{\s*\n\s*b\.options\.clear\(\);',
         subpages_text,
@@ -571,12 +591,30 @@ def expect_subpage_modal_wiring_errors(name: str, grid_text: str, expected: tupl
         root = Path(tmp)
         path = root / "components" / "espcontrol" / "button_grid_grid.h"
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(grid_text, encoding="utf-8")
+        path.write_text(
+            grid_text +
+            '      if (sb_cfg.type == "fan_control") {\n'
+            "        if (!sb_cfg.entity.empty()) {\n"
+            "          FanCardCtx *ctx = create_fan_card_context(\n"
+            "            sub_slot, sb_cfg, DEFAULT_SLIDER_COLOR, DEFAULT_OFF_COLOR, DEFAULT_TERTIARY_COLOR, nullptr, nullptr, 100);\n"
+            "          subscribe_fan_card_state(ctx);\n"
+            "          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {\n"
+            "            FanCardCtx *ctx = (FanCardCtx *)lv_event_get_user_data(e);\n"
+            "            if (ctx) fan_control_open_modal(ctx);\n"
+            "          }, LV_EVENT_CLICKED, ctx);\n"
+            "        }\n"
+            "        continue;\n"
+            "      }\n",
+            encoding="utf-8",
+        )
         (path.parent / "button_grid_subpages.h").write_text(
             'if (b.type == "light_control") {\n'
             "  b.options = light_control_card_options_normalized(b.options);\n"
             "}\n"
-            'if (!b.type.empty() && b.type != "light_control") {\n'
+            'if (b.type == "fan_control") {\n'
+            "  b.options = fan_control_card_options_normalized(b.options);\n"
+            "}\n"
+            'if (!b.type.empty() && b.type != "light_control" && !fan_card_type(b.type)) {\n'
             "  b.options.clear();\n"
             "}\n",
             encoding="utf-8",
@@ -631,6 +669,7 @@ def valid_sleep_takeover_files() -> dict[str, str]:
         "components/espcontrol/button_grid_navigation.h": (
             "inline void navigation_hide_modals() {\n"
             "  control_modal_close_active();\n"
+            "  fan_control_hide_modal();\n"
             "  cover_control_hide_modal();\n"
             "  light_control_hide_modal();\n"
             "}\n"

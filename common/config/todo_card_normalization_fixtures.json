@@ -1,0 +1,47 @@
+[
+  {
+    "name": "todo count display preserves large numbers",
+    "input": "todo.shopping;Shopping;Auto;Check;ignored;items;todo;2;large_numbers,ignored=1",
+    "expected": {
+      "entity": "todo.shopping",
+      "label": "Shopping",
+      "icon": "Check",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "todo",
+      "precision": "",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "todo icon count display drops large numbers",
+    "input": "todo.shopping;Shopping;Clipboard Check;Auto;ignored;items;todo;2;large_numbers,count_display=icon,ignored=1",
+    "expected": {
+      "entity": "todo.shopping",
+      "label": "Shopping",
+      "icon": "Clipboard Check",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "todo",
+      "precision": "",
+      "options": "count_display=icon"
+    }
+  },
+  {
+    "name": "todo invalid count display becomes default",
+    "input": "todo.shopping;Shopping;Auto;Auto;ignored;items;todo;2;count_display=bad,large_numbers=off",
+    "expected": {
+      "entity": "todo.shopping",
+      "label": "Shopping",
+      "icon": "Check",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "todo",
+      "precision": "",
+      "options": "large_numbers=off"
+    }
+  }
+]
