@@ -94,62 +94,23 @@ function buildSettingsPage(parent) {
 
   var appearBody = document.createElement("div");
 
-  if (isEpaperPreview()) {
-    var themeField = document.createElement("div");
-    themeField.className = "sp-field";
-    themeField.appendChild(fieldLabel("Theme", "sp-set-theme"));
-    var themeSelect = document.createElement("select");
-    themeSelect.className = "sp-select";
-    themeSelect.id = "sp-set-theme";
-    state.themeOptions.forEach(function (opt) {
-      var o = document.createElement("option");
-      o.value = opt;
-      o.textContent = opt;
-      themeSelect.appendChild(o);
-    });
-    themeSelect.value = normalizeTheme(state.theme);
-    themeSelect.addEventListener("change", function () {
-      applyThemePreset(this.value, true);
-    });
-    themeField.appendChild(themeSelect);
-    appearBody.appendChild(themeField);
-    els.setTheme = themeSelect;
-  } else {
-    appearBody.appendChild(fieldLabel("Primary"));
-    var onColor = colorField("sp-set-on-color", DEFAULT_COLOR_PRESET.on, function (hex) {
-      postText(entityName("button_on_color"), hex);
-    });
-    appearBody.appendChild(onColor);
-    els.setOnColor = onColor;
+  appearBody.appendChild(fieldLabel("Primary"));
+  var onColor = colorField("sp-set-on-color", DEFAULT_COLOR_PRESET.on, function (hex) {
+    postText(entityName("button_on_color"), hex);
+  });
+  appearBody.appendChild(onColor);
+  els.setOnColor = onColor;
 
-    appearBody.appendChild(fieldLabel("Secondary"));
-    var offColor = colorField("sp-set-off-color", DEFAULT_COLOR_PRESET.off, function (hex) {
-      postText(entityName("button_off_color"), hex);
-    });
-    appearBody.appendChild(offColor);
-    els.setOffColor = offColor;
-
-    appearBody.appendChild(fieldLabel("Tertiary"));
-    var sensorColor = colorField("sp-set-sensor-color", DEFAULT_COLOR_PRESET.sensor, function (hex) {
-      postText(entityName("sensor_card_color"), hex);
-    });
-    appearBody.appendChild(sensorColor);
-    els.setSensorColor = sensorColor;
-  }
-
-  var appearanceResetButton = null;
-  if (!isEpaperPreview()) {
-    appearanceResetButton = document.createElement("button");
-    appearanceResetButton.type = "button";
-    appearanceResetButton.className = "sp-icon-button sp-card-header-action";
-    appearanceResetButton.title = "Reset colours";
-    appearanceResetButton.setAttribute("aria-label", "Reset colours to defaults");
-    appearanceResetButton.innerHTML = '<span class="mdi mdi-restore" aria-hidden="true"></span>';
-    appearanceResetButton.addEventListener("click", function (event) {
-      event.stopPropagation();
-      resetAppearanceColors(true);
-    });
-  }
+  var appearanceResetButton = document.createElement("button");
+  appearanceResetButton.type = "button";
+  appearanceResetButton.className = "sp-icon-button sp-card-header-action";
+  appearanceResetButton.title = "Reset colours";
+  appearanceResetButton.setAttribute("aria-label", "Reset colours to defaults");
+  appearanceResetButton.innerHTML = '<span class="mdi mdi-restore" aria-hidden="true"></span>';
+  appearanceResetButton.addEventListener("click", function (event) {
+    event.stopPropagation();
+    resetAppearanceColors(true);
+  });
   var appearanceCard = makeCollapsibleCard("Appearance", appearBody, true, null, appearanceResetButton);
 
   var languageBody = document.createElement("div");
@@ -674,8 +635,7 @@ function buildSettingsPage(parent) {
   els.setClockBrightnessField = timerClockControls.brightnessField;
 
   var coverArtBody = document.createElement("div");
-  if (!isEpaperPreview()) {
-    var coverArtToggle = toggleRow(
+  var coverArtToggle = toggleRow(
       "Show Cover Art",
       "sp-set-ss-cover-art-enable",
       state.coverArtScreensaverOn);
@@ -865,7 +825,6 @@ function buildSettingsPage(parent) {
     coverArtOptions.appendChild(coverArtOnlyOptions);
     els.setCoverArtOptions = coverArtOptions;
     coverArtBody.appendChild(coverArtOptions);
-  }
 
   ssBody.appendChild(timerPanel);
   els.setSSTimeout = timeoutSelect;
@@ -965,13 +924,10 @@ function buildSettingsPage(parent) {
   els.setIdleBadge = idleBadge;
   syncIdleUi();
   var idleCard = makeCollapsibleCard("Idle", idleBody, true, idleBadge);
-  var coverArtCard = null;
-  if (!isEpaperPreview()) {
-    var coverArtBadge = statusBadge("Media cover art on");
-    els.setCoverArtBadge = coverArtBadge;
-    syncCoverArtScreensaverUi();
-    coverArtCard = makeCollapsibleCard("Cover Art", coverArtBody, true, coverArtBadge);
-  }
+  var coverArtBadge = statusBadge("Media cover art on");
+  els.setCoverArtBadge = coverArtBadge;
+  syncCoverArtScreensaverUi();
+  var coverArtCard = makeCollapsibleCard("Cover Art", coverArtBody, true, coverArtBadge);
 
   var backupBody = document.createElement("div");
 

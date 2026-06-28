@@ -39,7 +39,6 @@ function showBanner(msg, type) {
 function buildUI() {
   var root = document.createElement("div");
   root.id = "sp-app";
-  root.setAttribute("data-preview-theme", CFG.previewTheme || "default");
 
   var banner = document.createElement("div");
   banner.className = "sp-banner";
