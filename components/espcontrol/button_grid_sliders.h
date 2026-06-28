@@ -121,6 +121,9 @@ inline MediaVolumeModalUi &media_volume_modal_ui() {
 
 inline int slider_clamp_pct(int pct);
 inline bool slider_parse_light_brightness_pct(esphome::StringRef val, int &pct);
+inline void slider_set_value_safe(lv_obj_t *slider, int pct);
+inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
+                                bool interactive = true);
 
 struct LightControlCtx {
   std::string entity_id;
@@ -1607,6 +1610,7 @@ struct CoverControlCtx {
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
   uint32_t secondary_color = DEFAULT_OFF_COLOR;
   lv_obj_t *btn = nullptr;
+  lv_obj_t *card_slider = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *label_lbl = nullptr;
   const char *icon_closed_glyph = nullptr;
@@ -1757,10 +1761,26 @@ inline std::string cover_control_title(CoverControlCtx *ctx) {
   return espcontrol_i18n(std::string("Cover"));
 }
 
+inline void cover_control_update_card_slider(CoverControlCtx *ctx,
+                                             const std::string &state_text = "") {
+  if (!ctx || !ctx->card_slider) return;
+  SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(ctx->card_slider);
+  if (!sctx) return;
+  int position = 100;
+  if (ctx->current_position_known) {
+    position = ctx->current_position;
+  } else if (!state_text.empty() && cover_toggle_state_is_active(state_text)) {
+    position = 0;
+  }
+  slider_set_value_safe(ctx->card_slider, position);
+  slider_update_ctx_fill(sctx, ctx->btn, 100 - slider_clamp_pct(position));
+}
+
 inline void cover_control_apply_card_visual(CoverControlCtx *ctx,
                                             const std::string &state_text = "") {
   if (!ctx || !ctx->btn) return;
   apply_control_availability(ctx->btn, ctx->btn, ctx->available);
+  cover_control_update_card_slider(ctx, state_text);
   bool active = ctx->current_position_known
     ? slider_clamp_pct(ctx->current_position) < 100
     : (!state_text.empty() ? cover_toggle_state_is_active(state_text) : ctx->current_position < 100);
@@ -2381,8 +2401,10 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
 }
 
 inline void setup_cover_modal_card(BtnSlot &s, const ParsedCfg &p) {
-  lv_label_set_text(s.icon_lbl, slider_icon_off(p.type, p.entity, p.icon));
-  lv_label_set_text(s.text_lbl, p.label.empty() ? espcontrol_i18n("Cover") : p.label.c_str());
+  setup_slider_visual(s, p, DEFAULT_SLIDER_COLOR, false);
+  lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
+  if (slider) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
+  if (s.btn) lv_obj_add_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
   apply_push_button_transition(s.btn);
 }
 
@@ -2400,6 +2422,16 @@ inline CoverControlCtx *create_cover_control_context(
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->btn = s.btn;
+  ctx->card_slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
+  if (ctx->card_slider) {
+    SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(ctx->card_slider);
+    if (sctx) {
+      sctx->available = ctx->available;
+      if (sctx->fill) {
+        lv_obj_set_style_bg_color(sctx->fill, lv_color_hex(accent_color), LV_PART_MAIN);
+      }
+    }
+  }
   ctx->icon_lbl = s.icon_lbl;
   ctx->label_lbl = s.text_lbl;
   ctx->icon_closed_glyph = slider_icon_off(p.type, p.entity, p.icon);
@@ -2484,7 +2516,8 @@ inline void setup_cover_command_card(BtnSlot &s, const ParsedCfg &p) {
 }
 
 // Full slider button setup: visual + event handlers + HA action on release
-inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color) {
+inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
+                                bool interactive) {
   ESP_LOGI("slider", "Setup brightness slider for %s (%s)",
     p.entity.c_str(), p.type.c_str());
   setup_toggle_visual(s, p);
@@ -2528,6 +2561,7 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
   ctx->radius = lv_obj_get_style_radius(s.btn, LV_PART_MAIN);
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(s.btn, slider);
+  if (!interactive) lv_obj_clear_flag(slider, LV_OBJ_FLAG_CLICKABLE);
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
@@ -2539,16 +2573,18 @@ inline void setup_slider_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_colo
     slider_update_ctx_fill(c, lv_obj_get_parent(sl), fill_val);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
 
-  lv_obj_add_event_cb(slider, [](lv_event_t *e) {
-    lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
-    if (!sl) return;
-    SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
-    if (c && !c->entity_id.empty()) {
-      if (!c->available) return;
-      int val = lv_slider_get_value(sl);
-      send_slider_action(c->entity_id, val, c->cover_tilt);
-    }
-  }, LV_EVENT_RELEASED, nullptr);
+  if (interactive) {
+    lv_obj_add_event_cb(slider, [](lv_event_t *e) {
+      lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
+      if (!sl) return;
+      SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(sl);
+      if (c && !c->entity_id.empty()) {
+        if (!c->available) return;
+        int val = lv_slider_get_value(sl);
+        send_slider_action(c->entity_id, val, c->cover_tilt);
+      }
+    }, LV_EVENT_RELEASED, nullptr);
+  }
 }
 
 inline int slider_clamp_pct(int pct) {

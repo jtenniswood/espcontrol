@@ -376,7 +376,7 @@ function sliderTypeFactory(opts) {
     renderPreview: function (b, helpers) {
       var label = b.label || b.entity || opts.fallbackLabel;
       var iconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : opts.fallbackIcon;
-      if (opts.interactionMode && (b.sensor === "modal" || b.sensor === "toggle" || coverCommandMode(b.sensor))) {
+      if (opts.interactionMode && (b.sensor === "toggle" || coverCommandMode(b.sensor))) {
         return {
           iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
           labelHtml: cardBadgeLabelHtml(helpers, label, metadata.preview.badge),
