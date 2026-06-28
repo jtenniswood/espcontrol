@@ -69,8 +69,6 @@ const v2 = hooks.createBackupConfig({
   grid: [1, 2, 0],
   sizes: { 2: 2 },
   button_on_color: "AA0000",
-  button_off_color: "111111",
-  sensor_card_color: "222222",
   buttons: [
     { entity: "light.kitchen", label: "Kitchen", icon: "Auto", icon_on: "Lightbulb" },
     { entity: "weather.home", label: "Weather", type: "weather_forecast" },

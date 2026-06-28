@@ -57,7 +57,7 @@ function defaultTimezoneCardEntity() {
 
 function dateTimeModeOptionValues() {
   var spec = cardContractOptionSpec("calendar", "date_time_mode");
-  return spec && spec.values ? spec.values.slice() : ["clock", "datetime", "", "timezone"];
+  return spec && spec.values ? spec.values.slice() : [];
 }
 
 function normalizeDateTimeCardMode(mode) {
@@ -153,13 +153,8 @@ registerButtonType("calendar", {
   defaultConfig: function () { return cardContractDefaultConfig("calendar"); },
   cardMetadata: DATE_TIME_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = "sensor.date";
-    b.label = "";
-    b.icon = "Auto";
-    b.icon_on = "Auto";
-    b.sensor = "";
-    b.unit = "";
-    b.options = "";
+    var defaults = cardContractDefaultConfig("calendar");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
     b.precision = b.precision === "datetime" ? "datetime" : "";
   },
   renderSettings: function (panel, b, slot, helpers) {

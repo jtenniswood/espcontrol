@@ -11,14 +11,8 @@ registerButtonType("clock", {
   },
   cardMetadata: DATE_TIME_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = "";
-    b.label = "";
-    b.icon = "Auto";
-    b.icon_on = "Auto";
-    b.sensor = "";
-    b.unit = "";
-    b.precision = "";
-    b.options = "";
+    var defaults = cardContractDefaultConfig("clock");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
   },
   renderSettings: function (panel, b, slot, helpers) {
     b.entity = "";
