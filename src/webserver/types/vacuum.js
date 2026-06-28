@@ -97,13 +97,10 @@ registerButtonType("vacuum", {
   cardMetadata: VACUUM_CARD_METADATA,
   normalizeConfig: normalizeVacuumConfig,
   onSelect: function (b) {
-    b.label = "";
-    b.sensor = "start_stop";
-    b.unit = "";
-    b.precision = "";
-    b.options = "";
-    b.icon = "Robot Vacuum";
-    b.icon_on = "Auto";
+    var defaults = cardContractDefaultConfig("vacuum");
+    Object.keys(defaults).forEach(function (key) {
+      if (key !== "entity") b[key] = defaults[key];
+    });
   },
   renderSettings: function (panel, b, slot, helpers) {
     var mode = normalizeVacuumMode(b.sensor);

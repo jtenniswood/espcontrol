@@ -1,6 +1,7 @@
 // Fan cards: grouped controls for Home Assistant fan entities.
 
 var FAN_CONTROL_TYPE_OPTIONS = [
+  ["fan_control", "Control Modal"],
   ["fan_switch", "Switch"],
   ["fan_speed", "Speed"],
   ["fan_oscillate", "Oscillation"],
@@ -9,6 +10,7 @@ var FAN_CONTROL_TYPE_OPTIONS = [
 ];
 
 function normalizeFanControlType(type) {
+  if (type === "fan_control") return type;
   if (type === "fan_switch" ||
       type === "fan_oscillate" ||
       type === "fan_direction" ||
@@ -17,6 +19,7 @@ function normalizeFanControlType(type) {
 }
 
 function fanControlDefaultIcon(type) {
+  if (type === "fan_control") return "Fan";
   if (type === "fan_switch") return "Fan Off";
   if (type === "fan_oscillate") return "Fan";
   if (type === "fan_direction") return "Swap Horizontal";
@@ -25,6 +28,7 @@ function fanControlDefaultIcon(type) {
 }
 
 function fanControlBadgeIcon(type) {
+  if (type === "fan_control") return "fan";
   if (type === "fan_switch") return "fan";
   if (type === "fan_oscillate") return "sync";
   if (type === "fan_direction") return "swap-horizontal";
@@ -85,6 +89,16 @@ function renderFanControlTypeField(panel, b, helpers) {
   }));
 }
 
+function renderFanControlTabSettings(panel, b, helpers) {
+  renderModalTabSettings(panel, b, helpers, {
+    definitions: fanControlTabDefinitions,
+    tabs: fanControlTabs,
+    normalizeOptions: normalizeFanControlOptions,
+    setTabs: setFanControlTabs,
+    idPrefix: "fan-tab-",
+  });
+}
+
 function fanTypeFactory(opts) {
   return {
     label: "Fans",
@@ -98,7 +112,7 @@ function fanTypeFactory(opts) {
       b.sensor = "";
       b.unit = "";
       b.precision = "";
-      b.options = "";
+      b.options = opts.type === "fan_control" ? normalizeFanControlOptions(b.options) : "";
       b.icon = fanControlDefaultIcon(opts.type);
       b.icon_on = opts.type === "fan_switch" ? "Fan" : "Auto";
     },
@@ -106,7 +120,7 @@ function fanTypeFactory(opts) {
       b.sensor = "";
       b.unit = "";
       b.precision = "";
-      b.options = "";
+      b.options = b.type === "fan_control" ? normalizeFanControlOptions(b.options) : "";
       if (!b.icon || b.icon === "Auto") b.icon = fanControlDefaultIcon(b.type);
       if (b.type === "fan_switch") {
         if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Fan";
@@ -120,6 +134,10 @@ function fanTypeFactory(opts) {
       helpers.renderCardEntityField(panel, b, helpers, FAN_CARD_METADATA);
 
       helpers.renderCardTextField(panel, b, helpers, FAN_CARD_METADATA.labelField);
+
+      if (b.type === "fan_control") {
+        renderFanControlTabSettings(panel, b, helpers);
+      }
 
       if (b.type === "fan_switch") {
         helpers.renderCardIconPicker(panel, b, helpers, {
@@ -165,6 +183,7 @@ function fanTypeFactory(opts) {
   };
 }
 
+registerButtonType("fan_control", fanTypeFactory({ type: "fan_control", pickerKey: "fan_speed", hidden: true }));
 registerButtonType("fan_speed", fanTypeFactory({ type: "fan_speed" }));
 registerButtonType("fan_switch", fanTypeFactory({ type: "fan_switch", pickerKey: "fan_speed", hidden: true }));
 registerButtonType("fan_oscillate", fanTypeFactory({ type: "fan_oscillate", pickerKey: "fan_speed", hidden: true }));

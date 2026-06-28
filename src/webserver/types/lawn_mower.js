@@ -80,13 +80,10 @@ registerButtonType("lawn_mower", {
   cardMetadata: LAWN_MOWER_CARD_METADATA,
   normalizeConfig: normalizeLawnMowerConfig,
   onSelect: function (b) {
-    b.label = "";
-    b.sensor = "start_mowing";
-    b.unit = "";
-    b.precision = "";
-    b.options = "";
-    b.icon = "Robot Mower";
-    b.icon_on = "Auto";
+    var defaults = cardContractDefaultConfig("lawn_mower");
+    Object.keys(defaults).forEach(function (key) {
+      if (key !== "entity") b[key] = defaults[key];
+    });
   },
   renderSettings: function (panel, b, slot, helpers) {
     var mode = normalizeLawnMowerMode(b.sensor);

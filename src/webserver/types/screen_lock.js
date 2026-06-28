@@ -15,14 +15,8 @@ registerButtonType("screen_lock", {
   defaultConfig: function () { return cardContractDefaultConfig("screen_lock"); },
   cardMetadata: SCREEN_LOCK_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = "";
-    b.label = "";
-    b.sensor = "";
-    b.unit = "";
-    b.precision = "";
-    b.options = "";
-    b.icon = "Lock";
-    b.icon_on = "Lock Open";
+    var defaults = cardContractDefaultConfig("screen_lock");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
   },
   renderPreview: function (b, helpers) {
     return cardBadgePreview(b, helpers, {
