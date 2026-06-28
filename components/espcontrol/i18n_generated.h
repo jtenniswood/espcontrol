@@ -220,6 +220,10 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizace selhala";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi odpojena";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavení WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Vybrat místnosti";
+  if (std::strcmp(text, "Rooms") == 0) return "Místnosti";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nejsou vybrány žádné místnosti";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Nejsou nakonfigurovány žádné místnosti";
   return text;
 }
 
@@ -422,6 +426,10 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Opdatering mislykkedes";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi afbrudt";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-opsætning";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Vælg rum";
+  if (std::strcmp(text, "Rooms") == 0) return "Rum";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Ingen rum valgt";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Ingen rum konfigureret";
   return text;
 }
 
@@ -621,6 +629,10 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Update fehlgeschlagen";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi getrennt";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-Einrichtung";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Räume wählen";
+  if (std::strcmp(text, "Rooms") == 0) return "Räume";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Keine Räume ausgewählt";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Keine Räume konfiguriert";
   return text;
 }
 
@@ -827,6 +839,10 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Error en la actualización";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuración WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Seleccionar habitaciones";
+  if (std::strcmp(text, "Rooms") == 0) return "Habitaciones";
+  if (std::strcmp(text, "No rooms selected") == 0) return "No hay habitaciones seleccionadas";
+  if (std::strcmp(text, "No rooms configured") == 0) return "No hay habitaciones configuradas";
   return text;
 }
 
@@ -1043,6 +1059,10 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Päivitys epäonnistui";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi katkaistu";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-asennus";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Valitse huoneet";
+  if (std::strcmp(text, "Rooms") == 0) return "Huoneet";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Huoneita ei ole valittu";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Huoneita ei ole määritetty";
   return text;
 }
 
@@ -1243,6 +1263,10 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Échec de la mise à jour";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi déconnecté";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuration WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Choisir des pièces";
+  if (std::strcmp(text, "Rooms") == 0) return "Pièces";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Aucune pièce sélectionnée";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Aucune pièce configurée";
   return text;
 }
 
@@ -1459,6 +1483,10 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Frissítés sikertelen";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi megszakadt";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi beállítás";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Szobák kiválasztása";
+  if (std::strcmp(text, "Rooms") == 0) return "Szobák";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nincsenek kiválasztott szobák";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Nincsenek beállított szobák";
   return text;
 }
 
@@ -1668,6 +1696,10 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Aggiornamento non riuscito";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi disconnesso";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configurazione WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Scegli stanze";
+  if (std::strcmp(text, "Rooms") == 0) return "Stanze";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nessuna stanza selezionata";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Nessuna stanza configurata";
   return text;
 }
 
@@ -1872,6 +1904,10 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Oppdatering mislyktes";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi frakoblet";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-oppsett";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Velg rom";
+  if (std::strcmp(text, "Rooms") == 0) return "Rom";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Ingen rom valgt";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Ingen rom konfigurert";
   return text;
 }
 
@@ -2077,6 +2113,10 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Update mislukt";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi verbroken";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-installatie";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Kamers kiezen";
+  if (std::strcmp(text, "Rooms") == 0) return "Kamers";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Geen kamers geselecteerd";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Geen kamers geconfigureerd";
   return text;
 }
 
@@ -2281,6 +2321,10 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizacja nieudana";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi rozłączone";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Konfiguracja WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Wybierz pokoje";
+  if (std::strcmp(text, "Rooms") == 0) return "Pokoje";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nie wybrano pokoi";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Brak skonfigurowanych pokoi";
   return text;
 }
 
@@ -2487,6 +2531,10 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Falha na atualização";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Escolher cômodos";
+  if (std::strcmp(text, "Rooms") == 0) return "Cômodos";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nenhum cômodo selecionado";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Nenhum cômodo configurado";
   return text;
 }
 
@@ -2694,6 +2742,10 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Falha na atualização";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi desligado";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Escolher divisões";
+  if (std::strcmp(text, "Rooms") == 0) return "Divisões";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nenhuma divisão selecionada";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Nenhuma divisão configurada";
   return text;
 }
 
@@ -2910,6 +2962,10 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Actualizare eșuată";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi deconectat";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Configurare WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Alege camerele";
+  if (std::strcmp(text, "Rooms") == 0) return "Camere";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nicio cameră selectată";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Nicio cameră configurată";
   return text;
 }
 
@@ -3118,6 +3174,10 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Aktualizácia zlyhala";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi odpojené";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavenie WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Vybrať miestnosti";
+  if (std::strcmp(text, "Rooms") == 0) return "Miestnosti";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nie sú vybraté žiadne miestnosti";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Nie sú nakonfigurované žiadne miestnosti";
   return text;
 }
 
@@ -3330,6 +3390,10 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Posodobitev ni uspela";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi prekinjen";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Nastavitev WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Izberi sobe";
+  if (std::strcmp(text, "Rooms") == 0) return "Sobe";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Nobena soba ni izbrana";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Nobena soba ni nastavljena";
   return text;
 }
 
@@ -3534,6 +3598,10 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Uppdatering misslyckades";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi frånkopplat";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi-installation";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Välj rum";
+  if (std::strcmp(text, "Rooms") == 0) return "Rum";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Inga rum valda";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Inga rum konfigurerade";
   return text;
 }
 
@@ -3750,6 +3818,10 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Güncelleme başarısız";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi bağlantısı kesildi";
   if (std::strcmp(text, "WiFi Setup") == 0) return "WiFi Kurulumu";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Odaları seç";
+  if (std::strcmp(text, "Rooms") == 0) return "Odalar";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Seçili oda yok";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Yapılandırılmış oda yok";
   return text;
 }
 
@@ -3968,6 +4040,10 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Update failed") == 0) return "Помилка оновлення";
   if (std::strcmp(text, "WiFi Disconnected") == 0) return "WiFi від’єднано";
   if (std::strcmp(text, "WiFi Setup") == 0) return "Налаштування WiFi";
+  if (std::strcmp(text, "Choose Rooms") == 0) return "Вибрати кімнати";
+  if (std::strcmp(text, "Rooms") == 0) return "Кімнати";
+  if (std::strcmp(text, "No rooms selected") == 0) return "Кімнати не вибрано";
+  if (std::strcmp(text, "No rooms configured") == 0) return "Кімнати не налаштовано";
   return text;
 }
 
@@ -4193,6 +4269,10 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update failed";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi Disconnected";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi Setup";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Choose Rooms";
+  if (std::strcmp(key, "rooms") == 0) return "Rooms";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "No rooms selected";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "No rooms configured";
   return key;
 }
 
@@ -4402,6 +4482,10 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizace selhala";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi odpojena";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavení WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Vybrat místnosti";
+  if (std::strcmp(key, "rooms") == 0) return "Místnosti";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nejsou vybrány žádné místnosti";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Nejsou nakonfigurovány žádné místnosti";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -4605,6 +4689,10 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Opdatering mislykkedes";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi afbrudt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-opsætning";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Vælg rum";
+  if (std::strcmp(key, "rooms") == 0) return "Rum";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Ingen rum valgt";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Ingen rum konfigureret";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -4805,6 +4893,10 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update fehlgeschlagen";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi getrennt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-Einrichtung";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Räume wählen";
+  if (std::strcmp(key, "rooms") == 0) return "Räume";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Keine Räume ausgewählt";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Keine Räume konfiguriert";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5012,6 +5104,10 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Error en la actualización";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuración WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Seleccionar habitaciones";
+  if (std::strcmp(key, "rooms") == 0) return "Habitaciones";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "No hay habitaciones seleccionadas";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "No hay habitaciones configuradas";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5229,6 +5325,10 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Päivitys epäonnistui";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi katkaistu";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-asennus";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Valitse huoneet";
+  if (std::strcmp(key, "rooms") == 0) return "Huoneet";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Huoneita ei ole valittu";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Huoneita ei ole määritetty";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5430,6 +5530,10 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Échec de la mise à jour";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi déconnecté";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuration WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Choisir des pièces";
+  if (std::strcmp(key, "rooms") == 0) return "Pièces";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Aucune pièce sélectionnée";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Aucune pièce configurée";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5647,6 +5751,10 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Frissítés sikertelen";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi megszakadt";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi beállítás";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Szobák kiválasztása";
+  if (std::strcmp(key, "rooms") == 0) return "Szobák";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nincsenek kiválasztott szobák";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Nincsenek beállított szobák";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -5857,6 +5965,10 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aggiornamento non riuscito";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi disconnesso";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurazione WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Scegli stanze";
+  if (std::strcmp(key, "rooms") == 0) return "Stanze";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nessuna stanza selezionata";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Nessuna stanza configurata";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6062,6 +6174,10 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Oppdatering mislyktes";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi frakoblet";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-oppsett";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Velg rom";
+  if (std::strcmp(key, "rooms") == 0) return "Rom";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Ingen rom valgt";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Ingen rom konfigurert";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6267,6 +6383,10 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Update mislukt";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi verbroken";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installatie";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Kamers kiezen";
+  if (std::strcmp(key, "rooms") == 0) return "Kamers";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Geen kamers geselecteerd";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Geen kamers geconfigureerd";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6472,6 +6592,10 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizacja nieudana";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi rozłączone";
   if (std::strcmp(key, "wifi_setup") == 0) return "Konfiguracja WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Wybierz pokoje";
+  if (std::strcmp(key, "rooms") == 0) return "Pokoje";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nie wybrano pokoi";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Brak skonfigurowanych pokoi";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6679,6 +6803,10 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Falha na atualização";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desconectado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Escolher cômodos";
+  if (std::strcmp(key, "rooms") == 0) return "Cômodos";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nenhum cômodo selecionado";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Nenhum cômodo configurado";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -6887,6 +7015,10 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Falha na atualização";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi desligado";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configuração WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Escolher divisões";
+  if (std::strcmp(key, "rooms") == 0) return "Divisões";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nenhuma divisão selecionada";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Nenhuma divisão configurada";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7104,6 +7236,10 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Actualizare eșuată";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi deconectat";
   if (std::strcmp(key, "wifi_setup") == 0) return "Configurare WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Alege camerele";
+  if (std::strcmp(key, "rooms") == 0) return "Camere";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nicio cameră selectată";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Nicio cameră configurată";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7313,6 +7449,10 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Aktualizácia zlyhala";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi odpojené";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavenie WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Vybrať miestnosti";
+  if (std::strcmp(key, "rooms") == 0) return "Miestnosti";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nie sú vybraté žiadne miestnosti";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Nie sú nakonfigurované žiadne miestnosti";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7526,6 +7666,10 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Posodobitev ni uspela";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi prekinjen";
   if (std::strcmp(key, "wifi_setup") == 0) return "Nastavitev WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Izberi sobe";
+  if (std::strcmp(key, "rooms") == 0) return "Sobe";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Nobena soba ni izbrana";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Nobena soba ni nastavljena";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7731,6 +7875,10 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Uppdatering misslyckades";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi frånkopplat";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi-installation";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Välj rum";
+  if (std::strcmp(key, "rooms") == 0) return "Rum";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Inga rum valda";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Inga rum konfigurerade";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -7948,6 +8096,10 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Güncelleme başarısız";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi bağlantısı kesildi";
   if (std::strcmp(key, "wifi_setup") == 0) return "WiFi Kurulumu";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Odaları seç";
+  if (std::strcmp(key, "rooms") == 0) return "Odalar";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Seçili oda yok";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Yapılandırılmış oda yok";
   return espcontrol_i18n_key_en(key);
 }
 
@@ -8167,6 +8319,10 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "update_failed") == 0) return "Помилка оновлення";
   if (std::strcmp(key, "wifi_disconnected") == 0) return "WiFi від’єднано";
   if (std::strcmp(key, "wifi_setup") == 0) return "Налаштування WiFi";
+  if (std::strcmp(key, "choose_rooms") == 0) return "Вибрати кімнати";
+  if (std::strcmp(key, "rooms") == 0) return "Кімнати";
+  if (std::strcmp(key, "no_rooms_selected") == 0) return "Кімнати не вибрано";
+  if (std::strcmp(key, "no_rooms_configured") == 0) return "Кімнати не налаштовано";
   return espcontrol_i18n_key_en(key);
 }
 
