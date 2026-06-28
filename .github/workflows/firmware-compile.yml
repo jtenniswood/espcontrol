@@ -123,6 +123,13 @@ jobs:
         working-directory: espcontrol-${{ matrix.slug }}
         run: |
           RUN_CACHE_ROOT="${RUNNER_TEMP}/espcontrol-esphome/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.slug }}"
+          if [ -d /github/runner_temp ]; then
+            RUN_CACHE_ROOT="/github/runner_temp/espcontrol-esphome/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.slug }}"
+          fi
+          DOCKER_CONFIG_ROOT="${PWD}"
+          if [ -d "/github/workspace/espcontrol-${{ matrix.slug }}" ]; then
+            DOCKER_CONFIG_ROOT="/github/workspace/espcontrol-${{ matrix.slug }}"
+          fi
           PLATFORMIO_CACHE="${RUN_CACHE_ROOT}/platformio-${ESPHOME_VERSION}"
           BUILD_CACHE="${RUN_CACHE_ROOT}/build"
           BUILD_INPUT_DIR=".firmware-builds"
@@ -136,6 +143,7 @@ jobs:
           echo "PLATFORMIO_CACHE=${PLATFORMIO_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_CACHE=${BUILD_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_INPUT_DIR=${BUILD_INPUT_DIR}" >> "$GITHUB_ENV"
+          echo "DOCKER_CONFIG_ROOT=${DOCKER_CONFIG_ROOT}" >> "$GITHUB_ENV"
 
       - name: Pull ESPHome image
         working-directory: espcontrol-${{ matrix.slug }}
@@ -157,7 +165,7 @@ jobs:
           -e HOME=/config
           -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio
           -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false
-          -v "${PWD}:/config"
+          -v "${DOCKER_CONFIG_ROOT}:/config"
           -v "${PLATFORMIO_CACHE}:/config/.esphome"
           -v "${BUILD_CACHE}:/config/${BUILD_INPUT_DIR}/.esphome"
           "${ESPHOME_IMAGE}"
