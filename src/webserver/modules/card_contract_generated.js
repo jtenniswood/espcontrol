@@ -287,6 +287,7 @@ var CARD_CONTRACT_CARDS = {
           "home",
           "disarm"
         ],
+        "maxVisibleActions": 3,
         "actions": [
           {
             "value": "away",
@@ -681,6 +682,33 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "fan_control": {
+    "label": "Fans",
+    "allowInSubpage": true,
+    "pickerKey": "fan_speed",
+    "domains": [
+      "fan"
+    ],
+    "options": [
+      {
+        "name": "fan_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "defaultValue": "power|speed|preset|oscillation|direction"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Fan",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_control",
+      "precision": "",
+      "options": ""
+    }
+  },
   "fan_switch": {
     "label": "Fans",
     "allowInSubpage": true,
@@ -859,6 +887,12 @@ var CARD_CONTRACT_CARDS = {
         "name": "light_tabs",
         "label": "Visible Tabs",
         "kind": "text",
+        "values": [
+          "power",
+          "brightness",
+          "temperature",
+          "color"
+        ],
         "defaultValue": "power|brightness|temperature|color"
       }
     ],
@@ -1425,6 +1459,7 @@ var CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES = ["slider", "light_brightness", "fan_
 var CARD_CONTRACT_FAN_DEFAULT_ICONS = {
   "fan_switch": "Fan Off",
   "fan_speed": "Fan Speed 2",
+  "fan_control": "Fan",
   "fan_oscillate": "Fan",
   "fan_direction": "Swap Horizontal",
   "fan_preset": "Fan Auto"
@@ -1448,6 +1483,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "option_select": "U",
   "fan_switch": "B",
   "fan_speed": "J",
+  "fan_control": "FC",
   "fan_oscillate": "O",
   "fan_direction": "E",
   "fan_preset": "Z",
@@ -1485,6 +1521,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "U": "option_select",
   "B": "fan_switch",
   "J": "fan_speed",
+  "FC": "fan_control",
   "O": "fan_oscillate",
   "E": "fan_direction",
   "Z": "fan_preset",
@@ -1545,6 +1582,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "cover_position": "cover_position",
   "cover_tabs": "cover_tabs",
   "date_time_mode": "date_time_mode",
+  "fan_tabs": "fan_tabs",
   "garage_mode": "garage_mode",
   "icon_display": "icon_display",
   "image_icon": "image_icon",

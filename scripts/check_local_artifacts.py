@@ -12,6 +12,9 @@ SKIP_DIRS = {
     ".git",
     ".cache",
     ".esphome",
+    ".pio-core",
+    ".platformio",
+    ".platformio-run",
     "node_modules",
     "__pycache__",
 }
@@ -22,6 +25,7 @@ SKIP_PATHS = {
 }
 TRACKED_ARTIFACT_SUFFIXES = (".pyc", ".pyo")
 TRACKED_ARTIFACT_NAMES = {".DS_Store"}
+TEMP_PR_PREFIX = ".tmp-pr"
 
 
 def should_skip_dir(path: Path) -> bool:
@@ -52,16 +56,27 @@ def find_tracked_local_artifacts() -> list[Path]:
 
 def main() -> int:
     ds_store_files: list[Path] = []
+    temp_pr_dirs: list[Path] = []
     stack = [ROOT]
     while stack:
         current = stack.pop()
         for child in current.iterdir():
             if child.is_dir():
+                if child.parent == ROOT and child.name.startswith(TEMP_PR_PREFIX):
+                    temp_pr_dirs.append(child.relative_to(ROOT))
+                    continue
                 if not should_skip_dir(child):
                     stack.append(child)
                 continue
             if child.name == ".DS_Store":
                 ds_store_files.append(child.relative_to(ROOT))
+
+    if temp_pr_dirs:
+        print("Found temporary PR folders in the repository root:")
+        for path in sorted(temp_pr_dirs):
+            print(f"  {path}")
+        print("Remove them before running local checks or committing.")
+        return 1
 
     if ds_store_files:
         print("Found .DS_Store files that should not be kept in the repository:")
