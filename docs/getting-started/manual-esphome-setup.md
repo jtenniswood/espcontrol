@@ -170,7 +170,7 @@ If ESPHome cannot access the USB port directly, choose **Manual download** inste
 1. Wait for the display to join WiFi.
 2. Add it to Home Assistant when the ESPHome integration discovers it.
 3. Open the display address in a browser, for example `http://espcontrol.local`.
-4. Configure cards, colours, brightness, and other settings from the built-in web page.
+4. Configure cards, active colour, brightness, and other settings from the built-in web page.
 5. Follow [Enable Actions](/getting-started/home-assistant-actions) so the display is allowed to control your Home Assistant devices.
 
 ## Updating Later
