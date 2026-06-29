@@ -376,7 +376,7 @@ assert(
 );
 const mediaControlPickerOption = pickerOptions.find((option) => option.key === "media_control");
 assert(mediaControlPickerOption, "media control appears as a top-level card picker shortcut");
-assert.strictEqual(mediaControlPickerOption.label, "Media Control", "media control picker option has a clear label");
+assert.strictEqual(mediaControlPickerOption.label, "All Controls", "media control picker option has a clear label");
 assert.strictEqual(
   hooks.defaultButtonTypeForPicker("media_control"),
   "media",
@@ -385,6 +385,11 @@ assert.strictEqual(
 assert(
   Array.from(hooks.mediaModeOptionValues()).includes("control_modal"),
   "media mode options include the media control modal subtype"
+);
+assert.strictEqual(
+  Array.from(hooks.mediaModeOptionValues())[0],
+  "control_modal",
+  "all media controls appears first in the media mode list"
 );
 const mediaControlConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
   entity: "media_player.living_room",

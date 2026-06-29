@@ -52,7 +52,7 @@ var CARD_TYPE_PICKER_DETAILS = {
   local_sensor: { icon: "gauge", description: "Show a sensor value from this device." },
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
-  media_control: { icon: "music", description: "Open playback controls and volume in a modal." },
+  media_control: { icon: "music", description: "Open all media controls and volume in a modal." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
@@ -108,9 +108,9 @@ function buttonTypePickerOptionList(isSub, selectedTypeKey) {
     if (td.key === "media") {
       typeOpts.push(Object.assign({
         key: "media_control",
-        label: "Media Control",
+        label: "All Controls",
         disabled: false,
-      }, buttonTypePickerDetails("media_control", "Media Control")));
+      }, buttonTypePickerDetails("media_control", "All Controls")));
     }
   }
   if (selectedUnsupported) {

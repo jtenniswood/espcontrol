@@ -14,13 +14,13 @@ A Media card controls a Home Assistant `media_player` entity. It can work as a s
 
 1. Select a card and change its type to **Media**.
 2. Choose the media **Type**:
+   - **All Controls**
    - **Play/Pause Button**
    - **Previous Button**
    - **Next Button**
    - **Volume Button**
    - **Track Position**
    - **Now Playing**
-   - **All Controls**
    - **Playlist Button**
 3. Enter the media player entity, for example `media_player.living_room`.
 4. Set a label or icon if the selected type shows those fields.
