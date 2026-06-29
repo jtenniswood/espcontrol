@@ -161,6 +161,17 @@ inline bool navigation_is_voice_target(const std::string &target) {
          normalized == "volume" || normalized == "device_volume";
 }
 
+inline bool navigation_has_home_label_target(const std::string &target) {
+  std::string wanted = navigation_lower(navigation_trim(target));
+  if (wanted.empty()) return false;
+
+  for (auto &entry : navigation_home_targets()) {
+    if (entry.button == nullptr || entry.label.empty()) continue;
+    if (navigation_lower(entry.label) == wanted) return true;
+  }
+  return false;
+}
+
 inline NavigationHomeTargetEntry *navigation_find_label_target(
     const std::string &target, bool *duplicate_found = nullptr) {
   if (duplicate_found) *duplicate_found = false;

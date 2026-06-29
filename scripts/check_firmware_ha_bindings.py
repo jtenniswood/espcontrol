@@ -1381,6 +1381,8 @@ def firmware_navigation_target_errors(
         errors.append(f"{navigation_rel}: register general home-screen navigation targets")
     if "navigation_find_label_target" not in navigation_text or "navigation_home_targets()" not in navigation_text:
         errors.append(f"{navigation_rel}: resolve navigate labels against home-screen cards")
+    if "navigation_has_home_label_target" not in navigation_text:
+        errors.append(f"{navigation_rel}: let configured card labels take priority over voice aliases")
     if "entry.display_order < best->display_order" not in navigation_text:
         errors.append(f"{navigation_rel}: choose the first displayed card when labels are duplicated")
     if "navigation_find_slot_target" not in navigation_text or "entry.slot == slot" not in navigation_text:
@@ -1397,10 +1399,12 @@ def firmware_navigation_target_errors(
     else:
         grid_rel = grid_path.relative_to(root)
         grid_text = grid_path.read_text(encoding="utf-8")
-        if "navigation_clear_home_targets();" not in grid_text:
-            errors.append(f"{grid_rel}: clear home-screen navigation targets before rebuilding the grid")
+        if grid_text.count("navigation_clear_home_targets();") < 2:
+            errors.append(f"{grid_rel}: refresh home-screen navigation targets when the displayed grid order changes")
         if "navigation_register_home_target(idx, pos, p.label, scfg, s.btn);" not in grid_text:
             errors.append(f"{grid_rel}: register every displayed home-screen card for Home Assistant navigation")
+        if "navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);" not in grid_text:
+            errors.append(f"{grid_rel}: refresh displayed home-screen card targets during layout-only updates")
         if "navigation_register_subpage(" not in grid_text:
             errors.append(f"{grid_rel}: preserve subpage navigation registration")
 
@@ -1411,6 +1415,8 @@ def firmware_navigation_target_errors(
         api_text = api_navigate_path.read_text(encoding="utf-8")
         if "navigation_is_voice_target(target)" not in api_text or "${navigate_voice_target_code}" not in api_text:
             errors.append(f"{api_rel}: route reserved voice targets through the device-specific voice hook")
+        if "!navigation_has_home_label_target(target)" not in api_text:
+            errors.append(f"{api_rel}: resolve configured card labels before reserved voice aliases")
         if "espcontrol_navigate(target, id(main_page)->obj);" not in api_text:
             errors.append(f"{api_rel}: keep normal navigate targets routed through espcontrol_navigate")
 
@@ -3873,12 +3879,15 @@ def run_self_test() -> int:
         "inline void navigation_find_label_target() { navigation_home_targets(); entry.display_order < best->display_order; }\n"
         "inline void navigation_find_slot_target() { entry.slot == slot; }\n"
         "inline bool navigation_is_voice_target() { return normalized == \"device_volume\"; }\n"
+        "inline bool navigation_has_home_label_target() {}\n"
         "inline void navigation_activate_home_target() { navigation_return_home(main_page_obj); handle_button_click(target->config, target->slot, target->button); }\n"
         "inline void espcontrol_navigate() { normalized == \"home\" || normalized == \"main\"; }\n",
         "navigation_clear_home_targets();\n"
         "navigation_register_home_target(idx, pos, p.label, scfg, s.btn);\n"
+        "navigation_clear_home_targets();\n"
+        "navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);\n"
         "navigation_register_subpage(\n",
-        "if (navigation_is_voice_target(target)) { ${navigate_voice_target_code} } else { espcontrol_navigate(target, id(main_page)->obj); }\n",
+        "if (navigation_is_voice_target(target) && !navigation_has_home_label_target(target)) { ${navigate_voice_target_code} } else { espcontrol_navigate(target, id(main_page)->obj); }\n",
         {
             "esp32-p4-86": "navigate_voice_target_code: |-\n  if (id(voice_services_enabled).state) { id(open_device_volume_control).execute(); }\n",
             "other-p4": "navigate_voice_target_code: |-\n  ESP_LOGW(\"navigation\", \"Voice volume target is not available on this device\");\n",

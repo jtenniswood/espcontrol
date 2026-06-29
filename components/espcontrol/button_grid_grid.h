@@ -696,6 +696,7 @@ inline void grid_refresh_layout(
   parse_order_string(order_str, NS, parsed);
   clear_spanned_cells(parsed, NS, COLS, order);
   clock_bar_clear_responsive_grid_cards(main_page_obj);
+  navigation_clear_home_targets();
 
   lv_obj_t *first_card = nullptr;
   if (parsed.positions[0] >= 1 && parsed.positions[0] <= NS) {
@@ -723,6 +724,7 @@ inline void grid_refresh_layout(
     if (idx < 1 || idx > NS) continue;
     auto &s = slots[idx - 1];
     ParsedCfg p = parse_cfg(s.config->state);
+    navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     refresh_card_layout(s, p, cfg, row_span);
     if (p.type == "vacuum") {
