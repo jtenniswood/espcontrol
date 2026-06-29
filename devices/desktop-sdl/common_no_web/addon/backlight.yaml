@@ -1,0 +1,1042 @@
+# =============================================================================
+# BACKLIGHT - Screensaver, clock overlay, and setup screen dim
+# =============================================================================
+# Screensaver modes:
+#   1. Disabled: no automatic screensaver
+#   2. Idle timer: configurable timeout, sleeps after inactivity
+#   3. Presence sensor: optional HA binary_sensor, wakes display on detection
+# Screen schedule can also force the physical backlight off outside configured
+# hours. It shares the same display sleep/wake plumbing but tracks its own state.
+# When the screensaver activates, it can dim the current screen, show a drifting
+# clock, or turn the display off. The clock label repositions each update for
+# burn-in prevention.
+# Setup screen dim: dims to 50% after 120s on static setup pages.
+# Touch wake is handled by the touchscreen on_touch in device.yaml.
+# =============================================================================
+
+globals:
+  - id: display_asleep
+    type: bool
+    initial_value: 'false'
+  - id: screen_schedule_asleep
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+  - id: backlight_manual_off
+    type: bool
+    initial_value: 'false'
+  - id: manual_wake_ms
+    type: uint32_t
+    initial_value: '0'
+  - id: screensaver_display_off_active
+    type: bool
+    initial_value: 'false'
+  - id: screensaver_dimmed_active
+    type: bool
+    initial_value: 'false'
+  - id: screensaver_wake_touch_guard_active
+    type: bool
+    initial_value: 'false'
+  - id: screensaver_wake_touch_guard_skip_once
+    type: bool
+    initial_value: 'false'
+  - id: display_takeover_suspended
+    type: bool
+    initial_value: 'false'
+  - id: screensaver_sensor_sleep_pending
+    type: bool
+    initial_value: 'false'
+  - id: presence_detected
+    type: bool
+    initial_value: 'false'
+  - id: media_player_playing
+    type: bool
+    initial_value: 'false'
+  - id: is_clock_showing
+    type: bool
+    initial_value: 'false'
+  - id: screensaver_fade_start_level
+    type: float
+    initial_value: '1.0'
+  - id: backlight_force_next_write
+    type: bool
+    initial_value: 'false'
+  - id: screensaver_clock_target_level
+    type: float
+    initial_value: '0.35'
+  - id: screensaver_dimmed_target_level
+    type: float
+    initial_value: '0.10'
+  - id: clock_brightness_migrated
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+  - id: clock_brightness_legacy_sync_ready
+    type: bool
+    initial_value: 'false'
+  - id: clock_brightness_legacy_last_level
+    type: float
+    initial_value: '35.0'
+  - id: screensaver_action_migrated
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+  - id: screensaver_action_clock
+    type: bool
+    initial_value: 'false'
+  - id: screensaver_action_dimmed
+    type: bool
+    initial_value: 'false'
+
+esphome:
+  on_boot:
+    priority: -240
+    then:
+      - lambda: |-
+          auto update_screensaver_action_cache = []() {
+            std::string action = id(screensaver_action).current_option();
+            id(screensaver_action_clock) = screensaver_action_clock_mode(action);
+            id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
+          };
+          update_screensaver_action_cache();
+
+          if (!id(screensaver_action_migrated)) {
+            if (id(clock_screensaver_enabled).state) {
+              auto action_call = id(screensaver_action).make_call();
+              action_call.set_option("Clock");
+              action_call.perform();
+            }
+            id(screensaver_action_migrated) = true;
+            global_preferences->sync();
+          }
+          update_screensaver_action_cache();
+
+          auto clamp_clock_pct = [](float pct, float fallback) -> float {
+            if (std::isnan(pct) || pct <= 0.0f) pct = fallback;
+            if (pct < ${screen_saver_clock_min_brightness}.0f) {
+              pct = ${screen_saver_clock_min_brightness}.0f;
+            }
+            if (pct > 100.0f) pct = 100.0f;
+            return pct;
+          };
+          float legacy_pct = clamp_clock_pct(
+            id(clock_brightness).state, ${screen_saver_clock_default_brightness}.0f);
+          id(clock_brightness_legacy_last_level) = legacy_pct;
+
+          if (!id(clock_brightness_migrated)) {
+            float day_pct = clamp_clock_pct(
+              id(clock_brightness_day).state, ${screen_saver_clock_default_brightness}.0f);
+            float night_pct = clamp_clock_pct(
+              id(clock_brightness_night).state, ${screen_saver_clock_default_brightness}.0f);
+
+            if (day_pct == ${screen_saver_clock_default_brightness}.0f &&
+                night_pct == ${screen_saver_clock_default_brightness}.0f) {
+              auto day_call = id(clock_brightness_day).make_call();
+              day_call.set_value(legacy_pct);
+              day_call.perform();
+
+              auto night_call = id(clock_brightness_night).make_call();
+              night_call.set_value(legacy_pct);
+              night_call.perform();
+            }
+
+            id(clock_brightness_migrated) = true;
+            global_preferences->sync();
+          }
+      - delay: 10s
+      - lambda: 'id(clock_brightness_legacy_sync_ready) = true;'
+
+script:
+  # Screensaver idle timer (restartable)
+  - id: screensaver_idle_check
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+              if (screen_schedule_night_active(
+                    id(screen_schedule_trigger).state,
+                    id(schedule_enabled).state,
+                    id(presence_detected),
+                    now.is_valid(),
+                    now.is_valid() ? now.hour : 0,
+                    (int) id(schedule_on_hour).state,
+                    (int) id(schedule_off_hour).state)) {
+                id(screen_schedule_check).execute();
+                return false;
+              }
+              return id(screensaver_mode).state == "timer" ||
+                     id(screensaver_mode).state == "sensor";
+          then:
+            - delay: !lambda |-
+                float val = id(screensaver_timeout).state;
+                if (std::isnan(val) || val <= 0) val = 300;
+                return (int)(val * 1000);
+            - if:
+                condition:
+                  lambda: |-
+                    return id(cover_art_screensaver_active) ||
+                           alarm_display_takeover_active() ||
+                           (id(media_player_sleep_prevention_enabled).state &&
+                            id(media_player_playing));
+                then:
+                  - script.execute: screensaver_idle_check
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screensaver_mode).state == "sensor" && id(presence_detected);'
+                      then:
+                        - script.execute: screensaver_idle_check
+                      else:
+                        - script.execute: screensaver_sleep_timer
+
+  # Timer mode honours the clock/display-off setting.
+  - id: screensaver_sleep_timer
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(cover_art_screensaver_active);'
+          then:
+            - script.execute: screensaver_idle_check
+          else:
+            - if:
+                condition:
+                  lambda: 'return !id(display_takeover_suspended);'
+                then:
+                  - globals.set:
+                      id: screensaver_sensor_sleep_pending
+                      value: 'false'
+                  - lambda: |-
+                      if (!alarm_display_takeover_active()) {
+                        navigation_return_home(id(main_page)->obj);
+                      }
+                  - if:
+                      condition:
+                        lambda: |-
+                          bool voice_active = ${voice_interaction_active_condition};
+                          return id(cover_art_screensaver_enabled).state &&
+                                 id(cover_art_media_playing) &&
+                                 !voice_active &&
+                                 id(cover_art_attribute_conditions_match) &&
+                                 !(id(cover_art_hide_external_input_enabled).state &&
+                                   id(cover_art_external_input_active)) &&
+                                 !id(cover_art_media_player_entity).state.empty();
+                      then:
+                        - script.execute: show_cover_art_view
+                      else:
+                        - if:
+                            condition:
+                              lambda: 'return id(screensaver_action_clock);'
+                            then:
+                              - globals.set:
+                                  id: display_asleep
+                                  value: 'true'
+                              - script.execute: show_clock_view
+                            else:
+                              - script.execute: hide_cover_art_view
+                              - if:
+                                  condition:
+                                    lambda: 'return id(screensaver_action_dimmed);'
+                                  then:
+                                    - script.execute: show_dimmed_view
+                                  else:
+                                    - script.execute: screensaver_sleep_display_off
+                else:
+                  - lambda: 'ESP_LOGD("screensaver", "Skipping automatic sleep while image modal is active");'
+
+  # Sensor mode honours the same clock/display-off setting as timer mode.
+  - id: screensaver_sleep_sensor
+    mode: restart
+    then:
+      - script.stop: screensaver_idle_check
+      - globals.set:
+          id: screensaver_sensor_sleep_pending
+          value: 'true'
+      - script.execute: screensaver_sleep_timer
+
+  # Presence sensor mode is lower priority than the screen schedule. This keeps
+  # motion/presence from waking the panel during scheduled off or clock hours.
+  - id: screensaver_presence_wake
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return screen_schedule_sensor_trigger(id(screen_schedule_trigger).state);'
+          then:
+            - script.execute: screen_schedule_check
+      - if:
+          condition:
+            lambda: |-
+              if (id(screensaver_mode).state != "sensor") return false;
+              if (!id(schedule_enabled).state) return true;
+              auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+              if (screen_schedule_waiting_for_time(
+                    id(screen_schedule_trigger).state,
+                    id(schedule_enabled).state,
+                    now.is_valid()) ||
+                  screen_schedule_night_active(
+                    id(screen_schedule_trigger).state,
+                    id(schedule_enabled).state,
+                    id(presence_detected),
+                    now.is_valid(),
+                    now.is_valid() ? now.hour : 0,
+                    (int) id(schedule_on_hour).state,
+                    (int) id(schedule_off_hour).state)) {
+                id(screen_schedule_check).execute();
+                return false;
+              }
+              return true;
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    if (!id(schedule_enabled).state) return true;
+                    auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                    if (screen_schedule_normal_active(
+                          id(screen_schedule_trigger).state,
+                          id(schedule_enabled).state,
+                          id(presence_detected),
+                          now.is_valid(),
+                          now.is_valid() ? now.hour : 0,
+                          (int) id(schedule_on_hour).state,
+                          (int) id(schedule_off_hour).state)) return true;
+                    return id(schedule_mode_always_on);
+                then:
+                  - script.execute: screensaver_wake
+                else:
+                  - script.execute: screen_schedule_check
+
+  - id: screensaver_presence_sleep
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return screen_schedule_sensor_trigger(id(screen_schedule_trigger).state);'
+          then:
+            - script.execute: screen_schedule_check
+      - if:
+          condition:
+            lambda: 'return id(screensaver_mode).state == "sensor";'
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    if (!id(schedule_enabled).state) return false;
+                    auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                    return screen_schedule_waiting_for_time(
+                             id(screen_schedule_trigger).state,
+                             id(schedule_enabled).state,
+                             now.is_valid()) ||
+                           screen_schedule_night_active(
+                             id(screen_schedule_trigger).state,
+                             id(schedule_enabled).state,
+                             id(presence_detected),
+                             now.is_valid(),
+                             now.is_valid() ? now.hour : 0,
+                             (int) id(schedule_on_hour).state,
+                             (int) id(schedule_off_hour).state);
+                then:
+                  - script.execute: screen_schedule_check
+                else:
+                  - script.execute: screensaver_sleep_sensor
+
+  - id: screensaver_sleep_display_off
+    mode: restart
+    then:
+      - globals.set:
+          id: screen_schedule_asleep
+          value: 'false'
+      - script.execute: backlight_sleep_display_off
+
+  - id: backlight_force_display_off
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(display_takeover_suspended);'
+          then:
+            - if:
+                condition:
+                  light.is_on: display_backlight
+                then:
+                  - light.turn_off:
+                      id: display_backlight
+                      transition_length: 0s
+            - output.turn_off: gpio_backlight_pwm
+            - lambda: 'id(gpio_backlight_pwm).turn_off();'
+          else:
+            - lambda: 'ESP_LOGD("backlight", "Skipping force display-off while image modal is active");'
+
+  - id: backlight_pause_display_off
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(display_takeover_suspended);'
+          then:
+            - lambda: 'ESP_LOGD("backlight", "Skipping LVGL pause while image modal is active");'
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    #ifdef ESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF
+                    return false;
+                    #else
+                    return true;
+                    #endif
+                then:
+                  - script.execute: backlight_force_display_off
+                  - delay: 100ms
+                  - if:
+                      condition:
+                        lambda: |-
+                          return id(screen_rotation_select).current_option() == "90" ||
+                                 id(screen_rotation_select).current_option() == "270";
+                      then:
+                        - lvgl.pause:
+                      else:
+                        - lvgl.pause:
+                            show_snow: true
+                  - script.execute: backlight_force_display_off
+                else:
+                  - lambda: 'ESP_LOGD("backlight", "Keeping LVGL active during display-off so touch can wake the screen");'
+
+  - id: backlight_fade_current_ui_to_black
+    mode: restart
+    then:
+      - lambda: |-
+          float brightness = 1.0f;
+          id(display_backlight).current_values_as_brightness(&brightness);
+          if (brightness <= 0.01f) brightness = id(display_backlight).remote_values.get_brightness();
+          if (brightness <= 0.01f) brightness = 1.0f;
+          id(screensaver_fade_start_level) = brightness;
+      - output.set_level:
+          id: gpio_backlight_pwm
+          level: !lambda 'return id(screensaver_fade_start_level) * 0.85f;'
+      - delay: 50ms
+      - output.set_level:
+          id: gpio_backlight_pwm
+          level: !lambda 'return id(screensaver_fade_start_level) * 0.70f;'
+      - delay: 50ms
+      - output.set_level:
+          id: gpio_backlight_pwm
+          level: !lambda 'return id(screensaver_fade_start_level) * 0.55f;'
+      - delay: 50ms
+      - output.set_level:
+          id: gpio_backlight_pwm
+          level: !lambda 'return id(screensaver_fade_start_level) * 0.40f;'
+      - delay: 50ms
+      - output.set_level:
+          id: gpio_backlight_pwm
+          level: !lambda 'return id(screensaver_fade_start_level) * 0.25f;'
+      - delay: 50ms
+      - output.set_level:
+          id: gpio_backlight_pwm
+          level: !lambda 'return id(screensaver_fade_start_level) * 0.12f;'
+      - delay: 50ms
+      - output.set_level:
+          id: gpio_backlight_pwm
+          level: !lambda 'return id(screensaver_fade_start_level) * 0.04f;'
+      - delay: 50ms
+      - output.set_level:
+          id: gpio_backlight_pwm
+          level: 0%
+      - delay: 50ms
+
+  - id: backlight_sleep_display_off
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(display_takeover_suspended);'
+          then:
+            - globals.set:
+                id: display_asleep
+                value: 'true'
+            - globals.set:
+                id: screensaver_display_off_active
+                value: 'true'
+            - globals.set:
+                id: screensaver_dimmed_active
+                value: 'false'
+            - globals.set:
+                id: cover_art_screensaver_active
+                value: 'false'
+            - lvgl.resume:
+            - script.execute: clock_bar_hide
+            - script.wait: clock_bar_hide
+            - script.execute: backlight_fade_current_ui_to_black
+            - script.wait: backlight_fade_current_ui_to_black
+            - script.execute: hide_clock_view
+            - script.execute: hide_cover_art_view
+            - lvgl.widget.hide: dim_screensaver_touch_guard
+            - lvgl.page.show: screen_off_page
+            - script.execute: clock_bar_hide
+            - delay: 50ms
+            - script.execute: backlight_force_display_off
+            - script.execute: backlight_pause_display_off
+          else:
+            - lambda: 'ESP_LOGD("backlight", "Skipping automatic display-off while image modal is active");'
+
+  - id: backlight_schedule_display_off
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return !alarm_display_takeover_active() && (!id(display_takeover_suspended) || id(screen_schedule_asleep));'
+          then:
+            - lambda: 'backlight_close_modals_for_display_takeover();'
+            - script.execute: backlight_force_display_off
+            - lvgl.resume:
+            - script.execute: clock_bar_hide
+            - script.wait: clock_bar_hide
+            - script.stop: cover_art_delay_timer
+            - script.execute: hide_cover_art_view
+            - script.execute: hide_clock_view
+            - globals.set:
+                id: screensaver_dimmed_active
+                value: 'false'
+            - lvgl.widget.hide: dim_screensaver_touch_guard
+            - lvgl.page.show: screen_off_page
+            - script.execute: clock_bar_hide
+            - delay: 50ms
+            - script.execute: backlight_force_display_off
+            - script.execute: backlight_pause_display_off
+          else:
+            - lambda: 'ESP_LOGD("backlight", "Skipping non-scheduled display-off while image modal is active");'
+
+  # Touchscreen long-press sleep. This is stronger than the automatic schedule;
+  # the next tap wakes it.
+  - id: screen_schedule_manual_sleep
+    mode: restart
+    then:
+      - lambda: 'backlight_close_modals_for_display_takeover();'
+      - script.stop: screensaver_idle_check
+      - globals.set:
+          id: display_asleep
+          value: 'true'
+      - globals.set:
+          id: screensaver_display_off_active
+          value: 'true'
+      - globals.set:
+          id: screen_schedule_asleep
+          value: 'false'
+      - globals.set:
+          id: backlight_manual_off
+          value: 'true'
+      - globals.set:
+          id: manual_wake_ms
+          value: '0'
+      - script.execute: backlight_schedule_display_off
+
+  # Setup screen burn-in protection
+  - id: setup_screen_dim
+    mode: restart
+    then:
+      - delay: 120s
+      - if:
+          condition:
+            lambda: |-
+              return (id(screen_schedule_asleep) &&
+                      !id(schedule_mode_clock)) ||
+                     screen_schedule_waiting_for_time(
+                       id(screen_schedule_trigger).state,
+                       id(schedule_enabled).state,
+                       panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now()).is_valid());
+          then:
+            - script.execute: backlight_force_display_off
+          else:
+            - globals.set:
+                id: display_asleep
+                value: 'true'
+            - light.turn_on:
+                id: display_backlight
+                brightness: 50%
+                transition_length: 2s
+
+  # Home screen return timer (restartable)
+  - id: home_screen_idle_check
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              float val = id(home_screen_timeout).state;
+              return !std::isnan(val) && val > 0;
+          then:
+            - delay: !lambda |-
+                float val = id(home_screen_timeout).state;
+                if (std::isnan(val) || val <= 0) val = 60;
+                return (int)(val * 1000);
+            - lambda: |-
+                if (!alarm_display_takeover_active()) {
+                  navigation_return_home(id(main_page)->obj);
+                }
+
+  - id: home_screen_idle_restore
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              float val = id(home_screen_timeout).state;
+              if (std::isnan(val) || val <= 0) return false;
+              return lv_disp_get_inactive_time(NULL) >= (uint32_t)(val * 1000);
+          then:
+            - lambda: |-
+                if (!alarm_display_takeover_active()) {
+                  navigation_return_home(id(main_page)->obj);
+                }
+          else:
+            - script.execute: home_screen_idle_check
+
+  - id: display_takeover_resume_restore
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(screensaver_sensor_sleep_pending) &&
+                     id(screensaver_mode).state == "sensor" &&
+                     !id(presence_detected);
+          then:
+            - script.execute: screensaver_sleep_sensor
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                    return id(cover_art_screensaver_enabled).state &&
+                           id(cover_art_media_playing) &&
+                           !id(cover_art_media_player_entity).state.empty() &&
+                           !screen_schedule_blocks_cover_art(
+                             id(screen_schedule_trigger).state,
+                             id(schedule_enabled).state,
+                             id(presence_detected),
+                             now.is_valid(),
+                             now.is_valid() ? now.hour : 0,
+                             (int) id(schedule_on_hour).state,
+                             (int) id(schedule_off_hour).state) &&
+                           (id(cover_art_screensaver_active) ||
+                            id(media_player_sleep_prevention_enabled).state ||
+                            id(display_asleep) ||
+                            id(screen_schedule_asleep) ||
+                            id(screensaver_display_off_active) ||
+                            id(screensaver_dimmed_active) ||
+                            id(is_clock_showing));
+                then:
+                  - script.execute: show_cover_art_view
+                else:
+                  - script.execute: home_screen_idle_restore
+                  - script.execute: screen_schedule_check
+                  - script.execute: screensaver_idle_check
+
+  # Wake from screensaver
+  - id: screensaver_wake
+    mode: restart
+    then:
+      - script.stop: screen_schedule_sleep
+      - script.stop: backlight_fade_current_ui_to_black
+      - script.stop: backlight_sleep_display_off
+      - script.stop: backlight_schedule_display_off
+      - script.stop: backlight_pause_display_off
+      - script.stop: screensaver_sleep_timer
+      - script.stop: screensaver_sleep_sensor
+      - script.stop: screensaver_sleep_display_off
+      - script.stop: screen_schedule_show_clock
+      - script.stop: show_clock_view
+      - script.stop: clock_screensaver_refresh_brightness
+      - script.stop: show_dimmed_view
+      - script.stop: screensaver_dimmed_refresh_brightness
+      - script.stop: show_cover_art_view
+      - script.stop: cover_art_delay_timer
+      - script.stop: cover_art_show_track_overlay
+      - lambda: |-
+          id(backlight_manual_off) = false;
+          if (id(schedule_enabled).state) {
+            auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+            bool schedule_night = screen_schedule_night_active(
+              id(screen_schedule_trigger).state,
+              id(schedule_enabled).state,
+              id(presence_detected),
+              now.is_valid(),
+              now.is_valid() ? now.hour : 0,
+              (int) id(schedule_on_hour).state,
+              (int) id(schedule_off_hour).state);
+            id(manual_wake_ms) =
+              (schedule_night && !id(schedule_mode_always_on)) ? millis() : 0;
+          }
+      - if:
+          condition:
+            lambda: 'return id(manual_wake_ms) != 0;'
+          then:
+            - script.execute: screen_schedule_wake_timeout_check
+          else:
+            - script.stop: screen_schedule_wake_timeout_check
+      - if:
+          condition:
+            lambda: 'return id(cover_art_screensaver_active);'
+          then:
+            - globals.set:
+                id: screensaver_wake_touch_guard_skip_once
+                value: 'true'
+            - globals.set:
+                id: screensaver_wake_touch_guard_active
+                value: 'true'
+            - lvgl.widget.show: cover_art_wake_touch_guard
+            - lambda: 'lv_obj_move_foreground(id(cover_art_wake_touch_guard));'
+            - script.execute: cover_art_wake_touch_block
+      - if:
+          condition:
+            lambda: 'return id(display_asleep) || id(screen_schedule_asleep) || id(screensaver_display_off_active) || id(screensaver_dimmed_active) || id(cover_art_screensaver_active);'
+          then:
+            - script.stop: screensaver_idle_check
+            - if:
+                condition:
+                  lambda: |-
+                    bool keep_cover_art_guard =
+                        id(cover_art_screensaver_active) &&
+                        id(screensaver_wake_touch_guard_skip_once);
+                    id(screensaver_wake_touch_guard_skip_once) = false;
+                    return keep_cover_art_guard;
+                then:
+                  - lambda: 'ESP_LOGD("screensaver", "Keeping cover art wake guard until touch release");'
+                else:
+                  - script.stop: screensaver_wake_touch_guard_clear
+                  - globals.set:
+                      id: screensaver_wake_touch_guard_active
+                      value: 'false'
+            - if:
+                condition:
+                  lambda: 'return id(screensaver_display_off_active);'
+                then:
+                  - script.execute: backlight_force_display_off
+                  - script.wait: backlight_force_display_off
+            - globals.set:
+                id: screensaver_display_off_active
+                value: 'false'
+            - globals.set:
+                id: screensaver_dimmed_active
+                value: 'false'
+            - globals.set:
+                id: cover_art_screensaver_active
+                value: 'false'
+            - globals.set:
+                id: screen_schedule_asleep
+                value: 'false'
+            - globals.set:
+                id: backlight_force_next_write
+                value: 'true'
+            - lvgl.resume:
+            - lvgl.widget.hide: dim_screensaver_touch_guard
+            - script.execute: hide_cover_art_view
+            - if:
+                condition:
+                  lambda: 'return id(is_clock_showing);'
+                then:
+                  - globals.set:
+                      id: display_asleep
+                      value: 'false'
+                  - script.execute: clock_bar_apply
+                  - if:
+                      condition:
+                        lambda: 'return lv_scr_act() == id(screen_off_page)->obj;'
+                      then:
+                        - script.execute: navigate_after_api
+                  - script.execute: backlight_apply_brightness
+                  - delay: 300ms
+                  - script.execute: hide_clock_view
+                else:
+                  - script.execute: hide_clock_view
+                  - delay: 100ms
+                  - if:
+                      condition:
+                        lambda: 'return lv_scr_act() == id(screen_off_page)->obj;'
+                      then:
+                        - script.execute: navigate_after_api
+                  - delay: 50ms
+                  - globals.set:
+                      id: display_asleep
+                      value: 'false'
+                  - script.execute: clock_bar_apply
+                  - script.execute: backlight_apply_brightness
+      - script.execute: screensaver_idle_check
+      - script.execute: home_screen_idle_check
+      - if:
+          condition:
+            lambda: |-
+              return id(media_player_sleep_prevention_enabled).state &&
+                     id(cover_art_media_playing) &&
+                     id(cover_art_screensaver_enabled).state &&
+                     !alarm_display_takeover_active();
+          then:
+            - script.execute: cover_art_delay_timer
+
+  - id: screensaver_wake_touch_guard_clear
+    mode: restart
+    then:
+      - delay: 5s
+      - globals.set:
+          id: screensaver_wake_touch_guard_active
+          value: 'false'
+
+  # Choose and apply the brightness for the dimmed-screen screensaver.
+  - id: screensaver_dimmed_refresh_brightness
+    mode: restart
+    then:
+      - lambda: |-
+          float pct = id(screensaver_dimmed_brightness).state;
+          if (std::isnan(pct) || pct <= 0.0f) pct = 10.0f;
+          if (pct < 1.0f) pct = 1.0f;
+          if (pct > 100.0f) pct = 100.0f;
+
+          float target = pct / 100.0f;
+          if (target < 0.01f) target = 0.01f;
+          if (target > 1.0f) target = 1.0f;
+          id(screensaver_dimmed_target_level) = target;
+      - if:
+          condition:
+            lambda: 'return id(screensaver_dimmed_active);'
+          then:
+            - light.turn_on:
+                id: display_backlight
+                brightness: !lambda 'return id(screensaver_dimmed_target_level);'
+                transition_length: 400ms
+
+  # Keep the normal UI visible but lower the backlight and catch the first tap.
+  - id: show_dimmed_view
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(display_takeover_suspended);'
+          then:
+            - script.execute: screensaver_dimmed_refresh_brightness
+            - script.wait: screensaver_dimmed_refresh_brightness
+            - globals.set:
+                id: display_asleep
+                value: 'true'
+            - globals.set:
+                id: screen_schedule_asleep
+                value: 'false'
+            - globals.set:
+                id: screensaver_display_off_active
+                value: 'false'
+            - globals.set:
+                id: screensaver_dimmed_active
+                value: 'true'
+            - lvgl.resume:
+            - script.execute: clock_bar_hide
+            - script.wait: clock_bar_hide
+            - script.execute: hide_clock_view
+            - lambda: 'refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));'
+            - lvgl.widget.show: dim_screensaver_touch_guard
+            - lambda: 'lv_obj_move_foreground(id(dim_screensaver_touch_guard));'
+            - light.turn_on:
+                id: display_backlight
+                brightness: !lambda 'return id(screensaver_dimmed_target_level);'
+                transition_length: 2s
+          else:
+            - lambda: 'ESP_LOGD("backlight", "Skipping dimmed screensaver while image modal is active");'
+
+  # Choose the clock screensaver brightness for the current day/night period.
+  - id: clock_screensaver_refresh_brightness
+    mode: restart
+    then:
+      - lambda: |-
+          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+
+          float pct = ${screen_saver_clock_default_brightness}.0f;
+          if (id(screen_schedule_asleep) &&
+              id(schedule_mode_clock)) {
+            pct = id(schedule_clock_brightness).state;
+            if (std::isnan(pct) || pct <= 0.0f) {
+              pct = ${screen_schedule_clock_default_brightness}.0f;
+            }
+            if (pct < ${screen_schedule_clock_min_brightness}.0f) {
+              pct = ${screen_schedule_clock_min_brightness}.0f;
+            }
+            if (pct > 100.0f) pct = 100.0f;
+          } else {
+            float day_pct = id(clock_brightness_day).state;
+            if (std::isnan(day_pct) || day_pct <= 0.0f) {
+              day_pct = ${screen_saver_clock_default_brightness}.0f;
+            }
+            if (day_pct < ${screen_saver_clock_min_brightness}.0f) {
+              day_pct = ${screen_saver_clock_min_brightness}.0f;
+            }
+            if (day_pct > 100.0f) day_pct = 100.0f;
+
+            float night_pct = id(clock_brightness_night).state;
+            if (std::isnan(night_pct) || night_pct <= 0.0f) night_pct = day_pct;
+            if (night_pct < ${screen_saver_clock_min_brightness}.0f) {
+              night_pct = ${screen_saver_clock_min_brightness}.0f;
+            }
+            if (night_pct > 100.0f) night_pct = 100.0f;
+
+            bool is_day = id(last_is_daytime);
+            int rise_h = id(sunrise_hour);
+            int rise_m = id(sunrise_minute);
+            int set_h = id(sunset_hour);
+            int set_m = id(sunset_minute);
+            bool times_valid = brightness_schedule_times(
+              id(automatic_brightness_enabled).state,
+              id(sunrise_sunset_valid), id(sunrise_hour), id(sunrise_minute),
+              id(sunset_hour), id(sunset_minute),
+              id(brightness_dawn_time).state, id(brightness_dusk_time).state,
+              rise_h, rise_m, set_h, set_m);
+            pct = calc_brightness_pct(
+              times_valid, rise_h, rise_m, set_h, set_m,
+              now.is_valid() ? now.hour : 12, now.is_valid() ? now.minute : 0,
+              &is_day, day_pct, night_pct);
+            id(last_is_daytime) = is_day;
+          }
+
+          float target = pct / 100.0f;
+          if (target < 0.01f) target = 0.01f;
+          if (target > 1.0f) target = 1.0f;
+          id(screensaver_clock_target_level) = target;
+      - if:
+          condition:
+            lambda: 'return id(is_clock_showing);'
+          then:
+            - light.turn_on:
+                id: display_backlight
+                brightness: !lambda 'return id(screensaver_clock_target_level);'
+                transition_length: 400ms
+
+  # Show the clock screensaver overlay
+  - id: show_clock_view
+    mode: single
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(display_takeover_suspended);'
+          then:
+            - lambda: 'navigation_return_home(id(main_page)->obj);'
+            - globals.set:
+                id: screensaver_dimmed_active
+                value: 'false'
+            - lvgl.widget.hide: dim_screensaver_touch_guard
+            - script.execute: clock_screensaver_refresh_brightness
+            - script.wait: clock_screensaver_refresh_brightness
+            - lambda: |-
+                id(is_clock_showing) = true;
+                apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);
+                auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                if (time.is_valid()) {
+                  char buf[8];
+                  bool use_12h = id(clock_format_12h);
+                  format_clock_time_without_suffix(buf, sizeof(buf),
+                                                   time.hour, time.minute, use_12h);
+                  lv_label_set_text(id(clock_label), buf);
+                  position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);
+                }
+            - script.execute: clock_bar_hide
+            - script.wait: clock_bar_hide
+            - script.execute: backlight_fade_current_ui_to_black
+            - script.wait: backlight_fade_current_ui_to_black
+            - lambda: |-
+                lv_obj_t *temperature_labels[] = {
+                  id(temperatures),
+                  id(temperature_2),
+                  id(temperature_3),
+                  id(temperature_4),
+                  id(temperature_5),
+                  id(temperature_6),
+                };
+                hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                                                 id(display_time),
+                                                 id(network_status_button));
+                network_status_hide_modal();
+                refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));
+                lv_obj_clear_flag(id(clock_screensaver), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(id(clock_screensaver));
+            - output.set_level:
+                id: gpio_backlight_pwm
+                level: 0%
+            - delay: 50ms
+            - output.set_level:
+                id: gpio_backlight_pwm
+                level: !lambda 'return id(screensaver_clock_target_level) * 0.20f;'
+            - delay: 50ms
+            - output.set_level:
+                id: gpio_backlight_pwm
+                level: !lambda 'return id(screensaver_clock_target_level) * 0.40f;'
+            - delay: 50ms
+            - output.set_level:
+                id: gpio_backlight_pwm
+                level: !lambda 'return id(screensaver_clock_target_level) * 0.60f;'
+            - delay: 50ms
+            - output.set_level:
+                id: gpio_backlight_pwm
+                level: !lambda 'return id(screensaver_clock_target_level) * 0.80f;'
+            - delay: 50ms
+            - output.set_level:
+                id: gpio_backlight_pwm
+                level: !lambda 'return id(screensaver_clock_target_level);'
+            - delay: 50ms
+            - light.turn_on:
+                id: display_backlight
+                brightness: !lambda 'return id(screensaver_clock_target_level);'
+                transition_length: 0s
+          else:
+            - lambda: 'ESP_LOGD("backlight", "Skipping clock screensaver while image modal is active");'
+
+  # Hide the clock screensaver overlay
+  - id: hide_clock_view
+    mode: single
+    then:
+      - lambda: 'id(is_clock_showing) = false;'
+      - lvgl.widget.hide: clock_screensaver
+      - script.execute: clock_bar_apply
+
+  # Keep the clock above any screen changes or top-layer overlays that appear
+  # after the screensaver starts.
+  - id: clock_screensaver_keep_on_top
+    mode: restart
+    then:
+      - lambda: |-
+          if (!id(is_clock_showing)) return;
+          lv_obj_t *temperature_labels[] = {
+            id(temperatures),
+            id(temperature_2),
+            id(temperature_3),
+            id(temperature_4),
+            id(temperature_5),
+            id(temperature_6),
+          };
+          hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                                           id(display_time),
+                                           id(network_status_button));
+          network_status_hide_modal();
+          refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));
+          lv_obj_move_foreground(id(clock_screensaver));
+
+# -----------------------------------------------------------------------------
+# Clock screensaver drift update (repositions label for burn-in prevention)
+# -----------------------------------------------------------------------------
+interval:
+  - interval: 1s
+    then:
+      - script.execute: clock_screensaver_keep_on_top
+  - interval: 30s
+    then:
+      - if:
+          condition:
+            lambda: 'return id(is_clock_showing);'
+          then:
+            - script.execute: clock_screensaver_refresh_brightness
+      - lambda: |-
+          if (!id(is_clock_showing)) return;
+          apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);
+          auto time = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          if (!time.is_valid()) return;
+          char buf[8];
+          bool use_12h = id(clock_format_12h);
+          format_clock_time_without_suffix(buf, sizeof(buf),
+                                           time.hour, time.minute, use_12h);
+          lv_label_set_text(id(clock_label), buf);
+          position_clock_screensaver_label(id(clock_screensaver), id(clock_label), time.minute);

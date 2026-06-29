@@ -1,0 +1,13 @@
+# =============================================================================
+# DEV CONFIG - Local desktop SDL entry point
+# =============================================================================
+# Run with: esphome run dev.yaml
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-desktop-sdl"
+  friendly_name: "EspControl Desktop SDL"
+  mdi_font_file: "../../common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+
+packages:
+  espcontrol: !include packages.yaml

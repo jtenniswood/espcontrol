@@ -1,0 +1,183 @@
+# =============================================================================
+# DEVICE - Desktop SDL host
+# =============================================================================
+# ESPHome host-platform version of EspControl. It runs as a local process and
+# renders the panel to a 720x720 SDL window, with mouse input emulating touch.
+# =============================================================================
+
+substitutions:
+  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+
+host:
+  mac_address: "06:35:69:72:07:20"
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+    components: [espcontrol, artwork_image]
+
+espcontrol:
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-DESPCONTROL_DISABLE_IMAGE_CARDS=1"
+      - "-DESPCONTROL_DISABLE_TODO=1"
+      - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+  on_boot:
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: apply_screen_rotation
+        - script.execute: clock_bar_apply
+
+packages:
+  core_infra: !include ../common_no_web/device/core_infra_host.yaml
+
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+
+safe_mode:
+
+logger:
+
+output:
+  - platform: template
+    id: gpio_backlight_pwm
+    type: float
+    write_action:
+      - lambda: |-
+          // SDL has no hardware backlight. Keep the output so shared
+          // brightness/sleep scripts can run unchanged.
+          (void) state;
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                return (id(screen_schedule_asleep) &&
+                        !id(schedule_mode_clock)) ||
+                       screen_schedule_waiting_for_time(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         now.is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(screensaver_display_off_active);'
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return !id(display_asleep) &&
+                       !id(screen_schedule_asleep) &&
+                       !id(screensaver_display_off_active) &&
+                       !id(screensaver_dimmed_active);
+            then:
+              - script.execute: screen_schedule_manual_sleep
+
+display:
+  - platform: sdl
+    id: my_display
+    update_interval: never
+    auto_clear_enabled: false
+    dimensions:
+      width: 720
+      height: 720
+    window_options:
+      resizable: true
+
+touchscreen:
+  - platform: sdl
+    id: my_touchscreen
+    on_touch:
+      - script.execute: screensaver_wake
+
+lvgl:
+  id: main_lvgl
+  buffer_size: 25%
+  displays: my_display
+  rotation: 0
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 90
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 180
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 270
+                      else:
+                        - lvgl.display.set_rotation: 0
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "0"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screen_rotation_ready);'
+            then:
+              - script.execute: apply_screen_rotation
+              - script.execute: clock_bar_apply

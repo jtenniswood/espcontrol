@@ -1,0 +1,13 @@
+# =============================================================================
+# ESPHOME ENTRY POINT - EspControl Desktop SDL
+# =============================================================================
+# Run from this repository with: esphome run devices/desktop-sdl/esphome.yaml
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-desktop-sdl"
+  friendly_name: "EspControl Desktop SDL"
+  mdi_font_file: "../../common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+
+packages:
+  espcontrol: !include packages.yaml

@@ -1,0 +1,129 @@
+# =============================================================================
+# PACKAGES - ESPHome include manifest for desktop SDL host
+# =============================================================================
+# Loads the normal EspControl UI at 720x720, but swaps physical ESP32 hardware,
+# WiFi, and memory diagnostics for host-compatible SDL/device packages.
+# =============================================================================
+
+substitutions:
+  device_slug: "desktop-sdl"
+  firmware_manifest_slug: "desktop-sdl"
+  firmware_version: "dev"
+  screen_width: "720"
+  screen_height: "720"
+  content_width: "570"
+  setup_icon_font_id: font_icon_main
+  setup_title_font_id: font_text_title
+  setup_body_font_id: font_text_body
+  setup_pad_row: "30"
+  setup_loading_pad_row: "60"
+  setup_action_button_width: "300"
+  setup_action_button_height: "84"
+  setup_action_button_radius: "18"
+  icon_font: font_icon_main
+  subpage_chevron_font: font_icon_status
+  label_font: font_text_body
+  media_title_font: font_text_title
+  unit_font: font_text_body
+  sensor_value_font: font_number_value
+  padding: 21px
+  radius: 12px
+  main_page_card_gap: "15"
+  main_page_pad_top: "60"
+  main_page_compact_pad_top: "6"
+  clock_bar_item_gap: "96"
+  clock_bar_visual_gap: "12"
+  voice_clock_bar_hide_code: ""
+  voice_clock_bar_apply_code: ""
+  voice_interaction_active_condition: "false"
+  clock_font_size: "224"
+  clock_cx: "360"
+  clock_cy: "360"
+  screen_saver_clock_min_brightness: "1"
+  screen_saver_clock_default_brightness: "35"
+  screen_schedule_clock_min_brightness: "1"
+  screen_schedule_clock_default_brightness: "10"
+  cover_art_size: "720"
+  cover_art_decode_size: "720"
+  cover_art_x: "0"
+  cover_art_y: "0"
+  cover_art_accent_x: "0"
+  cover_art_accent_y: "0"
+  cover_art_accent_width: "720"
+  cover_art_accent_height: "720"
+  cover_art_accent_bg_opa: "80%"
+  cover_art_accent_opa: "80%"
+  cover_art_panel_x: "0"
+  cover_art_panel_y: "0"
+  cover_art_panel_width: "720"
+  cover_art_panel_height: "720"
+  cover_art_panel_pad_top: "36"
+  cover_art_panel_pad_bottom: "24"
+  cover_art_panel_pad_left: "36"
+  cover_art_panel_pad_right: "36"
+  cover_art_panel_pad_row: "0"
+  cover_art_title_font: "font_cover_art_title"
+  cover_art_title_max_height: "495"
+  cover_art_title_line_space: "0"
+  cover_art_artist_font: "font_cover_art_artist"
+  cover_art_artist_pad_top: "9"
+  cover_art_artist_long_mode: "dot"
+  cover_art_time_font: "font_cover_art_time"
+  cover_art_time_pad_top: "18"
+  cover_art_progress_width: "720"
+  cover_art_progress_height: "4"
+  cover_art_text_color: "0xFFFFFF"
+  cover_art_square_overlay: "true"
+  cover_art_live_image_updates: "false"
+
+packages:
+  # ---------------------------------------------------------------------------
+  # Host device, assets, and LVGL base
+  # ---------------------------------------------------------------------------
+  entity_names:    !include ../../common/config/entity_names.yaml
+  device:          !include device/device.yaml
+  icons:           !include ../../common/assets/icons.yaml
+  fonts_device:    !include device/fonts.yaml
+  button_theme:    !include ../../common/theme/button.yaml
+  # ---------------------------------------------------------------------------
+  # Configuration (text/select/number components for web UI)
+  # ---------------------------------------------------------------------------
+  colors:          !include common_no_web/config/colors.yaml
+  button_order:    !include common_no_web/config/button_order.yaml
+  display_config:  !include common_no_web/config/display.yaml
+  # Per-button entity/label/icon (9 slots - 3x3 grid)
+  btn_1:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "1" } }
+  btn_2:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "2" } }
+  btn_3:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "3" } }
+  btn_4:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "4" } }
+  btn_5:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "5" } }
+  btn_6:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "6" } }
+  btn_7:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "7" } }
+  btn_8:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "8" } }
+  btn_9:           !include { file: common_no_web/config/button_template.yaml, vars: { num: "9" } }
+  # ---------------------------------------------------------------------------
+  # Addons
+  # ---------------------------------------------------------------------------
+  connectivity:    !include ../../common/addon/connectivity_host.yaml
+  api_navigate:    !include ../../common/device/api_navigate.yaml
+  time_sync:       !include common_no_web/addon/time.yaml
+  backlight:       !include common_no_web/addon/backlight.yaml
+  bl_schedule:     !include common_no_web/addon/backlight_schedule.yaml
+  network:         !include ../../common/addon/network_host.yaml
+  fw_update:       !include common_no_web/addon/firmware_update_disabled.yaml
+
+  # ---------------------------------------------------------------------------
+  # Screens (loading must be first page for LVGL startup)
+  # ---------------------------------------------------------------------------
+  screen_loading:  !include ../../common/device/screen_loading_host.yaml
+  screen_wifi:     !include ../../common/device/screen_wifi_setup.yaml
+  screen_ha:       !include ../../common/device/screen_ha_setup.yaml
+  screen_ha_act:   !include ../../common/device/screen_ha_actions.yaml
+  screen_setup:    !include ../../common/device/screen_button_setup.yaml
+  screen_clock:    !include ../../common/device/screen_clock.yaml
+  screen_art:      !include screen_cover_art_host.yaml
+  # ---------------------------------------------------------------------------
+  # Main page and dynamic sensor subscriptions (after setup screens)
+  # ---------------------------------------------------------------------------
+  lvgl:            !include device/lvgl.yaml
+  sensors:         !include device/sensors.yaml

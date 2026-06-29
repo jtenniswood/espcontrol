@@ -1,0 +1,25 @@
+# =============================================================================
+# CONFIG: BUTTON COLOUR
+# =============================================================================
+# Primary (on) colour shared across all devices. Secondary and tertiary UI
+# colours are fixed in the shared firmware style tokens.
+# Values are 6-digit hex strings without the # prefix.
+# =============================================================================
+
+substitutions:
+  button_on_color_initial: "FF8C00"
+
+text:
+  - platform: template
+    name: "${entity_button_on_color}"
+    internal: true
+    id: button_on_color
+    optimistic: true
+    restore_value: true
+    initial_value: "${button_on_color_initial}"
+    min_length: 6
+    max_length: 6
+    mode: text
+    entity_category: config
+    icon: "mdi:palette"
+    update_interval: never

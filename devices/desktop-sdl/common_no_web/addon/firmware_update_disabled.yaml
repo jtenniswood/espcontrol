@@ -1,0 +1,144 @@
+# =============================================================================
+# FIRMWARE UPDATE DISABLED - Version metadata only
+# =============================================================================
+# Keeps firmware version reporting available while omitting the GitHub firmware
+# update checker, auto-update switch, update frequency selector, and manual
+# update button.
+# =============================================================================
+
+substitutions:
+  firmware_version: "dev"
+
+esphome:
+  project:
+    name: jtenniswood.espcontrol
+    version: "${firmware_version}"
+  on_boot:
+    - priority: 200
+      then:
+        - text_sensor.template.publish:
+            id: firmware_version_sensor
+            state: "${firmware_version}"
+    - priority: -50
+      then:
+        - if:
+            condition:
+              lambda: 'return id(firmware_update_complete_pending);'
+            then:
+              - if:
+                  condition:
+                    lambda: |-
+                      auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                      return id(screen_schedule_asleep) ||
+                             screen_schedule_waiting_for_time(
+                               id(screen_schedule_trigger).state,
+                               id(schedule_enabled).state,
+                               now.is_valid());
+                  then:
+                    - globals.set:
+                        id: firmware_update_complete_pending
+                        value: 'false'
+                    - lambda: 'global_preferences->sync();'
+                  else:
+                    - script.execute: show_update_complete_next_boot
+
+globals:
+  - id: firmware_update_complete_pending
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+
+script:
+  - id: show_update_starting
+    mode: restart
+    then:
+      - script.stop: screensaver_idle_check
+      - script.stop: home_screen_idle_check
+      - script.stop: setup_screen_dim
+      - lambda: |-
+          media_volume_hide_modal();
+          climate_control_hide_modal();
+          option_select_hide_modal();
+          switch_confirmation_hide_modal();
+          alarm_pin_hide_modal();
+          network_status_hide_modal();
+          lv_label_set_text(id(loading_status_icon), "${icon_progress_clock}");
+          lv_label_set_text(id(loading_status_title), espcontrol_i18n("Installing update"));
+          lv_label_set_text(id(loading_status_label), espcontrol_i18n("Preparing the screen\nDo not power off"));
+      - lvgl.resume:
+      - script.execute: clock_bar_hide
+      - lvgl.page.show: loading_page
+      - light.turn_on:
+          id: display_backlight
+          brightness: 90%
+          transition_length: 200ms
+      - delay: 900ms
+
+  - id: show_update_writing
+    mode: restart
+    then:
+      - globals.set:
+          id: firmware_update_complete_pending
+          value: 'false'
+      - lambda: |-
+          lv_label_set_text(id(loading_status_icon), "${icon_progress_clock}");
+          lv_label_set_text(id(loading_status_title), espcontrol_i18n("Installing update"));
+          lv_label_set_text(id(loading_status_label), espcontrol_i18n("The screen may turn off\nDo not power off"));
+      - lvgl.resume:
+      - script.execute: clock_bar_hide
+      - lvgl.page.show: loading_page
+      - script.execute: backlight_force_display_off
+      - script.wait: backlight_force_display_off
+
+  - id: show_update_complete_next_boot
+    mode: single
+    then:
+      - script.stop: setup_screen_dim
+      - lambda: |-
+          lv_label_set_text(id(loading_status_icon), "${icon_check}");
+          lv_label_set_text(id(loading_status_title), espcontrol_i18n("Update complete"));
+          lv_label_set_text(id(loading_status_label), espcontrol_i18n("Restarting display"));
+      - lvgl.resume:
+      - script.execute: clock_bar_hide
+      - lvgl.page.show: loading_page
+      - light.turn_on:
+          id: display_backlight
+          brightness: 90%
+          transition_length: 200ms
+      - delay: 4s
+      - globals.set:
+          id: firmware_update_complete_pending
+          value: 'false'
+      - lambda: 'global_preferences->sync();'
+      - script.execute: clock_bar_hide
+      - lvgl.page.show: loading_page
+
+  - id: show_update_failed
+    mode: restart
+    then:
+      - globals.set:
+          id: firmware_update_complete_pending
+          value: 'false'
+      - lambda: |-
+          global_preferences->sync();
+          lv_label_set_text(id(loading_status_icon), "${icon_progress_clock}");
+          lv_label_set_text(id(loading_status_title), espcontrol_i18n("Update failed"));
+          lv_label_set_text(id(loading_status_label), espcontrol_i18n("Try installing the update again"));
+      - lvgl.resume:
+      - script.execute: clock_bar_hide
+      - lvgl.page.show: loading_page
+      - light.turn_on:
+          id: display_backlight
+          brightness: 90%
+          transition_length: 200ms
+      - delay: 8s
+      - script.execute: navigate_after_api
+
+text_sensor:
+  - platform: template
+    name: "${entity_firmware_version}"
+    id: firmware_version_sensor
+    entity_category: diagnostic
+    icon: "mdi:tag"
+    update_interval: never
+    lambda: 'return {"${firmware_version}"};'

@@ -1,0 +1,891 @@
+# =============================================================================
+# CONFIG: DISPLAY & SCREENSAVER
+# =============================================================================
+# User-configurable temperature entity bindings and screensaver settings.
+# All values persist across reboots and are editable via the webserver v3 UI.
+# =============================================================================
+
+globals:
+  - id: screen_rotation_ready
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+esphome:
+  on_boot:
+    # Apply restored clock-bar layout before subpages copy main-page padding.
+    - priority: -150
+      then:
+        - lambda: |-
+            std::vector<std::string> restored_clock_bar_temperature_entities =
+                parse_clock_bar_temperature_entities(id(clock_bar_temperature_entities).state);
+            if (restored_clock_bar_temperature_entities.empty()) {
+              std::string legacy_clock_bar_temperature_entity;
+              if (id(outdoor_temp_enable).state && !id(outdoor_temp_entity).state.empty()) {
+                legacy_clock_bar_temperature_entity = id(outdoor_temp_entity).state;
+              } else if (id(indoor_temp_enable).state && !id(indoor_temp_entity).state.empty()) {
+                legacy_clock_bar_temperature_entity = id(indoor_temp_entity).state;
+              }
+              if (!legacy_clock_bar_temperature_entity.empty()) {
+                id(clock_bar_temperature_entities).publish_state(legacy_clock_bar_temperature_entity);
+                id(outdoor_temp_enable).turn_on();
+                id(indoor_temp_enable).turn_off();
+              }
+            }
+            set_display_temperature_unit(id(temperature_unit_select).current_option(),
+                                         id(timezone_select).current_option());
+            set_display_temperature_degree_symbol(id(temperature_degree_symbol_enabled).state);
+        - script.execute: clock_bar_hide
+        - script.execute: clock_bar_apply
+
+script:
+  - id: clock_bar_hide
+    mode: restart
+    then:
+      - lambda: |-
+          lv_obj_t *temperature_labels[] = {
+            id(temperatures),
+            id(temperature_2),
+            id(temperature_3),
+            id(temperature_4),
+            id(temperature_5),
+            id(temperature_6),
+          };
+          hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                                           id(display_time),
+                                           id(network_status_button));
+          ${voice_clock_bar_hide_code}
+          network_status_hide_modal();
+
+  - id: clock_bar_apply
+    mode: restart
+    then:
+      - lambda: |-
+          ClockBarVisibility visibility = clock_bar_resolve_visibility(
+              id(clock_bar_enabled).state,
+              id(main_page)->obj,
+              id(display_asleep),
+              id(screen_schedule_asleep),
+              id(is_clock_showing),
+              id(cover_art_screensaver_active),
+              id(screensaver_display_off_active),
+              id(screensaver_dimmed_active));
+          bool reserve_clock_bar_space = visibility.reserve_space;
+          bool visible = visibility.visible;
+          bool show_time = visible && id(clock_bar_time_enabled).state;
+          bool show_network = visible && id(network_status_enabled).state;
+          int clock_bar_screen_width = clock_bar_current_screen_width(${screen_width});
+          int clock_bar_screen_height = clock_bar_current_screen_height(${screen_height});
+          bool clock_bar_480_square =
+              clock_bar_screen_width == 480 && clock_bar_screen_height == 480;
+          bool clock_bar_device_480_square =
+              ${screen_width} == 480 && ${screen_height} == 480;
+          int clock_bar_label_y = ${main_page_pad_top} / 5;
+          int clock_bar_icon_y =
+              (${main_page_pad_top} - lv_obj_get_height(id(network_status_button))) / 2;
+          if (clock_bar_icon_y < 0) clock_bar_icon_y = 0;
+          int clock_bar_item_width = ${clock_bar_item_gap};
+          int clock_bar_visual_gap = ${clock_bar_visual_gap};
+          int clock_bar_right_x =
+              clock_bar_480_square ? 4 : (clock_bar_screen_width >= 700 ? 8 : 6);
+          lv_obj_t *temperature_labels[] = {
+            id(temperatures),
+            id(temperature_2),
+            id(temperature_3),
+            id(temperature_4),
+            id(temperature_5),
+            id(temperature_6),
+          };
+          set_clock_bar_temperature_labels(temperature_labels, 6);
+          clock_bar_set_button_grid_pages_pad_top(
+            id(main_page)->obj,
+            reserve_clock_bar_space ? ${main_page_pad_top} : ${main_page_compact_pad_top});
+
+          if (!visible) {
+            hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                                             id(display_time),
+                                             id(network_status_button));
+            ${voice_clock_bar_hide_code}
+            network_status_hide_modal();
+            return;
+          }
+
+          apply_clock_bar_layout(id(clock_bar_layout).state,
+                                 temperature_labels,
+                                 6,
+                                 id(display_time),
+                                 id(network_status_button),
+                                 show_time,
+                                 show_network,
+                                 visible && id(indoor_temp_enable).state,
+                                 visible && id(outdoor_temp_enable).state,
+                                 clock_bar_screen_width,
+                                 clock_bar_screen_width >= 700 ? 8 : 6,
+                                 clock_bar_label_y,
+                                 clock_bar_right_x,
+                                 clock_bar_icon_y,
+                                 clock_bar_item_width,
+                                 clock_bar_visual_gap);
+
+          if (show_time) {
+            lv_obj_clear_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
+          }
+          if (show_network) {
+            lv_obj_clear_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
+            id(network_status_refresh).execute();
+          } else {
+            lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
+            network_status_hide_modal();
+          }
+          ${voice_clock_bar_apply_code}
+          if (!visible) return;
+
+          refresh_clock_bar_temperature_label_values(id(main_page)->obj,
+                                    visible &&
+                                      !id(display_asleep) &&
+                                      !id(screen_schedule_asleep),
+                                    id(indoor_temp_enable).state,
+                                    id(outdoor_temp_enable).state,
+                                    id(indoor_temp), id(outdoor_temp));
+
+switch:
+  - platform: template
+    name: "${entity_screen_clock_bar}"
+    internal: true
+    id: clock_bar_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:clock-digital"
+    on_turn_on:
+      - script.execute: clock_bar_apply
+      - delay: 50ms
+      - script.execute: refresh_button_grid
+    on_turn_off:
+      - script.execute: clock_bar_apply
+      - delay: 50ms
+      - script.execute: refresh_button_grid
+
+  - platform: template
+    name: "${entity_screen_network_status_icon}"
+    internal: true
+    id: network_status_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    icon: "mdi:wifi"
+    on_turn_on:
+      - script.execute: clock_bar_apply
+    on_turn_off:
+      - script.execute: clock_bar_apply
+
+  - platform: template
+    name: "${entity_screen_clock_bar_time}"
+    internal: true
+    id: clock_bar_time_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    icon: "mdi:clock-time-four-outline"
+    on_turn_on:
+      - script.execute: clock_bar_apply
+    on_turn_off:
+      - script.execute: clock_bar_apply
+
+  - platform: template
+    name: "${entity_indoor_temp_enable}"
+    internal: true
+    id: indoor_temp_enable
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:home-thermometer"
+    on_turn_on:
+      - script.execute: clock_bar_apply
+      - lambda: |-
+          refresh_clock_bar_temperature_label_values(
+            id(main_page)->obj,
+            clock_bar_should_show(
+              id(clock_bar_enabled).state,
+              id(main_page)->obj,
+              id(display_asleep),
+              id(screen_schedule_asleep),
+              id(is_clock_showing),
+              id(cover_art_screensaver_active),
+              id(screensaver_display_off_active),
+              id(screensaver_dimmed_active)),
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp), id(outdoor_temp));
+    on_turn_off:
+      - script.execute: clock_bar_apply
+      - lambda: |-
+          refresh_clock_bar_temperature_label_values(
+            id(main_page)->obj,
+            clock_bar_should_show(
+              id(clock_bar_enabled).state,
+              id(main_page)->obj,
+              id(display_asleep),
+              id(screen_schedule_asleep),
+              id(is_clock_showing),
+              id(cover_art_screensaver_active),
+              id(screensaver_display_off_active),
+              id(screensaver_dimmed_active)),
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp), id(outdoor_temp));
+
+  - platform: template
+    name: "${entity_outdoor_temp_enable}"
+    internal: true
+    id: outdoor_temp_enable
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+    icon: "mdi:sun-thermometer"
+    on_turn_on:
+      - script.execute: clock_bar_apply
+      - lambda: |-
+          refresh_clock_bar_temperature_label_values(
+            id(main_page)->obj,
+            clock_bar_should_show(
+              id(clock_bar_enabled).state,
+              id(main_page)->obj,
+              id(display_asleep),
+              id(screen_schedule_asleep),
+              id(is_clock_showing),
+              id(cover_art_screensaver_active),
+              id(screensaver_display_off_active),
+              id(screensaver_dimmed_active)),
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp), id(outdoor_temp));
+    on_turn_off:
+      - script.execute: clock_bar_apply
+      - lambda: |-
+          refresh_clock_bar_temperature_label_values(
+            id(main_page)->obj,
+            clock_bar_should_show(
+              id(clock_bar_enabled).state,
+              id(main_page)->obj,
+              id(display_asleep),
+              id(screen_schedule_asleep),
+              id(is_clock_showing),
+              id(cover_art_screensaver_active),
+              id(screensaver_display_off_active),
+              id(screensaver_dimmed_active)),
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp), id(outdoor_temp));
+
+  - platform: template
+    name: "${entity_screen_temperature_degree_symbol}"
+    internal: true
+    id: temperature_degree_symbol_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    icon: "mdi:temperature-celsius"
+    on_turn_on:
+      - lambda: |-
+          set_display_temperature_degree_symbol(true);
+          refresh_clock_bar_temperature_label_values(
+            id(main_page)->obj,
+            clock_bar_should_show(
+              id(clock_bar_enabled).state,
+              id(main_page)->obj,
+              id(display_asleep),
+              id(screen_schedule_asleep),
+              id(is_clock_showing),
+              id(cover_art_screensaver_active),
+              id(screensaver_display_off_active),
+              id(screensaver_dimmed_active)),
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp), id(outdoor_temp));
+    on_turn_off:
+      - lambda: |-
+          set_display_temperature_degree_symbol(false);
+          refresh_clock_bar_temperature_label_values(
+            id(main_page)->obj,
+            clock_bar_should_show(
+              id(clock_bar_enabled).state,
+              id(main_page)->obj,
+              id(display_asleep),
+              id(screen_schedule_asleep),
+              id(is_clock_showing),
+              id(cover_art_screensaver_active),
+              id(screensaver_display_off_active),
+              id(screensaver_dimmed_active)),
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp), id(outdoor_temp));
+
+  - platform: template
+    name: "${entity_screen_subpage_chevron}"
+    internal: true
+    id: subpage_chevrons_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    icon: "mdi:chevron-right"
+    on_turn_on:
+      - script.execute: refresh_button_grid
+    on_turn_off:
+      - script.execute: refresh_button_grid
+
+  - platform: template
+    name: "${entity_screen_saver_clock}"
+    internal: true
+    id: clock_screensaver_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:clock-outline"
+    entity_category: config
+    on_turn_on:
+      - if:
+          condition:
+            lambda: 'return !id(screensaver_action_clock);'
+          then:
+            - select.set:
+                id: screensaver_action
+                option: "Clock"
+      - if:
+          condition:
+            lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+          then:
+            - script.execute: screensaver_idle_check
+    on_turn_off:
+      - if:
+          condition:
+            lambda: 'return id(screensaver_action_clock);'
+          then:
+            - select.set:
+                id: screensaver_action
+                option: "Display Off"
+      - if:
+          condition:
+            lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+          then:
+            - script.execute: screensaver_idle_check
+
+  - platform: template
+    name: "${entity_screen_saver_media_player_sleep_prevention}"
+    internal: true
+    id: media_player_sleep_prevention_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:speaker-play"
+    entity_category: config
+    on_turn_on:
+      - if:
+          condition:
+            lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+          then:
+            - script.execute: screensaver_idle_check
+    on_turn_off:
+      - if:
+          condition:
+            lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+          then:
+            - script.execute: screensaver_idle_check
+
+  - platform: template
+    name: "${entity_screen_saver_cover_art}"
+    internal: true
+    id: cover_art_screensaver_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    icon: "mdi:image-album"
+    entity_category: config
+    on_turn_on:
+      - script.execute: cover_art_resubscribe
+      - script.execute: cover_art_playback_refresh
+    on_turn_off:
+      - script.execute: cover_art_disable
+
+  - platform: template
+    name: "${entity_screen_saver_hide_cover_art_external_input}"
+    internal: true
+    id: cover_art_hide_external_input_enabled
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    icon: "mdi:television-classic"
+    entity_category: config
+    on_turn_on:
+      - script.execute: cover_art_apply_external_input_policy
+    on_turn_off:
+      - script.execute: cover_art_apply_external_input_policy
+
+select:
+  - platform: template
+    name: "${entity_screen_saver_action}"
+    internal: true
+    id: screensaver_action
+    entity_category: config
+    icon: "mdi:monitor-shimmer"
+    optimistic: true
+    restore_value: true
+    initial_option: "Display Off"
+    options:
+      - "Display Off"
+      - "Screen Dimmed"
+      - "Clock"
+    on_value:
+      then:
+        - lambda: |-
+            std::string action = id(screensaver_action).current_option();
+            id(screensaver_action_clock) = screensaver_action_clock_mode(action);
+            id(screensaver_action_dimmed) = screensaver_action_dimmed_mode(action);
+        - if:
+            condition:
+              lambda: |-
+                return id(screensaver_action_clock) && !id(clock_screensaver_enabled).state;
+            then:
+              - switch.turn_on: clock_screensaver_enabled
+        - if:
+            condition:
+              lambda: |-
+                return !id(screensaver_action_clock) && id(clock_screensaver_enabled).state;
+            then:
+              - switch.turn_off: clock_screensaver_enabled
+        - if:
+            condition:
+              lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+            then:
+              - script.execute: screensaver_idle_check
+
+  - platform: template
+    name: "${entity_screen_temperature_unit}"
+    internal: true
+    disabled_by_default: true
+    id: temperature_unit_select
+    entity_category: config
+    icon: "mdi:temperature-celsius"
+    optimistic: true
+    restore_value: true
+    initial_option: "Auto"
+    options:
+      - "Auto"
+      - "°C"
+      - "°F"
+    on_value:
+      then:
+        - lambda: |-
+            set_display_temperature_unit(id(temperature_unit_select).current_option(),
+                                         id(timezone_select).current_option());
+            refresh_temperature_unit_labels();
+            refresh_clock_bar_temperature_label_values(
+              id(main_page)->obj,
+              clock_bar_should_show(
+                id(clock_bar_enabled).state,
+                id(main_page)->obj,
+                id(display_asleep),
+                id(screen_schedule_asleep),
+                id(is_clock_showing),
+                id(cover_art_screensaver_active),
+                id(screensaver_display_off_active),
+                id(screensaver_dimmed_active)),
+              id(indoor_temp_enable).state,
+              id(outdoor_temp_enable).state,
+              id(indoor_temp), id(outdoor_temp));
+
+text:
+  - platform: template
+    name: "${entity_screen_clock_bar_layout}"
+    internal: true
+    id: clock_bar_layout
+    optimistic: true
+    restore_value: true
+    initial_value: "left:temperature|middle:time|right:network"
+    min_length: 0
+    max_length: 80
+    mode: text
+    entity_category: config
+    icon: "mdi:format-align-justify"
+    update_interval: never
+    on_value:
+      then:
+        - script.execute: clock_bar_apply
+
+  - platform: template
+    name: "${entity_clock_bar_temperature_entities}"
+    internal: true
+    id: clock_bar_temperature_entities
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 240
+    mode: text
+    entity_category: config
+    icon: "mdi:thermometer-lines"
+    update_interval: never
+    on_value:
+      then:
+        - lambda: |-
+            lv_obj_t *temperature_labels[] = {
+              id(temperatures),
+              id(temperature_2),
+              id(temperature_3),
+              id(temperature_4),
+              id(temperature_5),
+              id(temperature_6),
+            };
+            configure_clock_bar_temperature_entities(
+              id(clock_bar_temperature_entities).state,
+              temperature_labels,
+              6,
+              id(main_page)->obj,
+              []() {
+                return clock_bar_should_show(
+                    id(clock_bar_enabled).state,
+                    id(main_page)->obj,
+                    id(display_asleep),
+                    id(screen_schedule_asleep),
+                    id(is_clock_showing),
+                    id(cover_art_screensaver_active),
+                    id(screensaver_display_off_active),
+                    id(screensaver_dimmed_active));
+              },
+              []() {
+                return id(outdoor_temp_enable).state;
+              });
+        - script.execute: clock_bar_apply
+
+  - platform: template
+    name: "${entity_indoor_temp_entity}"
+    internal: true
+    id: indoor_temp_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:home-thermometer"
+    update_interval: never
+  - platform: template
+    name: "${entity_outdoor_temp_entity}"
+    internal: true
+    id: outdoor_temp_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:sun-thermometer"
+    update_interval: never
+  - platform: template
+    name: "Screensaver Mode"
+    internal: true
+    id: screensaver_mode
+    optimistic: true
+    restore_value: true
+    initial_value: "disabled"
+    min_length: 0
+    max_length: 10
+    mode: text
+    entity_category: config
+    icon: "mdi:timer-cog-outline"
+    update_interval: never
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+            then:
+              - script.execute: screensaver_idle_check
+
+  # Optional presence sensor for screensaver (e.g. mmWave)
+  - platform: template
+    name: "${entity_presence_sensor_entity}"
+    internal: true
+    id: presence_sensor_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:motion-sensor"
+    update_interval: never
+  # Optional media player that keeps the screensaver awake while playing.
+  - platform: template
+    name: "${entity_media_player_sleep_prevention_entity}"
+    internal: true
+    id: media_player_sleep_prevention_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:speaker-play"
+    update_interval: never
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+            then:
+              - script.execute: screensaver_idle_check
+
+  - platform: template
+    name: "${entity_screen_saver_cover_art_entity}"
+    internal: true
+    id: cover_art_media_player_entity
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 100
+    mode: text
+    entity_category: config
+    icon: "mdi:speaker-play"
+    update_interval: never
+    on_value:
+      then:
+        - globals.set:
+            id: cover_art_subscribed_entity
+            value: '""'
+        - script.execute: cover_art_playback_stopped
+        - script.execute: cover_art_resubscribe
+
+  - platform: template
+    name: "${entity_screen_saver_cover_art_conditions}"
+    internal: true
+    id: cover_art_attribute_conditions
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 240
+    mode: text
+    entity_category: config
+    icon: "mdi:filter-check"
+    update_interval: never
+    on_value:
+      then:
+        - globals.set:
+            id: cover_art_subscribed_entity
+            value: '""'
+        - script.execute: cover_art_playback_stopped
+        - script.execute: cover_art_resubscribe
+
+number:
+  - platform: template
+    name: "${entity_screen_saver_daytime_clock_brightness}"
+    internal: true
+    id: clock_brightness_day
+    min_value: ${screen_saver_clock_min_brightness}
+    max_value: 100
+    step: 1
+    initial_value: ${screen_saver_clock_default_brightness}
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-7"
+    on_value:
+      then:
+        - lambda: 'global_preferences->sync();'
+        - if:
+            condition:
+              lambda: 'return id(is_clock_showing);'
+            then:
+              - script.execute: clock_screensaver_refresh_brightness
+
+  - platform: template
+    name: "${entity_screen_saver_nighttime_clock_brightness}"
+    internal: true
+    id: clock_brightness_night
+    min_value: ${screen_saver_clock_min_brightness}
+    max_value: 100
+    step: 1
+    initial_value: ${screen_saver_clock_default_brightness}
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-4"
+    on_value:
+      then:
+        - lambda: 'global_preferences->sync();'
+        - if:
+            condition:
+              lambda: 'return id(is_clock_showing);'
+            then:
+              - script.execute: clock_screensaver_refresh_brightness
+
+  - platform: template
+    name: "${entity_screen_saver_dimmed_brightness}"
+    internal: true
+    id: screensaver_dimmed_brightness
+    min_value: 1
+    max_value: 100
+    step: 1
+    initial_value: 10
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:brightness-4"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screensaver_dimmed_active);'
+            then:
+              - script.execute: screensaver_dimmed_refresh_brightness
+
+  - platform: template
+    name: "${entity_screen_saver_cover_art_delay}"
+    internal: true
+    id: cover_art_delay
+    min_value: 0
+    max_value: 300
+    step: 1
+    initial_value: 10
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "s"
+    entity_category: config
+    icon: "mdi:timer-outline"
+    on_value:
+      then:
+        - script.execute: cover_art_playback_refresh
+
+  - platform: template
+    name: "${entity_screen_saver_cover_art_touch_pause}"
+    internal: true
+    id: cover_art_touch_pause
+    min_value: 0
+    max_value: 300
+    step: 10
+    initial_value: 120
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "s"
+    entity_category: config
+    icon: "mdi:gesture-tap"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return !id(cover_art_screensaver_active) &&
+                       id(cover_art_media_playing) &&
+                       id(cover_art_manual_pause_until_ms) != 0 &&
+                       (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
+            then:
+              - script.execute: cover_art_delay_timer
+
+  - platform: template
+    name: "${entity_screen_saver_track_overlay_duration}"
+    internal: true
+    id: cover_art_track_overlay_duration
+    min_value: -1
+    max_value: 60
+    step: 1
+    initial_value: 5
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "s"
+    entity_category: config
+    icon: "mdi:playlist-music-outline"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(cover_art_screensaver_active);'
+            then:
+              - script.execute: cover_art_show_track_overlay
+
+  # Legacy setting kept so existing panels can migrate their saved single
+  # clock brightness into the new day/night settings, and so older cached web
+  # UIs still change the live screensaver brightness after startup.
+  - platform: template
+    name: "${entity_screen_saver_clock_brightness}"
+    internal: true
+    id: clock_brightness
+    min_value: ${screen_saver_clock_min_brightness}
+    max_value: 100
+    step: 1
+    initial_value: ${screen_saver_clock_default_brightness}
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "%"
+    entity_category: config
+    icon: "mdi:clock-outline"
+    on_value:
+      then:
+        - lambda: |-
+            if (!id(clock_brightness_legacy_sync_ready)) return;
+            auto clamp_clock_pct = [](float pct, float fallback) -> float {
+              if (std::isnan(pct) || pct <= 0.0f) pct = fallback;
+              if (pct < ${screen_saver_clock_min_brightness}.0f) {
+                pct = ${screen_saver_clock_min_brightness}.0f;
+              }
+              if (pct > 100.0f) pct = 100.0f;
+              return pct;
+            };
+            float legacy_pct = clamp_clock_pct(
+              id(clock_brightness).state, ${screen_saver_clock_default_brightness}.0f);
+            float previous_pct = clamp_clock_pct(
+              id(clock_brightness_legacy_last_level), legacy_pct);
+            if (legacy_pct == previous_pct) return;
+            id(clock_brightness_legacy_last_level) = legacy_pct;
+
+            auto day_call = id(clock_brightness_day).make_call();
+            day_call.set_value(legacy_pct);
+            day_call.perform();
+
+            auto night_call = id(clock_brightness_night).make_call();
+            night_call.set_value(legacy_pct);
+            night_call.perform();
+            global_preferences->sync();
+
+  # Screensaver idle timeout
+  - platform: template
+    name: "${entity_screensaver_timeout}"
+    internal: true
+    id: screensaver_timeout
+    min_value: 10
+    max_value: 3600
+    step: 10
+    initial_value: 1800
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "s"
+    entity_category: config
+    icon: "mdi:timer-outline"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(display_asleep) && lv_scr_act() == id(main_page)->obj;'
+            then:
+              - script.execute: screensaver_idle_check
+
+  # Home screen return timeout (0 = disabled)
+  - platform: template
+    name: "${entity_home_screen_timeout}"
+    internal: true
+    id: home_screen_timeout
+    min_value: 0
+    max_value: 300
+    step: 1
+    initial_value: 60
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "s"
+    entity_category: config
+    icon: "mdi:home-clock"

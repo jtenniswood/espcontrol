@@ -1,0 +1,69 @@
+# =============================================================================
+# NETWORK - Desktop host diagnostics
+# =============================================================================
+# The host platform has no ESPHome WiFi component. Expose always-on diagnostics
+# and keep the existing network status button working with the host IP address.
+# =============================================================================
+
+binary_sensor:
+  - platform: status
+    name: "Online"
+    id: ink_ha_connected
+    icon: mdi:check-network
+
+script:
+  - id: network_status_refresh
+    mode: restart
+    then:
+      - lambda: |-
+          network_status_set_wifi_icon(id(network_status_icon_label), 100.0f, true);
+
+  - id: network_status_open_info
+    mode: single
+    then:
+      - lambda: |-
+          network_status_open_modal(
+            "${friendly_name}",
+            network_status_ip_address(),
+            "${firmware_version}",
+            id(${media_title_font})->get_lv_font(),
+            id(${icon_font})->get_lv_font());
+
+sensor:
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
+    entity_category: diagnostic
+    internal: true
+
+  - platform: template
+    name: "${entity_wifi_strength}"
+    id: wifi_strength_percent
+    unit_of_measurement: "%"
+    icon: mdi:monitor
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 60s
+    lambda: 'return 100.0f;'
+    on_value:
+      then:
+        - script.execute: network_status_refresh
+
+text_sensor:
+  - platform: template
+    name: "${entity_network_transport}"
+    id: network_transport_sensor
+    icon: mdi:monitor
+    entity_category: diagnostic
+    internal: true
+    update_interval: 60s
+    lambda: |-
+      return {"host"};
+
+  - platform: template
+    name: IP Address
+    icon: mdi:ip-network
+    entity_category: diagnostic
+    update_interval: 60s
+    lambda: |-
+      return {network_status_ip_address()};

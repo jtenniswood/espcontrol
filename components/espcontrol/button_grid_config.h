@@ -16,7 +16,7 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_PHASE3 = 1u << 2;
 #ifdef USE_TEXT_SENSOR
 #include "esphome/components/text_sensor/text_sensor.h"
 #endif
-#ifdef USE_WEBSERVER
+#if defined(USE_WEBSERVER) && defined(USE_ESP_IDF)
 #include <esp_http_server.h>
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #endif
@@ -2756,7 +2756,7 @@ inline std::vector<LocalSensorControl> &local_sensor_registry() {
   return sensors;
 }
 
-#ifdef USE_WEBSERVER
+#if defined(USE_WEBSERVER) && defined(USE_ESP_IDF)
 inline std::string local_endpoint_json_escape(const std::string &s) {
   std::string out;
   out.reserve(s.size() + 4);
@@ -2875,7 +2875,10 @@ inline void register_local_sensor_endpoint() {
   registered = true;
   ESP_LOGI("sensors", "Local sensor endpoint registered");
 }
-#endif  // USE_WEBSERVER
+#else
+inline void register_local_action_endpoint() {}
+inline void register_local_sensor_endpoint() {}
+#endif  // USE_WEBSERVER && USE_ESP_IDF
 
 inline std::vector<InternalRelayControl> &internal_relay_registry() {
   static std::vector<InternalRelayControl> relays;

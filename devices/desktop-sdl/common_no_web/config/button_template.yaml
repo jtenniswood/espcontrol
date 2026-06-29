@@ -1,0 +1,128 @@
+# =============================================================================
+# CONFIG: BUTTON TEMPLATE (parameterized by ${num})
+# =============================================================================
+# Per-button config stored as a single semicolon-delimited string:
+#   entity_id;label;icon;icon_on;sensor;sensor_unit;type;precision;options
+# Subpage config kept separate; split across text entities because ESPHome caps
+# each text max_length at 255.
+# Included once per button slot from packages.yaml with vars: { num: "N" }.
+# =============================================================================
+
+text:
+  - platform: template
+    name: "${entity_button_config_prefix}${num}${entity_button_config_suffix}"
+    internal: true
+    id: button_${num}_config
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:cog"
+    update_interval: never
+  - platform: template
+    name: "${entity_subpage_config_prefix}${num}${entity_subpage_config_suffix}"
+    internal: true
+    id: subpage_${num}_config
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:file-tree"
+    update_interval: never
+  - platform: template
+    name: "${entity_subpage_config_ext_prefix}${num}${entity_subpage_config_ext_suffix}"
+    internal: true
+    id: subpage_${num}_config_ext
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:file-tree"
+    update_interval: never
+  - platform: template
+    name: "${entity_subpage_config_ext_2_prefix}${num}${entity_subpage_config_ext_2_suffix}"
+    internal: true
+    id: subpage_${num}_config_ext_2
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:file-tree"
+    update_interval: never
+  - platform: template
+    name: "${entity_subpage_config_ext_3_prefix}${num}${entity_subpage_config_ext_3_suffix}"
+    internal: true
+    id: subpage_${num}_config_ext_3
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:file-tree"
+    update_interval: never
+  - platform: template
+    name: "${entity_subpage_config_ext_4_prefix}${num}${entity_subpage_config_ext_4_suffix}"
+    internal: true
+    id: subpage_${num}_config_ext_4
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:file-tree"
+    update_interval: never
+  - platform: template
+    name: "${entity_subpage_config_ext_5_prefix}${num}${entity_subpage_config_ext_5_suffix}"
+    internal: true
+    id: subpage_${num}_config_ext_5
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:file-tree"
+    update_interval: never
+  - platform: template
+    name: "${entity_subpage_config_ext_6_prefix}${num}${entity_subpage_config_ext_6_suffix}"
+    internal: true
+    id: subpage_${num}_config_ext_6
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:file-tree"
+    update_interval: never
+  - platform: template
+    name: "${entity_subpage_config_ext_7_prefix}${num}${entity_subpage_config_ext_7_suffix}"
+    internal: true
+    id: subpage_${num}_config_ext_7
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    min_length: 0
+    max_length: 255
+    mode: text
+    entity_category: config
+    icon: "mdi:file-tree"
+    update_interval: never

@@ -1,0 +1,84 @@
+# =============================================================================
+# SCREEN: LOADING - Desktop host
+# =============================================================================
+# Boot screen for the SDL host build. It keeps the same loading and screen-off
+# page IDs as hardware builds, then navigates using host connectivity logic.
+# =============================================================================
+
+globals:
+  - id: boot_grace_period
+    type: bool
+    initial_value: 'true'
+
+lvgl:
+  pages:
+    - id: loading_page
+      bg_color: 0x000000
+      scrollable: false
+      widgets:
+        - obj:
+            align: center
+            width: $content_width
+            height: SIZE_CONTENT
+            bg_opa: 0%
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            layout:
+              type: flex
+              flex_flow: COLUMN
+              flex_align_main: center
+              flex_align_cross: center
+              pad_row: $setup_loading_pad_row
+            widgets:
+              - label:
+                  id: loading_status_icon
+                  text_font: $setup_icon_font_id
+                  text: $icon_wifi_startup
+                  text_color: 0xFFFFFF
+                  text_align: center
+              - label:
+                  id: loading_status_title
+                  text: ""
+                  text_font: $setup_title_font_id
+                  text_color: 0xFFFFFF
+                  width: $content_width
+                  text_align: center
+              - label:
+                  id: loading_status_label
+                  text: ""
+                  text_font: $setup_body_font_id
+                  text_color: 0xB0B0B0
+                  width: $content_width
+                  text_align: center
+              - slider:
+                  hidden: true
+                  width: 0
+                  height: 0
+              - arc:
+                  hidden: true
+                  width: 0
+                  height: 0
+    - id: screen_off_page
+      bg_color: 0x000000
+      scrollable: false
+
+esphome:
+  on_boot:
+    - priority: -200
+      then:
+        - lvgl.resume:
+        - script.execute: clock_bar_hide
+        - lambda: |-
+            lv_label_set_text(id(loading_status_title), espcontrol_i18n("Starting up"));
+            lv_label_set_text(id(loading_status_label), espcontrol_i18n("Starting desktop host"));
+        - lvgl.page.show: loading_page
+        - light.turn_on:
+            id: display_backlight
+            brightness: 90%
+            transition_length: 500ms
+    - priority: -100
+      then:
+        - delay: 1s
+        - lambda: 'id(boot_grace_period) = false;'
+        - script.execute: navigate_after_api

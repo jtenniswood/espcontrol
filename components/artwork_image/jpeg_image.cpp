@@ -5,7 +5,9 @@
 #include "esphome/core/application.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#ifdef USE_ESP32
 #include "esp_heap_caps.h"
+#endif
 
 #include <climits>
 #include <cstdint>
@@ -153,7 +155,11 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
 
   // Allocate row buffers (raw pointers — safe across longjmp)
   size_t row_stride = static_cast<size_t>(out_w) * 3;
+#ifdef USE_ESP32
   row_buffer = static_cast<uint8_t *>(heap_caps_malloc(row_stride, MALLOC_CAP_8BIT));
+#else
+  row_buffer = static_cast<uint8_t *>(malloc(row_stride));
+#endif
   if (row_buffer == nullptr) {
     ESP_LOGE(TAG, "JPEG row buffer allocation failed: %zu bytes", row_stride);
     jpeg_destroy_decompress(&cinfo);

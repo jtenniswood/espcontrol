@@ -1,0 +1,58 @@
+# =============================================================================
+# CONNECTIVITY - Desktop host navigation
+# =============================================================================
+# The host platform uses the computer's network stack directly. There is no
+# WiFi setup or captive portal, so startup goes from loading to Home Assistant
+# setup/actions or the configured main page.
+# =============================================================================
+
+esphome:
+  on_boot:
+    priority: 600
+    then:
+      - lambda: |-
+          ESP_LOGI("connectivity", "Host network available");
+          lv_label_set_text(id(loading_status_label), espcontrol_i18n("Connected"));
+
+api:
+  on_client_connected:
+    - delay: 2s
+    - if:
+        condition:
+          lambda: 'return ha_api_state_connected();'
+        then:
+          - if:
+              condition:
+                lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'
+              then:
+                - script.stop: setup_screen_dim
+                - script.execute: clock_bar_hide
+                - lvgl.page.show: ha_actions_page
+              else:
+                - script.execute: navigate_after_api
+
+script:
+  - id: navigate_after_api
+    mode: restart
+    then:
+      - script.stop: setup_screen_dim
+      - if:
+          condition:
+            lambda: 'return !id(button_order).state.empty();'
+          then:
+            - lvgl.page.show: main_page
+            - script.execute: clock_bar_apply
+            - script.execute: screensaver_idle_check
+          else:
+            - if:
+                condition:
+                  lambda: 'return ha_api_state_connected();'
+                then:
+                  - script.execute: clock_bar_hide
+                  - lvgl.page.show: ha_actions_page
+                else:
+                  - lambda: |-
+                      lv_label_set_text(id(setup_ip_label), "http://localhost");
+                  - script.execute: clock_bar_hide
+                  - lvgl.page.show: ha_setup_page
+                  - script.execute: setup_screen_dim
