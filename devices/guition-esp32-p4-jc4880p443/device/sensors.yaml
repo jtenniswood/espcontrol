@@ -489,8 +489,7 @@ esphome:
         # Phase 3: Temperature + presence subscriptions
         - lambda: |-
             lv_obj_t *temperature_labels[] = {
-              id(temperatures), id(temperature_2), id(temperature_3),
-              id(temperature_4), id(temperature_5), id(temperature_6),
+              id(temperatures),
             };
             grid_phase3(
               id(indoor_temp_enable).state,

@@ -13,7 +13,7 @@ globals:
 
 esphome:
   on_boot:
-    # Apply restored clock-bar layout before subpages copy main-page padding.
+    # Apply restored clock-bar visibility before subpages copy main-page padding.
     - priority: -150
       then:
         - lambda: |-
@@ -45,13 +45,8 @@ script:
       - lambda: |-
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
-            id(temperature_2),
-            id(temperature_3),
-            id(temperature_4),
-            id(temperature_5),
-            id(temperature_6),
           };
-          hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+          hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                            id(display_time),
                                            id(network_status_button));
           ${voice_clock_bar_hide_code}
@@ -84,25 +79,18 @@ script:
           int clock_bar_icon_y =
               (${main_page_pad_top} - lv_obj_get_height(id(network_status_button))) / 2;
           if (clock_bar_icon_y < 0) clock_bar_icon_y = 0;
-          int clock_bar_item_width = ${clock_bar_item_gap};
-          int clock_bar_visual_gap = ${clock_bar_visual_gap};
           int clock_bar_right_x =
               clock_bar_480_square ? 4 : (clock_bar_screen_width >= 700 ? 8 : 6);
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
-            id(temperature_2),
-            id(temperature_3),
-            id(temperature_4),
-            id(temperature_5),
-            id(temperature_6),
           };
-          set_clock_bar_temperature_labels(temperature_labels, 6);
+          set_clock_bar_temperature_labels(temperature_labels, 1);
           clock_bar_set_button_grid_pages_pad_top(
             id(main_page)->obj,
             reserve_clock_bar_space ? ${main_page_pad_top} : ${main_page_compact_pad_top});
 
           if (!visible) {
-            hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+            hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                              id(display_time),
                                              id(network_status_button));
             ${voice_clock_bar_hide_code}
@@ -110,22 +98,18 @@ script:
             return;
           }
 
-          apply_clock_bar_layout(id(clock_bar_layout).state,
-                                 temperature_labels,
-                                 6,
-                                 id(display_time),
-                                 id(network_status_button),
-                                 show_time,
-                                 show_network,
-                                 visible && id(indoor_temp_enable).state,
-                                 visible && id(outdoor_temp_enable).state,
-                                 clock_bar_screen_width,
-                                 clock_bar_screen_width >= 700 ? 8 : 6,
-                                 clock_bar_label_y,
-                                 clock_bar_right_x,
-                                 clock_bar_icon_y,
-                                 clock_bar_item_width,
-                                 clock_bar_visual_gap);
+          apply_clock_bar_fixed_layout(
+              id(temperatures),
+              id(display_time),
+              id(network_status_button),
+              visible && (id(indoor_temp_enable).state || id(outdoor_temp_enable).state),
+              show_time,
+              show_network,
+              clock_bar_screen_width >= 700 ? 8 : 6,
+              clock_bar_label_y,
+              clock_bar_right_x,
+              clock_bar_icon_y,
+              ${clock_bar_item_gap});
 
           if (show_time) {
             lv_obj_clear_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
@@ -520,25 +504,6 @@ select:
 
 text:
   - platform: template
-    name: "${entity_screen_clock_bar_layout}"
-    internal: true
-    id: clock_bar_layout
-    optimistic: true
-    restore_value: true
-    initial_value: "left:temperature|middle:time|right:network"
-    min_length: 0
-    max_length: 80
-    mode: text
-    entity_category: config
-    icon: "mdi:format-align-justify"
-    update_interval: never
-    web_server:
-      sorting_group_id: sg_display
-    on_value:
-      then:
-        - script.execute: clock_bar_apply
-
-  - platform: template
     name: "${entity_clock_bar_temperature_entities}"
     internal: true
     id: clock_bar_temperature_entities
@@ -558,16 +523,11 @@ text:
         - lambda: |-
             lv_obj_t *temperature_labels[] = {
               id(temperatures),
-              id(temperature_2),
-              id(temperature_3),
-              id(temperature_4),
-              id(temperature_5),
-              id(temperature_6),
             };
             configure_clock_bar_temperature_entities(
               id(clock_bar_temperature_entities).state,
               temperature_labels,
-              6,
+              1,
               id(main_page)->obj,
               []() {
                 return clock_bar_should_show(
