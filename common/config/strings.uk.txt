@@ -81,6 +81,7 @@ lawn_mower=Газонокосарка
 low=Низько
 low_target=Низька ціль
 media=Медіа
+playlist=Список відтворення
 medium=Середньо
 mode=Режим
 monthly=Щомісяця

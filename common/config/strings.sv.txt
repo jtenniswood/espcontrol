@@ -81,6 +81,7 @@ lawn_mower=Gräsklippare
 low=Låg
 low_target=Lågt mål
 media=Media
+playlist=Spellista
 medium=Medium
 mode=Läge
 monthly=Månadsvis

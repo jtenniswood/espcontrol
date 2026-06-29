@@ -81,6 +81,7 @@ lawn_mower=Çim biçme makinesi
 low=Düşük
 low_target=Düşük hedef
 media=Medya
+playlist=Çalma listesi
 medium=Orta
 mode=Mod
 monthly=Aylık

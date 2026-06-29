@@ -417,6 +417,8 @@ var CSS =
   "background:rgba(92,115,231,.12);border:1px solid rgba(92,115,231,.22);border-radius:8px;" +
   "color:var(--text2);font-size:.82rem;line-height:1.35}" +
   ".sp-info-panel .mdi{font-size:18px;color:var(--accent);line-height:1.1;flex:0 0 auto;margin-top:1px}" +
+  ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
+  ".sp-info-panel a:hover{text-decoration:underline}" +
 
   ".sp-range-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}" +
   ".sp-range-row:last-child{margin-bottom:0}" +

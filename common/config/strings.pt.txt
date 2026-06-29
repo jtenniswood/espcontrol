@@ -81,6 +81,7 @@ lawn_mower=Corta-relva
 low=Baixo
 low_target=Alvo baixo
 media=Multimédia
+playlist=Lista de reprodução
 medium=Medium
 mode=Modo
 monthly=Mensal

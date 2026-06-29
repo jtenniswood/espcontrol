@@ -1142,13 +1142,8 @@ function initIconPicker(picker, currentIcon, onSelect) {
   picker._setIcon = setPickerIcon;
 
   function openPicker() {
-    if (currentIcon === "Auto") {
-      input.value = "";
-      filterOpts("");
-    } else {
-      filterOpts(currentIcon);
-      setTimeout(function () { input.select(); }, 0);
-    }
+    input.value = "";
+    filterOpts("");
     picker.classList.add("sp-open");
   }
 

@@ -1,5 +1,35 @@
 [
   {
+    "name": "playlist content id is preserved",
+    "input": "media_player.living_room;Morning Mix;Music;Auto;playlist;;media;;playlist_content_id=media-source%3A//music/morning%2Cmix,playlist_content_type=music",
+    "expected": {
+      "entity": "media_player.living_room",
+      "label": "Morning Mix",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "playlist",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "playlist_content_id=media-source%3A//music/morning%2Cmix,playlist_content_type=music"
+    }
+  },
+  {
+    "name": "playlist default content type is omitted",
+    "input": "media_player.living_room;Morning Mix;Auto;Auto;playlist;;media;;playlist_content_id=media-source%3A//music/morning,playlist_content_type=playlist,volume_max=40",
+    "expected": {
+      "entity": "media_player.living_room",
+      "label": "Morning Mix",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "playlist",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "playlist_content_id=media-source%3A//music/morning"
+    }
+  },
+  {
     "name": "default media options are omitted",
     "input": "media_player.living_room;Play/Pause;Auto;Auto;play_pause;;media;;volume_max=40,large_numbers",
     "expected": {
