@@ -509,6 +509,15 @@ int main() {
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 
+  auto legacy_todo = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;large_numbers");
+  assert(legacy_todo.entity == "");
+  assert(legacy_todo.label == "Shopping");
+  assert(legacy_todo.icon == "Check");
+  assert(legacy_todo.icon_on == "Auto");
+  assert(legacy_todo.sensor == "local");
+  assert(legacy_todo.type == "action");
+  assert(legacy_todo.options == "");
+
   assert(cfg_option_token_present("large_numbers,active_color", "active_color"));
   assert(cfg_option_value("state_entity=sensor.room%2Ctemp,state_unit=%25", "state_entity") == "sensor.room,temp");
   assert(cfg_option_value("state_entity=sensor.room%2Ctemp,state_unit=%25", "state_unit") == "%");

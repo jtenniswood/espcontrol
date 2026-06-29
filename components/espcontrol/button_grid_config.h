@@ -982,6 +982,16 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.precision != "text" && p.precision != "1" && p.precision != "2") p.precision.clear();
     if (p.precision != "text" && (p.icon.empty() || p.icon == "Auto")) p.icon = "Auto";
   }
+  if (p.type == "todo") {
+    p.type = "action";
+    p.entity.clear();
+    p.sensor = "local";
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on = "Auto";
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Check";
+  }
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
   if (brightness_slider_type(p.type) && !p.sensor.empty()) p.sensor.clear();
