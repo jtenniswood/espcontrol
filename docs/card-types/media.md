@@ -71,6 +71,42 @@ Enter:
 
 To find the right values, browse to the item in Home Assistant's media browser, then test it from Home Assistant developer tools with the `media_player.play_media` action. Once that service call starts the right media, copy the working `media_content_id` and `media_content_type` into EspControl.
 
+### Using a Shared Playlist URL
+
+Many music services give you a web sharing URL. EspControl usually needs the media ID or URI, not the full share URL.
+
+For example, this Spotify playlist URL:
+
+```text
+https://open.spotify.com/playlist/1LG2Lnt9EDQS1DqoE8E2uO?si=1Jho2boIRDGE4PQ9Q0COXA
+```
+
+contains this playlist ID:
+
+```text
+1LG2Lnt9EDQS1DqoE8E2uO
+```
+
+For Spotify, the Home Assistant media content ID is commonly:
+
+```text
+spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO
+```
+
+Use that value as **Media Content ID / URI**, and use `playlist` as **Media Content Type**.
+
+The same idea applies to other services: copy the playlist, album, station, or favorite ID from the shared URL, then turn it into the URI format your Home Assistant integration expects. Always test the result in Home Assistant first:
+
+```yaml
+target:
+  entity_id: media_player.living_room
+data:
+  media_content_id: "spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO"
+  media_content_type: "playlist"
+```
+
+If the Home Assistant test starts the right playlist, use the same `media_content_id` and `media_content_type` in EspControl.
+
 ::: info Requires Home Assistant actions
 Media cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Enable Actions](/getting-started/home-assistant-actions).
 :::
