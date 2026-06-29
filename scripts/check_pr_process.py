@@ -38,7 +38,7 @@ def has_heading(text: str, heading: str) -> bool:
 
 
 def uses_pr_template(body: str) -> bool:
-    return any(has_heading(body, heading) for heading in REQUIRED_BODY_HEADINGS)
+    return all(has_heading(body, heading) for heading in REQUIRED_BODY_HEADINGS)
 
 
 def docs_notes(section: str) -> str:
@@ -80,6 +80,8 @@ def assert_template_ready() -> None:
 
 
 def assert_pr_body_ready(body: str) -> None:
+    assert body.strip(), "Add a PR description that explains the purpose and testing notes."
+
     if not uses_pr_template(body):
         print("PR body does not use the checklist template; skipping template field validation.")
         return
@@ -227,11 +229,21 @@ Affected display/device, if applicable:
 
 Explain the change in plain language.
 
-## Checks run
+## Testing
 
 - python3 scripts/build.py --check
 """
     assert_pr_body_ready(freeform)
+
+    empty_freeform = """
+
+"""
+    try:
+        assert_pr_body_ready(empty_freeform)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("self-test expected empty PR body to fail")
 
 
 def main() -> int:
