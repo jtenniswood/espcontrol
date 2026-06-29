@@ -1259,7 +1259,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t volume_slider_h = content_h - control_modal_scaled_px(12, layout.short_side);
   if (volume_slider_h < 160) volume_slider_h = content_h;
   if (ui.volume_slider) {
-    light_control_layout_slider(ui.volume_slider, volume_slider_w, volume_slider_h, 0);
+    light_control_layout_slider(
+      ui.volume_slider, volume_slider_w, volume_slider_h, 0,
+      ctx->width_compensation_percent);
     lv_obj_update_layout(ui.volume_box);
     media_control_update_volume_fill(ctx, ctx->current_pct);
   }

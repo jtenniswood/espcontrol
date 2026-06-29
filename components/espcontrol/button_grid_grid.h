@@ -1431,8 +1431,8 @@ inline void grid_phase2(
           MediaControlCtx *ctx = create_media_control_context(
             s, p,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            has_off ? off_val : DEFAULT_OFF_COLOR,
-            has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+            palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
+            palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
             display_media_title_font(display),
             display_media_control_artist_font(
               display, display_volume_label_font(
@@ -2177,8 +2177,8 @@ inline void grid_phase2(
             MediaControlCtx *ctx = create_media_control_context(
               sub_slot, sb_cfg,
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
-              has_off ? off_val : DEFAULT_OFF_COLOR,
-              has_sensor_color ? sensor_val : DEFAULT_TERTIARY_COLOR,
+              palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
+              palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
               display_media_title_font(display),
               display_media_control_artist_font(
                 display, display_volume_label_font(
