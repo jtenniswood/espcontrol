@@ -15,6 +15,7 @@ TEMPLATE = ROOT / ".github" / "pull_request_template.md"
 DOCS_HEADING = "Documentation decision"
 TESTING_HEADING = "Testing"
 STATUS_HEADING = "PR status"
+REQUIRED_BODY_HEADINGS = (DOCS_HEADING, TESTING_HEADING, STATUS_HEADING)
 
 
 def section_text(text: str, heading: str) -> str:
@@ -30,6 +31,14 @@ def section_text(text: str, heading: str) -> str:
 
 def checked_items(section: str) -> list[str]:
     return re.findall(r"^\s*- \[[xX]\] +(.+)$", section, re.MULTILINE)
+
+
+def has_heading(text: str, heading: str) -> bool:
+    return bool(re.search(rf"^## +{re.escape(heading)}\s*$", text, re.MULTILINE))
+
+
+def uses_pr_template(body: str) -> bool:
+    return any(has_heading(body, heading) for heading in REQUIRED_BODY_HEADINGS)
 
 
 def docs_notes(section: str) -> str:
@@ -71,6 +80,10 @@ def assert_template_ready() -> None:
 
 
 def assert_pr_body_ready(body: str) -> None:
+    if not uses_pr_template(body):
+        print("PR body does not use the checklist template; skipping template field validation.")
+        return
+
     section = section_text(body, DOCS_HEADING)
     selected = checked_items(section)
     assert selected, (
@@ -210,6 +223,16 @@ Affected display/device, if applicable:
     else:
         raise AssertionError("self-test expected multiple PR statuses to fail")
 
+    freeform = """## Purpose
+
+Explain the change in plain language.
+
+## Checks run
+
+- python3 scripts/build.py --check
+"""
+    assert_pr_body_ready(freeform)
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -222,13 +245,19 @@ def main() -> int:
     if args.self_test:
         run_self_test()
         print("PR process self-test passed.")
+        return 0
 
     body = pr_body_from_event(args.event_path)
     if body is None:
         print("PR process check skipped outside pull_request events.")
         return 0
 
-    assert_pr_body_ready(body)
+    try:
+        assert_pr_body_ready(body)
+    except AssertionError as error:
+        print(f"::error::{error}")
+        return 1
+
     print("PR process check passed.")
     return 0
 
