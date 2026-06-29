@@ -391,6 +391,25 @@ registerButtonType("media", {
     }
 
     if (b.sensor === "playlist") {
+      var playlistInfo = document.createElement("div");
+      playlistInfo.className = "sp-info-panel";
+      playlistInfo.setAttribute("role", "note");
+      var playlistInfoIcon = document.createElement("span");
+      playlistInfoIcon.className = "mdi mdi-information-outline";
+      playlistInfoIcon.setAttribute("aria-hidden", "true");
+      var playlistInfoText = document.createElement("span");
+      playlistInfoText.appendChild(document.createTextNode("Need help finding the media content ID? "));
+      var playlistInfoLink = document.createElement("a");
+      playlistInfoLink.href = "https://jtenniswood.github.io/espcontrol/card-types/media/#playlist-button";
+      playlistInfoLink.target = "_blank";
+      playlistInfoLink.rel = "noopener";
+      playlistInfoLink.textContent = "Learn how to configure playlist buttons";
+      playlistInfoText.appendChild(playlistInfoLink);
+      playlistInfoText.appendChild(document.createTextNode("."));
+      playlistInfo.appendChild(playlistInfoIcon);
+      playlistInfo.appendChild(playlistInfoText);
+      panel.appendChild(playlistInfo);
+
       var contentIdField = helpers.textField(
         "Media Content ID / URI",
         helpers.idPrefix + "playlist-content-id",
