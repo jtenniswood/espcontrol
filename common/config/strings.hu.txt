@@ -81,6 +81,7 @@ lawn_mower=Fűnyíró
 low=Alacsony
 low_target=Alacsony célérték
 media=Média
+playlist=Lejátszási lista
 medium=Közepes
 mode=Mód
 monthly=Havonta

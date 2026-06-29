@@ -81,6 +81,7 @@ lawn_mower=Ruohonleikkuri
 low=Matala
 low_target=Alaraja
 media=Media
+playlist=Soittolista
 medium=Keskitaso
 mode=Tila
 monthly=Kuukausittain

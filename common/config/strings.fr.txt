@@ -81,6 +81,7 @@ lawn_mower=Tondeuse
 low=Bas
 low_target=Cible basse
 media=Média
+playlist=Liste de lecture
 medium=Medium
 mode=Mode
 monthly=Mensuel

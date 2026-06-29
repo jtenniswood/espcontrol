@@ -81,6 +81,7 @@ lawn_mower=Lawn Mower
 low=Low
 low_target=Low target
 media=Media
+playlist=Playlist
 medium=Medium
 mode=Mode
 monthly=Monthly

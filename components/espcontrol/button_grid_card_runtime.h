@@ -126,6 +126,14 @@ constexpr const char *card_runtime_option_name_volume_max() {
   return CARD_CONTRACT_OPTION_NAME_VOLUME_MAX;
 }
 
+constexpr const char *card_runtime_option_name_playlist_content_id() {
+  return CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_ID;
+}
+
+constexpr const char *card_runtime_option_name_playlist_content_type() {
+  return CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_TYPE;
+}
+
 inline bool card_runtime_large_numbers_supported(const std::string &type,
                                                  const std::string &precision) {
   return card_contract_large_numbers_supported(type, precision);

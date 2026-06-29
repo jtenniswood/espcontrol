@@ -445,6 +445,10 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
   std::string mode = media_card_mode(p.sensor);
+  if (mode == "playlist") {
+    setup_media_action_layout(s.btn, s.icon_lbl, s.text_lbl, p);
+    return;
+  }
   if (media_playback_button_mode(mode)) {
     setup_media_action_layout(s.btn, s.icon_lbl, s.text_lbl, p);
     return;

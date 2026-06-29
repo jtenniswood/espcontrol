@@ -81,6 +81,7 @@ lawn_mower=Plæneklipper
 low=Lav
 low_target=Lavt mål
 media=Medie
+playlist=Afspilningsliste
 medium=Medium
 mode=Tilstand
 monthly=Månedligt
