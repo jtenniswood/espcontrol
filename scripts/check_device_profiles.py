@@ -155,30 +155,30 @@ def test_upgrades_do_not_reset_saved_panel_config() -> None:
 
 
 def test_square_s3_reapplies_clock_bar_layout() -> None:
-    slug = "guition-esp32-s3-4848s040"
-    sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
-    device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text(encoding="utf-8")
-    assert (
-        "grid_refresh_layout(slots, cfg,\n"
-        "            id(button_order).state,\n"
-        "            id(main_page)->obj);\n"
-        "      - script.execute: clock_bar_apply"
-    ) in sensors, "S3 grid refresh must reapply clock-bar layout like the working square profile"
-    assert (
-        "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
-        "              id(button_order).state,\n"
-        "              id(button_on_color).state,\n"
-        "              id(main_page)->obj);\n"
-        "        - script.execute: clock_bar_apply"
-    ) in sensors, "S3 boot setup must reapply clock-bar layout after subpages are created"
-    assert (
-        "- script.execute: apply_screen_rotation\n"
-        "        - script.execute: clock_bar_apply"
-    ) in device, "S3 restored rotation must reapply clock-bar layout"
-    assert (
-        "- script.execute: apply_screen_rotation\n"
-        "              - script.execute: clock_bar_apply"
-    ) in device, "S3 rotation changes must reapply clock-bar layout"
+    for slug in ("guition-esp32-s3-4848s040", "waveshare-esp32-s3-touch-lcd-4"):
+        sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+        device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text(encoding="utf-8")
+        assert (
+            "grid_refresh_layout(slots, cfg,\n"
+            "            id(button_order).state,\n"
+            "            id(main_page)->obj);\n"
+            "      - script.execute: clock_bar_apply"
+        ) in sensors, f"{slug}: S3 grid refresh must reapply clock-bar layout like the working square profile"
+        assert (
+            "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
+            "              id(button_order).state,\n"
+            "              id(button_on_color).state,\n"
+            "              id(main_page)->obj);\n"
+            "        - script.execute: clock_bar_apply"
+        ) in sensors, f"{slug}: S3 boot setup must reapply clock-bar layout after subpages are created"
+        assert (
+            "- script.execute: apply_screen_rotation\n"
+            "        - script.execute: clock_bar_apply"
+        ) in device, f"{slug}: S3 restored rotation must reapply clock-bar layout"
+        assert (
+            "- script.execute: apply_screen_rotation\n"
+            "              - script.execute: clock_bar_apply"
+        ) in device, f"{slug}: S3 rotation changes must reapply clock-bar layout"
 
 
 def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:

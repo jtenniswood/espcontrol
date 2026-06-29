@@ -78,6 +78,25 @@
       "subpages": true
     },
     {
+      "slug": "waveshare-esp32-s3-touch-lcd-4",
+      "installSlug": "waveshare-esp32-s3-touch-lcd-4",
+      "name": "Waveshare ESP32-S3-Touch-LCD-4",
+      "docsPath": "/screens/waveshare-lcd-4",
+      "screenSize": "4 inches",
+      "resolution": "480 x 480",
+      "orientation": "Square",
+      "slots": 9,
+      "grid": {
+        "rows": 3,
+        "cols": 3
+      },
+      "chipFamily": "ESP32-S3",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": false,
+      "subpages": true
+    },
+    {
       "slug": "guition-esp32-s3-4848s040",
       "installSlug": "guition-esp32-s3-4848s040",
       "name": "Guition 4848S040",

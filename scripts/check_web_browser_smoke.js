@@ -42,6 +42,7 @@ function casesFromManifest() {
   const sharedFourInchSquareSlugs = new Set([
     "esp32-p4-86",
     "guition-esp32-s3-4848s040",
+    "waveshare-esp32-s3-touch-lcd-4",
   ]);
   return Object.entries(manifest.devices || {}).map(([slug, device]) => {
     const aspect = parseAspect(
