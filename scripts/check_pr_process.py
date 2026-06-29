@@ -16,6 +16,15 @@ DOCS_HEADING = "Documentation decision"
 TESTING_HEADING = "Testing"
 STATUS_HEADING = "PR status"
 REQUIRED_BODY_HEADINGS = (DOCS_HEADING, TESTING_HEADING, STATUS_HEADING)
+TEMPLATE_CHECKLIST_ITEMS = (
+    "Updated public docs or release-facing notes",
+    "No docs needed because this does not change user-visible behavior/configuration",
+    "Docs follow-up needed before merge",
+    "Automated/local checks passed or were run where practical",
+    "Device testing is required before merge",
+    "Device testing is not required",
+    "Ready to merge after user confirmation",
+)
 
 
 def section_text(text: str, heading: str) -> str:
@@ -38,7 +47,14 @@ def has_heading(text: str, heading: str) -> bool:
 
 
 def uses_pr_template(body: str) -> bool:
-    return all(has_heading(body, heading) for heading in REQUIRED_BODY_HEADINGS)
+    heading_count = sum(has_heading(body, heading) for heading in REQUIRED_BODY_HEADINGS)
+    if heading_count == len(REQUIRED_BODY_HEADINGS):
+        return True
+
+    if heading_count >= 2:
+        return True
+
+    return any(item in body for item in TEMPLATE_CHECKLIST_ITEMS)
 
 
 def docs_notes(section: str) -> str:
@@ -234,6 +250,14 @@ Explain the change in plain language.
 - python3 scripts/build.py --check
 """
     assert_pr_body_ready(freeform)
+
+    partial_template = valid.replace("## PR status", "## Next steps")
+    try:
+        assert_pr_body_ready(partial_template)
+    except AssertionError as error:
+        assert "Missing '## PR status' section." in str(error)
+    else:
+        raise AssertionError("self-test expected partial checklist template to fail")
 
     empty_freeform = """
 
