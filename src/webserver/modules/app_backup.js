@@ -39,7 +39,6 @@ function exportConfig() {
       outdoor_temp_entity: state.outdoorEntity,
       temperature_unit: normalizeTemperatureUnit(state.temperatureUnit),
       clock_bar: state.clockBarOn,
-      clock_bar_layout: CLOCK_BAR_FIXED_LAYOUT_STRING,
       clock_bar_time: state.clockBarTimeOn,
       network_status_icon: state.networkStatusOn,
       voice_services: state.voiceServicesOn,
@@ -176,7 +175,6 @@ function importConfig() {
         var importedSettings = EspControlModel.normalizeBackupPanelSettings(s, {
           timezone: state.timezone,
           language: state.language,
-          clockBarLayout: CLOCK_BAR_FIXED_LAYOUT_STRING,
           clockFormat: state.clockFormat,
           clockFormatOptions: state.clockFormatOptions,
           ntpDefaults: NTP_SERVER_DEFAULTS,
@@ -197,8 +195,6 @@ function importConfig() {
         postText(entityName("outdoor_temp_entity"), importedSettings.outdoorTempEntity);
         postText(entityName("indoor_temp_entity"), importedSettings.indoorTempEntity);
         postClockBar(importedSettings.clockBar);
-        applyClockBarLayoutValue(CLOCK_BAR_FIXED_LAYOUT_STRING);
-        postClockBarLayout(CLOCK_BAR_FIXED_LAYOUT_STRING);
         postClockBarTime(importedSettings.clockBarTime);
         postNetworkStatusIcon(importedSettings.networkStatusIcon);
         if (CFG.features && CFG.features.voiceServices) postVoiceServices(importedSettings.voiceServices);

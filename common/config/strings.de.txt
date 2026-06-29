@@ -81,6 +81,7 @@ lawn_mower=Rasenmäher
 low=Niedrig
 low_target=Niedriger Zielwert
 media=Medien
+playlist=Wiedergabeliste
 medium=Medium
 mode=Modus
 monthly=Monatlich

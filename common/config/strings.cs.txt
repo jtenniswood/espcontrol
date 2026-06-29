@@ -81,6 +81,7 @@ lawn_mower=Sekačka
 low=Nízké
 low_target=Nízký cíl
 media=Média
+playlist=Playlist
 medium=Medium
 mode=Režim
 monthly=Měsíčně

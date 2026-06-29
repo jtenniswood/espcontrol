@@ -685,6 +685,20 @@ inline void send_media_playback_action(const std::string &entity_id,
   send_media_player_action(entity_id, media_service_for_mode(mode));
 }
 
+inline void send_media_playlist_action(const ParsedCfg &p) {
+  if (p.entity.empty()) return;
+  std::string content_id = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+  if (content_id.empty()) return;
+  std::string content_type = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
+  if (content_type.empty()) content_type = "playlist";
+  esphome::api::HomeassistantActionRequest req;
+  if (!ha_action_begin(req, "media_player.play_media", false, 3)) return;
+  ha_action_add_entity(req, p.entity);
+  ha_action_add_data(req, "media_content_id", content_id.c_str());
+  ha_action_add_data(req, "media_content_type", content_type.c_str());
+  ha_action_send(req);
+}
+
 inline bool media_fast_press_mode(const std::string &mode) {
   return mode == "previous" || mode == "next";
 }
@@ -863,6 +877,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (mode == "volume") {
       MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_obj_get_user_data(btn_obj);
       if (ctx) media_volume_open_modal(ctx);
+    } else if (mode == "playlist") {
+      send_media_playlist_action(p);
     } else if (mode == "now_playing" && p.precision == "play_pause") {
       send_media_playback_action(p.entity, "play_pause");
     } else if (media_playback_button_mode(mode)) {

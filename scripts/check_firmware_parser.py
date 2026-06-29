@@ -203,71 +203,29 @@ int main() {
   assert(!screen_schedule_clock_bar.reserve_space);
   assert(!screen_schedule_clock_bar.visible);
 
-  auto fallback_clock_bar = parse_clock_bar_layout("bad|unknown:time");
-  assert(fallback_clock_bar.section[CLOCK_BAR_ITEM_TEMPERATURE] == CLOCK_BAR_SECTION_LEFT);
-  assert(fallback_clock_bar.order[CLOCK_BAR_ITEM_TEMPERATURE] == 0);
-  assert(fallback_clock_bar.section[CLOCK_BAR_ITEM_TIME] == CLOCK_BAR_SECTION_MIDDLE);
-  assert(fallback_clock_bar.section[CLOCK_BAR_ITEM_NETWORK] == CLOCK_BAR_SECTION_RIGHT);
-  assert(fallback_clock_bar.order[CLOCK_BAR_ITEM_NETWORK] == 0);
-
-  auto duplicate_clock_bar = parse_clock_bar_layout(
-    " left : temperature , temperature | middle: time | right: network,network,weather ");
-  assert(duplicate_clock_bar.section[CLOCK_BAR_ITEM_TEMPERATURE] == CLOCK_BAR_SECTION_LEFT);
-  assert(duplicate_clock_bar.order[CLOCK_BAR_ITEM_TEMPERATURE] == 0);
-  assert(duplicate_clock_bar.section[CLOCK_BAR_ITEM_TIME] == CLOCK_BAR_SECTION_MIDDLE);
-  assert(duplicate_clock_bar.order[CLOCK_BAR_ITEM_TIME] == 0);
-  assert(duplicate_clock_bar.section[CLOCK_BAR_ITEM_NETWORK] == CLOCK_BAR_SECTION_RIGHT);
-  assert(duplicate_clock_bar.order[CLOCK_BAR_ITEM_NETWORK] == 0);
-
-  auto compact_clock_bar = compact_clock_bar_layout(
-    duplicate_clock_bar, 1, true, false);
-  assert(compact_clock_bar.section[CLOCK_BAR_ITEM_TEMPERATURE] == CLOCK_BAR_SECTION_LEFT);
-  assert(compact_clock_bar.section[CLOCK_BAR_ITEM_NETWORK] == -1);
-  assert(compact_clock_bar.count[CLOCK_BAR_SECTION_LEFT] == 1);
-  assert(compact_clock_bar.count[CLOCK_BAR_SECTION_RIGHT] == 0);
-
   auto clock_bar_entities = parse_clock_bar_temperature_entities(
     " sensor.outdoor | sensor.indoor, sensor.outdoor\nsensor.loft,, ");
   assert(clock_bar_entities.size() == 1);
   assert(clock_bar_entities[0] == "sensor.outdoor");
 
-  set_clock_bar_temperature_value_count(6);
+  set_clock_bar_temperature_value_count(1);
   lv_obj_t temperature_1;
-  lv_obj_t temperature_2;
-  lv_obj_t temperature_3;
-  lv_obj_t temperature_4;
-  lv_obj_t temperature_5;
-  lv_obj_t temperature_6;
   lv_obj_t display_time;
   lv_obj_t network_status_button;
   lv_obj_t *temperature_labels[] = {
     &temperature_1,
-    &temperature_2,
-    &temperature_3,
-    &temperature_4,
-    &temperature_5,
-    &temperature_6,
   };
   lv_obj_move_background_calls = 0;
-  apply_clock_bar_layout(
-    "left:temperature,temperature_2,temperature_3,temperature_4,temperature_5,temperature_6|middle:time|right:network,weather",
-    temperature_labels,
-    6,
+  apply_clock_bar_fixed_layout(
+    &temperature_1,
     &display_time,
     &network_status_button,
-    true, true, true, true,
-    1024, 12, 17, 20, 10, 80, 10);
+    true, true, true,
+    12, 17, 20, 10, 80);
   assert(lv_obj_move_background_calls == 3);
-  assert(lv_obj_has_flag(&temperature_2, LV_OBJ_FLAG_HIDDEN));
-  assert(lv_obj_has_flag(&temperature_6, LV_OBJ_FLAG_HIDDEN));
   hide_clock_bar_top_layer_widgets(
-    temperature_labels, 6, &display_time, &network_status_button);
+    temperature_labels, 1, &display_time, &network_status_button);
   assert(lv_obj_has_flag(&temperature_1, LV_OBJ_FLAG_HIDDEN));
-  assert(lv_obj_has_flag(&temperature_2, LV_OBJ_FLAG_HIDDEN));
-  assert(lv_obj_has_flag(&temperature_3, LV_OBJ_FLAG_HIDDEN));
-  assert(lv_obj_has_flag(&temperature_4, LV_OBJ_FLAG_HIDDEN));
-  assert(lv_obj_has_flag(&temperature_5, LV_OBJ_FLAG_HIDDEN));
-  assert(lv_obj_has_flag(&temperature_6, LV_OBJ_FLAG_HIDDEN));
   assert(lv_obj_has_flag(&display_time, LV_OBJ_FLAG_HIDDEN));
   assert(lv_obj_has_flag(&network_status_button, LV_OBJ_FLAG_HIDDEN));
   set_clock_bar_temperature_value_count(0);
@@ -458,6 +416,12 @@ int main() {
   assert(action_card_state_icon_mode(action_icon));
   assert(!action_card_state_numeric_mode(action_icon));
   assert(!action_card_state_text_mode(action_icon));
+  assert(numeric_state_positive_ref("1"));
+  assert(numeric_state_positive_ref("2"));
+  assert(numeric_state_positive_ref("3.5"));
+  assert(!numeric_state_positive_ref("0"));
+  assert(!numeric_state_positive_ref("-1"));
+  assert(!numeric_state_positive_ref("unknown"));
   auto action_confirm = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F,confirm_yes=Run,confirm_no=Cancel");
   assert(action_script_confirmation_enabled(action_confirm));
   assert(switch_confirmation_message(action_confirm) == "Run bedtime?");

@@ -81,6 +81,7 @@ lawn_mower=Mașină de tuns iarba
 low=Scăzut
 low_target=Țintă scăzută
 media=Media
+playlist=Listă de redare
 medium=Mediu
 mode=Mod
 monthly=Lunar
