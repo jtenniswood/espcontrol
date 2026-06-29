@@ -20,6 +20,7 @@ A Media card controls a Home Assistant `media_player` entity. It can work as a s
    - **Volume Button**
    - **Track Position**
    - **Now Playing**
+   - **Playlist Button**
 3. Enter the media player entity, for example `media_player.living_room`.
 4. Set a label or icon if the selected type shows those fields.
 
@@ -58,6 +59,17 @@ You can choose optional controls:
 - **Play/Pause** makes the card tappable so it toggles playback.
 
 Now Playing works best on wider or larger cards because it has more room for track text.
+
+## Playlist Button
+
+Playlist Button is a generic shortcut for anything Home Assistant can play with `media_player.play_media`. It is not tied to any particular music service.
+
+Enter:
+
+- **Media Content ID / URI** - the ID or URI Home Assistant uses for the playlist, station, album, or favorite.
+- **Media Content Type** - usually `playlist`, but some integrations use values such as `music`, `album`, or `channel`.
+
+To find the right values, browse to the item in Home Assistant's media browser, then test it from Home Assistant developer tools with the `media_player.play_media` action. Once that service call starts the right media, copy the working `media_content_id` and `media_content_type` into EspControl.
 
 ::: info Requires Home Assistant actions
 Media cards send Home Assistant actions from the panel. If tapping a card does nothing, check [Enable Actions](/getting-started/home-assistant-actions).

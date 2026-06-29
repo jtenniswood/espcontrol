@@ -81,6 +81,7 @@ lawn_mower=Grasmaaier
 low=Laag
 low_target=Laag doel
 media=Media
+playlist=Afspeellijst
 medium=Medium
 mode=Modus
 monthly=Maandelijks

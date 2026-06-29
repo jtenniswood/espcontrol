@@ -1405,6 +1405,8 @@ inline void grid_phase2(
         std::string mode = media_card_mode(p.sensor);
         if (mode == "play_pause") {
           subscribe_media_state(s.btn, media_play_pause_show_state(p) ? s.text_lbl : nullptr, p.entity);
+        } else if (mode == "playlist") {
+          subscribe_control_availability(s.btn, s.btn, p.entity);
         } else if (media_playback_button_mode(mode)) {
           subscribe_control_availability(s.btn, s.btn, p.entity);
           // Previous/next are momentary actions and do not reflect player state.
