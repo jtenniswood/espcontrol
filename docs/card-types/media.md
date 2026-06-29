@@ -65,6 +65,8 @@ Now Playing works best on wider or larger cards because it has more room for tra
 
 All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
 
+If the media player exposes sources, such as Sonos **Line-In** or **TV**, All Controls also shows a Sources tab for switching inputs.
+
 ## Playlist Button
 
 Playlist Button is a shortcut for anything Home Assistant can play with the `media_player.play_media` action. It is not tied to Spotify, Music Assistant, Plex, Jellyfin, Sonos, or any other specific music system.

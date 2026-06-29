@@ -107,6 +107,7 @@ nohold=Без утримання
 none=Немає
 no_options=Немає параметрів
 no_presets=Немає пресетів
+no_sources=Немає джерел
 not_available=Недоступно
 off=Вимкнено
 on=Увімкнено

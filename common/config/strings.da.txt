@@ -107,6 +107,7 @@ nohold=Nohold
 none=Ingen
 no_options=Ingen muligheder
 no_presets=Ingen forvalg
+no_sources=Ingen kilder
 not_available=Ikke tilgængelig
 off=Slukket
 on=Tændt

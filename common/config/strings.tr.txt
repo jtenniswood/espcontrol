@@ -107,6 +107,7 @@ nohold=Tutma yok
 none=Yok
 no_options=Seçenek yok
 no_presets=Ön ayar yok
+no_sources=Kaynak yok
 not_available=Mevcut değil
 off=Kapalı
 on=Açık

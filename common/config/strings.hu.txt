@@ -107,6 +107,7 @@ nohold=Nincs tartás
 none=Nincs
 no_options=Nincsenek opciók
 no_presets=Nincsenek előbeállítások
+no_sources=Nincsenek források
 not_available=Nem érhető el
 off=Ki
 on=Be

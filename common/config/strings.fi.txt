@@ -107,6 +107,7 @@ nohold=Ei pitoa
 none=Ei mitään
 no_options=Ei vaihtoehtoja
 no_presets=Ei esiasetuksia
+no_sources=Ei lähteitä
 not_available=Ei saatavilla
 off=Pois
 on=Päällä
