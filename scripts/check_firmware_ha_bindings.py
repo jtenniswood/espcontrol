@@ -1362,6 +1362,79 @@ def firmware_s3_api_errors(
     return errors
 
 
+def firmware_navigation_target_errors(
+    firmware_dir: Path,
+    api_navigate_path: Path,
+    package_paths: tuple[Path, ...],
+    root: Path,
+) -> list[str]:
+    errors: list[str] = []
+    navigation_path = firmware_dir / "button_grid_navigation.h"
+    grid_path = firmware_dir / "button_grid_grid.h"
+
+    if not navigation_path.exists():
+        errors.append("components/espcontrol/button_grid_navigation.h: keep Home Assistant navigation targets available")
+        return errors
+    navigation_rel = navigation_path.relative_to(root)
+    navigation_text = navigation_path.read_text(encoding="utf-8")
+    if "NavigationHomeTargetEntry" not in navigation_text or "navigation_home_targets()" not in navigation_text:
+        errors.append(f"{navigation_rel}: register general home-screen navigation targets")
+    if "navigation_find_label_target" not in navigation_text or "navigation_home_targets()" not in navigation_text:
+        errors.append(f"{navigation_rel}: resolve navigate labels against home-screen cards")
+    if "entry.display_order < best->display_order" not in navigation_text:
+        errors.append(f"{navigation_rel}: choose the first displayed card when labels are duplicated")
+    if "navigation_find_slot_target" not in navigation_text or "entry.slot == slot" not in navigation_text:
+        errors.append(f"{navigation_rel}: resolve slot:n against home-screen card slots")
+    if "navigation_return_home(main_page_obj)" not in navigation_text or "handle_button_click(target->config, target->slot, target->button)" not in navigation_text:
+        errors.append(f"{navigation_rel}: activate navigated home-screen cards through the normal tap handler")
+    if "navigation_is_voice_target" not in navigation_text or '"device_volume"' not in navigation_text:
+        errors.append(f"{navigation_rel}: reserve voice volume navigation aliases")
+    if "normalized == \"home\" || normalized == \"main\"" not in navigation_text:
+        errors.append(f"{navigation_rel}: preserve home/main navigation targets")
+
+    if not grid_path.exists():
+        errors.append("components/espcontrol/button_grid_grid.h: register home-screen navigation targets during grid refresh")
+    else:
+        grid_rel = grid_path.relative_to(root)
+        grid_text = grid_path.read_text(encoding="utf-8")
+        if "navigation_clear_home_targets();" not in grid_text:
+            errors.append(f"{grid_rel}: clear home-screen navigation targets before rebuilding the grid")
+        if "navigation_register_home_target(idx, pos, p.label, scfg, s.btn);" not in grid_text:
+            errors.append(f"{grid_rel}: register every displayed home-screen card for Home Assistant navigation")
+        if "navigation_register_subpage(" not in grid_text:
+            errors.append(f"{grid_rel}: preserve subpage navigation registration")
+
+    if not api_navigate_path.exists():
+        errors.append("common/device/api_navigate.yaml: route voice aliases through the navigate action")
+    else:
+        api_rel = api_navigate_path.relative_to(root)
+        api_text = api_navigate_path.read_text(encoding="utf-8")
+        if "navigation_is_voice_target(target)" not in api_text or "${navigate_voice_target_code}" not in api_text:
+            errors.append(f"{api_rel}: route reserved voice targets through the device-specific voice hook")
+        if "espcontrol_navigate(target, id(main_page)->obj);" not in api_text:
+            errors.append(f"{api_rel}: keep normal navigate targets routed through espcontrol_navigate")
+
+    voice_package_found = False
+    for package_path in package_paths:
+        if not package_path.exists():
+            continue
+        package_rel = package_path.relative_to(root)
+        package_text = package_path.read_text(encoding="utf-8")
+        if "navigate_voice_target_code" not in package_text:
+            errors.append(f"{package_rel}: define a voice-target navigate hook")
+        if package_path.parts[-2] == "esp32-p4-86":
+            voice_package_found = True
+            if "id(open_device_volume_control).execute();" not in package_text:
+                errors.append(f"{package_rel}: open the 86-P4 voice volume modal for voice navigation aliases")
+            if "id(voice_services_enabled).state" not in package_text:
+                errors.append(f"{package_rel}: only open the voice volume modal when Voice Services are enabled")
+        elif "open_device_volume_control" in package_text:
+            errors.append(f"{package_rel}: keep the voice volume modal hook limited to the 86-P4 package")
+    if not voice_package_found:
+        errors.append("devices/esp32-p4-86/packages.yaml: define the voice volume navigate hook")
+    return errors
+
+
 def firmware_todo_disabled_errors(device_paths: tuple[Path, ...], root: Path) -> list[str]:
     errors: list[str] = []
     for path in device_paths:
@@ -1429,6 +1502,7 @@ def run_scan() -> int:
             ROOT,
         )
     )
+    errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_todo_disabled_errors(DEVICE_DEVICE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
     if errors:
@@ -1966,6 +2040,37 @@ def expect_s3_api_errors(
             tuple(package_paths),
             root,
         )
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_navigation_target_errors(
+    name: str,
+    navigation_text: str,
+    grid_text: str,
+    api_text: str,
+    package_texts: dict[str, str],
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        api_path = root / "common" / "device" / "api_navigate.yaml"
+        firmware_dir.mkdir(parents=True)
+        api_path.parent.mkdir(parents=True)
+        (firmware_dir / "button_grid_navigation.h").write_text(navigation_text, encoding="utf-8")
+        (firmware_dir / "button_grid_grid.h").write_text(grid_text, encoding="utf-8")
+        api_path.write_text(api_text, encoding="utf-8")
+        package_paths: list[Path] = []
+        for slug, package_text in package_texts.items():
+            package_path = root / "devices" / slug / "packages.yaml"
+            package_path.parent.mkdir(parents=True)
+            package_path.write_text(package_text, encoding="utf-8")
+            package_paths.append(package_path)
+
+        errors = firmware_navigation_target_errors(firmware_dir, api_path, tuple(package_paths), root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3760,6 +3865,25 @@ def run_self_test() -> int:
         "api:\n  max_connections: 3\n  max_send_queue: 12\n",
         ("include the dedicated Home Assistant navigate API package",),
         extra_packages={"esp32-p4-86": "packages:\n  device: !include device/device.yaml\n"},
+    )
+    expect_navigation_target_errors(
+        "home card navigation targets",
+        "struct NavigationHomeTargetEntry {};\n"
+        "inline auto navigation_home_targets() {}\n"
+        "inline void navigation_find_label_target() { navigation_home_targets(); entry.display_order < best->display_order; }\n"
+        "inline void navigation_find_slot_target() { entry.slot == slot; }\n"
+        "inline bool navigation_is_voice_target() { return normalized == \"device_volume\"; }\n"
+        "inline void navigation_activate_home_target() { navigation_return_home(main_page_obj); handle_button_click(target->config, target->slot, target->button); }\n"
+        "inline void espcontrol_navigate() { normalized == \"home\" || normalized == \"main\"; }\n",
+        "navigation_clear_home_targets();\n"
+        "navigation_register_home_target(idx, pos, p.label, scfg, s.btn);\n"
+        "navigation_register_subpage(\n",
+        "if (navigation_is_voice_target(target)) { ${navigate_voice_target_code} } else { espcontrol_navigate(target, id(main_page)->obj); }\n",
+        {
+            "esp32-p4-86": "navigate_voice_target_code: |-\n  if (id(voice_services_enabled).state) { id(open_device_volume_control).execute(); }\n",
+            "other-p4": "navigate_voice_target_code: |-\n  ESP_LOGW(\"navigation\", \"Voice volume target is not available on this device\");\n",
+        },
+        (),
     )
     expect_connectivity_api_errors(
         "raw api connected navigation",
