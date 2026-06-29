@@ -1026,6 +1026,15 @@ inline void grid_clear_subpage_parent_targets(BtnSlot *slots, int slot_count) {
   }
 }
 
+inline bool grid_subpage_needs_startup_build(const std::string &sp_cfg) {
+  auto sp_btns = parse_subpage_config(sp_cfg);
+  for (const auto &sb : sp_btns) {
+    ParsedCfg sb_cfg = parsed_cfg_from_subpage_btn(sb);
+    if (sb_cfg.type == "climate") return true;
+  }
+  return false;
+}
+
 inline void grid_phase2(
     BtnSlot *slots, const GridConfig &cfg,
     esphome::text::Text **sp_configs,
@@ -1635,6 +1644,7 @@ inline void grid_phase2(
       optional_text_state(sp_ext6_configs, si) +
       optional_text_state(sp_ext7_configs, si);
     if (sp_cfg.empty()) continue;
+    bool build_at_startup = grid_subpage_needs_startup_build(sp_cfg);
 
     LazySubpageRuntimeCtx *lazy_ctx =
       grid_track_runtime_allocation(slots[si].btn, new LazySubpageRuntimeCtx());
@@ -2401,6 +2411,10 @@ inline void grid_phase2(
       normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")),
       nullptr, lazy_ctx);
     lv_obj_set_user_data(slots[si].btn, lazy_ctx);
+    if (build_at_startup) {
+      ESP_LOGI("sensors", "Subpage %d contains heavy controls; building during startup", si + 1);
+      lazy_subpage_screen_from_user_data(lazy_ctx);
+    }
   }
   if (!ha_api_state_connected()) apply_registered_ha_control_availability(false);
   screen_lock_apply();
