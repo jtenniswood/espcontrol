@@ -144,7 +144,6 @@ Docs notes:
 - [x] Automated/local checks passed or were run where practical.
 - [x] Device testing is required before merge.
 - [ ] Device testing is not required; explain why in Notes for testing.
-- [ ] Device tested by user.
 
 Affected display/device, if applicable:
 
