@@ -815,6 +815,32 @@ assert.strictEqual(
   "sensor icon display does not use large numbers"
 );
 
+const legacyTodo = hooks.parseButtonConfig("todo.shopping;Shopping;Check;Auto;;;todo;;large_numbers");
+assert.deepStrictEqual(buttonShape(legacyTodo), buttonShape({
+  entity: "",
+  label: "Shopping",
+  icon: "Check",
+  icon_on: "Auto",
+  sensor: "local",
+  type: "action",
+  options: "",
+}), "legacy todo card config becomes a no-op local action");
+assert.strictEqual(
+  hooks.serializeButtonConfig({
+    entity: "todo.shopping",
+    label: "Shopping",
+    icon: "Check",
+    icon_on: "Auto",
+    sensor: "",
+    unit: "",
+    type: "todo",
+    precision: "",
+    options: "large_numbers",
+  }),
+  ";Shopping;Check;Auto;local;;action",
+  "legacy todo card serialization drops the Home Assistant entity"
+);
+
 const parsedActiveSensor = hooks.parseButtonConfig(";;;;binary_sensor.patio_door;;sensor;text;active_color");
 assert.strictEqual(hooks.sensorActiveColorEnabled(parsedActiveSensor), false, "sensor active colour removed");
 

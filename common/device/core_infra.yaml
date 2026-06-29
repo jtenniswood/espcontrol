@@ -53,7 +53,6 @@ api:
         if (ha_api_state_connected()) {
           ha_flush_deferred_state_requests();
         }
-        todo_reload_active_modal();
     - delay: 8s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
@@ -61,7 +60,6 @@ api:
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
         }
-        todo_reload_active_modal();
     - delay: 20s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
@@ -69,7 +67,6 @@ api:
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
         }
-        todo_reload_active_modal();
   on_client_disconnected:
     - lambda: |-
         ESP_LOGW("api", "API client disconnected: %s", client_info.c_str());
@@ -79,7 +76,6 @@ api:
         }
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
-        todo_cancel_pending_request("api disconnected");
         apply_registered_ha_control_availability(false);
 
 interval:
@@ -89,7 +85,6 @@ interval:
           weather_forecast_cancel_stale_requests();
           weather_forecast_send_next_queued();
           ha_flush_deferred_state_requests();
-          todo_retry_waiting_modal();
 
   - interval: 1h
     then:

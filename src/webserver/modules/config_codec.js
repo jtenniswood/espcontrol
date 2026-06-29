@@ -36,6 +36,16 @@ function normalizeButtonConfig(b) {
     if (b.precision !== "text" && b.precision !== "1" && b.precision !== "2") b.precision = "";
     if (b.precision !== "text" && (!b.icon || b.icon === "Auto")) b.icon = "Auto";
   }
+  if (b && b.type === "todo") {
+    b.type = "action";
+    b.entity = "";
+    b.sensor = ACTION_CARD_LOCAL_ACTION;
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    b.icon_on = "Auto";
+    if (!b.icon || b.icon === "Auto") b.icon = "Check";
+  }
   if (b && b.type === "action" && b.sensor === "vacuum.start") {
     b.type = "vacuum";
     b.sensor = "start_stop";
@@ -201,14 +211,6 @@ function normalizeButtonConfig(b) {
     b.precision = "";
     b.options = normalizeDateTimeOptions("timezone", b.options, b.precision);
   }
-  if (b && b.type === "todo") {
-    b.sensor = "";
-    b.unit = "";
-    b.precision = "";
-    b.icon_on = "Auto";
-    if (!b.icon || b.icon === "Auto") b.icon = "Check";
-    b.options = normalizeTodoOptions(b.options);
-  }
   if (b && b.type === "image") {
     b.icon_on = "Auto";
     b.sensor = "";
@@ -290,7 +292,7 @@ function normalizeButtonConfig(b) {
     if (!b.icon || b.icon === "Auto") b.icon = "Motion Sensor Off";
     if (!b.icon_on || b.icon_on === "Auto") b.icon_on = "Motion Sensor";
     b.options = normalizePresenceOptions(b.options);
-  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "todo" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !isFanCardType(b.type) && !cardLargeNumbersSupported(b)) {
+  } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !isFanCardType(b.type) && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
   return b;
@@ -1365,18 +1367,6 @@ function normalizePresenceOptions(options) {
   return out;
 }
 
-function normalizeTodoCountDisplay(value) {
-  value = String(value || "").trim();
-  return value === "icon" ? "icon" : "count";
-}
-
-function normalizeTodoOptions(options) {
-  var showCount = normalizeTodoCountDisplay(configOptionValue(options, "count_display")) === "count";
-  var out = showCount ? "" : setConfigOptionValue("", "count_display", "icon");
-  if (showCount) out = copyLargeNumbersOption(out, options);
-  return out;
-}
-
 function switchConfirmationEnabled(b) {
   return !!switchConfirmationMode(b);
 }
@@ -1913,6 +1903,8 @@ function trimConfigFields(fields) {
 
 function buttonConfigFields(b) {
   var type = b && b.type || "";
+  var legacyTodo = b && b.type === "todo";
+  if (legacyTodo) type = "action";
   if (b && type === "subpage" && subpageKind(b)) {
     b = EspControlModel.cloneCardConfig(b);
     applySubpagePresetConfig(b);
@@ -1926,6 +1918,7 @@ function buttonConfigFields(b) {
   if (type === "screen_lock") label = "";
   var sensor = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
     (isBrightnessSliderType(type) || type === "calendar" || type === "clock" || type === "climate" || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+  if (legacyTodo) sensor = ACTION_CARD_LOCAL_ACTION;
   if (type === "lock" && sensor !== "lock" && sensor !== "unlock") sensor = "";
   if (b && b.type === "local") sensor = ACTION_CARD_LOCAL_ACTION;
   if (b && (b.type === "local_sensor" || sensorCardIsLocal(b))) sensor = SENSOR_CARD_LOCAL_SENSOR;
@@ -1934,6 +1927,7 @@ function buttonConfigFields(b) {
   if (isLocalAction) unit = "";
   var icon = b && b.icon || "Auto";
   if (isActionOptionSelect && (!icon || icon === "Auto" || icon === "Chevron Down")) icon = "Flash";
+  if (legacyTodo && (!icon || icon === "Auto")) icon = "Check";
   if (isLocalAction && (!icon || icon === "Auto" || icon === "Flash")) icon = "Gesture Tap";
   if (type === "alarm" && (!icon || icon === "Auto")) icon = "Security";
   if (type === "calendar" || type === "clock" || type === "timezone") icon = "Auto";
@@ -1975,19 +1969,17 @@ function buttonConfigFields(b) {
     sensor = "";
     precision = normalizeWeatherCardMode(precision);
   }
-  if (type === "todo") {
-    sensor = "";
-    unit = "";
-    precision = "";
-    iconOn = "Auto";
-    if (!icon || icon === "Auto") icon = "Check";
-  }
   if (type === "image") {
     iconOn = "Auto";
     sensor = "";
     unit = "";
     precision = "";
     if (!imageLabelEnabled(b)) label = "";
+  }
+  if (legacyTodo) {
+    unit = "";
+    precision = "";
+    iconOn = "Auto";
   }
   if (type === "door_window") precision = normalizeDoorWindowSubtype(precision);
   var options = b && b.options || "";
@@ -2022,8 +2014,6 @@ function buttonConfigFields(b) {
     options = normalizeDateTimeOptions(type, options, precision);
   } else if (type === "vacuum" || type === "lawn_mower") {
     options = "";
-  } else if (type === "todo") {
-    options = normalizeTodoOptions(options);
   } else if (type === "sensor") {
     options = sensor === SENSOR_CARD_LOCAL_SENSOR ? "" : normalizeSensorOptions(options, precision);
   } else if (type === "door_window") {
@@ -2080,7 +2070,7 @@ function buttonConfigFields(b) {
     precision = "";
   }
   return trimConfigFields([
-    (type === "door_window" || type === "presence" || type === "screen_lock") ? "" : (b && b.entity || ""),
+    (type === "door_window" || type === "presence" || type === "screen_lock" || legacyTodo) ? "" : (b && b.entity || ""),
     label,
     icon,
     iconOn,

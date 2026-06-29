@@ -424,16 +424,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
         display, s.text_lbl ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr));
     return;
   }
-  if (p.type == "todo") {
-    setup_todo_card(s, p, palette.off_val);
-    if (large_number_square_card_layout(row_span, col_span) &&
-        card_large_numbers_active_for_layout(p, row_span, col_span) &&
-        display_large_sensor_font(display)) {
-      apply_large_sensor_number_style(
-        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
-    }
-    return;
-  }
   if (p.type == "media") {
     setup_media_card(s, p,
       palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
@@ -1375,28 +1365,6 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "todo") {
-      if (!p.entity.empty()) {
-        TodoCardCtx *ctx = create_todo_card_context(
-          s, p,
-          has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          off_val,
-          large_number_square_card_layout(row_span, col_span) &&
-              card_large_numbers_active_for_layout(p, row_span, col_span) &&
-              display_large_sensor_font(display)
-            ? display_large_sensor_font(display) : display_sensor_font(display),
-          lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
-          display_media_title_font_or(
-            display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN)),
-          display_icon_font(display),
-          display_main_width_percent(display),
-          is_1x1_card);
-        grid_track_runtime_allocation(s.btn, ctx);
-        subscribe_todo_state(ctx);
-        subscribe_todo_friendly_name(ctx);
-      }
-      continue;
-    }
     if (p.type == "local") {
       continue;
     }
@@ -2065,32 +2033,6 @@ inline void grid_phase2(
           ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
           if (c) send_webhook_action(*c);
         }, LV_EVENT_CLICKED, ctx);
-        continue;
-      }
-      if (sb_cfg.type == "todo") {
-        if (!sb_cfg.entity.empty()) {
-          TodoCardCtx *ctx = create_todo_card_context(
-            sub_slot, sb_cfg,
-            has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            off_val,
-            large_number_square_card_layout(rs, cs) &&
-                card_large_numbers_active_for_layout(sb_cfg, rs, cs) &&
-                display_large_sensor_font(display)
-              ? display_large_sensor_font(display) : display_sensor_font(display),
-            lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
-            display_media_title_font_or(
-              display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN)),
-            display_icon_font(display),
-            display_main_width_percent(display),
-            card_span_is_single(rs, cs));
-          grid_delete_with_owner(sb_btn, ctx);
-          subscribe_todo_state(ctx);
-          subscribe_todo_friendly_name(ctx);
-          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            TodoCardCtx *ctx = (TodoCardCtx *)lv_event_get_user_data(e);
-            if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
-          }, LV_EVENT_CLICKED, ctx);
-        }
         continue;
       }
       if (sb_cfg.type == "option_select") {
