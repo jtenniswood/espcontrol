@@ -1060,14 +1060,21 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
   await page.locator('.sp-main [data-slot="1"]').click();
   await page.waitForSelector(".sp-selection-bar.sp-visible");
   mobile = await page.evaluate(() => {
+    var header = document.querySelector(".sp-header");
     var bar = document.querySelector(".sp-selection-bar");
     var label = document.querySelector(".sp-selection-label");
     var actions = document.querySelector(".sp-selection-actions");
+    var headerRect = header ? header.getBoundingClientRect() : null;
     var barRect = bar ? bar.getBoundingClientRect() : null;
     var labelRect = label ? label.getBoundingClientRect() : null;
     var actionsRect = actions ? actions.getBoundingClientRect() : null;
     return {
       selectionBarVisible: !!barRect && barRect.width > 1 && barRect.height > 1,
+      selectionBarMatchesHeader:
+        !!headerRect &&
+        !!barRect &&
+        Math.abs(barRect.left - headerRect.left) <= 1 &&
+        Math.abs(barRect.right - headerRect.right) <= 1,
       selectionBarWithinViewport:
         !!barRect &&
         barRect.left >= -1 &&
@@ -1088,6 +1095,10 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
   assert(
     mobile.selectionBarVisible,
     `${label}: mobile card selection bar should be visible after selecting a card`,
+  );
+  assert(
+    mobile.selectionBarMatchesHeader,
+    `${label}: mobile card selection bar should match header width`,
   );
   assert(
     mobile.selectionBarWithinViewport,

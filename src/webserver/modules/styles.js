@@ -174,7 +174,7 @@ var CSS =
   ".sp-hint{text-align:center;font-size:.7rem;color:var(--text3);padding:8px 0 12px;user-select:none}" +
 
   ".sp-selection-bar{display:none;align-items:center;justify-content:space-between;gap:12px;" +
-  "width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;" +
+  "width:100%;max-width:960px;margin:0 auto;box-sizing:border-box;overflow:hidden;" +
   "padding:14px var(--gap);background:var(--surface);" +
   "color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;user-select:none}" +
   ".sp-selection-bar.sp-visible{display:flex}" +
