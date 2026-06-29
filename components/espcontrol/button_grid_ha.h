@@ -41,6 +41,8 @@ inline bool ha_api_state_connected() {
 
 constexpr size_t HA_READ_INTERNAL_FREE_MIN_BYTES = 8 * 1024;
 constexpr size_t HA_READ_INTERNAL_LARGEST_MIN_BYTES = 4 * 1024;
+constexpr size_t HA_RESYNC_INTERNAL_FREE_MIN_BYTES = 24 * 1024;
+constexpr size_t HA_RESYNC_INTERNAL_LARGEST_MIN_BYTES = 8 * 1024;
 constexpr size_t HA_ACTION_INTERNAL_FREE_MIN_BYTES = 12 * 1024;
 constexpr size_t HA_ACTION_INTERNAL_LARGEST_MIN_BYTES = 4 * 1024;
 
@@ -320,8 +322,8 @@ inline bool ha_resync_persistent_subscriptions(size_t max_requests = HA_SUBSCRIP
                                                uint32_t scope = HA_SUBSCRIPTION_SCOPE_ALL) {
   if (ha_state_callback_depth() != 0 || !ha_api_state_connected() || max_requests == 0) return false;
   if (!ha_internal_heap_available("Home Assistant subscription resync",
-                                  HA_READ_INTERNAL_FREE_MIN_BYTES,
-                                  HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return false;
+                                  HA_RESYNC_INTERNAL_FREE_MIN_BYTES,
+                                  HA_RESYNC_INTERNAL_LARGEST_MIN_BYTES)) return false;
 
   std::vector<HaSubscriptionCallbackRef> &refs = ha_subscription_callback_refs();
   if (refs.empty()) return true;
