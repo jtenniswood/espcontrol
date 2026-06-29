@@ -1236,6 +1236,7 @@ async function assertEmptyCellSettings(page, posts, label) {
   const modalOpenState = await page.evaluate(() => ({
     htmlLocked: document.documentElement.classList.contains("sp-settings-open"),
     bodyLocked: document.body.classList.contains("sp-settings-open"),
+    htmlOverflow: getComputedStyle(document.documentElement).overflow,
     bodyOverflow: getComputedStyle(document.body).overflow,
     documentScrollWidth: document.documentElement.scrollWidth,
     windowWidth: window.innerWidth,
@@ -1243,6 +1244,11 @@ async function assertEmptyCellSettings(page, posts, label) {
   assert(
     modalOpenState.htmlLocked && modalOpenState.bodyLocked,
     `${label}: opening card settings should lock background page scrolling`,
+  );
+  assert.strictEqual(
+    modalOpenState.htmlOverflow,
+    "hidden",
+    `${label}: settings modal should hide root page overflow while open`,
   );
   assert.strictEqual(
     modalOpenState.bodyOverflow,
