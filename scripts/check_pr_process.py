@@ -58,11 +58,12 @@ def uses_pr_template(body: str) -> bool:
     if heading_count >= 2:
         return True
 
-    return any(
+    template_checklist_count = sum(
         template_item in item
         for item in checklist_items(body)
         for template_item in TEMPLATE_CHECKLIST_ITEMS
     )
+    return template_checklist_count >= 2
 
 
 def docs_notes(section: str) -> str:
@@ -268,6 +269,16 @@ Device testing is not required because this only changes docs.
 - Reviewed the wording locally.
 """
     assert_pr_body_ready(freeform_with_template_words)
+
+    freeform_with_template_checkbox = """## Purpose
+
+Documentation-only wording change.
+
+## Testing
+
+- [x] Device testing is not required because this only changes docs.
+"""
+    assert_pr_body_ready(freeform_with_template_checkbox)
 
     partial_template = valid.replace("## PR status", "## Next steps")
     try:
