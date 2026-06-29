@@ -1622,6 +1622,11 @@ inline bool parse_float_ref(esphome::StringRef value, float &out) {
   return end != value.c_str();
 }
 
+inline bool numeric_state_positive_ref(esphome::StringRef state) {
+  float value = 0.0f;
+  return parse_float_ref(state, value) && std::isfinite(value) && value > 0.0f;
+}
+
 inline bool is_entity_on_ref(esphome::StringRef state) {
   std::string value = normalized_state_text(state);
   return value == "on" || value == "true" || value == "1" ||

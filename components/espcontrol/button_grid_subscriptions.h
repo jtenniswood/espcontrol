@@ -454,7 +454,10 @@ inline void subscribe_action_card_display_state(ActionCardStateCtx *ctx,
     std::function<void(esphome::StringRef)>([ctx, entity_id](esphome::StringRef state) {
       bool unavailable = ha_entity_state_unavailable_ref(entity_id, state);
       ctx->state_available = !unavailable;
-      set_card_checked_state(ctx->btn, !unavailable && is_entity_on_ref(state));
+      bool active = !unavailable && (ctx->show_numeric_state
+        ? numeric_state_positive_ref(state)
+        : is_entity_on_ref(state));
+      set_card_checked_state(ctx->btn, active);
       apply_action_card_display_value(ctx, state, unavailable);
       apply_action_card_availability(ctx);
     })

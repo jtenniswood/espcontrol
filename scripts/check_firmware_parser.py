@@ -458,6 +458,12 @@ int main() {
   assert(action_card_state_icon_mode(action_icon));
   assert(!action_card_state_numeric_mode(action_icon));
   assert(!action_card_state_text_mode(action_icon));
+  assert(numeric_state_positive_ref("1"));
+  assert(numeric_state_positive_ref("2"));
+  assert(numeric_state_positive_ref("3.5"));
+  assert(!numeric_state_positive_ref("0"));
+  assert(!numeric_state_positive_ref("-1"));
+  assert(!numeric_state_positive_ref("unknown"));
   auto action_confirm = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F,confirm_yes=Run,confirm_no=Cancel");
   assert(action_script_confirmation_enabled(action_confirm));
   assert(switch_confirmation_message(action_confirm) == "Run bedtime?");

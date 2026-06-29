@@ -101,7 +101,7 @@ Show State has three display modes:
 - **Numeric** — shows a live sensor value, with optional **Unit**, **Unit Precision**, and **Large State Numbers** on larger cards.
 - **Text** — shows the live state text where the card label normally appears.
 
-When the state entity is active, Icon mode highlights the card. If the state entity is unavailable, the card is disabled until Home Assistant reports it as available again. The action target itself stays tappable because many Home Assistant command-only entities, including `button.*` entities, do not report a useful on/off state.
+When the state entity is active, Icon mode highlights the card. Numeric mode highlights the card when the live value is greater than zero, which is useful for counters and count-based indicators. If the state entity is unavailable, the card is disabled until Home Assistant reports it as available again. The action target itself stays tappable because many Home Assistant command-only entities, including `button.*` entities, do not report a useful on/off state.
 
 ## How It Works on the Panel
 
