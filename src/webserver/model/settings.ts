@@ -154,6 +154,8 @@ export interface BackupScreenSettingsState {
   scheduleOnHour: number;
   scheduleOffHour: number;
   scheduleMode: string;
+  schedulePresenceDetectedMode: string;
+  schedulePresenceNotDetectedMode: string;
   scheduleWakeTimeout: number;
   scheduleWakeBrightness: number;
   scheduleDimmedBrightness: number;
@@ -189,6 +191,16 @@ export function normalizeBackupScreenSettings(
     scheduleOnHour: normalizeHour(screenSettings.schedule_on_hour, 6),
     scheduleOffHour: normalizeHour(screenSettings.schedule_off_hour, 23),
     scheduleMode: normalizeScheduleMode(screenSettings.schedule_mode),
+    schedulePresenceDetectedMode: normalizeScheduleMode(
+      objectValue(screenSettings, "schedule_presence_detected_mode") != null
+        ? screenSettings.schedule_presence_detected_mode
+        : current.schedulePresenceDetectedMode,
+    ),
+    schedulePresenceNotDetectedMode: normalizeScheduleMode(
+      objectValue(screenSettings, "schedule_presence_not_detected_mode") != null
+        ? screenSettings.schedule_presence_not_detected_mode
+        : current.schedulePresenceNotDetectedMode,
+    ),
     scheduleWakeTimeout: normalizeScheduleWakeTimeout(screenSettings.schedule_wake_timeout),
     scheduleWakeBrightness: normalizeScheduleWakeBrightness(
       objectValue(screenSettings, "schedule_wake_brightness") != null

@@ -356,6 +356,24 @@ var ENTITY_CATALOG = {
         "screen__schedule_mode"
       ]
     },
+    "screen_schedule_presence_detected_mode": {
+      "domain": "select",
+      "name": "Screen: Schedule Presence Detected Mode",
+      "objectIds": [
+        "screen__schedule_presence_detected_mode",
+        "screen_schedule_presence_detected_mode",
+        "schedule_presence_detected_mode"
+      ]
+    },
+    "screen_schedule_presence_not_detected_mode": {
+      "domain": "select",
+      "name": "Screen: Schedule Presence Not Detected Mode",
+      "objectIds": [
+        "screen__schedule_presence_not_detected_mode",
+        "screen_schedule_presence_not_detected_mode",
+        "schedule_presence_not_detected_mode"
+      ]
+    },
     "screen_schedule_on_hour": {
       "domain": "number",
       "name": "Screen: Schedule On Hour",
@@ -553,6 +571,8 @@ var ENTITY_CATALOG = {
       "screen_schedule_enabled",
       "screen_schedule_trigger",
       "screen_schedule_mode",
+      "screen_schedule_presence_detected_mode",
+      "screen_schedule_presence_not_detected_mode",
       "screen_schedule_on_hour",
       "screen_schedule_off_hour",
       "screen_schedule_wake_timeout",

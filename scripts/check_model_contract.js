@@ -182,6 +182,8 @@ assert.deepStrictEqual(
     scheduleDimmedBrightness: 12,
     scheduleClockBrightness: 40,
     scheduleClockTextColor: "ABCDEF",
+    schedulePresenceDetectedMode: "screen_dimmed",
+    schedulePresenceNotDetectedMode: "clock",
   })),
   {
     brightnessDayVal: 88,
@@ -194,6 +196,8 @@ assert.deepStrictEqual(
     scheduleOnHour: 7,
     scheduleOffHour: 22,
     scheduleMode: "clock",
+    schedulePresenceDetectedMode: "screen_dimmed",
+    schedulePresenceNotDetectedMode: "clock",
     scheduleWakeTimeout: 30,
     scheduleWakeBrightness: 70,
     scheduleDimmedBrightness: 12,

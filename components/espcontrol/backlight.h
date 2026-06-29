@@ -190,6 +190,17 @@ inline bool screen_schedule_sensor_trigger(const std::string &trigger) {
   return trigger == "Sensor" || trigger == "sensor";
 }
 
+inline std::string screen_schedule_effective_mode(const std::string &trigger,
+                                                  bool presence_detected,
+                                                  const std::string &time_mode,
+                                                  const std::string &presence_detected_mode,
+                                                  const std::string &presence_not_detected_mode) {
+  if (screen_schedule_sensor_trigger(trigger)) {
+    return presence_detected ? presence_detected_mode : presence_not_detected_mode;
+  }
+  return time_mode;
+}
+
 inline bool screen_schedule_disabled_trigger(const std::string &trigger) {
   return trigger == "Disabled" || trigger == "disabled" || trigger == "Off" ||
          trigger == "off";

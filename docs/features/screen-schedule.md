@@ -8,14 +8,15 @@ description:
 
 Screen schedule controls what the panel does overnight, then returns it to normal when the schedule says it should be available again.
 
-You will find it in the **Settings** tab on the [Setup](/features/setup) page, under **Screen Schedule**.
+You will find it in the **Settings** tab on the [Setup](/features/setup) page, under **Night Schedule**.
 
 ## Settings
 
 - **Mode** - choose **Disabled**, **Time**, or **Sensor**. Time uses the daytime and night-time hours. Sensor uses the configured presence entity to decide when the panel is in normal or night mode.
 - **Daytime** - the first hour when the screen should be awake. The default is **6:00 AM**.
 - **Night Time** - the first hour when the night schedule starts. The default is **11:00 PM**.
-- **At Night Time** - what the panel should do overnight. **Screen Off** is the default, **Screen Dimmed** keeps the panel usable at a set brightness, and **Clock** shows the clock instead. Screen Off can protect the LCD in the background while the backlight stays off.
+- **At Night Time** - in **Time** mode, what the panel should do overnight. **Screen Off** is the default, **Screen Dimmed** keeps the panel usable at a set brightness, and **Clock** shows the clock instead. Screen Off can protect the LCD in the background while the backlight stays off.
+- **When presence is detected** and **When presence is not detected** - in **Sensor** mode, choose the screen action for each presence state. Both menus offer **Screen Off**, **Screen Dimmed**, and **Clock**.
 - **When Woken, Idle Time to Screen Off** - shown only for **Screen Off**. It controls how long the screen stays awake after you tap it during scheduled-off hours. The default is **1 minute**.
 - **When Woken, Screen Brightness** - shown only for **Screen Off**. It controls the brightness used for a temporary wake during scheduled-off hours. The default is **10%**.
 - **Dimmed Screen Brightness** - shown only for **Screen Dimmed**. It controls the overnight brightness while the panel stays usable. The default is **10%**.
