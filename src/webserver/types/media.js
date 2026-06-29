@@ -350,6 +350,7 @@ registerButtonType("media", {
     }
 
     if (b.sensor !== "now_playing" &&
+        b.sensor !== "playlist" &&
         (b.sensor !== "play_pause" || b.precision !== "state") &&
         (b.sensor !== "position" || b.precision !== "state")) {
       helpers.renderCardTextField(panel, b, helpers, {
@@ -413,6 +414,14 @@ registerButtonType("media", {
       hint.className = "sp-field-hint";
       hint.textContent = "Find these values by testing media_player.play_media in Home Assistant developer tools.";
       panel.appendChild(hint);
+
+      helpers.renderCardTextField(panel, b, helpers, {
+        label: "Label",
+        idSuffix: "label",
+        field: "label",
+        placeholder: "e.g. Morning Playlist",
+        rerender: true,
+      });
     }
 
     if (b.sensor !== "play_pause" && b.sensor !== "now_playing" &&
