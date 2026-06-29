@@ -94,7 +94,6 @@ function buildSettingsPage(parent) {
 
   var appearBody = document.createElement("div");
 
-  appearBody.appendChild(fieldLabel("Primary"));
   var onColor = colorField("sp-set-on-color", DEFAULT_COLOR_PRESET.on, function (hex) {
     postText(entityName("button_on_color"), hex);
   });
