@@ -108,8 +108,12 @@ function mediaPlaylistContentIdPlaceholder() {
   return "e.g. spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO";
 }
 
-function mediaPlaylistContentTypeOptions(currentValue) {
-  var options = [
+function mediaPlaylistContentTypeKnown(value) {
+  return mediaPlaylistContentTypeOptions().some(function (option) { return option[0] === value; });
+}
+
+function mediaPlaylistContentTypeOptions() {
+  return [
     ["playlist", "Playlist"],
     ["music", "Music"],
     ["album", "Album"],
@@ -123,12 +127,8 @@ function mediaPlaylistContentTypeOptions(currentValue) {
     ["movie", "Movie"],
     ["app", "App"],
     ["url", "URL"],
+    ["__custom", "Custom"],
   ];
-  currentValue = String(currentValue || "").trim();
-  if (currentValue && !options.some(function (option) { return option[0] === currentValue; })) {
-    options.push([currentValue, "Custom: " + currentValue]);
-  }
-  return options;
 }
 
 registerButtonType("media", {
@@ -428,14 +428,40 @@ registerButtonType("media", {
       var contentTypeField = helpers.selectField(
         "Media Content Type",
         helpers.idPrefix + "playlist-content-type",
-        mediaPlaylistContentTypeOptions(playlistContentType),
-        playlistContentType);
+        mediaPlaylistContentTypeOptions(),
+        mediaPlaylistContentTypeKnown(playlistContentType) ? playlistContentType : "__custom");
       panel.appendChild(contentTypeField.field);
+
+      var customContentTypeField = helpers.textField(
+        "Custom Media Content Type",
+        helpers.idPrefix + "playlist-content-type-custom",
+        mediaPlaylistContentTypeKnown(playlistContentType) ? "" : playlistContentType,
+        "e.g. favorite",
+        "",
+        false);
+      panel.appendChild(customContentTypeField.field);
+
+      function updateCustomContentTypeVisibility() {
+        customContentTypeField.field.hidden = contentTypeField.select.value !== "__custom";
+      }
+
       contentTypeField.select.addEventListener("change", function () {
-        setMediaPlaylistContentType(b, contentTypeField.select.value);
-        contentTypeField.select.value = mediaPlaylistContentType(b);
+        if (contentTypeField.select.value === "__custom") {
+          setMediaPlaylistContentType(b, customContentTypeField.input.value);
+        } else {
+          setMediaPlaylistContentType(b, contentTypeField.select.value);
+        }
+        helpers.saveField("options", b.options);
+        updateCustomContentTypeVisibility();
+      });
+      customContentTypeField.input.addEventListener("change", function () {
+        setMediaPlaylistContentType(b, customContentTypeField.input.value);
+        customContentTypeField.input.value = mediaPlaylistContentTypeKnown(mediaPlaylistContentType(b))
+          ? "" : mediaPlaylistContentType(b);
         helpers.saveField("options", b.options);
       });
+      updateCustomContentTypeVisibility();
+
       helpers.renderCardTextField(panel, b, helpers, {
         label: "Label",
         idSuffix: "label",

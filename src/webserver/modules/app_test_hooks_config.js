@@ -89,6 +89,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     mediaPlaylistContentId: mediaPlaylistContentId,
     mediaPlaylistContentType: mediaPlaylistContentType,
     mediaPlaylistContentTypeOptions: mediaPlaylistContentTypeOptions,
+    mediaPlaylistContentTypeKnown: mediaPlaylistContentTypeKnown,
     setMediaPlaylistContentId: setMediaPlaylistContentId,
     setMediaPlaylistContentType: setMediaPlaylistContentType,
     imageRefreshIntervalValues: imageRefreshIntervalValues,

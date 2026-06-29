@@ -435,15 +435,11 @@ assert.strictEqual(hooks.mediaStateDisplayModeSupported("position"), true, "medi
 assert.strictEqual(hooks.mediaStateDisplayModeSupported("volume"), false, "media state display rejects volume mode");
 assert.deepStrictEqual(
   Array.from(hooks.mediaPlaylistContentTypeOptions()).map((option) => option[0]),
-  ["playlist", "music", "album", "artist", "track", "channel", "episode", "podcast", "tvshow", "video", "movie", "app", "url"],
+  ["playlist", "music", "album", "artist", "track", "channel", "episode", "podcast", "tvshow", "video", "movie", "app", "url", "__custom"],
   "media playlist content type dropdown includes common Home Assistant media types"
 );
-const customPlaylistContentTypeOptions = Array.from(hooks.mediaPlaylistContentTypeOptions("favorite"));
-assert.deepStrictEqual(
-  Array.from(customPlaylistContentTypeOptions[customPlaylistContentTypeOptions.length - 1]),
-  ["favorite", "Custom: favorite"],
-  "media playlist content type dropdown preserves saved custom types"
-);
+assert.strictEqual(hooks.mediaPlaylistContentTypeKnown("playlist"), true, "media playlist recognizes known content types");
+assert.strictEqual(hooks.mediaPlaylistContentTypeKnown("favorite"), false, "media playlist custom content types use the custom field");
 const playlistOptions = { sensor: "playlist" };
 hooks.setMediaPlaylistContentId(playlistOptions, "media-source://music/morning,mix");
 hooks.setMediaPlaylistContentType(playlistOptions, "music");
