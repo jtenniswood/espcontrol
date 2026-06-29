@@ -15,8 +15,6 @@ export function normalizeClockBarTemperatureEntities(value: unknown): string[] {
   return out.slice(0, 1);
 }
 
-export const CLOCK_BAR_FIXED_LAYOUT = "left:temperature|middle:time|right:voice,network";
-
 export function normalizeLanguage(value: unknown): string {
   const language = String(value == null ? "" : value).trim().toLowerCase();
   return language || "en";
@@ -219,7 +217,6 @@ export function normalizeBackupScreenSettings(
 export interface BackupPanelSettingsCurrent {
   timezone: string;
   language: string;
-  clockBarLayout: string;
   clockFormat: string;
   clockFormatOptions: readonly string[];
   ntpDefaults: readonly string[];
@@ -237,7 +234,6 @@ export interface BackupPanelSettingsState {
   outdoorTempEntity: string;
   clockBarTemperatureEntities: string[];
   clockBar: boolean;
-  clockBarLayout: string;
   clockBarTime: boolean;
   networkStatusIcon: boolean;
   voiceServices: boolean;
@@ -328,7 +324,6 @@ export function normalizeBackupPanelSettings(
     outdoorTempEntity: clockBarTemperatureEntities[0] || "",
     clockBarTemperatureEntities,
     clockBar: objectValue(settings, "clock_bar") != null ? !!settings.clock_bar : false,
-    clockBarLayout: CLOCK_BAR_FIXED_LAYOUT,
     clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
     networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
     voiceServices: objectValue(settings, "voice_services") != null ? !!settings.voice_services : false,

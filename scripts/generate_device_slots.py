@@ -612,8 +612,6 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);")
     lines.append("            apply_width_compensation(id(display_time), cfg.width_compensation_percent);")
     lines.append("            apply_width_compensation(id(temperatures), cfg.width_compensation_percent);")
-    for index in range(2, 7):
-        lines.append(f"            apply_width_compensation(id(temperature_{index}), cfg.width_compensation_percent);")
     lines.append("            apply_width_compensation(id(clock_label), cfg.width_compensation_percent);")
     return lines
 
@@ -859,6 +857,11 @@ def replace_sensor_blocks(text: str, device: dict) -> str:
         r"            id\(sensor_card_color\)\.state,\n"
         r"            id\(main_page\)->obj\);$",
         "            id(button_on_color).state,\n            id(main_page)->obj);",
+        text,
+    )
+    text = re.sub(
+        r"(?m)^(              temperature_labels,\n)              6,",
+        r"\1              1,",
         text,
     )
     return text

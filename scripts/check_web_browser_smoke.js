@@ -2013,11 +2013,6 @@ async function assertClockBarEditorSmoke(page, posts, label) {
     `${label}: clock bar add controls are removed`,
   );
   assert.strictEqual(
-    await page.locator('[data-clockbar-item="temperature_2"]').count(),
-    0,
-    `${label}: extra temperature mini cards are not rendered`,
-  );
-  assert.strictEqual(
     await page.locator("#sp-clockbar-add-type").count(),
     0,
     `${label}: add-item selector is not present`,

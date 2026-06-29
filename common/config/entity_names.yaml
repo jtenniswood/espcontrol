@@ -27,7 +27,6 @@ substitutions:
   entity_indoor_temp_enable: "Indoor Temp Enable"
   entity_outdoor_temp_enable: "Outdoor Temp Enable"
   entity_screen_clock_bar: "Screen: Clock Bar"
-  entity_screen_clock_bar_layout: "Screen: Clock Bar Layout"
   entity_screen_clock_bar_time: "Screen: Clock Bar Time"
   entity_clock_bar_temperature_entities: "Clock Bar: Temperature Entities"
   entity_screen_network_status_icon: "Screen: Network Status Icon"

@@ -177,7 +177,6 @@ var state = {
   updateFreqOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
   configLocked: false,
   configLockReason: "",
-  clockBarLayout: null,
   clockBarDragItem: "",
   clockBarTempRestoreIndoor: false,
   clockBarTempRestoreOutdoor: true,
@@ -337,12 +336,6 @@ function clockBarTemperatureUnitSymbol() {
 }
 
 var MAX_CLOCK_BAR_TEMPERATURES = 1;
-var CLOCK_BAR_FIXED_LAYOUT_STRING = "left:temperature|middle:time|right:voice,network";
-var CLOCK_BAR_FIXED_LAYOUT = {
-  left: ["temperature"],
-  middle: ["time"],
-  right: ["voice", "network"],
-};
 
 function defaultClockBarTemperatureEntity(index) {
   if (index === 0) return "sensor.outdoor_temperature";
