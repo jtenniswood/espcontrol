@@ -965,8 +965,7 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(cover_art_screensaver_active) &&
-                     id(cover_art_screensaver_enabled).state &&
+              return id(cover_art_screensaver_enabled).state &&
                      id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active));
@@ -1038,6 +1037,8 @@ script:
             if (id(cover_art_screensaver_active) &&
                 (!id(cover_art_image_available) || id(cover_art_refresh_needed))) {
               id(cover_art_deferred_download).execute();
+            } else if (!id(cover_art_screensaver_active) && id(cover_art_refresh_needed)) {
+              ESP_LOGI("cover_art", "Cached artwork refresh staged while inactive");
             }
             return;
           }
@@ -1054,6 +1055,8 @@ script:
           if (id(cover_art_screensaver_active)) {
             id(cover_art_deferred_download).execute();
             id(cover_art_show_track_overlay).execute();
+          } else {
+            ESP_LOGI("cover_art", "Cached artwork URL staged while inactive");
           }
 
   - id: cover_art_prepare_download
@@ -1498,6 +1501,12 @@ script:
           }
 
           if (id(cover_art_refresh_needed) && !id(cover_art_url).empty()) {
+            if (id(cover_art_image_available) || !id(cover_art_loaded_url).empty()) {
+              ESP_LOGI("cover_art", "No updated artwork URL yet; keeping current artwork visible");
+              id(cover_art_deferred_download).execute();
+              id(cover_art_show_track_overlay).execute();
+              return;
+            }
             ESP_LOGI("cover_art", "No artwork URL available for refreshed track; clearing current artwork");
             id(cover_art_url).clear();
             id(cover_art_download_url).clear();
@@ -1913,11 +1922,20 @@ script:
 
               std::string &cached = local ? id(cover_art_cached_local_url) : id(cover_art_cached_remote_url);
               if (cached == url) {
-                ESP_LOGI("cover_art", "Artwork %s unchanged (%u chars, url %u chars, active=%s)",
+                const bool process_cached =
+                    !url.empty() &&
+                    (id(cover_art_screensaver_active) ||
+                     id(cover_art_refresh_needed) ||
+                     url != id(cover_art_url));
+                ESP_LOGI("cover_art", "Artwork %s unchanged (%u chars, url %u chars, active=%s, refresh_needed=%s)",
                          local ? "entity_picture_local" : "entity_picture",
                          (unsigned) path.size(), (unsigned) url.size(),
-                         id(cover_art_screensaver_active) ? "true" : "false");
-                if (!url.empty() && id(cover_art_screensaver_active)) {
+                         id(cover_art_screensaver_active) ? "true" : "false",
+                         id(cover_art_refresh_needed) ? "true" : "false");
+                if (process_cached) {
+                  if (!id(cover_art_screensaver_active) && id(cover_art_refresh_needed)) {
+                    ESP_LOGI("cover_art", "Reprocessing unchanged artwork because refresh is pending");
+                  }
                   id(cover_art_process_cached_artwork).execute();
                 }
                 return;
@@ -1936,7 +1954,7 @@ script:
                        (unsigned) path.size(), (unsigned) url.size(),
                        id(cover_art_screensaver_active) ? "true" : "false");
 
-              if (id(cover_art_screensaver_active)) {
+              if (id(cover_art_screensaver_active) || id(cover_art_refresh_needed)) {
                 id(cover_art_process_cached_artwork).execute();
               }
             };
