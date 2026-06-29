@@ -68,6 +68,8 @@ def voice_substitution_lines(device: dict) -> list[str]:
         return [
             '  voice_clock_bar_hide_code: ""',
             '  voice_clock_bar_apply_code: ""',
+            "  navigate_voice_target_code: |-",
+            '    ESP_LOGW("navigation", "Voice volume target is not available on this device");',
             '  voice_interaction_active_condition: "false"',
         ]
     return [
@@ -88,6 +90,12 @@ def voice_substitution_lines(device: dict) -> list[str]:
         "                                  LV_PART_MAIN);",
         "    } else {",
         "      lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "    }",
+        "  navigate_voice_target_code: |-",
+        "    if (id(voice_services_enabled).state) {",
+        "      id(open_device_volume_control).execute();",
+        "    } else {",
+        '      ESP_LOGW("navigation", "Voice volume target is not available while Voice Services are disabled");',
         "    }",
         '  voice_interaction_active_condition: "id(voice_interaction_active)"',
     ]

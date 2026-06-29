@@ -81,6 +81,7 @@ lawn_mower=Kosačka
 low=Nízke
 low_target=Nízky cieľ
 media=Médiá
+playlist=Zoznam skladieb
 medium=Medium
 mode=Režim
 monthly=Mesačne
