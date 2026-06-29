@@ -70,6 +70,13 @@ api:
           ha_flush_deferred_state_requests();
         }
         todo_reload_active_modal();
+    - delay: 25s
+    - lambda: |-
+        if (ha_api_state_connected()) {
+          refresh_weather_forecast_cards();
+          ha_flush_deferred_state_requests();
+        }
+        todo_reload_active_modal();
   on_client_disconnected:
     - lambda: |-
         ESP_LOGW("api", "API client disconnected: %s", client_info.c_str());

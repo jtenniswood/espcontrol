@@ -581,7 +581,7 @@ def firmware_weather_reconnect_errors(core_infra_path: Path, root: Path) -> list
         if "ha_api_state_connected()" not in guard_window:
             errors.append(f"{core_rel}: wait for Home Assistant state readiness before forecast reconnect refreshes")
             break
-    if "refresh_weather_forecast_cards();" in body and "delay: 20s" not in body:
+    if "refresh_weather_forecast_cards();" in body and ("delay: 20s" not in body or "delay: 25s" not in body):
         errors.append(f"{core_rel}: retry weather forecast refresh after slow S3 reconnects")
     return errors
 
@@ -2940,12 +2940,26 @@ def run_self_test() -> int:
         ("retry weather forecast refresh",),
     )
     expect_weather_reconnect_errors(
-        "guarded weather reconnect refresh with delayed retry",
+        "guarded weather reconnect refresh missing late retry",
         "api:\n"
         "  on_client_connected:\n"
         "    - lambda: |-\n"
         "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n"
         "    - delay: 20s\n"
+        "    - lambda: |-\n"
+        "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n",
+        ("retry weather forecast refresh",),
+    )
+    expect_weather_reconnect_errors(
+        "guarded weather reconnect refresh with delayed retries",
+        "api:\n"
+        "  on_client_connected:\n"
+        "    - lambda: |-\n"
+        "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n"
+        "    - delay: 20s\n"
+        "    - lambda: |-\n"
+        "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n"
+        "    - delay: 25s\n"
         "    - lambda: |-\n"
         "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n",
         (),
