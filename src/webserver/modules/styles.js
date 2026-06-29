@@ -174,8 +174,8 @@ var CSS =
   ".sp-hint{text-align:center;font-size:.7rem;color:var(--text3);padding:8px 0 12px;user-select:none}" +
 
   ".sp-selection-bar{display:none;align-items:center;justify-content:space-between;gap:12px;" +
-  "margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);box-sizing:border-box;" +
-  "padding:14px max(var(--gap),calc((100vw - 960px)/2 + var(--gap)));background:var(--surface);" +
+  "width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;" +
+  "padding:14px var(--gap);background:var(--surface);" +
   "color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;user-select:none}" +
   ".sp-selection-bar.sp-visible{display:flex}" +
   ".sp-selection-label{font-size:.85rem;color:var(--text2);margin-right:auto;min-width:0;" +
