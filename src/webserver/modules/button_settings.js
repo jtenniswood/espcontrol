@@ -2,6 +2,14 @@
 
 function hideSettingsOverlay() {
   if (els.settingsOverlay) els.settingsOverlay.classList.remove("sp-visible");
+  document.documentElement.classList.remove("sp-settings-open");
+  document.body.classList.remove("sp-settings-open");
+}
+
+function showSettingsOverlay() {
+  if (els.settingsOverlay) els.settingsOverlay.classList.add("sp-visible");
+  document.documentElement.classList.add("sp-settings-open");
+  document.body.classList.add("sp-settings-open");
 }
 
 function updatePreviewHint(c) {
@@ -188,7 +196,7 @@ function openClockBarTemperatureSettings() {
   if (!container) return;
   state.clockBarSelectedItem = "temperature";
   container.innerHTML = "";
-  if (els.settingsOverlay) els.settingsOverlay.classList.add("sp-visible");
+  showSettingsOverlay();
 
   var title = document.createElement("div");
   title.className = "sp-section-title";
@@ -260,7 +268,7 @@ function openCardSettings(slot) {
 
 function renderBackButtonSettings(container, c) {
   if (!c.isSub || c.selected[0] !== -2) return false;
-  if (els.settingsOverlay) els.settingsOverlay.classList.add("sp-visible");
+  showSettingsOverlay();
   var sp = getSubpage(state.editingSubpage);
 
   var title = document.createElement("div");
@@ -333,7 +341,7 @@ function renderButtonSettings(forceOpen) {
     return;
   }
 
-  if (els.settingsOverlay) els.settingsOverlay.classList.add("sp-visible");
+  showSettingsOverlay();
 
   if (renderBackButtonSettings(container, c)) return;
 
