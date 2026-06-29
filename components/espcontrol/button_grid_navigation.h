@@ -19,6 +19,7 @@ struct NavigationSubpageEntry {
   int display_order = 0;
   std::string kind;
   lv_obj_t *screen = nullptr;
+  LazySubpageRuntimeCtx *lazy = nullptr;
 };
 
 inline std::vector<NavigationHomeTargetEntry> &navigation_home_targets() {
@@ -104,8 +105,11 @@ inline void navigation_clear_home_targets() {
 inline void navigation_clear_subpages() {
   lv_obj_t *active = lv_scr_act();
   for (auto &entry : navigation_subpages()) {
-    if (entry.screen != nullptr && entry.screen != active) {
-      lv_obj_del(entry.screen);
+    lv_obj_t *screen = entry.screen;
+    if (screen == nullptr && entry.lazy != nullptr) screen = entry.lazy->screen;
+    if (screen != nullptr && screen != active) {
+      lv_obj_del(screen);
+      if (entry.lazy != nullptr) entry.lazy->screen = nullptr;
     }
   }
   navigation_subpages().clear();
@@ -128,15 +132,17 @@ inline void navigation_register_home_target(int slot, int display_order,
 
 inline void navigation_register_subpage(int slot, int display_order,
                                         const std::string &kind,
-                                        lv_obj_t *screen) {
-  if (slot <= 0 || screen == nullptr) return;
+                                        lv_obj_t *screen,
+                                        LazySubpageRuntimeCtx *lazy = nullptr) {
+  if (slot <= 0 || (screen == nullptr && lazy == nullptr)) return;
   NavigationSubpageEntry entry;
   entry.slot = slot;
   entry.display_order = display_order;
   entry.kind = navigation_lower(navigation_trim(kind));
   entry.screen = screen;
+  entry.lazy = lazy;
   navigation_subpages().push_back(entry);
-  clock_bar_register_button_grid_page(screen);
+  if (screen != nullptr) clock_bar_register_button_grid_page(screen);
 }
 
 inline int navigation_slot_from_target(const std::string &target) {
@@ -205,7 +211,7 @@ inline NavigationSubpageEntry *navigation_find_first_kind(const std::string &kin
   if (wanted.empty()) return nullptr;
   NavigationSubpageEntry *best = nullptr;
   for (auto &entry : navigation_subpages()) {
-    if (entry.screen == nullptr || entry.kind != wanted) continue;
+    if ((entry.screen == nullptr && entry.lazy == nullptr) || entry.kind != wanted) continue;
     if (best == nullptr || entry.display_order < best->display_order) {
       best = &entry;
     }
@@ -221,7 +227,12 @@ inline bool navigation_open_first_kind(const std::string &kind,
     ESP_LOGW("navigation", "No subpage of kind '%s'", navigation_trim(kind).c_str());
     return false;
   }
-  lv_scr_load_anim(target->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
+  lv_obj_t *screen = target->screen;
+  if (screen == nullptr && target->lazy != nullptr) {
+    screen = lazy_subpage_screen_from_user_data(target->lazy);
+  }
+  if (screen == nullptr) return false;
+  lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
   return true;
 }
 

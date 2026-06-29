@@ -122,6 +122,18 @@ struct BtnSlot {
   lv_obj_t *subpage_lbl = nullptr;  // small chevron marker for subpage cards
 };
 
+struct LazySubpageRuntimeCtx {
+  lv_obj_t *screen = nullptr;
+  std::function<lv_obj_t *()> build;
+};
+
+inline lv_obj_t *lazy_subpage_screen_from_user_data(void *ptr) {
+  LazySubpageRuntimeCtx *ctx = static_cast<LazySubpageRuntimeCtx *>(ptr);
+  if (ctx == nullptr) return nullptr;
+  if (ctx->screen == nullptr && ctx->build) ctx->screen = ctx->build();
+  return ctx->screen;
+}
+
 struct ParsedCfg;
 inline void set_card_checked_state(lv_obj_t *btn, bool checked);
 

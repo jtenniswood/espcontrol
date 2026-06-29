@@ -786,7 +786,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     ha_action_add_data(req, "slot", slot_buf);
     ha_action_send(req);
   } else if (p.type == "subpage") {
-    lv_obj_t *sub_scr = (lv_obj_t *)lv_obj_get_user_data(btn_obj);
+    lv_obj_t *sub_scr = lazy_subpage_screen_from_user_data(lv_obj_get_user_data(btn_obj));
     if (sub_scr)
       lv_scr_load_anim(sub_scr, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
   } else if (p.type == "alarm") {

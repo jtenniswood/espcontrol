@@ -1075,10 +1075,10 @@ inline void grid_phase2(
   reset_climate_control_refs();
   reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
+  navigation_clear_subpages();
   grid_release_main_runtime_allocations(slots, NS);
   grid_clear_subpage_parent_targets(slots, NS);
   navigation_clear_home_targets();
-  navigation_clear_subpages();
   clear_subpage_vacuum_card_text_refs();
   reset_image_card_pool(cfg);
 
@@ -1636,25 +1636,18 @@ inline void grid_phase2(
       optional_text_state(sp_ext7_configs, si);
     if (sp_cfg.empty()) continue;
 
-    auto sp_btns = parse_subpage_config(sp_cfg);
-    std::string sp_order_str = get_subpage_order(sp_cfg);
-    std::string sp_back_label = get_subpage_back_label(sp_order_str);
+    LazySubpageRuntimeCtx *lazy_ctx =
+      grid_track_runtime_allocation(slots[si].btn, new LazySubpageRuntimeCtx());
+    lazy_ctx->build = [=]() -> lv_obj_t * {
+      auto sp_btns = parse_subpage_config(sp_cfg);
+      std::string sp_order_str = get_subpage_order(sp_cfg);
+      std::string sp_back_label = get_subpage_back_label(sp_order_str);
 
-    SubpageOrder sp_ord;
-    parse_subpage_order(sp_order_str, NS, sp_btns.size(), sp_ord);
+      SubpageOrder sp_ord;
+      parse_subpage_order(sp_order_str, NS, sp_btns.size(), sp_ord);
 
-    lv_obj_t *sub_scr = lv_obj_create(NULL);
-    int display_order = NS;
-    for (int pos = 0; pos < NS; pos++) {
-      if (parsed.positions[pos] == si + 1) {
-        display_order = pos;
-        break;
-      }
-    }
-    navigation_register_subpage(
-      si + 1, display_order,
-      normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")),
-      sub_scr);
+      lv_obj_t *sub_scr = lv_obj_create(NULL);
+      clock_bar_register_button_grid_page(sub_scr);
     lv_obj_set_style_bg_color(sub_scr, lv_obj_get_style_bg_color(main_page_obj, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(sub_scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_layout(sub_scr, LV_LAYOUT_GRID);
@@ -2392,7 +2385,22 @@ inline void grid_phase2(
       }
     }
 
-    lv_obj_set_user_data(slots[si].btn, (void *)sub_scr);
+    screen_lock_apply();
+    return sub_scr;
+    };
+
+    int display_order = NS;
+    for (int pos = 0; pos < NS; pos++) {
+      if (parsed.positions[pos] == si + 1) {
+        display_order = pos;
+        break;
+      }
+    }
+    navigation_register_subpage(
+      si + 1, display_order,
+      normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")),
+      nullptr, lazy_ctx);
+    lv_obj_set_user_data(slots[si].btn, lazy_ctx);
   }
   if (!ha_api_state_connected()) apply_registered_ha_control_availability(false);
   screen_lock_apply();
