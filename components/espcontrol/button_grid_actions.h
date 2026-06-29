@@ -725,9 +725,6 @@ inline void image_card_open_modal(ImageCardCtx *ctx);
 inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj, bool turn_on);
 struct OptionSelectCtx;
 inline void option_select_open_modal(OptionSelectCtx *ctx);
-struct TodoCardCtx;
-inline bool todo_card_context_valid(TodoCardCtx *ctx);
-inline void todo_card_open_modal(TodoCardCtx *ctx);
 struct AlarmCardCtx;
 inline void alarm_card_open_page(AlarmCardCtx *ctx);
 inline bool alarm_card_context_valid(AlarmCardCtx *ctx);
@@ -855,9 +852,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     }
   } else if (p.type == "webhook") {
     send_webhook_action(p);
-  } else if (p.type == "todo") {
-    TodoCardCtx *ctx = (TodoCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
   } else if (p.type == "media") {
     std::string mode = media_card_mode(p.sensor);
     if (mode == "volume") {

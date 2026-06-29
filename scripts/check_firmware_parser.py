@@ -509,33 +509,6 @@ int main() {
   auto subpage_bad_kind = parse_cfg("media_player.bad;Bad;Speaker;Auto;indicator;;subpage;;subpage_kind=audio");
   assert(subpage_bad_kind.options == "");
 
-  auto todo = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo");
-  assert(todo.entity == "todo.shopping");
-  assert(todo.label == "Shopping");
-  assert(todo.icon == "Check");
-  assert(todo.icon_on == "Auto");
-  assert(todo.type == "todo");
-  assert(todo.options == "");
-  assert(todo_card_show_count(todo));
-  auto todo_icon_display = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=icon");
-  assert(todo_icon_display.options == "count_display=icon");
-  assert(!todo_card_show_count(todo_icon_display));
-  assert(!card_large_numbers_supported(todo_icon_display));
-  auto todo_large = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;large_numbers");
-  assert(todo_large.options == "large_numbers");
-  assert(todo_card_show_count(todo_large));
-  assert(card_large_numbers_enabled(todo_large));
-  auto todo_icon_large = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=icon,large_numbers");
-  assert(todo_icon_large.options == "count_display=icon");
-  assert(!card_large_numbers_enabled(todo_icon_large));
-  auto todo_legacy_options = parse_cfg("todo.shopping;Shopping;Check;Auto;;;todo;;count_display=top_task,label_display=count,completed_display=hide,large_numbers");
-  assert(todo_legacy_options.options == "large_numbers");
-  assert(todo_card_show_count(todo_legacy_options));
-  assert(!todo_card_shows_top_task(todo_legacy_options));
-  assert(!todo_card_label_shows_count(todo_legacy_options));
-  assert(!todo_card_shows_completed_items(todo_legacy_options));
-  assert(card_large_numbers_enabled(todo_legacy_options));
-
   assert(cfg_option_token_present("large_numbers,active_color", "active_color"));
   assert(cfg_option_value("state_entity=sensor.room%2Ctemp,state_unit=%25", "state_entity") == "sensor.room,temp");
   assert(cfg_option_value("state_entity=sensor.room%2Ctemp,state_unit=%25", "state_unit") == "%");

@@ -318,7 +318,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, climate, push, webhook, todo, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, climate, push, webhook, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -660,49 +660,6 @@ inline std::string presence_card_options_normalized(const std::string &options) 
   return cfg_option_token_present(options, "active_color") ? "active_color" : "";
 }
 
-inline std::string normalize_todo_count_display(const std::string &value) {
-  return value == "icon" ? "icon" : "count";
-}
-
-inline std::string normalize_todo_label_display(const std::string &value) {
-  (void) value;
-  return "label";
-}
-
-inline std::string normalize_todo_completed_display(const std::string &value) {
-  (void) value;
-  return "hide";
-}
-
-inline std::string todo_card_options_normalized(const std::string &options) {
-  bool show_count = normalize_todo_count_display(cfg_option_value(options, "count_display")) == "count";
-  std::string out = show_count ? "" : "count_display=icon";
-  if (show_count && (cfg_option_token_present(options, "large_numbers") ||
-      large_numbers_explicitly_disabled(options))) {
-    append_large_numbers_option(out, options);
-  }
-  return out;
-}
-
-inline bool todo_card_show_count(const ParsedCfg &p) {
-  return normalize_todo_count_display(cfg_option_value(p.options, "count_display")) == "count";
-}
-
-inline bool todo_card_shows_top_task(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
-inline bool todo_card_label_shows_count(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
-inline bool todo_card_shows_completed_items(const ParsedCfg &p) {
-  (void) p;
-  return false;
-}
-
 inline std::string normalize_climate_label_display(const std::string &value) {
   return card_runtime_climate_label_display(value);
 }
@@ -783,9 +740,6 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   if (p.type == "media") return p.sensor == "volume" || p.sensor == "position";
   if (p.type == "climate") {
     return normalize_climate_number_display(cfg_option_value(p.options, "number_display")) != "icon";
-  }
-  if (p.type == "todo") {
-    return normalize_todo_count_display(cfg_option_value(p.options, "count_display")) == "count";
   }
   if (p.type == "subpage") return !p.sensor.empty() && p.sensor != "indicator" && p.precision != "text";
   return card_runtime_large_numbers_supported(p.type, p.precision);
@@ -1188,14 +1142,6 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.precision.clear();
     p.options = date_time_card_options_normalized(p.options, p);
   }
-  if (p.type == "todo") {
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.icon_on = "Auto";
-    if (p.icon.empty() || p.icon == "Auto") p.icon = "Check";
-    p.options = todo_card_options_normalized(p.options);
-  }
   if (p.type == "light_switch") {
     p.sensor.clear();
     p.unit.clear();
@@ -1292,7 +1238,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (sensor_card_local_sensor(p)) {

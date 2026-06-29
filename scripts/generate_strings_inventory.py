@@ -155,7 +155,6 @@ def candidate_line(line: str) -> bool:
         "climate_",
         "fan_",
         "media_",
-        "todo_",
     )
     return any(marker in line for marker in markers)
 

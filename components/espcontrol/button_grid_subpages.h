@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, push, webhook, todo, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, push, webhook, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -147,14 +147,6 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     b.options = image_card_options_normalized(b.options);
   }
-  if (b.type == "todo") {
-    b.sensor.clear();
-    b.unit.clear();
-    b.precision.clear();
-    b.options = todo_card_options_normalized(b.options);
-    b.icon_on = "Auto";
-    if (b.icon.empty() || b.icon == "Auto") b.icon = "Check";
-  }
   if (b.type == "light_switch") {
     b.sensor.clear();
     b.unit.clear();
@@ -202,7 +194,6 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.type != "alarm_action" &&
       b.type != "climate" && b.type != "cover" && b.type != "garage" &&
       b.type != "webhook" &&
-      b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
       b.type != "subpage" && b.type != "light_control" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {

@@ -21,7 +21,6 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Akce";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Akce alarmu selhala";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm se nezměnil";
-  if (std::strcmp(text, "All done") == 0) return "Hotovo";
   if (std::strcmp(text, "Always On") == 0) return "Vždy zapnuto";
   if (std::strcmp(text, "Arm Away") == 0) return "Zajistit pryč";
   if (std::strcmp(text, "Arm Home") == 0) return "Zajistit doma";
@@ -161,7 +160,6 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Kývání";
   if (std::strcmp(text, "Target") == 0) return "Cíl";
   if (std::strcmp(text, "Today") == 0) return "Dnes";
-  if (std::strcmp(text, "Todo") == 0) return "Úkol";
   if (std::strcmp(text, "Too many") == 0) return "Příliš mnoho";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Přepnout toto zařízení?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Zítra";
@@ -229,7 +227,6 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Handling";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarmhandling mislykkedes";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarmen blev ikke ændret";
-  if (std::strcmp(text, "All done") == 0) return "Færdig";
   if (std::strcmp(text, "Always On") == 0) return "Altid tændt";
   if (std::strcmp(text, "Arm Away") == 0) return "Aktiver ude";
   if (std::strcmp(text, "Arm Home") == 0) return "Aktiver hjemme";
@@ -364,7 +361,6 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Sving";
   if (std::strcmp(text, "Target") == 0) return "Mål";
   if (std::strcmp(text, "Today") == 0) return "I dag";
-  if (std::strcmp(text, "Todo") == 0) return "Opgave";
   if (std::strcmp(text, "Too many") == 0) return "For mange";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Skift denne enhed?";
   if (std::strcmp(text, "Tomorrow") == 0) return "I morgen";
@@ -431,7 +427,6 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Aktion";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarmaktion fehlgeschlagen";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm wurde nicht geändert";
-  if (std::strcmp(text, "All done") == 0) return "Alles erledigt";
   if (std::strcmp(text, "Always On") == 0) return "Immer an";
   if (std::strcmp(text, "Arm Away") == 0) return "Abwesend scharfschalten";
   if (std::strcmp(text, "Arm Home") == 0) return "Zuhause scharfschalten";
@@ -563,7 +558,6 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Schwenken";
   if (std::strcmp(text, "Target") == 0) return "Ziel";
   if (std::strcmp(text, "Today") == 0) return "Heute";
-  if (std::strcmp(text, "Todo") == 0) return "Aufgabe";
   if (std::strcmp(text, "Too many") == 0) return "Zu viele";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Dieses Gerät umschalten?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Morgen";
@@ -631,7 +625,6 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Alarma";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Acción de alarma fallida";
   if (std::strcmp(text, "Alarm did not change") == 0) return "La alarma no cambió";
-  if (std::strcmp(text, "All done") == 0) return "Todo listo";
   if (std::strcmp(text, "Always On") == 0) return "Siempre encendido";
   if (std::strcmp(text, "Arm Away") == 0) return "Armar fuera";
   if (std::strcmp(text, "Arm Home") == 0) return "Armar en casa";
@@ -769,7 +762,6 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscilación";
   if (std::strcmp(text, "Target") == 0) return "Objetivo";
   if (std::strcmp(text, "Today") == 0) return "Hoy";
-  if (std::strcmp(text, "Todo") == 0) return "Tarea";
   if (std::strcmp(text, "Too many") == 0) return "Demasiados";
   if (std::strcmp(text, "Toggle this device?") == 0) return "¿Alternar este dispositivo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Mañana";
@@ -837,7 +829,6 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Hälytys";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Hälytystoiminto epäonnistui";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Hälytys ei muuttunut";
-  if (std::strcmp(text, "All done") == 0) return "Kaikki valmista";
   if (std::strcmp(text, "Always On") == 0) return "Aina päällä";
   if (std::strcmp(text, "Arm Away") == 0) return "Viritä poissa";
   if (std::strcmp(text, "Arm Home") == 0) return "Viritä kotona";
@@ -984,7 +975,6 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Tavoite";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Väliaikainen pito";
   if (std::strcmp(text, "Today") == 0) return "Tänään";
-  if (std::strcmp(text, "Todo") == 0) return "Tehtävä";
   if (std::strcmp(text, "Too many") == 0) return "Liian monta";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Vaihda tämän laitteen tila?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Huomenna";
@@ -1052,7 +1042,6 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Alarme";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Action d'alarme échouée";
   if (std::strcmp(text, "Alarm did not change") == 0) return "L'alarme n'a pas changé";
-  if (std::strcmp(text, "All done") == 0) return "Terminé";
   if (std::strcmp(text, "Always On") == 0) return "Toujours activé";
   if (std::strcmp(text, "Arm Away") == 0) return "Armer absent";
   if (std::strcmp(text, "Arm Home") == 0) return "Armer maison";
@@ -1185,7 +1174,6 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscillation";
   if (std::strcmp(text, "Target") == 0) return "Cible";
   if (std::strcmp(text, "Today") == 0) return "Aujourd'hui";
-  if (std::strcmp(text, "Todo") == 0) return "Tâche";
   if (std::strcmp(text, "Too many") == 0) return "Trop nombreux";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Basculer cet appareil ?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Demain";
@@ -1253,7 +1241,6 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Riasztó";
   if (std::strcmp(text, "Alarm action failed") == 0) return "A riasztási művelet sikertelen";
   if (std::strcmp(text, "Alarm did not change") == 0) return "A riasztó nem változott";
-  if (std::strcmp(text, "All done") == 0) return "Minden kész";
   if (std::strcmp(text, "Always On") == 0) return "Mindig bekapcsolva";
   if (std::strcmp(text, "Arm Away") == 0) return "Élesítés távollétre";
   if (std::strcmp(text, "Arm Home") == 0) return "Élesítés otthonra";
@@ -1399,7 +1386,6 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Célérték";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Ideiglenes tartás";
   if (std::strcmp(text, "Today") == 0) return "Ma";
-  if (std::strcmp(text, "Todo") == 0) return "Teendő";
   if (std::strcmp(text, "Too many") == 0) return "Túl sok";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Átváltja ezt az eszközt?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Holnap";
@@ -1469,7 +1455,6 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Allarme";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Azione allarme non riuscita";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Allarme invariato";
-  if (std::strcmp(text, "All done") == 0) return "Completato";
   if (std::strcmp(text, "Always On") == 0) return "Sempre acceso";
   if (std::strcmp(text, "Arm Away") == 0) return "Inserisci fuori casa";
   if (std::strcmp(text, "Arm Home") == 0) return "Inserisci in casa";
@@ -1610,7 +1595,6 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscillazione";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Temporaneo";
   if (std::strcmp(text, "Today") == 0) return "Oggi";
-  if (std::strcmp(text, "Todo") == 0) return "Da fare";
   if (std::strcmp(text, "Too many") == 0) return "Troppi";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Commutare questo dispositivo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Domani";
@@ -1677,7 +1661,6 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Handling";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarmhandling mislyktes";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarmen ble ikke endret";
-  if (std::strcmp(text, "All done") == 0) return "Ferdig";
   if (std::strcmp(text, "Always On") == 0) return "Alltid på";
   if (std::strcmp(text, "Arm Away") == 0) return "Aktiver borte";
   if (std::strcmp(text, "Arm Home") == 0) return "Aktiver hjemme";
@@ -1814,7 +1797,6 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Sving";
   if (std::strcmp(text, "Target") == 0) return "Mål";
   if (std::strcmp(text, "Today") == 0) return "I dag";
-  if (std::strcmp(text, "Todo") == 0) return "Oppgave";
   if (std::strcmp(text, "Too many") == 0) return "For mange";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Veksle denne enheten?";
   if (std::strcmp(text, "Tomorrow") == 0) return "I morgen";
@@ -1881,7 +1863,6 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Actie";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarmactie mislukt";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm is niet gewijzigd";
-  if (std::strcmp(text, "All done") == 0) return "Alles gereed";
   if (std::strcmp(text, "Always On") == 0) return "Altijd aan";
   if (std::strcmp(text, "Arm Away") == 0) return "Inschakelen afwezig";
   if (std::strcmp(text, "Arm Home") == 0) return "Inschakelen thuis";
@@ -2021,7 +2002,6 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Zwenken";
   if (std::strcmp(text, "Target") == 0) return "Doel";
   if (std::strcmp(text, "Today") == 0) return "Vandaag";
-  if (std::strcmp(text, "Todo") == 0) return "Taken";
   if (std::strcmp(text, "Too many") == 0) return "Te veel";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Dit apparaat schakelen?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Morgen";
@@ -2086,7 +2066,6 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Akcja";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Akcja alarmu nie powiodła się";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm się nie zmienił";
-  if (std::strcmp(text, "All done") == 0) return "Gotowe";
   if (std::strcmp(text, "Always On") == 0) return "Zawsze włączone";
   if (std::strcmp(text, "Arm Away") == 0) return "Uzbrój poza domem";
   if (std::strcmp(text, "Arm Home") == 0) return "Uzbrój w domu";
@@ -2223,7 +2202,6 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Ruch wahadłowy";
   if (std::strcmp(text, "Target") == 0) return "Cel";
   if (std::strcmp(text, "Today") == 0) return "Dziś";
-  if (std::strcmp(text, "Todo") == 0) return "Zadanie";
   if (std::strcmp(text, "Too many") == 0) return "Za dużo";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Przełączyć to urządzenie?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Jutro";
@@ -2291,7 +2269,6 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Alarme";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Ação do alarme falhou";
   if (std::strcmp(text, "Alarm did not change") == 0) return "O alarme não mudou";
-  if (std::strcmp(text, "All done") == 0) return "Tudo pronto";
   if (std::strcmp(text, "Always On") == 0) return "Sempre ligado";
   if (std::strcmp(text, "Arm Away") == 0) return "Armar ausente";
   if (std::strcmp(text, "Arm Home") == 0) return "Armar em casa";
@@ -2430,7 +2407,6 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscilação";
   if (std::strcmp(text, "Target") == 0) return "Alvo";
   if (std::strcmp(text, "Today") == 0) return "Hoje";
-  if (std::strcmp(text, "Todo") == 0) return "Tarefa";
   if (std::strcmp(text, "Too many") == 0) return "Muitos";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Alternar este dispositivo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Amanhã";
@@ -2497,7 +2473,6 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Alarme";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Ação do alarme falhou";
   if (std::strcmp(text, "Alarm did not change") == 0) return "O alarme não mudou";
-  if (std::strcmp(text, "All done") == 0) return "Tudo concluído";
   if (std::strcmp(text, "Always On") == 0) return "Sempre ligado";
   if (std::strcmp(text, "Arm Away") == 0) return "Armar ausente";
   if (std::strcmp(text, "Arm Home") == 0) return "Armar em casa";
@@ -2637,7 +2612,6 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Oscilação";
   if (std::strcmp(text, "Target") == 0) return "Alvo";
   if (std::strcmp(text, "Today") == 0) return "Hoje";
-  if (std::strcmp(text, "Todo") == 0) return "Tarefa";
   if (std::strcmp(text, "Too many") == 0) return "Demasiados";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Alternar este dispositivo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Amanhã";
@@ -2704,7 +2678,6 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Alarmă";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Acțiunea alarmei a eșuat";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarma nu s-a schimbat";
-  if (std::strcmp(text, "All done") == 0) return "Totul este gata";
   if (std::strcmp(text, "Always On") == 0) return "Mereu pornit";
   if (std::strcmp(text, "Arm Away") == 0) return "Armează plecat";
   if (std::strcmp(text, "Arm Home") == 0) return "Armează acasă";
@@ -2850,7 +2823,6 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Țintă";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Menținere temporară";
   if (std::strcmp(text, "Today") == 0) return "Astăzi";
-  if (std::strcmp(text, "Todo") == 0) return "De făcut";
   if (std::strcmp(text, "Too many") == 0) return "Prea multe";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Comuți acest dispozitiv?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Mâine";
@@ -2919,7 +2891,6 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Akcia";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Akcia alarmu zlyhala";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm sa nezmenil";
-  if (std::strcmp(text, "All done") == 0) return "Hotovo";
   if (std::strcmp(text, "Always On") == 0) return "Vždy zapnuté";
   if (std::strcmp(text, "Arm Away") == 0) return "Zabezpečiť preč";
   if (std::strcmp(text, "Arm Home") == 0) return "Zabezpečiť doma";
@@ -3059,7 +3030,6 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Kývanie";
   if (std::strcmp(text, "Target") == 0) return "Cieľ";
   if (std::strcmp(text, "Today") == 0) return "Dnes";
-  if (std::strcmp(text, "Todo") == 0) return "Úloha";
   if (std::strcmp(text, "Too many") == 0) return "Príliš veľa";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Prepnúť toto zariadenie?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Zajtra";
@@ -3127,7 +3097,6 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Dejanje";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Dejanje alarma ni uspelo";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm se ni spremenil";
-  if (std::strcmp(text, "All done") == 0) return "Vse opravljeno";
   if (std::strcmp(text, "Always On") == 0) return "Vedno vklopljeno";
   if (std::strcmp(text, "Arm Away") == 0) return "Vklopi odsotnost";
   if (std::strcmp(text, "Arm Home") == 0) return "Vklopi doma";
@@ -3271,7 +3240,6 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Cilj";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Začasno zadržanje";
   if (std::strcmp(text, "Today") == 0) return "Danes";
-  if (std::strcmp(text, "Todo") == 0) return "Opravilo";
   if (std::strcmp(text, "Too many") == 0) return "Preveč";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Preklopim to napravo?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Jutri";
@@ -3340,7 +3308,6 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Larm";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Larmåtgärd misslyckades";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Larmet ändrades inte";
-  if (std::strcmp(text, "All done") == 0) return "Klart";
   if (std::strcmp(text, "Always On") == 0) return "Alltid på";
   if (std::strcmp(text, "Arm Away") == 0) return "Larma borta";
   if (std::strcmp(text, "Arm Home") == 0) return "Larma hemma";
@@ -3476,7 +3443,6 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Swing") == 0) return "Svängning";
   if (std::strcmp(text, "Target") == 0) return "Mål";
   if (std::strcmp(text, "Today") == 0) return "Idag";
-  if (std::strcmp(text, "Todo") == 0) return "Uppgift";
   if (std::strcmp(text, "Too many") == 0) return "För många";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Växla denna enhet?";
   if (std::strcmp(text, "Tomorrow") == 0) return "I morgon";
@@ -3543,7 +3509,6 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Action") == 0) return "Eylem";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Alarm eylemi başarısız oldu";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Alarm değişmedi";
-  if (std::strcmp(text, "All done") == 0) return "Her şey tamam";
   if (std::strcmp(text, "Always On") == 0) return "Her zaman açık";
   if (std::strcmp(text, "Arm Away") == 0) return "Uzakta kur";
   if (std::strcmp(text, "Arm Home") == 0) return "Evde kur";
@@ -3690,7 +3655,6 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Hedef";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Geçici tutma";
   if (std::strcmp(text, "Today") == 0) return "Bugün";
-  if (std::strcmp(text, "Todo") == 0) return "Yapılacak";
   if (std::strcmp(text, "Too many") == 0) return "Çok fazla";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Bu cihazın durumunu değiştir?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Yarın";
@@ -3760,7 +3724,6 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Alarm") == 0) return "Сигналізація";
   if (std::strcmp(text, "Alarm action failed") == 0) return "Дію сигналізації не виконано";
   if (std::strcmp(text, "Alarm did not change") == 0) return "Сигналізація не змінилася";
-  if (std::strcmp(text, "All done") == 0) return "Усе готово";
   if (std::strcmp(text, "Always On") == 0) return "Завжди увімкнено";
   if (std::strcmp(text, "Arm Away") == 0) return "Увімкнути охорону поза домом";
   if (std::strcmp(text, "Arm Home") == 0) return "Увімкнути охорону вдома";
@@ -3908,7 +3871,6 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Target") == 0) return "Ціль";
   if (std::strcmp(text, "Temporaryhold") == 0) return "Тимчасове утримання";
   if (std::strcmp(text, "Today") == 0) return "Сьогодні";
-  if (std::strcmp(text, "Todo") == 0) return "Справи";
   if (std::strcmp(text, "Too many") == 0) return "Забагато";
   if (std::strcmp(text, "Toggle this device?") == 0) return "Перемкнути цей пристрій?";
   if (std::strcmp(text, "Tomorrow") == 0) return "Завтра";
@@ -3978,7 +3940,6 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Alarm";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarm action failed";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm did not change";
-  if (std::strcmp(key, "all_done") == 0) return "All done";
   if (std::strcmp(key, "always_on") == 0) return "Always On";
   if (std::strcmp(key, "arm_away") == 0) return "Arm Away";
   if (std::strcmp(key, "arm_home") == 0) return "Arm Home";
@@ -4131,7 +4092,6 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Target";
   if (std::strcmp(key, "temporaryhold") == 0) return "Temporaryhold";
   if (std::strcmp(key, "today") == 0) return "Today";
-  if (std::strcmp(key, "todo") == 0) return "Todo";
   if (std::strcmp(key, "too_many") == 0) return "Too many";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Toggle this device?";
   if (std::strcmp(key, "tomorrow") == 0) return "Tomorrow";
@@ -4202,7 +4162,6 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Akce";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Akce alarmu selhala";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm se nezměnil";
-  if (std::strcmp(key, "all_done") == 0) return "Hotovo";
   if (std::strcmp(key, "always_on") == 0) return "Vždy zapnuto";
   if (std::strcmp(key, "arm_away") == 0) return "Zajistit pryč";
   if (std::strcmp(key, "arm_home") == 0) return "Zajistit doma";
@@ -4343,7 +4302,6 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Kývání";
   if (std::strcmp(key, "target") == 0) return "Cíl";
   if (std::strcmp(key, "today") == 0) return "Dnes";
-  if (std::strcmp(key, "todo") == 0) return "Úkol";
   if (std::strcmp(key, "too_many") == 0) return "Příliš mnoho";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Přepnout toto zařízení?";
   if (std::strcmp(key, "tomorrow") == 0) return "Zítra";
@@ -4411,7 +4369,6 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Handling";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarmhandling mislykkedes";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarmen blev ikke ændret";
-  if (std::strcmp(key, "all_done") == 0) return "Færdig";
   if (std::strcmp(key, "always_on") == 0) return "Altid tændt";
   if (std::strcmp(key, "arm_away") == 0) return "Aktiver ude";
   if (std::strcmp(key, "arm_home") == 0) return "Aktiver hjemme";
@@ -4547,7 +4504,6 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Sving";
   if (std::strcmp(key, "target") == 0) return "Mål";
   if (std::strcmp(key, "today") == 0) return "I dag";
-  if (std::strcmp(key, "todo") == 0) return "Opgave";
   if (std::strcmp(key, "too_many") == 0) return "For mange";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Skift denne enhed?";
   if (std::strcmp(key, "tomorrow") == 0) return "I morgen";
@@ -4614,7 +4570,6 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Aktion";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarmaktion fehlgeschlagen";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm wurde nicht geändert";
-  if (std::strcmp(key, "all_done") == 0) return "Alles erledigt";
   if (std::strcmp(key, "always_on") == 0) return "Immer an";
   if (std::strcmp(key, "arm_away") == 0) return "Abwesend scharfschalten";
   if (std::strcmp(key, "arm_home") == 0) return "Zuhause scharfschalten";
@@ -4747,7 +4702,6 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Schwenken";
   if (std::strcmp(key, "target") == 0) return "Ziel";
   if (std::strcmp(key, "today") == 0) return "Heute";
-  if (std::strcmp(key, "todo") == 0) return "Aufgabe";
   if (std::strcmp(key, "too_many") == 0) return "Zu viele";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Dieses Gerät umschalten?";
   if (std::strcmp(key, "tomorrow") == 0) return "Morgen";
@@ -4815,7 +4769,6 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Alarma";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Acción de alarma fallida";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "La alarma no cambió";
-  if (std::strcmp(key, "all_done") == 0) return "Todo listo";
   if (std::strcmp(key, "always_on") == 0) return "Siempre encendido";
   if (std::strcmp(key, "arm_away") == 0) return "Armar fuera";
   if (std::strcmp(key, "arm_home") == 0) return "Armar en casa";
@@ -4954,7 +4907,6 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscilación";
   if (std::strcmp(key, "target") == 0) return "Objetivo";
   if (std::strcmp(key, "today") == 0) return "Hoy";
-  if (std::strcmp(key, "todo") == 0) return "Tarea";
   if (std::strcmp(key, "too_many") == 0) return "Demasiados";
   if (std::strcmp(key, "toggle_this_device") == 0) return "¿Alternar este dispositivo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Mañana";
@@ -5022,7 +4974,6 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Hälytys";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Hälytystoiminto epäonnistui";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Hälytys ei muuttunut";
-  if (std::strcmp(key, "all_done") == 0) return "Kaikki valmista";
   if (std::strcmp(key, "always_on") == 0) return "Aina päällä";
   if (std::strcmp(key, "arm_away") == 0) return "Viritä poissa";
   if (std::strcmp(key, "arm_home") == 0) return "Viritä kotona";
@@ -5170,7 +5121,6 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Tavoite";
   if (std::strcmp(key, "temporaryhold") == 0) return "Väliaikainen pito";
   if (std::strcmp(key, "today") == 0) return "Tänään";
-  if (std::strcmp(key, "todo") == 0) return "Tehtävä";
   if (std::strcmp(key, "too_many") == 0) return "Liian monta";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Vaihda tämän laitteen tila?";
   if (std::strcmp(key, "tomorrow") == 0) return "Huomenna";
@@ -5238,7 +5188,6 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Alarme";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Action d'alarme échouée";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "L'alarme n'a pas changé";
-  if (std::strcmp(key, "all_done") == 0) return "Terminé";
   if (std::strcmp(key, "always_on") == 0) return "Toujours activé";
   if (std::strcmp(key, "arm_away") == 0) return "Armer absent";
   if (std::strcmp(key, "arm_home") == 0) return "Armer maison";
@@ -5372,7 +5321,6 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscillation";
   if (std::strcmp(key, "target") == 0) return "Cible";
   if (std::strcmp(key, "today") == 0) return "Aujourd'hui";
-  if (std::strcmp(key, "todo") == 0) return "Tâche";
   if (std::strcmp(key, "too_many") == 0) return "Trop nombreux";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Basculer cet appareil ?";
   if (std::strcmp(key, "tomorrow") == 0) return "Demain";
@@ -5440,7 +5388,6 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Riasztó";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "A riasztási művelet sikertelen";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "A riasztó nem változott";
-  if (std::strcmp(key, "all_done") == 0) return "Minden kész";
   if (std::strcmp(key, "always_on") == 0) return "Mindig bekapcsolva";
   if (std::strcmp(key, "arm_away") == 0) return "Élesítés távollétre";
   if (std::strcmp(key, "arm_home") == 0) return "Élesítés otthonra";
@@ -5587,7 +5534,6 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Célérték";
   if (std::strcmp(key, "temporaryhold") == 0) return "Ideiglenes tartás";
   if (std::strcmp(key, "today") == 0) return "Ma";
-  if (std::strcmp(key, "todo") == 0) return "Teendő";
   if (std::strcmp(key, "too_many") == 0) return "Túl sok";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Átváltja ezt az eszközt?";
   if (std::strcmp(key, "tomorrow") == 0) return "Holnap";
@@ -5657,7 +5603,6 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Allarme";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Azione allarme non riuscita";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Allarme invariato";
-  if (std::strcmp(key, "all_done") == 0) return "Completato";
   if (std::strcmp(key, "always_on") == 0) return "Sempre acceso";
   if (std::strcmp(key, "arm_away") == 0) return "Inserisci fuori casa";
   if (std::strcmp(key, "arm_home") == 0) return "Inserisci in casa";
@@ -5799,7 +5744,6 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscillazione";
   if (std::strcmp(key, "temporaryhold") == 0) return "Temporaneo";
   if (std::strcmp(key, "today") == 0) return "Oggi";
-  if (std::strcmp(key, "todo") == 0) return "Da fare";
   if (std::strcmp(key, "too_many") == 0) return "Troppi";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Commutare questo dispositivo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Domani";
@@ -5866,7 +5810,6 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Handling";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarmhandling mislyktes";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarmen ble ikke endret";
-  if (std::strcmp(key, "all_done") == 0) return "Ferdig";
   if (std::strcmp(key, "always_on") == 0) return "Alltid på";
   if (std::strcmp(key, "arm_away") == 0) return "Aktiver borte";
   if (std::strcmp(key, "arm_home") == 0) return "Aktiver hjemme";
@@ -6004,7 +5947,6 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Sving";
   if (std::strcmp(key, "target") == 0) return "Mål";
   if (std::strcmp(key, "today") == 0) return "I dag";
-  if (std::strcmp(key, "todo") == 0) return "Oppgave";
   if (std::strcmp(key, "too_many") == 0) return "For mange";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Veksle denne enheten?";
   if (std::strcmp(key, "tomorrow") == 0) return "I morgen";
@@ -6071,7 +6013,6 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Actie";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarmactie mislukt";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm is niet gewijzigd";
-  if (std::strcmp(key, "all_done") == 0) return "Alles gereed";
   if (std::strcmp(key, "always_on") == 0) return "Altijd aan";
   if (std::strcmp(key, "arm_away") == 0) return "Inschakelen afwezig";
   if (std::strcmp(key, "arm_home") == 0) return "Inschakelen thuis";
@@ -6211,7 +6152,6 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Zwenken";
   if (std::strcmp(key, "target") == 0) return "Doel";
   if (std::strcmp(key, "today") == 0) return "Vandaag";
-  if (std::strcmp(key, "todo") == 0) return "Taken";
   if (std::strcmp(key, "too_many") == 0) return "Te veel";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Dit apparaat schakelen?";
   if (std::strcmp(key, "tomorrow") == 0) return "Morgen";
@@ -6276,7 +6216,6 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Akcja";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Akcja alarmu nie powiodła się";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm się nie zmienił";
-  if (std::strcmp(key, "all_done") == 0) return "Gotowe";
   if (std::strcmp(key, "always_on") == 0) return "Zawsze włączone";
   if (std::strcmp(key, "arm_away") == 0) return "Uzbrój poza domem";
   if (std::strcmp(key, "arm_home") == 0) return "Uzbrój w domu";
@@ -6414,7 +6353,6 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Ruch wahadłowy";
   if (std::strcmp(key, "target") == 0) return "Cel";
   if (std::strcmp(key, "today") == 0) return "Dziś";
-  if (std::strcmp(key, "todo") == 0) return "Zadanie";
   if (std::strcmp(key, "too_many") == 0) return "Za dużo";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Przełączyć to urządzenie?";
   if (std::strcmp(key, "tomorrow") == 0) return "Jutro";
@@ -6482,7 +6420,6 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Alarme";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Ação do alarme falhou";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "O alarme não mudou";
-  if (std::strcmp(key, "all_done") == 0) return "Tudo pronto";
   if (std::strcmp(key, "always_on") == 0) return "Sempre ligado";
   if (std::strcmp(key, "arm_away") == 0) return "Armar ausente";
   if (std::strcmp(key, "arm_home") == 0) return "Armar em casa";
@@ -6622,7 +6559,6 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscilação";
   if (std::strcmp(key, "target") == 0) return "Alvo";
   if (std::strcmp(key, "today") == 0) return "Hoje";
-  if (std::strcmp(key, "todo") == 0) return "Tarefa";
   if (std::strcmp(key, "too_many") == 0) return "Muitos";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Alternar este dispositivo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Amanhã";
@@ -6689,7 +6625,6 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Alarme";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Ação do alarme falhou";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "O alarme não mudou";
-  if (std::strcmp(key, "all_done") == 0) return "Tudo concluído";
   if (std::strcmp(key, "always_on") == 0) return "Sempre ligado";
   if (std::strcmp(key, "arm_away") == 0) return "Armar ausente";
   if (std::strcmp(key, "arm_home") == 0) return "Armar em casa";
@@ -6830,7 +6765,6 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Oscilação";
   if (std::strcmp(key, "target") == 0) return "Alvo";
   if (std::strcmp(key, "today") == 0) return "Hoje";
-  if (std::strcmp(key, "todo") == 0) return "Tarefa";
   if (std::strcmp(key, "too_many") == 0) return "Demasiados";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Alternar este dispositivo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Amanhã";
@@ -6897,7 +6831,6 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Alarmă";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Acțiunea alarmei a eșuat";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarma nu s-a schimbat";
-  if (std::strcmp(key, "all_done") == 0) return "Totul este gata";
   if (std::strcmp(key, "always_on") == 0) return "Mereu pornit";
   if (std::strcmp(key, "arm_away") == 0) return "Armează plecat";
   if (std::strcmp(key, "arm_home") == 0) return "Armează acasă";
@@ -7044,7 +6977,6 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Țintă";
   if (std::strcmp(key, "temporaryhold") == 0) return "Menținere temporară";
   if (std::strcmp(key, "today") == 0) return "Astăzi";
-  if (std::strcmp(key, "todo") == 0) return "De făcut";
   if (std::strcmp(key, "too_many") == 0) return "Prea multe";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Comuți acest dispozitiv?";
   if (std::strcmp(key, "tomorrow") == 0) return "Mâine";
@@ -7113,7 +7045,6 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Akcia";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Akcia alarmu zlyhala";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm sa nezmenil";
-  if (std::strcmp(key, "all_done") == 0) return "Hotovo";
   if (std::strcmp(key, "always_on") == 0) return "Vždy zapnuté";
   if (std::strcmp(key, "arm_away") == 0) return "Zabezpečiť preč";
   if (std::strcmp(key, "arm_home") == 0) return "Zabezpečiť doma";
@@ -7254,7 +7185,6 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Kývanie";
   if (std::strcmp(key, "target") == 0) return "Cieľ";
   if (std::strcmp(key, "today") == 0) return "Dnes";
-  if (std::strcmp(key, "todo") == 0) return "Úloha";
   if (std::strcmp(key, "too_many") == 0) return "Príliš veľa";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Prepnúť toto zariadenie?";
   if (std::strcmp(key, "tomorrow") == 0) return "Zajtra";
@@ -7322,7 +7252,6 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Dejanje";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Dejanje alarma ni uspelo";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm se ni spremenil";
-  if (std::strcmp(key, "all_done") == 0) return "Vse opravljeno";
   if (std::strcmp(key, "always_on") == 0) return "Vedno vklopljeno";
   if (std::strcmp(key, "arm_away") == 0) return "Vklopi odsotnost";
   if (std::strcmp(key, "arm_home") == 0) return "Vklopi doma";
@@ -7467,7 +7396,6 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Cilj";
   if (std::strcmp(key, "temporaryhold") == 0) return "Začasno zadržanje";
   if (std::strcmp(key, "today") == 0) return "Danes";
-  if (std::strcmp(key, "todo") == 0) return "Opravilo";
   if (std::strcmp(key, "too_many") == 0) return "Preveč";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Preklopim to napravo?";
   if (std::strcmp(key, "tomorrow") == 0) return "Jutri";
@@ -7536,7 +7464,6 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Larm";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Larmåtgärd misslyckades";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Larmet ändrades inte";
-  if (std::strcmp(key, "all_done") == 0) return "Klart";
   if (std::strcmp(key, "always_on") == 0) return "Alltid på";
   if (std::strcmp(key, "arm_away") == 0) return "Larma borta";
   if (std::strcmp(key, "arm_home") == 0) return "Larma hemma";
@@ -7673,7 +7600,6 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "swing") == 0) return "Svängning";
   if (std::strcmp(key, "target") == 0) return "Mål";
   if (std::strcmp(key, "today") == 0) return "Idag";
-  if (std::strcmp(key, "todo") == 0) return "Uppgift";
   if (std::strcmp(key, "too_many") == 0) return "För många";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Växla denna enhet?";
   if (std::strcmp(key, "tomorrow") == 0) return "I morgon";
@@ -7740,7 +7666,6 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "action") == 0) return "Eylem";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Alarm eylemi başarısız oldu";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Alarm değişmedi";
-  if (std::strcmp(key, "all_done") == 0) return "Her şey tamam";
   if (std::strcmp(key, "always_on") == 0) return "Her zaman açık";
   if (std::strcmp(key, "arm_away") == 0) return "Uzakta kur";
   if (std::strcmp(key, "arm_home") == 0) return "Evde kur";
@@ -7888,7 +7813,6 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Hedef";
   if (std::strcmp(key, "temporaryhold") == 0) return "Geçici tutma";
   if (std::strcmp(key, "today") == 0) return "Bugün";
-  if (std::strcmp(key, "todo") == 0) return "Yapılacak";
   if (std::strcmp(key, "too_many") == 0) return "Çok fazla";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Bu cihazın durumunu değiştir?";
   if (std::strcmp(key, "tomorrow") == 0) return "Yarın";
@@ -7958,7 +7882,6 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "alarm") == 0) return "Сигналізація";
   if (std::strcmp(key, "alarm_action_failed") == 0) return "Дію сигналізації не виконано";
   if (std::strcmp(key, "alarm_did_not_change") == 0) return "Сигналізація не змінилася";
-  if (std::strcmp(key, "all_done") == 0) return "Усе готово";
   if (std::strcmp(key, "always_on") == 0) return "Завжди увімкнено";
   if (std::strcmp(key, "arm_away") == 0) return "Увімкнути охорону поза домом";
   if (std::strcmp(key, "arm_home") == 0) return "Увімкнути охорону вдома";
@@ -8107,7 +8030,6 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "target") == 0) return "Ціль";
   if (std::strcmp(key, "temporaryhold") == 0) return "Тимчасове утримання";
   if (std::strcmp(key, "today") == 0) return "Сьогодні";
-  if (std::strcmp(key, "todo") == 0) return "Справи";
   if (std::strcmp(key, "too_many") == 0) return "Забагато";
   if (std::strcmp(key, "toggle_this_device") == 0) return "Перемкнути цей пристрій?";
   if (std::strcmp(key, "tomorrow") == 0) return "Завтра";
