@@ -42,6 +42,10 @@ def checked_items(section: str) -> list[str]:
     return re.findall(r"^\s*- \[[xX]\] +(.+)$", section, re.MULTILINE)
 
 
+def checklist_items(text: str) -> list[str]:
+    return re.findall(r"^\s*- \[[ xX]\] +(.+)$", text, re.MULTILINE)
+
+
 def has_heading(text: str, heading: str) -> bool:
     return bool(re.search(rf"^## +{re.escape(heading)}\s*$", text, re.MULTILINE))
 
@@ -54,7 +58,11 @@ def uses_pr_template(body: str) -> bool:
     if heading_count >= 2:
         return True
 
-    return any(item in body for item in TEMPLATE_CHECKLIST_ITEMS)
+    return any(
+        template_item in item
+        for item in checklist_items(body)
+        for template_item in TEMPLATE_CHECKLIST_ITEMS
+    )
 
 
 def docs_notes(section: str) -> str:
@@ -250,6 +258,16 @@ Explain the change in plain language.
 - python3 scripts/build.py --check
 """
     assert_pr_body_ready(freeform)
+
+    freeform_with_template_words = """## Purpose
+
+Device testing is not required because this only changes docs.
+
+## Testing
+
+- Reviewed the wording locally.
+"""
+    assert_pr_body_ready(freeform_with_template_words)
 
     partial_template = valid.replace("## PR status", "## Next steps")
     try:
