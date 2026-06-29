@@ -291,8 +291,8 @@ function assertNoLayoutBreaks(result, label, options = {}) {
     `${label}: grid children overlapped: ${result.overlaps.join(", ")}`,
   );
   assert(
-    result.documentScrollWidth <= result.windowWidth + 1,
-    `${label}: page has horizontal overflow (${result.documentScrollWidth}px > ${result.windowWidth}px)`,
+    result.documentScrollWidth <= result.documentClientWidth + 1,
+    `${label}: page has horizontal overflow (${result.documentScrollWidth}px > ${result.documentClientWidth}px)`,
   );
 }
 
@@ -366,6 +366,7 @@ async function measureCoreLayout(page) {
       visibleCards: document.querySelectorAll(".sp-main > .sp-btn").length,
       outsideGrid: outsideGrid,
       overlaps: overlaps,
+      documentClientWidth: document.documentElement.clientWidth,
       documentScrollWidth: document.documentElement.scrollWidth,
       windowWidth: window.innerWidth,
     };
@@ -1029,6 +1030,7 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
         supportStyle.display !== "none" &&
         support.getBoundingClientRect().width > 1,
       screenWidth: screen.width,
+      documentClientWidth: document.documentElement.clientWidth,
       documentScrollWidth: document.documentElement.scrollWidth,
       windowWidth: window.innerWidth,
     };
@@ -1052,8 +1054,67 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
     `${label}: mobile screen preview fits viewport`,
   );
   assert(
-    mobile.documentScrollWidth <= mobile.windowWidth + 1,
+    mobile.documentScrollWidth <= mobile.documentClientWidth + 1,
     `${label}: mobile screen tab has horizontal overflow`,
+  );
+  await page.locator('.sp-main [data-slot="1"]').click();
+  await page.waitForSelector(".sp-selection-bar.sp-visible");
+  mobile = await page.evaluate(() => {
+    var header = document.querySelector(".sp-header");
+    var bar = document.querySelector(".sp-selection-bar");
+    var label = document.querySelector(".sp-selection-label");
+    var actions = document.querySelector(".sp-selection-actions");
+    var headerRect = header ? header.getBoundingClientRect() : null;
+    var barRect = bar ? bar.getBoundingClientRect() : null;
+    var labelRect = label ? label.getBoundingClientRect() : null;
+    var actionsRect = actions ? actions.getBoundingClientRect() : null;
+    return {
+      selectionBarVisible: !!barRect && barRect.width > 1 && barRect.height > 1,
+      selectionBarMatchesHeader:
+        !!headerRect &&
+        !!barRect &&
+        Math.abs(barRect.left - headerRect.left) <= 1 &&
+        Math.abs(barRect.right - headerRect.right) <= 1,
+      selectionBarWithinViewport:
+        !!barRect &&
+        barRect.left >= -1 &&
+        barRect.right <= document.documentElement.clientWidth + 1,
+      selectionLabelFits:
+        !!labelRect &&
+        !!actionsRect &&
+        labelRect.left >= barRect.left - 1 &&
+        labelRect.right <= actionsRect.left + 1,
+      selectionActionsWithinViewport:
+        !!actionsRect &&
+        actionsRect.right <= document.documentElement.clientWidth + 1,
+      documentClientWidth: document.documentElement.clientWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      windowWidth: window.innerWidth,
+    };
+  });
+  assert(
+    mobile.selectionBarVisible,
+    `${label}: mobile card selection bar should be visible after selecting a card`,
+  );
+  assert(
+    mobile.selectionBarMatchesHeader,
+    `${label}: mobile card selection bar should match header width`,
+  );
+  assert(
+    mobile.selectionBarWithinViewport,
+    `${label}: mobile card selection bar should fit viewport`,
+  );
+  assert(
+    mobile.selectionLabelFits,
+    `${label}: mobile card selection label should shrink before action buttons`,
+  );
+  assert(
+    mobile.selectionActionsWithinViewport,
+    `${label}: mobile card selection actions should fit viewport`,
+  );
+  assert(
+    mobile.documentScrollWidth <= mobile.documentClientWidth + 1,
+    `${label}: mobile card selection bar has horizontal overflow`,
   );
 
   await page.getByRole("tab", { name: "Settings" }).click();
