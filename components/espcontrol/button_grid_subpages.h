@@ -47,7 +47,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.sensor.clear();
     b.unit.clear();
     b.precision.clear();
-    b.options.clear();
+    b.options = b.type == "fan_control" ? fan_control_card_options_normalized(b.options) : "";
     if (b.icon.empty() || b.icon == "Auto") b.icon = fan_card_default_icon_name(b.type);
     if (b.type == "fan_switch") {
       if (b.icon_on.empty() || b.icon_on == "Auto") b.icon_on = "Fan";
@@ -100,6 +100,12 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     if (!b.sensor.empty()) b.icon_on.clear();
     b.options = garage_card_options_normalized(b.options, b.sensor);
+  }
+  if (b.type == "cover") {
+    if (!card_runtime_cover_mode_valid(b.sensor)) b.sensor.clear();
+    b.precision.clear();
+    if (b.sensor != "set_position") b.unit.clear();
+    b.options = cover_card_options_normalized(b.options, b.sensor);
   }
   if (b.type == "alarm") {
     b.sensor.clear();
@@ -155,6 +161,12 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     b.options.clear();
   }
+  if (b.type == "light_control") {
+    b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    b.options = light_control_card_options_normalized(b.options);
+  }
   if (b.type == "subpage") {
     b.options = subpage_card_options_normalized(b.options, b.sensor, b.precision);
   }
@@ -188,11 +200,11 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   p.precision = b.precision;
   if (!b.type.empty() && b.type != "action" && b.type != "alarm" &&
       b.type != "alarm_action" &&
-      b.type != "climate" && b.type != "garage" &&
+      b.type != "climate" && b.type != "cover" && b.type != "garage" &&
       b.type != "webhook" &&
       b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
-      b.type != "subpage" &&
+      b.type != "subpage" && b.type != "light_control" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }
@@ -406,13 +418,15 @@ inline void subscribe_subpage_parent_indicator(
     lv_obj_t *parent_btn, lv_obj_t *parent_icon,
     int parent_idx, bool *child_was_on,
     bool has_alt_icon, const char *off_glyph, const char *on_glyph,
-    int *sp_on_count) {
+    int *sp_on_count,
+    bool (*is_active_state)(esphome::StringRef) = is_entity_on_ref) {
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
       [parent_btn, parent_icon, parent_idx, child_was_on,
-       has_alt_icon, off_glyph, on_glyph, sp_on_count](esphome::StringRef state) {
-        bool is_on = is_entity_on_ref(state);
+       has_alt_icon, off_glyph, on_glyph, sp_on_count,
+       is_active_state](esphome::StringRef state) {
+        bool is_on = is_active_state(state);
         if (is_on && !*child_was_on) {
           sp_on_count[parent_idx]++;
           *child_was_on = true;
@@ -442,20 +456,9 @@ struct ClimateSubpageParentIndicatorCtx {
   const char *on_glyph = nullptr;
 };
 
-inline bool climate_subpage_mode_can_work(const std::string &mode) {
-  return mode == "cool" || mode == "heat" || mode == "auto" ||
-         mode == "heat_cool" || mode == "fan_only" || mode == "fan";
-}
-
-inline bool climate_subpage_action_is_working(const std::string &action) {
-  return action == "cooling" || action == "heating" || action == "fan";
-}
-
 inline void apply_climate_subpage_parent_indicator(ClimateSubpageParentIndicatorCtx *ctx) {
   if (!ctx) return;
-  bool working = ctx->available &&
-                 climate_subpage_mode_can_work(ctx->hvac_mode) &&
-                 climate_subpage_action_is_working(ctx->hvac_action);
+  bool working = ctx->available && climate_action_is_working(ctx->hvac_action);
   set_card_checked_state(ctx->parent_btn, working);
   if (ctx->has_alt_icon && ctx->parent_icon)
     lv_label_set_text(ctx->parent_icon, working ? ctx->on_glyph : ctx->off_glyph);

@@ -1,6 +1,15 @@
 #pragma once
 
+#ifndef ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_ALL = 0;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1u << 0;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_PHASE3 = 1u << 2;
+#define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
+#endif
+
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
+#include "esphome/core/defines.h"
 #ifdef USE_SENSOR
 #include "esphome/components/sensor/sensor.h"
 #endif
@@ -60,18 +69,6 @@ inline void notify_dashboard_content_changed() {
 static_assert(correct_display_color(0xF0F0F0, 200, 200, 200) == 0xFFFFFF,
               "colour correction must clamp channels at 255");
 
-constexpr uint32_t DEFAULT_SLIDER_COLOR = correct_display_color(0xFF8C00);
-constexpr uint32_t DEFAULT_OFF_COLOR = correct_display_color(0x313131);
-constexpr uint32_t DEFAULT_TERTIARY_COLOR = correct_display_color(0x212121);
-constexpr uint32_t DARK_BACKGROUND_SECONDARY = DEFAULT_OFF_COLOR;
-constexpr uint32_t DARK_BACKGROUND_TERTIARY = DEFAULT_TERTIARY_COLOR;
-constexpr uint32_t DARK_TEXT_PRIMARY = 0xFFFFFF;
-constexpr uint32_t DARK_TEXT_MUTED = 0xB0B0B0;
-constexpr uint32_t DARK_TEXT_SOFT = 0xEFEFEF;
-constexpr uint32_t DARK_BORDER = correct_display_color(0x3A3A3A);
-constexpr uint32_t DARK_CONTROL_NEUTRAL = correct_display_color(0x424242);
-constexpr uint32_t DARK_OVERLAY = 0x000000;
-constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x2F2F2F);
 #ifndef ESPCONTROL_MAX_GRID_SLOTS
 #define ESPCONTROL_MAX_GRID_SLOTS 25
 #endif
@@ -79,25 +76,37 @@ constexpr uint32_t DARK_TRACK_BACKGROUND = correct_display_color(0x2F2F2F);
 constexpr int MAX_GRID_SLOTS = ESPCONTROL_MAX_GRID_SLOTS;
 static_assert(MAX_GRID_SLOTS > 0, "ESPCONTROL_MAX_GRID_SLOTS must be positive");
 constexpr int MAX_SUBPAGE_ITEMS = MAX_GRID_SLOTS * MAX_GRID_SLOTS;
-constexpr const char *SENSOR_STATE_LABELS_OPTION = "state_labels";
-constexpr const char *SENSOR_STATE_INPUT_OPTION = "state_input";
-constexpr const char *SENSOR_STATE_OUTPUT_OPTION = "state_output";
-constexpr const char *SENSOR_STATE_INPUT_2_OPTION = "state_input_2";
-constexpr const char *SENSOR_STATE_OUTPUT_2_OPTION = "state_output_2";
-constexpr const char *SENSOR_STATE_LOW_LABEL_OPTION = "state_low_label";
-constexpr const char *SENSOR_STATE_HIGH_LABEL_OPTION = "state_high_label";
-constexpr const char *IMAGE_LABEL_OPTION = "image_label";
-constexpr const char *IMAGE_ICON_OPTION = "image_icon";
-constexpr const char *IMAGE_MODAL_MODE_OPTION = "image_modal_mode";
-constexpr const char *IMAGE_REFRESH_OPTION = "image_refresh";
-constexpr const char *IMAGE_REFRESH_MODE_OPTION = "image_refresh_mode";
-constexpr const char *CARD_BACKGROUND_IMAGE_OPTION = "bg_image";
-constexpr const char *CARD_BACKGROUND_DIM_OPTION = "bg_dim";
-
 #include "button_grid_contract_generated.h"
 #include "button_grid_card_runtime.h"
 #include <algorithm>
 #include <cstdlib>
+
+constexpr const char *SENSOR_STATE_LABELS_OPTION = card_runtime_option_name_state_labels();
+constexpr const char *SENSOR_STATE_INPUT_OPTION = card_runtime_option_name_state_input();
+constexpr const char *SENSOR_STATE_OUTPUT_OPTION = card_runtime_option_name_state_output();
+constexpr const char *SENSOR_STATE_INPUT_2_OPTION = card_runtime_option_name_state_input_2();
+constexpr const char *SENSOR_STATE_OUTPUT_2_OPTION = card_runtime_option_name_state_output_2();
+constexpr const char *SENSOR_STATE_LOW_LABEL_OPTION = card_runtime_option_name_state_low_label();
+constexpr const char *SENSOR_STATE_HIGH_LABEL_OPTION = card_runtime_option_name_state_high_label();
+constexpr const char *IMAGE_LABEL_OPTION = card_runtime_option_name_image_label();
+constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
+constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
+constexpr const char *IMAGE_REFRESH_OPTION = card_runtime_option_name_image_refresh();
+constexpr const char *IMAGE_REFRESH_MODE_OPTION = card_runtime_option_name_image_refresh_mode();
+constexpr const char *CARD_BACKGROUND_IMAGE_OPTION = card_runtime_option_name_bg_image();
+constexpr const char *CARD_BACKGROUND_DIM_OPTION = card_runtime_option_name_bg_dim();
+constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
+constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
+constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
+constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
+constexpr const char *FAN_CONTROL_TABS_OPTION = "fan_tabs";
+constexpr const char *FAN_CONTROL_DEFAULT_TABS_VALUE = "power|speed|preset|oscillation|direction";
+constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_display();
+constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
+constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_temperature_step();
+constexpr const char *VOLUME_MAX_OPTION = card_runtime_option_name_volume_max();
+constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
+constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
 
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
@@ -339,6 +348,14 @@ inline bool action_card_option_select(const ParsedCfg &p) {
   return p.type == "action" && action_card_option_select_action(p.sensor);
 }
 
+inline bool action_card_local_action(const ParsedCfg &p) {
+  return p.type == "action" && p.sensor == "local";
+}
+
+inline bool sensor_card_local_sensor(const ParsedCfg &p) {
+  return p.type == "sensor" && p.sensor == "local";
+}
+
 inline bool cfg_option_token_present(const std::string &options, const char *name) {
   if (!name || !*name || options.empty()) return false;
   size_t start = 0;
@@ -424,24 +441,46 @@ inline void append_large_numbers_option(std::string &out, const std::string &opt
 }
 
 inline int normalize_media_volume_max_percent(const std::string &value) {
-  if (value.empty()) return 100;
+  if (value.empty()) return card_runtime_media_volume_max_default();
   char *end = nullptr;
   long parsed = std::strtol(value.c_str(), &end, 10);
-  if (end == value.c_str()) return 100;
-  if (parsed < 1) return 1;
-  if (parsed > 100) return 100;
+  if (end == value.c_str()) return card_runtime_media_volume_max_default();
+  if (parsed < card_runtime_media_volume_max_min()) return card_runtime_media_volume_max_min();
+  if (parsed > card_runtime_media_volume_max_max()) return card_runtime_media_volume_max_max();
   return static_cast<int>(parsed);
 }
 
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
+  if (mode == "playlist") {
+    std::string out;
+    std::string content_id = cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+    if (!content_id.empty()) {
+      out = std::string(MEDIA_PLAYLIST_CONTENT_ID_OPTION) + "=" + encode_compact_field(content_id);
+    }
+    std::string content_type = cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
+    if (content_type.empty()) content_type = "playlist";
+    if (content_type != "playlist") {
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_PLAYLIST_CONTENT_TYPE_OPTION) + "=" + encode_compact_field(content_type);
+    }
+    return out;
+  }
   if (mode != "volume" && mode != "position") return "";
   std::string out;
   int max_pct = normalize_media_volume_max_percent(
-    cfg_option_value(options, "volume_max"));
-  if (mode == "volume" && max_pct < 100) {
-    out = "volume_max=" + std::to_string(max_pct);
+    cfg_option_value(options, VOLUME_MAX_OPTION));
+  if (mode == "volume" && max_pct < card_runtime_media_volume_max_default()) {
+    out = std::string(VOLUME_MAX_OPTION) + "=" + std::to_string(max_pct);
   }
+  append_large_numbers_option(out, options);
+  return out;
+}
+
+inline std::string weather_card_options_normalized(const std::string &options,
+                                                   const ParsedCfg &p) {
+  if (!card_runtime_weather_forecast_precision(p.precision)) return "";
+  std::string out;
   append_large_numbers_option(out, options);
   return out;
 }
@@ -457,7 +496,7 @@ inline std::string normalize_image_refresh_mode(const std::string &value) {
 }
 
 inline std::string normalize_image_modal_mode(const std::string &value) {
-  return value == "fit" ? "fit" : "fill";
+  return card_runtime_image_modal_mode(value);
 }
 
 inline std::string image_card_options_normalized(const std::string &options) {
@@ -471,11 +510,104 @@ inline std::string image_card_options_normalized(const std::string &options) {
   }
   std::string modal_mode = normalize_image_modal_mode(
     cfg_option_value(options, IMAGE_MODAL_MODE_OPTION));
-  if (modal_mode != "fill") {
+  if (modal_mode != card_runtime_image_modal_mode_default()) {
     if (!out.empty()) out += ",";
     out += std::string(IMAGE_MODAL_MODE_OPTION) + "=" + modal_mode;
   }
   return out;
+}
+
+inline bool light_control_tab_token_valid(const std::string &value) {
+  return card_runtime_light_control_tab_valid(value);
+}
+
+inline std::string normalize_light_control_tabs_value(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(
+    value.empty() ? std::string(card_runtime_light_control_tabs_default()) : value, '|');
+  std::vector<std::string> tabs;
+  for (const auto &part : parts) {
+    if (!light_control_tab_token_valid(part)) continue;
+    if (std::find(tabs.begin(), tabs.end(), part) == tabs.end()) {
+      tabs.push_back(part);
+    }
+  }
+  if (tabs.empty()) tabs.push_back("power");
+  std::string out;
+  for (const auto &tab : tabs) {
+    if (!out.empty()) out += "|";
+    out += tab;
+  }
+  return out;
+}
+
+inline std::string light_control_card_options_normalized(const std::string &options) {
+  std::string tabs = normalize_light_control_tabs_value(
+    cfg_option_value(options, LIGHT_CONTROL_TABS_OPTION));
+  if (tabs == card_runtime_light_control_tabs_default()) return "";
+  return std::string(LIGHT_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+}
+
+inline bool cover_control_tab_token_valid(const std::string &value) {
+  return card_runtime_cover_control_tab_valid(value);
+}
+
+inline std::string normalize_cover_control_tabs_value(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(
+    value.empty() ? std::string(card_runtime_cover_control_tabs_default()) : value, '|');
+  std::vector<std::string> tabs;
+  for (const auto &part : parts) {
+    if (!cover_control_tab_token_valid(part)) continue;
+    if (std::find(tabs.begin(), tabs.end(), part) == tabs.end()) {
+      tabs.push_back(part);
+    }
+  }
+  if (tabs.empty()) tabs.push_back("position");
+  std::string out;
+  for (const auto &tab : tabs) {
+    if (!out.empty()) out += "|";
+    out += tab;
+  }
+  return out;
+}
+
+inline std::string cover_card_options_normalized(const std::string &options,
+                                                 const std::string &mode) {
+  if (!card_runtime_cover_modal_mode(mode)) return "";
+  std::string tabs = normalize_cover_control_tabs_value(
+    cfg_option_value(options, COVER_CONTROL_TABS_OPTION));
+  if (tabs == card_runtime_cover_control_tabs_default()) return "";
+  return std::string(COVER_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+}
+
+inline bool fan_control_tab_token_valid(const std::string &value) {
+  return value == "power" || value == "speed" || value == "preset" ||
+         value == "oscillation" || value == "direction";
+}
+
+inline std::string normalize_fan_control_tabs_value(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(
+    value.empty() ? std::string(FAN_CONTROL_DEFAULT_TABS_VALUE) : value, '|');
+  std::vector<std::string> tabs;
+  for (const auto &part : parts) {
+    if (!fan_control_tab_token_valid(part)) continue;
+    if (std::find(tabs.begin(), tabs.end(), part) == tabs.end()) {
+      tabs.push_back(part);
+    }
+  }
+  if (tabs.empty()) tabs.push_back("power");
+  std::string out;
+  for (const auto &tab : tabs) {
+    if (!out.empty()) out += "|";
+    out += tab;
+  }
+  return out;
+}
+
+inline std::string fan_control_card_options_normalized(const std::string &options) {
+  std::string tabs = normalize_fan_control_tabs_value(
+    cfg_option_value(options, FAN_CONTROL_TABS_OPTION));
+  if (tabs == FAN_CONTROL_DEFAULT_TABS_VALUE) return "";
+  return std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
 }
 
 inline uint32_t image_card_refresh_interval_ms(const ParsedCfg &p) {
@@ -508,10 +640,6 @@ inline std::string sensor_card_options_normalized(const std::string &options,
       (cfg_option_token_present(options, "large_numbers") ||
        large_numbers_explicitly_disabled(options))) {
     append_large_numbers_option(out, options);
-  }
-  if (cfg_option_token_present(options, "active_color")) {
-    if (!out.empty()) out += ",";
-    out += "active_color";
   }
   if (precision == "text" && cfg_option_token_present(options, SENSOR_STATE_LABELS_OPTION)) {
     if (!out.empty()) out += ",";
@@ -553,6 +681,7 @@ inline std::string normalize_subpage_kind(const std::string &value) {
     value == "switch" || value == "alarm" ||
     value == "cover" || value == "garage" ||
     value == "lock" || value == "vacuum" ||
+    value == "lawn_mower" ||
     value == "weather" || value == "sensor" ||
     value == "image" ? value : "";
 }
@@ -642,14 +771,55 @@ inline std::string normalize_climate_number_display(const std::string &value) {
   return card_runtime_climate_number_display(value);
 }
 
+inline std::string normalize_climate_temperature_step(const std::string &value) {
+  return card_runtime_climate_temperature_step(value);
+}
+
+inline std::string sanitize_climate_range_value(const std::string &value) {
+  const char *start = value.c_str();
+  char *end = nullptr;
+  double parsed = std::strtod(start, &end);
+  if (end == start) return "";
+  while (*end != '\0') {
+    if (!std::isspace(static_cast<unsigned char>(*end))) return "";
+    end++;
+  }
+  double rounded = std::floor(parsed * 10.0 + 0.5) / 10.0;
+  char buffer[24];
+  std::snprintf(buffer, sizeof(buffer), "%.1f", rounded);
+  std::string out(buffer);
+  if (out.size() > 2 && out.substr(out.size() - 2) == ".0") {
+    out.erase(out.size() - 2);
+  }
+  return out;
+}
+
+inline std::string normalize_climate_precision_config(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(value, ':');
+  std::string precision = parts.empty() ? "" : parts[0];
+  if (precision == "0") precision.clear();
+  if (!card_runtime_climate_precision_valid(precision)) precision.clear();
+  std::string min = parts.size() > 1 ? sanitize_climate_range_value(parts[1]) : "";
+  std::string max = parts.size() > 2 ? sanitize_climate_range_value(parts[2]) : "";
+  if (min.empty() && max.empty()) return precision;
+  return (precision.empty() ? std::string("0") : precision) + ":" + min + ":" + max;
+}
+
 inline std::string climate_card_options_normalized(const std::string &options) {
-  std::string label_display = normalize_climate_label_display(cfg_option_value(options, "label_display"));
-  std::string number_display = normalize_climate_number_display(cfg_option_value(options, "number_display"));
+  std::string label_display = normalize_climate_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION));
+  std::string number_display = normalize_climate_number_display(cfg_option_value(options, NUMBER_DISPLAY_OPTION));
+  std::string temperature_step = normalize_climate_temperature_step(cfg_option_value(options, TEMPERATURE_STEP_OPTION));
   std::string out;
-  if (label_display != "label") out += "label_display=" + label_display;
-  if (number_display != "target") {
+  if (label_display != card_runtime_climate_label_display_default()) {
+    out += std::string(LABEL_DISPLAY_OPTION) + "=" + label_display;
+  }
+  if (number_display != card_runtime_climate_number_display_default()) {
     if (!out.empty()) out += ",";
-    out += "number_display=" + number_display;
+    out += std::string(NUMBER_DISPLAY_OPTION) + "=" + number_display;
+  }
+  if (temperature_step != card_runtime_climate_temperature_step_default()) {
+    if (!out.empty()) out += ",";
+    out += std::string(TEMPERATURE_STEP_OPTION) + "=" + temperature_step;
   }
   if (number_display != "icon" &&
       (cfg_option_token_present(options, "large_numbers") ||
@@ -660,7 +830,7 @@ inline std::string climate_card_options_normalized(const std::string &options) {
 }
 
 inline bool action_card_large_numbers_supported(const ParsedCfg &p) {
-  if (p.type != "action") return false;
+  if (p.type != "action" || action_card_local_action(p)) return false;
   std::string precision = cfg_option_value(p.options, "state_precision");
   return precision == "0" || precision == "1" || precision == "2" ||
          !cfg_option_value(p.options, "state_unit").empty();
@@ -669,6 +839,7 @@ inline bool action_card_large_numbers_supported(const ParsedCfg &p) {
 inline bool card_large_numbers_supported(const ParsedCfg &p) {
   if (p.type.empty()) return !p.sensor.empty() && p.precision != "text";
   if (p.type == "action") return action_card_large_numbers_supported(p);
+  if (sensor_card_local_sensor(p)) return false;
   if (p.type == "media") return p.sensor == "volume" || p.sensor == "position";
   if (p.type == "climate") {
     return normalize_climate_number_display(cfg_option_value(p.options, "number_display")) != "icon";
@@ -680,6 +851,18 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   return card_runtime_large_numbers_supported(p.type, p.precision);
 }
 
+inline std::string date_time_card_options_normalized(const std::string &options,
+                                                     const ParsedCfg &p) {
+  if (!card_large_numbers_supported(p)) return "";
+  if (cfg_option_token_present(options, "large_numbers") ||
+      large_numbers_explicitly_disabled(options)) {
+    std::string out;
+    append_large_numbers_option(out, options);
+    return out;
+  }
+  return "";
+}
+
 inline std::string normalize_garage_label_display(const std::string &value) {
   return card_runtime_garage_label_display(value);
 }
@@ -687,8 +870,8 @@ inline std::string normalize_garage_label_display(const std::string &value) {
 inline std::string garage_card_options_normalized(const std::string &options,
                                                   const std::string &sensor) {
   (void)sensor;
-  return normalize_garage_label_display(cfg_option_value(options, "label_display")) == "status"
-    ? "label_display=status"
+  return normalize_garage_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION)) == "status"
+    ? std::string(LABEL_DISPLAY_OPTION) + "=status"
     : "";
 }
 
@@ -712,6 +895,14 @@ inline std::string normalize_alarm_label_display(const std::string &value) {
   return card_runtime_alarm_label_display(value);
 }
 
+inline bool alarm_action_list_is_default(const std::vector<std::string> &actions) {
+  if (actions.size() != card_runtime_alarm_default_action_count()) return false;
+  for (size_t i = 0; i < actions.size(); i++) {
+    if (actions[i] != card_runtime_alarm_default_action_at(i)) return false;
+  }
+  return true;
+}
+
 inline std::string alarm_card_options_normalized(const std::string &options) {
   std::string out;
   if (cfg_option_value(options, "pin_arm") == "0") out = "pin_arm=0";
@@ -721,23 +912,27 @@ inline std::string alarm_card_options_normalized(const std::string &options) {
   }
   std::string actions = cfg_option_value(options, "actions");
   if (!actions.empty()) {
-    std::string filtered;
-    bool saw_valid = false;
+    std::vector<std::string> filtered;
     size_t start = 0;
     while (start <= actions.length()) {
       size_t end = actions.find('|', start);
       if (end == std::string::npos) end = actions.length();
       std::string action = actions.substr(start, end - start);
-      if (alarm_action_mode_valid(action)) {
-        if (!filtered.empty()) filtered += "|";
-        filtered += action;
-        saw_valid = true;
+      if (alarm_action_mode_valid(action) &&
+          std::find(filtered.begin(), filtered.end(), action) == filtered.end()) {
+        filtered.push_back(action);
+        if (filtered.size() >= card_runtime_alarm_max_visible_actions()) break;
       }
       start = end + 1;
     }
-    if (saw_valid && filtered != "away|home|disarm") {
+    if (!filtered.empty() && !alarm_action_list_is_default(filtered)) {
+      std::string joined;
+      for (const auto &action : filtered) {
+        if (!joined.empty()) joined += "|";
+        joined += action;
+      }
       if (!out.empty()) out += ",";
-      out += "actions=" + filtered;
+      out += "actions=" + encode_compact_field(joined);
     }
   }
   std::string icon_display = normalize_alarm_icon_display(
@@ -777,9 +972,12 @@ inline std::string normalize_card_on_pattern(const std::string &value) {
 
 inline std::string switch_card_options_normalized(const std::string &options) {
   std::string out;
-  std::string pattern = normalize_card_on_pattern(cfg_option_value(options, "on_pattern"));
-  if (!pattern.empty()) out = "on_pattern=" + pattern;
   append_large_numbers_option(out, options);
+  std::string pattern = normalize_card_on_pattern(cfg_option_value(options, "on_pattern"));
+  if (!pattern.empty()) {
+    if (!out.empty()) out += ",";
+    out += "on_pattern=" + pattern;
+  }
   if (cfg_option_token_present(options, "confirm_off")) {
     if (!out.empty()) out += ",";
     out += "confirm_off";
@@ -847,6 +1045,13 @@ inline std::string action_card_options_normalized(const std::string &options,
     }
   }
 
+  if (action == "script.turn_on") {
+    std::string fields = cfg_option_value(options, "script_fields");
+    if (!fields.empty()) {
+      append_config_token(out, "script_fields=" + encode_compact_field(fields));
+    }
+  }
+
   if (action == "script.turn_on" && cfg_option_token_present(options, "confirm_on")) {
     append_config_token(out, "confirm_on");
     std::string message = cfg_option_value(options, "confirm_message");
@@ -867,6 +1072,23 @@ inline std::string action_card_options_normalized(const std::string &options,
 
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   std::string original_options = p.options;
+  if (p.type == "local") {
+    p.type = "action";
+    p.sensor = "local";
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on = "Auto";
+    if (p.icon.empty() || p.icon == "Auto" || p.icon == "Flash") p.icon = "Gesture Tap";
+  }
+  if (p.type == "local_sensor") {
+    p.type = "sensor";
+    p.sensor = "local";
+    p.icon_on = "Auto";
+    p.options.clear();
+    if (p.precision != "text" && p.precision != "1" && p.precision != "2") p.precision.clear();
+    if (p.precision != "text" && (p.icon.empty() || p.icon == "Auto")) p.icon = "Auto";
+  }
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
   if (brightness_slider_type(p.type) && !p.sensor.empty()) p.sensor.clear();
@@ -874,7 +1096,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
-    p.options.clear();
+    p.options = p.type == "fan_control" ? fan_control_card_options_normalized(p.options) : "";
     if (p.icon.empty() || p.icon == "Auto") p.icon = fan_card_default_icon_name(p.type);
     if (p.type == "fan_switch") {
       if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Fan";
@@ -889,6 +1111,10 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   }
   if (p.type == "weather" && !card_runtime_weather_forecast_precision(p.precision)) {
     p.precision.clear();
+  }
+  if (p.type == "weather") {
+    p.sensor.clear();
+    p.options = weather_card_options_normalized(p.options, p);
   }
   if (p.type == "media") {
     if (p.sensor == "controls") {
@@ -905,6 +1131,10 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
       if (p.label.empty() || p.label == "Media") p.label = "Volume";
       p.icon = "Auto";
     }
+    if (p.sensor == "playlist") {
+      if (p.label.empty() || p.label == "Media") p.label = "Playlist";
+      if (p.icon.empty() || p.icon == "Auto") p.icon = "Music";
+    }
     if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = "Position";
     if (p.sensor == "now_playing") {
       p.precision = card_runtime_media_now_playing_control(p.precision) ? p.precision : "";
@@ -919,20 +1149,38 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor.clear();
     p.unit.clear();
     if (p.icon.empty()) p.icon = "Thermostat";
+    p.precision = normalize_climate_precision_config(p.precision);
     p.options = climate_card_options_normalized(p.options);
   }
   if (p.type == "garage") {
     if (!card_runtime_garage_mode_valid(p.sensor)) p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
-    if (!p.sensor.empty()) p.icon_on.clear();
+    if (!p.sensor.empty()) p.icon_on = "Auto";
     p.options = garage_card_options_normalized(p.options, p.sensor);
+  }
+  if (p.type == "lock") {
+    if (!card_runtime_lock_mode_valid(p.sensor)) p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    if (!p.sensor.empty()) {
+      p.icon_on = "Auto";
+    } else if (p.icon_on.empty() || p.icon_on == "Auto") {
+      p.icon_on = "Lock Open";
+    }
+  }
+  if (p.type == "cover") {
+    if (!card_runtime_cover_mode_valid(p.sensor)) p.sensor.clear();
+    p.precision.clear();
+    if (p.sensor != "set_position") p.unit.clear();
+    p.options = cover_card_options_normalized(p.options, p.sensor);
   }
   if (p.type == "alarm") {
     p.sensor.clear();
     p.unit.clear();
     p.precision.clear();
-    p.icon_on.clear();
+    p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto") p.icon = "Security";
     p.options = alarm_card_options_normalized(p.options);
   }
@@ -940,7 +1188,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (!alarm_action_mode_valid(p.sensor)) p.sensor = "away";
     p.unit.clear();
     p.precision.clear();
-    p.icon_on.clear();
+    p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto" || alarm_action_legacy_icon_name(p.sensor, p.icon)) {
       p.icon = alarm_action_icon_name(p.sensor);
     }
@@ -950,7 +1198,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.sensor = normalize_webhook_method(p.sensor);
     if (p.sensor == "GET" || p.sensor == "DELETE") p.unit.clear();
     p.precision.clear();
-    p.icon_on.clear();
+    p.icon_on = "Auto";
     if (p.icon.empty()) p.icon = "Auto";
     p.options = webhook_card_options_normalized(p.options);
   }
@@ -975,6 +1223,36 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.icon = "Lock";
     p.icon_on = "Lock Open";
   }
+  if (p.type == "calendar") {
+    if (p.entity.empty()) p.entity = "sensor.date";
+    p.label.clear();
+    p.icon = "Auto";
+    p.icon_on = "Auto";
+    p.sensor.clear();
+    p.unit.clear();
+    if (p.precision != "datetime") p.precision.clear();
+    p.options = date_time_card_options_normalized(p.options, p);
+  }
+  if (p.type == "clock") {
+    p.entity.clear();
+    p.label.clear();
+    p.icon = "Auto";
+    p.icon_on = "Auto";
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options = date_time_card_options_normalized(p.options, p);
+  }
+  if (p.type == "timezone") {
+    if (p.entity.empty()) p.entity = "UTC (GMT+0)";
+    p.label.clear();
+    p.icon = "Auto";
+    p.icon_on = "Auto";
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options = date_time_card_options_normalized(p.options, p);
+  }
   if (p.type == "todo") {
     p.sensor.clear();
     p.unit.clear();
@@ -988,6 +1266,12 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.unit.clear();
     p.precision.clear();
     p.options = card_background_options_normalized(p.options);
+  }
+  if (p.type == "light_control") {
+    p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    p.options = light_control_card_options_normalized(p.options);
   }
   if (p.type == "subpage") {
     p.options = subpage_card_options_normalized(p.options, p.sensor, p.precision);
@@ -1008,6 +1292,13 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options.clear();
     p.icon_on.clear();
     if (p.icon.empty() || p.icon == "Auto" || p.icon == "Chevron Down") p.icon = "Flash";
+  }
+  if (action_card_local_action(p)) {
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on = "Auto";
+    if (p.icon.empty() || p.icon == "Auto" || p.icon == "Flash") p.icon = "Gesture Tap";
   }
   if (p.type == "action" && p.sensor == "vacuum.start") {
     p.type = "vacuum";
@@ -1039,6 +1330,14 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_vacuum_default_icon_name(p.sensor);
   }
+  if (p.type == "lawn_mower") {
+    p.sensor = card_runtime_lawn_mower_mode(p.sensor);
+    p.unit.clear();
+    p.precision.clear();
+    p.options.clear();
+    p.icon_on = "Auto";
+    if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_lawn_mower_default_icon_name(p.sensor);
+  }
   if (p.type.empty()) {
     p.options = switch_card_options_normalized(p.options);
   }
@@ -1058,10 +1357,15 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "vacuum" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
-    p.options = card_background_options_normalized(p.options);
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+    p.options.clear();
   }
-  if (p.type == "sensor") {
+  if (sensor_card_local_sensor(p)) {
+    p.icon_on = "Auto";
+    p.options.clear();
+    if (p.precision != "text" && p.precision != "1" && p.precision != "2") p.precision.clear();
+    if (p.precision != "text" && (p.icon.empty() || p.icon == "Auto")) p.icon = "Auto";
+  } else if (p.type == "sensor") {
     p.options = sensor_card_options_normalized(p.options, p.precision);
   }
   if (card_background_supported_type(p.type)) append_card_background_options(p.options, original_options);
@@ -1101,19 +1405,22 @@ inline bool cfg_option_enabled(const std::string &options, const char *name) {
 
 inline int media_volume_max_percent(const ParsedCfg &p) {
   return p.type == "media" && p.sensor == "volume"
-    ? normalize_media_volume_max_percent(cfg_option_value(p.options, "volume_max"))
-    : 100;
+    ? normalize_media_volume_max_percent(cfg_option_value(p.options, VOLUME_MAX_OPTION))
+    : card_runtime_media_volume_max_default();
 }
 
 inline std::string action_card_state_entity(const ParsedCfg &p) {
+  if (action_card_local_action(p)) return "";
   return p.type == "action" ? cfg_option_value(p.options, "state_entity") : "";
 }
 
 inline std::string action_card_state_unit(const ParsedCfg &p) {
+  if (action_card_local_action(p)) return "";
   return p.type == "action" ? cfg_option_value(p.options, "state_unit") : "";
 }
 
 inline std::string action_card_state_precision(const ParsedCfg &p) {
+  if (action_card_local_action(p)) return "";
   return p.type == "action" ? cfg_option_value(p.options, "state_precision") : "";
 }
 
@@ -1185,6 +1492,12 @@ inline bool action_script_confirmation_enabled(const ParsedCfg &p) {
          cfg_option_enabled(p.options, "confirm_on");
 }
 
+inline std::string action_script_fields(const ParsedCfg &p) {
+  return p.type == "action" && p.sensor == "script.turn_on"
+    ? cfg_option_value(p.options, "script_fields")
+    : "";
+}
+
 inline bool switch_confirmation_required(const ParsedCfg &p, bool currently_on) {
   if (p.type.empty()) {
     return currently_on
@@ -1217,7 +1530,7 @@ inline std::string switch_confirmation_yes_text(const ParsedCfg &p) {
 
 inline std::string switch_confirmation_no_text(const ParsedCfg &p) {
   std::string value = cfg_option_value(p.options, "confirm_no");
-  return value.empty() ? std::string("No") : value;
+  return value.empty() ? espcontrol_i18n(std::string("No")) : value;
 }
 
 inline int parse_precision(const std::string &s) {
@@ -1262,6 +1575,7 @@ inline bool is_text_sensor_card(const std::string &type, const std::string &prec
 }
 
 inline bool is_text_sensor_card(const ParsedCfg &p) {
+  if (sensor_card_local_sensor(p)) return false;
   return is_text_sensor_card(p.type, p.precision);
 }
 
@@ -1374,6 +1688,11 @@ inline bool parse_float_ref(esphome::StringRef value, float &out) {
   return end != value.c_str();
 }
 
+inline bool numeric_state_positive_ref(esphome::StringRef state) {
+  float value = 0.0f;
+  return parse_float_ref(state, value) && std::isfinite(value) && value > 0.0f;
+}
+
 inline bool is_entity_on_ref(esphome::StringRef state) {
   std::string value = normalized_state_text(state);
   return value == "on" || value == "true" || value == "1" ||
@@ -1425,6 +1744,10 @@ inline void reset_ha_control_availability_refs() {
 inline void ha_reset_deferred_state_requests() {}
 #endif
 
+#ifndef ESPCONTROL_HA_SUBSCRIPTION_HELPERS_DEFINED
+inline void ha_reset_subscription_callbacks(uint32_t scope = 0) { (void) scope; }
+#endif
+
 inline uint32_t &ha_subscription_generation() {
   static uint32_t generation = 1;
   return generation;
@@ -1435,6 +1758,7 @@ inline void bump_ha_subscription_generation() {
   generation++;
   if (generation == 0) generation = 1;
   ha_reset_deferred_state_requests();
+  ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT);
 }
 
 inline void register_ha_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
@@ -1722,6 +2046,49 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
   lv_label_set_text(ref.unit_lbl, normalized_unit.c_str());
 }
 
+inline bool weather_forecast_card_ref_ready(const WeatherForecastCardRef &ref) {
+  if (!esphome::App.is_setup_complete()) return false;
+  if (!lv_display_get_default()) return false;
+  if (!ref.btn || !ref.value_lbl || !ref.unit_lbl) return false;
+  if (!lv_obj_is_valid(ref.btn)) return false;
+  if (!lv_obj_is_valid(ref.value_lbl)) return false;
+  if (!lv_obj_is_valid(ref.unit_lbl)) return false;
+  if (ref.label_lbl && !lv_obj_is_valid(ref.label_lbl)) return false;
+  return true;
+}
+
+inline void refresh_weather_forecast_card_visuals() {
+  WeatherForecastCardRef *refs = weather_forecast_card_refs();
+  int count = weather_forecast_card_count();
+  bool updated = false;
+  for (int i = 0; i < count; i++) {
+    if (!weather_forecast_card_ref_ready(refs[i])) continue;
+    apply_control_availability(refs[i].btn, refs[i].btn, refs[i].valid, false);
+    apply_weather_forecast_card_text(refs[i], refs[i].valid, refs[i].high,
+                                     refs[i].low, refs[i].source_unit);
+    updated = true;
+  }
+  if (updated) notify_dashboard_content_changed();
+}
+
+inline lv_timer_t *&weather_forecast_visual_refresh_timer() {
+  static lv_timer_t *timer = nullptr;
+  return timer;
+}
+
+inline void weather_forecast_apply_visuals_cb(lv_timer_t *timer) {
+  lv_timer_t *&active_timer = weather_forecast_visual_refresh_timer();
+  if (active_timer == timer) active_timer = nullptr;
+  lv_timer_del(timer);
+  refresh_weather_forecast_card_visuals();
+}
+
+inline void weather_forecast_schedule_visual_refresh() {
+  lv_timer_t *&timer = weather_forecast_visual_refresh_timer();
+  if (timer) lv_timer_reset(timer);
+  else timer = lv_timer_create(weather_forecast_apply_visuals_cb, 25, nullptr);
+}
+
 inline void apply_weather_forecast_to_entity(const std::string &entity_id,
                                              const std::string &day,
                                              bool valid, float high, float low,
@@ -1738,9 +2105,7 @@ inline void apply_weather_forecast_to_entity(const std::string &entity_id,
       refs[i].low = low;
       refs[i].source_unit = unit;
       refs[i].status_label = "";
-      apply_control_availability(refs[i].btn, refs[i].btn, valid, false);
-      apply_weather_forecast_card_text(refs[i], valid, high, low, unit);
-      notify_dashboard_content_changed();
+      weather_forecast_schedule_visual_refresh();
     }
   }
 }
@@ -1756,9 +2121,7 @@ inline void apply_weather_forecast_unavailable_for_entity(const std::string &ent
       refs[i].low = 0;
       refs[i].source_unit = "";
       refs[i].status_label = "";
-      apply_control_availability(refs[i].btn, refs[i].btn, false, false);
-      apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
-      notify_dashboard_content_changed();
+      weather_forecast_schedule_visual_refresh();
     }
   }
 }
@@ -1773,10 +2136,8 @@ inline void apply_weather_forecast_unavailable_all() {
     refs[i].low = 0;
     refs[i].source_unit = "";
     refs[i].status_label = "";
-    apply_control_availability(refs[i].btn, refs[i].btn, false, false);
-    apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
+    weather_forecast_schedule_visual_refresh();
   }
-  if (count > 0) notify_dashboard_content_changed();
 }
 
 inline void apply_weather_forecast_actions_required_for_entity(const std::string &entity_id) {
@@ -1792,9 +2153,7 @@ inline void apply_weather_forecast_actions_required_for_entity(const std::string
       refs[i].low = 0;
       refs[i].source_unit = "";
       refs[i].status_label = "";
-      apply_control_availability(refs[i].btn, refs[i].btn, false, false);
-      apply_weather_forecast_card_text(refs[i], false, 0, 0, "");
-      notify_dashboard_content_changed();
+      weather_forecast_schedule_visual_refresh();
     }
   }
 }
@@ -2297,20 +2656,15 @@ inline void climate_update_card(ClimateControlCtx *ctx);
 inline void climate_control_set_modal_value(ClimateControlCtx *ctx);
 
 inline void refresh_temperature_unit_labels() {
-  WeatherForecastCardRef *weather_refs = weather_forecast_card_refs();
-  int weather_count = weather_forecast_card_count();
-  for (int i = 0; i < weather_count; i++) {
-    apply_weather_forecast_card_text(weather_refs[i], weather_refs[i].valid,
-                                     weather_refs[i].high, weather_refs[i].low,
-                                     weather_refs[i].source_unit);
-  }
   ClimateControlCtx **climate_refs = climate_control_refs();
   int climate_count = climate_control_ref_count();
   for (int i = 0; i < climate_count; i++) {
+    if (!climate_refs[i]) continue;
     climate_update_card(climate_refs[i]);
     climate_control_set_modal_value(climate_refs[i]);
   }
-  if (weather_count > 0 || climate_count > 0) notify_dashboard_content_changed();
+  refresh_weather_forecast_card_visuals();
+  if (climate_count > 0) notify_dashboard_content_changed();
 }
 
 inline const char* garage_closed_icon(const std::string &icon) {
@@ -2748,7 +3102,8 @@ inline void send_internal_relay_action(const ParsedCfg &p) {
 
 inline std::string garage_state_label(const std::string &state) {
   if (state.empty()) return "--";
-  return sentence_cap_text(state);
+  if (state == "open") return espcontrol_i18n_key("state_open");
+  return espcontrol_i18n(sentence_cap_text(state));
 }
 
 inline bool garage_state_is_active(const std::string &state) {

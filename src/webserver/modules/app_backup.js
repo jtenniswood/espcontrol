@@ -29,22 +29,19 @@ function exportConfig() {
     sizes: state.sizes,
     button_order: serializeGrid(state.grid),
     button_on_color: state.onColor,
-    button_off_color: state.offColor,
-    sensor_card_color: state.sensorColor,
     buttons: state.buttons,
     subpages: state.subpages,
     settings: {
       indoor_temp_enable: state._indoorOn,
       outdoor_temp_enable: state._outdoorOn,
       clock_bar_temperature_entities: serializeClockBarTemperatureEntities(clockBarTemperatureEntities()),
-      theme: normalizeTheme(state.theme),
       indoor_temp_entity: state.indoorEntity,
       outdoor_temp_entity: state.outdoorEntity,
       temperature_unit: normalizeTemperatureUnit(state.temperatureUnit),
       clock_bar: state.clockBarOn,
-      clock_bar_layout: CLOCK_BAR_FIXED_LAYOUT_STRING,
       clock_bar_time: state.clockBarTimeOn,
       network_status_icon: state.networkStatusOn,
+      voice_services: state.voiceServicesOn,
       temperature_degree_symbol: state.temperatureDegreeSymbolOn,
       subpage_chevron: state.subpageChevronsOn,
       timezone: state.timezone,
@@ -61,6 +58,7 @@ function exportConfig() {
       cover_art_media_player_entity: state.coverArtMediaPlayerEntity,
       cover_art_attribute_conditions: state.coverArtAttributeConditions,
       cover_art_delay: state.coverArtDelay,
+      cover_art_touch_pause: state.coverArtTouchPause,
       cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
       cover_art_hide_external_input: state.coverArtHideExternalInputOn,
       home_assistant_artwork_port: normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort),
@@ -111,6 +109,7 @@ function importConfig() {
   input.type = "file";
   input.accept = ".json";
   input.style.display = "none";
+  var importPostThrottleMs = 75;
 
   function cleanupInput() {
     if (input.parentNode) input.parentNode.removeChild(input);
@@ -147,9 +146,9 @@ function importConfig() {
         showBanner(backupPlan.warnings[warningIdx], "warning");
       }
 
+      setPostThrottle(importPostThrottleMs);
+      resetPostQueueError();
       postText(entityName("button_on_color"), backupPlan.config.button_on_color);
-      postText(entityName("button_off_color"), backupPlan.config.button_off_color);
-      postText(entityName("sensor_card_color"), backupPlan.config.sensor_card_color);
 
       for (var i = 0; i < NUM_SLOTS; i++) {
         var b = backupPlan.buttons[i];
@@ -168,19 +167,14 @@ function importConfig() {
       postText(entityName("button_order"), backupPlan.button_order);
       applyImportedButtonOrder(backupPlan.button_order, backupPlan.importedSizes);
       state.onColor = backupPlan.config.button_on_color;
-      state.offColor = backupPlan.config.button_off_color;
-      state.sensorColor = backupPlan.config.sensor_card_color;
 
       if (els.setOnColor && els.setOnColor._syncColor) els.setOnColor._syncColor(state.onColor);
-      if (els.setOffColor && els.setOffColor._syncColor) els.setOffColor._syncColor(state.offColor);
-      if (els.setSensorColor && els.setSensorColor._syncColor) els.setSensorColor._syncColor(state.sensorColor);
 
       if (backupPlan.settings) {
         var s = backupPlan.settings;
         var importedSettings = EspControlModel.normalizeBackupPanelSettings(s, {
           timezone: state.timezone,
           language: state.language,
-          clockBarLayout: CLOCK_BAR_FIXED_LAYOUT_STRING,
           clockFormat: state.clockFormat,
           clockFormatOptions: state.clockFormatOptions,
           ntpDefaults: NTP_SERVER_DEFAULTS,
@@ -201,14 +195,12 @@ function importConfig() {
         postText(entityName("outdoor_temp_entity"), importedSettings.outdoorTempEntity);
         postText(entityName("indoor_temp_entity"), importedSettings.indoorTempEntity);
         postClockBar(importedSettings.clockBar);
-        applyClockBarLayoutValue(CLOCK_BAR_FIXED_LAYOUT_STRING);
-        postClockBarLayout(CLOCK_BAR_FIXED_LAYOUT_STRING);
         postClockBarTime(importedSettings.clockBarTime);
         postNetworkStatusIcon(importedSettings.networkStatusIcon);
+        if (CFG.features && CFG.features.voiceServices) postVoiceServices(importedSettings.voiceServices);
         postTemperatureDegreeSymbol(importedSettings.temperatureDegreeSymbol);
         postSubpageChevron(importedSettings.subpageChevron);
         var importedTimezone = importedSettings.timezone;
-        var importedTheme = normalizeTheme(s.theme || state.theme);
         var importedTemperatureUnit = importedSettings.temperatureUnit;
         var importedLanguage = importedSettings.language;
         var importedClockFormat = importedSettings.clockFormat;
@@ -220,7 +212,6 @@ function importConfig() {
         var importedNtpServer3 = importedSettings.ntpServer3;
         if (s.timezone) postSelect(entityName("screen_timezone"), importedTimezone);
         if (s.language) postSelect(entityName("screen_language"), importedLanguage);
-        if (s.theme && isEpaperPreview()) postSelect(entityName("screen_theme"), importedTheme);
         postSelect(entityName("screen_temperature_unit"), importedTemperatureUnit);
         if (s.clock_format) postSelect(entityName("screen_clock_format"), importedClockFormat);
         if (hasNtpServer1) {
@@ -240,6 +231,7 @@ function importConfig() {
         postText(entityName("screen_saver_cover_art_entity"), importedSettings.coverArtMediaPlayerEntity);
         postText(entityName("screen_saver_cover_art_conditions"), importedSettings.coverArtAttributeConditions);
         postCoverArtDelay(importedSettings.coverArtDelay);
+        postCoverArtTouchPause(importedSettings.coverArtTouchPause);
         postCoverArtTrackOverlayDuration(importedSettings.coverArtTrackOverlayDuration);
         postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
         postHomeAssistantArtworkPort(importedSettings.coverArtHomeAssistantPort);
@@ -266,11 +258,11 @@ function importConfig() {
         state.clockBarOn = importedSettings.clockBar;
         state.clockBarTimeOn = importedSettings.clockBarTime;
         state.networkStatusOn = importedSettings.networkStatusIcon;
+        state.voiceServicesOn = importedSettings.voiceServices;
         state.temperatureDegreeSymbolOn = importedSettings.temperatureDegreeSymbol;
         state.subpageChevronsOn = importedSettings.subpageChevron;
         state.timezone = importedTimezone;
         state.language = importedLanguage;
-        state.theme = importedTheme;
         state.clockFormat = importedClockFormat;
         state.ntpServer1 = importedNtpServer1;
         state.ntpServer2 = importedNtpServer2;
@@ -285,6 +277,7 @@ function importConfig() {
         state.coverArtMediaPlayerEntity = importedSettings.coverArtMediaPlayerEntity;
         state.coverArtAttributeConditions = importedSettings.coverArtAttributeConditions;
         state.coverArtDelay = importedSettings.coverArtDelay;
+        state.coverArtTouchPause = importedSettings.coverArtTouchPause;
         state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
         state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
         state.coverArtHomeAssistantPort = importedSettings.coverArtHomeAssistantPort;
@@ -306,7 +299,6 @@ function importConfig() {
         syncInput(els.setCoverArtMediaPlayer, state.coverArtMediaPlayerEntity);
         syncInput(els.setCoverArtConditions, state.coverArtAttributeConditions);
         syncCoverArtScreensaverUi();
-        syncThemeUi();
         if (els.setTimezone) els.setTimezone.value = state.timezone;
         syncLanguageSelect();
         if (els.setClockFormat) els.setClockFormat.value = state.clockFormat;
@@ -377,7 +369,10 @@ function importConfig() {
       renderPreview();
       renderButtonSettings();
       switchTab("screen");
-      showBanner("Configuration imported successfully", "success");
+      setPostThrottle(0);
+      postQueueIdle().then(function () {
+        if (!postQueueHadError()) showBanner("Configuration imported successfully", "success");
+      });
       cleanupInput();
     };
     reader.readAsText(input.files[0]);

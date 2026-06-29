@@ -21,6 +21,10 @@ REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
 }
+REQUIRED_LIGHT_CONTROL_ICON_GLYPHS = {
+    r'"\U000F0425"': "mdi-power",
+    r'"\U000F0766"': "mdi-circle-outline",
+}
 REQUIRED_CLIMATE_CARD_ICON_NAMES = {
     "Air Filter",
     "Fan",
@@ -150,7 +154,7 @@ def test_upgrades_do_not_reset_saved_panel_config() -> None:
         )
 
 
-def test_square_s3_reapplies_clock_bar_layout() -> None:
+def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     slug = "guition-esp32-s3-4848s040"
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
     device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text(encoding="utf-8")
@@ -159,30 +163,49 @@ def test_square_s3_reapplies_clock_bar_layout() -> None:
         "            id(button_order).state,\n"
         "            id(main_page)->obj);\n"
         "      - script.execute: clock_bar_apply"
-    ) in sensors, "S3 grid refresh must reapply clock-bar layout like the working square profile"
+    ) in sensors, "S3 grid refresh must reapply the fixed clock bar like the working square profile"
     assert (
         "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
         "              id(button_order).state,\n"
         "              id(button_on_color).state,\n"
-        "              id(button_off_color).state,\n"
-        "              id(sensor_card_color).state,\n"
         "              id(main_page)->obj);\n"
         "        - script.execute: clock_bar_apply"
-    ) in sensors, "S3 boot setup must reapply clock-bar layout after subpages are created"
+    ) in sensors, "S3 boot setup must reapply the fixed clock bar after subpages are created"
     assert (
         "- script.execute: apply_screen_rotation\n"
         "        - script.execute: clock_bar_apply"
-    ) in device, "S3 restored rotation must reapply clock-bar layout"
+    ) in device, "S3 restored rotation must reapply the fixed clock bar"
     assert (
         "- script.execute: apply_screen_rotation\n"
         "              - script.execute: clock_bar_apply"
-    ) in device, "S3 rotation changes must reapply clock-bar layout"
+    ) in device, "S3 rotation changes must reapply the fixed clock bar"
+
+
+def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
+    slug = "guition-esp32-p4-jc4880p443"
+    sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
+    assert (
+        "grid_refresh_layout(slots, cfg,\n"
+        "            id(button_order).state,\n"
+        "            id(main_page)->obj);\n"
+        "          navigation_return_home(id(main_page)->obj);"
+    ) in sensors, (
+        "4.3-inch P4 rotation refresh must refresh the home grid before rebuilding subpages"
+    )
+    assert "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7," in sensors, (
+        "4.3-inch P4 rotation refresh must rebuild subpage grids with the current column count"
+    )
+    assert "id(button_on_color).state" in sensors and "id(button_off_color).state" not in sensors, (
+        "4.3-inch P4 subpage rebuild must keep the configured primary color only"
+    )
 
 
 def test_setup_icon_glyphs() -> None:
     glyphs = (ROOT / "common" / "assets" / "icon_glyphs.yaml").read_text(encoding="utf-8")
     for glyph, icon_name in REQUIRED_SETUP_ICON_GLYPHS.items():
         assert glyph in glyphs, f"shared icon font missing {icon_name} for OTA update screen"
+    for glyph, icon_name in REQUIRED_LIGHT_CONTROL_ICON_GLYPHS.items():
+        assert glyph in glyphs, f"shared icon font missing {icon_name} for light control modal"
 
 
 def test_climate_card_icon_glyphs() -> None:
@@ -410,7 +433,7 @@ def test_temperature_unit_changes_refresh_weather_cards() -> None:
     assert match, "temperature unit label refresh helper is missing"
     body = match.group(0)
     assert "notify_dashboard_content_changed()" in body, (
-        "temperature unit changes must refresh e-paper weather cards"
+        "temperature unit changes must refresh weather cards"
     )
 
 
@@ -471,7 +494,8 @@ def main() -> int:
     test_generated_web(profiles)
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
-    test_square_s3_reapplies_clock_bar_layout()
+    test_square_s3_reapplies_clock_bar_after_screen_changes()
+    test_p4_43_rotation_refresh_rebuilds_subpages()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
     test_weather_card_mode_visibility_reset()

@@ -530,6 +530,9 @@ script:
       - globals.set:
           id: manual_wake_ms
           value: '0'
+      - globals.set:
+          id: backlight_force_next_write
+          value: 'true'
       - lambda: 'global_preferences->sync();'
       - lvgl.resume:
       - script.execute: hide_clock_view
@@ -575,6 +578,9 @@ script:
       - globals.set:
           id: manual_wake_ms
           value: '0'
+      - globals.set:
+          id: backlight_force_next_write
+          value: 'true'
       - lvgl.resume:
       - script.execute: hide_clock_view
       - script.execute: hide_cover_art_view
@@ -822,10 +828,21 @@ script:
               &is_day, id(brightness_day).state, id(brightness_night).state);
             id(last_is_daytime) = is_day;
           }
+          float target = pct / 100.0f;
+          if (target < 0.01f) target = 0.01f;
+          if (target > 1.0f) target = 1.0f;
+          float current = 0.0f;
+          id(display_backlight).current_values_as_brightness(&current);
+          if (!id(backlight_force_next_write) &&
+              id(display_backlight).current_values.is_on() &&
+              std::fabs(current - target) < 0.005f) {
+            return;
+          }
           auto call = id(display_backlight).turn_on();
-          call.set_brightness(pct / 100.0f);
+          call.set_brightness(target);
           call.set_transition_length(400);
           call.perform();
+          id(backlight_force_next_write) = false;
 
   # ---------------------------------------------------------------------------
   # Recalculate sunrise/sunset from timezone coordinates and current date

@@ -39,8 +39,14 @@ def package_substitution_lines(device: dict) -> list[str]:
     ]
     if package.get("firmwareVersion"):
         lines.append(f'  firmware_version: "{package["firmwareVersion"]}"')
+    added_voice_substitutions = False
     for key, value in package["substitutions"].items():
         lines.append(f"  {key}: {value}")
+        if key == "clock_bar_visual_gap":
+            lines.extend(voice_substitution_lines(device))
+            added_voice_substitutions = True
+    if not added_voice_substitutions:
+        lines.extend(voice_substitution_lines(device))
     if package.get("ethernetSelectable"):
         frequency = package["backlightPwmFrequency"]
         lines.extend(
@@ -55,6 +61,44 @@ def package_substitution_lines(device: dict) -> list[str]:
         )
     lines.extend(cover_art_substitution_lines(device))
     return lines
+
+
+def voice_substitution_lines(device: dict) -> list[str]:
+    if device["slug"] != "esp32-p4-86":
+        return [
+            '  voice_clock_bar_hide_code: ""',
+            '  voice_clock_bar_apply_code: ""',
+            "  navigate_voice_target_code: |-",
+            '    ESP_LOGW("navigation", "Voice volume target is not available on this device");',
+            '  voice_interaction_active_condition: "false"',
+        ]
+    return [
+        "  voice_clock_bar_hide_code: |-",
+        "    lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "  voice_clock_bar_apply_code: |-",
+        "    if (id(voice_services_enabled).state) {",
+        "      lv_obj_align(id(voice_clock_bar_mute_button), LV_ALIGN_TOP_RIGHT,",
+        "                   -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);",
+        "      lv_obj_clear_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "      const bool microphone_muted = id(master_mute_switch).state;",
+        "      const bool output_muted = id(voice_media_player).is_muted();",
+        "      lv_label_set_text(id(voice_clock_bar_mute_icon_label),",
+        '                        microphone_muted ? "\\U000F036D" :',
+        '                        output_muted ? "\\U000F04C4" : "\\U000F036C");',
+        "      lv_obj_set_style_text_color(id(voice_clock_bar_mute_icon_label),",
+        "                                  lv_color_hex(0xFFFFFF),",
+        "                                  LV_PART_MAIN);",
+        "    } else {",
+        "      lv_obj_add_flag(id(voice_clock_bar_mute_button), LV_OBJ_FLAG_HIDDEN);",
+        "    }",
+        "  navigate_voice_target_code: |-",
+        "    if (id(voice_services_enabled).state) {",
+        "      id(open_device_volume_control).execute();",
+        "    } else {",
+        '      ESP_LOGW("navigation", "Voice volume target is not available while Voice Services are disabled");',
+        "    }",
+        '  voice_interaction_active_condition: "id(voice_interaction_active)"',
+    ]
 
 
 def cover_art_substitution_lines(device: dict) -> list[str]:
@@ -125,6 +169,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "true",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc4880p443": {
             "cover_art_size": "480",
@@ -158,6 +203,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc8012p4a1": {
             "cover_art_size": "800",
@@ -191,6 +237,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFF5E0",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc1060p470": {
             "cover_art_size": "600",
@@ -224,6 +271,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
     }
     layout = layouts.get(device["slug"])
@@ -314,11 +362,6 @@ def package_file_text(device: dict) -> str:
             "  # Configuration (text/select/number components for web UI)",
             "  # ---------------------------------------------------------------------------",
             include_line("colors", "!include ../../common/config/colors.yaml"),
-            *(
-                [include_line("theme", "!include ../../common/config/theme.yaml")]
-                if device.get("display_mode") == "monochrome"
-                else []
-            ),
             include_line("button_order", "!include ../../common/config/button_order.yaml"),
             include_line("display_config", "!include ../../common/config/display.yaml"),
             button_package_block(device).rstrip(),
@@ -344,6 +387,10 @@ def package_file_text(device: dict) -> str:
                 "fw_update",
                 f"!include ../../common/addon/firmware_update{firmware_update_suffix}.yaml",
             ),
+            *[
+                include_line(key, include)
+                for key, include in (package.get("extraPackages") or {}).items()
+            ],
             "",
             "  # ---------------------------------------------------------------------------",
             "  # Screens (loading must be first page for LVGL startup)",
@@ -426,13 +473,13 @@ def button_slot_macro() -> str:
     )
 
 
-def macro_array(name: str, macro: str, slots: int, per_line: int = 4) -> list[str]:
-    lines = [f"            esphome::text::Text *{name}[] = {{"]
+def macro_array(name: str, macro: str, slots: int, per_line: int = 4, indent: str = "            ") -> list[str]:
+    lines = [f"{indent}esphome::text::Text *{name}[] = {{"]
     values = [f"{macro}({num})" for num in range(1, slots + 1)]
     for idx in range(0, len(values), per_line):
         chunk = ", ".join(values[idx : idx + per_line])
-        lines.append(f"              {chunk},")
-    lines.append("            };")
+        lines.append(f"{indent}  {chunk},")
+    lines.append(f"{indent}}};")
     return lines
 
 
@@ -507,26 +554,27 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("              id(backlight_sleep_display_off).stop();")
     lines.append("              id(backlight_fade_current_ui_to_black).stop();")
     lines.append("              id(backlight_schedule_display_off).stop();")
+    lines.append("              id(show_cover_art_view).stop();")
+    lines.append("              id(cover_art_delay_timer).stop();")
+    lines.append("              id(cover_art_show_track_overlay).stop();")
     lines.append("              id(show_clock_view).stop();")
     lines.append("              id(show_dimmed_view).stop();")
     lines.append("              id(clock_screensaver_refresh_brightness).stop();")
     lines.append("              id(screensaver_dimmed_refresh_brightness).stop();")
     lines.append("              id(display_asleep) = false;")
+    lines.append("              id(cover_art_screensaver_active) = false;")
     lines.append("              id(screensaver_display_off_active) = false;")
     lines.append("              id(screensaver_dimmed_active) = false;")
+    lines.append("              lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);")
+    lines.append("              lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);")
+    lines.append("              lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);")
+    lines.append("              lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);")
     lines.append("              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);")
     lines.append("              id(backlight_apply_brightness).execute();")
     lines.append("            };")
     lines.append("            cfg.resume_display_takeover = []() {")
     lines.append("              id(display_takeover_suspended) = false;")
-    lines.append("              if (id(screensaver_sensor_sleep_pending) &&")
-    lines.append("                  id(screensaver_mode).state == \"sensor\" &&")
-    lines.append("                  !id(presence_detected)) {")
-    lines.append("                id(screensaver_sleep_sensor).execute();")
-    lines.append("                return;")
-    lines.append("              }")
-    lines.append("              id(home_screen_idle_check).execute();")
-    lines.append("              id(screensaver_idle_check).execute();")
+    lines.append("              id(display_takeover_resume_restore).execute();")
     lines.append("            };")
     if image_card_count > 0:
         lines.append("            static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {")
@@ -571,8 +619,6 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("            set_width_compensation_vertical_axis(cfg.width_compensation_vertical);")
     lines.append("            apply_width_compensation(id(display_time), cfg.width_compensation_percent);")
     lines.append("            apply_width_compensation(id(temperatures), cfg.width_compensation_percent);")
-    for index in range(2, 7):
-        lines.append(f"            apply_width_compensation(id(temperature_{index}), cfg.width_compensation_percent);")
     lines.append("            apply_width_compensation(id(clock_label), cfg.width_compensation_percent);")
     return lines
 
@@ -616,6 +662,54 @@ def refresh_block(device: dict) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def refresh_subpage_arrays(device: dict) -> list[str]:
+    package = device.get("package") or {}
+    subpage_chunks = int(package.get("subpageConfigChunks") or 8)
+    indent = "          "
+    lines = [
+        "          #define SP_CFG(n) subpage_##n##_config",
+        "          #define SP_EXT(n) subpage_##n##_config_ext",
+        "          #define SP_EXT2(n) subpage_##n##_config_ext_2",
+        "          #define SP_EXT3(n) subpage_##n##_config_ext_3",
+    ]
+    if subpage_chunks >= 8:
+        lines.extend(
+            [
+                "          #define SP_EXT4(n) subpage_##n##_config_ext_4",
+                "          #define SP_EXT5(n) subpage_##n##_config_ext_5",
+                "          #define SP_EXT6(n) subpage_##n##_config_ext_6",
+                "          #define SP_EXT7(n) subpage_##n##_config_ext_7",
+            ]
+        )
+    lines.extend(macro_array("sp_cfgs", "SP_CFG", device["slots"], indent=indent))
+    lines.extend(macro_array("sp_ext", "SP_EXT", device["slots"], indent=indent))
+    lines.extend(macro_array("sp_ext2", "SP_EXT2", device["slots"], indent=indent))
+    lines.extend(macro_array("sp_ext3", "SP_EXT3", device["slots"], indent=indent))
+    if subpage_chunks >= 8:
+        lines.extend(macro_array("sp_ext4", "SP_EXT4", device["slots"], indent=indent))
+        lines.extend(macro_array("sp_ext5", "SP_EXT5", device["slots"], indent=indent))
+        lines.extend(macro_array("sp_ext6", "SP_EXT6", device["slots"], indent=indent))
+        lines.extend(macro_array("sp_ext7", "SP_EXT7", device["slots"], indent=indent))
+    lines.extend(
+        [
+            "          #undef SP_CFG",
+            "          #undef SP_EXT",
+            "          #undef SP_EXT2",
+            "          #undef SP_EXT3",
+        ]
+    )
+    if subpage_chunks >= 8:
+        lines.extend(
+            [
+                "          #undef SP_EXT4",
+                "          #undef SP_EXT5",
+                "          #undef SP_EXT6",
+                "          #undef SP_EXT7",
+            ]
+        )
+    return lines
 
 
 def phase2_block(device: dict) -> str:
@@ -676,11 +770,43 @@ def phase2_block(device: dict) -> str:
 
 def script_block(device: dict) -> str:
     after_refresh = ["      - script.execute: clock_bar_apply"]
+    if device.get("refresh_rebuilds_subpages"):
+        package = device.get("package") or {}
+        subpage_chunks = int(package.get("subpageConfigChunks") or 8)
+        phase2_call = [
+            "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,"
+            if subpage_chunks >= 8
+            else "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,",
+            "            id(button_order).state,",
+            "            id(button_on_color).state,",
+            "            id(main_page)->obj);",
+        ]
+        return "\n".join(
+            [
+                "script:",
+                "  - id: refresh_button_grid",
+                "    mode: restart",
+                "    then:",
+                "      - delay: 3s",
+                "      - lambda: |-",
+                refresh_block(device),
+                *refresh_subpage_arrays(device),
+                "          grid_refresh_layout(slots, cfg,",
+                "            id(button_order).state,",
+                "            id(main_page)->obj);",
+                "          navigation_return_home(id(main_page)->obj);",
+                *phase2_call,
+                *after_refresh,
+                "",
+            ]
+        )
     return "\n".join(
         [
             "script:",
             "  - id: refresh_button_grid",
+            "    mode: restart",
             "    then:",
+            "      - delay: 3s",
             "      - lambda: |-",
             refresh_block(device),
             "          grid_refresh_layout(slots, cfg,",
@@ -723,13 +849,28 @@ def replace_script_block(text: str, device: dict) -> str:
 def replace_sensor_blocks(text: str, device: dict) -> str:
     text = replace_script_block(text, device)
     text = replace_phase(text, 1, phase1_block(device), "grid_phase1", device["slug"])
-    text = re.sub(
-        r"(?m)^              id\(sensor_card_color\)\.state\);$",
-        "              id(sensor_card_color).state,\n              id(main_page)->obj);",
-        text,
-        count=1,
-    )
     text = replace_phase(text, 2, phase2_block(device), "grid_phase2", device["slug"])
+    text = re.sub(
+        r"(?m)^              id\(button_on_color\)\.state,\n"
+        r"              id\(button_off_color\)\.state,\n"
+        r"              id\(sensor_card_color\)\.state,\n"
+        r"              id\(main_page\)->obj\);$",
+        "              id(button_on_color).state,\n              id(main_page)->obj);",
+        text,
+    )
+    text = re.sub(
+        r"(?m)^            id\(button_on_color\)\.state,\n"
+        r"            id\(button_off_color\)\.state,\n"
+        r"            id\(sensor_card_color\)\.state,\n"
+        r"            id\(main_page\)->obj\);$",
+        "            id(button_on_color).state,\n            id(main_page)->obj);",
+        text,
+    )
+    text = re.sub(
+        r"(?m)^(              temperature_labels,\n)              6,",
+        r"\1              1,",
+        text,
+    )
     return text
 
 
@@ -772,8 +913,6 @@ def main() -> int:
 
     changed: list[Path] = []
     for device in slot_devices():
-        if device.get("display_mode") == "monochrome":
-            continue
         slug = device["slug"]
         package_path = ROOT / "devices" / slug / "packages.yaml"
         sensor_path = ROOT / "devices" / slug / "device" / "sensors.yaml"

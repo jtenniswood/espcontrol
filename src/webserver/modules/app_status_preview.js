@@ -1,6 +1,7 @@
 // ── Clock (minute-aligned) ─────────────────────────────────────────────
 
 function getTzId(tz) {
+  if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(tz)) return "UTC";
   var idx = tz.indexOf(" (");
   return idx > 0 ? tz.substring(0, idx) : tz;
 }
@@ -44,8 +45,9 @@ function timezoneOffsetMinutes(tzId, date) {
 }
 
 function formatTimezoneOption(opt) {
+  if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(opt)) return opt;
   var tzId = getTzId(opt);
-  var offset = timezoneOffsetMinutes(tzId, new Date());
+  var offset = timezoneOffsetMinutes(tzId, webserverNow());
   if (offset == null || !isFinite(offset)) return opt;
   return tzId + " (" + formatGmtOffset(offset) + ")";
 }
@@ -59,8 +61,8 @@ function appendTimezoneOption(select, opt) {
 
 function updateClockText() {
   if (!els.clock) return;
-  var now = new Date();
-  var tzId = getTzId(state.timezone);
+  var now = webserverNow();
+  var tzId = getTzId(effectiveTimezoneOptionForWeb(state.timezone));
   try {
     var parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tzId, hour: "numeric", minute: "2-digit",
@@ -82,7 +84,7 @@ function updateClockText() {
 
 function updateClock() {
   updateClockText();
-  var now = new Date();
+  var now = webserverNow();
   var msToNext = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
   setTimeout(updateClock, msToNext + 50);
 }
@@ -90,11 +92,6 @@ function updateClock() {
 function clockBarTemperatureActive() {
   return clockBarTemperatureVisible();
 }
-
-var CLOCK_BAR_SECTIONS = ["left", "middle", "right"];
-var CLOCK_BAR_DEFAULT_LAYOUT = CLOCK_BAR_FIXED_LAYOUT;
-var CLOCK_BAR_LAYOUT_STORAGE_PREFIX = "espcontrol.clockBarLayout.";
-var clockBarLayoutLoaded = false;
 
 function clockBarTemperatureItemId(index) {
   return index === 0 ? "temperature" : "temperature_" + (index + 1);
@@ -114,12 +111,16 @@ function clockBarTemperatureItemIds() {
 }
 
 function clockBarItems() {
-  return ["temperature", "time", "network"];
+  var items = ["temperature", "time"];
+  if (voiceServicesSupported()) items.push("voice");
+  items.push("network");
+  return items;
 }
 
 function clockBarDefaultSection(item) {
   if (isClockBarTemperatureItem(item)) return "left";
   if (item === "time") return "middle";
+  if (item === "voice") return "right";
   if (item === "network") return "right";
   return "left";
 }
@@ -128,6 +129,7 @@ function clockBarItemActive(item) {
   var tempIndex = clockBarTemperatureItemIndex(item);
   if (tempIndex >= 0) return clockBarTemperatureVisible();
   if (item === "time") return !!state.clockBarTimeOn;
+  if (item === "voice") return voiceServicesSupported() && !!state.voiceServicesOn;
   if (item === "network") return !!state.networkStatusOn;
   return false;
 }
@@ -139,86 +141,9 @@ function clockBarItemElement(item) {
 function clockBarItemLabel(item) {
   if (isClockBarTemperatureItem(item)) return "Temperature";
   if (item === "time") return "Clock";
+  if (item === "voice") return "Voice Services";
   if (item === "network") return "Connectivity";
   return "Clock Bar";
-}
-
-function clockBarLayoutStorageKey() {
-  return CLOCK_BAR_LAYOUT_STORAGE_PREFIX + (typeof DEVICE_ID === "string" ? DEVICE_ID : "default");
-}
-
-function cloneClockBarLayout(layout) {
-  var out = { left: [], middle: [], right: [] };
-  var allowed = clockBarItems();
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
-    (layout && layout[section] || []).forEach(function (item) {
-      if (allowed.indexOf(item) !== -1 && out[section].indexOf(item) === -1) out[section].push(item);
-    });
-  });
-  return out;
-}
-
-function serializeClockBarLayout(layout) {
-  layout = cloneClockBarLayout(layout || CLOCK_BAR_DEFAULT_LAYOUT);
-  return CLOCK_BAR_SECTIONS.map(function (section) {
-    return section + ":" + layout[section].join(",");
-  }).join("|");
-}
-
-function parseClockBarLayout(value) {
-  var out = { left: [], middle: [], right: [] };
-  var seen = {};
-  var allowed = clockBarItems();
-  String(value || "").split("|").forEach(function (segment) {
-    var parts = segment.split(":");
-    if (parts.length < 2) return;
-    var section = parts[0];
-    if (CLOCK_BAR_SECTIONS.indexOf(section) === -1) return;
-    parts.slice(1).join(":").split(",").forEach(function (item) {
-      item = item.trim();
-      if (allowed.indexOf(item) === -1 || seen[item]) return;
-      seen[item] = true;
-      out[section].push(item);
-    });
-  });
-  return cloneClockBarLayout(out);
-}
-
-function applyClockBarLayoutValue(value) {
-  state.clockBarLayout = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
-  clockBarLayoutLoaded = true;
-  saveClockBarLayout(false);
-  updateClockBarItemUi();
-}
-
-function loadClockBarLayout() {
-  if (clockBarLayoutLoaded && state.clockBarLayout) return state.clockBarLayout;
-  state.clockBarLayout = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
-  clockBarLayoutLoaded = true;
-  return state.clockBarLayout;
-}
-
-function saveClockBarLayout(postDevice) {
-  if (!state.clockBarLayout) return;
-  clockBarLayoutLoaded = true;
-  var serialized = serializeClockBarLayout(state.clockBarLayout);
-  try {
-    if (window.localStorage) {
-      window.localStorage.setItem(clockBarLayoutStorageKey(), JSON.stringify(cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT)));
-    }
-  } catch (_) {}
-  // Layout customization has been removed; keep this as a local compatibility cache only.
-}
-
-function normalizeClockBarLayout() {
-  var next = { left: [], middle: [], right: [] };
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
-    (CLOCK_BAR_DEFAULT_LAYOUT[section] || []).forEach(function (item) {
-      if (next[section].indexOf(item) === -1) next[section].push(item);
-    });
-  });
-  state.clockBarLayout = next;
-  return next;
 }
 
 function createClockBarItemElement(item, section) {
@@ -248,18 +173,28 @@ function createClockBarItemElement(item, section) {
     network.className = "sp-network-preview mdi mdi-wifi-strength-4";
     button.appendChild(network);
     els.networkPreview = network;
+  } else if (item === "voice") {
+    var voice = document.createElement("span");
+    voice.className = "sp-voice-preview mdi mdi-microphone";
+    button.appendChild(voice);
+    els.voicePreview = voice;
   }
   return button;
 }
 
 function renderClockBarLayout() {
   if (!els.clockBarSections) return;
-  var layout = normalizeClockBarLayout();
+  var layout = {
+    left: ["temperature"],
+    middle: ["time"],
+    right: voiceServicesSupported() ? ["voice", "network"] : ["network"],
+  };
   els.clockBarItems = {};
   els.temps = {};
   els.clock = null;
   els.networkPreview = null;
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
+  els.voicePreview = null;
+  ["left", "middle", "right"].forEach(function (section) {
     var container = els.clockBarSections[section];
     if (!container) return;
     container.innerHTML = "";
@@ -275,6 +210,7 @@ function renderClockBarLayout() {
   updateTempPreview();
   updateClockText();
   updateNetworkPreview();
+  updateVoicePreview();
 }
 
 function syncClockBarItemElement(item) {
@@ -332,11 +268,10 @@ function updateSunInfo() {
     return;
   }
   el.classList.add("sp-visible");
-  var t = "";
-  if (state.sunrise) t += "Sunrise: " + escHtml(state.sunrise);
-  if (state.sunrise && state.sunset) t += " \u00a0/\u00a0 ";
-  if (state.sunset) t += "Sunset: " + escHtml(state.sunset);
-  el.innerHTML = t;
+  var parts = [];
+  if (state.sunrise) parts.push("Sunrise: " + state.sunrise);
+  if (state.sunset) parts.push("Sunset: " + state.sunset);
+  el.textContent = parts.join(" \u00a0/\u00a0 ");
 }
 
 function updateTempPreview() {
@@ -383,4 +318,11 @@ function updateNetworkPreview() {
   els.networkPreview.className = "sp-network-preview mdi mdi-" +
     networkPreviewIconSlug(state.networkTransport, state.wifiStrengthPercent) +
     (show ? " sp-visible" : "");
+}
+
+function updateVoicePreview() {
+  if (!els.voicePreview) return;
+  var show = clockBarVisibleInPreview();
+  els.voicePreview.className = "sp-voice-preview mdi mdi-microphone" +
+    (show && voiceServicesSupported() && state.voiceServicesOn ? " sp-visible" : "");
 }

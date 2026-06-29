@@ -8,12 +8,12 @@ import os
 import re
 import sys
 import time
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 ROOT = Path(__file__).resolve().parent.parent
 TIME_YAML = ROOT / "common" / "addon" / "time.yaml"
 SUN_CALC_H = ROOT / "components" / "espcontrol" / "sun_calc.h"
+AUTO_TIMEZONE_OPTION = "Auto (Home Assistant)"
 
 ZONEINFO_ALIASES = {
     "Asia/Rangoon": "Asia/Yangon",
@@ -24,6 +24,8 @@ def load_timezone_options() -> dict[str, str]:
     options: dict[str, str] = {}
     for match in re.finditer(r'^\s+- "([^"]+)"$', TIME_YAML.read_text(), re.M):
         option = match.group(1)
+        if option == AUTO_TIMEZONE_OPTION:
+            continue
         if " (GMT" not in option or ("/" not in option and not option.startswith("UTC ")):
             continue
         tz_id = option.split(" (", 1)[0]
@@ -68,27 +70,31 @@ def point_in_ranges(
     return any(start <= point < end for start, end in ranges)
 
 
+def local_offset_minutes(dt: datetime) -> int:
+    ts = dt.timestamp()
+    local_tm = time.localtime(ts)
+    if hasattr(local_tm, "tm_gmtoff"):
+        return int(local_tm.tm_gmtoff // 60)
+    utc_tm = time.gmtime(ts)
+    diff = (
+        (local_tm.tm_yday - utc_tm.tm_yday) * 1440
+        + (local_tm.tm_hour - utc_tm.tm_hour) * 60
+        + local_tm.tm_min
+        - utc_tm.tm_min
+    )
+    if diff > 720:
+        diff -= 1440
+    elif diff < -720:
+        diff += 1440
+    return diff
+
+
 def posix_offset_minutes(posix: str, dt: datetime) -> int:
     old_tz = os.environ.get("TZ")
     try:
         os.environ["TZ"] = posix
         time.tzset()
-        ts = dt.timestamp()
-        local_tm = time.localtime(ts)
-        if hasattr(local_tm, "tm_gmtoff"):
-            return int(local_tm.tm_gmtoff // 60)
-        utc_tm = time.gmtime(ts)
-        diff = (
-            (local_tm.tm_yday - utc_tm.tm_yday) * 1440
-            + (local_tm.tm_hour - utc_tm.tm_hour) * 60
-            + local_tm.tm_min
-            - utc_tm.tm_min
-        )
-        if diff > 720:
-            diff -= 1440
-        elif diff < -720:
-            diff += 1440
-        return diff
+        return local_offset_minutes(dt)
     finally:
         if old_tz is None:
             os.environ.pop("TZ", None)
@@ -98,11 +104,7 @@ def posix_offset_minutes(posix: str, dt: datetime) -> int:
 
 
 def iana_offset_minutes(tz_id: str, dt: datetime) -> int:
-    try:
-        zone = ZoneInfo(tz_id)
-    except ZoneInfoNotFoundError:
-        zone = ZoneInfo(ZONEINFO_ALIASES.get(tz_id, tz_id))
-    return int(dt.astimezone(zone).utcoffset().total_seconds() // 60)
+    return posix_offset_minutes(ZONEINFO_ALIASES.get(tz_id, tz_id), dt)
 
 
 def firmware_offset_minutes(
@@ -117,28 +119,37 @@ def firmware_offset_minutes(
 
 
 def expected_casablanca_pauses() -> list[tuple[tuple[int, ...], tuple[int, ...]]]:
-    zone = ZoneInfo("Africa/Casablanca")
     start = datetime(2024, 1, 1, tzinfo=timezone.utc)
     end = datetime(2051, 1, 1, tzinfo=timezone.utc)
     pauses: list[tuple[tuple[int, ...], tuple[int, ...]]] = []
     pause_start: datetime | None = None
-    prev = start.astimezone(zone).utcoffset()
-    if prev == timedelta(0):
-        pause_start = start
-    dt = start + timedelta(hours=1)
-    while dt <= end:
-        offset = dt.astimezone(zone).utcoffset()
-        if offset != prev:
-            transition = dt
-            if prev != timedelta(0) and offset == timedelta(0):
-                pause_start = transition
-            elif prev == timedelta(0) and offset != timedelta(0):
-                if pause_start is None:
-                    raise AssertionError("Casablanca pause end without start")
-                pauses.append((utc_point(pause_start), utc_point(transition)))
-                pause_start = None
-            prev = offset
-        dt += timedelta(hours=1)
+    old_tz = os.environ.get("TZ")
+    try:
+        os.environ["TZ"] = "Africa/Casablanca"
+        time.tzset()
+        prev = timedelta(minutes=local_offset_minutes(start))
+        if prev == timedelta(0):
+            pause_start = start
+        dt = start + timedelta(hours=1)
+        while dt <= end:
+            offset = timedelta(minutes=local_offset_minutes(dt))
+            if offset != prev:
+                transition = dt
+                if prev != timedelta(0) and offset == timedelta(0):
+                    pause_start = transition
+                elif prev == timedelta(0) and offset != timedelta(0):
+                    if pause_start is None:
+                        raise AssertionError("Casablanca pause end without start")
+                    pauses.append((utc_point(pause_start), utc_point(transition)))
+                    pause_start = None
+                prev = offset
+            dt += timedelta(hours=1)
+    finally:
+        if old_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = old_tz
+        time.tzset()
     return pauses
 
 

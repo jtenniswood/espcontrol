@@ -1,5 +1,7 @@
 // ── State ──────────────────────────────────────────────────────────────
 
+var AUTO_TIMEZONE_OPTION = "Auto (Home Assistant)";
+var FALLBACK_TIMEZONE_OPTION = "UTC (GMT+0)";
 var NTP_SERVER_DEFAULTS = ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"];
 var LANGUAGE_LABELS = {
   cs: "Čeština (Czech)",
@@ -24,29 +26,41 @@ var LANGUAGE_LABELS = {
   uk: "Українська (Ukrainian)"
 };
 var THEME_PRESETS = {
-  Light: { on: "0073FF", off: "CECECE", sensor: "DEDEDE" },
-  Dark: { on: "FF8C00", off: "313131", sensor: "212121" },
+  Light: { on: "0073FF" },
+  Dark: { on: WEB_UI_COLORS.primary },
 };
+var DEFAULT_COLOR_PRESET = THEME_PRESETS[defaultTheme()];
 
 function defaultTheme() {
   return "Dark";
 }
 
-function isEpaperPreview() {
-  return CFG && CFG.previewTheme === "epaper";
-}
-
-function epaperPreviewFillColor() {
-  return normalizeTheme(state.theme) === "Light" ? "FFFFFF" : "000000";
+function voiceServicesSupported() {
+  return !!(CFG.features && CFG.features.voiceServices);
 }
 
 function defaultTimezoneOptions() {
-  return (CFG && Array.isArray(CFG.timezoneOptions)) ? CFG.timezoneOptions.slice() : [];
+  var options = (CFG && Array.isArray(CFG.timezoneOptions)) ? CFG.timezoneOptions.slice() : [];
+  return options;
 }
 
-function timezoneOptionsWithFallback(options, selected) {
+function isHomeAssistantAutoTimezone(value) {
+  return String(value || "") === AUTO_TIMEZONE_OPTION;
+}
+
+function effectiveTimezoneOptionForWeb(value) {
+  if (!isHomeAssistantAutoTimezone(value)) return value;
+  var active = String(state && state.activeTimezone || "").trim();
+  return active && !isHomeAssistantAutoTimezone(active) ? active : FALLBACK_TIMEZONE_OPTION;
+}
+
+function timezoneOptionsWithFallback(options, selected, preserveSelectedAuto) {
   var list = Array.isArray(options) && options.length ? options.slice() : defaultTimezoneOptions();
-  if (selected && list.indexOf(selected) === -1) list.unshift(selected);
+  var supportsAuto = list.indexOf(AUTO_TIMEZONE_OPTION) !== -1;
+  if (selected && list.indexOf(selected) === -1 &&
+      (!isHomeAssistantAutoTimezone(selected) || supportsAuto || preserveSelectedAuto)) {
+    list.unshift(selected);
+  }
   return list;
 }
 
@@ -55,10 +69,7 @@ var state = {
   sizes: {},
   buttons: [],
   theme: defaultTheme(),
-  themeOptions: ["Light", "Dark"],
-  onColor: THEME_PRESETS[defaultTheme()].on,
-  offColor: THEME_PRESETS[defaultTheme()].off,
-  sensorColor: THEME_PRESETS[defaultTheme()].sensor,
+  onColor: DEFAULT_COLOR_PRESET.on,
   selectedSlots: [],
   lastClickedSlot: -1,
   clockBarSelectedItem: "",
@@ -77,6 +88,7 @@ var state = {
   _clockBarStateValues: {},
   clockBarTimeOn: true,
   networkStatusOn: true,
+  voiceServicesOn: false,
   networkTransport: "wifi",
   wifiStrengthPercent: 100,
   temperatureDegreeSymbolOn: true,
@@ -89,8 +101,10 @@ var state = {
   coverArtAttributeConditions: "",
   coverArtFilteringEnabled: false,
   coverArtDelay: 10,
+  coverArtTouchPause: 120,
   coverArtTrackOverlayDuration: 5,
   coverArtHideExternalInputOn: true,
+  homeAssistantArtworkProtocol: "http",
   coverArtHomeAssistantPort: 8123,
   screensaverMode: "disabled",
   _screensaverModeReceived: false,
@@ -122,7 +136,8 @@ var state = {
   scheduleDimmedBrightness: 10,
   scheduleClockBrightness: 10,
   scheduleClockTextColor: "FFFFFF",
-  timezone: "UTC (GMT+0)",
+  timezone: AUTO_TIMEZONE_OPTION,
+  activeTimezone: FALLBACK_TIMEZONE_OPTION,
   timezoneOptions: defaultTimezoneOptions(),
   language: "en",
   languageOptions: ["en", "cs", "da", "de", "es", "fi", "fr", "hu", "it", "nb", "nl", "pl", "pt", "pt-br", "ro", "sk", "sl", "sv", "tr", "uk"],
@@ -148,6 +163,7 @@ var state = {
   firmwareInstallTargetVersion: "",
   firmwareInstallPostPending: false,
   firmwareInstallStatus: "",
+  firmwareInstallError: "",
   firmwareUpdateControlsSupported: false,
   firmwareInstallControlsSupported: false,
   firmwareOtaUrl: "",
@@ -161,7 +177,6 @@ var state = {
   updateFreqOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
   configLocked: false,
   configLockReason: "",
-  clockBarLayout: null,
   clockBarDragItem: "",
   clockBarTempRestoreIndoor: false,
   clockBarTempRestoreOutdoor: true,
@@ -289,7 +304,7 @@ function syncLanguageSelect() {
 }
 
 function timezonePrefersFahrenheit(timezone) {
-  var tz = getTzId(timezone || state.timezone);
+  var tz = getTzId(effectiveTimezoneOptionForWeb(timezone || state.timezone));
   var fahrenheitZones = {
     "America/Adak": true,
     "America/Anchorage": true,
@@ -321,12 +336,6 @@ function clockBarTemperatureUnitSymbol() {
 }
 
 var MAX_CLOCK_BAR_TEMPERATURES = 1;
-var CLOCK_BAR_FIXED_LAYOUT_STRING = "left:temperature|middle:time|right:network";
-var CLOCK_BAR_FIXED_LAYOUT = {
-  left: ["temperature"],
-  middle: ["time"],
-  right: ["network"],
-};
 
 function defaultClockBarTemperatureEntity(index) {
   if (index === 0) return "sensor.outdoor_temperature";
@@ -441,6 +450,9 @@ function setClockBarItemVisible(item, visible) {
   } else if (item === "time") {
     state.clockBarTimeOn = visible;
     postClockBarTime(state.clockBarTimeOn);
+  } else if (item === "voice" && voiceServicesSupported()) {
+    state.voiceServicesOn = visible;
+    postVoiceServices(state.voiceServicesOn);
   } else if (item === "network") {
     state.networkStatusOn = visible;
     postNetworkStatusIcon(state.networkStatusOn);
@@ -622,6 +634,11 @@ function normalizeHomeAssistantArtworkPort(value) {
   return port;
 }
 
+function normalizeHomeAssistantArtworkProtocol(value) {
+  value = String(value == null ? "" : value).trim().toLowerCase();
+  return value === "https" ? "https" : "http";
+}
+
 function setSelectValue(select, value, label) {
   if (!select) return;
   value = String(value);
@@ -749,45 +766,20 @@ function normalizeTheme(value) {
 }
 
 function syncThemeUi() {
-  if (els.setTheme) els.setTheme.value = normalizeTheme(state.theme);
   if (els.root) els.root.setAttribute("data-screen-theme", normalizeTheme(state.theme).toLowerCase());
 }
 
 function syncColorUi() {
   if (els.setOnColor && els.setOnColor._syncColor) els.setOnColor._syncColor(state.onColor);
-  if (els.setOffColor && els.setOffColor._syncColor) els.setOffColor._syncColor(state.offColor);
-  if (els.setSensorColor && els.setSensorColor._syncColor) els.setSensorColor._syncColor(state.sensorColor);
 }
 
-function applyThemePreset(theme, postChanges) {
-  state.theme = normalizeTheme(theme);
-  var preset = THEME_PRESETS[state.theme];
-  state.onColor = preset.on;
-  state.offColor = preset.off;
-  state.sensorColor = preset.sensor;
-  syncThemeUi();
+function resetAppearanceColors(postChanges) {
+  state.onColor = DEFAULT_COLOR_PRESET.on;
   syncColorUi();
   renderPreview();
   if (postChanges) {
-    postSelect(entityName("screen_theme"), state.theme);
-    if (!isEpaperPreview()) {
-      postText(entityName("button_on_color"), state.onColor);
-      postText(entityName("button_off_color"), state.offColor);
-      postText(entityName("sensor_card_color"), state.sensorColor);
-    }
+    postText(entityName("button_on_color"), state.onColor);
   }
-}
-
-function syncThemeFromDevice(theme, options) {
-  state.theme = normalizeTheme(theme);
-  if (options && Array.isArray(options)) state.themeOptions = options;
-  var preset = THEME_PRESETS[state.theme];
-  state.onColor = preset.on;
-  state.offColor = preset.off;
-  state.sensorColor = preset.sensor;
-  syncThemeUi();
-  syncColorUi();
-  renderPreview();
 }
 
 function syncClockBarUi() {
@@ -803,6 +795,9 @@ function syncClockBarUi() {
   if (els.setNetworkStatusToggle) {
     els.setNetworkStatusToggle.checked = !!state.networkStatusOn;
   }
+  if (els.setVoiceServicesToggle) {
+    els.setVoiceServicesToggle.checked = !!state.voiceServicesOn;
+  }
   if (els.setClockBarBadge) {
     els.setClockBarBadge.className = "sp-card-badge" + (state.clockBarOn ? "" : " sp-hidden");
   }
@@ -815,6 +810,7 @@ function syncClockBarUi() {
   updateClockBarItemUi();
   renderSelectionBar(ctx());
   updateNetworkPreview();
+  updateVoicePreview();
   updateTempPreview();
 }
 
@@ -857,6 +853,21 @@ var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unknown";
 function escHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
     .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function mdiIcon(icon, className) {
+  var iconName = String(icon || "cog").trim();
+  var span = document.createElement("span");
+  span.className = className || "mdi";
+  span.classList.add("mdi-" + (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(iconName) ? iconName : iconSlug(iconName)));
+  return span;
+}
+
+function textSpan(text, className) {
+  var span = document.createElement("span");
+  if (className) span.className = className;
+  span.textContent = text == null ? "" : String(text);
+  return span;
 }
 
 function screenRotationStartupRequired() {
@@ -1189,6 +1200,9 @@ function renderFirmwareUpdateStatus() {
   if (state.firmwareUpdateState === "INSTALLING") {
     status = state.firmwareInstallStatus || "Installing update\u2026";
     cls += " sp-update-installing";
+  } else if (state.firmwareInstallError) {
+    status = escHtml(state.firmwareInstallError);
+    cls += " sp-update-error";
   } else if (firmwareInstallAvailable()) {
     status = publicFirmwareStatusHtml();
     cls += " sp-update-available";
@@ -1264,6 +1278,7 @@ function setFirmwareUpdateInfo(d) {
     updateState = "INSTALLING";
   }
   state.firmwareUpdateState = updateState;
+  if (state.firmwareUpdateState) state.firmwareInstallError = "";
   state.firmwareReleaseUrl = d.release_url || state.firmwareReleaseUrl || "";
   if (state.firmwareUpdateState === "NO UPDATE" &&
       !isSpecificFirmwareVersion(state.firmwareVersion) &&
@@ -1383,7 +1398,7 @@ function isFirmwareInstallButtonEvent(id, d) {
 }
 
 function escAttr(s) {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;")
     .replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 

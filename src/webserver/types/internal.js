@@ -113,12 +113,9 @@ registerButtonType("internal", {
     return internalRelayOptions().length > 0;
   },
   onSelect: function (b) {
+    var defaults = cardContractDefaultConfig("internal");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
     ensureInternalRelaySelection(b);
-    b.sensor = "";
-    b.unit = "";
-    b.precision = "";
-    b.icon = internalRelayDefaultIcon("switch");
-    b.icon_on = internalRelayDefaultOnIcon();
   },
   renderSettingsBeforeLabel: function (panel, b, slot, helpers) {
     renderInternalRelayField(panel, b, helpers);

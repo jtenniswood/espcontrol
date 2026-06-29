@@ -1,0 +1,77 @@
+[
+  {
+    "name": "default garage options are omitted",
+    "input": "cover.garage;Garage Door;Garage;Garage Open;;;garage;;label_display=label",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Garage Door",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "status label display is preserved",
+    "input": "cover.garage;Garage Door;Garage;Garage Open;;;garage;;label_display=status",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Garage Door",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": "label_display=status"
+    }
+  },
+  {
+    "name": "invalid label display falls back to default",
+    "input": "cover.garage;Garage Door;Garage;Garage Open;;;garage;;label_display=bad",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Garage Door",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "open command clears ignored fields",
+    "input": "cover.garage;Open;Garage Open;Auto;open;W;garage;2;label_display=status",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Open",
+      "icon": "Garage Open",
+      "icon_on": "Auto",
+      "sensor": "open",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": "label_display=status"
+    }
+  },
+  {
+    "name": "invalid command mode becomes status card",
+    "input": "cover.garage;Garage Door;Garage;Garage Open;bad;W;garage;2;label_display=status",
+    "expected": {
+      "entity": "cover.garage",
+      "label": "Garage Door",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": "label_display=status"
+    }
+  }
+]

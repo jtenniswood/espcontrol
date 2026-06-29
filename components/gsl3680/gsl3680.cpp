@@ -11,10 +11,12 @@ namespace gsl3680 {
 void GSL3680::setup() {
 
     ESP_LOGD(TAG, "Setup start");
-    // The panel can be mounted with swapped axes. Use the display's native
-    // dimensions so raw touch coordinates match the active orientation.
-    this->x_raw_max_ = this->swap_x_y_? this->get_display()->get_native_height(): this->get_display()->get_native_width() ;
-    this->y_raw_max_ = this->swap_x_y_? this->get_display()->get_native_width() : this->get_display()->get_native_height();
+    // LVGL applies the final screen rotation after the touchscreen reports a
+    // display-space point, so calibrate against the native display dimensions.
+    this->x_raw_max_ =
+        this->swap_x_y_ ? this->get_display()->get_native_height() : this->get_display()->get_native_width();
+    this->y_raw_max_ =
+        this->swap_x_y_ ? this->get_display()->get_native_width() : this->get_display()->get_native_height();
 
     this->reset_pin_->pin_mode(esphome::gpio::FLAG_OUTPUT);
     this->reset_pin_->setup();
@@ -224,9 +226,23 @@ void GSL3680::update_touches() {
 
     ESP_LOGV(TAG, "update_touches: touch [%d] %dx%d (%d)", cinfo.finger_num, cinfo.x[0], cinfo.y[0], mask);
 
-    if (cinfo.finger_num == 1) {
-        // Report only first finger for now
-        this->add_raw_touch_position_(0, cinfo.x[0], cinfo.y[0]);
+    int selected_touch = -1;
+    for (int i = 0; i < cinfo.finger_num && i < 2; i++) {
+        const bool touch_in_bounds =
+            cinfo.x[i] >= this->x_raw_min_ && cinfo.x[i] <= this->x_raw_max_ &&
+            cinfo.y[i] >= this->y_raw_min_ && cinfo.y[i] <= this->y_raw_max_;
+        if (touch_in_bounds) {
+            selected_touch = i;
+            break;
+        }
+    }
+    if (selected_touch >= 0) {
+        // Report the first valid contact even when the controller sees a noisy
+        // or multi-touch wake tap; the screensaver wake path only needs one touch.
+        this->add_raw_touch_position_(0, cinfo.x[selected_touch], cinfo.y[selected_touch]);
+    } else if (cinfo.finger_num >= 1) {
+        ESP_LOGW(TAG, "Ignoring out-of-bounds GSL3680 touches %dx%d and %dx%d",
+                 cinfo.x[0], cinfo.y[0], cinfo.x[1], cinfo.y[1]);
     }
 }
 

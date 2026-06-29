@@ -21,10 +21,11 @@ Because the value comes from the device itself, local sensor cards update and di
 
 No firmware changes are needed. Define your sensors in your ESPHome YAML as normal — EspControl discovers them automatically.
 
-1. Select a card and change its type to **Local Sensor**.
-2. Open the **Sensor** dropdown — the device is queried for its available sensors.
-3. Select the sensor you want to display. The **Label** and **Unit** fields auto-fill from the sensor's name and unit of measurement. You can edit them freely.
-4. Choose **Numeric** or **Text** mode. This is set automatically based on the sensor type but can be changed.
+1. Select a card and change its type to **Sensor**.
+2. Change **Source** from **Home Assistant** to **Local Sensor**.
+3. Open the **Local Sensor** dropdown — the device is queried for its available sensors.
+4. Select the sensor you want to display. The **Label** and **Unit** fields auto-fill from the sensor's name and unit of measurement. You can edit them freely.
+5. Choose **Numeric** or **Text** mode. This is set automatically based on the sensor type but can be changed.
 
 For **Numeric** mode:
 
@@ -50,7 +51,7 @@ If the web UI cannot reach the device while you are configuring a card, a manual
 - The device subscribes directly to the sensor's value updates — the display refreshes automatically whenever the sensor reports a new reading.
 - The refresh rate is controlled by the sensor's own `update_interval` in your ESPHome YAML.
 - Before the first value is received (for example, immediately after boot), the card shows `--`.
-- Numeric mode uses the **tertiary** colour from [Appearance](/features/appearance), so it remains visually distinct from Switch and Trigger cards.
+- Numeric mode uses the fixed **tertiary** background colour, so it remains visually distinct from Switch and Trigger cards.
 - Text mode uses the same tertiary colour while keeping the normal Switch-style icon and label layout.
 
 ## Example Sensors
@@ -87,4 +88,4 @@ text_sensor:
 
 ## When to Use It
 
-Use local sensor cards when the sensor is part of the device's ESPHome config and you want to display its value without relying on Home Assistant. Use [Sensor](/card-types/sensors) cards when the data is already in Home Assistant and you want to pull it from there.
+Use the **Local Sensor** source when the sensor is part of the device's ESPHome config and you want to display its value without relying on Home Assistant. Use the default **Home Assistant** source when the data is already in Home Assistant and you want to pull it from there.

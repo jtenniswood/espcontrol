@@ -155,6 +155,7 @@ function setLightControlType(b, type, helpers) {
   helpers.saveField("sensor", b.sensor || "");
   helpers.saveField("unit", b.unit || "");
   helpers.saveField("precision", b.precision || "");
+  helpers.saveField("options", b.options || "");
   helpers.saveField("icon", b.icon || "Auto");
   helpers.saveField("icon_on", b.icon_on || "Auto");
   renderButtonSettings();
@@ -162,6 +163,16 @@ function setLightControlType(b, type, helpers) {
 
 function renderLightControlTypeField(panel, b, helpers) {
   return helpers.renderCardModeSelector(panel, b, helpers, LIGHT_CONTROL_TYPE_METADATA);
+}
+
+function renderLightControlTabSettings(panel, b, helpers) {
+  renderModalTabSettings(panel, b, helpers, {
+    definitions: lightControlTabDefinitions,
+    tabs: lightControlTabs,
+    normalizeOptions: normalizeLightControlOptions,
+    setTabs: setLightControlTabs,
+    idPrefix: "light-tab-",
+  });
 }
 
 registerButtonType("light_temperature", {
@@ -284,8 +295,10 @@ registerButtonType("light_control", {
   },
   renderSettings: function (panel, b, slot, helpers) {
     renderLightControlTypeField(panel, b, helpers);
+    b.options = normalizeLightControlOptions(b.options);
 
     helpers.renderBasicCardFields(panel, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA);
+    renderLightControlTabSettings(panel, b, helpers);
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Light";

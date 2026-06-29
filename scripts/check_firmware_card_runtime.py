@@ -28,17 +28,21 @@ MODE_ARRAY_PATTERN = re.compile(
     r"open|close|stop|set_position|tilt|toggle|lock|unlock|away|home|night|vacation|disarm)\""
 )
 SERVICE_MAPPING_PATTERN = re.compile(
-    r"\"(?:cover\.(?:open_cover|close_cover|stop_cover|set_cover_position)|"
+    r"\"(?:cover\.(?:open_cover|close_cover|stop_cover|set_cover_position|"
+    r"open_cover_tilt|close_cover_tilt|stop_cover_tilt|set_cover_tilt_position)|"
     r"lock\.(?:lock|unlock)|"
     r"media_player\.(?:media_play_pause|media_previous_track|media_next_track)|"
     r"alarm_control_panel\.(?:alarm_arm_away|alarm_arm_home|alarm_arm_night|alarm_arm_vacation|alarm_disarm))\""
 )
 
+LAWN_MOWER_HEADER = "button_grid_lawn_mower.h"
+GRID_HEADER = "button_grid_grid.h"
+
 
 def service_mapping_line_allowed(line: str) -> bool:
     if "ESP_LOGW" in line:
         return True
-    if "cover.set_cover_tilt_position" in line:
+    if "cover." in line and "_tilt" in line:
         return True
     return False
 
@@ -63,6 +67,43 @@ def check_root(root: Path) -> list[str]:
                 and not service_mapping_line_allowed(line)
             ):
                 failures.append(f"{rel}:{line_no}: keep shared card service mappings in the card runtime/contract boundary")
+    mower_header = root / "components" / "espcontrol" / LAWN_MOWER_HEADER
+    if mower_header.exists():
+        text = mower_header.read_text(encoding="utf-8")
+        required = (
+            "lawn_mower.start_mowing",
+            "lawn_mower.pause",
+            "lawn_mower.dock",
+            'ctx->state == "mowing"',
+            'ctx->state == "unavailable" || ctx->state == "unknown"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(f"components/espcontrol/{LAWN_MOWER_HEADER}: missing mower runtime guard {needle}")
+        forbidden = (
+            "vacuum.",
+            "lawn_mower.stop",
+            "lawn_mower.locate",
+            "lawn_mower.clean_spot",
+            "lawn_mower.clean_area",
+        )
+        for needle in forbidden:
+            if needle in text:
+                failures.append(f"components/espcontrol/{LAWN_MOWER_HEADER}: unexpected mower service/reference {needle}")
+    grid_header = root / "components" / "espcontrol" / GRID_HEADER
+    if grid_header.exists():
+        text = grid_header.read_text(encoding="utf-8")
+        if 'parent_subpage_kind == "lawn_mower"' not in text or "lawn_mower_state_active_ref" not in text:
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: route mower subpage parent indicators through mower active-state handling"
+            )
+        if (
+            'if (sb_cfg.type == "light_control")' not in text
+            or "subscribe_light_control_state(ctx);\n          add_parent_indicator(sb_cfg.entity);" not in text
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: include full light controls in generic subpage parent indicators"
+            )
     return failures
 
 
@@ -107,6 +148,33 @@ def run_self_test() -> None:
         (
             {"button_grid_actions.h": "cover_tilt ? \"cover.set_cover_tilt_position\" : \"cover.set_cover_position\";\n"},
             (),
+        ),
+        (
+            {"button_grid_actions.h": "if (sensor == \"open\") return \"cover.open_cover_tilt\";\n"},
+            (),
+        ),
+        (
+            {"button_grid_lawn_mower.h": "return \"lawn_mower.start_mowing\";\n"},
+            ("missing mower runtime guard lawn_mower.pause",),
+        ),
+        (
+            {"button_grid_lawn_mower.h": "return \"lawn_mower.clean_spot\";\n"},
+            ("unexpected mower service/reference lawn_mower.clean_spot",),
+        ),
+        (
+            {"button_grid_grid.h": 'if (parent_subpage_kind == "climate") {}\n'},
+            ("route mower subpage parent indicators through mower active-state handling",),
+        ),
+        (
+            {
+                "button_grid_grid.h": (
+                    'if (parent_subpage_kind == "lawn_mower") { lawn_mower_state_active_ref(state); }\n'
+                    'if (sb_cfg.type == "light_control") {\n'
+                    '  subscribe_light_control_state(ctx);\n'
+                    '}\n'
+                )
+            },
+            ("include full light controls in generic subpage parent indicators",),
         ),
     )
     for files, expected in cases:

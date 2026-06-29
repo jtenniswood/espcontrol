@@ -20,6 +20,7 @@ enum class ControlModalKind {
   SWITCH_CONFIRMATION,
   OPTION_SELECT,
   FAN_PRESET,
+  FAN_CONTROL,
   NETWORK_STATUS,
   ALARM_PIN,
   ALARM_CONTROL,
@@ -232,8 +233,21 @@ inline bool control_modal_uses_4848_tuning(const ControlModalLayout &layout) {
   return display_modal_is_4848_size(layout.sw, layout.sh);
 }
 
+inline bool control_modal_uses_4848_control_tuning(const ControlModalLayout &layout) {
+  return control_modal_uses_4848_tuning(layout) ||
+         control_modal_is_jc4880p443_size(layout);
+}
+
+inline bool control_modal_uses_p4_86_tuning(const ControlModalLayout &layout) {
+  return display_modal_is_p4_86_size(layout.sw, layout.sh);
+}
+
 inline bool control_modal_uses_large_landscape_tuning(const ControlModalLayout &layout) {
   return display_modal_is_large_landscape_size(layout.sw, layout.sh);
+}
+
+inline bool control_modal_uses_jc1060p470_tuning(const ControlModalLayout &layout) {
+  return display_modal_is_jc1060p470_size(layout.sw, layout.sh);
 }
 
 inline lv_coord_t control_modal_screen_width(lv_coord_t fallback = 480) {
@@ -291,7 +305,8 @@ inline lv_coord_t control_modal_home_card_width(lv_obj_t *btn,
   return width;
 }
 
-inline ControlModalLayout control_modal_calc_layout(int width_compensation_percent) {
+inline ControlModalLayout control_modal_calc_layout(int width_compensation_percent,
+                                                    bool allow_compact_portrait_tuning = true) {
   ControlModalLayout layout;
   lv_disp_t *disp = lv_disp_get_default();
   layout.sw = disp ? lv_disp_get_hor_res(disp) : 480;
@@ -317,7 +332,7 @@ inline ControlModalLayout control_modal_calc_layout(int width_compensation_perce
   if (layout.inset < 8) layout.inset = 8;
   layout.back_inset_x = layout.inset;
   layout.back_inset_y = layout.inset;
-  if (control_modal_uses_compact_portrait_tuning(layout)) {
+  if (allow_compact_portrait_tuning && control_modal_uses_compact_portrait_tuning(layout)) {
     lv_coord_t back_offset = control_modal_scaled_px(12, layout.short_side);
     layout.back_inset_x += back_offset;
     layout.back_inset_y += back_offset;

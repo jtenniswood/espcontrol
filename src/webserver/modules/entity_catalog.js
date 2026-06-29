@@ -8,25 +8,9 @@ var ENTITY_CATALOG = {
       "domain": "text",
       "name": "Button Order"
     },
-    "screen_theme": {
-      "domain": "select",
-      "name": "Screen: Theme",
-      "objectIds": [
-        "screen__theme",
-        "screen_theme"
-      ]
-    },
     "button_on_color": {
       "domain": "text",
       "name": "Button On Color"
-    },
-    "button_off_color": {
-      "domain": "text",
-      "name": "Button Off Color"
-    },
-    "sensor_card_color": {
-      "domain": "text",
-      "name": "Sensor Card Color"
     },
     "button_config": {
       "domain": "text",
@@ -81,15 +65,6 @@ var ENTITY_CATALOG = {
         "clock_bar_enabled"
       ]
     },
-    "screen_clock_bar_layout": {
-      "domain": "text",
-      "name": "Screen: Clock Bar Layout",
-      "objectIds": [
-        "screen__clock_bar_layout",
-        "screen_clock_bar_layout",
-        "clock_bar_layout"
-      ]
-    },
     "screen_clock_bar_time": {
       "domain": "switch",
       "name": "Screen: Clock Bar Time",
@@ -113,6 +88,14 @@ var ENTITY_CATALOG = {
         "screen__network_status_icon",
         "screen_network_status_icon",
         "network_status_enabled"
+      ]
+    },
+    "voice_services": {
+      "domain": "switch",
+      "name": "Voice Services",
+      "objectIds": [
+        "voice_services",
+        "voice_services_enabled"
       ]
     },
     "screen_temperature_degree_symbol": {
@@ -206,6 +189,15 @@ var ENTITY_CATALOG = {
         "cover_art_delay"
       ]
     },
+    "screen_saver_cover_art_touch_pause": {
+      "domain": "number",
+      "name": "Screen Saver: Cover Art Touch Pause",
+      "objectIds": [
+        "screen_saver__cover_art_touch_pause",
+        "screen_saver_cover_art_touch_pause",
+        "cover_art_touch_pause"
+      ]
+    },
     "screen_saver_track_overlay_duration": {
       "domain": "number",
       "name": "Screen Saver: Show Track Overlay",
@@ -225,6 +217,14 @@ var ENTITY_CATALOG = {
         "hide_cover_art_on_external_input",
         "cover_art_hide_external_input",
         "screen_saver__hide_for_external_sources"
+      ]
+    },
+    "home_assistant_artwork_protocol": {
+      "domain": "select",
+      "name": "Home Assistant Artwork Protocol",
+      "objectIds": [
+        "home_assistant_artwork_protocol",
+        "cover_art_home_assistant_artwork_protocol"
       ]
     },
     "home_assistant_artwork_port": {
@@ -281,6 +281,10 @@ var ENTITY_CATALOG = {
     "screen_timezone": {
       "domain": "select",
       "name": "Screen: Timezone"
+    },
+    "screen_active_timezone": {
+      "domain": "text_sensor",
+      "name": "Screen: Active Timezone"
     },
     "screen_language": {
       "domain": "select",
@@ -486,10 +490,7 @@ var ENTITY_CATALOG = {
   "groups": {
     "card": [
       "button_order",
-      "screen_theme",
-      "button_on_color",
-      "button_off_color",
-      "sensor_card_color"
+      "button_on_color"
     ],
     "card_slot": [
       "button_config"
@@ -508,7 +509,6 @@ var ENTITY_CATALOG = {
       "indoor_temp_enable",
       "outdoor_temp_enable",
       "screen_clock_bar",
-      "screen_clock_bar_layout",
       "screen_clock_bar_time",
       "clock_bar_temperature_entities",
       "screen_network_status_icon",
@@ -526,8 +526,10 @@ var ENTITY_CATALOG = {
       "screen_saver_cover_art_entity",
       "screen_saver_cover_art_conditions",
       "screen_saver_cover_art_delay",
+      "screen_saver_cover_art_touch_pause",
       "screen_saver_track_overlay_duration",
       "screen_saver_hide_cover_art_external_input",
+      "home_assistant_artwork_protocol",
       "home_assistant_artwork_port",
       "screen_saver_daytime_clock_brightness",
       "screen_saver_nighttime_clock_brightness",
@@ -537,6 +539,7 @@ var ENTITY_CATALOG = {
       "home_screen_timeout",
       "screen_saver_clock",
       "screen_timezone",
+      "screen_active_timezone",
       "screen_language",
       "screen_clock_format",
       "screen_ntp_server_1",
@@ -567,6 +570,9 @@ var ENTITY_CATALOG = {
       "firmware_install_update",
       "firmware_auto_update",
       "firmware_update_frequency"
+    ],
+    "settings_voice": [
+      "voice_services"
     ],
     "settings_optional": [
       "screen_rotation"

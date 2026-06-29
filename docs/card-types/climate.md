@@ -24,14 +24,18 @@ A Climate card controls a Home Assistant `climate` entity, such as a thermostat,
    - **Icon** shows the selected icon instead of a large temperature. Choose separate **Off Icon** and **On Icon** values if you want the icon to change when the climate entity is on.
    - **Actual Temp** shows the current measured temperature as the large number.
    - **Target Temp** shows the target temperature as the large number.
-6. Choose **Unit Precision**:
+6. Choose **Temperature Display**:
    - **10** shows whole numbers.
    - **10.2** shows one decimal place.
-7. Use **Advanced** only if you want to override the minimum or maximum temperature range shown on the panel. Negative values are supported, for example `-25` to `5` for a freezer thermostat.
+7. Choose **Temperature Step**:
+   - **1 degree** changes the target by whole degrees.
+   - **0.5 degree** changes the target by half degrees.
+   Home Assistant limits still apply, and larger Home Assistant `target_temp_step` values are respected.
+8. Use **Advanced** only if you want to override the minimum or maximum temperature range shown on the panel. Negative values are supported, for example `-25` to `5` for a freezer thermostat.
 
 ## How It Works on the Panel
 
-The card can show either an icon or a large temperature. It lights up when the climate entity is actively heating or cooling.
+The card can show either an icon or a large temperature. It lights up when Home Assistant reports that the climate entity is actively heating, cooling, drying, or running the fan. Idle and off states do not show as active.
 
 Tapping the card opens a climate control popup. From there, you can:
 

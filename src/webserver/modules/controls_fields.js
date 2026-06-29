@@ -1,6 +1,6 @@
 // ── Settings helpers ───────────────────────────────────────────────────
 
-function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement) {
+function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement, actionElement) {
   var card = document.createElement("div");
   card.className = "card";
   var header = document.createElement("div");
@@ -9,10 +9,9 @@ function makeCollapsibleCard(title, bodyElement, defaultCollapsed, badgeElement)
   h3.textContent = title;
   var rightWrap = document.createElement("div");
   rightWrap.className = "card-header-right";
-  var chevron = document.createElement("span");
-  chevron.className = "card-chevron";
-  chevron.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+  var chevron = createDisclosureChevron("card-chevron");
   if (badgeElement) rightWrap.appendChild(badgeElement);
+  if (actionElement) rightWrap.appendChild(actionElement);
   rightWrap.appendChild(chevron);
   header.appendChild(h3);
   header.appendChild(rightWrap);

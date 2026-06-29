@@ -271,7 +271,7 @@ inline void reset_timezone_cards() {
 }
 
 inline std::string timezone_city_label(const std::string &tz_option) {
-  std::string tz_id = timezone_id_from_option(tz_option);
+  std::string tz_id = timezone_id_from_option(effective_timezone_option(tz_option));
   if (tz_id.empty()) return espcontrol_i18n("World Clock");
   if (tz_id == "UTC") return "UTC";
   size_t slash = tz_id.rfind('/');
@@ -284,7 +284,7 @@ inline std::string timezone_city_label(const std::string &tz_option) {
 
 inline bool timezone_localtime(const std::string &tz_option, time_t epoch, struct tm &out) {
   int offset_minutes = 0;
-  if (!timezone_offset_minutes_at_utc(tz_option, epoch, offset_minutes)) return false;
+  if (!timezone_offset_minutes_at_utc(effective_timezone_option(tz_option), epoch, offset_minutes)) return false;
   time_t local_epoch = epoch + static_cast<time_t>(offset_minutes) * 60;
   return gmtime_r(&local_epoch, &out) != nullptr;
 }
@@ -568,7 +568,13 @@ inline void setup_toggle_visual(BtnSlot &s, const ParsedCfg &p) {
   }
 }
 
+inline void setup_local_action_card(BtnSlot &s, const ParsedCfg &p);
+
 inline void setup_action_card(BtnSlot &s, const ParsedCfg &p) {
+  if (action_card_local_action(p)) {
+    setup_local_action_card(s, p);
+    return;
+  }
   std::string action_label = p.label.empty()
     ? (p.entity.empty() ? espcontrol_i18n(std::string("Action")) : p.entity)
     : p.label;

@@ -150,7 +150,7 @@ const faqItems = [
   {
     question: 'What Card Types Are Available?',
     answer:
-      'The setup page includes Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage cards.',
+      'The setup page includes Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage cards.',
   },
   {
     question: 'How Many Cards Can I Have?',
@@ -412,6 +412,7 @@ export default defineConfig({
           { text: 'Fans', link: '/card-types/fans' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
           { text: 'Internal', link: '/card-types/internal-relays' },
+          { text: 'Lawn Mower', link: '/card-types/lawn-mower' },
           { text: 'Lights', link: '/card-types/lights' },
           { text: 'Local Action', link: '/card-types/local-actions' },
           { text: 'Lock', link: '/card-types/locks' },
@@ -450,6 +451,7 @@ export default defineConfig({
           { text: 'Backup', link: '/features/backup' },
           { text: 'Firmware', link: '/features/firmware-updates' },
           { text: 'Built-in Relays', link: '/features/relays' },
+          { text: 'Voice Control', link: '/features/voice-control' },
         ],
       },
       {

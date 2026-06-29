@@ -1,4 +1,4 @@
 interface:
-  display_name: "/post-update"
+  display_name: "post-update"
   short_description: "Post a next-release update on a GitHub issue"
   default_prompt: "Use $post-update when I say /post-update to comment on the GitHub issue in chat context, say the fix will be in the next release, and ask for feedback after testing."

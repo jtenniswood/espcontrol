@@ -410,8 +410,6 @@ var EspControlModel = (() => {
       exported_at: snapshot.exported_at || (/* @__PURE__ */ new Date()).toISOString(),
       button_order: outputs.button_order != null ? String(outputs.button_order) : "",
       button_on_color: snapshot.button_on_color || "0073FF",
-      button_off_color: snapshot.button_off_color || "CECECE",
-      sensor_card_color: snapshot.sensor_card_color || "DEDEDE",
       buttons: outputs.buttons,
       subpages: outputs.subpages,
       subpage_objects: outputs.subpage_objects || {},
@@ -428,8 +426,6 @@ var EspControlModel = (() => {
       exported_at: String(data.exported_at || ""),
       button_order: String(data.button_order || ""),
       button_on_color: String(data.button_on_color || "0073FF"),
-      button_off_color: String(data.button_off_color || "CECECE"),
-      sensor_card_color: String(data.sensor_card_color || "DEDEDE"),
       buttons: outputs.buttons,
       subpages: outputs.subpages,
       subpage_objects: outputs.subpage_objects || {},
@@ -821,7 +817,6 @@ var EspControlModel = (() => {
     }
     return out.slice(0, 1);
   }
-  var CLOCK_BAR_FIXED_LAYOUT = "left:temperature|middle:time|right:network";
   function normalizeLanguage(value) {
     const language = String(value == null ? "" : value).trim().toLowerCase();
     return language || "en";
@@ -1012,9 +1007,9 @@ var EspControlModel = (() => {
       outdoorTempEntity: clockBarTemperatureEntities[0] || "",
       clockBarTemperatureEntities,
       clockBar: objectValue(settings, "clock_bar") != null ? !!settings.clock_bar : false,
-      clockBarLayout: CLOCK_BAR_FIXED_LAYOUT,
       clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
       networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
+      voiceServices: objectValue(settings, "voice_services") != null ? !!settings.voice_services : false,
       temperatureDegreeSymbol: objectValue(settings, "temperature_degree_symbol") != null ? !!settings.temperature_degree_symbol : true,
       subpageChevron: objectValue(settings, "subpage_chevron") != null ? !!settings.subpage_chevron : true,
       timezone: String(settings.timezone || current.timezone),
@@ -1035,6 +1030,7 @@ var EspControlModel = (() => {
       coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
       coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
       coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
+      coverArtTouchPause: objectValue(settings, "cover_art_touch_pause") != null ? settings.cover_art_touch_pause : 120,
       coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
       coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null ? !!settings.cover_art_hide_external_input : true,
       coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port) : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
