@@ -1030,7 +1030,10 @@ inline bool grid_subpage_needs_startup_build(const std::string &sp_cfg) {
   auto sp_btns = parse_subpage_config(sp_cfg);
   for (const auto &sb : sp_btns) {
     ParsedCfg sb_cfg = parsed_cfg_from_subpage_btn(sb);
-    if (sb_cfg.type == "climate") return true;
+    if (!sb_cfg.entity.empty() || !sb_cfg.sensor.empty()) return true;
+    if (sb_cfg.type == "climate" || sb_cfg.type == "media" ||
+        sb_cfg.type == "weather_forecast" || sb_cfg.type == "calendar" ||
+        sb_cfg.type == "timezone" || sb_cfg.type == "todo") return true;
   }
   return false;
 }
