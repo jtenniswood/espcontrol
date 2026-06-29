@@ -107,6 +107,7 @@ nohold=Auto
 none=Nessuno
 no_options=Nessuna opzione
 no_presets=Nessun preset
+no_sources=Nessuna sorgente
 not_available=Non disponibile
 off=Spento
 on=Acceso

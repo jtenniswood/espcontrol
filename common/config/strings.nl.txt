@@ -107,6 +107,7 @@ nohold=Nohold
 none=Geen
 no_options=Geen opties
 no_presets=Geen voorinstellingen
+no_sources=Geen bronnen
 not_available=Niet beschikbaar
 off=Uit
 on=Aan

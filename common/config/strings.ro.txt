@@ -107,6 +107,7 @@ nohold=Fără menținere
 none=Niciunul
 no_options=Fără opțiuni
 no_presets=Fără presetări
+no_sources=Fără surse
 not_available=Indisponibil
 off=Oprit
 on=Pornit

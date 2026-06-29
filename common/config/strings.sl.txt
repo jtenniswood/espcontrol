@@ -107,6 +107,7 @@ nohold=Brez zadržanja
 none=Brez
 no_options=Ni možnosti
 no_presets=Ni prednastavitev
+no_sources=Ni virov
 not_available=Ni na voljo
 off=Izklop
 on=Vklop

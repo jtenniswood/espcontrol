@@ -107,6 +107,7 @@ nohold=Nohold
 none=Aucun
 no_options=Aucune option
 no_presets=Aucun préréglage
+no_sources=Aucune source
 not_available=Non disponible
 off=Éteint
 on=Allumé

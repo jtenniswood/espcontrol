@@ -679,6 +679,12 @@ inline void send_media_seek_action(const std::string &entity_id, int value, floa
   send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
 }
 
+inline void send_media_source_action(const std::string &entity_id,
+                                     const std::string &source) {
+  if (entity_id.empty() || source.empty()) return;
+  send_media_player_action(entity_id, "media_player.select_source", "source", source.c_str());
+}
+
 inline void send_media_playback_action(const std::string &entity_id,
                                        const std::string &mode) {
   if (entity_id.empty()) return;
