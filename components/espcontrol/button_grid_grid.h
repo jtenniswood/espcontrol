@@ -445,7 +445,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       row_span, col_span);
     return;
   }
-  if (p.type == "climate") {
+  if (climate_card_type(p.type)) {
     setup_climate_control_button(
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl,
       s.text_lbl, p, display_icon_font(display));
@@ -1440,7 +1440,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "climate") {
+    if (climate_card_type(p.type)) {
       if (!p.entity.empty()) {
         ClimateControlCtx *ctx = create_climate_control_context(
           s.btn, s.icon_lbl, s.text_lbl, p,
@@ -2174,7 +2174,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "climate") {
+      if (climate_card_type(sb_cfg.type)) {
         if (!sb_cfg.entity.empty()) {
           ClimateControlCtx *ctx = create_climate_control_context(
             sub_slot.btn, sub_slot.icon_lbl, sub_slot.text_lbl, sb_cfg,

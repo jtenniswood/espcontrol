@@ -96,6 +96,8 @@ constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
+constexpr const char *CLIMATE_CONTROL_TABS_OPTION = "climate_tabs";
+constexpr const char *CLIMATE_CONTROL_DEFAULT_TABS_VALUE = "temperature|mode|preset|fan|swing";
 constexpr const char *FAN_CONTROL_TABS_OPTION = "fan_tabs";
 constexpr const char *FAN_CONTROL_DEFAULT_TABS_VALUE = "power|speed|preset|oscillation|direction";
 constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_display();
@@ -519,6 +521,30 @@ inline std::string cover_card_options_normalized(const std::string &options,
   return std::string(COVER_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
 }
 
+inline bool climate_control_tab_token_valid(const std::string &value) {
+  return value == "temperature" || value == "mode" || value == "preset" ||
+         value == "fan" || value == "swing";
+}
+
+inline std::string normalize_climate_control_tabs_value(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(
+    value.empty() ? std::string(CLIMATE_CONTROL_DEFAULT_TABS_VALUE) : value, '|');
+  std::vector<std::string> tabs;
+  for (const auto &part : parts) {
+    if (!climate_control_tab_token_valid(part)) continue;
+    if (std::find(tabs.begin(), tabs.end(), part) == tabs.end()) {
+      tabs.push_back(part);
+    }
+  }
+  if (tabs.empty()) tabs.push_back("temperature");
+  std::string out;
+  for (const auto &tab : tabs) {
+    if (!out.empty()) out += "|";
+    out += tab;
+  }
+  return out;
+}
+
 inline bool fan_control_tab_token_valid(const std::string &value) {
   return value == "power" || value == "speed" || value == "preset" ||
          value == "oscillation" || value == "direction";
@@ -715,6 +741,10 @@ inline std::string normalize_climate_temperature_step(const std::string &value) 
   return card_runtime_climate_temperature_step(value);
 }
 
+inline bool climate_card_type(const std::string &type) {
+  return type == "climate" || type == "climate_control";
+}
+
 inline std::string sanitize_climate_range_value(const std::string &value) {
   const char *start = value.c_str();
   char *end = nullptr;
@@ -745,7 +775,8 @@ inline std::string normalize_climate_precision_config(const std::string &value) 
   return (precision.empty() ? std::string("0") : precision) + ":" + min + ":" + max;
 }
 
-inline std::string climate_card_options_normalized(const std::string &options) {
+inline std::string climate_card_options_normalized(const std::string &options,
+                                                   bool include_control_tabs = false) {
   std::string label_display = normalize_climate_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION));
   std::string number_display = normalize_climate_number_display(cfg_option_value(options, NUMBER_DISPLAY_OPTION));
   std::string temperature_step = normalize_climate_temperature_step(cfg_option_value(options, TEMPERATURE_STEP_OPTION));
@@ -766,6 +797,14 @@ inline std::string climate_card_options_normalized(const std::string &options) {
        large_numbers_explicitly_disabled(options))) {
     append_large_numbers_option(out, options);
   }
+  if (include_control_tabs) {
+    std::string tabs = normalize_climate_control_tabs_value(
+      cfg_option_value(options, CLIMATE_CONTROL_TABS_OPTION));
+    if (tabs != CLIMATE_CONTROL_DEFAULT_TABS_VALUE) {
+      if (!out.empty()) out += ",";
+      out += std::string(CLIMATE_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+    }
+  }
   return out;
 }
 
@@ -781,7 +820,7 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   if (p.type == "action") return action_card_large_numbers_supported(p);
   if (sensor_card_local_sensor(p)) return false;
   if (p.type == "media") return p.sensor == "volume" || p.sensor == "position";
-  if (p.type == "climate") {
+  if (climate_card_type(p.type)) {
     return normalize_climate_number_display(cfg_option_value(p.options, "number_display")) != "icon";
   }
   if (p.type == "todo") {
@@ -1080,12 +1119,12 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     }
     p.options = media_card_options_normalized(p.options, p.sensor);
   }
-  if (p.type == "climate") {
+  if (climate_card_type(p.type)) {
     p.sensor.clear();
     p.unit.clear();
     if (p.icon.empty()) p.icon = "Thermostat";
     p.precision = normalize_climate_precision_config(p.precision);
-    p.options = climate_card_options_normalized(p.options);
+    p.options = climate_card_options_normalized(p.options, p.type == "climate_control");
   }
   if (p.type == "garage") {
     if (!card_runtime_garage_mode_valid(p.sensor)) p.sensor.clear();
@@ -1292,7 +1331,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (sensor_card_local_sensor(p)) {

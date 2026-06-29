@@ -1,5 +1,12 @@
 // Climate card: thermostat status plus full-screen climate controls.
 var CLIMATE_CARD_METADATA = {
+  type: {
+    label: "Type",
+    options: [
+      ["climate_control", "All Controls"],
+      ["climate", "Legacy Controls"],
+    ],
+  },
   entity: {
     label: "Climate Entity",
     idSuffix: "entity",
@@ -69,6 +76,21 @@ registerButtonType("climate", {
     b.unit = "";
     if (!b.icon) b.icon = "Thermostat";
     if (!b.icon_on) b.icon_on = "Auto";
+    var typeField = helpers.selectField(
+      CLIMATE_CARD_METADATA.type.label,
+      helpers.idPrefix + "climate-card-type",
+      CLIMATE_CARD_METADATA.type.options,
+      b.type === "climate_control" ? "climate_control" : "climate"
+    );
+    typeField.select.addEventListener("change", function () {
+      b.type = this.value === "climate_control" ? "climate_control" : "climate";
+      helpers.saveField("type", b.type);
+      b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
+      helpers.saveField("options", b.options);
+      scheduleRender();
+    });
+    panel.appendChild(typeField.field);
+
     var climateConfig = parseClimatePrecisionConfig(b.precision);
     var normalizedPrecision = climatePrecisionConfig(
       climateConfig.precision,
@@ -81,6 +103,17 @@ registerButtonType("climate", {
     }
 
     helpers.renderCardEntityField(panel, b, helpers, CLIMATE_CARD_METADATA);
+    if (b.type === "climate_control") {
+      renderModalTabSettings(panel, b, helpers, {
+        definitions: climateControlTabDefinitions,
+        tabs: climateControlTabs,
+        normalizeOptions: function (options) { return normalizeClimateOptions(options, true); },
+        setTabs: setClimateControlTabs,
+        idPrefix: "climate-tab-",
+        groupLabel: "Modal Controls",
+        groupIdSuffix: "climate-modal-controls",
+      });
+    }
 
     var labelField = condField();
     labelField.classList.add("sp-climate-settings-gap");
@@ -95,7 +128,13 @@ registerButtonType("climate", {
       labelField.classList.toggle("sp-visible", climateLabelDisplayMode(b) === "label");
     }
 
-    var labelDisplayField = helpers.renderCardSegmentControl(panel, b, helpers, {
+    var cardSettingsDisclosure = helpers.disclosureSection(
+      "Card Settings",
+      helpers.idPrefix + "climate-card-settings",
+      false
+    );
+    var cardSettings = cardSettingsDisclosure.section;
+    helpers.renderCardSegmentControl(cardSettings, b, helpers, {
       segment: Object.assign({}, CLIMATE_CARD_METADATA.labelDisplay, {
         value: function () { return climateLabelDisplayMode(b); },
         onSelect: function (button, cardHelpers, value) {
@@ -107,9 +146,9 @@ registerButtonType("climate", {
       }),
     });
     syncLabelField();
-    panel.appendChild(labelField);
+    cardSettings.appendChild(labelField);
 
-    var numberDisplayField = helpers.renderCardSegmentControl(panel, b, helpers, {
+    helpers.renderCardSegmentControl(cardSettings, b, helpers, {
       segment: Object.assign({}, CLIMATE_CARD_METADATA.numberDisplay, {
         value: function () { return climateNumberDisplayMode(b); },
         onSelect: function (button, cardHelpers, value) {
@@ -142,9 +181,9 @@ registerButtonType("climate", {
       iconFields.classList.toggle("sp-visible", climateNumberDisplayMode(b) === "icon");
     }
     syncIconFields();
-    panel.appendChild(iconFields);
+    cardSettings.appendChild(iconFields);
 
-    var precisionField = helpers.selectField("Temperature Display", helpers.idPrefix + "climate-precision", [
+    var precisionField = helpers.selectField("Temperature Settings", helpers.idPrefix + "climate-precision", [
       ["", "10"],
       ["1", "10.2"],
     ], climateConfig.precision);
@@ -155,7 +194,6 @@ registerButtonType("climate", {
       scheduleRender();
     }
     precision.addEventListener("change", saveClimateAdvancedSettings);
-    panel.appendChild(precisionField.field);
     var stepField = helpers.selectField(
       CLIMATE_CARD_METADATA.temperatureStep.label,
       helpers.idPrefix + "climate-temperature-step",
@@ -167,19 +205,17 @@ registerButtonType("climate", {
       helpers.saveField("options", b.options);
       scheduleRender();
     });
-    panel.appendChild(stepField.field);
-    helpers.renderCardLargeNumbersToggle(panel, b, helpers, CLIMATE_CARD_METADATA);
+    helpers.renderCardLargeNumbersToggle(cardSettings, b, helpers, CLIMATE_CARD_METADATA);
+    panel.appendChild(cardSettingsDisclosure.panel);
 
-    var hasRange = !!(climateConfig.min || climateConfig.max);
-    var advancedToggleSection = helpers.toggleSection(
+    var advancedDisclosure = helpers.disclosureSection(
       "Advanced",
-      helpers.idPrefix + "climate-advanced-toggle",
-      hasRange
+      helpers.idPrefix + "climate-advanced",
+      false
     );
-    var advancedToggle = advancedToggleSection.toggle;
-    var advanced = advancedToggleSection.section;
-    panel.appendChild(advancedToggle.row);
-    if (hasRange) advanced.classList.add("sp-visible");
+    var advanced = advancedDisclosure.section;
+    advanced.appendChild(precisionField.field);
+    advanced.appendChild(stepField.field);
 
     var minField = helpers.textField(
       "Minimum Temperature", helpers.idPrefix + "climate-min", climateConfig.min, "e.g. -25");
@@ -195,17 +231,7 @@ registerButtonType("climate", {
 
     minInp.addEventListener("change", saveClimateAdvancedSettings);
     maxInp.addEventListener("change", saveClimateAdvancedSettings);
-    advancedToggle.input.addEventListener("change", function () {
-      if (this.checked) {
-        advanced.classList.add("sp-visible");
-      } else {
-        advanced.classList.remove("sp-visible");
-        minInp.value = "";
-        maxInp.value = "";
-        saveClimateAdvancedSettings();
-      }
-    });
-    panel.appendChild(advanced);
+    panel.appendChild(advancedDisclosure.panel);
   },
   renderPreview: function (b, helpers) {
     var climateConfig = parseClimatePrecisionConfig(b.precision);
@@ -241,3 +267,11 @@ registerButtonType("climate", {
     };
   },
 });
+
+registerButtonType("climate_control", Object.assign({}, BUTTON_TYPES.climate, {
+  label: function () { return cardContractCardLabel("climate_control"); },
+  allowInSubpage: function () { return cardContractAllowInSubpage("climate_control"); },
+  pickerKey: function () { return cardContractPickerKey("climate_control"); },
+  hidden: function () { return cardContractHidden("climate_control"); },
+  defaultConfig: function () { return cardContractDefaultConfig("climate_control"); },
+}));
