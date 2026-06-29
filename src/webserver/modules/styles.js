@@ -179,7 +179,8 @@ var CSS =
   "padding:14px max(var(--gap),calc((100vw - 960px)/2 + var(--gap)));background:var(--surface);" +
   "color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;user-select:none}" +
   ".sp-selection-bar.sp-visible{display:flex}" +
-  ".sp-selection-label{font-size:.85rem;color:var(--text2);margin-right:auto}" +
+  ".sp-selection-label{font-size:.85rem;color:var(--text2);margin-right:auto;min-width:0;" +
+  "overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
   ".sp-selection-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}" +
   ".sp-selection-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;" +
   "border:1px solid var(--border);border-radius:var(--action-r);background:var(--surface2);" +
@@ -190,6 +191,9 @@ var CSS =
   ".sp-selection-btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}" +
   ".sp-selection-btn:disabled,.sp-selection-btn:disabled:hover{opacity:.45;cursor:not-allowed;background:var(--surface2);border-color:var(--border);color:var(--text2)}" +
   ".sp-selection-btn .mdi{font-size:16px;line-height:1}" +
+  "@media(max-width:600px){.sp-selection-bar{margin-left:0;margin-right:0;padding:12px var(--gap);gap:8px}" +
+  ".sp-selection-actions{gap:6px}.sp-selection-btn{padding:8px 10px}" +
+  ".sp-selection-btn[aria-label='Card actions']{width:36px;padding:0}.sp-selection-btn .mdi{flex-shrink:0}}" +
 
   ".sp-config{padding:var(--gap) var(--gap) var(--gap)}" +
   ".sp-settings-status-header{display:flex;align-items:baseline;justify-content:space-between;" +

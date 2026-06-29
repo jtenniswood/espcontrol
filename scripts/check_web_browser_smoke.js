@@ -1055,6 +1055,50 @@ async function assertMobileTabLayout(page, label, restoreViewport) {
     mobile.documentScrollWidth <= mobile.windowWidth + 1,
     `${label}: mobile screen tab has horizontal overflow`,
   );
+  await page.locator('.sp-main [data-slot="1"]').click();
+  await page.waitForSelector(".sp-selection-bar.sp-visible");
+  mobile = await page.evaluate(() => {
+    var bar = document.querySelector(".sp-selection-bar");
+    var label = document.querySelector(".sp-selection-label");
+    var actions = document.querySelector(".sp-selection-actions");
+    var barRect = bar ? bar.getBoundingClientRect() : null;
+    var labelRect = label ? label.getBoundingClientRect() : null;
+    var actionsRect = actions ? actions.getBoundingClientRect() : null;
+    return {
+      selectionBarVisible: !!barRect && barRect.width > 1 && barRect.height > 1,
+      selectionBarWithinViewport:
+        !!barRect && barRect.left >= -1 && barRect.right <= window.innerWidth + 1,
+      selectionLabelFits:
+        !!labelRect &&
+        !!actionsRect &&
+        labelRect.left >= barRect.left - 1 &&
+        labelRect.right <= actionsRect.left + 1,
+      selectionActionsWithinViewport:
+        !!actionsRect && actionsRect.right <= window.innerWidth + 1,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      windowWidth: window.innerWidth,
+    };
+  });
+  assert(
+    mobile.selectionBarVisible,
+    `${label}: mobile card selection bar should be visible after selecting a card`,
+  );
+  assert(
+    mobile.selectionBarWithinViewport,
+    `${label}: mobile card selection bar should fit viewport`,
+  );
+  assert(
+    mobile.selectionLabelFits,
+    `${label}: mobile card selection label should shrink before action buttons`,
+  );
+  assert(
+    mobile.selectionActionsWithinViewport,
+    `${label}: mobile card selection actions should fit viewport`,
+  );
+  assert(
+    mobile.documentScrollWidth <= mobile.windowWidth + 1,
+    `${label}: mobile card selection bar has horizontal overflow`,
+  );
 
   await page.getByRole("tab", { name: "Settings" }).click();
   await page.waitForSelector("#sp-settings.sp-page.active");
