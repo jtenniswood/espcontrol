@@ -566,6 +566,16 @@
       "mdi": "floor-lamp"
     },
     {
+      "name": "Folder Music Outline",
+      "codepoint": "F135A",
+      "mdi": "folder-music-outline"
+    },
+    {
+      "name": "Folder Play",
+      "codepoint": "F19FA",
+      "mdi": "folder-play"
+    },
+    {
       "name": "Fountain",
       "codepoint": "F096B",
       "mdi": "fountain"
@@ -951,6 +961,21 @@
       "mdi": "music"
     },
     {
+      "name": "Music Box Multiple",
+      "codepoint": "F0333",
+      "mdi": "music-box-multiple"
+    },
+    {
+      "name": "Music Note",
+      "codepoint": "F0387",
+      "mdi": "music-note"
+    },
+    {
+      "name": "Music Note Quarter",
+      "codepoint": "F038B",
+      "mdi": "music-note-quarter"
+    },
+    {
       "name": "Nintendo Switch",
       "codepoint": "F07E1",
       "mdi": "nintendo-switch"
@@ -1244,6 +1269,16 @@
       "name": "Speaker",
       "codepoint": "F04C3",
       "mdi": "speaker"
+    },
+    {
+      "name": "Speaker Pause",
+      "codepoint": "F1B73",
+      "mdi": "speaker-pause"
+    },
+    {
+      "name": "Speaker Play",
+      "codepoint": "F1B72",
+      "mdi": "speaker-play"
     },
     {
       "name": "Spotlight",
