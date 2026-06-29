@@ -44,22 +44,25 @@ api:
             apply_registered_ha_control_availability(true);
             refresh_weather_forecast_cards();
             ha_flush_deferred_state_requests();
+            ha_resync_persistent_subscriptions();
           }
         }
         register_local_action_endpoint();
-    - delay: 2s
+    - delay: 5s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
           ha_flush_deferred_state_requests();
+          ha_resync_persistent_subscriptions();
         }
         todo_reload_active_modal();
-    - delay: 8s
+    - delay: 10s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
+          ha_resync_persistent_subscriptions();
         }
         todo_reload_active_modal();
     - delay: 20s
@@ -68,6 +71,39 @@ api:
         if (ha_api_state_connected()) {
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
+          ha_resync_persistent_subscriptions();
+        }
+        todo_reload_active_modal();
+    - delay: 25s
+    - lambda: |-
+        if (ha_api_state_connected()) {
+          refresh_weather_forecast_cards();
+          ha_flush_deferred_state_requests();
+          ha_resync_persistent_subscriptions();
+        }
+    - delay: 60s
+    - lambda: |-
+        if (ha_api_state_connected()) {
+          ha_flush_deferred_state_requests();
+          ha_resync_persistent_subscriptions();
+        }
+    - delay: 60s
+    - lambda: |-
+        if (ha_api_state_connected()) {
+          ha_flush_deferred_state_requests();
+          ha_resync_persistent_subscriptions();
+        }
+    - delay: 60s
+    - lambda: |-
+        if (ha_api_state_connected()) {
+          ha_flush_deferred_state_requests();
+          ha_resync_persistent_subscriptions();
+        }
+    - delay: 60s
+    - lambda: |-
+        if (ha_api_state_connected()) {
+          ha_flush_deferred_state_requests();
+          ha_resync_persistent_subscriptions();
         }
         todo_reload_active_modal();
   on_client_disconnected:
