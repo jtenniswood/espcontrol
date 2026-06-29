@@ -1233,32 +1233,6 @@ async function assertEmptyCellSettings(page, posts, label) {
   await emptyCell.click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
   await page.waitForTimeout(100);
-  const modalOpenState = await page.evaluate(() => ({
-    htmlLocked: document.documentElement.classList.contains("sp-settings-open"),
-    bodyLocked: document.body.classList.contains("sp-settings-open"),
-    htmlOverflow: getComputedStyle(document.documentElement).overflow,
-    bodyOverflow: getComputedStyle(document.body).overflow,
-    documentScrollWidth: document.documentElement.scrollWidth,
-    windowWidth: window.innerWidth,
-  }));
-  assert(
-    modalOpenState.htmlLocked && modalOpenState.bodyLocked,
-    `${label}: opening card settings should lock background page scrolling`,
-  );
-  assert.strictEqual(
-    modalOpenState.htmlOverflow,
-    "hidden",
-    `${label}: settings modal should hide root page overflow while open`,
-  );
-  assert.strictEqual(
-    modalOpenState.bodyOverflow,
-    "hidden",
-    `${label}: settings modal should hide body overflow while open`,
-  );
-  assert(
-    modalOpenState.documentScrollWidth <= modalOpenState.windowWidth + 1,
-    `${label}: locked settings modal should not add page-level horizontal scroll`,
-  );
   assert.strictEqual(
     posts.length,
     before,
@@ -1371,14 +1345,6 @@ async function assertEmptyCellSettings(page, posts, label) {
     var overlay = document.querySelector(".sp-settings-overlay");
     return overlay && !overlay.classList.contains("sp-visible");
   });
-  const modalClosedState = await page.evaluate(() => ({
-    htmlLocked: document.documentElement.classList.contains("sp-settings-open"),
-    bodyLocked: document.body.classList.contains("sp-settings-open"),
-  }));
-  assert(
-    !modalClosedState.htmlLocked && !modalClosedState.bodyLocked,
-    `${label}: closing card settings should unlock background page scrolling`,
-  );
   assert.strictEqual(
     posts.length,
     before,

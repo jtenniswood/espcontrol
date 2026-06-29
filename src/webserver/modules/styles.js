@@ -13,7 +13,6 @@ var CSS =
   "#sp-app{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
   "color:var(--text);max-width:960px;margin:0 auto;-webkit-font-smoothing:antialiased;" +
   "font-optical-sizing:auto}" +
-  "html.sp-settings-open,body.sp-settings-open{overflow:hidden}" +
   "body{background:var(--bg);margin:0}" +
   "esp-app{display:none !important}" +
 
