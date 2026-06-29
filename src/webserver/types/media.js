@@ -287,7 +287,14 @@ registerButtonType("media", {
     if (b.sensor === "previous" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Previous";
     if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
 
-    helpers.renderCardEntityField(panel, b, helpers, MEDIA_CARD_METADATA);
+    helpers.renderCardEntityField(panel, b, helpers, b.sensor === "playlist"
+      ? {
+        entity: Object.assign({}, MEDIA_CARD_METADATA.entity, {
+          label: "Speaker Entity",
+          requiredMessage: "Add a speaker entity before saving.",
+        }),
+      }
+      : MEDIA_CARD_METADATA);
 
     var displayMode = helpers.renderCardSegmentControl(panel, b, helpers, {
       segment: Object.assign({}, MEDIA_CARD_METADATA.displayMode, {
