@@ -2,17 +2,29 @@
 
 // Internal implementation detail for button_grid.h. Include button_grid.h from device YAML.
 
-// ── Home Assistant-driven page navigation ────────────────────────────
+// ── Home Assistant-driven home-screen navigation ─────────────────────
 
 inline void image_card_hide_modal();
+
+struct NavigationHomeTargetEntry {
+  int slot = 0;
+  int display_order = 0;
+  std::string label;
+  std::string config;
+  lv_obj_t *button = nullptr;
+};
 
 struct NavigationSubpageEntry {
   int slot = 0;
   int display_order = 0;
   std::string kind;
-  std::string label;
   lv_obj_t *screen = nullptr;
 };
+
+inline std::vector<NavigationHomeTargetEntry> &navigation_home_targets() {
+  static std::vector<NavigationHomeTargetEntry> entries;
+  return entries;
+}
 
 inline std::vector<NavigationSubpageEntry> &navigation_subpages() {
   static std::vector<NavigationSubpageEntry> entries;
@@ -85,6 +97,10 @@ inline bool navigation_return_home(lv_obj_t *main_page_obj) {
   return true;
 }
 
+inline void navigation_clear_home_targets() {
+  navigation_home_targets().clear();
+}
+
 inline void navigation_clear_subpages() {
   lv_obj_t *active = lv_scr_act();
   for (auto &entry : navigation_subpages()) {
@@ -96,16 +112,28 @@ inline void navigation_clear_subpages() {
   clock_bar_clear_button_grid_pages();
 }
 
+inline void navigation_register_home_target(int slot, int display_order,
+                                            const std::string &label,
+                                            const std::string &config,
+                                            lv_obj_t *button) {
+  if (slot <= 0 || button == nullptr) return;
+  NavigationHomeTargetEntry entry;
+  entry.slot = slot;
+  entry.display_order = display_order;
+  entry.label = navigation_trim(label);
+  entry.config = config;
+  entry.button = button;
+  navigation_home_targets().push_back(entry);
+}
+
 inline void navigation_register_subpage(int slot, int display_order,
                                         const std::string &kind,
-                                        const std::string &label,
                                         lv_obj_t *screen) {
   if (slot <= 0 || screen == nullptr) return;
   NavigationSubpageEntry entry;
   entry.slot = slot;
   entry.display_order = display_order;
   entry.kind = navigation_lower(navigation_trim(kind));
-  entry.label = navigation_trim(label);
   entry.screen = screen;
   navigation_subpages().push_back(entry);
   clock_bar_register_button_grid_page(screen);
@@ -126,15 +154,33 @@ inline int navigation_slot_from_target(const std::string &target) {
   return slot;
 }
 
-inline NavigationSubpageEntry *navigation_find_label_target(
+inline bool navigation_is_voice_target(const std::string &target) {
+  std::string normalized = navigation_lower(navigation_trim(target));
+  return normalized == "voice" || normalized == "mic" ||
+         normalized == "microphone" || normalized == "speaker" ||
+         normalized == "volume" || normalized == "device_volume";
+}
+
+inline bool navigation_has_home_label_target(const std::string &target) {
+  std::string wanted = navigation_lower(navigation_trim(target));
+  if (wanted.empty()) return false;
+
+  for (auto &entry : navigation_home_targets()) {
+    if (entry.button == nullptr || entry.label.empty()) continue;
+    if (navigation_lower(entry.label) == wanted) return true;
+  }
+  return false;
+}
+
+inline NavigationHomeTargetEntry *navigation_find_label_target(
     const std::string &target, bool *duplicate_found = nullptr) {
   if (duplicate_found) *duplicate_found = false;
   std::string wanted = navigation_lower(navigation_trim(target));
   if (wanted.empty()) return nullptr;
 
-  NavigationSubpageEntry *best = nullptr;
-  for (auto &entry : navigation_subpages()) {
-    if (entry.screen == nullptr || entry.label.empty()) continue;
+  NavigationHomeTargetEntry *best = nullptr;
+  for (auto &entry : navigation_home_targets()) {
+    if (entry.button == nullptr || entry.label.empty()) continue;
     if (navigation_lower(entry.label) != wanted) continue;
     if (best == nullptr || entry.display_order < best->display_order) {
       if (best != nullptr && duplicate_found) *duplicate_found = true;
@@ -146,10 +192,10 @@ inline NavigationSubpageEntry *navigation_find_label_target(
   return best;
 }
 
-inline NavigationSubpageEntry *navigation_find_slot_target(int slot) {
+inline NavigationHomeTargetEntry *navigation_find_slot_target(int slot) {
   if (slot <= 0) return nullptr;
-  for (auto &entry : navigation_subpages()) {
-    if (entry.slot == slot && entry.screen != nullptr) return &entry;
+  for (auto &entry : navigation_home_targets()) {
+    if (entry.slot == slot && entry.button != nullptr) return &entry;
   }
   return nullptr;
 }
@@ -179,6 +225,14 @@ inline bool navigation_open_first_kind(const std::string &kind,
   return true;
 }
 
+inline bool navigation_activate_home_target(NavigationHomeTargetEntry *target,
+                                            lv_obj_t *main_page_obj) {
+  if (target == nullptr || target->button == nullptr) return false;
+  if (!navigation_return_home(main_page_obj)) return false;
+  handle_button_click(target->config, target->slot, target->button);
+  return true;
+}
+
 inline bool espcontrol_navigate(const std::string &target,
                                 lv_obj_t *main_page_obj) {
   std::string normalized = navigation_lower(navigation_trim(target));
@@ -194,29 +248,27 @@ inline bool espcontrol_navigate(const std::string &target,
   navigation_hide_modals();
 
   bool duplicate_found = false;
-  NavigationSubpageEntry *label_target =
+  NavigationHomeTargetEntry *label_target =
     navigation_find_label_target(target, &duplicate_found);
   if (label_target != nullptr) {
     if (duplicate_found) {
       ESP_LOGW("navigation",
-        "Multiple subpages are labelled '%s'; opening slot %d",
+        "Multiple home-screen cards are labelled '%s'; activating slot %d",
         navigation_trim(target).c_str(), label_target->slot);
     }
-    lv_scr_load_anim(label_target->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
-    return true;
+    return navigation_activate_home_target(label_target, main_page_obj);
   }
 
   int slot = navigation_slot_from_target(target);
   if (slot > 0) {
-    NavigationSubpageEntry *slot_target = navigation_find_slot_target(slot);
+    NavigationHomeTargetEntry *slot_target = navigation_find_slot_target(slot);
     if (slot_target != nullptr) {
-      lv_scr_load_anim(slot_target->screen, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
-      return true;
+      return navigation_activate_home_target(slot_target, main_page_obj);
     }
-    ESP_LOGW("navigation", "Slot %d is not a configured subpage", slot);
+    ESP_LOGW("navigation", "Slot %d is not a configured home-screen card", slot);
     return false;
   }
 
-  ESP_LOGW("navigation", "No subpage labelled '%s'", navigation_trim(target).c_str());
+  ESP_LOGW("navigation", "No home-screen card labelled '%s'", navigation_trim(target).c_str());
   return false;
 }

@@ -93,11 +93,6 @@ function clockBarTemperatureActive() {
   return clockBarTemperatureVisible();
 }
 
-var CLOCK_BAR_SECTIONS = ["left", "middle", "right"];
-var CLOCK_BAR_DEFAULT_LAYOUT = CLOCK_BAR_FIXED_LAYOUT;
-var CLOCK_BAR_LAYOUT_STORAGE_PREFIX = "espcontrol.clockBarLayout.";
-var clockBarLayoutLoaded = false;
-
 function clockBarTemperatureItemId(index) {
   return index === 0 ? "temperature" : "temperature_" + (index + 1);
 }
@@ -151,79 +146,6 @@ function clockBarItemLabel(item) {
   return "Clock Bar";
 }
 
-function clockBarLayoutStorageKey() {
-  return CLOCK_BAR_LAYOUT_STORAGE_PREFIX + (typeof DEVICE_ID === "string" ? DEVICE_ID : "default");
-}
-
-function cloneClockBarLayout(layout) {
-  var out = { left: [], middle: [], right: [] };
-  var allowed = clockBarItems();
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
-    (layout && layout[section] || []).forEach(function (item) {
-      if (allowed.indexOf(item) !== -1 && out[section].indexOf(item) === -1) out[section].push(item);
-    });
-  });
-  return out;
-}
-
-function serializeClockBarLayout(layout) {
-  layout = cloneClockBarLayout(layout || CLOCK_BAR_DEFAULT_LAYOUT);
-  return CLOCK_BAR_SECTIONS.map(function (section) {
-    return section + ":" + layout[section].join(",");
-  }).join("|");
-}
-
-function parseClockBarLayout(value) {
-  var out = { left: [], middle: [], right: [] };
-  var seen = {};
-  var allowed = clockBarItems();
-  String(value || "").split("|").forEach(function (segment) {
-    var parts = segment.split(":");
-    if (parts.length < 2) return;
-    var section = parts[0];
-    if (CLOCK_BAR_SECTIONS.indexOf(section) === -1) return;
-    parts.slice(1).join(":").split(",").forEach(function (item) {
-      item = item.trim();
-      if (allowed.indexOf(item) === -1 || seen[item]) return;
-      seen[item] = true;
-      out[section].push(item);
-    });
-  });
-  return cloneClockBarLayout(out);
-}
-
-function applyClockBarLayoutValue(value) {
-  state.clockBarLayout = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
-  clockBarLayoutLoaded = true;
-  saveClockBarLayout(false);
-  updateClockBarItemUi();
-}
-
-function loadClockBarLayout() {
-  if (clockBarLayoutLoaded && state.clockBarLayout) return state.clockBarLayout;
-  state.clockBarLayout = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
-  clockBarLayoutLoaded = true;
-  return state.clockBarLayout;
-}
-
-function saveClockBarLayout(postDevice) {
-  if (!state.clockBarLayout) return;
-  clockBarLayoutLoaded = true;
-  var serialized = serializeClockBarLayout(state.clockBarLayout);
-  try {
-    if (window.localStorage) {
-      window.localStorage.setItem(clockBarLayoutStorageKey(), JSON.stringify(cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT)));
-    }
-  } catch (_) {}
-  // Layout customization has been removed; keep this as a local compatibility cache only.
-}
-
-function normalizeClockBarLayout() {
-  var next = cloneClockBarLayout(CLOCK_BAR_DEFAULT_LAYOUT);
-  state.clockBarLayout = next;
-  return next;
-}
-
 function createClockBarItemElement(item, section) {
   var button = document.createElement("div");
   button.className = "sp-clockbar-item sp-clockbar-" + (isClockBarTemperatureItem(item) ? "temperature" : item);
@@ -262,13 +184,17 @@ function createClockBarItemElement(item, section) {
 
 function renderClockBarLayout() {
   if (!els.clockBarSections) return;
-  var layout = normalizeClockBarLayout();
+  var layout = {
+    left: ["temperature"],
+    middle: ["time"],
+    right: voiceServicesSupported() ? ["voice", "network"] : ["network"],
+  };
   els.clockBarItems = {};
   els.temps = {};
   els.clock = null;
   els.networkPreview = null;
   els.voicePreview = null;
-  CLOCK_BAR_SECTIONS.forEach(function (section) {
+  ["left", "middle", "right"].forEach(function (section) {
     var container = els.clockBarSections[section];
     if (!container) return;
     container.innerHTML = "";

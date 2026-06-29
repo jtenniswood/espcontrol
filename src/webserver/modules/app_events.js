@@ -2,7 +2,6 @@
 
 var SSE_ALIAS_GROUPS = {
   clockBar: ["switch-screen__clock_bar", "switch-screen_clock_bar", "switch-clock_bar_enabled"],
-  clockBarLayout: ["text-screen__clock_bar_layout", "text-screen_clock_bar_layout", "text-clock_bar_layout"],
   clockBarTime: ["switch-screen__clock_bar_time", "switch-screen_clock_bar_time", "switch-clock_bar_time_enabled"],
   clockBarTemperatureEntities: ["text-clock_bar_temperature_entities", "text-clock_bar__temperature_entities"],
   networkStatus: ["switch-screen__network_status_icon", "switch-screen_network_status_icon", "switch-network_status_enabled"],
@@ -160,9 +159,6 @@ function connectEvents() {
     },
     "switch-screen__clock_bar": function (val, d, key) {
       if (applyClockBarStateValue(val, d, key)) syncClockBarUi();
-    },
-    "text-screen__clock_bar_layout": function (val) {
-      applyClockBarLayoutValue(CLOCK_BAR_FIXED_LAYOUT_STRING);
     },
     "text-clock_bar_temperature_entities": function (val) {
       applyClockBarTemperatureEntities(normalizeClockBarTemperatureEntities(val), false);
@@ -507,7 +503,6 @@ function connectEvents() {
   };
 
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBar, sseHandlers["switch-screen__clock_bar"]);
-  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarLayout, sseHandlers["text-screen__clock_bar_layout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarTime, sseHandlers["switch-screen__clock_bar_time"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarTemperatureEntities, sseHandlers["text-clock_bar_temperature_entities"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.networkStatus, sseHandlers["switch-screen__network_status_icon"]);
