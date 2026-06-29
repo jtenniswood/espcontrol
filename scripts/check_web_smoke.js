@@ -391,6 +391,16 @@ assert.strictEqual(
   "control_modal",
   "all media controls appears first in the media mode list"
 );
+const mediaControlIconPreview = hooks.buttonTypePreviewFor("media", {
+  label: "All Controls",
+  icon: "Music",
+  sensor: "control_modal",
+  type: "media",
+});
+assert(
+  mediaControlIconPreview.iconHtml.includes("mdi-play-pause"),
+  "all controls preview uses the play/pause icon even with an old saved custom icon"
+);
 const mediaControlConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
   entity: "media_player.living_room",
   label: "Speaker",
