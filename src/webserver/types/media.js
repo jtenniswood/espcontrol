@@ -436,11 +436,6 @@ registerButtonType("media", {
         contentTypeField.select.value = mediaPlaylistContentType(b);
         helpers.saveField("options", b.options);
       });
-      var hint = document.createElement("div");
-      hint.className = "sp-field-hint";
-      hint.textContent = "Find these values by testing media_player.play_media in Home Assistant developer tools.";
-      panel.appendChild(hint);
-
       helpers.renderCardTextField(panel, b, helpers, {
         label: "Label",
         idSuffix: "label",
