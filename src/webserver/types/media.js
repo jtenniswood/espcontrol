@@ -105,7 +105,7 @@ var MEDIA_CARD_METADATA = {
 };
 
 function mediaPlaylistContentIdPlaceholder() {
-  return "e.g. media-source://media_source/local/playlist.m3u";
+  return "e.g. spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO";
 }
 
 function mediaPlaylistContentTypeOptions(currentValue) {
