@@ -63,7 +63,7 @@ Now Playing works best on wider or larger cards because it has more room for tra
 
 ## All Controls
 
-All Controls opens playback controls and volume in a popup. The parent card can show either its fixed label or the current media player state, and its top-left area can show either the play/pause icon or the current volume number.
+All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
 
 ## Playlist Button
 
