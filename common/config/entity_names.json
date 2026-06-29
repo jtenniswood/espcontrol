@@ -15,7 +15,6 @@
     { "key": "indoor_temp_enable", "domain": "switch", "name": "Indoor Temp Enable", "groups": ["settings"] },
     { "key": "outdoor_temp_enable", "domain": "switch", "name": "Outdoor Temp Enable", "groups": ["settings"] },
     { "key": "screen_clock_bar", "domain": "switch", "name": "Screen: Clock Bar", "objectIds": ["screen__clock_bar", "screen_clock_bar", "clock_bar_enabled"], "groups": ["settings"] },
-    { "key": "screen_clock_bar_layout", "domain": "text", "name": "Screen: Clock Bar Layout", "objectIds": ["screen__clock_bar_layout", "screen_clock_bar_layout", "clock_bar_layout"], "groups": ["settings"] },
     { "key": "screen_clock_bar_time", "domain": "switch", "name": "Screen: Clock Bar Time", "objectIds": ["screen__clock_bar_time", "screen_clock_bar_time", "clock_bar_time_enabled"], "groups": ["settings"] },
     { "key": "clock_bar_temperature_entities", "domain": "text", "name": "Clock Bar: Temperature Entities", "objectIds": ["clock_bar__temperature_entities"], "groups": ["settings"] },
     { "key": "screen_network_status_icon", "domain": "switch", "name": "Screen: Network Status Icon", "objectIds": ["screen__network_status_icon", "screen_network_status_icon", "network_status_enabled"], "groups": ["settings"] },

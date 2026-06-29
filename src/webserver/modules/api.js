@@ -740,15 +740,6 @@ function postClockBar(on) {
   postSwitchWithObjectIds(entityName("screen_clock_bar"), entityObjectIds("screen_clock_bar"), on, CLOCK_BAR_UNAVAILABLE);
 }
 
-function postClockBarLayout(value) {
-  postTextWithObjectIds(
-    entityName("screen_clock_bar_layout"),
-    entityObjectIds("screen_clock_bar_layout"),
-    value,
-    CLOCK_BAR_UNAVAILABLE
-  );
-}
-
 function postClockBarTemperatureEntities(value) {
   var name = entityName("clock_bar_temperature_entities");
   var objectIds = entityObjectIds("clock_bar_temperature_entities");

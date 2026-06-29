@@ -103,6 +103,10 @@ npm run docs:build
 For firmware changes, also compile the affected device with ESPHome before
 publishing.
 
+The ESPHome Docker image version used by firmware compile, nightly firmware, and
+release firmware workflows is set in `.github/esphome.env`. Update that one file
+when moving to a new ESPHome release.
+
 The `Firmware Compile` GitHub workflow starts on every pull request, then checks
 the changed files itself. It only runs the expensive firmware compile when a PR
 touches firmware-visible paths such as `common/`, `components/`, `devices/`,

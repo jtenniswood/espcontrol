@@ -968,7 +968,8 @@ var CARD_CONTRACT_CARDS = {
           "next",
           "volume",
           "position",
-          "now_playing"
+          "now_playing",
+          "playlist"
         ],
         "defaultValue": "play_pause"
       },
@@ -1001,6 +1002,17 @@ var CARD_CONTRACT_CARDS = {
         "max": 100,
         "step": 1,
         "defaultValue": "100"
+      },
+      {
+        "name": "playlist_content_id",
+        "label": "Media Content ID / URI",
+        "kind": "text"
+      },
+      {
+        "name": "playlist_content_type",
+        "label": "Media Content Type",
+        "kind": "text",
+        "defaultValue": "playlist"
       },
       {
         "name": "large_numbers",
@@ -1603,6 +1615,8 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "on_pattern": "on_pattern",
   "pin_arm": "pin_arm",
   "pin_disarm": "pin_disarm",
+  "playlist_content_id": "playlist_content_id",
+  "playlist_content_type": "playlist_content_type",
   "script_fields": "script_fields",
   "state_high_label": "state_high_label",
   "state_input": "state_input",

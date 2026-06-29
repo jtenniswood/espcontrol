@@ -803,7 +803,7 @@
           "name": "media_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["play_pause", "previous", "next", "volume", "position", "now_playing"],
+          "values": ["play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
           "defaultValue": "play_pause"
         },
         {
@@ -828,6 +828,17 @@
           "max": 100,
           "step": 1,
           "defaultValue": "100"
+        },
+        {
+          "name": "playlist_content_id",
+          "label": "Media Content ID / URI",
+          "kind": "text"
+        },
+        {
+          "name": "playlist_content_type",
+          "label": "Media Content Type",
+          "kind": "text",
+          "defaultValue": "playlist"
         },
         {
           "name": "large_numbers",

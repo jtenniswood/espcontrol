@@ -102,6 +102,8 @@ constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_disp
 constexpr const char *NUMBER_DISPLAY_OPTION = card_runtime_option_name_number_display();
 constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_temperature_step();
 constexpr const char *VOLUME_MAX_OPTION = card_runtime_option_name_volume_max();
+constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
+constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
 
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
@@ -406,6 +408,20 @@ inline int normalize_media_volume_max_percent(const std::string &value) {
 
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
+  if (mode == "playlist") {
+    std::string out;
+    std::string content_id = cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+    if (!content_id.empty()) {
+      out = std::string(MEDIA_PLAYLIST_CONTENT_ID_OPTION) + "=" + encode_compact_field(content_id);
+    }
+    std::string content_type = cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
+    if (content_type.empty()) content_type = "playlist";
+    if (content_type != "playlist") {
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_PLAYLIST_CONTENT_TYPE_OPTION) + "=" + encode_compact_field(content_type);
+    }
+    return out;
+  }
   if (mode != "volume" && mode != "position") return "";
   std::string out;
   int max_pct = normalize_media_volume_max_percent(
@@ -1069,6 +1085,10 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.sensor == "volume") {
       if (p.label.empty() || p.label == "Media") p.label = "Volume";
       p.icon = "Auto";
+    }
+    if (p.sensor == "playlist") {
+      if (p.label.empty() || p.label == "Media") p.label = "Playlist";
+      if (p.icon.empty() || p.icon == "Auto") p.icon = "Music";
     }
     if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = "Position";
     if (p.sensor == "now_playing") {

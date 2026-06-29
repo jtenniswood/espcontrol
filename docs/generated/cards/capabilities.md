@@ -34,7 +34,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Lights | light_temperature | light | Yes | Lights (light_brightness) | None | Visible |
 | Lights | light_control | light | Yes | Lights (light_brightness) | Visible Tabs: power, brightness, temperature, color | Hidden |
 | Lock | lock | lock | Yes | Own picker item | Type: default, lock, unlock | Visible |
-| Media | media | media_player | Yes | Own picker item | Type: play_pause, previous, next, volume, position, now_playing; Type: default, state; Controls: default, progress, play_pause; Maximum Volume: 1-100; Large Media Numbers | Visible |
+| Media | media | media_player | Yes | Own picker item | Type: play_pause, previous, next, volume, position, now_playing, playlist; Type: default, state; Controls: default, progress, play_pause; Maximum Volume: 1-100; Media Content ID / URI; Media Content Type; Large Media Numbers | Visible |
 | Option Select | option_select | select, input_select | Yes | Own picker item | None | Hidden |
 | Trigger | push | None | Yes | Own picker item | None | Visible |
 | Screen Lock | screen_lock | None | Yes | Own picker item | None | Visible |

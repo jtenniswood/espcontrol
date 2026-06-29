@@ -102,6 +102,10 @@ function normalizeButtonConfig(b) {
       if (!b.label || b.label === "Media") b.label = "Volume";
       b.icon = "Auto";
     }
+    if (b.sensor === "playlist") {
+      if (!b.label || b.label === "Media") b.label = "Playlist";
+      if (!b.icon || b.icon === "Auto") b.icon = "Music";
+    }
     if (b.sensor === "position" && (!b.label || b.label === "Track")) b.label = "Position";
     if (b.sensor === "now_playing") {
       b.precision = mediaNowPlayingControls(b);
@@ -337,6 +341,8 @@ var CLIMATE_LABEL_DISPLAY_OPTION = cardContractOptionName("label_display");
 var CLIMATE_NUMBER_DISPLAY_OPTION = cardContractOptionName("number_display");
 var CLIMATE_TEMPERATURE_STEP_OPTION = cardContractOptionName("temperature_step");
 var MEDIA_VOLUME_MAX_OPTION = cardContractOptionName("volume_max");
+var MEDIA_PLAYLIST_CONTENT_ID_OPTION = cardContractOptionName("playlist_content_id");
+var MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = cardContractOptionName("playlist_content_type");
 var SUBPAGE_KIND_OPTION = cardContractOptionName("subpage_kind");
 var IMAGE_LABEL_OPTION = cardContractOptionName("image_label");
 var IMAGE_ICON_OPTION = cardContractOptionName("image_icon");
@@ -456,6 +462,17 @@ function normalizeMediaVolumeMax(value) {
 
 function normalizeMediaOptions(options, mode) {
   mode = mediaEditorMode(mode);
+  if (mode === "playlist") {
+    var playlistOut = "";
+    var contentId = configOptionValue(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+    if (contentId) playlistOut = setConfigOptionValue(playlistOut, MEDIA_PLAYLIST_CONTENT_ID_OPTION, contentId);
+    var defaultType = cardContractOptionDefaultValue("media", MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, "playlist");
+    var contentType = configOptionValue(options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION) || defaultType;
+    if (contentType !== defaultType) {
+      playlistOut = setConfigOptionValue(playlistOut, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, contentType);
+    }
+    return playlistOut;
+  }
   if (mode !== "volume" && mode !== "position") return "";
   var out = "";
   var maxVolume = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
@@ -1112,6 +1129,34 @@ function setMediaVolumeMax(b, value) {
     MEDIA_VOLUME_MAX_OPTION,
     normalized === "100" ? "" : normalized
   );
+  b.options = normalizeMediaOptions(b.options, b.sensor);
+  return b.options;
+}
+
+function mediaPlaylistContentId(b) {
+  return configOptionValue(b && b.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+}
+
+function mediaPlaylistContentType(b) {
+  return configOptionValue(b && b.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION) ||
+    cardContractOptionDefaultValue("media", MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, "playlist");
+}
+
+function setMediaPlaylistContentId(b, value) {
+  if (!b) return "";
+  b.options = setConfigOptionValue(b.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION, value || "");
+  b.options = normalizeMediaOptions(b.options, b.sensor);
+  return b.options;
+}
+
+function setMediaPlaylistContentType(b, value) {
+  if (!b) return "";
+  var defaultType = cardContractOptionDefaultValue("media", MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, "playlist");
+  value = String(value || "").trim() || defaultType;
+  b.options = setConfigOptionValue(
+    b.options,
+    MEDIA_PLAYLIST_CONTENT_TYPE_OPTION,
+    value === defaultType ? "" : value);
   b.options = normalizeMediaOptions(b.options, b.sensor);
   return b.options;
 }
