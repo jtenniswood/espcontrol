@@ -589,6 +589,7 @@ def check_clock_bar_visual_gaps() -> None:
         "guition-esp32-p4-jc4880p443": '"12"',
         "guition-esp32-p4-jc8012p4a1": '"10"',
         "guition-esp32-s3-4848s040": '"8"',
+        "guition-esp32-s3-jc3248w535": '"8"',
     }
     for device, value in expected.items():
         packages = DEVICES_DIR / device / "packages.yaml"

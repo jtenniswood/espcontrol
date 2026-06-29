@@ -582,6 +582,147 @@
         }
       }
     },
+    "guition-esp32-s3-jc3248w535": {
+      "slots": 6,
+      "public": {
+        "name": "Guition JC3248W535",
+        "docsPath": "/screens/jc3248w535",
+        "screenSize": "3.5 inches",
+        "resolution": "480 x 320",
+        "orientation": "Landscape"
+      },
+      "layout": {
+        "cols": 2,
+        "rows": 3,
+        "firmwareGrid": "2x3",
+        "portraitCols": 3
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ],
+        "default": "90",
+        "displayOffset": 90
+      },
+      "web": {
+        "dragMode": "displace",
+        "dragAnimation": true,
+        "screen": {
+          "width": "50%",
+          "aspect": "2/3"
+        },
+        "portrait": {
+          "cols": 3,
+          "rows": 2,
+          "screen": {
+            "width": "70%",
+            "aspect": "3/2"
+          }
+        },
+        "topbar": {
+          "height": 9.38,
+          "padding": "1.56cqw 1.04cqw 1.04cqw",
+          "fontSize": 4.69
+        },
+        "grid": {
+          "top": 10.94,
+          "compactTop": 1.56,
+          "left": 1.56,
+          "right": 1.56,
+          "bottom": 1.56,
+          "gap": 2.08,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 2.08,
+          "padding": 3.13,
+          "iconSize": 10.42,
+          "labelSize": 4.69,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 2.08
+        },
+        "sensorBadge": {
+          "top": 2.08,
+          "right": 2.08,
+          "fontSize": 3.65
+        },
+        "subpageBadge": {
+          "bottom": 2.08,
+          "right": 2.08,
+          "fontSize": 4.69
+        }
+      },
+      "firmware": {
+        "build": {
+          "chip": "ESP32-S3"
+        },
+        "fonts": {
+          "icon": "font_icon_main",
+          "sensor": "font_number_value",
+          "largeSensor": "font_number_value_large",
+          "mediaTitle": "font_text_title",
+          "volumeNumber": "font_number_value_large",
+          "volumeLabel": "font_text_body",
+          "climateCardIcon": "font_icon_card",
+          "subpageChevron": "font_icon_status",
+          "climateOptionTitle": "font_text_body",
+          "climateOptionValue": "font_text_body"
+        },
+        "display": {
+          "wrapTallLabels": false,
+          "imageCardDownloaders": 0,
+          "subpageChevronX": 3,
+          "subpageChevronY": -2,
+          "subpageChevronTextWidthPercent": 96
+        },
+        "package": {
+          "firmwareVersion": "dev",
+          "subpageConfigChunks": 4,
+          "substitutions": {
+            "screen_width": "\"480\"",
+            "screen_height": "\"320\"",
+            "content_width": "\"380\"",
+            "setup_icon_font_id": "font_icon_main",
+            "setup_title_font_id": "font_text_title",
+            "setup_body_font_id": "font_text_body",
+            "setup_pad_row": "\"20\"",
+            "setup_loading_pad_row": "\"40\"",
+            "setup_action_button_width": "\"200\"",
+            "setup_action_button_height": "\"56\"",
+            "setup_action_button_radius": "\"12\"",
+            "icon_font": "font_icon_main",
+            "subpage_chevron_font": "font_icon_status",
+            "label_font": "font_text_body",
+            "media_title_font": "font_text_title",
+            "unit_font": "font_text_body",
+            "sensor_value_font": "font_number_value",
+            "padding": "14px",
+            "radius": "8px",
+            "main_page_card_gap": "\"10\"",
+            "main_page_pad_top": "\"40\"",
+            "main_page_compact_pad_top": "\"4\"",
+            "clock_bar_item_gap": "\"60\"",
+            "clock_bar_visual_gap": "\"8\"",
+            "clock_font_size": "\"160\"",
+            "clock_cx": "\"240\"",
+            "clock_cy": "\"160\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
+          },
+          "deviceFontPackageKey": "fonts_device",
+          "apiNavigateAction": false
+        }
+      }
+    },
     "guition-esp32-s3-4848s040": {
       "slots": 9,
       "public": {

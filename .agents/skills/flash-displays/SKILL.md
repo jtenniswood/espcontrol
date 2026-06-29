@@ -18,6 +18,7 @@ Use the local development ESPHome configs to flash the known EspControl displays
 | `4inch P4`, `4-inch P4`, `P4-86`, `86 Panel`, `Waveshare P4-86`, `esp32-p4-86` | `devices/esp32-p4-86` | `192.168.10.52` |
 | `4.3inch P4`, `4.3-inch P4`, `P4 4.3inch`, `P4 4.3-inch`, `JC4880P443` | `devices/guition-esp32-p4-jc4880p443` | `192.168.6.101` |
 | `4inch S3`, `4-inch S3`, `4848S040` | `devices/guition-esp32-s3-4848s040` | `192.168.10.226` |
+| `3.5inch S3`, `3.5-inch S3`, `JC3248W535` | `devices/guition-esp32-s3-jc3248w535` | — |
 
 All screens can also be flashed over USB when explicitly requested. Use the selected screen's config directory and the local serial target, normally `/dev/cu.usbmodem201301`.
 

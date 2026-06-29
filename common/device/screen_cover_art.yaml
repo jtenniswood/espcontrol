@@ -1375,7 +1375,9 @@ script:
       - lvgl.widget.hide: cover_art_progress_bar
       - if:
           condition:
-            lambda: 'return std::string("${device_slug}") == "guition-esp32-s3-4848s040";'
+            lambda: |-
+              return std::string("${device_slug}") == "guition-esp32-s3-4848s040" ||
+                     std::string("${device_slug}") == "guition-esp32-s3-jc3248w535";
           then:
             - script.execute: cover_art_clear_image_source
             - script.wait: cover_art_clear_image_source

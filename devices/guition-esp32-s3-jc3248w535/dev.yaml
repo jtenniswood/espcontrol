@@ -1,0 +1,31 @@
+# =============================================================================
+# DEV CONFIG - Local development entry point (3.5" S3 landscape panel)
+# =============================================================================
+# Flash with: esphome run dev.yaml
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-jc3248w535"
+  friendly_name: "EspControl JC3248W535"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:
+
+packages:
+  espcontrol: !include packages.yaml
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+    components: [espcontrol, web_server_idf, artwork_image]
+    refresh: 1s
+
+web_server:
+  js_url: ""
+  js_include: "../../docs/public/webserver/guition-esp32-s3-jc3248w535/www.js"
