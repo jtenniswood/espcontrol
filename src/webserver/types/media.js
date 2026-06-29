@@ -418,6 +418,7 @@ registerButtonType("media", {
         "",
         false);
       panel.appendChild(contentIdField.field);
+      helpers.requireField(contentIdField.input, "Add a media content ID before saving.");
       contentIdField.input.addEventListener("change", function () {
         setMediaPlaylistContentId(b, contentIdField.input.value);
         contentIdField.input.value = mediaPlaylistContentId(b);
