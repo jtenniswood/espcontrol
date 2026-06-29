@@ -125,6 +125,37 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     )
     if any(symbol in text for symbol in retry_symbols):
         errors.append(f"{rel}: do not reintroduce unavailable HA state retry polling")
+    if "ha_resync_persistent_subscriptions" not in text:
+        errors.append(f"{rel}: expose bounded Home Assistant startup subscription resync")
+    if "ha_start_subscription_resync_window" not in text or "ha_run_subscription_resync_window" not in text:
+        errors.append(f"{rel}: run Home Assistant startup resync until the bounded window completes")
+    if "HA_SUBSCRIPTION_RESYNC_WINDOW_MS" not in text or "5 * 60 * 1000" not in text:
+        errors.append(f"{rel}: keep Home Assistant startup resync bounded to five minutes")
+    if "ha_subscription_resync_cursor" not in text:
+        errors.append(f"{rel}: rotate bounded Home Assistant startup resync requests")
+    if "ref.generation != active_generation" not in text:
+        errors.append(f"{rel}: keep Home Assistant startup resync on the active subscription generation")
+    if "ref.persistent" not in text:
+        errors.append(f"{rel}: resync persistent Home Assistant subscriptions only")
+    if not re.search(
+        r"ha_resync_persistent_subscriptions\s*\([^)]*uint32_t\s+scope\s*=\s*HA_SUBSCRIPTION_SCOPE_ALL",
+        text,
+        re.DOTALL,
+    ):
+        errors.append(f"{rel}: include all persistent Home Assistant subscription scopes in reconnect resync")
+    if "completed_cycle || scanned >= refs.size()" not in text:
+        errors.append(f"{rel}: stop Home Assistant startup resync after the cursor covers every tracked subscription")
+    if "if (!ha_api_state_connected()) return;" not in text:
+        errors.append(f"{rel}: wait for Home Assistant state subscription before issuing resync reads")
+    start_match = re.search(
+        r"inline\s+void\s+ha_start_subscription_resync_window\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        text,
+        re.DOTALL,
+    )
+    if start_match and "ha_api_state_connected()" in start_match.group("body"):
+        errors.append(f"{rel}: start the reconnect resync window before Home Assistant state subscription is ready")
+    if "retained_cover_art" not in text or "check_generation && generation != ha_subscription_generation()" not in text:
+        errors.append(f"{rel}: resync retained cover-art subscriptions across grid generation changes")
 
     attribute_helper = ATTRIBUTE_HELPER_PATTERN.search(text)
     if not attribute_helper:
@@ -190,6 +221,14 @@ def firmware_unavailable_retry_errors(
         core_text = core_infra_path.read_text(encoding="utf-8")
         if "ha_retry_unavailable_states" in core_text:
             errors.append(f"{core_rel}: do not retry unavailable HA states after reconnects or during maintenance")
+        if "ha_start_subscription_resync_window();" not in core_text:
+            errors.append(f"{core_rel}: resync Home Assistant subscriptions after startup reconnects")
+        if core_text.find("ha_start_subscription_resync_window();") > core_text.find("if (ha_api_state_connected())"):
+            errors.append(f"{core_rel}: open the startup resync window before Home Assistant state subscription is ready")
+        if "ha_run_subscription_resync_window();" not in core_text:
+            errors.append(f"{core_rel}: continue bounded Home Assistant subscription resync during maintenance")
+        if "interval: 5s" not in core_text or "ha_run_subscription_resync_window();" not in core_text:
+            errors.append(f"{core_rel}: keep Home Assistant startup resync active for up to five minutes")
     return errors
 
 
@@ -2254,6 +2293,22 @@ def run_self_test() -> int:
             "do not reset removed unavailable HA state retries",
             "do not keep removed unavailable HA state retry helpers",
             "do not retry unavailable HA states",
+        ),
+    )
+    expect_unavailable_retry_errors(
+        "missing bounded startup resync",
+        "inline void bump_ha_subscription_generation() {\n"
+        "  ha_reset_deferred_state_requests();\n"
+        "  ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT);\n"
+        "}\n",
+        "interval:\n"
+        "  - interval: 5s\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          ha_flush_deferred_state_requests();\n",
+        (
+            "resync Home Assistant subscriptions after startup reconnects",
+            "keep Home Assistant startup resync active for up to five minutes",
         ),
     )
     with TemporaryDirectory() as tmp:

@@ -90,7 +90,12 @@ inline uint8_t &ha_state_callback_depth() {
 
 struct HaSubscriptionCallbackRef {
   std::shared_ptr<HomeAssistantStateCallback> callback;
+  std::string entity_id;
+  std::string attribute;
+  uint32_t generation = 0;
   uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT;
+  bool has_attribute = false;
+  bool persistent = false;
 };
 
 inline std::vector<HaSubscriptionCallbackRef> &ha_subscription_callback_refs() {
@@ -147,11 +152,21 @@ inline void ha_reset_subscription_callbacks(uint32_t scope = HA_SUBSCRIPTION_SCO
 
 inline void ha_track_subscription_callback(
     const std::shared_ptr<HomeAssistantStateCallback> &callback,
-    uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
+    const std::string &entity_id,
+    const std::string &attribute,
+    uint32_t generation,
+    uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT,
+    bool has_attribute = false,
+    bool persistent = false) {
   if (!callback || !*callback) return;
   ha_subscription_callback_refs().push_back({
     callback,
+    entity_id,
+    attribute,
+    generation,
     scope,
+    has_attribute,
+    persistent,
   });
 }
 
@@ -253,6 +268,125 @@ inline void ha_flush_deferred_state_requests(size_t max_requests = 8) {
   ha_release_deferred_state_request_storage();
 }
 
+constexpr uint32_t HA_SUBSCRIPTION_RESYNC_WINDOW_MS = 5 * 60 * 1000UL;
+constexpr size_t HA_SUBSCRIPTION_RESYNC_REQUESTS_PER_PASS = 128;
+
+inline size_t &ha_subscription_resync_cursor() {
+  static size_t cursor = 0;
+  return cursor;
+}
+
+inline bool &ha_subscription_resync_window_active() {
+  static bool active = false;
+  return active;
+}
+
+inline uint32_t &ha_subscription_resync_window_generation() {
+  static uint32_t generation = 0;
+  return generation;
+}
+
+inline uint32_t &ha_subscription_resync_window_started_ms() {
+  static uint32_t started_ms = 0;
+  return started_ms;
+}
+
+inline uint32_t &ha_subscription_resync_window_duration_ms() {
+  static uint32_t duration_ms = HA_SUBSCRIPTION_RESYNC_WINDOW_MS;
+  return duration_ms;
+}
+
+inline void ha_start_subscription_resync_window(uint32_t duration_ms = HA_SUBSCRIPTION_RESYNC_WINDOW_MS) {
+  ha_subscription_resync_cursor() = 0;
+  ha_subscription_resync_window_generation() = ha_subscription_generation();
+  ha_subscription_resync_window_started_ms() = esphome::millis();
+  ha_subscription_resync_window_duration_ms() = duration_ms;
+  ha_subscription_resync_window_active() = true;
+}
+
+inline void ha_stop_subscription_resync_window() {
+  ha_subscription_resync_window_active() = false;
+  ha_subscription_resync_window_started_ms() = 0;
+}
+
+inline bool ha_subscription_resync_window_expired() {
+  if (!ha_subscription_resync_window_active()) return true;
+  if (ha_subscription_resync_window_generation() != ha_subscription_generation()) return true;
+  return (int32_t) (esphome::millis() - ha_subscription_resync_window_started_ms() -
+                    ha_subscription_resync_window_duration_ms()) >= 0;
+}
+
+inline bool ha_resync_persistent_subscriptions(size_t max_requests = HA_SUBSCRIPTION_RESYNC_REQUESTS_PER_PASS,
+                                               uint32_t scope = HA_SUBSCRIPTION_SCOPE_ALL) {
+  if (ha_state_callback_depth() != 0 || !ha_api_state_connected() || max_requests == 0) return false;
+  if (!ha_internal_heap_available("Home Assistant subscription resync",
+                                  HA_READ_INTERNAL_FREE_MIN_BYTES,
+                                  HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return false;
+
+  std::vector<HaSubscriptionCallbackRef> &refs = ha_subscription_callback_refs();
+  if (refs.empty()) return true;
+
+  const uint32_t active_generation = ha_subscription_generation();
+  size_t &cursor = ha_subscription_resync_cursor();
+  if (cursor >= refs.size()) cursor = 0;
+  const size_t start_cursor = cursor;
+
+  size_t processed = 0;
+  size_t scanned = 0;
+  bool completed_cycle = false;
+  while (scanned < refs.size() && processed < max_requests) {
+    size_t index = cursor;
+    cursor = (cursor + 1) % refs.size();
+    scanned++;
+    if (cursor == start_cursor) completed_cycle = true;
+
+    HaSubscriptionCallbackRef &ref = refs[index];
+    if (!ref.persistent || !ref.callback || !*ref.callback) continue;
+    const bool retained_cover_art = (ref.scope & HA_SUBSCRIPTION_SCOPE_COVER_ART) != 0;
+    if (!retained_cover_art && ref.generation != active_generation) continue;
+    if (scope != HA_SUBSCRIPTION_SCOPE_ALL && (ref.scope & scope) == 0) continue;
+
+    const std::string entity_id = ref.entity_id;
+    const std::string attribute = ref.attribute;
+    const bool has_attribute = ref.has_attribute;
+    const uint32_t generation = ref.generation;
+    const bool check_generation = !retained_cover_art;
+    auto callback = ref.callback;
+
+    if (has_attribute) {
+      esphome::api::global_api_server->get_home_assistant_state(
+        entity_id,
+        attribute,
+        [callback, generation, check_generation](esphome::StringRef state) {
+          if (check_generation && generation != ha_subscription_generation()) return;
+          ha_invoke_state_callback(callback, state);
+        });
+    } else {
+      esphome::api::global_api_server->get_home_assistant_state(
+        entity_id,
+        {},
+        [callback, generation, check_generation](esphome::StringRef state) {
+          if (check_generation && generation != ha_subscription_generation()) return;
+          ha_invoke_state_callback(callback, state);
+        });
+    }
+    processed++;
+  }
+  return completed_cycle || scanned >= refs.size();
+}
+
+inline void ha_run_subscription_resync_window(size_t max_requests = HA_SUBSCRIPTION_RESYNC_REQUESTS_PER_PASS) {
+  if (!ha_subscription_resync_window_active()) return;
+  if (ha_subscription_resync_window_expired()) {
+    ha_stop_subscription_resync_window();
+    return;
+  }
+  if (!ha_api_state_connected()) return;
+  if (ha_resync_persistent_subscriptions(max_requests)) {
+    ha_stop_subscription_resync_window();
+  }
+}
+
 inline bool ha_action_begin(esphome::api::HomeassistantActionRequest &req,
                             const char *service,
                             bool is_event,
@@ -344,7 +478,9 @@ inline bool ha_subscribe_state(const std::string &entity_id,
                                uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
   auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
-  ha_track_subscription_callback(callback_ref, scope);
+  const uint32_t generation = ha_subscription_generation();
+  ha_track_subscription_callback(callback_ref, entity_id, std::string(),
+                                 generation, scope, false, true);
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, {},
     [callback_ref](esphome::StringRef state) {
@@ -377,7 +513,9 @@ inline bool ha_subscribe_attribute(const std::string &entity_id,
                                    uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
   if (!ha_api_available() || entity_id.empty() || !callback) return false;
   auto callback_ref = std::make_shared<HomeAssistantStateCallback>(std::move(callback));
-  ha_track_subscription_callback(callback_ref, scope);
+  const uint32_t generation = ha_subscription_generation();
+  ha_track_subscription_callback(callback_ref, entity_id, attribute,
+                                 generation, scope, true, true);
   esphome::api::global_api_server->subscribe_home_assistant_state(
     entity_id, attribute,
     [callback_ref](esphome::StringRef state) {
