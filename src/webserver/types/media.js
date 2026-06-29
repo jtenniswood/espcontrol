@@ -108,6 +108,29 @@ function mediaPlaylistContentIdPlaceholder() {
   return "e.g. media-source://media_source/local/playlist.m3u";
 }
 
+function mediaPlaylistContentTypeOptions(currentValue) {
+  var options = [
+    ["playlist", "Playlist"],
+    ["music", "Music"],
+    ["album", "Album"],
+    ["artist", "Artist"],
+    ["track", "Track"],
+    ["channel", "Channel"],
+    ["episode", "Episode"],
+    ["podcast", "Podcast"],
+    ["tvshow", "TV Show"],
+    ["video", "Video"],
+    ["movie", "Movie"],
+    ["app", "App"],
+    ["url", "URL"],
+  ];
+  currentValue = String(currentValue || "").trim();
+  if (currentValue && !options.some(function (option) { return option[0] === currentValue; })) {
+    options.push([currentValue, "Custom: " + currentValue]);
+  }
+  return options;
+}
+
 registerButtonType("media", {
   label: function () { return cardContractCardLabel("media"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("media"); },
@@ -374,17 +397,16 @@ registerButtonType("media", {
         helpers.saveField("options", b.options);
       });
 
-      var contentTypeField = helpers.textField(
+      var playlistContentType = mediaPlaylistContentType(b);
+      var contentTypeField = helpers.selectField(
         "Media Content Type",
         helpers.idPrefix + "playlist-content-type",
-        mediaPlaylistContentType(b),
-        "playlist",
-        "",
-        false);
+        mediaPlaylistContentTypeOptions(playlistContentType),
+        playlistContentType);
       panel.appendChild(contentTypeField.field);
-      contentTypeField.input.addEventListener("change", function () {
-        setMediaPlaylistContentType(b, contentTypeField.input.value);
-        contentTypeField.input.value = mediaPlaylistContentType(b);
+      contentTypeField.select.addEventListener("change", function () {
+        setMediaPlaylistContentType(b, contentTypeField.select.value);
+        contentTypeField.select.value = mediaPlaylistContentType(b);
         helpers.saveField("options", b.options);
       });
       var hint = document.createElement("div");

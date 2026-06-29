@@ -88,6 +88,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     setMediaVolumeMax: setMediaVolumeMax,
     mediaPlaylistContentId: mediaPlaylistContentId,
     mediaPlaylistContentType: mediaPlaylistContentType,
+    mediaPlaylistContentTypeOptions: mediaPlaylistContentTypeOptions,
     setMediaPlaylistContentId: setMediaPlaylistContentId,
     setMediaPlaylistContentType: setMediaPlaylistContentType,
     imageRefreshIntervalValues: imageRefreshIntervalValues,

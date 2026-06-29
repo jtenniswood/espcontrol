@@ -67,7 +67,7 @@ Playlist Button is a generic shortcut for anything Home Assistant can play with 
 Enter:
 
 - **Media Content ID / URI** - the ID or URI Home Assistant uses for the playlist, station, album, or favorite.
-- **Media Content Type** - usually `playlist`, but some integrations use values such as `music`, `album`, or `channel`.
+- **Media Content Type** - choose the type Home Assistant expects, such as `playlist`, `music`, `album`, `track`, or `channel`.
 
 To find the right values, browse to the item in Home Assistant's media browser, then test it from Home Assistant developer tools with the `media_player.play_media` action. Once that service call starts the right media, copy the working `media_content_id` and `media_content_type` into EspControl.
 
@@ -93,7 +93,7 @@ For Spotify, the Home Assistant media content ID is commonly:
 spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO
 ```
 
-Use that value as **Media Content ID / URI**, and use `playlist` as **Media Content Type**.
+Use that value as **Media Content ID / URI**, and choose `playlist` for **Media Content Type**.
 
 The same idea applies to other services: copy the playlist, album, station, or favorite ID from the shared URL, then turn it into the URI format your Home Assistant integration expects. Always test the result in Home Assistant first:
 
