@@ -127,12 +127,18 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: do not reintroduce unavailable HA state retry polling")
     if "ha_resync_persistent_subscriptions" not in text:
         errors.append(f"{rel}: expose bounded Home Assistant startup subscription resync")
+    if "ha_start_subscription_resync_window" not in text or "ha_run_subscription_resync_window" not in text:
+        errors.append(f"{rel}: run Home Assistant startup resync until the bounded window completes")
+    if "HA_SUBSCRIPTION_RESYNC_WINDOW_MS" not in text or "5 * 60 * 1000" not in text:
+        errors.append(f"{rel}: keep Home Assistant startup resync bounded to five minutes")
     if "ha_subscription_resync_cursor" not in text:
         errors.append(f"{rel}: rotate bounded Home Assistant startup resync requests")
     if "ref.generation != active_generation" not in text:
         errors.append(f"{rel}: keep Home Assistant startup resync on the active subscription generation")
     if "ref.persistent" not in text:
         errors.append(f"{rel}: resync persistent Home Assistant subscriptions only")
+    if "return scanned >= refs.size()" not in text:
+        errors.append(f"{rel}: keep Home Assistant startup resync active until every tracked subscription is covered")
 
     attribute_helper = ATTRIBUTE_HELPER_PATTERN.search(text)
     if not attribute_helper:
@@ -198,12 +204,12 @@ def firmware_unavailable_retry_errors(
         core_text = core_infra_path.read_text(encoding="utf-8")
         if "ha_retry_unavailable_states" in core_text:
             errors.append(f"{core_rel}: do not retry unavailable HA states after reconnects or during maintenance")
-        if "ha_resync_persistent_subscriptions();" not in core_text:
+        if "ha_start_subscription_resync_window();" not in core_text:
             errors.append(f"{core_rel}: resync Home Assistant subscriptions after startup reconnects")
-        if core_text.count("ha_resync_persistent_subscriptions();") < 8:
+        if "ha_run_subscription_resync_window();" not in core_text:
+            errors.append(f"{core_rel}: continue bounded Home Assistant subscription resync during maintenance")
+        if "interval: 5s" not in core_text or "ha_run_subscription_resync_window();" not in core_text:
             errors.append(f"{core_rel}: keep Home Assistant startup resync active for up to five minutes")
-        if core_text.count("delay: 60s") < 4:
-            errors.append(f"{core_rel}: space bounded Home Assistant startup resync through the five-minute window")
     return errors
 
 

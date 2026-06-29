@@ -268,20 +268,64 @@ inline void ha_flush_deferred_state_requests(size_t max_requests = 8) {
   ha_release_deferred_state_request_storage();
 }
 
+constexpr uint32_t HA_SUBSCRIPTION_RESYNC_WINDOW_MS = 5 * 60 * 1000UL;
+constexpr size_t HA_SUBSCRIPTION_RESYNC_REQUESTS_PER_PASS = 128;
+
 inline size_t &ha_subscription_resync_cursor() {
   static size_t cursor = 0;
   return cursor;
 }
 
-inline void ha_resync_persistent_subscriptions(size_t max_requests = 48,
+inline bool &ha_subscription_resync_window_active() {
+  static bool active = false;
+  return active;
+}
+
+inline uint32_t &ha_subscription_resync_window_generation() {
+  static uint32_t generation = 0;
+  return generation;
+}
+
+inline uint32_t &ha_subscription_resync_window_started_ms() {
+  static uint32_t started_ms = 0;
+  return started_ms;
+}
+
+inline uint32_t &ha_subscription_resync_window_duration_ms() {
+  static uint32_t duration_ms = HA_SUBSCRIPTION_RESYNC_WINDOW_MS;
+  return duration_ms;
+}
+
+inline void ha_start_subscription_resync_window(uint32_t duration_ms = HA_SUBSCRIPTION_RESYNC_WINDOW_MS) {
+  if (!ha_api_state_connected()) return;
+  ha_subscription_resync_cursor() = 0;
+  ha_subscription_resync_window_generation() = ha_subscription_generation();
+  ha_subscription_resync_window_started_ms() = esphome::millis();
+  ha_subscription_resync_window_duration_ms() = duration_ms;
+  ha_subscription_resync_window_active() = true;
+}
+
+inline void ha_stop_subscription_resync_window() {
+  ha_subscription_resync_window_active() = false;
+  ha_subscription_resync_window_started_ms() = 0;
+}
+
+inline bool ha_subscription_resync_window_expired() {
+  if (!ha_subscription_resync_window_active()) return true;
+  if (ha_subscription_resync_window_generation() != ha_subscription_generation()) return true;
+  return (int32_t) (esphome::millis() - ha_subscription_resync_window_started_ms() -
+                    ha_subscription_resync_window_duration_ms()) >= 0;
+}
+
+inline bool ha_resync_persistent_subscriptions(size_t max_requests = HA_SUBSCRIPTION_RESYNC_REQUESTS_PER_PASS,
                                                uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
-  if (ha_state_callback_depth() != 0 || !ha_api_state_connected() || max_requests == 0) return;
+  if (ha_state_callback_depth() != 0 || !ha_api_state_connected() || max_requests == 0) return false;
   if (!ha_internal_heap_available("Home Assistant subscription resync",
                                   HA_READ_INTERNAL_FREE_MIN_BYTES,
-                                  HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return;
+                                  HA_READ_INTERNAL_LARGEST_MIN_BYTES)) return false;
 
   std::vector<HaSubscriptionCallbackRef> &refs = ha_subscription_callback_refs();
-  if (refs.empty()) return;
+  if (refs.empty()) return true;
 
   const uint32_t active_generation = ha_subscription_generation();
   size_t &cursor = ha_subscription_resync_cursor();
@@ -323,6 +367,22 @@ inline void ha_resync_persistent_subscriptions(size_t max_requests = 48,
         });
     }
     processed++;
+  }
+  return scanned >= refs.size();
+}
+
+inline void ha_run_subscription_resync_window(size_t max_requests = HA_SUBSCRIPTION_RESYNC_REQUESTS_PER_PASS) {
+  if (!ha_subscription_resync_window_active()) return;
+  if (!ha_api_state_connected()) {
+    ha_stop_subscription_resync_window();
+    return;
+  }
+  if (ha_subscription_resync_window_expired()) {
+    ha_stop_subscription_resync_window();
+    return;
+  }
+  if (ha_resync_persistent_subscriptions(max_requests)) {
+    ha_stop_subscription_resync_window();
   }
 }
 
