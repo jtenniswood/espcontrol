@@ -318,7 +318,7 @@ inline bool ha_subscription_resync_window_expired() {
 }
 
 inline bool ha_resync_persistent_subscriptions(size_t max_requests = HA_SUBSCRIPTION_RESYNC_REQUESTS_PER_PASS,
-                                               uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT) {
+                                               uint32_t scope = HA_SUBSCRIPTION_SCOPE_ALL) {
   if (ha_state_callback_depth() != 0 || !ha_api_state_connected() || max_requests == 0) return false;
   if (!ha_internal_heap_available("Home Assistant subscription resync",
                                   HA_READ_INTERNAL_FREE_MIN_BYTES,

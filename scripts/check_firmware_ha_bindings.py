@@ -137,6 +137,12 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: keep Home Assistant startup resync on the active subscription generation")
     if "ref.persistent" not in text:
         errors.append(f"{rel}: resync persistent Home Assistant subscriptions only")
+    if not re.search(
+        r"ha_resync_persistent_subscriptions\s*\([^)]*uint32_t\s+scope\s*=\s*HA_SUBSCRIPTION_SCOPE_ALL",
+        text,
+        re.DOTALL,
+    ):
+        errors.append(f"{rel}: include all persistent Home Assistant subscription scopes in reconnect resync")
     if "return scanned >= refs.size()" not in text:
         errors.append(f"{rel}: keep Home Assistant startup resync active until every tracked subscription is covered")
 
