@@ -81,6 +81,7 @@ lawn_mower=Kosiarka
 low=Niski
 low_target=Niski cel
 media=Media
+playlist=Playlista
 medium=Medium
 mode=Tryb
 monthly=Co miesiąc

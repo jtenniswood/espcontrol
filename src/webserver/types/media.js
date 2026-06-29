@@ -59,6 +59,7 @@ var MEDIA_CARD_METADATA = {
       ["volume", "Volume Button"],
       ["position", "Track Position"],
       ["now_playing", "Now Playing"],
+      ["playlist", "Playlist Button"],
     ],
     value: function (b) {
       return mediaEditorValidMode(b.sensor);
@@ -103,6 +104,33 @@ var MEDIA_CARD_METADATA = {
   },
 };
 
+function mediaPlaylistContentIdPlaceholder() {
+  return "e.g. spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO";
+}
+
+function mediaPlaylistContentTypeKnown(value) {
+  return mediaPlaylistContentTypeOptions().some(function (option) { return option[0] === value; });
+}
+
+function mediaPlaylistContentTypeOptions() {
+  return [
+    ["playlist", "Playlist"],
+    ["music", "Music"],
+    ["album", "Album"],
+    ["artist", "Artist"],
+    ["track", "Track"],
+    ["channel", "Channel"],
+    ["episode", "Episode"],
+    ["podcast", "Podcast"],
+    ["tvshow", "TV Show"],
+    ["video", "Video"],
+    ["movie", "Movie"],
+    ["app", "App"],
+    ["url", "URL"],
+    ["__custom", "Custom"],
+  ];
+}
+
 registerButtonType("media", {
   label: function () { return cardContractCardLabel("media"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("media"); },
@@ -133,6 +161,7 @@ registerButtonType("media", {
       if (mode === "volume") return "Volume High";
       if (mode === "position") return "Progress Clock";
       if (mode === "now_playing") return "Music";
+      if (mode === "playlist") return "Music";
       return "Play Pause";
     }
 
@@ -148,6 +177,7 @@ registerButtonType("media", {
       if (mode === "next") return "Next";
       if (mode === "volume") return "Volume";
       if (mode === "play_pause") return "Play/Pause";
+      if (mode === "playlist") return "Playlist";
       return "";
     }
 
@@ -178,6 +208,15 @@ registerButtonType("media", {
             b.label = mediaActionLabel(b.sensor);
             b.icon = mediaDefaultIcon(b.sensor);
             helpers.saveField("label", b.label);
+            helpers.saveField("icon", b.icon);
+          }
+          if (b.sensor === "playlist") {
+            var oldPlaylistDefaultLabel = mediaActionLabel(oldMode);
+            if (!b.label || b.label === oldPlaylistDefaultLabel || b.label === "Media") {
+              b.label = mediaActionLabel(b.sensor);
+              helpers.saveField("label", b.label);
+            }
+            b.icon = mediaDefaultIcon(b.sensor);
             helpers.saveField("icon", b.icon);
           }
           if (b.sensor === "volume") {
@@ -238,10 +277,24 @@ registerButtonType("media", {
       b.icon = "Auto";
       helpers.saveField("icon", b.icon);
     }
+    if (b.sensor === "playlist") {
+      if (!b.label || b.label === "Media") b.label = "Playlist";
+      if (!b.icon || b.icon === "Auto") {
+        b.icon = "Music";
+        helpers.saveField("icon", b.icon);
+      }
+    }
     if (b.sensor === "previous" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Previous";
     if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
 
-    helpers.renderCardEntityField(panel, b, helpers, MEDIA_CARD_METADATA);
+    helpers.renderCardEntityField(panel, b, helpers, b.sensor === "playlist"
+      ? {
+        entity: Object.assign({}, MEDIA_CARD_METADATA.entity, {
+          label: "Speaker Entity",
+          requiredMessage: "Add a speaker entity before saving.",
+        }),
+      }
+      : MEDIA_CARD_METADATA);
 
     var displayMode = helpers.renderCardSegmentControl(panel, b, helpers, {
       segment: Object.assign({}, MEDIA_CARD_METADATA.displayMode, {
@@ -304,6 +357,7 @@ registerButtonType("media", {
     }
 
     if (b.sensor !== "now_playing" &&
+        b.sensor !== "playlist" &&
         (b.sensor !== "play_pause" || b.precision !== "state") &&
         (b.sensor !== "position" || b.precision !== "state")) {
       helpers.renderCardTextField(panel, b, helpers, {
@@ -336,6 +390,88 @@ registerButtonType("media", {
       });
     }
 
+    if (b.sensor === "playlist") {
+      var playlistInfo = document.createElement("div");
+      playlistInfo.className = "sp-info-panel";
+      playlistInfo.setAttribute("role", "note");
+      var playlistInfoIcon = document.createElement("span");
+      playlistInfoIcon.className = "mdi mdi-information-outline";
+      playlistInfoIcon.setAttribute("aria-hidden", "true");
+      var playlistInfoText = document.createElement("span");
+      playlistInfoText.appendChild(document.createTextNode("Need help finding the media content ID? "));
+      var playlistInfoLink = document.createElement("a");
+      playlistInfoLink.href = "https://jtenniswood.github.io/espcontrol/card-types/media/#playlist-button";
+      playlistInfoLink.target = "_blank";
+      playlistInfoLink.rel = "noopener";
+      playlistInfoLink.textContent = "Learn how to configure playlist buttons";
+      playlistInfoText.appendChild(playlistInfoLink);
+      playlistInfoText.appendChild(document.createTextNode("."));
+      playlistInfo.appendChild(playlistInfoIcon);
+      playlistInfo.appendChild(playlistInfoText);
+      panel.appendChild(playlistInfo);
+
+      var contentIdField = helpers.textField(
+        "Media Content ID / URI",
+        helpers.idPrefix + "playlist-content-id",
+        mediaPlaylistContentId(b),
+        mediaPlaylistContentIdPlaceholder(),
+        "",
+        false);
+      panel.appendChild(contentIdField.field);
+      helpers.requireField(contentIdField.input, "Add a media content ID before saving.");
+      contentIdField.input.addEventListener("change", function () {
+        setMediaPlaylistContentId(b, contentIdField.input.value);
+        contentIdField.input.value = mediaPlaylistContentId(b);
+        helpers.saveField("options", b.options);
+      });
+
+      var playlistContentType = mediaPlaylistContentType(b);
+      var contentTypeField = helpers.selectField(
+        "Media Content Type",
+        helpers.idPrefix + "playlist-content-type",
+        mediaPlaylistContentTypeOptions(),
+        mediaPlaylistContentTypeKnown(playlistContentType) ? playlistContentType : "__custom");
+      panel.appendChild(contentTypeField.field);
+
+      var customContentTypeField = helpers.textField(
+        "Custom Media Content Type",
+        helpers.idPrefix + "playlist-content-type-custom",
+        mediaPlaylistContentTypeKnown(playlistContentType) ? "" : playlistContentType,
+        "e.g. favorite",
+        "",
+        false);
+      panel.appendChild(customContentTypeField.field);
+
+      function updateCustomContentTypeVisibility() {
+        customContentTypeField.field.hidden = contentTypeField.select.value !== "__custom";
+      }
+
+      contentTypeField.select.addEventListener("change", function () {
+        if (contentTypeField.select.value === "__custom") {
+          setMediaPlaylistContentType(b, customContentTypeField.input.value);
+        } else {
+          setMediaPlaylistContentType(b, contentTypeField.select.value);
+        }
+        helpers.saveField("options", b.options);
+        updateCustomContentTypeVisibility();
+      });
+      customContentTypeField.input.addEventListener("change", function () {
+        setMediaPlaylistContentType(b, customContentTypeField.input.value);
+        customContentTypeField.input.value = mediaPlaylistContentTypeKnown(mediaPlaylistContentType(b))
+          ? "" : mediaPlaylistContentType(b);
+        helpers.saveField("options", b.options);
+      });
+      updateCustomContentTypeVisibility();
+
+      helpers.renderCardTextField(panel, b, helpers, {
+        label: "Label",
+        idSuffix: "label",
+        field: "label",
+        placeholder: "e.g. Morning Playlist",
+        rerender: true,
+      });
+    }
+
     if (b.sensor !== "play_pause" && b.sensor !== "now_playing" &&
         b.sensor !== "position" && b.sensor !== "volume") {
       helpers.renderCardIconPicker(panel, b, helpers, {
@@ -354,6 +490,7 @@ registerButtonType("media", {
       if (value === "volume") return { mode: "volume", label: "Volume", icon: "volume-high" };
       if (value === "position") return { mode: "position", label: "Position", icon: "progress-clock" };
       if (value === "now_playing") return { mode: "now_playing", label: "Now Playing", icon: "music" };
+      if (value === "playlist") return { mode: "playlist", label: "Playlist", icon: "music" };
       return { mode: "play_pause", label: "Play/Pause", icon: "play-pause" };
     }
     var info = modeInfo(mediaEditorValidMode(b.sensor));

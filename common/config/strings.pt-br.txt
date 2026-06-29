@@ -81,6 +81,7 @@ lawn_mower=Cortador de grama
 low=Baixo
 low_target=Alvo baixo
 media=Mídia
+playlist=Lista de reprodução
 medium=Medium
 mode=Modo
 monthly=Mensal

@@ -20,6 +20,7 @@ FIRMWARE_WIDE_PREFIXES = (
     "src/webserver/",
 )
 FIRMWARE_WIDE_FILES = {
+    ".github/esphome.env",
     "devices/manifest.json",
 }
 FIRMWARE_WIDE_SCRIPTS = (
@@ -229,6 +230,11 @@ def run_self_test() -> None:
     assert generated_web.firmware_related
     assert not generated_web.docs_only
     assert len(generated_web.devices) >= 5
+
+    esphome_version = analyze([".github/esphome.env"])
+    assert esphome_version.firmware_related
+    assert not esphome_version.docs_only
+    assert len(esphome_version.devices) >= 5
 
     docs = analyze(["docs/reference/contributing.md"])
     assert docs.docs_only or docs.process_only

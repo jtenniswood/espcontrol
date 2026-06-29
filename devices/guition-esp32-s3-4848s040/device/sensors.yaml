@@ -109,11 +109,6 @@ script:
           set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
           apply_width_compensation(id(display_time), cfg.width_compensation_percent);
           apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
           apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
           // END GENERATED REFRESH GRID WIRING
           grid_refresh_layout(slots, cfg,
@@ -216,11 +211,6 @@ esphome:
             set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
             // END GENERATED PHASE 1 GRID WIRING
             grid_phase1(slots, cfg,
@@ -348,11 +338,6 @@ esphome:
             set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
             // END GENERATED PHASE 2 GRID WIRING
             grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,
@@ -376,7 +361,7 @@ esphome:
               id(clock_bar_temperature_entities).state,
               &id(indoor_temp), &id(outdoor_temp),
               temperature_labels,
-              6,
+              1,
               id(main_page)->obj,
               id(presence_sensor_entity).state,
               &id(presence_detected),
