@@ -79,6 +79,7 @@ script:
           int clock_bar_icon_y =
               (${main_page_pad_top} - lv_obj_get_height(id(network_status_button))) / 2;
           if (clock_bar_icon_y < 0) clock_bar_icon_y = 0;
+          int clock_bar_item_width = ${clock_bar_item_gap};
           int clock_bar_right_x =
               clock_bar_480_square ? 4 : (clock_bar_screen_width >= 700 ? 8 : 6);
           lv_obj_t *temperature_labels[] = {
