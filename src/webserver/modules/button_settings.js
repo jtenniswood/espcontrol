@@ -707,7 +707,7 @@ function renderButtonSettings(forceOpen) {
     if (td && td.onSelect) td.onSelect(b);
     if (pickerType === "media_control") {
       b.sensor = "control_modal";
-      b.label = "Media Control";
+      b.label = "All Controls";
       b.icon = "Auto";
       b.icon_on = "Auto";
       b.unit = "";
