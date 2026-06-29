@@ -297,7 +297,6 @@ inline uint32_t &ha_subscription_resync_window_duration_ms() {
 }
 
 inline void ha_start_subscription_resync_window(uint32_t duration_ms = HA_SUBSCRIPTION_RESYNC_WINDOW_MS) {
-  if (!ha_api_state_connected()) return;
   ha_subscription_resync_cursor() = 0;
   ha_subscription_resync_window_generation() = ha_subscription_generation();
   ha_subscription_resync_window_started_ms() = esphome::millis();
@@ -330,57 +329,59 @@ inline bool ha_resync_persistent_subscriptions(size_t max_requests = HA_SUBSCRIP
   const uint32_t active_generation = ha_subscription_generation();
   size_t &cursor = ha_subscription_resync_cursor();
   if (cursor >= refs.size()) cursor = 0;
+  const size_t start_cursor = cursor;
 
   size_t processed = 0;
   size_t scanned = 0;
+  bool completed_cycle = false;
   while (scanned < refs.size() && processed < max_requests) {
     size_t index = cursor;
     cursor = (cursor + 1) % refs.size();
     scanned++;
+    if (cursor == start_cursor) completed_cycle = true;
 
     HaSubscriptionCallbackRef &ref = refs[index];
     if (!ref.persistent || !ref.callback || !*ref.callback) continue;
-    if (ref.generation != active_generation) continue;
+    const bool retained_cover_art = (ref.scope & HA_SUBSCRIPTION_SCOPE_COVER_ART) != 0;
+    if (!retained_cover_art && ref.generation != active_generation) continue;
     if (scope != HA_SUBSCRIPTION_SCOPE_ALL && (ref.scope & scope) == 0) continue;
 
     const std::string entity_id = ref.entity_id;
     const std::string attribute = ref.attribute;
     const bool has_attribute = ref.has_attribute;
     const uint32_t generation = ref.generation;
+    const bool check_generation = !retained_cover_art;
     auto callback = ref.callback;
 
     if (has_attribute) {
       esphome::api::global_api_server->get_home_assistant_state(
         entity_id,
         attribute,
-        [callback, generation](esphome::StringRef state) {
-          if (generation != ha_subscription_generation()) return;
+        [callback, generation, check_generation](esphome::StringRef state) {
+          if (check_generation && generation != ha_subscription_generation()) return;
           ha_invoke_state_callback(callback, state);
         });
     } else {
       esphome::api::global_api_server->get_home_assistant_state(
         entity_id,
         {},
-        [callback, generation](esphome::StringRef state) {
-          if (generation != ha_subscription_generation()) return;
+        [callback, generation, check_generation](esphome::StringRef state) {
+          if (check_generation && generation != ha_subscription_generation()) return;
           ha_invoke_state_callback(callback, state);
         });
     }
     processed++;
   }
-  return scanned >= refs.size();
+  return completed_cycle || scanned >= refs.size();
 }
 
 inline void ha_run_subscription_resync_window(size_t max_requests = HA_SUBSCRIPTION_RESYNC_REQUESTS_PER_PASS) {
   if (!ha_subscription_resync_window_active()) return;
-  if (!ha_api_state_connected()) {
-    ha_stop_subscription_resync_window();
-    return;
-  }
   if (ha_subscription_resync_window_expired()) {
     ha_stop_subscription_resync_window();
     return;
   }
+  if (!ha_api_state_connected()) return;
   if (ha_resync_persistent_subscriptions(max_requests)) {
     ha_stop_subscription_resync_window();
   }

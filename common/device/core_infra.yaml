@@ -40,11 +40,11 @@ api:
             ESP_LOGW("api", "Home Assistant API client address is empty; image proxy base URL not updated");
           }
           refresh_image_cards();
+          ha_start_subscription_resync_window();
           if (ha_api_state_connected()) {
             apply_registered_ha_control_availability(true);
             refresh_weather_forecast_cards();
             ha_flush_deferred_state_requests();
-            ha_start_subscription_resync_window();
             ha_run_subscription_resync_window();
           }
         }
