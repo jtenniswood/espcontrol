@@ -561,6 +561,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "large_sensor_font": fonts["largeSensor"],
         "large_sensor_unit_offset_percent": profile["settings"]["largeSensorUnitOffsetPercent"],
         "media_title_font": fonts["mediaTitle"],
+        "media_control_title_font": fonts.get("mediaControlTitle"),
         "volume_number_font": fonts["volumeNumber"],
         "volume_label_font": fonts["volumeLabel"],
         "climate_card_icon_font": fonts.get("climateCardIcon"),

@@ -524,6 +524,10 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append(f"            cfg.sp_large_sensor_font = id({device['large_sensor_font']})->get_lv_font();")
     lines.append(f"            cfg.large_sensor_unit_offset_percent = {device['large_sensor_unit_offset_percent']};")
     lines.append(f"            cfg.media_title_font = id({device['media_title_font']})->get_lv_font();")
+    if device.get("media_control_title_font"):
+        lines.append(
+            f"            cfg.media_control_title_font = id({device['media_control_title_font']})->get_lv_font();"
+        )
     lines.append(f"            cfg.volume_number_font = id({device['volume_number_font']})->get_lv_font();")
     lines.append(f"            cfg.volume_label_font = id({device['volume_label_font']})->get_lv_font();")
     if device.get("climate_card_icon_font"):
