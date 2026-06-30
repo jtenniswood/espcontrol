@@ -11,6 +11,8 @@
     "options"
   ],
   "optionNames": [
+    "bg_image",
+    "bg_dim",
     "state_low_label",
     "state_high_label",
     "image_refresh",

@@ -783,6 +783,7 @@ function renderButtonSettings(forceOpen) {
     renderCardActiveColorToggle: renderCardActiveColorToggle,
     renderBasicCardFields: renderBasicCardFields,
     renderCardSegmentControl: renderCardSegmentControl,
+    renderCardBackgroundControl: renderCardBackgroundControl,
     requireField: requireField,
     clearFieldError: clearFieldError,
     toggleRow: toggleRow,
@@ -994,6 +995,8 @@ function renderButtonSettings(forceOpen) {
     });
     panel.appendChild(patternField.field);
   }
+
+  renderCardBackgroundControl(panel, b, typeHelpers);
 
   var saveRow = document.createElement("div");
   saveRow.className = "sp-btn-row sp-btn-row--save";

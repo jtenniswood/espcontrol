@@ -98,6 +98,14 @@ constexpr const char *card_runtime_option_name_image_refresh_mode() {
   return CARD_CONTRACT_OPTION_NAME_IMAGE_REFRESH_MODE;
 }
 
+constexpr const char *card_runtime_option_name_bg_image() {
+  return CARD_CONTRACT_OPTION_NAME_BG_IMAGE;
+}
+
+constexpr const char *card_runtime_option_name_bg_dim() {
+  return CARD_CONTRACT_OPTION_NAME_BG_DIM;
+}
+
 constexpr const char *card_runtime_option_name_light_tabs() {
   return CARD_CONTRACT_OPTION_NAME_LIGHT_TABS;
 }

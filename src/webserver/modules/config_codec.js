@@ -8,6 +8,8 @@ var SENSOR_STATE_OUTPUT_2_OPTION = cardContractOptionName("state_output_2");
 var SENSOR_STATE_LOW_LABEL_OPTION = cardContractOptionName("state_low_label");
 var SENSOR_STATE_HIGH_LABEL_OPTION = cardContractOptionName("state_high_label");
 var CARD_ON_PATTERN_OPTION = cardContractOptionName("on_pattern");
+var CARD_BACKGROUND_IMAGE_OPTION = cardContractOptionName("bg_image");
+var CARD_BACKGROUND_DIM_OPTION = cardContractOptionName("bg_dim");
 
 function normalizeWithRegisteredCardType(b) {
   if (!b || typeof BUTTON_TYPES === "undefined") return false;
@@ -19,6 +21,7 @@ function normalizeWithRegisteredCardType(b) {
 
 function normalizeButtonConfig(b) {
   if (b) b.options = b.options || "";
+  var originalOptions = b ? b.options : "";
   if (b && b.type === "local") {
     b.type = "action";
     b.sensor = ACTION_CARD_LOCAL_ACTION;
@@ -226,7 +229,7 @@ function normalizeButtonConfig(b) {
     b.sensor = "";
     b.unit = "";
     b.precision = "";
-    b.options = "";
+    b.options = normalizeCardBackgroundOptions(b.options);
   }
   if (b && b.type === "light_control") {
     b.sensor = "";
@@ -297,6 +300,7 @@ function normalizeButtonConfig(b) {
   } else if (b && b.type !== "action" && b.type !== "alarm" && b.type !== "alarm_action" && b.type !== "climate" && b.type !== "cover" && b.type !== "garage" && b.type !== "webhook" && b.type !== "screen_lock" && b.type !== "todo" && b.type !== "media" && b.type !== "presence" && b.type !== "subpage" && b.type !== "image" && b.type !== "light_control" && b.type !== "vacuum" && b.type !== "lawn_mower" && !isFanCardType(b.type) && !cardLargeNumbersSupported(b)) {
     b.options = "";
   }
+  if (b && cardBackgroundSupported(b)) b.options = appendCardBackgroundOptions(b.options, originalOptions);
   return b;
 }
 
@@ -432,6 +436,52 @@ function setConfigOptionValue(options, name, value) {
   value = String(value || "").trim();
   if (value) out.push(prefix + encodeConfigField(value));
   return out.join(",");
+}
+
+function normalizeCardBackgroundImageId(value) {
+  value = String(value || "").trim().toLowerCase();
+  return /^[a-z0-9-]{1,40}$/.test(value) ? value : "";
+}
+
+function normalizeCardBackgroundDim(value) {
+  var parsed = parseInt(value, 10);
+  if (!isFinite(parsed)) return "45";
+  if (parsed < 0) parsed = 0;
+  if (parsed > 90) parsed = 90;
+  return String(parsed);
+}
+
+function cardBackgroundImage(options) {
+  return normalizeCardBackgroundImageId(configOptionValue(options, CARD_BACKGROUND_IMAGE_OPTION));
+}
+
+function cardBackgroundDim(options) {
+  return normalizeCardBackgroundDim(configOptionValue(options, CARD_BACKGROUND_DIM_OPTION));
+}
+
+function normalizeCardBackgroundOptions(options) {
+  var out = "";
+  var image = cardBackgroundImage(options);
+  if (!image) return out;
+  out = setConfigOptionValue(out, CARD_BACKGROUND_IMAGE_OPTION, image);
+  var dim = cardBackgroundDim(options);
+  if (dim !== "45") out = setConfigOptionValue(out, CARD_BACKGROUND_DIM_OPTION, dim);
+  return out;
+}
+
+function appendCardBackgroundOptions(out, options) {
+  var bg = normalizeCardBackgroundOptions(options);
+  if (!bg) return out || "";
+  if ((out || "") === bg) return out;
+  return out ? out + "," + bg : bg;
+}
+
+function cardBackgroundSupported(b) {
+  if (!b) return false;
+  var type = b.type || "";
+  return type === "" || type === "action" || type === "push" || type === "media" ||
+    type === "light_switch" || type === "internal" || type === "subpage" ||
+    type === "garage" || type === "vacuum";
 }
 
 function largeNumbersExplicitlyDisabled(options) {

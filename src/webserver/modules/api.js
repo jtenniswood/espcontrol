@@ -36,6 +36,103 @@ function postQuiet(url) {
   });
 }
 
+var CARD_IMAGE_MAX_BYTES = 80 * 1024;
+var CARD_IMAGE_MAX_COUNT = 8;
+var CARD_IMAGE_TARGET_SIZE = 320;
+var _cardImageLibrary = null;
+
+function cardImageUrl(id) {
+  id = normalizeCardBackgroundImageId(id);
+  return id ? "/card-images/" + encodeURIComponent(id) + ".jpg" : "";
+}
+
+function listCardImages(force) {
+  if (!force && _cardImageLibrary) return Promise.resolve(_cardImageLibrary.slice());
+  return fetch("/api/card-images", { cache: "no-store" }).then(function (r) {
+    if (!r.ok) throw new Error("Could not load images.");
+    return r.json();
+  }).then(function (data) {
+    var items = data && data.images || [];
+    _cardImageLibrary = items.slice(0, CARD_IMAGE_MAX_COUNT);
+    return _cardImageLibrary.slice();
+  }).catch(function () {
+    return [];
+  });
+}
+
+function dataUrlToBlob(dataUrl) {
+  var parts = String(dataUrl || "").split(",");
+  var meta = parts[0] || "";
+  var raw = atob(parts[1] || "");
+  var bytes = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return new Blob([bytes], { type: meta.indexOf("image/jpeg") !== -1 ? "image/jpeg" : "application/octet-stream" });
+}
+
+function resizeCardImageFile(file) {
+  return new Promise(function (resolve, reject) {
+    if (!file || !file.type || file.type.indexOf("image/") !== 0) {
+      reject(new Error("Choose an image file."));
+      return;
+    }
+    var img = new Image();
+    var objectUrl = URL.createObjectURL(file);
+    img.onload = function () {
+      URL.revokeObjectURL(objectUrl);
+      var side = CARD_IMAGE_TARGET_SIZE;
+      var canvas = document.createElement("canvas");
+      canvas.width = side;
+      canvas.height = side;
+      var ctx2d = canvas.getContext("2d");
+      var scale = Math.max(side / img.naturalWidth, side / img.naturalHeight);
+      var w = img.naturalWidth * scale;
+      var h = img.naturalHeight * scale;
+      ctx2d.drawImage(img, (side - w) / 2, (side - h) / 2, w, h);
+      var quality = 0.82;
+      var blob = dataUrlToBlob(canvas.toDataURL("image/jpeg", quality));
+      while (blob.size > CARD_IMAGE_MAX_BYTES && quality > 0.5) {
+        quality -= 0.08;
+        blob = dataUrlToBlob(canvas.toDataURL("image/jpeg", quality));
+      }
+      if (blob.size > CARD_IMAGE_MAX_BYTES) {
+        reject(new Error("Image is still too large after resizing."));
+        return;
+      }
+      resolve(blob);
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Could not read that image."));
+    };
+    img.src = objectUrl;
+  });
+}
+
+function uploadCardImage(file) {
+  return resizeCardImageFile(file).then(function (blob) {
+    return fetch("/api/card-images", {
+      method: "POST",
+      headers: { "Content-Type": "image/jpeg", "X-Card-Image-Name": encodeURIComponent(file.name || "image") },
+      body: blob,
+    });
+  }).then(function (r) {
+    if (!r.ok) throw new Error("Image upload failed.");
+    return r.json();
+  }).then(function (item) {
+    _cardImageLibrary = null;
+    return item;
+  });
+}
+
+function deleteCardImage(id) {
+  id = normalizeCardBackgroundImageId(id);
+  if (!id) return Promise.resolve(false);
+  return fetch("/api/card-images/" + encodeURIComponent(id), { method: "DELETE" }).then(function (r) {
+    _cardImageLibrary = null;
+    return r.ok;
+  }).catch(function () { return false; });
+}
+
 function entityDef(key) {
   return ENTITY_CATALOG.entities[key] || {};
 }

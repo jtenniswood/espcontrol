@@ -86,6 +86,18 @@ script:
             id(display_takeover_suspended) = false;
             id(display_takeover_resume_restore).execute();
           };
+          static esphome::artwork_image::ArtworkImage *card_background_downloaders[] = {
+            id(card_background_download_1),
+            id(card_background_download_2),
+            id(card_background_download_3),
+            id(card_background_download_4),
+            id(card_background_download_5),
+            id(card_background_download_6),
+            id(card_background_download_7),
+            id(card_background_download_8),
+          };
+          cfg.card_background_images = card_background_downloaders;
+          cfg.card_background_image_count = 8;
           cfg.home_assistant_base_url = []() {
             std::string base = id(cover_art_home_assistant_base_url);
             while (!base.empty() && base.back() == '/') base.pop_back();
@@ -188,6 +200,18 @@ esphome:
               id(display_takeover_suspended) = false;
               id(display_takeover_resume_restore).execute();
             };
+            static esphome::artwork_image::ArtworkImage *card_background_downloaders[] = {
+              id(card_background_download_1),
+              id(card_background_download_2),
+              id(card_background_download_3),
+              id(card_background_download_4),
+              id(card_background_download_5),
+              id(card_background_download_6),
+              id(card_background_download_7),
+              id(card_background_download_8),
+            };
+            cfg.card_background_images = card_background_downloaders;
+            cfg.card_background_image_count = 8;
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
               while (!base.empty() && base.back() == '/') base.pop_back();
@@ -315,6 +339,18 @@ esphome:
               id(display_takeover_suspended) = false;
               id(display_takeover_resume_restore).execute();
             };
+            static esphome::artwork_image::ArtworkImage *card_background_downloaders[] = {
+              id(card_background_download_1),
+              id(card_background_download_2),
+              id(card_background_download_3),
+              id(card_background_download_4),
+              id(card_background_download_5),
+              id(card_background_download_6),
+              id(card_background_download_7),
+              id(card_background_download_8),
+            };
+            cfg.card_background_images = card_background_downloaders;
+            cfg.card_background_image_count = 8;
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
               while (!base.empty() && base.back() == '/') base.pop_back();

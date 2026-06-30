@@ -50,6 +50,8 @@ struct GridConfig {
   esphome::artwork_image::ArtworkImage **image_card_images = nullptr;
   esphome::artwork_image::ArtworkImage **image_card_modal_images = nullptr;
   int image_card_image_count = 0;
+  esphome::artwork_image::ArtworkImage **card_background_images = nullptr;
+  int card_background_image_count = 0;
   bool image_card_diagnostics = false;
   std::function<std::string()> home_assistant_base_url;
 };
@@ -248,6 +250,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
 
   screen_lock_register_controlled_button(s.btn);
+  apply_card_background_image(s, p, cfg);
 
   if (p.type == "image") {
     setup_image_card(s);
@@ -642,6 +645,7 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
       s, cfg.subpage_chevrons_enabled, cfg.subpage_chevron_x,
       cfg.subpage_chevron_y, cfg.subpage_chevron_text_width_percent);
   }
+  refresh_card_background_image(s.btn, cfg);
 
   if (p.type == "image") {
     ImageCardCtx *ctx = s.btn
@@ -748,6 +752,7 @@ inline void grid_phase1(
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   display_set_width_axis(display);
+  reset_card_background_image_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;

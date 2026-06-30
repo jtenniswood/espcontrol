@@ -405,6 +405,7 @@ def package_file_text(device: dict) -> str:
             include_line("screen_setup", "!include ../../common/device/screen_button_setup.yaml"),
             include_line("screen_clock", "!include ../../common/device/screen_clock.yaml"),
             include_line("screen_art", "!include ../../common/device/screen_cover_art.yaml"),
+            include_line("card_bg_images", "!include ../../common/device/card_background_images.yaml"),
             *(
                 [
                     include_line(
@@ -589,6 +590,12 @@ def cfg_lines(device: dict) -> list[str]:
         lines.append(f"            cfg.image_card_image_count = {image_card_count};")
     if device.get("image_card_diagnostics"):
         lines.append("            cfg.image_card_diagnostics = true;")
+    lines.append("            static esphome::artwork_image::ArtworkImage *card_background_downloaders[] = {")
+    for num in range(1, 9):
+        lines.append(f"              id(card_background_download_{num}),")
+    lines.append("            };")
+    lines.append("            cfg.card_background_images = card_background_downloaders;")
+    lines.append("            cfg.card_background_image_count = 8;")
     lines.append("            cfg.home_assistant_base_url = []() {")
     lines.append("              std::string base = id(cover_art_home_assistant_base_url);")
     lines.append("              while (!base.empty() && base.back() == '/') base.pop_back();")

@@ -352,6 +352,148 @@ function renderCardSegmentControl(panel, b, helpers, metadata) {
   return control;
 }
 
+function renderCardBackgroundControl(panel, b, helpers) {
+  if (!cardBackgroundSupported(b)) return null;
+  var field = document.createElement("div");
+  field.className = "sp-field sp-card-bg-field";
+  field.appendChild(fieldLabel("Background Image", helpers.idPrefix + "bg-image"));
+
+  var preview = document.createElement("div");
+  preview.className = "sp-card-bg-preview";
+  field.appendChild(preview);
+
+  var select = document.createElement("select");
+  select.className = "sp-select";
+  select.id = helpers.idPrefix + "bg-image";
+  field.appendChild(select);
+
+  var actions = document.createElement("div");
+  actions.className = "sp-card-bg-actions";
+  var upload = document.createElement("input");
+  upload.type = "file";
+  upload.accept = "image/*";
+  upload.className = "sp-card-bg-file";
+  var uploadBtn = document.createElement("button");
+  uploadBtn.type = "button";
+  uploadBtn.className = "sp-action-btn";
+  uploadBtn.innerHTML = '<span class="mdi mdi-upload"></span>Upload';
+  var clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "sp-action-btn";
+  clearBtn.innerHTML = '<span class="mdi mdi-close"></span>Clear';
+  var deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "sp-action-btn sp-card-bg-delete-btn";
+  deleteBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
+  actions.appendChild(upload);
+  actions.appendChild(uploadBtn);
+  actions.appendChild(clearBtn);
+  actions.appendChild(deleteBtn);
+  field.appendChild(actions);
+
+  var dim = document.createElement("input");
+  dim.type = "range";
+  dim.min = "0";
+  dim.max = "90";
+  dim.step = "5";
+  dim.value = cardBackgroundDim(b.options);
+  var dimField = document.createElement("div");
+  dimField.className = "sp-card-bg-dim";
+  var dimLabel = document.createElement("span");
+  dimLabel.textContent = "Dim Overlay";
+  dimField.appendChild(dimLabel);
+  dimField.appendChild(dim);
+  field.appendChild(dimField);
+
+  function selectedImage() {
+    return cardBackgroundImage(b.options);
+  }
+
+  function setBackground(id) {
+    id = normalizeCardBackgroundImageId(id);
+    b.options = setConfigOptionValue(b.options, CARD_BACKGROUND_IMAGE_OPTION, id);
+    if (id) {
+      b.options = setConfigOptionValue(b.options, CARD_BACKGROUND_DIM_OPTION, cardBackgroundDim(b.options));
+    } else {
+      b.options = setConfigOptionValue(b.options, CARD_BACKGROUND_DIM_OPTION, "");
+    }
+    helpers.saveField("options", b.options);
+    refreshPreview();
+    renderPreview();
+  }
+
+  function refreshPreview() {
+    var id = selectedImage();
+    preview.style.backgroundImage = id ? "url('" + cardImageUrl(id) + "')" : "";
+    preview.classList.toggle("sp-card-bg-preview-empty", !id);
+    clearBtn.disabled = !id;
+    deleteBtn.disabled = !id;
+  }
+
+  function fillSelect(items) {
+    var current = selectedImage();
+    select.innerHTML = "";
+    var none = document.createElement("option");
+    none.value = "";
+    none.textContent = "No image";
+    select.appendChild(none);
+    (items || []).forEach(function (item) {
+      var option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = item.name || item.id;
+      select.appendChild(option);
+    });
+    if (current && !(items || []).some(function (item) { return item.id === current; })) {
+      var missing = document.createElement("option");
+      missing.value = current;
+      missing.textContent = current + " (missing)";
+      select.appendChild(missing);
+    }
+    select.value = current;
+    refreshPreview();
+  }
+
+  select.addEventListener("change", function () { setBackground(this.value); });
+  clearBtn.addEventListener("click", function () {
+    select.value = "";
+    setBackground("");
+  });
+  uploadBtn.addEventListener("click", function () { upload.click(); });
+  upload.addEventListener("change", function () {
+    var file = upload.files && upload.files[0];
+    if (!file) return;
+    uploadBtn.disabled = true;
+    uploadCardImage(file).then(function (item) {
+      setBackground(item.id);
+      return listCardImages(true);
+    }).then(fillSelect).catch(function (err) {
+      showBanner(err && err.message || "Could not upload image.", "error");
+    }).then(function () {
+      upload.value = "";
+      uploadBtn.disabled = false;
+    });
+  });
+  deleteBtn.addEventListener("click", function () {
+    var id = selectedImage();
+    if (!id) return;
+    deleteCardImage(id).then(function () {
+      setBackground("");
+      return listCardImages(true);
+    }).then(fillSelect);
+  });
+  dim.addEventListener("input", function () {
+    if (!selectedImage()) return;
+    b.options = setConfigOptionValue(b.options, CARD_BACKGROUND_DIM_OPTION, normalizeCardBackgroundDim(this.value));
+    helpers.saveField("options", b.options);
+    renderPreview();
+  });
+
+  fillSelect(_cardImageLibrary || []);
+  listCardImages(false).then(fillSelect);
+  panel.appendChild(field);
+  return field;
+}
+
 function cardSensorPreviewHtml(b, helpers, value, unit, extraClass, valueClass) {
   var className = "sp-sensor-preview" + (extraClass ? " " + extraClass : "") +
     (cardLargeNumbersActiveForCardSize(b, helpers) ? " sp-sensor-preview-large" : "");
