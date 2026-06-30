@@ -1040,11 +1040,14 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t text_w = content_w * 92 / 100;
   if (ui.title_lbl) {
     lv_obj_set_size(ui.title_lbl, text_w, title_h);
+    lv_obj_update_layout(ui.title_lbl);
+    lv_coord_t rendered_title_h = lv_obj_get_height(ui.title_lbl);
+    if (rendered_title_h > 0 && rendered_title_h < title_h) title_h = rendered_title_h;
     lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, 0);
   }
   if (ui.artist_lbl) {
     lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
-    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h);
+    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h + control_modal_scaled_px(2, layout.short_side));
   }
   lv_coord_t progress_gap = control_modal_scaled_px(12, layout.short_side);
   lv_coord_t slider_w = content_w - progress_gap * 2;
