@@ -19,6 +19,8 @@ var SSE_ALIAS_GROUPS = {
   homeAssistantArtworkProtocol: ["select-home_assistant_artwork_protocol", "select-cover_art_home_assistant_artwork_protocol"],
   homeAssistantArtworkPort: ["number-home_assistant_artwork_port"],
   scheduleTrigger: ["text-screen__schedule_trigger", "text-screen_schedule_trigger", "text-schedule_trigger"],
+  schedulePresenceDetectedMode: ["select-screen__schedule_presence_detected_mode", "select-screen_schedule_presence_detected_mode", "select-schedule_presence_detected_mode"],
+  schedulePresenceNotDetectedMode: ["select-screen__schedule_presence_not_detected_mode", "select-screen_schedule_presence_not_detected_mode", "select-schedule_presence_not_detected_mode"],
   scheduleWakeTimeout: ["number-screen__schedule_wake_timeout", "number-screen_schedule_wake_timeout", "number-schedule_wake_timeout"],
   scheduleWakeBrightness: ["number-screen__schedule_wake_brightness", "number-screen_schedule_wake_brightness", "number-schedule_wake_brightness"],
   scheduleDimmedBrightness: ["number-screen__schedule_dimmed_brightness", "number-screen_schedule_dimmed_brightness", "number-schedule_dimmed_brightness"],
@@ -360,6 +362,14 @@ function connectEvents() {
       state.scheduleMode = normalizeScheduleMode(d.value || val);
       syncScreenScheduleUi();
     },
+    "select-screen__schedule_presence_detected_mode": function (val, d) {
+      state.schedulePresenceDetectedMode = normalizeScheduleMode(d.value || val);
+      syncScreenScheduleUi();
+    },
+    "select-screen__schedule_presence_not_detected_mode": function (val, d) {
+      state.schedulePresenceNotDetectedMode = normalizeScheduleMode(d.value || val);
+      syncScreenScheduleUi();
+    },
     "number-screen__schedule_wake_timeout": function (val) {
       state.scheduleWakeTimeout = normalizeScheduleWakeTimeout(val);
       syncScreenScheduleUi();
@@ -520,6 +530,8 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, sseHandlers["select-home_assistant_artwork_protocol"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, sseHandlers["number-home_assistant_artwork_port"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleTrigger, sseHandlers["text-screen__schedule_trigger"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.schedulePresenceDetectedMode, sseHandlers["select-screen__schedule_presence_detected_mode"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.schedulePresenceNotDetectedMode, sseHandlers["select-screen__schedule_presence_not_detected_mode"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, sseHandlers["number-screen__schedule_wake_timeout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeBrightness, sseHandlers["number-screen__schedule_wake_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleDimmedBrightness, sseHandlers["number-screen__schedule_dimmed_brightness"]);

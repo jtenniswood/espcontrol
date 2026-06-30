@@ -750,6 +750,27 @@ async function assertSettingsPage(page, label, options = {}) {
     "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active. Use Sensor mode when you want presence to control the night schedule.",
     `${label}: night schedule override info panel text should match`,
   );
+  await nightScheduleCard.getByRole("button", { name: "Sensor" }).click();
+  assert.strictEqual(
+    await nightScheduleCard.locator("#sp-set-schedule-sensor-mode").inputValue(),
+    "screen_off",
+    `${label}: sensor presence-detected action defaults to screen off`,
+  );
+  assert.strictEqual(
+    await nightScheduleCard.locator("#sp-set-schedule-sensor-not-detected-mode").inputValue(),
+    "screen_off",
+    `${label}: sensor presence-not-detected action defaults to screen off`,
+  );
+  assert.strictEqual(
+    await nightScheduleCard.locator("#sp-set-schedule-sensor-wake-timeout").inputValue(),
+    "60",
+    `${label}: sensor night schedule wake timeout defaults to 1 minute`,
+  );
+  assert.strictEqual(
+    await nightScheduleCard.locator("#sp-set-schedule-sensor-wake-brightness").inputValue(),
+    "10",
+    `${label}: sensor night schedule wake brightness defaults to 10 percent`,
+  );
   const coverArtCard = page
     .locator("#sp-settings .card")
     .filter({

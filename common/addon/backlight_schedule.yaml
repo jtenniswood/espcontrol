@@ -159,6 +159,46 @@ select:
             id(schedule_mode_clock) = screen_schedule_clock_mode(mode);
         - script.execute: screen_schedule_check
 
+  - platform: template
+    name: "${entity_screen_schedule_presence_detected_mode}"
+    internal: true
+    id: schedule_presence_detected_mode
+    entity_category: config
+    icon: "mdi:motion-sensor"
+    optimistic: true
+    restore_value: true
+    initial_option: "Screen off"
+    options:
+      - "Screen off"
+      - "Screen Dimmed"
+      - "Always On"
+      - "Clock"
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - script.execute: screen_schedule_check
+
+  - platform: template
+    name: "${entity_screen_schedule_presence_not_detected_mode}"
+    internal: true
+    id: schedule_presence_not_detected_mode
+    entity_category: config
+    icon: "mdi:motion-sensor-off"
+    optimistic: true
+    restore_value: true
+    initial_option: "Screen off"
+    options:
+      - "Screen off"
+      - "Screen Dimmed"
+      - "Always On"
+      - "Clock"
+    web_server:
+      sorting_group_id: sg_brightness
+    on_value:
+      then:
+        - script.execute: screen_schedule_check
+
 text:
   - platform: template
     name: "${entity_screen_schedule_trigger}"
@@ -352,6 +392,12 @@ number:
               lambda: |-
                 if (id(display_asleep)) return false;
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                std::string mode = screen_schedule_effective_mode(
+                  id(screen_schedule_trigger).state,
+                  id(presence_detected),
+                  id(schedule_mode).current_option(),
+                  id(schedule_presence_detected_mode).current_option(),
+                  id(schedule_presence_not_detected_mode).current_option());
                 return screen_schedule_night_active(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
@@ -360,7 +406,7 @@ number:
                          now.is_valid() ? now.hour : 0,
                          (int) id(schedule_on_hour).state,
                          (int) id(schedule_off_hour).state) &&
-                       id(schedule_mode_always_on);
+                       screen_schedule_always_on_mode(mode);
             then:
               - script.execute: backlight_apply_brightness
 
@@ -453,8 +499,14 @@ script:
                        (int) id(schedule_on_hour).state,
                        (int) id(schedule_off_hour).state);
               if (!waiting_for_time && !night_active) return false;
+              std::string mode = screen_schedule_effective_mode(
+                id(screen_schedule_trigger).state,
+                id(presence_detected),
+                id(schedule_mode).current_option(),
+                id(schedule_presence_detected_mode).current_option(),
+                id(schedule_presence_not_detected_mode).current_option());
               return waiting_for_time ||
-                     (!id(schedule_mode_always_on) && !id(schedule_mode_clock));
+                     (!screen_schedule_always_on_mode(mode) && !screen_schedule_clock_mode(mode));
           then:
             - globals.set:
                 id: display_asleep
@@ -653,6 +705,13 @@ script:
             return;
           }
 
+          std::string mode = screen_schedule_effective_mode(
+            id(screen_schedule_trigger).state,
+            id(presence_detected),
+            id(schedule_mode).current_option(),
+            id(schedule_presence_detected_mode).current_option(),
+            id(schedule_presence_not_detected_mode).current_option());
+
           if (screen_schedule_normal_active(
                 id(screen_schedule_trigger).state,
                 id(schedule_enabled).state,
@@ -661,15 +720,17 @@ script:
                 now.is_valid() ? now.hour : 0,
                 (int) id(schedule_on_hour).state,
                 (int) id(schedule_off_hour).state)) {
-            id(manual_wake_ms) = 0;
-            if (id(display_asleep) && id(screen_schedule_asleep) &&
-                !id(backlight_manual_off)) {
-              id(screen_schedule_wake).execute();
+            if (screen_schedule_time_trigger(id(screen_schedule_trigger).state)) {
+              id(manual_wake_ms) = 0;
+              if (id(display_asleep) && id(screen_schedule_asleep) &&
+                  !id(backlight_manual_off)) {
+                id(screen_schedule_wake).execute();
+              }
+              return;
             }
-            return;
           }
 
-          if (id(schedule_mode_always_on)) {
+          if (screen_schedule_always_on_mode(mode)) {
             id(manual_wake_ms) = 0;
             if (id(backlight_manual_off)) {
               id(backlight_schedule_display_off).execute();
@@ -679,7 +740,7 @@ script:
             return;
           }
 
-          if (id(schedule_mode_clock)) {
+          if (screen_schedule_clock_mode(mode)) {
             if (id(backlight_manual_off)) {
               id(backlight_schedule_display_off).execute();
               return;
@@ -763,7 +824,13 @@ script:
           uint32_t elapsed = (uint32_t) (millis() - id(manual_wake_ms));
           if (elapsed >= timeout_ms && !id(screen_schedule_asleep)) {
             id(manual_wake_ms) = 0;
-            if (id(schedule_mode_clock)) {
+            std::string mode = screen_schedule_effective_mode(
+              id(screen_schedule_trigger).state,
+              id(presence_detected),
+              id(schedule_mode).current_option(),
+              id(schedule_presence_detected_mode).current_option(),
+              id(schedule_presence_not_detected_mode).current_option());
+            if (screen_schedule_clock_mode(mode)) {
               id(screen_schedule_show_clock).execute();
             } else {
               id(screen_schedule_sleep).execute();
@@ -779,8 +846,14 @@ script:
       - lambda: |-
           if (id(display_asleep) && !id(cover_art_screensaver_active)) return;
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          std::string mode = screen_schedule_effective_mode(
+            id(screen_schedule_trigger).state,
+            id(presence_detected),
+            id(schedule_mode).current_option(),
+            id(schedule_presence_detected_mode).current_option(),
+            id(schedule_presence_not_detected_mode).current_option());
           if (id(screen_schedule_asleep)) {
-            if (id(schedule_mode_clock)) return;
+            if (screen_schedule_clock_mode(mode)) return;
             id(backlight_force_display_off).execute();
             return;
           }
@@ -797,15 +870,16 @@ script:
             if (std::isnan(pct) || pct <= 0) pct = 10;
             if (pct < 10) pct = 10;
             if (pct > 100) pct = 100;
-          } else if (screen_schedule_night_active(
-                       id(screen_schedule_trigger).state,
-                       id(schedule_enabled).state,
-                       id(presence_detected),
-                       now.is_valid(),
-                       now.is_valid() ? now.hour : 0,
-                       (int) id(schedule_on_hour).state,
-                       (int) id(schedule_off_hour).state) &&
-                     id(schedule_mode_always_on)) {
+          } else if (((screen_schedule_night_active(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         id(presence_detected),
+                         now.is_valid(),
+                         now.is_valid() ? now.hour : 0,
+                         (int) id(schedule_on_hour).state,
+                         (int) id(schedule_off_hour).state) ||
+                       screen_schedule_sensor_trigger(id(screen_schedule_trigger).state)) &&
+                     screen_schedule_always_on_mode(mode))) {
             pct = id(schedule_dimmed_brightness).state;
             if (std::isnan(pct) || pct <= 0) pct = 10;
             if (pct < 1) pct = 1;
@@ -878,8 +952,14 @@ interval:
       - if:
           condition:
             lambda: |-
+              std::string mode = screen_schedule_effective_mode(
+                id(screen_schedule_trigger).state,
+                id(presence_detected),
+                id(schedule_mode).current_option(),
+                id(schedule_presence_detected_mode).current_option(),
+                id(schedule_presence_not_detected_mode).current_option());
               return (id(screen_schedule_asleep) &&
-                      !id(schedule_mode_clock)) ||
+                      !screen_schedule_clock_mode(mode)) ||
                      screen_schedule_waiting_for_time(
                        id(screen_schedule_trigger).state,
                        id(schedule_enabled).state,

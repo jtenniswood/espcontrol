@@ -83,6 +83,8 @@ function exportConfig() {
       schedule_on_hour: normalizeHour(state.scheduleOnHour, 6),
       schedule_off_hour: normalizeHour(state.scheduleOffHour, 23),
       schedule_mode: normalizeScheduleMode(state.scheduleMode),
+      schedule_presence_detected_mode: normalizeScheduleMode(state.schedulePresenceDetectedMode),
+      schedule_presence_not_detected_mode: normalizeScheduleMode(state.schedulePresenceNotDetectedMode),
       schedule_wake_timeout: normalizeScheduleWakeTimeout(state.scheduleWakeTimeout),
       schedule_wake_brightness: normalizeScheduleWakeBrightness(state.scheduleWakeBrightness),
       schedule_dimmed_brightness: normalizeScheduleDimmedBrightness(state.scheduleDimmedBrightness),
@@ -320,6 +322,8 @@ function importConfig() {
           scheduleDimmedBrightness: state.scheduleDimmedBrightness,
           scheduleClockBrightness: state.scheduleClockBrightness,
           scheduleClockTextColor: state.scheduleClockTextColor,
+          schedulePresenceDetectedMode: state.schedulePresenceDetectedMode,
+          schedulePresenceNotDetectedMode: state.schedulePresenceNotDetectedMode,
         });
         state.brightnessDayVal = importedScreenSettings.brightnessDayVal;
         state.brightnessNightVal = importedScreenSettings.brightnessNightVal;
@@ -331,6 +335,8 @@ function importConfig() {
         state.scheduleOnHour = importedScreenSettings.scheduleOnHour;
         state.scheduleOffHour = importedScreenSettings.scheduleOffHour;
         state.scheduleMode = importedScreenSettings.scheduleMode;
+        state.schedulePresenceDetectedMode = importedScreenSettings.schedulePresenceDetectedMode;
+        state.schedulePresenceNotDetectedMode = importedScreenSettings.schedulePresenceNotDetectedMode;
         state.scheduleWakeTimeout = importedScreenSettings.scheduleWakeTimeout;
         state.scheduleWakeBrightness = importedScreenSettings.scheduleWakeBrightness;
         state.scheduleDimmedBrightness = importedScreenSettings.scheduleDimmedBrightness;
@@ -346,6 +352,8 @@ function importConfig() {
         postScreenScheduleOnHour(state.scheduleOnHour);
         postScreenScheduleOffHour(state.scheduleOffHour);
         postScreenScheduleMode(state.scheduleMode);
+        postScreenSchedulePresenceDetectedMode(state.schedulePresenceDetectedMode);
+        postScreenSchedulePresenceNotDetectedMode(state.schedulePresenceNotDetectedMode);
         postScreenScheduleWakeTimeout(state.scheduleWakeTimeout);
         postScreenScheduleWakeBrightness(state.scheduleWakeBrightness);
         postScreenScheduleDimmedBrightness(state.scheduleDimmedBrightness);

@@ -72,6 +72,8 @@ substitutions:
   entity_screen_schedule_enabled: "Screen: Schedule Enabled"
   entity_screen_schedule_trigger: "Screen: Schedule Trigger"
   entity_screen_schedule_mode: "Screen: Schedule Mode"
+  entity_screen_schedule_presence_detected_mode: "Screen: Schedule Presence Detected Mode"
+  entity_screen_schedule_presence_not_detected_mode: "Screen: Schedule Presence Not Detected Mode"
   entity_screen_schedule_on_hour: "Screen: Schedule On Hour"
   entity_screen_schedule_off_hour: "Screen: Schedule Off Hour"
   entity_screen_schedule_wake_timeout: "Screen: Schedule Wake Timeout"

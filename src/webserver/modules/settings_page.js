@@ -229,127 +229,30 @@ function buildSettingsPage(parent) {
   scheduleTimes.appendChild(offHour.wrap);
   els.setScheduleOffHour = offHour.select;
 
-  var scheduleModeField = document.createElement("div");
-  scheduleModeField.className = "sp-field";
-  scheduleModeField.appendChild(fieldLabel("At Night Time", "sp-set-schedule-mode"));
-  var scheduleModeSelect = document.createElement("select");
-  scheduleModeSelect.className = "sp-select";
-  scheduleModeSelect.id = "sp-set-schedule-mode";
-  [
-    { value: "screen_off", label: "Screen Off" },
-    { value: "screen_dimmed", label: "Screen Dimmed" },
-    { value: "clock", label: "Clock" },
-  ].forEach(function (opt) {
-    var option = document.createElement("option");
-    option.value = opt.value;
-    option.textContent = opt.label;
-    scheduleModeSelect.appendChild(option);
-  });
-  scheduleModeSelect.addEventListener("change", function () {
-    state.scheduleMode = normalizeScheduleMode(this.value);
-    postScreenScheduleMode(state.scheduleMode);
-    syncScreenScheduleUi();
-  });
-  scheduleModeField.appendChild(scheduleModeSelect);
-  scheduleTimes.appendChild(scheduleModeField);
-  els.setScheduleMode = scheduleModeSelect;
-
-  var offScreenOptions = condField();
-  var wakeTimeoutField = document.createElement("div");
-  wakeTimeoutField.className = "sp-field";
-  wakeTimeoutField.appendChild(fieldLabel("When Woken, Idle Time to Screen Off", "sp-set-schedule-wake-timeout"));
-  var wakeTimeoutSelect = document.createElement("select");
-  wakeTimeoutSelect.className = "sp-select";
-  wakeTimeoutSelect.id = "sp-set-schedule-wake-timeout";
-  var wakeTimeoutOptions = [
-    { label: "10 seconds", value: 10 },
-    { label: "30 seconds", value: 30 },
-    { label: "1 minute", value: 60 },
-    { label: "2 minutes", value: 120 },
-    { label: "5 minutes", value: 300 },
-    { label: "10 minutes", value: 600 },
-    { label: "30 minutes", value: 1800 },
-    { label: "1 hour", value: 3600 },
-  ];
-  wakeTimeoutOptions.forEach(function (opt) {
-    var o = document.createElement("option");
-    o.value = opt.value;
-    o.textContent = opt.label;
-    wakeTimeoutSelect.appendChild(o);
-  });
-  wakeTimeoutSelect.addEventListener("change", function () {
-    state.scheduleWakeTimeout = normalizeScheduleWakeTimeout(this.value);
-    postScreenScheduleWakeTimeout(state.scheduleWakeTimeout);
-    syncScreenScheduleUi();
-  });
-  wakeTimeoutField.appendChild(wakeTimeoutSelect);
-  offScreenOptions.appendChild(wakeTimeoutField);
-  els.setScheduleWakeTimeout = wakeTimeoutSelect;
-
-  var wakeBrightnessSlider = createRangeSlider(
-    "When Woken, Screen Brightness",
-    state.scheduleWakeBrightness,
-    postScreenScheduleWakeBrightness
-  );
-  wakeBrightnessSlider.range.id = "sp-set-schedule-wake-brightness";
-  wakeBrightnessSlider.range.addEventListener("change", function () {
-    state.scheduleWakeBrightness = normalizeScheduleWakeBrightness(this.value);
-    syncScreenScheduleUi();
-  });
-  offScreenOptions.appendChild(wakeBrightnessSlider.wrap);
-  els.setScheduleWakeBrightness = wakeBrightnessSlider.range;
-  els.setScheduleWakeBrightnessVal = wakeBrightnessSlider.val;
-  scheduleTimes.appendChild(offScreenOptions);
-  els.setScheduleOffOptions = offScreenOptions;
-
-  var dimmedOptions = condField();
-  var dimmedBrightnessSlider = createRangeSlider(
-    "Dimmed Screen Brightness",
-    state.scheduleDimmedBrightness,
-    postScreenScheduleDimmedBrightness
-  );
-  dimmedBrightnessSlider.range.id = "sp-set-schedule-dimmed-brightness";
-  dimmedBrightnessSlider.range.min = "1";
-  dimmedBrightnessSlider.range.step = "1";
-  dimmedBrightnessSlider.range.addEventListener("input", function () {
-    state.scheduleDimmedBrightness = normalizeScheduleDimmedBrightness(this.value);
-    syncScreenScheduleUi();
-  });
-  dimmedOptions.appendChild(dimmedBrightnessSlider.wrap);
-  scheduleTimes.appendChild(dimmedOptions);
-  els.setScheduleDimmedOptions = dimmedOptions;
-  els.setScheduleDimmedBrightness = dimmedBrightnessSlider.range;
-  els.setScheduleDimmedBrightnessVal = dimmedBrightnessSlider.val;
-
-  var clockOptions = condField();
-  var clockBrightnessSlider = createRangeSlider(
-    "Clock Brightness",
-    state.scheduleClockBrightness,
-    postScreenScheduleClockBrightness
-  );
-  clockBrightnessSlider.range.id = "sp-set-schedule-clock-brightness";
-  clockBrightnessSlider.range.min = "1";
-  clockBrightnessSlider.range.step = "1";
-  clockBrightnessSlider.range.addEventListener("input", function () {
-    state.scheduleClockBrightness = normalizeScheduleClockBrightness(this.value);
-    syncScreenScheduleUi();
-  });
-  clockOptions.appendChild(clockBrightnessSlider.wrap);
-  clockOptions.appendChild(fieldLabel("Clock Text Colour"));
-  var clockTextColor = colorField(
-    "sp-set-schedule-clock-text-color",
-    state.scheduleClockTextColor,
-    function (hex) {
-      state.scheduleClockTextColor = normalizeHexColor(hex, "FFFFFF");
-      postText(entityName("screen_schedule_clock_text_color"), state.scheduleClockTextColor);
+  var timeScheduleControls = createScheduleNightActionControls(
+    "sp-set-schedule",
+    "At Night Time",
+    function () { return state.scheduleMode; },
+    function (mode) {
+      state.scheduleMode = mode;
+      postScreenScheduleMode(mode);
     }
   );
-  clockOptions.appendChild(clockTextColor);
-  scheduleTimes.appendChild(clockOptions);
-  els.setScheduleClockOptions = clockOptions;
-  els.setScheduleClockBrightness = clockBrightnessSlider.range;
-  els.setScheduleClockBrightnessVal = clockBrightnessSlider.val;
-  els.setScheduleClockTextColor = clockTextColor;
+  timeScheduleControls.fields.forEach(function (field) {
+    scheduleTimes.appendChild(field);
+  });
+  els.setScheduleMode = timeScheduleControls.modeSelect;
+  els.setScheduleWakeTimeout = timeScheduleControls.wakeTimeoutSelect;
+  els.setScheduleWakeBrightness = timeScheduleControls.wakeBrightness;
+  els.setScheduleWakeBrightnessVal = timeScheduleControls.wakeBrightnessVal;
+  els.setScheduleOffOptions = timeScheduleControls.offOptions;
+  els.setScheduleDimmedOptions = timeScheduleControls.dimmedOptions;
+  els.setScheduleDimmedBrightness = timeScheduleControls.dimmedBrightness;
+  els.setScheduleDimmedBrightnessVal = timeScheduleControls.dimmedBrightnessVal;
+  els.setScheduleClockOptions = timeScheduleControls.clockOptions;
+  els.setScheduleClockBrightness = timeScheduleControls.clockBrightness;
+  els.setScheduleClockBrightnessVal = timeScheduleControls.clockBrightnessVal;
+  els.setScheduleClockTextColor = timeScheduleControls.clockTextColor;
 
   scheduleBody.appendChild(scheduleTimes);
   els.setScheduleTimes = scheduleTimes;
@@ -363,9 +266,44 @@ function buildSettingsPage(parent) {
   schedulePresenceField.appendChild(schedulePresInp);
   scheduleSensor.appendChild(schedulePresenceField);
   bindTextPost(schedulePresInp, entityName("presence_sensor_entity"), {});
+  var sensorScheduleControls = createScheduleNightActionControls(
+    "sp-set-schedule-sensor",
+    "When presence is detected",
+    function () { return state.schedulePresenceDetectedMode; },
+    function (mode) {
+      state.schedulePresenceDetectedMode = mode;
+      postScreenSchedulePresenceDetectedMode(mode);
+    }
+  );
+  sensorScheduleControls.fields.forEach(function (field) {
+    scheduleSensor.appendChild(field);
+  });
+  var sensorNotDetectedMode = createScheduleModeField(
+    "When presence is not detected",
+    "sp-set-schedule-sensor-not-detected-mode",
+    function () { return state.schedulePresenceNotDetectedMode; },
+    function (mode) {
+      state.schedulePresenceNotDetectedMode = mode;
+      postScreenSchedulePresenceNotDetectedMode(mode);
+    }
+  );
+  scheduleSensor.appendChild(sensorNotDetectedMode.field);
   scheduleBody.appendChild(scheduleSensor);
   els.setScheduleSensor = scheduleSensor;
   els.setSchedulePresence = schedulePresInp;
+  els.setScheduleSensorMode = sensorScheduleControls.modeSelect;
+  els.setScheduleSensorNotDetectedMode = sensorNotDetectedMode.select;
+  els.setScheduleSensorWakeTimeout = sensorScheduleControls.wakeTimeoutSelect;
+  els.setScheduleSensorWakeBrightness = sensorScheduleControls.wakeBrightness;
+  els.setScheduleSensorWakeBrightnessVal = sensorScheduleControls.wakeBrightnessVal;
+  els.setScheduleSensorOffOptions = sensorScheduleControls.offOptions;
+  els.setScheduleSensorDimmedOptions = sensorScheduleControls.dimmedOptions;
+  els.setScheduleSensorDimmedBrightness = sensorScheduleControls.dimmedBrightness;
+  els.setScheduleSensorDimmedBrightnessVal = sensorScheduleControls.dimmedBrightnessVal;
+  els.setScheduleSensorClockOptions = sensorScheduleControls.clockOptions;
+  els.setScheduleSensorClockBrightness = sensorScheduleControls.clockBrightness;
+  els.setScheduleSensorClockBrightnessVal = sensorScheduleControls.clockBrightnessVal;
+  els.setScheduleSensorClockTextColor = sensorScheduleControls.clockTextColor;
 
   function setScheduleTrigger(trigger) {
     state._scheduleTriggerReceived = true;
@@ -1351,6 +1289,142 @@ function createScreensaverThenControls(selectId) {
     clockBrightnessDayVal: daySlider.val,
     clockBrightnessNight: nightSlider.range,
     clockBrightnessNightVal: nightSlider.val,
+  };
+}
+
+function createScheduleModeField(label, id, getMode, setMode) {
+  var scheduleModeField = document.createElement("div");
+  scheduleModeField.className = "sp-field";
+  scheduleModeField.appendChild(fieldLabel(label, id));
+  var scheduleModeSelect = document.createElement("select");
+  scheduleModeSelect.className = "sp-select";
+  scheduleModeSelect.id = id;
+  [
+    { value: "screen_off", label: "Screen Off" },
+    { value: "screen_dimmed", label: "Screen Dimmed" },
+    { value: "clock", label: "Clock" },
+  ].forEach(function (opt) {
+    var option = document.createElement("option");
+    option.value = opt.value;
+    option.textContent = opt.label;
+    scheduleModeSelect.appendChild(option);
+  });
+  scheduleModeSelect.addEventListener("change", function () {
+    setMode(normalizeScheduleMode(this.value));
+    syncScreenScheduleUi();
+  });
+  scheduleModeSelect.value = normalizeScheduleMode(getMode());
+  scheduleModeField.appendChild(scheduleModeSelect);
+  return { field: scheduleModeField, select: scheduleModeSelect };
+}
+
+function createScheduleNightActionControls(idPrefix, label, getMode, setMode) {
+  var fields = [];
+
+  var scheduleModeField = createScheduleModeField(label, idPrefix + "-mode", getMode, setMode);
+  var scheduleModeSelect = scheduleModeField.select;
+  fields.push(scheduleModeField.field);
+
+  var offScreenOptions = condField();
+  var wakeTimeoutField = document.createElement("div");
+  wakeTimeoutField.className = "sp-field";
+  wakeTimeoutField.appendChild(fieldLabel("When Woken, Idle Time to Screen Off", idPrefix + "-wake-timeout"));
+  var wakeTimeoutSelect = document.createElement("select");
+  wakeTimeoutSelect.className = "sp-select";
+  wakeTimeoutSelect.id = idPrefix + "-wake-timeout";
+  [
+    { label: "10 seconds", value: 10 },
+    { label: "30 seconds", value: 30 },
+    { label: "1 minute", value: 60 },
+    { label: "2 minutes", value: 120 },
+    { label: "5 minutes", value: 300 },
+    { label: "10 minutes", value: 600 },
+    { label: "30 minutes", value: 1800 },
+    { label: "1 hour", value: 3600 },
+  ].forEach(function (opt) {
+    var option = document.createElement("option");
+    option.value = opt.value;
+    option.textContent = opt.label;
+    wakeTimeoutSelect.appendChild(option);
+  });
+  wakeTimeoutSelect.addEventListener("change", function () {
+    state.scheduleWakeTimeout = normalizeScheduleWakeTimeout(this.value);
+    postScreenScheduleWakeTimeout(state.scheduleWakeTimeout);
+    syncScreenScheduleUi();
+  });
+  wakeTimeoutField.appendChild(wakeTimeoutSelect);
+  offScreenOptions.appendChild(wakeTimeoutField);
+
+  var wakeBrightnessSlider = createRangeSlider(
+    "When Woken, Screen Brightness",
+    state.scheduleWakeBrightness,
+    postScreenScheduleWakeBrightness
+  );
+  wakeBrightnessSlider.range.id = idPrefix + "-wake-brightness";
+  wakeBrightnessSlider.range.addEventListener("change", function () {
+    state.scheduleWakeBrightness = normalizeScheduleWakeBrightness(this.value);
+    syncScreenScheduleUi();
+  });
+  offScreenOptions.appendChild(wakeBrightnessSlider.wrap);
+  fields.push(offScreenOptions);
+
+  var dimmedOptions = condField();
+  var dimmedBrightnessSlider = createRangeSlider(
+    "Dimmed Screen Brightness",
+    state.scheduleDimmedBrightness,
+    postScreenScheduleDimmedBrightness
+  );
+  dimmedBrightnessSlider.range.id = idPrefix + "-dimmed-brightness";
+  dimmedBrightnessSlider.range.min = "1";
+  dimmedBrightnessSlider.range.step = "1";
+  dimmedBrightnessSlider.range.addEventListener("input", function () {
+    state.scheduleDimmedBrightness = normalizeScheduleDimmedBrightness(this.value);
+    syncScreenScheduleUi();
+  });
+  dimmedOptions.appendChild(dimmedBrightnessSlider.wrap);
+  fields.push(dimmedOptions);
+
+  var clockOptions = condField();
+  var clockBrightnessSlider = createRangeSlider(
+    "Clock Brightness",
+    state.scheduleClockBrightness,
+    postScreenScheduleClockBrightness
+  );
+  clockBrightnessSlider.range.id = idPrefix + "-clock-brightness";
+  clockBrightnessSlider.range.min = "1";
+  clockBrightnessSlider.range.step = "1";
+  clockBrightnessSlider.range.addEventListener("input", function () {
+    state.scheduleClockBrightness = normalizeScheduleClockBrightness(this.value);
+    syncScreenScheduleUi();
+  });
+  clockOptions.appendChild(clockBrightnessSlider.wrap);
+  clockOptions.appendChild(fieldLabel("Clock Text Colour"));
+  var clockTextColor = colorField(
+    idPrefix + "-clock-text-color",
+    state.scheduleClockTextColor,
+    function (hex) {
+      state.scheduleClockTextColor = normalizeHexColor(hex, "FFFFFF");
+      postText(entityName("screen_schedule_clock_text_color"), state.scheduleClockTextColor);
+      syncScreenScheduleUi();
+    }
+  );
+  clockOptions.appendChild(clockTextColor);
+  fields.push(clockOptions);
+
+  return {
+    fields: fields,
+    modeSelect: scheduleModeSelect,
+    wakeTimeoutSelect: wakeTimeoutSelect,
+    wakeBrightness: wakeBrightnessSlider.range,
+    wakeBrightnessVal: wakeBrightnessSlider.val,
+    offOptions: offScreenOptions,
+    dimmedOptions: dimmedOptions,
+    dimmedBrightness: dimmedBrightnessSlider.range,
+    dimmedBrightnessVal: dimmedBrightnessSlider.val,
+    clockOptions: clockOptions,
+    clockBrightness: clockBrightnessSlider.range,
+    clockBrightnessVal: clockBrightnessSlider.val,
+    clockTextColor: clockTextColor,
   };
 }
 

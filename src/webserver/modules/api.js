@@ -901,6 +901,24 @@ function postScreenScheduleMode(value) {
   );
 }
 
+function postScreenSchedulePresenceDetectedMode(value) {
+  postSelectWithObjectIds(
+    entityName("screen_schedule_presence_detected_mode"),
+    entityObjectIds("screen_schedule_presence_detected_mode"),
+    scheduleModeOption(value),
+    SCREEN_SCHEDULE_MODE_UNAVAILABLE
+  );
+}
+
+function postScreenSchedulePresenceNotDetectedMode(value) {
+  postSelectWithObjectIds(
+    entityName("screen_schedule_presence_not_detected_mode"),
+    entityObjectIds("screen_schedule_presence_not_detected_mode"),
+    scheduleModeOption(value),
+    SCREEN_SCHEDULE_MODE_UNAVAILABLE
+  );
+}
+
 function postScreenScheduleWakeTimeout(value) {
   postNumberWithObjectIds(
     entityName("screen_schedule_wake_timeout"),

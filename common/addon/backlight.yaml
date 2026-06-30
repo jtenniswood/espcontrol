@@ -294,6 +294,12 @@ script:
                   lambda: |-
                     if (!id(schedule_enabled).state) return true;
                     auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                    std::string mode = screen_schedule_effective_mode(
+                      id(screen_schedule_trigger).state,
+                      id(presence_detected),
+                      id(schedule_mode).current_option(),
+                      id(schedule_presence_detected_mode).current_option(),
+                      id(schedule_presence_not_detected_mode).current_option());
                     if (screen_schedule_normal_active(
                           id(screen_schedule_trigger).state,
                           id(schedule_enabled).state,
@@ -301,8 +307,9 @@ script:
                           now.is_valid(),
                           now.is_valid() ? now.hour : 0,
                           (int) id(schedule_on_hour).state,
-                          (int) id(schedule_off_hour).state)) return true;
-                    return id(schedule_mode_always_on);
+                          (int) id(schedule_off_hour).state) &&
+                        screen_schedule_time_trigger(id(screen_schedule_trigger).state)) return true;
+                    return screen_schedule_always_on_mode(mode);
                 then:
                   - script.execute: screensaver_wake
                 else:
@@ -539,8 +546,14 @@ script:
       - if:
           condition:
             lambda: |-
+              std::string mode = screen_schedule_effective_mode(
+                id(screen_schedule_trigger).state,
+                id(presence_detected),
+                id(schedule_mode).current_option(),
+                id(schedule_presence_detected_mode).current_option(),
+                id(schedule_presence_not_detected_mode).current_option());
               return (id(screen_schedule_asleep) &&
-                      !id(schedule_mode_clock)) ||
+                      !screen_schedule_clock_mode(mode)) ||
                      screen_schedule_waiting_for_time(
                        id(screen_schedule_trigger).state,
                        id(schedule_enabled).state,
@@ -665,8 +678,14 @@ script:
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
               (int) id(schedule_off_hour).state);
+            std::string mode = screen_schedule_effective_mode(
+              id(screen_schedule_trigger).state,
+              id(presence_detected),
+              id(schedule_mode).current_option(),
+              id(schedule_presence_detected_mode).current_option(),
+              id(schedule_presence_not_detected_mode).current_option());
             id(manual_wake_ms) =
-              (schedule_night && !id(schedule_mode_always_on)) ? millis() : 0;
+              (schedule_night && !screen_schedule_always_on_mode(mode)) ? millis() : 0;
           }
       - if:
           condition:
@@ -849,8 +868,14 @@ script:
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
 
           float pct = ${screen_saver_clock_default_brightness}.0f;
+          std::string mode = screen_schedule_effective_mode(
+            id(screen_schedule_trigger).state,
+            id(presence_detected),
+            id(schedule_mode).current_option(),
+            id(schedule_presence_detected_mode).current_option(),
+            id(schedule_presence_not_detected_mode).current_option());
           if (id(screen_schedule_asleep) &&
-              id(schedule_mode_clock)) {
+              screen_schedule_clock_mode(mode)) {
             pct = id(schedule_clock_brightness).state;
             if (std::isnan(pct) || pct <= 0.0f) {
               pct = ${screen_schedule_clock_default_brightness}.0f;
