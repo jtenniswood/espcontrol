@@ -169,6 +169,9 @@ guition-esp32-p4-jc8012p4a1.ota.bin
 guition-esp32-s3-4848s040.factory.bin
 guition-esp32-s3-4848s040.manifest.json
 guition-esp32-s3-4848s040.ota.bin
+guition-esp32-s3-jc3248w535.factory.bin
+guition-esp32-s3-jc3248w535.manifest.json
+guition-esp32-s3-jc3248w535.ota.bin
 ```
 
 The `Deploy Docs` workflow is configured to run after a successful

@@ -128,6 +128,18 @@ const devices = [
     rows: 3,
     aspect: '1 / 1',
     shape: 'square'
+  },
+  {
+    slug: 'guition-esp32-s3-jc3248w535',
+    name: 'JC3248W535',
+    size: '3.5 in',
+    resolution: '480 x 320',
+    orientation: 'Landscape',
+    slots: 6,
+    cols: 3,
+    rows: 2,
+    aspect: '3 / 2',
+    shape: 'landscape'
   }
 ]
 

@@ -142,7 +142,7 @@ deliberately.
 | Flag | Devices | Purpose | Remove when |
 |---|---|---|---|
 | `ESPCONTROL_DISABLE_TODO=1` | All current production devices | Keeps the todo card firmware out of memory-constrained builds. | Todo memory use is reduced enough to compile and run reliably on every supported panel. |
-| `ESPCONTROL_MAX_GRID_SLOTS=6` | `guition-esp32-p4-jc4880p443` | Caps runtime grid allocation to the device's 6 slots. | Grid slot capacity is generated from device profile data. |
+| `ESPCONTROL_MAX_GRID_SLOTS=6` | `guition-esp32-p4-jc4880p443`, `guition-esp32-s3-jc3248w535` | Caps runtime grid allocation to the device's 6 slots. | Grid slot capacity is generated from device profile data. |
 | `ESPCONTROL_MAX_GRID_SLOTS=9` | `esp32-p4-86`, `guition-esp32-s3-4848s040` | Caps runtime grid allocation to the device's 9 slots. | Grid slot capacity is generated from device profile data. |
 | `ESPCONTROL_ESPHOME_2026_5_REBUILD=1` | P4 devices | Forces PlatformIO to rebuild objects after ESPHome 2026.5 scheduler/watchdog changes. | Local and CI caches no longer contain stale 2026.4 objects, or the next deliberate cache-busting marker replaces it. |
 | `ESPCONTROL_JC1060P470_BOOTFIX_20260522=1` | `guition-esp32-p4-jc1060p470` | Cache-busting marker for a JC1060P470 boot-loop fix. | A later required rebuild marker supersedes it. |
@@ -160,7 +160,7 @@ Per-device `platformio_options.build_src_flags` should stay even narrower:
 
 | Flag | Devices | Purpose | Remove when |
 |---|---|---|---|
-| `-mtext-section-literals` | `guition-esp32-s3-4848s040` | Keeps Xtensa literal pools close enough for the large generated S3 firmware translation unit to link. | The S3 firmware is split into smaller translation units or ESPHome/toolchain changes make the flag unnecessary. |
+| `-mtext-section-literals` | `guition-esp32-s3-4848s040`, `guition-esp32-s3-jc3248w535` | Keeps Xtensa literal pools close enough for the large generated S3 firmware translation unit to link. | The S3 firmware is split into smaller translation units or ESPHome/toolchain changes make the flag unnecessary. |
 
 ## Adding a Device Checklist
 
