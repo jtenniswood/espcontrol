@@ -7,8 +7,7 @@ enum class MediaControlTab : uint8_t {
   VOLUME = 1,
 };
 
-constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_DOWN_REF_PX = 14;
-constexpr lv_coord_t MEDIA_CONTROL_VOLUME_UNIT_X_REF_PX = 58;
+constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
 
 struct MediaControlCtx {
   std::string entity_id;
@@ -72,7 +71,6 @@ struct MediaControlModalUi {
   lv_obj_t *next_btn = nullptr;
   lv_obj_t *volume_arc = nullptr;
   lv_obj_t *volume_pct_lbl = nullptr;
-  lv_obj_t *volume_pct_unit_lbl = nullptr;
   lv_obj_t *volume_minus_btn = nullptr;
   lv_obj_t *volume_plus_btn = nullptr;
   MediaControlCtx *active = nullptr;
@@ -1133,13 +1131,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (ui.volume_pct_lbl) {
       apply_width_compensation(ui.volume_pct_lbl, ctx->width_compensation_percent);
       lv_obj_align(ui.volume_pct_lbl, LV_ALIGN_CENTER, 0,
-        control_modal_scaled_px(MEDIA_CONTROL_VOLUME_VALUE_DOWN_REF_PX, volume_layout.short_side));
-    }
-    if (ui.volume_pct_unit_lbl) {
-      apply_width_compensation(ui.volume_pct_unit_lbl, ctx->width_compensation_percent);
-      lv_obj_align(ui.volume_pct_unit_lbl, LV_ALIGN_CENTER,
-        control_modal_scaled_px(MEDIA_CONTROL_VOLUME_UNIT_X_REF_PX, volume_layout.short_side),
-        control_modal_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, volume_layout.short_side));
+        control_modal_scaled_px(MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX, volume_layout.short_side));
     }
     lv_obj_update_layout(ui.volume_box);
   }
@@ -1360,15 +1352,6 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
     lv_obj_set_style_text_align(ui.volume_pct_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (ctx->number_font) lv_obj_set_style_text_font(ui.volume_pct_lbl, ctx->number_font, LV_PART_MAIN);
     apply_width_compensation(ui.volume_pct_lbl, ctx->width_compensation_percent);
-  }
-
-  ui.volume_pct_unit_lbl = lv_label_create(ui.volume_box);
-  if (ui.volume_pct_unit_lbl) {
-    lv_label_set_text(ui.volume_pct_unit_lbl, "%");
-    lv_obj_set_style_text_color(ui.volume_pct_unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_style_text_align(ui.volume_pct_unit_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(ui.volume_pct_unit_lbl, ctx->label_font, LV_PART_MAIN);
-    apply_width_compensation(ui.volume_pct_unit_lbl, ctx->width_compensation_percent);
   }
 
   ui.volume_minus_btn = control_modal_create_round_button(
