@@ -40,30 +40,26 @@ api:
             ESP_LOGW("api", "Home Assistant API client address is empty; image proxy base URL not updated");
           }
           refresh_image_cards();
-          ha_start_subscription_resync_window();
           if (ha_api_state_connected()) {
             apply_registered_ha_control_availability(true);
             refresh_weather_forecast_cards();
             ha_flush_deferred_state_requests();
-            ha_run_subscription_resync_window();
           }
         }
         register_local_action_endpoint();
-    - delay: 5s
+    - delay: 2s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
           ha_flush_deferred_state_requests();
-          ha_run_subscription_resync_window();
         }
         todo_reload_active_modal();
-    - delay: 10s
+    - delay: 8s
     - lambda: |-
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
-          ha_run_subscription_resync_window();
         }
         todo_reload_active_modal();
     - delay: 20s
@@ -72,7 +68,6 @@ api:
         if (ha_api_state_connected()) {
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
-          ha_run_subscription_resync_window();
         }
         todo_reload_active_modal();
     - delay: 25s
@@ -80,7 +75,6 @@ api:
         if (ha_api_state_connected()) {
           refresh_weather_forecast_cards();
           ha_flush_deferred_state_requests();
-          ha_run_subscription_resync_window();
         }
         todo_reload_active_modal();
   on_client_disconnected:
@@ -93,7 +87,6 @@ api:
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
         todo_cancel_pending_request("api disconnected");
-        ha_stop_subscription_resync_window();
         apply_registered_ha_control_availability(false);
 
 interval:
@@ -103,7 +96,6 @@ interval:
           weather_forecast_cancel_stale_requests();
           weather_forecast_send_next_queued();
           ha_flush_deferred_state_requests();
-          ha_run_subscription_resync_window();
           todo_retry_waiting_modal();
 
   - interval: 1h

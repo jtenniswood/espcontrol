@@ -54,6 +54,19 @@ struct MediaNowPlayingCtx {
   bool play_pause_background = false;
 };
 
+struct MediaPlaylistCtx {
+  lv_obj_t *btn = nullptr;
+  std::string entity_id;
+  std::string content_id;
+  std::string content_type;
+  std::string current_content_id;
+  std::string current_content_type;
+  bool available = true;
+  bool playing = false;
+  bool has_current_content_id = false;
+  bool has_current_content_type = false;
+};
+
 constexpr uint32_t MEDIA_SEEK_PENDING_TIMEOUT_MS = 3000;
 constexpr float MEDIA_SEEK_MATCH_TOLERANCE_SECONDS = 2.0f;
 constexpr lv_coord_t MEDIA_VOLUME_REFERENCE_SIDE_PX = DISPLAY_MODAL_REFERENCE_SIDE_PX;

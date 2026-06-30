@@ -1410,7 +1410,9 @@ inline void grid_phase2(
         if (mode == "play_pause") {
           subscribe_media_state(s.btn, media_play_pause_show_state(p) ? s.text_lbl : nullptr, p.entity);
         } else if (mode == "playlist") {
-          subscribe_control_availability(s.btn, s.btn, p.entity);
+          MediaPlaylistCtx *ctx = grid_track_runtime_allocation(
+            s.btn, create_media_playlist_context(s.btn, p));
+          subscribe_media_playlist_state(ctx);
         } else if (media_playback_button_mode(mode)) {
           subscribe_control_availability(s.btn, s.btn, p.entity);
           // Previous/next are momentary actions and do not reflect player state.
@@ -2122,7 +2124,9 @@ inline void grid_phase2(
         if (!sb_cfg.entity.empty()) {
           if (mode == "playlist") {
             ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+            MediaPlaylistCtx *playlist_ctx = grid_delete_with_owner(
+              sb_btn, create_media_playlist_context(sub_slot.btn, sb_cfg));
+            subscribe_media_playlist_state(playlist_ctx);
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
               if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
