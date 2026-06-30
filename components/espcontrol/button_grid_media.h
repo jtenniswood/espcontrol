@@ -1039,8 +1039,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t slider_min_w = control_modal_scaled_px(120, layout.short_side);
   if (slider_w < slider_min_w) slider_w = slider_min_w;
   if (slider_w > content_w) slider_w = content_w;
-  lv_coord_t slider_h = control_modal_scaled_px(22, layout.short_side);
-  if (slider_h < 16) slider_h = 16;
+  lv_coord_t slider_h = control_modal_scaled_px(10, layout.short_side);
+  if (slider_h < 8) slider_h = 8;
   lv_coord_t progress_center_y = content_h / 12;
   if (ui.progress_slider) {
     lv_obj_set_size(ui.progress_slider, slider_w, slider_h);
