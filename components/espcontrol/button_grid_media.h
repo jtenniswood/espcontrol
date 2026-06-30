@@ -64,6 +64,8 @@ struct MediaControlModalUi {
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
+  lv_obj_t *progress_elapsed_lbl = nullptr;
+  lv_obj_t *progress_duration_lbl = nullptr;
   lv_obj_t *previous_btn = nullptr;
   lv_obj_t *play_btn = nullptr;
   lv_obj_t *play_icon_lbl = nullptr;
@@ -777,6 +779,16 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
     pct = (int)((seconds * 100.0f / ctx->duration) + 0.5f);
   }
   pct = media_clamp_percent(pct);
+  if (ui.progress_elapsed_lbl) {
+    char buf[16];
+    media_format_time(seconds, buf, sizeof(buf));
+    lv_label_set_text(ui.progress_elapsed_lbl, buf);
+  }
+  if (ui.progress_duration_lbl) {
+    char buf[16];
+    media_format_time(ctx->duration > 0.0f ? ctx->duration : 0.0f, buf, sizeof(buf));
+    lv_label_set_text(ui.progress_duration_lbl, buf);
+  }
   if (ui.progress_slider && !ctx->dragging_progress) {
     ui.updating_progress = true;
     lv_slider_set_value(ui.progress_slider, pct, LV_ANIM_OFF);
@@ -923,8 +935,7 @@ inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *
                                                   const lv_font_t *font) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
@@ -941,21 +952,21 @@ inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *
   return btn;
 }
 
-inline void media_control_style_progress_slider(lv_obj_t *slider, uint32_t background_color) {
+inline void media_control_style_progress_slider(lv_obj_t *slider, uint32_t background_color,
+                                                uint32_t tint_color) {
   if (!slider) return;
   lv_slider_set_range(slider, 0, 100);
   lv_obj_set_style_bg_color(slider, lv_color_hex(background_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(slider, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(slider, lv_color_hex(tint_color), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(slider, LV_OPA_TRANSP, LV_PART_KNOB);
+  lv_obj_set_style_bg_color(slider, lv_color_hex(tint_color), LV_PART_KNOB);
+  lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_border_width(slider, 0, LV_PART_MAIN);
   lv_obj_set_style_border_width(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_shadow_width(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_outline_width(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_pad_all(slider, 0, LV_PART_KNOB);
-  lv_obj_set_style_width(slider, 0, LV_PART_KNOB);
-  lv_obj_set_style_height(slider, 0, LV_PART_KNOB);
 }
 
 inline void media_control_layout_modal(MediaControlCtx *ctx) {
@@ -1035,30 +1046,51 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
     lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h);
   }
-  lv_coord_t slider_w = content_w * 64 / 100;
-  lv_coord_t slider_min_w = control_modal_scaled_px(120, layout.short_side);
+  lv_coord_t progress_gap = control_modal_scaled_px(12, layout.short_side);
+  lv_coord_t slider_w = content_w - progress_gap * 2;
+  lv_coord_t slider_min_w = control_modal_scaled_px(160, layout.short_side);
   if (slider_w < slider_min_w) slider_w = slider_min_w;
   if (slider_w > content_w) slider_w = content_w;
   lv_coord_t slider_h = control_modal_scaled_px(10, layout.short_side);
   if (slider_h < 8) slider_h = 8;
-  lv_coord_t progress_center_y = content_h / 12;
+  lv_coord_t progress_top = title_h + artist_h + control_modal_scaled_px(24, layout.short_side);
+  lv_coord_t progress_min_top = control_modal_scaled_px(24, layout.short_side);
+  if (progress_top < progress_min_top) progress_top = progress_min_top;
   if (ui.progress_slider) {
     lv_obj_set_size(ui.progress_slider, slider_w, slider_h);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_INDICATOR);
-    lv_obj_align(ui.progress_slider, LV_ALIGN_CENTER, 0, progress_center_y);
+    lv_obj_set_style_radius(ui.progress_slider, slider_h, LV_PART_KNOB);
+    lv_obj_set_style_width(ui.progress_slider, slider_h * 3, LV_PART_KNOB);
+    lv_obj_set_style_height(ui.progress_slider, slider_h * 3, LV_PART_KNOB);
+    lv_obj_align(ui.progress_slider, LV_ALIGN_TOP_MID, 0, progress_top);
+  }
+  const lv_font_t *time_font = ctx->label_font
+    ? ctx->label_font
+    : (ui.progress_elapsed_lbl ? lv_obj_get_style_text_font(ui.progress_elapsed_lbl, LV_PART_MAIN) : nullptr);
+  lv_coord_t time_h = time_font && time_font->line_height > 0
+    ? time_font->line_height : control_modal_scaled_px(24, layout.short_side);
+  lv_coord_t time_y = progress_top + slider_h + control_modal_scaled_px(14, layout.short_side);
+  lv_coord_t time_w = slider_w / 2;
+  if (ui.progress_elapsed_lbl) {
+    lv_obj_set_size(ui.progress_elapsed_lbl, time_w, time_h);
+    lv_obj_align(ui.progress_elapsed_lbl, LV_ALIGN_TOP_LEFT, (content_w - slider_w) / 2, time_y);
+  }
+  if (ui.progress_duration_lbl) {
+    lv_obj_set_size(ui.progress_duration_lbl, time_w, time_h);
+    lv_obj_align(ui.progress_duration_lbl, LV_ALIGN_TOP_RIGHT, -(content_w - slider_w) / 2, time_y);
   }
   lv_coord_t btn_gap = cover_control_home_grid_row_gap(layout);
   lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
   lv_coord_t max_btn = control_modal_scaled_px(112, layout.short_side);
-  lv_coord_t progress_bottom_y = content_h / 2 + progress_center_y + slider_h / 2;
-  lv_coord_t available_btn_h = content_h - progress_bottom_y - control_modal_scaled_px(24, layout.short_side);
+  lv_coord_t controls_top = time_y + time_h + control_modal_scaled_px(32, layout.short_side);
+  lv_coord_t available_btn_h = content_h - controls_top - control_modal_scaled_px(8, layout.short_side);
   if (max_btn > available_btn_h) max_btn = available_btn_h;
   if (btn_size > max_btn) btn_size = max_btn;
   if (btn_size < 64) btn_size = 64;
   lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
-  lv_coord_t button_y = content_h - btn_size - control_modal_scaled_px(8, layout.short_side);
+  lv_coord_t button_y = controls_top;
   lv_coord_t btn_radius = control_modal_card_radius(ctx->btn);
   lv_obj_t *buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
   for (int i = 0; i < 3; i++) {
@@ -1067,7 +1099,10 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_style_radius(buttons[i], btn_radius, LV_PART_MAIN);
     lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT, button_start_x + i * (btn_size + btn_gap), button_y);
     lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
-    if (label) lv_obj_center(label);
+    if (label) {
+      lv_obj_set_style_transform_zoom(label, i == 1 ? 260 : 210, LV_PART_MAIN);
+      lv_obj_center(label);
+    }
   }
 
   if (ui.volume_arc) {
@@ -1195,7 +1230,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   apply_width_compensation(ui.artist_lbl, ctx->width_compensation_percent);
 
   ui.progress_slider = lv_slider_create(ui.controls_box);
-  media_control_style_progress_slider(ui.progress_slider, ctx->secondary_color);
+  media_control_style_progress_slider(ui.progress_slider, ctx->secondary_color, ctx->accent_color);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_progress) return;
@@ -1227,6 +1262,26 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
       media_control_refresh_progress(ui.active);
     }
   }, LV_EVENT_PRESS_LOST, nullptr);
+
+  ui.progress_elapsed_lbl = lv_label_create(ui.controls_box);
+  if (ui.progress_elapsed_lbl) {
+    lv_label_set_text(ui.progress_elapsed_lbl, "0:00");
+    lv_obj_set_style_text_color(ui.progress_elapsed_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.progress_elapsed_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(ui.progress_elapsed_lbl, ctx->label_font, LV_PART_MAIN);
+    lv_label_set_long_mode(ui.progress_elapsed_lbl, LV_LABEL_LONG_CLIP);
+    apply_width_compensation(ui.progress_elapsed_lbl, ctx->width_compensation_percent);
+  }
+
+  ui.progress_duration_lbl = lv_label_create(ui.controls_box);
+  if (ui.progress_duration_lbl) {
+    lv_label_set_text(ui.progress_duration_lbl, "0:00");
+    lv_obj_set_style_text_color(ui.progress_duration_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.progress_duration_lbl, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(ui.progress_duration_lbl, ctx->label_font, LV_PART_MAIN);
+    lv_label_set_long_mode(ui.progress_duration_lbl, LV_LABEL_LONG_CLIP);
+    apply_width_compensation(ui.progress_duration_lbl, ctx->width_compensation_percent);
+  }
 
   ui.previous_btn = media_control_create_icon_button(
     ui.controls_box, find_icon("Skip Previous"), ctx->icon_font);
