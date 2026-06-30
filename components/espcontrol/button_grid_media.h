@@ -1063,7 +1063,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (btn_size < 68) btn_size = 68;
   lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
-  lv_coord_t button_y = progress_top - btn_size - control_modal_scaled_px(54, layout.short_side);
+  lv_coord_t button_y = progress_top - btn_size - control_modal_scaled_px(34, layout.short_side);
   lv_coord_t text_top = button_y / 2 - text_block_h / 2;
   lv_coord_t min_text_top = control_modal_scaled_px(22, layout.short_side);
   if (text_top < min_text_top) text_top = min_text_top;
