@@ -1036,52 +1036,61 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     ? title_font->line_height : control_modal_scaled_px(28, layout.short_side);
   lv_coord_t artist_h = artist_font && artist_font->line_height > 0
     ? artist_font->line_height : control_modal_scaled_px(24, layout.short_side);
-  lv_coord_t title_h = title_line_h * 2 + 2;
+  lv_coord_t title_h = title_line_h * 2;
   lv_coord_t text_w = content_w * 92 / 100;
-  lv_coord_t text_block_h = title_h + artist_h;
-  lv_coord_t slider_h = control_modal_scaled_px(6, layout.short_side);
-  if (slider_h < 4) slider_h = 4;
-  lv_coord_t progress_top = text_block_h + control_modal_scaled_px(52, layout.short_side);
-  lv_coord_t progress_min_top = control_modal_scaled_px(84, layout.short_side);
-  if (progress_top < progress_min_top) progress_top = progress_min_top;
-  lv_coord_t text_top = (progress_top - text_block_h) / 2;
-  if (text_top < 0) text_top = 0;
+  lv_coord_t text_gap = control_modal_scaled_px(2, layout.short_side);
+  lv_coord_t text_block_h = title_h + text_gap + artist_h;
+  lv_coord_t slider_h = control_modal_scaled_px(4, layout.short_side);
+  if (slider_h < 3) slider_h = 3;
+  lv_coord_t progress_gap = control_modal_scaled_px(2, layout.short_side);
+  lv_coord_t slider_w = content_w * 88 / 100;
+  lv_coord_t slider_min_w = control_modal_scaled_px(170, layout.short_side);
+  if (slider_w < slider_min_w) slider_w = slider_min_w;
+  if (slider_w > content_w) slider_w = content_w;
+  const lv_font_t *time_font = ctx->label_font
+    ? ctx->label_font
+    : (ui.progress_elapsed_lbl ? lv_obj_get_style_text_font(ui.progress_elapsed_lbl, LV_PART_MAIN) : nullptr);
+  lv_coord_t time_h = time_font && time_font->line_height > 0
+    ? time_font->line_height : control_modal_scaled_px(24, layout.short_side);
+  lv_coord_t time_y = content_h - time_h - control_modal_scaled_px(12, layout.short_side);
+  lv_coord_t progress_top = time_y - slider_h - progress_gap;
+  lv_coord_t btn_gap = control_modal_scaled_px(16, layout.short_side);
+  if (btn_gap < 12) btn_gap = 12;
+  lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
+  lv_coord_t max_btn = control_modal_scaled_px(86, layout.short_side);
+  if (btn_size > max_btn) btn_size = max_btn;
+  if (btn_size < 68) btn_size = 68;
+  lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
+  lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
+  lv_coord_t button_y = progress_top - btn_size - control_modal_scaled_px(54, layout.short_side);
+  lv_coord_t text_top = button_y / 2 - text_block_h / 2;
+  lv_coord_t min_text_top = control_modal_scaled_px(22, layout.short_side);
+  if (text_top < min_text_top) text_top = min_text_top;
   if (ui.title_lbl) {
     lv_obj_set_size(ui.title_lbl, text_w, title_h);
     lv_obj_update_layout(ui.title_lbl);
     lv_coord_t rendered_title_h = lv_obj_get_height(ui.title_lbl);
     if (rendered_title_h > 0 && rendered_title_h < title_h) {
       title_h = rendered_title_h;
-      text_block_h = title_h + artist_h;
-      text_top = (progress_top - text_block_h) / 2;
-      if (text_top < 0) text_top = 0;
+      text_block_h = title_h + text_gap + artist_h;
+      text_top = button_y / 2 - text_block_h / 2;
+      if (text_top < min_text_top) text_top = min_text_top;
     }
     lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, text_top);
   }
   if (ui.artist_lbl) {
     lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
-    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, text_top + title_h);
+    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, text_top + title_h + text_gap);
   }
-  lv_coord_t progress_gap = control_modal_scaled_px(12, layout.short_side);
-  lv_coord_t slider_w = content_w - progress_gap * 2;
-  lv_coord_t slider_min_w = control_modal_scaled_px(160, layout.short_side);
-  if (slider_w < slider_min_w) slider_w = slider_min_w;
-  if (slider_w > content_w) slider_w = content_w;
   if (ui.progress_slider) {
     lv_obj_set_size(ui.progress_slider, slider_w, slider_h);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(ui.progress_slider, slider_h, LV_PART_KNOB);
-    lv_obj_set_style_width(ui.progress_slider, slider_h * 3, LV_PART_KNOB);
-    lv_obj_set_style_height(ui.progress_slider, slider_h * 3, LV_PART_KNOB);
+    lv_obj_set_style_bg_opa(ui.progress_slider, LV_OPA_TRANSP, LV_PART_KNOB);
+    lv_obj_set_style_width(ui.progress_slider, 0, LV_PART_KNOB);
+    lv_obj_set_style_height(ui.progress_slider, 0, LV_PART_KNOB);
     lv_obj_align(ui.progress_slider, LV_ALIGN_TOP_MID, 0, progress_top);
   }
-  const lv_font_t *time_font = ctx->label_font
-    ? ctx->label_font
-    : (ui.progress_elapsed_lbl ? lv_obj_get_style_text_font(ui.progress_elapsed_lbl, LV_PART_MAIN) : nullptr);
-  lv_coord_t time_h = time_font && time_font->line_height > 0
-    ? time_font->line_height : control_modal_scaled_px(24, layout.short_side);
-  lv_coord_t time_y = progress_top + slider_h + control_modal_scaled_px(14, layout.short_side);
   lv_coord_t time_w = slider_w / 2;
   if (ui.progress_elapsed_lbl) {
     lv_obj_set_size(ui.progress_elapsed_lbl, time_w, time_h);
@@ -1091,17 +1100,6 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_size(ui.progress_duration_lbl, time_w, time_h);
     lv_obj_align(ui.progress_duration_lbl, LV_ALIGN_TOP_RIGHT, -(content_w - slider_w) / 2, time_y);
   }
-  lv_coord_t btn_gap = cover_control_home_grid_row_gap(layout);
-  lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
-  lv_coord_t max_btn = control_modal_scaled_px(132, layout.short_side);
-  lv_coord_t controls_top = time_y + time_h + control_modal_scaled_px(32, layout.short_side);
-  lv_coord_t available_btn_h = content_h - controls_top - control_modal_scaled_px(8, layout.short_side);
-  if (max_btn > available_btn_h) max_btn = available_btn_h;
-  if (btn_size > max_btn) btn_size = max_btn;
-  if (btn_size < 72) btn_size = 72;
-  lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
-  lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
-  lv_coord_t button_y = controls_top;
   lv_obj_t *buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
   for (int i = 0; i < 3; i++) {
     if (!buttons[i]) continue;
