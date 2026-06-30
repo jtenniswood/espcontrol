@@ -41,9 +41,9 @@ jobs:
 
   preflight:
     name: Product Preflight
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - name: Prepare self-hosted workspace
+      - name: Prepare workspace
         run: |
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
@@ -68,11 +68,11 @@ jobs:
   device-matrix:
     name: Prepare Device Matrix
     needs: preflight
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - name: Prepare self-hosted workspace
+      - name: Prepare workspace
         run: |
           rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
             sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
@@ -260,7 +260,7 @@ jobs:
     name: Publish to Release
     if: github.event_name == 'release' || inputs.release_tag != ''
     needs: build-firmware
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Download all firmware artifacts
         uses: actions/download-artifact@v8
