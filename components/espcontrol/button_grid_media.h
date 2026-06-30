@@ -1038,28 +1038,35 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     ? artist_font->line_height : control_modal_scaled_px(24, layout.short_side);
   lv_coord_t title_h = title_line_h * 2 + 2;
   lv_coord_t text_w = content_w * 92 / 100;
+  lv_coord_t text_block_h = title_h + artist_h;
+  lv_coord_t slider_h = control_modal_scaled_px(6, layout.short_side);
+  if (slider_h < 4) slider_h = 4;
+  lv_coord_t progress_top = text_block_h + control_modal_scaled_px(52, layout.short_side);
+  lv_coord_t progress_min_top = control_modal_scaled_px(84, layout.short_side);
+  if (progress_top < progress_min_top) progress_top = progress_min_top;
+  lv_coord_t text_top = (progress_top - text_block_h) / 2;
+  if (text_top < 0) text_top = 0;
   if (ui.title_lbl) {
     lv_obj_set_size(ui.title_lbl, text_w, title_h);
     lv_obj_update_layout(ui.title_lbl);
     lv_coord_t rendered_title_h = lv_obj_get_height(ui.title_lbl);
-    if (rendered_title_h > 0 && rendered_title_h < title_h) title_h = rendered_title_h;
-    lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, 0);
+    if (rendered_title_h > 0 && rendered_title_h < title_h) {
+      title_h = rendered_title_h;
+      text_block_h = title_h + artist_h;
+      text_top = (progress_top - text_block_h) / 2;
+      if (text_top < 0) text_top = 0;
+    }
+    lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, text_top);
   }
   if (ui.artist_lbl) {
     lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
-    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h);
+    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, text_top + title_h);
   }
   lv_coord_t progress_gap = control_modal_scaled_px(12, layout.short_side);
   lv_coord_t slider_w = content_w - progress_gap * 2;
   lv_coord_t slider_min_w = control_modal_scaled_px(160, layout.short_side);
   if (slider_w < slider_min_w) slider_w = slider_min_w;
   if (slider_w > content_w) slider_w = content_w;
-  lv_coord_t slider_h = control_modal_scaled_px(10, layout.short_side);
-  if (slider_h < 8) slider_h = 8;
-  lv_coord_t progress_top = title_h + artist_h + control_modal_scaled_px(24, layout.short_side);
-  lv_coord_t progress_min_top = control_modal_scaled_px(24, layout.short_side);
-  if (progress_top < progress_min_top) progress_top = progress_min_top;
-  progress_top += control_modal_scaled_px(8, layout.short_side);
   if (ui.progress_slider) {
     lv_obj_set_size(ui.progress_slider, slider_w, slider_h);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_MAIN);
