@@ -1170,7 +1170,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
   ui.controls_tab = media_control_create_tab_button(
-    ui.tab_row, find_icon("Music"), ctx->icon_font,
+    ui.tab_row, find_icon("Play"), ctx->icon_font,
     MediaControlTab::CONTROLS, ctx->width_compensation_percent);
   ui.volume_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Volume High"), ctx->icon_font,
