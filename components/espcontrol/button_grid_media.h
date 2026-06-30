@@ -1059,6 +1059,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t progress_top = title_h + artist_h + control_modal_scaled_px(24, layout.short_side);
   lv_coord_t progress_min_top = control_modal_scaled_px(24, layout.short_side);
   if (progress_top < progress_min_top) progress_top = progress_min_top;
+  progress_top += control_modal_scaled_px(8, layout.short_side);
   if (ui.progress_slider) {
     lv_obj_set_size(ui.progress_slider, slider_w, slider_h);
     lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_MAIN);
