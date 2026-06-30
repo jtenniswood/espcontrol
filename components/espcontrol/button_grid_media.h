@@ -1086,12 +1086,12 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   }
   lv_coord_t btn_gap = cover_control_home_grid_row_gap(layout);
   lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
-  lv_coord_t max_btn = control_modal_scaled_px(112, layout.short_side);
+  lv_coord_t max_btn = control_modal_scaled_px(132, layout.short_side);
   lv_coord_t controls_top = time_y + time_h + control_modal_scaled_px(32, layout.short_side);
   lv_coord_t available_btn_h = content_h - controls_top - control_modal_scaled_px(8, layout.short_side);
   if (max_btn > available_btn_h) max_btn = available_btn_h;
   if (btn_size > max_btn) btn_size = max_btn;
-  if (btn_size < 64) btn_size = 64;
+  if (btn_size < 72) btn_size = 72;
   lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
   lv_coord_t button_y = controls_top;
