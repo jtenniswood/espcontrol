@@ -1038,7 +1038,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     ? artist_font->line_height : control_modal_scaled_px(24, layout.short_side);
   lv_coord_t title_h = title_line_h * 2;
   lv_coord_t text_w = content_w * 92 / 100;
-  lv_coord_t text_gap = control_modal_scaled_px(2, layout.short_side);
+  lv_coord_t text_gap = 0;
   lv_coord_t text_block_h = title_h + text_gap + artist_h;
   lv_coord_t slider_h = control_modal_scaled_px(4, layout.short_side);
   if (slider_h < 3) slider_h = 3;
