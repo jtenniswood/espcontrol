@@ -1047,7 +1047,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   }
   if (ui.artist_lbl) {
     lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
-    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h + control_modal_scaled_px(2, layout.short_side));
+    lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, title_h);
   }
   lv_coord_t progress_gap = control_modal_scaled_px(12, layout.short_side);
   lv_coord_t slider_w = content_w - progress_gap * 2;
