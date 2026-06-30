@@ -1268,7 +1268,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.progress_elapsed_lbl = lv_label_create(ui.controls_box);
   if (ui.progress_elapsed_lbl) {
     lv_label_set_text(ui.progress_elapsed_lbl, "0:00");
-    lv_obj_set_style_text_color(ui.progress_elapsed_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui.progress_elapsed_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.progress_elapsed_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(ui.progress_elapsed_lbl, ctx->label_font, LV_PART_MAIN);
     lv_label_set_long_mode(ui.progress_elapsed_lbl, LV_LABEL_LONG_CLIP);
@@ -1278,7 +1278,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.progress_duration_lbl = lv_label_create(ui.controls_box);
   if (ui.progress_duration_lbl) {
     lv_label_set_text(ui.progress_duration_lbl, "0:00");
-    lv_obj_set_style_text_color(ui.progress_duration_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ui.progress_duration_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.progress_duration_lbl, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     if (ctx->label_font) lv_obj_set_style_text_font(ui.progress_duration_lbl, ctx->label_font, LV_PART_MAIN);
     lv_label_set_long_mode(ui.progress_duration_lbl, LV_LABEL_LONG_CLIP);
