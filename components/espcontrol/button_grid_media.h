@@ -1122,8 +1122,14 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
       volume_layout.btn_size / 2 - volume_layout.inset +
       control_modal_controls_down_px(volume_layout);
     control_modal_apply_arc_layout(ui.volume_arc, volume_layout, ctx->width_compensation_percent);
+    ControlModalLayout volume_buttons_layout = media_volume_step_button_layout(volume_layout);
+    volume_buttons_layout.btn_size = volume_buttons_layout.btn_size * 3 / 4;
+    if (volume_buttons_layout.btn_size < control_modal_scaled_px(48, layout.short_side)) {
+      volume_buttons_layout.btn_size = control_modal_scaled_px(48, layout.short_side);
+    }
+    volume_buttons_layout.controls_gap = control_modal_scaled_px(28, layout.short_side);
     control_modal_apply_step_buttons_layout(
-      ui.volume_minus_btn, ui.volume_plus_btn, media_volume_step_button_layout(volume_layout));
+      ui.volume_minus_btn, ui.volume_plus_btn, volume_buttons_layout);
     if (ui.volume_pct_lbl) {
       apply_width_compensation(ui.volume_pct_lbl, ctx->width_compensation_percent);
       lv_obj_align(ui.volume_pct_lbl, LV_ALIGN_CENTER, 0,
@@ -1366,10 +1372,10 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   }
 
   ui.volume_minus_btn = control_modal_create_round_button(
-    ui.volume_box, 72, find_icon("Minus"), ctx->icon_font,
+    ui.volume_box, 56, find_icon("Minus"), ctx->icon_font,
     DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
   ui.volume_plus_btn = control_modal_create_round_button(
-    ui.volume_box, 72, find_icon("Plus"), ctx->icon_font,
+    ui.volume_box, 56, find_icon("Plus"), ctx->icon_font,
     DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
   if (ui.volume_minus_btn) {
     lv_obj_add_event_cb(ui.volume_minus_btn, [](lv_event_t *) {
