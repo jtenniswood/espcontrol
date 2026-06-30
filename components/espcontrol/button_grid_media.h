@@ -933,8 +933,10 @@ inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *
                                                   const lv_font_t *font) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_color(btn, lv_color_hex(DARK_BORDER), LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 2, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
   control_modal_apply_pressed_fill(btn);
@@ -1092,12 +1094,11 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
   lv_coord_t button_y = controls_top;
-  lv_coord_t btn_radius = control_modal_card_radius(ctx->btn);
   lv_obj_t *buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
   for (int i = 0; i < 3; i++) {
     if (!buttons[i]) continue;
     lv_obj_set_size(buttons[i], btn_size, btn_size);
-    lv_obj_set_style_radius(buttons[i], btn_radius, LV_PART_MAIN);
+    lv_obj_set_style_radius(buttons[i], btn_size / 2, LV_PART_MAIN);
     lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT, button_start_x + i * (btn_size + btn_gap), button_y);
     lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
     if (label) {
