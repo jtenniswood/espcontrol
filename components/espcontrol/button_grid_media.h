@@ -5,10 +5,10 @@
 enum class MediaControlTab : uint8_t {
   CONTROLS = 0,
   VOLUME = 1,
-  SOURCES = 2,
 };
 
-constexpr int MEDIA_SOURCE_MAX_OPTIONS = 24;
+constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_DOWN_REF_PX = 14;
+constexpr lv_coord_t MEDIA_CONTROL_VOLUME_UNIT_X_REF_PX = 58;
 
 struct MediaControlCtx {
   std::string entity_id;
@@ -17,8 +17,6 @@ struct MediaControlCtx {
   std::string state_text = "unknown";
   std::string title;
   std::string artist;
-  std::string source;
-  std::vector<std::string> sources;
   float duration = 0.0f;
   float position_seconds = 0.0f;
   uint32_t position_updated_ms = 0;
@@ -54,11 +52,6 @@ struct MediaControlCtx {
   bool dragging_volume = false;
 };
 
-struct MediaSourceClick {
-  MediaControlCtx *ctx = nullptr;
-  std::string source;
-};
-
 struct MediaControlModalUi {
   lv_obj_t *overlay = nullptr;
   lv_obj_t *panel = nullptr;
@@ -66,11 +59,8 @@ struct MediaControlModalUi {
   lv_obj_t *tab_row = nullptr;
   lv_obj_t *controls_tab = nullptr;
   lv_obj_t *volume_tab = nullptr;
-  lv_obj_t *sources_tab = nullptr;
   lv_obj_t *controls_box = nullptr;
   lv_obj_t *volume_box = nullptr;
-  lv_obj_t *sources_list = nullptr;
-  lv_obj_t *sources_empty_lbl = nullptr;
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
@@ -83,7 +73,6 @@ struct MediaControlModalUi {
   lv_obj_t *volume_pct_unit_lbl = nullptr;
   lv_obj_t *volume_minus_btn = nullptr;
   lv_obj_t *volume_plus_btn = nullptr;
-  MediaSourceClick source_clicks[MEDIA_SOURCE_MAX_OPTIONS];
   MediaControlCtx *active = nullptr;
   MediaControlTab tab = MediaControlTab::CONTROLS;
   bool updating_progress = false;
@@ -107,93 +96,6 @@ inline std::string media_status_text(const std::string &state) {
   if (state == "unavailable") return espcontrol_i18n(std::string("Unavailable"));
   if (state == "unknown" || state.empty()) return espcontrol_i18n(std::string("Unknown"));
   return sentence_cap_text(state);
-}
-
-inline std::string media_source_trim(const std::string &value) {
-  size_t first = 0;
-  while (first < value.size() && std::isspace((unsigned char)value[first])) first++;
-  size_t last = value.size();
-  while (last > first && std::isspace((unsigned char)value[last - 1])) last--;
-  return value.substr(first, last - first);
-}
-
-inline void media_source_add_option(std::vector<std::string> &out,
-                                    const std::string &value) {
-  std::string source = media_source_trim(value);
-  if (source.empty() || source == "unknown" || source == "unavailable") return;
-  for (const auto &existing : out) {
-    if (existing == source) return;
-  }
-  out.push_back(source);
-}
-
-inline std::vector<std::string> media_source_parse_list_options(const std::string &text) {
-  std::vector<std::string> out;
-  if (text.size() < 2) return out;
-  std::string body = text.substr(1, text.size() - 2);
-  std::string token;
-  bool in_quote = false;
-  char quote = '\0';
-  bool escaping = false;
-
-  for (char ch : body) {
-    if (in_quote) {
-      if (escaping) {
-        token.push_back(ch);
-        escaping = false;
-      } else if (ch == '\\') {
-        escaping = true;
-      } else if (ch == quote) {
-        in_quote = false;
-      } else {
-        token.push_back(ch);
-      }
-      continue;
-    }
-    if (ch == '\'' || ch == '"') {
-      in_quote = true;
-      quote = ch;
-      continue;
-    }
-    if (ch == ',') {
-      media_source_add_option(out, token);
-      token.clear();
-      continue;
-    }
-    token.push_back(ch);
-  }
-  media_source_add_option(out, token);
-  return out;
-}
-
-inline std::vector<std::string> media_source_parse_options(esphome::StringRef value) {
-  std::string text = media_source_trim(string_ref_limited(value, HA_TEXT_SENSOR_STATE_MAX_LEN));
-  if (text.empty() || text == "unknown" || text == "unavailable") return {};
-  if ((text.front() == '[' && text.back() == ']') ||
-      (text.front() == '(' && text.back() == ')')) {
-    std::vector<std::string> parsed = media_source_parse_list_options(text);
-    if (!parsed.empty()) return parsed;
-  }
-  std::vector<std::string> out;
-  char delimiter = '\0';
-  if (text.find('\n') != std::string::npos) delimiter = '\n';
-  else if (text.find('|') != std::string::npos) delimiter = '|';
-  else if (text.find(',') != std::string::npos) delimiter = ',';
-  if (delimiter == '\0') {
-    media_source_add_option(out, text);
-    return out;
-  }
-  std::string token;
-  for (char ch : text) {
-    if (ch == delimiter) {
-      media_source_add_option(out, token);
-      token.clear();
-    } else {
-      token.push_back(ch);
-    }
-  }
-  media_source_add_option(out, token);
-  return out;
 }
 
 inline void media_set_metadata_text(lv_obj_t *label, esphome::StringRef value,
@@ -227,7 +129,6 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx);
 inline void media_control_refresh_volume(MediaControlCtx *ctx);
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct);
 inline int media_control_clamp_volume(MediaControlCtx *ctx, int pct);
-inline void media_control_rebuild_source_list(MediaControlCtx *ctx);
 
 inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
   if (!ctx) return;
@@ -364,24 +265,6 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         }
         media_control_set_volume_value(ctx, pct);
         media_control_refresh_parent_card(ctx);
-      })
-  );
-  ha_subscribe_attribute(
-    ctx->entity_id, std::string("source"),
-    std::function<void(esphome::StringRef)>(
-      [ctx](esphome::StringRef val) {
-        std::string text = string_ref_limited(val, HA_STATE_TEXT_MAX_LEN);
-        if (text == "unknown" || text == "unavailable") text.clear();
-        ctx->source = text;
-        if (media_control_modal_ui().active == ctx) media_control_rebuild_source_list(ctx);
-      })
-  );
-  ha_subscribe_attribute(
-    ctx->entity_id, std::string("source_list"),
-    std::function<void(esphome::StringRef)>(
-      [ctx](esphome::StringRef val) {
-        ctx->sources = media_source_parse_options(val);
-        if (media_control_modal_ui().active == ctx) media_control_rebuild_source_list(ctx);
       })
   );
   if (ctx->label.empty() || ctx->label == espcontrol_i18n(std::string("Media Control"))) {
@@ -935,46 +818,6 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   media_control_refresh_volume(ctx);
 }
 
-inline void media_control_rebuild_source_list(MediaControlCtx *ctx) {
-  MediaControlModalUi &ui = media_control_modal_ui();
-  if (!ctx || ui.active != ctx || !ui.sources_list) return;
-  lv_obj_clean(ui.sources_list);
-  ui.sources_empty_lbl = nullptr;
-  int count = ctx->sources.size() > MEDIA_SOURCE_MAX_OPTIONS
-    ? MEDIA_SOURCE_MAX_OPTIONS
-    : static_cast<int>(ctx->sources.size());
-  lv_coord_t row_h = 48;
-  lv_coord_t row_radius = 16;
-  for (int i = 0; i < count; i++) {
-    const std::string &source = ctx->sources[i];
-    bool selected = !ctx->source.empty() && source == ctx->source;
-    lv_obj_t *btn = control_modal_create_list_row(
-      ui.sources_list, source, selected, row_h, row_radius,
-      ctx->accent_color, DARK_BACKGROUND_SECONDARY,
-      ctx->label_font, ctx->width_compensation_percent);
-    ui.source_clicks[i].ctx = ctx;
-    ui.source_clicks[i].source = source;
-    lv_obj_add_event_cb(btn, [](lv_event_t *e) {
-      MediaSourceClick *click = (MediaSourceClick *)lv_event_get_user_data(e);
-      if (!click || !click->ctx || !click->ctx->available || click->source.empty()) return;
-      click->ctx->source = click->source;
-      media_control_rebuild_source_list(click->ctx);
-      send_media_source_action(click->ctx->entity_id, click->source);
-    }, LV_EVENT_CLICKED, &ui.source_clicks[i]);
-  }
-  if (count == 0) {
-    lv_obj_t *empty = lv_label_create(ui.sources_list);
-    lv_label_set_text(empty, espcontrol_i18n("No sources"));
-    lv_label_set_long_mode(empty, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(empty, lv_pct(100));
-    lv_obj_set_style_text_color(empty, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(empty, ctx->label_font, LV_PART_MAIN);
-    apply_width_compensation(empty, ctx->width_compensation_percent);
-    ui.sources_empty_lbl = empty;
-  }
-}
-
 inline void media_control_position_timer_cb(lv_timer_t *timer) {
   MediaControlCtx *ctx = static_cast<MediaControlCtx *>(lv_timer_get_user_data(timer));
   if (!ctx || !ctx->playing) return;
@@ -1017,7 +860,6 @@ inline void media_control_apply_tab_visibility() {
   MediaControlModalUi &ui = media_control_modal_ui();
   bool show_controls = ui.tab == MediaControlTab::CONTROLS;
   bool show_volume = ui.tab == MediaControlTab::VOLUME;
-  bool show_sources = ui.tab == MediaControlTab::SOURCES;
   if (ui.controls_box) {
     if (show_controls) lv_obj_clear_flag(ui.controls_box, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.controls_box, LV_OBJ_FLAG_HIDDEN);
@@ -1026,13 +868,8 @@ inline void media_control_apply_tab_visibility() {
     if (show_volume) lv_obj_clear_flag(ui.volume_box, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.volume_box, LV_OBJ_FLAG_HIDDEN);
   }
-  if (ui.sources_list) {
-    if (show_sources) lv_obj_clear_flag(ui.sources_list, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(ui.sources_list, LV_OBJ_FLAG_HIDDEN);
-  }
   media_control_style_tab(ui.controls_tab, show_controls);
   media_control_style_tab(ui.volume_tab, show_volume);
-  media_control_style_tab(ui.sources_tab, show_sources);
 }
 
 inline void media_control_layout_modal(MediaControlCtx *ctx);
@@ -1135,7 +972,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t tab_frame_pad = tab_size / 5;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
   lv_coord_t tab_gap = tab_size / 4;
-  lv_coord_t tabs_total_w = tab_size * 3 + tab_gap * 2;
+  lv_coord_t tabs_total_w = tab_size * 2 + tab_gap;
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
   lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
   if (tab_frame_w > max_tab_frame_w) tab_frame_w = max_tab_frame_w;
@@ -1149,13 +986,12 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_t *btn;
     MediaControlTab tab;
   };
-  MediaControlTabLayout tabs[3] = {
+  MediaControlTabLayout tabs[2] = {
     {ui.controls_tab, MediaControlTab::CONTROLS},
     {ui.volume_tab, MediaControlTab::VOLUME},
-    {ui.sources_tab, MediaControlTab::SOURCES},
   };
   lv_coord_t first_tab_x = (tab_frame_w - tabs_total_w) / 2;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 2; i++) {
     if (!tabs[i].btn) continue;
     bool active = tabs[i].tab == ui.tab;
     lv_coord_t tab_btn_size = active ? selected_tab_size : tab_size;
@@ -1179,14 +1015,6 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_size(ui.volume_box, content_w, content_h);
     lv_obj_align(ui.volume_box, LV_ALIGN_TOP_MID, 0, content_top);
   }
-  if (ui.sources_list) {
-    lv_coord_t source_gap = control_modal_scaled_px(8, layout.short_side);
-    if (source_gap < 4) source_gap = 4;
-    lv_obj_set_size(ui.sources_list, content_w, content_h);
-    lv_obj_set_style_pad_row(ui.sources_list, source_gap, LV_PART_MAIN);
-    lv_obj_align(ui.sources_list, LV_ALIGN_TOP_MID, 0, content_top);
-  }
-
   const lv_font_t *title_font = ctx->title_font
     ? ctx->title_font
     : (ui.title_lbl ? lv_obj_get_style_text_font(ui.title_lbl, LV_PART_MAIN) : nullptr);
@@ -1261,12 +1089,12 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (ui.volume_pct_lbl) {
       apply_width_compensation(ui.volume_pct_lbl, ctx->width_compensation_percent);
       lv_obj_align(ui.volume_pct_lbl, LV_ALIGN_CENTER, 0,
-        control_modal_scaled_px(MEDIA_VOLUME_VALUE_DOWN_REF_PX, volume_layout.short_side));
+        control_modal_scaled_px(MEDIA_CONTROL_VOLUME_VALUE_DOWN_REF_PX, volume_layout.short_side));
     }
     if (ui.volume_pct_unit_lbl) {
       apply_width_compensation(ui.volume_pct_unit_lbl, ctx->width_compensation_percent);
       lv_obj_align(ui.volume_pct_unit_lbl, LV_ALIGN_CENTER,
-        control_modal_scaled_px(MEDIA_VOLUME_UNIT_X_REF_PX, volume_layout.short_side),
+        control_modal_scaled_px(MEDIA_CONTROL_VOLUME_UNIT_X_REF_PX, volume_layout.short_side),
         control_modal_scaled_px(MEDIA_VOLUME_UNIT_Y_REF_PX, volume_layout.short_side));
     }
     lv_obj_update_layout(ui.volume_box);
@@ -1347,13 +1175,9 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.volume_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Volume High"), ctx->icon_font,
     MediaControlTab::VOLUME, ctx->width_compensation_percent);
-  ui.sources_tab = media_control_create_tab_button(
-    ui.tab_row, find_icon("Television"), ctx->icon_font,
-    MediaControlTab::SOURCES, ctx->width_compensation_percent);
 
   ui.controls_box = media_control_create_box(ui.panel);
   ui.volume_box = media_control_create_box(ui.panel);
-  ui.sources_list = control_modal_create_scroll_list(ui.panel, 100, 100, 8);
 
   ui.title_lbl = lv_label_create(ui.controls_box);
   lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
@@ -1505,7 +1329,6 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   }
 
   media_control_layout_modal(ctx);
-  media_control_rebuild_source_list(ctx);
   lv_obj_move_foreground(ui.overlay);
 }
 
