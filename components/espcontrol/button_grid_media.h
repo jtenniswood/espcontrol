@@ -940,8 +940,8 @@ inline lv_obj_t *media_control_create_tab_button(lv_obj_t *parent, const char *i
     lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (font) lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
-    lv_obj_set_style_transform_zoom(label, 210, LV_PART_MAIN);
-    lv_obj_center(label);
+    lv_obj_set_style_transform_zoom(label, 180, LV_PART_MAIN);
+    light_control_center_icon_label(label);
   }
   lv_obj_add_event_cb(btn, [](lv_event_t *e) {
     MediaControlTab tab = static_cast<MediaControlTab>(
@@ -1012,13 +1012,11 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, control_modal_card_radius(ctx->btn));
   control_modal_apply_back_button_layout(ui.back_btn, layout);
 
-  lv_coord_t tab_size = layout.back_size * 7 / 10;
-  if (tab_size < 48) tab_size = 48;
-  if (tab_size > 68) tab_size = 68;
+  lv_coord_t tab_size = control_modal_prominent_card_tab_size(layout);
   lv_coord_t selected_tab_size = tab_size + tab_size / 8;
   lv_coord_t tab_frame_pad = tab_size / 5;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
-  lv_coord_t tab_gap = tab_size / 4;
+  lv_coord_t tab_gap = control_modal_control_tab_gap(layout, tab_size);
   lv_coord_t tabs_total_w = tab_size * 2 + tab_gap;
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
   lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
@@ -1047,10 +1045,14 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_coord_t tab_x = first_tab_x + i * (tab_size + tab_gap);
     lv_obj_align(tabs[i].btn, LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
     lv_obj_t *label = lv_obj_get_child(tabs[i].btn, 0);
-    if (label) lv_obj_align(label, LV_ALIGN_CENTER, tab_btn_size / 16, tab_btn_size / 16);
+    if (label && control_modal_uses_compact_portrait_tuning(layout)) {
+      lv_obj_set_style_transform_zoom(label, 240, LV_PART_MAIN);
+    }
+    light_control_center_icon_label(label);
   }
 
-  lv_coord_t content_top = layout.inset + tab_frame_h + control_modal_scaled_px(22, layout.short_side);
+  lv_coord_t content_top =
+    layout.inset + tab_frame_h + control_modal_prominent_card_tab_content_gap(layout);
   lv_coord_t content_w = layout.panel_w - layout.inset * 2;
   lv_coord_t content_h = layout.panel_h - content_top - layout.inset;
   if (content_h < 180) content_h = layout.panel_h / 2;
