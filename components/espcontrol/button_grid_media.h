@@ -1087,8 +1087,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (title_size.y > title_h) title_h = title_size.y;
     if (title_h > title_max_h) title_h = title_max_h;
   }
-  lv_coord_t text_block_h = title_h + text_gap + artist_h;
-  lv_coord_t text_top = button_y / 2 - text_block_h / 2;
+  lv_coord_t base_text_block_h = title_line_h + text_gap + artist_h;
+  lv_coord_t title_extra_h = title_h > title_line_h ? title_h - title_line_h : 0;
+  lv_coord_t text_top = button_y / 2 - base_text_block_h / 2 - title_extra_h;
   lv_coord_t min_text_top = control_modal_scaled_px(22, layout.short_side);
   if (text_top < min_text_top) text_top = min_text_top;
   if (ui.title_lbl) {
