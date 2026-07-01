@@ -1112,8 +1112,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT, button_start_x + i * (btn_size + btn_gap), button_y);
     lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
     if (label) {
-      lv_obj_set_style_transform_zoom(label, i == 1 ? 260 : 210, LV_PART_MAIN);
-      lv_obj_center(label);
+      lv_obj_set_style_transform_zoom(label, 230, LV_PART_MAIN);
+      lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
     }
   }
 
