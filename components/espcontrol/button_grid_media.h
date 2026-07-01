@@ -24,6 +24,7 @@ struct MediaControlCtx {
   bool seek_pending = false;
   float seek_target_seconds = 0.0f;
   uint32_t seek_pending_ms = 0;
+  uint32_t track_position_reset_until_ms = 0;
   int current_pct = 0;
   int max_pct = 100;
   int pending_pct = -1;
@@ -122,6 +123,7 @@ inline void media_refresh_artist_text(lv_obj_t *artist_lbl,
 
 inline bool media_position_timestamp_ms(esphome::StringRef value, uint32_t &updated_ms);
 inline bool media_control_seek_pending_active(MediaControlCtx *ctx);
+inline bool media_control_track_position_reset_active(MediaControlCtx *ctx);
 inline bool media_control_volume_pending_active(MediaControlCtx *ctx);
 inline void media_control_hide_modal();
 inline void media_control_layout_modal(MediaControlCtx *ctx);
@@ -208,6 +210,13 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
       [ctx](esphome::StringRef val) {
         float pos = 0.0f;
         if (!parse_float_ref(val, pos) || pos < 0.0f) pos = 0.0f;
+        if (media_control_track_position_reset_active(ctx)) {
+          if (pos > MEDIA_SEEK_MATCH_TOLERANCE_SECONDS) {
+            media_control_refresh_progress(ctx);
+            return;
+          }
+          ctx->track_position_reset_until_ms = 0;
+        }
         if (media_control_seek_pending_active(ctx)) {
           if (std::fabs(pos - ctx->seek_target_seconds) > MEDIA_SEEK_MATCH_TOLERANCE_SECONDS) {
             media_control_refresh_progress(ctx);
@@ -228,6 +237,10 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
     ctx->entity_id, std::string("media_position_updated_at"),
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef val) {
+        if (media_control_track_position_reset_active(ctx)) {
+          media_control_refresh_progress(ctx);
+          return;
+        }
         if (media_control_seek_pending_active(ctx)) {
           media_control_refresh_progress(ctx);
           return;
@@ -762,6 +775,23 @@ inline float media_control_current_position_seconds(MediaControlCtx *ctx) {
 inline bool media_control_seek_pending_active(MediaControlCtx *ctx) {
   return ctx && ctx->seek_pending &&
          (esphome::millis() - ctx->seek_pending_ms) < MEDIA_SEEK_PENDING_TIMEOUT_MS;
+}
+
+inline bool media_control_track_position_reset_active(MediaControlCtx *ctx) {
+  return ctx && ctx->track_position_reset_until_ms != 0 &&
+         (int32_t)(ctx->track_position_reset_until_ms - esphome::millis()) > 0;
+}
+
+inline void media_control_reset_track_position(MediaControlCtx *ctx) {
+  if (!ctx) return;
+  uint32_t now = esphome::millis();
+  ctx->seek_pending = false;
+  ctx->track_position_reset_until_ms = now + MEDIA_SEEK_PENDING_TIMEOUT_MS;
+  ctx->position_seconds = 0.0f;
+  ctx->position_updated_at_known = false;
+  ctx->position_updated_at_ms = 0;
+  ctx->position_updated_ms = now;
+  media_control_refresh_progress(ctx);
 }
 
 inline void media_control_refresh_play_icon(MediaControlCtx *ctx) {
@@ -1326,7 +1356,10 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
     ui.controls_box, find_icon("Skip Next"), ctx->icon_font);
   lv_obj_add_event_cb(ui.previous_btn, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
-    if (ui.active && ui.active->available) send_media_playback_action(ui.active->entity_id, "previous");
+    if (ui.active && ui.active->available) {
+      media_control_reset_track_position(ui.active);
+      send_media_playback_action(ui.active->entity_id, "previous");
+    }
   }, LV_EVENT_CLICKED, nullptr);
   lv_obj_add_event_cb(ui.play_btn, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
@@ -1334,7 +1367,10 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   }, LV_EVENT_CLICKED, nullptr);
   lv_obj_add_event_cb(ui.next_btn, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
-    if (ui.active && ui.active->available) send_media_playback_action(ui.active->entity_id, "next");
+    if (ui.active && ui.active->available) {
+      media_control_reset_track_position(ui.active);
+      send_media_playback_action(ui.active->entity_id, "next");
+    }
   }, LV_EVENT_CLICKED, nullptr);
 
   ui.volume_arc = lv_arc_create(ui.volume_box);
