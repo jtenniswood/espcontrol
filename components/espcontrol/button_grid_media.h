@@ -784,9 +784,11 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
   }
   if (ui.progress_duration_lbl) {
     char buf[16];
+    char time_buf[16];
     float remaining_seconds = ctx->duration > 0.0f ? ctx->duration - seconds : 0.0f;
     if (remaining_seconds < 0.0f || !std::isfinite(remaining_seconds)) remaining_seconds = 0.0f;
-    media_format_time(remaining_seconds, buf, sizeof(buf));
+    media_format_time(remaining_seconds, time_buf, sizeof(time_buf));
+    snprintf(buf, sizeof(buf), "-%s", time_buf);
     lv_label_set_text(ui.progress_duration_lbl, buf);
   }
   if (ui.progress_slider && !ctx->dragging_progress) {
