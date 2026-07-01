@@ -1070,10 +1070,11 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
   lv_coord_t button_y = progress_top - btn_size - control_modal_scaled_px(34, layout.short_side);
   if (ui.title_lbl) {
-    lv_obj_set_size(ui.title_lbl, text_w, LV_SIZE_CONTENT);
-    lv_obj_update_layout(ui.title_lbl);
-    lv_coord_t rendered_title_h = lv_obj_get_height(ui.title_lbl);
-    if (rendered_title_h > title_h) title_h = rendered_title_h;
+    const char *title_text = lv_label_get_text(ui.title_lbl);
+    lv_point_t title_size;
+    lv_text_get_size(&title_size, title_text ? title_text : "", title_font, 0, 0,
+      text_w, LV_TEXT_FLAG_NONE);
+    if (title_size.y > title_h) title_h = title_size.y;
     if (title_h > title_max_h) title_h = title_max_h;
   }
   lv_coord_t text_block_h = title_h + text_gap + artist_h;
