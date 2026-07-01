@@ -411,6 +411,7 @@ export default defineConfig({
           { text: 'Doors & Windows', link: '/card-types/doors-windows' },
           { text: 'Fans', link: '/card-types/fans' },
           { text: 'Garage Door', link: '/card-types/garage-doors' },
+          { text: 'Gate', link: '/card-types/gates' },
           { text: 'Internal', link: '/card-types/internal-relays' },
           { text: 'Lawn Mower', link: '/card-types/lawn-mower' },
           { text: 'Lights', link: '/card-types/lights' },

@@ -52,6 +52,7 @@ CATEGORIES = (
             "color",
             "confirmation",
             "garage",
+            "gate",
             "grid",
             "light",
             "lock",

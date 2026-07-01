@@ -29,6 +29,7 @@ Use this page when you know what you want the panel to do but are not sure which
 | Use grouped fan controls | [Fans](/card-types/fans) | `fan` |
 | Control blinds, shutters, shades, gates, position, or tilt | [Cover](/card-types/covers) | `cover` |
 | Open or close a garage door | [Garage Door](/card-types/garage-doors) | `cover` |
+| Open, close, or stop a gate | [Gate](/card-types/gates) | `cover` |
 | Lock or unlock a door lock | [Lock](/card-types/locks) | `lock` |
 | Arm, disarm, or show an alarm panel | [Alarm](/card-types/alarms) | `alarm_control_panel` |
 | Show local date, time, or date and time | [Date & Time](/card-types/calendar) | No entity required for clock modes |
@@ -69,7 +70,7 @@ Some names in the setup page group several related modes:
 | **Date & Time** | Clock, Date, Time & Date, World Clock |
 | **Media** | Play/Pause, Previous, Next, Volume, Track Position, Now Playing |
 | **Cover** | All Controls, Position, Tilt, Toggle, Open, Close, Stop, Set Position |
-| **Subpage** | Generic, Switch, Lights, Climate, Presence, Media, Alarm, Cover, Garage Door, Lock, Vacuum, Lawn Mower, Weather, Sensor, Camera / Image |
+| **Subpage** | Generic, Switch, Lights, Climate, Presence, Media, Alarm, Cover, Garage Door, Gate, Lock, Vacuum, Lawn Mower, Weather, Sensor, Camera / Image |
 
 ## Permissions
 

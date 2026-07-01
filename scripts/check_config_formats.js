@@ -80,6 +80,7 @@ function subpageTypeFromCode(code) {
     C: "cover",
     N: "light_temperature",
     R: "garage",
+    GT: "gate",
     K: "lock",
     LM: "lawn_mower",
     M: "media",
@@ -279,6 +280,7 @@ assert.deepStrictEqual(Array.from(subpageKindOption.values), [
   "alarm",
   "cover",
   "garage",
+  "gate",
   "lock",
   "vacuum",
   "lawn_mower",
@@ -349,6 +351,7 @@ assertButtonTypeSpecBacked("screen_lock", "screen lock card");
 assertButtonTypeSpecBacked("webhook", "webhook card");
 assertButtonTypeSpecBacked("internal", "internal relay card");
 assertButtonTypeSpecBacked("garage", "garage card");
+assertButtonTypeSpecBacked("gate", "gate card");
 assertButtonTypeSpecBacked("lock", "lock card");
 assertButtonTypeSpecBacked("media", "media card");
 assertButtonTypeSpecBacked("alarm", "alarm card");
@@ -388,6 +391,16 @@ assert.strictEqual(hooks.normalizeGarageMode("open"), "open", "garage open mode 
 assert.strictEqual(hooks.normalizeGarageMode("bad"), "", "garage invalid mode falls back to toggle");
 assert.strictEqual(hooks.normalizeGarageLabelDisplayMode("status"), "status", "garage status display is allowed by spec");
 assert.strictEqual(hooks.normalizeGarageLabelDisplayMode("bad"), "label", "garage invalid display falls back to label");
+assert.deepStrictEqual(
+  Array.from(hooks.gateModeOptionValues()),
+  ["", "open", "close", "stop"],
+  "gate mode options are spec-backed"
+);
+assert.strictEqual(hooks.normalizeGateMode("open"), "open", "gate open mode is allowed by spec");
+assert.strictEqual(hooks.normalizeGateMode("stop"), "stop", "gate stop mode is allowed by spec");
+assert.strictEqual(hooks.normalizeGateMode("bad"), "", "gate invalid mode falls back to toggle");
+assert.strictEqual(hooks.normalizeGateLabelDisplayMode("status"), "status", "gate status display is allowed by spec");
+assert.strictEqual(hooks.normalizeGateLabelDisplayMode("bad"), "label", "gate invalid display falls back to label");
 assert.deepStrictEqual(
   Array.from(hooks.lockModeOptionValues()),
   ["", "lock", "unlock"],
@@ -1055,6 +1068,110 @@ assertButtonRoundTrip(hooks, "garage close command status button", {
   sensor: "close",
   unit: "",
   type: "garage",
+  precision: "",
+  options: "label_display=status",
+}, false);
+
+assertButtonRoundTrip(hooks, "gate label button", {
+  entity: "cover.gate",
+  label: "Gate",
+  icon: "Gate",
+  icon_on: "Gate Open",
+  sensor: "",
+  unit: "",
+  type: "gate",
+  precision: "",
+}, false);
+
+const gateStatusCard = {
+  entity: "cover.gate",
+  label: "Gate",
+  icon: "Gate",
+  icon_on: "Gate Open",
+  sensor: "",
+  unit: "",
+  type: "gate",
+  precision: "",
+  options: "label_display=status",
+};
+assertButtonRoundTrip(hooks, "gate status button", gateStatusCard, false);
+assert.strictEqual(hooks.gateLabelDisplayMode(gateStatusCard), "status", "gate status display option");
+
+assertButtonRoundTrip(hooks, "gate open command button", {
+  entity: "cover.gate",
+  label: "Open",
+  icon: "Gate Open",
+  icon_on: "Auto",
+  sensor: "open",
+  unit: "",
+  type: "gate",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "gate open command status button", {
+  entity: "cover.gate",
+  label: "Open",
+  icon: "Gate Open",
+  icon_on: "Auto",
+  sensor: "open",
+  unit: "",
+  type: "gate",
+  precision: "",
+  options: "label_display=status",
+}, false);
+
+assert.strictEqual(
+  hooks.gateLabelDisplayMode({
+    type: "gate",
+    sensor: "open",
+    options: "label_display=status",
+  }),
+  "status",
+  "gate open command status display option"
+);
+
+assertButtonRoundTrip(hooks, "gate close command button", {
+  entity: "cover.gate",
+  label: "Close",
+  icon: "Gate",
+  icon_on: "Auto",
+  sensor: "close",
+  unit: "",
+  type: "gate",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "gate close command status button", {
+  entity: "cover.gate",
+  label: "Close",
+  icon: "Gate",
+  icon_on: "Auto",
+  sensor: "close",
+  unit: "",
+  type: "gate",
+  precision: "",
+  options: "label_display=status",
+}, false);
+
+assertButtonRoundTrip(hooks, "gate stop command button", {
+  entity: "cover.gate",
+  label: "Stop",
+  icon: "Stop",
+  icon_on: "Auto",
+  sensor: "stop",
+  unit: "",
+  type: "gate",
+  precision: "",
+}, false);
+
+assertButtonRoundTrip(hooks, "gate stop command status button", {
+  entity: "cover.gate",
+  label: "Stop",
+  icon: "Stop",
+  icon_on: "Auto",
+  sensor: "stop",
+  unit: "",
+  type: "gate",
   precision: "",
   options: "label_display=status",
 }, false);
@@ -2717,6 +2834,21 @@ assertSubpageRoundTrip(hooks, "garage status subpage", {
   ],
 }, true);
 
+assertSubpageRoundTrip(hooks, "gate command subpage", {
+  order: ["1", "B", "2"],
+  buttons: [
+    buttonShape({ entity: "cover.gate", label: "Open", icon: "Gate Open", icon_on: "Auto", sensor: "open", type: "gate" }),
+    buttonShape({ entity: "cover.gate", label: "Stop", icon: "Stop", icon_on: "Auto", sensor: "stop", type: "gate" }),
+  ],
+}, true);
+
+assertSubpageRoundTrip(hooks, "gate status subpage", {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "cover.gate", label: "Gate", icon: "Gate", icon_on: "Gate Open", type: "gate", options: "label_display=status" }),
+  ],
+}, true);
+
 assertSubpageRoundTrip(hooks, "action subpage", {
   order: ["1", "B", "2"],
   buttons: [
@@ -3001,6 +3133,28 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B,2|R,cover.gar
     buttonShape({ entity: "cover.garage", label: "Close", icon: "Garage", icon_on: "Auto", sensor: "close", type: "garage" }),
   ],
 }, "compact garage command subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|GT,cover.gate,,Gate,Gate%20Open")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "cover.gate", icon: "Gate", icon_on: "Gate Open", type: "gate" }),
+  ],
+}, "compact gate subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|GT,cover.gate,Gate,Gate,Gate%20Open")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "cover.gate", label: "Gate", icon: "Gate", icon_on: "Gate Open", type: "gate" }),
+  ],
+}, "compact gate label subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B,2|GT,cover.gate,Open,Gate%20Open,,open|GT,cover.gate,Stop,Stop,,stop")), {
+  order: ["1", "B", "2"],
+  buttons: [
+    buttonShape({ entity: "cover.gate", label: "Open", icon: "Gate Open", icon_on: "Auto", sensor: "open", type: "gate" }),
+    buttonShape({ entity: "cover.gate", label: "Stop", icon: "Stop", icon_on: "Auto", sensor: "stop", type: "gate" }),
+  ],
+}, "compact gate command subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|C,cover.office_blind,Office%20Blind,Blinds,Blinds%20Open,toggle")), {
   order: ["1", "B"],

@@ -320,7 +320,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, climate, push, webhook, todo, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, climate, push, webhook, todo, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -635,7 +635,7 @@ inline std::string normalize_subpage_kind(const std::string &value) {
   return value == "lights" || value == "media" ||
     value == "climate" || value == "presence" ||
     value == "switch" || value == "alarm" ||
-    value == "cover" || value == "garage" ||
+    value == "cover" || value == "garage" || value == "gate" ||
     value == "lock" || value == "vacuum" ||
     value == "lawn_mower" ||
     value == "weather" || value == "sensor" ||
@@ -827,6 +827,18 @@ inline std::string garage_card_options_normalized(const std::string &options,
                                                   const std::string &sensor) {
   (void)sensor;
   return normalize_garage_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION)) == "status"
+    ? std::string(LABEL_DISPLAY_OPTION) + "=status"
+    : "";
+}
+
+inline std::string normalize_gate_label_display(const std::string &value) {
+  return card_runtime_gate_label_display(value);
+}
+
+inline std::string gate_card_options_normalized(const std::string &options,
+                                                 const std::string &sensor) {
+  (void)sensor;
+  return normalize_gate_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION)) == "status"
     ? std::string(LABEL_DISPLAY_OPTION) + "=status"
     : "";
 }
@@ -1114,6 +1126,13 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (!p.sensor.empty()) p.icon_on = "Auto";
     p.options = garage_card_options_normalized(p.options, p.sensor);
   }
+  if (p.type == "gate") {
+    if (!card_runtime_gate_mode_valid(p.sensor)) p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    if (!p.sensor.empty()) p.icon_on = "Auto";
+    p.options = gate_card_options_normalized(p.options, p.sensor);
+  }
   if (p.type == "lock") {
     if (!card_runtime_lock_mode_valid(p.sensor)) p.sensor.clear();
     p.unit.clear();
@@ -1312,7 +1331,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "gate" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (sensor_card_local_sensor(p)) {
@@ -2647,6 +2666,37 @@ inline const char *garage_card_label(const ParsedCfg &p) {
 
 inline bool garage_card_show_status(const ParsedCfg &p) {
   return normalize_garage_label_display(cfg_option_value(p.options, "label_display")) == "status";
+}
+
+inline const char* gate_closed_icon(const std::string &icon) {
+  return (icon.empty() || icon == "Auto") ? find_icon("Gate") : find_icon(icon.c_str());
+}
+
+inline const char* gate_open_icon(const std::string &icon_on) {
+  return (icon_on.empty() || icon_on == "Auto") ? find_icon("Gate Open") : find_icon(icon_on.c_str());
+}
+
+inline bool gate_command_mode(const std::string &sensor) {
+  return card_runtime_gate_command_mode(sensor);
+}
+
+inline const char *gate_command_icon(const ParsedCfg &p) {
+  if (!p.icon.empty() && p.icon != "Auto") return find_icon(p.icon.c_str());
+  if (p.sensor == "open") return find_icon("Gate Open");
+  if (p.sensor == "stop") return find_icon("Stop");
+  return find_icon("Gate");
+}
+
+inline const char *gate_card_label(const ParsedCfg &p) {
+  if (!p.label.empty()) return p.label.c_str();
+  if (p.sensor == "open") return espcontrol_i18n("Open");
+  if (p.sensor == "close") return espcontrol_i18n("Close");
+  if (p.sensor == "stop") return espcontrol_i18n("Stop");
+  return espcontrol_i18n("Gate");
+}
+
+inline bool gate_card_show_status(const ParsedCfg &p) {
+  return normalize_gate_label_display(cfg_option_value(p.options, "label_display")) == "status";
 }
 
 inline bool alarm_card_show_status_icon(const ParsedCfg &p) {
