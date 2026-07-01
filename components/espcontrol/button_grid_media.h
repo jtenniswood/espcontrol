@@ -1089,8 +1089,16 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   }
   lv_coord_t base_text_block_h = title_line_h + text_gap + artist_h;
   lv_coord_t title_extra_h = title_h > title_line_h ? title_h - title_line_h : 0;
+  lv_coord_t text_block_h = title_h + text_gap + artist_h;
   lv_coord_t text_top = button_y / 2 - base_text_block_h / 2 - title_extra_h;
-  lv_coord_t min_text_top = control_modal_scaled_px(22, layout.short_side);
+  lv_coord_t min_text_top = title_extra_h > 0
+    ? control_modal_scaled_px(4, layout.short_side)
+    : control_modal_scaled_px(22, layout.short_side);
+  lv_coord_t button_clearance = control_modal_scaled_px(12, layout.short_side);
+  if (button_clearance < 8) button_clearance = 8;
+  lv_coord_t max_text_top = button_y - button_clearance - text_block_h;
+  if (max_text_top < min_text_top) min_text_top = max_text_top > 0 ? max_text_top : 0;
+  if (text_top > max_text_top) text_top = max_text_top;
   if (text_top < min_text_top) text_top = min_text_top;
   if (ui.title_lbl) {
     lv_obj_set_size(ui.title_lbl, text_w, title_h);
