@@ -346,6 +346,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_garage_card(s, p);
     return;
   }
+  if (p.type == "gate") {
+    setup_gate_card(s, p);
+    return;
+  }
   if (subpage_parent_sensor_state_enabled(p)) {
     setup_subpage_parent_state_card(
       s, p, display_sensor_font(display), cfg.subpage_chevrons_enabled,
@@ -540,6 +544,23 @@ inline bool bind_garage_status_card(BtnSlot &s, const ParsedCfg &p,
   if (status_label_out != nullptr) *status_label_out = status_label;
   subscribe_garage_state(s.btn, s.icon_lbl, status_label,
     garage_closed_icon(p.icon), garage_open_icon(p.icon_on), p.entity, show_status);
+  if (!show_status && p.label.empty())
+    subscribe_friendly_name(status_label, p.entity);
+  return true;
+}
+
+inline bool bind_gate_status_card(BtnSlot &s, const ParsedCfg &p,
+                                  TransientStatusLabel **status_label_out = nullptr) {
+  if (p.type != "gate" || p.entity.empty()) {
+    return false;
+  }
+  bool show_status = gate_card_show_status(p);
+  std::string fallback_label = p.label.empty() ? espcontrol_i18n(std::string("Gate")) : p.label;
+  TransientStatusLabel *status_label = create_transient_status_label(
+    s.text_lbl, show_status ? "--" : fallback_label);
+  if (status_label_out != nullptr) *status_label_out = status_label;
+  subscribe_gate_state(s.btn, s.icon_lbl, status_label,
+    gate_closed_icon(p.icon), gate_open_icon(p.icon_on), p.entity, show_status);
   if (!show_status && p.label.empty())
     subscribe_friendly_name(status_label, p.entity);
   return true;
@@ -1134,6 +1155,19 @@ inline void grid_phase2(
       if (!garage_command_mode(p.sensor) || garage_card_show_status(p)) {
         TransientStatusLabel *status_label = nullptr;
         bind_garage_status_card(s, p, &status_label);
+        grid_track_transient_status_label_runtime(s.btn, status_label);
+      }
+      continue;
+    }
+    if (p.type == "gate") {
+      if (!p.entity.empty()) {
+        if (gate_command_mode(p.sensor)) {
+          subscribe_control_availability(s.btn, s.btn, p.entity);
+        }
+      }
+      if (!gate_command_mode(p.sensor) || gate_card_show_status(p)) {
+        TransientStatusLabel *status_label = nullptr;
+        bind_gate_status_card(s, p, &status_label);
         grid_track_transient_status_label_runtime(s.btn, status_label);
       }
       continue;
@@ -1829,6 +1863,28 @@ inline void grid_phase2(
             }, LV_EVENT_CLICKED, ctx);
           } else {
             if (bind_garage_status_card(sub_slot, sb_cfg)) {
+              add_parent_indicator(sb_cfg.entity);
+              add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
+            }
+          }
+        }
+        continue;
+      }
+      if (sb_cfg.type == "gate") {
+        if (!sb_cfg.entity.empty()) {
+          if (gate_command_mode(sb_cfg.sensor)) {
+            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+            if (gate_card_show_status(sb_cfg)) {
+              bind_gate_status_card(sub_slot, sb_cfg);
+              add_parent_indicator(sb_cfg.entity);
+            }
+            ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
+              if (c) send_cover_command_action(*c);
+            }, LV_EVENT_CLICKED, ctx);
+          } else {
+            if (bind_gate_status_card(sub_slot, sb_cfg)) {
               add_parent_indicator(sb_cfg.entity);
               add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
             }

@@ -816,6 +816,13 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       set_card_checked_state(btn_obj, true);
       send_toggle_action(p.entity);
     }
+  } else if (p.type == "gate") {
+    if (gate_command_mode(p.sensor)) {
+      send_cover_command_action(p);
+    } else if (!p.entity.empty()) {
+      set_card_checked_state(btn_obj, true);
+      send_toggle_action(p.entity);
+    }
   } else if (p.type == "lock") {
     if (lock_command_mode(p.sensor)) {
       send_lock_command_action(p);

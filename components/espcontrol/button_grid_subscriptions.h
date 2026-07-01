@@ -235,6 +235,29 @@ inline void subscribe_garage_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
   );
 }
 
+inline void subscribe_gate_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
+                                 TransientStatusLabel *status_label,
+                                 const char *closed_icon, const char *open_icon,
+                                 const std::string &entity_id,
+                                 bool persistent_status = false) {
+  register_ha_control_availability(btn_ptr, btn_ptr);
+  ha_subscribe_state(
+    entity_id,
+    std::function<void(esphome::StringRef)>(
+      [btn_ptr, icon_lbl, status_label, closed_icon, open_icon, persistent_status](esphome::StringRef state) {
+        std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+        bool unavailable = ha_state_unavailable_ref(state);
+        apply_control_availability(btn_ptr, btn_ptr, !unavailable);
+        bool active = garage_state_is_active(state_text);
+        set_card_checked_state(btn_ptr, active);
+        lv_label_set_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
+        transient_status_label_show_if_changed(
+          status_label, garage_state_label(state_text),
+          persistent_status ? false : garage_state_releases_label(state_text));
+      })
+  );
+}
+
 inline void subscribe_cover_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                          TransientStatusLabel *status_label,
                                          const char *closed_icon, const char *open_icon,
