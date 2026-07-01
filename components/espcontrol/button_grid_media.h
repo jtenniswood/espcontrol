@@ -1036,10 +1036,10 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     ? title_font->line_height : control_modal_scaled_px(28, layout.short_side);
   lv_coord_t artist_h = artist_font && artist_font->line_height > 0
     ? artist_font->line_height : control_modal_scaled_px(24, layout.short_side);
-  lv_coord_t title_h = title_line_h * 2;
+  lv_coord_t title_h = title_line_h;
+  lv_coord_t title_max_h = title_line_h * 2;
   lv_coord_t text_w = content_w * 92 / 100;
   lv_coord_t text_gap = 0;
-  lv_coord_t text_block_h = title_h + text_gap + artist_h;
   lv_coord_t slider_h = control_modal_scaled_px(4, layout.short_side);
   if (slider_h < 3) slider_h = 3;
   lv_coord_t progress_gap = control_modal_scaled_px(12, layout.short_side);
@@ -1064,19 +1064,19 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
   lv_coord_t button_y = progress_top - btn_size - control_modal_scaled_px(34, layout.short_side);
+  if (ui.title_lbl) {
+    lv_obj_set_size(ui.title_lbl, text_w, LV_SIZE_CONTENT);
+    lv_obj_update_layout(ui.title_lbl);
+    lv_coord_t rendered_title_h = lv_obj_get_height(ui.title_lbl);
+    if (rendered_title_h > title_h) title_h = rendered_title_h;
+    if (title_h > title_max_h) title_h = title_max_h;
+  }
+  lv_coord_t text_block_h = title_h + text_gap + artist_h;
   lv_coord_t text_top = button_y / 2 - text_block_h / 2;
   lv_coord_t min_text_top = control_modal_scaled_px(22, layout.short_side);
   if (text_top < min_text_top) text_top = min_text_top;
   if (ui.title_lbl) {
     lv_obj_set_size(ui.title_lbl, text_w, title_h);
-    lv_obj_update_layout(ui.title_lbl);
-    lv_coord_t rendered_title_h = lv_obj_get_height(ui.title_lbl);
-    if (rendered_title_h > 0 && rendered_title_h < title_h) {
-      title_h = rendered_title_h;
-      text_block_h = title_h + text_gap + artist_h;
-      text_top = button_y / 2 - text_block_h / 2;
-      if (text_top < min_text_top) text_top = min_text_top;
-    }
     lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, text_top);
   }
   if (ui.artist_lbl) {
