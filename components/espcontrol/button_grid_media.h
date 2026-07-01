@@ -1295,7 +1295,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   apply_width_compensation(ui.artist_lbl, ctx->width_compensation_percent);
 
   ui.progress_slider = lv_slider_create(ui.controls_box);
-  media_control_style_progress_slider(ui.progress_slider, ctx->secondary_color, DARK_TEXT_PRIMARY);
+  media_control_style_progress_slider(ui.progress_slider, ctx->secondary_color, ctx->accent_color);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_progress) return;
