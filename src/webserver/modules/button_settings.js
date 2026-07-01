@@ -669,6 +669,7 @@ function renderButtonSettings(forceOpen) {
 
   function selectCardType(newType) {
     if (newType === "__choose-card-type__") return;
+    var pickerType = newType;
     newType = defaultButtonTypeForPicker(newType);
     b.type = newType;
     if (state.settingsDraft && state.settingsDraft.key === draftKey) {
@@ -676,7 +677,16 @@ function renderButtonSettings(forceOpen) {
     }
     var td = BUTTON_TYPES[newType];
     if (td && td.onSelect) td.onSelect(b);
-    saveField("type", newType);
+    if (pickerType === "media_control") {
+      b.sensor = "control_modal";
+      b.label = "All Controls";
+      b.icon = "Auto";
+      b.icon_on = "Auto";
+      b.unit = "";
+      b.precision = "";
+      b.options = "";
+    }
+    saveField("type", b.type);
     renderButtonSettings();
   }
 

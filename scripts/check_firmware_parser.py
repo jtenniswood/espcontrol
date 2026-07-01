@@ -26,6 +26,7 @@ IMAGE_CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "image_card_nor
 
 
 CPP_SOURCE = r'''
+#include <algorithm>
 #include <cassert>
 #include <algorithm>
 #include <cmath>
@@ -405,6 +406,16 @@ int main() {
   auto now_playing_large = parse_cfg("media_player.office;;Auto;Auto;now_playing;;media;;large_numbers");
   assert(now_playing_large.options == "");
   assert(!card_large_numbers_enabled(now_playing_large));
+  auto media_control_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media;;label_display=status,number_display=volume");
+  assert(media_control_display.type == "media");
+  assert(media_control_display.sensor == "control_modal");
+  assert(media_control_display.options == "label_display=status,number_display=volume");
+  assert(media_control_card_show_status_label(media_control_display));
+  assert(media_control_card_show_volume_number(media_control_display));
+  auto media_control_default_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media;;label_display=label,number_display=icon,large_numbers");
+  assert(media_control_default_display.options == "");
+  assert(!media_control_card_show_status_label(media_control_default_display));
+  assert(!media_control_card_show_volume_number(media_control_default_display));
   auto volume_uncapped = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=150");
   assert(volume_uncapped.options == "");
   assert(media_volume_max_percent(volume_uncapped) == 100);

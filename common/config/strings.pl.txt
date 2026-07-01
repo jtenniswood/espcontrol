@@ -107,6 +107,7 @@ nohold=Nohold
 none=Brak
 no_options=Brak opcji
 no_presets=Brak presetów
+no_sources=Brak źródeł
 not_available=Niedostępne
 off=Wyłączone
 on=Włączone

@@ -107,6 +107,7 @@ nohold=Nohold
 none=Ingen
 no_options=Inga alternativ
 no_presets=Inga förval
+no_sources=Inga källor
 not_available=Inte tillgänglig
 off=Av
 on=På

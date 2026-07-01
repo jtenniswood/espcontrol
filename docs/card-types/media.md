@@ -14,6 +14,7 @@ A Media card controls a Home Assistant `media_player` entity. It can work as a s
 
 1. Select a card and change its type to **Media**.
 2. Choose the media **Type**:
+   - **All Controls**
    - **Play/Pause Button**
    - **Previous Button**
    - **Next Button**
@@ -59,6 +60,12 @@ You can choose optional controls:
 - **Play/Pause** makes the card tappable so it toggles playback.
 
 Now Playing works best on wider or larger cards because it has more room for track text.
+
+## All Controls
+
+All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
+
+If the media player exposes sources, such as Sonos **Line-In** or **TV**, All Controls also shows a Sources tab for switching inputs.
 
 ## Playlist Button
 

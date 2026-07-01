@@ -107,6 +107,7 @@ nohold=Nohold
 none=Žádné
 no_options=Žádné možnosti
 no_presets=Žádné předvolby
+no_sources=Žádné zdroje
 not_available=Není dostupné
 off=Vypnuto
 on=Zapnuto
