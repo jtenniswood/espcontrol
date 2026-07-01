@@ -1041,8 +1041,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t title_h = title_line_h;
   lv_coord_t title_max_h = title_line_h * 2;
   lv_coord_t text_w = content_w * 92 / 100;
-  lv_coord_t text_gap = control_modal_scaled_px(4, layout.short_side);
-  if (text_gap < 3) text_gap = 3;
+  lv_coord_t text_gap = control_modal_scaled_px(8, layout.short_side);
+  if (text_gap < 6) text_gap = 6;
   lv_coord_t slider_h = control_modal_scaled_px(4, layout.short_side);
   if (slider_h < 3) slider_h = 3;
   lv_coord_t progress_gap = control_modal_scaled_px(12, layout.short_side);
