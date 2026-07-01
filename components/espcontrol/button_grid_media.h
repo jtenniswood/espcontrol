@@ -124,6 +124,7 @@ inline bool media_position_timestamp_ms(esphome::StringRef value, uint32_t &upda
 inline bool media_control_seek_pending_active(MediaControlCtx *ctx);
 inline bool media_control_volume_pending_active(MediaControlCtx *ctx);
 inline void media_control_hide_modal();
+inline void media_control_layout_modal(MediaControlCtx *ctx);
 inline void media_control_refresh_modal(MediaControlCtx *ctx);
 inline void media_control_refresh_progress(MediaControlCtx *ctx);
 inline void media_control_refresh_volume(MediaControlCtx *ctx);
@@ -178,7 +179,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         std::string text = string_ref_limited(title, HA_STATE_TEXT_MAX_LEN);
         if (text == "unknown" || text == "unavailable") text.clear();
         ctx->title = text;
-        if (media_control_modal_ui().active == ctx) media_control_refresh_modal(ctx);
+        if (media_control_modal_ui().active == ctx) media_control_layout_modal(ctx);
       })
   );
   ha_subscribe_attribute(
@@ -188,7 +189,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         std::string text = string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN);
         if (text == "unknown" || text == "unavailable") text.clear();
         ctx->artist = text;
-        if (media_control_modal_ui().active == ctx) media_control_refresh_modal(ctx);
+        if (media_control_modal_ui().active == ctx) media_control_layout_modal(ctx);
       })
   );
   ha_subscribe_attribute(
@@ -273,6 +274,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
       std::function<void(esphome::StringRef value)>(
         [ctx](esphome::StringRef value) {
           ctx->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
+          if (media_control_modal_ui().active == ctx) media_control_layout_modal(ctx);
         })
     );
   }
@@ -1029,6 +1031,14 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (ui.volume_box) {
     lv_obj_set_size(ui.volume_box, content_w, content_h);
     lv_obj_align(ui.volume_box, LV_ALIGN_TOP_MID, 0, content_top);
+  }
+  if (ui.title_lbl) {
+    std::string title = media_control_title_text(ctx);
+    lv_label_set_text(ui.title_lbl, title.c_str());
+  }
+  if (ui.artist_lbl) {
+    std::string artist = media_control_artist_text(ctx);
+    lv_label_set_text(ui.artist_lbl, artist.c_str());
   }
   const lv_font_t *title_font = ctx->title_font
     ? ctx->title_font
