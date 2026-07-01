@@ -3320,7 +3320,7 @@ def run_self_test() -> int:
     expect_image_card_quality_errors(
         "image card modal requests capped image",
         "constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;\n"
-        "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;\n"
+        "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 640;\n"
         "constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;\n"
         "inline lv_style_selector_t image_card_pressed_selector() { return LV_STATE_PRESSED; }\n"
         "inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {}\n"

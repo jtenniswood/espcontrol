@@ -183,7 +183,7 @@ class ArtworkImage : public PollingComponent,
   size_t retired_buffer_bytes_() const;
   void invalidate_lvgl_cache_();
   bool ensure_download_buffer_capacity_();
-  bool decode_buffered_data_();
+  bool decode_buffered_data_(size_t max_bytes = 0);
   void finish_download_();
   void fail_download_();
 
