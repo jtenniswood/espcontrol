@@ -391,6 +391,10 @@ int main() {
   assert(media.type == "media");
   assert(media.sensor == "play_pause");
   assert(media.icon == "Auto");
+  auto playlist = parse_cfg("media_player.living;Morning Mix;Music;Auto;playlist;;media;;playlist_content_id=spotify%3Aplaylist%3A1LG2Lnt9EDQS1DqoE8E2uO");
+  assert(playlist.type == "media");
+  assert(playlist.sensor == "playlist");
+  assert(cfg_option_value(playlist.options, "playlist_content_id") == "spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO");
   auto volume = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=40");
   assert(volume.type == "media");
   assert(volume.sensor == "volume");

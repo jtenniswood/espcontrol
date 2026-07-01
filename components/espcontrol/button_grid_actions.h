@@ -691,6 +691,15 @@ inline void send_media_playlist_action(const ParsedCfg &p) {
   if (content_id.empty()) return;
   std::string content_type = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
   if (content_type.empty()) content_type = "playlist";
+  std::string player_source = cfg_option_value(p.options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION);
+  if (!player_source.empty()) {
+    esphome::api::HomeassistantActionRequest source_req;
+    if (ha_action_begin(source_req, "media_player.select_source", false, 2)) {
+      ha_action_add_entity(source_req, p.entity);
+      ha_action_add_data(source_req, "source", player_source.c_str());
+      ha_action_send(source_req);
+    }
+  }
   esphome::api::HomeassistantActionRequest req;
   if (!ha_action_begin(req, "media_player.play_media", false, 3)) return;
   ha_action_add_entity(req, p.entity);

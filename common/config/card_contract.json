@@ -841,6 +841,11 @@
           "defaultValue": "playlist"
         },
         {
+          "name": "playlist_player_source",
+          "label": "Playback Device",
+          "kind": "text"
+        },
+        {
           "name": "large_numbers",
           "label": "Large Media Numbers",
           "kind": "flag"

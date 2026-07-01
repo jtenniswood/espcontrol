@@ -1015,6 +1015,11 @@ var CARD_CONTRACT_CARDS = {
         "defaultValue": "playlist"
       },
       {
+        "name": "playlist_player_source",
+        "label": "Playback Device",
+        "kind": "text"
+      },
+      {
         "name": "large_numbers",
         "label": "Large Media Numbers",
         "kind": "flag"
@@ -1617,6 +1622,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "pin_disarm": "pin_disarm",
   "playlist_content_id": "playlist_content_id",
   "playlist_content_type": "playlist_content_type",
+  "playlist_player_source": "playlist_player_source",
   "script_fields": "script_fields",
   "state_high_label": "state_high_label",
   "state_input": "state_input",

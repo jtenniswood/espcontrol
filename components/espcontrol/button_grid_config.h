@@ -104,6 +104,7 @@ constexpr const char *TEMPERATURE_STEP_OPTION = card_runtime_option_name_tempera
 constexpr const char *VOLUME_MAX_OPTION = card_runtime_option_name_volume_max();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_ID_OPTION = card_runtime_option_name_playlist_content_id();
 constexpr const char *MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = card_runtime_option_name_playlist_content_type();
+constexpr const char *MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = card_runtime_option_name_playlist_player_source();
 
 inline int bounded_grid_slots(int num_slots) {
   if (num_slots < 0) return 0;
@@ -419,6 +420,11 @@ inline std::string media_card_options_normalized(const std::string &options,
     if (content_type != "playlist") {
       if (!out.empty()) out += ",";
       out += std::string(MEDIA_PLAYLIST_CONTENT_TYPE_OPTION) + "=" + encode_compact_field(content_type);
+    }
+    std::string player_source = cfg_option_value(options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION);
+    if (!player_source.empty()) {
+      if (!out.empty()) out += ",";
+      out += std::string(MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION) + "=" + encode_compact_field(player_source);
     }
     return out;
   }

@@ -134,6 +134,10 @@ constexpr const char *card_runtime_option_name_playlist_content_type() {
   return CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_TYPE;
 }
 
+constexpr const char *card_runtime_option_name_playlist_player_source() {
+  return CARD_CONTRACT_OPTION_NAME_PLAYLIST_PLAYER_SOURCE;
+}
+
 inline bool card_runtime_large_numbers_supported(const std::string &type,
                                                  const std::string &precision) {
   return card_contract_large_numbers_supported(type, precision);

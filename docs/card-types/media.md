@@ -69,12 +69,15 @@ Use it for playlists, radio stations, albums, saved favorites, channels, podcast
 Enter:
 
 - **Speaker Entity** - the Home Assistant `media_player` that should play the media, for example `media_player.living_room`.
-- **Media Content ID / URI** - the ID or URI Home Assistant uses for the playlist, station, album, or favorite.
-- **Media Content Type** - choose the type Home Assistant expects, such as `playlist`, `music`, `album`, `track`, or `channel`. Use **Custom** if your integration needs a different value.
+- **Source** - choose the source preset, such as **Spotify**, **Apple Music**, **YouTube Music**, **Plex**, **Jellyfin**, **Home Assistant Media Source**, or **Custom / full URI**.
+- **Media Type** - choose the type Home Assistant expects, such as `playlist`, `music`, `album`, `track`, or `channel`. Use **Custom** if your integration needs a different value.
+- **ID** - enter only the playlist, station, album, track, or favorite ID when using a source preset. Use **Custom / full URI** if your integration needs the full media content ID exactly as Home Assistant shows it.
 - **Label** - the name shown on the button, for example `Morning Playlist`.
 - **Icon** - the icon shown on the button.
 
 The important part is that EspControl uses the same values Home Assistant uses. If the values work in Home Assistant first, they should work from the EspControl button.
+
+When Home Assistant reports the currently playing `media_content_id`, the Playlist Button highlights only while that configured playlist or media item is playing. Some integrations do not report this value reliably; in that case EspControl can start the playlist, but it may not be able to confirm that the specific playlist is active.
 
 ### Find the Media Content ID
 
@@ -107,8 +110,10 @@ In EspControl, that becomes:
 | Home Assistant value | EspControl field |
 | --- | --- |
 | `entity_id: media_player.living_room` | **Speaker Entity** |
-| `media_content_id: "spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO"` | **Media Content ID / URI** |
-| `media_content_type: "playlist"` | **Media Content Type** |
+| `media_content_id: "spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO"` | **Source:** Spotify, **Media Type:** Playlist, **ID:** `1LG2Lnt9EDQS1DqoE8E2uO` |
+| `media_content_type: "playlist"` | **Media Type:** Playlist |
+
+If the value does not match one of the source presets, choose **Custom / full URI** and paste the full `media_content_id` into **ID**.
 
 ### If You Do Not Know the ID Format
 
@@ -116,12 +121,12 @@ Different Home Assistant integrations use different ID formats. There is no sing
 
 Common examples look like this:
 
-| System or source | Example Media Content ID / URI | Media Content Type |
-| --- | --- | --- |
-| Spotify playlist | `spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO` | `playlist` |
-| Spotify track | `spotify:track:0KIhLAkHfL9fvgn0yy1qsU` | `music` or `track` |
-| Home Assistant media source | `media-source://media_source/local/Morning.mp3` | `music` |
-| Integration favorite | `favorite_id_or_uri` | often `music`, `playlist`, or `favorite` |
+| System or source | Source | ID | Media Type |
+| --- | --- | --- | --- |
+| Spotify playlist | Spotify | `1LG2Lnt9EDQS1DqoE8E2uO` | `playlist` |
+| Spotify track | Spotify | `0KIhLAkHfL9fvgn0yy1qsU` | `music` or `track` |
+| Home Assistant media source | Home Assistant Media Source | `media_source/local/Morning.mp3` | `music` |
+| Integration favorite | Custom / full URI | `favorite_id_or_uri` | often `music`, `playlist`, or `favorite` |
 
 These examples are starting points only. The value that matters is the one your Home Assistant integration accepts when you test `media_player.play_media`.
 
@@ -147,16 +152,20 @@ For Spotify, the Home Assistant media content ID is commonly:
 spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO
 ```
 
-Use that value as **Media Content ID / URI**, and choose `playlist` for **Media Content Type**.
+In EspControl, choose **Spotify**, choose **Playlist**, and paste only this ID into **ID**:
+
+```text
+1LG2Lnt9EDQS1DqoE8E2uO
+```
 
 The same idea applies to other services: copy the playlist, album, station, or favorite ID from the shared URL, then turn it into the URI format your Home Assistant integration expects.
 
 Examples:
 
-| Shared link or ID | Try this as Media Content ID / URI |
-| --- | --- |
-| `https://open.spotify.com/playlist/1LG2Lnt9EDQS1DqoE8E2uO?si=...` | `spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO` |
-| `https://open.spotify.com/track/0KIhLAkHfL9fvgn0yy1qsU?si=...` | `spotify:track:0KIhLAkHfL9fvgn0yy1qsU` |
+| Shared link or ID | Source | Media Type | ID |
+| --- | --- | --- | --- |
+| `https://open.spotify.com/playlist/1LG2Lnt9EDQS1DqoE8E2uO?si=...` | Spotify | Playlist | `1LG2Lnt9EDQS1DqoE8E2uO` |
+| `https://open.spotify.com/track/0KIhLAkHfL9fvgn0yy1qsU?si=...` | Spotify | Track | `0KIhLAkHfL9fvgn0yy1qsU` |
 
 Always test the result in Home Assistant first:
 
@@ -175,11 +184,13 @@ If the Home Assistant test starts the right playlist, use the same `media_conten
 
 If tapping the Playlist Button does not start playback:
 
-- Make sure the button has a **Media Content ID / URI**. EspControl requires this before saving.
+- Make sure the button has an **ID**. EspControl requires this before saving.
 - Test the same values with `media_player.play_media` in Home Assistant.
 - Check that the selected **Speaker Entity** can play that source from Home Assistant.
-- Try a different **Media Content Type**. Some integrations use `playlist`, while others use `music`, `album`, `track`, `channel`, or a custom value.
+- Try a different **Media Type**. Some integrations use `playlist`, while others use `music`, `album`, `track`, `channel`, or a custom value.
 - If your integration gives you a full sharing URL, convert it to the ID or URI format that Home Assistant expects.
+- If the preset source builds the wrong value for your integration, choose **Custom / full URI** and paste the exact `media_content_id` that works in Home Assistant.
+- If the button starts the playlist but does not stay highlighted, check whether the media player entity reports a matching `media_content_id` while playing.
 - If the speaker needs repeat or shuffle, create a Home Assistant script that sets those options and starts playback, then trigger that script from an EspControl Action card.
 
 ::: info Requires Home Assistant actions

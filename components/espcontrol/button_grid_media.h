@@ -515,14 +515,79 @@ inline void subscribe_media_state(lv_obj_t *btn_ptr,
   );
 }
 
+inline std::string media_playlist_trim_text(const std::string &value) {
+  return trim_display_unit(value);
+}
+
+inline std::string media_playlist_lower_text(std::string value) {
+  value = media_playlist_trim_text(value);
+  for (char &ch : value) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  return value;
+}
+
+inline std::string media_playlist_without_url_suffix(std::string value) {
+  size_t hash = value.find('#');
+  if (hash != std::string::npos) value = value.substr(0, hash);
+  size_t query = value.find('?');
+  if (query != std::string::npos) value = value.substr(0, query);
+  while (!value.empty() && value.back() == '/') value.pop_back();
+  return value;
+}
+
+inline std::string media_playlist_leaf_id(const std::string &value) {
+  std::string clean = media_playlist_without_url_suffix(media_playlist_trim_text(value));
+  size_t colon = clean.find_last_of(':');
+  size_t slash = clean.find_last_of('/');
+  size_t pos = std::max(colon, slash);
+  if (pos == std::string::npos || pos + 1 >= clean.size()) return clean;
+  return clean.substr(pos + 1);
+}
+
+inline bool media_playlist_content_id_matches(const std::string &configured,
+                                              const std::string &current) {
+  std::string wanted = media_playlist_without_url_suffix(media_playlist_trim_text(configured));
+  std::string actual = media_playlist_without_url_suffix(media_playlist_trim_text(current));
+  if (wanted.empty() || actual.empty()) return false;
+  if (wanted == actual) return true;
+
+  std::string wanted_lower = media_playlist_lower_text(wanted);
+  std::string actual_lower = media_playlist_lower_text(actual);
+  if (wanted_lower == actual_lower) return true;
+
+  const std::string media_source_prefix = "media-source://";
+  if (wanted_lower.rfind(media_source_prefix, 0) == 0) {
+    std::string wanted_path = wanted_lower.substr(media_source_prefix.size());
+    if (!wanted_path.empty() && actual_lower.find(wanted_path) != std::string::npos) return true;
+  }
+
+  std::string wanted_leaf = media_playlist_lower_text(media_playlist_leaf_id(wanted));
+  std::string actual_leaf = media_playlist_lower_text(media_playlist_leaf_id(actual));
+  if (!wanted_leaf.empty() && wanted_leaf.size() >= 4 && wanted_leaf == actual_leaf) return true;
+  if (wanted_leaf.size() >= 8 && actual_lower.find(wanted_leaf) != std::string::npos) return true;
+  return false;
+}
+
+inline bool media_playlist_content_type_matches(const std::string &configured,
+                                                const std::string &current) {
+  std::string wanted = media_playlist_lower_text(configured.empty() ? "playlist" : configured);
+  std::string actual = media_playlist_lower_text(current);
+  if (actual.empty()) return true;
+  if (wanted == actual) return true;
+  if (wanted == "playlist" && (actual == "music" || actual == "audio")) return true;
+  if (wanted == "track" && actual == "music") return true;
+  return false;
+}
+
 inline bool media_playlist_active(const MediaPlaylistCtx *ctx) {
   if (!ctx || !ctx->available || !ctx->playing || ctx->content_id.empty() ||
       !ctx->has_current_content_id) {
     return false;
   }
-  if (ctx->current_content_id != ctx->content_id) return false;
-  return !ctx->has_current_content_type || ctx->current_content_type.empty() ||
-         ctx->current_content_type == ctx->content_type;
+  if (!media_playlist_content_id_matches(ctx->content_id, ctx->current_content_id)) return false;
+  return !ctx->has_current_content_type ||
+         media_playlist_content_type_matches(ctx->content_type, ctx->current_content_type);
 }
 
 inline void media_playlist_refresh_checked(MediaPlaylistCtx *ctx) {

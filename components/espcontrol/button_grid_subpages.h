@@ -71,7 +71,8 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.sensor = "play_pause";
     } else if (b.sensor != "play_pause" && b.sensor != "previous" &&
                b.sensor != "next" && b.sensor != "volume" &&
-               b.sensor != "position" && b.sensor != "now_playing") {
+               b.sensor != "position" && b.sensor != "now_playing" &&
+               b.sensor != "playlist") {
       b.sensor = "play_pause";
     }
     if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
@@ -79,6 +80,10 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     if (b.sensor == "volume") {
       if (b.label.empty() || b.label == "Media") b.label = "Volume";
       b.icon = "Auto";
+    }
+    if (b.sensor == "playlist") {
+      if (b.label.empty() || b.label == "Media") b.label = "Playlist";
+      if (b.icon.empty() || b.icon == "Auto") b.icon = "Music";
     }
     if (b.sensor == "position" && (b.label.empty() || b.label == "Track")) b.label = "Position";
     if (b.sensor == "now_playing") {
@@ -88,6 +93,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     } else {
       b.precision.clear();
     }
+    b.options = media_card_options_normalized(b.options, b.sensor);
   }
   if (b.type == "climate") {
     b.sensor.clear();
