@@ -475,7 +475,7 @@ function normalizeMediaOptions(options, mode) {
       configOptionValue(options, MEDIA_LABEL_DISPLAY_OPTION));
     var numberMode = normalizeMediaNumberDisplayMode(
       configOptionValue(options, MEDIA_NUMBER_DISPLAY_OPTION));
-    if (labelMode !== "label") {
+    if (labelMode !== "status") {
       controlOut = setConfigOptionValue(controlOut, MEDIA_LABEL_DISPLAY_OPTION, labelMode);
     }
     if (numberMode !== "icon") {
@@ -508,7 +508,8 @@ function normalizeMediaLabelDisplayMode(value) {
   value = String(value || "").trim();
   var spec = cardContractOptionSpec("media", MEDIA_LABEL_DISPLAY_OPTION);
   var values = spec && spec.values ? spec.values : ["label", "status"];
-  return values.indexOf(value) >= 0 ? value : "label";
+  var fallback = cardContractOptionDefaultValue("media", MEDIA_LABEL_DISPLAY_OPTION, "status");
+  return values.indexOf(value) >= 0 ? value : fallback;
 }
 
 function normalizeMediaNumberDisplayMode(value) {
@@ -1223,7 +1224,7 @@ function setMediaLabelDisplayMode(b, mode) {
   b.options = setConfigOptionValue(
     b.options,
     MEDIA_LABEL_DISPLAY_OPTION,
-    normalized === "label" ? "" : normalized
+    normalized === "status" ? "" : normalized
   );
   b.options = normalizeMediaOptions(b.options, b.sensor);
   return b.options;

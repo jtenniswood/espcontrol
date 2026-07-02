@@ -894,7 +894,7 @@
           "label": "Label Display",
           "kind": "choice",
           "values": ["label", "status"],
-          "defaultValue": "label"
+          "defaultValue": "status"
         },
         {
           "name": "number_display",

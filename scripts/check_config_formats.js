@@ -1651,6 +1651,18 @@ assertButtonRoundTrip(hooks, "media control modal card", {
   precision: "",
 }, false);
 
+assertButtonRoundTrip(hooks, "media control modal card label display", {
+  entity: "media_player.living_room",
+  label: "Living Room",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=label",
+}, false);
+
 assertButtonRoundTrip(hooks, "climate card", {
   entity: "climate.living_room",
   label: "Living Room",

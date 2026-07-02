@@ -414,11 +414,24 @@ const mediaControlConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
 }));
 assert.strictEqual(
   mediaControlConfig.options,
-  "label_display=status,number_display=volume",
+  "number_display=volume",
   "media control parent card display options survive normalization"
 );
 assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlConfig), "status");
 assert.strictEqual(hooks.mediaNumberDisplayMode(mediaControlConfig), "volume");
+const mediaControlLabelConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
+  entity: "media_player.living_room",
+  label: "Speaker",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=label",
+}));
+assert.strictEqual(mediaControlLabelConfig.options, "label_display=label");
+assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlLabelConfig), "label");
 const mediaControlPreview = hooks.buttonTypePreviewFor("media", mediaControlConfig);
 assert(
   mediaControlPreview.iconHtml.includes("sp-sensor-preview"),

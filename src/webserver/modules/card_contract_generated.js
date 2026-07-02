@@ -1091,7 +1091,7 @@ var CARD_CONTRACT_CARDS = {
           "label",
           "status"
         ],
-        "defaultValue": "label"
+        "defaultValue": "status"
       },
       {
         "name": "number_display",
