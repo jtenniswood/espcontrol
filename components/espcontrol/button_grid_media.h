@@ -1214,9 +1214,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t btn_gap = control_modal_scaled_px(16, layout.short_side);
   if (btn_gap < 12) btn_gap = 12;
   lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
-  lv_coord_t max_btn = control_modal_scaled_px(80, layout.short_side);
+  lv_coord_t max_btn = control_modal_scaled_px(88, layout.short_side);
   if (btn_size > max_btn) btn_size = max_btn;
-  if (btn_size < 68) btn_size = 68;
+  if (btn_size < 74) btn_size = 74;
   lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
   lv_coord_t progress_slider_h = content_h * 42 / 100;
