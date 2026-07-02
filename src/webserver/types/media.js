@@ -400,10 +400,10 @@ registerButtonType("media", {
       var playlistInfoText = document.createElement("span");
       playlistInfoText.appendChild(document.createTextNode("Need help finding the media content ID? "));
       var playlistInfoLink = document.createElement("a");
-      playlistInfoLink.href = "https://jtenniswood.github.io/espcontrol/card-types/media/#playlist-button";
+      playlistInfoLink.href = "https://jtenniswood.github.io/espcontrol/card-types/media/#media-content";
       playlistInfoLink.target = "_blank";
       playlistInfoLink.rel = "noopener";
-      playlistInfoLink.textContent = "Learn how to configure playlist buttons";
+      playlistInfoLink.textContent = "Learn how to configure media content buttons";
       playlistInfoText.appendChild(playlistInfoLink);
       playlistInfoText.appendChild(document.createTextNode("."));
       playlistInfo.appendChild(playlistInfoIcon);
