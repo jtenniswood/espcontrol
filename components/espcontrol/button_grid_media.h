@@ -69,6 +69,7 @@ struct MediaControlModalUi {
   lv_obj_t *progress_slider = nullptr;
   lv_obj_t *progress_fill = nullptr;
   lv_obj_t *progress_handle = nullptr;
+  lv_obj_t *progress_time_lbl = nullptr;
   lv_obj_t *previous_btn = nullptr;
   lv_obj_t *play_btn = nullptr;
   lv_obj_t *play_icon_lbl = nullptr;
@@ -803,6 +804,19 @@ inline void media_control_refresh_play_icon(MediaControlCtx *ctx) {
   lv_label_set_text(ui.play_icon_lbl, ctx->playing ? find_icon("Pause") : find_icon("Play"));
 }
 
+inline void media_control_refresh_progress_time_label(MediaControlCtx *ctx, float seconds) {
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (!ctx || ui.active != ctx || !ui.progress_time_lbl) return;
+  char position_buf[16];
+  char remaining_buf[16];
+  media_format_time(seconds, position_buf, sizeof(position_buf));
+  float remaining = ctx->duration > seconds ? ctx->duration - seconds : 0.0f;
+  media_format_time(remaining, remaining_buf, sizeof(remaining_buf));
+  char time_buf[40];
+  snprintf(time_buf, sizeof(time_buf), "%s / -%s", position_buf, remaining_buf);
+  lv_label_set_text(ui.progress_time_lbl, time_buf);
+}
+
 inline lv_obj_t *media_control_create_progress_fill(lv_obj_t *slider, lv_color_t fill_color) {
   if (!slider) return nullptr;
   lv_obj_set_style_bg_opa(slider, LV_OPA_TRANSP, LV_PART_INDICATOR);
@@ -922,6 +936,7 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
     ui.progress_slider, ui.progress_fill, ui.progress_handle, pct,
     lv_color_hex(ctx->accent_color));
   media_control_update_progress_handle(ui.progress_slider, ui.progress_handle, pct);
+  media_control_refresh_progress_time_label(ctx, seconds);
   if (ui.progress_slider) {
     bool has_duration = ctx->duration > 0.0f && ctx->available;
     apply_control_availability(ui.progress_slider, ui.progress_slider, has_duration);
@@ -1268,6 +1283,17 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     media_control_update_progress_handle(
       ui.progress_slider, ui.progress_handle, lv_slider_get_value(ui.progress_slider));
   }
+  if (ui.progress_time_lbl) {
+    lv_coord_t time_h = artist_font && artist_font->line_height > 0
+      ? artist_font->line_height : control_modal_scaled_px(24, layout.short_side);
+    lv_coord_t time_y =
+      progress_slider_y + progress_slider_h + control_modal_scaled_px(18, layout.short_side);
+    lv_coord_t max_time_y = content_h - time_h;
+    if (time_y > max_time_y) time_y = max_time_y;
+    if (time_y < 0) time_y = 0;
+    lv_obj_set_size(ui.progress_time_lbl, text_w, time_h);
+    lv_obj_align(ui.progress_time_lbl, LV_ALIGN_TOP_MID, 0, time_y);
+  }
   lv_obj_t *buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
   for (int i = 0; i < 3; i++) {
     if (!buttons[i]) continue;
@@ -1286,19 +1312,20 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     volume_layout.panel_w = content_w;
     volume_layout.panel_h = content_h;
     volume_layout.arc_size = content_w < content_h ? content_w : content_h;
-    volume_layout.arc_size -= control_modal_scaled_px(18, layout.short_side);
-    if (volume_layout.arc_size > layout.arc_size) volume_layout.arc_size = layout.arc_size;
+    volume_layout.arc_size -= control_modal_scaled_px(4, layout.short_side);
     if (volume_layout.arc_size < 74) volume_layout.arc_size = 74;
     volume_layout.arc_center_x = 0;
-    volume_layout.arc_center_y = 0;
+    lv_coord_t volume_down = control_modal_scaled_px(16, layout.short_side);
+    if (volume_down < 10) volume_down = 10;
+    volume_layout.arc_center_y = volume_down;
     volume_layout.controls_center_y = volume_layout.arc_size / 2 -
       volume_layout.btn_size / 2 - volume_layout.inset +
-      control_modal_controls_down_px(volume_layout);
+      control_modal_controls_down_px(volume_layout) + volume_down;
     control_modal_apply_arc_layout(ui.volume_arc, volume_layout, ctx->width_compensation_percent);
     ControlModalLayout volume_buttons_layout = media_volume_step_button_layout(volume_layout);
-    volume_buttons_layout.btn_size = volume_buttons_layout.btn_size * 3 / 4;
-    if (volume_buttons_layout.btn_size < control_modal_scaled_px(48, layout.short_side)) {
-      volume_buttons_layout.btn_size = control_modal_scaled_px(48, layout.short_side);
+    volume_buttons_layout.btn_size = volume_buttons_layout.btn_size * 7 / 8;
+    if (volume_buttons_layout.btn_size < control_modal_scaled_px(54, layout.short_side)) {
+      volume_buttons_layout.btn_size = control_modal_scaled_px(54, layout.short_side);
     }
     volume_buttons_layout.controls_gap = control_modal_scaled_px(12, layout.short_side);
     control_modal_apply_step_buttons_layout(
@@ -1306,6 +1333,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (ui.volume_pct_lbl) {
       apply_width_compensation(ui.volume_pct_lbl, ctx->width_compensation_percent);
       lv_obj_align(ui.volume_pct_lbl, LV_ALIGN_CENTER, 0,
+        volume_layout.arc_center_y +
         control_modal_scaled_px(MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX, volume_layout.short_side));
     }
     lv_obj_update_layout(ui.volume_box);
@@ -1417,6 +1445,14 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.progress_fill = media_control_create_progress_fill(
     ui.progress_slider, lv_color_hex(ctx->accent_color));
   ui.progress_handle = media_control_create_progress_handle(ui.progress_slider);
+  ui.progress_time_lbl = lv_label_create(ui.progress_box);
+  if (ui.progress_time_lbl) {
+    lv_label_set_text(ui.progress_time_lbl, "0:00 / -0:00");
+    lv_obj_set_style_text_color(ui.progress_time_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+    lv_obj_set_style_text_align(ui.progress_time_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (ctx->label_font) lv_obj_set_style_text_font(ui.progress_time_lbl, ctx->label_font, LV_PART_MAIN);
+    apply_width_compensation(ui.progress_time_lbl, ctx->width_compensation_percent);
+  }
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_progress) return;
@@ -1427,6 +1463,10 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
       slider, ui.progress_fill, ui.progress_handle, value,
       lv_color_hex(ui.active->accent_color));
     media_control_update_progress_handle(slider, ui.progress_handle, value);
+    if (ui.active && ui.active->duration > 0.0f) {
+      media_control_refresh_progress_time_label(
+        ui.active, ui.active->duration * value / 100.0f);
+    }
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
