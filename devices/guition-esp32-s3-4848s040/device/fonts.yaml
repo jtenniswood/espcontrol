@@ -37,6 +37,16 @@ font:
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
+  # Smaller secondary text
+  - file: "gfonts://Roboto"
+    id: font_text_small
+    size: 18
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
   # Headings and media titles
   - file: "gfonts://Roboto@Light"
     id: font_text_title
@@ -51,6 +61,16 @@ font:
   - file: "gfonts://Roboto@Light"
     id: font_cover_art_title
     size: 70
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Media control modal title
+  - file: "gfonts://Roboto@Light"
+    id: font_media_control_title
+    size: 60
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:

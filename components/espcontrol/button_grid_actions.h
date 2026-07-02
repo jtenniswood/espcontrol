@@ -679,6 +679,12 @@ inline void send_media_seek_action(const std::string &entity_id, int value, floa
   send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
 }
 
+inline void send_media_source_action(const std::string &entity_id,
+                                     const std::string &source) {
+  if (entity_id.empty() || source.empty()) return;
+  send_media_player_action(entity_id, "media_player.select_source", "source", source.c_str());
+}
+
 inline void send_media_playback_action(const std::string &entity_id,
                                        const std::string &mode) {
   if (entity_id.empty()) return;
@@ -770,8 +776,8 @@ inline bool media_fast_press_consume(int slot_num) {
 
 inline void handle_button_press(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  (void) btn_obj;
   if (slot_num <= 0 || slot_num > MAX_GRID_SLOTS) return;
-  if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
   if (p.type != "media") return;
   std::string mode = media_card_mode(p.sensor);
@@ -784,6 +790,8 @@ inline void handle_button_press(const std::string &cfg, int slot_num,
 
 struct MediaVolumeCtx;
 inline void media_volume_open_modal(MediaVolumeCtx *ctx);
+struct MediaControlCtx;
+inline void media_control_open_modal(MediaControlCtx *ctx);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
 struct ImageCardCtx;
@@ -813,8 +821,8 @@ inline void light_control_open_modal(LightControlCtx *ctx);
 // slider toggle, or entity toggle based on the config string.
 inline void handle_button_click(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  (void) btn_obj;
   if (media_fast_press_consume(slot_num)) return;
-  if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
   ESP_LOGI("button", "Main button %d clicked: type=%s entity=%s mode=%s label=%s",
            slot_num, p.type.c_str(), p.entity.c_str(), p.sensor.c_str(), p.label.c_str());
@@ -864,8 +872,13 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "garage") {
     if (garage_command_mode(p.sensor)) {
       send_cover_command_action(p);
-    } else if (garage_card_show_status(p)) {
-      return;
+    } else if (!p.entity.empty()) {
+      set_card_checked_state(btn_obj, true);
+      send_toggle_action(p.entity);
+    }
+  } else if (p.type == "gate") {
+    if (gate_command_mode(p.sensor)) {
+      send_cover_command_action(p);
     } else if (!p.entity.empty()) {
       set_card_checked_state(btn_obj, true);
       send_toggle_action(p.entity);
@@ -928,7 +941,10 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
   } else if (p.type == "media") {
     std::string mode = media_card_mode(p.sensor);
-    if (mode == "volume") {
+    if (mode == "control_modal") {
+      MediaControlCtx *ctx = (MediaControlCtx *)lv_obj_get_user_data(btn_obj);
+      if (ctx) media_control_open_modal(ctx);
+    } else if (mode == "volume") {
       MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_obj_get_user_data(btn_obj);
       if (ctx) media_volume_open_modal(ctx);
     } else if (mode == "playlist") {
@@ -938,7 +954,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     } else if (media_playback_button_mode(mode)) {
       send_media_playback_action(p.entity, mode);
     }
-  } else if (p.type == "climate") {
+  } else if (climate_card_type(p.type)) {
     ClimateControlCtx *ctx = (ClimateControlCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) climate_control_open_modal(ctx);
   } else if (p.type == "image") {

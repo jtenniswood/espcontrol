@@ -331,7 +331,6 @@ inline const char *light_control_icon_on(const ParsedCfg &p) {
 
 inline void light_control_apply_card_visual(LightControlCtx *ctx) {
   if (!ctx || !ctx->btn) return;
-  apply_control_availability(ctx->btn, ctx->btn, ctx->available);
   set_card_checked_state(ctx->btn, ctx->on);
   if (ctx->icon_lbl) {
     const char *glyph = ctx->on && ctx->icon_on_glyph ? ctx->icon_on_glyph : ctx->icon_off_glyph;
@@ -1213,7 +1212,6 @@ inline LightControlCtx *create_light_control_context(
 
 inline void subscribe_light_control_state(LightControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
@@ -1705,7 +1703,6 @@ inline void cover_control_update_card_slider(CoverControlCtx *ctx,
 inline void cover_control_apply_card_visual(CoverControlCtx *ctx,
                                             const std::string &state_text = "") {
   if (!ctx || !ctx->btn) return;
-  apply_control_availability(ctx->btn, ctx->btn, ctx->available);
   cover_control_update_card_slider(ctx, state_text);
   bool active = ctx->current_position_known
     ? slider_clamp_pct(ctx->current_position) < 100
@@ -2370,7 +2367,6 @@ inline CoverControlCtx *create_cover_control_context(
 
 inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
@@ -2378,10 +2374,6 @@ inline void subscribe_cover_control_state(CoverControlCtx *ctx) {
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         ctx->available = !ha_state_unavailable_ref(state);
         cover_control_apply_card_visual(ctx, state_text);
-        CoverControlModalUi &ui = cover_control_modal_ui();
-        if (ui.active == ctx) {
-          apply_control_availability(ui.panel, ui.panel, ctx->available, false);
-        }
       })
   );
   ha_subscribe_attribute(
@@ -2562,7 +2554,6 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
       entity_id.c_str());
     return;
   }
-  register_ha_control_availability(btn_ptr, slider);
   SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(slider);
   lv_obj_t *fill = sctx ? sctx->fill : nullptr;
   bool horiz = sctx ? sctx->horizontal : false;
@@ -2633,7 +2624,6 @@ inline void subscribe_slider_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
         }
         bool unavailable = ha_state_unavailable_ref(state);
         if (sctx) sctx->available = !unavailable;
-        apply_control_availability(btn_ptr, slider, !unavailable);
         bool on = is_entity_on_ref(state);
         if (!on) {
           slider_set_value_safe(slider, 0);
@@ -2712,7 +2702,6 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
                                         const std::string &entity_id,
                                         int /*min_k*/, int /*max_k*/, bool kelvin_color) {
   if (!slider || entity_id.empty()) return;
-  register_ha_control_availability(btn_ptr, slider);
   SliderCtx *sctx = (SliderCtx *)lv_obj_get_user_data(slider);
   // Track on/off so kelvin updates can be ignored once the light is known off
   // while still handling the initial case where HA sends color_temp before state.
@@ -2722,7 +2711,6 @@ inline void subscribe_light_temp_state(lv_obj_t *btn_ptr, lv_obj_t *slider,
       [slider, btn_ptr, kelvin_color, sctx](esphome::StringRef state) {
         bool unavailable = ha_state_unavailable_ref(state);
         if (sctx) sctx->available = !unavailable;
-        apply_control_availability(btn_ptr, slider, !unavailable);
         bool on = is_entity_on_ref(state);
         if (sctx) {
           sctx->light_state_known = true;
@@ -2834,6 +2822,7 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
 inline const char *media_default_icon(const std::string &mode,
                                       const std::string &icon) {
   if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
+  if (mode == "control_modal") return find_icon("Play Pause");
   if (mode == "previous") return find_icon("Skip Previous");
   if (mode == "next") return find_icon("Skip Next");
   if (mode == "play_pause") return find_icon("Play Pause");
@@ -2850,6 +2839,7 @@ inline std::string media_default_label(const std::string &mode) {
   if (mode == "volume") return espcontrol_i18n(std::string("Volume"));
   if (mode == "position") return espcontrol_i18n(std::string("Position"));
   if (mode == "play_pause") return espcontrol_i18n(std::string("Play/Pause"));
+  if (mode == "control_modal") return espcontrol_i18n(std::string("All Controls"));
   if (mode == "playlist") return espcontrol_i18n(std::string("Playlist"));
   return espcontrol_i18n(std::string("Media"));
 }

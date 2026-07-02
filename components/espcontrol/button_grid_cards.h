@@ -449,6 +449,17 @@ inline void setup_garage_card(BtnSlot &s, const ParsedCfg &p) {
   lv_label_set_text(s.text_lbl, garage_card_show_status(p) ? "--" : garage_card_label(p));
 }
 
+inline void setup_gate_card(BtnSlot &s, const ParsedCfg &p) {
+  if (gate_command_mode(p.sensor)) {
+    lv_label_set_text(s.icon_lbl, gate_command_icon(p));
+    lv_label_set_text(s.text_lbl, gate_card_show_status(p) ? "--" : gate_card_label(p));
+    apply_push_button_transition(s.btn);
+    return;
+  }
+  lv_label_set_text(s.icon_lbl, gate_closed_icon(p.icon));
+  lv_label_set_text(s.text_lbl, gate_card_show_status(p) ? "--" : gate_card_label(p));
+}
+
 inline void setup_lock_card(BtnSlot &s, const ParsedCfg &p) {
   if (lock_command_mode(p.sensor)) {
     lv_label_set_text(s.icon_lbl, lock_command_icon(p));

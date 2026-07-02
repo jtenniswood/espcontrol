@@ -41,7 +41,6 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
                                    bool active_color = false,
                                    uint32_t on_color = DEFAULT_SLIDER_COLOR,
                                    uint32_t sensor_color = DEFAULT_TERTIARY_COLOR) {
-  if (availability_obj) register_ha_control_availability(availability_obj, availability_obj, false);
   std::string display_unit = trim_display_unit(unit);
   ha_subscribe_state(
     sensor_id,
@@ -49,9 +48,6 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
       [sensor_lbl, precision, unit_lbl, display_unit, availability_obj,
        active_color, on_color, sensor_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
-      if (availability_obj) {
-        apply_control_availability(availability_obj, availability_obj, !unavailable, false);
-      }
       apply_sensor_active_color(availability_obj, active_color, state,
         on_color, sensor_color, unavailable);
 
@@ -85,15 +81,11 @@ inline void subscribe_text_sensor_value(lv_obj_t *text_lbl, const std::string &s
                                         bool active_color = false,
                                         uint32_t on_color = DEFAULT_SLIDER_COLOR,
                                         uint32_t sensor_color = DEFAULT_TERTIARY_COLOR) {
-  if (availability_obj) register_ha_control_availability(availability_obj, availability_obj, false);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
       [text_lbl, availability_obj, active_color, on_color, sensor_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
-      if (availability_obj) {
-        apply_control_availability(availability_obj, availability_obj, !unavailable, false);
-      }
       apply_sensor_active_color(availability_obj, active_color, state,
         on_color, sensor_color, unavailable);
       set_wrapped_button_label_text(text_lbl, text_sensor_display_text(state));
@@ -104,7 +96,6 @@ inline void subscribe_text_sensor_value(lv_obj_t *text_lbl, const std::string &s
 inline void subscribe_sensor_icon_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                         const ParsedCfg &p) {
   if (p.sensor.empty()) return;
-  register_ha_control_availability(btn_ptr, btn_ptr, false);
   const char *icon_off = (p.icon.empty() || p.icon == "Auto")
     ? find_icon("Auto") : find_icon(p.icon.c_str());
   bool has_icon_on = !p.icon_on.empty() && p.icon_on != "Auto";
@@ -115,7 +106,6 @@ inline void subscribe_sensor_icon_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
       [btn_ptr, icon_lbl, icon_off, icon_on](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       if (btn_ptr) {
-        apply_control_availability(btn_ptr, btn_ptr, !unavailable, false);
         set_card_checked_state(btn_ptr, !unavailable && is_entity_on_ref(state));
       }
       lv_label_set_text(icon_lbl, (!unavailable && is_entity_on_ref(state)) ? icon_on : icon_off);
@@ -129,15 +119,11 @@ inline void subscribe_sensor_text_card_value(lv_obj_t *text_lbl, const ParsedCfg
                                              uint32_t on_color = DEFAULT_SLIDER_COLOR,
                                              uint32_t sensor_color = DEFAULT_TERTIARY_COLOR) {
   if (p.sensor.empty()) return;
-  if (availability_obj) register_ha_control_availability(availability_obj, availability_obj, false);
   ha_subscribe_state(
     p.sensor,
     std::function<void(esphome::StringRef)>(
       [text_lbl, p, availability_obj, active_color, on_color, sensor_color](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
-      if (availability_obj) {
-        apply_control_availability(availability_obj, availability_obj, !unavailable, false);
-      }
       apply_sensor_active_color(availability_obj, active_color, state,
         on_color, sensor_color, unavailable);
       set_wrapped_button_label_text(text_lbl, sensor_state_display_text(p, state));
@@ -151,13 +137,11 @@ inline void subscribe_door_window_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                         bool active_color,
                                         uint32_t on_color,
                                         uint32_t sensor_color) {
-  register_ha_control_availability(btn_ptr, btn_ptr, false);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
       [btn_ptr, icon_lbl, closed_icon, open_icon, active_color, on_color, sensor_color](esphome::StringRef state) {
         bool unavailable = ha_state_unavailable_ref(state);
-        apply_control_availability(btn_ptr, btn_ptr, !unavailable, false);
         bool open = !unavailable && is_entity_on_ref(state);
         lv_label_set_text(icon_lbl, open ? open_icon : closed_icon);
         if (btn_ptr && active_color) {
@@ -174,13 +158,11 @@ inline void subscribe_presence_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                      bool active_color,
                                      uint32_t on_color,
                                      uint32_t sensor_color) {
-  register_ha_control_availability(btn_ptr, btn_ptr, false);
   ha_subscribe_state(
     sensor_id,
     std::function<void(esphome::StringRef)>(
       [btn_ptr, icon_lbl, clear_icon, detected_icon, active_color, on_color, sensor_color](esphome::StringRef state) {
         bool unavailable = ha_state_unavailable_ref(state);
-        apply_control_availability(btn_ptr, btn_ptr, !unavailable, false);
         bool detected = !unavailable && presence_detected_ref(state);
         lv_label_set_text(icon_lbl, detected ? detected_icon : clear_icon);
         if (btn_ptr && active_color) {
@@ -193,17 +175,12 @@ inline void subscribe_presence_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
 
 inline void subscribe_weather_state(lv_obj_t *icon_lbl, lv_obj_t *text_lbl, const std::string &entity_id) {
   ESP_LOGI("weather", "Subscribing to current weather state for %s", entity_id.c_str());
-  lv_obj_t *btn_ptr = icon_lbl ? lv_obj_get_parent(icon_lbl) : nullptr;
   uint32_t generation = ha_subscription_generation();
-  register_ha_control_availability(btn_ptr, btn_ptr, false);
-  apply_control_availability(btn_ptr, btn_ptr, false, false);
   ha_subscribe_state(
     entity_id,
-    std::function<void(esphome::StringRef)>([btn_ptr, icon_lbl, text_lbl, entity_id, generation](esphome::StringRef state) {
+    std::function<void(esphome::StringRef)>([icon_lbl, text_lbl, entity_id, generation](esphome::StringRef state) {
       if (generation != ha_subscription_generation()) return;
       std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-      bool unavailable = ha_state_unavailable_ref(state);
-      apply_control_availability(btn_ptr, btn_ptr, !unavailable, false);
       ESP_LOGI("weather", "Current weather state for %s: %s", entity_id.c_str(), state_text.c_str());
       lv_label_set_text(icon_lbl, weather_icon_for_state(state_text));
       lv_label_set_text(text_lbl, weather_label_for_state(state_text).c_str());
@@ -217,6 +194,26 @@ inline void subscribe_garage_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                    const char *closed_icon, const char *open_icon,
                                    const std::string &entity_id,
                                    bool persistent_status = false) {
+  ha_subscribe_state(
+    entity_id,
+    std::function<void(esphome::StringRef)>(
+      [btn_ptr, icon_lbl, status_label, closed_icon, open_icon, persistent_status](esphome::StringRef state) {
+        std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+        bool active = garage_state_is_active(state_text);
+        set_card_checked_state(btn_ptr, active);
+        lv_label_set_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
+        transient_status_label_show_if_changed(
+          status_label, garage_state_label(state_text),
+          persistent_status ? false : garage_state_releases_label(state_text));
+      })
+  );
+}
+
+inline void subscribe_gate_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
+                                 TransientStatusLabel *status_label,
+                                 const char *closed_icon, const char *open_icon,
+                                 const std::string &entity_id,
+                                 bool persistent_status = false) {
   register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     entity_id,
@@ -239,14 +236,11 @@ inline void subscribe_cover_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                          TransientStatusLabel *status_label,
                                          const char *closed_icon, const char *open_icon,
                                          const std::string &entity_id) {
-  register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
       [btn_ptr, icon_lbl, status_label, closed_icon, open_icon](esphome::StringRef state) {
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-        bool unavailable = ha_state_unavailable_ref(state);
-        apply_control_availability(btn_ptr, btn_ptr, !unavailable);
         bool active = cover_toggle_state_is_active(state_text);
         set_card_checked_state(btn_ptr, active);
         lv_label_set_text(icon_lbl, garage_state_uses_open_icon(state_text) ? open_icon : closed_icon);
@@ -261,14 +255,11 @@ inline void subscribe_lock_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                  const char *locked_icon, const char *unlocked_icon,
                                  LockCardCtx *ctx) {
   if (!ctx) return;
-  register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
       [btn_ptr, icon_lbl, status_label, locked_icon, unlocked_icon, ctx](esphome::StringRef state) {
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-        bool unavailable = ha_state_unavailable_ref(state);
-        apply_control_availability(btn_ptr, btn_ptr, !unavailable);
         ctx->state = state_text;
         bool active = lock_state_is_active(state_text);
         set_card_checked_state(btn_ptr, active);
@@ -322,15 +313,12 @@ inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
                                    const std::string &entity_id,
                                    bool disable_interaction = true,
                                    bool (*is_active_state)(esphome::StringRef) = is_entity_on_ref) {
-  register_ha_control_availability(btn_ptr, btn_ptr, disable_interaction);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
       [btn_ptr, icon_lbl, sensor_ctr, slot_has_sensor, slot_sensor_text_mode,
        slot_has_icon_on, slot_icon_off, slot_icon_on, text_sensor_ctx,
-       disable_interaction, is_active_state](esphome::StringRef state) {
-        bool unavailable = ha_state_unavailable_ref(state);
-        apply_control_availability(btn_ptr, btn_ptr, !unavailable, disable_interaction);
+       is_active_state](esphome::StringRef state) {
         bool on = is_active_state(state);
         set_card_checked_state(btn_ptr, on);
 
@@ -358,31 +346,12 @@ inline void subscribe_toggle_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
   );
 }
 
-inline void subscribe_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
-                                           const std::string &entity_id,
-                                           bool disable_interaction = true) {
-  if (entity_id.empty()) return;
-  register_ha_control_availability(visual_obj, input_obj, disable_interaction);
-  ha_subscribe_state(
-    entity_id,
-    std::function<void(esphome::StringRef)>(
-      [visual_obj, input_obj, entity_id, disable_interaction](esphome::StringRef state) {
-        apply_control_availability(
-          visual_obj, input_obj,
-          !ha_entity_state_unavailable_ref(entity_id, state),
-          disable_interaction);
-      })
-  );
-}
-
 struct ActionCardStateCtx {
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *text_lbl = nullptr;
   lv_obj_t *sensor_lbl = nullptr;
   lv_obj_t *unit_lbl = nullptr;
-  bool state_available = true;
-  bool has_state_entity = false;
   bool show_icon_state = false;
   bool show_text_state = false;
   bool show_numeric_state = false;
@@ -410,12 +379,6 @@ inline ActionCardStateCtx *create_action_card_state_context(const BtnSlot &s,
   ctx->precision = parse_precision(action_card_state_precision(p));
   ctx->unit = trim_display_unit(action_card_state_unit(p));
   return ctx;
-}
-
-inline void apply_action_card_availability(ActionCardStateCtx *ctx) {
-  if (!ctx || !ctx->btn) return;
-  bool available = !ctx->has_state_entity || ctx->state_available;
-  apply_control_availability(ctx->btn, ctx->btn, available);
 }
 
 inline void apply_action_card_display_value(ActionCardStateCtx *ctx,
@@ -447,19 +410,15 @@ inline void apply_action_card_display_value(ActionCardStateCtx *ctx,
 inline void subscribe_action_card_display_state(ActionCardStateCtx *ctx,
                                                 const std::string &entity_id) {
   if (!ctx || entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
-  ctx->has_state_entity = true;
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>([ctx, entity_id](esphome::StringRef state) {
       bool unavailable = ha_entity_state_unavailable_ref(entity_id, state);
-      ctx->state_available = !unavailable;
       bool active = !unavailable && (ctx->show_numeric_state
         ? numeric_state_positive_ref(state)
         : is_entity_on_ref(state));
       set_card_checked_state(ctx->btn, active);
       apply_action_card_display_value(ctx, state, unavailable);
-      apply_action_card_availability(ctx);
     })
   );
 }

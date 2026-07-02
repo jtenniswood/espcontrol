@@ -659,6 +659,34 @@ function renderButtonSettings(forceOpen) {
     };
   }
 
+  function disclosureSection(labelText, inputId, open) {
+    var panel = document.createElement("div");
+    panel.className = "sp-disclosure" + (open ? " sp-open" : "");
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "sp-disclosure-button";
+    if (inputId) button.id = inputId;
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+    var label = document.createElement("span");
+    label.textContent = labelText;
+    button.appendChild(label);
+    button.appendChild(createDisclosureChevron("sp-disclosure-chevron"));
+    var section = document.createElement("div");
+    section.className = "sp-disclosure-body";
+    button.addEventListener("click", function () {
+      open = !panel.classList.contains("sp-open");
+      panel.classList.toggle("sp-open", open);
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    panel.appendChild(button);
+    panel.appendChild(section);
+    return {
+      panel: panel,
+      button: button,
+      section: section,
+    };
+  }
+
   function precisionField(inputId, value, onChange) {
     return selectField("Unit Precision", inputId, [
       ["0", "10"],
@@ -669,14 +697,25 @@ function renderButtonSettings(forceOpen) {
 
   function selectCardType(newType) {
     if (newType === "__choose-card-type__") return;
+    var pickerType = newType;
     newType = defaultButtonTypeForPicker(newType);
+    var keepMediaEntity = pickerType === "media_control" && b.type === "media";
     b.type = newType;
     if (state.settingsDraft && state.settingsDraft.key === draftKey) {
       state.settingsDraft.typeSelected = true;
     }
     var td = BUTTON_TYPES[newType];
-    if (td && td.onSelect) td.onSelect(b);
-    saveField("type", newType);
+    if (td && td.onSelect && !keepMediaEntity) td.onSelect(b);
+    if (pickerType === "media_control") {
+      b.sensor = "control_modal";
+      b.label = "All Controls";
+      b.icon = "Auto";
+      b.icon_on = "Auto";
+      b.unit = "";
+      b.precision = "";
+      b.options = "";
+    }
+    saveField("type", b.type);
     renderButtonSettings();
   }
 
@@ -764,6 +803,7 @@ function renderButtonSettings(forceOpen) {
     textField: textField,
     segmentControl: segmentControl,
     toggleSection: toggleSection,
+    disclosureSection: disclosureSection,
     precisionField: precisionField,
     fieldLabel: fieldLabel,
     textInput: textInput,

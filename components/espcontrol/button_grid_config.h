@@ -96,6 +96,8 @@ constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
 constexpr const char *COVER_CONTROL_DEFAULT_TABS_VALUE = "position|controls|tilt";
+constexpr const char *CLIMATE_CONTROL_TABS_OPTION = "climate_tabs";
+constexpr const char *CLIMATE_CONTROL_DEFAULT_TABS_VALUE = "temperature|mode|preset|fan|swing";
 constexpr const char *FAN_CONTROL_TABS_OPTION = "fan_tabs";
 constexpr const char *FAN_CONTROL_DEFAULT_TABS_VALUE = "power|speed|preset|oscillation|direction";
 constexpr const char *LABEL_DISPLAY_OPTION = card_runtime_option_name_label_display();
@@ -321,7 +323,7 @@ struct ParsedCfg {
   std::string icon_on;     // 3  icon name for on state (blank = no swap)
   std::string sensor;      // 4  sensor entity, cover mode, or action name for Action cards
   std::string unit;        // 5  unit suffix for sensor display
-  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, climate, push, webhook, todo, internal, subpage
+  std::string type;        // 6  button type: "" (toggle), action, sensor, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, climate, push, webhook, todo, internal, subpage
   std::string precision;   // 7  decimal places for sensors; "text" = text sensor mode
   std::string options;     // 8  comma-delimited card options
 };
@@ -409,6 +411,23 @@ inline int normalize_media_volume_max_percent(const std::string &value) {
 
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
+  if (mode == "control_modal") {
+    std::string out;
+    if (cfg_option_value(options, "label_display") == "label") {
+      out = "label_display=label";
+    }
+    if (cfg_option_value(options, "number_display") == "volume") {
+      if (!out.empty()) out += ",";
+      out += "number_display=volume";
+    }
+    int max_pct = normalize_media_volume_max_percent(
+      cfg_option_value(options, VOLUME_MAX_OPTION));
+    if (max_pct < card_runtime_media_volume_max_default()) {
+      if (!out.empty()) out += ",";
+      out += std::string(VOLUME_MAX_OPTION) + "=" + std::to_string(max_pct);
+    }
+    return out;
+  }
   if (mode == "playlist") {
     std::string out;
     std::string content_id = cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
@@ -541,6 +560,30 @@ inline std::string cover_card_options_normalized(const std::string &options,
   return std::string(COVER_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
 }
 
+inline bool climate_control_tab_token_valid(const std::string &value) {
+  return value == "temperature" || value == "mode" || value == "preset" ||
+         value == "fan" || value == "swing";
+}
+
+inline std::string normalize_climate_control_tabs_value(const std::string &value) {
+  std::vector<std::string> parts = split_config_fields(
+    value.empty() ? std::string(CLIMATE_CONTROL_DEFAULT_TABS_VALUE) : value, '|');
+  std::vector<std::string> tabs;
+  for (const auto &part : parts) {
+    if (!climate_control_tab_token_valid(part)) continue;
+    if (std::find(tabs.begin(), tabs.end(), part) == tabs.end()) {
+      tabs.push_back(part);
+    }
+  }
+  if (tabs.empty()) tabs.push_back("temperature");
+  std::string out;
+  for (const auto &tab : tabs) {
+    if (!out.empty()) out += "|";
+    out += tab;
+  }
+  return out;
+}
+
 inline bool fan_control_tab_token_valid(const std::string &value) {
   return value == "power" || value == "speed" || value == "preset" ||
          value == "oscillation" || value == "direction";
@@ -641,7 +684,7 @@ inline std::string normalize_subpage_kind(const std::string &value) {
   return value == "lights" || value == "media" ||
     value == "climate" || value == "presence" ||
     value == "switch" || value == "alarm" ||
-    value == "cover" || value == "garage" ||
+    value == "cover" || value == "garage" || value == "gate" ||
     value == "lock" || value == "vacuum" ||
     value == "lawn_mower" ||
     value == "weather" || value == "sensor" ||
@@ -737,6 +780,10 @@ inline std::string normalize_climate_temperature_step(const std::string &value) 
   return card_runtime_climate_temperature_step(value);
 }
 
+inline bool climate_card_type(const std::string &type) {
+  return type == "climate" || type == "climate_control";
+}
+
 inline std::string sanitize_climate_range_value(const std::string &value) {
   const char *start = value.c_str();
   char *end = nullptr;
@@ -767,7 +814,8 @@ inline std::string normalize_climate_precision_config(const std::string &value) 
   return (precision.empty() ? std::string("0") : precision) + ":" + min + ":" + max;
 }
 
-inline std::string climate_card_options_normalized(const std::string &options) {
+inline std::string climate_card_options_normalized(const std::string &options,
+                                                   bool include_control_tabs = false) {
   std::string label_display = normalize_climate_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION));
   std::string number_display = normalize_climate_number_display(cfg_option_value(options, NUMBER_DISPLAY_OPTION));
   std::string temperature_step = normalize_climate_temperature_step(cfg_option_value(options, TEMPERATURE_STEP_OPTION));
@@ -788,6 +836,14 @@ inline std::string climate_card_options_normalized(const std::string &options) {
        large_numbers_explicitly_disabled(options))) {
     append_large_numbers_option(out, options);
   }
+  if (include_control_tabs) {
+    std::string tabs = normalize_climate_control_tabs_value(
+      cfg_option_value(options, CLIMATE_CONTROL_TABS_OPTION));
+    if (tabs != CLIMATE_CONTROL_DEFAULT_TABS_VALUE) {
+      if (!out.empty()) out += ",";
+      out += std::string(CLIMATE_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
+    }
+  }
   return out;
 }
 
@@ -803,7 +859,7 @@ inline bool card_large_numbers_supported(const ParsedCfg &p) {
   if (p.type == "action") return action_card_large_numbers_supported(p);
   if (sensor_card_local_sensor(p)) return false;
   if (p.type == "media") return p.sensor == "volume" || p.sensor == "position";
-  if (p.type == "climate") {
+  if (climate_card_type(p.type)) {
     return normalize_climate_number_display(cfg_option_value(p.options, "number_display")) != "icon";
   }
   if (p.type == "todo") {
@@ -833,6 +889,18 @@ inline std::string garage_card_options_normalized(const std::string &options,
                                                   const std::string &sensor) {
   (void)sensor;
   return normalize_garage_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION)) == "status"
+    ? std::string(LABEL_DISPLAY_OPTION) + "=status"
+    : "";
+}
+
+inline std::string normalize_gate_label_display(const std::string &value) {
+  return card_runtime_gate_label_display(value);
+}
+
+inline std::string gate_card_options_normalized(const std::string &options,
+                                                 const std::string &sensor) {
+  (void)sensor;
+  return normalize_gate_label_display(cfg_option_value(options, LABEL_DISPLAY_OPTION)) == "status"
     ? std::string(LABEL_DISPLAY_OPTION) + "=status"
     : "";
 }
@@ -1106,12 +1174,12 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     }
     p.options = media_card_options_normalized(p.options, p.sensor);
   }
-  if (p.type == "climate") {
+  if (climate_card_type(p.type)) {
     p.sensor.clear();
     p.unit.clear();
     if (p.icon.empty()) p.icon = "Thermostat";
     p.precision = normalize_climate_precision_config(p.precision);
-    p.options = climate_card_options_normalized(p.options);
+    p.options = climate_card_options_normalized(p.options, p.type == "climate_control");
   }
   if (p.type == "garage") {
     if (!card_runtime_garage_mode_valid(p.sensor)) p.sensor.clear();
@@ -1119,6 +1187,13 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.precision.clear();
     if (!p.sensor.empty()) p.icon_on = "Auto";
     p.options = garage_card_options_normalized(p.options, p.sensor);
+  }
+  if (p.type == "gate") {
+    if (!card_runtime_gate_mode_valid(p.sensor)) p.sensor.clear();
+    p.unit.clear();
+    p.precision.clear();
+    if (!p.sensor.empty()) p.icon_on = "Auto";
+    p.options = gate_card_options_normalized(p.options, p.sensor);
   }
   if (p.type == "lock") {
     if (!card_runtime_lock_mode_valid(p.sensor)) p.sensor.clear();
@@ -1318,7 +1393,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
     p.options = presence_card_options_normalized(p.options);
   }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && p.type != "climate" && p.type != "cover" && p.type != "garage" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "cover" && p.type != "garage" && p.type != "gate" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   if (sensor_card_local_sensor(p)) {
@@ -1364,9 +1439,19 @@ inline bool cfg_option_enabled(const std::string &options, const char *name) {
 }
 
 inline int media_volume_max_percent(const ParsedCfg &p) {
-  return p.type == "media" && p.sensor == "volume"
+  return p.type == "media" && (p.sensor == "volume" || p.sensor == "control_modal")
     ? normalize_media_volume_max_percent(cfg_option_value(p.options, VOLUME_MAX_OPTION))
     : card_runtime_media_volume_max_default();
+}
+
+inline bool media_control_card_show_status_label(const ParsedCfg &p) {
+  return p.type == "media" && p.sensor == "control_modal" &&
+         cfg_option_value(p.options, "label_display") != "label";
+}
+
+inline bool media_control_card_show_volume_number(const ParsedCfg &p) {
+  return p.type == "media" && p.sensor == "control_modal" &&
+         cfg_option_value(p.options, "number_display") == "volume";
 }
 
 inline std::string action_card_state_entity(const ParsedCfg &p) {
@@ -1685,21 +1770,6 @@ inline bool ha_entity_state_unavailable_ref(const std::string &entity_id,
   return false;
 }
 
-struct HaControlAvailabilityRef {
-  lv_obj_t *visual_obj;
-  lv_obj_t *input_obj;
-  bool disable_interaction;
-};
-
-inline std::vector<HaControlAvailabilityRef> &ha_control_availability_refs() {
-  static std::vector<HaControlAvailabilityRef> refs;
-  return refs;
-}
-
-inline void reset_ha_control_availability_refs() {
-  ha_control_availability_refs().clear();
-}
-
 #ifndef ESPCONTROL_HA_DEFERRED_HELPERS_DEFINED
 inline void ha_reset_deferred_state_requests() {}
 #endif
@@ -1719,45 +1789,6 @@ inline void bump_ha_subscription_generation() {
   if (generation == 0) generation = 1;
   ha_reset_deferred_state_requests();
   ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT);
-}
-
-inline void register_ha_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
-                                             bool disable_interaction = true) {
-  if (!visual_obj && !input_obj) return;
-  std::vector<HaControlAvailabilityRef> &refs = ha_control_availability_refs();
-  for (const auto &ref : refs) {
-    if (ref.visual_obj == visual_obj && ref.input_obj == input_obj &&
-        ref.disable_interaction == disable_interaction) {
-      return;
-    }
-  }
-  refs.push_back({visual_obj, input_obj, disable_interaction});
-}
-
-inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
-                                       bool available, bool disable_interaction = true) {
-  if (visual_obj) {
-    lv_obj_set_style_opa(visual_obj, available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
-    if (disable_interaction) {
-      if (available) lv_obj_clear_state(visual_obj, LV_STATE_DISABLED);
-      else lv_obj_add_state(visual_obj, LV_STATE_DISABLED);
-    }
-  }
-  if (!disable_interaction || !input_obj) return;
-  if (input_obj != visual_obj) {
-    if (available) lv_obj_clear_state(input_obj, LV_STATE_DISABLED);
-    else lv_obj_add_state(input_obj, LV_STATE_DISABLED);
-  }
-  if (available) lv_obj_add_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
-  else lv_obj_clear_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
-}
-
-inline void apply_registered_ha_control_availability(bool available) {
-  const auto &refs = ha_control_availability_refs();
-  for (const auto &ref : refs) {
-    apply_control_availability(ref.visual_obj, ref.input_obj, available, ref.disable_interaction);
-  }
-  if (!refs.empty()) notify_dashboard_content_changed();
 }
 
 inline std::string sentence_cap_text(const std::string &state) {
@@ -2023,7 +2054,6 @@ inline void refresh_weather_forecast_card_visuals() {
   bool updated = false;
   for (int i = 0; i < count; i++) {
     if (!weather_forecast_card_ref_ready(refs[i])) continue;
-    apply_control_availability(refs[i].btn, refs[i].btn, refs[i].valid, false);
     apply_weather_forecast_card_text(refs[i], refs[i].valid, refs[i].high,
                                      refs[i].low, refs[i].source_unit);
     updated = true;
@@ -2149,9 +2179,6 @@ inline void register_weather_forecast_card(lv_obj_t *btn,
   weather_forecast_card_refs()[count++] = {
     btn, value_lbl, unit_lbl, label_lbl, entity_id, day, label, "", false, 0, 0, ""
   };
-  apply_control_availability(weather_forecast_card_refs()[count - 1].btn,
-                             weather_forecast_card_refs()[count - 1].btn,
-                             false, false);
   apply_weather_forecast_card_text(weather_forecast_card_refs()[count - 1], false, 0, 0, "");
 }
 
@@ -2653,6 +2680,37 @@ inline const char *garage_card_label(const ParsedCfg &p) {
 
 inline bool garage_card_show_status(const ParsedCfg &p) {
   return normalize_garage_label_display(cfg_option_value(p.options, "label_display")) == "status";
+}
+
+inline const char* gate_closed_icon(const std::string &icon) {
+  return (icon.empty() || icon == "Auto") ? find_icon("Gate") : find_icon(icon.c_str());
+}
+
+inline const char* gate_open_icon(const std::string &icon_on) {
+  return (icon_on.empty() || icon_on == "Auto") ? find_icon("Gate Open") : find_icon(icon_on.c_str());
+}
+
+inline bool gate_command_mode(const std::string &sensor) {
+  return card_runtime_gate_command_mode(sensor);
+}
+
+inline const char *gate_command_icon(const ParsedCfg &p) {
+  if (!p.icon.empty() && p.icon != "Auto") return find_icon(p.icon.c_str());
+  if (p.sensor == "open") return find_icon("Gate Open");
+  if (p.sensor == "stop") return find_icon("Stop");
+  return find_icon("Gate");
+}
+
+inline const char *gate_card_label(const ParsedCfg &p) {
+  if (!p.label.empty()) return p.label.c_str();
+  if (p.sensor == "open") return espcontrol_i18n("Open");
+  if (p.sensor == "close") return espcontrol_i18n("Close");
+  if (p.sensor == "stop") return espcontrol_i18n("Stop");
+  return espcontrol_i18n("Gate");
+}
+
+inline bool gate_card_show_status(const ParsedCfg &p) {
+  return normalize_gate_label_display(cfg_option_value(p.options, "label_display")) == "status";
 }
 
 inline bool alarm_card_show_status_icon(const ParsedCfg &p) {

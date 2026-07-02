@@ -190,6 +190,20 @@ inline std::string card_runtime_garage_label_display(const std::string &value) {
     : CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT;
 }
 
+inline bool card_runtime_gate_mode_valid(const std::string &mode) {
+  return card_contract_gate_mode_valid(mode);
+}
+
+inline bool card_runtime_gate_command_mode(const std::string &mode) {
+  return card_runtime_gate_mode_valid(mode) && !mode.empty();
+}
+
+inline std::string card_runtime_gate_label_display(const std::string &value) {
+  return card_contract_gate_label_display_valid(value)
+    ? value
+    : CARD_CONTRACT_GATE_LABEL_DISPLAY_DEFAULT;
+}
+
 inline bool card_runtime_lock_mode_valid(const std::string &mode) {
   return card_contract_lock_mode_valid(mode);
 }

@@ -14,13 +14,14 @@ A Media card controls a Home Assistant `media_player` entity. It can work as a s
 
 1. Select a card and change its type to **Media**.
 2. Choose the media **Type**:
+   - **All Controls**
    - **Play/Pause Button**
    - **Previous Button**
    - **Next Button**
    - **Volume Button**
    - **Track Position**
    - **Now Playing**
-   - **Playlist Button**
+   - **Media Content**
 3. Enter the media player entity, for example `media_player.living_room`.
 4. Set a label or icon if the selected type shows those fields.
 
@@ -60,9 +61,13 @@ You can choose optional controls:
 
 Now Playing works best on wider or larger cards because it has more room for track text.
 
-## Playlist Button
+## All Controls
 
-Playlist Button is a shortcut for anything Home Assistant can play with the `media_player.play_media` action. It is not tied to Spotify, Music Assistant, Plex, Jellyfin, Sonos, or any other specific music system.
+All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
+
+## Media Content
+
+Media Content is a shortcut for anything Home Assistant can play with the `media_player.play_media` action. It is not tied to Spotify, Music Assistant, Plex, Jellyfin, Sonos, or any other specific music system.
 
 Use it for playlists, radio stations, albums, saved favorites, channels, podcasts, or other playable media items.
 
@@ -75,7 +80,7 @@ Enter:
 - **Label** - the name shown on the button, for example `Morning Playlist`.
 - **Icon** - the icon shown on the button.
 
-The important part is that EspControl uses the same values Home Assistant uses. If the values work in Home Assistant first, they should work from the EspControl button.
+EspControl sends the media content type as `playlist` automatically. The important part is that the media content ID works in Home Assistant first.
 
 When Home Assistant reports the currently playing `media_content_id`, the Playlist Button highlights only while that configured playlist or media item is playing. Some integrations do not report this value reliably; in that case EspControl can start the playlist, but it may not be able to confirm that the specific playlist is active.
 
@@ -90,7 +95,7 @@ The easiest way is to test the media item in Home Assistant first, then copy the
 5. Open the **Actions** tab.
 6. Choose the action **Media player: Play media**.
 7. Select the same speaker entity you want EspControl to use.
-8. Enter the media content ID and media content type you want to test.
+8. Enter the media content ID you want to test and use `playlist` as the media content type.
 9. Press **Perform action**.
 10. If the speaker starts the right media, copy those same values into EspControl.
 
@@ -178,11 +183,11 @@ data:
   media_content_type: "playlist"
 ```
 
-If the Home Assistant test starts the right playlist, use the same `media_content_id` and `media_content_type` in EspControl.
+If the Home Assistant test starts the right playlist, use the same `media_content_id` in EspControl.
 
 ### Troubleshooting
 
-If tapping the Playlist Button does not start playback:
+If tapping the Media Content button does not start playback:
 
 - Make sure the button has an **ID**. EspControl requires this before saving.
 - Test the same values with `media_player.play_media` in Home Assistant.

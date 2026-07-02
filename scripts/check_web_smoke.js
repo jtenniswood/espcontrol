@@ -374,6 +374,73 @@ assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Security", type: "alarm" }).iconHtml.includes("mdi-shield-off"),
   "alarm preview defaults to the status icon"
 );
+const mediaControlPickerOption = pickerOptions.find((option) => option.key === "media_control");
+assert(mediaControlPickerOption, "media control appears as a top-level card picker shortcut");
+assert.strictEqual(mediaControlPickerOption.label, "All Controls", "media control picker option has a clear label");
+assert.strictEqual(
+  hooks.defaultButtonTypeForPicker("media_control"),
+  "media",
+  "media control picker shortcut still saves as the media card type"
+);
+assert(
+  Array.from(hooks.mediaModeOptionValues()).includes("control_modal"),
+  "media mode options include the media control modal subtype"
+);
+assert.strictEqual(
+  Array.from(hooks.mediaModeOptionValues())[0],
+  "control_modal",
+  "all media controls appears first in the media mode list"
+);
+const mediaControlIconPreview = hooks.buttonTypePreviewFor("media", {
+  label: "All Controls",
+  icon: "Music",
+  sensor: "control_modal",
+  type: "media",
+});
+assert(
+  mediaControlIconPreview.iconHtml.includes("mdi-music"),
+  "all controls preview uses the selected custom icon"
+);
+const mediaControlConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
+  entity: "media_player.living_room",
+  label: "Speaker",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=status,number_display=volume",
+}));
+assert.strictEqual(
+  mediaControlConfig.options,
+  "number_display=volume",
+  "media control parent card display options survive normalization"
+);
+assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlConfig), "status");
+assert.strictEqual(hooks.mediaNumberDisplayMode(mediaControlConfig), "volume");
+const mediaControlLabelConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
+  entity: "media_player.living_room",
+  label: "Speaker",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=label",
+}));
+assert.strictEqual(mediaControlLabelConfig.options, "label_display=label");
+assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlLabelConfig), "label");
+const mediaControlPreview = hooks.buttonTypePreviewFor("media", mediaControlConfig);
+assert(
+  mediaControlPreview.iconHtml.includes("sp-sensor-preview"),
+  "media control volume display previews as a top-left number"
+);
+assert(
+  mediaControlPreview.labelHtml.includes("Playing"),
+  "media control status label preview uses player state text"
+);
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Alarm", type: "alarm", options: "icon_display=static" }).iconHtml.includes("mdi-bell-ring"),
   "alarm preview uses the selected Alarm icon"
