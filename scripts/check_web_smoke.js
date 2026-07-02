@@ -398,8 +398,8 @@ const mediaControlIconPreview = hooks.buttonTypePreviewFor("media", {
   type: "media",
 });
 assert(
-  mediaControlIconPreview.iconHtml.includes("mdi-play-pause"),
-  "all controls preview uses the play/pause icon even with an old saved custom icon"
+  mediaControlIconPreview.iconHtml.includes("mdi-music"),
+  "all controls preview uses the selected custom icon"
 );
 const mediaControlConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
   entity: "media_player.living_room",

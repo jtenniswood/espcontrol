@@ -2821,8 +2821,8 @@ inline void setup_light_temp_visual(BtnSlot &s, const ParsedCfg &p, uint32_t on_
 
 inline const char *media_default_icon(const std::string &mode,
                                       const std::string &icon) {
-  if (mode == "control_modal") return find_icon("Play Pause");
   if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
+  if (mode == "control_modal") return find_icon("Play Pause");
   if (mode == "previous") return find_icon("Skip Previous");
   if (mode == "next") return find_icon("Skip Next");
   if (mode == "play_pause") return find_icon("Play Pause");

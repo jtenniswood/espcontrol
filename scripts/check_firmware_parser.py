@@ -419,6 +419,9 @@ int main() {
   auto media_control_implicit_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media");
   assert(media_control_implicit_display.options == "");
   assert(media_control_card_show_status_label(media_control_implicit_display));
+  auto media_control_custom_icon = parse_cfg("media_player.living;Speaker;Music;Auto;control_modal;;media");
+  assert(media_control_custom_icon.sensor == "control_modal");
+  assert(media_control_custom_icon.icon == "Music");
   auto volume_uncapped = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=150");
   assert(volume_uncapped.options == "");
   assert(media_volume_max_percent(volume_uncapped) == 100);
