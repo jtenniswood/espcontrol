@@ -808,13 +808,8 @@ inline void media_control_refresh_progress_time_label(MediaControlCtx *ctx, floa
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx || !ui.progress_time_lbl) return;
   char position_buf[16];
-  char remaining_buf[16];
   media_format_time(seconds, position_buf, sizeof(position_buf));
-  float remaining = ctx->duration > seconds ? ctx->duration - seconds : 0.0f;
-  media_format_time(remaining, remaining_buf, sizeof(remaining_buf));
-  char time_buf[40];
-  snprintf(time_buf, sizeof(time_buf), "%s / -%s", position_buf, remaining_buf);
-  lv_label_set_text(ui.progress_time_lbl, time_buf);
+  lv_label_set_text(ui.progress_time_lbl, position_buf);
 }
 
 inline lv_obj_t *media_control_create_progress_fill(lv_obj_t *slider, lv_color_t fill_color) {
@@ -1284,8 +1279,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
       ui.progress_slider, ui.progress_handle, lv_slider_get_value(ui.progress_slider));
   }
   if (ui.progress_time_lbl) {
-    lv_coord_t time_h = artist_font && artist_font->line_height > 0
-      ? artist_font->line_height : control_modal_scaled_px(24, layout.short_side);
+    lv_coord_t time_h = title_font && title_font->line_height > 0
+      ? title_font->line_height : control_modal_scaled_px(28, layout.short_side);
     lv_coord_t time_gap = control_modal_scaled_px(12, layout.short_side);
     if (time_gap < 8) time_gap = 8;
     lv_coord_t time_y =
@@ -1449,10 +1444,10 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.progress_handle = media_control_create_progress_handle(ui.progress_slider);
   ui.progress_time_lbl = lv_label_create(ui.progress_box);
   if (ui.progress_time_lbl) {
-    lv_label_set_text(ui.progress_time_lbl, "0:00 / -0:00");
+    lv_label_set_text(ui.progress_time_lbl, "0:00");
     lv_obj_set_style_text_color(ui.progress_time_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(ui.progress_time_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(ui.progress_time_lbl, ctx->label_font, LV_PART_MAIN);
+    if (ctx->title_font) lv_obj_set_style_text_font(ui.progress_time_lbl, ctx->title_font, LV_PART_MAIN);
     apply_width_compensation(ui.progress_time_lbl, ctx->width_compensation_percent);
   }
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
