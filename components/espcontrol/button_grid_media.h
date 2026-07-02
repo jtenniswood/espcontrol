@@ -1076,7 +1076,8 @@ inline lv_obj_t *media_control_create_box(lv_obj_t *parent) {
 }
 
 inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *icon,
-                                                  const lv_font_t *font) {
+                                                  const lv_font_t *font,
+                                                  uint32_t pressed_color) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
   lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
@@ -1085,6 +1086,8 @@ inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
   control_modal_apply_pressed_fill(btn);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(pressed_color),
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
@@ -1496,12 +1499,12 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   }, LV_EVENT_PRESS_LOST, nullptr);
 
   ui.previous_btn = media_control_create_icon_button(
-    ui.controls_box, find_icon("Skip Previous"), ctx->icon_font);
+    ui.controls_box, find_icon("Skip Previous"), ctx->icon_font, ctx->accent_color);
   ui.play_btn = media_control_create_icon_button(
-    ui.controls_box, find_icon("Play"), ctx->icon_font);
+    ui.controls_box, find_icon("Play"), ctx->icon_font, ctx->accent_color);
   ui.play_icon_lbl = ui.play_btn ? lv_obj_get_child(ui.play_btn, 0) : nullptr;
   ui.next_btn = media_control_create_icon_button(
-    ui.controls_box, find_icon("Skip Next"), ctx->icon_font);
+    ui.controls_box, find_icon("Skip Next"), ctx->icon_font, ctx->accent_color);
   lv_obj_add_event_cb(ui.previous_btn, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (ui.active && ui.active->available) {
