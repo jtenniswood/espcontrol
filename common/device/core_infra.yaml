@@ -41,7 +41,6 @@ api:
           }
           refresh_image_cards();
           if (ha_api_state_connected()) {
-            apply_registered_ha_control_availability(true);
             refresh_weather_forecast_cards();
             ha_flush_deferred_state_requests();
           }
@@ -87,7 +86,7 @@ api:
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
         todo_cancel_pending_request("api disconnected");
-        apply_registered_ha_control_availability(false);
+    - script.execute: ha_reconnect_flow
 
 interval:
   - interval: 5s

@@ -1679,21 +1679,6 @@ inline bool ha_entity_state_unavailable_ref(const std::string &entity_id,
   return false;
 }
 
-struct HaControlAvailabilityRef {
-  lv_obj_t *visual_obj;
-  lv_obj_t *input_obj;
-  bool disable_interaction;
-};
-
-inline std::vector<HaControlAvailabilityRef> &ha_control_availability_refs() {
-  static std::vector<HaControlAvailabilityRef> refs;
-  return refs;
-}
-
-inline void reset_ha_control_availability_refs() {
-  ha_control_availability_refs().clear();
-}
-
 #ifndef ESPCONTROL_HA_DEFERRED_HELPERS_DEFINED
 inline void ha_reset_deferred_state_requests() {}
 #endif
@@ -1715,19 +1700,6 @@ inline void bump_ha_subscription_generation() {
   ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT);
 }
 
-inline void register_ha_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
-                                             bool disable_interaction = true) {
-  if (!visual_obj && !input_obj) return;
-  std::vector<HaControlAvailabilityRef> &refs = ha_control_availability_refs();
-  for (const auto &ref : refs) {
-    if (ref.visual_obj == visual_obj && ref.input_obj == input_obj &&
-        ref.disable_interaction == disable_interaction) {
-      return;
-    }
-  }
-  refs.push_back({visual_obj, input_obj, disable_interaction});
-}
-
 inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
                                        bool available, bool disable_interaction = true) {
   if (visual_obj) {
@@ -1744,14 +1716,6 @@ inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj
   }
   if (available) lv_obj_add_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
   else lv_obj_clear_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
-}
-
-inline void apply_registered_ha_control_availability(bool available) {
-  const auto &refs = ha_control_availability_refs();
-  for (const auto &ref : refs) {
-    apply_control_availability(ref.visual_obj, ref.input_obj, available, ref.disable_interaction);
-  }
-  if (!refs.empty()) notify_dashboard_content_changed();
 }
 
 inline std::string sentence_cap_text(const std::string &state) {
@@ -2017,7 +1981,6 @@ inline void refresh_weather_forecast_card_visuals() {
   bool updated = false;
   for (int i = 0; i < count; i++) {
     if (!weather_forecast_card_ref_ready(refs[i])) continue;
-    apply_control_availability(refs[i].btn, refs[i].btn, refs[i].valid, false);
     apply_weather_forecast_card_text(refs[i], refs[i].valid, refs[i].high,
                                      refs[i].low, refs[i].source_unit);
     updated = true;
@@ -2143,9 +2106,6 @@ inline void register_weather_forecast_card(lv_obj_t *btn,
   weather_forecast_card_refs()[count++] = {
     btn, value_lbl, unit_lbl, label_lbl, entity_id, day, label, "", false, 0, 0, ""
   };
-  apply_control_availability(weather_forecast_card_refs()[count - 1].btn,
-                             weather_forecast_card_refs()[count - 1].btn,
-                             false, false);
   apply_weather_forecast_card_text(weather_forecast_card_refs()[count - 1], false, 0, 0, "");
 }
 

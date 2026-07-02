@@ -555,7 +555,6 @@ inline void alarm_apply_home_state(AlarmCardCtx *ctx, const std::string &state) 
   if (!alarm_state_is_delay(ctx->state)) ctx->arm_delay_total_seconds = -1;
   bool unavailable = state.empty() || state == "unavailable" || state == "unknown";
   ctx->available = !unavailable;
-  apply_control_availability(ctx->btn, ctx->btn, ctx->available);
 
   bool triggered = state == "triggered";
   bool active = alarm_state_is_active(state) || triggered;
@@ -600,7 +599,6 @@ inline void alarm_apply_home_arm_delay(AlarmCardCtx *ctx, const std::string &del
 
 inline void subscribe_alarm_state(AlarmCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
@@ -625,7 +623,6 @@ inline void alarm_apply_action_availability(AlarmCardCtx *ctx, const std::string
   if (!ctx || !ctx->btn) return;
   bool unavailable = state.empty() || state == "unavailable" || state == "unknown";
   ctx->available = !unavailable;
-  apply_control_availability(ctx->btn, ctx->btn, ctx->available);
 }
 
 inline void alarm_apply_action_state(AlarmCardCtx *ctx, const std::string &mode,
@@ -656,7 +653,6 @@ inline void alarm_apply_action_arm_mode(AlarmCardCtx *ctx, const std::string &mo
 
 inline void subscribe_alarm_action_availability(AlarmCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ctx->available = true;
   ha_subscribe_state(
     ctx->entity_id,
@@ -668,7 +664,6 @@ inline void subscribe_alarm_action_availability(AlarmCardCtx *ctx) {
 
 inline void subscribe_alarm_action_state(AlarmCardCtx *ctx, const std::string &mode) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ctx->available = true;
   ha_subscribe_state(
     ctx->entity_id,

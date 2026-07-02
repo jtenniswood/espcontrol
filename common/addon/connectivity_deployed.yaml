@@ -31,7 +31,7 @@ wifi:
                 - lvgl.page.show: ha_setup_page
                 - script.execute: setup_screen_dim
               else:
-                - script.execute: navigate_after_api
+                - script.execute: ha_reconnect_flow
   on_disconnect:
     - script.execute: network_status_refresh
     - if:
@@ -51,9 +51,15 @@ api:
               condition:
                 lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'
               then:
-                - script.stop: setup_screen_dim
-                - script.execute: clock_bar_hide
-                - lvgl.page.show: ha_actions_page
+                - if:
+                    condition:
+                      lambda: 'return id(button_order).state.empty();'
+                    then:
+                      - script.stop: setup_screen_dim
+                      - script.execute: clock_bar_hide
+                      - lvgl.page.show: ha_actions_page
+                    else:
+                      - script.execute: navigate_after_api
               else:
                 - script.execute: navigate_after_api
 
@@ -92,6 +98,24 @@ script:
               wifi.connected:
           then:
             - script.execute: wifi_show_reconnecting
+
+  - id: ha_reconnect_flow
+    mode: restart
+    then:
+      - delay: 5s
+      - if:
+          condition:
+            and:
+              - wifi.connected:
+              - lambda: 'return !ha_api_state_connected();'
+          then:
+            - script.execute: clock_bar_hide
+            - lambda: |-
+                lv_label_set_text(id(ha_setup_title), espcontrol_i18n("Home Assistant"));
+                lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n("Waiting for Home Assistant"));
+                lv_label_set_text(id(ha_setup_path), "");
+            - lvgl.page.show: ha_setup_page
+            - script.execute: setup_screen_dim
 
   - id: navigate_after_api
     mode: restart

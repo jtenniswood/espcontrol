@@ -1199,7 +1199,6 @@ inline FanCardCtx *create_fan_card_context(
 
 inline void subscribe_fan_card_state(FanCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   auto refresh = [ctx]() {
     if (ctx->type == "fan_control") {
       fan_control_refresh_card(ctx);
