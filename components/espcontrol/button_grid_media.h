@@ -9,6 +9,8 @@ enum class MediaControlTab : uint8_t {
 
 constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
 
+constexpr uint32_t MEDIA_CONTROL_PROGRESS_FILL_COLOR = 0x8A8A8A;
+
 struct MediaControlCtx {
   std::string entity_id;
   std::string label;
@@ -1268,7 +1270,8 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   apply_width_compensation(ui.artist_lbl, ctx->width_compensation_percent);
 
   ui.progress_slider = lv_slider_create(ui.controls_box);
-  media_control_style_progress_slider(ui.progress_slider, ctx->secondary_color, ctx->accent_color);
+  media_control_style_progress_slider(
+    ui.progress_slider, ctx->secondary_color, MEDIA_CONTROL_PROGRESS_FILL_COLOR);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_progress) return;
