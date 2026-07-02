@@ -137,6 +137,25 @@ inline void media_control_refresh_volume(MediaControlCtx *ctx);
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct);
 inline int media_control_clamp_volume(MediaControlCtx *ctx, int pct);
 
+inline void media_control_apply_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
+                                             bool available,
+                                             bool disable_interaction = true) {
+  if (visual_obj) {
+    lv_obj_set_style_opa(visual_obj, available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
+    if (disable_interaction) {
+      if (available) lv_obj_clear_state(visual_obj, LV_STATE_DISABLED);
+      else lv_obj_add_state(visual_obj, LV_STATE_DISABLED);
+    }
+  }
+  if (!disable_interaction || !input_obj) return;
+  if (input_obj != visual_obj) {
+    if (available) lv_obj_clear_state(input_obj, LV_STATE_DISABLED);
+    else lv_obj_add_state(input_obj, LV_STATE_DISABLED);
+  }
+  if (available) lv_obj_add_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
+  else lv_obj_clear_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
+}
+
 inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
   if (!ctx) return;
   if (ctx->label_lbl) {
@@ -155,7 +174,6 @@ inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
 
 inline void subscribe_media_control_state(MediaControlCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
@@ -163,7 +181,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         ctx->state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         ctx->available = !ha_state_unavailable_ref(state);
         ctx->playing = ctx->state_text == "playing";
-        apply_control_availability(ctx->btn, ctx->btn, ctx->available);
+        media_control_apply_availability(ctx->btn, ctx->btn, ctx->available);
         set_card_checked_state(ctx->btn, ctx->available && ctx->playing);
         media_control_refresh_parent_card(ctx);
         if (ctx->position_timer) {
@@ -934,7 +952,7 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
   media_control_refresh_progress_time_label(ctx, seconds);
   if (ui.progress_slider) {
     bool has_duration = ctx->duration > 0.0f && ctx->available;
-    apply_control_availability(ui.progress_slider, ui.progress_slider, has_duration);
+    media_control_apply_availability(ui.progress_slider, ui.progress_slider, has_duration);
   }
 }
 
@@ -962,7 +980,7 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   std::string artist = media_control_artist_text(ctx);
   if (ui.title_lbl) lv_label_set_text(ui.title_lbl, title.c_str());
   if (ui.artist_lbl) lv_label_set_text(ui.artist_lbl, artist.c_str());
-  apply_control_availability(ui.panel, ui.panel, ctx->available, false);
+  media_control_apply_availability(ui.panel, ui.panel, ctx->available, false);
   media_control_refresh_play_icon(ctx);
   media_control_refresh_progress(ctx);
   media_control_refresh_volume(ctx);

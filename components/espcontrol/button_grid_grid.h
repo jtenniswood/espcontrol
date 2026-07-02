@@ -2143,8 +2143,6 @@ inline void grid_phase2(
               subscribe_media_state(sub_slot.btn,
                 media_play_pause_show_state(sb_cfg) ? sub_slot.text_lbl : nullptr,
                 sb_cfg.entity);
-            else
-              subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
           } else if (mode == "control_modal") {
             MediaControlCtx *ctx = create_media_control_context(
               sub_slot, sb_cfg,
