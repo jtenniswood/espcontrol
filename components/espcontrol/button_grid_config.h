@@ -412,8 +412,8 @@ inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
   if (mode == "control_modal") {
     std::string out;
-    if (cfg_option_value(options, "label_display") == "status") {
-      out = "label_display=status";
+    if (cfg_option_value(options, "label_display") == "label") {
+      out = "label_display=label";
     }
     if (cfg_option_value(options, "number_display") == "volume") {
       if (!out.empty()) out += ",";
@@ -1415,7 +1415,7 @@ inline int media_volume_max_percent(const ParsedCfg &p) {
 
 inline bool media_control_card_show_status_label(const ParsedCfg &p) {
   return p.type == "media" && p.sensor == "control_modal" &&
-         cfg_option_value(p.options, "label_display") == "status";
+         cfg_option_value(p.options, "label_display") != "label";
 }
 
 inline bool media_control_card_show_volume_number(const ParsedCfg &p) {

@@ -409,13 +409,16 @@ int main() {
   auto media_control_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media;;label_display=status,number_display=volume");
   assert(media_control_display.type == "media");
   assert(media_control_display.sensor == "control_modal");
-  assert(media_control_display.options == "label_display=status,number_display=volume");
+  assert(media_control_display.options == "number_display=volume");
   assert(media_control_card_show_status_label(media_control_display));
   assert(media_control_card_show_volume_number(media_control_display));
   auto media_control_default_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media;;label_display=label,number_display=icon,large_numbers");
-  assert(media_control_default_display.options == "");
+  assert(media_control_default_display.options == "label_display=label");
   assert(!media_control_card_show_status_label(media_control_default_display));
   assert(!media_control_card_show_volume_number(media_control_default_display));
+  auto media_control_implicit_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media");
+  assert(media_control_implicit_display.options == "");
+  assert(media_control_card_show_status_label(media_control_implicit_display));
   auto volume_uncapped = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=150");
   assert(volume_uncapped.options == "");
   assert(media_volume_max_percent(volume_uncapped) == 100);
