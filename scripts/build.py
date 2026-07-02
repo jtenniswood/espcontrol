@@ -940,6 +940,8 @@ def card_doc_type_name(card_type):
 def summarize_card_options(card):
     options = []
     for option in card.get("options", []):
+        if option.get("docsHidden"):
+            continue
         label = option.get("label") or option["name"]
         values = option.get("values") or []
         if values:
