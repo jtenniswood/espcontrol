@@ -498,6 +498,26 @@ assert.strictEqual(hooks.normalizeClimateTemperatureStep("bad"), "1", "climate i
 assert.deepStrictEqual(Array.from(hooks.climatePrecisionValues()), ["", "1", "2", "3"], "climate precision values are spec-backed");
 assert.strictEqual(hooks.normalizeClimatePrecisionConfig("3:-1.24:5.05"), "3:-1.2:5.1", "climate precision range cleanup is spec-backed");
 assert.strictEqual(hooks.normalizeClimatePrecisionConfig("bad:-25:5"), "0:-25:5", "climate invalid precision preserves custom range with fallback precision");
+assert.deepStrictEqual(
+  Array.from(hooks.climateControlTabs({ options: "climate_tabs=fan%7Ctemperature%7Cmode" })),
+  ["fan", "temperature", "mode"],
+  "climate control tabs preserve custom order"
+);
+assert.strictEqual(
+  hooks.normalizeClimateOptions("climate_tabs=temperature%7Cmode%7Cpreset%7Cfan%7Cswing"),
+  "",
+  "plain climate cards omit climate control tabs"
+);
+assert.strictEqual(
+  hooks.normalizeClimateOptions("climate_tabs=temperature%7Cmode%7Cpreset%7Cfan%7Cswing", true),
+  "",
+  "default climate control tab order is omitted"
+);
+assert.strictEqual(
+  hooks.normalizeClimateOptions("climate_tabs=bad%7Cfan%7Cfan", true),
+  "climate_tabs=fan",
+  "invalid and duplicate climate control tabs are removed"
+);
 const coverOptionSpecs = hooks.cardContractOptions("cover");
 const coverOptionByName = Object.fromEntries(coverOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
@@ -1711,6 +1731,29 @@ assertButtonRoundTrip(hooks, "climate card icon display", {
   options: "number_display=icon",
 }, false);
 
+assertButtonMigration(hooks, "plain climate drops all-controls tabs", "climate.hallway;Hallway;Thermostat;Auto;;;climate;1;climate_tabs=mode%7Ctemperature", {
+  entity: "climate.hallway",
+  label: "Hallway",
+  icon: "Thermostat",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate",
+  precision: "1",
+});
+
+assertButtonRoundTrip(hooks, "climate all controls custom tabs", {
+  entity: "climate.hallway",
+  label: "Hallway",
+  icon: "Thermostat",
+  icon_on: "Auto",
+  sensor: "",
+  unit: "",
+  type: "climate_control",
+  precision: "1",
+  options: "climate_tabs=mode%7Ctemperature",
+}, false);
+
 assertButtonMigration(hooks, "climate clears ignored fields", "climate.living_room;Living;Thermostat;Radiator;sensor.temp;deg C;climate;bad", {
   entity: "climate.living_room",
   label: "Living",
@@ -1810,6 +1853,11 @@ assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_temperature", true)
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("light_control", false), false, "full light control subtype hidden from top-level picker");
 assert.strictEqual(hooks.buttonTypeRuntimeSpec("light_control").hidden, true, "full light control is grouped under Lights");
 assert.strictEqual(hooks.defaultButtonTypeForPicker("light_brightness"), "light_control", "lights picker defaults to all controls");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("climate", false), true, "climate picker visible on parent page");
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("climate_control", false), false, "all controls climate subtype hidden from top-level picker");
+assert.strictEqual(hooks.buttonTypeRuntimeSpec("climate_control").label, "All Controls", "all controls climate subtype has its own label");
+assert.strictEqual(hooks.buttonTypeRuntimeSpec("climate_control").pickerKey, "climate", "all controls climate subtype is grouped under Climate");
+assert.strictEqual(hooks.defaultButtonTypeForPicker("climate"), "climate_control", "climate picker defaults to all controls");
 assert.strictEqual(hooks.defaultButtonTypeForPicker("cover"), "cover", "ungrouped picker entries keep their own type");
 assert.strictEqual(
   hooks.buttonTypePickerKeysFor(false, "light_brightness").indexOf("light_brightness") >= 0,

@@ -412,6 +412,66 @@
         "options": ""
       }
     },
+    "climate_control": {
+      "label": "All Controls",
+      "allowInSubpage": true,
+      "pickerKey": "climate",
+      "hidden": true,
+      "domains": ["climate"],
+      "options": [
+        {
+          "name": "label_display",
+          "label": "Label Display",
+          "kind": "choice",
+          "values": ["label", "status", "actual", "target"],
+          "defaultValue": "label"
+        },
+        {
+          "name": "number_display",
+          "label": "Icon & Temperatures",
+          "kind": "choice",
+          "values": ["icon", "actual", "target"],
+          "defaultValue": "target"
+        },
+        {
+          "name": "temperature_step",
+          "label": "Temperature Step",
+          "kind": "choice",
+          "values": ["1", "0.5"],
+          "defaultValue": "1"
+        },
+        {
+          "name": "large_numbers",
+          "label": "Large Temperature Numbers",
+          "kind": "flag"
+        },
+        {
+          "name": "climate_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "defaultValue": "temperature|mode|preset|fan|swing"
+        }
+      ],
+      "behavior": {
+        "climate": {
+          "defaultLabelDisplay": "label",
+          "defaultNumberDisplay": "target",
+          "defaultTemperatureStep": "1",
+          "precisionValues": ["", "1", "2", "3"]
+        }
+      },
+      "default": {
+        "entity": "",
+        "label": "Climate",
+        "icon": "Thermostat",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "climate_control",
+        "precision": "",
+        "options": ""
+      }
+    },
     "cover": {
       "label": "Cover",
       "allowInSubpage": true,
@@ -1279,6 +1339,7 @@
     "calendar": true,
     "clock": true,
     "climate": true,
+    "climate_control": true,
     "media": true,
     "subpage": true,
     "timezone": true
@@ -1315,6 +1376,7 @@
     "lock": "K",
     "media": "M",
     "climate": "H",
+    "climate_control": "HC",
     "push": "P",
     "screen_lock": "SL",
     "webhook": "WH",

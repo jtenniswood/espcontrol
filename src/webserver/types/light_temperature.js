@@ -172,6 +172,8 @@ function renderLightControlTabSettings(panel, b, helpers) {
     normalizeOptions: normalizeLightControlOptions,
     setTabs: setLightControlTabs,
     idPrefix: "light-tab-",
+    groupLabel: "Modal Controls",
+    groupIdSuffix: "light-modal-controls",
   });
 }
 
@@ -297,8 +299,23 @@ registerButtonType("light_control", {
     renderLightControlTypeField(panel, b, helpers);
     b.options = normalizeLightControlOptions(b.options);
 
-    helpers.renderBasicCardFields(panel, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA);
+    helpers.renderCardEntityField(panel, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA);
     renderLightControlTabSettings(panel, b, helpers);
+    var cardSettingsDisclosure = helpers.disclosureSection(
+      "Card Settings",
+      helpers.idPrefix + "light-card-settings",
+      false
+    );
+    var cardSettings = cardSettingsDisclosure.section;
+    helpers.renderCardTextField(cardSettings, b, helpers, LIGHT_FULL_CONTROL_CARD_METADATA.labelField);
+    helpers.renderCardIconPair(
+      cardSettings,
+      b,
+      helpers,
+      LIGHT_FULL_CONTROL_CARD_METADATA.iconOff,
+      LIGHT_FULL_CONTROL_CARD_METADATA.iconOn
+    );
+    panel.appendChild(cardSettingsDisclosure.panel);
   },
   renderPreview: function (b, helpers) {
     var label = b.label || b.entity || "Light";

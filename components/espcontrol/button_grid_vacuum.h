@@ -130,9 +130,7 @@ inline void apply_vacuum_card_state(VacuumCardCtx *ctx,
   if (ctx->btn && ctx->mode == "start_stop") {
     set_card_checked_state(ctx->btn, ctx->state == "cleaning");
   }
-  if (ctx->btn) {
-    apply_control_availability(ctx->btn, ctx->btn, !unavailable, !ctx->status_card);
-  }
+  (void) unavailable;
 }
 
 inline void refresh_vacuum_card_translated_text(lv_obj_t *text_lbl,
@@ -168,7 +166,6 @@ inline void refresh_subpage_vacuum_card_translated_text() {
 
 inline void subscribe_vacuum_card_state(VacuumCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn, !ctx->status_card);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {

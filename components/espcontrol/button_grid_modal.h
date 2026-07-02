@@ -539,7 +539,7 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
     }
     control_modal_style_chrome_button(shell.close_btn, shell.layout, button_top_right);
     lv_obj_add_event_cb(shell.close_btn, [](lv_event_t *) {
-      control_modal_close_active();
+      control_modal_force_close_active();
     }, LV_EVENT_CLICKED, nullptr);
   }
 

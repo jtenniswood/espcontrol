@@ -112,15 +112,10 @@ inline void apply_lawn_mower_card_state(LawnMowerCardCtx *ctx,
       : ctx->label;
     set_wrapped_button_label_text(ctx->text_lbl, label);
   }
-  if (ctx->btn) {
-    bool available = !(ctx->state == "unavailable" || ctx->state == "unknown");
-    apply_control_availability(ctx->btn, ctx->btn, available, !ctx->status_card);
-  }
 }
 
 inline void subscribe_lawn_mower_card_state(LawnMowerCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn, !ctx->status_card);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {

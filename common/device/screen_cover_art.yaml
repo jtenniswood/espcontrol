@@ -984,6 +984,14 @@ script:
                      id(cover_art_cached_remote_url) != chosen) {
             alternate = id(cover_art_cached_remote_url);
           }
+          if (id(cover_art_refresh_needed) &&
+              !id(cover_art_cached_remote_url).empty() &&
+              id(cover_art_cached_remote_url) != id(cover_art_url) &&
+              chosen == id(cover_art_url)) {
+            ESP_LOGI("cover_art", "Preferring refreshed artwork URL over stale local artwork cache");
+            alternate = chosen;
+            chosen = id(cover_art_cached_remote_url);
+          }
 
           std::string fallback;
           std::string capped = esphome::artwork_image::cap_artwork_url(chosen, ${cover_art_decode_size});

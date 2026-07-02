@@ -497,14 +497,11 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
 inline void subscribe_media_state(lv_obj_t *btn_ptr,
                                   lv_obj_t *status_lbl,
                                   const std::string &entity_id) {
-  register_ha_control_availability(btn_ptr, btn_ptr);
   ha_subscribe_state(
     entity_id,
     std::function<void(esphome::StringRef)>(
       [btn_ptr, status_lbl](esphome::StringRef state) {
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-        bool unavailable = ha_state_unavailable_ref(state);
-        apply_control_availability(btn_ptr, btn_ptr, !unavailable);
         bool playing = state_text == "playing";
         set_card_checked_state(btn_ptr, playing);
         if (status_lbl) {
@@ -543,7 +540,6 @@ inline MediaPlaylistCtx *create_media_playlist_context(lv_obj_t *btn,
 
 inline void subscribe_media_playlist_state(MediaPlaylistCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
@@ -551,7 +547,6 @@ inline void subscribe_media_playlist_state(MediaPlaylistCtx *ctx) {
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         ctx->available = !ha_state_unavailable_ref(state);
         ctx->playing = state_text == "playing";
-        apply_control_availability(ctx->btn, ctx->btn, ctx->available);
         media_playlist_refresh_checked(ctx);
       })
   );
@@ -654,13 +649,11 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
 
 inline void subscribe_media_volume_state(MediaVolumeCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef state) {
         ctx->available = !ha_state_unavailable_ref(state);
-        apply_control_availability(ctx->btn, ctx->btn, ctx->available);
         if (!ctx->available) media_volume_hide_modal();
       })
   );
@@ -754,8 +747,6 @@ inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
                                          const std::string &entity_id) {
   SliderCtx *ctx = (SliderCtx *)lv_obj_get_user_data(slider);
   if (!ctx) return;
-  register_ha_control_availability(
-    btn_ptr, ctx->interactive ? ctx->media_slider : nullptr, ctx->interactive);
 
   ha_subscribe_state(
     entity_id,
@@ -764,9 +755,6 @@ inline void subscribe_media_slider_state(lv_obj_t *btn_ptr,
         std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         bool unavailable = ha_state_unavailable_ref(state);
         ctx->available = !unavailable;
-        apply_control_availability(
-          btn_ptr, ctx->interactive ? ctx->media_slider : nullptr,
-          ctx->available, ctx->interactive);
         ctx->media_playing = state_text == "playing";
         if (ctx->media_status_lbl) {
           std::string label = media_status_text(state_text);
