@@ -1300,7 +1300,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_t *label = lv_obj_get_child(buttons[i], 0);
     if (label) {
       lv_obj_set_style_transform_zoom(label, 230, LV_PART_MAIN);
-      lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+      light_control_center_icon_label(label);
     }
   }
 
