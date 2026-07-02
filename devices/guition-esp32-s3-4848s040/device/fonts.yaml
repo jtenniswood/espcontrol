@@ -67,6 +67,16 @@ font:
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
 
+  # Media control modal title
+  - file: "gfonts://Roboto@Light"
+    id: font_media_control_title
+    size: 60
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo@Light"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
   # Media cover-art screensaver artist
   - file: "gfonts://Roboto@Light"
     id: font_cover_art_artist
