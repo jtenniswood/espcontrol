@@ -64,8 +64,6 @@ struct MediaControlModalUi {
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
-  lv_obj_t *progress_elapsed_lbl = nullptr;
-  lv_obj_t *progress_duration_lbl = nullptr;
   lv_obj_t *previous_btn = nullptr;
   lv_obj_t *play_btn = nullptr;
   lv_obj_t *play_icon_lbl = nullptr;
@@ -809,20 +807,6 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
     pct = (int)((seconds * 100.0f / ctx->duration) + 0.5f);
   }
   pct = media_clamp_percent(pct);
-  if (ui.progress_elapsed_lbl) {
-    char buf[16];
-    media_format_time(seconds, buf, sizeof(buf));
-    lv_label_set_text(ui.progress_elapsed_lbl, buf);
-  }
-  if (ui.progress_duration_lbl) {
-    char buf[16];
-    char time_buf[16];
-    float remaining_seconds = ctx->duration > 0.0f ? ctx->duration - seconds : 0.0f;
-    if (remaining_seconds < 0.0f || !std::isfinite(remaining_seconds)) remaining_seconds = 0.0f;
-    media_format_time(remaining_seconds, time_buf, sizeof(time_buf));
-    snprintf(buf, sizeof(buf), "-%s", time_buf);
-    lv_label_set_text(ui.progress_duration_lbl, buf);
-  }
   if (ui.progress_slider && !ctx->dragging_progress) {
     ui.updating_progress = true;
     lv_slider_set_value(ui.progress_slider, pct, LV_ANIM_OFF);
@@ -1088,19 +1072,11 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (text_gap < 6) text_gap = 6;
   lv_coord_t slider_h = control_modal_scaled_px(4, layout.short_side);
   if (slider_h < 3) slider_h = 3;
-  lv_coord_t progress_gap = control_modal_scaled_px(12, layout.short_side);
-  if (progress_gap < 8) progress_gap = 8;
   lv_coord_t slider_w = content_w * 88 / 100;
   lv_coord_t slider_min_w = control_modal_scaled_px(170, layout.short_side);
   if (slider_w < slider_min_w) slider_w = slider_min_w;
   if (slider_w > content_w) slider_w = content_w;
-  const lv_font_t *time_font = ctx->label_font
-    ? ctx->label_font
-    : (ui.progress_elapsed_lbl ? lv_obj_get_style_text_font(ui.progress_elapsed_lbl, LV_PART_MAIN) : nullptr);
-  lv_coord_t time_h = time_font && time_font->line_height > 0
-    ? time_font->line_height : control_modal_scaled_px(24, layout.short_side);
-  lv_coord_t time_y = content_h - time_h - control_modal_scaled_px(12, layout.short_side);
-  lv_coord_t progress_top = time_y - slider_h - progress_gap;
+  lv_coord_t progress_top = content_h - slider_h - control_modal_scaled_px(28, layout.short_side);
   lv_coord_t btn_gap = control_modal_scaled_px(16, layout.short_side);
   if (btn_gap < 12) btn_gap = 12;
   lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
@@ -1147,15 +1123,6 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_style_width(ui.progress_slider, 0, LV_PART_KNOB);
     lv_obj_set_style_height(ui.progress_slider, 0, LV_PART_KNOB);
     lv_obj_align(ui.progress_slider, LV_ALIGN_TOP_MID, 0, progress_top);
-  }
-  lv_coord_t time_w = slider_w / 2;
-  if (ui.progress_elapsed_lbl) {
-    lv_obj_set_size(ui.progress_elapsed_lbl, time_w, time_h);
-    lv_obj_align(ui.progress_elapsed_lbl, LV_ALIGN_TOP_LEFT, (content_w - slider_w) / 2, time_y);
-  }
-  if (ui.progress_duration_lbl) {
-    lv_obj_set_size(ui.progress_duration_lbl, time_w, time_h);
-    lv_obj_align(ui.progress_duration_lbl, LV_ALIGN_TOP_RIGHT, -(content_w - slider_w) / 2, time_y);
   }
   lv_obj_t *buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
   for (int i = 0; i < 3; i++) {
@@ -1327,26 +1294,6 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
       media_control_refresh_progress(ui.active);
     }
   }, LV_EVENT_PRESS_LOST, nullptr);
-
-  ui.progress_elapsed_lbl = lv_label_create(ui.controls_box);
-  if (ui.progress_elapsed_lbl) {
-    lv_label_set_text(ui.progress_elapsed_lbl, "0:00");
-    lv_obj_set_style_text_color(ui.progress_elapsed_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
-    lv_obj_set_style_text_align(ui.progress_elapsed_lbl, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(ui.progress_elapsed_lbl, ctx->label_font, LV_PART_MAIN);
-    lv_label_set_long_mode(ui.progress_elapsed_lbl, LV_LABEL_LONG_CLIP);
-    apply_width_compensation(ui.progress_elapsed_lbl, ctx->width_compensation_percent);
-  }
-
-  ui.progress_duration_lbl = lv_label_create(ui.controls_box);
-  if (ui.progress_duration_lbl) {
-    lv_label_set_text(ui.progress_duration_lbl, "0:00");
-    lv_obj_set_style_text_color(ui.progress_duration_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
-    lv_obj_set_style_text_align(ui.progress_duration_lbl, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
-    if (ctx->label_font) lv_obj_set_style_text_font(ui.progress_duration_lbl, ctx->label_font, LV_PART_MAIN);
-    lv_label_set_long_mode(ui.progress_duration_lbl, LV_LABEL_LONG_CLIP);
-    apply_width_compensation(ui.progress_duration_lbl, ctx->width_compensation_percent);
-  }
 
   ui.previous_btn = media_control_create_icon_button(
     ui.controls_box, find_icon("Skip Previous"), ctx->icon_font);
