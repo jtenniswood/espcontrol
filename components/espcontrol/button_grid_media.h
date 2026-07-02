@@ -1075,6 +1075,15 @@ inline lv_obj_t *media_control_create_box(lv_obj_t *parent) {
   return box;
 }
 
+inline void media_control_apply_primary_pressed_fill(lv_obj_t *btn, uint32_t pressed_color) {
+  if (!btn) return;
+  control_modal_apply_pressed_fill(btn);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(pressed_color),
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER,
+    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+}
+
 inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *icon,
                                                   const lv_font_t *font,
                                                   uint32_t pressed_color) {
@@ -1085,9 +1094,7 @@ inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
-  control_modal_apply_pressed_fill(btn);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(pressed_color),
-    static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
+  media_control_apply_primary_pressed_fill(btn, pressed_color);
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *label = lv_label_create(btn);
   if (label) {
@@ -1580,6 +1587,8 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.volume_plus_btn = control_modal_create_round_button(
     ui.volume_box, 56, find_icon("Plus"), ctx->icon_font,
     DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+  media_control_apply_primary_pressed_fill(ui.volume_minus_btn, ctx->accent_color);
+  media_control_apply_primary_pressed_fill(ui.volume_plus_btn, ctx->accent_color);
   if (ui.volume_minus_btn) {
     lv_obj_add_event_cb(ui.volume_minus_btn, [](lv_event_t *) {
       MediaControlModalUi &ui = media_control_modal_ui();
