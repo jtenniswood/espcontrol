@@ -10,8 +10,6 @@ enum class MediaControlTab : uint8_t {
 
 constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
 
-constexpr uint32_t MEDIA_CONTROL_PROGRESS_FILL_COLOR = 0x8A8A8A;
-
 struct MediaControlCtx {
   std::string entity_id;
   std::string label;
@@ -922,7 +920,7 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
   }
   media_control_update_progress_fill(
     ui.progress_slider, ui.progress_fill, ui.progress_handle, pct,
-    lv_color_hex(MEDIA_CONTROL_PROGRESS_FILL_COLOR));
+    lv_color_hex(ctx->accent_color));
   media_control_update_progress_handle(ui.progress_slider, ui.progress_handle, pct);
   if (ui.progress_slider) {
     bool has_duration = ctx->duration > 0.0f && ctx->available;
@@ -1266,7 +1264,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_align(ui.progress_slider, LV_ALIGN_TOP_MID, 0, progress_slider_y);
     media_control_update_progress_fill(
       ui.progress_slider, ui.progress_fill, ui.progress_handle, lv_slider_get_value(ui.progress_slider),
-      lv_color_hex(MEDIA_CONTROL_PROGRESS_FILL_COLOR));
+      lv_color_hex(ctx->accent_color));
     media_control_update_progress_handle(
       ui.progress_slider, ui.progress_handle, lv_slider_get_value(ui.progress_slider));
   }
@@ -1415,9 +1413,9 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
 
   ui.progress_slider = lv_slider_create(ui.progress_box);
   media_control_style_progress_slider(
-    ui.progress_slider, DARK_BACKGROUND_SECONDARY, MEDIA_CONTROL_PROGRESS_FILL_COLOR);
+    ui.progress_slider, DARK_BACKGROUND_SECONDARY, ctx->accent_color);
   ui.progress_fill = media_control_create_progress_fill(
-    ui.progress_slider, lv_color_hex(MEDIA_CONTROL_PROGRESS_FILL_COLOR));
+    ui.progress_slider, lv_color_hex(ctx->accent_color));
   ui.progress_handle = media_control_create_progress_handle(ui.progress_slider);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
@@ -1427,7 +1425,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
     int value = lv_slider_get_value(slider);
     media_control_update_progress_fill(
       slider, ui.progress_fill, ui.progress_handle, value,
-      lv_color_hex(MEDIA_CONTROL_PROGRESS_FILL_COLOR));
+      lv_color_hex(ui.active->accent_color));
     media_control_update_progress_handle(slider, ui.progress_handle, value);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *) {
