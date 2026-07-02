@@ -848,6 +848,48 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "gate": {
+    "label": "Gate",
+    "allowInSubpage": true,
+    "domains": [
+      "cover"
+    ],
+    "options": [
+      {
+        "name": "gate_mode",
+        "label": "Interaction",
+        "kind": "choice",
+        "values": [
+          "",
+          "open",
+          "close",
+          "stop"
+        ],
+        "defaultValue": ""
+      },
+      {
+        "name": "label_display",
+        "label": "Display",
+        "kind": "choice",
+        "values": [
+          "label",
+          "status"
+        ],
+        "defaultValue": "label"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Gate",
+      "icon_on": "Gate Open",
+      "sensor": "",
+      "unit": "",
+      "type": "gate",
+      "precision": "",
+      "options": ""
+    }
+  },
   "internal": {
     "label": "Internal Switches",
     "allowInSubpage": true,
@@ -1385,6 +1427,7 @@ var CARD_CONTRACT_CARDS = {
           "alarm",
           "cover",
           "garage",
+          "gate",
           "lock",
           "vacuum",
           "lawn_mower",
@@ -1612,6 +1655,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "lawn_mower": "LM",
   "light_temperature": "N",
   "garage": "R",
+  "gate": "GT",
   "lock": "K",
   "media": "M",
   "climate": "H",
@@ -1651,6 +1695,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "LM": "lawn_mower",
   "N": "light_temperature",
   "R": "garage",
+  "GT": "gate",
   "K": "lock",
   "M": "media",
   "H": "climate",
@@ -1702,6 +1747,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "date_time_mode": "date_time_mode",
   "fan_tabs": "fan_tabs",
   "garage_mode": "garage_mode",
+  "gate_mode": "gate_mode",
   "icon_display": "icon_display",
   "image_icon": "image_icon",
   "image_label": "image_label",

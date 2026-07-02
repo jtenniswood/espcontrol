@@ -47,6 +47,7 @@ struct MediaControlCtx {
   lv_timer_t *position_timer = nullptr;
   bool available = true;
   bool playing = false;
+  bool volume_known = false;
   bool label_shows_status = false;
   bool top_shows_volume = false;
   bool dragging_progress = false;
@@ -136,6 +137,21 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx);
 inline void media_control_refresh_volume(MediaControlCtx *ctx);
 inline void media_control_set_volume_value(MediaControlCtx *ctx, int pct);
 inline int media_control_clamp_volume(MediaControlCtx *ctx, int pct);
+inline float media_control_current_position_seconds(MediaControlCtx *ctx);
+
+inline void delete_media_control_context(MediaControlCtx *ctx) {
+  if (!ctx) return;
+  MediaControlModalUi &ui = media_control_modal_ui();
+  if (ui.active == ctx) media_control_hide_modal();
+  if (ctx->btn && lv_obj_get_user_data(ctx->btn) == ctx) {
+    lv_obj_set_user_data(ctx->btn, nullptr);
+  }
+  if (ctx->position_timer) {
+    lv_timer_del(ctx->position_timer);
+    ctx->position_timer = nullptr;
+  }
+  delete ctx;
+}
 
 inline void media_control_apply_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
                                              bool available,
@@ -165,9 +181,13 @@ inline void media_control_refresh_parent_card(MediaControlCtx *ctx) {
     lv_label_set_text(ctx->label_lbl, label.c_str());
   }
   if (ctx->top_shows_volume && ctx->volume_value_lbl) {
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d", media_control_clamp_volume(ctx, ctx->current_pct));
-    lv_label_set_text(ctx->volume_value_lbl, buf);
+    if (ctx->volume_known) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%d", media_control_clamp_volume(ctx, ctx->current_pct));
+      lv_label_set_text(ctx->volume_value_lbl, buf);
+    } else {
+      lv_label_set_text(ctx->volume_value_lbl, "--");
+    }
     if (ctx->volume_unit_lbl) lv_label_set_text(ctx->volume_unit_lbl, "");
   }
 }
@@ -178,6 +198,13 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
     ctx->entity_id,
     std::function<void(esphome::StringRef)>(
       [ctx](esphome::StringRef state) {
+        bool was_playing = ctx->playing;
+        if (was_playing && string_ref_limited(state, HA_SHORT_STATE_MAX_LEN) != "playing") {
+          ctx->position_seconds = media_control_current_position_seconds(ctx);
+          ctx->position_updated_ms = esphome::millis();
+          ctx->position_updated_at_known = false;
+          ctx->position_updated_at_ms = 0;
+        }
         ctx->state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
         ctx->available = !ha_state_unavailable_ref(state);
         ctx->playing = ctx->state_text == "playing";
@@ -299,20 +326,19 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
           ctx->pending_pct = -1;
           ctx->pending_until_ms = 0;
         }
+        ctx->volume_known = true;
         media_control_set_volume_value(ctx, pct);
         media_control_refresh_parent_card(ctx);
       })
   );
-  if (ctx->label.empty() || ctx->label == espcontrol_i18n(std::string("Media Control"))) {
-    ha_subscribe_attribute(
-      ctx->entity_id, std::string("friendly_name"),
-      std::function<void(esphome::StringRef value)>(
-        [ctx](esphome::StringRef value) {
-          ctx->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
-          if (media_control_modal_ui().active == ctx) media_control_layout_modal(ctx);
-        })
-    );
-  }
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("friendly_name"),
+    std::function<void(esphome::StringRef value)>(
+      [ctx](esphome::StringRef value) {
+        ctx->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
+        if (media_control_modal_ui().active == ctx) media_control_layout_modal(ctx);
+      })
+  );
 }
 
 inline bool media_seek_pending_active(SliderCtx *ctx) {
@@ -1004,10 +1030,12 @@ inline void media_control_apply_volume_percent(MediaControlCtx *ctx, int pct,
   pct = media_control_clamp_volume(ctx, pct);
   ctx->current_pct = pct;
   if (from_user) {
+    ctx->volume_known = true;
     ctx->pending_pct = pct;
     ctx->pending_until_ms = esphome::millis() + 1500;
   }
   media_control_refresh_volume(ctx);
+  media_control_refresh_parent_card(ctx);
   if (send_action) send_media_volume_action(ctx->entity_id, pct);
 }
 

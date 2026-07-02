@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, push, webhook, todo, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, push, webhook, todo, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -101,6 +101,13 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     if (!b.sensor.empty()) b.icon_on.clear();
     b.options = garage_card_options_normalized(b.options, b.sensor);
+  }
+  if (b.type == "gate") {
+    if (b.sensor != "open" && b.sensor != "close" && b.sensor != "stop") b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    if (!b.sensor.empty()) b.icon_on.clear();
+    b.options = gate_card_options_normalized(b.options, b.sensor);
   }
   if (b.type == "cover") {
     if (!card_runtime_cover_mode_valid(b.sensor)) b.sensor.clear();
@@ -201,7 +208,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   p.precision = b.precision;
   if (!b.type.empty() && b.type != "action" && b.type != "alarm" &&
       b.type != "alarm_action" &&
-      !climate_card_type(b.type) && b.type != "cover" && b.type != "garage" &&
+      !climate_card_type(b.type) && b.type != "cover" && b.type != "garage" && b.type != "gate" &&
       b.type != "webhook" &&
       b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&

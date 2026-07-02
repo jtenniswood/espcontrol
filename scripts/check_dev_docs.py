@@ -128,6 +128,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "fan_speed": "docs/card-types/fans.md",
     "fan_switch": "docs/card-types/fans.md",
     "garage": "docs/card-types/garage-doors.md",
+    "gate": "docs/card-types/gates.md",
     "internal": "docs/card-types/internal-relays.md",
     "light_brightness": "docs/card-types/lights.md",
     "light_control": "docs/card-types/lights.md",

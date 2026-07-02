@@ -699,12 +699,13 @@ function renderButtonSettings(forceOpen) {
     if (newType === "__choose-card-type__") return;
     var pickerType = newType;
     newType = defaultButtonTypeForPicker(newType);
+    var keepMediaEntity = pickerType === "media_control" && b.type === "media";
     b.type = newType;
     if (state.settingsDraft && state.settingsDraft.key === draftKey) {
       state.settingsDraft.typeSelected = true;
     }
     var td = BUTTON_TYPES[newType];
-    if (td && td.onSelect) td.onSelect(b);
+    if (td && td.onSelect && !keepMediaEntity) td.onSelect(b);
     if (pickerType === "media_control") {
       b.sensor = "control_modal";
       b.label = "All Controls";

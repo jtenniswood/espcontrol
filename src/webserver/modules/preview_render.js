@@ -45,6 +45,7 @@ var CARD_TYPE_PICKER_DETAILS = {
   presence: { icon: "account", description: "Show person or presence status." },
   fan_speed: { icon: "fan", description: "Control fan speed, mode, or direction." },
   garage: { icon: "garage", description: "Show and control a garage door." },
+  gate: { icon: "gate", description: "Show and control a gate." },
   image: { icon: "image", description: "Display an image card where supported." },
   internal: { icon: "power-plug", description: "Control built-in device relays." },
   light_brightness: { icon: "lightbulb", description: "Configure light switch, brightness, or temperature controls." },
