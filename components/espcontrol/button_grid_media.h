@@ -1193,7 +1193,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_align(tabs[i].btn, LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
     lv_obj_t *label = lv_obj_get_child(tabs[i].btn, 0);
     if (label && control_modal_uses_compact_portrait_tuning(layout))
-      lv_obj_set_style_transform_zoom(label, 240, LV_PART_MAIN);
+      lv_obj_set_style_transform_zoom(label, 210, LV_PART_MAIN);
     else if (label && control_modal_uses_p4_86_tuning(layout))
       lv_obj_set_style_transform_zoom(label, 190, LV_PART_MAIN);
     light_control_center_icon_label(label);
