@@ -87,7 +87,7 @@ script:
           then:
             - script.execute: clock_bar_hide
             - lambda: |-
-                lv_label_set_text(id(ha_setup_title), espcontrol_i18n("Home Assistant connection lost"));
+                lv_label_set_text(id(ha_setup_title), espcontrol_i18n("Connection lost"));
                 lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n("Check the status of your Home Assistant server"));
                 lv_label_set_text(id(ha_setup_path), "");
             - lvgl.page.show: ha_setup_page

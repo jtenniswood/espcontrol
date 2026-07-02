@@ -1503,7 +1503,7 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
         elif (
             "delay: 5s" not in body
             or "ha_api_state_connected()" not in body
-            or "Home Assistant connection lost" not in body
+            or "Connection lost" not in body
             or "Check the status of your Home Assistant server" not in body
             or "lvgl.page.show: ha_setup_page" not in body
         ):
@@ -4005,7 +4005,7 @@ def run_self_test() -> int:
         "          condition:\n"
         "            lambda: 'return !ha_api_state_connected();'\n"
         "          then:\n"
-        "            - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Home Assistant connection lost\"));'\n"
+        "            - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Connection lost\"));'\n"
         "            - lambda: 'lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n(\"Check the status of your Home Assistant server\"));'\n"
         "            - lvgl.page.show: ha_setup_page\n",
         (),
