@@ -988,6 +988,11 @@ inline void media_control_style_progress_slider(lv_obj_t *slider, uint32_t backg
   lv_obj_set_style_pad_all(slider, 0, LV_PART_KNOB);
 }
 
+inline lv_coord_t media_control_tab_size(const ControlModalLayout &layout) {
+  if (control_modal_uses_p4_86_tuning(layout)) return 64;
+  return control_modal_prominent_card_tab_size(layout);
+}
+
 inline void media_control_layout_modal(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || !ui.overlay || !ui.panel) return;
@@ -995,7 +1000,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, control_modal_card_radius(ctx->btn));
   control_modal_apply_back_button_layout(ui.back_btn, layout);
 
-  lv_coord_t tab_size = control_modal_prominent_card_tab_size(layout);
+  lv_coord_t tab_size = media_control_tab_size(layout);
   lv_coord_t selected_tab_size = tab_size + tab_size / 8;
   lv_coord_t tab_frame_pad = tab_size / 5;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
@@ -1028,9 +1033,10 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_coord_t tab_x = first_tab_x + i * (tab_size + tab_gap);
     lv_obj_align(tabs[i].btn, LV_ALIGN_LEFT_MID, tab_x - (tab_btn_size - tab_size) / 2, 0);
     lv_obj_t *label = lv_obj_get_child(tabs[i].btn, 0);
-    if (label && control_modal_uses_compact_portrait_tuning(layout)) {
+    if (label && control_modal_uses_compact_portrait_tuning(layout))
       lv_obj_set_style_transform_zoom(label, 240, LV_PART_MAIN);
-    }
+    else if (label && control_modal_uses_p4_86_tuning(layout))
+      lv_obj_set_style_transform_zoom(label, 230, LV_PART_MAIN);
     light_control_center_icon_label(label);
   }
 
