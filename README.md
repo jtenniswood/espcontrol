@@ -18,7 +18,7 @@ You do not need to write code, edit YAML, or build your own ESPHome setup. Insta
 - **Live home information** - show temperatures, sensors, weather, dates, clocks, and other Home Assistant readings at a glance.
 - **Flexible pages of controls** - keep the main screen simple, then open extra pages for rooms, devices, or less common actions.
 - **Local smart home control** - the panel talks to Home Assistant on your own network. It is not a cloud dashboard.
-- **Easy changes later** - rearrange buttons, change icons, adjust colours, back up your setup, and install firmware updates without starting again.
+- **Easy changes later** - rearrange buttons, change icons, adjust the active colour, back up your setup, and install firmware updates without starting again.
 
 ## What You Can Control
 
@@ -44,7 +44,7 @@ If Home Assistant can see it, EspControl is designed to make it easier to put th
 3. **Connect the screen to WiFi** using the setup screen it creates.
 4. **Add it to Home Assistant** when Home Assistant discovers it.
 5. **Allow Home Assistant actions** so the panel is permitted to control your devices.
-6. **Open the panel's web page** and choose the buttons, sensors, pages, colours, and display settings you want.
+6. **Open the panel's web page** and choose the buttons, sensors, pages, active colour, and display settings you want.
 
 After that, the panel runs on its own. You can still change the layout at any time from a phone, tablet, or computer browser.
 
@@ -74,7 +74,7 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 - **Home Assistant action support** - run scenes, scripts, automations, buttons, webhooks, and helper changes directly from the panel.
 - **Camera and media displays** - show camera images, media player state, album art, playback controls, volume, and progress.
 - **Display scheduling** - use idle timers, night schedules, brightness controls, and optional presence sensors so the screen behaves well in real rooms.
-- **Appearance controls** - choose icons, labels, status text, colours, clock display, rotation, and temperature units from the setup page.
+- **Appearance controls** - choose icons, labels, status text, active colour, clock display, rotation, and temperature units from the setup page.
 - **Screensaver and brightness controls** - dim or sleep the display when it is not in use.
 - **Automatic updates** - keep standard firmware current after the first install.
 - **Backup and restore** - save your layout and copy it to another panel.

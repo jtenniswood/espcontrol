@@ -81,6 +81,7 @@ lawn_mower=Tagliaerba
 low=Basso
 low_target=Target basso
 media=Media
+playlist=Playlist
 medium=Medio
 mode=Modalità
 monthly=Mensile

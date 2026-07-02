@@ -154,7 +154,7 @@ def test_upgrades_do_not_reset_saved_panel_config() -> None:
         )
 
 
-def test_square_s3_reapplies_clock_bar_layout() -> None:
+def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     slug = "guition-esp32-s3-4848s040"
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
     device = (ROOT / "devices" / slug / "device" / "device.yaml").read_text(encoding="utf-8")
@@ -163,22 +163,22 @@ def test_square_s3_reapplies_clock_bar_layout() -> None:
         "            id(button_order).state,\n"
         "            id(main_page)->obj);\n"
         "      - script.execute: clock_bar_apply"
-    ) in sensors, "S3 grid refresh must reapply clock-bar layout like the working square profile"
+    ) in sensors, "S3 grid refresh must reapply the fixed clock bar like the working square profile"
     assert (
         "grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,\n"
         "              id(button_order).state,\n"
         "              id(button_on_color).state,\n"
         "              id(main_page)->obj);\n"
         "        - script.execute: clock_bar_apply"
-    ) in sensors, "S3 boot setup must reapply clock-bar layout after subpages are created"
+    ) in sensors, "S3 boot setup must reapply the fixed clock bar after subpages are created"
     assert (
         "- script.execute: apply_screen_rotation\n"
         "        - script.execute: clock_bar_apply"
-    ) in device, "S3 restored rotation must reapply clock-bar layout"
+    ) in device, "S3 restored rotation must reapply the fixed clock bar"
     assert (
         "- script.execute: apply_screen_rotation\n"
         "              - script.execute: clock_bar_apply"
-    ) in device, "S3 rotation changes must reapply clock-bar layout"
+    ) in device, "S3 rotation changes must reapply the fixed clock bar"
 
 
 def test_p4_43_rotation_refresh_rebuilds_subpages() -> None:
@@ -494,7 +494,7 @@ def main() -> int:
     test_generated_web(profiles)
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
-    test_square_s3_reapplies_clock_bar_layout()
+    test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_p4_43_rotation_refresh_rebuilds_subpages()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()

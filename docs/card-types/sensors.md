@@ -50,7 +50,7 @@ For **Text** mode:
 
 - Icon mode treats active Home Assistant states such as `on`, `true`, `home`, `playing`, `open`, or `unlocked` as active and uses the on icon when configured.
 - Numeric mode displays the current value in large text, with the unit beside it and the label underneath.
-- Numeric mode uses the **tertiary** colour from [Appearance](/features/appearance), so it remains visually distinct from Switch and Trigger cards.
+- Numeric mode uses the fixed **tertiary** background colour, so it remains visually distinct from Switch and Trigger cards.
 - Text mode uses the same tertiary colour as Numeric mode, while keeping the normal Switch-style icon and label layout.
 - Text mode capitalises each word in the Home Assistant text and preserves line breaks. Advanced status translation is applied before the text is shown. Very long values are limited to roughly 256 characters so the panel stays responsive.
 

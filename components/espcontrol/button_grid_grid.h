@@ -696,6 +696,7 @@ inline void grid_refresh_layout(
   parse_order_string(order_str, NS, parsed);
   clear_spanned_cells(parsed, NS, COLS, order);
   clock_bar_clear_responsive_grid_cards(main_page_obj);
+  navigation_clear_home_targets();
 
   lv_obj_t *first_card = nullptr;
   if (parsed.positions[0] >= 1 && parsed.positions[0] <= NS) {
@@ -723,6 +724,7 @@ inline void grid_refresh_layout(
     if (idx < 1 || idx > NS) continue;
     auto &s = slots[idx - 1];
     ParsedCfg p = parse_cfg(s.config->state);
+    navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     refresh_card_layout(s, p, cfg, row_span);
     if (p.type == "vacuum") {
@@ -1075,6 +1077,7 @@ inline void grid_phase2(
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
   grid_clear_subpage_parent_targets(slots, NS);
+  navigation_clear_home_targets();
   navigation_clear_subpages();
   clear_subpage_vacuum_card_text_refs();
   reset_image_card_pool(cfg);
@@ -1116,6 +1119,7 @@ inline void grid_phase2(
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     bool is_1x1_card = card_span_is_single(row_span, col_span);
     if (cfg.info_only && info_only_hidden_card_type(p)) continue;
+    navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
     if (p.type == "push") continue;
     if (bind_image_card(s, p, cfg)) continue;
     if (p.type == "local_sensor" || sensor_card_local_sensor(p)) continue;
@@ -1405,6 +1409,10 @@ inline void grid_phase2(
         std::string mode = media_card_mode(p.sensor);
         if (mode == "play_pause") {
           subscribe_media_state(s.btn, media_play_pause_show_state(p) ? s.text_lbl : nullptr, p.entity);
+        } else if (mode == "playlist") {
+          MediaPlaylistCtx *ctx = grid_track_runtime_allocation(
+            s.btn, create_media_playlist_context(s.btn, p));
+          subscribe_media_playlist_state(ctx);
         } else if (media_playback_button_mode(mode)) {
           subscribe_control_availability(s.btn, s.btn, p.entity);
           // Previous/next are momentary actions and do not reflect player state.
@@ -1648,7 +1656,7 @@ inline void grid_phase2(
     navigation_register_subpage(
       si + 1, display_order,
       normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")),
-      p.label, sub_scr);
+      sub_scr);
     lv_obj_set_style_bg_color(sub_scr, lv_obj_get_style_bg_color(main_page_obj, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(sub_scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_layout(sub_scr, LV_LAYOUT_GRID);
@@ -2114,7 +2122,18 @@ inline void grid_phase2(
       if (sb_cfg.type == "media") {
         std::string mode = media_card_mode(sb_cfg.sensor);
         if (!sb_cfg.entity.empty()) {
-          if (media_playback_button_mode(mode)) {
+          if (mode == "playlist") {
+            ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
+            MediaPlaylistCtx *playlist_ctx = grid_delete_with_owner(
+              sb_btn, create_media_playlist_context(sub_slot.btn, sb_cfg));
+            subscribe_media_playlist_state(playlist_ctx);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
+              if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
+              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
+              if (c) send_media_playlist_action(*c);
+            }, LV_EVENT_CLICKED, ctx);
+          } else if (media_playback_button_mode(mode)) {
             ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
             ctx->sensor = mode;
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {

@@ -9,6 +9,7 @@
 substitutions:
   espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
   espcontrol_component_ref: "main"
+  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
 
 # ---------------------------------------------------------------------------
 # ESP32-S3 platform (16MB flash, ESP-IDF framework)

@@ -81,6 +81,7 @@ lawn_mower=Gressklipper
 low=Lav
 low_target=Lavt mål
 media=Media
+playlist=Spilleliste
 medium=Medium
 mode=Modus
 monthly=Månedlig

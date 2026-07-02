@@ -51,7 +51,7 @@ If the web UI cannot reach the device while you are configuring a card, a manual
 - The device subscribes directly to the sensor's value updates — the display refreshes automatically whenever the sensor reports a new reading.
 - The refresh rate is controlled by the sensor's own `update_interval` in your ESPHome YAML.
 - Before the first value is received (for example, immediately after boot), the card shows `--`.
-- Numeric mode uses the **tertiary** colour from [Appearance](/features/appearance), so it remains visually distinct from Switch and Trigger cards.
+- Numeric mode uses the fixed **tertiary** background colour, so it remains visually distinct from Switch and Trigger cards.
 - Text mode uses the same tertiary colour while keeping the normal Switch-style icon and label layout.
 
 ## Example Sensors

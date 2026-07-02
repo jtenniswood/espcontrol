@@ -7,21 +7,21 @@
 
 font:
   # Main action/setup icons
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+  - file: '${mdi_font_file}'
     id: font_icon_main
     size: 44
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Smaller card icons
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+  - file: '${mdi_font_file}'
     id: font_icon_card
     size: 33
     bpp: 4
     glyphs: !include ../../../common/assets/climate_card_icon_glyphs.yaml
 
   # Status, network, and subpage icons
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+  - file: '${mdi_font_file}'
     id: font_icon_status
     size: 24
     bpp: 4

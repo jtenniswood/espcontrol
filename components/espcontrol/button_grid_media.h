@@ -445,6 +445,10 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
   lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
   std::string mode = media_card_mode(p.sensor);
+  if (mode == "playlist") {
+    setup_media_action_layout(s.btn, s.icon_lbl, s.text_lbl, p);
+    return;
+  }
   if (media_playback_button_mode(mode)) {
     setup_media_action_layout(s.btn, s.icon_lbl, s.text_lbl, p);
     return;
@@ -507,6 +511,72 @@ inline void subscribe_media_state(lv_obj_t *btn_ptr,
           std::string label = media_status_text(state_text);
           lv_label_set_text(status_lbl, label.c_str());
         }
+      })
+  );
+}
+
+inline bool media_playlist_active(const MediaPlaylistCtx *ctx) {
+  if (!ctx || !ctx->available || !ctx->playing || ctx->content_id.empty() ||
+      !ctx->has_current_content_id) {
+    return false;
+  }
+  if (ctx->current_content_id != ctx->content_id) return false;
+  return !ctx->has_current_content_type || ctx->current_content_type.empty() ||
+         ctx->current_content_type == ctx->content_type;
+}
+
+inline void media_playlist_refresh_checked(MediaPlaylistCtx *ctx) {
+  if (!ctx) return;
+  set_card_checked_state(ctx->btn, media_playlist_active(ctx));
+}
+
+inline MediaPlaylistCtx *create_media_playlist_context(lv_obj_t *btn,
+                                                       const ParsedCfg &p) {
+  MediaPlaylistCtx *ctx = new MediaPlaylistCtx();
+  ctx->btn = btn;
+  ctx->entity_id = p.entity;
+  ctx->content_id = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+  ctx->content_type = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
+  if (ctx->content_type.empty()) ctx->content_type = "playlist";
+  return ctx;
+}
+
+inline void subscribe_media_playlist_state(MediaPlaylistCtx *ctx) {
+  if (!ctx || ctx->entity_id.empty()) return;
+  register_ha_control_availability(ctx->btn, ctx->btn);
+  ha_subscribe_state(
+    ctx->entity_id,
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef state) {
+        std::string state_text = string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
+        ctx->available = !ha_state_unavailable_ref(state);
+        ctx->playing = state_text == "playing";
+        apply_control_availability(ctx->btn, ctx->btn, ctx->available);
+        media_playlist_refresh_checked(ctx);
+      })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("media_content_id"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef value) {
+        ctx->current_content_id = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+        ctx->has_current_content_id =
+          !ctx->current_content_id.empty() &&
+          ctx->current_content_id != "unknown" &&
+          ctx->current_content_id != "unavailable";
+        media_playlist_refresh_checked(ctx);
+      })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("media_content_type"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef value) {
+        ctx->current_content_type = string_ref_limited(value, HA_SHORT_STATE_MAX_LEN);
+        ctx->has_current_content_type =
+          !ctx->current_content_type.empty() &&
+          ctx->current_content_type != "unknown" &&
+          ctx->current_content_type != "unavailable";
+        media_playlist_refresh_checked(ctx);
       })
   );
 }

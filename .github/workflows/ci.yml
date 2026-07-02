@@ -9,6 +9,7 @@ on:
     paths:
       - '.github/workflows/ci.yml'
       - '.github/workflows/nightly-firmware.yml'
+      - '.github/workflows/pr-testing-guidance.yml'
       - '.github/workflows/release.yml'
       - '.github/pull_request_template.md'
       - 'common/**'

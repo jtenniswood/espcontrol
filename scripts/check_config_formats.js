@@ -411,7 +411,7 @@ assert.strictEqual(hooks.internalRelayDefaultIcon("push"), "Gesture Tap", "inter
 assert.strictEqual(hooks.internalRelayDefaultOnIcon(), "Lightbulb", "internal relay on icon is spec-backed");
 assert.deepStrictEqual(
   Array.from(hooks.mediaModeOptionValues()),
-  ["play_pause", "previous", "next", "volume", "position", "now_playing"],
+  ["play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
   "media mode options are spec-backed"
 );
 assert.strictEqual(hooks.mediaEditorMode("controls"), "play_pause", "legacy media controls mode maps through spec");
@@ -433,6 +433,28 @@ assert.strictEqual(
 );
 assert.strictEqual(hooks.mediaStateDisplayModeSupported("position"), true, "media state display supports position mode");
 assert.strictEqual(hooks.mediaStateDisplayModeSupported("volume"), false, "media state display rejects volume mode");
+assert.deepStrictEqual(
+  Array.from(hooks.mediaPlaylistContentTypeOptions()).map((option) => option[0]),
+  ["playlist", "music", "album", "artist", "track", "channel", "episode", "podcast", "tvshow", "video", "movie", "app", "url", "__custom"],
+  "media playlist content type dropdown includes common Home Assistant media types"
+);
+assert.strictEqual(hooks.mediaPlaylistContentTypeKnown("playlist"), true, "media playlist recognizes known content types");
+assert.strictEqual(hooks.mediaPlaylistContentTypeKnown("favorite"), false, "media playlist custom content types use the custom field");
+const playlistOptions = { sensor: "playlist" };
+hooks.setMediaPlaylistContentId(playlistOptions, "media-source://music/morning,mix");
+hooks.setMediaPlaylistContentType(playlistOptions, "music");
+assert.strictEqual(
+  hooks.mediaPlaylistContentId(playlistOptions),
+  "media-source://music/morning,mix",
+  "media playlist content IDs are compact-option encoded"
+);
+assert.strictEqual(hooks.mediaPlaylistContentType(playlistOptions), "music", "media playlist content type is preserved");
+hooks.setMediaPlaylistContentType(playlistOptions, "playlist");
+assert.strictEqual(
+  playlistOptions.options,
+  "playlist_content_id=media-source%3A//music/morning%2Cmix",
+  "media playlist default content type is omitted"
+);
 assert.strictEqual(
   hooks.normalizeMediaOptions("volume_max=40", "volume"),
   "volume_max=40",

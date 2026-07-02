@@ -9,6 +9,7 @@ substitutions:
   friendly_name: "Guition ESP32-S3-4848S040"
   firmware_version: "0.0.0"
   espcontrol_component_url: "file:///config"
+  mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
   espcontrol_component_ref: "HEAD"
 
 packages:

@@ -81,6 +81,7 @@ lawn_mower=Cortacésped
 low=Bajo
 low_target=Objetivo bajo
 media=Multimedia
+playlist=Lista de reproducción
 medium=Medium
 mode=Modo
 monthly=Mensual

@@ -1,0 +1,94 @@
+name: PR Testing Guidance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-testing-guidance-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  guidance:
+    name: Generate Testing Guidance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Collect changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate \
+            --jq '.[].filename' > changed-files.txt
+
+      - name: Generate testing guidance
+        run: python3 scripts/pr_testing_guidance.py --changed-files changed-files.txt --output pr-testing-guidance.md
+
+      - name: Add guidance to workflow summary
+        run: cat pr-testing-guidance.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pr-testing-guidance
+          path: pr-testing-guidance.md
+          if-no-files-found: error
+
+  comment:
+    name: Post Testing Guidance
+    needs: guidance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: pr-testing-guidance
+
+      - name: Add guidance to workflow summary
+        run: cat pr-testing-guidance.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post or update PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          MARKER="<!-- espcontrol-pr-testing-guidance -->"
+          COMMENT_ID="$(
+            gh api \
+              "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              --paginate \
+              --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" \
+              | tail -n 1
+          )"
+
+          if [ -n "${COMMENT_ID}" ]; then
+            gh api \
+              --method PATCH \
+              "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
+              -F body=@pr-testing-guidance.md
+          else
+            gh api \
+              --method POST \
+              "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              -F body=@pr-testing-guidance.md
+          fi
+
+          STATUS=$?
+          if [ "${STATUS}" -ne 0 ]; then
+            echo "::warning::Could not post PR testing guidance as a comment. The guidance is still available in the workflow summary."
+          fi
+          exit 0

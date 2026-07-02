@@ -299,7 +299,7 @@ inline lv_obj_t *todo_lite_create_row(TodoCardCtx *ctx, TodoLiteItem *item,
   lv_obj_set_size(box, checkbox_size, checkbox_size);
   lv_obj_set_style_radius(box, checkbox_size / 4, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(box, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_color(box, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+  lv_obj_set_style_border_color(box, lv_color_hex(DARK_BORDER), LV_PART_MAIN);
   lv_obj_set_style_border_width(box, 2, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(box, 0, LV_PART_MAIN);
   lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
@@ -1026,7 +1026,7 @@ inline lv_obj_t *todo_modal_create_list_item_row(
   lv_coord_t label_x = 0;
   lv_coord_t label_w = content_width;
   if (show_checkbox) {
-    uint32_t checkbox_color = checked ? DARK_TEXT_SOFT : DARK_TEXT_MUTED;
+    uint32_t checkbox_color = checked ? DARK_TEXT_PRIMARY : DARK_BORDER;
     lv_obj_t *box = lv_obj_create(row);
     lv_obj_set_size(box, checkbox_size, checkbox_size);
     lv_obj_set_style_radius(box, checkbox_size / 4, LV_PART_MAIN);

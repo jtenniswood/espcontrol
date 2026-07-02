@@ -3,7 +3,7 @@ var CSS =
   "--bg:#1b1b1f;--surface:#202127;--surface2:#2e2e32;--border:#3c3f44;" +
   "--text:#dfdfd6;--text2:#98989f;--text3:#6a6a71;--accent:#5c73e7;--accent-hover:#a8b1ff;" +
   "--screen-primary:#" + WEB_UI_COLORS.primary + ";--screen-secondary:#" + WEB_UI_COLORS.secondary + ";" +
-  "--screen-tertiary:#" + WEB_UI_COLORS.tertiary + ";--screen-secondary-fallback:#" + WEB_UI_COLORS.fallbackSecondary + ";" +
+  "--screen-tertiary:#" + WEB_UI_COLORS.tertiary + ";" +
   "--accent-soft:rgba(100,108,255,.16);--success:#30a46c;--danger:#f14158;" +
   "--radius:12px;--action-r:9999px;--gap:16px;" +
   "--shadow-1:0 1px 2px rgba(0,0,0,.2),0 1px 2px rgba(0,0,0,.24);" +
@@ -156,7 +156,7 @@ var CSS =
   "#sp-app[data-screen-theme='light'] .sp-clockbar-item,#sp-app[data-screen-theme='light'] .sp-temp,#sp-app[data-screen-theme='light'] .sp-clock,#sp-app[data-screen-theme='light'] .sp-network-preview,#sp-app[data-screen-theme='light'] .sp-voice-preview,#sp-app[data-screen-theme='light'] .sp-btn-icon,#sp-app[data-screen-theme='light'] .sp-btn-label,#sp-app[data-screen-theme='light'] .sp-sensor-preview,#sp-app[data-screen-theme='light'] .sp-sensor-unit,#sp-app[data-screen-theme='light'] .sp-media-now-title,#sp-app[data-screen-theme='light'] .sp-media-now-artist{color:#000}" +
   "#sp-app[data-screen-theme='dark'] .sp-clockbar-item,#sp-app[data-screen-theme='dark'] .sp-temp,#sp-app[data-screen-theme='dark'] .sp-clock,#sp-app[data-screen-theme='dark'] .sp-network-preview,#sp-app[data-screen-theme='dark'] .sp-voice-preview,#sp-app[data-screen-theme='dark'] .sp-btn-icon,#sp-app[data-screen-theme='dark'] .sp-btn-label,#sp-app[data-screen-theme='dark'] .sp-sensor-preview,#sp-app[data-screen-theme='dark'] .sp-sensor-unit,#sp-app[data-screen-theme='dark'] .sp-media-now-title,#sp-app[data-screen-theme='dark'] .sp-media-now-artist{color:#fff}" +
   "#sp-app[data-screen-theme='light'] .sp-clockbar-item:not(.sp-selected):hover,#sp-app[data-screen-theme='dark'] .sp-clockbar-item:not(.sp-selected):hover{background:transparent;border-color:transparent}" +
-  "#sp-app[data-screen-theme='light'] .sp-media-h-slider{background:var(--screen-secondary-fallback)}" +
+  "#sp-app[data-screen-theme='light'] .sp-media-h-slider{background:var(--screen-secondary)}" +
   "#sp-app[data-screen-theme='light'] .sp-media-h-slider span{background:#000}" +
   "#sp-app[data-screen-theme='dark'] .sp-media-h-slider{background:var(--screen-tertiary)}" +
   "#sp-app[data-screen-theme='dark'] .sp-media-h-slider span{background:#fff}" +
@@ -174,11 +174,12 @@ var CSS =
   ".sp-hint{text-align:center;font-size:.7rem;color:var(--text3);padding:8px 0 12px;user-select:none}" +
 
   ".sp-selection-bar{display:none;align-items:center;justify-content:space-between;gap:12px;" +
-  "margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);box-sizing:border-box;" +
-  "padding:14px max(var(--gap),calc((100vw - 960px)/2 + var(--gap)));background:var(--surface);" +
+  "width:100%;max-width:960px;margin:0 auto;box-sizing:border-box;overflow:hidden;" +
+  "padding:14px var(--gap);background:var(--surface);" +
   "color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;user-select:none}" +
   ".sp-selection-bar.sp-visible{display:flex}" +
-  ".sp-selection-label{font-size:.85rem;color:var(--text2);margin-right:auto}" +
+  ".sp-selection-label{font-size:.85rem;color:var(--text2);margin-right:auto;min-width:0;" +
+  "overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
   ".sp-selection-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}" +
   ".sp-selection-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;" +
   "border:1px solid var(--border);border-radius:var(--action-r);background:var(--surface2);" +
@@ -189,6 +190,9 @@ var CSS =
   ".sp-selection-btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}" +
   ".sp-selection-btn:disabled,.sp-selection-btn:disabled:hover{opacity:.45;cursor:not-allowed;background:var(--surface2);border-color:var(--border);color:var(--text2)}" +
   ".sp-selection-btn .mdi{font-size:16px;line-height:1}" +
+  "@media(max-width:600px){.sp-selection-bar{margin-left:0;margin-right:0;padding:12px var(--gap);gap:8px}" +
+  ".sp-selection-actions{gap:6px}.sp-selection-btn{padding:8px 10px}" +
+  ".sp-selection-btn[aria-label='Card actions']{width:36px;padding:0}.sp-selection-btn .mdi{flex-shrink:0}}" +
 
   ".sp-config{padding:var(--gap) var(--gap) var(--gap)}" +
   ".sp-settings-status-header{display:flex;align-items:baseline;justify-content:space-between;" +
@@ -417,6 +421,8 @@ var CSS =
   "background:rgba(92,115,231,.12);border:1px solid rgba(92,115,231,.22);border-radius:8px;" +
   "color:var(--text2);font-size:.82rem;line-height:1.35}" +
   ".sp-info-panel .mdi{font-size:18px;color:var(--accent);line-height:1.1;flex:0 0 auto;margin-top:1px}" +
+  ".sp-info-panel a{color:var(--accent);font-weight:600;text-decoration:none}" +
+  ".sp-info-panel a:hover{text-decoration:underline}" +
 
   ".sp-range-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}" +
   ".sp-range-row:last-child{margin-bottom:0}" +

@@ -81,6 +81,7 @@ lawn_mower=Kosilnica
 low=Nizko
 low_target=Nizka ciljna vrednost
 media=Predstavnost
+playlist=Seznam predvajanja
 medium=Srednje
 mode=Način
 monthly=Mesečno

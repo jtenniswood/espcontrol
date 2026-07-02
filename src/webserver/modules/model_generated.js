@@ -817,7 +817,6 @@ var EspControlModel = (() => {
     }
     return out.slice(0, 1);
   }
-  var CLOCK_BAR_FIXED_LAYOUT = "left:temperature|middle:time|right:voice,network";
   function normalizeLanguage(value) {
     const language = String(value == null ? "" : value).trim().toLowerCase();
     return language || "en";
@@ -1008,7 +1007,6 @@ var EspControlModel = (() => {
       outdoorTempEntity: clockBarTemperatureEntities[0] || "",
       clockBarTemperatureEntities,
       clockBar: objectValue(settings, "clock_bar") != null ? !!settings.clock_bar : false,
-      clockBarLayout: CLOCK_BAR_FIXED_LAYOUT,
       clockBarTime: objectValue(settings, "clock_bar_time") != null ? !!settings.clock_bar_time : true,
       networkStatusIcon: objectValue(settings, "network_status_icon") != null ? !!settings.network_status_icon : true,
       voiceServices: objectValue(settings, "voice_services") != null ? !!settings.voice_services : false,
