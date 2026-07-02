@@ -46,6 +46,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     normalizeDateTimeCardMode: normalizeDateTimeCardMode,
     dateTimeLargeNumbersLabel: dateTimeLargeNumbersLabel,
     weatherModeOptionValues: weatherModeOptionValues,
+    weatherCardModeOptions: weatherCardModeOptions,
     normalizeWeatherCardMode: normalizeWeatherCardMode,
     weatherCardIsForecastMode: weatherCardIsForecastMode,
     coverModeOptionValues: coverModeOptionValues,
@@ -190,6 +191,11 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       var config = typeDef && typeDef.defaultConfig;
       if (typeof config === "function") config = config();
       return config ? EspControlModel.cloneCardConfig(config) : null;
+    },
+    buttonTypeValidateSave: function (type, button, slot, options) {
+      var typeDef = BUTTON_TYPES[type || ""];
+      if (!typeDef || !typeDef.validateSave) return true;
+      return typeDef.validateSave(button || {}, slot || 0, options || {});
     },
     buttonTypeRuntimeSpec: function (type) {
       var typeDef = BUTTON_TYPES[type || ""];

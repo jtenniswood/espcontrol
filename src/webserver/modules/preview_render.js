@@ -189,7 +189,13 @@ function renderPreview() {
       }
       var slotSz = c.sizes[slot];
       var typePreview = previewTypeDef && previewTypeDef.renderPreview
-        ? previewTypeDef.renderPreview(b, { escHtml: escHtml, cardSize: slotSz || 1 })
+        ? previewTypeDef.renderPreview(b, {
+          escHtml: escHtml,
+          cardSize: slotSz || CARD_SIZE_SINGLE,
+          getCardSize: function () {
+            return c.sizes[slot] || CARD_SIZE_SINGLE;
+          },
+        })
         : null;
 
       var btn = document.createElement("div");

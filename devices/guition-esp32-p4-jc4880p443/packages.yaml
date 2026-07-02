@@ -75,7 +75,7 @@ substitutions:
   cover_art_progress_height: "4"
   cover_art_text_color: "0xFFFFFF"
   cover_art_square_overlay: "false"
-  cover_art_live_image_updates: "true"
+  cover_art_live_image_updates: "false"
 
 packages:
   # ---------------------------------------------------------------------------

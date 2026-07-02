@@ -1,7 +1,9 @@
 # =============================================================================
 # BUILD PROFILE - Guition ESP32-S3-4848S040 (4" square)
 # =============================================================================
-# CI/local build entry point for the 480×480 square ESP32-S3 panel.
+# CI/local build entry point for the 480x480 square ESP32-S3 panel.
+# Bundles the matching web UI so branch/release builds do not load the shared
+# GitHub Pages copy from main.
 # =============================================================================
 
 substitutions:
@@ -25,3 +27,7 @@ wifi:
     ssid: "${friendly_name}"
 
 captive_portal:
+
+web_server:
+  js_url: ""
+  js_include: "../docs/public/webserver/guition-esp32-s3-4848s040/www.js"

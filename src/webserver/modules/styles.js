@@ -88,6 +88,17 @@ var CSS =
   ".sp-clock-wide-large{justify-content:center;align-items:flex-start}" +
   ".sp-clock-wide-large .sp-sensor-value{font-family:Roboto,sans-serif;font-weight:100}" +
   ".sp-forecast-preview{white-space:nowrap;gap:0}" +
+  ".sp-forecast-strip-preview{display:flex;align-items:center;justify-content:space-evenly;width:100%;gap:2px;font-size:calc(var(--btn-label)*0.85);line-height:1.1;text-align:center}" +
+  ".sp-forecast-strip-preview span{flex:1 1 0;min-width:0}" +
+  ".sp-forecast-hourly-preview{display:flex;align-items:center;justify-content:space-evenly;width:100%;gap:1px;font-size:calc(var(--btn-label)*0.72);line-height:1.1;text-align:center}" +
+  ".sp-forecast-hourly-preview span{flex:1 1 0;min-width:0}" +
+  ".sp-weather-strip-card{justify-content:center;gap:calc(var(--btn-pad)*0.35)}" +
+  ".sp-weather-strip-card .sp-forecast-strip-preview,.sp-weather-strip-card .sp-forecast-hourly-preview{align-self:stretch;min-height:0}" +
+  ".sp-weather-strip-card .sp-btn-label-row{flex:0 0 auto}" +
+  ".sp-forecast-hero-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%}" +
+  ".sp-forecast-hero-condition{font-size:calc(var(--btn-label)*0.95);line-height:1.1}" +
+  ".sp-forecast-hero-temp{margin-top:2px}" +
+  ".sp-forecast-hero-range{font-size:calc(var(--btn-label)*1.05);line-height:1.1}" +
   ".sp-sensor-value{font-size:var(--btn-icon);line-height:1;font-weight:300}" +
   ".sp-sensor-unit{font-size:var(--btn-label);line-height:1;color:#fff}" +
   ".sp-slider-preview{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;pointer-events:none}" +

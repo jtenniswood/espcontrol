@@ -161,6 +161,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "true",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc4880p443": {
             "cover_art_size": "480",
@@ -194,6 +195,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc8012p4a1": {
             "cover_art_size": "800",
@@ -227,6 +229,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFF5E0",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
         "guition-esp32-p4-jc1060p470": {
             "cover_art_size": "600",
@@ -260,6 +263,7 @@ def cover_art_substitution_lines(device: dict) -> list[str]:
             "cover_art_progress_height": "4",
             "cover_art_text_color": "0xFFFFFF",
             "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false",
         },
     }
     layout = layouts.get(device["slug"])

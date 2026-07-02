@@ -198,6 +198,11 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
     }
   }
   size_t new_size = this->get_buffer_size_(width, height);
+  if (!this->retired_buffers_.empty()) {
+    ESP_LOGI(TAG, "Freeing retired artwork buffers before next decode: need=%zu retired_bytes=%zu",
+             new_size, this->retired_buffer_bytes_());
+    this->cleanup_retired_buffers_(true);
+  }
   if (this->decode_buffer_) {
     if (new_size <= this->get_decode_buffer_size_()) {
       this->decode_buffer_width_ = width;
@@ -966,6 +971,14 @@ void ArtworkImage::cleanup_retired_buffers_(bool force) {
   }
 }
 
+size_t ArtworkImage::retired_buffer_bytes_() const {
+  size_t retired_bytes = 0;
+  for (const auto &buffer : this->retired_buffers_) {
+    retired_bytes += buffer.size;
+  }
+  return retired_bytes;
+}
+
 void ArtworkImage::limit_retired_buffers_() {
   while (this->retired_buffers_.size() > MAX_RETIRED_IMAGE_BUFFERS) {
     auto it = this->retired_buffers_.begin();
@@ -1025,10 +1038,13 @@ void ArtworkImage::finish_download_() {
     this->fail_download_();
     return;
   }
+  const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   this->log_state_("download-complete");
   ESP_LOGD(TAG, "Image fully downloaded, read %zu bytes, width/height = %d/%d",
-           this->downloader_ ? this->downloader_->get_bytes_read() : 0, this->width_, this->height_);
+           bytes_read, this->width_, this->height_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
+  this->end_connection_();
+  this->log_state_("download-resources-released");
   App.feed_wdt();
 #ifdef USE_LVGL
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
@@ -1039,7 +1055,6 @@ void ArtworkImage::finish_download_() {
 #endif
   this->log_state_("lvgl-descriptor-ready");
   App.feed_wdt();
-  this->end_connection_();
   this->download_finished_callback_.call(false);
   App.feed_wdt();
   this->log_state_("download-callback-finished");
@@ -1091,10 +1106,7 @@ void ArtworkImage::log_state_(const char *stage) {
 #endif
   size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   size_t content_length = this->downloader_ ? this->downloader_->content_length : 0;
-  size_t retired_bytes = 0;
-  for (const auto &buffer : this->retired_buffers_) {
-    retired_bytes += buffer.size;
-  }
+  size_t retired_bytes = this->retired_buffer_bytes_();
   ESP_LOGD(TAG,
            "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu retired_bytes=%zu heap_free=%zu heap_largest=%zu pending=%s",
            stage, this->url_.size(), bytes_read, content_length, this->download_buffer_.unread(),

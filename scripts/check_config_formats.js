@@ -321,10 +321,13 @@ assert.strictEqual(hooks.normalizeDateTimeCardMode("timezone"), "timezone", "dat
 assert.strictEqual(hooks.normalizeDateTimeCardMode("bad"), "", "date/time invalid mode falls back to date mode");
 assert.deepStrictEqual(
   Array.from(hooks.weatherModeOptionValues()),
-  ["", "today", "tomorrow"],
+  ["", "today", "tomorrow", "hero", "daily_strip", "hourly_strip"],
   "weather mode options are spec-backed"
 );
 assert.strictEqual(hooks.normalizeWeatherCardMode("today"), "today", "weather today mode is allowed by spec");
+assert.strictEqual(hooks.normalizeWeatherCardMode("hero"), "hero", "weather hero mode is allowed by spec");
+assert.strictEqual(hooks.normalizeWeatherCardMode("daily_strip"), "daily_strip", "weather daily strip mode is allowed by spec");
+assert.strictEqual(hooks.normalizeWeatherCardMode("hourly_strip"), "hourly_strip", "weather hourly strip mode is allowed by spec");
 assert.strictEqual(hooks.normalizeWeatherCardMode("bad"), "", "weather invalid mode falls back to current conditions");
 assert.strictEqual(
   hooks.cardContractOptionSupportedFor("weather", "large_numbers", { precision: "today" }),

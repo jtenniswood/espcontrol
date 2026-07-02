@@ -1488,9 +1488,13 @@ script:
           if (!id(cover_art_screensaver_enabled).state &&
               !id(media_player_sleep_prevention_enabled).state) {
             id(cover_art_empty_entity_logged) = false;
+            id(cover_art_subscribed_entity).clear();
+            ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             return;
           }
           if (cover_entity.empty()) {
+            id(cover_art_subscribed_entity).clear();
+            ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             if (!id(cover_art_empty_entity_logged)) {
               ESP_LOGW("cover_art", "No media player selected for cover art screensaver");
               id(cover_art_empty_entity_logged) = true;
@@ -1499,6 +1503,7 @@ script:
           }
           if (!ha_api_available()) {
             id(cover_art_subscribed_entity).clear();
+            ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             if (!id(cover_art_api_wait_logged)) {
               ESP_LOGI("cover_art", "Waiting for API server before subscribing");
               id(cover_art_api_wait_logged) = true;
@@ -1509,6 +1514,7 @@ script:
           id(cover_art_empty_entity_logged) = false;
           const bool already_subscribed = cover_entity == id(cover_art_subscribed_entity);
           if (!already_subscribed) {
+            ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);
             id(cover_art_subscription_generation)++;
             id(cover_art_subscribed_entity) = cover_entity;
             id(cover_art_last_playback_state).clear();
@@ -1572,7 +1578,11 @@ script:
               id(cover_art_playback_stopped).execute();
             };
           if (!already_subscribed) {
-            bool state_subscribed = ha_subscribe_state(cover_entity, handle_playback_state);
+            bool state_subscribed = ha_subscribe_state(
+              cover_entity,
+              handle_playback_state,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
             ESP_LOGI("cover_art", "Playback state subscription %s for %s",
                      state_subscribed ? "ready" : "failed", cover_entity.c_str());
           }
@@ -1603,7 +1613,12 @@ script:
               }
             };
           if (!already_subscribed) {
-            bool title_subscribed = ha_subscribe_attribute(cover_entity, std::string("media_title"), handle_media_title);
+            bool title_subscribed = ha_subscribe_attribute(
+              cover_entity,
+              std::string("media_title"),
+              handle_media_title,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
             ESP_LOGI("cover_art", "Title subscription %s", title_subscribed ? "ready" : "failed");
           }
           bool title_requested = ha_get_attribute(cover_entity, std::string("media_title"), handle_media_title);
@@ -1629,7 +1644,12 @@ script:
               }
             };
           if (!already_subscribed) {
-            bool artist_subscribed = ha_subscribe_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
+            bool artist_subscribed = ha_subscribe_attribute(
+              cover_entity,
+              std::string("media_artist"),
+              handle_media_artist,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
             ESP_LOGI("cover_art", "Artist subscription %s", artist_subscribed ? "ready" : "failed");
           }
           bool artist_requested = ha_get_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
@@ -1653,7 +1673,12 @@ script:
               }
             };
           if (!already_subscribed) {
-            bool album_subscribed = ha_subscribe_attribute(cover_entity, std::string("media_album_name"), handle_media_album);
+            bool album_subscribed = ha_subscribe_attribute(
+              cover_entity,
+              std::string("media_album_name"),
+              handle_media_album,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
             ESP_LOGI("cover_art", "Album subscription %s", album_subscribed ? "ready" : "failed");
           }
           bool album_requested = ha_get_attribute(cover_entity, std::string("media_album_name"), handle_media_album);
@@ -1685,7 +1710,12 @@ script:
               }
             };
           if (!already_subscribed) {
-            bool source_subscribed = ha_subscribe_attribute(cover_entity, std::string("source"), handle_media_source);
+            bool source_subscribed = ha_subscribe_attribute(
+              cover_entity,
+              std::string("source"),
+              handle_media_source,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
             ESP_LOGI("cover_art", "Source subscription %s", source_subscribed ? "ready" : "failed");
           }
           bool source_requested = ha_get_attribute(cover_entity, std::string("source"), handle_media_source);
@@ -1787,7 +1817,8 @@ script:
               bool condition_subscribed = ha_subscribe_attribute(
                 cover_entity,
                 attribute_name,
-                handle_condition
+                handle_condition,
+                HA_SUBSCRIPTION_SCOPE_COVER_ART
               );
               ESP_LOGI("cover_art", "Attribute condition subscription %s for %s",
                        condition_subscribed ? "ready" : "failed", attribute_name.c_str());
@@ -1854,7 +1885,8 @@ script:
               std::function<void(esphome::StringRef)>(
                 [handle_picture_change](esphome::StringRef picture) {
                   handle_picture_change(picture, false);
-                })
+                }),
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
             );
             bool local_picture_subscribed = ha_subscribe_attribute(
               cover_entity,
@@ -1862,7 +1894,8 @@ script:
               std::function<void(esphome::StringRef)>(
                 [handle_picture_change](esphome::StringRef picture) {
                   handle_picture_change(picture, true);
-                })
+                }),
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
             );
             ESP_LOGI("cover_art", "Artwork subscriptions entity_picture=%s entity_picture_local=%s",
                      picture_subscribed ? "ready" : "failed",
@@ -1901,7 +1934,12 @@ script:
               if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
             };
           if (!already_subscribed) {
-            ha_subscribe_attribute(cover_entity, std::string("media_duration"), handle_media_duration);
+            ha_subscribe_attribute(
+              cover_entity,
+              std::string("media_duration"),
+              handle_media_duration,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
           }
           ha_get_attribute(cover_entity, std::string("media_duration"), handle_media_duration);
 
@@ -1927,7 +1965,12 @@ script:
               }
             };
           if (!already_subscribed) {
-            ha_subscribe_attribute(cover_entity, std::string("media_position"), handle_media_position);
+            ha_subscribe_attribute(
+              cover_entity,
+              std::string("media_position"),
+              handle_media_position,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
           }
           ha_get_attribute(cover_entity, std::string("media_position"), handle_media_position);
 
@@ -1957,7 +2000,12 @@ script:
               }
             };
           if (!already_subscribed) {
-            ha_subscribe_attribute(cover_entity, std::string("media_position_updated_at"), handle_media_position_updated_at);
+            ha_subscribe_attribute(
+              cover_entity,
+              std::string("media_position_updated_at"),
+              handle_media_position_updated_at,
+              HA_SUBSCRIPTION_SCOPE_COVER_ART
+            );
           }
           ha_get_attribute(cover_entity, std::string("media_position_updated_at"), handle_media_position_updated_at);
 

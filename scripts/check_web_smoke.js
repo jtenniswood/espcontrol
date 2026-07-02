@@ -613,6 +613,86 @@ assert(weatherForecastPreview.iconHtml.includes("sp-sensor-preview-large"), "wea
 assert(weatherForecastPreview.iconHtml.includes("\u00b0F"), "weather forecast preview uses the selected temperature unit");
 assert(weatherForecastPreview.labelHtml.includes("Garden"), "weather forecast preview uses the custom label");
 
+const weatherDailyStripPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  label: "Forecast",
+  type: "weather",
+  precision: "daily_strip",
+  options: "",
+}, { cardSize: CARD_SIZE_WIDE });
+assert(weatherDailyStripPreview.iconHtml.includes("sp-forecast-strip-preview"), "weather daily strip preview uses strip styling");
+assert(weatherDailyStripPreview.labelHtml.includes("Forecast"), "weather daily strip preview uses the custom label");
+const weatherDailyStripNarrowPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "daily_strip",
+}, { cardSize: CARD_SIZE_SINGLE });
+assert(!weatherDailyStripNarrowPreview.iconHtml.includes("sp-forecast-strip-preview"), "weather daily strip preview warns in a single slot");
+assert(weatherDailyStripNarrowPreview.labelHtml.includes("Today"), "weather daily strip preview falls back in a single slot");
+assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "daily_strip",
+}, 3, { cardSize: CARD_SIZE_SINGLE }), false, "weather daily strip save requires a wide slot");
+assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "daily_strip",
+}, 3, { cardSize: CARD_SIZE_WIDE }), true, "weather daily strip save allows a wide slot");
+const weatherHourlyStripPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  label: "Hourly",
+  type: "weather",
+  precision: "hourly_strip",
+  options: "",
+}, { cardSize: CARD_SIZE_EXTRA_WIDE });
+assert(weatherHourlyStripPreview.iconHtml.includes("sp-forecast-hourly-preview"), "weather hourly strip preview uses hourly styling");
+assert(weatherHourlyStripPreview.iconHtml.includes("12a"), "weather hourly strip preview shows twelve hour columns");
+assert(weatherHourlyStripPreview.labelHtml.includes("Hourly"), "weather hourly strip preview uses the custom label");
+const weatherHourlyStripWidePreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "hourly_strip",
+}, { cardSize: CARD_SIZE_WIDE });
+assert(!weatherHourlyStripWidePreview.iconHtml.includes("sp-forecast-hourly-preview"), "weather hourly strip preview warns in a wide slot");
+assert(weatherHourlyStripWidePreview.labelHtml.includes("Hourly"), "weather hourly strip preview falls back in a wide slot");
+assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "hourly_strip",
+}, 3, { cardSize: CARD_SIZE_WIDE }), false, "weather hourly strip save requires an extra-wide slot");
+assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "hourly_strip",
+}, 3, { cardSize: CARD_SIZE_EXTRA_WIDE }), true, "weather hourly strip save allows an extra-wide slot");
+assert.deepStrictEqual(
+  Array.from(hooks.weatherModeOptionValues()),
+  ["", "today", "tomorrow", "hero", "daily_strip", "hourly_strip"],
+  "weather card mode selector includes strip modes"
+);
+assert.deepStrictEqual(
+  hooks.weatherCardModeOptions().map(function (entry) { return entry[0]; }),
+  ["", "today", "tomorrow", "hero", "daily_strip", "hourly_strip"],
+  "weather card mode options stay visible before resizing the slot"
+);
+
+const weatherHeroPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "hero",
+  options: "",
+}, { cardSize: CARD_SIZE_LARGE });
+assert(weatherHeroPreview.iconHtml.includes("sp-forecast-hero-preview"), "weather hero preview uses hero styling");
+assert(weatherHeroPreview.labelHtml.includes("18/10"), "weather hero preview shows high/low range label");
+assert(weatherHeroPreview.labelHtml.includes("sp-sensor-unit"), "weather hero range shows unit suffix");
+assert(!weatherHeroPreview.labelHtml.includes("sp-type-badge"), "weather hero range omits forecast badge icon");
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("weather", "large_numbers", { precision: "hero" }),
+  true,
+  "weather large-number option supports hero mode"
+);
+
 const imagePreview = hooks.buttonTypePreviewFor("image", {
   entity: "camera.seaside",
   label: "Seaside",

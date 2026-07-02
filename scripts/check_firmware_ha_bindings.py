@@ -146,6 +146,18 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: defer Home Assistant actions when S3 internal heap is critically low")
     if "Home Assistant attribute request" not in text:
         errors.append(f"{rel}: defer one-off Home Assistant attribute reads when S3 internal heap is critically low")
+    if text.count("ha_state_callback_depth() != 0 || !ha_api_state_connected()") < 2:
+        errors.append(f"{rel}: queue one-off Home Assistant reads until state subscription is ready")
+    if (
+        "request.callbacks.push_back(std::move(callback))" not in text
+        or "request.entity_id == entity_id" not in text
+        or "for (const auto &callback : *callbacks)" not in text
+    ):
+        errors.append(f"{rel}: fan out duplicate deferred Home Assistant reads")
+    if text.count("ha_track_subscription_callback(callback_ref") < 2:
+        errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
+    if "ha_release_subscription_callbacks_now" not in text or "*ref.callback = nullptr" not in text:
+        errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
 
     return errors
 
@@ -167,6 +179,8 @@ def firmware_unavailable_retry_errors(
         )
         if bump_match and "ha_reset_unavailable_state_retries" in bump_match.group("body"):
             errors.append(f"{config_rel}: do not reset removed unavailable HA state retries")
+        if bump_match and "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT)" not in bump_match.group("body"):
+            errors.append(f"{config_rel}: release retired default Home Assistant subscription callbacks on generation bumps")
         if "ha_reset_unavailable_state_retries" in config_text:
             errors.append(f"{config_rel}: do not keep removed unavailable HA state retry helpers")
 
@@ -577,8 +591,12 @@ def firmware_cover_art_external_input_errors(path: Path, root: Path) -> list[str
     errors: list[str] = []
     if "cover_art_hide_external_input_enabled" not in text:
         errors.append(f"{rel}: expose a cover art external-input hide setting")
-    if 'ha_subscribe_attribute(cover_entity, std::string("source"), handle_media_source)' not in text:
+    if ('std::string("source")' not in text or
+            "handle_media_source" not in text or
+            "HA_SUBSCRIPTION_SCOPE_COVER_ART" not in text):
         errors.append(f"{rel}: subscribe to the media player source attribute")
+    if "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART)" not in text:
+        errors.append(f"{rel}: release retired cover art Home Assistant subscriptions")
     if 'ha_get_attribute(cover_entity, std::string("source"), handle_media_source)' not in text:
         errors.append(f"{rel}: refresh the media player source attribute")
     if 'next == "TV"' not in text or 'next == "Line-in"' not in text:
@@ -1910,6 +1928,79 @@ def run_self_test() -> int:
         ("send Home Assistant actions only after state subscription is ready",),
     )
     expect_ha_boundary_errors(
+        "one-off state read before state connection",
+        {
+            "button_grid_ha.h": (
+                "inline bool ha_subscribe_state() {\n  return true;\n}\n"
+                "inline bool ha_subscribe_attribute() {\n  return true;\n}\n"
+                "inline bool ha_cancel_action_response_callback() {\n  handle_action_response(); return true;\n}\n"
+                "inline bool ha_action_send() {\n"
+                "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
+                "}\n"
+                "inline bool ha_get_attribute() {\n"
+                "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
+                "  if (ha_state_callback_depth() != 0) return true;\n"
+                "  return true;\n"
+                "}\n"
+            )
+        },
+        ("queue one-off Home Assistant reads until state subscription is ready",),
+    )
+    expect_ha_boundary_errors(
+        "duplicate deferred state reads",
+        {
+            "button_grid_ha.h": (
+                "inline bool ha_subscribe_state() {\n  return true;\n}\n"
+                "inline bool ha_subscribe_attribute() {\n  return true;\n}\n"
+                "inline bool ha_cancel_action_response_callback() {\n  handle_action_response(); return true;\n}\n"
+                "inline bool ha_action_send() {\n"
+                "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
+                "}\n"
+                "inline bool ha_get_state() {\n"
+                "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
+                "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
+                "  return true;\n"
+                "}\n"
+                "inline bool ha_get_attribute() {\n"
+                "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
+                "  return true;\n"
+                "}\n"
+            )
+        },
+        ("fan out duplicate deferred Home Assistant reads",),
+    )
+    expect_ha_boundary_errors(
+        "subscription callback bodies retained",
+        {
+            "button_grid_ha.h": (
+                "inline bool ha_subscribe_state() {\n"
+                "  ha_track_subscription_callback(callback_ref);\n"
+                "  return true;\n"
+                "}\n"
+                "inline bool ha_subscribe_attribute() {\n"
+                "  ha_track_subscription_callback(callback_ref);\n"
+                "  return true;\n"
+                "}\n"
+                "inline bool ha_cancel_action_response_callback() {\n  handle_action_response(); return true;\n}\n"
+                "inline bool ha_action_send() {\n"
+                "  return ha_api_state_connected() && HA_ACTION_INTERNAL_FREE_MIN_BYTES;\n"
+                "}\n"
+                "inline bool ha_get_state() {\n"
+                "  ha_internal_heap_available(\"Home Assistant attribute request\");\n"
+                "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
+                "  request.callback = std::move(callback);\n"
+                "  request.entity_id == entity_id;\n"
+                "  return true;\n"
+                "}\n"
+                "inline bool ha_get_attribute() {\n"
+                "  if (ha_state_callback_depth() != 0 || !ha_api_state_connected()) return true;\n"
+                "  return true;\n"
+                "}\n"
+            )
+        },
+        ("release retired Home Assistant subscription callback bodies",),
+    )
+    expect_ha_boundary_errors(
         "unavailable retry helper symbols",
         {
             "button_grid_ha.h": (
@@ -2633,7 +2724,13 @@ def run_self_test() -> int:
         "      - lambda: |-\n"
         "          id(cover_art_hide_external_input_enabled).state && id(cover_art_external_input_active);\n"
         "          bool external = next == \"TV\" || next == \"Line-in\";\n"
-        "          ha_subscribe_attribute(cover_entity, std::string(\"source\"), handle_media_source);\n"
+        "          ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);\n"
+        "          ha_subscribe_attribute(\n"
+        "            cover_entity,\n"
+        "            std::string(\"source\"),\n"
+        "            handle_media_source,\n"
+        "            HA_SUBSCRIPTION_SCOPE_COVER_ART\n"
+        "          );\n"
         "          ha_get_attribute(cover_entity, std::string(\"source\"), handle_media_source);\n",
         (),
     )

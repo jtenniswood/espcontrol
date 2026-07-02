@@ -771,6 +771,9 @@ function renderButtonSettings(forceOpen) {
     clearFieldError: clearFieldError,
     toggleRow: toggleRow,
     cardSize: c.sizes[slot] || 1,
+    getCardSize: function () {
+      return c.sizes[slot] || CARD_SIZE_SINGLE;
+    },
     idPrefix: idPrefix,
     isSub: c.isSub,
   };
@@ -1002,6 +1005,17 @@ function renderButtonSettings(forceOpen) {
     if (!validateSettingsDraft()) return;
     if (!validateImageCardLimit()) return;
     if (!validateConfigSize()) return;
+    var saveTypeDef = BUTTON_TYPES[b.type || ""] || null;
+    if (saveTypeDef && saveTypeDef.validateSave &&
+        !saveTypeDef.validateSave(b, slot, {
+          cardSize: c.sizes[slot] || CARD_SIZE_SINGLE,
+          getCardSize: function () {
+            return c.sizes[slot] || CARD_SIZE_SINGLE;
+          },
+          showBanner: showBanner,
+        })) {
+      return;
+    }
     if (!applySettingsDraft()) return;
     closeSettings();
   });

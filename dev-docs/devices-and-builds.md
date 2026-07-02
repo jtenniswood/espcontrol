@@ -116,9 +116,11 @@ Each device gets a bundle at:
 docs/public/webserver/<slug>/www.js
 ```
 
-Production firmware points the browser setup page at the GitHub Pages copy of
-that bundle. Local testing can override `web_server.js_url` to load a bundle
-served from a development machine.
+Generated bundles are committed even when firmware bundles them locally. Older
+installed firmware can still point at the GitHub Pages copy of this path, while
+new `builds/*.yaml` entry points use `web_server.js_include` so the setup page
+matches the firmware branch being flashed. Local testing can still override
+`web_server.js_url` to load a bundle served from a development machine.
 
 ## Firmware Build Artifacts
 

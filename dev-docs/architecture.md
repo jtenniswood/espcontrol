@@ -58,8 +58,9 @@ Use `python3 scripts/build.py --check` to confirm generated files are current.
    theme/config YAML in `common/config/`, and C++ components in
    `components/espcontrol/`.
 3. The device exposes a web server.
-4. The browser setup page loads a per-device `www.js` bundle. In production that
-   bundle is fetched from `docs/public/webserver/<slug>/www.js` on GitHub Pages.
+4. The browser setup page loads a per-device `www.js` bundle. New build
+   entrypoints bundle it into firmware; older installed firmware can still fetch
+   `docs/public/webserver/<slug>/www.js` from GitHub Pages.
 5. The setup page reads and writes ESPHome entities exposed by the device, such
    as `Button N Config` text entities.
 6. Firmware parses the saved compact config string and updates the on-device

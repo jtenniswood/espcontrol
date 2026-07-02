@@ -176,6 +176,7 @@ class ArtworkImage : public PollingComponent,
   void retire_active_buffer_();
   void cleanup_retired_buffers_(bool force);
   void limit_retired_buffers_();
+  size_t retired_buffer_bytes_() const;
   void invalidate_lvgl_cache_();
   bool ensure_download_buffer_capacity_();
   bool decode_buffered_data_();

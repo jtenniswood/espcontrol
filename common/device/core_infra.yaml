@@ -43,6 +43,7 @@ api:
           if (ha_api_state_connected()) {
             apply_registered_ha_control_availability(true);
             refresh_weather_forecast_cards();
+            refresh_weather_hourly_forecast_cards();
             ha_flush_deferred_state_requests();
           }
         }
@@ -59,6 +60,7 @@ api:
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
           refresh_weather_forecast_cards();
+          refresh_weather_hourly_forecast_cards();
           ha_flush_deferred_state_requests();
         }
         todo_reload_active_modal();
@@ -67,6 +69,7 @@ api:
         if (ha_api_connected()) refresh_image_cards();
         if (ha_api_state_connected()) {
           refresh_weather_forecast_cards();
+          refresh_weather_hourly_forecast_cards();
           ha_flush_deferred_state_requests();
         }
         todo_reload_active_modal();
@@ -95,6 +98,11 @@ interval:
     then:
       - lambda: |-
           refresh_weather_forecast_cards();
+
+  - interval: 30min
+    then:
+      - lambda: |-
+          refresh_weather_hourly_forecast_cards();
 
 logger:
   logs:
