@@ -718,8 +718,8 @@ inline bool media_fast_press_consume(int slot_num) {
 
 inline void handle_button_press(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  (void) btn_obj;
   if (slot_num <= 0 || slot_num > MAX_GRID_SLOTS) return;
-  if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
   if (p.type != "media") return;
   std::string mode = media_card_mode(p.sensor);
@@ -761,8 +761,8 @@ inline void light_control_open_modal(LightControlCtx *ctx);
 // slider toggle, or entity toggle based on the config string.
 inline void handle_button_click(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  (void) btn_obj;
   if (media_fast_press_consume(slot_num)) return;
-  if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
   if (p.type == "sensor" || p.type == "text_sensor" || p.type == "local_sensor" ||
       p.type == "door_window" ||
@@ -810,8 +810,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "garage") {
     if (garage_command_mode(p.sensor)) {
       send_cover_command_action(p);
-    } else if (garage_card_show_status(p)) {
-      return;
     } else if (!p.entity.empty()) {
       set_card_checked_state(btn_obj, true);
       send_toggle_action(p.entity);
@@ -891,7 +889,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     } else if (media_playback_button_mode(mode)) {
       send_media_playback_action(p.entity, mode);
     }
-  } else if (p.type == "climate") {
+  } else if (climate_card_type(p.type)) {
     ClimateControlCtx *ctx = (ClimateControlCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) climate_control_open_modal(ctx);
   } else if (p.type == "image") {

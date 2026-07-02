@@ -398,6 +398,35 @@ def firmware_light_control_tab_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_climate_control_tab_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_climate.h"
+    errors: list[str] = []
+
+    if not path.exists():
+        errors.append("components/espcontrol/button_grid_climate.h: keep climate modal tabs")
+        return errors
+
+    text = path.read_text(encoding="utf-8")
+    if "enum class ClimateControlTab" not in text or "ClimateControlVisibleTabs" not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: model climate modal controls as top-level tabs")
+    if 'cfg_option_value(ctx ? ctx->options : "", CLIMATE_CONTROL_TABS_OPTION)' not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: order climate modal tabs from saved climate_tabs config")
+    if "climate_control_tab_supported(ctx, tab)" not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: filter climate tabs using Home Assistant capabilities")
+    if "ui.tab = climate_control_first_visible_tab(ctx);" not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: fall back when the active climate tab disappears")
+    if "tabs_layout.show_tab_bar = ctx && ctx->all_controls && tabs_layout.tab_count > 1;" not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: hide climate modal tabs unless All Controls has multiple visible controls")
+    if 'ctx->all_controls = p.type == "climate_control";' not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: keep climate tabs scoped to the All Controls subtype")
+    if "climate_set_dial_controls_visible(show_temperature)" not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: keep temperature controls scoped to the temperature tab")
+    if "climate_open_inline_option_list(ctx, climate_control_tab_kind(ui.tab))" not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: show non-temperature climate controls as tab pages")
+
+    return errors
+
+
 def firmware_network_status_version_errors(root: Path) -> list[str]:
     path = root / "components" / "espcontrol" / "network_status.h"
     errors: list[str] = []
@@ -506,6 +535,7 @@ def run_scan() -> int:
     errors.extend(firmware_light_control_brightness_errors(ROOT))
     errors.extend(firmware_light_control_tab_errors(ROOT))
     errors.extend(firmware_cover_control_tab_errors(ROOT))
+    errors.extend(firmware_climate_control_tab_errors(ROOT))
     errors.extend(firmware_network_status_version_errors(ROOT))
 
     if errors:

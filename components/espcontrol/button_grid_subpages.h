@@ -71,7 +71,8 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.sensor = "play_pause";
     } else if (b.sensor != "play_pause" && b.sensor != "previous" &&
                b.sensor != "next" && b.sensor != "volume" &&
-               b.sensor != "position" && b.sensor != "now_playing") {
+               b.sensor != "position" && b.sensor != "now_playing" &&
+               b.sensor != "playlist") {
       b.sensor = "play_pause";
     }
     if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
@@ -89,7 +90,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.precision.clear();
     }
   }
-  if (b.type == "climate") {
+  if (climate_card_type(b.type)) {
     b.sensor.clear();
     b.unit.clear();
     b.options = climate_card_options_normalized(b.options);
@@ -207,11 +208,11 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   p.precision = b.precision;
   if (!b.type.empty() && b.type != "action" && b.type != "alarm" &&
       b.type != "alarm_action" &&
-      b.type != "climate" && b.type != "cover" && b.type != "garage" && b.type != "gate" &&
+      !climate_card_type(b.type) && b.type != "cover" && b.type != "garage" && b.type != "gate" &&
       b.type != "webhook" &&
       b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
-      b.type != "subpage" && b.type != "light_control" &&
+      b.type != "subpage" && b.type != "light_control" && b.type != "media" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }

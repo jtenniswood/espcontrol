@@ -449,7 +449,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       row_span, col_span);
     return;
   }
-  if (p.type == "climate") {
+  if (climate_card_type(p.type)) {
     setup_climate_control_button(
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl,
       s.text_lbl, p, display_icon_font(display));
@@ -1094,7 +1094,6 @@ inline void grid_phase2(
   bump_ha_subscription_generation();
   weather_forecast_cancel_pending_requests();
   reset_climate_control_refs();
-  reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
   grid_clear_subpage_parent_targets(slots, NS);
@@ -1147,11 +1146,6 @@ inline void grid_phase2(
     if (bind_basic_sensor_card(s, p, palette)) continue;
     if (bind_passive_card_sources(s, p)) continue;
     if (p.type == "garage") {
-      if (!p.entity.empty()) {
-        if (garage_command_mode(p.sensor)) {
-          subscribe_control_availability(s.btn, s.btn, p.entity);
-        }
-      }
       if (!garage_command_mode(p.sensor) || garage_card_show_status(p)) {
         TransientStatusLabel *status_label = nullptr;
         bind_garage_status_card(s, p, &status_label);
@@ -1219,9 +1213,7 @@ inline void grid_phase2(
     }
     if (p.type == "lock") {
       if (!p.entity.empty()) {
-        if (lock_command_mode(p.sensor)) {
-          subscribe_control_availability(s.btn, s.btn, p.entity);
-        } else {
+        if (!lock_command_mode(p.sensor)) {
           TransientStatusLabel *status_label = nullptr;
           grid_track_runtime_allocation(s.btn, bind_lock_status_card(s, p, &status_label));
           grid_track_transient_status_label_runtime(s.btn, status_label);
@@ -1323,7 +1315,6 @@ inline void grid_phase2(
       if (!p.entity.empty()) {
         if (p.label.empty())
           subscribe_friendly_name(s.text_lbl, p.entity);
-        subscribe_control_availability(s.btn, s.btn, p.entity);
         CoverCommandCtx *ctx = create_cover_command_context(p);
         grid_track_runtime_allocation(s.btn, ctx);
         lv_obj_set_user_data(s.btn, ctx);
@@ -1382,8 +1373,6 @@ inline void grid_phase2(
         grid_track_runtime_allocation(s.btn, ctx);
         subscribe_vacuum_card_state(ctx);
         lv_obj_set_user_data(s.btn, ctx);
-      } else if (!p.entity.empty()) {
-        subscribe_control_availability(s.btn, s.btn, p.entity);
       }
       continue;
     }
@@ -1394,8 +1383,6 @@ inline void grid_phase2(
         grid_track_runtime_allocation(s.btn, ctx);
         subscribe_lawn_mower_card_state(ctx);
         lv_obj_set_user_data(s.btn, ctx);
-      } else if (!p.entity.empty()) {
-        subscribe_control_availability(s.btn, s.btn, p.entity);
       }
       continue;
     }
@@ -1448,7 +1435,6 @@ inline void grid_phase2(
             s.btn, create_media_playlist_context(s.btn, p));
           subscribe_media_playlist_state(ctx);
         } else if (media_playback_button_mode(mode)) {
-          subscribe_control_availability(s.btn, s.btn, p.entity);
           // Previous/next are momentary actions and do not reflect player state.
         } else if (mode == "volume") {
           MediaVolumeCtx *ctx = create_media_volume_context(
@@ -1482,7 +1468,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "climate") {
+    if (climate_card_type(p.type)) {
       if (!p.entity.empty()) {
         ClimateControlCtx *ctx = create_climate_control_context(
           s.btn, s.icon_lbl, s.text_lbl, p,
@@ -1788,9 +1774,7 @@ inline void grid_phase2(
       setup_card_visual(sub_slot, sb_cfg, cfg, palette, rs, cs);
 
       if (sb_cfg.type == "screen_lock") {
-        lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-          lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-          if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
+        lv_obj_add_event_cb(sb_btn, [](lv_event_t *) {
           screen_lock_toggle();
         }, LV_EVENT_CLICKED, nullptr);
         continue;
@@ -1812,7 +1796,6 @@ inline void grid_phase2(
           add_parent_indicator(sb_cfg.entity);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-            if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
             CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(target);
             if (ctx) cover_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, nullptr);
@@ -1823,7 +1806,6 @@ inline void grid_phase2(
         if (!sb_cfg.entity.empty()) {
           if (sb_cfg.label.empty())
             subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
-          subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
           CoverCommandCtx *ctx = grid_delete_with_owner(sb_btn, create_cover_command_context(sb_cfg));
           subscribe_cover_command_features(ctx);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
@@ -1851,7 +1833,6 @@ inline void grid_phase2(
       if (sb_cfg.type == "garage") {
         if (!sb_cfg.entity.empty()) {
           if (garage_command_mode(sb_cfg.sensor)) {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
             if (garage_card_show_status(sb_cfg)) {
               bind_garage_status_card(sub_slot, sb_cfg);
               add_parent_indicator(sb_cfg.entity);
@@ -1895,7 +1876,6 @@ inline void grid_phase2(
       if (sb_cfg.type == "lock") {
         if (!sb_cfg.entity.empty()) {
           if (lock_command_mode(sb_cfg.sensor)) {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
             ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
@@ -2091,8 +2071,6 @@ inline void grid_phase2(
           register_subpage_vacuum_card_text(sub_slot.text_lbl, ctx, sb_cfg);
           if (vacuum_card_mode_needs_state(sb_cfg.sensor)) {
             subscribe_vacuum_card_state(ctx);
-          } else {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
           }
           add_parent_indicator(sb_cfg.entity);
           if (!vacuum_card_read_only(sb_cfg)) {
@@ -2110,8 +2088,6 @@ inline void grid_phase2(
           grid_delete_with_owner(sb_btn, ctx);
           if (lawn_mower_card_mode_needs_state(sb_cfg.sensor)) {
             subscribe_lawn_mower_card_state(ctx);
-          } else {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
           }
           add_parent_indicator(sb_cfg.entity, lawn_mower_state_active_ref);
           if (!lawn_mower_card_read_only(sb_cfg)) {
@@ -2184,8 +2160,6 @@ inline void grid_phase2(
               sb_btn, create_media_playlist_context(sub_slot.btn, sb_cfg));
             subscribe_media_playlist_state(playlist_ctx);
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-              if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_media_playlist_action(*c);
             }, LV_EVENT_CLICKED, ctx);
@@ -2193,8 +2167,6 @@ inline void grid_phase2(
             ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
             ctx->sensor = mode;
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-              if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_media_playback_action(c->entity, media_card_mode(c->sensor));
             }, media_fast_press_mode(mode) ? LV_EVENT_PRESSED : LV_EVENT_CLICKED, ctx);
@@ -2202,8 +2174,6 @@ inline void grid_phase2(
               subscribe_media_state(sub_slot.btn,
                 media_play_pause_show_state(sb_cfg) ? sub_slot.text_lbl : nullptr,
                 sb_cfg.entity);
-            else
-              subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
           } else if (mode == "volume") {
             MediaVolumeCtx *ctx = create_media_volume_context(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
@@ -2249,7 +2219,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "climate") {
+      if (climate_card_type(sb_cfg.type)) {
         if (!sb_cfg.entity.empty()) {
           ClimateControlCtx *ctx = create_climate_control_context(
             sub_slot.btn, sub_slot.icon_lbl, sub_slot.text_lbl, sb_cfg,
@@ -2310,8 +2280,6 @@ inline void grid_phase2(
           subscribe_light_control_state(ctx);
           add_parent_indicator(sb_cfg.entity);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-            if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
             LightControlCtx *ctx = (LightControlCtx *)lv_event_get_user_data(e);
             if (ctx) light_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
@@ -2454,7 +2422,6 @@ inline void grid_phase2(
 
     lv_obj_set_user_data(slots[si].btn, (void *)sub_scr);
   }
-  if (!ha_api_state_connected()) apply_registered_ha_control_availability(false);
   screen_lock_apply();
   refresh_weather_forecast_cards();
   grid_log_memory("end");

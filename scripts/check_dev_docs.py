@@ -117,6 +117,7 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "calendar": "docs/card-types/calendar.md",
     "clock": "docs/card-types/calendar.md",
     "climate": "docs/card-types/climate.md",
+    "climate_control": "docs/card-types/climate.md",
     "cover": "docs/card-types/covers.md",
     "door_window": "docs/card-types/doors-windows.md",
     "presence": "docs/card-types/presence.md",
@@ -306,13 +307,15 @@ def option_summary(card: dict) -> str:
         return "None"
     labels = []
     for option in options:
+        if option.get("docsHidden"):
+            continue
         values = option.get("values") or []
         label = option.get("label") or option.get("name") or ""
         if values:
             labels.append(f"{label}: {', '.join('default' if v == '' else str(v) for v in values)}")
         else:
             labels.append(str(label))
-    return "; ".join(labels)
+    return "; ".join(labels) if labels else "None"
 
 
 def docs_link(path: str) -> str:
@@ -345,7 +348,7 @@ def generated_card_map() -> str:
         checks = ["Contract", "Codec", "Parser"]
         if card.get("domains") or card_type in {"action", "push", "webhook", "weather", "image"}:
             checks.append("HA")
-        if "modal" in " ".join(firmware_files.get(card_type, [])).lower() or card_type in {"alarm", "alarm_action", "climate", "media", "option_select", "image"}:
+        if "modal" in " ".join(firmware_files.get(card_type, [])).lower() or card_type in {"alarm", "alarm_action", "climate", "climate_control", "media", "option_select", "image"}:
             checks.append("Modals")
         if card.get("options"):
             checks.append("Backup")
