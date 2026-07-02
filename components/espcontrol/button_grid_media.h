@@ -1410,7 +1410,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
     ui.tab_row, find_icon("Speaker"), ctx->icon_font,
     MediaControlTab::CONTROLS, ctx->width_compensation_percent);
   ui.progress_tab = media_control_create_tab_button(
-    ui.tab_row, find_icon("Timer"), ctx->icon_font,
+    ui.tab_row, find_icon("Progress Clock"), ctx->icon_font,
     MediaControlTab::PROGRESS, ctx->width_compensation_percent);
   ui.volume_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Volume High"), ctx->icon_font,
