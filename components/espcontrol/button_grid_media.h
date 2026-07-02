@@ -4,7 +4,8 @@
 
 enum class MediaControlTab : uint8_t {
   CONTROLS = 0,
-  VOLUME = 1,
+  PROGRESS = 1,
+  VOLUME = 2,
 };
 
 constexpr lv_coord_t MEDIA_CONTROL_VOLUME_VALUE_Y_REF_PX = -8;
@@ -60,12 +61,16 @@ struct MediaControlModalUi {
   lv_obj_t *back_btn = nullptr;
   lv_obj_t *tab_row = nullptr;
   lv_obj_t *controls_tab = nullptr;
+  lv_obj_t *progress_tab = nullptr;
   lv_obj_t *volume_tab = nullptr;
   lv_obj_t *controls_box = nullptr;
+  lv_obj_t *progress_box = nullptr;
   lv_obj_t *volume_box = nullptr;
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
+  lv_obj_t *progress_fill = nullptr;
+  lv_obj_t *progress_handle = nullptr;
   lv_obj_t *previous_btn = nullptr;
   lv_obj_t *play_btn = nullptr;
   lv_obj_t *play_icon_lbl = nullptr;
@@ -800,6 +805,107 @@ inline void media_control_refresh_play_icon(MediaControlCtx *ctx) {
   lv_label_set_text(ui.play_icon_lbl, ctx->playing ? find_icon("Pause") : find_icon("Play"));
 }
 
+inline lv_obj_t *media_control_create_progress_fill(lv_obj_t *slider, lv_color_t fill_color) {
+  if (!slider) return nullptr;
+  lv_obj_set_style_bg_opa(slider, LV_OPA_TRANSP, LV_PART_INDICATOR);
+  lv_obj_t *fill = lv_obj_create(slider);
+  if (!fill) return nullptr;
+  lv_obj_set_size(fill, 0, 0);
+  lv_obj_set_style_bg_color(fill, fill_color, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(fill, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(fill, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(fill, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(fill, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(fill, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(fill, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(fill, LV_OBJ_FLAG_SCROLLABLE);
+  return fill;
+}
+
+inline lv_obj_t *media_control_create_progress_handle(lv_obj_t *slider) {
+  if (!slider) return nullptr;
+  lv_obj_t *handle = lv_obj_create(slider);
+  if (!handle) return nullptr;
+  lv_obj_set_size(handle, 0, 0);
+  lv_obj_set_style_bg_color(handle, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(handle, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(handle, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(handle, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(handle, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(handle, LV_OBJ_FLAG_SCROLLABLE);
+  return handle;
+}
+
+inline lv_coord_t media_control_progress_handle_inset(lv_obj_t *slider) {
+  if (!slider) return 18;
+  lv_coord_t inset = lv_obj_get_style_radius(slider, LV_PART_MAIN) * 3 / 4;
+  if (inset < 16) inset = 16;
+  if (inset > 28) inset = 28;
+  return inset;
+}
+
+inline lv_coord_t media_control_progress_handle_width(lv_obj_t *slider) {
+  if (!slider) return 6;
+  lv_coord_t width = lv_obj_get_width(slider);
+  lv_coord_t handle_w = width / 70;
+  if (handle_w < 5) handle_w = 5;
+  if (handle_w > 8) handle_w = 8;
+  return handle_w;
+}
+
+inline lv_coord_t media_control_progress_fill_width(lv_obj_t *slider, int pct) {
+  if (!slider) return 0;
+  lv_coord_t width = lv_obj_get_width(slider);
+  if (width <= 0) return 0;
+  lv_coord_t fill_w = (lv_coord_t)((int32_t) width * media_clamp_percent(pct) / 100);
+  lv_coord_t min_handle_cap =
+    media_control_progress_handle_inset(slider) * 2 + media_control_progress_handle_width(slider);
+  if (fill_w < min_handle_cap) fill_w = min_handle_cap;
+  if (fill_w > width) fill_w = width;
+  return fill_w;
+}
+
+inline void media_control_update_progress_fill(lv_obj_t *slider, lv_obj_t *fill,
+                                               lv_obj_t *handle, int pct,
+                                               lv_color_t fill_color) {
+  if (!slider || !fill) return;
+  lv_coord_t width = lv_obj_get_width(slider);
+  lv_coord_t height = lv_obj_get_height(slider);
+  if (width <= 0 || height <= 0) return;
+  pct = media_clamp_percent(pct);
+  lv_obj_set_style_bg_color(fill, fill_color, LV_PART_MAIN);
+  lv_coord_t fill_w = media_control_progress_fill_width(slider, pct);
+  lv_obj_set_size(fill, fill_w, height);
+  lv_obj_set_style_radius(fill, 0, LV_PART_MAIN);
+  lv_obj_align(fill, LV_ALIGN_LEFT_MID, 0, 0);
+  lv_obj_move_foreground(fill);
+  if (handle) lv_obj_move_foreground(handle);
+}
+
+inline void media_control_update_progress_handle(lv_obj_t *slider, lv_obj_t *handle, int pct) {
+  if (!slider || !handle) return;
+  lv_coord_t width = lv_obj_get_width(slider);
+  lv_coord_t height = lv_obj_get_height(slider);
+  if (width <= 0 || height <= 0) return;
+  lv_coord_t handle_h = height * 3 / 5;
+  if (handle_h < 20) handle_h = 20;
+  if (handle_h > height - 12) handle_h = height - 12;
+  if (handle_h < 8) handle_h = 8;
+  lv_coord_t handle_w = media_control_progress_handle_width(slider);
+  lv_coord_t inset = media_control_progress_handle_inset(slider);
+  lv_coord_t fill_w = media_control_progress_fill_width(slider, pct);
+  lv_coord_t x = fill_w - inset;
+  if (x < inset) x = inset;
+  if (x > width - inset - handle_w) x = width - inset - handle_w;
+  if (x > width - handle_w) x = width - handle_w;
+  lv_obj_set_size(handle, handle_w, handle_h);
+  lv_obj_set_style_radius(handle, handle_w / 2, LV_PART_MAIN);
+  lv_obj_align(handle, LV_ALIGN_LEFT_MID, x, 0);
+  lv_obj_clear_flag(handle, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_move_foreground(handle);
+}
+
 inline void media_control_refresh_progress(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
@@ -814,6 +920,10 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
     lv_slider_set_value(ui.progress_slider, pct, LV_ANIM_OFF);
     ui.updating_progress = false;
   }
+  media_control_update_progress_fill(
+    ui.progress_slider, ui.progress_fill, ui.progress_handle, pct,
+    lv_color_hex(MEDIA_CONTROL_PROGRESS_FILL_COLOR));
+  media_control_update_progress_handle(ui.progress_slider, ui.progress_handle, pct);
   if (ui.progress_slider) {
     bool has_duration = ctx->duration > 0.0f && ctx->available;
     apply_control_availability(ui.progress_slider, ui.progress_slider, has_duration);
@@ -891,16 +1001,22 @@ inline void media_control_style_tab(lv_obj_t *btn, bool active) {
 inline void media_control_apply_tab_visibility() {
   MediaControlModalUi &ui = media_control_modal_ui();
   bool show_controls = ui.tab == MediaControlTab::CONTROLS;
+  bool show_progress = ui.tab == MediaControlTab::PROGRESS;
   bool show_volume = ui.tab == MediaControlTab::VOLUME;
   if (ui.controls_box) {
     if (show_controls) lv_obj_clear_flag(ui.controls_box, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.controls_box, LV_OBJ_FLAG_HIDDEN);
+  }
+  if (ui.progress_box) {
+    if (show_progress) lv_obj_clear_flag(ui.progress_box, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui.progress_box, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.volume_box) {
     if (show_volume) lv_obj_clear_flag(ui.volume_box, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(ui.volume_box, LV_OBJ_FLAG_HIDDEN);
   }
   media_control_style_tab(ui.controls_tab, show_controls);
+  media_control_style_tab(ui.progress_tab, show_progress);
   media_control_style_tab(ui.volume_tab, show_volume);
 }
 
@@ -988,6 +1104,8 @@ inline void media_control_style_progress_slider(lv_obj_t *slider, uint32_t backg
   lv_obj_set_style_shadow_width(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_outline_width(slider, 0, LV_PART_KNOB);
   lv_obj_set_style_pad_all(slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_width(slider, 0, LV_PART_KNOB);
+  lv_obj_set_style_height(slider, 0, LV_PART_KNOB);
 }
 
 inline lv_coord_t media_control_tab_size(const ControlModalLayout &layout) {
@@ -1007,7 +1125,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t tab_frame_pad = tab_size / 5;
   lv_coord_t tab_frame_h = tab_size + tab_frame_pad * 2;
   lv_coord_t tab_gap = control_modal_control_tab_gap(layout, tab_size);
-  lv_coord_t tabs_total_w = tab_size * 2 + tab_gap;
+  constexpr int MEDIA_CONTROL_TAB_COUNT = 3;
+  lv_coord_t tabs_total_w =
+    tab_size * MEDIA_CONTROL_TAB_COUNT + tab_gap * (MEDIA_CONTROL_TAB_COUNT - 1);
   lv_coord_t tab_frame_w = tabs_total_w + tab_frame_pad * 2;
   lv_coord_t max_tab_frame_w = layout.panel_w - layout.inset * 3;
   if (tab_frame_w > max_tab_frame_w) tab_frame_w = max_tab_frame_w;
@@ -1021,12 +1141,13 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_t *btn;
     MediaControlTab tab;
   };
-  MediaControlTabLayout tabs[2] = {
+  MediaControlTabLayout tabs[MEDIA_CONTROL_TAB_COUNT] = {
     {ui.controls_tab, MediaControlTab::CONTROLS},
+    {ui.progress_tab, MediaControlTab::PROGRESS},
     {ui.volume_tab, MediaControlTab::VOLUME},
   };
   lv_coord_t first_tab_x = (tab_frame_w - tabs_total_w) / 2;
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < MEDIA_CONTROL_TAB_COUNT; i++) {
     if (!tabs[i].btn) continue;
     bool active = tabs[i].tab == ui.tab;
     lv_coord_t tab_btn_size = active ? selected_tab_size : tab_size;
@@ -1050,6 +1171,10 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (ui.controls_box) {
     lv_obj_set_size(ui.controls_box, content_w, content_h);
     lv_obj_align(ui.controls_box, LV_ALIGN_TOP_MID, 0, content_top);
+  }
+  if (ui.progress_box) {
+    lv_obj_set_size(ui.progress_box, content_w, content_h);
+    lv_obj_align(ui.progress_box, LV_ALIGN_TOP_MID, 0, content_top);
   }
   if (ui.volume_box) {
     lv_obj_set_size(ui.volume_box, content_w, content_h);
@@ -1078,13 +1203,6 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t text_w = content_w * 92 / 100;
   lv_coord_t text_gap = control_modal_scaled_px(8, layout.short_side);
   if (text_gap < 6) text_gap = 6;
-  lv_coord_t slider_h = control_modal_scaled_px(4, layout.short_side);
-  if (slider_h < 3) slider_h = 3;
-  lv_coord_t slider_w = content_w * 88 / 100;
-  lv_coord_t slider_min_w = control_modal_scaled_px(170, layout.short_side);
-  if (slider_w < slider_min_w) slider_w = slider_min_w;
-  if (slider_w > content_w) slider_w = content_w;
-  lv_coord_t progress_top = content_h - slider_h;
   lv_coord_t btn_gap = control_modal_scaled_px(16, layout.short_side);
   if (btn_gap < 12) btn_gap = 12;
   lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
@@ -1093,7 +1211,21 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (btn_size < 68) btn_size = 68;
   lv_coord_t buttons_total_w = btn_size * 3 + btn_gap * 2;
   lv_coord_t button_start_x = (content_w - buttons_total_w) / 2;
-  lv_coord_t button_y = progress_top - btn_size - control_modal_scaled_px(34, layout.short_side);
+  lv_coord_t progress_slider_h = content_h * 42 / 100;
+  lv_coord_t progress_slider_max_h = control_modal_scaled_px(144, layout.short_side);
+  if (progress_slider_h > progress_slider_max_h) progress_slider_h = progress_slider_max_h;
+  if (progress_slider_h < 74) progress_slider_h = 74;
+  lv_coord_t progress_slider_w = content_w * 84 / 100;
+  lv_coord_t progress_slider_min_w = control_modal_scaled_px(180, layout.short_side);
+  if (progress_slider_w < progress_slider_min_w) progress_slider_w = progress_slider_min_w;
+  if (progress_slider_w > content_w) progress_slider_w = content_w;
+  lv_coord_t progress_slider_y = content_h / 2 - progress_slider_h / 2;
+  lv_coord_t progress_radius = progress_slider_h / 5;
+  if (progress_radius < 18) progress_radius = 18;
+  if (progress_radius > 34) progress_radius = 34;
+  lv_coord_t controls_bottom_gap = control_modal_scaled_px(22, layout.short_side);
+  if (controls_bottom_gap < 14) controls_bottom_gap = 14;
+  lv_coord_t button_y = content_h - btn_size - controls_bottom_gap;
   if (ui.title_lbl) {
     const char *title_text = lv_label_get_text(ui.title_lbl);
     lv_point_t title_size;
@@ -1124,13 +1256,19 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, text_top + title_h + text_gap);
   }
   if (ui.progress_slider) {
-    lv_obj_set_size(ui.progress_slider, slider_w, slider_h);
-    lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_MAIN);
-    lv_obj_set_style_radius(ui.progress_slider, slider_h / 2, LV_PART_INDICATOR);
+    lv_obj_set_size(ui.progress_slider, progress_slider_w, progress_slider_h);
+    lv_obj_set_style_radius(ui.progress_slider, progress_radius, LV_PART_MAIN);
+    lv_obj_set_style_radius(ui.progress_slider, 0, LV_PART_INDICATOR);
+    lv_obj_set_style_clip_corner(ui.progress_slider, true, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ui.progress_slider, LV_OPA_TRANSP, LV_PART_KNOB);
     lv_obj_set_style_width(ui.progress_slider, 0, LV_PART_KNOB);
     lv_obj_set_style_height(ui.progress_slider, 0, LV_PART_KNOB);
-    lv_obj_align(ui.progress_slider, LV_ALIGN_TOP_MID, 0, progress_top);
+    lv_obj_align(ui.progress_slider, LV_ALIGN_TOP_MID, 0, progress_slider_y);
+    media_control_update_progress_fill(
+      ui.progress_slider, ui.progress_fill, ui.progress_handle, lv_slider_get_value(ui.progress_slider),
+      lv_color_hex(MEDIA_CONTROL_PROGRESS_FILL_COLOR));
+    media_control_update_progress_handle(
+      ui.progress_slider, ui.progress_handle, lv_slider_get_value(ui.progress_slider));
   }
   lv_obj_t *buttons[3] = {ui.previous_btn, ui.play_btn, ui.next_btn};
   for (int i = 0; i < 3; i++) {
@@ -1247,11 +1385,15 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.controls_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Speaker"), ctx->icon_font,
     MediaControlTab::CONTROLS, ctx->width_compensation_percent);
+  ui.progress_tab = media_control_create_tab_button(
+    ui.tab_row, find_icon("Progress Clock"), ctx->icon_font,
+    MediaControlTab::PROGRESS, ctx->width_compensation_percent);
   ui.volume_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Volume High"), ctx->icon_font,
     MediaControlTab::VOLUME, ctx->width_compensation_percent);
 
   ui.controls_box = media_control_create_box(ui.panel);
+  ui.progress_box = media_control_create_box(ui.panel);
   ui.volume_box = media_control_create_box(ui.panel);
 
   ui.title_lbl = lv_label_create(ui.controls_box);
@@ -1269,13 +1411,22 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   lv_label_set_long_mode(ui.artist_lbl, LV_LABEL_LONG_DOT);
   apply_width_compensation(ui.artist_lbl, ctx->width_compensation_percent);
 
-  ui.progress_slider = lv_slider_create(ui.controls_box);
+  ui.progress_slider = lv_slider_create(ui.progress_box);
   media_control_style_progress_slider(
-    ui.progress_slider, ctx->secondary_color, MEDIA_CONTROL_PROGRESS_FILL_COLOR);
+    ui.progress_slider, DARK_BACKGROUND_SECONDARY, MEDIA_CONTROL_PROGRESS_FILL_COLOR);
+  ui.progress_fill = media_control_create_progress_fill(
+    ui.progress_slider, lv_color_hex(MEDIA_CONTROL_PROGRESS_FILL_COLOR));
+  ui.progress_handle = media_control_create_progress_handle(ui.progress_slider);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_progress) return;
     if (ui.active) ui.active->dragging_progress = true;
+    lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    int value = lv_slider_get_value(slider);
+    media_control_update_progress_fill(
+      slider, ui.progress_fill, ui.progress_handle, value,
+      lv_color_hex(MEDIA_CONTROL_PROGRESS_FILL_COLOR));
+    media_control_update_progress_handle(slider, ui.progress_handle, value);
   }, LV_EVENT_VALUE_CHANGED, nullptr);
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *) {
     MediaControlModalUi &ui = media_control_modal_ui();
