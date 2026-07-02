@@ -2804,7 +2804,7 @@ assertSubpageRoundTrip(hooks, "alarm action subpage", {
 }, true);
 
 assertSubpageRoundTrip(hooks, "media subpage", {
-  order: ["1", "B", "2", "3", "4", "5", "6"],
+  order: ["1", "B", "2", "3", "4", "5", "6", "7"],
   buttons: [
     buttonShape({ entity: "media_player.living_room", label: "Play/Pause", icon: "Auto", sensor: "play_pause", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Previous", icon: "Auto", sensor: "previous", type: "media" }),
@@ -2812,6 +2812,7 @@ assertSubpageRoundTrip(hooks, "media subpage", {
     buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Auto", sensor: "volume", type: "media", options: "volume_max=40" }),
     buttonShape({ entity: "media_player.office", label: "Office", icon: "Progress Clock", sensor: "position", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "", icon: "Auto", sensor: "now_playing", type: "media" }),
+    buttonShape({ entity: "media_player.office", label: "Morning Mix", icon: "Music", sensor: "playlist", type: "media", options: "playlist_content_id=spotify%3Aplaylist%3A12345" }),
   ],
 }, true);
 
@@ -3128,6 +3129,13 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|M,media_playe
     buttonShape({ entity: "media_player.living_room", label: "Play/Pause", icon: "Auto", icon_on: "Auto", sensor: "play_pause", type: "media" }),
   ],
 }, "compact media subpage parse");
+
+assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|M,media_player.office,Morning%20Mix,Music,,playlist,,,playlist_content_id=spotify%253Aplaylist%253A12345")), {
+  order: ["1", "B"],
+  buttons: [
+    buttonShape({ entity: "media_player.office", label: "Morning Mix", icon: "Music", icon_on: "Auto", sensor: "playlist", type: "media", options: "playlist_content_id=spotify%3Aplaylist%3A12345" }),
+  ],
+}, "compact media playlist subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|M,media_player.living_room,Living%20Room,Speaker,,controls")), {
   order: ["1", "B"],

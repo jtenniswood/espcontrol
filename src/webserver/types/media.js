@@ -59,7 +59,7 @@ var MEDIA_CARD_METADATA = {
       ["volume", "Volume Button"],
       ["position", "Track Position"],
       ["now_playing", "Now Playing"],
-      ["playlist", "Playlist Button"],
+      ["playlist", "Media Content"],
     ],
     value: function (b) {
       return mediaEditorValidMode(b.sensor);
@@ -400,10 +400,10 @@ registerButtonType("media", {
       var playlistInfoText = document.createElement("span");
       playlistInfoText.appendChild(document.createTextNode("Need help finding the media content ID? "));
       var playlistInfoLink = document.createElement("a");
-      playlistInfoLink.href = "https://jtenniswood.github.io/espcontrol/card-types/media/#playlist-button";
+      playlistInfoLink.href = "https://jtenniswood.github.io/espcontrol/card-types/media/#media-content";
       playlistInfoLink.target = "_blank";
       playlistInfoLink.rel = "noopener";
-      playlistInfoLink.textContent = "Learn how to configure playlist buttons";
+      playlistInfoLink.textContent = "Learn how to configure media content buttons";
       playlistInfoText.appendChild(playlistInfoLink);
       playlistInfoText.appendChild(document.createTextNode("."));
       playlistInfo.appendChild(playlistInfoIcon);
@@ -424,44 +424,6 @@ registerButtonType("media", {
         contentIdField.input.value = mediaPlaylistContentId(b);
         helpers.saveField("options", b.options);
       });
-
-      var playlistContentType = mediaPlaylistContentType(b);
-      var contentTypeField = helpers.selectField(
-        "Media Content Type",
-        helpers.idPrefix + "playlist-content-type",
-        mediaPlaylistContentTypeOptions(),
-        mediaPlaylistContentTypeKnown(playlistContentType) ? playlistContentType : "__custom");
-      panel.appendChild(contentTypeField.field);
-
-      var customContentTypeField = helpers.textField(
-        "Custom Media Content Type",
-        helpers.idPrefix + "playlist-content-type-custom",
-        mediaPlaylistContentTypeKnown(playlistContentType) ? "" : playlistContentType,
-        "e.g. favorite",
-        "",
-        false);
-      panel.appendChild(customContentTypeField.field);
-
-      function updateCustomContentTypeVisibility() {
-        customContentTypeField.field.hidden = contentTypeField.select.value !== "__custom";
-      }
-
-      contentTypeField.select.addEventListener("change", function () {
-        if (contentTypeField.select.value === "__custom") {
-          setMediaPlaylistContentType(b, customContentTypeField.input.value);
-        } else {
-          setMediaPlaylistContentType(b, contentTypeField.select.value);
-        }
-        helpers.saveField("options", b.options);
-        updateCustomContentTypeVisibility();
-      });
-      customContentTypeField.input.addEventListener("change", function () {
-        setMediaPlaylistContentType(b, customContentTypeField.input.value);
-        customContentTypeField.input.value = mediaPlaylistContentTypeKnown(mediaPlaylistContentType(b))
-          ? "" : mediaPlaylistContentType(b);
-        helpers.saveField("options", b.options);
-      });
-      updateCustomContentTypeVisibility();
 
       helpers.renderCardTextField(panel, b, helpers, {
         label: "Label",
