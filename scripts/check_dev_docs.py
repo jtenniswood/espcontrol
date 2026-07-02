@@ -306,13 +306,15 @@ def option_summary(card: dict) -> str:
         return "None"
     labels = []
     for option in options:
+        if option.get("docsHidden"):
+            continue
         values = option.get("values") or []
         label = option.get("label") or option.get("name") or ""
         if values:
             labels.append(f"{label}: {', '.join('default' if v == '' else str(v) for v in values)}")
         else:
             labels.append(str(label))
-    return "; ".join(labels)
+    return "; ".join(labels) if labels else "None"
 
 
 def docs_link(path: str) -> str:

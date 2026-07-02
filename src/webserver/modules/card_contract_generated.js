@@ -1112,7 +1112,9 @@ var CARD_CONTRACT_CARDS = {
         "name": "playlist_content_type",
         "label": "Media Content Type",
         "kind": "text",
-        "defaultValue": "playlist"
+        "defaultValue": "playlist",
+        "hidden": true,
+        "docsHidden": true
       },
       {
         "name": "large_numbers",

@@ -72,7 +72,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     } else if (b.sensor != "play_pause" && b.sensor != "previous" &&
                b.sensor != "next" && b.sensor != "volume" &&
                b.sensor != "position" && b.sensor != "now_playing" &&
-               b.sensor != "control_modal") {
+               b.sensor != "control_modal" && b.sensor != "playlist") {
       b.sensor = "play_pause";
     }
     if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
@@ -205,7 +205,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.type != "webhook" &&
       b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
-      b.type != "subpage" && b.type != "light_control" &&
+      b.type != "subpage" && b.type != "light_control" && b.type != "media" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }
