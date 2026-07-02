@@ -329,6 +329,29 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
     return errors
 
 
+def firmware_card_disabled_state_errors(firmware_dir: Path, root: Path) -> list[str]:
+    errors: list[str] = []
+    config_path = firmware_dir / "button_grid_config.h"
+    actions_path = firmware_dir / "button_grid_actions.h"
+    grid_path = firmware_dir / "button_grid_grid.h"
+
+    if config_path.exists():
+        rel = config_path.relative_to(root)
+        text = config_path.read_text(encoding="utf-8")
+        if "apply_control_availability" in text:
+            errors.append(f"{rel}: do not keep a generic helper that dims or disables card controls")
+
+    for path in (actions_path, grid_path):
+        if not path.exists():
+            continue
+        rel = path.relative_to(root)
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"lv_obj_has_state\s*\([^;\n]*LV_STATE_DISABLED", text):
+            errors.append(f"{rel}: card tap handlers must not ignore taps because a card is disabled")
+
+    return errors
+
+
 def firmware_action_card_script_fields_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_actions.h"
     if not path.exists():
@@ -1496,6 +1519,7 @@ def run_scan() -> int:
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_card_disabled_state_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_action_card_script_fields_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))

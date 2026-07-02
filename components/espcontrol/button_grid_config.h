@@ -1700,24 +1700,6 @@ inline void bump_ha_subscription_generation() {
   ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT);
 }
 
-inline void apply_control_availability(lv_obj_t *visual_obj, lv_obj_t *input_obj,
-                                       bool available, bool disable_interaction = true) {
-  if (visual_obj) {
-    lv_obj_set_style_opa(visual_obj, available ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
-    if (disable_interaction) {
-      if (available) lv_obj_clear_state(visual_obj, LV_STATE_DISABLED);
-      else lv_obj_add_state(visual_obj, LV_STATE_DISABLED);
-    }
-  }
-  if (!disable_interaction || !input_obj) return;
-  if (input_obj != visual_obj) {
-    if (available) lv_obj_clear_state(input_obj, LV_STATE_DISABLED);
-    else lv_obj_add_state(input_obj, LV_STATE_DISABLED);
-  }
-  if (available) lv_obj_add_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
-  else lv_obj_clear_flag(input_obj, LV_OBJ_FLAG_CLICKABLE);
-}
-
 inline std::string sentence_cap_text(const std::string &state) {
   std::string out;
   out.reserve(state.size());

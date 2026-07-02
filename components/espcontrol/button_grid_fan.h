@@ -407,9 +407,6 @@ inline bool fan_control_supported(FanCardCtx *ctx) {
 
 inline void fan_apply_card_visual(FanCardCtx *ctx) {
   if (!ctx || !ctx->btn) return;
-  bool supported = fan_control_supported(ctx);
-  apply_control_availability(ctx->btn, ctx->btn, supported);
-
   bool active = false;
   if (ctx->type == "fan_switch") active = ctx->on;
   else if (ctx->type == "fan_control") active = ctx->on;
@@ -661,7 +658,6 @@ inline void fan_control_refresh_modal(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx || !ui.panel) return;
   fan_control_ensure_visible_tab(ctx);
-  apply_control_availability(ui.panel, ui.panel, ctx->available, false);
   fan_control_set_speed_value(ctx, ctx->on ? ctx->percentage : 0);
   fan_control_apply_power(ctx);
   fan_control_apply_oscillation(ctx);

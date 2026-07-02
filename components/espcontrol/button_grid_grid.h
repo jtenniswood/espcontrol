@@ -1740,9 +1740,7 @@ inline void grid_phase2(
       setup_card_visual(sub_slot, sb_cfg, cfg, palette, rs, cs);
 
       if (sb_cfg.type == "screen_lock") {
-        lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-          lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-          if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
+        lv_obj_add_event_cb(sb_btn, [](lv_event_t *) {
           screen_lock_toggle();
         }, LV_EVENT_CLICKED, nullptr);
         continue;
@@ -1764,7 +1762,6 @@ inline void grid_phase2(
           add_parent_indicator(sb_cfg.entity);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-            if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
             CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(target);
             if (ctx) cover_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, nullptr);
@@ -2107,8 +2104,6 @@ inline void grid_phase2(
               sb_btn, create_media_playlist_context(sub_slot.btn, sb_cfg));
             subscribe_media_playlist_state(playlist_ctx);
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-              if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_media_playlist_action(*c);
             }, LV_EVENT_CLICKED, ctx);
@@ -2116,8 +2111,6 @@ inline void grid_phase2(
             ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
             ctx->sensor = mode;
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-              if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_media_playback_action(c->entity, media_card_mode(c->sensor));
             }, media_fast_press_mode(mode) ? LV_EVENT_PRESSED : LV_EVENT_CLICKED, ctx);
@@ -2125,8 +2118,6 @@ inline void grid_phase2(
               subscribe_media_state(sub_slot.btn,
                 media_play_pause_show_state(sb_cfg) ? sub_slot.text_lbl : nullptr,
                 sb_cfg.entity);
-            else {
-            }
           } else if (mode == "volume") {
             MediaVolumeCtx *ctx = create_media_volume_context(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
@@ -2233,8 +2224,6 @@ inline void grid_phase2(
           subscribe_light_control_state(ctx);
           add_parent_indicator(sb_cfg.entity);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-            if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
             LightControlCtx *ctx = (LightControlCtx *)lv_event_get_user_data(e);
             if (ctx) light_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
