@@ -70,7 +70,11 @@ wifi:
 
 api:
   on_client_connected:
-    - delay: 2s
+    - script.stop: ha_reconnect_flow
+    - wait_until:
+        condition:
+          lambda: 'return ha_api_state_connected();'
+        timeout: 2s
     - if:
         condition:
           lambda: 'return ha_api_state_connected();'

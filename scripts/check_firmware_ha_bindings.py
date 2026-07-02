@@ -1487,6 +1487,16 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
             errors.append(f"{rel}: wait for Home Assistant state subscription, not any API client")
         if "on_client_connected:" in text and "ha_api_state_connected()" not in text:
             errors.append(f"{rel}: only navigate after a Home Assistant state connection is ready")
+        api_connected_match = re.search(
+            r"(?ms)^api:\n(?P<body>.*?)(?:^\S|\Z)",
+            text,
+        )
+        if api_connected_match and "on_client_connected:" in api_connected_match.group("body"):
+            api_connected_body = api_connected_match.group("body")
+            if "script.stop: ha_reconnect_flow" not in api_connected_body:
+                errors.append(f"{rel}: stop the pending Home Assistant waiting screen when HA reconnects")
+            if "wait_until:" not in api_connected_body or "timeout: 2s" not in api_connected_body:
+                errors.append(f"{rel}: return from the Home Assistant waiting screen as soon as HA is ready")
         body = yaml_script_body(text, "ha_reconnect_flow")
         if body is None:
             errors.append(f"{rel}: show a delayed Home Assistant waiting screen after HA disconnects")
@@ -3978,7 +3988,11 @@ def run_self_test() -> int:
         "          lambda: 'return ha_api_state_connected();'\n"
         "api:\n"
         "  on_client_connected:\n"
-        "    - delay: 2s\n"
+        "    - script.stop: ha_reconnect_flow\n"
+        "    - wait_until:\n"
+        "        condition:\n"
+        "          lambda: 'return ha_api_state_connected();'\n"
+        "        timeout: 2s\n"
         "    - if:\n"
         "        condition:\n"
         "          lambda: 'return ha_api_state_connected();'\n"
