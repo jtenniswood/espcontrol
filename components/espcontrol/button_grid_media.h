@@ -1223,8 +1223,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t progress_radius = progress_slider_h / 5;
   if (progress_radius < 18) progress_radius = 18;
   if (progress_radius > 34) progress_radius = 34;
-  lv_coord_t controls_bottom_gap = control_modal_scaled_px(22, layout.short_side);
-  if (controls_bottom_gap < 14) controls_bottom_gap = 14;
+  lv_coord_t controls_bottom_gap = control_modal_scaled_px(10, layout.short_side);
+  if (controls_bottom_gap < 6) controls_bottom_gap = 6;
   lv_coord_t button_y = content_h - btn_size - controls_bottom_gap;
   if (ui.title_lbl) {
     const char *title_text = lv_label_get_text(ui.title_lbl);
@@ -1255,7 +1255,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
     lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, text_top + title_h + text_gap);
   }
-  if (ui.progress_slider) {
+  if (ui.progress_box && ui.progress_slider) {
     lv_obj_set_size(ui.progress_slider, progress_slider_w, progress_slider_h);
     lv_obj_set_style_radius(ui.progress_slider, progress_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.progress_slider, 0, LV_PART_INDICATOR);
@@ -1395,6 +1395,8 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.controls_box = media_control_create_box(ui.panel);
   ui.progress_box = media_control_create_box(ui.panel);
   ui.volume_box = media_control_create_box(ui.panel);
+  if (ui.progress_box) lv_obj_add_flag(ui.progress_box, LV_OBJ_FLAG_HIDDEN);
+  if (ui.volume_box) lv_obj_add_flag(ui.volume_box, LV_OBJ_FLAG_HIDDEN);
 
   ui.title_lbl = lv_label_create(ui.controls_box);
   lv_obj_set_style_text_color(ui.title_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
