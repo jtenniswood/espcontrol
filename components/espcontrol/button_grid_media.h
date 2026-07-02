@@ -1325,6 +1325,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
       volume_buttons_layout.btn_size = control_modal_scaled_px(54, layout.short_side);
     }
     volume_buttons_layout.controls_gap = control_modal_scaled_px(12, layout.short_side);
+    lv_coord_t volume_buttons_up = control_modal_scaled_px(18, layout.short_side);
+    if (volume_buttons_up < 12) volume_buttons_up = 12;
+    volume_buttons_layout.controls_center_y -= volume_buttons_up;
     control_modal_apply_step_buttons_layout(
       ui.volume_minus_btn, ui.volume_plus_btn, volume_buttons_layout);
     if (ui.volume_pct_lbl) {
