@@ -1082,7 +1082,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   lv_coord_t slider_min_w = control_modal_scaled_px(170, layout.short_side);
   if (slider_w < slider_min_w) slider_w = slider_min_w;
   if (slider_w > content_w) slider_w = content_w;
-  lv_coord_t progress_top = content_h - slider_h - control_modal_scaled_px(28, layout.short_side);
+  lv_coord_t progress_top = content_h - slider_h - control_modal_scaled_px(16, layout.short_side);
   lv_coord_t btn_gap = control_modal_scaled_px(16, layout.short_side);
   if (btn_gap < 12) btn_gap = 12;
   lv_coord_t btn_size = (content_w - btn_gap * 2) / 3;
