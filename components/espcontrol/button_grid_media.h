@@ -1109,7 +1109,7 @@ inline void media_control_style_progress_slider(lv_obj_t *slider, uint32_t backg
 }
 
 inline lv_coord_t media_control_tab_size(const ControlModalLayout &layout) {
-  if (control_modal_uses_p4_86_tuning(layout)) return 72;
+  if (control_modal_uses_p4_86_tuning(layout)) return 68;
   return control_modal_prominent_card_tab_size(layout);
 }
 
@@ -1159,7 +1159,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (label && control_modal_uses_compact_portrait_tuning(layout))
       lv_obj_set_style_transform_zoom(label, 240, LV_PART_MAIN);
     else if (label && control_modal_uses_p4_86_tuning(layout))
-      lv_obj_set_style_transform_zoom(label, 210, LV_PART_MAIN);
+      lv_obj_set_style_transform_zoom(label, 190, LV_PART_MAIN);
     light_control_center_icon_label(label);
   }
 
