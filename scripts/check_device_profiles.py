@@ -437,7 +437,7 @@ def test_temperature_unit_changes_refresh_weather_cards() -> None:
     )
 
 
-def test_current_weather_state_updates_availability() -> None:
+def test_current_weather_state_keeps_normal_card_visuals() -> None:
     subscriptions = (ROOT / "components" / "espcontrol" / "button_grid_subscriptions.h").read_text(encoding="utf-8")
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
     match = re.search(
@@ -446,11 +446,8 @@ def test_current_weather_state_updates_availability() -> None:
     )
     assert match, "current weather state subscription is missing"
     body = match.group(0)
-    assert "apply_control_availability(btn_ptr, btn_ptr, !unavailable, false)" in body, (
-        "current weather cards must clear unavailable styling when Home Assistant sends a valid state"
-    )
-    assert "apply_control_availability(btn_ptr, btn_ptr, false, false)" in body, (
-        "current weather cards must start unavailable until Home Assistant sends a state"
+    assert "apply_control_availability" not in body, (
+        "current weather cards must not dim or disable themselves for unavailable entity states"
     )
     assert "notify_dashboard_content_changed()" in body, "current weather state changes must notify the dashboard"
     assert "uint32_t generation = ha_subscription_generation();" in body and "generation != ha_subscription_generation()" in body, (
@@ -502,7 +499,7 @@ def main() -> int:
     test_grid_phase2_uses_cleaned_spanned_layout()
     test_spanned_cards_refresh_after_clock_bar_padding_changes()
     test_temperature_unit_changes_refresh_weather_cards()
-    test_current_weather_state_updates_availability()
+    test_current_weather_state_keeps_normal_card_visuals()
     test_firmware_matrices(profile_slugs)
     test_public_firmware_slugs(profile_slugs)
     print("Device profile cross-checks passed.")

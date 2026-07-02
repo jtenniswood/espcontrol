@@ -2450,7 +2450,6 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
   auto active = [generation]() {
     return generation == ha_subscription_generation();
   };
-  register_ha_control_availability(ctx->btn, ctx->btn);
   auto refresh = [ctx, active]() {
     if (!active()) return;
     climate_update_card(ctx);
@@ -2464,7 +2463,6 @@ inline void subscribe_climate_control_state(ClimateControlCtx *ctx) {
         ctx->hvac_mode = climate_hvac_service_value(string_ref_limited(state, HA_SHORT_STATE_MAX_LEN));
         ctx->available = !climate_unavailable_value(ctx->hvac_mode);
         if (!ctx->available) ctx->hvac_mode = "off";
-        apply_control_availability(ctx->btn, ctx->btn, ctx->available);
         if (!ctx->available) climate_control_hide_modal();
         refresh();
       })

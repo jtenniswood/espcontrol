@@ -270,8 +270,8 @@ def firmware_todo_disconnect_errors(firmware_dir: Path, core_infra_path: Path, r
         errors.append(f"{todo_rel}: retry open todo modals that are waiting for Home Assistant")
     if "ctx->available) return" in todo_text:
         errors.append(f"{todo_rel}: allow todo modals to open while waiting for Home Assistant availability")
-    if "apply_control_availability(ctx->btn, ctx->btn, ctx->available, false)" not in todo_text:
-        errors.append(f"{todo_rel}: keep todo cards tappable while Home Assistant availability is pending")
+    if "apply_control_availability(ctx->btn, ctx->btn, ctx->available, false)" in todo_text:
+        errors.append(f"{todo_rel}: do not dim or disable todo cards for unavailable entity states")
     if "on_client_disconnected:" not in core_text or "todo_cancel_pending_request" not in core_text:
         errors.append(f"{core_rel}: cancel pending todo requests when the HA API disconnects")
     if "on_client_connected:" not in core_text or "todo_reload_active_modal" not in core_text:
@@ -326,6 +326,29 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
         body = match.group("body")
         if "register_ha_control_availability(sb_btn, sb_btn)" in body:
             errors.append(f"{rel}: keep subpage trigger cards tappable while Home Assistant availability is pending")
+    return errors
+
+
+def firmware_card_disabled_state_errors(firmware_dir: Path, root: Path) -> list[str]:
+    errors: list[str] = []
+    config_path = firmware_dir / "button_grid_config.h"
+    actions_path = firmware_dir / "button_grid_actions.h"
+    grid_path = firmware_dir / "button_grid_grid.h"
+
+    if config_path.exists():
+        rel = config_path.relative_to(root)
+        text = config_path.read_text(encoding="utf-8")
+        if "apply_control_availability" in text:
+            errors.append(f"{rel}: do not keep a generic helper that dims or disables card controls")
+
+    for path in (actions_path, grid_path):
+        if not path.exists():
+            continue
+        rel = path.relative_to(root)
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"lv_obj_has_state\s*\([^;\n]*LV_STATE_DISABLED", text):
+            errors.append(f"{rel}: card tap handlers must not ignore taps because a card is disabled")
+
     return errors
 
 
@@ -1464,6 +1487,49 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
             errors.append(f"{rel}: wait for Home Assistant state subscription, not any API client")
         if "on_client_connected:" in text and "ha_api_state_connected()" not in text:
             errors.append(f"{rel}: only navigate after a Home Assistant state connection is ready")
+        api_connected_match = re.search(
+            r"(?ms)^api:\n(?P<body>.*?)(?:^\S|\Z)",
+            text,
+        )
+        if api_connected_match and "on_client_connected:" in api_connected_match.group("body"):
+            api_connected_body = api_connected_match.group("body")
+            if "script.stop: ha_reconnect_flow" not in api_connected_body:
+                errors.append(f"{rel}: stop the pending Home Assistant waiting screen when HA reconnects")
+            if "script.execute: ha_restore_after_api" not in api_connected_body:
+                errors.append(f"{rel}: restore the display immediately when Home Assistant reconnects")
+            if "wait_until:" in api_connected_body or "timeout: 2s" in api_connected_body:
+                errors.append(f"{rel}: do not delay display restore after Home Assistant reconnects")
+        restore_body = yaml_script_body(text, "ha_restore_after_api")
+        if restore_body is None:
+            errors.append(f"{rel}: define the immediate Home Assistant display restore script")
+        elif "ha_api_connected()" not in restore_body or "navigate_after_api" not in restore_body:
+            errors.append(f"{rel}: return from the Home Assistant waiting screen on API reconnect")
+        body = yaml_script_body(text, "ha_reconnect_flow")
+        if body is None:
+            errors.append(f"{rel}: show a delayed Home Assistant waiting screen after HA disconnects")
+        elif (
+            "delay: 5s" not in body
+            or "ha_api_state_connected()" not in body
+            or "Connection lost" not in body
+            or "Check the status of your Home Assistant server" not in body
+            or "lvgl.page.show: ha_setup_page" not in body
+        ):
+            errors.append(f"{rel}: keep the Home Assistant waiting screen delayed and tied to HA state connection")
+    return errors
+
+
+def firmware_ha_reconnect_flow_errors(core_infra_path: Path, root: Path) -> list[str]:
+    if not core_infra_path.exists():
+        return []
+    rel = core_infra_path.relative_to(root)
+    text = core_infra_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    if "on_client_disconnected:" not in text or "script.execute: ha_reconnect_flow" not in text:
+        errors.append(f"{rel}: start the Home Assistant waiting screen flow when HA disconnects")
+    if "on_client_connected:" not in text or "id(ha_restore_after_api).execute();" not in text:
+        errors.append(f"{rel}: restore the display immediately when Home Assistant reconnects")
+    if "apply_registered_ha_control_availability" in text:
+        errors.append(f"{rel}: do not dim registered cards when HA disconnects")
     return errors
 
 
@@ -1473,6 +1539,7 @@ def run_scan() -> int:
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_card_disabled_state_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_action_card_script_fields_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
@@ -1511,6 +1578,7 @@ def run_scan() -> int:
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_todo_disabled_errors(DEVICE_DEVICE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
+    errors.extend(firmware_ha_reconnect_flow_errors(CORE_INFRA_PATH, ROOT))
     if errors:
         print("Firmware Home Assistant binding check failed:")
         for error in errors:
@@ -2573,7 +2641,7 @@ def run_self_test() -> int:
         ("allow todo modals to open while waiting",),
     )
     expect_todo_disconnect_errors(
-        "availability disables todo tap",
+        "availability dims todo card",
         "inline void todo_cancel_pending_request(const char *reason) {}\n"
         "inline void todo_reload_active_modal() {}\n"
         "inline void todo_retry_waiting_modal() { waiting_for_ha = true; }\n"
@@ -2581,7 +2649,7 @@ def run_self_test() -> int:
         "  if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;\n"
         "}\n"
         "inline void subscribe_todo_state(TodoCardCtx *ctx) {\n"
-        "  apply_control_availability(ctx->btn, ctx->btn, ctx->available);\n"
+        "  apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);\n"
         "}\n",
         "api:\n"
         "  on_client_connected:\n"
@@ -2592,7 +2660,7 @@ def run_self_test() -> int:
         "  - interval: 5s\n"
         "    then:\n"
         "      - lambda: todo_retry_waiting_modal();\n",
-        ("keep todo cards tappable",),
+        ("do not dim or disable todo cards",),
     )
     expect_action_card_availability_errors(
         "stateless main action registered for availability",
@@ -3929,10 +3997,28 @@ def run_self_test() -> int:
         "          lambda: 'return ha_api_state_connected();'\n"
         "api:\n"
         "  on_client_connected:\n"
-        "    - delay: 2s\n"
-        "    - if:\n"
-        "        condition:\n"
-        "          lambda: 'return ha_api_state_connected();'\n",
+        "    - script.stop: ha_reconnect_flow\n"
+        "    - script.execute: ha_restore_after_api\n"
+        "script:\n"
+        "  - id: ha_restore_after_api\n"
+        "    mode: restart\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return ha_api_connected();'\n"
+        "          then:\n"
+        "            - script.execute: navigate_after_api\n"
+        "  - id: ha_reconnect_flow\n"
+        "    mode: restart\n"
+        "    then:\n"
+        "      - delay: 5s\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return !ha_api_state_connected();'\n"
+        "          then:\n"
+        "            - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Connection lost\"));'\n"
+        "            - lambda: 'lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n(\"Check the status of your Home Assistant server\"));'\n"
+        "            - lvgl.page.show: ha_setup_page\n",
         (),
     )
     print("Firmware Home Assistant binding self-tests passed.")

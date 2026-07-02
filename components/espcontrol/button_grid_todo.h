@@ -653,7 +653,6 @@ inline TodoCardCtx *create_todo_card_context(
 
 inline void subscribe_todo_state(TodoCardCtx *ctx) {
   if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn, false);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
@@ -664,7 +663,6 @@ inline void subscribe_todo_state(TodoCardCtx *ctx) {
       } else {
         todo_lite_copy_text(ctx->count_text, sizeof(ctx->count_text), state);
       }
-      apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);
       todo_lite_apply_card_text(ctx);
       TodoLiteModalUi &ui = todo_lite_modal_ui();
       if (ui.active == ctx && !ctx->available) {
@@ -1375,14 +1373,12 @@ inline TodoCardCtx *create_todo_card_context(
 
 inline void subscribe_todo_state(TodoCardCtx *ctx) {
   if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn, false);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       ctx->available = !unavailable;
       ctx->count_text = unavailable ? "--" : string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-      apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);
       todo_apply_card_text(ctx);
       if (todo_modal_ui().active == ctx && !ctx->available) {
         todo_modal_ui().waiting_for_ha = true;

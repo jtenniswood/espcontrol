@@ -317,7 +317,6 @@ inline OptionSelectCtx *create_option_select_context(
 
 inline void subscribe_option_select_state(OptionSelectCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
@@ -325,7 +324,6 @@ inline void subscribe_option_select_state(OptionSelectCtx *ctx) {
       bool unavailable = ha_state_unavailable_ref(state);
       ctx->available = !unavailable;
       ctx->current_option = unavailable ? "" : state_text;
-      apply_control_availability(ctx->btn, ctx->btn, ctx->available);
       option_select_apply_card_text(ctx);
       OptionSelectModalUi &ui = option_select_modal_ui();
       if (ui.active == ctx && !ctx->available) option_select_hide_modal();
