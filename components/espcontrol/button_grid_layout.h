@@ -93,6 +93,11 @@ inline bool card_span_fits_weather_daily_strip(int row_span, int col_span) {
   return col_span >= CARD_SIZE_WIDE_COL_SPAN;
 }
 
+inline bool card_span_fits_weather_hourly_strip(int row_span, int col_span) {
+  (void) row_span;
+  return col_span >= CARD_SIZE_EXTRA_WIDE_COL_SPAN;
+}
+
 inline bool card_span_is_large(int row_span, int col_span) {
   return card_span_matches(row_span, col_span, CARD_SIZE_LARGE_ROW_SPAN, CARD_SIZE_LARGE_COL_SPAN);
 }

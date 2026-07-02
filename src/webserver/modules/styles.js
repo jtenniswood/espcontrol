@@ -90,6 +90,11 @@ var CSS =
   ".sp-forecast-preview{white-space:nowrap;gap:0}" +
   ".sp-forecast-strip-preview{display:flex;align-items:center;justify-content:space-evenly;width:100%;gap:2px;font-size:calc(var(--btn-label)*0.85);line-height:1.1;text-align:center}" +
   ".sp-forecast-strip-preview span{flex:1 1 0;min-width:0}" +
+  ".sp-forecast-hourly-preview{display:flex;align-items:center;justify-content:space-evenly;width:100%;gap:1px;font-size:calc(var(--btn-label)*0.72);line-height:1.1;text-align:center}" +
+  ".sp-forecast-hourly-preview span{flex:1 1 0;min-width:0}" +
+  ".sp-weather-strip-card{justify-content:center;gap:calc(var(--btn-pad)*0.35)}" +
+  ".sp-weather-strip-card .sp-forecast-strip-preview,.sp-weather-strip-card .sp-forecast-hourly-preview{align-self:stretch;min-height:0}" +
+  ".sp-weather-strip-card .sp-btn-label-row{flex:0 0 auto}" +
   ".sp-forecast-hero-preview{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%}" +
   ".sp-forecast-hero-condition{font-size:calc(var(--btn-label)*0.95);line-height:1.1}" +
   ".sp-forecast-hero-temp{margin-top:2px}" +

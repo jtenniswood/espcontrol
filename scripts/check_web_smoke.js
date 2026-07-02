@@ -639,10 +639,42 @@ assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
   type: "weather",
   precision: "daily_strip",
 }, 3, { cardSize: CARD_SIZE_WIDE }), true, "weather daily strip save allows a wide slot");
+const weatherHourlyStripPreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  label: "Hourly",
+  type: "weather",
+  precision: "hourly_strip",
+  options: "",
+}, { cardSize: CARD_SIZE_EXTRA_WIDE });
+assert(weatherHourlyStripPreview.iconHtml.includes("sp-forecast-hourly-preview"), "weather hourly strip preview uses hourly styling");
+assert(weatherHourlyStripPreview.iconHtml.includes("12a"), "weather hourly strip preview shows twelve hour columns");
+assert(weatherHourlyStripPreview.labelHtml.includes("Hourly"), "weather hourly strip preview uses the custom label");
+const weatherHourlyStripWidePreview = hooks.buttonTypePreviewFor("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "hourly_strip",
+}, { cardSize: CARD_SIZE_WIDE });
+assert(!weatherHourlyStripWidePreview.iconHtml.includes("sp-forecast-hourly-preview"), "weather hourly strip preview warns in a wide slot");
+assert(weatherHourlyStripWidePreview.labelHtml.includes("Hourly"), "weather hourly strip preview falls back in a wide slot");
+assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "hourly_strip",
+}, 3, { cardSize: CARD_SIZE_WIDE }), false, "weather hourly strip save requires an extra-wide slot");
+assert.strictEqual(hooks.buttonTypeValidateSave("weather", {
+  entity: "weather.forecast_home",
+  type: "weather",
+  precision: "hourly_strip",
+}, 3, { cardSize: CARD_SIZE_EXTRA_WIDE }), true, "weather hourly strip save allows an extra-wide slot");
 assert.deepStrictEqual(
   Array.from(hooks.weatherModeOptionValues()),
-  ["", "today", "tomorrow", "hero", "daily_strip"],
-  "weather card mode selector includes daily strip"
+  ["", "today", "tomorrow", "hero", "daily_strip", "hourly_strip"],
+  "weather card mode selector includes strip modes"
+);
+assert.deepStrictEqual(
+  hooks.weatherCardModeOptions().map(function (entry) { return entry[0]; }),
+  ["", "today", "tomorrow", "hero", "daily_strip", "hourly_strip"],
+  "weather card mode options stay visible before resizing the slot"
 );
 
 const weatherHeroPreview = hooks.buttonTypePreviewFor("weather", {

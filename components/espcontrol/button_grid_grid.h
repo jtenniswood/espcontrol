@@ -352,6 +352,19 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       display_main_width_percent(display));
     return;
   }
+  if (weather_card_is_hourly_strip(p)) {
+    if (!card_span_fits_weather_hourly_strip(row_span, col_span)) {
+      ESP_LOGW("weather_forecast",
+        "Hourly strip card needs an extra-wide grid slot; showing current conditions instead");
+      ParsedCfg fallback = p;
+      fallback.precision = "";
+      setup_weather_card(s, palette.has_sensor_color, palette.sensor_val);
+      return;
+    }
+    setup_weather_hourly_strip_card(s, p, palette.has_sensor_color, palette.sensor_val,
+      display_main_width_percent(display));
+    return;
+  }
   if (weather_card_shows_forecast(p)) {
     setup_weather_forecast_card(s, p, palette.has_sensor_color, palette.sensor_val,
       display_main_width_percent(display));
@@ -837,6 +850,7 @@ inline void grid_phase1(
   weather_forecast_cancel_pending_requests();
   reset_weather_forecast_cards();
   reset_weather_daily_strip_cards();
+  reset_weather_hourly_strip_cards();
   reset_climate_control_refs();
   screen_lock_reset_registry();
 

@@ -1289,7 +1289,8 @@ var CARD_CONTRACT_CARDS = {
           "today",
           "tomorrow",
           "hero",
-          "daily_strip"
+          "daily_strip",
+          "hourly_strip"
         ],
         "defaultValue": ""
       },

@@ -1,4 +1,13 @@
 // Read-only weather card: displays either current conditions or high / low temperatures.
+var WEATHER_CARD_MODE_LABELS = {
+  "": "Current Conditions",
+  today: "Temperatures Today",
+  tomorrow: "Temperatures Tomorrow",
+  hero: "Hero (current + today)",
+  daily_strip: "Daily Strip (5 days)",
+  hourly_strip: "Hourly Strip (12 hours)",
+};
+
 var WEATHER_CARD_METADATA = {
   mode: {
     label: "Type",
@@ -9,10 +18,12 @@ var WEATHER_CARD_METADATA = {
       ["tomorrow", "Temperatures Tomorrow"],
       ["hero", "Hero (current + today)"],
       ["daily_strip", "Daily Strip (5 days)"],
+      ["hourly_strip", "Hourly Strip (12 hours)"],
     ],
     value: function (b) {
       if (!b) return "";
       if (b.precision === "daily_strip") return "daily_strip";
+      if (b.precision === "hourly_strip") return "hourly_strip";
       if (b.precision === "hero") return "hero";
       return weatherCardIsForecastMode(b) ? b.precision : "";
     },
@@ -52,6 +63,7 @@ function weatherCardDefaultForecastLabel(b) {
   if (b.precision === "today") return "Today";
   if (b.precision === "tomorrow") return "Tomorrow";
   if (b.precision === "daily_strip") return "Forecast";
+  if (b.precision === "hourly_strip") return "Hourly";
   return "Tomorrow";
 }
 
@@ -66,7 +78,8 @@ function normalizeWeatherCardMode(mode) {
 }
 
 function weatherCardShowsLabelField(b) {
-  return weatherCardIsForecastMode(b) || (!!b && b.precision === "daily_strip");
+  return weatherCardIsForecastMode(b) ||
+    (!!b && (b.precision === "daily_strip" || b.precision === "hourly_strip"));
 }
 
 function weatherCardSupportsLargeNumbers(b) {
@@ -82,12 +95,31 @@ function weatherCardHasWideSlot(cardSize) {
   return cardSize === CARD_SIZE_WIDE || cardSize === CARD_SIZE_EXTRA_WIDE;
 }
 
-function weatherCardModeOptions(cardSize, currentMode) {
-  var options = WEATHER_CARD_METADATA.mode.options.slice();
-  if (weatherCardHasWideSlot(cardSize)) return options;
-  return options.filter(function (entry) {
-    return entry[0] !== "daily_strip" || currentMode === "daily_strip";
+function weatherCardHasExtraWideSlot(cardSize) {
+  cardSize = cardSize || CARD_SIZE_SINGLE;
+  return cardSize === CARD_SIZE_EXTRA_WIDE;
+}
+
+function weatherCardCurrentSize(helpers) {
+  if (helpers && typeof helpers.getCardSize === "function") return helpers.getCardSize();
+  return (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
+}
+
+function weatherCardModeOptions() {
+  return weatherModeOptionValues().map(function (value) {
+    return [value, WEATHER_CARD_MODE_LABELS[value] || value];
   });
+}
+
+function weatherCardRefreshPreview() {
+  if (typeof renderPreview === "function") renderPreview();
+}
+
+function weatherCardHourlyStripPreviewHtml() {
+  return '<div class="sp-forecast-hourly-preview">' +
+    "<span>3p</span><span>4p</span><span>5p</span><span>6p</span><span>7p</span><span>8p</span>" +
+    "<span>9p</span><span>10p</span><span>11p</span><span>12a</span><span>1a</span><span>2a</span>" +
+    "</div>";
 }
 
 registerButtonType("weather", {
@@ -99,15 +131,31 @@ registerButtonType("weather", {
   defaultConfig: function () { return cardContractDefaultConfig("weather"); },
   cardMetadata: WEATHER_CARD_METADATA,
   validateSave: function (b, slot, ctx) {
-    if (!b || b.precision !== "daily_strip") return true;
-    if (weatherCardHasWideSlot(ctx && ctx.cardSize)) return true;
-    if (ctx && ctx.showBanner) {
-      ctx.showBanner(
-        "Daily Strip needs a wide grid slot. Resize this card to wide (add w in Grid Order, e.g. 3w) before saving.",
-        "error"
-      );
+    if (!b) return true;
+    var cardSize = ctx && typeof ctx.getCardSize === "function"
+      ? ctx.getCardSize()
+      : (ctx && ctx.cardSize);
+    if (b.precision === "daily_strip") {
+      if (weatherCardHasWideSlot(cardSize)) return true;
+      if (ctx && ctx.showBanner) {
+        ctx.showBanner(
+          "Daily Strip needs a wide grid slot. Resize this card to wide (add w in Grid Order, e.g. 3w) before saving.",
+          "error"
+        );
+      }
+      return false;
     }
-    return false;
+    if (b.precision === "hourly_strip") {
+      if (weatherCardHasExtraWideSlot(cardSize)) return true;
+      if (ctx && ctx.showBanner) {
+        ctx.showBanner(
+          "Hourly Strip needs an extra-wide grid slot. Resize this card to extra-wide (add x in Grid Order, e.g. 3x) before saving.",
+          "error"
+        );
+      }
+      return false;
+    }
+    return true;
   },
   onSelect: function (b) {
     b.label = "";
@@ -134,55 +182,41 @@ registerButtonType("weather", {
     stripHint.className = "sp-hint";
     panel.appendChild(stripHint);
 
-    function syncModeOptions() {
-      var options = weatherCardModeOptions(helpers.cardSize, b.precision);
-      var selected = modeSelect.value;
-      modeSelect.innerHTML = "";
-      options.forEach(function (entry) {
-        var option = document.createElement("option");
-        option.value = entry[0];
-        option.textContent = entry[1];
-        modeSelect.appendChild(option);
-      });
-      if (options.some(function (entry) { return entry[0] === selected; })) {
-        modeSelect.value = selected;
-      } else if (b.precision === "daily_strip") {
-        modeSelect.value = "daily_strip";
-      } else {
-        modeSelect.value = "";
-        if (b.precision !== "") {
-          b.precision = "";
-          helpers.saveField("precision", "");
-        }
+    function syncStripHint() {
+      var cardSize = weatherCardCurrentSize(helpers);
+      var daily = b.precision === "daily_strip";
+      var hourly = b.precision === "hourly_strip";
+      stripHint.style.display = daily || hourly ? "" : "none";
+      if (daily) {
+        stripHint.textContent = weatherCardHasWideSlot(cardSize)
+          ? "Shows five days with weekday, icon, and high/low."
+          : "Daily Strip requires a wide grid slot. Resize this card to wide (add w in Grid Order, e.g. 3w) before saving.";
+        return;
+      }
+      if (hourly) {
+        stripHint.textContent = weatherCardHasExtraWideSlot(cardSize)
+          ? "Shows the next twelve hours with hour, icon, and temperature."
+          : "Hourly Strip requires an extra-wide grid slot. Resize this card to extra-wide (add x in Grid Order, e.g. 3x) before saving.";
       }
     }
 
-    function syncDailyStripHint() {
-      var show = b.precision === "daily_strip";
-      stripHint.style.display = show ? "" : "none";
-      if (!show) return;
-      stripHint.textContent = weatherCardHasWideSlot(helpers.cardSize)
-        ? "Shows five days with weekday, icon, and high/low."
-        : "Daily Strip requires a wide grid slot. Resize this card to wide (add w in Grid Order, e.g. 3w) before saving.";
-    }
-
     function syncForecastFields() {
-      syncModeOptions();
       var forecast = weatherCardShowsLabelField(b);
       var heroOrForecast = weatherCardSupportsLargeNumbers(b);
       labelField.style.display = forecast ? "" : "none";
       labelInp.placeholder = "e.g. " + weatherCardDefaultForecastLabel(b);
       helpers.syncCardLargeNumbersToggle(largeNumbersToggle, b, helpers, heroOrForecast);
-      syncDailyStripHint();
+      syncStripHint();
     }
 
     modeSelect.addEventListener("change", function () {
-      WEATHER_CARD_METADATA.mode.onChange.call(this, b, helpers);
       syncForecastFields();
+      weatherCardRefreshPreview();
     });
     syncForecastFields();
   },
   renderPreview: function (b, helpers) {
+    var cardSize = weatherCardCurrentSize(helpers);
     if (b.precision === "hero") {
       return {
         iconHtml:
@@ -195,15 +229,29 @@ registerButtonType("weather", {
       };
     }
     if (b.precision === "daily_strip") {
-      if (!weatherCardHasWideSlot(helpers && helpers.cardSize)) {
+      if (!weatherCardHasWideSlot(cardSize)) {
         return {
           iconHtml: cardSensorPreviewHtml(b, helpers, "18/10", temperatureUnitSymbol(), "sp-forecast-preview", "sp-forecast-value"),
           labelHtml: cardBadgeLabelHtml(helpers, "Today", WEATHER_CARD_METADATA.preview.forecastBadge),
         };
       }
       return {
+        buttonClass: "sp-weather-strip-card",
         iconHtml: '<div class="sp-forecast-strip-preview"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span></div>',
         labelHtml: cardBadgeLabelHtml(helpers, b.label || "Forecast", WEATHER_CARD_METADATA.preview.forecastBadge),
+      };
+    }
+    if (b.precision === "hourly_strip") {
+      if (!weatherCardHasExtraWideSlot(cardSize)) {
+        return {
+          iconHtml: cardSensorPreviewHtml(b, helpers, "18", temperatureUnitSymbol(), "sp-forecast-preview", "sp-forecast-value"),
+          labelHtml: cardBadgeLabelHtml(helpers, "Hourly", WEATHER_CARD_METADATA.preview.forecastBadge),
+        };
+      }
+      return {
+        buttonClass: "sp-weather-strip-card",
+        iconHtml: weatherCardHourlyStripPreviewHtml(),
+        labelHtml: cardBadgeLabelHtml(helpers, b.label || "Hourly", WEATHER_CARD_METADATA.preview.forecastBadge),
       };
     }
     if (weatherCardIsForecastMode(b)) {

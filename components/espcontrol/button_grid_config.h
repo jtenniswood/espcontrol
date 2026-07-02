@@ -912,7 +912,7 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.label == "Weather") p.label.clear();
   }
   if (p.type == "weather" && !card_runtime_weather_forecast_precision(p.precision) &&
-      p.precision != "daily_strip" && p.precision != "hero") {
+      p.precision != "daily_strip" && p.precision != "hourly_strip" && p.precision != "hero") {
     p.precision.clear();
   }
   if (p.type == "media") {
@@ -1765,6 +1765,43 @@ inline void reset_weather_daily_strip_cards() {
   weather_daily_strip_card_count() = 0;
 }
 
+constexpr int WEATHER_HOURLY_STRIP_HOUR_COUNT = 12;
+
+struct WeatherHourlyStripHourRef {
+  lv_obj_t *column = nullptr;
+  lv_obj_t *hour_lbl = nullptr;
+  lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *temp_lbl = nullptr;
+};
+
+struct WeatherHourlyStripCardRef {
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *strip_container = nullptr;
+  WeatherHourlyStripHourRef hours[WEATHER_HOURLY_STRIP_HOUR_COUNT];
+  std::string entity_id;
+  std::string source_unit;
+};
+
+struct WeatherHourPayload {
+  int hour_24 = -1;
+  float temp = WEATHER_FORECAST_TEMP_MISSING;
+  std::string condition;
+  bool valid = false;
+};
+
+inline std::vector<WeatherHourlyStripCardRef> &weather_hourly_strip_card_refs() {
+  static std::vector<WeatherHourlyStripCardRef> refs;
+  return refs;
+}
+
+inline void reset_weather_hourly_strip_cards() {
+  weather_hourly_strip_card_refs().clear();
+}
+
+inline int weather_hourly_strip_card_count() {
+  return static_cast<int>(weather_hourly_strip_card_refs().size());
+}
+
 constexpr int WEATHER_FORECAST_PENDING_MAX = 8;
 constexpr uint32_t WEATHER_FORECAST_REQUEST_TIMEOUT_MS = 60000;
 constexpr uint32_t WEATHER_FORECAST_RETRY_DELAY_MS = 300000;
@@ -2241,6 +2278,160 @@ inline void register_weather_daily_strip_card(lv_obj_t *btn,
   apply_weather_daily_strip_unavailable_for_entity(entity_id);
 }
 
+inline std::string weather_hourly_display_label(int hour_24) {
+  if (hour_24 < 0 || hour_24 > 23) return "--";
+  char buf[8];
+  if (hour_24 == 0) return "12a";
+  if (hour_24 < 12) {
+    snprintf(buf, sizeof(buf), "%da", hour_24);
+    return buf;
+  }
+  if (hour_24 == 12) return "12p";
+  snprintf(buf, sizeof(buf), "%dp", hour_24 - 12);
+  return buf;
+}
+
+inline void apply_weather_hourly_strip_hour_text(WeatherHourlyStripHourRef &hour_ref,
+                                                 const WeatherHourPayload &hour,
+                                                 const std::string &unit) {
+  if (hour_ref.hour_lbl) {
+    std::string label = weather_hourly_display_label(hour.hour_24);
+    lv_label_set_text(hour_ref.hour_lbl, label.c_str());
+  }
+  if (hour_ref.icon_lbl) {
+    if (hour.valid && !hour.condition.empty()) {
+      lv_label_set_text(hour_ref.icon_lbl, weather_icon_for_state(hour.condition));
+      lv_obj_clear_flag(hour_ref.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_label_set_text(hour_ref.icon_lbl, find_icon("Weather Sunny Off"));
+      lv_obj_add_flag(hour_ref.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  if (!hour_ref.temp_lbl) return;
+  if (!hour.valid || hour.temp == WEATHER_FORECAST_TEMP_MISSING) {
+    lv_label_set_text(hour_ref.temp_lbl, "--");
+    return;
+  }
+  char buf[12];
+  snprintf(buf, sizeof(buf), "%d", weather_forecast_display_temp(hour.temp, unit));
+  lv_label_set_text(hour_ref.temp_lbl, buf);
+}
+
+inline void apply_weather_hourly_strip_card_text(WeatherHourlyStripCardRef &ref,
+                                               const WeatherHourPayload *hours,
+                                               int hour_count,
+                                               const std::string &unit) {
+  if (!hours || hour_count <= 0) return;
+  int visible = hour_count;
+  if (visible > WEATHER_HOURLY_STRIP_HOUR_COUNT) visible = WEATHER_HOURLY_STRIP_HOUR_COUNT;
+  ref.source_unit = unit;
+  for (int i = 0; i < WEATHER_HOURLY_STRIP_HOUR_COUNT; i++) {
+    if (ref.hours[i].column) {
+      if (i < visible) lv_obj_clear_flag(ref.hours[i].column, LV_OBJ_FLAG_HIDDEN);
+      else lv_obj_add_flag(ref.hours[i].column, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (i < hour_count) apply_weather_hourly_strip_hour_text(ref.hours[i], hours[i], unit);
+    else apply_weather_hourly_strip_hour_text(ref.hours[i], WeatherHourPayload(), unit);
+  }
+}
+
+inline void apply_weather_hourly_strip_to_entity(const std::string &entity_id,
+                                               const WeatherHourPayload *hours,
+                                               int hour_count,
+                                               const std::string &unit) {
+  std::vector<WeatherHourlyStripCardRef> &refs = weather_hourly_strip_card_refs();
+  for (auto &ref : refs) {
+    if (ref.entity_id != entity_id) continue;
+    apply_weather_hourly_strip_card_text(ref, hours, hour_count, unit);
+    apply_control_availability(ref.btn, ref.btn, hour_count > 0, false);
+    notify_dashboard_content_changed();
+  }
+}
+
+inline void apply_weather_hourly_strip_unavailable_for_entity(const std::string &entity_id) {
+  WeatherHourPayload empty_hours[WEATHER_HOURLY_STRIP_HOUR_COUNT];
+  apply_weather_hourly_strip_to_entity(
+    entity_id, empty_hours, WEATHER_HOURLY_STRIP_HOUR_COUNT, "");
+}
+
+inline void register_weather_hourly_strip_card(lv_obj_t *btn,
+                                               lv_obj_t *strip_container,
+                                               WeatherHourlyStripHourRef *hours,
+                                               int hour_count,
+                                               const std::string &entity_id) {
+  if (hour_count < WEATHER_HOURLY_STRIP_HOUR_COUNT) {
+    ESP_LOGW("weather_forecast", "Too many hourly strip cards; skipping updates");
+    return;
+  }
+  if (weather_hourly_strip_card_refs().size() >= static_cast<size_t>(MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS)) {
+    ESP_LOGW("weather_forecast", "Too many hourly strip cards; skipping updates");
+    return;
+  }
+  WeatherHourlyStripCardRef ref;
+  ref.btn = btn;
+  ref.strip_container = strip_container;
+  ref.entity_id = entity_id;
+  for (int i = 0; i < WEATHER_HOURLY_STRIP_HOUR_COUNT; i++) {
+    ref.hours[i] = hours[i];
+  }
+  weather_hourly_strip_card_refs().push_back(ref);
+  apply_control_availability(ref.btn, ref.btn, false, false);
+  apply_weather_hourly_strip_unavailable_for_entity(entity_id);
+}
+
+inline bool parse_weather_hourly_forecast_payload(const std::string &payload,
+                                                  WeatherHourPayload *hours,
+                                                  int hour_count,
+                                                  std::string &unit) {
+  if (!hours || hour_count < WEATHER_HOURLY_STRIP_HOUR_COUNT) return false;
+  if (payload.rfind("h1|", 0) != 0) return false;
+  std::vector<std::string> parts;
+  size_t start = 0;
+  while (start <= payload.size()) {
+    size_t next = payload.find('|', start);
+    if (next == std::string::npos) {
+      parts.push_back(payload.substr(start));
+      break;
+    }
+    parts.push_back(payload.substr(start, next - start));
+    start = next + 1;
+  }
+  if (parts.size() < 2 + static_cast<size_t>(WEATHER_HOURLY_STRIP_HOUR_COUNT) * 3) return false;
+  unit = parts[1];
+  bool any_valid = false;
+  for (int i = 0; i < WEATHER_HOURLY_STRIP_HOUR_COUNT; i++) {
+    size_t base = 2 + static_cast<size_t>(i) * 3;
+    WeatherHourPayload &hour = hours[i];
+    hour = WeatherHourPayload();
+    if (!parts[base].empty()) {
+      char *end = nullptr;
+      long parsed_hour = strtol(parts[base].c_str(), &end, 10);
+      if (end != parts[base].c_str() && parsed_hour >= 0 && parsed_hour <= 23) {
+        hour.hour_24 = static_cast<int>(parsed_hour);
+      }
+    }
+    hour.condition = parts[base + 2];
+    hour.valid = parse_weather_forecast_temp(parts[base + 1], hour.temp);
+    any_valid = any_valid || hour.valid;
+  }
+  return any_valid;
+}
+
+inline std::string weather_hourly_forecast_response_template(const std::string &entity_id) {
+  return std::string("{% set entity = '") + entity_id + "' %}"
+    "{% set r = response if response is defined else {} %}"
+    "{% set e = r if 'forecast' in r else (r[entity] if entity in r else {}) %}"
+    "{% set f = e['forecast'] if 'forecast' in e else [] %}"
+    "{% set u = e.get('temperature_unit', state_attr(entity, 'temperature_unit')) or '' %}"
+    "{% set t = namespace(x='') %}"
+    "{% for i in range(12) %}{% set it = f[i] if f|length > i else none %}"
+    "{% set h = as_local(as_datetime(it['datetime'])).hour if it and 'datetime' in it else '' %}"
+    "{% set tp = it['temperature'] if it and 'temperature' in it else '' %}"
+    "{% set c = it['condition'] if it and 'condition' in it else '' %}"
+    "{% set t.x = t.x ~ h ~ '|' ~ tp ~ '|' ~ c ~ '|' %}{% endfor %}"
+    "h1|{{ u }}|{{ t.x }}";
+}
+
 inline void register_weather_hero_card(lv_obj_t *btn,
                                        lv_obj_t *icon_lbl,
                                        lv_obj_t *condition_lbl,
@@ -2593,10 +2784,15 @@ inline bool weather_forecast_cancel_stale_requests() {
 
 inline void request_weather_forecast_entity(const std::string &entity_id,
                                             const std::string &day) {
+  const bool hourly = (day == "hourly");
+  auto mark_unavailable = [&]() {
+    if (hourly) apply_weather_hourly_strip_unavailable_for_entity(entity_id);
+    else apply_weather_forecast_unavailable_for_entity(entity_id);
+  };
   if (!weather_forecast_entity_id_safe(entity_id) ||
       !ha_api_state_connected() ||
       !weather_forecast_actions_ready()) {
-    apply_weather_forecast_unavailable_for_entity(entity_id);
+    mark_unavailable();
     return;
   }
 #ifdef ESP_PLATFORM
@@ -2605,8 +2801,9 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
   if (internal_free < HA_ACTION_INTERNAL_FREE_MIN_BYTES ||
       internal_largest < HA_ACTION_INTERNAL_LARGEST_MIN_BYTES) {
     ESP_LOGW("weather_forecast",
-             "Deferring forecast request for %s: internal heap free=%u largest=%u",
-             entity_id.c_str(), (unsigned) internal_free, (unsigned) internal_largest);
+             "Deferring %s forecast request for %s: internal heap free=%u largest=%u",
+             hourly ? "hourly" : "daily", entity_id.c_str(),
+             (unsigned) internal_free, (unsigned) internal_largest);
     weather_forecast_schedule_retry(entity_id, day, "low internal heap");
     return;
   }
@@ -2615,20 +2812,22 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
   esphome::api::HomeassistantActionRequest req;
   uint32_t call_id = next_weather_forecast_call_id();
   if (!ha_action_begin(req, "weather.get_forecasts", false, 2, call_id)) {
-    apply_weather_forecast_unavailable_for_entity(entity_id);
+    mark_unavailable();
     weather_forecast_schedule_retry(entity_id, day, "request setup failed");
     return;
   }
   req.wants_response = true;
-  std::string response_template = weather_forecast_response_template(entity_id);
+  std::string response_template = hourly
+    ? weather_hourly_forecast_response_template(entity_id)
+    : weather_forecast_response_template(entity_id);
   req.response_template = decltype(req.response_template)(response_template);
   ha_action_add_entity(req, entity_id);
-  ha_action_add_data(req, "type", "daily");
+  ha_action_add_data(req, "type", hourly ? "hourly" : "daily");
   uint32_t generation = ha_subscription_generation();
 
   if (!ha_register_action_response_callback(
     req.call_id,
-    [entity_id, day, call_id = req.call_id, generation](const esphome::api::ActionResponse &response) {
+    [entity_id, day, hourly, call_id = req.call_id, generation](const esphome::api::ActionResponse &response) {
       weather_forecast_clear_pending(call_id);
       if (generation != ha_subscription_generation()) {
         weather_forecast_send_next_queued();
@@ -2636,9 +2835,11 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
       }
       if (!response.is_success()) {
         std::string error_message = response.get_error_message();
-        ESP_LOGW("weather_forecast", "Forecast request failed for %s: %s",
-          entity_id.c_str(), error_message.c_str());
-        if (weather_forecast_error_is_timeout(error_message)) {
+        ESP_LOGW("weather_forecast", "%s forecast request failed for %s: %s",
+          hourly ? "Hourly" : "Daily", entity_id.c_str(), error_message.c_str());
+        if (hourly) {
+          apply_weather_hourly_strip_unavailable_for_entity(entity_id);
+        } else if (weather_forecast_error_is_timeout(error_message)) {
           apply_weather_forecast_actions_required_for_entity(entity_id);
         } else {
           apply_weather_forecast_unavailable_for_entity(entity_id);
@@ -2650,44 +2851,62 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
       auto json = response.get_json();
       const char *payload = json["response"].as<const char *>();
       if (payload == nullptr) {
-        ESP_LOGW("weather_forecast", "Forecast response for %s did not include a rendered payload",
-          entity_id.c_str());
-        apply_weather_forecast_unavailable_for_entity(entity_id);
+        ESP_LOGW("weather_forecast", "%s forecast response for %s did not include a rendered payload",
+          hourly ? "Hourly" : "Daily", entity_id.c_str());
+        if (hourly) apply_weather_hourly_strip_unavailable_for_entity(entity_id);
+        else apply_weather_forecast_unavailable_for_entity(entity_id);
         weather_forecast_schedule_retry(entity_id, day, "empty response");
         weather_forecast_send_next_queued();
         return;
       }
-      WeatherForecastPayload forecast;
-      WeatherStripDayPayload strip_days[WEATHER_DAILY_STRIP_DAY_COUNT];
-      bool valid = parse_weather_forecast_payload(
-        payload, forecast, strip_days, WEATHER_DAILY_STRIP_DAY_COUNT);
-      if (!valid) {
-        ESP_LOGW("weather_forecast", "No usable forecast temperatures for %s: %s",
-          entity_id.c_str(), payload);
-        weather_forecast_schedule_retry(entity_id, day, "no usable forecast temperatures");
+      if (hourly) {
+        WeatherHourPayload hours[WEATHER_HOURLY_STRIP_HOUR_COUNT];
+        std::string unit;
+        bool valid = parse_weather_hourly_forecast_payload(
+          payload, hours, WEATHER_HOURLY_STRIP_HOUR_COUNT, unit);
+        if (!valid) {
+          ESP_LOGW("weather_forecast", "No usable hourly forecast for %s: %s",
+            entity_id.c_str(), payload);
+          apply_weather_hourly_strip_unavailable_for_entity(entity_id);
+          weather_forecast_schedule_retry(entity_id, day, "no usable hourly forecast");
+        } else {
+          apply_weather_hourly_strip_to_entity(
+            entity_id, hours, WEATHER_HOURLY_STRIP_HOUR_COUNT, unit);
+        }
+      } else {
+        WeatherForecastPayload forecast;
+        WeatherStripDayPayload strip_days[WEATHER_DAILY_STRIP_DAY_COUNT];
+        bool valid = parse_weather_forecast_payload(
+          payload, forecast, strip_days, WEATHER_DAILY_STRIP_DAY_COUNT);
+        if (!valid) {
+          ESP_LOGW("weather_forecast", "No usable forecast temperatures for %s: %s",
+            entity_id.c_str(), payload);
+          weather_forecast_schedule_retry(entity_id, day, "no usable forecast temperatures");
+        }
+        apply_weather_forecast_to_entity(entity_id, "today", forecast.today_valid,
+          forecast.today_high, forecast.today_low, forecast.unit, forecast.today_condition);
+        apply_weather_forecast_to_entity(entity_id, "tomorrow", forecast.tomorrow_valid,
+          forecast.tomorrow_high, forecast.tomorrow_low, forecast.unit, forecast.tomorrow_condition);
+        apply_weather_daily_strip_to_entity(
+          entity_id, strip_days, WEATHER_DAILY_STRIP_DAY_COUNT, forecast.unit);
       }
-      apply_weather_forecast_to_entity(entity_id, "today", forecast.today_valid,
-        forecast.today_high, forecast.today_low, forecast.unit, forecast.today_condition);
-      apply_weather_forecast_to_entity(entity_id, "tomorrow", forecast.tomorrow_valid,
-        forecast.tomorrow_high, forecast.tomorrow_low, forecast.unit, forecast.tomorrow_condition);
-      apply_weather_daily_strip_to_entity(
-        entity_id, strip_days, WEATHER_DAILY_STRIP_DAY_COUNT, forecast.unit);
       weather_forecast_send_next_queued();
     })) {
-    apply_weather_forecast_unavailable_for_entity(entity_id);
+    mark_unavailable();
     weather_forecast_schedule_retry(entity_id, day, "callback setup failed");
     return;
   }
   if (!weather_forecast_track_pending(req.call_id, entity_id, day)) {
     ha_cancel_action_response_callback(req.call_id, "too many pending forecasts");
-    apply_weather_forecast_unavailable_for_entity(entity_id);
+    mark_unavailable();
     return;
   }
-  ESP_LOGI("weather_forecast", "Requesting daily forecast for %s", entity_id.c_str());
+  ESP_LOGI("weather_forecast", "Requesting %s forecast for %s",
+    hourly ? "hourly" : "daily", entity_id.c_str());
   if (!ha_action_send(req)) {
     weather_forecast_clear_pending(req.call_id);
     ha_cancel_action_response_callback(req.call_id, "send failed");
-    apply_weather_forecast_unavailable_for_entity(entity_id);
+    mark_unavailable();
     weather_forecast_schedule_retry(entity_id, day, "send failed");
     weather_forecast_send_next_queued();
   }
@@ -2736,6 +2955,27 @@ inline void refresh_weather_forecast_cards() {
     if (already_requested) continue;
     requested.push_back(entity_id);
     weather_forecast_enqueue(entity_id, "");
+  }
+  if (requested.empty()) return;
+  weather_forecast_send_next_queued();
+}
+
+inline void refresh_weather_hourly_forecast_cards() {
+  std::vector<std::string> requested;
+  std::vector<WeatherHourlyStripCardRef> &strip_refs = weather_hourly_strip_card_refs();
+  requested.reserve(strip_refs.size());
+  for (const auto &ref : strip_refs) {
+    const std::string &entity_id = ref.entity_id;
+    bool already_requested = false;
+    for (const auto &existing : requested) {
+      if (existing == entity_id) {
+        already_requested = true;
+        break;
+      }
+    }
+    if (already_requested) continue;
+    requested.push_back(entity_id);
+    weather_forecast_enqueue(entity_id, "hourly");
   }
   if (requested.empty()) return;
   weather_forecast_send_next_queued();
