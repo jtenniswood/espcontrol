@@ -438,7 +438,7 @@ registerButtonType("media", {
     }
 
     if (b.sensor !== "now_playing" &&
-        b.sensor !== "control_modal" &&
+        (b.sensor !== "control_modal" || mediaLabelDisplayMode(b) === "label") &&
         b.sensor !== "playlist" &&
         (b.sensor !== "play_pause" || b.precision !== "state") &&
         (b.sensor !== "position" || b.precision !== "state")) {
