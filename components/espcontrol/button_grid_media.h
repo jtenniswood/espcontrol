@@ -17,6 +17,7 @@ struct MediaControlCtx {
   std::string state_text = "unknown";
   std::string title;
   std::string artist;
+  std::string source;
   float duration = 0.0f;
   float position_seconds = 0.0f;
   uint32_t position_updated_ms = 0;
@@ -243,6 +244,16 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         std::string text = string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN);
         if (text == "unknown" || text == "unavailable") text.clear();
         ctx->artist = text;
+        if (media_control_modal_ui().active == ctx) media_control_layout_modal(ctx);
+      })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("source"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef source) {
+        std::string text = trim_display_unit(string_ref_limited(source, HA_SHORT_STATE_MAX_LEN));
+        if (text == "unknown" || text == "unavailable") text.clear();
+        ctx->source = text;
         if (media_control_modal_ui().active == ctx) media_control_layout_modal(ctx);
       })
   );
@@ -794,6 +805,10 @@ inline std::string media_control_artist_text(MediaControlCtx *ctx) {
   return ctx->label;
 }
 
+inline bool media_control_modal_hide_artist(MediaControlCtx *ctx) {
+  return ctx && ctx->source == "TV";
+}
+
 inline int media_control_volume_max_pct(MediaControlCtx *ctx) {
   if (!ctx) return 100;
   if (ctx->max_pct < 1) return 1;
@@ -1009,6 +1024,10 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   std::string artist = media_control_artist_text(ctx);
   if (ui.title_lbl) lv_label_set_text(ui.title_lbl, title.c_str());
   if (ui.artist_lbl) lv_label_set_text(ui.artist_lbl, artist.c_str());
+  if (ui.artist_lbl) {
+    if (media_control_modal_hide_artist(ctx)) lv_obj_add_flag(ui.artist_lbl, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_clear_flag(ui.artist_lbl, LV_OBJ_FLAG_HIDDEN);
+  }
   media_control_apply_availability(ui.panel, ui.panel, ctx->available, false);
   media_control_refresh_play_icon(ctx);
   media_control_refresh_progress(ctx);
@@ -1437,6 +1456,8 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   if (ui.artist_lbl) {
     std::string artist = media_control_artist_text(ctx);
     lv_label_set_text(ui.artist_lbl, artist.c_str());
+    if (media_control_modal_hide_artist(ctx)) lv_obj_add_flag(ui.artist_lbl, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_clear_flag(ui.artist_lbl, LV_OBJ_FLAG_HIDDEN);
   }
   const lv_font_t *title_font = ctx->title_font
     ? ctx->title_font
@@ -1448,6 +1469,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     ? title_font->line_height : control_modal_scaled_px(28, layout.short_side);
   lv_coord_t artist_h = artist_font && artist_font->line_height > 0
     ? artist_font->line_height : control_modal_scaled_px(24, layout.short_side);
+  bool hide_artist = media_control_modal_hide_artist(ctx);
   lv_coord_t title_h = title_line_h;
   lv_coord_t title_max_h = title_line_h * 2;
   lv_coord_t text_w = content_w * 92 / 100;
@@ -1486,7 +1508,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     if (title_size.y > title_h) title_h = title_size.y;
     if (title_h > title_max_h) title_h = title_max_h;
   }
-  lv_coord_t text_block_h = title_h + text_gap + artist_h;
+  lv_coord_t text_block_h = hide_artist ? title_h : title_h + text_gap + artist_h;
   lv_coord_t button_clearance = control_modal_scaled_px(12, layout.short_side);
   if (button_clearance < 8) button_clearance = 8;
   lv_coord_t max_text_top = button_y - button_clearance - text_block_h;
@@ -1501,7 +1523,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_size(ui.title_lbl, text_w, title_h);
     lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, text_top);
   }
-  if (ui.artist_lbl) {
+  if (ui.artist_lbl && !hide_artist) {
     lv_obj_set_size(ui.artist_lbl, text_w, artist_h);
     lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, text_top + title_h + text_gap);
   }
