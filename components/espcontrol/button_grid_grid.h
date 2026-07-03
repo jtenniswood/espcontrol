@@ -1488,10 +1488,6 @@ inline void grid_phase2(
             display_icon_font(display),
             display_volume_width_percent(display)));
           subscribe_media_control_state(ctx);
-          lv_obj_add_event_cb(s.btn, [](lv_event_t *e) {
-            MediaControlCtx *ctx = (MediaControlCtx *)lv_event_get_user_data(e);
-            if (ctx) media_control_open_modal(ctx);
-          }, LV_EVENT_CLICKED, ctx);
         } else if (mode == "volume") {
           MediaVolumeCtx *ctx = create_media_volume_context(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
