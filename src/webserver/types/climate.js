@@ -104,15 +104,20 @@ registerButtonType("climate", {
 
     helpers.renderCardEntityField(panel, b, helpers, CLIMATE_CARD_METADATA);
     if (b.type === "climate_control") {
-      renderModalTabSettings(panel, b, helpers, {
+      var modalTabsDisclosure = helpers.disclosureSection(
+        "Modal Tabs",
+        helpers.idPrefix + "climate-modal-tabs",
+        b._modalSettingsOpen === true
+      );
+      renderModalTabSettings(modalTabsDisclosure.section, b, helpers, {
         definitions: climateControlTabDefinitions,
         tabs: climateControlTabs,
         normalizeOptions: function (options) { return normalizeClimateOptions(options, true); },
         setTabs: setClimateControlTabs,
         idPrefix: "climate-tab-",
-        groupLabel: "Modal Controls",
-        groupIdSuffix: "climate-modal-controls",
+        hideHeading: true,
       });
+      panel.appendChild(modalTabsDisclosure.panel);
     }
 
     var labelField = condField();
