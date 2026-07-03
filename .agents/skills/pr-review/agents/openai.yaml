@@ -1,4 +1,0 @@
-interface:
-  display_name: "pr-review"
-  short_description: "Address PR feedback and resolve review threads"
-  default_prompt: "Use $pr-review when I say /pr-review to inspect unresolved feedback on an open pull request, make the requested fixes, push the branch, and mark addressed review threads as resolved."

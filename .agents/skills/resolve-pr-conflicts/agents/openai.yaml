@@ -1,4 +1,0 @@
-interface:
-  display_name: "Resolve PR Conflicts"
-  short_description: "Resolve merge conflicts in pull requests"
-  default_prompt: "Use $resolve-pr-conflicts to resolve the merge conflicts in this pull request."
