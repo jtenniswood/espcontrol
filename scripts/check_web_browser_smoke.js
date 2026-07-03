@@ -66,9 +66,10 @@ const CASES = casesFromManifest();
 const BUTTON_FIXTURES = [
   "light.kitchen;Kitchen;Lightbulb;Lightbulb",
   "sensor.energy;Energy;Gauge;Auto;sensor.energy;W;sensor;0",
-  "alarm_control_panel.house;Alarm;Security;Auto;;;alarm;;",
+  "climate.hall;Hall;Thermostat;Auto;;;climate;;",
   "media_player.living;Media;Auto;Auto;play_pause;;media;;",
   "cover.office_blind;Blind;Blinds Open;Blinds;modal;;cover;;cover_tabs=controls%7Cposition%7Ctilt",
+  "alarm_control_panel.house;Alarm;Security;Auto;;;alarm;;",
 ];
 
 function htmlFor(slug) {
@@ -186,7 +187,7 @@ async function installFakeEventSource(page) {
 
 function seededEvents() {
   const events = [
-    { id: "text-button_order", state: "1,2,3w,4,5" },
+    { id: "text-button_order", state: "1,2,3w,4,5,6" },
     { id: "text-button_on_color", state: "0073FF" },
     { id: "text-button_off_color", state: "CECECE" },
     { id: "text-sensor_card_color", state: "DEDEDE" },
@@ -245,7 +246,7 @@ function seededEvents() {
   return events;
 }
 
-function rotationStartupBaseEvents(includeRotation = true) {
+function rotationStartupBaseEvents(includeRotation = true, fixtureCount = BUTTON_FIXTURES.length) {
   const events = [
     { id: "text-button_on_color", state: "0073FF" },
     { id: "text-button_off_color", state: "CECECE" },
@@ -259,7 +260,7 @@ function rotationStartupBaseEvents(includeRotation = true) {
       option: ["0", "90", "180", "270"],
     });
   }
-  BUTTON_FIXTURES.forEach((state, index) => {
+  BUTTON_FIXTURES.slice(0, fixtureCount).forEach((state, index) => {
     events.push({ id: `text-button_${index + 1}_config`, state });
   });
   return events;
@@ -398,7 +399,7 @@ function gridTrackCount(value) {
   return value.split(/\s+/).length;
 }
 
-function assertPortraitGridLayout(result, label) {
+function assertPortraitGridLayout(result, label, options = {}) {
   assert(
     !result.loading,
     `${label}: grid should no longer be waiting for startup rotation`,
@@ -414,7 +415,7 @@ function assertPortraitGridLayout(result, label) {
     `${label}: grid should be visible after startup rotation is known`,
   );
   assert(
-    result.visibleCards >= BUTTON_FIXTURES.length,
+    result.visibleCards >= (options.minVisibleCards || BUTTON_FIXTURES.length),
     `${label}: saved cards should render`,
   );
   assert(
@@ -551,7 +552,7 @@ async function assertRotationStartupOrdering(browser) {
     await page.evaluate(
       (events) => window.__seedEspState(events),
       [{ id: "text-button_order", state: "1,2,3w,4,5" }].concat(
-        rotationStartupBaseEvents(false),
+        rotationStartupBaseEvents(false, 5),
       ),
     );
     let layout = await measureRotationStartupLayout(page);
@@ -586,7 +587,9 @@ async function assertRotationStartupOrdering(browser) {
     );
     await page.waitForSelector(".sp-main > .sp-btn");
     layout = await measureRotationStartupLayout(page);
-    assertPortraitGridLayout(layout, "button_order before rotation");
+    assertPortraitGridLayout(layout, "button_order before rotation", {
+      minVisibleCards: 5,
+    });
   } finally {
     await context.close();
   }
@@ -607,7 +610,7 @@ async function assertRotationStartupOrdering(browser) {
     );
     await reversePage.evaluate(
       (events) => window.__seedEspState(events),
-      rotationStartupBaseEvents(true).concat([
+      rotationStartupBaseEvents(true, 5).concat([
         { id: "text-button_order", state: "1,2,3w,4,5" },
       ]),
     );
@@ -615,6 +618,7 @@ async function assertRotationStartupOrdering(browser) {
     assertPortraitGridLayout(
       await measureRotationStartupLayout(reversePage),
       "rotation before button_order",
+      { minVisibleCards: 5 },
     );
   } finally {
     await reverseContext.close();
@@ -637,7 +641,7 @@ async function assertRotationStartupOrdering(browser) {
     await fallbackPage.evaluate(
       (events) => window.__seedEspState(events),
       [{ id: "text-button_order", state: "1,2,3w,4,5" }].concat(
-        rotationStartupBaseEvents(false),
+        rotationStartupBaseEvents(false, 5),
       ),
     );
     let layout = await measureRotationStartupLayout(fallbackPage);
@@ -668,7 +672,7 @@ async function assertRotationStartupOrdering(browser) {
       "rotation fallback: grid should be visible after fallback timeout",
     );
     assert(
-      layout.visibleCards >= BUTTON_FIXTURES.length,
+      layout.visibleCards >= 5,
       "rotation fallback: saved cards should render after fallback timeout",
     );
   } finally {
@@ -1523,13 +1527,33 @@ async function assertCoverSettingsPanels(page, label) {
   });
 }
 
-async function assertAlarmLabelDisplaySettings(page, label) {
+async function assertAlarmSettingsPanels(page, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
-  await page.locator('.sp-main [data-slot="3"]').click();
+  await page.locator('.sp-main [data-slot="6"]').click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
 
+  const cardSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Card Settings" }).first();
+  const modalSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Modal Settings" }).first();
+  assert(await cardSettings.isVisible(), `${label}: alarm card settings panel should render`);
+  assert(await modalSettings.isVisible(), `${label}: alarm modal settings panel should render`);
+  assert(!(await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm card settings panel should start collapsed`);
+  assert(!(await modalSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm modal settings panel should start collapsed`);
+  assert.strictEqual(
+    await page.locator("#sp-inp-alarm-card-type").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: alarm type selector should sit outside collapsible panels`
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-alarm-entity").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: alarm entity field should sit outside collapsible panels`
+  );
+
+  await cardSettings.locator("> .sp-disclosure-button").click();
+  assert(await cardSettings.getByText("Label Display", { exact: true }).isVisible(), `${label}: alarm card settings panel should contain label display controls`);
+  assert(await cardSettings.getByText("Icon Display", { exact: true }).isVisible(), `${label}: alarm card settings panel should contain icon display controls`);
   const labelInput = page.locator("#sp-inp-alarm-label");
   await labelInput.waitFor({ state: "attached" });
   assert.strictEqual(
@@ -1538,8 +1562,8 @@ async function assertAlarmLabelDisplaySettings(page, label) {
     `${label}: alarm label input starts hidden when status label display is selected`,
   );
 
-  await page
-    .locator(".sp-settings-modal .sp-field")
+  await cardSettings
+    .locator(".sp-field")
     .filter({ hasText: "Label Display" })
     .getByRole("button", { name: "Name", exact: true })
     .click();
@@ -1561,8 +1585,8 @@ async function assertAlarmLabelDisplaySettings(page, label) {
     `${label}: alarm label input is shown directly below label display controls`,
   );
 
-  await page
-    .locator(".sp-settings-modal .sp-field")
+  await cardSettings
+    .locator(".sp-field")
     .filter({ hasText: "Label Display" })
     .getByRole("button", { name: "Status", exact: true })
     .click();
@@ -1571,6 +1595,15 @@ async function assertAlarmLabelDisplaySettings(page, label) {
     false,
     `${label}: alarm label input hides again when status label display is selected`,
   );
+
+  await modalSettings.locator("> .sp-disclosure-button").click();
+  assert(await modalSettings.getByText("Visible Actions", { exact: true }).isVisible(), `${label}: alarm modal settings panel should contain visible actions controls`);
+  const pinSettings = modalSettings.locator(".sp-disclosure").filter({ hasText: "PIN Settings" }).first();
+  assert(await pinSettings.isVisible(), `${label}: alarm modal settings panel should contain PIN settings`);
+  assert(!(await pinSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm PIN settings panel should start collapsed`);
+  await pinSettings.locator("> .sp-disclosure-button").click();
+  assert(await pinSettings.getByText("PIN required for arming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain arming PIN controls`);
+  assert(await pinSettings.getByText("PIN required for disarming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain disarming PIN controls`);
 
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
@@ -2551,7 +2584,7 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCoverSettingsPanels(page, testCase.name);
-    await assertAlarmLabelDisplaySettings(page, testCase.name);
+    await assertAlarmSettingsPanels(page, testCase.name);
     if (testCase.exerciseInteractions) {
       await assertMobileTabLayout(page, testCase.name, testCase.viewport);
     }

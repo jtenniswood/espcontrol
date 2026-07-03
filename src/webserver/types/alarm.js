@@ -228,7 +228,18 @@ registerButtonType("alarm", {
       }),
     });
 
-    renderAlarmVisibleActionsField(panel, b, helpers);
+    var cardSettingsDisclosure = helpers.disclosureSection(
+      "Card Settings",
+      helpers.idPrefix + "alarm-card-settings",
+      false
+    );
+    var cardSettings = cardSettingsDisclosure.section;
+    var modalSettingsDisclosure = helpers.disclosureSection(
+      "Modal Settings",
+      helpers.idPrefix + "alarm-modal-settings",
+      false
+    );
+    var modalSettings = modalSettingsDisclosure.section;
 
     var labelHost = condField();
     helpers.renderCardTextField(labelHost, b, helpers, {
@@ -243,7 +254,7 @@ registerButtonType("alarm", {
       labelHost.classList.toggle("sp-visible", value === "name");
     }
 
-    var labelDisplayField = helpers.renderCardSegmentControl(panel, b, helpers, {
+    helpers.renderCardSegmentControl(cardSettings, b, helpers, {
       segment: Object.assign({}, ALARM_CARD_METADATA.labelDisplay, {
         value: function () { return alarmLabelDisplayMode(b); },
         onSelect: function (button, cardHelpers, value) {
@@ -255,7 +266,7 @@ registerButtonType("alarm", {
       }),
     });
     setLabelVisible(alarmLabelDisplayMode(b));
-    panel.appendChild(labelHost);
+    cardSettings.appendChild(labelHost);
 
     var iconHost = condField();
     helpers.renderCardIconPicker(iconHost, b, helpers, {
@@ -270,7 +281,7 @@ registerButtonType("alarm", {
       iconHost.classList.toggle("sp-visible", value === "static");
     }
 
-    var iconDisplayField = helpers.renderCardSegmentControl(panel, b, helpers, {
+    helpers.renderCardSegmentControl(cardSettings, b, helpers, {
       segment: Object.assign({}, ALARM_CARD_METADATA.iconDisplay, {
         value: function () { return alarmIconDisplayMode(b); },
         onSelect: function (button, cardHelpers, value) {
@@ -282,7 +293,10 @@ registerButtonType("alarm", {
       }),
     });
     setIconVisible(alarmIconDisplayMode(b));
-    panel.appendChild(iconHost);
+    cardSettings.appendChild(iconHost);
+    panel.appendChild(cardSettingsDisclosure.panel);
+
+    renderAlarmVisibleActionsField(modalSettings, b, helpers);
 
     function savePinOptions() {
       setAlarmPinRequired(b, "arm", armPinToggle.input.checked);
@@ -290,18 +304,27 @@ registerButtonType("alarm", {
       helpers.saveField("options", b.options);
     }
 
-    var armPinToggle = helpers.renderCardOptionToggle(panel, b, helpers, {
+    var pinSettingsDisclosure = helpers.disclosureSection(
+      "PIN Settings",
+      helpers.idPrefix + "alarm-pin-settings",
+      false
+    );
+    var pinSettings = pinSettingsDisclosure.section;
+
+    var armPinToggle = helpers.renderCardOptionToggle(pinSettings, b, helpers, {
       label: "PIN required for arming",
       idSuffix: "alarm-pin-arm",
       checked: function () { return alarmPinRequired(b, "arm"); },
       onChange: savePinOptions,
     });
-    var disarmPinToggle = helpers.renderCardOptionToggle(panel, b, helpers, {
+    var disarmPinToggle = helpers.renderCardOptionToggle(pinSettings, b, helpers, {
       label: "PIN required for disarming",
       idSuffix: "alarm-pin-disarm",
       checked: function () { return alarmPinRequired(b, "disarm"); },
       onChange: savePinOptions,
     });
+    modalSettings.appendChild(pinSettingsDisclosure.panel);
+    panel.appendChild(modalSettingsDisclosure.panel);
   },
   renderPreview: function (b, helpers) {
     var label = (b.label && b.label.trim()) || (b.entity && b.entity.trim()) || "Alarm";
