@@ -780,33 +780,6 @@ number:
         - script.execute: cover_art_playback_refresh
 
   - platform: template
-    name: "${entity_screen_saver_cover_art_touch_pause}"
-    internal: true
-    id: cover_art_touch_pause
-    min_value: 0
-    max_value: 300
-    step: 10
-    initial_value: 120
-    restore_value: true
-    optimistic: true
-    unit_of_measurement: "s"
-    entity_category: config
-    icon: "mdi:gesture-tap"
-    web_server:
-      sorting_group_id: sg_screensaver
-    on_value:
-      then:
-        - if:
-            condition:
-              lambda: |-
-                return !id(cover_art_screensaver_active) &&
-                       id(cover_art_media_playing) &&
-                       id(cover_art_manual_pause_until_ms) != 0 &&
-                       (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
-            then:
-              - script.execute: cover_art_delay_timer
-
-  - platform: template
     name: "${entity_screen_saver_track_overlay_duration}"
     internal: true
     id: cover_art_track_overlay_duration
