@@ -1578,6 +1578,16 @@ script:
               bool playing = state_text == "playing" || state_text == "buffering";
               if (state_text == id(cover_art_last_playback_state) &&
                   id(cover_art_media_playing) == playing) {
+                if (playing &&
+                    id(cover_art_screensaver_enabled).state &&
+                    (!id(cover_art_image_available) ||
+                     (id(cover_art_screensaver_active) && id(cover_art_url).empty()))) {
+                  ESP_LOGI("cover_art", "Playback unchanged but artwork is not ready; refreshing current track");
+                  id(cover_art_playback_started).execute();
+                  if (id(cover_art_screensaver_active)) {
+                    id(cover_art_request_artwork).execute();
+                  }
+                }
                 return;
               }
               id(cover_art_last_playback_state) = state_text;
