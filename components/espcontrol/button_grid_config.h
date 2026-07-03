@@ -663,6 +663,10 @@ inline std::string climate_card_options_normalized(const std::string &options) {
        large_numbers_explicitly_disabled(options))) {
     append_large_numbers_option(out, options);
   }
+  if (cfg_option_token_present(options, "show_dial")) {
+    if (!out.empty()) out += ",";
+    out += "show_dial";
+  }
   return out;
 }
 

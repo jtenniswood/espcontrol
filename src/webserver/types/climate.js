@@ -38,6 +38,27 @@ var CLIMATE_CARD_METADATA = {
   },
 };
 
+function climateCardCurrentSize(helpers) {
+  if (helpers && typeof helpers.getCardSize === "function") return helpers.getCardSize();
+  return (helpers && helpers.cardSize) || CARD_SIZE_SINGLE;
+}
+
+function climateDialPreviewHtml() {
+  var unit = temperatureUnitSymbol();
+  return (
+    '<svg class="sp-climate-dial-preview" viewBox="0 0 100 100" aria-hidden="true">' +
+    '<path d="M21.72,78.28 A40,40 0 1 1 78.28,78.28" fill="none" ' +
+    'stroke="#2a2f3a" stroke-width="9" stroke-linecap="round"/>' +
+    '<path d="M21.72,78.28 A40,40 0 0 1 50,10" fill="none" ' +
+    'stroke="#f5a524" stroke-width="9" stroke-linecap="round"/>' +
+    '<circle cx="56.3" cy="10.6" r="4" fill="#9aa4b2"/>' +
+    '<circle cx="50" cy="10" r="6" fill="#f4f6fb"/>' +
+    '<text class="sp-climate-dial-value" x="50" y="52" text-anchor="middle" ' +
+    'dominant-baseline="middle">20' + unit + "</text>" +
+    "</svg>"
+  );
+}
+
 registerButtonType("climate", {
   label: function () { return cardContractCardLabel("climate"); },
   allowInSubpage: function () { return cardContractAllowInSubpage("climate"); },
@@ -151,6 +172,18 @@ registerButtonType("climate", {
     panel.appendChild(precisionField.field);
     helpers.renderCardLargeNumbersToggle(panel, b, helpers, CLIMATE_CARD_METADATA);
 
+    var showDialToggle = helpers.toggleRow(
+      "Show dial on large cards",
+      helpers.idPrefix + "climate-show-dial",
+      climateShowDialEnabled(b)
+    );
+    panel.appendChild(showDialToggle.row);
+    showDialToggle.input.addEventListener("change", function () {
+      setClimateShowDial(b, this.checked);
+      helpers.saveField("options", b.options);
+      scheduleRender();
+    });
+
     var hasRange = !!(climateConfig.min || climateConfig.max);
     var advancedToggleSection = helpers.toggleSection(
       "Advanced",
@@ -189,6 +222,14 @@ registerButtonType("climate", {
     panel.appendChild(advanced);
   },
   renderPreview: function (b, helpers) {
+    if (climateShowDialEnabled(b) && climateCardCurrentSize(helpers) === CARD_SIZE_LARGE) {
+      var dialLabel = (b.label && b.label.trim()) || "Climate";
+      return {
+        buttonClass: "sp-climate-dial-card",
+        iconHtml: climateDialPreviewHtml(),
+        labelHtml: cardBadgeLabelHtml(helpers, dialLabel, CLIMATE_CARD_METADATA.preview.badge),
+      };
+    }
     var climateConfig = parseClimatePrecisionConfig(b.precision);
     var prec = parseInt(climateConfig.precision || "0", 10) || 0;
     var unit = temperatureUnitSymbol();

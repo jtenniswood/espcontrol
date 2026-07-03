@@ -1288,7 +1288,9 @@ inline void grid_phase2(
           display_climate_card_icon_font(display),
           display_icon_font(display),
           display_volume_width_percent(display),
-          s.sensor_container, s.sensor_lbl, s.unit_lbl);
+          s.sensor_container, s.sensor_lbl, s.unit_lbl,
+          card_span_is_large(row_span, col_span) &&
+            cfg_option_enabled(p.options, "show_dial"));
         subscribe_climate_control_state(ctx);
       }
       continue;

@@ -92,6 +92,11 @@ struct ClimateControlCtx {
   lv_obj_t *sensor_container = nullptr;
   lv_obj_t *value_lbl = nullptr;
   lv_obj_t *unit_lbl = nullptr;
+  bool show_dial = false;
+  lv_obj_t *dial_arc = nullptr;
+  lv_obj_t *dial_current_dot = nullptr;
+  lv_obj_t *dial_value_lbl = nullptr;
+  lv_obj_t *dial_unit_lbl = nullptr;
   const char *icon_off_glyph = nullptr;
   const char *icon_on_glyph = nullptr;
   int width_compensation_percent = 100;
@@ -696,8 +701,164 @@ inline void climate_layout_card_label(lv_obj_t *label_lbl) {
   lv_obj_move_foreground(label_lbl);
 }
 
+// ── Inline card dial (display-only summary on large 2x2 cards) ────────
+// Tapping the card still opens the full control modal; the arc, target
+// handle, and current-temperature dot here are purely informational.
+
+constexpr lv_coord_t CLIMATE_CARD_DIAL_INSET_PX = 12;
+constexpr lv_coord_t CLIMATE_CARD_DIAL_MIN_SIZE_PX = 80;
+
+inline lv_coord_t climate_card_dial_stroke(lv_coord_t dial_size) {
+  lv_coord_t stroke = dial_size / 12;
+  if (stroke < 6) stroke = 6;
+  if (stroke > 18) stroke = 18;
+  return stroke;
+}
+
+inline void climate_card_dial_layout(ClimateControlCtx *ctx) {
+  if (!ctx || !ctx->dial_arc || !ctx->btn) return;
+  lv_coord_t bw = lv_obj_get_width(ctx->btn);
+  lv_coord_t bh = lv_obj_get_height(ctx->btn);
+  if (bw <= 0 || bh <= 0) return;
+  lv_coord_t dial_size = (bw < bh ? bw : bh) - CLIMATE_CARD_DIAL_INSET_PX * 2;
+  if (dial_size < CLIMATE_CARD_DIAL_MIN_SIZE_PX) dial_size = CLIMATE_CARD_DIAL_MIN_SIZE_PX;
+  lv_coord_t stroke = climate_card_dial_stroke(dial_size);
+  lv_obj_set_size(ctx->dial_arc, dial_size, dial_size);
+  lv_obj_align(ctx->dial_arc, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_style_arc_width(ctx->dial_arc, stroke, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(ctx->dial_arc, stroke, LV_PART_INDICATOR);
+  lv_coord_t knob_pad = stroke / 3;
+  if (knob_pad < 2) knob_pad = 2;
+  lv_obj_set_style_pad_all(ctx->dial_arc, knob_pad, LV_PART_KNOB);
+  if (ctx->dial_value_lbl) {
+    lv_coord_t unit_w = 0;
+    if (ctx->dial_unit_lbl) {
+      lv_obj_update_layout(ctx->dial_unit_lbl);
+      unit_w = lv_obj_get_width(ctx->dial_unit_lbl);
+    }
+    lv_obj_align(ctx->dial_value_lbl, LV_ALIGN_CENTER, -(unit_w / 2), 0);
+    if (ctx->dial_unit_lbl)
+      lv_obj_align_to(ctx->dial_unit_lbl, ctx->dial_value_lbl,
+        LV_ALIGN_OUT_RIGHT_TOP, 2, 4);
+  }
+  if (ctx->dial_current_dot) {
+    lv_coord_t dot = stroke + 4;
+    if (dot < 10) dot = 10;
+    lv_obj_set_size(ctx->dial_current_dot, dot, dot);
+    lv_obj_set_style_radius(ctx->dial_current_dot, dot / 2, LV_PART_MAIN);
+    lv_coord_t radius = dial_size / 2 - stroke / 2;
+    if (radius < 0) radius = dial_size / 2;
+    float angle = climate_arc_angle_for_tenths(ctx, ctx->current_tenths);
+    float rad = angle * 3.14159265f / 180.0f;
+    lv_obj_align(ctx->dial_current_dot, LV_ALIGN_CENTER,
+      (lv_coord_t)(std::cos(rad) * radius), (lv_coord_t)(std::sin(rad) * radius));
+  }
+}
+
+inline void climate_build_card_dial(ClimateControlCtx *ctx) {
+  if (!ctx || !ctx->btn || ctx->dial_arc) return;
+
+  lv_obj_t *arc = lv_arc_create(ctx->btn);
+  ctx->dial_arc = arc;
+  lv_arc_set_bg_angles(arc, 135, 45);
+  lv_arc_set_range(arc, ctx->min_tenths, ctx->max_tenths);
+  lv_obj_set_style_bg_opa(arc, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(arc, 0, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(arc, lv_color_hex(DARK_TRACK_BACKGROUND), LV_PART_MAIN);
+  lv_obj_set_style_arc_rounded(arc, true, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(arc, lv_color_hex(ctx->accent_color), LV_PART_INDICATOR);
+  lv_obj_set_style_arc_rounded(arc, true, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(arc, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_KNOB);
+  lv_obj_set_style_bg_opa(arc, LV_OPA_COVER, LV_PART_KNOB);
+  lv_obj_set_style_border_width(arc, 0, LV_PART_KNOB);
+  lv_obj_set_style_shadow_width(arc, 0, LV_PART_KNOB);
+  lv_obj_set_style_radius(arc, LV_RADIUS_CIRCLE, LV_PART_KNOB);
+  lv_obj_clear_flag(arc, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(arc, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+  ctx->dial_value_lbl = lv_label_create(ctx->btn);
+  if (ctx->number_font)
+    lv_obj_set_style_text_font(ctx->dial_value_lbl, ctx->number_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(ctx->dial_value_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_text_align(ctx->dial_value_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  lv_label_set_text(ctx->dial_value_lbl, "--");
+  lv_obj_clear_flag(ctx->dial_value_lbl, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(ctx->dial_value_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+  ctx->dial_unit_lbl = lv_label_create(ctx->btn);
+  const lv_font_t *dial_unit_font = ctx->unit_font ? ctx->unit_font : ctx->label_font;
+  if (dial_unit_font)
+    lv_obj_set_style_text_font(ctx->dial_unit_lbl, dial_unit_font, LV_PART_MAIN);
+  lv_obj_set_style_text_color(ctx->dial_unit_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_label_set_text(ctx->dial_unit_lbl, "");
+  lv_obj_clear_flag(ctx->dial_unit_lbl, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(ctx->dial_unit_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+  ctx->dial_current_dot = lv_obj_create(ctx->btn);
+  lv_obj_set_style_bg_color(ctx->dial_current_dot, lv_color_hex(DARK_CONTROL_NEUTRAL), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(ctx->dial_current_dot, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(ctx->dial_current_dot, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(ctx->dial_current_dot, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(ctx->dial_current_dot, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(ctx->dial_current_dot, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_clear_flag(ctx->dial_current_dot, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(ctx->dial_current_dot, LV_OBJ_FLAG_EVENT_BUBBLE);
+  lv_obj_add_flag(ctx->dial_current_dot, LV_OBJ_FLAG_HIDDEN);
+
+  lv_obj_add_event_cb(ctx->btn, [](lv_event_t *e) {
+    ClimateControlCtx *cb_ctx = static_cast<ClimateControlCtx *>(lv_event_get_user_data(e));
+    climate_card_dial_layout(cb_ctx);
+  }, LV_EVENT_SIZE_CHANGED, ctx);
+}
+
+inline void climate_update_card_dial(ClimateControlCtx *ctx) {
+  if (!ctx || !ctx->dial_arc) return;
+  bool avail = ctx->available;
+  int target = climate_selected_target(ctx);
+  bool active = climate_is_active(ctx);
+  lv_arc_set_range(ctx->dial_arc, ctx->min_tenths, ctx->max_tenths);
+  lv_arc_set_value(ctx->dial_arc, climate_clamp_tenths(ctx, target));
+  lv_obj_set_style_arc_color(ctx->dial_arc,
+    lv_color_hex(active ? climate_active_color(ctx) : DARK_BACKGROUND_SECONDARY),
+    LV_PART_INDICATOR);
+  std::string dial_number = avail ? climate_card_target_value(ctx) : "--";
+  if (ctx->dial_value_lbl) {
+    lv_label_set_text(ctx->dial_value_lbl, dial_number.c_str());
+  }
+  if (ctx->dial_unit_lbl) {
+    bool has_value = !(dial_number.empty() || dial_number == "--");
+    lv_label_set_text(ctx->dial_unit_lbl,
+      has_value ? display_temperature_unit_symbol() : "");
+  }
+  bool show_current = avail && ctx->has_current;
+  if (ctx->dial_current_dot) {
+    if (show_current) lv_obj_clear_flag(ctx->dial_current_dot, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ctx->dial_current_dot, LV_OBJ_FLAG_HIDDEN);
+  }
+  climate_card_dial_layout(ctx);
+  if (ctx->dial_value_lbl) lv_obj_move_foreground(ctx->dial_value_lbl);
+  if (ctx->dial_unit_lbl) lv_obj_move_foreground(ctx->dial_unit_lbl);
+  if (ctx->dial_current_dot && show_current) lv_obj_move_foreground(ctx->dial_current_dot);
+}
+
 inline void climate_update_card(ClimateControlCtx *ctx) {
   if (!ctx) return;
+  if (ctx->show_dial && ctx->dial_arc) {
+    climate_update_card_dial(ctx);
+    if (ctx->icon_lbl) lv_obj_add_flag(ctx->icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->sensor_container) lv_obj_add_flag(ctx->sensor_container, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->value_lbl) lv_obj_add_flag(ctx->value_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->unit_lbl) lv_obj_add_flag(ctx->unit_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->label_lbl) {
+      lv_label_set_text(ctx->label_lbl, climate_card_label(ctx).c_str());
+      configure_button_label_wrap(ctx->label_lbl);
+      lv_obj_set_style_text_align(ctx->label_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+      lv_obj_align(ctx->label_lbl, LV_ALIGN_BOTTOM_MID, 0, 0);
+      lv_obj_move_foreground(ctx->label_lbl);
+    }
+    if (ctx->btn) set_card_checked_state(ctx->btn, climate_is_active(ctx));
+    return;
+  }
   std::string value = climate_card_value(ctx);
   bool show_icon = ctx->number_display == "icon";
   if (ctx->icon_lbl) {
@@ -1812,7 +1973,8 @@ inline ClimateControlCtx *create_climate_control_context(
     const lv_font_t *option_value_font, const lv_font_t *option_menu_font,
     const lv_font_t *card_icon_font, const lv_font_t *icon_font,
     int width_compensation_percent,
-    lv_obj_t *sensor_container, lv_obj_t *value_lbl, lv_obj_t *unit_lbl) {
+    lv_obj_t *sensor_container, lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
+    bool show_dial = false) {
   ClimateControlCtx *ctx = new ClimateControlCtx();
   ctx->entity_id = p.entity;
   ctx->configured_label = p.label;
@@ -1840,7 +2002,9 @@ inline ClimateControlCtx *create_climate_control_context(
   ctx->card_icon_font = card_icon_font ? card_icon_font : icon_font;
   ctx->icon_font = icon_font;
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);
+  ctx->show_dial = show_dial;
   if (btn) lv_obj_set_user_data(btn, ctx);
+  if (ctx->show_dial) climate_build_card_dial(ctx);
   int &count = climate_control_ref_count();
   if (count < MAX_GRID_SLOTS + MAX_SUBPAGE_ITEMS) climate_control_refs()[count++] = ctx;
   climate_update_card(ctx);

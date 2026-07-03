@@ -271,6 +271,7 @@ var ALARM_LABEL_DISPLAY_OPTION = "label_display";
 var GARAGE_LABEL_DISPLAY_OPTION = "label_display";
 var CLIMATE_LABEL_DISPLAY_OPTION = "label_display";
 var CLIMATE_NUMBER_DISPLAY_OPTION = "number_display";
+var CLIMATE_SHOW_DIAL_OPTION = "show_dial";
 var MEDIA_VOLUME_MAX_OPTION = "volume_max";
 var SUBPAGE_KIND_OPTION = "subpage_kind";
 var IMAGE_LABEL_OPTION = "image_label";
@@ -1225,7 +1226,21 @@ function normalizeClimateOptions(options) {
   if (numberMode !== "icon") {
     out = copyLargeNumbersOption(out, options);
   }
+  if (configOptionEnabled(options, CLIMATE_SHOW_DIAL_OPTION)) {
+    out = setConfigOption(out, CLIMATE_SHOW_DIAL_OPTION, true);
+  }
   return out;
+}
+
+function climateShowDialEnabled(b) {
+  return configOptionEnabled(b && b.options, CLIMATE_SHOW_DIAL_OPTION);
+}
+
+function setClimateShowDial(b, enabled) {
+  if (!b) return "";
+  b.options = setConfigOption(b.options, CLIMATE_SHOW_DIAL_OPTION, !!enabled);
+  b.options = normalizeClimateOptions(b.options);
+  return b.options;
 }
 
 function climateLabelDisplayMode(b) {

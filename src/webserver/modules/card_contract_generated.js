@@ -459,6 +459,11 @@ var CARD_CONTRACT_CARDS = {
         "name": "large_numbers",
         "label": "Large Temperature Numbers",
         "kind": "flag"
+      },
+      {
+        "name": "show_dial",
+        "label": "Show dial on large cards",
+        "kind": "flag"
       }
     ],
     "behavior": {

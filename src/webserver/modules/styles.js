@@ -82,6 +82,10 @@ var CSS =
   ".sp-sensor-preview{display:flex;align-items:baseline;gap:.18em;color:#fff}" +
   ".sp-climate-temp-card .sp-sensor-preview{position:absolute;left:var(--btn-pad);top:var(--btn-pad)}" +
   ".sp-climate-temp-card .sp-btn-label-row{margin-top:auto}" +
+  ".sp-climate-dial-card{justify-content:center;align-items:center;gap:calc(var(--btn-pad)*0.3)}" +
+  ".sp-climate-dial-card .sp-climate-dial-preview{width:72%;max-width:calc(var(--btn-icon)*3.4);height:auto;display:block;margin:0 auto}" +
+  ".sp-climate-dial-card .sp-climate-dial-value{fill:#fff;font-size:22px;font-weight:300}" +
+  ".sp-climate-dial-card .sp-btn-label-row{flex:0 0 auto}" +
   ".sp-btn-big .sp-sensor-preview-large .sp-sensor-value,.sp-btn-wide .sp-sensor-preview-large .sp-sensor-value{font-size:calc(var(--btn-icon)*2.5);font-weight:100}" +
   ".sp-btn-big .sp-sensor-preview-large .sp-sensor-unit,.sp-btn-wide .sp-sensor-preview-large .sp-sensor-unit{transform:translateY(var(--large-sensor-unit-offset-y,-20px))}" +
   ".sp-date-time-wide-large{justify-content:center;align-items:center}" +

@@ -27,11 +27,22 @@ A Climate card controls a Home Assistant `climate` entity, such as a thermostat,
 6. Choose **Unit Precision**:
    - **10** shows whole numbers.
    - **10.2** shows one decimal place.
-7. Use **Advanced** only if you want to override the minimum or maximum temperature range shown on the panel. Negative values are supported, for example `-25` to `5` for a freezer thermostat.
+7. Turn on **Show dial on large cards** if you want a circular thermostat dial on larger cards. See [Dial on large cards](#dial-on-large-cards) below.
+8. Use **Advanced** only if you want to override the minimum or maximum temperature range shown on the panel. Negative values are supported, for example `-25` to `5` for a freezer thermostat.
 
 ## How It Works on the Panel
 
 The card can show either an icon or a large temperature. It lights up when Home Assistant reports that the climate entity is actively heating, cooling, drying, or running the fan. Idle and off states do not show as active.
+
+### Dial on large cards
+
+When **Show dial on large cards** is on and the card uses a large **2x2** (square) grid slot, the card shows a circular thermostat dial instead of the plain temperature:
+
+- The ring fills toward the target temperature and uses the heating or cooling colour when the entity is active.
+- A handle marks the target temperature and a smaller dot marks the current measured temperature on the ring.
+- The target temperature is shown in the centre of the dial.
+
+The inline dial is display-only. Tapping the card still opens the full climate control popup to make changes. The dial only appears on 2x2 cards; smaller sizes keep the standard icon or temperature layout, so you can leave the toggle on without affecting other cards.
 
 Tapping the card opens a climate control popup. From there, you can:
 
