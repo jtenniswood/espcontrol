@@ -7,29 +7,31 @@
 
 constexpr const char *BATTERY_ICON_UNKNOWN = "\U000F0091";  // Battery Unknown
 constexpr const char *BATTERY_ICON_ALERT = "\U000F0083";    // Battery Alert
-constexpr const char *BATTERY_ICON_10 = "\U000F007A";
-constexpr const char *BATTERY_ICON_20 = "\U000F007B";
-constexpr const char *BATTERY_ICON_30 = "\U000F007C";
-constexpr const char *BATTERY_ICON_40 = "\U000F007D";
-constexpr const char *BATTERY_ICON_50 = "\U000F007E";
-constexpr const char *BATTERY_ICON_60 = "\U000F007F";
-constexpr const char *BATTERY_ICON_70 = "\U000F0080";
-constexpr const char *BATTERY_ICON_80 = "\U000F0081";
-constexpr const char *BATTERY_ICON_90 = "\U000F0082";
+
+// Ten evenly-spaced 10%-wide tiers, each keyed by its upper bound.
+struct BatteryIconTier {
+  float max_pct;
+  const char *icon;
+};
+constexpr BatteryIconTier BATTERY_ICON_TIERS[] = {
+    {15.0f, "\U000F007A"},  // Battery 10%
+    {25.0f, "\U000F007B"},  // Battery 20%
+    {35.0f, "\U000F007C"},  // Battery 30%
+    {45.0f, "\U000F007D"},  // Battery 40%
+    {55.0f, "\U000F007E"},  // Battery 50%
+    {65.0f, "\U000F007F"},  // Battery 60%
+    {75.0f, "\U000F0080"},  // Battery 70%
+    {85.0f, "\U000F0081"},  // Battery 80%
+    {95.0f, "\U000F0082"},  // Battery 90%
+};
 constexpr const char *BATTERY_ICON_FULL = "\U000F0079";
 
 inline const char *battery_status_icon(float pct) {
   if (!std::isfinite(pct)) return BATTERY_ICON_UNKNOWN;
   if (pct <= 5.0f) return BATTERY_ICON_ALERT;
-  if (pct < 15.0f) return BATTERY_ICON_10;
-  if (pct < 25.0f) return BATTERY_ICON_20;
-  if (pct < 35.0f) return BATTERY_ICON_30;
-  if (pct < 45.0f) return BATTERY_ICON_40;
-  if (pct < 55.0f) return BATTERY_ICON_50;
-  if (pct < 65.0f) return BATTERY_ICON_60;
-  if (pct < 75.0f) return BATTERY_ICON_70;
-  if (pct < 85.0f) return BATTERY_ICON_80;
-  if (pct < 95.0f) return BATTERY_ICON_90;
+  for (const auto &tier : BATTERY_ICON_TIERS) {
+    if (pct < tier.max_pct) return tier.icon;
+  }
   return BATTERY_ICON_FULL;
 }
 

@@ -84,7 +84,6 @@ substitutions:
       lv_obj_align(id(battery_status_button), LV_ALIGN_TOP_RIGHT,
                    -(clock_bar_right_x + clock_bar_item_width), clock_bar_icon_y);
       lv_obj_clear_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);
-      battery_status_set_icon(id(battery_status_icon_label), id(battery_percent).state);
     } else {
       lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);
     }

@@ -64,12 +64,14 @@ lvgl:
             then:
               - script.execute: network_status_open_info
 
-      # Battery status (experimental - IP5306 battery variant only)
+      # Battery status (experimental - IP5306 battery variant only). Starts
+      # hidden; battery_status_apply_code (scripts/generate_device_slots.py)
+      # positions and reveals it at runtime, so the x/y here are unused placeholders.
       - obj:
           id: battery_status_button
           align: top_right
-          x: -54
-          y: 1
+          x: 0
+          y: 0
           width: 38
           height: 34
           bg_opa: 0%
