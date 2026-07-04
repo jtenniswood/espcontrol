@@ -470,7 +470,7 @@ script:
             return;
           }
 
-          if (slug == "guition-esp32-p4-jc8012p4a1") {
+          if (slug == "guition-esp32-p4-jc8012p4a1" || slug == "seeed-esp32-p4-reterminal-d1001") {
             const bool landscape = rotation == "0" || rotation == "180";
             if (landscape) {
               apply_split_layout(1280, 800, 0, 0, 800, 800, 0, 480, 800, 840, 40, 400, 720, 506);

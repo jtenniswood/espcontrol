@@ -26,6 +26,7 @@ Each screen uses a different ESPHome package file. Pick the one that matches you
 | Panel | Package file |
 | --- | --- |
 | 10.1-inch JC8012P4A1 | `devices/guition-esp32-p4-jc8012p4a1/packages.yaml` |
+| 8-inch Seeed reTerminal D1001 | `devices/seeed-esp32-p4-reterminal-d1001/packages.yaml` |
 | 7-inch JC1060P470 | `devices/guition-esp32-p4-jc1060p470/packages.yaml` |
 | 4.3-inch JC4880P443 | `devices/guition-esp32-p4-jc4880p443/packages.yaml` |
 | 4-inch ESP32-P4 86 Panel | `devices/esp32-p4-86/packages.yaml` |
