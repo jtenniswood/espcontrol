@@ -634,6 +634,19 @@ function postCoverArtDelay(value) {
   return post(coverArtDelayPostUrls(value));
 }
 
+function coverArtTouchPausePostUrls(value) {
+  return entityPostUrls(
+    "number",
+    entityName("screen_saver_cover_art_touch_pause"),
+    entityObjectIds("screen_saver_cover_art_touch_pause"),
+    "set?value=" + encodeURIComponent(value)
+  );
+}
+
+function postCoverArtTouchPause(value) {
+  return post(coverArtTouchPausePostUrls(value));
+}
+
 function coverArtTrackOverlayDurationPostUrls(value) {
   return entityPostUrls(
     "number",

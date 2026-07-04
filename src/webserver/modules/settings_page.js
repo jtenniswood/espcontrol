@@ -705,6 +705,32 @@ function buildSettingsPage(parent) {
     coverArtOnlyOptions.appendChild(coverArtDelayField);
     els.setCoverArtDelay = coverArtDelaySelect;
 
+    var coverArtTouchPauseField = document.createElement("div");
+    coverArtTouchPauseField.className = "sp-field";
+    coverArtTouchPauseField.appendChild(fieldLabel("After Touch, Show Again", "sp-set-ss-cover-art-touch-pause"));
+    var coverArtTouchPauseSelect = document.createElement("select");
+    coverArtTouchPauseSelect.className = "sp-select";
+    coverArtTouchPauseSelect.id = "sp-set-ss-cover-art-touch-pause";
+    [
+      { label: "Immediately", value: 0 },
+      { label: "1 minute", value: 60 },
+      { label: "2 minutes", value: 120 },
+      { label: "3 minutes", value: 180 },
+      { label: "5 minutes", value: 300 },
+    ].forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      coverArtTouchPauseSelect.appendChild(o);
+    });
+    coverArtTouchPauseSelect.addEventListener("change", function () {
+      state.coverArtTouchPause = parseFloat(this.value) || 0;
+      postCoverArtTouchPause(state.coverArtTouchPause);
+    });
+    coverArtTouchPauseField.appendChild(coverArtTouchPauseSelect);
+    coverArtOnlyOptions.appendChild(coverArtTouchPauseField);
+    els.setCoverArtTouchPause = coverArtTouchPauseSelect;
+
     if (coverArtTrackOverlayDurationSupported()) {
       var trackOverlayField = document.createElement("div");
       trackOverlayField.className = "sp-field";
@@ -1278,6 +1304,14 @@ function syncCoverArtScreensaverUi() {
       els.setCoverArtDelay,
       coverArtDelay,
       coverArtDelay > 0 ? formatDuration(coverArtDelay) : "Immediately");
+  }
+  if (els.setCoverArtTouchPause) {
+    var coverArtTouchPause = Math.max(0, parseFloat(state.coverArtTouchPause) || 0);
+    state.coverArtTouchPause = coverArtTouchPause;
+    setSelectValue(
+      els.setCoverArtTouchPause,
+      coverArtTouchPause,
+      coverArtTouchPause > 0 ? formatDuration(coverArtTouchPause) : "Immediately");
   }
   if (els.setCoverArtTrackOverlayDuration) {
     var value = state.coverArtTrackOverlayDuration;

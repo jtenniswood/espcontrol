@@ -111,6 +111,9 @@ globals:
   - id: cover_art_last_progress_percent
     type: int
     initial_value: '-1'
+  - id: cover_art_manual_pause_until_ms
+    type: uint32_t
+    initial_value: '0'
   - id: cover_art_accent_r
     type: int
     initial_value: '0'
@@ -211,6 +214,7 @@ lvgl:
           hidden: true
           on_press:
             then:
+              - script.execute: cover_art_pause_after_touch
               - script.execute: screensaver_wake
           widgets:
             - obj:
@@ -336,6 +340,23 @@ lvgl:
           hidden: true
 
 script:
+  - id: cover_art_pause_after_touch
+    mode: restart
+    then:
+      - script.stop: cover_art_delay_timer
+      - lambda: |-
+          float seconds = id(cover_art_touch_pause).state;
+          if (std::isnan(seconds) || seconds < 0.0f) seconds = 120.0f;
+          if (seconds <= 0.0f) {
+            id(cover_art_manual_pause_until_ms) = 0;
+            ESP_LOGI("cover_art", "Cover art touch pause disabled");
+            return;
+          }
+          if (seconds > 300.0f) seconds = 300.0f;
+          uint32_t duration_ms = (uint32_t)(seconds * 1000.0f);
+          id(cover_art_manual_pause_until_ms) = millis() + duration_ms;
+          ESP_LOGI("cover_art", "Pausing cover art for %.0fs after touch", seconds);
+
   - id: cover_art_wake_touch_block
     mode: restart
     then:
@@ -778,6 +799,9 @@ script:
       - globals.set:
           id: cover_art_media_playing
           value: 'false'
+      - globals.set:
+          id: cover_art_manual_pause_until_ms
+          value: '0'
       - globals.set:
           id: cover_art_image_available
           value: 'false'
@@ -1246,6 +1270,14 @@ script:
       - if:
           condition:
             lambda: |-
+              return id(cover_art_manual_pause_until_ms) != 0 &&
+                     (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
+          then:
+            - script.execute: cover_art_delay_timer
+            - script.stop: show_cover_art_view
+      - if:
+          condition:
+            lambda: |-
               auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               return screen_schedule_blocks_cover_art(
                        id(screen_schedule_trigger).state,
@@ -1369,8 +1401,18 @@ script:
       - delay: !lambda |-
           float seconds = id(cover_art_delay).state;
           if (std::isnan(seconds) || seconds < 0.0f) seconds = 10.0f;
-          ESP_LOGI("cover_art", "Waiting %.0fs before showing cover art", seconds);
-          return (uint32_t)(seconds * 1000.0f);
+          uint32_t delay_ms = (uint32_t)(seconds * 1000.0f);
+          int32_t pause_remaining_ms = id(cover_art_manual_pause_until_ms) != 0
+              ? (int32_t)(id(cover_art_manual_pause_until_ms) - millis())
+              : 0;
+          if (pause_remaining_ms > 0) {
+            delay_ms = (uint32_t) pause_remaining_ms;
+            ESP_LOGI("cover_art", "Waiting %.0fs before showing cover art after touch",
+                     delay_ms / 1000.0f);
+          } else {
+            ESP_LOGI("cover_art", "Waiting %.0fs before showing cover art", seconds);
+          }
+          return delay_ms;
       - if:
           condition:
             lambda: |-
@@ -1380,6 +1422,8 @@ script:
                      id(cover_art_screensaver_enabled).state &&
                      id(cover_art_media_playing) &&
                      !voice_active &&
+                     (id(cover_art_manual_pause_until_ms) == 0 ||
+                      (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) <= 0) &&
                      !screen_schedule_blocks_cover_art(
                        id(screen_schedule_trigger).state,
                        id(schedule_enabled).state,
@@ -2102,6 +2146,9 @@ script:
       - globals.set:
           id: cover_art_media_playing
           value: 'false'
+      - globals.set:
+          id: cover_art_manual_pause_until_ms
+          value: '0'
       - lambda: |-
           id(cover_art_media_position) = 0.0f;
           id(cover_art_position_anchor) = 0.0f;
