@@ -113,6 +113,10 @@ inline constexpr bool media_control_low_heap_mode() {
 #endif
 }
 
+inline constexpr bool media_control_progress_supported() {
+  return !media_control_low_heap_mode();
+}
+
 inline void media_set_metadata_text(lv_obj_t *label, esphome::StringRef value,
                                     const char *fallback) {
   if (!label) return;
@@ -1070,7 +1074,8 @@ inline void media_control_style_tab(lv_obj_t *btn, bool active) {
 inline void media_control_apply_tab_visibility() {
   MediaControlModalUi &ui = media_control_modal_ui();
   bool show_controls = ui.tab == MediaControlTab::CONTROLS;
-  bool show_progress = ui.tab == MediaControlTab::PROGRESS;
+  bool show_progress = media_control_progress_supported() &&
+                       ui.tab == MediaControlTab::PROGRESS;
   bool show_volume = ui.tab == MediaControlTab::VOLUME;
   media_control_style_tab(ui.controls_tab, show_controls);
   media_control_style_tab(ui.progress_tab, show_progress);
@@ -1227,6 +1232,7 @@ inline void media_control_create_controls_tab_content(MediaControlCtx *ctx) {
   }, LV_EVENT_CLICKED, nullptr);
 }
 
+#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
 inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || !ui.content_box || ui.progress_slider) return;
@@ -1288,6 +1294,7 @@ inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
     }
   }, LV_EVENT_PRESS_LOST, nullptr);
 }
+#endif
 
 inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
@@ -1393,13 +1400,20 @@ inline void media_control_clear_tab_content() {
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx) {
   MediaControlModalUi &ui = media_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
+  if (ui.tab == MediaControlTab::PROGRESS && !media_control_progress_supported()) {
+    ui.tab = MediaControlTab::CONTROLS;
+  }
   if (ui.tab == MediaControlTab::CONTROLS) {
     ui.controls_box = ui.content_box;
     media_control_create_controls_tab_content(ctx);
-  } else if (ui.tab == MediaControlTab::PROGRESS) {
+  }
+#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
+  else if (ui.tab == MediaControlTab::PROGRESS) {
     ui.progress_box = ui.content_box;
     media_control_create_progress_tab_content(ctx);
-  } else if (ui.tab == MediaControlTab::VOLUME) {
+  }
+#endif
+  else if (ui.tab == MediaControlTab::VOLUME) {
     ui.volume_box = ui.content_box;
     media_control_create_volume_tab_content(ctx);
   }
@@ -1413,7 +1427,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, control_modal_card_radius(ctx->btn));
   control_modal_apply_back_button_layout(ui.back_btn, layout);
 
-  constexpr int MEDIA_CONTROL_TAB_COUNT = 3;
+  constexpr int MEDIA_CONTROL_TAB_COUNT = media_control_progress_supported() ? 3 : 2;
   ControlModalTabLayout tabs_layout =
     control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true);
   control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
@@ -1424,7 +1438,9 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
   };
   MediaControlTabLayout tabs[MEDIA_CONTROL_TAB_COUNT] = {
     {ui.controls_tab, MediaControlTab::CONTROLS},
+#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
     {ui.progress_tab, MediaControlTab::PROGRESS},
+#endif
     {ui.volume_tab, MediaControlTab::VOLUME},
   };
   for (int i = 0; i < MEDIA_CONTROL_TAB_COUNT; i++) {
@@ -1671,15 +1687,18 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.controls_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Speaker"), ctx->icon_font,
     MediaControlTab::CONTROLS, ctx->width_compensation_percent);
+#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
   ui.progress_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Progress Clock"), ctx->icon_font,
     MediaControlTab::PROGRESS, ctx->width_compensation_percent);
+#endif
   ui.volume_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Volume High"), ctx->icon_font,
     MediaControlTab::VOLUME, ctx->width_compensation_percent);
 
   ui.content_box = media_control_create_box(ui.panel);
-  if (!ui.controls_tab || !ui.progress_tab || !ui.volume_tab || !ui.content_box) {
+  if (!ui.controls_tab || (media_control_progress_supported() && !ui.progress_tab) ||
+      !ui.volume_tab || !ui.content_box) {
     media_control_hide_modal();
     return;
   }

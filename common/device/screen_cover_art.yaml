@@ -713,7 +713,18 @@ script:
           then:
             - lvgl.widget.show: cover_art_accent_overlay
             - lvgl.widget.show: cover_art_track_panel
-            - lvgl.widget.show: cover_art_progress_bar
+            - if:
+                condition:
+                  lambda: |-
+                    #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+                    return false;
+                    #else
+                    return true;
+                    #endif
+                then:
+                  - lvgl.widget.show: cover_art_progress_bar
+                else:
+                  - lvgl.widget.hide: cover_art_progress_bar
           else:
             - lvgl.widget.hide: cover_art_accent_overlay
             - lvgl.widget.hide: cover_art_track_panel
@@ -1166,11 +1177,23 @@ script:
             - lvgl.widget.show: cover_art_artist_label
           else:
             - lvgl.widget.hide: cover_art_artist_label
+      - lambda: |-
+          #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+          lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+          #else
+          lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+          #endif
 
   - id: cover_art_refresh_progress
     mode: restart
     then:
       - lambda: |-
+          #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+          lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+          #else
+
           float duration = id(cover_art_media_duration);
           float position = id(cover_art_media_position);
           auto now = id(panel_time).now();
@@ -1218,6 +1241,7 @@ script:
             id(cover_art_last_progress_percent) = value;
             lv_bar_set_value(id(cover_art_progress_bar), value, LV_ANIM_OFF);
           }
+          #endif
 
   - id: cover_art_show_track_overlay
     mode: restart
@@ -1227,7 +1251,18 @@ script:
             lambda: 'return id(cover_art_screensaver_active) && id(cover_art_media_playing);'
           then:
             - script.execute: cover_art_sync_track_text
-            - lvgl.widget.show: cover_art_progress_bar
+            - if:
+                condition:
+                  lambda: |-
+                    #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+                    return false;
+                    #else
+                    return true;
+                    #endif
+                then:
+                  - lvgl.widget.show: cover_art_progress_bar
+                else:
+                  - lvgl.widget.hide: cover_art_progress_bar
             - script.execute: cover_art_refresh_progress
             - if:
                 condition:
