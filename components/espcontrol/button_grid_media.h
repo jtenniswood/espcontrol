@@ -105,6 +105,14 @@ inline std::string media_status_text(const std::string &state) {
   return sentence_cap_text(state);
 }
 
+inline constexpr bool media_control_low_heap_mode() {
+#ifdef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
+  return true;
+#else
+  return false;
+#endif
+}
+
 inline void media_set_metadata_text(lv_obj_t *label, esphome::StringRef value,
                                     const char *fallback) {
   if (!label) return;
@@ -226,6 +234,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         }
       })
   );
+#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
   ha_subscribe_attribute(
     ctx->entity_id, std::string("media_title"),
     std::function<void(esphome::StringRef)>(
@@ -311,6 +320,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         if (media_control_modal_ui().active == ctx) media_control_refresh_progress(ctx);
       })
   );
+#endif
   ha_subscribe_attribute(
     ctx->entity_id, std::string("volume_level"),
     std::function<void(esphome::StringRef)>(
@@ -334,6 +344,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         media_control_refresh_parent_card(ctx);
       })
   );
+#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
   ha_subscribe_attribute(
     ctx->entity_id, std::string("friendly_name"),
     std::function<void(esphome::StringRef value)>(
@@ -342,6 +353,7 @@ inline void subscribe_media_control_state(MediaControlCtx *ctx) {
         if (media_control_modal_ui().active == ctx) media_control_layout_modal(ctx);
       })
   );
+#endif
 }
 
 inline bool media_seek_pending_active(SliderCtx *ctx) {
@@ -1624,8 +1636,10 @@ inline MediaControlCtx *create_media_control_context(
   ctx->width_compensation_percent = normalize_width_compensation_percent(width_compensation_percent);
   ctx->label_shows_status = media_control_card_show_status_label(p);
   ctx->top_shows_volume = media_control_card_show_volume_number(p);
+#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL
   ctx->position_timer = lv_timer_create(media_control_position_timer_cb, 1000, ctx);
   if (ctx->position_timer) lv_timer_pause(ctx->position_timer);
+#endif
   lv_obj_set_user_data(s.btn, ctx);
   return ctx;
 }
@@ -1902,7 +1916,9 @@ inline void subscribe_media_now_playing_state(MediaNowPlayingCtx *ctx,
     std::function<void(esphome::StringRef)>(
       [title_lbl, artist_lbl, entity_id](esphome::StringRef title) {
         media_set_metadata_text(title_lbl, title, "--");
-        media_refresh_artist_text(artist_lbl, entity_id);
+        if (!media_control_low_heap_mode()) {
+          media_refresh_artist_text(artist_lbl, entity_id);
+        }
       })
   );
   ha_subscribe_attribute(

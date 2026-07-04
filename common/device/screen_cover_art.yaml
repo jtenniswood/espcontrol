@@ -965,7 +965,8 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(cover_art_screensaver_enabled).state &&
+              return id(cover_art_screensaver_active) &&
+                     id(cover_art_screensaver_enabled).state &&
                      id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active));
@@ -1734,6 +1735,7 @@ script:
           bool artist_requested = ha_get_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
           ESP_LOGI("cover_art", "Artist refresh %s", artist_requested ? "requested" : "failed");
 
+          #ifndef ESPCONTROL_LOW_HEAP_COVER_ART
           std::function<void(esphome::StringRef)> handle_media_album =
             [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef album) {
               if (!id(cover_art_screensaver_enabled).state ||
@@ -1762,6 +1764,7 @@ script:
           }
           bool album_requested = ha_get_attribute(cover_entity, std::string("media_album_name"), handle_media_album);
           ESP_LOGI("cover_art", "Album refresh %s", album_requested ? "requested" : "failed");
+          #endif
 
           std::function<void(esphome::StringRef)> handle_media_source =
             [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef source) {
@@ -1932,18 +1935,16 @@ script:
               if (cached == url) {
                 const bool process_cached =
                     !url.empty() &&
-                    (id(cover_art_screensaver_active) ||
-                     id(cover_art_refresh_needed) ||
-                     url != id(cover_art_url));
+                    id(cover_art_screensaver_active) &&
+                    (id(cover_art_refresh_needed) ||
+                     url != id(cover_art_url) ||
+                     !id(cover_art_image_available));
                 ESP_LOGI("cover_art", "Artwork %s unchanged (%u chars, url %u chars, active=%s, refresh_needed=%s)",
                          local ? "entity_picture_local" : "entity_picture",
                          (unsigned) path.size(), (unsigned) url.size(),
                          id(cover_art_screensaver_active) ? "true" : "false",
                          id(cover_art_refresh_needed) ? "true" : "false");
                 if (process_cached) {
-                  if (!id(cover_art_screensaver_active) && id(cover_art_refresh_needed)) {
-                    ESP_LOGI("cover_art", "Reprocessing unchanged artwork because refresh is pending");
-                  }
                   id(cover_art_process_cached_artwork).execute();
                 }
                 return;
@@ -1962,7 +1963,7 @@ script:
                        (unsigned) path.size(), (unsigned) url.size(),
                        id(cover_art_screensaver_active) ? "true" : "false");
 
-              if (id(cover_art_screensaver_active) || id(cover_art_refresh_needed)) {
+              if (id(cover_art_screensaver_active)) {
                 id(cover_art_process_cached_artwork).execute();
               }
             };
@@ -2009,6 +2010,7 @@ script:
                    picture_requested ? "requested" : "failed",
                    local_picture_requested ? "requested" : "failed");
 
+          #ifndef ESPCONTROL_LOW_HEAP_COVER_ART
           std::function<void(esphome::StringRef)> handle_media_duration =
             [cover_entity, subscription_generation](esphome::StringRef duration) {
               if (!id(cover_art_screensaver_enabled).state ||
@@ -2096,6 +2098,7 @@ script:
             );
           }
           ha_get_attribute(cover_entity, std::string("media_position_updated_at"), handle_media_position_updated_at);
+          #endif
 
   - id: cover_art_playback_started
     mode: restart
