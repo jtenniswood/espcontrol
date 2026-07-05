@@ -11,7 +11,7 @@
 
 substitutions:
   battery_adc_pin: GPIO52
-  battery_adc_attenuation: "11dB"
+  battery_adc_attenuation: "12dB"
   battery_adc_update_interval: "30s"
   battery_voltage_divider_multiplier: "1.68"
   battery_empty_voltage: "3.30"
