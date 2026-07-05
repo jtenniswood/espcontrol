@@ -21,7 +21,7 @@ esphome:
     version: "${firmware_version}"
 
 dashboard_import:
-  package_import_url: github://jtenniswood/espcontrol/devices/waveshare-esp32-s3-touch-lcd-4/esphome.yaml@main
+  package_import_url: github://codenamefez/espcontrol/devices/waveshare-esp32-s3-touch-lcd-4/esphome.yaml@main
 
 web_server:
   port: 80

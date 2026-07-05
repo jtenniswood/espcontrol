@@ -9,6 +9,7 @@
 substitutions:
   device_slug: "waveshare-esp32-s3-touch-lcd-4"
   firmware_manifest_slug: "waveshare-esp32-s3-touch-lcd-4"
+  firmware_update_base_url: "https://codenamefez.github.io/espcontrol/firmware"
   firmware_version: "dev"
   screen_width: "480"
   screen_height: "480"

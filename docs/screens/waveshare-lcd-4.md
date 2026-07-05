@@ -59,7 +59,7 @@ wifi:
 
 packages:
   setup:
-    url: https://github.com/jtenniswood/espcontrol/
+    url: https://github.com/codenamefez/espcontrol/
     file: devices/waveshare-esp32-s3-touch-lcd-4/packages.yaml
     refresh: 1sec
 ```

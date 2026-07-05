@@ -9,6 +9,7 @@
 
 substitutions:
   firmware_version: "dev"
+  firmware_update_base_url: "https://jtenniswood.github.io/espcontrol/firmware"
 
 esphome:
   project:
@@ -170,7 +171,7 @@ update:
     id: firmware_update
     name: "${entity_firmware_update}"
     internal: true
-    source: https://jtenniswood.github.io/espcontrol/firmware/${firmware_manifest_slug}/manifest.json
+    source: ${firmware_update_base_url}/${firmware_manifest_slug}/manifest.json
     update_interval: never
     on_update_available:
       then:
