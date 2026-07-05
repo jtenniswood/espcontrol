@@ -48,9 +48,8 @@ sensor:
                           (${battery_full_voltage}f - ${battery_empty_voltage}f) * 100.0f,
                           0.0f), 100.0f);
     unit_of_measurement: "%"
-    icon: "mdi:battery-unknown"
     entity_category: diagnostic
-    device_class: ""
+    device_class: battery
     on_value:
       then:
         - script.execute: battery_status_refresh
