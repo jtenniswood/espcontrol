@@ -39,3 +39,15 @@
 - "\U000F0F38"  # mdi-weather-tornado
 - "\U000F059D"  # mdi-weather-windy
 - "\U000F059E"  # mdi-weather-windy-variant
+- "\U000F0091"  # mdi-battery-unknown
+- "\U000F0083"  # mdi-battery-alert
+- "\U000F007A"  # mdi-battery-10
+- "\U000F007B"  # mdi-battery-20
+- "\U000F007C"  # mdi-battery-30
+- "\U000F007D"  # mdi-battery-40
+- "\U000F007E"  # mdi-battery-50
+- "\U000F007F"  # mdi-battery-60
+- "\U000F0080"  # mdi-battery-70
+- "\U000F0081"  # mdi-battery-80
+- "\U000F0082"  # mdi-battery-90
+- "\U000F0079"  # mdi-battery (100%)

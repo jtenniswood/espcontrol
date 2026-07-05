@@ -75,7 +75,7 @@ def battery_substitution_lines(device: dict) -> list[str]:
         "  battery_status_apply_code: |-",
         "    if (id(battery_status_enabled).state) {",
         "      lv_obj_align(id(battery_status_button), LV_ALIGN_TOP_RIGHT,",
-        "                   -(clock_bar_right_x + clock_bar_item_width), clock_bar_icon_y);",
+        "                   -(clock_bar_right_x + clock_bar_item_width / 2), clock_bar_icon_y);",
         "      lv_obj_clear_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
         "    } else {",
         "      lv_obj_add_flag(id(battery_status_button), LV_OBJ_FLAG_HIDDEN);",
