@@ -23,6 +23,7 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     entityLookupNames: entityLookupNames,
     coverArtHideExternalInputPostUrls: coverArtHideExternalInputPostUrls,
     coverArtDelayPostUrls: coverArtDelayPostUrls,
+    coverArtTouchPausePostUrls: coverArtTouchPausePostUrls,
     coverArtTrackOverlayDurationPostUrls: coverArtTrackOverlayDurationPostUrls,
     homeAssistantArtworkPortPostUrls: homeAssistantArtworkPortPostUrls,
     voiceServicesPostUrls: voiceServicesPostUrls,

@@ -189,6 +189,15 @@ var ENTITY_CATALOG = {
         "cover_art_delay"
       ]
     },
+    "screen_saver_cover_art_touch_pause": {
+      "domain": "number",
+      "name": "Screen Saver: Cover Art Touch Pause",
+      "objectIds": [
+        "screen_saver__cover_art_touch_pause",
+        "screen_saver_cover_art_touch_pause",
+        "cover_art_touch_pause"
+      ]
+    },
     "screen_saver_track_overlay_duration": {
       "domain": "number",
       "name": "Screen Saver: Show Track Overlay",
@@ -560,6 +569,7 @@ var ENTITY_CATALOG = {
       "screen_saver_cover_art_entity",
       "screen_saver_cover_art_conditions",
       "screen_saver_cover_art_delay",
+      "screen_saver_cover_art_touch_pause",
       "screen_saver_track_overlay_duration",
       "screen_saver_hide_cover_art_external_input",
       "home_assistant_artwork_protocol",

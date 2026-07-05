@@ -1939,6 +1939,37 @@ inline std::string weather_label_for_state(const std::string &state) {
   return sentence_cap_text(state);
 }
 
+#if defined(ESPCONTROL_DISABLE_WEATHER_FORECAST) && ESPCONTROL_DISABLE_WEATHER_FORECAST
+
+inline void reset_weather_forecast_cards() {}
+
+inline void refresh_weather_forecast_card_visuals() {}
+
+inline void register_weather_forecast_card(lv_obj_t *btn,
+                                           lv_obj_t *value_lbl, lv_obj_t *unit_lbl,
+                                           lv_obj_t *label_lbl,
+                                           const std::string &entity_id,
+                                           const std::string &day,
+                                           const std::string &label) {
+  (void) btn;
+  (void) value_lbl;
+  (void) unit_lbl;
+  (void) label_lbl;
+  (void) entity_id;
+  (void) day;
+  (void) label;
+}
+
+inline void weather_forecast_cancel_pending_requests() {}
+
+inline bool weather_forecast_cancel_stale_requests() { return false; }
+
+inline void weather_forecast_send_next_queued() {}
+
+inline void refresh_weather_forecast_cards() {}
+
+#else
+
 struct WeatherForecastCardRef {
   lv_obj_t *btn;
   lv_obj_t *value_lbl;
@@ -2635,6 +2666,8 @@ inline void refresh_weather_forecast_cards() {
   }
   weather_forecast_send_next_queued();
 }
+
+#endif
 
 struct ClimateControlCtx;
 inline ClimateControlCtx **climate_control_refs();

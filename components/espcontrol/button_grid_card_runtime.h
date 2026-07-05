@@ -363,7 +363,16 @@ inline bool card_runtime_climate_precision_valid(const std::string &precision) {
   return card_contract_climate_precision_valid(precision);
 }
 
+inline constexpr bool card_runtime_weather_forecast_supported() {
+#if defined(ESPCONTROL_DISABLE_WEATHER_FORECAST) && ESPCONTROL_DISABLE_WEATHER_FORECAST
+  return false;
+#else
+  return true;
+#endif
+}
+
 inline bool card_runtime_weather_forecast_precision(const std::string &precision) {
+  if (!card_runtime_weather_forecast_supported()) return false;
   return card_contract_weather_forecast_precision(precision);
 }
 

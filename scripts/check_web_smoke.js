@@ -228,6 +228,23 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
     Array.from(generatedHooks.timezoneOptionsWithFallback(["UTC (GMT+0)"], "Auto (Home Assistant)", true)).includes("Auto (Home Assistant)"),
     `${slug}: timezone fallback must preserve restored Auto timezone selections`
   );
+  if (((device.web || {}).disabledCardTypes || []).includes("weather_forecast")) {
+    assert.deepStrictEqual(
+      Array.from(generatedHooks.weatherModeOptionValues()),
+      [""],
+      `${slug}: generated web UI must hide weather forecast modes when forecast cards are disabled`
+    );
+    assert.strictEqual(
+      generatedHooks.normalizeWeatherCardMode("today"),
+      "",
+      `${slug}: generated web UI must normalize forecast weather cards back to current conditions`
+    );
+    assert.strictEqual(
+      generatedHooks.weatherCardIsForecastMode({ precision: "today" }),
+      false,
+      `${slug}: generated web UI must not preview disabled weather forecast modes`
+    );
+  }
   assert(
     sandbox.__domEvents.some((event) => event.type === "DOMContentLoaded" && typeof event.listener === "function"),
     `${slug}: generated web UI must register DOMContentLoaded startup wiring`

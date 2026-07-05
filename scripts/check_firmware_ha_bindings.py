@@ -75,6 +75,10 @@ WEATHER_FORECAST_REQUEST_PATTERN = re.compile(
     r"inline\s+void\s+request_weather_forecast_entity\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
     re.DOTALL,
 )
+MEDIA_CONTROL_STATE_PATTERN = re.compile(
+    r"inline\s+void\s+subscribe_media_control_state\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}\n\ninline\s+bool\s+media_seek_pending_active",
+    re.DOTALL,
+)
 COVER_COMMAND_REQUEST_PATTERN = re.compile(
     r"inline\s+void\s+send_cover_command_action\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
     re.DOTALL,
@@ -890,6 +894,36 @@ def firmware_media_sleep_prevention_subscription_errors(paths: tuple[Path, ...],
     return errors
 
 
+def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_media.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    match = MEDIA_CONTROL_STATE_PATTERN.search(text)
+    if not match:
+        errors.append(f"{rel}: missing subscribe_media_control_state helper")
+        return errors
+
+    body = match.group("body")
+    marker = "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL"
+    if marker not in body:
+        errors.append(f"{rel}: keep S3 media modal progress metadata behind the low-heap guard")
+        return errors
+
+    always_on, low_heap_excluded = body.split(marker, 1)
+    for attr in ("media_title", "media_artist"):
+        if f'std::string("{attr}")' not in always_on:
+            errors.append(f"{rel}: keep {attr} subscribed for the S3 media modal")
+    for attr in ("media_duration", "media_position", "media_position_updated_at"):
+        if f'std::string("{attr}")' in always_on:
+            errors.append(f"{rel}: keep {attr} out of the S3 low-heap media modal path")
+        if f'std::string("{attr}")' not in low_heap_excluded:
+            errors.append(f"{rel}: full media modal builds should still subscribe {attr}")
+    return errors
+
+
 def firmware_image_card_entity_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_image.h"
     if not path.exists():
@@ -1565,6 +1599,7 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
+    errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
@@ -1938,6 +1973,20 @@ def expect_media_sleep_prevention_errors(
         cover_art_path.write_text(cover_art_text, encoding="utf-8")
 
         errors = firmware_media_sleep_prevention_errors(backlight_path, display_path, cover_art_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_control_low_heap_metadata_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_media_control_low_heap_metadata_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3383,6 +3432,51 @@ def run_self_test() -> int:
         "          else:\n"
         "            - script.execute: screensaver_idle_check\n",
         ("start cover art directly after the normal screensaver timeout",),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal keeps title and artist",
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        (),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal lost title and artist",
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        (
+            "keep media_title subscribed",
+            "keep media_artist subscribed",
+        ),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal progress metadata is guarded",
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        ("keep media_duration out of the S3 low-heap media modal path",),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",
