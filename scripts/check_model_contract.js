@@ -282,6 +282,30 @@ assert.strictEqual(panelSettings.clockBrightnessNight, 22, "panel night clock br
 assert.strictEqual(panelSettings.subpageChevron, true, "panel subpage chevron defaults on");
 assert.strictEqual(panelSettings.screenRotation, "90", "panel rotation validates against options");
 
+const invalidPanelOptionSettings = model.normalizeBackupPanelSettings({
+  clock_format: "24h",
+  firmware_update_frequency: "Yearly",
+  screen_rotation: "270",
+}, {
+  timezone: "UTC (GMT+0)",
+  language: "en",
+  clockFormat: "12h",
+  clockFormatOptions: ["12h"],
+  ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"],
+  ntpServer1: "0.pool.ntp.org",
+  ntpServer2: "1.pool.ntp.org",
+  ntpServer3: "2.pool.ntp.org",
+  coverArtHomeAssistantProtocol: "http",
+  coverArtHomeAssistantPort: 8123,
+  autoUpdate: true,
+  updateFrequency: "Daily",
+  updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
+  screenRotationOptions: ["0", "90", "180"],
+});
+assert.strictEqual(invalidPanelOptionSettings.clockFormat, "12h", "invalid backup clock format falls back to current setting");
+assert.strictEqual(invalidPanelOptionSettings.updateFrequency, "Daily", "invalid backup update frequency falls back to current setting");
+assert.strictEqual(invalidPanelOptionSettings.screenRotation, "0", "invalid backup rotation falls back to a safe default");
+
 const legacyPanelSettings = model.normalizeBackupPanelSettings({}, {
   timezone: "UTC (GMT+0)",
   language: "en",
