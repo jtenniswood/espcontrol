@@ -1,5 +1,5 @@
 // ── Config Event Handlers ─────────────────────────────────────────────
-// @web-module-requires: state, config_codec
+// @web-module-requires: state, config_codec, config_post_api
 
 function ensureSubpageRaw(slot) {
   if (!state.subpageRaw[slot]) {

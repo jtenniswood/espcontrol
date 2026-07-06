@@ -28,6 +28,7 @@
   "public_firmware_install",
   "config_codec",
   "config_post_api",
+  "state_loader_api",
   "controls",
   "controls_shell",
   "settings_page",

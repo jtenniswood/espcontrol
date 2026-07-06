@@ -1,4 +1,4 @@
-// @web-module-requires: environment_state, ntp_state, artwork_state, screensaver_state, firmware_version_state, clock_bar_state, entity_state, firmware_update_state, screensaver_timeout, public_firmware_install
+// @web-module-requires: environment_state, ntp_state, artwork_state, screensaver_state, firmware_version_state, clock_bar_state, entity_state, firmware_update_state, screensaver_timeout, public_firmware_install, state_loader_api
 
 if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
   registerEspControlTestHookGroup("settings", {

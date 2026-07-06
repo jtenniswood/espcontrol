@@ -1,5 +1,5 @@
 // ── Page title ─────────────────────────────────────────────────────────
-// @web-module-requires: api
+// @web-module-requires: state_loader_api
 
 function applyPageTitle(title) {
   var text = typeof title === "string" ? title.trim() : "";
