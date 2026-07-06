@@ -30,6 +30,10 @@ def assert_same_slugs(expected: list[str], actual: list[str], label: str) -> Non
     assert actual == expected, f"{label} slugs differ: {actual} != {expected}"
 
 
+def assert_same_names(expected: list[str], actual: list[str], label: str) -> None:
+    assert sorted(actual) == sorted(expected), f"{label} names differ: {sorted(actual)} != {sorted(expected)}"
+
+
 def test_public_device_profiles(profile_slugs: list[str]) -> list[dict]:
     capabilities = read_json(DEVICE_CAPABILITIES_JSON)
     devices = capabilities["devices"]
@@ -38,6 +42,12 @@ def test_public_device_profiles(profile_slugs: list[str]) -> list[dict]:
 
 
 def test_web_bundles(profile_slugs: list[str]) -> None:
+    actual_slugs = [
+        path.name
+        for path in WEB_OUTPUT_DIR.iterdir()
+        if path.is_dir()
+    ]
+    assert_same_names(profile_slugs, actual_slugs, "generated setup page bundle directory")
     for slug in profile_slugs:
         bundle = WEB_OUTPUT_DIR / slug / "www.js"
         assert bundle.is_file(), f"{slug}: generated setup page bundle is missing"
@@ -60,6 +70,11 @@ def test_public_firmware_manifest(profile_slugs: list[str]) -> None:
 
 
 def test_generated_device_docs(devices: list[dict]) -> None:
+    expected_stems = [docs_stem(capability) for capability in devices]
+    actual_grid_stems = sorted(path.name.removesuffix("-grid.md") for path in DEVICE_DOCS_DIR.glob("*-grid.md"))
+    actual_install_stems = sorted(path.name.removesuffix("-install.md") for path in DEVICE_DOCS_DIR.glob("*-install.md"))
+    assert_same_names(expected_stems, actual_grid_stems, "generated screen grid doc")
+    assert_same_names(expected_stems, actual_install_stems, "generated screen install doc")
     for capability in devices:
         stem = docs_stem(capability)
         grid = DEVICE_DOCS_DIR / f"{stem}-grid.md"
