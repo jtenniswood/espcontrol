@@ -210,6 +210,28 @@ def test_public_device_profile_change_is_user_facing() -> None:
     assert "Affected devices: All supported displays may be affected" in text
 
 
+def test_docs_prefixed_public_device_profile_change_is_user_facing() -> None:
+    tmp, repo = with_temp_repo()
+    original_root = release_changelog.ROOT
+    try:
+        release_changelog.ROOT = repo
+        write(repo, "docs/public/device-profiles.json", '{"devices":[]}\n')
+        commit(repo, "docs: update device profiles")
+        text = release_changelog.build_changelog(
+            "v1.1.0",
+            release_changelog.default_from_ref("v1.1.0", "HEAD"),
+            "HEAD",
+            None,
+        )
+    finally:
+        release_changelog.ROOT = original_root
+        tmp.cleanup()
+
+    assert "docs: update device profiles" in text
+    assert "1 user-facing change is included in this release." in text
+    assert "Optional update" not in text
+
+
 def test_public_release_helper_changes_are_user_facing() -> None:
     tmp, repo = with_temp_repo()
     original_root = release_changelog.ROOT
