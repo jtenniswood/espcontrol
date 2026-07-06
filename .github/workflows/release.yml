@@ -15,6 +15,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ESPCONTROL_NPM_CACHE_MAX_MB: 512
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
 jobs:
@@ -60,7 +61,7 @@ jobs:
           NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"
           mkdir -p "${NPM_CACHE}"
           npm ci --prefer-offline --cache "${NPM_CACHE}"
-          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" 512 --strategy reset
+          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
       - name: Run release preflight
         run: npm run check:release-preflight
