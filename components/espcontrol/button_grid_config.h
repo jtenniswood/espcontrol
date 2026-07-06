@@ -76,7 +76,6 @@ static_assert(correct_display_color(0xF0F0F0, 200, 200, 200) == 0xFFFFFF,
 constexpr int MAX_GRID_SLOTS = ESPCONTROL_MAX_GRID_SLOTS;
 static_assert(MAX_GRID_SLOTS > 0, "ESPCONTROL_MAX_GRID_SLOTS must be positive");
 constexpr int MAX_SUBPAGE_ITEMS = MAX_GRID_SLOTS * MAX_GRID_SLOTS;
-#include "button_grid_contract_generated.h"
 #include "button_grid_card_runtime.h"
 #include <cstdlib>
 
