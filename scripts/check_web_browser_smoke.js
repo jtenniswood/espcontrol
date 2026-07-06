@@ -2761,7 +2761,8 @@ async function runCase(browser, testCase) {
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+    if (message.type() === "error" || message.type() === "warning")
+      errors.push(`[${message.type()}] ${message.text()}`);
   });
   page.on("request", (request) => {
     const requestUrl = new URL(request.url());
