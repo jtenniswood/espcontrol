@@ -598,7 +598,7 @@ def compiler() -> str | None:
 
 def pure_config_header() -> str:
     text = CONFIG_HEADER.read_text(encoding="utf-8")
-    marker = "inline const char* weather_icon_for_state"
+    marker = '#include "button_grid_weather_forecast.h"'
     index = text.find(marker)
     if index < 0:
         raise RuntimeError(f"Could not find pure parser boundary in {CONFIG_HEADER}")
