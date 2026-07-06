@@ -9,6 +9,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
 from pathlib import Path
+import re
 from tempfile import TemporaryDirectory
 from threading import Thread
 
@@ -19,6 +20,8 @@ SLUG = "demo-panel"
 VERSION = "v9.8.7"
 CHIP = "ESP32-S3"
 PROJECT_NAME = "jtenniswood.espcontrol"
+ESPHOME_ENV = Path(__file__).resolve().parents[1] / ".github" / "esphome.env"
+ESPHOME_ENV_RE = re.compile(r"^ESPHOME_VERSION=20[0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}$")
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -63,6 +66,41 @@ def run_fails(args: list[str]) -> None:
     with redirect_stderr(io.StringIO()):
         code = firmware_release.main(args)
     assert code != 0, f"{args} unexpectedly passed"
+
+
+def validate_esphome_env(path: Path) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1, f"{path}: expected exactly one ESPHOME_VERSION line"
+    assert ESPHOME_ENV_RE.fullmatch(lines[0]), (
+        f"{path}: expected ESPHOME_VERSION to be a stable numeric ESPHome release, "
+        "for example ESPHOME_VERSION=2026.6.4"
+    )
+
+
+def test_esphome_env_format() -> None:
+    validate_esphome_env(ESPHOME_ENV)
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        valid = base / "valid.env"
+        valid.write_text("ESPHOME_VERSION=2026.6.4\n", encoding="utf-8")
+        validate_esphome_env(valid)
+
+        for value in (
+            "",
+            "export ESPHOME_VERSION=2026.6.4\n",
+            "ESPHOME_VERSION=\"2026.6.4\"\n",
+            "ESPHOME_VERSION=2026.6.4-beta.1\n",
+            "OTHER_VERSION=2026.6.4\n",
+            "ESPHOME_VERSION=2026.6.4\nEXTRA=value\n",
+        ):
+            invalid = base / "invalid.env"
+            invalid.write_text(value, encoding="utf-8")
+            try:
+                validate_esphome_env(invalid)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"invalid ESPHome env value passed validation: {value!r}")
 
 
 def make_release_files(base: Path, slug: str = SLUG, version: str = VERSION) -> tuple[Path, Path, Path]:
@@ -233,6 +271,7 @@ def test_public_pages_verification() -> None:
 
 
 def main() -> int:
+    test_esphome_env_format()
     test_valid_files_and_directory()
     test_placeholder_fails()
     test_unrelated_placeholder_strings_pass()
