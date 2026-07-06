@@ -206,6 +206,56 @@ def web_screen_width_percent(profile: dict) -> float:
     return float(width[:-1])
 
 
+def parse_resolution(profile: dict) -> tuple[int, int]:
+    resolution = str(profile["public"]["resolution"]).strip()
+    match = re.fullmatch(r"([1-9]\d*)\s*x\s*([1-9]\d*)", resolution)
+    assert match, f"{profile['slug']}: public resolution must look like '1024 x 600'"
+    return int(match.group(1)), int(match.group(2))
+
+
+def parse_aspect(profile: dict, key_path: str, value: str) -> tuple[int, int]:
+    match = re.fullmatch(r"([1-9]\d*)/([1-9]\d*)", str(value).strip())
+    assert match, f"{profile['slug']}: {key_path} must look like '1024/600'"
+    return int(match.group(1)), int(match.group(2))
+
+
+def orientation_for(width: int, height: int) -> str:
+    if width == height:
+        return "Square"
+    return "Landscape" if width > height else "Portrait"
+
+
+def assert_same_ratio(slug: str, label: str, left: tuple[int, int], right: tuple[int, int]) -> None:
+    assert left[0] * right[1] == left[1] * right[0], (
+        f"{slug}: {label} must match the public screen resolution"
+    )
+
+
+def test_web_screen_aspect_matches_public_resolution() -> None:
+    profiles = load_device_profiles()
+    for slug, profile in profiles.items():
+        resolution = parse_resolution(profile)
+        assert profile["public"]["orientation"] == orientation_for(*resolution), (
+            f"{slug}: public orientation must match public resolution"
+        )
+        screen = parse_aspect(profile, "web.screen.aspect", profile["web"]["screen"]["aspect"])
+        assert_same_ratio(slug, "web.screen.aspect", screen, resolution)
+
+        portrait = profile["web"].get("portrait")
+        if portrait:
+            portrait_screen = parse_aspect(
+                profile,
+                "web.portrait.screen.aspect",
+                portrait["screen"]["aspect"],
+            )
+            assert_same_ratio(
+                slug,
+                "web.portrait.screen.aspect",
+                portrait_screen,
+                (resolution[1], resolution[0]),
+            )
+
+
 def test_web_grid_spacing_matches_across_screen_sizes() -> None:
     profiles = load_device_profiles()
     expected = None
@@ -512,6 +562,7 @@ def main() -> int:
     test_upgrades_do_not_reset_saved_panel_config()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_p4_43_rotation_refresh_rebuilds_subpages()
+    test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()
