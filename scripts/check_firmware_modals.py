@@ -276,6 +276,42 @@ def firmware_subpage_modal_wiring_errors(root: Path) -> list[str]:
         return errors
 
     text = grid_path.read_text(encoding="utf-8")
+    media_home_block = re.search(
+        r"MediaControlCtx \*ctx = grid_track_media_control_runtime"
+        r"(?P<body>.*?)"
+        r"\n\s*\}\s*else if\s*\(mode == \"volume\"\)",
+        text,
+        re.S,
+    )
+    if media_home_block is None:
+        errors.append("components/espcontrol/button_grid_grid.h: keep media control cards wired on the home grid")
+    else:
+        body = media_home_block.group("body")
+        if (
+            "create_media_control_context" not in body
+            or "subscribe_media_control_state(ctx);" not in body
+        ):
+            errors.append("components/espcontrol/button_grid_grid.h: keep media control cards wired on the home grid")
+        if "media_control_open_modal(ctx);" in body or "LV_EVENT_CLICKED, ctx" in body:
+            errors.append("components/espcontrol/button_grid_grid.h: open home media control cards through the shared button dispatcher")
+
+    media_refresh_block = re.search(
+        r'if\s*\(\s*mode\s*==\s*"control_modal"\s*\)\s*\{(?P<body>.*?)\n  \}\n  if\s*\(\s*mode\s*==\s*"volume"\s*\)',
+        text,
+        re.S,
+    )
+    if media_refresh_block is None:
+        errors.append("components/espcontrol/button_grid_grid.h: keep media control cards refreshed on grid layout updates")
+    else:
+        body = media_refresh_block.group("body")
+        if (
+            "grid_media_control_runtime_for_owner(s.btn)" not in body
+            or "lv_obj_set_user_data(s.btn, ctx)" not in body
+            or "media_control_refresh_parent_card(ctx)" not in body
+            or "lv_obj_set_user_data(s.btn, nullptr)" in body
+        ):
+            errors.append("components/espcontrol/button_grid_grid.h: preserve media control context during grid layout refresh")
+
     light_block = re.search(
         r'if\s*\(\s*sb_cfg\.type\s*==\s*"light_control"\s*\)\s*\{(?P<body>.*?)\n      \}',
         text,
@@ -697,6 +733,21 @@ def expect_subpage_modal_wiring_errors(name: str, grid_text: str, expected: tupl
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             grid_text +
+            '  if (mode == "control_modal") {\n'
+            "    MediaControlCtx *ctx = grid_media_control_runtime_for_owner(s.btn);\n"
+            "    setup_media_control_button(\n"
+            "      s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);\n"
+            "    if (s.btn) lv_obj_set_user_data(s.btn, ctx);\n"
+            "    if (ctx) media_control_refresh_parent_card(ctx);\n"
+            "    return;\n"
+            "  }\n"
+            "  if (mode == \"volume\") return;\n"
+            '        } else if (mode == "control_modal") {\n'
+            "          MediaControlCtx *ctx = grid_track_media_control_runtime(s.btn, create_media_control_context(\n"
+            "            s, p, DEFAULT_SLIDER_COLOR, DEFAULT_OFF_COLOR, DEFAULT_TERTIARY_COLOR,\n"
+            "            nullptr, nullptr, nullptr, nullptr, 100));\n"
+            "          subscribe_media_control_state(ctx);\n"
+            '        } else if (mode == "volume") {\n'
             '      if (sb_cfg.type == "fan_control") {\n'
             "        if (!sb_cfg.entity.empty()) {\n"
             "          FanCardCtx *ctx = create_fan_card_context(\n"
@@ -952,6 +1003,21 @@ def run_self_test() -> int:
         "display takeover close",
         valid_sleep_takeover_files(),
         (),
+    )
+    expect_subpage_modal_wiring_errors(
+        "media refresh preserves modal context",
+        (
+            '  if (mode == "control_modal") {\n'
+            "    if (s.btn) lv_obj_set_user_data(s.btn, nullptr);\n"
+            "    setup_media_control_button(\n"
+            "      s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);\n"
+            "    MediaControlCtx *ctx = (MediaControlCtx *)lv_obj_get_user_data(s.btn);\n"
+            "    if (ctx) media_control_refresh_parent_card(ctx);\n"
+            "    return;\n"
+            "  }\n"
+            "  if (mode == \"volume\") return;\n"
+        ),
+        ("preserve media control context during grid layout refresh",),
     )
     expect_subpage_modal_wiring_errors(
         "subpage light modal missing click handler",

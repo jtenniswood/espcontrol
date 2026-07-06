@@ -767,7 +767,11 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(media_player_sleep_prevention_enabled).state &&
+              const bool cover_art_touch_pause_active =
+                id(cover_art_manual_pause_until_ms) != 0 &&
+                (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
+              return (id(media_player_sleep_prevention_enabled).state ||
+                      cover_art_touch_pause_active) &&
                      id(cover_art_media_playing) &&
                      id(cover_art_screensaver_enabled).state &&
                      !alarm_display_takeover_active();

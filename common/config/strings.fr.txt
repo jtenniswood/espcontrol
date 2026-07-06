@@ -108,6 +108,7 @@ none=Aucun
 no_options=Aucune option
 no_presets=Aucun préréglage
 no_sources=Aucune source
+source=Source
 not_available=Non disponible
 off=Éteint
 on=Allumé

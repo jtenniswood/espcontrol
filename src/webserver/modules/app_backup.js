@@ -53,7 +53,7 @@ function exportConfig() {
       screensaver_mode: getActiveScreensaverMode(),
       presence_sensor_entity: state.presenceEntity,
       media_player_sleep_prevention: state.mediaPlayerSleepPreventionOn,
-      media_player_sleep_prevention_entity: state.coverArtMediaPlayerEntity,
+      media_player_sleep_prevention_entity: state.mediaPlayerSleepPreventionEntity || state.coverArtMediaPlayerEntity,
       cover_art_screensaver: state.coverArtScreensaverOn,
       cover_art_media_player_entity: state.coverArtMediaPlayerEntity,
       cover_art_attribute_conditions: state.coverArtAttributeConditions,
@@ -61,7 +61,10 @@ function exportConfig() {
       cover_art_touch_pause: state.coverArtTouchPause,
       cover_art_track_overlay_duration: state.coverArtTrackOverlayDuration,
       cover_art_hide_external_input: state.coverArtHideExternalInputOn,
+      home_assistant_artwork_protocol: normalizeHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol),
       home_assistant_artwork_port: normalizeHomeAssistantArtworkPort(state.coverArtHomeAssistantPort),
+      firmware_auto_update: !!state.autoUpdate,
+      firmware_update_frequency: state.updateFrequency,
       screensaver_action: normalizeScreensaverAction(state.screensaverAction),
       clock_screensaver: state.clockScreensaverOn,
       clock_brightness: state.clockBrightnessDay,
@@ -181,7 +184,11 @@ function importConfig() {
           ntpServer1: state.ntpServer1,
           ntpServer2: state.ntpServer2,
           ntpServer3: state.ntpServer3,
+          coverArtHomeAssistantProtocol: state.homeAssistantArtworkProtocol,
           coverArtHomeAssistantPort: state.coverArtHomeAssistantPort,
+          autoUpdate: state.autoUpdate,
+          updateFrequency: state.updateFrequency,
+          updateFrequencyOptions: state.updateFreqOptions,
           screenRotationOptions: allScreenRotationOptions(),
         });
 
@@ -224,28 +231,34 @@ function importConfig() {
           postText(entityName("screen_ntp_server_3"), importedNtpServer3);
         }
         var importedScreensaverMode = importedSettings.screensaverMode;
-        postText(entityName("screensaver_mode"), importedScreensaverMode);
-        postText(entityName("presence_sensor_entity"), importedSettings.presenceSensorEntity);
-        postSwitch(entityName("screen_saver_media_player_sleep_prevention"), importedSettings.mediaPlayerSleepPrevention);
-        postSwitch(entityName("screen_saver_cover_art"), importedSettings.coverArtScreensaver);
-        postText(entityName("screen_saver_cover_art_entity"), importedSettings.coverArtMediaPlayerEntity);
-        postText(entityName("screen_saver_cover_art_conditions"), importedSettings.coverArtAttributeConditions);
+        postScreensaverMode(importedScreensaverMode);
+        postPresenceSensorEntity(importedSettings.presenceSensorEntity);
+        postMediaPlayerSleepPrevention(importedSettings.mediaPlayerSleepPrevention);
+        postMediaPlayerSleepPreventionEntity(importedSettings.mediaPlayerSleepPreventionEntity);
+        postCoverArtScreensaver(importedSettings.coverArtScreensaver);
+        postCoverArtMediaPlayerEntity(importedSettings.coverArtMediaPlayerEntity);
+        postCoverArtConditions(importedSettings.coverArtAttributeConditions);
         postCoverArtDelay(importedSettings.coverArtDelay);
         postCoverArtTouchPause(importedSettings.coverArtTouchPause);
         postCoverArtTrackOverlayDuration(importedSettings.coverArtTrackOverlayDuration);
         postCoverArtHideExternalInput(importedSettings.coverArtHideExternalInput);
+        postHomeAssistantArtworkProtocol(importedSettings.coverArtHomeAssistantProtocol);
         postHomeAssistantArtworkPort(importedSettings.coverArtHomeAssistantPort);
+        if (firmwareUpdateControlsVisible()) {
+          postFirmwareAutoUpdate(importedSettings.autoUpdate);
+          postFirmwareUpdateFrequency(importedSettings.updateFrequency);
+        }
         var importedScreensaverAction = importedSettings.screensaverAction;
         var importedScreensaverDimmedBrightness = importedSettings.screensaverDimmedBrightness;
         var importedClockBrightnessDay = importedSettings.clockBrightnessDay;
         var importedClockBrightnessNight = importedSettings.clockBrightnessNight;
         postScreensaverAction(importedScreensaverAction);
-        postSwitch(entityName("screen_saver_clock"), importedScreensaverAction === "clock");
+        postClockScreensaver(importedScreensaverAction === "clock");
         postClockBrightnessDay(importedClockBrightnessDay);
         postClockBrightnessNight(importedClockBrightnessNight);
         postScreensaverDimmedBrightness(importedScreensaverDimmedBrightness);
         postScreensaverTimeout(importedSettings.screensaverTimeout);
-        postNumber(entityName("home_screen_timeout"), importedSettings.homeScreenTimeout);
+        postHomeScreenTimeout(importedSettings.homeScreenTimeout);
         var importedScreenRotation = importedSettings.screenRotation;
         if (CFG.features && CFG.features.screenRotation) postSelect(entityName("screen_rotation"), importedScreenRotation);
         state.clockBarTemperatureEntities = importedSettings.clockBarTemperatureEntities;
@@ -272,7 +285,7 @@ function importConfig() {
         state._screensaverModeReceived = true;
         state.presenceEntity = importedSettings.presenceSensorEntity;
         state.mediaPlayerSleepPreventionOn = importedSettings.mediaPlayerSleepPrevention;
-        state.mediaPlayerSleepPreventionEntity = importedSettings.coverArtMediaPlayerEntity;
+        state.mediaPlayerSleepPreventionEntity = importedSettings.mediaPlayerSleepPreventionEntity;
         state.coverArtScreensaverOn = importedSettings.coverArtScreensaver;
         state.coverArtMediaPlayerEntity = importedSettings.coverArtMediaPlayerEntity;
         state.coverArtAttributeConditions = importedSettings.coverArtAttributeConditions;
@@ -280,7 +293,10 @@ function importConfig() {
         state.coverArtTouchPause = importedSettings.coverArtTouchPause;
         state.coverArtTrackOverlayDuration = importedSettings.coverArtTrackOverlayDuration;
         state.coverArtHideExternalInputOn = importedSettings.coverArtHideExternalInput;
+        state.homeAssistantArtworkProtocol = importedSettings.coverArtHomeAssistantProtocol;
         state.coverArtHomeAssistantPort = importedSettings.coverArtHomeAssistantPort;
+        state.autoUpdate = importedSettings.autoUpdate;
+        state.updateFrequency = importedSettings.updateFrequency;
         state.screensaverAction = importedScreensaverAction;
         state._screensaverActionReceived = true;
         state.clockScreensaverOn = importedScreensaverAction === "clock";
@@ -299,6 +315,9 @@ function importConfig() {
         syncInput(els.setCoverArtMediaPlayer, state.coverArtMediaPlayerEntity);
         syncInput(els.setCoverArtConditions, state.coverArtAttributeConditions);
         syncCoverArtScreensaverUi();
+        if (els.setAutoUpdate) els.setAutoUpdate.checked = state.autoUpdate;
+        if (els.setUpdateFreq) els.setUpdateFreq.value = state.updateFrequency;
+        syncFirmwareUpdateUi();
         if (els.setTimezone) els.setTimezone.value = state.timezone;
         syncLanguageSelect();
         if (els.setClockFormat) els.setClockFormat.value = state.clockFormat;

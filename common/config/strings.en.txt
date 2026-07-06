@@ -108,6 +108,7 @@ none=None
 no_options=No options
 no_presets=No presets
 no_sources=No sources
+source=Source
 not_available=Not available
 off=Off
 on=On

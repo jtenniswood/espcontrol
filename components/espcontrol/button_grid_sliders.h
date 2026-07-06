@@ -51,6 +51,8 @@ struct MediaNowPlayingCtx {
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
   lv_obj_t *btn = nullptr;
+  char artist[HA_STATE_TEXT_MAX_LEN + 1] = {};
+  bool external_source = false;
   bool play_pause_background = false;
 };
 

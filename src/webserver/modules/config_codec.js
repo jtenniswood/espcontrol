@@ -2596,7 +2596,8 @@ function subpageFirstFreeSlot(sp) {
 function bindTextPost(input, postName, opts) {
   input.addEventListener("blur", function () {
     if (opts && opts.onBlur) opts.onBlur(this.value);
-    postText(postName, this.value);
+    if (opts && opts.post) opts.post(this.value);
+    else postText(postName, this.value);
     if (opts && opts.rerender) renderPreview();
   });
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") this.blur(); });

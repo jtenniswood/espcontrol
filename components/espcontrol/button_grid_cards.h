@@ -404,8 +404,9 @@ inline void setup_weather_card(BtnSlot &s, bool has_sensor_color, uint32_t senso
 }
 
 inline bool weather_card_shows_forecast(const ParsedCfg &p) {
-  return p.type == "weather_forecast" ||
-    (p.type == "weather" && card_runtime_weather_forecast_precision(p.precision));
+  return card_runtime_weather_forecast_supported() &&
+    (p.type == "weather_forecast" ||
+     (p.type == "weather" && card_runtime_weather_forecast_precision(p.precision)));
 }
 
 inline std::string weather_card_forecast_day(const ParsedCfg &p) {

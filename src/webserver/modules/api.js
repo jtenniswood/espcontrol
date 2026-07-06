@@ -481,6 +481,28 @@ function postFirmwareUpdateCheck() {
   post(urls, null, "Could not check for firmware update.");
 }
 
+function postC6FirmwareUpdateInstall() {
+  var urls = [];
+  rememberedPostUrls("button", entityName("esp32_c6_install_update"), entityObjectIds("esp32_c6_install_update"), "press")
+    .forEach(function (url) { uniquePush(urls, url); });
+  entityLookupNames("esp32_c6_install_update").forEach(function (name) {
+    uniquePush(urls, "/button/" + encodeURIComponent(name) + "/press");
+  });
+
+  post(urls, null, "Could not start WiFi firmware update.");
+}
+
+function postC6FirmwareUpdateCheck() {
+  var urls = [];
+  rememberedPostUrls("button", entityName("esp32_c6_check_for_update"), entityObjectIds("esp32_c6_check_for_update"), "press")
+    .forEach(function (url) { uniquePush(urls, url); });
+  entityLookupNames("esp32_c6_check_for_update").forEach(function (name) {
+    uniquePush(urls, "/button/" + encodeURIComponent(name) + "/press");
+  });
+
+  post(urls, null, "Could not check WiFi firmware update.");
+}
+
 function ensurePublicFirmwareOtaUrl(info) {
   info = info || selectedFirmwareInfo();
   if (info && info.ota_url) return Promise.resolve(info.ota_url);
@@ -586,6 +608,62 @@ function postSwitch(name, on) {
   return post(entityPostUrls("switch", name, [], on ? "turn_on" : "turn_off"));
 }
 
+function postScreensaverMode(value) {
+  return postTextWithObjectIds(
+    entityName("screensaver_mode"),
+    entityObjectIds("screensaver_mode"),
+    value
+  );
+}
+
+function postPresenceSensorEntity(value) {
+  return postTextWithObjectIds(
+    entityName("presence_sensor_entity"),
+    entityObjectIds("presence_sensor_entity"),
+    value
+  );
+}
+
+function postMediaPlayerSleepPrevention(on) {
+  return postSwitchWithObjectIds(
+    entityName("screen_saver_media_player_sleep_prevention"),
+    entityObjectIds("screen_saver_media_player_sleep_prevention"),
+    on
+  );
+}
+
+function postMediaPlayerSleepPreventionEntity(value) {
+  return postTextWithObjectIds(
+    entityName("media_player_sleep_prevention_entity"),
+    entityObjectIds("media_player_sleep_prevention_entity"),
+    value
+  );
+}
+
+function postCoverArtScreensaver(on) {
+  return postSwitchWithObjectIds(
+    entityName("screen_saver_cover_art"),
+    entityObjectIds("screen_saver_cover_art"),
+    on
+  );
+}
+
+function postCoverArtMediaPlayerEntity(value) {
+  return postTextWithObjectIds(
+    entityName("screen_saver_cover_art_entity"),
+    entityObjectIds("screen_saver_cover_art_entity"),
+    value
+  );
+}
+
+function postCoverArtConditions(value) {
+  return postTextWithObjectIds(
+    entityName("screen_saver_cover_art_conditions"),
+    entityObjectIds("screen_saver_cover_art_conditions"),
+    value
+  );
+}
+
 function coverArtHideExternalInputPostUrls(on) {
   return entityPostUrls(
     "switch",
@@ -649,6 +727,30 @@ function homeAssistantArtworkPortPostUrls(value) {
 
 function postHomeAssistantArtworkPort(value) {
   return post(homeAssistantArtworkPortPostUrls(value));
+}
+
+function postHomeAssistantArtworkProtocol(value) {
+  return postSelectWithObjectIds(
+    entityName("home_assistant_artwork_protocol"),
+    entityObjectIds("home_assistant_artwork_protocol"),
+    normalizeHomeAssistantArtworkProtocol(value)
+  );
+}
+
+function postFirmwareAutoUpdate(on) {
+  return postSwitchWithObjectIds(
+    entityName("firmware_auto_update"),
+    entityObjectIds("firmware_auto_update"),
+    on
+  );
+}
+
+function postFirmwareUpdateFrequency(value) {
+  return postSelectWithObjectIds(
+    entityName("firmware_update_frequency"),
+    entityObjectIds("firmware_update_frequency"),
+    value
+  );
 }
 
 function postNumber(name, value) {
@@ -725,12 +827,28 @@ function postClockBrightnessNight(value) {
   );
 }
 
+function postHomeScreenTimeout(value) {
+  postNumberWithObjectIds(
+    entityName("home_screen_timeout"),
+    entityObjectIds("home_screen_timeout"),
+    value
+  );
+}
+
 function postSwitchWithObjectId(name, objectId, on, errorMessage) {
   postWithObjectId("switch", name, objectId, on ? "turn_on" : "turn_off", errorMessage);
 }
 
 function postSwitchWithObjectIds(name, objectIds, on, errorMessage) {
   postWithObjectIds("switch", name, objectIds, on ? "turn_on" : "turn_off", errorMessage);
+}
+
+function postClockScreensaver(on) {
+  return postSwitchWithObjectIds(
+    entityName("screen_saver_clock"),
+    entityObjectIds("screen_saver_clock"),
+    on
+  );
 }
 
 var CLOCK_BAR_UNAVAILABLE =
@@ -1060,7 +1178,7 @@ function loadInitialState(handleState, onLoaded) {
 }
 
 function refreshFirmwareVersion() {
-  var pending = 7;
+  var pending = 12;
   if (!state.firmwareVersion) {
     state.firmwareVersionRefreshPending = true;
     renderFirmwareVersion();
@@ -1106,6 +1224,29 @@ function refreshFirmwareVersion() {
     state.firmwareUpdateControlsSupported = true;
     renderFirmwareUpdateStatus();
     syncFirmwareUpdateUi();
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+  getJsonFirst(entityDetailPaths("text_sensor", entityLookupNames("esp32_c6_current_firmware")), function (d) {
+    rememberEntityPostPath(d);
+    setC6FirmwareCurrentVersion(d.state || d.value);
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+  getJsonFirst(entityDetailPaths("text_sensor", entityLookupNames("esp32_c6_latest_firmware")), function (d) {
+    rememberEntityPostPath(d);
+    setC6FirmwareLatestVersion(d.state || d.value);
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+  getJsonFirst(entityDetailPaths("text_sensor", entityLookupNames("esp32_c6_update_available")), function (d) {
+    rememberEntityPostPath(d);
+    setC6FirmwareUpdateAvailable(d.state || d.value);
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+  getJsonFirst(entityDetailPaths("button", entityLookupNames("esp32_c6_install_update")), function (d) {
+    rememberEntityPostPath(d);
+    state.c6FirmwareUpdateControlsSupported = true;
+    state.c6FirmwareInstallControlsSupported = true;
+    syncC6FirmwareUi();
+  }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
+  getJsonFirst(entityDetailPaths("button", entityLookupNames("esp32_c6_check_for_update")), function (d) {
+    rememberEntityPostPath(d);
+    state.c6FirmwareUpdateControlsSupported = true;
+    syncC6FirmwareUi();
   }).then(finishFirmwareVersionRefresh, finishFirmwareVersionRefresh);
 }
 

@@ -75,6 +75,10 @@ WEATHER_FORECAST_REQUEST_PATTERN = re.compile(
     r"inline\s+void\s+request_weather_forecast_entity\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
     re.DOTALL,
 )
+MEDIA_CONTROL_STATE_PATTERN = re.compile(
+    r"inline\s+void\s+subscribe_media_control_state\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}\n\ninline\s+bool\s+media_seek_pending_active",
+    re.DOTALL,
+)
 COVER_COMMAND_REQUEST_PATTERN = re.compile(
     r"inline\s+void\s+send_cover_command_action\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
     re.DOTALL,
@@ -651,7 +655,10 @@ def firmware_cover_art_external_input_errors(path: Path, root: Path) -> list[str
         errors.append(f"{rel}: release retired cover art Home Assistant subscriptions")
     if 'ha_get_attribute(cover_entity, std::string("source"), handle_media_source)' not in text:
         errors.append(f"{rel}: refresh the media player source attribute")
-    if 'next == "TV"' not in text or 'next == "Line-in"' not in text:
+    if ('normalized_source == "tv"' not in text or
+            'normalized_source == "line-in"' not in text or
+            'normalized_source == "line in"' not in text or
+            "std::tolower" not in text):
         errors.append(f"{rel}: treat TV and Line-in sources as external inputs")
     if "cover_art_apply_external_input_policy" not in text:
         errors.append(f"{rel}: centralize cover art external-input behavior")
@@ -838,6 +845,16 @@ def firmware_media_sleep_prevention_errors(
                 idle_body,
             ):
                 errors.append(f"{rel}: do not let cover art alone keep the idle timer awake")
+        sleep_body = yaml_script_body(text, "screensaver_sleep_timer")
+        if sleep_body is not None:
+            cover_art_sleep_match = re.search(
+                r"id\(cover_art_screensaver_enabled\)\.state[\s\S]{0,360}"
+                r"id\(cover_art_media_playing\)[\s\S]{0,360}"
+                r"then:\s*\n\s*-\s*script\.execute:\s*([a-zA-Z0-9_]+)",
+                sleep_body,
+            )
+            if cover_art_sleep_match and cover_art_sleep_match.group(1) != "show_cover_art_view":
+                errors.append(f"{rel}: start cover art directly after the normal screensaver timeout")
 
     if display_path.exists():
         rel = display_path.relative_to(root)
@@ -877,6 +894,36 @@ def firmware_media_sleep_prevention_subscription_errors(paths: tuple[Path, ...],
             text,
         ):
             errors.append(f"{rel}: do not drive media sleep prevention from the cover art media player")
+    return errors
+
+
+def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_media.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    match = MEDIA_CONTROL_STATE_PATTERN.search(text)
+    if not match:
+        errors.append(f"{rel}: missing subscribe_media_control_state helper")
+        return errors
+
+    body = match.group("body")
+    marker = "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL"
+    if marker not in body:
+        errors.append(f"{rel}: keep S3 media modal progress metadata behind the low-heap guard")
+        return errors
+
+    always_on, low_heap_excluded = body.split(marker, 1)
+    for attr in ("media_title", "media_artist"):
+        if f'std::string("{attr}")' not in always_on:
+            errors.append(f"{rel}: keep {attr} subscribed for the S3 media modal")
+    for attr in ("media_duration", "media_position", "media_position_updated_at"):
+        if f'std::string("{attr}")' in always_on:
+            errors.append(f"{rel}: keep {attr} out of the S3 low-heap media modal path")
+        if f'std::string("{attr}")' not in low_heap_excluded:
+            errors.append(f"{rel}: full media modal builds should still subscribe {attr}")
     return errors
 
 
@@ -1555,6 +1602,7 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
+    errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
@@ -1928,6 +1976,20 @@ def expect_media_sleep_prevention_errors(
         cover_art_path.write_text(cover_art_text, encoding="utf-8")
 
         errors = firmware_media_sleep_prevention_errors(backlight_path, display_path, cover_art_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_control_low_heap_metadata_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_media_control_low_heap_metadata_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3079,7 +3141,13 @@ def run_self_test() -> int:
         "      - script.stop: cover_art_request_artwork\n"
         "      - lambda: |-\n"
         "          id(cover_art_hide_external_input_enabled).state && id(cover_art_external_input_active);\n"
-        "          bool external = next == \"TV\" || next == \"Line-in\";\n"
+        "          std::string normalized_source = next;\n"
+        "          for (char &ch : normalized_source) {\n"
+        "            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));\n"
+        "          }\n"
+        "          bool external = normalized_source == \"tv\" ||\n"
+        "                          normalized_source == \"line-in\" ||\n"
+        "                          normalized_source == \"line in\";\n"
         "          ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);\n"
         "          ha_subscribe_attribute(\n"
         "            cover_entity,\n"
@@ -3297,6 +3365,127 @@ def run_self_test() -> int:
         "          else:\n"
         "            - script.execute: screensaver_idle_check\n",
         (),
+    )
+    expect_media_sleep_prevention_errors(
+        "normal screensaver timeout starts cover art directly",
+        "script:\n"
+        "  - id: screensaver_idle_check\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_active) ||\n"
+        "                     (id(media_player_sleep_prevention_enabled).state &&\n"
+        "                      id(media_player_playing));\n"
+        "  - id: screensaver_sleep_timer\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_enabled).state &&\n"
+        "                     id(cover_art_media_playing) &&\n"
+        "                     !id(cover_art_media_player_entity).state.empty();\n"
+        "          then:\n"
+        "            - script.execute: show_cover_art_view\n",
+        "switch:\n"
+        "  - platform: template\n"
+        "    id: cover_art_screensaver_enabled\n",
+        "script:\n"
+        "  - id: cover_art_playback_started\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(media_player_sleep_prevention_enabled).state ||\n"
+        "                     id(display_asleep);\n"
+        "          then:\n"
+        "            - script.execute: cover_art_delay_timer\n"
+        "          else:\n"
+        "            - script.execute: screensaver_idle_check\n",
+        (),
+    )
+    expect_media_sleep_prevention_errors(
+        "normal screensaver timeout does not add cover art delay",
+        "script:\n"
+        "  - id: screensaver_idle_check\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_active) ||\n"
+        "                     (id(media_player_sleep_prevention_enabled).state &&\n"
+        "                      id(media_player_playing));\n"
+        "  - id: screensaver_sleep_timer\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_enabled).state &&\n"
+        "                     id(cover_art_media_playing) &&\n"
+        "                     !id(cover_art_media_player_entity).state.empty();\n"
+        "          then:\n"
+        "            - script.execute: cover_art_delay_timer\n",
+        "switch:\n"
+        "  - platform: template\n"
+        "    id: cover_art_screensaver_enabled\n",
+        "script:\n"
+        "  - id: cover_art_playback_started\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(media_player_sleep_prevention_enabled).state ||\n"
+        "                     id(display_asleep);\n"
+        "          then:\n"
+        "            - script.execute: cover_art_delay_timer\n"
+        "          else:\n"
+        "            - script.execute: screensaver_idle_check\n",
+        ("start cover art directly after the normal screensaver timeout",),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal keeps title and artist",
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        (),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal lost title and artist",
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        (
+            "keep media_title subscribed",
+            "keep media_artist subscribed",
+        ),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal progress metadata is guarded",
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        ("keep media_duration out of the S3 low-heap media modal path",),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",

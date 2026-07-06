@@ -189,25 +189,18 @@ function buildSettingsPage(parent) {
     "Time-based Night Schedule overrides screensaver presence wake and Media Cover Art while it is active. Use Sensor mode when you want presence to control the night schedule."
   ));
   scheduleBody.appendChild(fieldLabel("Mode"));
-  var scheduleSegment = document.createElement("div");
-  scheduleSegment.className = "sp-segment sp-screensaver-mode";
-  var scheduleDisabledBtn = document.createElement("button");
-  scheduleDisabledBtn.textContent = "Disabled";
-  scheduleDisabledBtn.type = "button";
-  var scheduleTimeBtn = document.createElement("button");
-  scheduleTimeBtn.textContent = "Time";
-  scheduleTimeBtn.type = "button";
-  var scheduleSensorBtn = document.createElement("button");
-  scheduleSensorBtn.textContent = "Sensor";
-  scheduleSensorBtn.type = "button";
-  scheduleSegment.appendChild(scheduleDisabledBtn);
-  scheduleSegment.appendChild(scheduleTimeBtn);
-  scheduleSegment.appendChild(scheduleSensorBtn);
-  scheduleBody.appendChild(scheduleSegment);
+  var scheduleModeSegment = segmentControl([
+    ["disabled", "Disabled"],
+    ["time", "Time"],
+    ["sensor", "Sensor"],
+  ], state.scheduleTrigger, function (mode) {
+    setScheduleTrigger(mode);
+  }, "sp-segment sp-screensaver-mode");
+  scheduleBody.appendChild(scheduleModeSegment.segment);
   els.setScheduleModeButtons = {
-    disabled: scheduleDisabledBtn,
-    time: scheduleTimeBtn,
-    sensor: scheduleSensorBtn,
+    disabled: scheduleModeSegment.buttons.disabled,
+    time: scheduleModeSegment.buttons.time,
+    sensor: scheduleModeSegment.buttons.sensor,
   };
 
   var scheduleTimes = document.createElement("div");
@@ -229,38 +222,20 @@ function buildSettingsPage(parent) {
   scheduleTimes.appendChild(offHour.wrap);
   els.setScheduleOffHour = offHour.select;
 
-  var scheduleModeField = document.createElement("div");
-  scheduleModeField.className = "sp-field";
-  scheduleModeField.appendChild(fieldLabel("At Night Time", "sp-set-schedule-mode"));
-  var scheduleModeSelect = document.createElement("select");
-  scheduleModeSelect.className = "sp-select";
-  scheduleModeSelect.id = "sp-set-schedule-mode";
-  [
+  var scheduleModeControl = selectField("At Night Time", "sp-set-schedule-mode", [
     { value: "screen_off", label: "Screen Off" },
     { value: "screen_dimmed", label: "Screen Dimmed" },
     { value: "clock", label: "Clock" },
-  ].forEach(function (opt) {
-    var option = document.createElement("option");
-    option.value = opt.value;
-    option.textContent = opt.label;
-    scheduleModeSelect.appendChild(option);
-  });
-  scheduleModeSelect.addEventListener("change", function () {
+  ], state.scheduleMode, function () {
     state.scheduleMode = normalizeScheduleMode(this.value);
     postScreenScheduleMode(state.scheduleMode);
     syncScreenScheduleUi();
   });
-  scheduleModeField.appendChild(scheduleModeSelect);
-  scheduleTimes.appendChild(scheduleModeField);
+  var scheduleModeSelect = scheduleModeControl.select;
+  scheduleTimes.appendChild(scheduleModeControl.field);
   els.setScheduleMode = scheduleModeSelect;
 
   var offScreenOptions = condField();
-  var wakeTimeoutField = document.createElement("div");
-  wakeTimeoutField.className = "sp-field";
-  wakeTimeoutField.appendChild(fieldLabel("When Woken, Idle Time to Screen Off", "sp-set-schedule-wake-timeout"));
-  var wakeTimeoutSelect = document.createElement("select");
-  wakeTimeoutSelect.className = "sp-select";
-  wakeTimeoutSelect.id = "sp-set-schedule-wake-timeout";
   var wakeTimeoutOptions = [
     { label: "10 seconds", value: 10 },
     { label: "30 seconds", value: 30 },
@@ -271,19 +246,18 @@ function buildSettingsPage(parent) {
     { label: "30 minutes", value: 1800 },
     { label: "1 hour", value: 3600 },
   ];
-  wakeTimeoutOptions.forEach(function (opt) {
-    var o = document.createElement("option");
-    o.value = opt.value;
-    o.textContent = opt.label;
-    wakeTimeoutSelect.appendChild(o);
-  });
-  wakeTimeoutSelect.addEventListener("change", function () {
+  var wakeTimeoutControl = selectField(
+    "When Woken, Idle Time to Screen Off",
+    "sp-set-schedule-wake-timeout",
+    wakeTimeoutOptions,
+    state.scheduleWakeTimeout,
+    function () {
     state.scheduleWakeTimeout = normalizeScheduleWakeTimeout(this.value);
     postScreenScheduleWakeTimeout(state.scheduleWakeTimeout);
     syncScreenScheduleUi();
   });
-  wakeTimeoutField.appendChild(wakeTimeoutSelect);
-  offScreenOptions.appendChild(wakeTimeoutField);
+  var wakeTimeoutSelect = wakeTimeoutControl.select;
+  offScreenOptions.appendChild(wakeTimeoutControl.field);
   els.setScheduleWakeTimeout = wakeTimeoutSelect;
 
   var wakeBrightnessSlider = createRangeSlider(
@@ -362,7 +336,9 @@ function buildSettingsPage(parent) {
   var schedulePresInp = entityInput("sp-set-schedule-presence", state.presenceEntity, "Presence sensor entity", ["binary_sensor", "sensor"]);
   schedulePresenceField.appendChild(schedulePresInp);
   scheduleSensor.appendChild(schedulePresenceField);
-  bindTextPost(schedulePresInp, entityName("presence_sensor_entity"), {});
+  bindTextPost(schedulePresInp, entityName("presence_sensor_entity"), {
+    post: postPresenceSensorEntity,
+  });
   scheduleBody.appendChild(scheduleSensor);
   els.setScheduleSensor = scheduleSensor;
   els.setSchedulePresence = schedulePresInp;
@@ -375,16 +351,6 @@ function buildSettingsPage(parent) {
     postScreenScheduleEnabled(state.scheduleEnabled);
     syncScreenScheduleUi();
   }
-
-  scheduleDisabledBtn.addEventListener("click", function () {
-    setScheduleTrigger("disabled");
-  });
-  scheduleTimeBtn.addEventListener("click", function () {
-    setScheduleTrigger("time");
-  });
-  scheduleSensorBtn.addEventListener("click", function () {
-    setScheduleTrigger("sensor");
-  });
 
   var scheduleBadge = statusBadge("Schedule on");
   els.setScheduleBadge = scheduleBadge;
@@ -586,37 +552,29 @@ function buildSettingsPage(parent) {
   var ssMode = getActiveScreensaverMode();
 
   ssBody.appendChild(fieldLabel("Mode"));
-  var segment = document.createElement("div");
-  segment.className = "sp-segment sp-screensaver-mode";
-  var disabledBtn = document.createElement("button");
-  disabledBtn.textContent = "Disabled";
-  disabledBtn.type = "button";
-  var timerBtn = document.createElement("button");
-  timerBtn.textContent = "Timer";
-  timerBtn.type = "button";
-  var sensorBtn = document.createElement("button");
-  sensorBtn.textContent = "Sensor";
-  sensorBtn.type = "button";
-  segment.appendChild(disabledBtn);
-  segment.appendChild(timerBtn);
-  segment.appendChild(sensorBtn);
-  ssBody.appendChild(segment);
+  var ssModeSegment = segmentControl([
+    ["disabled", "Disabled"],
+    ["timer", "Timer"],
+    ["sensor", "Sensor"],
+  ], ssMode, function (mode) {
+    setSsMode(mode);
+    state.screensaverMode = mode;
+    postScreensaverMode(mode);
+  }, "sp-segment sp-screensaver-mode");
+  var disabledBtn = ssModeSegment.buttons.disabled;
+  var timerBtn = ssModeSegment.buttons.timer;
+  var sensorBtn = ssModeSegment.buttons.sensor;
+  ssBody.appendChild(ssModeSegment.segment);
 
   var timerPanel = document.createElement("div");
 
-  var timeoutField = document.createElement("div");
-  timeoutField.className = "sp-field";
-  timeoutField.appendChild(fieldLabel("Timeout"));
-  var timeoutSelect = document.createElement("select");
-  timeoutSelect.className = "sp-select";
-  timeoutSelect.id = "sp-set-ss-timeout";
-  timeoutSelect.addEventListener("change", function () {
+  var timeoutControl = selectField("Timeout", "sp-set-ss-timeout", [], state.screensaverTimeout, function () {
     var n = parseFloat(this.value);
     if (isFinite(n)) state.screensaverTimeout = n;
     postScreensaverTimeout(this.value);
   });
-  timeoutField.appendChild(timeoutSelect);
-  timerPanel.appendChild(timeoutField);
+  var timeoutSelect = timeoutControl.select;
+  timerPanel.appendChild(timeoutControl.field);
 
   var timerClockControls = createScreensaverThenControls("sp-set-clock-mode");
   timerPanel.appendChild(timerClockControls.clockField);
@@ -642,7 +600,7 @@ function buildSettingsPage(parent) {
     coverArtToggle.input.addEventListener("change", function () {
       state.coverArtScreensaverOn = this.checked;
       syncCoverArtScreensaverUi();
-      postSwitch(entityName("screen_saver_cover_art"), state.coverArtScreensaverOn);
+      postCoverArtScreensaver(state.coverArtScreensaverOn);
     });
     els.setCoverArtToggle = coverArtToggle.input;
 
@@ -659,7 +617,7 @@ function buildSettingsPage(parent) {
       state.mediaPlayerSleepPreventionOn = this.checked;
       syncMediaPlayerSleepPreventionUi();
       syncCoverArtScreensaverUi();
-      postSwitch(entityName("screen_saver_media_player_sleep_prevention"), state.mediaPlayerSleepPreventionOn);
+      postMediaPlayerSleepPrevention(state.mediaPlayerSleepPreventionOn);
     });
     els.setMediaPlayerSleepPreventionToggle = sleepPreventionToggle.input;
 
@@ -674,7 +632,14 @@ function buildSettingsPage(parent) {
     coverArtEntityField.appendChild(coverArtEntityInp);
     coverArtOnlyOptions.appendChild(coverArtEntityField);
     bindTextPost(coverArtEntityInp, entityName("screen_saver_cover_art_entity"), {
-      onBlur: function (value) { state.coverArtMediaPlayerEntity = value; },
+      onBlur: function (value) {
+        state.coverArtMediaPlayerEntity = value;
+        state.mediaPlayerSleepPreventionEntity = value;
+      },
+      post: function (value) {
+        postCoverArtMediaPlayerEntity(value);
+        postMediaPlayerSleepPreventionEntity(value);
+      },
     });
     els.setCoverArtMediaPlayer = coverArtEntityInp;
 
@@ -785,7 +750,7 @@ function buildSettingsPage(parent) {
       if (!state.coverArtFilteringEnabled) {
         state.coverArtAttributeConditions = "";
         syncInput(els.setCoverArtConditions, "");
-        postText(entityName("screen_saver_cover_art_conditions"), "");
+        postCoverArtConditions("");
       }
       syncCoverArtScreensaverUi();
     });
@@ -811,6 +776,7 @@ function buildSettingsPage(parent) {
         state.coverArtFilteringEnabled = !!value || state.coverArtFilteringEnabled;
         syncCoverArtScreensaverUi();
       },
+      post: postCoverArtConditions,
     });
     els.setCoverArtConditions = coverArtConditionsInp;
     els.setCoverArtFilterOptions = coverArtFilterOptions;
@@ -836,7 +802,9 @@ function buildSettingsPage(parent) {
   var presInp = entityInput("sp-set-presence", state.presenceEntity, "Presence sensor entity", ["binary_sensor", "sensor"]);
   presenceField.appendChild(presInp);
   sensorPanel.appendChild(presenceField);
-  bindTextPost(presInp, entityName("presence_sensor_entity"), {});
+  bindTextPost(presInp, entityName("presence_sensor_entity"), {
+    post: postPresenceSensorEntity,
+  });
   var sensorClockControls = createScreensaverThenControls("sp-set-sensor-clock-mode");
   sensorPanel.appendChild(sensorClockControls.clockField);
   sensorPanel.appendChild(sensorClockControls.dimBrightnessField);
@@ -871,21 +839,6 @@ function buildSettingsPage(parent) {
       els.setScreensaverBadge.className = "sp-card-badge" + (mode === "disabled" ? " sp-hidden" : "");
     }
   }
-  disabledBtn.addEventListener("click", function () {
-    setSsMode("disabled");
-    state.screensaverMode = "disabled";
-    postText(entityName("screensaver_mode"), "disabled");
-  });
-  timerBtn.addEventListener("click", function () {
-    setSsMode("timer");
-    state.screensaverMode = "timer";
-    postText(entityName("screensaver_mode"), "timer");
-  });
-  sensorBtn.addEventListener("click", function () {
-    setSsMode("sensor");
-    state.screensaverMode = "sensor";
-    postText(entityName("screensaver_mode"), "sensor");
-  });
   els.setSsMode = setSsMode;
   setSsMode(ssMode);
 
@@ -915,7 +868,7 @@ function buildSettingsPage(parent) {
   hsSelect.addEventListener("change", function () {
     state.homeScreenTimeout = parseFloat(this.value) || 0;
     syncIdleUi();
-    postNumber(entityName("home_screen_timeout"), this.value);
+    postHomeScreenTimeout(this.value);
   });
   idleBody.appendChild(hsSelect);
   els.setHSTimeout = hsSelect;
@@ -1050,7 +1003,8 @@ function buildSettingsPage(parent) {
       syncFirmwareUpdateUi();
       return;
     }
-    postSwitch(entityName("firmware_auto_update"), this.checked);
+    state.autoUpdate = this.checked;
+    postFirmwareAutoUpdate(state.autoUpdate);
     syncFirmwareUpdateUi();
   });
   els.setAutoUpdateRow = autoUpdateToggle.row;
@@ -1070,7 +1024,8 @@ function buildSettingsPage(parent) {
   freqSelect.value = state.updateFrequency;
   freqSelect.addEventListener("change", function () {
     if (!firmwareUpdateControlsVisible()) return;
-    postSelect(entityName("firmware_update_frequency"), this.value);
+    state.updateFrequency = this.value;
+    postFirmwareUpdateFrequency(state.updateFrequency);
   });
   freqWrap.appendChild(freqSelect);
   fwBody.appendChild(freqWrap);
@@ -1079,6 +1034,69 @@ function buildSettingsPage(parent) {
   syncFirmwareUpdateUi();
 
   var firmwareCard = makeCollapsibleCard("Firmware", fwBody, true);
+
+  var wifiFirmwareBody = document.createElement("div");
+  var c6CurrentRow = document.createElement("div");
+  c6CurrentRow.className = "sp-fw-row sp-fw-info-row";
+  var c6CurrentLabel = document.createElement("span");
+  c6CurrentLabel.className = "sp-fw-label";
+  c6CurrentLabel.textContent = "Current C6 Firmware";
+  var c6CurrentValue = document.createElement("span");
+  c6CurrentValue.className = "sp-fw-version";
+  c6CurrentRow.appendChild(c6CurrentLabel);
+  c6CurrentRow.appendChild(c6CurrentValue);
+  wifiFirmwareBody.appendChild(c6CurrentRow);
+  els.c6FirmwareCurrent = c6CurrentValue;
+
+  var c6LatestRow = document.createElement("div");
+  c6LatestRow.className = "sp-fw-row sp-fw-info-row";
+  var c6LatestLabel = document.createElement("span");
+  c6LatestLabel.className = "sp-fw-label";
+  c6LatestLabel.textContent = "Available C6 Firmware";
+  var c6LatestValue = document.createElement("span");
+  c6LatestValue.className = "sp-fw-version";
+  c6LatestRow.appendChild(c6LatestLabel);
+  c6LatestRow.appendChild(c6LatestValue);
+  wifiFirmwareBody.appendChild(c6LatestRow);
+  els.c6FirmwareLatest = c6LatestValue;
+
+  var c6Actions = document.createElement("div");
+  c6Actions.className = "sp-fw-actions sp-fw-actions-full";
+  var c6UpdateBtn = document.createElement("button");
+  c6UpdateBtn.className = "sp-fw-btn";
+  c6UpdateBtn.textContent = "Check for Update";
+  c6UpdateBtn.addEventListener("click", function () {
+    if (!state.c6FirmwareUpdateControlsSupported) return;
+    if (c6FirmwareUpdateKnownAvailable() && state.c6FirmwareInstallControlsSupported) {
+      state.c6FirmwareInstalling = true;
+      state.c6FirmwareChecking = false;
+      syncC6FirmwareUi();
+      postC6FirmwareUpdateInstall();
+      setTimeout(function () {
+        refreshFirmwareVersion();
+      }, 5000);
+      return;
+    }
+    state.c6FirmwareChecking = true;
+    syncC6FirmwareUi();
+    postC6FirmwareUpdateCheck();
+    setTimeout(function () {
+      state.c6FirmwareChecking = false;
+      refreshFirmwareVersion();
+      syncC6FirmwareUi();
+    }, 10000);
+  });
+  c6Actions.appendChild(c6UpdateBtn);
+  wifiFirmwareBody.appendChild(c6Actions);
+  els.c6FirmwareUpdateBtn = c6UpdateBtn;
+
+  var c6Status = document.createElement("div");
+  c6Status.className = "sp-fw-status";
+  wifiFirmwareBody.appendChild(c6Status);
+  els.c6FirmwareStatus = c6Status;
+  var wifiFirmwareCard = makeCollapsibleCard("WiFi", wifiFirmwareBody, true);
+  els.c6FirmwareCard = wifiFirmwareCard;
+  syncC6FirmwareUi();
 
   var homeAssistantSettingsBody = document.createElement("div");
   var haProtocolField = document.createElement("div");
@@ -1097,10 +1115,7 @@ function buildSettingsPage(parent) {
   haProtocolSelect.addEventListener("change", function () {
     state.homeAssistantArtworkProtocol = normalizeHomeAssistantArtworkProtocol(this.value);
     this.value = state.homeAssistantArtworkProtocol;
-    postSelectWithObjectIds(
-      entityName("home_assistant_artwork_protocol"),
-      entityObjectIds("home_assistant_artwork_protocol"),
-      state.homeAssistantArtworkProtocol);
+    postHomeAssistantArtworkProtocol(state.homeAssistantArtworkProtocol);
   });
   haProtocolField.appendChild(haProtocolSelect);
   homeAssistantSettingsBody.appendChild(haProtocolField);
@@ -1152,6 +1167,7 @@ function buildSettingsPage(parent) {
   appendSettingsSection(config, "System", [
     backupCard,
     firmwareCard,
+    wifiFirmwareCard,
     homeAssistantSettingsCard,
   ]);
 
@@ -1305,7 +1321,7 @@ function createScreensaverThenControls(selectId) {
     state.clockScreensaverOn = state.screensaverAction === "clock";
     syncClockScreensaverControls();
     postScreensaverAction(state.screensaverAction);
-    postSwitch(entityName("screen_saver_clock"), state.clockScreensaverOn);
+    postClockScreensaver(state.clockScreensaverOn);
   });
   clockField.appendChild(clockSelect);
 

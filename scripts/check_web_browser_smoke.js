@@ -217,6 +217,19 @@ function seededEvents() {
     },
     { id: "select-screen__language", state: "en", value: "en", option: ["en"] },
     {
+      id: "select-home_assistant_artwork_protocol",
+      state: "http",
+      value: "http",
+      option: ["http", "https"],
+    },
+    { id: "switch-firmware__auto_update", state: "ON", value: true },
+    {
+      id: "select-firmware__update_frequency",
+      state: "Daily",
+      value: "Daily",
+      option: ["Hourly", "Daily", "Weekly", "Monthly"],
+    },
+    {
       id: "select-screen__clock_format",
       state: "24h",
       value: "24h",
@@ -1766,6 +1779,17 @@ function backupFixture(device, slots) {
       presence_sensor_entity: "binary_sensor.office_presence",
       media_player_sleep_prevention: true,
       media_player_sleep_prevention_entity: "media_player.living",
+      cover_art_screensaver: true,
+      cover_art_media_player_entity: "media_player.living",
+      cover_art_attribute_conditions: "app_id=com.apple.TVMusic",
+      cover_art_delay: 30,
+      cover_art_touch_pause: 180,
+      cover_art_track_overlay_duration: 10,
+      cover_art_hide_external_input: false,
+      home_assistant_artwork_protocol: "https",
+      home_assistant_artwork_port: 9443,
+      firmware_auto_update: false,
+      firmware_update_frequency: "Weekly",
       screensaver_action: "dim",
       clock_brightness_day: 44,
       clock_brightness_night: 22,
@@ -1931,6 +1955,163 @@ async function assertBackupImportSmoke(page, posts, testCase) {
     "backup clock bar time reset",
     before,
   );
+  const screensaverImportPosts = [
+    [
+      { domain: "text", name: "screensaver_mode", action: "set", value: "timer" },
+      "backup screensaver mode import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "presence_sensor_entity",
+        action: "set",
+        value: "binary_sensor.office_presence",
+      },
+      "backup screensaver presence import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "screen_saver__media_player_sleep_prevention",
+        action: "turn_on",
+      },
+      "backup media sleep prevention import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "media_player_sleep_prevention_entity",
+        action: "set",
+        value: "media_player.living",
+      },
+      "backup media sleep prevention entity import",
+    ],
+    [
+      { domain: "switch", name: "screen_saver__cover_art", action: "turn_on" },
+      "backup cover art import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "screen_saver__cover_art_entity",
+        action: "set",
+        value: "media_player.living",
+      },
+      "backup cover art entity import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "screen_saver__cover_art_conditions",
+        action: "set",
+        value: "app_id=com.apple.TVMusic",
+      },
+      "backup cover art conditions import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__cover_art_delay",
+        action: "set",
+        value: "30",
+      },
+      "backup cover art delay import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__cover_art_touch_pause",
+        action: "set",
+        value: "180",
+      },
+      "backup cover art touch pause import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__track_overlay_duration",
+        action: "set",
+        value: "10",
+      },
+      "backup cover art track overlay import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "screen_saver__hide_cover_art_on_external_input",
+        action: "turn_off",
+      },
+      "backup cover art external input import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "home_assistant_artwork_protocol",
+        action: "set",
+        option: "https",
+      },
+      "backup Home Assistant artwork protocol import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "home_assistant_artwork_port",
+        action: "set",
+        value: "9443",
+      },
+      "backup Home Assistant artwork port import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "firmware__auto_update",
+        action: "turn_off",
+      },
+      "backup firmware auto-update import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "firmware__update_frequency",
+        action: "set",
+        option: "Weekly",
+      },
+      "backup firmware update frequency import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "screen_saver__action",
+        action: "set",
+        option: "Screen Dimmed",
+      },
+      "backup screensaver action import",
+    ],
+    [
+      { domain: "switch", name: "screen_saver__clock", action: "turn_off" },
+      "backup clock screensaver switch import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__dimmed_brightness",
+        action: "set",
+        value: "15",
+      },
+      "backup dimmed screensaver brightness import",
+    ],
+    [
+      { domain: "number", name: "screensaver_timeout", action: "set", value: "60" },
+      "backup screensaver timeout import",
+    ],
+    [
+      { domain: "number", name: "home_screen_timeout", action: "set", value: "120" },
+      "backup home screen timeout import",
+    ],
+  ];
+  for (const [expected, label] of screensaverImportPosts) {
+    await waitForPost(posts, expected, label, before);
+  }
   await waitForPost(
     posts,
     {

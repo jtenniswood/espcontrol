@@ -505,9 +505,11 @@ var CSS =
   ".sp-field-hint{font-size:.75rem;color:var(--text2);margin-top:6px;margin-bottom:16px}" +
 
   ".sp-fw-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;margin-bottom:12px}" +
+  ".sp-fw-info-row{min-height:28px;margin-bottom:8px}" +
   ".sp-fw-version{font-size:.875rem;color:var(--text)}" +
   ".sp-fw-label{font-size:inherit;color:var(--text2)}" +
   ".sp-fw-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-left:auto}" +
+  ".sp-fw-actions-full{justify-content:flex-start;margin:12px 0 0}" +
   ".sp-fw-inline-status{display:none;font-size:.8rem;color:#3dd68c;white-space:nowrap}" +
   ".sp-fw-inline-status.sp-visible{display:inline}" +
   ".sp-fw-status{font-size:.8rem;color:var(--text2);line-height:1.4;margin:-4px 0 12px 0}" +

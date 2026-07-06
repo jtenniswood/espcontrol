@@ -216,7 +216,10 @@ const panelSettings = model.normalizeBackupPanelSettings({
   screensaver_mode: "timer",
   screensaver_action: "Screen Dimmed",
   cover_art_hide_external_input: true,
+  home_assistant_artwork_protocol: "https",
   home_assistant_artwork_port: "80",
+  firmware_auto_update: false,
+  firmware_update_frequency: "Weekly",
   clock_brightness_day: 44,
   clock_brightness_night: 22,
   screen_rotation: "90",
@@ -229,7 +232,11 @@ const panelSettings = model.normalizeBackupPanelSettings({
   ntpServer1: "0.pool.ntp.org",
   ntpServer2: "1.pool.ntp.org",
   ntpServer3: "2.pool.ntp.org",
+  coverArtHomeAssistantProtocol: "http",
   coverArtHomeAssistantPort: 8123,
+  autoUpdate: true,
+  updateFrequency: "Daily",
+  updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
   screenRotationOptions: ["0", "90", "180", "270"],
 });
 assert.strictEqual(panelSettings.temperatureUnit, "\u00B0C", "panel temperature unit normalizes");
@@ -244,7 +251,10 @@ assert.strictEqual(panelSettings.ntpServer1, "pool.ntp.org", "panel NTP server i
 assert.strictEqual(panelSettings.screensaverMode, "timer", "panel screensaver mode imports");
 assert.strictEqual(panelSettings.screensaverAction, "dim", "panel screensaver action imports");
 assert.strictEqual(panelSettings.coverArtHideExternalInput, true, "panel cover art external-input setting imports");
+assert.strictEqual(panelSettings.coverArtHomeAssistantProtocol, "https", "panel Home Assistant artwork protocol imports");
 assert.strictEqual(panelSettings.coverArtHomeAssistantPort, 80, "panel Home Assistant artwork port imports");
+assert.strictEqual(panelSettings.autoUpdate, false, "panel firmware auto-update imports");
+assert.strictEqual(panelSettings.updateFrequency, "Weekly", "panel firmware update frequency imports");
 assert.strictEqual(
   model.normalizeBackupPanelSettings({
     media_player_sleep_prevention_entity: "media_player.living",
@@ -257,7 +267,11 @@ assert.strictEqual(
     ntpServer1: "0.pool.ntp.org",
     ntpServer2: "1.pool.ntp.org",
     ntpServer3: "2.pool.ntp.org",
+    coverArtHomeAssistantProtocol: "http",
     coverArtHomeAssistantPort: 8123,
+    autoUpdate: true,
+    updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
     screenRotationOptions: ["0", "90", "180", "270"],
   }).coverArtMediaPlayerEntity,
   "media_player.living",
@@ -277,12 +291,19 @@ const legacyPanelSettings = model.normalizeBackupPanelSettings({}, {
   ntpServer1: "0.pool.ntp.org",
   ntpServer2: "1.pool.ntp.org",
   ntpServer3: "2.pool.ntp.org",
+  coverArtHomeAssistantProtocol: "https",
   coverArtHomeAssistantPort: 80,
+  autoUpdate: false,
+  updateFrequency: "Monthly",
+  updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
   screenRotationOptions: ["0", "90", "180", "270"],
 });
 assert.strictEqual(legacyPanelSettings.clockBarTime, true, "legacy panel settings default clock bar time on");
 assert.strictEqual(legacyPanelSettings.voiceServices, false, "legacy panel settings default voice services off");
 assert.strictEqual(legacyPanelSettings.coverArtHideExternalInput, true, "legacy panel settings default cover art external-input setting on");
+assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantProtocol, "https", "legacy panel settings keep current Home Assistant artwork protocol");
 assert.strictEqual(legacyPanelSettings.coverArtHomeAssistantPort, 80, "legacy panel settings keep current Home Assistant artwork port");
+assert.strictEqual(legacyPanelSettings.autoUpdate, false, "legacy panel settings keep current firmware auto-update setting");
+assert.strictEqual(legacyPanelSettings.updateFrequency, "Monthly", "legacy panel settings keep current firmware update frequency");
 
 console.log("Model contract tests passed.");

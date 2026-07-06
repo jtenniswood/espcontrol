@@ -43,6 +43,95 @@ function textInput(id, value, placeholder) {
   return el;
 }
 
+function fieldWithControl(labelText, inputId, control) {
+  var field = document.createElement("div");
+  field.className = "sp-field";
+  field.appendChild(fieldLabel(labelText, inputId));
+  if (control) field.appendChild(control);
+  return field;
+}
+
+function optionValue(option) {
+  if (Array.isArray(option)) return option[0];
+  if (option && typeof option === "object") return option.value;
+  return option;
+}
+
+function optionLabel(option) {
+  if (Array.isArray(option)) return option[1];
+  if (option && typeof option === "object") return option.label;
+  return option;
+}
+
+function selectField(labelText, inputId, options, value, onChange) {
+  var select = document.createElement("select");
+  select.className = "sp-select";
+  if (inputId) select.id = inputId;
+  (options || []).forEach(function (entry) {
+    var option = document.createElement("option");
+    option.value = optionValue(entry);
+    option.textContent = optionLabel(entry);
+    select.appendChild(option);
+  });
+  select.value = value == null ? "" : String(value);
+  if (onChange) select.addEventListener("change", onChange);
+  return {
+    field: fieldWithControl(labelText, inputId, select),
+    select: select,
+  };
+}
+
+function segmentControl(options, value, onSelect, className) {
+  var segment = document.createElement("div");
+  segment.className = className || "sp-segment";
+  var buttons = {};
+  (options || []).forEach(function (entry) {
+    var optValue = optionValue(entry);
+    var button = document.createElement("button");
+    button.type = "button";
+    button.textContent = optionLabel(entry);
+    button.classList.toggle("active", optValue === value);
+    button.addEventListener("click", function () {
+      for (var key in buttons) buttons[key].classList.toggle("active", key === optValue);
+      if (onSelect) onSelect(optValue, button);
+    });
+    segment.appendChild(button);
+    buttons[optValue] = button;
+  });
+  return {
+    segment: segment,
+    buttons: buttons,
+  };
+}
+
+function disclosureSection(labelText, inputId, open) {
+  var panel = document.createElement("div");
+  panel.className = "sp-disclosure" + (open ? " sp-open" : "");
+  var button = document.createElement("button");
+  button.type = "button";
+  button.className = "sp-disclosure-button";
+  if (inputId) button.id = inputId;
+  button.setAttribute("aria-expanded", open ? "true" : "false");
+  var label = document.createElement("span");
+  label.textContent = labelText;
+  button.appendChild(label);
+  button.appendChild(createDisclosureChevron("sp-disclosure-chevron"));
+  var section = document.createElement("div");
+  section.className = "sp-disclosure-body";
+  button.addEventListener("click", function () {
+    open = !panel.classList.contains("sp-open");
+    panel.classList.toggle("sp-open", open);
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  panel.appendChild(button);
+  panel.appendChild(section);
+  return {
+    panel: panel,
+    button: button,
+    section: section,
+  };
+}
+
 function colorField(id, value, onChange) {
   var row = document.createElement("div");
   row.className = "sp-color-row";

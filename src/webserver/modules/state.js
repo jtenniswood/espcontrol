@@ -172,6 +172,13 @@ var state = {
   firmwareVersionOptions: [],
   firmwareSelectedVersion: "",
   firmwareVersionIndexLoaded: false,
+  c6FirmwareCurrentVersion: "",
+  c6FirmwareLatestVersion: "",
+  c6FirmwareUpdateAvailable: "",
+  c6FirmwareUpdateControlsSupported: false,
+  c6FirmwareInstallControlsSupported: false,
+  c6FirmwareChecking: false,
+  c6FirmwareInstalling: false,
   autoUpdate: true,
   updateFrequency: "Daily",
   updateFreqOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
@@ -910,6 +917,95 @@ function renderFirmwareVersion() {
     escHtml(firmwareVersionLabel());
 }
 
+function displayC6FirmwareVersion(version) {
+  version = String(version == null ? "" : version).trim();
+  return version || "Unknown";
+}
+
+function c6FirmwareVersionLooksKnown(version) {
+  version = String(version == null ? "" : version).trim();
+  return /\d/.test(version);
+}
+
+function c6FirmwareUpdateKnownAvailable() {
+  var current = String(state.c6FirmwareCurrentVersion || "").trim();
+  var latest = String(state.c6FirmwareLatestVersion || "").trim();
+  return c6FirmwareVersionLooksKnown(current) &&
+    c6FirmwareVersionLooksKnown(latest) &&
+    current !== latest;
+}
+
+function syncC6FirmwareUi() {
+  var show = state.c6FirmwareUpdateControlsSupported === true;
+  if (els.c6FirmwareCard) els.c6FirmwareCard.style.display = show ? "" : "none";
+  if (els.c6FirmwareCurrent) {
+    els.c6FirmwareCurrent.textContent = displayC6FirmwareVersion(state.c6FirmwareCurrentVersion);
+  }
+  if (els.c6FirmwareLatest) {
+    els.c6FirmwareLatest.textContent = displayC6FirmwareVersion(state.c6FirmwareLatestVersion);
+  }
+  if (els.c6FirmwareStatus) {
+    var cls = "sp-fw-status";
+    var status = "";
+    if (state.c6FirmwareInstalling) {
+      status = "Installing WiFi firmware update\u2026";
+      cls += " sp-update-installing";
+    } else if (state.c6FirmwareChecking) {
+      status = "Checking WiFi firmware\u2026";
+    } else if (c6FirmwareUpdateKnownAvailable()) {
+      status = "WiFi firmware update available.";
+      cls += " sp-update-available";
+    } else if (state.c6FirmwareUpdateAvailable) {
+      status = state.c6FirmwareUpdateAvailable;
+    }
+    els.c6FirmwareStatus.className = cls;
+    els.c6FirmwareStatus.textContent = status;
+  }
+  if (els.c6FirmwareUpdateBtn) {
+    var busy = state.c6FirmwareChecking || state.c6FirmwareInstalling;
+    els.c6FirmwareUpdateBtn.className = "sp-fw-btn" + (busy ? " sp-fw-btn-busy" : "");
+    els.c6FirmwareUpdateBtn.disabled = busy || !show ||
+      (c6FirmwareUpdateKnownAvailable() && !state.c6FirmwareInstallControlsSupported);
+    if (state.c6FirmwareInstalling) {
+      els.c6FirmwareUpdateBtn.textContent = "Installing\u2026";
+    } else if (state.c6FirmwareChecking) {
+      els.c6FirmwareUpdateBtn.textContent = "Checking\u2026";
+    } else if (c6FirmwareUpdateKnownAvailable()) {
+      els.c6FirmwareUpdateBtn.textContent = "Update WiFi Firmware";
+    } else {
+      els.c6FirmwareUpdateBtn.textContent = "Check for Update";
+    }
+  }
+}
+
+function setC6FirmwareCurrentVersion(version) {
+  version = String(version == null ? "" : version).trim();
+  if (!version) return;
+  state.c6FirmwareCurrentVersion = version;
+  state.c6FirmwareUpdateControlsSupported = true;
+  state.c6FirmwareChecking = false;
+  state.c6FirmwareInstalling = false;
+  syncC6FirmwareUi();
+}
+
+function setC6FirmwareLatestVersion(version) {
+  version = String(version == null ? "" : version).trim();
+  if (!version) return;
+  state.c6FirmwareLatestVersion = version;
+  state.c6FirmwareUpdateControlsSupported = true;
+  state.c6FirmwareChecking = false;
+  syncC6FirmwareUi();
+}
+
+function setC6FirmwareUpdateAvailable(value) {
+  value = String(value == null ? "" : value).trim();
+  if (!value) return;
+  state.c6FirmwareUpdateAvailable = value;
+  state.c6FirmwareUpdateControlsSupported = true;
+  state.c6FirmwareChecking = false;
+  syncC6FirmwareUi();
+}
+
 function isSpecificFirmwareVersion(version) {
   version = String(version == null ? "" : version).trim();
   return /^v[0-9]+(\.[0-9]+){2}([-+][0-9A-Za-z.-]+)?$/i.test(version);
@@ -1394,6 +1490,61 @@ function isFirmwareInstallButtonEvent(id, d) {
   return nameId === "button/firmware: install update" ||
     (domain === "button" && name === "firmware: install update") ||
     (id.indexOf("button-") === 0 && id.indexOf("firmware") !== -1 &&
+      id.indexOf("install") !== -1 && id.indexOf("update") !== -1);
+}
+
+function isC6FirmwareCurrentEvent(id, d) {
+  id = String(id || "").toLowerCase();
+  var nameId = String(d.name_id || "").toLowerCase();
+  var domain = String(d.domain || "").toLowerCase();
+  var name = String(d.name || "").toLowerCase();
+  return nameId === "text_sensor/esp32-c6: current firmware" ||
+    (domain === "text_sensor" && name === "esp32-c6: current firmware") ||
+    (id.indexOf("text_sensor-") === 0 && id.indexOf("c6") !== -1 &&
+      id.indexOf("current") !== -1 && id.indexOf("firmware") !== -1);
+}
+
+function isC6FirmwareLatestEvent(id, d) {
+  id = String(id || "").toLowerCase();
+  var nameId = String(d.name_id || "").toLowerCase();
+  var domain = String(d.domain || "").toLowerCase();
+  var name = String(d.name || "").toLowerCase();
+  return nameId === "text_sensor/esp32-c6: latest firmware" ||
+    (domain === "text_sensor" && name === "esp32-c6: latest firmware") ||
+    (id.indexOf("text_sensor-") === 0 && id.indexOf("c6") !== -1 &&
+      id.indexOf("latest") !== -1 && id.indexOf("firmware") !== -1);
+}
+
+function isC6FirmwareUpdateAvailableEvent(id, d) {
+  id = String(id || "").toLowerCase();
+  var nameId = String(d.name_id || "").toLowerCase();
+  var domain = String(d.domain || "").toLowerCase();
+  var name = String(d.name || "").toLowerCase();
+  return nameId === "text_sensor/esp32-c6: update available" ||
+    (domain === "text_sensor" && name === "esp32-c6: update available") ||
+    (id.indexOf("text_sensor-") === 0 && id.indexOf("c6") !== -1 &&
+      id.indexOf("update") !== -1 && id.indexOf("available") !== -1);
+}
+
+function isC6FirmwareCheckButtonEvent(id, d) {
+  id = String(id || "").toLowerCase();
+  var nameId = String(d.name_id || "").toLowerCase();
+  var domain = String(d.domain || "").toLowerCase();
+  var name = String(d.name || "").toLowerCase();
+  return nameId === "button/firmware esp32-c6: check for update" ||
+    (domain === "button" && name === "firmware esp32-c6: check for update") ||
+    (id.indexOf("button-") === 0 && id.indexOf("c6") !== -1 &&
+      id.indexOf("check") !== -1 && id.indexOf("update") !== -1);
+}
+
+function isC6FirmwareInstallButtonEvent(id, d) {
+  id = String(id || "").toLowerCase();
+  var nameId = String(d.name_id || "").toLowerCase();
+  var domain = String(d.domain || "").toLowerCase();
+  var name = String(d.name || "").toLowerCase();
+  return nameId === "button/firmware esp32-c6: install update" ||
+    (domain === "button" && name === "firmware esp32-c6: install update") ||
+    (id.indexOf("button-") === 0 && id.indexOf("c6") !== -1 &&
       id.indexOf("install") !== -1 && id.indexOf("update") !== -1);
 }
 

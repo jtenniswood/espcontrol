@@ -108,6 +108,7 @@ none=Žiadne
 no_options=Žiadne možnosti
 no_presets=Žiadne predvoľby
 no_sources=Žiadne zdroje
+source=Zdroj
 not_available=Nie je dostupné
 off=Vypnuté
 on=Zapnuté

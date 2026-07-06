@@ -108,6 +108,7 @@ none=Немає
 no_options=Немає параметрів
 no_presets=Немає пресетів
 no_sources=Немає джерел
+source=Джерело
 not_available=Недоступно
 off=Вимкнено
 on=Увімкнено

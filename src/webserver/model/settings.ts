@@ -138,6 +138,10 @@ export function normalizeHomeAssistantArtworkPort(value: unknown): number {
   return port;
 }
 
+export function normalizeHomeAssistantArtworkProtocol(value: unknown): string {
+  return String(value || "").trim().toLowerCase() === "https" ? "https" : "http";
+}
+
 export function normalizeNtpServer(value: unknown, fallback: string): string {
   const server = String(value == null ? "" : value).trim();
   return server || fallback;
@@ -223,7 +227,11 @@ export interface BackupPanelSettingsCurrent {
   ntpServer1: string;
   ntpServer2: string;
   ntpServer3: string;
+  coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  autoUpdate: boolean;
+  updateFrequency: string;
+  updateFrequencyOptions: readonly string[];
   screenRotationOptions: readonly string[];
 }
 
@@ -260,7 +268,10 @@ export interface BackupPanelSettingsState {
   coverArtTouchPause: unknown;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
+  coverArtHomeAssistantProtocol: string;
   coverArtHomeAssistantPort: number;
+  autoUpdate: boolean;
+  updateFrequency: string;
   screensaverAction: string;
   clockScreensaver: boolean;
   clockBrightnessDay: number;
@@ -279,6 +290,11 @@ function normalizeScreensaverMode(value: unknown): string {
 function normalizeScreenRotationValue(value: unknown, options: readonly string[]): string {
   const rotation = String(value == null ? "" : value);
   return options.indexOf(rotation) !== -1 ? rotation : "0";
+}
+
+function normalizeUpdateFrequency(value: unknown, options: readonly string[], fallback: string): string {
+  const frequency = String(value == null ? "" : value);
+  return options.indexOf(frequency) !== -1 ? frequency : fallback;
 }
 
 export function normalizeBackupPanelSettings(
@@ -352,7 +368,7 @@ export function normalizeBackupPanelSettings(
     screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
     presenceSensorEntity: String(settings.presence_sensor_entity || ""),
     mediaPlayerSleepPrevention: !!settings.media_player_sleep_prevention,
-    mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || ""),
+    mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || settings.cover_art_media_player_entity || ""),
     coverArtScreensaver: !!settings.cover_art_screensaver,
     coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
     coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
@@ -362,9 +378,22 @@ export function normalizeBackupPanelSettings(
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input
       : true,
+    coverArtHomeAssistantProtocol: objectValue(settings, "home_assistant_artwork_protocol") != null
+      ? normalizeHomeAssistantArtworkProtocol(settings.home_assistant_artwork_protocol)
+      : normalizeHomeAssistantArtworkProtocol(current.coverArtHomeAssistantProtocol),
     coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null
       ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port)
       : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
+    autoUpdate: objectValue(settings, "firmware_auto_update") != null
+      ? !!settings.firmware_auto_update
+      : current.autoUpdate,
+    updateFrequency: objectValue(settings, "firmware_update_frequency") != null
+      ? normalizeUpdateFrequency(
+        settings.firmware_update_frequency,
+        current.updateFrequencyOptions,
+        current.updateFrequency,
+      )
+      : current.updateFrequency,
     screensaverAction,
     clockScreensaver: screensaverAction === "clock",
     clockBrightnessDay,

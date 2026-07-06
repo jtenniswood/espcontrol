@@ -629,6 +629,9 @@
         "coverArtSquareOverlay": true,
         "dragMode": "displace",
         "dragAnimation": true,
+        "disabledCardTypes": [
+          "weather_forecast"
+        ],
         "screen": {
           "width": "55%",
           "aspect": "1/1"
