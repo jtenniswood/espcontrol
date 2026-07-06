@@ -8,6 +8,7 @@
   "screen_rotation_state",
   "screen_schedule_state",
   "ntp_state",
+  "appearance_state",
   "clock_bar_state",
   "firmware_update_state",
   "screensaver_timeout",

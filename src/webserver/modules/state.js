@@ -245,27 +245,6 @@ function setSelectValue(select, value, label) {
   select.value = value;
 }
 
-function normalizeTheme(value) {
-  return THEME_PRESETS[value] ? value : defaultTheme();
-}
-
-function syncThemeUi() {
-  if (els.root) els.root.setAttribute("data-screen-theme", normalizeTheme(state.theme).toLowerCase());
-}
-
-function syncColorUi() {
-  if (els.setOnColor && els.setOnColor._syncColor) els.setOnColor._syncColor(state.onColor);
-}
-
-function resetAppearanceColors(postChanges) {
-  state.onColor = DEFAULT_COLOR_PRESET.on;
-  syncColorUi();
-  renderPreview();
-  if (postChanges) {
-    postText(entityName("button_on_color"), state.onColor);
-  }
-}
-
 function syncIdleUi() {
   state.homeScreenTimeout = parseFloat(state.homeScreenTimeout) || 0;
   if (els.setHSTimeout) els.setHSTimeout.value = String(state.homeScreenTimeout);
