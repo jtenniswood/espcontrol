@@ -1,5 +1,5 @@
 // ── SSE ────────────────────────────────────────────────────────────────
-// @web-module-requires: state, api, config_codec, app_backup, app_status_preview, firmware_event_matchers, app_event_aliases, app_title
+// @web-module-requires: state, screensaver_timeout, api, config_codec, app_backup, app_status_preview, firmware_event_matchers, app_event_aliases, app_title
 
 function applyClockBarStateValue(val, d, matchedKey) {
   var keys = entityStateKeys(d);

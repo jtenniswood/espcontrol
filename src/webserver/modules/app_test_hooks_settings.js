@@ -1,3 +1,5 @@
+// @web-module-requires: screensaver_timeout
+
 if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
   registerEspControlTestHookGroup("settings", {
     SSE_ALIAS_GROUPS: SSE_ALIAS_GROUPS,

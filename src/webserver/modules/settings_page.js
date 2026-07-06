@@ -1,5 +1,5 @@
 // ── Settings Page ──────────────────────────────────────────────────────
-// @web-module-requires: state, api, controls, controls_shell
+// @web-module-requires: state, screensaver_timeout, api, controls, controls_shell
 
 function settingsStatusHeader(title) {
   var header = document.createElement("div");
