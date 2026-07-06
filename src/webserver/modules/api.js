@@ -1,5 +1,5 @@
 // ── POST queue ─────────────────────────────────────────────────────────
-// @web-module-requires: state, screensaver_timeout, entity_catalog
+// @web-module-requires: state, screensaver_timeout, c6_firmware_ui, entity_catalog
 
 var _postQueue = Promise.resolve();
 var _postThrottleMs = 0;
