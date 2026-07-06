@@ -465,6 +465,13 @@ def markdown_files() -> list[Path]:
     return [path for path in files if path.exists()]
 
 
+def workflow_files() -> list[Path]:
+    workflow_dir = ROOT / ".github" / "workflows"
+    files = sorted(workflow_dir.glob("*.yml"))
+    files.extend(sorted(workflow_dir.glob("*.yaml")))
+    return files
+
+
 def check_markdown_links(errors: list[str]) -> None:
     link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     for path in markdown_files():
@@ -484,7 +491,7 @@ def check_referenced_commands(errors: list[str]) -> None:
     scripts = package_scripts()
     npm_re = re.compile(r"\bnpm run ([A-Za-z0-9:_-]+)")
     py_re = re.compile(r"\bpython3 (scripts/[A-Za-z0-9_./-]+)")
-    for path in markdown_files():
+    for path in [*markdown_files(), *workflow_files()]:
         text = path.read_text()
         for cmd in npm_re.findall(text):
             if cmd not in scripts:
