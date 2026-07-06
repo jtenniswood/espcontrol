@@ -20,17 +20,90 @@ ZONEINFO_ALIASES = {
 }
 
 
+def load_timezone_select_options() -> list[tuple[int, str]]:
+    options: list[tuple[int, str]] = []
+    in_timezone_select = False
+    in_options = False
+    for line_no, line in enumerate(TIME_YAML.read_text().splitlines(), 1):
+        if re.match(r"^\s+id:\s*timezone_select\s*$", line):
+            in_timezone_select = True
+            continue
+        if in_timezone_select and not in_options:
+            if re.match(r"^\s+options:\s*$", line):
+                in_options = True
+            continue
+        if not in_options:
+            continue
+        match = re.match(r'^\s+- "([^"]+)"$', line)
+        if match:
+            options.append((line_no, match.group(1)))
+            continue
+        if line.strip():
+            break
+    return options
+
+
+def timezone_option_id(option: str) -> str | None:
+    if " (GMT" not in option or ("/" not in option and not option.startswith("UTC ")):
+        return None
+    return option.split(" (", 1)[0]
+
+
 def load_timezone_options() -> dict[str, str]:
     options: dict[str, str] = {}
-    for match in re.finditer(r'^\s+- "([^"]+)"$', TIME_YAML.read_text(), re.M):
-        option = match.group(1)
+    for _line_no, option in load_timezone_select_options():
         if option == AUTO_TIMEZONE_OPTION:
             continue
-        if " (GMT" not in option or ("/" not in option and not option.startswith("UTC ")):
+        tz_id = timezone_option_id(option)
+        if tz_id is None:
             continue
-        tz_id = option.split(" (", 1)[0]
         options[tz_id] = option
     return options
+
+
+def validate_timezone_select_options(rows: list[tuple[int, str]]) -> list[str]:
+    errors: list[str] = []
+    if not rows:
+        return [f"{TIME_YAML.relative_to(ROOT)}: timezone_select options were not found"]
+
+    options_seen: dict[str, int] = {}
+    tz_ids_seen: dict[str, int] = {}
+    auto_lines = []
+    for line_no, option in rows:
+        if option in options_seen:
+            errors.append(
+                f"{TIME_YAML.relative_to(ROOT)}:{line_no}: duplicate timezone option "
+                f"{option!r} (first defined on line {options_seen[option]})"
+            )
+        options_seen[option] = line_no
+
+        if option == AUTO_TIMEZONE_OPTION:
+            auto_lines.append(line_no)
+            continue
+
+        tz_id = timezone_option_id(option)
+        if tz_id is None:
+            errors.append(f"{TIME_YAML.relative_to(ROOT)}:{line_no}: invalid timezone option {option!r}")
+            continue
+        if tz_id in tz_ids_seen:
+            errors.append(
+                f"{TIME_YAML.relative_to(ROOT)}:{line_no}: duplicate timezone id "
+                f"{tz_id!r} (first defined on line {tz_ids_seen[tz_id]})"
+            )
+        tz_ids_seen[tz_id] = line_no
+
+    if len(auto_lines) != 1:
+        errors.append(
+            f"{TIME_YAML.relative_to(ROOT)}: expected exactly one {AUTO_TIMEZONE_OPTION!r} option, "
+            f"found {len(auto_lines)}"
+        )
+    elif rows[-1][1] != AUTO_TIMEZONE_OPTION:
+        errors.append(
+            f"{TIME_YAML.relative_to(ROOT)}:{auto_lines[0]}: {AUTO_TIMEZONE_OPTION!r} must stay last "
+            "so restored option indexes remain stable"
+        )
+
+    return errors
 
 
 def load_posix_table() -> dict[str, str]:
@@ -155,6 +228,8 @@ def expected_casablanca_pauses() -> list[tuple[tuple[int, ...], tuple[int, ...]]
 
 def main() -> int:
     errors: list[str] = []
+    option_rows = load_timezone_select_options()
+    errors.extend(validate_timezone_select_options(option_rows))
     options = load_timezone_options()
     posix_table = load_posix_table()
     casablanca_pauses = load_casablanca_pauses()
