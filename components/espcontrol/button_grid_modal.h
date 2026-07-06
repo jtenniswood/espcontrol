@@ -680,6 +680,7 @@ inline lv_obj_t *control_modal_create_round_button(lv_obj_t *parent, lv_coord_t 
                                                   uint32_t border_color,
                                                   uint32_t bg_color,
                                                   int width_compensation_percent = 100) {
+  (void) border_color;
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
   lv_obj_set_size(btn, size, size);
@@ -687,8 +688,7 @@ inline lv_obj_t *control_modal_create_round_button(lv_obj_t *parent, lv_coord_t 
   lv_obj_set_style_radius(btn, size / 2, LV_PART_MAIN);
   lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_color(btn, lv_color_hex(border_color), LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn, 2, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   control_modal_apply_pressed_fill(btn);
   lv_obj_t *label = lv_label_create(btn);
