@@ -89,8 +89,15 @@ function htmlFor(slug) {
 }
 
 function routeContentType(url) {
-  if (/\.css(?:$|\?)/.test(url)) return "text/css";
-  if (/\.(?:png|jpg|jpeg|gif|webp|svg)(?:$|\?)/.test(url))
+  const pathname = typeof url === "string" ? url : url.pathname;
+  if (
+    typeof url !== "string" &&
+    url.hostname === "fonts.googleapis.com" &&
+    pathname === "/css2"
+  )
+    return "text/css";
+  if (/\.css(?:$|\?)/.test(pathname)) return "text/css";
+  if (/\.(?:png|jpg|jpeg|gif|webp|svg)(?:$|\?)/.test(pathname))
     return "image/svg+xml";
   return "text/plain";
 }
@@ -132,7 +139,7 @@ async function installRoutes(context, slug) {
     }
     await route.fulfill({
       status: 200,
-      contentType: routeContentType(requestUrl.pathname),
+      contentType: routeContentType(requestUrl),
       body: "",
     });
   });
