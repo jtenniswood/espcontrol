@@ -303,6 +303,9 @@ def web_registration_map() -> dict[str, str]:
 
 def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
     out = {card_type: [] for card_type in card_types}
+    extra_by_type = {
+        "weather": ["components/espcontrol/button_grid_weather_forecast.h"],
+    }
     headers = [
         path for path in sorted((ROOT / "components/espcontrol").glob("button_grid*.h"))
         if not path.name.endswith("_generated.h")
@@ -316,6 +319,9 @@ def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
             text = path.read_text(errors="ignore")
             if any(needle in text for needle in needles):
                 out[card_type].append(rel(path))
+        for extra in extra_by_type.get(card_type, []):
+            if extra not in out[card_type]:
+                out[card_type].append(extra)
     return out
 
 
