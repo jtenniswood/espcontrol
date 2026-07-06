@@ -1,6 +1,7 @@
 [
   "style_tokens",
   "state_defaults",
+  "firmware_metadata",
   "styles",
   "state",
   "model_generated",
