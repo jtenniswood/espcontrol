@@ -6,6 +6,7 @@
   "state",
   "language_state",
   "screen_rotation_state",
+  "screen_schedule_state",
   "ntp_state",
   "clock_bar_state",
   "firmware_update_state",

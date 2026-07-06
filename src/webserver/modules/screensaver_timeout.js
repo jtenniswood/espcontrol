@@ -1,5 +1,5 @@
 // Screensaver timeout options and UI syncing.
-// @web-module-requires: state
+// @web-module-requires: state, screen_schedule_state
 
 var SCREENSAVER_TIMEOUT_OPTIONS = [
   { label: "10 seconds", value: 10 },
