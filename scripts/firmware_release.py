@@ -117,6 +117,7 @@ def verify_manifest(
     version: str,
     ota_md5: str,
     require_factory: bool = True,
+    expected_chip: str | None = None,
 ) -> dict:
     manifest = load_manifest(manifest_path)
     actual_version = str(manifest.get("version", "")).strip()
@@ -131,6 +132,8 @@ def verify_manifest(
     chip_family = build.get("chipFamily")
     if not isinstance(chip_family, str) or not chip_family.strip():
         raise FirmwareReleaseError(f"{manifest_path} build chipFamily must be a non-empty string")
+    if expected_chip and chip_family != expected_chip:
+        raise FirmwareReleaseError(f"{manifest_path} build chipFamily {chip_family!r} does not match {expected_chip!r}")
 
     ota = build.get("ota")
     if not isinstance(ota, dict):
@@ -161,14 +164,21 @@ def verify_manifest(
     return build
 
 
-def verify_files(slug: str, version: str, manifest: Path, factory: Path | None, ota: Path) -> None:
+def verify_files(
+    slug: str,
+    version: str,
+    manifest: Path,
+    factory: Path | None,
+    ota: Path,
+    expected_chip: str | None = None,
+) -> None:
     require_file(manifest, "firmware manifest")
     require_file(ota, "OTA firmware")
     require_factory = factory is not None
     if require_factory:
         require_file(factory, "factory firmware")
 
-    verify_manifest(manifest, slug, version, md5sum(ota), require_factory=require_factory)
+    verify_manifest(manifest, slug, version, md5sum(ota), require_factory=require_factory, expected_chip=expected_chip)
     assert_binary_version(ota, version)
     if factory is not None:
         assert_binary_version(factory, version)
@@ -348,7 +358,7 @@ def cmd_manifest(args: argparse.Namespace) -> None:
 
 
 def cmd_verify_files(args: argparse.Namespace) -> None:
-    verify_files(args.slug, args.version, Path(args.manifest), Path(args.factory), Path(args.ota))
+    verify_files(args.slug, args.version, Path(args.manifest), Path(args.factory), Path(args.ota), args.chip)
 
 
 def cmd_verify_directory(args: argparse.Namespace) -> None:
@@ -383,6 +393,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify_files_cmd.add_argument("--manifest", required=True)
     verify_files_cmd.add_argument("--factory", required=True)
     verify_files_cmd.add_argument("--ota", required=True)
+    verify_files_cmd.add_argument("--chip", help="Expected manifest chipFamily")
     verify_files_cmd.set_defaults(func=cmd_verify_files)
 
     verify_directory_cmd = sub.add_parser("verify-directory", help="Verify firmware files for multiple slugs")

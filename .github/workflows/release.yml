@@ -234,6 +234,7 @@ jobs:
             --out "output/${{ matrix.slug }}.manifest.json"
           python3 espcontrol-${{ matrix.slug }}/scripts/firmware_release.py verify-files \
             --slug "${{ matrix.slug }}" \
+            --chip "${{ matrix.chip }}" \
             --version "${VERSION}" \
             --manifest "output/${{ matrix.slug }}.manifest.json" \
             --factory "output/${{ matrix.slug }}.factory.bin" \

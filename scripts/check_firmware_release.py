@@ -180,6 +180,24 @@ def test_missing_chip_family_fails() -> None:
         ])
 
 
+def test_wrong_chip_family_fails() -> None:
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        manifest, factory, ota = make_release_files(base)
+        data = json.loads(manifest.read_text())
+        data["builds"][0]["chipFamily"] = "ESP32-P4"
+        manifest.write_text(json.dumps(data))
+        run_fails([
+            "verify-files",
+            "--slug", SLUG,
+            "--version", VERSION,
+            "--manifest", str(manifest),
+            "--factory", str(factory),
+            "--ota", str(ota),
+            "--chip", CHIP,
+        ])
+
+
 def test_wrong_md5_fails() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
@@ -255,6 +273,7 @@ def main() -> int:
     test_unrelated_placeholder_strings_pass()
     test_wrong_manifest_version_fails()
     test_missing_chip_family_fails()
+    test_wrong_chip_family_fails()
     test_wrong_md5_fails()
     test_missing_asset_fails()
     test_wrong_slug_path_fails()
