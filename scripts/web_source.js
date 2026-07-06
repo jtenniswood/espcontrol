@@ -10,6 +10,31 @@ const MODULES_DIR = path.join(ROOT, "src", "webserver", "modules");
 const TYPES_DIR = path.join(ROOT, "src", "webserver", "types");
 const WEB_MODULE_ORDER = require("./web_modules.json");
 
+function moduleFileNames() {
+  return fs.readdirSync(MODULES_DIR)
+    .filter((name) => name.endsWith(".js"))
+    .map((name) => path.basename(name, ".js"))
+    .sort();
+}
+
+function assertWebModuleOrderCoversFiles() {
+  const actual = moduleFileNames();
+  const actualSet = new Set(actual);
+  const orderSet = new Set(WEB_MODULE_ORDER);
+  const duplicates = WEB_MODULE_ORDER
+    .filter((name, index) => WEB_MODULE_ORDER.indexOf(name) !== index)
+    .sort();
+  const missing = actual.filter((name) => !orderSet.has(name));
+  const unknown = WEB_MODULE_ORDER.filter((name) => !actualSet.has(name)).sort();
+  const errors = [];
+  if (duplicates.length) errors.push(`duplicate entries: ${Array.from(new Set(duplicates)).join(", ")}`);
+  if (missing.length) errors.push(`missing modules: ${missing.join(", ")}`);
+  if (unknown.length) errors.push(`unknown modules: ${unknown.join(", ")}`);
+  if (errors.length) {
+    throw new Error(`scripts/web_modules.json does not match src/webserver/modules: ${errors.join("; ")}`);
+  }
+}
+
 function indentChunk(text) {
   return text.trimEnd().split(/\r?\n/).map((line) => {
     return line.trim() ? `  ${line}` : "";
@@ -44,6 +69,7 @@ function loadButtonTypes() {
 }
 
 function loadWebModules() {
+  assertWebModuleOrderCoversFiles();
   return WEB_MODULE_ORDER.map((name) => {
     const modulePath = path.join(MODULES_DIR, `${name}.js`);
     if (!fs.existsSync(modulePath)) {
