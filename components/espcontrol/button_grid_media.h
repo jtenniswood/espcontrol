@@ -31,8 +31,8 @@ struct MediaControlCtx {
   int pending_pct = -1;
   uint32_t pending_until_ms = 0;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
-  uint32_t secondary_color = DEFAULT_OFF_COLOR;
-  uint32_t tertiary_color = DEFAULT_TERTIARY_COLOR;
+  uint32_t secondary_color = SECONDARY_GREY;
+  uint32_t tertiary_color = TERTIARY_GREY;
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *label_lbl = nullptr;
@@ -1719,13 +1719,13 @@ inline void media_control_apply_volume_percent(MediaControlCtx *ctx, int pct,
 inline void media_control_style_tab(lv_obj_t *btn, bool active) {
   if (!btn) return;
   lv_obj_set_style_bg_color(
-    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? DEFAULT_TERTIARY_COLOR : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      label, lv_color_hex(active ? TERTIARY_GREY : DARK_TEXT_PRIMARY), LV_PART_MAIN);
   }
 }
 
@@ -1751,7 +1751,7 @@ inline lv_obj_t *media_control_create_tab_button(lv_obj_t *parent, const char *i
                                                  MediaControlTab tab,
                                                  int width_compensation_percent) {
   lv_obj_t *btn = control_modal_create_flat_icon_button(
-    parent, icon, font, DARK_BACKGROUND_TERTIARY, LV_OPA_TRANSP,
+    parent, icon, font, SECONDARY_GREY, LV_OPA_TRANSP,
     width_compensation_percent, 180);
   if (!btn) return nullptr;
   light_control_center_icon_label(control_modal_icon_label(btn));
@@ -1805,7 +1805,7 @@ inline lv_obj_t *media_control_create_icon_button(lv_obj_t *parent, const char *
                                                   const lv_font_t *font,
                                                   uint32_t pressed_color) {
   lv_obj_t *btn = control_modal_create_flat_icon_button(
-    parent, icon, font, DARK_BACKGROUND_SECONDARY, LV_OPA_COVER);
+    parent, icon, font, SECONDARY_GREY, LV_OPA_COVER);
   if (!btn) return nullptr;
   control_modal_apply_pressed_fill_color(btn, pressed_color);
   return btn;
@@ -1887,7 +1887,7 @@ inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
   if (!ui.progress_slider) return;
   lv_obj_add_flag(ui.progress_slider, LV_OBJ_FLAG_HIDDEN);
   media_control_style_progress_slider(
-    ui.progress_slider, DARK_BACKGROUND_SECONDARY, ctx->accent_color);
+    ui.progress_slider, SECONDARY_GREY, ctx->accent_color);
   ui.progress_fill = media_control_create_progress_fill(
     ui.progress_slider, lv_color_hex(ctx->accent_color));
   ui.progress_handle = media_control_create_progress_handle(ui.progress_slider);
@@ -1998,10 +1998,10 @@ inline void media_control_create_volume_tab_content(MediaControlCtx *ctx) {
 
   ui.volume_minus_btn = control_modal_create_round_button(
     ui.content_box, 56, find_icon("Minus"), ctx->icon_font,
-    DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+    DARK_BORDER, SECONDARY_GREY, ctx->width_compensation_percent);
   ui.volume_plus_btn = control_modal_create_round_button(
     ui.content_box, 56, find_icon("Plus"), ctx->icon_font,
-    DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+    DARK_BORDER, SECONDARY_GREY, ctx->width_compensation_percent);
   control_modal_apply_pressed_fill_color(ui.volume_minus_btn, ctx->accent_color);
   control_modal_apply_pressed_fill_color(ui.volume_plus_btn, ctx->accent_color);
   if (ui.volume_minus_btn) {
@@ -2322,7 +2322,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
     media_control_hide_modal();
     return;
   }
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
@@ -2609,8 +2609,8 @@ inline void open_device_volume_modal(lv_obj_t *anchor,
     ctx = new MediaVolumeCtx();
     ctx->max_pct = 100;
     ctx->accent_color = DEFAULT_SLIDER_COLOR;
-    ctx->secondary_color = DEFAULT_OFF_COLOR;
-    ctx->tertiary_color = DEFAULT_TERTIARY_COLOR;
+    ctx->secondary_color = SECONDARY_GREY;
+    ctx->tertiary_color = TERTIARY_GREY;
   }
   if (subscribed_player != player) {
     subscribed_player = player;
