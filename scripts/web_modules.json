@@ -4,6 +4,7 @@
   "firmware_metadata",
   "styles",
   "state",
+  "screen_rotation_state",
   "clock_bar_state",
   "firmware_update_state",
   "screensaver_timeout",

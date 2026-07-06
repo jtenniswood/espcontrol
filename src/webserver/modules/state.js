@@ -172,11 +172,6 @@ function getActiveScreensaverMode() {
   return "disabled";
 }
 
-function normalizeScreenRotation(value) {
-  value = String(value == null ? "" : value);
-  return allScreenRotationOptions().indexOf(value) !== -1 ? value : "0";
-}
-
 function uniqueOptions(options) {
   var out = [];
   (options || []).forEach(function (opt) {
@@ -184,49 +179,6 @@ function uniqueOptions(options) {
     if (out.indexOf(opt) < 0) out.push(opt);
   });
   return out;
-}
-
-function activeScreenRotationOptions() {
-  return sortScreenRotationOptions(uniqueOptions(state.screenRotationOptions || []));
-}
-
-function allScreenRotationOptions() {
-  return uniqueOptions(
-    (state.screenRotationOptions || [])
-      .concat(state.screenRotationDeviceOptions || [])
-  );
-}
-
-function syncScreenRotationSelect() {
-  if (!els.setScreenRotation) return;
-  els.setScreenRotation.innerHTML = "";
-  activeScreenRotationOptions().forEach(function (opt) {
-    appendScreenRotationOption(els.setScreenRotation, opt);
-  });
-  els.setScreenRotation.value = state.screenRotation;
-}
-
-function displayScreenRotation(value) {
-  var labels = CFG.features && CFG.features.screenRotationDisplayLabels;
-  value = String(value == null ? "" : value);
-  if (labels && Object.prototype.hasOwnProperty.call(labels, value)) return labels[value];
-  var offset = (CFG.features && parseInt(CFG.features.screenRotationDisplayOffset, 10)) || 0;
-  var n = parseInt(value, 10);
-  if (!isFinite(n)) return value;
-  return String((n + offset + 360) % 360);
-}
-
-function screenRotationSortValue(value) {
-  var displayed = parseInt(displayScreenRotation(value), 10);
-  if (isFinite(displayed)) return (displayed + 360) % 360;
-  var raw = parseInt(value, 10);
-  return isFinite(raw) ? (raw + 360) % 360 : 999;
-}
-
-function sortScreenRotationOptions(options) {
-  return (options || []).slice().sort(function (a, b) {
-    return screenRotationSortValue(a) - screenRotationSortValue(b);
-  });
 }
 
 function normalizeTemperatureUnit(value) {
@@ -265,13 +217,6 @@ function syncLanguageSelect() {
     appendLanguageOption(els.setLanguage, opt);
   });
   els.setLanguage.value = normalizeLanguage(state.language);
-}
-
-function appendScreenRotationOption(select, opt) {
-  var o = document.createElement("option");
-  o.value = opt;
-  o.textContent = displayScreenRotation(opt) + " deg";
-  select.appendChild(o);
 }
 
 function normalizeHour(value, fallback) {
@@ -536,7 +481,6 @@ var migrationTimer = null;
 var sliderMigrationTimer = null;
 var pendingSliderSubpageMigrations = {};
 var _eventSource = null;
-var SCREEN_ROTATION_STARTUP_FALLBACK_MS = 1200;
 var FIRMWARE_CHECKING_VERSION_LABEL = "Checking version...";
 var FIRMWARE_DEV_VERSION_LABEL = "Dev build";
 var FIRMWARE_UNKNOWN_VERSION_LABEL = "Version unknown";
@@ -561,40 +505,6 @@ function textSpan(text, className) {
   if (className) span.className = className;
   span.textContent = text == null ? "" : String(text);
   return span;
-}
-
-function screenRotationStartupRequired() {
-  return !!(CFG.features && CFG.features.screenRotation);
-}
-
-function gridPreviewBlockedByRotationStartup() {
-  return screenRotationStartupRequired() && !state.screenRotationInitialReady;
-}
-
-function clearInitialScreenRotationTimer() {
-  if (!state.screenRotationInitialTimer) return;
-  clearTimeout(state.screenRotationInitialTimer);
-  state.screenRotationInitialTimer = null;
-}
-
-function startInitialScreenRotationCheck() {
-  clearInitialScreenRotationTimer();
-  state.pendingButtonOrderRaw = null;
-  state.screenRotationInitialReady = !screenRotationStartupRequired();
-  if (!state.screenRotationInitialReady) {
-    state.screenRotationInitialTimer = setTimeout(resolveInitialScreenRotationCheck, SCREEN_ROTATION_STARTUP_FALLBACK_MS);
-  }
-}
-
-function resolveInitialScreenRotationCheck() {
-  if (state.screenRotationInitialReady) return;
-  clearInitialScreenRotationTimer();
-  state.screenRotationInitialReady = true;
-  if (state.pendingButtonOrderRaw !== null) {
-    applyButtonOrderValue(state.pendingButtonOrderRaw, true);
-    state.pendingButtonOrderRaw = null;
-  }
-  if (els.previewMain) renderPreview();
 }
 
 function renderFirmwareVersion() {

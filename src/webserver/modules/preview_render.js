@@ -1,5 +1,5 @@
 // ── Preview rendering (unified) ────────────────────────────────────────
-// @web-module-requires: state, grid, config_codec, controls, controls_fields
+// @web-module-requires: state, screen_rotation_state, grid, config_codec, controls, controls_fields
 
 function previewHtmlValue(typePreview, key, fallback) {
   return typePreview && Object.prototype.hasOwnProperty.call(typePreview, key)
