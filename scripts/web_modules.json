@@ -26,6 +26,7 @@
   "firmware_event_matchers",
   "app_title",
   "app_event_aliases",
+  "app_event_alias_wiring",
   "app_config_events",
   "app_events",
   "app",
