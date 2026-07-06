@@ -106,8 +106,8 @@ struct ClimateControlCtx {
   bool pending_temp_send = false;
   lv_timer_t *debounce_timer = nullptr;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
-  uint32_t secondary_color = DEFAULT_OFF_COLOR;
-  uint32_t tertiary_color = DEFAULT_TERTIARY_COLOR;
+  uint32_t secondary_color = SECONDARY_GREY;
+  uint32_t tertiary_color = TERTIARY_GREY;
   lv_obj_t *btn = nullptr;
   lv_obj_t *icon_lbl = nullptr;
   lv_obj_t *label_lbl = nullptr;
@@ -899,7 +899,7 @@ inline bool climate_has_active_arc_mode(ClimateControlCtx *ctx) {
 }
 
 inline uint32_t climate_modal_arc_color(ClimateControlCtx *ctx) {
-  if (!climate_has_active_arc_mode(ctx)) return DARK_BACKGROUND_SECONDARY;
+  if (!climate_has_active_arc_mode(ctx)) return SECONDARY_GREY;
   return ctx ? ctx->accent_color : DEFAULT_SLIDER_COLOR;
 }
 
@@ -1308,7 +1308,7 @@ inline lv_obj_t *climate_create_option_chip(lv_obj_t *parent, const char *icon,
   lv_obj_set_flex_grow(btn, 0);
   lv_obj_add_flag(btn, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
   lv_obj_set_style_radius(btn, 47, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -1397,7 +1397,7 @@ inline void climate_set_step_button_enabled(lv_obj_t *btn, bool enabled) {
   lv_style_selector_t disabled_selector =
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DISABLED);
   lv_obj_set_style_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, disabled_selector);
   lv_obj_set_style_opa(btn, LV_OPA_COVER, disabled_selector);
@@ -1425,13 +1425,13 @@ inline void climate_control_style_tab(lv_obj_t *btn, bool active, uint32_t accen
   if (!btn) return;
   (void) accent_color;
   lv_obj_set_style_bg_color(
-    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? DEFAULT_TERTIARY_COLOR : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      label, lv_color_hex(active ? TERTIARY_GREY : DARK_TEXT_PRIMARY), LV_PART_MAIN);
   }
 }
 
@@ -1449,7 +1449,7 @@ inline lv_obj_t *climate_control_create_tab_button(lv_obj_t *parent, const char 
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
   apply_width_compensation(btn, width_compensation_percent);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -2059,7 +2059,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.tab = climate_control_first_visible_tab(ctx);
 
   ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
@@ -2090,7 +2090,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_add_flag(ui.menu_view, LV_OBJ_FLAG_HIDDEN);
 
   ui.menu_close_btn = control_modal_create_round_button(ui.panel, 32, "\U000F0156", ctx->icon_font,
-    DARK_BORDER, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+    DARK_BORDER, SECONDARY_GREY, ctx->width_compensation_percent);
   lv_obj_set_style_bg_opa(ui.menu_close_btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.menu_close_btn, 0, LV_PART_MAIN);
   lv_obj_add_flag(ui.menu_close_btn, LV_OBJ_FLAG_HIDDEN);
@@ -2203,9 +2203,9 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   if (ctx->label_font) lv_obj_set_style_text_font(ui.status_lbl, ctx->label_font, LV_PART_MAIN);
 
   ui.minus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Minus"), ctx->icon_font,
-    DARK_CONTROL_NEUTRAL, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+    DARK_CONTROL_NEUTRAL, SECONDARY_GREY, ctx->width_compensation_percent);
   ui.plus_btn = control_modal_create_round_button(ui.panel, 72, find_icon("Plus"), ctx->icon_font,
-    DARK_CONTROL_NEUTRAL, DARK_BACKGROUND_TERTIARY, ctx->width_compensation_percent);
+    DARK_CONTROL_NEUTRAL, SECONDARY_GREY, ctx->width_compensation_percent);
   climate_apply_step_button_icon_size(ui.minus_btn);
   climate_apply_step_button_icon_size(ui.plus_btn);
   lv_obj_add_event_cb(ui.minus_btn, [](lv_event_t *) {
