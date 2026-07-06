@@ -355,6 +355,9 @@ def validate_screen_box(slug: str, errors: list[str], value: Any, name: str) -> 
     for key in ("width", "aspect"):
         if not isinstance(screen.get(key), str) or not screen.get(key):
             errors.append(device_error(slug, f"{name}.{key} must be a non-empty string"))
+    width = screen.get("width")
+    if isinstance(width, str) and not re.fullmatch(r"(?:[1-9]\d*(?:\.\d+)?|0\.\d+)%", width):
+        errors.append(device_error(slug, f"{name}.width must be a percentage, for example '100%'"))
     aspect = screen.get("aspect")
     if isinstance(aspect, str) and not re.fullmatch(r"[1-9]\d*/[1-9]\d*", aspect):
         errors.append(device_error(slug, f"{name}.aspect must look like '1024/600'"))
