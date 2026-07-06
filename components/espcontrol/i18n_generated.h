@@ -4207,8 +4207,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Version unknown";
   if (std::strcmp(key, "volume") == 0) return "Volume";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Waiting for Home Assistant";
-  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Home Assistant Offline";
-  if (std::strcmp(key, "check_the_status_of_your_home_assistant_server") == 0) return "Check the status of your Home Assistant server";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Trying to connect to Home Assistant";
+  if (std::strcmp(key, "check_the_status_of_your_home_assistant_server") == 0) return "If this persists, check your server for issues";
   if (std::strcmp(key, "weather") == 0) return "Weather";
   if (std::strcmp(key, "weekly") == 0) return "Weekly";
   if (std::strcmp(key, "window") == 0) return "Window";

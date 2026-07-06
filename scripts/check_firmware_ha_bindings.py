@@ -1638,8 +1638,8 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
         elif (
             "delay: 5s" not in body
             or "ha_api_state_connected()" not in body
-            or "Home Assistant Offline" not in body
-            or "Check the status of your Home Assistant server" not in body
+            or "Trying to connect to Home Assistant" not in body
+            or "If this persists, check your server for issues" not in body
             or "lvgl.page.show: ha_setup_page" not in body
         ):
             errors.append(f"{rel}: keep the Home Assistant waiting screen delayed and tied to HA state connection")
@@ -4384,8 +4384,8 @@ def run_self_test() -> int:
         "          condition:\n"
         "            lambda: 'return !ha_api_state_connected();'\n"
         "          then:\n"
-        "            - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Home Assistant Offline\"));'\n"
-        "            - lambda: 'lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n(\"Check the status of your Home Assistant server\"));'\n"
+        "            - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Trying to connect to Home Assistant\"));'\n"
+        "            - lambda: 'lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n(\"If this persists, check your server for issues\"));'\n"
         "            - lvgl.page.show: ha_setup_page\n",
         (),
     )
