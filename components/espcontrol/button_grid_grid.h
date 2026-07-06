@@ -119,8 +119,8 @@ struct CardPalette {
   bool has_off = false;
   bool has_sensor_color = false;
   uint32_t on_val = DEFAULT_SLIDER_COLOR;
-  uint32_t off_val = DEFAULT_OFF_COLOR;
-  uint32_t sensor_val = DEFAULT_TERTIARY_COLOR;
+  uint32_t off_val = SECONDARY_GREY;
+  uint32_t sensor_val = TERTIARY_GREY;
 };
 
 inline lv_coord_t large_sensor_unit_offset_px(const lv_font_t *large_font, int percent) {
@@ -1353,8 +1353,8 @@ inline void grid_phase2(
         FanCardCtx *ctx = create_fan_card_context(
           s, p,
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
-          palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+          palette.has_off ? palette.off_val : SECONDARY_GREY,
+          palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           display_icon_font(display),
           display_main_width_percent(display));
@@ -1492,8 +1492,8 @@ inline void grid_phase2(
           MediaControlCtx *ctx = grid_track_media_control_runtime(s.btn, create_media_control_context(
             s, p,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
-            palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+            palette.has_off ? palette.off_val : SECONDARY_GREY,
+            palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
             display_media_control_title_font(display),
             display_media_control_artist_font(
               display, display_volume_label_font(
@@ -2058,8 +2058,8 @@ inline void grid_phase2(
           FanCardCtx *ctx = create_fan_card_context(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
-            palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+            palette.has_off ? palette.off_val : SECONDARY_GREY,
+            palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             display_icon_font(display),
             display_main_width_percent(display));
@@ -2248,8 +2248,8 @@ inline void grid_phase2(
             MediaControlCtx *ctx = grid_delete_media_control_with_owner(sb_btn, create_media_control_context(
               sub_slot, sb_cfg,
               has_on ? on_val : DEFAULT_SLIDER_COLOR,
-              palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
-              palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+              palette.has_off ? palette.off_val : SECONDARY_GREY,
+              palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
               display_media_control_title_font(display),
               display_media_control_artist_font(
                 display, display_volume_label_font(
