@@ -1,5 +1,5 @@
 // ── Clock Bar State ───────────────────────────────────────────────────
-// @web-module-requires: state, environment_state
+// @web-module-requires: state, environment_state, entity_state
 
 function clockBarVisibleInPreview() {
   return !!state.clockBarOn;
