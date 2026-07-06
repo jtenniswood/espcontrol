@@ -22,6 +22,7 @@ import urllib.request
 from pathlib import Path
 
 from device_profiles import load_device_profiles, public_device_capabilities, web_config
+from check_timezones import AUTO_TIMEZONE_OPTION, load_timezone_select_options, timezone_option_id
 from product_schema import ProductSchemaError, assert_card_contract_valid
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1438,11 +1439,8 @@ def build_web_devices():
 
 def load_timezone_options():
     options = []
-    for match in re.finditer(r'^\s+- "([^"]+)"$', TIME_YAML.read_text(), re.M):
-        option = match.group(1)
-        if option == "Auto (Home Assistant)" or (
-            " (GMT" in option and ("/" in option or option.startswith("UTC "))
-        ):
+    for _line_no, option in load_timezone_select_options():
+        if option == AUTO_TIMEZONE_OPTION or timezone_option_id(option) is not None:
             options.append(option)
     if not options:
         raise BuildError(f"No timezone options found in {TIME_YAML.relative_to(ROOT)}")
