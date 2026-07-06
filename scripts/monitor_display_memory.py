@@ -296,6 +296,34 @@ def run_self_test() -> int:
     assert ("missing", "psram_largest") not in trends
     assert parse_metric_payload('{"value": "12345 B"}') == 12345
     assert parse_metric_payload("state: 67890") == 67890
+
+    original_fetch_metric = fetch_metric
+    try:
+        def optional_missing_fetch(host: str, metric: str, timeout: float) -> float:
+            if metric == "heap_largest":
+                raise MonitorError("missing optional metric")
+            return 42.0
+
+        globals()["fetch_metric"] = optional_missing_fetch
+        sample = collect_sample([Target("optional", "example.invalid")], 1.0)[0]
+        assert math.isnan(sample.values["heap_largest"])
+        assert sample.values["heap_free"] == 42.0
+
+        def required_missing_fetch(host: str, metric: str, timeout: float) -> float:
+            if metric == "heap_free":
+                raise MonitorError("missing required metric")
+            return 42.0
+
+        globals()["fetch_metric"] = required_missing_fetch
+        try:
+            collect_sample([Target("required", "example.invalid")], 1.0)
+        except MonitorError:
+            pass
+        else:
+            raise AssertionError("self-test expected missing required metric to fail")
+    finally:
+        globals()["fetch_metric"] = original_fetch_metric
+
     print("Memory monitor self-test passed.")
     return 0
 

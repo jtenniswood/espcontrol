@@ -627,12 +627,16 @@ def generated_fixture_assertions(fixtures: list[dict], comment: str, prefix: str
     lines = [f"  // {comment}"]
     for fixture in fixtures:
         name = fixture["name"]
-        input_value = fixture["input"]
         expected = fixture["expected"]
         var_name = prefix + "".join(ch if ch.isalnum() else "_" for ch in name.lower())
-        lines.append(f"  auto {var_name} = parse_cfg({cpp_string(input_value)});")
-        for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
-            lines.append(f"  assert({var_name}.{field} == {cpp_string(expected[field])});")
+        cases = [("input", fixture["input"])]
+        if "canonical" in fixture:
+            cases.append(("canonical", fixture["canonical"]))
+        for case_name, input_value in cases:
+            case_var_name = var_name if case_name == "input" else f"{var_name}_{case_name}"
+            lines.append(f"  auto {case_var_name} = parse_cfg({cpp_string(input_value)});")
+            for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
+                lines.append(f"  assert({case_var_name}.{field} == {cpp_string(expected[field])});")
     return "\n".join(lines) + "\n"
 
 
