@@ -116,6 +116,8 @@ def validate_entity_names(data: dict[str, Any]) -> list[str]:
             or not all(isinstance(v, str) and v for v in object_ids)
         ):
             errors.append(path_error(f"{entry_path}.objectIds", "must be a list of non-empty strings"))
+        elif isinstance(object_ids, list) and len(object_ids) != len(set(object_ids)):
+            errors.append(path_error(f"{entry_path}.objectIds", "must not contain duplicate values"))
         groups = entry.get("groups", [])
         if groups and (
             not isinstance(groups, list)
