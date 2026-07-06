@@ -28,6 +28,7 @@
   "app_event_aliases",
   "app_event_alias_wiring",
   "app_config_events",
+  "app_state_event_handlers",
   "app_events",
   "app",
   "app_test_hooks",
