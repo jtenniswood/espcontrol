@@ -90,6 +90,13 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
 
 
 def test_generated_web(profiles: dict[str, dict]) -> None:
+    expected_slugs = set(profiles)
+    actual_slugs = {path.name for path in WEB_OUTPUT_DIR.iterdir() if path.is_dir()}
+    stale_slugs = sorted(actual_slugs - expected_slugs)
+    assert not stale_slugs, (
+        "generated web bundle folder has no device profile: " + ", ".join(stale_slugs)
+    )
+
     for slug, profile in profiles.items():
         path = WEB_OUTPUT_DIR / slug / "www.js"
         assert path.is_file(), f"{slug}: generated web bundle is missing"
