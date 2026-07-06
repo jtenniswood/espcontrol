@@ -1213,7 +1213,9 @@ inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizonta
 }
 
 // Resize the colored fill overlay to reflect the current slider percentage
-inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool horizontal, bool inverted, lv_coord_t r) {
+inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool horizontal,
+                               bool inverted, lv_coord_t r,
+                               bool keep_min_horizontal_handle = false) {
   if (!fill || !btn) return;
   if (pct < 0) pct = 0;
   if (pct > 100) pct = 100;
@@ -1223,6 +1225,11 @@ inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool hori
   lv_obj_set_style_radius(fill, r, LV_PART_MAIN);
   if (horizontal) {
     lv_coord_t w = (lv_coord_t)((int32_t)bw * pct / 100);
+    if (keep_min_horizontal_handle && r > 0) {
+      lv_coord_t min_w = r * 2;
+      if (min_w > bw) min_w = bw;
+      if (w < min_w) w = min_w;
+    }
     lv_obj_set_size(fill, w, bh);
     lv_obj_align(fill, inverted ? LV_ALIGN_RIGHT_MID : LV_ALIGN_LEFT_MID, 0, 0);
   } else {
@@ -1282,7 +1289,8 @@ inline void slider_update_ctx_fill(SliderCtx *c, lv_obj_t *btn, int pct) {
     slider_update_horizontal_track_bg(c->media_track_bg, btn);
     slider_update_horizontal_track_fill(c->fill, btn, pct);
   } else {
-    slider_update_fill(c->fill, btn, pct, c->horizontal, c->inverted, c->radius);
+    slider_update_fill(c->fill, btn, pct, c->horizontal, c->inverted, c->radius,
+                       c->media_position);
   }
 }
 
