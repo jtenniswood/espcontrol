@@ -1,3 +1,5 @@
+// @web-module-requires: language_state, clock_bar_state
+
 if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
   registerEspControlTestHookGroup("preview", {
     clockBarVisibleInPreviewFor: function (clockBarOn, screensaverAction) {
