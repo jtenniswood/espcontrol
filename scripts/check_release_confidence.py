@@ -30,6 +30,16 @@ def assert_same_slugs(expected: list[str], actual: list[str], label: str) -> Non
     assert actual == expected, f"{label} slugs differ: {actual} != {expected}"
 
 
+def assert_unique_public_values(devices: list[dict], key: str, label: str) -> None:
+    seen: dict[str, str] = {}
+    for device in devices:
+        slug = device.get("slug", "<unknown>")
+        value = device.get(key)
+        assert isinstance(value, str) and value, f"{slug}: public device profile missing {label}"
+        assert value not in seen, f"{slug}: {label} {value!r} duplicates {seen[value]}"
+        seen[value] = slug
+
+
 def assert_same_names(expected: list[str], actual: list[str], label: str) -> None:
     assert sorted(actual) == sorted(expected), f"{label} names differ: {sorted(actual)} != {sorted(expected)}"
 
@@ -38,6 +48,8 @@ def test_public_device_profiles(profile_slugs: list[str]) -> list[dict]:
     capabilities = read_json(DEVICE_CAPABILITIES_JSON)
     devices = capabilities["devices"]
     assert_same_slugs(profile_slugs, [device["slug"] for device in devices], "public device profile")
+    assert_unique_public_values(devices, "installSlug", "install slug")
+    assert_unique_public_values(devices, "docsPath", "docs path")
     return devices
 
 
