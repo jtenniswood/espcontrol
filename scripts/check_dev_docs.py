@@ -446,15 +446,16 @@ def check_generated_files(errors: list[str]) -> None:
 
 def source_truth_path_targets(value: str) -> list[str]:
     prefixes = ("common/", "components/", "compatibility/", "devices/", "docs/", "scripts/", "src/")
+    targets: list[str] = []
     quoted = re.findall(r"`([^`]+)`", value)
-    if quoted:
-        return [target for target in quoted if target.startswith(prefixes)]
     if value.startswith(("generated ", "no generated ", "compile ")):
-        return []
+        return [target for target in quoted if target.startswith(prefixes)]
+    targets.extend(target for target in quoted if target.startswith(prefixes))
     for prefix in prefixes:
         if value.startswith(prefix):
-            return [value.split(",", 1)[0].split(" ", 1)[0]]
-    return []
+            targets.append(value.split(",", 1)[0].split(" ", 1)[0])
+            break
+    return list(dict.fromkeys(targets))
 
 
 def check_source_truth_path(value: str, label: str, errors: list[str]) -> None:
