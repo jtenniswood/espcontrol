@@ -1,5 +1,5 @@
 // ── Export / Import ────────────────────────────────────────────────────
-// @web-module-requires: state, screensaver_timeout, api, config_codec, backup_contract
+// @web-module-requires: state, firmware_update_state, screensaver_timeout, api, config_codec, backup_contract
 
 function backupExportScreenSizeSlug(value) {
   value = String(value || "").trim().toLowerCase();
