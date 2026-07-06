@@ -128,6 +128,10 @@ def verify_manifest(
         raise FirmwareReleaseError(f"{manifest_path} home_assistant_domain must be esphome")
 
     build = first_build(manifest, manifest_path)
+    chip_family = build.get("chipFamily")
+    if not isinstance(chip_family, str) or not chip_family.strip():
+        raise FirmwareReleaseError(f"{manifest_path} build chipFamily must be a non-empty string")
+
     ota = build.get("ota")
     if not isinstance(ota, dict):
         raise FirmwareReleaseError(f"{manifest_path} build has no ota object")
