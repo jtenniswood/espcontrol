@@ -9,6 +9,10 @@ from typing import Any
 from device_profiles import DEVICE_MANIFEST, DeviceProfileError, load_manifest_data, rel, validate_manifest_data
 
 
+def docs_path_stem(docs_path: str) -> str:
+    return docs_path.rstrip("/").split("/")[-1]
+
+
 def validate_unique_docs_paths(data: dict[str, Any]) -> list[str]:
     devices = data.get("devices")
     if not isinstance(devices, dict):
@@ -25,11 +29,12 @@ def validate_unique_docs_paths(data: dict[str, Any]) -> list[str]:
         docs_path = public.get("docsPath")
         if not isinstance(docs_path, str) or not docs_path:
             continue
-        previous = seen.get(docs_path)
+        stem = docs_path_stem(docs_path)
+        previous = seen.get(stem)
         if previous is not None:
-            errors.append(f"{slug}: public.docsPath duplicates {previous}: {docs_path}")
+            errors.append(f"{slug}: public.docsPath stem duplicates {previous}: {stem}")
             continue
-        seen[docs_path] = slug
+        seen[stem] = slug
     return errors
 
 
@@ -37,12 +42,12 @@ def self_test() -> None:
     data = {
         "devices": {
             "alpha": {"public": {"docsPath": "/screens/shared"}},
-            "beta": {"public": {"docsPath": "/screens/shared"}},
+            "beta": {"public": {"docsPath": "/screens/archive/shared/"}},
             "gamma": {"public": {"docsPath": "/screens/gamma"}},
         }
     }
     errors = validate_unique_docs_paths(data)
-    assert errors == ["beta: public.docsPath duplicates alpha: /screens/shared"], errors
+    assert errors == ["beta: public.docsPath stem duplicates alpha: shared"], errors
     assert validate_unique_docs_paths({"devices": {}}) == []
     print("Device manifest self-test passed.")
 
