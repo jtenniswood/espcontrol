@@ -117,8 +117,13 @@ def validate_entity_names(data):
         if isinstance(value, str):
             names_by_domain.setdefault(domain, {}).setdefault(value, []).append(key)
         object_ids = entry.get("objectIds", [])
-        if object_ids and (not isinstance(object_ids, list) or not all(isinstance(v, str) and v for v in object_ids)):
+        if object_ids and (
+            not isinstance(object_ids, list)
+            or not all(isinstance(v, str) and v for v in object_ids)
+        ):
             errors.append(f"{key}: objectIds must be a list of strings")
+        elif isinstance(object_ids, list) and len(object_ids) != len(set(object_ids)):
+            errors.append(f"{key}: objectIds must not contain duplicate values")
         groups = entry.get("groups", [])
         if groups and (not isinstance(groups, list) or not all(isinstance(v, str) and v for v in groups)):
             errors.append(f"{key}: groups must be a list of strings")
