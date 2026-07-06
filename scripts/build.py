@@ -249,6 +249,7 @@ def unescape_compact_string(value):
 
 def load_compact_strings(path):
     strings = {}
+    key_lines = {}
     for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line or line.startswith("#"):
             continue
@@ -258,6 +259,12 @@ def load_compact_strings(path):
         key = key.strip()
         if not key:
             raise BuildError(f"Empty strings key in {path.relative_to(ROOT)}:{line_no}")
+        if key in key_lines:
+            raise BuildError(
+                f"Duplicate strings key {key!r} in {path.relative_to(ROOT)}:"
+                f"{line_no} (first defined on line {key_lines[key]})"
+            )
+        key_lines[key] = line_no
         strings[key] = unescape_compact_string(value)
     return strings
 
@@ -1413,6 +1420,22 @@ def load_web_module_order():
     order = load_json(WEB_MODULE_ORDER_PATH)
     if not isinstance(order, list) or not all(isinstance(name, str) and name for name in order):
         raise BuildError(f"Invalid web module order: {WEB_MODULE_ORDER_PATH.relative_to(ROOT)}")
+    actual = sorted(path.stem for path in MODULES_DIR.glob("*.js"))
+    duplicates = sorted({name for name in order if order.count(name) > 1})
+    missing = sorted(set(actual) - set(order))
+    unknown = sorted(set(order) - set(actual))
+    errors = []
+    if duplicates:
+        errors.append("duplicate entries: " + ", ".join(duplicates))
+    if missing:
+        errors.append("missing modules: " + ", ".join(missing))
+    if unknown:
+        errors.append("unknown modules: " + ", ".join(unknown))
+    if errors:
+        raise BuildError(
+            f"{WEB_MODULE_ORDER_PATH.relative_to(ROOT)} does not match "
+            f"{MODULES_DIR.relative_to(ROOT)}: " + "; ".join(errors)
+        )
     return order
 
 

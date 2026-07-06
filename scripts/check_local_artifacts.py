@@ -25,6 +25,9 @@ SKIP_PATHS = {
 }
 TRACKED_ARTIFACT_SUFFIXES = (".pyc", ".pyo")
 TRACKED_ARTIFACT_NAMES = {".DS_Store"}
+STALE_TRACKED_ARTIFACTS = {
+    Path("common/config/strings.en.json"),
+}
 TEMP_PR_PREFIX = ".tmp-pr"
 
 
@@ -49,6 +52,7 @@ def find_tracked_local_artifacts() -> list[Path]:
             "__pycache__" in path.parts
             or path.name in TRACKED_ARTIFACT_NAMES
             or path.suffix in TRACKED_ARTIFACT_SUFFIXES
+            or path in STALE_TRACKED_ARTIFACTS
         ):
             paths.append(path)
     return sorted(paths)
