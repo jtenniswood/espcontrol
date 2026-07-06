@@ -136,6 +136,7 @@ const normalizedV1 = hooks.normalizeBackupConfig({
 
 assert.strictEqual(normalizedV1.version, 2, "v1 imports normalize to v2");
 assert.strictEqual(normalizedV1.format, hooks.BACKUP_FORMAT, "v1 imports gain the v2 marker");
+assert.deepStrictEqual(plain(normalizedV1.source), { device: "panel-a", slots: 2 }, "v1 imports preserve source metadata");
 assert.deepStrictEqual(buttonShape(normalizedV1.buttons[0]), buttonShape({
   entity: "weather.home",
   label: "",
