@@ -22,7 +22,11 @@ import urllib.request
 from pathlib import Path
 
 from device_profiles import load_device_profiles, public_device_capabilities, web_config
-from product_schema import ProductSchemaError, assert_card_contract_valid
+from product_schema import (
+    ProductSchemaError,
+    assert_card_contract_valid,
+    assert_entity_names_valid as assert_product_entity_names_valid,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 MDI_VERSION = "7.4.47"
@@ -126,13 +130,10 @@ def validate_entity_names(data):
 
 
 def assert_entity_names_valid(data):
-    errors = validate_entity_names(data)
-    if not errors:
-        return
-    print("Entity name registry is invalid:")
-    for error in errors:
-        print(f"  {error}")
-    raise BuildError("Entity name validation failed.")
+    try:
+        assert_product_entity_names_valid(data)
+    except ProductSchemaError as exc:
+        raise BuildError(str(exc)) from exc
 
 
 def yaml_quote(value):
