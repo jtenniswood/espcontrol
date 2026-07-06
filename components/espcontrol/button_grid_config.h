@@ -2545,12 +2545,4 @@ inline void refresh_temperature_unit_labels() {
 
 #include "button_grid_access_cards.h"
 
-inline bool alarm_card_show_status_icon(const ParsedCfg &p) {
-  return normalize_alarm_icon_display(cfg_option_value(p.options, "icon_display")) == "status";
-}
-
-inline bool alarm_card_show_status_label(const ParsedCfg &p) {
-  return normalize_alarm_label_display(cfg_option_value(p.options, "label_display")) == "status";
-}
-
 #include "button_grid_local_controls.h"

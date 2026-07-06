@@ -98,6 +98,14 @@ struct AlarmDeferredAction {
   bool submit_pin = false;
 };
 
+inline bool alarm_card_show_status_icon(const ParsedCfg &p) {
+  return normalize_alarm_icon_display(cfg_option_value(p.options, "icon_display")) == "status";
+}
+
+inline bool alarm_card_show_status_label(const ParsedCfg &p) {
+  return normalize_alarm_label_display(cfg_option_value(p.options, "label_display")) == "status";
+}
+
 inline AlarmControlModalUi &alarm_control_modal_ui() {
   static AlarmControlModalUi ui;
   return ui;
