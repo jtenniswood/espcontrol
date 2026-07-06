@@ -48,10 +48,19 @@ def rel(path: Path) -> str:
         return str(path)
 
 
+def reject_duplicate_json_keys(path: Path, pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ProductSchemaError(f"{rel(path)} contains duplicate JSON key {key!r}")
+        result[key] = value
+    return result
+
+
 def load_json(path: Path) -> Any:
     try:
         with path.open(encoding="utf-8") as f:
-            return json.load(f)
+            return json.load(f, object_pairs_hook=lambda pairs: reject_duplicate_json_keys(path, pairs))
     except FileNotFoundError as exc:
         raise ProductSchemaError(f"{rel(path)} was not found") from exc
     except json.JSONDecodeError as exc:
