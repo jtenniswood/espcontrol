@@ -1412,6 +1412,22 @@ def load_web_module_order():
     order = load_json(WEB_MODULE_ORDER_PATH)
     if not isinstance(order, list) or not all(isinstance(name, str) and name for name in order):
         raise BuildError(f"Invalid web module order: {WEB_MODULE_ORDER_PATH.relative_to(ROOT)}")
+    actual = sorted(path.stem for path in MODULES_DIR.glob("*.js"))
+    duplicates = sorted({name for name in order if order.count(name) > 1})
+    missing = sorted(set(actual) - set(order))
+    unknown = sorted(set(order) - set(actual))
+    errors = []
+    if duplicates:
+        errors.append("duplicate entries: " + ", ".join(duplicates))
+    if missing:
+        errors.append("missing modules: " + ", ".join(missing))
+    if unknown:
+        errors.append("unknown modules: " + ", ".join(unknown))
+    if errors:
+        raise BuildError(
+            f"{WEB_MODULE_ORDER_PATH.relative_to(ROOT)} does not match "
+            f"{MODULES_DIR.relative_to(ROOT)}: " + "; ".join(errors)
+        )
     return order
 
 
