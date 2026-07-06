@@ -241,10 +241,6 @@ function normalizeScreensaverDimmedBrightness(value) {
   return EspControlModel.normalizeScreensaverDimmedBrightness(value);
 }
 
-function normalizeNtpServer(value, fallback) {
-  return EspControlModel.normalizeNtpServer(value, fallback);
-}
-
 function monthNameForIndex(index) {
   var monthIndex = parseInt(index, 10);
   if (!isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return "Date";
@@ -255,18 +251,6 @@ function monthNameForIndex(index) {
     return new Intl.DateTimeFormat("en", { month: "long" })
       .format(new Date(Date.UTC(2000, monthIndex, 1)));
   }
-}
-
-function hasCustomNtpServers() {
-  return normalizeNtpServer(state.ntpServer1, NTP_SERVER_DEFAULTS[0]) !== NTP_SERVER_DEFAULTS[0] ||
-    normalizeNtpServer(state.ntpServer2, NTP_SERVER_DEFAULTS[1]) !== NTP_SERVER_DEFAULTS[1] ||
-    normalizeNtpServer(state.ntpServer3, NTP_SERVER_DEFAULTS[2]) !== NTP_SERVER_DEFAULTS[2];
-}
-
-function resetNtpServersToDefaults() {
-  state.ntpServer1 = NTP_SERVER_DEFAULTS[0];
-  state.ntpServer2 = NTP_SERVER_DEFAULTS[1];
-  state.ntpServer3 = NTP_SERVER_DEFAULTS[2];
 }
 
 function formatDuration(seconds) {
@@ -388,19 +372,6 @@ function syncScreenScheduleUi() {
   if (els.setScheduleBadge) {
     els.setScheduleBadge.className = "sp-card-badge" + (state.scheduleEnabled ? "" : " sp-hidden");
   }
-}
-
-function syncNtpServerUi() {
-  if (els.setCustomNtpServersToggle) {
-    els.setCustomNtpServersToggle.checked = !!state.customNtpServers;
-  }
-  if (els.setNtpServerFields) {
-    els.setNtpServerFields.className =
-      "sp-field-stack" + (state.customNtpServers ? "" : " sp-hidden");
-  }
-  syncInput(els.setNtpServer1, state.ntpServer1);
-  syncInput(els.setNtpServer2, state.ntpServer2);
-  syncInput(els.setNtpServer3, state.ntpServer3);
 }
 
 function normalizeTheme(value) {
