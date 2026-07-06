@@ -24,6 +24,7 @@
   "model_generated",
   "grid",
   "api",
+  "firmware_update_post_api",
   "public_firmware_install",
   "config_codec",
   "controls",
