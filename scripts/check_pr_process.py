@@ -15,7 +15,9 @@ TEMPLATE = ROOT / ".github" / "pull_request_template.md"
 DOCS_HEADING = "Documentation decision"
 TESTING_HEADING = "Testing"
 STATUS_HEADING = "PR status"
-REQUIRED_BODY_HEADINGS = (DOCS_HEADING, TESTING_HEADING, STATUS_HEADING)
+ISSUE_HEADING = "Issue handling"
+ISSUE_CONFIRMATION = "Do not close related issues until the user confirms the fix works"
+REQUIRED_BODY_HEADINGS = (DOCS_HEADING, TESTING_HEADING, STATUS_HEADING, ISSUE_HEADING)
 TEMPLATE_CHECKLIST_ITEMS = (
     "Updated public docs or release-facing notes",
     "No docs needed because this does not change user-visible behavior/configuration",
@@ -24,6 +26,7 @@ TEMPLATE_CHECKLIST_ITEMS = (
     "Device testing is required before merge",
     "Device testing is not required",
     "Ready to merge after user confirmation",
+    ISSUE_CONFIRMATION,
 )
 
 
@@ -103,6 +106,12 @@ def assert_template_ready() -> None:
     status_items = re.findall(r"^\s*- \[[ xX]\] +(.+)$", status, re.MULTILINE)
     assert len(status_items) >= 5, "PR template must include a clear PR status checklist."
 
+    issue = section_text(text, ISSUE_HEADING)
+    issue_items = re.findall(r"^\s*- \[[ xX]\] +(.+)$", issue, re.MULTILINE)
+    assert any(ISSUE_CONFIRMATION in item for item in issue_items), (
+        "PR template must include the related-issue confirmation."
+    )
+
 
 def assert_pr_body_ready(body: str) -> None:
     assert body.strip(), "Add a PR description that explains the purpose and testing notes."
@@ -155,6 +164,12 @@ def assert_pr_body_ready(body: str) -> None:
     assert status_selected, "Choose one PR status item so the next action is obvious."
     assert len(status_selected) == 1, "Choose exactly one PR status item."
 
+    issue = section_text(body, ISSUE_HEADING)
+    issue_selected = checked_items(issue)
+    assert any(ISSUE_CONFIRMATION in item for item in issue_selected), (
+        "Confirm related issues will stay open until the user confirms the fix works."
+    )
+
 
 def pr_body_from_event(event_path: str | None) -> str | None:
     if not event_path:
@@ -201,6 +216,10 @@ Affected display/device, if applicable:
 - [ ] Device test failed; details below.
 - [ ] Device tested successfully.
 - [ ] Ready to merge after user confirmation.
+
+## Issue handling
+
+- [x] Do not close related issues until the user confirms the fix works.
 """
     assert_pr_body_ready(valid)
 
