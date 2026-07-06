@@ -25,6 +25,8 @@ struct SliderCtx {
   uint32_t media_seek_pending_ms = 0;
   bool media_playing = false;
   lv_obj_t *media_slider = nullptr;
+  lv_timer_t *media_timer = nullptr;
+  uint8_t media_position_refresh_remaining = 0;
   lv_obj_t *media_track_bg = nullptr;
   lv_obj_t *media_value_lbl = nullptr;
   lv_obj_t *media_status_lbl = nullptr;
@@ -1211,7 +1213,9 @@ inline void slider_fit_to_button(lv_obj_t *slider, lv_obj_t *btn, bool horizonta
 }
 
 // Resize the colored fill overlay to reflect the current slider percentage
-inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool horizontal, bool inverted, lv_coord_t r) {
+inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool horizontal,
+                               bool inverted, lv_coord_t r,
+                               bool keep_min_horizontal_handle = false) {
   if (!fill || !btn) return;
   if (pct < 0) pct = 0;
   if (pct > 100) pct = 100;
@@ -1221,6 +1225,11 @@ inline void slider_update_fill(lv_obj_t *fill, lv_obj_t *btn, int pct, bool hori
   lv_obj_set_style_radius(fill, r, LV_PART_MAIN);
   if (horizontal) {
     lv_coord_t w = (lv_coord_t)((int32_t)bw * pct / 100);
+    if (keep_min_horizontal_handle && r > 0) {
+      lv_coord_t min_w = r * 2;
+      if (min_w > bw) min_w = bw;
+      if (w < min_w) w = min_w;
+    }
     lv_obj_set_size(fill, w, bh);
     lv_obj_align(fill, inverted ? LV_ALIGN_RIGHT_MID : LV_ALIGN_LEFT_MID, 0, 0);
   } else {
@@ -1280,8 +1289,20 @@ inline void slider_update_ctx_fill(SliderCtx *c, lv_obj_t *btn, int pct) {
     slider_update_horizontal_track_bg(c->media_track_bg, btn);
     slider_update_horizontal_track_fill(c->fill, btn, pct);
   } else {
-    slider_update_fill(c->fill, btn, pct, c->horizontal, c->inverted, c->radius);
+    slider_update_fill(c->fill, btn, pct, c->horizontal, c->inverted, c->radius,
+                       c->media_position);
   }
+}
+
+inline void slider_prime_media_position_fill(SliderCtx *c, lv_obj_t *btn) {
+  if (!c || !c->media_position || !c->fill || !btn || c->media_track_bg) return;
+  lv_coord_t min_w = c->radius > 0 ? c->radius * 2 : 1;
+  lv_coord_t btn_w = lv_obj_get_width(btn);
+  if (btn_w > 0 && min_w > btn_w) min_w = btn_w;
+  lv_obj_set_style_radius(c->fill, c->radius, LV_PART_MAIN);
+  lv_obj_set_width(c->fill, min_w);
+  lv_obj_set_height(c->fill, lv_pct(100));
+  lv_obj_align(c->fill, c->inverted ? LV_ALIGN_RIGHT_MID : LV_ALIGN_LEFT_MID, 0, 0);
 }
 
 inline void slider_refresh_geometry(lv_obj_t *slider) {
