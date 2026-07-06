@@ -36,7 +36,7 @@ def yaml_script_body(text: str, script_id: str) -> str | None:
 
 def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
     allocation_pattern = re.compile(r"\bnew\s+(" + "|".join(FORBIDDEN_ALLOCATIONS) + r")\b")
-    layer_top_pattern = re.compile(r"\blv_obj_create\s*\(\s*lv_layer_top\s*\(\s*\)\s*\)")
+    layer_top_pattern = re.compile(r"\blv_layer_top\s*\(\s*\)")
     manual_overlay_delete_pattern = re.compile(r"\blv_obj_del\s*\(\s*(?:ui\.)?(?:menu_)?overlay\s*\)")
     errors: list[str] = []
 
@@ -51,7 +51,7 @@ def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
             if path.name not in LAYER_TOP_ALLOWLIST and layer_top_pattern.search(line):
                 rel = path.relative_to(root)
                 errors.append(
-                    f"{rel}:{line_no}: open modal overlays through button_grid_modal.h helpers"
+                    f"{rel}:{line_no}: route modal top-layer access through button_grid_modal.h helpers"
                 )
             if path.name not in MANUAL_OVERLAY_DELETE_ALLOWLIST and manual_overlay_delete_pattern.search(line):
                 rel = path.relative_to(root)
@@ -963,7 +963,12 @@ def run_self_test() -> int:
     expect_errors(
         "ad hoc top layer",
         {"button_grid_climate.h": "lv_obj_t *overlay = lv_obj_create(lv_layer_top());\n"},
-        ("open modal overlays through button_grid_modal.h helpers",),
+        ("route modal top-layer access through button_grid_modal.h helpers",),
+    )
+    expect_errors(
+        "ad hoc top layer reference",
+        {"button_grid_alarm.h": "lv_obj_move_foreground(lv_layer_top());\n"},
+        ("route modal top-layer access through button_grid_modal.h helpers",),
     )
     expect_errors(
         "shared helpers",
