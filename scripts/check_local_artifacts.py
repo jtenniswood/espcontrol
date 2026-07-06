@@ -45,7 +45,12 @@ def should_skip_dir(path: Path) -> bool:
 
 def is_local_only_tracked_file(path: Path) -> bool:
     value = path.as_posix()
-    return any(fnmatch.fnmatchcase(value, pattern) for pattern in TRACKED_LOCAL_ONLY_PATTERNS)
+    return any(
+        fnmatch.fnmatchcase(value, pattern)
+        if "/" in pattern
+        else fnmatch.fnmatchcase(path.name, pattern)
+        for pattern in TRACKED_LOCAL_ONLY_PATTERNS
+    )
 
 
 def find_tracked_local_artifacts() -> list[Path]:
