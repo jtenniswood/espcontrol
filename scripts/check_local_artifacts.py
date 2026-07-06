@@ -35,6 +35,9 @@ TRACKED_LOCAL_ONLY_PATTERNS = (
     "wifi-secrets*.yaml",
     "devices/*/dev-pr*.yaml",
 )
+STALE_TRACKED_ARTIFACTS = {
+    Path("common/config/strings.en.json"),
+}
 TEMP_PR_PREFIX = ".tmp-pr"
 
 
@@ -70,6 +73,7 @@ def find_tracked_local_artifacts() -> list[Path]:
             or path.name in TRACKED_ARTIFACT_NAMES
             or path.suffix in TRACKED_ARTIFACT_SUFFIXES
             or is_local_only_tracked_file(path)
+            or path in STALE_TRACKED_ARTIFACTS
         ):
             paths.append(path)
     return sorted(paths)
