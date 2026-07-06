@@ -1,5 +1,5 @@
 // ── Settings Page ──────────────────────────────────────────────────────
-// @web-module-requires: state, language_state, screen_rotation_state, screen_schedule_state, ntp_state, appearance_state, clock_bar_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, controls, controls_shell
+// @web-module-requires: state, language_state, screen_rotation_state, screen_schedule_state, ntp_state, appearance_state, idle_state, clock_bar_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, controls, controls_shell
 
 function settingsStatusHeader(title) {
   var header = document.createElement("div");
