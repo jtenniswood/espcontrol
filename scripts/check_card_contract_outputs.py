@@ -13,6 +13,7 @@ from product_schema import CARD_CONTRACT_JSON, ROOT, load_card_contract, validat
 CARD_CONTRACT_JS = ROOT / "src" / "webserver" / "modules" / "card_contract_generated.js"
 CARD_CONTRACT_H = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_CAPABILITY_DOCS = ROOT / "docs" / "generated" / "cards" / "capabilities.md"
+OPTION_CONSTANT_RE = re.compile(r'^constexpr const char \*(CARD_CONTRACT_OPTION_NAME_[A-Z0-9_]+) = ("(?:[^"\\]|\\.)*");$', re.M)
 
 
 def cpp_string(value: str) -> str:
@@ -21,6 +22,33 @@ def cpp_string(value: str) -> str:
 
 def card_type_name(card_type: str) -> str:
     return card_type or "switch"
+
+
+def option_names(data: dict) -> dict[str, str]:
+    names: dict[str, str] = {}
+    for name in data.get("optionNames", []):
+        if name:
+            names[name] = name
+    for card in data["cards"].values():
+        for option in card.get("options", []):
+            name = option.get("name")
+            if name:
+                names[name] = name
+            for storage_name in option.get("storage", []):
+                names[storage_name] = storage_name
+    return dict(sorted(names.items()))
+
+
+def option_constant_name(option_name: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9]+", "_", option_name).strip("_").upper()
+    return f"CARD_CONTRACT_OPTION_NAME_{normalized}"
+
+
+def header_option_constants(header: str) -> dict[str, str]:
+    return {
+        name: json.loads(value)
+        for name, value in OPTION_CONSTANT_RE.findall(header)
+    }
 
 
 def assert_contains(text: str, needle: str, label: str) -> None:
@@ -32,6 +60,11 @@ def assert_js_contract(data: dict, js: str) -> None:
         js,
         f"var CARD_CONFIG_FIELDS = {json.dumps(data['fields'])};",
         "web card contract",
+    )
+    assert_contains(
+        js,
+        f"var CARD_CONTRACT_OPTION_NAMES = {json.dumps(option_names(data), indent=2)};",
+        "web card contract option names",
     )
     for card_type, card in data["cards"].items():
         assert_contains(js, json.dumps(card_type), f"web card contract card {card_type_name(card_type)}")
@@ -85,6 +118,22 @@ def assert_h_contract(data: dict, header: str) -> None:
 
     for action in data["optionSelect"]["actions"]:
         assert_contains(header, cpp_string(action), f"firmware option-select action {action}")
+
+    expected_constants = {
+        option_constant_name(option_name): option_name
+        for option_name in option_names(data)
+    }
+    actual_constants = header_option_constants(header)
+    missing = sorted(set(expected_constants) - set(actual_constants))
+    extra = sorted(set(actual_constants) - set(expected_constants))
+    wrong = sorted(
+        name for name in set(expected_constants) & set(actual_constants)
+        if actual_constants[name] != expected_constants[name]
+    )
+    assert not missing and not extra and not wrong, (
+        "firmware option name constants differ "
+        f"(missing: {missing or 'none'}, extra: {extra or 'none'}, wrong: {wrong or 'none'})"
+    )
 
 
 def assert_docs_contract(data: dict, docs: str) -> None:
