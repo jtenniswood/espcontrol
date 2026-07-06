@@ -27,6 +27,45 @@ REQUIRED_FONT_ROLES = (
     "volumeNumber",
     "volumeLabel",
 )
+COVER_ART_SUBSTITUTION_KEYS = (
+    "cover_art_size",
+    "cover_art_decode_size",
+    "cover_art_x",
+    "cover_art_y",
+    "cover_art_accent_x",
+    "cover_art_accent_y",
+    "cover_art_accent_width",
+    "cover_art_accent_height",
+    "cover_art_accent_bg_opa",
+    "cover_art_accent_opa",
+    "cover_art_panel_x",
+    "cover_art_panel_y",
+    "cover_art_panel_width",
+    "cover_art_panel_height",
+    "cover_art_panel_pad_top",
+    "cover_art_panel_pad_bottom",
+    "cover_art_panel_pad_left",
+    "cover_art_panel_pad_right",
+    "cover_art_panel_pad_row",
+    "cover_art_title_font",
+    "cover_art_title_max_height",
+    "cover_art_title_line_space",
+    "cover_art_artist_font",
+    "cover_art_artist_pad_top",
+    "cover_art_artist_long_mode",
+    "cover_art_time_font",
+    "cover_art_time_pad_top",
+    "cover_art_progress_width",
+    "cover_art_progress_height",
+    "cover_art_text_color",
+    "cover_art_square_overlay",
+    "cover_art_live_image_updates",
+)
+COVER_ART_FONT_KEYS = (
+    "cover_art_title_font",
+    "cover_art_artist_font",
+    "cover_art_time_font",
+)
 FONT_ID_RE = re.compile(r"^\s+id:\s+([A-Za-z0-9_]+)\s*$", re.MULTILINE)
 
 
@@ -175,6 +214,14 @@ def validate_fonts(
         elif font_id not in available_ids:
             errors.append(device_error(slug, f"firmware.fonts.{role} references unknown font id {font_id!r}"))
 
+    display = firmware.get("display", {})
+    cover_art = display.get("coverArt") if isinstance(display, dict) else None
+    if isinstance(cover_art, dict):
+        for key in COVER_ART_FONT_KEYS:
+            font_id = cover_art.get(key)
+            if isinstance(font_id, str) and font_id and font_id not in available_ids:
+                errors.append(device_error(slug, f"firmware.display.coverArt.{key} references unknown font id {font_id!r}"))
+
 
 def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> None:
     firmware = device.get("firmware")
@@ -204,6 +251,19 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
         errors.append(device_error(slug, "firmware.display.imageCardDiagnostics must be true or false when set"))
     if "refreshRebuildsSubpages" in display and not isinstance(display["refreshRebuildsSubpages"], bool):
         errors.append(device_error(slug, "firmware.display.refreshRebuildsSubpages must be true or false when set"))
+
+    cover_art = require_object(slug, errors, display.get("coverArt"), "firmware.display.coverArt")
+    if cover_art is not None:
+        missing = sorted(set(COVER_ART_SUBSTITUTION_KEYS) - set(cover_art))
+        extra = sorted(set(cover_art) - set(COVER_ART_SUBSTITUTION_KEYS))
+        if missing:
+            errors.append(device_error(slug, "firmware.display.coverArt is missing: " + ", ".join(missing)))
+        if extra:
+            errors.append(device_error(slug, "firmware.display.coverArt has unknown keys: " + ", ".join(extra)))
+        for key in COVER_ART_SUBSTITUTION_KEYS:
+            value = cover_art.get(key)
+            if not isinstance(value, str) or not value:
+                errors.append(device_error(slug, f"firmware.display.coverArt.{key} must be a non-empty string"))
 
     correction = display.get("colorCorrection")
     if correction is not None:
@@ -564,6 +624,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "media_control_title_font": fonts.get("mediaControlTitle"),
         "volume_number_font": fonts["volumeNumber"],
         "volume_label_font": fonts["volumeLabel"],
+        "cover_art": copy.deepcopy(display["coverArt"]),
         "climate_card_icon_font": fonts.get("climateCardIcon"),
         "subpage_chevron_font": fonts.get("subpageChevron"),
         "climate_option_title_font": fonts.get("climateOptionTitle"),
