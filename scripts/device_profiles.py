@@ -133,6 +133,29 @@ def validate_public(slug: str, device: dict[str, Any], errors: list[str]) -> Non
         errors.append(device_error(slug, "public.docsPath must start with /screens/"))
 
 
+def public_docs_stem(docs_path: str) -> str:
+    return docs_path.rstrip("/").split("/")[-1]
+
+
+def validate_public_docs_paths(devices: dict[str, Any], errors: list[str]) -> None:
+    seen: dict[str, str] = {}
+    for slug, device in sorted(devices.items()):
+        if not isinstance(slug, str) or not isinstance(device, dict):
+            continue
+        public = device.get("public")
+        if not isinstance(public, dict):
+            continue
+        docs_path = public.get("docsPath")
+        if not isinstance(docs_path, str) or not docs_path:
+            continue
+        stem = public_docs_stem(docs_path)
+        previous = seen.get(stem)
+        if previous is not None:
+            errors.append(device_error(slug, f"public.docsPath stem duplicates {previous}: {stem}"))
+            continue
+        seen[stem] = slug
+
+
 def validate_build(slug: str, firmware: dict[str, Any] | None, errors: list[str]) -> None:
     if firmware is None:
         return
@@ -443,6 +466,7 @@ def validate_manifest_data(data: Any, shared_font_ids: set[str] | None = None) -
     if not isinstance(devices, dict) or not devices:
         return [f"{rel(DEVICE_MANIFEST)} must contain a non-empty devices object"]
 
+    validate_public_docs_paths(devices, errors)
     shared_font_ids = common_font_ids() if shared_font_ids is None else shared_font_ids
     for slug, device in sorted(devices.items()):
         if not isinstance(slug, str) or not slug:
