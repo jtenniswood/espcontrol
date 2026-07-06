@@ -6,11 +6,14 @@ from __future__ import annotations
 import argparse
 import copy
 import sys
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from product_schema import (
     ProductSchemaError,
     load_card_contract,
     load_entity_names,
+    load_json,
     validate_card_contract,
     validate_entity_names,
     validate_product_sources,
@@ -63,6 +66,23 @@ def run_self_test() -> int:
     invalid_alias.setdefault("migrationAliases", {})["self_test_alias"] = {"not_a_field": "value"}
     expect_error(validate_card_contract(invalid_alias), "is not a saved config field")
 
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        valid = root / "valid.json"
+        valid.write_text('{"outer": {"name": "primary"}, "items": [{"name": "nested"}]}\n', encoding="utf-8")
+        parsed = load_json(valid)
+        assert parsed["outer"]["name"] == "primary"
+        assert parsed["items"][0]["name"] == "nested"
+
+        duplicate = root / "duplicate.json"
+        duplicate.write_text('{"outer": {"name": "first", "name": "second"}}\n', encoding="utf-8")
+        try:
+            load_json(duplicate)
+        except ProductSchemaError as exc:
+            assert "duplicate JSON key 'name'" in str(exc)
+        else:
+            raise AssertionError("duplicate JSON keys must fail validation")
+
     print("Product schema self-test passed.")
     return 0
 
@@ -74,7 +94,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.self_test:
         return run_self_test()
-
     try:
         results = validate_product_sources()
     except ProductSchemaError as exc:
