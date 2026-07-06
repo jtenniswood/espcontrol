@@ -54,10 +54,11 @@ HA_BOUNDARY_ALLOWLIST = {
 }
 DIRECT_HA_PATTERNS = (
     (re.compile(r"\bglobal_api_server\b"), "access Home Assistant API through button_grid_ha.h helpers"),
-    (re.compile(r"->send_homeassistant_action\s*\("), "send Home Assistant actions through button_grid_ha.h helpers"),
-    (re.compile(r"->subscribe_home_assistant_state\s*\("), "subscribe to Home Assistant state through button_grid_ha.h helpers"),
-    (re.compile(r"->get_home_assistant_state\s*\("), "get Home Assistant state through button_grid_ha.h helpers"),
-    (re.compile(r"->register_action_response_callback\s*\("), "register action callbacks through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)send_homeassistant_action\s*\("), "send Home Assistant actions through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)subscribe_home_assistant_state\s*\("), "subscribe to Home Assistant state through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)get_home_assistant_state\s*\("), "get Home Assistant state through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)register_action_response_callback\s*\("), "register action callbacks through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)handle_action_response\s*\("), "cancel action callbacks through button_grid_ha.h helpers"),
 )
 STATE_HELPER_PATTERN = re.compile(
     r"inline\s+bool\s+ha_subscribe_state\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
@@ -2338,8 +2339,18 @@ def run_self_test() -> int:
         ("access Home Assistant API through button_grid_ha.h helpers",),
     )
     expect_errors(
+        "direct action send through reference",
+        {"button_grid_actions.h": "api.send_homeassistant_action(req);\n"},
+        ("send Home Assistant actions through button_grid_ha.h helpers",),
+    )
+    expect_errors(
         "direct state subscription",
         {"button_grid_media.h": "api->subscribe_home_assistant_state(entity, {}, cb);\n"},
+        ("subscribe to Home Assistant state through button_grid_ha.h helpers",),
+    )
+    expect_errors(
+        "direct state subscription through reference",
+        {"button_grid_media.h": "api.subscribe_home_assistant_state(entity, {}, cb);\n"},
         ("subscribe to Home Assistant state through button_grid_ha.h helpers",),
     )
     expect_errors(
@@ -2348,9 +2359,19 @@ def run_self_test() -> int:
         ("get Home Assistant state through button_grid_ha.h helpers",),
     )
     expect_errors(
+        "direct state get through reference",
+        {"button_grid_media.h": "api.get_home_assistant_state(entity, {}, cb);\n"},
+        ("get Home Assistant state through button_grid_ha.h helpers",),
+    )
+    expect_errors(
         "direct callback registration",
         {"button_grid_alarm.h": "api->register_action_response_callback(id, cb);\n"},
         ("register action callbacks through button_grid_ha.h helpers",),
+    )
+    expect_errors(
+        "direct callback cancellation",
+        {"button_grid_alarm.h": "api.handle_action_response(id, false, error);\n"},
+        ("cancel action callbacks through button_grid_ha.h helpers",),
     )
     expect_errors(
         "helper boundary",

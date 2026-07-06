@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 from pathlib import Path
 import subprocess
 
@@ -25,6 +26,15 @@ SKIP_PATHS = {
 }
 TRACKED_ARTIFACT_SUFFIXES = (".pyc", ".pyo")
 TRACKED_ARTIFACT_NAMES = {".DS_Store"}
+TRACKED_LOCAL_ONLY_PATTERNS = (
+    "secrets.yaml",
+    "secrets.yml",
+    "*.secrets.yaml",
+    "*.secrets.yml",
+    "wifi_secrets*.yaml",
+    "wifi-secrets*.yaml",
+    "devices/*/dev-pr*.yaml",
+)
 STALE_TRACKED_ARTIFACTS = {
     Path("common/config/strings.en.json"),
 }
@@ -34,6 +44,16 @@ TEMP_PR_PREFIX = ".tmp-pr"
 def should_skip_dir(path: Path) -> bool:
     rel = path.relative_to(ROOT)
     return path.name in SKIP_DIRS or rel in SKIP_PATHS
+
+
+def is_local_only_tracked_file(path: Path) -> bool:
+    value = path.as_posix()
+    return any(
+        fnmatch.fnmatchcase(value, pattern)
+        if "/" in pattern
+        else fnmatch.fnmatchcase(path.name, pattern)
+        for pattern in TRACKED_LOCAL_ONLY_PATTERNS
+    )
 
 
 def find_tracked_local_artifacts() -> list[Path]:
@@ -52,6 +72,7 @@ def find_tracked_local_artifacts() -> list[Path]:
             "__pycache__" in path.parts
             or path.name in TRACKED_ARTIFACT_NAMES
             or path.suffix in TRACKED_ARTIFACT_SUFFIXES
+            or is_local_only_tracked_file(path)
             or path in STALE_TRACKED_ARTIFACTS
         ):
             paths.append(path)
