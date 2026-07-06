@@ -106,6 +106,12 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "none",
         "`npm run check:backup-contract` and `npm run check:product`",
     ),
+    SourceTruthRow(
+        "`devices/manifest.json`, `common/config/card_contract.json`, `common/config/entity_names.json`, `common/assets/icons.json`, `compatibility/fixtures/product_compatibility.json`",
+        ("product/product_snapshot.json",),
+        "python3 scripts/check_product_snapshot.py --update",
+        "`npm run check:product-snapshot` and `npm run check:product`",
+    ),
 )
 
 
@@ -195,6 +201,12 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "Shared Home Assistant entity names consumed by firmware YAML and the web setup page",
         "`python3 scripts/build.py entities --check`",
         "`npm run check:product` when generated entity files or web behavior changes",
+    ),
+    CheckMatrixRow(
+        "`product/product_snapshot.json`",
+        "Generated combined product model snapshot",
+        "`npm run check:product-snapshot`",
+        "`npm run check:product` when authored product sources also changed",
     ),
     CheckMatrixRow(
         "`common/config/strings.*.txt`",
