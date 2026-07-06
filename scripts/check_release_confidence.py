@@ -8,7 +8,7 @@ from pathlib import Path
 
 import check_public_firmware
 import device_matrix
-from device_profiles import ROOT, load_device_profiles
+from device_profiles import ROOT, load_device_profiles, public_device_capabilities
 
 
 WEB_OUTPUT_DIR = ROOT / "docs" / "public" / "webserver"
@@ -105,11 +105,12 @@ def test_generated_card_docs() -> None:
 def main() -> int:
     profiles = load_device_profiles()
     profile_slugs = list(profiles.keys())
+    source_devices = public_device_capabilities()["devices"]
     devices = test_public_device_profiles(profile_slugs)
     test_web_bundles(profile_slugs)
     test_firmware_release_matrix(profile_slugs)
     test_public_firmware_manifest(profile_slugs)
-    test_generated_device_docs(devices)
+    test_generated_device_docs(source_devices)
     test_generated_card_docs()
     print("Release confidence checks passed.")
     return 0
