@@ -11,6 +11,7 @@
   "appearance_state",
   "idle_state",
   "artwork_state",
+  "screensaver_state",
   "clock_bar_state",
   "firmware_update_state",
   "screensaver_timeout",

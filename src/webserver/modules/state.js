@@ -166,12 +166,6 @@ for (var i = 0; i < TOTAL_SLOTS; i++) {
   state.buttons.push({ entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", precision: "", options: "" });
 }
 
-function getActiveScreensaverMode() {
-  if (state.screensaverMode === "sensor") return "sensor";
-  if (state.screensaverMode === "timer") return "timer";
-  return "disabled";
-}
-
 function uniqueOptions(options) {
   var out = [];
   (options || []).forEach(function (opt) {
@@ -183,22 +177,6 @@ function uniqueOptions(options) {
 
 function normalizeTemperatureUnit(value) {
   return EspControlModel.normalizeTemperatureUnit(value);
-}
-
-function normalizeScreensaverAction(value) {
-  return EspControlModel.normalizeScreensaverAction(value);
-}
-
-function screensaverActionOption(value) {
-  return EspControlModel.screensaverActionOption(value);
-}
-
-function normalizeClockBrightness(value, fallback) {
-  return EspControlModel.normalizeClockBrightness(value, fallback);
-}
-
-function normalizeScreensaverDimmedBrightness(value) {
-  return EspControlModel.normalizeScreensaverDimmedBrightness(value);
 }
 
 function monthNameForIndex(index) {
