@@ -2,6 +2,7 @@
 """Validate timezone selector options against firmware rules."""
 from __future__ import annotations
 
+import argparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import os
@@ -153,11 +154,14 @@ def expected_casablanca_pauses() -> list[tuple[tuple[int, ...], tuple[int, ...]]
     return pauses
 
 
-def main() -> int:
+def validate_timezones(
+    options: dict[str, str],
+    posix_table: dict[str, str],
+    casablanca_pauses: list[tuple[tuple[int, ...], tuple[int, ...]]],
+    *,
+    check_casablanca_table: bool = True,
+) -> list[str]:
     errors: list[str] = []
-    options = load_timezone_options()
-    posix_table = load_posix_table()
-    casablanca_pauses = load_casablanca_pauses()
 
     missing = sorted(set(options) - set(posix_table))
     extra = sorted(set(posix_table) - set(options))
@@ -175,9 +179,10 @@ def main() -> int:
             + ", ".join(quoted_numeric)
         )
 
-    expected_pauses = expected_casablanca_pauses()
-    if casablanca_pauses != expected_pauses:
-        errors.append("Africa/Casablanca pause table does not match Python zoneinfo")
+    if check_casablanca_table:
+        expected_pauses = expected_casablanca_pauses()
+        if casablanca_pauses != expected_pauses:
+            errors.append("Africa/Casablanca pause table does not match Python zoneinfo")
 
     samples = [
         datetime(2026, 1, 15, 12, tzinfo=timezone.utc),
@@ -187,6 +192,8 @@ def main() -> int:
         datetime(2026, 10, 15, 12, tzinfo=timezone.utc),
     ]
     for tz_id, posix in sorted(posix_table.items()):
+        if tz_id not in options:
+            continue
         for sample in samples:
             want = iana_offset_minutes(tz_id, sample)
             got = firmware_offset_minutes(tz_id, posix, sample, casablanca_pauses)
@@ -205,19 +212,91 @@ def main() -> int:
     }
     april_2026 = datetime(2026, 4, 22, 12, tzinfo=timezone.utc)
     for tz_id, expected in known.items():
+        if tz_id not in posix_table:
+            continue
         got = firmware_offset_minutes(tz_id, posix_table[tz_id], april_2026, casablanca_pauses)
         if got != expected:
             errors.append(f"{tz_id} expected {expected} min on 2026-04-22, got {got} min")
 
-    casablanca_ramadan = datetime(2026, 3, 1, 12, tzinfo=timezone.utc)
-    got = firmware_offset_minutes(
-        "Africa/Casablanca",
-        posix_table["Africa/Casablanca"],
-        casablanca_ramadan,
-        casablanca_pauses,
+    if "Africa/Casablanca" in posix_table:
+        casablanca_ramadan = datetime(2026, 3, 1, 12, tzinfo=timezone.utc)
+        got = firmware_offset_minutes(
+            "Africa/Casablanca",
+            posix_table["Africa/Casablanca"],
+            casablanca_ramadan,
+            casablanca_pauses,
+        )
+        if got != 0:
+            errors.append(f"Africa/Casablanca expected 0 min during Ramadan pause, got {got} min")
+
+    return errors
+
+
+def expect_error(errors: list[str], expected: str) -> None:
+    if not any(expected in error for error in errors):
+        raise AssertionError(f"expected error containing {expected!r}, got {errors!r}")
+
+
+def run_self_test() -> int:
+    options = load_timezone_options()
+    posix_table = load_posix_table()
+    casablanca_pauses = load_casablanca_pauses()
+
+    errors = validate_timezones(options, posix_table, casablanca_pauses, check_casablanca_table=False)
+    assert errors == []
+
+    known = {"Europe/London", "America/New_York", "America/Los_Angeles", "Asia/Almaty", "Africa/Casablanca"}
+    missing_id = next(tz_id for tz_id in options if tz_id not in known)
+    missing_posix = dict(posix_table)
+    del missing_posix[missing_id]
+    expect_error(
+        validate_timezones(options, missing_posix, casablanca_pauses, check_casablanca_table=False),
+        f"Missing firmware timezone rows: {missing_id}",
     )
-    if got != 0:
-        errors.append(f"Africa/Casablanca expected 0 min during Ramadan pause, got {got} min")
+
+    extra_id = "Etc/UTC" if "Etc/UTC" not in options else "UTC"
+    extra_posix = dict(posix_table)
+    extra_posix[extra_id] = "UTC0"
+    expect_error(
+        validate_timezones(options, extra_posix, casablanca_pauses, check_casablanca_table=False),
+        f"Unused firmware timezone rows: {extra_id}",
+    )
+
+    quoted_posix = dict(posix_table)
+    quoted_posix["Europe/London"] = "<GMT0>0"
+    expect_error(
+        validate_timezones(options, quoted_posix, casablanca_pauses, check_casablanca_table=False),
+        "Firmware POSIX strings must avoid quoted numeric timezone names: Europe/London",
+    )
+
+    wrong_offset_posix = dict(posix_table)
+    wrong_offset_posix["Europe/London"] = "UTC0"
+    expect_error(
+        validate_timezones(options, wrong_offset_posix, casablanca_pauses, check_casablanca_table=False),
+        "Europe/London offset mismatch",
+    )
+
+    expect_error(
+        validate_timezones(options, posix_table, casablanca_pauses[1:], check_casablanca_table=True),
+        "Africa/Casablanca pause table does not match Python zoneinfo",
+    )
+
+    print("Timezone self-test passed.")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--self-test", action="store_true", help="run timezone validator self-tests")
+    args = parser.parse_args(argv)
+
+    if args.self_test:
+        return run_self_test()
+
+    options = load_timezone_options()
+    posix_table = load_posix_table()
+    casablanca_pauses = load_casablanca_pauses()
+    errors = validate_timezones(options, posix_table, casablanca_pauses)
 
     if errors:
         print("Timezone validation failed:")
