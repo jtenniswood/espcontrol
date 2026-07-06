@@ -62,6 +62,13 @@ function assertGeneratedRotationOptions(slug, generated, key, options) {
   );
 }
 
+function assertGeneratedConfigValue(slug, generated, key, value) {
+  assert(
+    generated.includes(`${key}:${JSON.stringify(value)}`),
+    `${slug}: generated web UI must include ${key} ${JSON.stringify(value)}`
+  );
+}
+
 const hooks = loadHooks();
 assert(hooks, "web test hooks were not exported");
 assert.strictEqual(
@@ -181,6 +188,10 @@ const manifest = JSON.parse(fs.readFileSync(DEVICE_MANIFEST, "utf8"));
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
   const webOutput = path.join(WEB_OUTPUT_DIR, slug, "www.js");
   const generated = fs.readFileSync(webOutput, "utf8");
+  assertGeneratedConfigValue(slug, generated, "slots", device.slots);
+  assertGeneratedConfigValue(slug, generated, "cols", device.layout.cols);
+  assertGeneratedConfigValue(slug, generated, "rows", device.layout.rows);
+  assertGeneratedConfigValue(slug, generated, "screenSize", device.public.screenSize);
   const sandbox = createWebSandbox();
   vm.createContext(sandbox);
   vm.runInContext(generated, sandbox, { filename: webOutput });
