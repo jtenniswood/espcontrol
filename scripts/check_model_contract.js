@@ -27,6 +27,39 @@ function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+const nestedPlaylistOptions = "playlist_content_id=media-source%3A//music/morning%2Cmix=50%25,playlist_player_source=Kitchen%2C Main=Zone 50%25";
+assert.strictEqual(
+  model.encodeConfigField(nestedPlaylistOptions),
+  "playlist_content_id=media-source%253A//music/morning%252Cmix=50%2525%2Cplaylist_player_source=Kitchen%252C Main=Zone 50%2525",
+  "config field encoding preserves nested option escaping"
+);
+assert.strictEqual(
+  model.decodeConfigField("Kitchen%2C Main=Zone 50%25"),
+  "Kitchen, Main=Zone 50%",
+  "config field decoding restores punctuation used inside option values"
+);
+assert.deepStrictEqual(plain(model.parseRawButtonConfig([
+  "~media_player.kitchen",
+  "Morning Mix",
+  "Music",
+  "Auto",
+  "playlist",
+  "",
+  "media",
+  "",
+  model.encodeConfigField(nestedPlaylistOptions),
+].join(","))), {
+  entity: "media_player.kitchen",
+  label: "Morning Mix",
+  icon: "Music",
+  icon_on: "Auto",
+  sensor: "playlist",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: nestedPlaylistOptions,
+}, "compact button parsing preserves nested encoded option values");
+
 assert.deepStrictEqual(plain(model.parseGridOrder("1,2d,3w", 8, 4)), {
   grid: [1, 2, 3, -1, 0, -1, 0, 0],
   sizes: { 2: 2, 3: 3 },
