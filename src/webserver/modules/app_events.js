@@ -1,40 +1,5 @@
 // ── SSE ────────────────────────────────────────────────────────────────
-// @web-module-requires: state, api, config_codec, app_backup, app_status_preview, app_event_aliases
-
-function applyPageTitle(title) {
-  var text = typeof title === "string" ? title.trim() : "";
-  document.title = text || "EspControl";
-}
-
-function handleWebServerPingEvent(e) {
-  var data = null;
-  try {
-    data = e && e.data ? JSON.parse(e.data) : null;
-  } catch (_) {
-    applyPageTitle("");
-    return;
-  }
-  if (data && Object.prototype.hasOwnProperty.call(data, "title")) {
-    applyPageTitle(data.title);
-  }
-}
-
-function loadPageTitleFromEventStream() {
-  if (eventStreamEnabled() || typeof EventSource !== "function") return;
-  var source = new EventSource("/events");
-  var closeTimer = setTimeout(function () {
-    source.close();
-  }, 5000);
-  source.addEventListener("ping", function (e) {
-    handleWebServerPingEvent(e);
-    clearTimeout(closeTimer);
-    source.close();
-  });
-  source.addEventListener("error", function () {
-    clearTimeout(closeTimer);
-    source.close();
-  });
-}
+// @web-module-requires: state, api, config_codec, app_backup, app_status_preview, app_event_aliases, app_title
 
 function applyClockBarStateValue(val, d, matchedKey) {
   var keys = entityStateKeys(d);
