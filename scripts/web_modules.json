@@ -27,6 +27,7 @@
   "firmware_update_post_api",
   "public_firmware_install",
   "config_codec",
+  "config_post_api",
   "controls",
   "controls_shell",
   "settings_page",
