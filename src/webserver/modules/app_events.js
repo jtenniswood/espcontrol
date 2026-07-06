@@ -1,5 +1,5 @@
 // ── SSE ────────────────────────────────────────────────────────────────
-// @web-module-requires: state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, config_codec, app_backup, app_status_preview, firmware_event_matchers, app_event_alias_wiring, app_title, app_config_events, app_state_event_handlers
+// @web-module-requires: state, firmware_version_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, config_codec, app_backup, app_status_preview, firmware_event_matchers, app_event_alias_wiring, app_title, app_config_events, app_state_event_handlers
 
 function connectEvents() {
   if (_eventSource) { _eventSource.close(); _eventSource = null; }

@@ -1,5 +1,5 @@
 // ── Firmware Update State ─────────────────────────────────────────────
-// @web-module-requires: state, firmware_metadata
+// @web-module-requires: state, firmware_metadata, firmware_version_state
 
 var firmwareInstallRefreshTimer = null;
 var firmwareInstallRefreshUntil = 0;

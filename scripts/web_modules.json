@@ -13,6 +13,7 @@
   "idle_state",
   "artwork_state",
   "screensaver_state",
+  "firmware_version_state",
   "clock_bar_state",
   "firmware_update_state",
   "screensaver_timeout",
