@@ -26,6 +26,7 @@ struct SliderCtx {
   bool media_playing = false;
   lv_obj_t *media_slider = nullptr;
   lv_timer_t *media_timer = nullptr;
+  uint8_t media_position_refresh_remaining = 0;
   lv_obj_t *media_track_bg = nullptr;
   lv_obj_t *media_value_lbl = nullptr;
   lv_obj_t *media_status_lbl = nullptr;

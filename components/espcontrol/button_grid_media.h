@@ -384,17 +384,22 @@ inline void media_deferred_position_refresh_cb(lv_timer_t *timer) {
   if (!timer) return;
   SliderCtx *ctx = static_cast<SliderCtx *>(lv_timer_get_user_data(timer));
   if (ctx) {
-    ctx->media_timer = nullptr;
     if (ctx->media_slider) slider_refresh_geometry(ctx->media_slider);
     media_apply_position(ctx);
+    if (ctx->media_position_refresh_remaining > 0) {
+      ctx->media_position_refresh_remaining--;
+      return;
+    }
+    ctx->media_timer = nullptr;
   }
   lv_timer_del(timer);
 }
 
 inline void media_schedule_position_refresh(SliderCtx *ctx) {
   if (!ctx || !ctx->media_position || !ctx->media_slider) return;
+  ctx->media_position_refresh_remaining = 10;
   if (ctx->media_timer) return;
-  ctx->media_timer = lv_timer_create(media_deferred_position_refresh_cb, 50, ctx);
+  ctx->media_timer = lv_timer_create(media_deferred_position_refresh_cb, 100, ctx);
 }
 
 inline void media_set_pending_seek_position(SliderCtx *ctx, int value) {
@@ -1392,6 +1397,7 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   ctx->content_pad = pad;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
+  if (position) media_schedule_position_refresh(ctx);
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));
