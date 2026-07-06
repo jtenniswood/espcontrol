@@ -1,5 +1,5 @@
 // ── SSE ────────────────────────────────────────────────────────────────
-// @web-module-requires: state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, config_codec, app_backup, app_status_preview, firmware_event_matchers, app_event_aliases, app_title
+// @web-module-requires: state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, config_codec, app_backup, app_status_preview, firmware_event_matchers, app_event_aliases, app_title, app_config_events
 
 function applyClockBarStateValue(val, d, matchedKey) {
   var keys = entityStateKeys(d);
@@ -499,109 +499,7 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.firmwareAutoUpdate, sseHandlers["switch-firmware__auto_update"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.firmwareUpdateFrequency, sseHandlers["select-firmware__update_frequency"]);
 
-  var ssePatterns = [
-    {
-      re: /^text-button_(\d+)_config$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        var b = state.buttons[slot - 1];
-        var migrateConfig = buttonConfigNeedsMigration(val || "");
-        var parsed = parseButtonConfig(val || "");
-        b.entity = parsed.entity;
-        b.label = parsed.label;
-        b.icon = parsed.icon;
-        b.icon_on = parsed.icon_on;
-        b.sensor = parsed.sensor;
-        b.unit = parsed.unit;
-        b.type = parsed.type;
-        b.precision = parsed.precision;
-        b.options = parsed.options;
-        if (migrateConfig) saveButtonConfig(slot);
-        scheduleRender();
-      },
-    },
-    {
-      re: /^text-subpage_(\d+)_config$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        if (!state.subpageRaw[slot]) state.subpageRaw[slot] = { main: "", ext: "", ext2: "", ext3: "", ext4: "", ext5: "", ext6: "", ext7: "" };
-        state.subpageRaw[slot].main = val || "";
-        applySubpageRaw(slot);
-      },
-    },
-    {
-      re: /^text-subpage_(\d+)_config_ext$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        if (!state.subpageRaw[slot]) state.subpageRaw[slot] = { main: "", ext: "", ext2: "", ext3: "", ext4: "", ext5: "", ext6: "", ext7: "" };
-        state.subpageRaw[slot].ext = val || "";
-        applySubpageRaw(slot);
-      },
-    },
-    {
-      re: /^text-subpage_(\d+)_config_ext_2$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        if (!state.subpageRaw[slot]) state.subpageRaw[slot] = { main: "", ext: "", ext2: "", ext3: "", ext4: "", ext5: "", ext6: "", ext7: "" };
-        state.subpageRaw[slot].ext2 = val || "";
-        applySubpageRaw(slot);
-      },
-    },
-    {
-      re: /^text-subpage_(\d+)_config_ext_3$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        if (!state.subpageRaw[slot]) state.subpageRaw[slot] = { main: "", ext: "", ext2: "", ext3: "", ext4: "", ext5: "", ext6: "", ext7: "" };
-        state.subpageRaw[slot].ext3 = val || "";
-        applySubpageRaw(slot);
-      },
-    },
-    {
-      re: /^text-subpage_(\d+)_config_ext_4$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        if (!state.subpageRaw[slot]) state.subpageRaw[slot] = { main: "", ext: "", ext2: "", ext3: "", ext4: "", ext5: "", ext6: "", ext7: "" };
-        state.subpageRaw[slot].ext4 = val || "";
-        applySubpageRaw(slot);
-      },
-    },
-    {
-      re: /^text-subpage_(\d+)_config_ext_5$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        if (!state.subpageRaw[slot]) state.subpageRaw[slot] = { main: "", ext: "", ext2: "", ext3: "", ext4: "", ext5: "", ext6: "", ext7: "" };
-        state.subpageRaw[slot].ext5 = val || "";
-        applySubpageRaw(slot);
-      },
-    },
-    {
-      re: /^text-subpage_(\d+)_config_ext_6$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        if (!state.subpageRaw[slot]) state.subpageRaw[slot] = { main: "", ext: "", ext2: "", ext3: "", ext4: "", ext5: "", ext6: "", ext7: "" };
-        state.subpageRaw[slot].ext6 = val || "";
-        applySubpageRaw(slot);
-      },
-    },
-    {
-      re: /^text-subpage_(\d+)_config_ext_7$/,
-      fn: function (m, val) {
-        var slot = parseInt(m[1], 10);
-        if (slot < 1 || slot > TOTAL_SLOTS) return;
-        if (!state.subpageRaw[slot]) state.subpageRaw[slot] = { main: "", ext: "", ext2: "", ext3: "", ext4: "", ext5: "", ext6: "", ext7: "" };
-        state.subpageRaw[slot].ext7 = val || "";
-        applySubpageRaw(slot);
-      },
-    },
-  ];
+  var ssePatterns = configEventPatterns();
 
   function handleState(d) {
     rememberEntityPostPath(d);
