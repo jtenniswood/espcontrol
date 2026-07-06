@@ -15,6 +15,9 @@ CARD_RUNTIME_BOUNDARY_FILES = {
     "button_grid_card_runtime.h",
     "button_grid_contract_generated.h",
 }
+CONTRACT_INCLUDE_ALLOWLIST = {
+    "button_grid_card_runtime.h",
+}
 
 # Existing alarm UI code keeps a few local button-order arrays. The runtime
 # guard still blocks direct generated-contract access in that file.
@@ -23,6 +26,7 @@ MODE_ARRAY_ALLOWLIST = CARD_RUNTIME_BOUNDARY_FILES | {
 }
 
 DIRECT_CONTRACT_PATTERN = re.compile(r"\b(?:card_contract_[A-Za-z0-9_]+|CARD_CONTRACT_[A-Z0-9_]+)\b")
+CONTRACT_INCLUDE_PATTERN = re.compile(r'#\s*include\s+[<"]button_grid_contract_generated\.h[>"]')
 MODE_ARRAY_PATTERN = re.compile(
     r"\{[^}\n]*\"(?:play_pause|previous|next|volume|position|now_playing|"
     r"open|close|stop|set_position|tilt|toggle|lock|unlock|away|home|night|vacation|disarm)\""
@@ -58,6 +62,8 @@ def check_root(root: Path) -> list[str]:
         filename = path.name
         rel = path.relative_to(root)
         for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if filename not in CONTRACT_INCLUDE_ALLOWLIST and CONTRACT_INCLUDE_PATTERN.search(line):
+                failures.append(f"{rel}:{line_no}: include generated card contract through button_grid_card_runtime.h")
             if filename not in CARD_RUNTIME_BOUNDARY_FILES and DIRECT_CONTRACT_PATTERN.search(line):
                 failures.append(f"{rel}:{line_no}: access generated card contract through button_grid_card_runtime.h")
             if filename not in MODE_ARRAY_ALLOWLIST and MODE_ARRAY_PATTERN.search(line):
@@ -132,6 +138,10 @@ def run_self_test() -> None:
             ("access generated card contract through button_grid_card_runtime.h",),
         ),
         (
+            {"button_grid_config.h": '#include "button_grid_contract_generated.h"\n'},
+            ("include generated card contract through button_grid_card_runtime.h",),
+        ),
+        (
             {"button_grid_cards.h": "static const char *modes[] = {\"open\", \"close\"};\n"},
             ("keep shared card mode lists in the card runtime/contract boundary",),
         ),
@@ -145,6 +155,10 @@ def run_self_test() -> None:
         ),
         (
             {"button_grid_card_runtime.h": "return card_contract_media_mode_valid(mode);\n"},
+            (),
+        ),
+        (
+            {"button_grid_card_runtime.h": '#include "button_grid_contract_generated.h"\n'},
             (),
         ),
         (
