@@ -629,7 +629,10 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       lv_obj_move_foreground(s.text_lbl);
     }
     if (slider) slider_refresh_geometry(slider);
-    if (ctx) media_apply_position(ctx);
+    if (ctx) {
+      media_apply_position(ctx);
+      media_schedule_position_refresh(ctx);
+    }
     return;
   }
 
