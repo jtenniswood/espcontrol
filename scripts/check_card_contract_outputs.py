@@ -23,6 +23,26 @@ def card_type_name(card_type: str) -> str:
     return card_type or "switch"
 
 
+def option_names(data: dict) -> dict[str, str]:
+    names: dict[str, str] = {}
+    for name in data.get("optionNames", []):
+        if name:
+            names[name] = name
+    for card in data["cards"].values():
+        for option in card.get("options", []):
+            name = option.get("name")
+            if name:
+                names[name] = name
+            for storage_name in option.get("storage", []):
+                names[storage_name] = storage_name
+    return dict(sorted(names.items()))
+
+
+def option_constant_name(option_name: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9]+", "_", option_name).strip("_").upper()
+    return f"CARD_CONTRACT_OPTION_NAME_{normalized}"
+
+
 def assert_contains(text: str, needle: str, label: str) -> None:
     assert needle in text, f"{label} missing {needle!r}"
 
@@ -32,6 +52,11 @@ def assert_js_contract(data: dict, js: str) -> None:
         js,
         f"var CARD_CONFIG_FIELDS = {json.dumps(data['fields'])};",
         "web card contract",
+    )
+    assert_contains(
+        js,
+        f"var CARD_CONTRACT_OPTION_NAMES = {json.dumps(option_names(data), indent=2)};",
+        "web card contract option names",
     )
     for card_type, card in data["cards"].items():
         assert_contains(js, json.dumps(card_type), f"web card contract card {card_type_name(card_type)}")
@@ -85,6 +110,13 @@ def assert_h_contract(data: dict, header: str) -> None:
 
     for action in data["optionSelect"]["actions"]:
         assert_contains(header, cpp_string(action), f"firmware option-select action {action}")
+
+    for option_name in option_names(data):
+        assert_contains(
+            header,
+            f"constexpr const char *{option_constant_name(option_name)} = {cpp_string(option_name)};",
+            f"firmware option name constant {option_name}",
+        )
 
 
 def assert_docs_contract(data: dict, docs: str) -> None:
