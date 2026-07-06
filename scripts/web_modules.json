@@ -29,6 +29,7 @@
   "config_codec",
   "config_post_api",
   "state_loader_api",
+  "artwork_post_api",
   "controls",
   "controls_shell",
   "settings_page",

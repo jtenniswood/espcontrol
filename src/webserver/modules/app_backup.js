@@ -1,5 +1,5 @@
 // ── Export / Import ────────────────────────────────────────────────────
-// @web-module-requires: state, language_state, environment_state, screen_rotation_state, screen_schedule_state, ntp_state, idle_state, artwork_state, screensaver_state, clock_bar_state, firmware_update_state, screensaver_timeout, api, config_codec, config_post_api, backup_contract
+// @web-module-requires: state, language_state, environment_state, screen_rotation_state, screen_schedule_state, ntp_state, idle_state, artwork_state, screensaver_state, clock_bar_state, firmware_update_state, screensaver_timeout, api, artwork_post_api, config_codec, config_post_api, backup_contract
 
 function backupExportScreenSizeSlug(value) {
   value = String(value || "").trim().toLowerCase();
