@@ -585,7 +585,8 @@ inline lv_obj_t *fan_control_create_icon_button(lv_obj_t *parent, const char *ic
 
 inline void fan_control_style_binary_button(lv_obj_t *btn, bool active,
                                             uint32_t active_color,
-                                            uint32_t inactive_color) {
+                                            uint32_t inactive_color,
+                                            uint32_t active_text_color = DARK_TEXT_PRIMARY) {
   if (!btn) return;
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   lv_obj_set_style_bg_color(btn, lv_color_hex(active ? active_color : inactive_color), LV_PART_MAIN);
@@ -594,7 +595,7 @@ inline void fan_control_style_binary_button(lv_obj_t *btn, bool active,
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? 0xFFFFFF : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      label, lv_color_hex(active ? active_text_color : DARK_TEXT_PRIMARY), LV_PART_MAIN);
   }
 }
 
@@ -602,14 +603,16 @@ inline void fan_control_apply_power(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
   fan_control_style_binary_button(ui.power_on_btn, ctx->on, ctx->on_color, SECONDARY_GREY);
-  fan_control_style_binary_button(ui.power_off_btn, !ctx->on, SECONDARY_GREY, SECONDARY_GREY);
+  fan_control_style_binary_button(
+    ui.power_off_btn, !ctx->on, DARK_TEXT_PRIMARY, SECONDARY_GREY, DARK_TEXT_INVERTED);
 }
 
 inline void fan_control_apply_oscillation(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
   fan_control_style_binary_button(ui.oscillation_on_btn, ctx->oscillating, ctx->on_color, SECONDARY_GREY);
-  fan_control_style_binary_button(ui.oscillation_off_btn, !ctx->oscillating, SECONDARY_GREY, SECONDARY_GREY);
+  fan_control_style_binary_button(
+    ui.oscillation_off_btn, !ctx->oscillating, DARK_TEXT_PRIMARY, SECONDARY_GREY, DARK_TEXT_INVERTED);
 }
 
 inline void fan_control_apply_direction(FanCardCtx *ctx) {
