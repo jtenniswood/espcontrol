@@ -248,6 +248,7 @@ def unescape_compact_string(value):
 
 def load_compact_strings(path):
     strings = {}
+    key_lines = {}
     for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line or line.startswith("#"):
             continue
@@ -257,6 +258,12 @@ def load_compact_strings(path):
         key = key.strip()
         if not key:
             raise BuildError(f"Empty strings key in {path.relative_to(ROOT)}:{line_no}")
+        if key in key_lines:
+            raise BuildError(
+                f"Duplicate strings key {key!r} in {path.relative_to(ROOT)}:"
+                f"{line_no} (first defined on line {key_lines[key]})"
+            )
+        key_lines[key] = line_no
         strings[key] = unescape_compact_string(value)
     return strings
 
