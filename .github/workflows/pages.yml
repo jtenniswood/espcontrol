@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'devices/manifest.json'
+      - 'scripts/check_public_firmware.py'
+      - 'scripts/prune_actions_cache.sh'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/pages.yml'
