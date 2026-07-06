@@ -1,4 +1,4 @@
-// @web-module-requires: ntp_state, clock_bar_state, firmware_update_state, screensaver_timeout
+// @web-module-requires: ntp_state, artwork_state, clock_bar_state, firmware_update_state, screensaver_timeout
 
 if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
   registerEspControlTestHookGroup("settings", {
