@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -24,6 +25,11 @@ FIRMWARE_VERSION_PLACEHOLDER = '  firmware_version: "0.0.0"'
 PLACEHOLDER_STRINGS = {"dev", "0.0.0"}
 RELEASE_URL_BASE = "https://github.com/jtenniswood/espcontrol/releases/tag/"
 PROJECT_NAME = "jtenniswood.espcontrol"
+DEVICE_CHIP_PATTERNS = (
+    (re.compile(r"^\s+variant:\s*esp32p4\s*$", re.M), "ESP32-P4"),
+    (re.compile(r"^\s+variant:\s*esp32s3\s*$", re.M), "ESP32-S3"),
+    (re.compile(r"^\s+board:\s*esp32-s3(?:-|\b)", re.M), "ESP32-S3"),
+)
 
 
 class FirmwareReleaseError(RuntimeError):
@@ -111,13 +117,22 @@ def first_build(manifest: dict, manifest_path: Path) -> dict:
     return builds[0]
 
 
+def expected_chip_family_for_slug(slug: str) -> str:
+    device_yaml = ROOT / "devices" / slug / "device" / "device.yaml"
+    require_file(device_yaml, "device hardware YAML")
+    text = device_yaml.read_text(encoding="utf-8")
+    for pattern, chip_family in DEVICE_CHIP_PATTERNS:
+        if pattern.search(text):
+            return chip_family
+    raise FirmwareReleaseError(f"{device_yaml} does not declare a known ESP32 chip family")
+
+
 def verify_manifest(
     manifest_path: Path,
     slug: str,
     version: str,
     ota_md5: str,
     require_factory: bool = True,
-    expected_chip: str | None = None,
 ) -> dict:
     manifest = load_manifest(manifest_path)
     actual_version = str(manifest.get("version", "")).strip()
@@ -132,6 +147,7 @@ def verify_manifest(
     chip_family = build.get("chipFamily")
     if not isinstance(chip_family, str) or not chip_family.strip():
         raise FirmwareReleaseError(f"{manifest_path} build chipFamily must be a non-empty string")
+    expected_chip = expected_chip_family_for_slug(slug)
     if expected_chip and chip_family != expected_chip:
         raise FirmwareReleaseError(f"{manifest_path} build chipFamily {chip_family!r} does not match {expected_chip!r}")
 
@@ -170,7 +186,6 @@ def verify_files(
     manifest: Path,
     factory: Path | None,
     ota: Path,
-    expected_chip: str | None = None,
 ) -> None:
     require_file(manifest, "firmware manifest")
     require_file(ota, "OTA firmware")
@@ -178,7 +193,7 @@ def verify_files(
     if require_factory:
         require_file(factory, "factory firmware")
 
-    verify_manifest(manifest, slug, version, md5sum(ota), require_factory=require_factory, expected_chip=expected_chip)
+    verify_manifest(manifest, slug, version, md5sum(ota), require_factory=require_factory)
     assert_binary_version(ota, version)
     if factory is not None:
         assert_binary_version(factory, version)
@@ -358,7 +373,7 @@ def cmd_manifest(args: argparse.Namespace) -> None:
 
 
 def cmd_verify_files(args: argparse.Namespace) -> None:
-    verify_files(args.slug, args.version, Path(args.manifest), Path(args.factory), Path(args.ota), args.chip)
+    verify_files(args.slug, args.version, Path(args.manifest), Path(args.factory), Path(args.ota))
 
 
 def cmd_verify_directory(args: argparse.Namespace) -> None:
@@ -393,7 +408,6 @@ def build_parser() -> argparse.ArgumentParser:
     verify_files_cmd.add_argument("--manifest", required=True)
     verify_files_cmd.add_argument("--factory", required=True)
     verify_files_cmd.add_argument("--ota", required=True)
-    verify_files_cmd.add_argument("--chip", help="Expected manifest chipFamily")
     verify_files_cmd.set_defaults(func=cmd_verify_files)
 
     verify_directory_cmd = sub.add_parser("verify-directory", help="Verify firmware files for multiple slugs")

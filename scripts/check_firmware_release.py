@@ -15,7 +15,7 @@ from threading import Thread
 import firmware_release
 
 
-SLUG = "demo-panel"
+SLUG = "guition-esp32-s3-4848s040"
 VERSION = "v9.8.7"
 CHIP = "ESP32-S3"
 PROJECT_NAME = "jtenniswood.espcontrol"
@@ -194,7 +194,6 @@ def test_wrong_chip_family_fails() -> None:
             "--manifest", str(manifest),
             "--factory", str(factory),
             "--ota", str(ota),
-            "--chip", CHIP,
         ])
 
 
