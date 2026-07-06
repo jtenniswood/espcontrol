@@ -1414,6 +1414,7 @@ WEB_MODULE_ORDER_PATH = ROOT / "scripts" / "web_modules.json"
 MODEL_ENTRY = ROOT / "src" / "webserver" / "model" / "index.ts"
 MODEL_GENERATED_JS = MODULES_DIR / "model_generated.js"
 TIME_YAML = ROOT / "common" / "addon" / "time.yaml"
+WEB_MODULE_REQUIRES_RE = re.compile(r"^\s*//\s*@web-module-requires:\s*(.*?)\s*$", re.MULTILINE)
 
 CONFIG_START = "__DEVICE_CONFIG_START__"
 CONFIG_END = "__DEVICE_CONFIG_END__"
@@ -1442,7 +1443,40 @@ def load_web_module_order():
             f"{WEB_MODULE_ORDER_PATH.relative_to(ROOT)} does not match "
             f"{MODULES_DIR.relative_to(ROOT)}: " + "; ".join(errors)
         )
+    validate_web_module_dependencies(order)
     return order
+
+
+def web_module_requires(path):
+    text = path.read_text()
+    requires = []
+    for match in WEB_MODULE_REQUIRES_RE.finditer(text):
+        raw = match.group(1).strip()
+        if not raw or raw.lower() == "none":
+            continue
+        for name in raw.split(","):
+            name = name.strip()
+            if name:
+                requires.append(name)
+    return requires
+
+
+def validate_web_module_dependencies(order):
+    order_set = set(order)
+    seen = set()
+    errors = []
+    for name in order:
+        path = MODULES_DIR / f"{name}.js"
+        for dependency in web_module_requires(path):
+            if dependency == name:
+                errors.append(f"{name} cannot require itself")
+            elif dependency not in order_set:
+                errors.append(f"{name} requires unknown module {dependency}")
+            elif dependency not in seen:
+                errors.append(f"{name} requires {dependency}, but it is listed later in web_modules.json")
+        seen.add(name)
+    if errors:
+        raise BuildError("Invalid web module dependency order:\n  " + "\n  ".join(errors))
 
 
 def build_config_block(slug, cfg):

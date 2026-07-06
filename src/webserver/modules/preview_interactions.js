@@ -1,4 +1,5 @@
 // ── Preview event delegation & drag ────────────────────────────────────
+// @web-module-requires: state, grid, config_codec, api, button_settings, preview_render
 
 function resolveSpanPos(pos) {
   var c = ctx();

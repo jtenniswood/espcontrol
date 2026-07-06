@@ -1,4 +1,5 @@
 // ── SSE ────────────────────────────────────────────────────────────────
+// @web-module-requires: state, api, config_codec, app_backup, app_status_preview
 
 var SSE_ALIAS_GROUPS = {
   clockBar: ["switch-screen__clock_bar", "switch-screen_clock_bar", "switch-clock_bar_enabled"],

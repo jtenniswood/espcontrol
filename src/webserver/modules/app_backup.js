@@ -1,4 +1,5 @@
 // ── Export / Import ────────────────────────────────────────────────────
+// @web-module-requires: state, api, config_codec, backup_contract
 
 function backupExportScreenSizeSlug(value) {
   value = String(value || "").trim().toLowerCase();

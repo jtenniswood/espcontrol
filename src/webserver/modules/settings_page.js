@@ -1,4 +1,5 @@
 // ── Settings Page ──────────────────────────────────────────────────────
+// @web-module-requires: state, api, controls, controls_shell
 
 function settingsStatusHeader(title) {
   var header = document.createElement("div");

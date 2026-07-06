@@ -1,4 +1,5 @@
 // ── POST queue ─────────────────────────────────────────────────────────
+// @web-module-requires: state, entity_catalog
 
 var _postQueue = Promise.resolve();
 var _postThrottleMs = 0;

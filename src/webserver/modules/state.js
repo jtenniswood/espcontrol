@@ -1,4 +1,5 @@
 // ── State ──────────────────────────────────────────────────────────────
+// @web-module-requires: style_tokens
 
 var AUTO_TIMEZONE_OPTION = "Auto (Home Assistant)";
 var FALLBACK_TIMEZONE_OPTION = "UTC (GMT+0)";
