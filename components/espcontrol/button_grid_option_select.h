@@ -22,8 +22,8 @@ struct OptionSelectCtx {
   lv_obj_t *unit_lbl = nullptr;
   lv_obj_t *label_lbl = nullptr;
   uint32_t accent_color = DEFAULT_SLIDER_COLOR;
-  uint32_t secondary_color = DEFAULT_OFF_COLOR;
-  uint32_t tertiary_color = DEFAULT_TERTIARY_COLOR;
+  uint32_t secondary_color = SECONDARY_GREY;
+  uint32_t tertiary_color = TERTIARY_GREY;
   int width_compensation_percent = 100;
   const lv_font_t *value_font = nullptr;
   const lv_font_t *label_font = nullptr;
@@ -266,7 +266,7 @@ inline void option_select_open_modal(OptionSelectCtx *ctx) {
     bool active = ctx->options[i] == ctx->current_option;
     lv_obj_t *btn = control_modal_create_list_row(
       ui.list, ctx->options[i], active, row_h, row_radius,
-      ctx->accent_color, DARK_BACKGROUND_SECONDARY,
+      ctx->accent_color, SECONDARY_GREY,
       ctx->label_font, ctx->width_compensation_percent);
     ui.option_clicks[i].ctx = ctx;
     ui.option_clicks[i].value = ctx->options[i];
