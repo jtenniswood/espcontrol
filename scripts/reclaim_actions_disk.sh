@@ -1,6 +1,73 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")
+
+assert_exists() {
+  local path=$1
+  local label=$2
+  if [ ! -e "$path" ]; then
+    echo "::error::self-test failed: ${label} should exist" >&2
+    exit 1
+  fi
+}
+
+assert_missing() {
+  local path=$1
+  local label=$2
+  if [ -e "$path" ]; then
+    echo "::error::self-test failed: ${label} should have been removed" >&2
+    exit 1
+  fi
+}
+
+run_self_test() {
+  local tmp
+  tmp=$(mktemp -d)
+  SELF_TEST_TMP=$tmp
+  trap 'rm -rf "$SELF_TEST_TMP"' EXIT
+
+  local home="$tmp/home"
+  local workspace="$tmp/workspace"
+  local update_dir="$home/actions-runner-1/_work/_update"
+  local legacy_cache="$home/.cache/espcontrol-actions/esphome"
+  mkdir -p "$workspace" "$update_dir" "$legacy_cache"
+  touch "$update_dir/stale.update" "$legacy_cache/legacy.cache"
+
+  HOME="$home" \
+    GITHUB_WORKSPACE="$workspace" \
+    DOCKER=/bin/false \
+    ESPCONTROL_DOCKER_LOCK_HELD=true \
+    bash "$SCRIPT_PATH" >/dev/null
+
+  assert_missing "$update_dir" "runner update cleanup"
+  assert_missing "$legacy_cache" "legacy ESPHome cache cleanup"
+
+  local disabled_home="$tmp/disabled-home"
+  local disabled_update="$disabled_home/actions-runner-1/_work/_update"
+  local disabled_legacy="$disabled_home/.cache/espcontrol-actions/esphome"
+  mkdir -p "$disabled_update" "$disabled_legacy"
+  touch "$disabled_update/stale.update" "$disabled_legacy/legacy.cache"
+
+  HOME="$disabled_home" \
+    GITHUB_WORKSPACE="$workspace" \
+    DOCKER=/bin/false \
+    ESPCONTROL_DOCKER_LOCK_HELD=true \
+    ESPCONTROL_CLEAN_RUNNER_UPDATES=false \
+    ESPCONTROL_CLEAN_LEGACY_ESPHOME_CACHE=false \
+    bash "$SCRIPT_PATH" >/dev/null
+
+  assert_exists "$disabled_update/stale.update" "disabled runner update cleanup"
+  assert_exists "$disabled_legacy/legacy.cache" "disabled legacy ESPHome cache cleanup"
+
+  echo "Runner disk cleanup self-tests passed."
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+  run_self_test
+  exit 0
+fi
+
 DOCKER_COMMAND=${DOCKER:-docker}
 KEEP_STORAGE=${ESPCONTROL_DOCKER_BUILD_CACHE_KEEP:-2GB}
 LOCK_FILE=${ESPCONTROL_DOCKER_LOCK_FILE:-/tmp/espcontrol-esphome-image.lock}
