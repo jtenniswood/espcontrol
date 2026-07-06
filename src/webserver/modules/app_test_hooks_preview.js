@@ -1,4 +1,4 @@
-// @web-module-requires: language_state, screensaver_state, clock_bar_state
+// @web-module-requires: language_state, environment_state, screensaver_state, clock_bar_state
 
 if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
   registerEspControlTestHookGroup("preview", {

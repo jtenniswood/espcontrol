@@ -5,6 +5,7 @@
   "styles",
   "state",
   "language_state",
+  "environment_state",
   "screen_rotation_state",
   "screen_schedule_state",
   "ntp_state",
