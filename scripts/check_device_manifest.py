@@ -12,6 +12,7 @@ from device_profiles import (
     DeviceProfileError,
     common_font_ids,
     load_manifest_data,
+    public_docs_stem,
     rel,
     validate_manifest_data,
 )
@@ -65,6 +66,17 @@ def run_self_test() -> int:
     expect_error(
         validate_manifest_data(invalid_web, fonts),
         f"{slug}: web.dragMode must be swap or displace",
+    )
+
+    duplicate_docs_path = copy.deepcopy(data)
+    slugs = sorted(duplicate_docs_path["devices"])
+    assert len(slugs) >= 2, "self-test needs at least two devices"
+    first, second = slugs[:2]
+    first_stem = public_docs_stem(duplicate_docs_path["devices"][first]["public"]["docsPath"])
+    duplicate_docs_path["devices"][second]["public"]["docsPath"] = f"/screens/archive/{first_stem}/"
+    expect_error(
+        validate_manifest_data(duplicate_docs_path, fonts),
+        f"{second}: public.docsPath stem duplicates {first}: {first_stem}",
     )
 
     print("Device manifest self-test passed.")

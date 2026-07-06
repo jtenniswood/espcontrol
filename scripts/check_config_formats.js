@@ -232,6 +232,9 @@ function assertNormalizationFixtures(hooks, groups) {
       const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
       assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `${group.label} fixture ${fixture.name}: web parse`);
       const canonical = hooks.serializeButtonConfig(parsed);
+      if (Object.prototype.hasOwnProperty.call(fixture, "canonical")) {
+        assert.strictEqual(canonical, fixture.canonical, `${group.label} fixture ${fixture.name}: web canonical string`);
+      }
       assert.deepStrictEqual(
         buttonShape(hooks.parseButtonConfig(canonical)),
         buttonShape(fixture.expected),
