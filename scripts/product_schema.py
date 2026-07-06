@@ -79,8 +79,10 @@ def load_entity_names(path: Path = ENTITY_NAMES_JSON) -> dict[str, Any]:
 
 
 def validate_entity_identifier_list(entry: dict[str, Any], field: str, entry_path: str, errors: list[str]) -> None:
-    values = entry.get(field, [])
-    if not values:
+    if field not in entry:
+        return
+    values = entry[field]
+    if values == []:
         return
     if not isinstance(values, list) or not all(isinstance(value, str) and value for value in values):
         errors.append(path_error(f"{entry_path}.{field}", "must be a list of non-empty strings"))
