@@ -121,6 +121,56 @@ assert.strictEqual(v2.settings.home_assistant_artwork_port, 80, "exports Home As
 assert.strictEqual(v2.settings.firmware_auto_update, false, "exports firmware auto-update setting");
 assert.strictEqual(v2.settings.firmware_update_frequency, "Weekly", "exports firmware update frequency setting");
 
+const playlistButton = {
+  entity: "media_player.kitchen",
+  label: "Morning Mix",
+  icon: "Music",
+  icon_on: "Auto",
+  sensor: "playlist",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "",
+};
+hooks.setMediaPlaylistContentId(playlistButton, "media-source://music/morning,mix=50%");
+hooks.setMediaPlaylistContentType(playlistButton, "music");
+hooks.setMediaPlaylistPlayerSource(playlistButton, "Kitchen, Main=Zone 50%");
+const playlistBackup = hooks.createBackupConfig({
+  device: "panel-a",
+  slots: 1,
+  exported_at: "2026-05-24T12:00:00.000Z",
+  grid: [1],
+  buttons: [playlistButton],
+});
+assert.strictEqual(
+  playlistBackup.buttons[0].options,
+  "playlist_content_id=media-source%3A//music/morning%2Cmix=50%25,playlist_content_type=music,playlist_player_source=Kitchen%2C Main=Zone 50%25",
+  "backup exports encoded media playlist option values"
+);
+const normalizedPlaylistBackup = hooks.normalizeBackupConfig(playlistBackup);
+assert.strictEqual(
+  hooks.mediaPlaylistContentId(normalizedPlaylistBackup.buttons[0]),
+  "media-source://music/morning,mix=50%",
+  "backup normalization keeps media playlist content ID punctuation"
+);
+assert.strictEqual(
+  hooks.mediaPlaylistPlayerSource(normalizedPlaylistBackup.buttons[0]),
+  "Kitchen, Main=Zone 50%",
+  "backup normalization keeps media playlist player source punctuation"
+);
+const playlistImportPlan = hooks.planBackupImport(playlistBackup, { device: "panel-a", slots: 1 });
+assert.deepStrictEqual(plain(playlistImportPlan.warnings), [], "playlist backup same-device import has no warnings");
+assert.strictEqual(
+  hooks.mediaPlaylistContentId(playlistImportPlan.buttons[0]),
+  "media-source://music/morning,mix=50%",
+  "backup import keeps media playlist content ID punctuation"
+);
+assert.strictEqual(
+  hooks.mediaPlaylistPlayerSource(playlistImportPlan.buttons[0]),
+  "Kitchen, Main=Zone 50%",
+  "backup import keeps media playlist player source punctuation"
+);
+
 const normalizedV1 = hooks.normalizeBackupConfig({
   version: 1,
   device: "panel-a",

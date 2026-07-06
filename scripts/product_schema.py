@@ -210,13 +210,19 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                 if not isinstance(options, list):
                     errors.append(path_error(f"{card_path}.options", "must be a list"))
                 else:
+                    option_names: dict[str, str] = {}
                     for idx, option in enumerate(options):
                         option_path = f"{card_path}.options[{idx}]"
                         if not isinstance(option, dict):
                             errors.append(path_error(option_path, "must be an object"))
                             continue
-                        if not isinstance(option.get("name"), str) or not option.get("name"):
+                        name = option.get("name")
+                        if not isinstance(name, str) or not name:
                             errors.append(path_error(f"{option_path}.name", "must be a non-empty string"))
+                        elif name in option_names:
+                            errors.append(path_error(f"{option_path}.name", f"duplicates {option_names[name]}"))
+                        else:
+                            option_names[name] = f"{option_path}.name"
                         if not isinstance(option.get("label"), str) or not option.get("label"):
                             errors.append(path_error(f"{option_path}.label", "must be a non-empty string"))
                         if "kind" in option and option.get("kind") not in {"choice", "flag", "number", "text"}:

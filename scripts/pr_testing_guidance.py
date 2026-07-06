@@ -105,6 +105,15 @@ def affected_devices(paths: list[str], slugs: set[str]) -> tuple[set[str], bool]
             if build_slug in slugs:
                 devices.add(build_slug)
                 continue
+        if (
+            len(parts) >= 4
+            and parts[0] == "docs"
+            and parts[1] == "public"
+            and parts[2] == "webserver"
+            and parts[3] in slugs
+        ):
+            devices.add(parts[3])
+            continue
 
         if path in FIRMWARE_WIDE_FILES or path in FIRMWARE_WIDE_SCRIPTS:
             all_devices = True
@@ -259,10 +268,15 @@ def run_self_test() -> None:
     assert wide.firmware_related
     assert len(wide.devices) >= 5
 
-    generated_web = analyze(["docs/public/webserver/espcontrol/www.js"])
+    generated_web = analyze(["docs/public/webserver/guition-esp32-p4-jc1060p470/www.js"])
     assert generated_web.firmware_related
     assert not generated_web.docs_only
-    assert len(generated_web.devices) >= 5
+    assert generated_web.devices == ["guition-esp32-p4-jc1060p470"]
+
+    generated_web_unknown = analyze(["docs/public/webserver/unknown-panel/www.js"])
+    assert generated_web_unknown.firmware_related
+    assert not generated_web_unknown.docs_only
+    assert len(generated_web_unknown.devices) >= 5
 
     esphome_version = analyze([".github/esphome.env"])
     assert esphome_version.firmware_related
