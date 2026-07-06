@@ -52,6 +52,23 @@ def firmware_headers(root: Path) -> list[Path]:
     return sorted((root / "components" / "espcontrol").glob("button_grid*.h"))
 
 
+def function_body(text: str, name: str) -> str | None:
+    match = re.search(rf"\b{name}\s*\([^)]*\)\s*\{{", text)
+    if not match:
+        return None
+    start = match.end() - 1
+    depth = 0
+    for index in range(start, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1:index]
+    return None
+
+
 def check_root(root: Path) -> list[str]:
     failures: list[str] = []
     for path in firmware_headers(root):
@@ -114,7 +131,8 @@ def check_root(root: Path) -> list[str]:
     image_header = root / "components" / "espcontrol" / IMAGE_HEADER
     if image_header.exists():
         text = image_header.read_text(encoding="utf-8")
-        if "for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++)" not in text:
+        reset_body = function_body(text, "reset_image_card_pool")
+        if reset_body is None or "for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++)" not in reset_body:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
@@ -207,6 +225,30 @@ def run_self_test() -> None:
         (
             {"button_grid_image.h": "for (int i = 0; i < count; i++) {}\n"},
             ("reset every image-card context, including disabled slots",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void image_card_start_next_queued_download() {\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  int count = cfg.image_card_image_count;\n"
+                    "  for (int i = 0; i < count; i++) {}\n"
+                    "}\n"
+                )
+            },
+            ("reset every image-card context, including disabled slots",),
+        ),
+        (
+            {
+                "button_grid_image.h": (
+                    "inline void reset_image_card_pool(const GridConfig &cfg) {\n"
+                    "  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {}\n"
+                    "}\n"
+                )
+            },
+            (),
         ),
     )
     for files, expected in cases:
