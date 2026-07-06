@@ -18,6 +18,7 @@
   "backup_contract",
   "app_backup",
   "app_status_preview",
+  "app_event_aliases",
   "app_events",
   "app",
   "app_test_hooks",
