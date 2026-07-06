@@ -108,6 +108,7 @@ none=Ingen
 no_options=Ingen muligheder
 no_presets=Ingen forvalg
 no_sources=Ingen kilder
+source=Kilde
 not_available=Ikke tilgængelig
 off=Slukket
 on=Tændt

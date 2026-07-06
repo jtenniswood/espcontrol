@@ -28,7 +28,6 @@ struct SliderCtx {
   lv_obj_t *media_track_bg = nullptr;
   lv_obj_t *media_value_lbl = nullptr;
   lv_obj_t *media_status_lbl = nullptr;
-  lv_timer_t *media_timer = nullptr;
   lv_coord_t content_pad = 0;
   bool available = true;
   bool interactive = true;
@@ -51,6 +50,8 @@ struct MediaNowPlayingCtx {
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
   lv_obj_t *btn = nullptr;
+  char artist[HA_STATE_TEXT_MAX_LEN + 1] = {};
+  bool external_source = false;
   bool play_pause_background = false;
 };
 

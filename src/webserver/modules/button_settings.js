@@ -33,10 +33,7 @@ function renderClockBarSelectionBar() {
   var actions = document.createElement("div");
   actions.className = "sp-selection-actions";
 
-  var editBtn = document.createElement("button");
-  editBtn.type = "button";
-  editBtn.className = "sp-selection-btn sp-selection-btn-primary";
-  editBtn.innerHTML = '<span class="mdi mdi-pencil"></span>Edit';
+  var editBtn = createActionButton("sp-selection-btn sp-selection-btn-primary", "Edit", "pencil");
   editBtn.disabled = !canEditClockBarItem;
   editBtn.addEventListener("click", function (e) {
     e.preventDefault();
@@ -51,11 +48,11 @@ function renderClockBarSelectionBar() {
   actions.appendChild(editBtn);
 
   var visible = clockBarItemActive(state.clockBarSelectedItem);
-  var hideBtn = document.createElement("button");
-  hideBtn.type = "button";
-  hideBtn.className = "sp-selection-btn";
-  hideBtn.innerHTML = '<span class="mdi mdi-' + (visible ? "eye-off-outline" : "eye-outline") + '"></span>' +
-    (visible ? "Hide" : "Show");
+  var hideBtn = createActionButton(
+    "sp-selection-btn",
+    visible ? "Hide" : "Show",
+    visible ? "eye-off-outline" : "eye-outline"
+  );
   hideBtn.addEventListener("click", function (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -93,10 +90,7 @@ function renderSelectionBar(c) {
   actions.className = "sp-selection-actions";
 
   if (c.selected.length === 1) {
-    var editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.className = "sp-selection-btn sp-selection-btn-primary";
-    editBtn.innerHTML = '<span class="mdi mdi-pencil"></span>Edit';
+    var editBtn = createActionButton("sp-selection-btn sp-selection-btn-primary", "Edit", "pencil");
     editBtn.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -105,11 +99,7 @@ function renderSelectionBar(c) {
     actions.appendChild(editBtn);
   }
 
-  var menuBtn = document.createElement("button");
-  menuBtn.type = "button";
-  menuBtn.className = "sp-selection-btn";
-  menuBtn.setAttribute("aria-label", "Card actions");
-  menuBtn.innerHTML = '<span class="mdi mdi-dots-horizontal"></span>';
+  var menuBtn = createActionButton("sp-selection-btn", "", "dots-horizontal", "Card actions");
   menuBtn.addEventListener("click", function (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -221,21 +211,18 @@ function openClockBarTemperatureSettings() {
   saveRow.className = "sp-btn-row sp-btn-row--save sp-has-secondary";
 
   var visible = clockBarItemActive("temperature");
-  var hideBtn = document.createElement("button");
-  hideBtn.type = "button";
-  hideBtn.className = "sp-action-btn sp-hide-btn";
-  hideBtn.innerHTML = '<span class="mdi mdi-' + (visible ? "eye-off-outline" : "eye-outline") + '"></span>' +
-    (visible ? "Hide" : "Show");
+  var hideBtn = createActionButton(
+    "sp-action-btn sp-hide-btn",
+    visible ? "Hide" : "Show",
+    visible ? "eye-off-outline" : "eye-outline"
+  );
   hideBtn.addEventListener("click", function () {
     setClockBarItemVisible("temperature", !visible);
     closeSettings();
   });
   saveRow.appendChild(hideBtn);
 
-  var saveBtn = document.createElement("button");
-  saveBtn.type = "button";
-  saveBtn.className = "sp-action-btn sp-save-btn";
-  saveBtn.textContent = "Save";
+  var saveBtn = createActionButton("sp-action-btn sp-save-btn", "Save");
   saveBtn.addEventListener("click", function () {
     saveClockBarTemperatureSettings(entityInp.value, degreeToggle.input.checked);
     closeSettings();
@@ -294,10 +281,7 @@ function renderBackButtonSettings(container, c) {
 
   var doneRow = document.createElement("div");
   doneRow.className = "sp-btn-row sp-btn-row--save";
-  var doneBtn = document.createElement("button");
-  doneBtn.type = "button";
-  doneBtn.className = "sp-action-btn sp-save-btn";
-  doneBtn.textContent = "Done";
+  var doneBtn = createActionButton("sp-action-btn sp-save-btn", "Done");
   doneBtn.addEventListener("click", closeSettings);
   doneRow.appendChild(doneBtn);
   panel.appendChild(doneRow);
@@ -580,44 +564,6 @@ function renderButtonSettings(forceOpen) {
     return icf;
   }
 
-  function fieldWithControl(labelText, inputId, control) {
-    var field = document.createElement("div");
-    field.className = "sp-field";
-    field.appendChild(fieldLabel(labelText, inputId));
-    if (control) field.appendChild(control);
-    return field;
-  }
-
-  function optionValue(option) {
-    if (Array.isArray(option)) return option[0];
-    if (option && typeof option === "object") return option.value;
-    return option;
-  }
-
-  function optionLabel(option) {
-    if (Array.isArray(option)) return option[1];
-    if (option && typeof option === "object") return option.label;
-    return option;
-  }
-
-  function selectField(labelText, inputId, options, value, onChange) {
-    var select = document.createElement("select");
-    select.className = "sp-select";
-    if (inputId) select.id = inputId;
-    (options || []).forEach(function (entry) {
-      var option = document.createElement("option");
-      option.value = optionValue(entry);
-      option.textContent = optionLabel(entry);
-      select.appendChild(option);
-    });
-    select.value = value || "";
-    if (onChange) select.addEventListener("change", onChange);
-    return {
-      field: fieldWithControl(labelText, inputId, select),
-      select: select,
-    };
-  }
-
   function entityField(labelText, inputId, value, placeholder, domains, bindName, rerender, requiredMessage) {
     var input = entityInput(inputId, value, placeholder, domains);
     var field = fieldWithControl(labelText, inputId, input);
@@ -639,61 +585,10 @@ function renderButtonSettings(forceOpen) {
     };
   }
 
-  function segmentControl(options, value, onSelect) {
-    var segment = document.createElement("div");
-    segment.className = "sp-segment";
-    var buttons = {};
-    (options || []).forEach(function (entry) {
-      var optValue = optionValue(entry);
-      var button = document.createElement("button");
-      button.type = "button";
-      button.textContent = optionLabel(entry);
-      button.classList.toggle("active", optValue === value);
-      button.addEventListener("click", function () {
-        for (var key in buttons) buttons[key].classList.toggle("active", key === optValue);
-        if (onSelect) onSelect(optValue, button);
-      });
-      segment.appendChild(button);
-      buttons[optValue] = button;
-    });
-    return {
-      segment: segment,
-      buttons: buttons,
-    };
-  }
-
   function toggleSection(labelText, inputId, checked) {
     return {
       toggle: toggleRow(labelText, inputId, checked),
       section: condField(),
-    };
-  }
-
-  function disclosureSection(labelText, inputId, open) {
-    var panel = document.createElement("div");
-    panel.className = "sp-disclosure" + (open ? " sp-open" : "");
-    var button = document.createElement("button");
-    button.type = "button";
-    button.className = "sp-disclosure-button";
-    if (inputId) button.id = inputId;
-    button.setAttribute("aria-expanded", open ? "true" : "false");
-    var label = document.createElement("span");
-    label.textContent = labelText;
-    button.appendChild(label);
-    button.appendChild(createDisclosureChevron("sp-disclosure-chevron"));
-    var section = document.createElement("div");
-    section.className = "sp-disclosure-body";
-    button.addEventListener("click", function () {
-      open = !panel.classList.contains("sp-open");
-      panel.classList.toggle("sp-open", open);
-      button.setAttribute("aria-expanded", open ? "true" : "false");
-    });
-    panel.appendChild(button);
-    panel.appendChild(section);
-    return {
-      panel: panel,
-      button: button,
-      section: section,
     };
   }
 
@@ -758,6 +653,131 @@ function renderButtonSettings(forceOpen) {
     });
     field.appendChild(grid);
     return field;
+  }
+
+  function renderActiveDisplaySettings(panel, button, idPrefix) {
+    var hasIconOn = button.icon_on && button.icon_on !== "Auto";
+    var hasSensor = !!button.sensor;
+    var activeEnabled = hasIconOn || hasSensor || !!button._whenOnActive;
+    var activeMode = button._whenOnMode || (hasSensor ? "sensor" : "icon");
+
+    var activeToggle = toggleRow("Active Display", idPrefix + "whenon-toggle", activeEnabled);
+    panel.appendChild(activeToggle.row);
+
+    var activeFields = condField();
+    if (activeEnabled) activeFields.classList.add("sp-visible");
+
+    var modeControl = segmentControl([
+      ["icon", "On Icon"],
+      ["sensor", "Numeric"],
+    ], activeMode, function (mode) {
+      setActiveDisplayMode(mode);
+    });
+    activeFields.appendChild(modeControl.segment);
+
+    var iconSection = condField();
+    if (activeMode === "icon") iconSection.classList.add("sp-visible");
+    var iconOnPicker = makeIconPicker(
+      idPrefix + "icon-on-picker",
+      idPrefix + "icon-on",
+      hasIconOn ? button.icon_on : "Auto",
+      function (opt) {
+        button.icon_on = opt;
+        saveField("icon_on", opt);
+      },
+      "On Icon"
+    );
+    iconSection.appendChild(iconOnPicker);
+    activeFields.appendChild(iconSection);
+
+    var sensorSection = condField();
+    if (activeMode === "sensor") sensorSection.classList.add("sp-visible");
+
+    var sensorField = entityField(
+      "Sensor Entity",
+      idPrefix + "sensor",
+      button.sensor,
+      "e.g. sensor.printer_percent_complete",
+      ["sensor", "binary_sensor", "text_sensor"],
+      "sensor",
+      true
+    );
+    sensorSection.appendChild(sensorField.field);
+
+    var unitField = textField("Unit", idPrefix + "unit", button.unit, "e.g. %", "unit", false);
+    sensorSection.appendChild(unitField.field);
+
+    var precision = precisionField(idPrefix + "precision", button.precision || "0", function () {
+      button.precision = this.value === "0" ? "" : this.value;
+      saveField("precision", button.precision);
+    });
+    sensorSection.appendChild(precision.field);
+    activeFields.appendChild(sensorSection);
+
+    panel.appendChild(activeFields);
+
+    function syncIconPicker(value) {
+      if (value === "Auto") {
+        var autoPreview = iconOnPicker.querySelector(".sp-icon-picker-preview");
+        if (autoPreview) autoPreview.className = "sp-icon-picker-preview mdi mdi-cog";
+        var autoInput = iconOnPicker.querySelector(".sp-icon-picker-input");
+        if (autoInput) autoInput.value = "Auto";
+        return;
+      }
+      var picker = iconOnPicker.querySelector(".sp-icon-picker");
+      if (picker && picker._setIcon) {
+        picker._setIcon(value);
+        return;
+      }
+      var preview = iconOnPicker.querySelector(".sp-icon-picker-preview");
+      if (preview) preview.className = "sp-icon-picker-preview mdi mdi-" + iconSlug(value);
+      var input = iconOnPicker.querySelector(".sp-icon-picker-input");
+      if (input) input.value = value;
+    }
+
+    function resetSensorFields() {
+      sensorField.input.value = "";
+      unitField.input.value = "";
+      precision.select.value = "0";
+      button.sensor = "";
+      button.unit = "";
+      button.precision = "";
+      saveField("sensor", "");
+      saveField("unit", "");
+      saveField("precision", "");
+    }
+
+    function setActiveDisplayMode(mode) {
+      activeMode = mode;
+      button._whenOnActive = true;
+      button._whenOnMode = mode;
+      modeControl.buttons.icon.classList.toggle("active", mode === "icon");
+      modeControl.buttons.sensor.classList.toggle("active", mode === "sensor");
+      iconSection.classList.toggle("sp-visible", mode === "icon");
+      sensorSection.classList.toggle("sp-visible", mode === "sensor");
+      if (mode === "icon") {
+        resetSensorFields();
+      } else {
+        button.icon_on = "Auto";
+        saveField("icon_on", "Auto");
+        syncIconPicker("Auto");
+      }
+    }
+
+    activeToggle.input.addEventListener("change", function () {
+      if (this.checked) {
+        button._whenOnActive = true;
+        activeFields.classList.add("sp-visible");
+      } else {
+        button._whenOnActive = false;
+        button._whenOnMode = null;
+        activeFields.classList.remove("sp-visible");
+        resetSensorFields();
+        button.icon_on = "Auto";
+        saveField("icon_on", "Auto");
+        syncIconPicker("Auto");
+      }
+    });
   }
 
   var isNewDraftWithoutType = isNewDraft && !state.settingsDraft.typeSelected;
@@ -878,161 +898,7 @@ function renderButtonSettings(forceOpen) {
       saveField("icon", opt);
     }, "Off Icon"));
 
-    // When-on section
-    var hasIconOn = b.icon_on && b.icon_on !== "Auto";
-    var hasSensor = !!b.sensor;
-    var whenOnEnabled = hasIconOn || hasSensor || !!b._whenOnActive;
-    var whenOnMode = b._whenOnMode || (hasSensor ? "sensor" : "icon");
-
-    var whenOnToggle = toggleRow("Active Display", idPrefix + "whenon-toggle", whenOnEnabled);
-    panel.appendChild(whenOnToggle.row);
-
-    var whenOnCond = condField();
-    if (whenOnEnabled) whenOnCond.classList.add("sp-visible");
-
-    var seg = document.createElement("div");
-    seg.className = "sp-segment";
-    var btnIcon = document.createElement("button");
-    btnIcon.type = "button";
-    btnIcon.textContent = "On Icon";
-    if (whenOnMode === "icon") btnIcon.classList.add("active");
-    var btnSensor = document.createElement("button");
-    btnSensor.type = "button";
-    btnSensor.textContent = "Numeric";
-    if (whenOnMode === "sensor") btnSensor.classList.add("active");
-    seg.appendChild(btnIcon);
-    seg.appendChild(btnSensor);
-    whenOnCond.appendChild(seg);
-
-    // Icon-on section
-    var iconOnSection = condField();
-    if (whenOnMode === "icon") iconOnSection.classList.add("sp-visible");
-    var ionLabel = fieldLabel("On Icon", idPrefix + "icon-on");
-    iconOnSection.appendChild(ionLabel);
-    var iconOnVal = hasIconOn ? b.icon_on : "Auto";
-    var iconOnPicker = document.createElement("div");
-    iconOnPicker.className = "sp-icon-picker";
-    iconOnPicker.id = idPrefix + "icon-on-picker";
-    iconOnPicker.appendChild(mdiIcon(iconOnVal, "sp-icon-picker-preview mdi"));
-    var iconOnInput = document.createElement("input");
-    iconOnInput.className = "sp-icon-picker-input";
-    iconOnInput.id = idPrefix + "icon-on";
-    iconOnInput.type = "text";
-    iconOnInput.placeholder = "Search icons\u2026";
-    iconOnInput.value = iconOnVal || "";
-    iconOnInput.autocomplete = "off";
-    iconOnPicker.appendChild(iconOnInput);
-    var iconOnDropdown = document.createElement("div");
-    iconOnDropdown.className = "sp-icon-dropdown";
-    iconOnPicker.appendChild(iconOnDropdown);
-    iconOnSection.appendChild(iconOnPicker);
-    whenOnCond.appendChild(iconOnSection);
-
-    initIconPicker(iconOnPicker, iconOnVal, function (opt) {
-      b.icon_on = opt;
-      saveField("icon_on", opt);
-    });
-
-    // Sensor section
-    var sensorSection = condField();
-    if (whenOnMode === "sensor") sensorSection.classList.add("sp-visible");
-
-    var sf = document.createElement("div");
-    sf.className = "sp-field";
-    sf.appendChild(fieldLabel("Sensor Entity", idPrefix + "sensor"));
-    var sensorInp = entityInput(idPrefix + "sensor", b.sensor, "e.g. sensor.printer_percent_complete", [
-      "sensor", "binary_sensor", "text_sensor"
-    ]);
-    sf.appendChild(sensorInp);
-    sensorSection.appendChild(sf);
-
-    var uf = document.createElement("div");
-    uf.className = "sp-field";
-    uf.appendChild(fieldLabel("Unit", idPrefix + "unit"));
-    var unitInp = textInput(idPrefix + "unit", b.unit, "e.g. %");
-    unitInp.className = "sp-input";
-    uf.appendChild(unitInp);
-    sensorSection.appendChild(uf);
-
-    var pf = document.createElement("div");
-    pf.className = "sp-field";
-    pf.appendChild(fieldLabel("Unit Precision", idPrefix + "precision"));
-    var precisionSelect = document.createElement("select");
-    precisionSelect.className = "sp-select";
-    precisionSelect.id = idPrefix + "precision";
-    var precOpts = [["0", "10"], ["1", "10.2"], ["2", "10.21"]];
-    for (var pi = 0; pi < precOpts.length; pi++) {
-      var opt = document.createElement("option");
-      opt.value = precOpts[pi][0];
-      opt.textContent = precOpts[pi][1];
-      precisionSelect.appendChild(opt);
-    }
-    precisionSelect.value = b.precision || "0";
-    precisionSelect.addEventListener("change", function () {
-      b.precision = this.value === "0" ? "" : this.value;
-      saveField("precision", b.precision);
-    });
-    pf.appendChild(precisionSelect);
-    sensorSection.appendChild(pf);
-    whenOnCond.appendChild(sensorSection);
-
-    panel.appendChild(whenOnCond);
-
-    bindField(sensorInp, "sensor", true);
-    bindField(unitInp, "unit", false);
-
-    function setWhenOnMode(mode) {
-      whenOnMode = mode;
-      b._whenOnActive = true;
-      b._whenOnMode = mode;
-      btnIcon.classList.toggle("active", mode === "icon");
-      btnSensor.classList.toggle("active", mode === "sensor");
-      iconOnSection.classList.toggle("sp-visible", mode === "icon");
-      sensorSection.classList.toggle("sp-visible", mode === "sensor");
-      if (mode === "icon") {
-        sensorInp.value = "";
-        unitInp.value = "";
-        precisionSelect.value = "0";
-        b.sensor = "";
-        b.unit = "";
-        b.precision = "";
-        saveField("sensor", "");
-        saveField("unit", "");
-        saveField("precision", "");
-      } else {
-        b.icon_on = "Auto";
-        saveField("icon_on", "Auto");
-        var ionPreview = iconOnPicker.querySelector(".sp-icon-picker-preview");
-        if (ionPreview) ionPreview.className = "sp-icon-picker-preview mdi mdi-cog";
-        var ionInput = iconOnPicker.querySelector(".sp-icon-picker-input");
-        if (ionInput) ionInput.value = "Auto";
-      }
-    }
-
-    btnIcon.addEventListener("click", function () { setWhenOnMode("icon"); });
-    btnSensor.addEventListener("click", function () { setWhenOnMode("sensor"); });
-
-    whenOnToggle.input.addEventListener("change", function () {
-      if (this.checked) {
-        b._whenOnActive = true;
-        whenOnCond.classList.add("sp-visible");
-      } else {
-        b._whenOnActive = false;
-        b._whenOnMode = null;
-        whenOnCond.classList.remove("sp-visible");
-        sensorInp.value = "";
-        unitInp.value = "";
-        precisionSelect.value = "0";
-        b.sensor = "";
-        b.unit = "";
-        b.precision = "";
-        b.icon_on = "Auto";
-        saveField("sensor", "");
-        saveField("unit", "");
-        saveField("precision", "");
-        saveField("icon_on", "Auto");
-      }
-    });
+    renderActiveDisplaySettings(panel, b, idPrefix);
 
     var patternField = selectField("On State Pattern", idPrefix + "on-pattern", [
       ["", "Solid"],
@@ -1049,9 +915,7 @@ function renderButtonSettings(forceOpen) {
   saveRow.className = "sp-btn-row sp-btn-row--save";
 
   if (!isNewDraft) {
-    var delBtn = document.createElement("button");
-    delBtn.className = "sp-action-btn sp-delete-btn";
-    delBtn.innerHTML = '<span class="mdi mdi-trash-can-outline"></span>';
+    var delBtn = createActionButton("sp-action-btn sp-delete-btn", "", "trash-can-outline");
     delBtn.addEventListener("click", function () {
       state.settingsDraft = null;
       deleteSlot(slot);
@@ -1068,9 +932,7 @@ function renderButtonSettings(forceOpen) {
   } else if (editSubBtn) {
     rightGroup.appendChild(editSubBtn);
   }
-  var saveBtn = document.createElement("button");
-  saveBtn.className = "sp-action-btn sp-save-btn";
-  saveBtn.textContent = "Save";
+  var saveBtn = createActionButton("sp-action-btn sp-save-btn", "Save");
   saveBtn.addEventListener("click", function () {
     if (!validateSettingsDraft()) return;
     if (!validateImageCardLimit()) return;

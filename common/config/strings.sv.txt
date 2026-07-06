@@ -108,6 +108,7 @@ none=Ingen
 no_options=Inga alternativ
 no_presets=Inga förval
 no_sources=Inga källor
+source=Källa
 not_available=Inte tillgänglig
 off=Av
 on=På

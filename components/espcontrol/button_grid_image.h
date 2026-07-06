@@ -618,7 +618,8 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
   ImageCardCtx *contexts = image_card_contexts();
   int count = cfg.image_card_image_count;
   if (count > IMAGE_CARD_MAX_CONTEXTS) count = IMAGE_CARD_MAX_CONTEXTS;
-  for (int i = 0; i < count; i++) {
+  if (count < 0) count = 0;
+  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
     image_card_clear_widget_source(contexts[i].widget);
     contexts[i].active = false;
     contexts[i].widget = nullptr;
@@ -657,8 +658,8 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
     contexts[i].startup_download_errors = 0;
-    contexts[i].image = cfg.image_card_images ? cfg.image_card_images[i] : nullptr;
-    contexts[i].modal_image = cfg.image_card_modal_images ? cfg.image_card_modal_images[i] : nullptr;
+    contexts[i].image = (i < count && cfg.image_card_images) ? cfg.image_card_images[i] : nullptr;
+    contexts[i].modal_image = (i < count && cfg.image_card_modal_images) ? cfg.image_card_modal_images[i] : nullptr;
     contexts[i].modal_url.clear();
     if (contexts[i].image) contexts[i].image->release();
     if (image_card_has_separate_modal_image(&contexts[i])) contexts[i].modal_image->release();

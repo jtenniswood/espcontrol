@@ -37,6 +37,7 @@ SERVICE_MAPPING_PATTERN = re.compile(
 
 LAWN_MOWER_HEADER = "button_grid_lawn_mower.h"
 GRID_HEADER = "button_grid_grid.h"
+IMAGE_HEADER = "button_grid_image.h"
 
 
 def service_mapping_line_allowed(line: str) -> bool:
@@ -103,6 +104,19 @@ def check_root(root: Path) -> list[str]:
         ):
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: include full light controls in generic subpage parent indicators"
+            )
+        image_reset_pos = text.find("reset_image_card_pool(cfg);")
+        subpage_clear_pos = text.find("navigation_clear_subpages();")
+        if image_reset_pos < 0 or subpage_clear_pos < 0 or image_reset_pos > subpage_clear_pos:
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: reset image-card contexts before deleting subpage screens"
+            )
+    image_header = root / "components" / "espcontrol" / IMAGE_HEADER
+    if image_header.exists():
+        text = image_header.read_text(encoding="utf-8")
+        if "for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++)" not in text:
+            failures.append(
+                f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
     return failures
 
@@ -175,6 +189,24 @@ def run_self_test() -> None:
                 )
             },
             ("include full light controls in generic subpage parent indicators",),
+        ),
+        (
+            {
+                "button_grid_grid.h": (
+                    'if (parent_subpage_kind == "lawn_mower") { lawn_mower_state_active_ref(state); }\n'
+                    'if (sb_cfg.type == "light_control") {\n'
+                    '  subscribe_light_control_state(ctx);\n'
+                    '  add_parent_indicator(sb_cfg.entity);\n'
+                    '}\n'
+                    'navigation_clear_subpages();\n'
+                    'reset_image_card_pool(cfg);\n'
+                )
+            },
+            ("reset image-card contexts before deleting subpage screens",),
+        ),
+        (
+            {"button_grid_image.h": "for (int i = 0; i < count; i++) {}\n"},
+            ("reset every image-card context, including disabled slots",),
         ),
     )
     for files, expected in cases:

@@ -1149,9 +1149,10 @@ inline void grid_phase2(
   grid_release_main_runtime_allocations(slots, NS);
   grid_clear_subpage_parent_targets(slots, NS);
   navigation_clear_home_targets();
+  // Image-card contexts may still point at widgets inside subpage screens.
+  reset_image_card_pool(cfg);
   navigation_clear_subpages();
   clear_subpage_vacuum_card_text_refs();
-  reset_image_card_pool(cfg);
 
   bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);

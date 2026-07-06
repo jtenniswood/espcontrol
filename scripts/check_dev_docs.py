@@ -280,6 +280,12 @@ def web_registration_map() -> dict[str, str]:
         text = path.read_text()
         for match in re.finditer(r"registerButtonType\(\s*([\"'])(.*?)\1", text):
             out[match.group(2)] = rel(path)
+        for match in re.finditer(
+            r"registerCoverLikeCardType\(\s*\{.*?\btype\s*:\s*([\"'])(.*?)\1",
+            text,
+            flags=re.DOTALL,
+        ):
+            out[match.group(2)] = rel(path)
     return out
 
 

@@ -655,7 +655,10 @@ def firmware_cover_art_external_input_errors(path: Path, root: Path) -> list[str
         errors.append(f"{rel}: release retired cover art Home Assistant subscriptions")
     if 'ha_get_attribute(cover_entity, std::string("source"), handle_media_source)' not in text:
         errors.append(f"{rel}: refresh the media player source attribute")
-    if 'next == "TV"' not in text or 'next == "Line-in"' not in text:
+    if ('normalized_source == "tv"' not in text or
+            'normalized_source == "line-in"' not in text or
+            'normalized_source == "line in"' not in text or
+            "std::tolower" not in text):
         errors.append(f"{rel}: treat TV and Line-in sources as external inputs")
     if "cover_art_apply_external_input_policy" not in text:
         errors.append(f"{rel}: centralize cover art external-input behavior")
@@ -913,14 +916,95 @@ def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Pa
         return errors
 
     always_on, low_heap_excluded = body.split(marker, 1)
+    metadata_helper = ""
+    progress_helper = ""
+    if "inline void media_playback_subscribe_metadata" in text:
+        metadata_helper = text.split("inline void media_playback_subscribe_metadata", 1)[1]
+        metadata_helper = metadata_helper.split(
+            "\n\ninline void media_playback_subscribe_progress", 1
+        )[0]
+    if "inline void media_playback_subscribe_progress" in text:
+        progress_helper = text.split("inline void media_playback_subscribe_progress", 1)[1]
+        progress_helper = progress_helper.split(
+            "\n\ninline void media_playback_subscribe_volume", 1
+        )[0]
+
     for attr in ("media_title", "media_artist"):
-        if f'std::string("{attr}")' not in always_on:
+        if (
+            "media_playback_subscribe_metadata(state)" not in always_on
+            or f'std::string("{attr}")' not in metadata_helper
+        ):
             errors.append(f"{rel}: keep {attr} subscribed for the S3 media modal")
+    progress_in_always_on = "media_playback_subscribe_progress(state)" in always_on
+    progress_in_low_heap_excluded = "media_playback_subscribe_progress(state)" in low_heap_excluded
     for attr in ("media_duration", "media_position", "media_position_updated_at"):
-        if f'std::string("{attr}")' in always_on:
+        if (
+            f'std::string("{attr}")' in always_on
+            or progress_in_always_on
+        ):
             errors.append(f"{rel}: keep {attr} out of the S3 low-heap media modal path")
-        if f'std::string("{attr}")' not in low_heap_excluded:
+        if (
+            not progress_in_always_on
+            and not progress_in_low_heap_excluded
+            or f'std::string("{attr}")' not in progress_helper
+        ):
             errors.append(f"{rel}: full media modal builds should still subscribe {attr}")
+    return errors
+
+
+def firmware_cover_art_low_heap_progress_errors(
+    firmware_dir: Path, cover_art_path: Path, root: Path
+) -> list[str]:
+    media_path = firmware_dir / "button_grid_media.h"
+    errors: list[str] = []
+
+    if media_path.exists():
+        rel = media_path.relative_to(root)
+        media_text = media_path.read_text(encoding="utf-8")
+        for token in (
+            "struct MediaPlaybackState",
+            "media_playback_ensure_state(entity_id)",
+            "media_playback_attach_slider(state, ctx)",
+            "media_playback_subscribe_state(state)",
+            "media_playback_state_snapshot",
+            "media_playback_state_has_progress",
+        ):
+            if token not in media_text:
+                errors.append(f"{rel}: let S3 cover art reuse shared media playback progress")
+                break
+    else:
+        errors.append(f"{media_path.relative_to(root)}: missing media card helpers")
+
+    if not cover_art_path.exists():
+        return errors
+
+    rel = cover_art_path.relative_to(root)
+    text = cover_art_path.read_text(encoding="utf-8")
+    stripped_low_heap = re.sub(
+        r"#ifndef ESPCONTROL_LOW_HEAP_COVER_ART.*?#endif",
+        "",
+        text,
+        flags=re.DOTALL,
+    )
+    for attr in ("media_duration", "media_position", "media_position_updated_at"):
+        if f'std::string("{attr}")' in stripped_low_heap:
+            errors.append(f"{rel}: keep {attr} out of the S3 low-heap cover art path")
+        if f'std::string("{attr}")' not in text:
+            errors.append(f"{rel}: full cover art builds should still subscribe {attr}")
+
+    refresh_body = yaml_script_body(text, "cover_art_refresh_progress")
+    if not refresh_body:
+        errors.append(f"{rel}: missing cover_art_refresh_progress script")
+    elif (
+        "#ifdef ESPCONTROL_LOW_HEAP_COVER_ART" not in refresh_body
+        or "media_playback_state_snapshot" not in refresh_body
+        or "lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN)" not in refresh_body
+    ):
+        errors.append(f"{rel}: let S3 cover art consume shared progress when a media card provides it")
+
+    if "return media_playback_state_has_progress(id(cover_art_media_player_entity).state);" not in text:
+        errors.append(f"{rel}: show S3 cover art progress only when shared playback progress is available")
+
     return errors
 
 
@@ -1600,6 +1684,7 @@ def run_scan() -> int:
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
@@ -1987,6 +2072,28 @@ def expect_media_control_low_heap_metadata_errors(name: str, text: str, expected
         (firmware_dir / "button_grid_media.h").write_text(text, encoding="utf-8")
 
         errors = firmware_media_control_low_heap_metadata_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_art_low_heap_progress_errors(
+    name: str,
+    media_text: str,
+    cover_art_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        cover_art_path = root / "common" / "device" / "screen_cover_art.yaml"
+        firmware_dir.mkdir(parents=True)
+        cover_art_path.parent.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(media_text, encoding="utf-8")
+        cover_art_path.write_text(cover_art_text, encoding="utf-8")
+
+        errors = firmware_cover_art_low_heap_progress_errors(firmware_dir, cover_art_path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3138,7 +3245,13 @@ def run_self_test() -> int:
         "      - script.stop: cover_art_request_artwork\n"
         "      - lambda: |-\n"
         "          id(cover_art_hide_external_input_enabled).state && id(cover_art_external_input_active);\n"
-        "          bool external = next == \"TV\" || next == \"Line-in\";\n"
+        "          std::string normalized_source = next;\n"
+        "          for (char &ch : normalized_source) {\n"
+        "            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));\n"
+        "          }\n"
+        "          bool external = normalized_source == \"tv\" ||\n"
+        "                          normalized_source == \"line-in\" ||\n"
+        "                          normalized_source == \"line in\";\n"
         "          ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);\n"
         "          ha_subscribe_attribute(\n"
         "            cover_entity,\n"
@@ -3435,13 +3548,21 @@ def run_self_test() -> int:
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",
+        "inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_artist\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_progress(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_volume(MediaPlaybackState *state) {}\n"
         "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
+        "  MediaPlaybackState *state = media_playback_ensure_state(ctx->entity_id);\n"
+        "  media_playback_subscribe_metadata(state);\n"
         "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "  media_playback_subscribe_progress(state);\n"
         "#endif\n"
         "}\n\n"
         "inline bool media_seek_pending_active() { return false; }\n",
@@ -3449,13 +3570,20 @@ def run_self_test() -> int:
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal lost title and artist",
+        "inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_artist\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_progress(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_volume(MediaPlaybackState *state) {}\n"
         "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
         "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "  media_playback_subscribe_metadata(state);\n"
+        "  media_playback_subscribe_progress(state);\n"
         "#endif\n"
         "}\n\n"
         "inline bool media_seek_pending_active() { return false; }\n",
@@ -3466,17 +3594,77 @@ def run_self_test() -> int:
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal progress metadata is guarded",
+        "inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_artist\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_progress(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_volume(MediaPlaybackState *state) {}\n"
         "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_title\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_artist\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_duration\"), cb);\n"
+        "  MediaPlaybackState *state = media_playback_ensure_state(ctx->entity_id);\n"
+        "  media_playback_subscribe_metadata(state);\n"
+        "  media_playback_subscribe_progress(state);\n"
         "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position\"), cb);\n"
-        "  ha_subscribe_attribute(ctx->entity_id, std::string(\"media_position_updated_at\"), cb);\n"
         "#endif\n"
         "}\n\n"
         "inline bool media_seek_pending_active() { return false; }\n",
-        ("keep media_duration out of the S3 low-heap media modal path",),
+        (
+            "keep media_duration out of the S3 low-heap media modal path",
+            "keep media_position out of the S3 low-heap media modal path",
+            "keep media_position_updated_at out of the S3 low-heap media modal path",
+        ),
+    )
+    cover_art_shared_media = (
+        "struct MediaPlaybackState {};\n"
+        "inline void subscribe_media_slider_state(lv_obj_t *btn_ptr, lv_obj_t *slider, const std::string &entity_id) {\n"
+        "  MediaPlaybackState *state = media_playback_ensure_state(entity_id);\n"
+        "  media_playback_attach_slider(state, ctx);\n"
+        "  media_playback_subscribe_state(state);\n"
+        "}\n"
+        "inline bool media_playback_state_snapshot() { return true; }\n"
+        "inline bool media_playback_state_has_progress() { return true; }\n"
+    )
+    expect_cover_art_low_heap_progress_errors(
+        "low heap cover art reuses shared progress",
+        cover_art_shared_media,
+        "script:\n"
+        "  - id: cover_art_refresh_progress\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          #ifdef ESPCONTROL_LOW_HEAP_COVER_ART\n"
+        "          media_playback_state_snapshot(id(cover_art_media_player_entity).state, playing, duration, position);\n"
+        "          lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);\n"
+        "          #endif\n"
+        "          return media_playback_state_has_progress(id(cover_art_media_player_entity).state);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_COVER_ART\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_duration\"), cb);\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_position\"), cb);\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_position_updated_at\"), cb);\n"
+        "#endif\n",
+        (),
+    )
+    expect_cover_art_low_heap_progress_errors(
+        "low heap cover art direct progress subscriptions",
+        cover_art_shared_media,
+        "script:\n"
+        "  - id: cover_art_refresh_progress\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return false;\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_duration\"), cb);\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_position\"), cb);\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_position_updated_at\"), cb);\n",
+        (
+            "keep media_duration out of the S3 low-heap cover art path",
+            "keep media_position out of the S3 low-heap cover art path",
+            "keep media_position_updated_at out of the S3 low-heap cover art path",
+            "let S3 cover art consume shared progress",
+            "show S3 cover art progress only when shared playback progress is available",
+        ),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",

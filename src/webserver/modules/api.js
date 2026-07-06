@@ -608,6 +608,62 @@ function postSwitch(name, on) {
   return post(entityPostUrls("switch", name, [], on ? "turn_on" : "turn_off"));
 }
 
+function postScreensaverMode(value) {
+  return postTextWithObjectIds(
+    entityName("screensaver_mode"),
+    entityObjectIds("screensaver_mode"),
+    value
+  );
+}
+
+function postPresenceSensorEntity(value) {
+  return postTextWithObjectIds(
+    entityName("presence_sensor_entity"),
+    entityObjectIds("presence_sensor_entity"),
+    value
+  );
+}
+
+function postMediaPlayerSleepPrevention(on) {
+  return postSwitchWithObjectIds(
+    entityName("screen_saver_media_player_sleep_prevention"),
+    entityObjectIds("screen_saver_media_player_sleep_prevention"),
+    on
+  );
+}
+
+function postMediaPlayerSleepPreventionEntity(value) {
+  return postTextWithObjectIds(
+    entityName("media_player_sleep_prevention_entity"),
+    entityObjectIds("media_player_sleep_prevention_entity"),
+    value
+  );
+}
+
+function postCoverArtScreensaver(on) {
+  return postSwitchWithObjectIds(
+    entityName("screen_saver_cover_art"),
+    entityObjectIds("screen_saver_cover_art"),
+    on
+  );
+}
+
+function postCoverArtMediaPlayerEntity(value) {
+  return postTextWithObjectIds(
+    entityName("screen_saver_cover_art_entity"),
+    entityObjectIds("screen_saver_cover_art_entity"),
+    value
+  );
+}
+
+function postCoverArtConditions(value) {
+  return postTextWithObjectIds(
+    entityName("screen_saver_cover_art_conditions"),
+    entityObjectIds("screen_saver_cover_art_conditions"),
+    value
+  );
+}
+
 function coverArtHideExternalInputPostUrls(on) {
   return entityPostUrls(
     "switch",
@@ -671,6 +727,30 @@ function homeAssistantArtworkPortPostUrls(value) {
 
 function postHomeAssistantArtworkPort(value) {
   return post(homeAssistantArtworkPortPostUrls(value));
+}
+
+function postHomeAssistantArtworkProtocol(value) {
+  return postSelectWithObjectIds(
+    entityName("home_assistant_artwork_protocol"),
+    entityObjectIds("home_assistant_artwork_protocol"),
+    normalizeHomeAssistantArtworkProtocol(value)
+  );
+}
+
+function postFirmwareAutoUpdate(on) {
+  return postSwitchWithObjectIds(
+    entityName("firmware_auto_update"),
+    entityObjectIds("firmware_auto_update"),
+    on
+  );
+}
+
+function postFirmwareUpdateFrequency(value) {
+  return postSelectWithObjectIds(
+    entityName("firmware_update_frequency"),
+    entityObjectIds("firmware_update_frequency"),
+    value
+  );
 }
 
 function postNumber(name, value) {
@@ -747,12 +827,28 @@ function postClockBrightnessNight(value) {
   );
 }
 
+function postHomeScreenTimeout(value) {
+  postNumberWithObjectIds(
+    entityName("home_screen_timeout"),
+    entityObjectIds("home_screen_timeout"),
+    value
+  );
+}
+
 function postSwitchWithObjectId(name, objectId, on, errorMessage) {
   postWithObjectId("switch", name, objectId, on ? "turn_on" : "turn_off", errorMessage);
 }
 
 function postSwitchWithObjectIds(name, objectIds, on, errorMessage) {
   postWithObjectIds("switch", name, objectIds, on ? "turn_on" : "turn_off", errorMessage);
+}
+
+function postClockScreensaver(on) {
+  return postSwitchWithObjectIds(
+    entityName("screen_saver_clock"),
+    entityObjectIds("screen_saver_clock"),
+    on
+  );
 }
 
 var CLOCK_BAR_UNAVAILABLE =

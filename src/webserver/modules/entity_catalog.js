@@ -130,7 +130,10 @@ var ENTITY_CATALOG = {
     },
     "screensaver_mode": {
       "domain": "text",
-      "name": "Screensaver Mode"
+      "name": "Screensaver Mode",
+      "objectIds": [
+        "screensaver_mode"
+      ]
     },
     "screen_saver_action": {
       "domain": "select",
@@ -143,15 +146,26 @@ var ENTITY_CATALOG = {
     },
     "presence_sensor_entity": {
       "domain": "text",
-      "name": "Presence Sensor Entity"
+      "name": "Presence Sensor Entity",
+      "objectIds": [
+        "presence_sensor_entity"
+      ]
     },
     "screen_saver_media_player_sleep_prevention": {
       "domain": "switch",
-      "name": "Screen Saver: Media Player Sleep Prevention"
+      "name": "Screen Saver: Media Player Sleep Prevention",
+      "objectIds": [
+        "screen_saver__media_player_sleep_prevention",
+        "screen_saver_media_player_sleep_prevention",
+        "media_player_sleep_prevention_enabled"
+      ]
     },
     "media_player_sleep_prevention_entity": {
       "domain": "text",
-      "name": "Media Player Sleep Prevention Entity"
+      "name": "Media Player Sleep Prevention Entity",
+      "objectIds": [
+        "media_player_sleep_prevention_entity"
+      ]
     },
     "screen_saver_cover_art": {
       "domain": "switch",
@@ -272,11 +286,19 @@ var ENTITY_CATALOG = {
     },
     "home_screen_timeout": {
       "domain": "number",
-      "name": "Home Screen Timeout"
+      "name": "Home Screen Timeout",
+      "objectIds": [
+        "home_screen_timeout"
+      ]
     },
     "screen_saver_clock": {
       "domain": "switch",
-      "name": "Screen Saver: Clock"
+      "name": "Screen Saver: Clock",
+      "objectIds": [
+        "screen_saver__clock",
+        "screen_saver_clock",
+        "clock_screensaver_enabled"
+      ]
     },
     "screen_timezone": {
       "domain": "select",
@@ -476,11 +498,21 @@ var ENTITY_CATALOG = {
     },
     "firmware_auto_update": {
       "domain": "switch",
-      "name": "Firmware: Auto Update"
+      "name": "Firmware: Auto Update",
+      "objectIds": [
+        "firmware__auto_update",
+        "firmware_auto_update",
+        "auto_update_switch"
+      ]
     },
     "firmware_update_frequency": {
       "domain": "select",
-      "name": "Firmware: Update Frequency"
+      "name": "Firmware: Update Frequency",
+      "objectIds": [
+        "firmware__update_frequency",
+        "firmware_update_frequency",
+        "update_frequency_select"
+      ]
     },
     "esp32_c6_update_available": {
       "domain": "text_sensor",

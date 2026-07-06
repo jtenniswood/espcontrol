@@ -9,6 +9,9 @@ var SSE_ALIAS_GROUPS = {
   temperatureDegreeSymbol: ["switch-screen__temperature_degree_symbol", "switch-screen_temperature_degree_symbol", "switch-temperature_degree_symbol_enabled"],
   subpageChevron: ["switch-screen__subpage_chevron", "switch-screen_subpage_chevron", "switch-subpage_chevrons_enabled"],
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
+  clockScreensaver: ["switch-screen_saver__clock", "switch-screen_saver_clock", "switch-clock_screensaver_enabled"],
+  mediaPlayerSleepPrevention: ["switch-screen_saver__media_player_sleep_prevention", "switch-screen_saver_media_player_sleep_prevention", "switch-media_player_sleep_prevention_enabled"],
+  mediaPlayerSleepPreventionEntity: ["text-media_player_sleep_prevention_entity"],
   coverArt: ["switch-screen_saver__cover_art", "switch-screen_saver_cover_art", "switch-screensaver_cover_art"],
   coverArtEntity: ["text-screen_saver__cover_art_entity", "text-screen_saver_cover_art_entity", "text-cover_art_media_player_entity"],
   coverArtConditions: ["text-screen_saver__cover_art_conditions", "text-screen_saver_cover_art_conditions", "text-cover_art_attribute_conditions"],
@@ -29,6 +32,8 @@ var SSE_ALIAS_GROUPS = {
   ntpServer1: ["text-screen__ntp_server_1", "text-ntp_server_1"],
   ntpServer2: ["text-screen__ntp_server_2", "text-ntp_server_2"],
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
+  firmwareAutoUpdate: ["switch-firmware__auto_update", "switch-firmware_auto_update", "switch-auto_update_switch"],
+  firmwareUpdateFrequency: ["select-firmware__update_frequency", "select-firmware_update_frequency", "select-update_frequency_select"],
 };
 
 function applyPageTitle(title) {
@@ -278,6 +283,7 @@ function connectEvents() {
     },
     "text-screen_saver__cover_art_entity": function (val) {
       state.coverArtMediaPlayerEntity = val;
+      if (!state.mediaPlayerSleepPreventionEntity) state.mediaPlayerSleepPreventionEntity = val;
       syncInput(els.setCoverArtMediaPlayer, val);
     },
     "text-screen_saver__cover_art_conditions": function (val) {
@@ -537,6 +543,9 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.temperatureDegreeSymbol, sseHandlers["switch-screen__temperature_degree_symbol"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.subpageChevron, sseHandlers["switch-screen__subpage_chevron"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screensaverTimeout, sseHandlers["number-screensaver_timeout"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockScreensaver, sseHandlers["switch-screen_saver__clock"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPrevention, sseHandlers["switch-screen_saver__media_player_sleep_prevention"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPreventionEntity, sseHandlers["text-media_player_sleep_prevention_entity"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArt, sseHandlers["switch-screen_saver__cover_art"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtEntity, sseHandlers["text-screen_saver__cover_art_entity"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.coverArtConditions, sseHandlers["text-screen_saver__cover_art_conditions"]);
@@ -557,6 +566,8 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer1, sseHandlers["text-screen__ntp_server_1"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer2, sseHandlers["text-screen__ntp_server_2"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.ntpServer3, sseHandlers["text-screen__ntp_server_3"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.firmwareAutoUpdate, sseHandlers["switch-firmware__auto_update"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.firmwareUpdateFrequency, sseHandlers["select-firmware__update_frequency"]);
 
   var ssePatterns = [
     {

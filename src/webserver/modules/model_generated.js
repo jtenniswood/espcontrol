@@ -924,6 +924,9 @@ var EspControlModel = (() => {
     if (port > 65535) return 65535;
     return port;
   }
+  function normalizeHomeAssistantArtworkProtocol(value) {
+    return String(value || "").trim().toLowerCase() === "https" ? "https" : "http";
+  }
   function normalizeNtpServer(value, fallback) {
     const server = String(value == null ? "" : value).trim();
     return server || fallback;
@@ -972,6 +975,10 @@ var EspControlModel = (() => {
   function normalizeScreenRotationValue(value, options) {
     const rotation = String(value == null ? "" : value);
     return options.indexOf(rotation) !== -1 ? rotation : "0";
+  }
+  function normalizeUpdateFrequency(value, options, fallback) {
+    const frequency = String(value == null ? "" : value);
+    return options.indexOf(frequency) !== -1 ? frequency : fallback;
   }
   function normalizeBackupPanelSettings(settings, current) {
     const hasNtpServer1 = objectValue(settings, "ntp_server_1") !== void 0;
@@ -1025,7 +1032,7 @@ var EspControlModel = (() => {
       screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
       presenceSensorEntity: String(settings.presence_sensor_entity || ""),
       mediaPlayerSleepPrevention: !!settings.media_player_sleep_prevention,
-      mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || ""),
+      mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || settings.cover_art_media_player_entity || ""),
       coverArtScreensaver: !!settings.cover_art_screensaver,
       coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
       coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
@@ -1033,7 +1040,14 @@ var EspControlModel = (() => {
       coverArtTouchPause: objectValue(settings, "cover_art_touch_pause") != null ? settings.cover_art_touch_pause : 120,
       coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
       coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null ? !!settings.cover_art_hide_external_input : true,
+      coverArtHomeAssistantProtocol: objectValue(settings, "home_assistant_artwork_protocol") != null ? normalizeHomeAssistantArtworkProtocol(settings.home_assistant_artwork_protocol) : normalizeHomeAssistantArtworkProtocol(current.coverArtHomeAssistantProtocol),
       coverArtHomeAssistantPort: objectValue(settings, "home_assistant_artwork_port") != null ? normalizeHomeAssistantArtworkPort(settings.home_assistant_artwork_port) : normalizeHomeAssistantArtworkPort(current.coverArtHomeAssistantPort),
+      autoUpdate: objectValue(settings, "firmware_auto_update") != null ? !!settings.firmware_auto_update : current.autoUpdate,
+      updateFrequency: objectValue(settings, "firmware_update_frequency") != null ? normalizeUpdateFrequency(
+        settings.firmware_update_frequency,
+        current.updateFrequencyOptions,
+        current.updateFrequency
+      ) : current.updateFrequency,
       screensaverAction,
       clockScreensaver: screensaverAction === "clock",
       clockBrightnessDay,
