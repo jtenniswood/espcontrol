@@ -1397,7 +1397,10 @@ inline lv_obj_t *setup_media_slider_layout(lv_obj_t *btn, lv_obj_t *icon_lbl,
   ctx->content_pad = pad;
   lv_obj_set_user_data(slider, (void *)ctx);
   slider_bind_geometry_refresh(btn, slider);
-  if (position) media_schedule_position_refresh(ctx);
+  if (position) {
+    slider_prime_media_position_fill(ctx, btn);
+    media_schedule_position_refresh(ctx);
+  }
 
   lv_obj_add_event_cb(slider, [](lv_event_t *e) {
     lv_obj_t *sl = static_cast<lv_obj_t *>(lv_event_get_target(e));

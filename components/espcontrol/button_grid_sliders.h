@@ -1294,6 +1294,17 @@ inline void slider_update_ctx_fill(SliderCtx *c, lv_obj_t *btn, int pct) {
   }
 }
 
+inline void slider_prime_media_position_fill(SliderCtx *c, lv_obj_t *btn) {
+  if (!c || !c->media_position || !c->fill || !btn || c->media_track_bg) return;
+  lv_coord_t min_w = c->radius > 0 ? c->radius * 2 : 1;
+  lv_coord_t btn_w = lv_obj_get_width(btn);
+  if (btn_w > 0 && min_w > btn_w) min_w = btn_w;
+  lv_obj_set_style_radius(c->fill, c->radius, LV_PART_MAIN);
+  lv_obj_set_width(c->fill, min_w);
+  lv_obj_set_height(c->fill, lv_pct(100));
+  lv_obj_align(c->fill, c->inverted ? LV_ALIGN_RIGHT_MID : LV_ALIGN_LEFT_MID, 0, 0);
+}
+
 inline void slider_refresh_geometry(lv_obj_t *slider) {
   if (!slider) return;
   SliderCtx *c = (SliderCtx *)lv_obj_get_user_data(slider);
