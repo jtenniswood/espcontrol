@@ -1,5 +1,5 @@
 // ── State Event Handlers ──────────────────────────────────────────
-// @web-module-requires: state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, app_status_preview
+// @web-module-requires: state, clock_bar_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, app_status_preview
 
 function applyClockBarStateValue(val, d, matchedKey) {
   var keys = entityStateKeys(d);

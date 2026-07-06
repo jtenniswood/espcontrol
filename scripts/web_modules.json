@@ -4,6 +4,7 @@
   "firmware_metadata",
   "styles",
   "state",
+  "clock_bar_state",
   "firmware_update_state",
   "screensaver_timeout",
   "c6_firmware_ui",
