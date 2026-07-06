@@ -563,7 +563,7 @@ inline void control_modal_style_overlay(lv_obj_t *overlay) {
 
 inline void control_modal_style_panel(lv_obj_t *panel, lv_coord_t radius) {
   if (!panel) return;
-  lv_obj_set_style_bg_color(panel, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(panel, lv_color_hex(TERTIARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(panel, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(panel, 0, LV_PART_MAIN);
@@ -622,7 +622,7 @@ inline void control_modal_apply_step_buttons_layout(lv_obj_t *minus_btn,
 
 inline void control_modal_apply_pressed_fill(lv_obj_t *btn) {
   if (!btn) return;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY),
+  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY),
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER,
     static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_PRESSED));
@@ -680,6 +680,7 @@ inline lv_obj_t *control_modal_create_round_button(lv_obj_t *parent, lv_coord_t 
                                                   uint32_t border_color,
                                                   uint32_t bg_color,
                                                   int width_compensation_percent = 100) {
+  (void) border_color;
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
   lv_obj_set_size(btn, size, size);
@@ -687,8 +688,7 @@ inline lv_obj_t *control_modal_create_round_button(lv_obj_t *parent, lv_coord_t 
   lv_obj_set_style_radius(btn, size / 2, LV_PART_MAIN);
   lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_color(btn, lv_color_hex(border_color), LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn, 2, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   control_modal_apply_pressed_fill(btn);
   lv_obj_t *label = lv_label_create(btn);
@@ -760,7 +760,7 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
   if (button_text) {
     shell.close_btn = control_modal_create_round_button(
       shell.panel, 32, button_text, icon_font,
-      DARK_BORDER, DARK_BACKGROUND_TERTIARY, width_compensation_percent);
+      DARK_BORDER, SECONDARY_GREY, width_compensation_percent);
     if (!shell.close_btn) {
       ESP_LOGW("control_modal", "Unable to create modal close button");
       lv_obj_del(shell.overlay);
@@ -791,7 +791,7 @@ inline void control_modal_style_nested_overlay(lv_obj_t *overlay) {
 inline void control_modal_style_nested_panel(lv_obj_t *panel, lv_coord_t radius) {
   if (!panel) return;
   lv_obj_set_height(panel, LV_SIZE_CONTENT);
-  lv_obj_set_style_bg_color(panel, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(panel, lv_color_hex(TERTIARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(panel, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(panel, 0, LV_PART_MAIN);

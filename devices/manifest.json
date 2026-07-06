@@ -626,11 +626,6 @@
           "climateOptionValue": "font_text_body"
         },
         "display": {
-          "colorCorrection": {
-            "redPercent": 130,
-            "greenPercent": 100,
-            "bluePercent": 104
-          },
           "imageCardDownloaders": 6,
           "wrapTallLabels": false,
           "coverArt": {
