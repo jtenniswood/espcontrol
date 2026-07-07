@@ -1112,6 +1112,7 @@
             "label": "Type",
             "kind": "choice",
             "values": [
+              "modal",
               "status",
               "start_stop",
               "dock",
@@ -1120,7 +1121,24 @@
               "locate",
               "clean_area"
             ],
-            "defaultValue": "start_stop"
+            "defaultValue": "modal"
+          },
+          {
+            "name": "vacuum_tabs",
+            "label": "Modal Tabs",
+            "kind": "choice",
+            "values": [
+              "controls",
+              "rooms",
+              "fan"
+            ],
+            "defaultValue": "controls|rooms|fan"
+          },
+          {
+            "name": "vacuum_rooms",
+            "label": "Rooms",
+            "kind": "text",
+            "defaultValue": ""
           }
         ],
         "default": {
@@ -1128,7 +1146,7 @@
           "label": "",
           "icon": "Robot Vacuum",
           "icon_on": "Auto",
-          "sensor": "start_stop",
+          "sensor": "modal",
           "unit": "",
           "type": "vacuum",
           "precision": "",
