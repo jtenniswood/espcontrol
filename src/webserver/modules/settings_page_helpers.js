@@ -1,6 +1,92 @@
 // ── Settings Page Helpers ──────────────────────────────────────────
 // @web-module-requires: state, screen_schedule_state, screensaver_state, screensaver_timeout, clock_bar_state, clock_bar_post_api, artwork_state, artwork_post_api, controls, controls_shell
 
+// ── Settings UI helpers ─────────────────────────────────────────────
+
+function settingsStatusHeader(title) {
+  var header = document.createElement("div");
+  header.className = "sp-settings-status-header";
+
+  var label = document.createElement("div");
+  label.className = "sp-settings-status-title";
+  label.textContent = title;
+  header.appendChild(label);
+
+  return header;
+}
+
+function appendSettingsSection(parent, title, cards) {
+  var visibleCards = cards.filter(Boolean);
+  if (!visibleCards.length) return;
+
+  parent.appendChild(settingsStatusHeader(title));
+  visibleCards.forEach(function (card) {
+    parent.appendChild(card);
+  });
+}
+
+function openVoiceServicesSettings() {
+  if (isConfigLocked() || !els.voiceServicesCard) return;
+  switchTab("settings");
+  els.voiceServicesCard.classList.remove("collapsed");
+  els.voiceServicesCard.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (els.setVoiceServicesToggle) {
+    window.setTimeout(function () { els.setVoiceServicesToggle.focus(); }, 150);
+  }
+}
+
+function coverArtTrackOverlayDurationSupported() {
+  return !!(CFG && CFG.coverArtSquareOverlay);
+}
+
+function infoPanel(id, text) {
+  var panel = document.createElement("div");
+  panel.className = "sp-info-panel";
+  panel.id = id;
+  panel.setAttribute("role", "note");
+  var icon = document.createElement("span");
+  icon.className = "mdi mdi-information-outline";
+  icon.setAttribute("aria-hidden", "true");
+  var message = document.createElement("span");
+  message.textContent = text;
+  panel.appendChild(icon);
+  panel.appendChild(message);
+  return panel;
+}
+
+function statusBadge(label) {
+  var badge = document.createElement("span");
+  badge.setAttribute("aria-label", label);
+  badge.appendChild(textSpan("", "sp-card-badge-dot"));
+  badge.appendChild(textSpan("ON"));
+  return badge;
+}
+
+function inlineDisclosure(title, bodyElement, defaultOpen) {
+  var panel = document.createElement("div");
+  panel.className = "sp-disclosure" + (defaultOpen ? " sp-open" : "");
+  var button = document.createElement("button");
+  button.type = "button";
+  button.className = "sp-disclosure-button";
+  button.setAttribute("aria-expanded", defaultOpen ? "true" : "false");
+  var label = document.createElement("span");
+  label.textContent = title;
+  var chevron = createDisclosureChevron("sp-disclosure-chevron");
+  button.appendChild(label);
+  button.appendChild(chevron);
+  var body = document.createElement("div");
+  body.className = "sp-disclosure-body";
+  body.appendChild(bodyElement);
+  button.addEventListener("click", function () {
+    var open = !panel.classList.contains("sp-open");
+    panel.classList.toggle("sp-open", open);
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  panel.appendChild(button);
+  panel.appendChild(body);
+  return panel;
+}
+
 // ── Settings sync helpers ───────────────────────────────────────────
 
 function syncClockScreensaverControls() {
