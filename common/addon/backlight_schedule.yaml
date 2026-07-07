@@ -167,7 +167,7 @@ select:
     icon: "mdi:motion-sensor"
     optimistic: true
     restore_value: true
-    initial_option: "Screen off"
+    initial_option: "Always On"
     options:
       - "Screen off"
       - "Screen Dimmed"

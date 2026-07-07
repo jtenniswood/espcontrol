@@ -133,11 +133,26 @@ function syncScreenScheduleUi() {
     els.setScheduleSensorClockBrightness.value = state.scheduleClockBrightness;
     els.setScheduleSensorClockBrightnessVal.textContent = Math.round(state.scheduleClockBrightness) + "%";
   }
+  if (els.setScheduleSensorNotDetectedWakeBrightness) {
+    els.setScheduleSensorNotDetectedWakeBrightness.value = state.scheduleWakeBrightness;
+    els.setScheduleSensorNotDetectedWakeBrightnessVal.textContent = Math.round(state.scheduleWakeBrightness) + "%";
+  }
+  if (els.setScheduleSensorNotDetectedDimmedBrightness) {
+    els.setScheduleSensorNotDetectedDimmedBrightness.value = state.scheduleDimmedBrightness;
+    els.setScheduleSensorNotDetectedDimmedBrightnessVal.textContent = Math.round(state.scheduleDimmedBrightness) + "%";
+  }
+  if (els.setScheduleSensorNotDetectedClockBrightness) {
+    els.setScheduleSensorNotDetectedClockBrightness.value = state.scheduleClockBrightness;
+    els.setScheduleSensorNotDetectedClockBrightnessVal.textContent = Math.round(state.scheduleClockBrightness) + "%";
+  }
   if (els.setScheduleClockTextColor && els.setScheduleClockTextColor._syncColor) {
     els.setScheduleClockTextColor._syncColor(state.scheduleClockTextColor);
   }
   if (els.setScheduleSensorClockTextColor && els.setScheduleSensorClockTextColor._syncColor) {
     els.setScheduleSensorClockTextColor._syncColor(state.scheduleClockTextColor);
+  }
+  if (els.setScheduleSensorNotDetectedClockTextColor && els.setScheduleSensorNotDetectedClockTextColor._syncColor) {
+    els.setScheduleSensorNotDetectedClockTextColor._syncColor(state.scheduleClockTextColor);
   }
   if (els.setScheduleOffOptions) {
     els.setScheduleOffOptions.className =
@@ -147,6 +162,10 @@ function syncScreenScheduleUi() {
     els.setScheduleSensorOffOptions.className =
       "sp-cond-field" + (state.schedulePresenceDetectedMode === "screen_off" ? " sp-visible" : "");
   }
+  if (els.setScheduleSensorNotDetectedOffOptions) {
+    els.setScheduleSensorNotDetectedOffOptions.className =
+      "sp-cond-field" + (state.schedulePresenceNotDetectedMode === "screen_off" ? " sp-visible" : "");
+  }
   if (els.setScheduleDimmedOptions) {
     els.setScheduleDimmedOptions.className =
       "sp-cond-field" + (state.scheduleMode === "screen_dimmed" ? " sp-visible" : "");
@@ -155,6 +174,10 @@ function syncScreenScheduleUi() {
     els.setScheduleSensorDimmedOptions.className =
       "sp-cond-field" + (state.schedulePresenceDetectedMode === "screen_dimmed" ? " sp-visible" : "");
   }
+  if (els.setScheduleSensorNotDetectedDimmedOptions) {
+    els.setScheduleSensorNotDetectedDimmedOptions.className =
+      "sp-cond-field" + (state.schedulePresenceNotDetectedMode === "screen_dimmed" ? " sp-visible" : "");
+  }
   if (els.setScheduleClockOptions) {
     els.setScheduleClockOptions.className =
       "sp-cond-field" + (state.scheduleMode === "clock" ? " sp-visible" : "");
@@ -162,6 +185,10 @@ function syncScreenScheduleUi() {
   if (els.setScheduleSensorClockOptions) {
     els.setScheduleSensorClockOptions.className =
       "sp-cond-field" + (state.schedulePresenceDetectedMode === "clock" ? " sp-visible" : "");
+  }
+  if (els.setScheduleSensorNotDetectedClockOptions) {
+    els.setScheduleSensorNotDetectedClockOptions.className =
+      "sp-cond-field" + (state.schedulePresenceNotDetectedMode === "clock" ? " sp-visible" : "");
   }
   if (els.setScheduleTimes) {
     els.setScheduleTimes.className = "sp-schedule-times" + (state.scheduleTrigger === "time" ? "" : " sp-hidden");

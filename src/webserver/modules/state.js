@@ -68,7 +68,7 @@ var state = {
   scheduleOnHour: 6,
   scheduleOffHour: 23,
   scheduleMode: "screen_off",
-  schedulePresenceDetectedMode: "screen_off",
+  schedulePresenceDetectedMode: "always_on",
   schedulePresenceNotDetectedMode: "screen_off",
   scheduleWakeTimeout: 60,
   scheduleWakeBrightness: 10,

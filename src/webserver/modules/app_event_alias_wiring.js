@@ -27,6 +27,8 @@ function applySseHandlerAliases(sseHandlers) {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, sseHandlers["select-home_assistant_artwork_protocol"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, sseHandlers["number-home_assistant_artwork_port"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleTrigger, sseHandlers["text-screen__schedule_trigger"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.schedulePresenceDetectedMode, sseHandlers["select-screen__schedule_presence_detected_mode"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.schedulePresenceNotDetectedMode, sseHandlers["select-screen__schedule_presence_not_detected_mode"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, sseHandlers["number-screen__schedule_wake_timeout"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleWakeBrightness, sseHandlers["number-screen__schedule_wake_brightness"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.scheduleDimmedBrightness, sseHandlers["number-screen__schedule_dimmed_brightness"]);

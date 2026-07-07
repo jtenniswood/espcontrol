@@ -92,21 +92,23 @@ function buildScreenScheduleSettingsCard() {
   sensorScheduleControls.fields.forEach(function (field) {
     scheduleSensor.appendChild(field);
   });
-  var sensorNotDetectedMode = createScheduleModeField(
+  var sensorNotDetectedControls = createScheduleNightActionControls(
+    "sp-set-schedule-sensor-not-detected",
     "When presence is not detected",
-    "sp-set-schedule-sensor-not-detected-mode",
     function () { return state.schedulePresenceNotDetectedMode; },
     function (mode) {
       state.schedulePresenceNotDetectedMode = mode;
       postScreenSchedulePresenceNotDetectedMode(mode);
     }
   );
-  scheduleSensor.appendChild(sensorNotDetectedMode.field);
+  sensorNotDetectedControls.fields.forEach(function (field) {
+    scheduleSensor.appendChild(field);
+  });
   scheduleBody.appendChild(scheduleSensor);
   els.setScheduleSensor = scheduleSensor;
   els.setSchedulePresence = schedulePresInp;
   els.setScheduleSensorMode = sensorScheduleControls.modeSelect;
-  els.setScheduleSensorNotDetectedMode = sensorNotDetectedMode.select;
+  els.setScheduleSensorNotDetectedMode = sensorNotDetectedControls.modeSelect;
   els.setScheduleSensorWakeTimeout = sensorScheduleControls.wakeTimeoutSelect;
   els.setScheduleSensorWakeBrightness = sensorScheduleControls.wakeBrightness;
   els.setScheduleSensorWakeBrightnessVal = sensorScheduleControls.wakeBrightnessVal;
@@ -118,6 +120,17 @@ function buildScreenScheduleSettingsCard() {
   els.setScheduleSensorClockBrightness = sensorScheduleControls.clockBrightness;
   els.setScheduleSensorClockBrightnessVal = sensorScheduleControls.clockBrightnessVal;
   els.setScheduleSensorClockTextColor = sensorScheduleControls.clockTextColor;
+  els.setScheduleSensorNotDetectedOffOptions = sensorNotDetectedControls.offOptions;
+  els.setScheduleSensorNotDetectedWakeTimeout = sensorNotDetectedControls.wakeTimeoutSelect;
+  els.setScheduleSensorNotDetectedWakeBrightness = sensorNotDetectedControls.wakeBrightness;
+  els.setScheduleSensorNotDetectedWakeBrightnessVal = sensorNotDetectedControls.wakeBrightnessVal;
+  els.setScheduleSensorNotDetectedDimmedOptions = sensorNotDetectedControls.dimmedOptions;
+  els.setScheduleSensorNotDetectedDimmedBrightness = sensorNotDetectedControls.dimmedBrightness;
+  els.setScheduleSensorNotDetectedDimmedBrightnessVal = sensorNotDetectedControls.dimmedBrightnessVal;
+  els.setScheduleSensorNotDetectedClockOptions = sensorNotDetectedControls.clockOptions;
+  els.setScheduleSensorNotDetectedClockBrightness = sensorNotDetectedControls.clockBrightness;
+  els.setScheduleSensorNotDetectedClockBrightnessVal = sensorNotDetectedControls.clockBrightnessVal;
+  els.setScheduleSensorNotDetectedClockTextColor = sensorNotDetectedControls.clockTextColor;
 
   function setScheduleTrigger(trigger) {
     state._scheduleTriggerReceived = true;
@@ -141,6 +154,7 @@ function createScheduleModeField(label, id, getMode, postMode) {
   var scheduleModeControl = selectField(label, id, [
     { value: "screen_off", label: "Screen Off" },
     { value: "screen_dimmed", label: "Screen Dimmed" },
+    { value: "always_on", label: "Always On" },
     { value: "clock", label: "Clock" },
   ], getMode(), function () {
     var mode = normalizeScheduleMode(this.value);
