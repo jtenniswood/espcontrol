@@ -22,6 +22,7 @@
     { "key": "screen_clock_bar_time", "domain": "switch", "name": "Screen: Clock Bar Time", "objectIds": ["screen__clock_bar_time", "screen_clock_bar_time", "clock_bar_time_enabled"], "groups": ["settings"] },
     { "key": "clock_bar_temperature_entities", "domain": "text", "name": "Clock Bar: Temperature Entities", "objectIds": ["clock_bar__temperature_entities"], "groups": ["settings"] },
     { "key": "screen_network_status_icon", "domain": "switch", "name": "Screen: Network Status Icon", "objectIds": ["screen__network_status_icon", "screen_network_status_icon", "network_status_enabled"], "groups": ["settings"] },
+    { "key": "voice_services", "domain": "switch", "name": "Voice Services", "objectIds": ["voice_services", "voice_services_enabled"], "groups": ["settings"] },
     { "key": "screen_temperature_degree_symbol", "domain": "switch", "name": "Screen: Temperature Degree Symbol", "objectIds": ["screen__temperature_degree_symbol", "screen_temperature_degree_symbol", "temperature_degree_symbol_enabled"], "groups": ["settings"] },
     { "key": "screen_subpage_chevron", "domain": "switch", "name": "Screen: Subpage Chevron", "objectIds": ["screen__subpage_chevron", "screen_subpage_chevron", "subpage_chevrons_enabled"], "groups": ["settings"] },
     { "key": "screen_temperature_unit", "domain": "select", "name": "Screen: Temperature Unit", "groups": ["settings"] },

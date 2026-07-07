@@ -56,7 +56,7 @@ function exportConfig() {
       screensaver_mode: getActiveScreensaverMode(),
       presence_sensor_entity: state.presenceEntity,
       media_player_sleep_prevention: state.mediaPlayerSleepPreventionOn,
-      media_player_sleep_prevention_entity: state.coverArtMediaPlayerEntity,
+      media_player_sleep_prevention_entity: state.mediaPlayerSleepPreventionEntity,
       cover_art_screensaver: state.coverArtScreensaverOn,
       cover_art_media_player_entity: state.coverArtMediaPlayerEntity,
       cover_art_attribute_conditions: state.coverArtAttributeConditions,
@@ -237,6 +237,7 @@ function importConfig() {
         postText(entityName("screensaver_mode"), importedScreensaverMode);
         postText(entityName("presence_sensor_entity"), importedSettings.presenceSensorEntity);
         postSwitch(entityName("screen_saver_media_player_sleep_prevention"), importedSettings.mediaPlayerSleepPrevention);
+        postText(entityName("media_player_sleep_prevention_entity"), importedSettings.mediaPlayerSleepPreventionEntity);
         postSwitch(entityName("screen_saver_cover_art"), importedSettings.coverArtScreensaver);
         postText(entityName("screen_saver_cover_art_entity"), importedSettings.coverArtMediaPlayerEntity);
         postText(entityName("screen_saver_cover_art_conditions"), importedSettings.coverArtAttributeConditions);
@@ -283,7 +284,7 @@ function importConfig() {
         state._screensaverModeReceived = true;
         state.presenceEntity = importedSettings.presenceSensorEntity;
         state.mediaPlayerSleepPreventionOn = importedSettings.mediaPlayerSleepPrevention;
-        state.mediaPlayerSleepPreventionEntity = importedSettings.coverArtMediaPlayerEntity;
+        state.mediaPlayerSleepPreventionEntity = importedSettings.mediaPlayerSleepPreventionEntity;
         state.coverArtScreensaverOn = importedSettings.coverArtScreensaver;
         state.coverArtMediaPlayerEntity = importedSettings.coverArtMediaPlayerEntity;
         state.coverArtAttributeConditions = importedSettings.coverArtAttributeConditions;

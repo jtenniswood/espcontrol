@@ -6,6 +6,7 @@ var SSE_ALIAS_GROUPS = {
   clockBarTime: ["switch-screen__clock_bar_time", "switch-screen_clock_bar_time", "switch-clock_bar_time_enabled"],
   clockBarTemperatureEntities: ["text-clock_bar_temperature_entities", "text-clock_bar__temperature_entities"],
   networkStatus: ["switch-screen__network_status_icon", "switch-screen_network_status_icon", "switch-network_status_enabled"],
+  voiceServices: ["switch-voice_services", "switch-voice_services_enabled"],
   temperatureDegreeSymbol: ["switch-screen__temperature_degree_symbol", "switch-screen_temperature_degree_symbol", "switch-temperature_degree_symbol_enabled"],
   subpageChevron: ["switch-screen__subpage_chevron", "switch-screen_subpage_chevron", "switch-subpage_chevrons_enabled"],
   screensaverTimeout: ["number-screensaver_timeout", "number-screen_saver__timeout", "number-screen_saver_timeout"],
@@ -474,6 +475,7 @@ function connectEvents() {
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarTime, sseHandlers["switch-screen__clock_bar_time"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.clockBarTemperatureEntities, sseHandlers["text-clock_bar_temperature_entities"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.networkStatus, sseHandlers["switch-screen__network_status_icon"]);
+  addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.voiceServices, sseHandlers["switch-voice_services"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.temperatureDegreeSymbol, sseHandlers["switch-screen__temperature_degree_symbol"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.subpageChevron, sseHandlers["switch-screen__subpage_chevron"]);
   addSseAliases(sseHandlers, SSE_ALIAS_GROUPS.screensaverTimeout, sseHandlers["number-screensaver_timeout"]);

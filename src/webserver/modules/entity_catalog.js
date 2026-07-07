@@ -115,6 +115,14 @@ var ENTITY_CATALOG = {
         "network_status_enabled"
       ]
     },
+    "voice_services": {
+      "domain": "switch",
+      "name": "Voice Services",
+      "objectIds": [
+        "voice_services",
+        "voice_services_enabled"
+      ]
+    },
     "screen_temperature_degree_symbol": {
       "domain": "switch",
       "name": "Screen: Temperature Degree Symbol",
@@ -528,6 +536,7 @@ var ENTITY_CATALOG = {
       "screen_clock_bar_time",
       "clock_bar_temperature_entities",
       "screen_network_status_icon",
+      "voice_services",
       "screen_temperature_degree_symbol",
       "screen_subpage_chevron",
       "screen_temperature_unit",

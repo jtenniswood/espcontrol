@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 struct ScreenLockCardRef {
@@ -17,6 +18,40 @@ struct ScreenLockCardRef {
 inline bool &screen_lock_enabled() {
   static bool locked = false;
   return locked;
+}
+
+inline bool &screensaver_pin_locked() {
+  static bool locked = false;
+  return locked;
+}
+
+inline std::string &screensaver_pin_unlock_code() {
+  static std::string code;
+  return code;
+}
+
+inline std::string normalize_numeric_pin(const std::string &value) {
+  std::string normalized;
+  normalized.reserve(value.size());
+  for (char ch : value) {
+    if (ch >= '0' && ch <= '9') normalized.push_back(ch);
+  }
+  return normalized;
+}
+
+using ScreenLockForceScreensaverCallback = void (*)();
+
+inline ScreenLockForceScreensaverCallback &screen_lock_force_screensaver_callback() {
+  static ScreenLockForceScreensaverCallback callback = nullptr;
+  return callback;
+}
+
+inline void set_screen_lock_force_screensaver_callback(ScreenLockForceScreensaverCallback callback) {
+  screen_lock_force_screensaver_callback() = callback;
+}
+
+inline bool screen_interaction_locked() {
+  return screen_lock_enabled() || screensaver_pin_locked();
 }
 
 inline std::vector<lv_obj_t *> &screen_lock_controlled_buttons() {
@@ -110,6 +145,9 @@ inline void screen_lock_apply() {
 
 inline void screen_lock_set_enabled(bool locked) {
   screen_lock_enabled() = locked;
+  if (locked && screen_lock_force_screensaver_callback() != nullptr) {
+    screen_lock_force_screensaver_callback()();
+  }
   screen_lock_apply();
 }
 
