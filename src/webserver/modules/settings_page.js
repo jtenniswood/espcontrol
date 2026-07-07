@@ -372,4 +372,3 @@ function buildSettingsPage(parent) {
   parent.appendChild(page);
   els.settingsPage = page;
 }
-
