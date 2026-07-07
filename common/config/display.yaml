@@ -13,7 +13,7 @@ globals:
 
 esphome:
   on_boot:
-    # Apply restored clock-bar layout before subpages copy main-page padding.
+    # Apply restored clock-bar visibility before subpages copy main-page padding.
     - priority: -150
       then:
         - lambda: |-
@@ -45,15 +45,11 @@ script:
       - lambda: |-
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
-            id(temperature_2),
-            id(temperature_3),
-            id(temperature_4),
-            id(temperature_5),
-            id(temperature_6),
           };
-          hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+          hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                            id(display_time),
                                            id(network_status_button));
+          ${voice_clock_bar_hide_code}
           network_status_hide_modal();
 
   - id: clock_bar_apply
@@ -81,48 +77,40 @@ script:
               ${screen_width} == 480 && ${screen_height} == 480;
           int clock_bar_label_y = ${main_page_pad_top} / 5;
           int clock_bar_icon_y =
-              (${screen_width} == 1024 || clock_bar_device_480_square) ? 1 : clock_bar_label_y;
+              (${main_page_pad_top} - lv_obj_get_height(id(network_status_button))) / 2;
+          if (clock_bar_icon_y < 0) clock_bar_icon_y = 0;
           int clock_bar_item_width = ${clock_bar_item_gap};
-          int clock_bar_visual_gap = ${clock_bar_visual_gap};
           int clock_bar_right_x =
               clock_bar_480_square ? 4 : (clock_bar_screen_width >= 700 ? 8 : 6);
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
-            id(temperature_2),
-            id(temperature_3),
-            id(temperature_4),
-            id(temperature_5),
-            id(temperature_6),
           };
-          set_clock_bar_temperature_labels(temperature_labels, 6);
+          set_clock_bar_temperature_labels(temperature_labels, 1);
           clock_bar_set_button_grid_pages_pad_top(
             id(main_page)->obj,
             reserve_clock_bar_space ? ${main_page_pad_top} : ${main_page_compact_pad_top});
 
           if (!visible) {
-            hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+            hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                              id(display_time),
                                              id(network_status_button));
+            ${voice_clock_bar_hide_code}
             network_status_hide_modal();
             return;
           }
 
-          apply_clock_bar_layout(id(clock_bar_layout).state,
-                                 temperature_labels,
-                                 6,
-                                 id(display_time),
-                                 id(network_status_button),
-                                 show_time,
-                                 show_network,
-                                 visible && id(indoor_temp_enable).state,
-                                 visible && id(outdoor_temp_enable).state,
-                                 clock_bar_screen_width,
-                                 clock_bar_screen_width >= 700 ? 8 : 6,
-                                 clock_bar_label_y,
-                                 clock_bar_right_x,
-                                 clock_bar_icon_y,
-                                 clock_bar_item_width,
-                                 clock_bar_visual_gap);
+          apply_clock_bar_fixed_layout(
+              id(temperatures),
+              id(display_time),
+              id(network_status_button),
+              visible && (id(indoor_temp_enable).state || id(outdoor_temp_enable).state),
+              show_time,
+              show_network,
+              clock_bar_screen_width >= 700 ? 8 : 6,
+              clock_bar_label_y,
+              clock_bar_right_x,
+              clock_bar_icon_y,
+              ${clock_bar_item_gap});
 
           if (show_time) {
             lv_obj_clear_flag(id(display_time), LV_OBJ_FLAG_HIDDEN);
@@ -136,6 +124,7 @@ script:
             lv_obj_add_flag(id(network_status_button), LV_OBJ_FLAG_HIDDEN);
             network_status_hide_modal();
           }
+          ${voice_clock_bar_apply_code}
           if (!visible) return;
 
           refresh_clock_bar_temperature_label_values(id(main_page)->obj,
@@ -417,7 +406,6 @@ switch:
     web_server:
       sorting_group_id: sg_screensaver
     on_turn_on:
-      - switch.turn_on: media_player_sleep_prevention_enabled
       - script.execute: cover_art_resubscribe
       - script.execute: cover_art_playback_refresh
     on_turn_off:
@@ -528,25 +516,6 @@ select:
 
 text:
   - platform: template
-    name: "${entity_screen_clock_bar_layout}"
-    internal: true
-    id: clock_bar_layout
-    optimistic: true
-    restore_value: true
-    initial_value: "left:temperature|middle:time|right:network"
-    min_length: 0
-    max_length: 80
-    mode: text
-    entity_category: config
-    icon: "mdi:format-align-justify"
-    update_interval: never
-    web_server:
-      sorting_group_id: sg_display
-    on_value:
-      then:
-        - script.execute: clock_bar_apply
-
-  - platform: template
     name: "${entity_clock_bar_temperature_entities}"
     internal: true
     id: clock_bar_temperature_entities
@@ -566,16 +535,11 @@ text:
         - lambda: |-
             lv_obj_t *temperature_labels[] = {
               id(temperatures),
-              id(temperature_2),
-              id(temperature_3),
-              id(temperature_4),
-              id(temperature_5),
-              id(temperature_6),
             };
             configure_clock_bar_temperature_entities(
               id(clock_bar_temperature_entities).state,
               temperature_labels,
-              6,
+              1,
               id(main_page)->obj,
               []() {
                 return clock_bar_should_show(
@@ -841,6 +805,33 @@ number:
     on_value:
       then:
         - script.execute: cover_art_playback_refresh
+
+  - platform: template
+    name: "${entity_screen_saver_cover_art_touch_pause}"
+    internal: true
+    id: cover_art_touch_pause
+    min_value: 0
+    max_value: 300
+    step: 10
+    initial_value: 120
+    restore_value: true
+    optimistic: true
+    unit_of_measurement: "s"
+    entity_category: config
+    icon: "mdi:gesture-tap"
+    web_server:
+      sorting_group_id: sg_screensaver
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                return !id(cover_art_screensaver_active) &&
+                       id(cover_art_media_playing) &&
+                       id(cover_art_manual_pause_until_ms) != 0 &&
+                       (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
+            then:
+              - script.execute: cover_art_delay_timer
 
   - platform: template
     name: "${entity_screen_saver_track_overlay_duration}"

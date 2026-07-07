@@ -43,12 +43,13 @@ You can register as many actions as you need:
               "unlock_door", "Unlock Door", [=]() { id(door_relay).turn_on(); });
 ```
 
-## Setting Up a Local Action Card
+## Setting Up a Local Action
 
-1. Select a card and change its type to **Local Action**.
-2. The web UI queries the device for registered actions and shows a dropdown.
-3. Choose an action — the **Label** field is auto-filled from the registered label and can be edited.
-4. Choose an **Icon** (defaults to a tap gesture icon).
+1. Select a card and change its type to **Action**.
+2. In the **Action** dropdown, choose **Local Action**.
+3. The web UI queries the device for registered actions and shows a dropdown.
+4. Choose an action — the **Label** field is auto-filled from the registered label and can be edited.
+5. Choose an **Icon** (defaults to a tap gesture icon).
 
 ### When the device is unreachable
 
@@ -84,4 +85,4 @@ When you tap a local action card:
 
 ## When to Use It
 
-Use local action cards when the action is handled entirely by the device and does not need Home Assistant. Use [Trigger](/card-types/buttons) cards when you want Home Assistant to react to the button press, or [Action](/card-types/actions) cards when you want to call a Home Assistant service directly.
+Use Local Action mode when the action is handled entirely by the device and does not need Home Assistant. Use [Trigger](/card-types/buttons) cards when you want Home Assistant to react to the button press, or another [Action](/card-types/actions) mode when you want to call a Home Assistant service directly.

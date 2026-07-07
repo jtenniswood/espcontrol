@@ -1,4 +1,5 @@
 // ── Preview rendering (unified) ────────────────────────────────────────
+// @web-module-requires: state, screen_rotation_state, grid, config_codec, controls, controls_fields
 
 function previewHtmlValue(typePreview, key, fallback) {
   return typePreview && Object.prototype.hasOwnProperty.call(typePreview, key)
@@ -36,7 +37,7 @@ function buttonTypeInfoOnlyVisible(key) {
 
 var CARD_TYPE_PICKER_DETAILS = {
   "": { icon: "toggle-switch", description: "Toggle lights, switches, helpers, or fans." },
-  action: { icon: "flash", description: "Run a Home Assistant action or service." },
+  action: { icon: "flash", description: "Run a Home Assistant or local action." },
   alarm: { icon: "shield-home", description: "Control or trigger alarm panel actions." },
   calendar: { icon: "calendar-clock", description: "Show date, time, or world clock values." },
   climate: { icon: "thermostat", description: "Show climate status and temperature controls." },
@@ -45,12 +46,15 @@ var CARD_TYPE_PICKER_DETAILS = {
   presence: { icon: "account", description: "Show person or presence status." },
   fan_speed: { icon: "fan", description: "Control fan speed, mode, or direction." },
   garage: { icon: "garage", description: "Show and control a garage door." },
+  gate: { icon: "gate", description: "Show and control a gate." },
   image: { icon: "image", description: "Display an image card where supported." },
   internal: { icon: "power-plug", description: "Control built-in device relays." },
   light_brightness: { icon: "lightbulb", description: "Configure light switch, brightness, or temperature controls." },
+  lawn_mower: { icon: "robot-mower", description: "Show or control a robotic lawn mower." },
   local_sensor: { icon: "gauge", description: "Show a sensor value from this device." },
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
+  media_control: { icon: "music", description: "Open all media controls and volume in a modal." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
@@ -61,7 +65,9 @@ var CARD_TYPE_PICKER_DETAILS = {
 };
 
 var CARD_TYPE_PICKER_DEFAULTS = {
+  climate: "climate_control",
   light_brightness: "light_control",
+  media_control: "media",
 };
 
 function defaultButtonTypeForPicker(key) {
@@ -102,6 +108,13 @@ function buttonTypePickerOptionList(isSub, selectedTypeKey) {
       label: label,
       disabled: false,
     }, buttonTypePickerDetails(td.key, label)));
+    if (td.key === "media") {
+      typeOpts.push(Object.assign({
+        key: "media_control",
+        label: "All Controls",
+        disabled: false,
+      }, buttonTypePickerDetails("media_control", "All Controls")));
+    }
   }
   if (selectedUnsupported) {
     var unsupportedLabel = selectedUnsupported.label + " (not available)";
@@ -154,8 +167,7 @@ function renderPreview() {
       backBtn.innerHTML =
         '<span class="sp-btn-icon sp-back-hit mdi mdi-chevron-left"></span>' +
         '<span class="sp-btn-label">' + escHtml(backLabel) + '</span>';
-      var backColor = isEpaperPreview() ? epaperPreviewFillColor() : state.offColor;
-      backBtn.style.backgroundColor = "#" + (backColor.length === 6 ? backColor : "CECECE");
+      backBtn.style.backgroundColor = "#" + WEB_UI_COLORS.secondary;
       backBtn.style.cursor = "pointer";
       backBtn.setAttribute("data-pos", pos);
       backBtn.draggable = !isConfigLocked();
@@ -179,9 +191,8 @@ function renderPreview() {
       }
       var iconName = resolveIcon(b);
       var label = b.label || b.entity || "Configure";
-      var color = isEpaperPreview() ? epaperPreviewFillColor() :
-        (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
-        ? state.sensorColor : state.offColor;
+      var color = (b.type === "sensor" || b.type === "local_sensor" || b.type === "door_window" || b.type === "presence" || b.type === "weather" || b.type === "weather_forecast" || b.type === "calendar" || b.type === "clock" || b.type === "timezone")
+        ? WEB_UI_COLORS.tertiary : WEB_UI_COLORS.secondary;
       var previewTypeDef = BUTTON_TYPES[b.type || ""] || null;
       if (previewTypeDef && c.isSub && !buttonTypeRegistryValue(previewTypeDef, "allowInSubpage", false)) {
         previewTypeDef = null;
@@ -196,13 +207,13 @@ function renderPreview() {
         (typePreview && typePreview.buttonClass ? " " + typePreview.buttonClass : "") +
         sizeClass(slotSz) +
         (c.selected.indexOf(slot) !== -1 ? " sp-selected" : "");
-      btn.style.backgroundColor = "#" + (color.length === 6 ? color : "CECECE");
+      btn.style.backgroundColor = "#" + color;
       btn.draggable = !isConfigLocked();
       btn.setAttribute("data-pos", pos);
       btn.setAttribute("data-slot", slot);
       var hasWhenOn = !typePreview && (b.sensor || (b.icon_on && b.icon_on !== "Auto"));
-      if (!typePreview && hasWhenOn && typeof cardOnPattern === "function" && cardOnPattern(b) === "stripes" && !isEpaperPreview()) {
-        var onColor = state.onColor && state.onColor.length === 6 ? state.onColor : "FF8C00";
+      if (!typePreview && hasWhenOn && typeof cardOnPattern === "function" && cardOnPattern(b) === "stripes") {
+        var onColor = state.onColor && state.onColor.length === 6 ? state.onColor : WEB_UI_COLORS.primary;
         btn.style.backgroundImage =
           "repeating-linear-gradient(135deg,#" + onColor + " 0,#" + onColor +
           " 12px,rgba(255,255,255,.22) 12px,rgba(255,255,255,.22) 20px)";

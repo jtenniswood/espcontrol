@@ -26,6 +26,8 @@ Camera cards are not supported on the ESP32-S3 screen because it has an older, s
 
 The card accepts both `camera.*` and `image.*` entities, so `image.latest_package_snapshot` works as well as `camera.front_door`.
 
+If your Home Assistant instance uses a custom port, open **Settings > System > Home Assistant Settings** and set **Home Assistant Port** to match it. Camera and image cards use this port when downloading snapshots.
+
 ## How It Works on the Panel
 
 - The card asks Home Assistant for the entity picture and downloads it through Home Assistant.

@@ -15,7 +15,7 @@ A subpage has one fewer usable slot than the home screen because it includes a *
 ## Setting Up a Subpage
 
 1. Select a card on the home screen and change its type to **Subpage**.
-2. Choose a subpage **Type**. **Generic** is a normal folder. The other presets make the home-screen Subpage tile look and behave like the thing it represents, such as **Lights**, **Switch**, **Alarm**, **Cover**, **Garage Door**, **Lock**, **Vacuum**, **Weather**, **Sensor**, or **Camera / Image**, before opening the detailed subpage.
+2. Choose a subpage **Type**. **Generic** is a normal folder. The other presets make the home-screen Subpage tile look and behave like the thing it represents, such as **Lights**, **Switch**, **Alarm**, **Cover**, **Garage Door**, **Lock**, **Vacuum**, **Lawn Mower**, **Weather**, **Sensor**, or **Camera / Image**, before opening the detailed subpage.
 3. Set a **Label** and **Icon** if you want them.
 4. Click **Edit Subpage** in the card settings, or right-click the card and choose **Edit Subpage**.
 5. The preview switches to the subpage. Add and arrange cards here the same way you would on the home screen.
@@ -23,11 +23,11 @@ A subpage has one fewer usable slot than the home screen because it includes a *
 
 You can also right-click an empty space on the home screen and choose **Create Subpage**.
 
-Subpages can contain Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Cover, Garage Door, Lock, Alarm, Date & Time, Clock, World Clock, Weather, Camera, Media, Climate, Internal Switches, and Screen Lock cards. Subpages cannot contain another Subpage card.
+Subpages can contain Switch, Lights, Action, Local Action, Option Select, Webhook, Trigger, Sensor, Local Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, Clock, World Clock, Weather, Camera, Media, Climate, Internal Switches, and Screen Lock cards. Subpages cannot contain another Subpage card.
 
-## Open a Page From Home Assistant
+## Open or Activate a Target From Home Assistant
 
-You can ask Home Assistant to wake the panel and open a page directly. This is useful in automations, scripts, dashboards, or voice routines where you want the panel to jump to a relevant page.
+You can ask Home Assistant to wake the panel and open or activate something on the home screen. This is useful in automations, scripts, dashboards, or voice routines where you want the panel to jump to a relevant page or open a card's normal control popup.
 
 This Home-Assistant-to-panel action is disabled on the ESP32-S3 4-inch panel because it can stop Home Assistant completing the panel startup registration on that lower-memory model. Tapping Subpage cards on the panel still works normally.
 
@@ -78,12 +78,15 @@ The action is not an entity, so it will not appear in the entity list. It only a
 The `target` value can be:
 
 - `home` or `main` to open the home screen.
-- The **Label** you set on a Subpage card, such as `Lights`, `Heating`, or `Media`. Matching is not case-sensitive, so `lights` and `Lights` work the same way.
-- `slot:3` to open the subpage attached to home screen slot 3. This is mainly a fallback for troubleshooting; using the subpage label is easier.
+- The **Label** you set on a home-screen card, such as `Lights`, `Heating`, `Camera`, or `Media`. Matching is not case-sensitive, so `lights` and `Lights` work the same way.
+- `slot:3` to activate the card in home-screen slot 3.
+- `voice`, `mic`, `microphone`, `speaker`, `volume`, or `device_volume` on the ESP32-P4-86 to open the device volume and microphone control popup when **Voice Services** are enabled.
 
-You do not need to know a page number. Use the same label you gave the Subpage card on the home screen.
+You do not need to know a page number. Use the same label you gave the card on the home screen.
 
-If two subpages use the same label, the first matching home screen slot opens. To avoid surprises, give each subpage a unique label. If Home Assistant sends a label or slot that does not exist, the panel logs a warning and stays on the current page.
+If two home-screen cards use the same label, the first matching displayed slot is used. To avoid surprises, give cards you want to target a unique label. If Home Assistant sends a label or slot that does not exist, the panel logs a warning and stays on the current page.
+
+Targeting a normal home-screen card is the same as tapping it on the panel. Camera or image, climate, media volume, light control, cover, alarm, option-select, todo, and similar cards open their normal popup. Action, toggle, webhook, lock, garage, cover command, vacuum, mower, and other command cards can send real Home Assistant commands, so target those carefully.
 
 The panel wakes before navigating, so the action works when the screen is off, dimmed, or showing the clock screensaver. It does not change long-press behavior. If you use the [Home screen timeout](/features/idle), the panel will still return to the home screen using that normal setting.
 

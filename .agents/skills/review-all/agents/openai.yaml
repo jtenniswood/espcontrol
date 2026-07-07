@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review All"
+  short_description: "Review all of your open PRs and address unresolved feedback."
+  default_prompt: "Review all of my open PRs and address actionable review feedback."

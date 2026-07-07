@@ -1,0 +1,92 @@
+[
+  {
+    "name": "legacy vacuum start action migrates to start stop",
+    "input": "vacuum.k11;Vacuum Bath;Auto;Robot Vacuum;vacuum.start;ignored;action;2;ignored=1",
+    "expected": {
+      "entity": "vacuum.k11",
+      "label": "Vacuum Bath",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "start_stop",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "legacy vacuum dock action migrates to dock",
+    "input": "vacuum.k11;Dock Vacuum;Auto;Robot Vacuum;vacuum.return_to_base;ignored;action;2;ignored=1",
+    "expected": {
+      "entity": "vacuum.k11",
+      "label": "Dock Vacuum",
+      "icon": "Robot Vacuum Variant",
+      "icon_on": "Auto",
+      "sensor": "dock",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "vacuum clean area preserves area id",
+    "input": "vacuum.k11;Clean Kitchen;Auto;Auto;clean_area;kitchen;vacuum;text;large_numbers",
+    "expected": {
+      "entity": "vacuum.k11",
+      "label": "Clean Kitchen",
+      "icon": "Vacuum Outline",
+      "icon_on": "Auto",
+      "sensor": "clean_area",
+      "unit": "kitchen",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "invalid vacuum mode becomes start stop",
+    "input": "vacuum.k11;Vacuum;Auto;Auto;bad_mode;kitchen;vacuum;2;ignored=1",
+    "expected": {
+      "entity": "vacuum.k11",
+      "label": "Vacuum",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "start_stop",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lawn mower dock uses dock defaults",
+    "input": "lawn_mower.backyard;Dock Mower;Auto;Auto;dock;ignored;lawn_mower;text;large_numbers",
+    "expected": {
+      "entity": "lawn_mower.backyard",
+      "label": "Dock Mower",
+      "icon": "Robot Mower Outline",
+      "icon_on": "Auto",
+      "sensor": "dock",
+      "unit": "",
+      "type": "lawn_mower",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "invalid lawn mower mode becomes start mowing",
+    "input": "lawn_mower.backyard;Backyard Mower;Auto;Auto;bad_mode;ignored;lawn_mower;2;ignored=1",
+    "expected": {
+      "entity": "lawn_mower.backyard",
+      "label": "Backyard Mower",
+      "icon": "Robot Mower",
+      "icon_on": "Auto",
+      "sensor": "start_mowing",
+      "unit": "",
+      "type": "lawn_mower",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

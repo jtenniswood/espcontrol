@@ -25,7 +25,7 @@ Date and clock cards are read-only — tapping them does nothing.
 - The label underneath follows the same local timezone, so it stays matched to the time shown above.
 - Month text comes from **Custom Month Names** in [Time Settings](/features/clock), if that advanced option is enabled.
 - The panel publishes a **Screen: Date** diagnostic value, so you can check whether the device currently knows the date.
-- The card uses the **tertiary** colour from [Appearance](/features/appearance), like Sensor, World Clock, and Weather cards.
+- The card uses the fixed **tertiary** background colour, like Sensor, World Clock, and Weather cards.
 - If the panel has not synced time yet, the card shows `--` until time becomes available.
 
 The same **Date & Time** card settings also include **World Clock**. Choosing that changes the card into a [World Clock](/card-types/timezones) card for another city or timezone.

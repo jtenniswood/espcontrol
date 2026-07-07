@@ -8,6 +8,7 @@ substitutions:
   name: "espcontrol-4inch-s3"
   friendly_name: "EspControl 4inch S3"
   espcontrol_component_url: "../.."
+  mdi_font_file: "../../common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
   espcontrol_component_ref: "HEAD"
 
 wifi:

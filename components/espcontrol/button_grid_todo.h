@@ -4,6 +4,12 @@
 
 // Home Assistant todo card controls.
 
+constexpr uint32_t TODO_CARD_CTX_MAGIC = 0x544F444F;  // TODO
+
+inline bool todo_request_timed_out(uint32_t started_ms, uint32_t timeout_ms) {
+  return esphome::millis() - started_ms >= timeout_ms;
+}
+
 #if defined(ESPCONTROL_DISABLE_TODO) && ESPCONTROL_DISABLE_TODO
 
 struct TodoCardCtx {};
@@ -61,7 +67,6 @@ inline void subscribe_todo_friendly_name(TodoCardCtx *ctx) { (void) ctx; }
 
 #elif defined(ESPCONTROL_TODO_LITE) && ESPCONTROL_TODO_LITE
 
-constexpr uint32_t TODO_CARD_CTX_MAGIC = 0x544F444F;  // TODO
 constexpr int TODO_LITE_MAX_ITEMS = 5;
 constexpr size_t TODO_LITE_KEY_MAX_LEN = 64;
 constexpr size_t TODO_LITE_SUMMARY_MAX_LEN = 64;
@@ -229,7 +234,7 @@ inline void todo_cancel_pending_request(const char *reason, bool keep_modal_wait
 inline bool todo_lite_cancel_stale_request() {
   TodoLiteModalUi &ui = todo_lite_modal_ui();
   if (ui.call_id == 0) return false;
-  if (esphome::millis() - ui.started_ms >= TODO_LITE_REQUEST_TIMEOUT_MS) {
+  if (todo_request_timed_out(ui.started_ms, TODO_LITE_REQUEST_TIMEOUT_MS)) {
     uint32_t call_id = ui.call_id;
     todo_lite_cancel_request(call_id, "timeout");
     return true;
@@ -294,7 +299,7 @@ inline lv_obj_t *todo_lite_create_row(TodoCardCtx *ctx, TodoLiteItem *item,
   lv_obj_set_size(box, checkbox_size, checkbox_size);
   lv_obj_set_style_radius(box, checkbox_size / 4, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(box, LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_color(box, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
+  lv_obj_set_style_border_color(box, lv_color_hex(DARK_BORDER), LV_PART_MAIN);
   lv_obj_set_style_border_width(box, 2, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(box, 0, LV_PART_MAIN);
   lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
@@ -402,7 +407,8 @@ inline void todo_lite_render_items(TodoCardCtx *ctx) {
 
   if (ui.more_count > 0) {
     char more_label[32];
-    std::snprintf(more_label, sizeof(more_label), "%d more", ui.more_count);
+    std::snprintf(
+      more_label, sizeof(more_label), "%d %s", ui.more_count, espcontrol_i18n("more"));
     todo_lite_create_note_row(ctx, more_label, row_h, content_w);
   }
 }
@@ -647,7 +653,6 @@ inline TodoCardCtx *create_todo_card_context(
 
 inline void subscribe_todo_state(TodoCardCtx *ctx) {
   if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn, false);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
@@ -658,7 +663,6 @@ inline void subscribe_todo_state(TodoCardCtx *ctx) {
       } else {
         todo_lite_copy_text(ctx->count_text, sizeof(ctx->count_text), state);
       }
-      apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);
       todo_lite_apply_card_text(ctx);
       TodoLiteModalUi &ui = todo_lite_modal_ui();
       if (ui.active == ctx && !ctx->available) {
@@ -684,7 +688,6 @@ inline void subscribe_todo_friendly_name(TodoCardCtx *ctx) {
 
 #else
 
-constexpr uint32_t TODO_CARD_CTX_MAGIC = 0x544F444F;  // TODO
 constexpr int TODO_MAX_ITEMS = 8;
 constexpr size_t TODO_RESPONSE_TEXT_MAX_LEN = 1536;
 constexpr int TODO_RESPONSE_KEY_MAX_LEN = 96;
@@ -712,7 +715,7 @@ struct TodoCardCtx {
   const lv_font_t *label_font = nullptr;
   const lv_font_t *list_font = nullptr;
   const lv_font_t *icon_font = nullptr;
-  uint32_t secondary_color = DEFAULT_OFF_COLOR;
+  uint32_t secondary_color = SECONDARY_GREY;
   int width_compensation_percent = 100;
   bool available = false;
 };
@@ -781,7 +784,7 @@ inline void todo_cancel_pending_request(const char *reason, bool keep_modal_wait
 inline bool todo_cancel_stale_request() {
   TodoRequestState &state = todo_request_state();
   if (state.call_id == 0) return false;
-  if (esphome::millis() - state.started_ms >= TODO_REQUEST_TIMEOUT_MS) {
+  if (todo_request_timed_out(state.started_ms, TODO_REQUEST_TIMEOUT_MS)) {
     uint32_t call_id = state.call_id;
     todo_cancel_request(call_id, "timeout");
     return true;
@@ -1021,7 +1024,7 @@ inline lv_obj_t *todo_modal_create_list_item_row(
   lv_coord_t label_x = 0;
   lv_coord_t label_w = content_width;
   if (show_checkbox) {
-    uint32_t checkbox_color = checked ? DARK_TEXT_SOFT : DARK_TEXT_MUTED;
+    uint32_t checkbox_color = checked ? DARK_TEXT_PRIMARY : DARK_BORDER;
     lv_obj_t *box = lv_obj_create(row);
     lv_obj_set_size(box, checkbox_size, checkbox_size);
     lv_obj_set_style_radius(box, checkbox_size / 4, LV_PART_MAIN);
@@ -1102,7 +1105,9 @@ inline void todo_modal_render_items(TodoCardCtx *ctx, const std::vector<TodoItem
   for (const auto &item : items) {
     if (item.more) {
       ui.more_items_visible = true;
-      std::string label = item.summary.empty() ? "More items" : item.summary + " more";
+      std::string label = item.summary.empty()
+        ? espcontrol_i18n(std::string("More items"))
+        : item.summary + " " + espcontrol_i18n(std::string("more"));
       todo_modal_create_list_item_row(
         ui.list, label, false, false, false, row_h, content_w,
         checkbox_size, item_gap, ctx->label_font,
@@ -1368,14 +1373,12 @@ inline TodoCardCtx *create_todo_card_context(
 
 inline void subscribe_todo_state(TodoCardCtx *ctx) {
   if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn, false);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
       bool unavailable = ha_state_unavailable_ref(state);
       ctx->available = !unavailable;
       ctx->count_text = unavailable ? "--" : string_ref_limited(state, HA_SHORT_STATE_MAX_LEN);
-      apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);
       todo_apply_card_text(ctx);
       if (todo_modal_ui().active == ctx && !ctx->available) {
         todo_modal_ui().waiting_for_ha = true;
