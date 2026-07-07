@@ -2465,7 +2465,8 @@
             "values": [
               "",
               "today",
-              "tomorrow"
+              "tomorrow",
+              "3day"
             ],
             "defaultValue": ""
           },
