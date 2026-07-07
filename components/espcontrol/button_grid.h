@@ -33,6 +33,7 @@
 // implementation is split into focused headers below for easier review.
 #include "button_grid_ha.h"
 #include "button_grid_config.h"
+#include "button_grid_style.h"
 #include "button_grid_card_runtime.h"
 #include "button_grid_layout.h"
 #include "button_grid_display.h"
@@ -41,6 +42,7 @@
 #include "button_grid_subscriptions.h"
 #include "button_grid_plant.h"
 #include "button_grid_vacuum.h"
+#include "button_grid_lawn_mower.h"
 #include "button_grid_actions.h"
 #include "button_grid_sliders.h"
 #include "button_grid_fan.h"

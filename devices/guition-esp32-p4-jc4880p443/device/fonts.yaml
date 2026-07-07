@@ -7,21 +7,21 @@
 
 font:
   # Main action/setup icons
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+  - file: '${mdi_font_file}'
     id: font_icon_main
     size: 62
     bpp: 4
     glyphs: !include ../../../common/assets/icon_glyphs.yaml
 
   # Smaller card icons
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+  - file: '${mdi_font_file}'
     id: font_icon_card
     size: 47
     bpp: 4
     glyphs: !include ../../../common/assets/climate_card_icon_glyphs.yaml
 
   # Status, network, and subpage icons
-  - file: 'https://github.com/Templarian/MaterialDesign-Webfont/raw/v7.4.47/fonts/materialdesignicons-webfont.ttf'
+  - file: '${mdi_font_file}'
     id: font_icon_status
     size: 27
     bpp: 4
@@ -30,7 +30,17 @@ font:
   # Main labels and setup body text
   - file: "gfonts://Roboto"
     id: font_text_body
-    size: 31
+    size: 29
+    bpp: 4
+    glyphs: !include ../../../common/assets/text_glyphs.yaml
+    extras:
+      - file: "gfonts://Heebo"
+        glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+
+  # Smaller secondary text
+  - file: "gfonts://Roboto"
+    id: font_text_small
+    size: 25
     bpp: 4
     glyphs: !include ../../../common/assets/text_glyphs.yaml
     extras:

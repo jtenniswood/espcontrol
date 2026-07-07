@@ -57,7 +57,7 @@ function defaultTimezoneCardEntity() {
 
 function dateTimeModeOptionValues() {
   var spec = cardContractOptionSpec("calendar", "date_time_mode");
-  return spec && spec.values ? spec.values.slice() : ["clock", "datetime", "", "timezone"];
+  return spec && spec.values ? spec.values.slice() : [];
 }
 
 function normalizeDateTimeCardMode(mode) {
@@ -124,10 +124,10 @@ function setDateTimeCardMode(b, mode, helpers) {
 }
 
 function dateTimeCardTimeParts() {
-  var now = new Date();
+  var now = webserverNow();
   var use12h = typeof state !== "undefined" && state.clockFormat === "12h";
-  var hour = now.getHours();
-  var minute = String(now.getMinutes()).padStart(2, "0");
+  var hour = now.getUTCHours();
+  var minute = String(now.getUTCMinutes()).padStart(2, "0");
   var timeValue = "";
 
   if (use12h) {
@@ -153,13 +153,8 @@ registerButtonType("calendar", {
   defaultConfig: function () { return cardContractDefaultConfig("calendar"); },
   cardMetadata: DATE_TIME_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = "sensor.date";
-    b.label = "";
-    b.icon = "Auto";
-    b.icon_on = "Auto";
-    b.sensor = "";
-    b.unit = "";
-    b.options = "";
+    var defaults = cardContractDefaultConfig("calendar");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
     b.precision = b.precision === "datetime" ? "datetime" : "";
   },
   renderSettings: function (panel, b, slot, helpers) {
@@ -170,16 +165,16 @@ registerButtonType("calendar", {
     helpers.renderCardLargeNumbersToggle(panel, b, helpers, DATE_TIME_CARD_METADATA);
   },
   renderPreview: function (b, helpers) {
-    var now = new Date();
+    var now = webserverNow();
     var isDateTime = b.precision === "datetime";
     var hideLabel = cardLargeNumbersHidePreviewLabel(b, helpers, DATE_TIME_CARD_METADATA);
     var buttonClass = hideLabel
       ? (isDateTime ? "sp-clock-wide-large" : "sp-date-time-wide-large")
       : undefined;
-    var day = String(now.getDate());
+    var day = String(now.getUTCDate());
     var month = typeof monthNameForIndex === "function"
-      ? monthNameForIndex(now.getMonth())
-      : now.toLocaleString("en", { month: "long" });
+      ? monthNameForIndex(now.getUTCMonth())
+      : now.toLocaleString("en", { month: "long", timeZone: "UTC" });
 
     if (isDateTime) {
       var time = dateTimeCardTimeParts();

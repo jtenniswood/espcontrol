@@ -401,6 +401,11 @@
       "mdi": "clock-outline"
     },
     {
+      "name": "Circle Outline",
+      "codepoint": "F0766",
+      "mdi": "circle-outline"
+    },
+    {
       "name": "Coffee Maker",
       "codepoint": "F109F",
       "mdi": "coffee-maker"
@@ -559,6 +564,16 @@
       "name": "Floor Lamp",
       "codepoint": "F08DD",
       "mdi": "floor-lamp"
+    },
+    {
+      "name": "Folder Music Outline",
+      "codepoint": "F135A",
+      "mdi": "folder-music-outline"
+    },
+    {
+      "name": "Folder Play",
+      "codepoint": "F19FA",
+      "mdi": "folder-play"
     },
     {
       "name": "Fountain",
@@ -741,6 +756,16 @@
       "mdi": "robot-mower"
     },
     {
+      "name": "Robot Mower",
+      "codepoint": "F11F7",
+      "mdi": "robot-mower"
+    },
+    {
+      "name": "Robot Mower Outline",
+      "codepoint": "F11F3",
+      "mdi": "robot-mower-outline"
+    },
+    {
       "name": "Leaf",
       "codepoint": "F032A",
       "mdi": "leaf"
@@ -886,6 +911,16 @@
       "mdi": "meter-gas"
     },
     {
+      "name": "Microphone",
+      "codepoint": "F036C",
+      "mdi": "microphone"
+    },
+    {
+      "name": "Microphone Off",
+      "codepoint": "F036D",
+      "mdi": "microphone-off"
+    },
+    {
       "name": "Microsoft Xbox",
       "codepoint": "F05B9",
       "mdi": "microsoft-xbox"
@@ -924,6 +959,21 @@
       "name": "Music",
       "codepoint": "F075A",
       "mdi": "music"
+    },
+    {
+      "name": "Music Box Multiple",
+      "codepoint": "F0333",
+      "mdi": "music-box-multiple"
+    },
+    {
+      "name": "Music Note",
+      "codepoint": "F0387",
+      "mdi": "music-note"
+    },
+    {
+      "name": "Music Note Quarter",
+      "codepoint": "F038B",
+      "mdi": "music-note-quarter"
     },
     {
       "name": "Nintendo Switch",
@@ -1221,7 +1271,22 @@
       "mdi": "speaker"
     },
     {
+      "name": "Speaker Pause",
+      "codepoint": "F1B73",
+      "mdi": "speaker-pause"
+    },
+    {
+      "name": "Speaker Play",
+      "codepoint": "F1B72",
+      "mdi": "speaker-play"
+    },
+    {
       "name": "Spotlight",
+      "codepoint": "F04C8",
+      "mdi": "spotlight"
+    },
+    {
+      "name": "Spotlight Beam",
       "codepoint": "F04C9",
       "mdi": "spotlight-beam"
     },
@@ -1394,6 +1459,11 @@
       "name": "Volume High",
       "codepoint": "F057E",
       "mdi": "volume-high"
+    },
+    {
+      "name": "Volume Off",
+      "codepoint": "F0581",
+      "mdi": "volume-off"
     },
     {
       "name": "Wall Outlet",

@@ -32,16 +32,17 @@ The setup page uses these card names and grouped modes on the device. For a quic
 |---|---|---|
 | **[Switch](/card-types/switches)** | Controls a Home Assistant entity and shows its on/off state. This is the default card type. | Yes |
 | **[Lights](/card-types/lights)** | Controls a light as a full control popup, switch, brightness slider, or colour temperature slider. | Yes, as a light entity |
-| **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, helper action, or Option Select picker. | Yes |
+| **[Action](/card-types/actions)** | Runs a one-tap Home Assistant scene, script, button, helper action, Option Select picker, or local panel action. | Depends on the selected action |
 | **[Option Select](/card-types/option-select)** | Opens a live `select` or `input_select` option list through the Action card. | Yes, as a select entity |
 | **[Webhook](/card-types/webhooks)** | Calls an HTTP URL directly from the panel for other automation platforms and webhook services. | URL |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
-| **[Sensor](/card-types/sensors)** | Shows a live numeric reading, text state, or icon state. | Yes, as **Sensor Entity** |
+| **[Sensor](/card-types/sensors)** | Shows a live numeric reading, text state, or icon state from Home Assistant or a local device sensor. | Yes for Home Assistant, local sensor key for Local Sensor source |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |
 | **[Presence](/card-types/presence)** | Shows whether a person, room, or motion sensor is active. | Yes, as **Sensor Entity** |
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
 | **[Fans](/card-types/fans)** | Controls supported fan switch, speed, oscillation, direction, and preset features. | Yes, as a fan entity |
 | **[Vacuum](/card-types/vacuum)** | Shows vacuum status or controls start/stop, dock, pause/resume, spot clean, locate, and clean area. | Yes, as a vacuum entity |
+| **[Lawn Mower](/card-types/lawn-mower)** | Shows mower status or controls start mowing, dock, and pause/resume. | Yes, as a lawn mower entity |
 | **[Cover](/card-types/covers)** | Controls blinds, shutters, and similar cover entities with a full control popup, slider, or tap action. | Yes |
 | **[Garage Door](/card-types/garage-doors)** | Controls a garage door cover entity with an open/close tap action. | Yes |
 | **[Lock](/card-types/locks)** | Locks, unlocks, or toggles a Home Assistant lock entity. | Yes |
@@ -56,7 +57,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 
 For cards that use Home Assistant, enter the entity name from Home Assistant in the **Entity** field, such as `light.living_room`, `switch.garden_lights`, `scene.movie_mode`, or `weather.forecast_home`. Some card types use a more specific label, such as **Sensor Entity**, **Weather Entity**, or **Climate Entity**. You can find entity names under **Settings > Devices & Services** in Home Assistant.
 
-Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, and Option Select actions. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Cover** contains Modal, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains Combined Control, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
+Some card names group several related controls together. **Lights** contains All Controls, Switch, Brightness, and Colour Temperature options. **Fans** contains Switch, Speed, Oscillation, Direction, and Preset options. **Action** contains scene, script, helper, Option Select, and Local Action modes. **Sensor** contains Home Assistant and Local Sensor sources. **Vacuum** contains Status, Start / Stop, Dock, Pause / Resume, Spot Clean, Locate, and Clean Area options. **Lawn Mower** contains Status, Start Mowing, Dock, and Pause / Resume options. **Cover** contains All Controls, Position, Tilt, Toggle, Open, Close, Stop, and Set Position options. **Alarm** contains Combined Control, Arm Away, Arm Home, Arm Night, Arm Vacation, and Disarm options. **Date & Time** contains Clock, Date, Time & Date, and World Clock options.
 
 For the generated list of current card domains, subpage support, grouping, and options, see the [Card Capability Reference](/generated/cards/capabilities).
 
@@ -93,6 +94,8 @@ If a card already occupies the space needed for a larger size, the setup page tr
 The **Settings** tab also includes display, brightness, screensaver, backup, and firmware update controls.
 
 ![Settings tab showing appearance, backlight, schedule, clock, and firmware controls](/images/settings-tab-display.png)
+
+Open **Settings > System > Home Assistant Settings** to change **Home Assistant Port** if your Home Assistant instance does not use the default `8123` port. Camera/image cards and media artwork downloads use this port when loading images from Home Assistant.
 
 ## Apply Configuration
 

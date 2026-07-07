@@ -31,6 +31,84 @@ inline const char *action_card_value_key(const std::string &action) {
   return nullptr;
 }
 
+inline std::string action_card_trim_text(const std::string &value) {
+  size_t start = 0;
+  while (start < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[start]))) {
+    start++;
+  }
+  size_t end = value.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+    end--;
+  }
+  return value.substr(start, end - start);
+}
+
+inline bool action_card_script_field_name_valid(const std::string &name) {
+  if (name.empty() || name == "entity_id") return false;
+  for (char ch : name) {
+    unsigned char c = static_cast<unsigned char>(ch);
+    if (!(std::isalnum(c) || ch == '_')) return false;
+  }
+  return true;
+}
+
+inline bool action_card_parse_script_field(const std::string &line,
+                                           std::string &key,
+                                           std::string &value) {
+  size_t sep = line.find(':');
+  size_t equals = line.find('=');
+  if (sep == std::string::npos || (equals != std::string::npos && equals < sep)) {
+    sep = equals;
+  }
+  if (sep == std::string::npos) return false;
+  key = action_card_trim_text(line.substr(0, sep));
+  value = action_card_trim_text(line.substr(sep + 1));
+  return action_card_script_field_name_valid(key) && !value.empty();
+}
+
+struct ActionCardScriptField {
+  std::string key;
+  std::string value;
+};
+
+inline std::vector<ActionCardScriptField> action_card_script_fields(const std::string &options) {
+  std::vector<ActionCardScriptField> out;
+  std::string fields = cfg_option_value(options, "script_fields");
+  if (fields.empty()) return out;
+  size_t start = 0;
+  while (start <= fields.size()) {
+    size_t end = fields.find('\n', start);
+    if (end == std::string::npos) end = fields.size();
+    std::string key;
+    std::string value;
+    if (action_card_parse_script_field(fields.substr(start, end - start), key, value)) {
+      out.push_back({key, value});
+    }
+    start = end + 1;
+  }
+  return out;
+}
+
+inline std::string action_card_script_fields_template(const std::vector<ActionCardScriptField> &fields) {
+  if (fields.empty()) return "";
+  std::string out = "{{ dict(";
+  for (size_t i = 0; i < fields.size(); i++) {
+    if (i > 0) out += ", ";
+    out += fields[i].key + "=" + fields[i].key;
+  }
+  out += ") }}";
+  return out;
+}
+
+inline void action_card_add_script_field_variables(esphome::api::HomeassistantActionRequest &req,
+                                                   const std::vector<ActionCardScriptField> &fields) {
+  for (const auto &field : fields) {
+    ha_action_add_variable(req, field.key.c_str(), field.value.c_str());
+  }
+}
+
 inline bool action_card_action_allowed(const std::string &action) {
   return action == "scene.turn_on" ||
          action == "script.turn_on" ||
@@ -47,16 +125,35 @@ inline bool action_card_action_allowed(const std::string &action) {
 }
 
 inline void send_action_card_action(const ParsedCfg &p) {
+  if (action_card_local_action(p)) {
+    if (!p.entity.empty()) send_local_action(p.entity);
+    return;
+  }
   if (p.entity.empty() || p.sensor.empty() || !action_card_action_allowed(p.sensor)) return;
   if (action_card_option_select(p)) return;
   const char *value_key = action_card_value_key(p.sensor);
   if (value_key && p.unit.empty()) return;
+  std::vector<ActionCardScriptField> script_fields = p.sensor == "script.turn_on"
+    ? action_card_script_fields(p.options)
+    : std::vector<ActionCardScriptField>();
 
   esphome::api::HomeassistantActionRequest req;
-  if (!ha_action_begin(req, p.sensor.c_str(), false, value_key ? 2 : 1)) return;
+  if (!ha_action_begin(req, p.sensor.c_str(), false, 1 + (value_key ? 1 : 0))) return;
+  std::string script_fields_template;
+  if (!script_fields.empty()) {
+    script_fields_template = action_card_script_fields_template(script_fields);
+    if (!script_fields_template.empty()) {
+      req.data_template.init(1);
+      req.variables.init(script_fields.size());
+    }
+  }
   ha_action_add_entity(req, p.entity);
   if (value_key) {
     ha_action_add_data(req, value_key, p.unit.c_str());
+  }
+  if (!script_fields_template.empty()) {
+    ha_action_add_data_template(req, "variables", script_fields_template.c_str());
+    action_card_add_script_field_variables(req, script_fields);
   }
   ha_action_send(req);
 }
@@ -215,6 +312,108 @@ inline const char *cover_command_service(const std::string &sensor) {
   return card_runtime_cover_command_service(sensor);
 }
 
+constexpr int COVER_SUPPORT_OPEN = 1;
+constexpr int COVER_SUPPORT_CLOSE = 2;
+constexpr int COVER_SUPPORT_SET_POSITION = 4;
+constexpr int COVER_SUPPORT_STOP = 8;
+constexpr int COVER_SUPPORT_OPEN_TILT = 16;
+constexpr int COVER_SUPPORT_CLOSE_TILT = 32;
+constexpr int COVER_SUPPORT_STOP_TILT = 64;
+constexpr int COVER_SUPPORT_SET_TILT_POSITION = 128;
+
+inline bool cover_parse_supported_features(esphome::StringRef val, int &features) {
+  std::string value = normalized_state_text(val);
+  if (value.empty() || value == "none" || value == "null" ||
+      value == "unknown" || value == "unavailable") {
+    return false;
+  }
+  char *end = nullptr;
+  long parsed = std::strtol(value.c_str(), &end, 10);
+  if (end == value.c_str()) return false;
+  features = static_cast<int>(parsed);
+  return true;
+}
+
+inline const char *cover_tilt_command_service(const std::string &sensor) {
+  if (sensor == "open") return "cover.open_cover_tilt";
+  if (sensor == "close") return "cover.close_cover_tilt";
+  if (sensor == "stop") return "cover.stop_cover_tilt";
+  if (sensor == "set_position") return "cover.set_cover_tilt_position";
+  return nullptr;
+}
+
+inline int cover_command_normal_feature(const std::string &sensor) {
+  if (sensor == "open") return COVER_SUPPORT_OPEN;
+  if (sensor == "close") return COVER_SUPPORT_CLOSE;
+  if (sensor == "stop") return COVER_SUPPORT_STOP;
+  if (sensor == "set_position") return COVER_SUPPORT_SET_POSITION;
+  return 0;
+}
+
+inline int cover_command_tilt_feature(const std::string &sensor) {
+  if (sensor == "open") return COVER_SUPPORT_OPEN_TILT;
+  if (sensor == "close") return COVER_SUPPORT_CLOSE_TILT;
+  if (sensor == "stop") return COVER_SUPPORT_STOP_TILT;
+  if (sensor == "set_position") return COVER_SUPPORT_SET_TILT_POSITION;
+  return 0;
+}
+
+struct CoverCommandCtx {
+  ParsedCfg config;
+  bool supported_features_known = false;
+  int supported_features = 0;
+};
+
+inline bool cover_command_use_tilt(const std::string &sensor,
+                                   bool supported_features_known,
+                                   int supported_features) {
+  if (!supported_features_known) return false;
+  int normal_feature = cover_command_normal_feature(sensor);
+  int tilt_feature = cover_command_tilt_feature(sensor);
+  return normal_feature != 0 && tilt_feature != 0 &&
+         (supported_features & normal_feature) == 0 &&
+         (supported_features & tilt_feature) != 0;
+}
+
+inline bool cover_command_supported(const std::string &sensor,
+                                    bool supported_features_known,
+                                    int supported_features) {
+  if (!supported_features_known) return true;
+  int normal_feature = cover_command_normal_feature(sensor);
+  int tilt_feature = cover_command_tilt_feature(sensor);
+  return (normal_feature != 0 && (supported_features & normal_feature) != 0) ||
+         (tilt_feature != 0 && (supported_features & tilt_feature) != 0);
+}
+
+inline void cover_command_apply_supported_features(CoverCommandCtx *ctx, int features) {
+  if (!ctx) return;
+  ctx->supported_features_known = true;
+  ctx->supported_features = features;
+}
+
+inline CoverCommandCtx *create_cover_command_context(const ParsedCfg &p) {
+  CoverCommandCtx *ctx = new CoverCommandCtx();
+  ctx->config = p;
+  return ctx;
+}
+
+inline void subscribe_cover_command_features(CoverCommandCtx *ctx) {
+  if (!ctx || ctx->config.entity.empty()) return;
+  ha_subscribe_attribute(
+    ctx->config.entity, std::string("supported_features"),
+    std::function<void(esphome::StringRef)>(
+      [ctx](esphome::StringRef val) {
+        int features = 0;
+        if (cover_parse_supported_features(val, features)) {
+          cover_command_apply_supported_features(ctx, features);
+        } else {
+          ctx->supported_features_known = false;
+          ctx->supported_features = 0;
+        }
+      })
+  );
+}
+
 inline int cover_position_value(const std::string &value) {
   char *end = nullptr;
   long pos = std::strtol(value.c_str(), &end, 10);
@@ -251,12 +450,14 @@ inline void cover_stop_cancel_pending_request() {
   ha_cancel_action_response_callback(call_id, "api disconnected");
 }
 
-inline void send_cover_command_action(const ParsedCfg &p) {
-  const char *service = cover_command_service(p.sensor);
+inline void send_cover_command_action(const ParsedCfg &p, bool tilt_command = false) {
+  const char *service = tilt_command
+    ? cover_tilt_command_service(p.sensor)
+    : cover_command_service(p.sensor);
   if (p.entity.empty() || service == nullptr) return;
 
   bool has_position = p.sensor == "set_position";
-  bool wants_stop_response = p.sensor == "stop";
+  bool wants_stop_response = p.sensor == "stop" && !tilt_command;
   esphome::api::HomeassistantActionRequest req;
   uint32_t call_id = wants_stop_response ? next_cover_stop_call_id() : 0;
   if (!ha_action_begin(req, service, false, has_position ? 2 : 1, call_id)) return;
@@ -267,7 +468,7 @@ inline void send_cover_command_action(const ParsedCfg &p) {
   if (has_position) {
     char buf[8];
     snprintf(buf, sizeof(buf), "%d", cover_position_value(p.unit));
-    ha_action_add_data(req, "position", buf);
+    ha_action_add_data(req, tilt_command ? "tilt_position" : "position", buf);
   }
   bool cover_stop_tracked = false;
   if (wants_stop_response) {
@@ -295,11 +496,24 @@ inline void send_cover_command_action(const ParsedCfg &p) {
 }
 
 inline void send_cover_command_action(const std::string &entity_id,
-                                      const std::string &mode) {
+                                      const std::string &mode,
+                                      bool tilt_command = false) {
   ParsedCfg p;
   p.entity = entity_id;
   p.sensor = mode;
-  send_cover_command_action(p);
+  send_cover_command_action(p, tilt_command);
+}
+
+inline void send_cover_command_action(const CoverCommandCtx &ctx) {
+  const ParsedCfg &p = ctx.config;
+  if (!cover_command_supported(p.sensor, ctx.supported_features_known, ctx.supported_features)) {
+    ESP_LOGW("cover", "Cover command %s is not supported for %s",
+             p.sensor.c_str(), p.entity.c_str());
+    return;
+  }
+  send_cover_command_action(
+    p,
+    cover_command_use_tilt(p.sensor, ctx.supported_features_known, ctx.supported_features));
 }
 
 // Send HA action for a slider change: toggle (value<0), brightness, or cover position/tilt
@@ -465,10 +679,82 @@ inline void send_media_seek_action(const std::string &entity_id, int value, floa
   send_media_player_action(entity_id, "media_player.media_seek", "seek_position", buf);
 }
 
+inline void send_media_source_action(const std::string &entity_id,
+                                     const std::string &source) {
+  if (entity_id.empty() || source.empty()) return;
+  send_media_player_action(entity_id, "media_player.select_source", "source", source.c_str());
+}
+
 inline void send_media_playback_action(const std::string &entity_id,
                                        const std::string &mode) {
   if (entity_id.empty()) return;
   send_media_player_action(entity_id, media_service_for_mode(mode));
+}
+
+inline uint32_t next_media_playlist_call_id() {
+  static uint32_t call_id = 400000;
+  return call_id++;
+}
+
+inline void send_media_playlist_action(const ParsedCfg &p) {
+  if (p.entity.empty()) return;
+  std::string content_id = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+  if (content_id.empty()) {
+    ESP_LOGW("media", "Playlist button for %s has no media content ID", p.entity.c_str());
+    return;
+  }
+  std::string content_type = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
+  if (content_type.empty()) content_type = "playlist";
+  std::string player_source = cfg_option_value(p.options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION);
+  ESP_LOGI("media", "Playlist button: entity=%s content_type=%s content_id=%s playback_device=%s",
+           p.entity.c_str(), content_type.c_str(), content_id.c_str(),
+           player_source.empty() ? "(none)" : player_source.c_str());
+  if (!player_source.empty()) {
+    esphome::api::HomeassistantActionRequest source_req;
+    uint32_t source_call_id = next_media_playlist_call_id();
+    if (ha_action_begin(source_req, "media_player.select_source", false, 2, source_call_id)) {
+      ha_action_add_entity(source_req, p.entity);
+      ha_action_add_data(source_req, "source", player_source.c_str());
+      std::string entity_id = p.entity;
+      std::string source = player_source;
+      ha_register_action_response_callback(
+        source_req.call_id,
+        [entity_id, source](const esphome::api::ActionResponse &response) {
+          if (response.is_success()) {
+            ESP_LOGI("media", "media_player.select_source accepted for %s source=%s",
+                     entity_id.c_str(), source.c_str());
+            return;
+          }
+          ESP_LOGW("media", "media_player.select_source failed for %s source=%s: %s",
+                   entity_id.c_str(), source.c_str(), response.get_error_message().c_str());
+        });
+      if (!ha_action_send(source_req)) {
+        ha_cancel_action_response_callback(source_req.call_id, "send failed");
+      }
+    }
+  }
+  esphome::api::HomeassistantActionRequest req;
+  uint32_t play_call_id = next_media_playlist_call_id();
+  if (!ha_action_begin(req, "media_player.play_media", false, 3, play_call_id)) return;
+  ha_action_add_entity(req, p.entity);
+  ha_action_add_data(req, "media_content_id", content_id.c_str());
+  ha_action_add_data(req, "media_content_type", content_type.c_str());
+  std::string entity_id = p.entity;
+  ha_register_action_response_callback(
+    req.call_id,
+    [entity_id, content_type, content_id](const esphome::api::ActionResponse &response) {
+      if (response.is_success()) {
+        ESP_LOGI("media", "media_player.play_media accepted for %s type=%s id=%s",
+                 entity_id.c_str(), content_type.c_str(), content_id.c_str());
+        return;
+      }
+      ESP_LOGW("media", "media_player.play_media failed for %s type=%s id=%s: %s",
+               entity_id.c_str(), content_type.c_str(), content_id.c_str(),
+               response.get_error_message().c_str());
+    });
+  if (!ha_action_send(req)) {
+    ha_cancel_action_response_callback(req.call_id, "send failed");
+  }
 }
 
 inline bool media_fast_press_mode(const std::string &mode) {
@@ -490,8 +776,8 @@ inline bool media_fast_press_consume(int slot_num) {
 
 inline void handle_button_press(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  (void) btn_obj;
   if (slot_num <= 0 || slot_num > MAX_GRID_SLOTS) return;
-  if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
   if (p.type != "media") return;
   std::string mode = media_card_mode(p.sensor);
@@ -504,6 +790,8 @@ inline void handle_button_press(const std::string &cfg, int slot_num,
 
 struct MediaVolumeCtx;
 inline void media_volume_open_modal(MediaVolumeCtx *ctx);
+struct MediaControlCtx;
+inline void media_control_open_modal(MediaControlCtx *ctx);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
 struct ImageCardCtx;
@@ -523,6 +811,7 @@ inline bool alarm_action_context_valid(AlarmActionCtx *action);
 struct FanCardCtx;
 inline bool fan_non_speed_card_type(const std::string &type);
 inline void fan_card_handle_click(FanCardCtx *ctx);
+inline void fan_control_open_modal(FanCardCtx *ctx);
 struct CoverControlCtx;
 inline void cover_control_open_modal(CoverControlCtx *ctx);
 struct LightControlCtx;
@@ -532,9 +821,11 @@ inline void light_control_open_modal(LightControlCtx *ctx);
 // slider toggle, or entity toggle based on the config string.
 inline void handle_button_click(const std::string &cfg, int slot_num,
                                 lv_obj_t *btn_obj) {
+  (void) btn_obj;
   if (media_fast_press_consume(slot_num)) return;
-  if (btn_obj && lv_obj_has_state(btn_obj, LV_STATE_DISABLED)) return;
   ParsedCfg p = parse_cfg(cfg);
+  ESP_LOGI("button", "Main button %d clicked: type=%s entity=%s mode=%s label=%s",
+           slot_num, p.type.c_str(), p.entity.c_str(), p.sensor.c_str(), p.label.c_str());
   if (p.type == "sensor" || p.type == "text_sensor" || p.type == "local_sensor" ||
       p.type == "door_window" ||
       p.type == "presence" ||
@@ -569,6 +860,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (fan_non_speed_card_type(p.type)) {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_card_handle_click(ctx);
+  } else if (p.type == "fan_control") {
+    FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) fan_control_open_modal(ctx);
   } else if (p.type == "cover" && cover_modal_mode(p.sensor)) {
     CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) cover_control_open_modal(ctx);
@@ -578,8 +872,13 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "garage") {
     if (garage_command_mode(p.sensor)) {
       send_cover_command_action(p);
-    } else if (garage_card_show_status(p)) {
-      return;
+    } else if (!p.entity.empty()) {
+      set_card_checked_state(btn_obj, true);
+      send_toggle_action(p.entity);
+    }
+  } else if (p.type == "gate") {
+    if (gate_command_mode(p.sensor)) {
+      send_cover_command_action(p);
     } else if (!p.entity.empty()) {
       set_card_checked_state(btn_obj, true);
       send_toggle_action(p.entity);
@@ -593,7 +892,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       else send_lock_action(p.entity, "");
     }
   } else if (p.type == "cover" && cover_command_mode(p.sensor)) {
-    send_cover_command_action(p);
+    CoverCommandCtx *ctx = (CoverCommandCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) send_cover_command_action(*ctx);
+    else send_cover_command_action(p);
   } else if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
     if (!p.entity.empty()) {
       set_card_checked_state(btn_obj, true);
@@ -601,7 +902,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     }
   } else if (p.type == "internal") {
     if (!p.entity.empty()) send_internal_relay_action(p);
-  } else if (p.type == "local") {
+  } else if (p.type == "local" || action_card_local_action(p)) {
     if (!p.entity.empty()) send_local_action(p.entity);
   } else if (p.type == "action") {
     if (action_card_option_select(p)) {
@@ -623,6 +924,16 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       fallback.area_id = p.unit;
       send_vacuum_card_action(&fallback);
     }
+  } else if (p.type == "lawn_mower") {
+    LawnMowerCardCtx *ctx = (LawnMowerCardCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) {
+      send_lawn_mower_card_action(ctx);
+    } else if (!lawn_mower_card_read_only(p)) {
+      LawnMowerCardCtx fallback;
+      fallback.entity_id = p.entity;
+      fallback.mode = lawn_mower_card_mode(p.sensor);
+      send_lawn_mower_card_action(&fallback);
+    }
   } else if (p.type == "webhook") {
     send_webhook_action(p);
   } else if (p.type == "todo") {
@@ -630,15 +941,20 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
   } else if (p.type == "media") {
     std::string mode = media_card_mode(p.sensor);
-    if (mode == "volume") {
+    if (mode == "control_modal") {
+      MediaControlCtx *ctx = (MediaControlCtx *)lv_obj_get_user_data(btn_obj);
+      if (ctx) media_control_open_modal(ctx);
+    } else if (mode == "volume") {
       MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_obj_get_user_data(btn_obj);
       if (ctx) media_volume_open_modal(ctx);
+    } else if (mode == "playlist") {
+      send_media_playlist_action(p);
     } else if (mode == "now_playing" && p.precision == "play_pause") {
       send_media_playback_action(p.entity, "play_pause");
     } else if (media_playback_button_mode(mode)) {
       send_media_playback_action(p.entity, mode);
     }
-  } else if (p.type == "climate") {
+  } else if (climate_card_type(p.type)) {
     ClimateControlCtx *ctx = (ClimateControlCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) climate_control_open_modal(ctx);
   } else if (p.type == "image") {

@@ -3,11 +3,7 @@ var WEATHER_CARD_METADATA = {
   mode: {
     label: "Type",
     idSuffix: "weather-display",
-    options: [
-      ["", "Current Conditions"],
-      ["today", "Temperatures Today"],
-      ["tomorrow", "Temperatures Tomorrow"],
-    ],
+    options: weatherModeOptions,
     value: function (b) {
       return weatherCardIsForecastMode(b) ? b.precision : "";
     },
@@ -47,9 +43,26 @@ function weatherCardDefaultForecastLabel(b) {
   return b.precision === "today" ? "Today" : "Tomorrow";
 }
 
+function weatherForecastCardsSupported() {
+  var disabled = CFG.disabledCardTypes || [];
+  return disabled.indexOf("weather_forecast") === -1;
+}
+
+function weatherModeOptions() {
+  var options = [
+    ["", "Current Conditions"],
+    ["today", "Temperatures Today"],
+    ["tomorrow", "Temperatures Tomorrow"],
+  ];
+  return weatherForecastCardsSupported() ? options : [options[0]];
+}
+
 function weatherModeOptionValues() {
   var spec = cardContractOptionSpec("weather", "weather_mode");
-  return spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow"];
+  var values = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow"];
+  return weatherForecastCardsSupported() ? values : values.filter(function (value) {
+    return value === "";
+  });
 }
 
 function normalizeWeatherCardMode(mode) {
@@ -58,7 +71,9 @@ function normalizeWeatherCardMode(mode) {
 }
 
 function weatherCardIsForecastMode(b) {
-  return !!b && cardContractOptionSupportedFor("weather", "large_numbers", { precision: b.precision });
+  return weatherForecastCardsSupported() &&
+    !!b &&
+    cardContractOptionSupportedFor("weather", "large_numbers", { precision: b.precision });
 }
 
 registerButtonType("weather", {

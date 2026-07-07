@@ -7,7 +7,7 @@ function mediaBehaviorSpec() {
 function mediaModeOptionValues() {
   var spec = cardContractOptionSpec("media", "media_mode");
   return spec && spec.values ? spec.values.slice() :
-    ["play_pause", "previous", "next", "volume", "position", "now_playing"];
+    ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"];
 }
 
 function mediaDefaultMode() {
@@ -48,17 +48,37 @@ function mediaNowPlayingPlayPauseEnabled(b) {
   return mediaNowPlayingControls(b) === "play_pause";
 }
 
+function mediaLabelIsGenerated(label) {
+  label = String(label || "").trim();
+  return !label || [
+    "Media",
+    "Play/Pause",
+    "Previous",
+    "Skip Previous",
+    "Next",
+    "Skip Next",
+    "Volume",
+    "Position",
+    "Now Playing",
+    "Media Control",
+    "Media Control Modal",
+    "All Controls",
+  ].indexOf(label) >= 0;
+}
+
 var MEDIA_CARD_METADATA = {
   mode: {
     label: "Type",
     idSuffix: "media-mode",
     options: [
+      ["control_modal", "All Controls"],
       ["play_pause", "Play/Pause Button"],
       ["previous", "Previous Button"],
       ["next", "Next Button"],
       ["volume", "Volume Button"],
       ["position", "Track Position"],
       ["now_playing", "Now Playing"],
+      ["playlist", "Media Content"],
     ],
     value: function (b) {
       return mediaEditorValidMode(b.sensor);
@@ -90,6 +110,22 @@ var MEDIA_CARD_METADATA = {
       ["play_pause", "Play/Pause"],
     ],
   },
+  controlLabelDisplay: {
+    label: "Label",
+    inputId: "media-control-label-display",
+    options: [
+      ["label", "Label"],
+      ["status", "State"],
+    ],
+  },
+  controlNumberDisplay: {
+    label: "Top Left",
+    inputId: "media-control-number-display",
+    options: [
+      ["icon", "Icon"],
+      ["volume", "Volume"],
+    ],
+  },
   largeNumbers: {
     label: "Large Media Numbers",
     idSuffix: "large-media-numbers",
@@ -102,6 +138,101 @@ var MEDIA_CARD_METADATA = {
     badge: "speaker",
   },
 };
+
+var MEDIA_PLAYLIST_SOURCE_DEFINITIONS = [
+  { value: "spotify", label: "Spotify", prefix: "spotify" },
+  { value: "apple_music", label: "Apple Music", prefix: "apple_music" },
+  { value: "youtube_music", label: "YouTube Music", prefix: "youtube_music" },
+  { value: "plex", label: "Plex", prefix: "plex" },
+  { value: "jellyfin", label: "Jellyfin", prefix: "jellyfin" },
+  { value: "media_source", label: "Home Assistant Media Source", prefix: "media-source" },
+  { value: "url", label: "Web URL", prefix: "" },
+  { value: "__custom", label: "Custom / full URI", prefix: "" },
+];
+
+function mediaPlaylistSourceOptions() {
+  return MEDIA_PLAYLIST_SOURCE_DEFINITIONS.map(function (source) {
+    return [source.value, source.label];
+  });
+}
+
+function mediaPlaylistSourceDefinition(value) {
+  value = String(value || "");
+  for (var i = 0; i < MEDIA_PLAYLIST_SOURCE_DEFINITIONS.length; i++) {
+    if (MEDIA_PLAYLIST_SOURCE_DEFINITIONS[i].value === value) return MEDIA_PLAYLIST_SOURCE_DEFINITIONS[i];
+  }
+  return MEDIA_PLAYLIST_SOURCE_DEFINITIONS[0];
+}
+
+function mediaPlaylistContentIdPlaceholder(source, contentType) {
+  source = String(source || "spotify");
+  contentType = String(contentType || "playlist");
+  if (source === "spotify") return "e.g. 1LG2Lnt9EDQS1DqoE8E2uO";
+  if (source === "media_source") return "e.g. music/morning-mix";
+  if (source === "url") return "e.g. https://example.com/music/stream.mp3";
+  if (source === "__custom") return "e.g. spotify:" + contentType + ":1LG2Lnt9EDQS1DqoE8E2uO";
+  return "Enter the " + contentType + " ID";
+}
+
+function parseMediaPlaylistContentId(value, contentType) {
+  value = String(value || "").trim();
+  contentType = String(contentType || "playlist").trim() || "playlist";
+  if (!value) return { source: "spotify", id: "" };
+  if (/^https?:\/\//i.test(value)) return { source: "url", id: value };
+
+  var spotifyMatch = value.match(/^spotify:([^:]+):(.+)$/i);
+  if (spotifyMatch) return { source: "spotify", contentType: spotifyMatch[1], id: spotifyMatch[2] };
+
+  var mediaSourceMatch = value.match(/^media-source:\/\/(.+)$/i);
+  if (mediaSourceMatch) return { source: "media_source", id: mediaSourceMatch[1] };
+
+  var colonMatch = value.match(/^([a-z][a-z0-9_-]*):([^:]+):(.+)$/i);
+  if (colonMatch) {
+    var prefix = colonMatch[1].toLowerCase();
+    for (var i = 0; i < MEDIA_PLAYLIST_SOURCE_DEFINITIONS.length; i++) {
+      var source = MEDIA_PLAYLIST_SOURCE_DEFINITIONS[i];
+      if (source.prefix && source.prefix.toLowerCase() === prefix) {
+        return { source: source.value, contentType: colonMatch[2], id: colonMatch[3] };
+      }
+    }
+  }
+
+  return { source: "__custom", id: value };
+}
+
+function buildMediaPlaylistContentId(source, contentType, id) {
+  source = String(source || "spotify");
+  contentType = String(contentType || "playlist").trim() || "playlist";
+  id = String(id || "").trim();
+  if (!id) return "";
+  if (source === "__custom" || source === "url") return id;
+  if (source === "media_source") return "media-source://" + id.replace(/^\/+/, "");
+  var definition = mediaPlaylistSourceDefinition(source);
+  return definition.prefix + ":" + contentType + ":" + id;
+}
+
+function mediaPlaylistContentTypeKnown(value) {
+  return mediaPlaylistContentTypeOptions().some(function (option) { return option[0] === value; });
+}
+
+function mediaPlaylistContentTypeOptions() {
+  return [
+    ["playlist", "Playlist"],
+    ["music", "Music"],
+    ["album", "Album"],
+    ["artist", "Artist"],
+    ["track", "Track"],
+    ["channel", "Channel"],
+    ["episode", "Episode"],
+    ["podcast", "Podcast"],
+    ["tvshow", "TV Show"],
+    ["video", "Video"],
+    ["movie", "Movie"],
+    ["app", "App"],
+    ["url", "URL"],
+    ["__custom", "Custom"],
+  ];
+}
 
 registerButtonType("media", {
   label: function () { return cardContractCardLabel("media"); },
@@ -133,6 +264,8 @@ registerButtonType("media", {
       if (mode === "volume") return "Volume High";
       if (mode === "position") return "Progress Clock";
       if (mode === "now_playing") return "Music";
+      if (mode === "control_modal") return "Play Pause";
+      if (mode === "playlist") return "Music";
       return "Play Pause";
     }
 
@@ -148,6 +281,8 @@ registerButtonType("media", {
       if (mode === "next") return "Next";
       if (mode === "volume") return "Volume";
       if (mode === "play_pause") return "Play/Pause";
+      if (mode === "control_modal") return "All Controls";
+      if (mode === "playlist") return "Playlist";
       return "";
     }
 
@@ -180,6 +315,15 @@ registerButtonType("media", {
             helpers.saveField("label", b.label);
             helpers.saveField("icon", b.icon);
           }
+          if (b.sensor === "playlist") {
+            var oldPlaylistDefaultLabel = mediaActionLabel(oldMode);
+            if (!b.label || b.label === oldPlaylistDefaultLabel || b.label === "Media") {
+              b.label = mediaActionLabel(b.sensor);
+              helpers.saveField("label", b.label);
+            }
+            b.icon = mediaDefaultIcon(b.sensor);
+            helpers.saveField("icon", b.icon);
+          }
           if (b.sensor === "volume") {
             var oldDefaultLabel = mediaActionLabel(oldMode);
             if (!b.label || b.label === oldDefaultLabel || b.label === "Media") {
@@ -188,6 +332,15 @@ registerButtonType("media", {
             }
             b.icon = "Auto";
             helpers.saveField("icon", b.icon);
+          }
+          if (b.sensor === "control_modal" && mediaLabelIsGenerated(b.label)) {
+            b.label = mediaActionLabel(b.sensor);
+            helpers.saveField("label", b.label);
+          }
+          if (oldMode === "control_modal" && b.sensor !== "control_modal" &&
+              mediaLabelIsGenerated(b.label)) {
+            b.label = mediaActionLabel(b.sensor);
+            helpers.saveField("label", b.label);
           }
           var normalizedOptions = normalizeMediaOptions(b.options, b.sensor);
           if (b.options !== normalizedOptions) {
@@ -238,10 +391,28 @@ registerButtonType("media", {
       b.icon = "Auto";
       helpers.saveField("icon", b.icon);
     }
+    if (b.sensor === "control_modal" && mediaLabelIsGenerated(b.label)) {
+      b.label = "All Controls";
+      helpers.saveField("label", b.label);
+    }
+    if (b.sensor === "playlist") {
+      if (!b.label || b.label === "Media") b.label = "Playlist";
+      if (!b.icon || b.icon === "Auto") {
+        b.icon = "Music";
+        helpers.saveField("icon", b.icon);
+      }
+    }
     if (b.sensor === "previous" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Previous";
     if (b.sensor === "next" && (!b.icon || b.icon === "Auto")) b.icon = "Skip Next";
 
-    helpers.renderCardEntityField(panel, b, helpers, MEDIA_CARD_METADATA);
+    helpers.renderCardEntityField(panel, b, helpers, b.sensor === "playlist"
+      ? {
+        entity: Object.assign({}, MEDIA_CARD_METADATA.entity, {
+          label: "Speaker Entity",
+          requiredMessage: "Add a speaker entity before saving.",
+        }),
+      }
+      : MEDIA_CARD_METADATA);
 
     var displayMode = helpers.renderCardSegmentControl(panel, b, helpers, {
       segment: Object.assign({}, MEDIA_CARD_METADATA.displayMode, {
@@ -303,7 +474,56 @@ registerButtonType("media", {
       }
     }
 
+    if (b.sensor === "control_modal") {
+      var labelDisplay = helpers.renderCardSegmentControl(panel, b, helpers, {
+        segment: Object.assign({}, MEDIA_CARD_METADATA.controlLabelDisplay, {
+          inputId: helpers.idPrefix + "media-control-label-display",
+          value: function () { return mediaLabelDisplayMode(b); },
+          onSelect: function (button, cardHelpers, value) {
+            setMediaLabelDisplayMode(button, value);
+            cardHelpers.saveField("options", button.options);
+            renderButtonSettings();
+          },
+        }),
+      });
+      labelDisplay.segment.classList.add("sp-segment-scroll");
+
+      if (mediaLabelDisplayMode(b) === "label") {
+        helpers.renderCardTextField(panel, b, helpers, {
+          label: "Label",
+          idSuffix: "label",
+          field: "label",
+          placeholder: "All Controls",
+          rerender: true,
+        });
+      }
+
+      var numberDisplay = helpers.renderCardSegmentControl(panel, b, helpers, {
+        segment: Object.assign({}, MEDIA_CARD_METADATA.controlNumberDisplay, {
+          inputId: helpers.idPrefix + "media-control-number-display",
+          value: function () { return mediaNumberDisplayMode(b); },
+          onSelect: function (button, cardHelpers, value) {
+            setMediaNumberDisplayMode(button, value);
+            cardHelpers.saveField("options", button.options);
+            renderButtonSettings();
+          },
+        }),
+      });
+      numberDisplay.segment.classList.add("sp-segment-scroll");
+
+      if (mediaNumberDisplayMode(b) === "icon") {
+        helpers.renderCardIconPicker(panel, b, helpers, {
+          pickerIdSuffix: "icon-picker",
+          idSuffix: "icon",
+          field: "icon",
+          fallback: "Play Pause",
+        });
+      }
+    }
+
     if (b.sensor !== "now_playing" &&
+        b.sensor !== "control_modal" &&
+        b.sensor !== "playlist" &&
         (b.sensor !== "play_pause" || b.precision !== "state") &&
         (b.sensor !== "position" || b.precision !== "state")) {
       helpers.renderCardTextField(panel, b, helpers, {
@@ -336,9 +556,171 @@ registerButtonType("media", {
       });
     }
 
+    var playlistCardSettings = null;
+    if (b.sensor === "playlist") {
+      var playlistSourceDisclosure = helpers.disclosureSection(
+        "Source",
+        helpers.idPrefix + "playlist-source-settings",
+        true
+      );
+      var playlistSourceSettings = playlistSourceDisclosure.section;
+      panel.appendChild(playlistSourceDisclosure.panel);
+
+      var playlistCardSettingsDisclosure = helpers.disclosureSection(
+        "Card Settings",
+        helpers.idPrefix + "playlist-card-settings",
+        true
+      );
+      playlistCardSettings = playlistCardSettingsDisclosure.section;
+      panel.appendChild(playlistCardSettingsDisclosure.panel);
+
+      var playlistInfo = document.createElement("div");
+      playlistInfo.className = "sp-info-panel";
+      playlistInfo.setAttribute("role", "note");
+      var playlistInfoIcon = document.createElement("span");
+      playlistInfoIcon.className = "mdi mdi-information-outline";
+      playlistInfoIcon.setAttribute("aria-hidden", "true");
+      var playlistInfoText = document.createElement("span");
+      playlistInfoText.appendChild(document.createTextNode("Need help finding the media content ID? "));
+      var playlistInfoLink = document.createElement("a");
+      playlistInfoLink.href = "https://jtenniswood.github.io/espcontrol/card-types/media/#media-content";
+      playlistInfoLink.target = "_blank";
+      playlistInfoLink.rel = "noopener";
+      playlistInfoLink.textContent = "Learn how to configure media content buttons";
+      playlistInfoText.appendChild(playlistInfoLink);
+      playlistInfoText.appendChild(document.createTextNode("."));
+      playlistInfo.appendChild(playlistInfoIcon);
+      playlistInfo.appendChild(playlistInfoText);
+      playlistSourceSettings.appendChild(playlistInfo);
+
+      var playlistContentType = mediaPlaylistContentType(b);
+      var explicitPlaylistContentType = configOptionValue(b && b.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
+      var parsedPlaylistContentId = parseMediaPlaylistContentId(mediaPlaylistContentId(b), playlistContentType);
+      if (!explicitPlaylistContentType &&
+          parsedPlaylistContentId.contentType &&
+          parsedPlaylistContentId.contentType !== playlistContentType) {
+        playlistContentType = parsedPlaylistContentId.contentType;
+        setMediaPlaylistContentType(b, playlistContentType);
+        helpers.saveField("options", b.options);
+      }
+      var sourceField = helpers.selectField(
+        "Source",
+        helpers.idPrefix + "playlist-source",
+        mediaPlaylistSourceOptions(),
+        parsedPlaylistContentId.source);
+      playlistSourceSettings.appendChild(sourceField.field);
+
+      var contentTypeField = helpers.selectField(
+        "Media Type",
+        helpers.idPrefix + "playlist-content-type",
+        mediaPlaylistContentTypeOptions(),
+        mediaPlaylistContentTypeKnown(playlistContentType) ? playlistContentType : "__custom");
+      playlistSourceSettings.appendChild(contentTypeField.field);
+
+      var customContentTypeField = helpers.textField(
+        "Custom Media Content Type",
+        helpers.idPrefix + "playlist-content-type-custom",
+        mediaPlaylistContentTypeKnown(playlistContentType) ? "" : playlistContentType,
+        "e.g. favorite",
+        "",
+        false);
+      playlistSourceSettings.appendChild(customContentTypeField.field);
+
+      function updateCustomContentTypeVisibility() {
+        customContentTypeField.field.hidden = contentTypeField.select.value !== "__custom";
+      }
+
+      function selectedPlaylistContentType() {
+        return contentTypeField.select.value === "__custom"
+          ? customContentTypeField.input.value
+          : contentTypeField.select.value;
+      }
+
+      function savePlaylistContentIdFromFields() {
+        var selectedSource = sourceField.select.value;
+        var selectedType = selectedPlaylistContentType();
+        setMediaPlaylistContentType(b, selectedType);
+        setMediaPlaylistContentId(
+          b,
+          buildMediaPlaylistContentId(selectedSource, selectedType, contentIdField.input.value)
+        );
+        contentIdField.input.value = selectedSource === "__custom" || selectedSource === "url"
+          ? mediaPlaylistContentId(b)
+          : parseMediaPlaylistContentId(mediaPlaylistContentId(b), selectedType).id;
+        helpers.saveField("options", b.options);
+      }
+
+      var contentIdField = helpers.textField(
+        "ID",
+        helpers.idPrefix + "playlist-content-id",
+        parsedPlaylistContentId.id,
+        mediaPlaylistContentIdPlaceholder(parsedPlaylistContentId.source, playlistContentType),
+        "",
+        false);
+      playlistSourceSettings.appendChild(contentIdField.field);
+      helpers.requireField(contentIdField.input, "Add a media ID before saving.");
+
+      function syncContentIdPlaceholder() {
+        contentIdField.input.placeholder = mediaPlaylistContentIdPlaceholder(
+          sourceField.select.value,
+          selectedPlaylistContentType()
+        );
+      }
+
+      sourceField.select.addEventListener("change", function () {
+        if (sourceField.select.value === "__custom" || sourceField.select.value === "url") {
+          contentIdField.input.value = mediaPlaylistContentId(b);
+        } else {
+          contentIdField.input.value = parseMediaPlaylistContentId(
+            mediaPlaylistContentId(b),
+            selectedPlaylistContentType()
+          ).id;
+        }
+        syncContentIdPlaceholder();
+        savePlaylistContentIdFromFields();
+      });
+      contentIdField.input.addEventListener("change", function () {
+        savePlaylistContentIdFromFields();
+      });
+      contentTypeField.select.addEventListener("change", function () {
+        updateCustomContentTypeVisibility();
+        syncContentIdPlaceholder();
+        savePlaylistContentIdFromFields();
+      });
+      customContentTypeField.input.addEventListener("change", function () {
+        savePlaylistContentIdFromFields();
+        customContentTypeField.input.value = mediaPlaylistContentTypeKnown(mediaPlaylistContentType(b))
+          ? "" : mediaPlaylistContentType(b);
+        syncContentIdPlaceholder();
+      });
+      updateCustomContentTypeVisibility();
+      syncContentIdPlaceholder();
+
+      var playerSourceField = helpers.renderCardTextField(playlistSourceSettings, b, helpers, {
+        label: "Player Source / Input",
+        idSuffix: "playlist-player-source",
+        bindName: "",
+        placeholder: "Optional, e.g. Spotify or Line-in",
+        value: function () { return mediaPlaylistPlayerSource(b); },
+      });
+      playerSourceField.input.addEventListener("change", function () {
+        setMediaPlaylistPlayerSource(b, playerSourceField.input.value);
+        helpers.saveField("options", b.options);
+      });
+
+      helpers.renderCardTextField(playlistCardSettings, b, helpers, {
+        label: "Label",
+        idSuffix: "label",
+        field: "label",
+        placeholder: "e.g. Morning Playlist",
+        rerender: true,
+      });
+    }
+
     if (b.sensor !== "play_pause" && b.sensor !== "now_playing" &&
-        b.sensor !== "position" && b.sensor !== "volume") {
-      helpers.renderCardIconPicker(panel, b, helpers, {
+        b.sensor !== "position" && b.sensor !== "volume" &&
+        b.sensor !== "control_modal") {
+      helpers.renderCardIconPicker(playlistCardSettings || panel, b, helpers, {
         pickerIdSuffix: "icon-picker",
         idSuffix: "icon",
         field: "icon",
@@ -354,11 +736,23 @@ registerButtonType("media", {
       if (value === "volume") return { mode: "volume", label: "Volume", icon: "volume-high" };
       if (value === "position") return { mode: "position", label: "Position", icon: "progress-clock" };
       if (value === "now_playing") return { mode: "now_playing", label: "Now Playing", icon: "music" };
+      if (value === "control_modal") return { mode: "control_modal", label: "All Controls", icon: "play-pause" };
+      if (value === "playlist") return { mode: "playlist", label: "Playlist", icon: "music" };
       return { mode: "play_pause", label: "Play/Pause", icon: "play-pause" };
     }
     var info = modeInfo(mediaEditorValidMode(b.sensor));
     var mode = info.mode;
     var label = (b.label && b.label.trim()) || info.label;
+    if (mode === "control_modal") {
+      var controlIcon = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : info.icon;
+      return {
+        iconHtml: mediaNumberDisplayMode(b) === "volume"
+          ? cardSensorPreviewHtml(b, helpers, "42", null)
+          : '<span class="sp-btn-icon mdi mdi-' + controlIcon + '"></span>',
+        labelHtml: cardBadgeLabelHtml(helpers, mediaLabelDisplayMode(b) === "status" ? "Playing" : label,
+          MEDIA_CARD_METADATA.preview.badge),
+      };
+    }
     if (mode === "volume") {
       return {
         iconHtml: cardSensorPreviewHtml(b, helpers, "42", null),
@@ -366,8 +760,8 @@ registerButtonType("media", {
       };
     }
     if (mode === "position") {
-      var bgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
-      var progressColor = "444444";
+      var bgColor = WEB_UI_COLORS.secondary;
+      var progressColor = WEB_UI_COLORS.secondary;
       var positionLabel = b.precision === "state" ? "Paused" : label;
       var positionClass = "sp-sensor-preview sp-media-position-time" +
         (cardLargeNumbersActiveForCardSize(b, helpers, MEDIA_CARD_METADATA) ? " sp-sensor-preview-large" : "");
@@ -384,13 +778,13 @@ registerButtonType("media", {
     if (mode === "now_playing") {
       var progressBg = "";
       if (mediaNowPlayingProgressEnabled(b)) {
-        var nowBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
+        var nowBgColor = WEB_UI_COLORS.secondary;
         progressBg =
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(nowBgColor) + '">' +
-          '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#444444">' +
+          '<span class="sp-slider-track"><span class="sp-slider-fill" style="width:50%;height:100%;background:#' + WEB_UI_COLORS.secondary + '">' +
           '</span></span></span>';
       } else if (mediaNowPlayingPlayPauseEnabled(b)) {
-        var playBgColor = (typeof state !== "undefined" && state.offColor) ? state.offColor : "CECECE";
+        var playBgColor = WEB_UI_COLORS.secondary;
         progressBg =
           '<span class="sp-slider-preview" style="inset:-2px;background:#' + helpers.escHtml(playBgColor) + '">' +
           '</span>';

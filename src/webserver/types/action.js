@@ -8,8 +8,10 @@ var ACTION_CARD_ACTIONS = [
   { value: "input_boolean.toggle", label: "Toggle Helper", placeholder: "e.g. input_boolean.guest_mode", icon: "toggle-switch-variant", domains: ["input_boolean"] },
   { value: "input_number.set_value", label: "Set Number Helper", placeholder: "e.g. input_number.target_level", icon: "counter", domains: ["input_number"] },
   { value: "input_select.select_option", label: "Option Select", placeholder: "e.g. select.wled_preset", icon: "form-dropdown", domains: ["select", "input_select"] },
+  { value: "local", label: "Local Action", placeholder: "e.g. zoom_mute", icon: "gesture-tap", domains: [] },
 ];
 var ACTION_CARD_OPTION_SELECT_ACTION = "input_select.select_option";
+var ACTION_CARD_LOCAL_ACTION = "local";
 
 function actionCardInfo(value) {
   for (var i = 0; i < ACTION_CARD_ACTIONS.length; i++) {
@@ -23,6 +25,11 @@ function actionCardIsOptionSelect(b) {
   return value === ACTION_CARD_OPTION_SELECT_ACTION || value === "select.select_option";
 }
 
+function actionCardIsLocal(b) {
+  if (typeof b === "string") return b === ACTION_CARD_LOCAL_ACTION;
+  return !!(b && (b.type === "action" || b.type === "local") && b.sensor === ACTION_CARD_LOCAL_ACTION);
+}
+
 function normalizeActionCardConfig(b) {
   if (b && b.sensor === "select.select_option") b.sensor = ACTION_CARD_OPTION_SELECT_ACTION;
   if (!b.sensor) b.sensor = "scene.turn_on";
@@ -33,6 +40,12 @@ function normalizeActionCardConfig(b) {
     b.unit = "";
     b.options = "";
     if (!b.icon || b.icon === "Auto" || b.icon === "Chevron Down") b.icon = "Flash";
+  } else if (actionCardIsLocal(b)) {
+    b.unit = "";
+    b.precision = "";
+    b.options = "";
+    b.icon_on = "Auto";
+    if (!b.icon || b.icon === "Auto" || b.icon === "Flash") b.icon = "Gesture Tap";
   } else {
     b.options = normalizeActionOptions(b.options, b.sensor);
   }
@@ -124,7 +137,7 @@ var ACTION_CARD_METADATA = {
     label: "Large State Numbers",
     idSuffix: "large-state-numbers",
     supported: function (b) {
-      return !actionCardIsOptionSelect(b) && actionCardStateDisplayMode(b) === "numeric";
+      return !actionCardIsOptionSelect(b) && !actionCardIsLocal(b) && actionCardStateDisplayMode(b) === "numeric";
     },
   },
   stateUnitField: {
@@ -137,6 +150,12 @@ var ACTION_CARD_METADATA = {
     label: "Confirmation Required",
     idSuffix: "script-confirm-toggle",
     checked: function (b) { return actionScriptConfirmationEnabled(b); },
+  },
+  scriptFields: {
+    label: "Fields",
+    idSuffix: "script-fields",
+    placeholder: "e.g. mode: night",
+    value: function (b) { return actionScriptFields(b); },
   },
   confirmationMessage: {
     label: "Message",
@@ -185,8 +204,13 @@ registerButtonType("action", {
     var actionField = helpers.renderCardModeSelector(panel, b, helpers, Object.assign({}, ACTION_CARD_METADATA, {
       mode: Object.assign({}, ACTION_CARD_METADATA.mode, {
         onChange: function () {
+          var wasLocal = actionCardIsLocal(b);
           b.sensor = this.value;
           helpers.saveField("sensor", b.sensor);
+          if (wasLocal !== actionCardIsLocal(b)) {
+            b.entity = "";
+            helpers.saveField("entity", "");
+          }
           if (!actionCardNeedsExtraValue(b.sensor)) {
             b.unit = "";
             helpers.saveField("unit", "");
@@ -194,9 +218,20 @@ registerButtonType("action", {
           if (actionCardIsOptionSelect(b)) {
             b.options = "";
             helpers.saveField("options", "");
+          } else if (actionCardIsLocal(b)) {
+            b.options = "";
+            helpers.saveField("options", "");
+            if (!b.icon || b.icon === "Auto" || b.icon === "Flash") {
+              b.icon = "Gesture Tap";
+              helpers.saveField("icon", b.icon);
+            }
           } else {
             b.options = normalizeActionOptions(b.options, b.sensor);
             helpers.saveField("options", b.options);
+            if (b.icon === "Gesture Tap") {
+              b.icon = "Flash";
+              helpers.saveField("icon", b.icon);
+            }
           }
           b.icon_on = "Auto";
           b.precision = "";
@@ -214,6 +249,11 @@ registerButtonType("action", {
 
     var info = actionCardInfo(b.sensor) || ACTION_CARD_ACTIONS[0];
     var isOptionSelect = actionCardIsOptionSelect(b);
+    var isLocal = actionCardIsLocal(b);
+    if (isLocal) {
+      renderActionCardLocalSettings(panel, b, slot, helpers);
+      return;
+    }
     var entityField = helpers.renderCardEntityField(panel, b, helpers, {
       entity: Object.assign({}, ACTION_CARD_METADATA.entity, {
         label: isOptionSelect ? "Select Entity" : "Action Entity",
@@ -252,6 +292,32 @@ registerButtonType("action", {
     if (isOptionSelect) return;
 
     if (actionCardIsScript(b)) {
+      var fieldsInput = document.createElement("textarea");
+      fieldsInput.className = "sp-input sp-textarea";
+      fieldsInput.id = helpers.idPrefix + ACTION_CARD_METADATA.scriptFields.idSuffix;
+      fieldsInput.placeholder = ACTION_CARD_METADATA.scriptFields.placeholder;
+      fieldsInput.value = actionScriptFields(b);
+      fieldsInput.rows = 3;
+      fieldsInput.spellcheck = false;
+
+      var fieldsWrapper = document.createElement("div");
+      fieldsWrapper.className = "sp-field";
+      fieldsWrapper.appendChild(helpers.fieldLabel(
+        ACTION_CARD_METADATA.scriptFields.label,
+        fieldsInput.id
+      ));
+      fieldsWrapper.appendChild(fieldsInput);
+      panel.appendChild(fieldsWrapper);
+
+      function saveScriptFields() {
+        setActionScriptFields(b, fieldsInput.value);
+        helpers.saveField("options", b.options);
+      }
+
+      fieldsInput.addEventListener("input", saveScriptFields);
+      fieldsInput.addEventListener("change", saveScriptFields);
+      fieldsInput.addEventListener("blur", saveScriptFields);
+
       var confirmOn = actionScriptConfirmationEnabled(b);
       var confirmToggle = helpers.renderCardOptionToggle(panel, b, helpers, ACTION_CARD_METADATA.confirmationToggle);
       var confirmSection = condField();
@@ -413,7 +479,14 @@ registerButtonType("action", {
     });
   },
   renderPreview: function (b, helpers) {
-    var label = b.label || b.entity || "Action";
+    var label = b.label || b.entity || (actionCardIsLocal(b) ? "Local Action" : "Action");
+    if (actionCardIsLocal(b)) {
+      var localIconName = b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "gesture-tap";
+      return {
+        iconHtml: '<span class="sp-btn-icon mdi mdi-' + localIconName + '"></span>',
+        labelHtml: cardBadgeLabelHtml(helpers, label, "chip"),
+      };
+    }
     if (actionCardIsOptionSelect(b)) {
       return {
         iconHtml: cardSensorPreviewHtml(b, helpers, "Option", null),
@@ -440,3 +513,110 @@ registerButtonType("action", {
     };
   },
 });
+
+function renderActionCardLocalSettings(panel, b, slot, helpers) {
+  var pickerSection = document.createElement("div");
+  pickerSection.className = "sp-field";
+  panel.appendChild(pickerSection);
+
+  helpers.renderCardIconPicker(panel, b, helpers, {
+    pickerIdSuffix: "icon-picker",
+    idSuffix: "icon",
+    field: "icon",
+    fallback: "Gesture Tap",
+  });
+
+  function buildDropdown(actions) {
+    pickerSection.innerHTML = "";
+    pickerSection.className = "sp-field";
+    pickerSection.appendChild(helpers.fieldLabel("Local Action", helpers.idPrefix + "action-sel"));
+
+    var sel = document.createElement("select");
+    sel.className = "sp-select";
+    sel.id = helpers.idPrefix + "action-sel";
+
+    var placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Choose an action…";
+    sel.appendChild(placeholder);
+
+    actions.forEach(function (a) {
+      var opt = document.createElement("option");
+      opt.value = a.key;
+      opt.textContent = a.label ? a.label + " (" + a.key + ")" : a.key;
+      if (a.key === b.entity) opt.selected = true;
+      sel.appendChild(opt);
+    });
+
+    if (b.entity && !actions.some(function (a) { return a.key === b.entity; })) {
+      var curOpt = document.createElement("option");
+      curOpt.value = b.entity;
+      curOpt.textContent = b.entity + " (current)";
+      curOpt.selected = true;
+      sel.appendChild(curOpt);
+    }
+
+    sel.addEventListener("change", function () {
+      var key = this.value;
+      if (!key) return;
+      b.entity = key;
+      helpers.saveField("entity", key);
+      var action = actions.find(function (a) { return a.key === key; });
+      if (action && action.label && !b.label) {
+        b.label = action.label;
+        helpers.saveField("label", action.label);
+        var labelInp = document.getElementById(helpers.idPrefix + "label");
+        if (labelInp) labelInp.value = action.label;
+      }
+    });
+
+    pickerSection.appendChild(sel);
+  }
+
+  function buildEmpty() {
+    pickerSection.innerHTML = "";
+    pickerSection.className = "";
+    var banner = document.createElement("div");
+    banner.className = "sp-banner sp-error";
+    banner.textContent =
+      "No local actions are registered on this device. " +
+      "Add register_local_action() calls to your device’s on_boot lambda.";
+    pickerSection.appendChild(banner);
+  }
+
+  function buildFallback() {
+    pickerSection.innerHTML = "";
+    pickerSection.className = "sp-local-picker-fallback";
+    var banner = document.createElement("div");
+    banner.className = "sp-banner sp-error";
+    banner.textContent = "Could not reach device. Enter the action key manually.";
+    pickerSection.appendChild(banner);
+
+    var kf = document.createElement("div");
+    kf.className = "sp-field";
+    kf.appendChild(helpers.fieldLabel("Action Key", helpers.idPrefix + "local-key"));
+    var keyInp = helpers.textInput(helpers.idPrefix + "local-key", b.entity, "e.g. zoom_mute");
+    kf.appendChild(keyInp);
+    pickerSection.appendChild(kf);
+    helpers.bindField(keyInp, "entity", true);
+    helpers.requireField(keyInp, "Add an action key before saving.");
+  }
+
+  pickerSection.textContent = "Loading actions…";
+
+  fetch("/local_actions")
+    .then(function (resp) {
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      return resp.json();
+    })
+    .then(function (data) {
+      if (!data.length) {
+        buildEmpty();
+      } else {
+        buildDropdown(data);
+      }
+    })
+    .catch(function () {
+      buildFallback();
+    });
+}
