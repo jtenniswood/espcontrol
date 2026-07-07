@@ -31,7 +31,7 @@ var WEATHER_CARD_METADATA = {
   largeNumbers: {
     label: "Large Temperature Numbers",
     idSuffix: "large-weather-numbers",
-    supported: weatherCardIsForecastMode,
+    supported: weatherCardSupportsLargeNumbers,
   },
   preview: {
     forecastBadge: "weather-partly-cloudy",
@@ -40,6 +40,7 @@ var WEATHER_CARD_METADATA = {
 };
 
 function weatherCardDefaultForecastLabel(b) {
+  if (b.precision === "3day") return "3-Day Forecast";
   return b.precision === "today" ? "Today" : "Tomorrow";
 }
 
@@ -53,6 +54,7 @@ function weatherModeOptions() {
     ["", "Current Conditions"],
     ["today", "Temperatures Today"],
     ["tomorrow", "Temperatures Tomorrow"],
+    ["3day", "3-Day Forecast"],
   ];
   return weatherForecastCardsSupported() ? options : [options[0]];
 }
@@ -73,6 +75,13 @@ function normalizeWeatherCardMode(mode) {
 function weatherCardIsForecastMode(b) {
   return weatherForecastCardsSupported() &&
     !!b &&
+    normalizeWeatherCardMode(b.precision) !== "";
+}
+
+function weatherCardSupportsLargeNumbers(b) {
+  return weatherForecastCardsSupported() &&
+    !!b &&
+    b.precision !== "3day" &&
     cardContractOptionSupportedFor("weather", "large_numbers", { precision: b.precision });
 }
 
@@ -119,8 +128,19 @@ registerButtonType("weather", {
   },
   renderPreview: function (b, helpers) {
     if (weatherCardIsForecastMode(b)) {
+      var escHtml = helpers.escHtml;
       var defaultLabel = weatherCardDefaultForecastLabel(b);
       var label = b.label || defaultLabel;
+      if (b.precision === "3day") {
+        return {
+          iconHtml: '<span class="sp-forecast-multiday">' +
+            '<span><b>Mon</b><em>18' + escHtml(temperatureUnitSymbol()) + ' / 10' + escHtml(temperatureUnitSymbol()) + '</em></span>' +
+            '<span><b>Tue</b><em>20' + escHtml(temperatureUnitSymbol()) + ' / 11' + escHtml(temperatureUnitSymbol()) + '</em></span>' +
+            '<span><b>Wed</b><em>17' + escHtml(temperatureUnitSymbol()) + ' / 9' + escHtml(temperatureUnitSymbol()) + '</em></span>' +
+            '</span>',
+          labelHtml: cardBadgeLabelHtml(helpers, label, WEATHER_CARD_METADATA.preview.forecastBadge),
+        };
+      }
       return {
         iconHtml: cardSensorPreviewHtml(b, helpers, "18/10", temperatureUnitSymbol(), "sp-forecast-preview", "sp-forecast-value"),
         labelHtml: cardBadgeLabelHtml(helpers, label, WEATHER_CARD_METADATA.preview.forecastBadge),

@@ -1386,7 +1386,8 @@
     "weather": {
       "precisions": [
         "today",
-        "tomorrow"
+        "tomorrow",
+        "3day"
       ]
     },
     "calendar": true,

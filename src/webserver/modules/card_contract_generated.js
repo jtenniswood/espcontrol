@@ -1724,7 +1724,8 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
   "weather": {
     "precisions": [
       "today",
-      "tomorrow"
+      "tomorrow",
+      "3day"
     ]
   },
   "calendar": true,
