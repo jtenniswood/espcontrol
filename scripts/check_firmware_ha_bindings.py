@@ -1838,23 +1838,6 @@ def expect_local_sensor_binding_order_errors(name: str, text: str, expected: tup
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
-def expect_todo_disabled_errors(name: str, files: dict[str, str], expected: tuple[str, ...]) -> None:
-    with TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        paths = []
-        for filename, text in files.items():
-            path = root / filename
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
-            paths.append(path)
-
-        errors = firmware_todo_disabled_errors(tuple(paths), root)
-        for item in expected:
-            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
-        if not expected:
-            assert not errors, f"{name}: expected no errors, got {errors!r}"
-
-
 def expect_time_reconnect_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
