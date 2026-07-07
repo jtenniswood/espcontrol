@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 5,
     "cardTypes": 40,
-    "entityNames": 82,
+    "entityNames": 84,
     "icons": 317,
     "structuralIcons": 18,
     "compatibilityFixtureGroups": 2
@@ -3278,6 +3278,32 @@
         "name": "Screen: Schedule Mode",
         "objectIds": [
           "screen__schedule_mode"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_schedule_presence_detected_mode",
+        "domain": "select",
+        "name": "Screen: Schedule Presence Detected Mode",
+        "objectIds": [
+          "screen__schedule_presence_detected_mode",
+          "screen_schedule_presence_detected_mode",
+          "schedule_presence_detected_mode"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screen_schedule_presence_not_detected_mode",
+        "domain": "select",
+        "name": "Screen: Schedule Presence Not Detected Mode",
+        "objectIds": [
+          "screen__schedule_presence_not_detected_mode",
+          "screen_schedule_presence_not_detected_mode",
+          "schedule_presence_not_detected_mode"
         ],
         "groups": [
           "settings"
