@@ -3,12 +3,7 @@ var WEATHER_CARD_METADATA = {
   mode: {
     label: "Type",
     idSuffix: "weather-display",
-    options: [
-      ["", "Current Conditions"],
-      ["today", "Temperatures Today"],
-      ["tomorrow", "Temperatures Tomorrow"],
-      ["3day", "3-Day Forecast"],
-    ],
+    options: weatherModeOptions,
     value: function (b) {
       return weatherCardIsForecastMode(b) ? b.precision : "";
     },
@@ -36,7 +31,7 @@ var WEATHER_CARD_METADATA = {
   largeNumbers: {
     label: "Large Temperature Numbers",
     idSuffix: "large-weather-numbers",
-    supported: weatherCardSupportsLargeNumbers,
+    supported: weatherCardIsForecastMode,
   },
   preview: {
     forecastBadge: "weather-partly-cloudy",
@@ -45,15 +40,29 @@ var WEATHER_CARD_METADATA = {
 };
 
 function weatherCardDefaultForecastLabel(b) {
-  if (b.precision === "today") return "Today";
-  if (b.precision === "tomorrow") return "Tomorrow";
-  if (b.precision === "3day") return "3-Day Forecast";
-  return "Forecast";
+  return b.precision === "today" ? "Today" : "Tomorrow";
+}
+
+function weatherForecastCardsSupported() {
+  var disabled = CFG.disabledCardTypes || [];
+  return disabled.indexOf("weather_forecast") === -1;
+}
+
+function weatherModeOptions() {
+  var options = [
+    ["", "Current Conditions"],
+    ["today", "Temperatures Today"],
+    ["tomorrow", "Temperatures Tomorrow"],
+  ];
+  return weatherForecastCardsSupported() ? options : [options[0]];
 }
 
 function weatherModeOptionValues() {
   var spec = cardContractOptionSpec("weather", "weather_mode");
-  return spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow", "3day"];
+  var values = spec && spec.values ? spec.values.slice() : ["", "today", "tomorrow"];
+  return weatherForecastCardsSupported() ? values : values.filter(function (value) {
+    return value === "";
+  });
 }
 
 function normalizeWeatherCardMode(mode) {
@@ -62,15 +71,9 @@ function normalizeWeatherCardMode(mode) {
 }
 
 function weatherCardIsForecastMode(b) {
-  return !!b && normalizeWeatherCardMode(b.precision) !== "";
-}
-
-function weatherCardSupportsLargeNumbers(b) {
-  return !!b && cardContractOptionSupportedFor("weather", "large_numbers", { precision: b.precision });
-}
-
-function weatherCardIsMultiDayForecastMode(b) {
-  return !!b && b.precision === "3day";
+  return weatherForecastCardsSupported() &&
+    !!b &&
+    cardContractOptionSupportedFor("weather", "large_numbers", { precision: b.precision });
 }
 
 registerButtonType("weather", {
@@ -106,7 +109,7 @@ registerButtonType("weather", {
       var forecast = weatherCardIsForecastMode(b);
       labelField.style.display = forecast ? "" : "none";
       labelInp.placeholder = "e.g. " + weatherCardDefaultForecastLabel(b);
-      helpers.syncCardLargeNumbersToggle(largeNumbersToggle, b, helpers, weatherCardSupportsLargeNumbers(b));
+      helpers.syncCardLargeNumbersToggle(largeNumbersToggle, b, helpers, forecast);
     }
 
     modeSelect.addEventListener("change", function () {
@@ -118,16 +121,6 @@ registerButtonType("weather", {
     if (weatherCardIsForecastMode(b)) {
       var defaultLabel = weatherCardDefaultForecastLabel(b);
       var label = b.label || defaultLabel;
-      if (weatherCardIsMultiDayForecastMode(b)) {
-        return {
-          iconHtml: '<span class="sp-sensor-preview sp-forecast-preview sp-forecast-multiday">' +
-            '<span class="sp-forecast-day">Mon <b>18/10</b></span>' +
-            '<span class="sp-forecast-day">Tue <b>19/11</b></span>' +
-            '<span class="sp-forecast-day">Wed <b>17/9</b></span>' +
-          '</span>',
-          labelHtml: cardBadgeLabelHtml(helpers, label, WEATHER_CARD_METADATA.preview.forecastBadge),
-        };
-      }
       return {
         iconHtml: cardSensorPreviewHtml(b, helpers, "18/10", temperatureUnitSymbol(), "sp-forecast-preview", "sp-forecast-value"),
         labelHtml: cardBadgeLabelHtml(helpers, label, WEATHER_CARD_METADATA.preview.forecastBadge),

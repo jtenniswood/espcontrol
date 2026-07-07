@@ -36,7 +36,7 @@ Older cards that were created as **Weather Forecast** cards still work. They now
 - In temperature modes, the card label defaults to **Today**, **Tomorrow**, or **3-Day Forecast**, unless you set your own label.
 - If Home Assistant reports `unknown`, `unavailable`, or an unexpected current condition, the card shows a fallback weather icon and a readable label.
 - If the requested forecast is missing or unavailable, the card shows **--/--** instead of leaving the card blank.
-- The card uses the **tertiary** colour from [Appearance](/features/appearance), like Sensor, Date, Clock, and World Clock cards.
+- The card uses the fixed **tertiary** background colour, like Sensor, Date, Clock, and World Clock cards.
 
 ::: tip Home Assistant actions permission
 The forecast displays need the same **Allow the device to perform Home Assistant actions** setting as control cards. EspControl uses that permission to request forecast data from Home Assistant.

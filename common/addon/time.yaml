@@ -17,12 +17,16 @@ esphome:
     then:
       - lambda: |-
           id(clock_format_12h) = id(clock_format_select).current_option() == "12h";
-          const char *posix = apply_timezone(id(timezone_select).current_option());
+          std::string timezone_option = id(timezone_select).current_option();
+          const char *posix = apply_configured_timezone(timezone_option);
           set_espcontrol_language(id(language_select).current_option());
-          id(panel_time).set_timezone(posix);
-          id(homeassistant_time).set_timezone(posix);
+          if (posix != nullptr) {
+            id(panel_time).set_timezone(posix);
+            id(homeassistant_time).set_timezone(posix);
+          }
           set_display_temperature_unit(id(temperature_unit_select).current_option(),
-                                       id(timezone_select).current_option());
+                                       timezone_option);
+          id(screen_active_timezone_sensor).publish_state(effective_timezone_option(timezone_option));
       - script.execute: network_setup_text_refresh
       - script.execute: ha_setup_text_refresh
       - script.execute: ha_actions_text_refresh
@@ -36,8 +40,7 @@ api:
     - delay: 2s
     - lambda: |-
         if (ha_api_state_connected()) id(homeassistant_time).update();
-    - delay: 1s
-    - script.execute: time_update
+    - script.execute: timezone_after_homeassistant_time_sync
     - script.execute: backlight_recalc_sunrise_sunset
     - script.execute: screen_schedule_check
 
@@ -54,7 +57,7 @@ select:
     icon: "mdi:map-clock"
     optimistic: true
     restore_value: true
-    initial_option: "UTC (GMT+0)"
+    initial_option: "Auto (Home Assistant)"
     options:
       - "Pacific/Midway (GMT-11)"
       - "Pacific/Pago_Pago (GMT-11)"
@@ -186,16 +189,23 @@ select:
       - "Pacific/Tongatapu (GMT+13)"
       - "Pacific/Apia (GMT+13)"
       - "Pacific/Kiritimati (GMT+14)"
+      - "Auto (Home Assistant)"
     web_server:
       sorting_group_id: sg_brightness
     on_value:
       then:
         - lambda: |-
-            const char *posix = apply_timezone(id(timezone_select).current_option());
-            id(panel_time).set_timezone(posix);
-            id(homeassistant_time).set_timezone(posix);
+            std::string timezone_option(x.c_str(), x.size());
+            const char *posix = apply_configured_timezone(timezone_option);
+            if (posix != nullptr) {
+              id(panel_time).set_timezone(posix);
+              id(homeassistant_time).set_timezone(posix);
+            } else {
+              if (ha_api_state_connected()) id(homeassistant_time).update();
+            }
             set_display_temperature_unit(id(temperature_unit_select).current_option(),
-                                         id(timezone_select).current_option());
+                                         timezone_option);
+            id(screen_active_timezone_sensor).publish_state(effective_timezone_option(timezone_option));
             refresh_temperature_unit_labels();
             refresh_clock_bar_temperature_label_values(
               id(main_page)->obj,
@@ -211,9 +221,7 @@ select:
               id(indoor_temp_enable).state,
               id(outdoor_temp_enable).state,
               id(indoor_temp), id(outdoor_temp));
-        - script.execute: time_update
-        - script.execute: backlight_recalc_sunrise_sunset
-        - script.execute: screen_schedule_check
+        - script.execute: timezone_after_homeassistant_time_sync
 
   - platform: template
     name: "${entity_screen_clock_format}"
@@ -354,6 +362,15 @@ text_sensor:
     web_server:
       sorting_group_id: sg_brightness
 
+  - platform: template
+    name: "${entity_screen_active_timezone}"
+    id: screen_active_timezone_sensor
+    entity_category: diagnostic
+    icon: "mdi:map-clock-outline"
+    update_interval: never
+    web_server:
+      sorting_group_id: sg_brightness
+
   # Optional direct Home Assistant Date & Time integration source. When
   # Home Assistant has sensor.date, use it immediately; otherwise the active
   # panel time source below remains the fallback.
@@ -375,7 +392,6 @@ text_sensor:
 time:
   - platform: sntp
     id: panel_time
-    timezone: "UTC0"
     servers:
       - "0.pool.ntp.org"
       - "1.pool.ntp.org"
@@ -392,11 +408,9 @@ time:
 
   - platform: homeassistant
     id: homeassistant_time
-    timezone: "UTC0"
     update_interval: 1min
     on_time_sync:
-      - script.execute: time_update
-      - script.execute: screen_schedule_check
+      - script.execute: timezone_after_homeassistant_time_sync
     on_time:
       - minutes: '*'
         seconds: 0
@@ -417,6 +431,42 @@ script:
           apply_ntp_servers(id(ntp_server_1).state,
                             id(ntp_server_2).state,
                             id(ntp_server_3).state);
+
+  - id: timezone_after_homeassistant_time_sync
+    mode: restart
+    then:
+      - delay: 1200ms
+      - lambda: |-
+          std::string timezone_option = id(timezone_select).current_option();
+          const char *posix = apply_configured_timezone(timezone_option);
+          if (posix != nullptr) {
+            id(panel_time).set_timezone(posix);
+            id(homeassistant_time).set_timezone(posix);
+          }
+          set_display_temperature_unit(id(temperature_unit_select).current_option(),
+                                       timezone_option);
+          std::string active_timezone = effective_timezone_option(timezone_option);
+          id(screen_active_timezone_sensor).publish_state(active_timezone);
+          ESP_LOGI("timezone", "Configured timezone: %s; active timezone: %s",
+                   timezone_option.c_str(), active_timezone.c_str());
+          refresh_temperature_unit_labels();
+          refresh_clock_bar_temperature_label_values(
+            id(main_page)->obj,
+            clock_bar_should_show(
+              id(clock_bar_enabled).state,
+              id(main_page)->obj,
+              id(display_asleep),
+              id(screen_schedule_asleep),
+              id(is_clock_showing),
+              id(cover_art_screensaver_active),
+              id(screensaver_display_off_active),
+              id(screensaver_dimmed_active)),
+            id(indoor_temp_enable).state,
+            id(outdoor_temp_enable).state,
+            id(indoor_temp), id(outdoor_temp));
+      - script.execute: time_update
+      - script.execute: backlight_recalc_sunrise_sunset
+      - script.execute: screen_schedule_check
 
   - id: time_update
     then:

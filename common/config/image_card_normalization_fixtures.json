@@ -1,0 +1,92 @@
+[
+  {
+    "name": "default image options are omitted",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_mode=fill,image_refresh=30,image_refresh_mode=timer",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "label option is preserved",
+    "input": "camera.front_door;Front Door;Auto;Auto;;;image;;image_label,image_refresh=30",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "Front Door",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": "image_label"
+    }
+  },
+  {
+    "name": "icon option enables default camera icon",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_icon",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Camera",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": "image_icon"
+    }
+  },
+  {
+    "name": "label is cleared without label option",
+    "input": "camera.front_door;Front Door;Auto;Auto;;;image;;",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "fit modal option is preserved",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_mode=fit,image_refresh=30,image_refresh_mode=timer",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": "image_modal_mode=fit"
+    }
+  },
+  {
+    "name": "invalid modal option falls back to default",
+    "input": "camera.front_door;;Auto;Auto;;;image;;image_modal_mode=stretch,image_refresh=30",
+    "expected": {
+      "entity": "camera.front_door",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

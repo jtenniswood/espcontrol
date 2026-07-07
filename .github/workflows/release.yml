@@ -15,10 +15,31 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ESPHOME_VERSION: 2026.6.0
+  ESPCONTROL_NPM_CACHE_MAX_MB: 512
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
 jobs:
+  release-notes:
+    name: Update Release Notes
+    if: github.event_name == 'release' || inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+
+      - name: Generate what changed notes
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+        run: python3 scripts/release_changelog.py "${RELEASE_TAG}" --output release-notes.md
+
+      - name: Update GitHub release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+        run: gh release edit "${RELEASE_TAG}" --notes-file release-notes.md
+
   preflight:
     name: Product Preflight
     runs-on: self-hosted
@@ -40,7 +61,7 @@ jobs:
           NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"
           mkdir -p "${NPM_CACHE}"
           npm ci --prefer-offline --cache "${NPM_CACHE}"
-          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" 512 --strategy reset
+          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
 
       - name: Run release preflight
         run: npm run check:release-preflight
@@ -82,8 +103,22 @@ jobs:
       - uses: actions/checkout@v7.0.0
         with:
           path: espcontrol-${{ matrix.slug }}
-      - run: git sparse-checkout disable || true
+      - name: Normalize checkout
         working-directory: espcontrol-${{ matrix.slug }}
+        run: |
+          git sparse-checkout disable || true
+          git reset --hard HEAD
+          BUILD_FILE="builds/${{ matrix.slug }}.factory.yaml"
+          if [ ! -f "${BUILD_FILE}" ]; then
+            echo "::error::Expected firmware build file is missing: ${BUILD_FILE}"
+            echo "Available build files:"
+            find builds -maxdepth 1 -type f -print | sort || true
+            exit 1
+          fi
+
+      - name: Load ESPHome version
+        working-directory: espcontrol-${{ matrix.slug }}
+        run: cat .github/esphome.env >> "$GITHUB_ENV"
 
       - name: Select Docker command
         run: |
@@ -106,8 +141,9 @@ jobs:
           RUN_CACHE_ROOT="${RUNNER_TEMP}/espcontrol-esphome/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.slug }}"
           PLATFORMIO_CACHE="${RUN_CACHE_ROOT}/platformio-${ESPHOME_VERSION}"
           BUILD_CACHE="${RUN_CACHE_ROOT}/build"
+          BUILD_INPUT_DIR=".firmware-builds"
           rm -rf "${RUN_CACHE_ROOT}"
-          mkdir -p "${PLATFORMIO_CACHE}" "${BUILD_CACHE}" builds
+          mkdir -p "${PLATFORMIO_CACHE}" "${BUILD_CACHE}"
           export PLATFORMIO_CACHE
           python3 - <<'PY'
           import json
@@ -130,10 +166,13 @@ jobs:
                       shutil.rmtree(package_dir, ignore_errors=True)
           PY
           rm -rf .esphome
-          rm -rf builds/.esphome
+          rm -rf "${BUILD_INPUT_DIR}"
+          mkdir -p "${BUILD_INPUT_DIR}"
+          cp builds/*.yaml "${BUILD_INPUT_DIR}/"
           echo "RUN_CACHE_ROOT=${RUN_CACHE_ROOT}" >> "$GITHUB_ENV"
           echo "PLATFORMIO_CACHE=${PLATFORMIO_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_CACHE=${BUILD_CACHE}" >> "$GITHUB_ENV"
+          echo "BUILD_INPUT_DIR=${BUILD_INPUT_DIR}" >> "$GITHUB_ENV"
 
       - name: Pull ESPHome image
         working-directory: espcontrol-${{ matrix.slug }}
@@ -151,18 +190,25 @@ jobs:
         working-directory: espcontrol-${{ matrix.slug }}
         env:
           VERSION: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
-        run: >-
-          ${DOCKER} run --rm
-          --user "$(id -u):$(id -g)"
-          -e HOME=/config
-          -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio
-          -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false
-          -v "${PWD}:/config"
-          -v "${PLATFORMIO_CACHE}:/config/.esphome"
-          -v "${BUILD_CACHE}:/config/builds/.esphome"
-          "${ESPHOME_IMAGE}"
-          -s firmware_version "${VERSION}"
-          compile /config/builds/${{ matrix.slug }}.factory.yaml
+        run: |
+          SOURCE_DIR="${PWD}"
+          CONTAINER=$(${DOCKER} create \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/config \
+            -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio \
+            -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
+            -v "${PLATFORMIO_CACHE}:/config/.esphome" \
+            -v "${BUILD_CACHE}:/config/${BUILD_INPUT_DIR}/.esphome" \
+            "${ESPHOME_IMAGE}" \
+            -s firmware_version "${VERSION}" \
+            compile /config/${BUILD_INPUT_DIR}/${{ matrix.slug }}.factory.yaml)
+          cleanup() {
+            ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          ${DOCKER} cp "${SOURCE_DIR}/." "${CONTAINER}:/config"
+          ${DOCKER} start -a "${CONTAINER}"
+          ${DOCKER} cp "${CONTAINER}:/config/${BUILD_INPUT_DIR}/.esphome/build" "${BUILD_CACHE}/" 2>/dev/null || true
 
       - name: Collect firmware files and generate manifest
         id: firmware

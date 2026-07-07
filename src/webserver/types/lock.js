@@ -5,7 +5,7 @@ function lockCommandMode(mode) {
 
 function lockModeOptionValues() {
   var spec = cardContractOptionSpec("lock", "lock_mode");
-  return spec && spec.values ? spec.values.slice() : ["", "lock", "unlock"];
+  return spec && spec.values ? spec.values.slice() : [];
 }
 
 function normalizeLockMode(mode) {

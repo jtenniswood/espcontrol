@@ -34,8 +34,8 @@ registerButtonType("push", {
   defaultConfig: function () { return cardContractDefaultConfig("push"); },
   cardMetadata: PUSH_CARD_METADATA,
   onSelect: function (b) {
-    b.entity = ""; b.sensor = ""; b.unit = ""; b.icon_on = pushDefaultIconOn();
-    b.icon = pushDefaultIcon();
+    var defaults = cardContractDefaultConfig("push");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
   },
   renderSettings: function (panel, b, slot, helpers) {
     helpers.renderBasicCardFields(panel, b, helpers, PUSH_CARD_METADATA);

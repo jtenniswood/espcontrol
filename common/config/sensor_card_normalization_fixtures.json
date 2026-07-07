@@ -1,0 +1,107 @@
+[
+  {
+    "name": "numeric sensor preserves large numbers",
+    "input": "sensor.room_temp;Room Temp;Auto;Auto;sensor.room_temp;deg C;sensor;1;large_numbers,ignored=1",
+    "expected": {
+      "entity": "sensor.room_temp",
+      "label": "Room Temp",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.room_temp",
+      "unit": "deg C",
+      "type": "sensor",
+      "precision": "1",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "numeric sensor preserves explicit large number off",
+    "input": "sensor.room_temp;Room Temp;Auto;Auto;sensor.room_temp;deg C;sensor;2;large_numbers=off,ignored=1",
+    "expected": {
+      "entity": "sensor.room_temp",
+      "label": "Room Temp",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.room_temp",
+      "unit": "deg C",
+      "type": "sensor",
+      "precision": "2",
+      "options": "large_numbers=off"
+    }
+  },
+  {
+    "name": "icon sensor drops unsupported large numbers",
+    "input": "binary_sensor.patio;Patio;Door Closed;Door Open;binary_sensor.patio;;sensor;icon;large_numbers,active_color",
+    "expected": {
+      "entity": "binary_sensor.patio",
+      "label": "Patio",
+      "icon": "Door Closed",
+      "icon_on": "Door Open",
+      "sensor": "binary_sensor.patio",
+      "unit": "",
+      "type": "sensor",
+      "precision": "icon",
+      "options": ""
+    }
+  },
+  {
+    "name": "text sensor preserves state translations",
+    "input": "sensor.bin_level;Bin;Trash Can;Auto;sensor.bin_level;;sensor;text;large_numbers,active_color,state_labels,state_input=high,state_output=Please%20empty,state_input_2=low,state_output_2=Full",
+    "expected": {
+      "entity": "sensor.bin_level",
+      "label": "Bin",
+      "icon": "Trash Can",
+      "icon_on": "Auto",
+      "sensor": "sensor.bin_level",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full"
+    }
+  },
+  {
+    "name": "legacy text labels migrate to state translations",
+    "input": "sensor.bin_level;Bin;Trash Can;Auto;sensor.bin_level;;sensor;text;state_labels,state_high_label=Please%20empty,state_low_label=Full",
+    "expected": {
+      "entity": "sensor.bin_level",
+      "label": "Bin",
+      "icon": "Trash Can",
+      "icon_on": "Auto",
+      "sensor": "sensor.bin_level",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "state_labels,state_input=high,state_output=Please empty"
+    }
+  },
+  {
+    "name": "local sensor clears remote-only options",
+    "input": "room_temp;Room Temp;Auto;Auto;local;deg C;sensor;1;large_numbers,state_labels,state_input=high,state_output=Hot",
+    "expected": {
+      "entity": "room_temp",
+      "label": "Room Temp",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "local",
+      "unit": "deg C",
+      "type": "sensor",
+      "precision": "1",
+      "options": ""
+    }
+  },
+  {
+    "name": "legacy local sensor subtype normalizes to sensor",
+    "input": "room_text;Room Text;Auto;Auto;;ignored;local_sensor;text;large_numbers,state_labels,state_input=on,state_output=On",
+    "expected": {
+      "entity": "room_text",
+      "label": "Room Text",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "local",
+      "unit": "ignored",
+      "type": "sensor",
+      "precision": "text",
+      "options": ""
+    }
+  }
+]

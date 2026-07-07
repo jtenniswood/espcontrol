@@ -18,7 +18,7 @@ You do not need to write code, edit YAML, or build your own ESPHome setup. Insta
 - **Live home information** - show temperatures, sensors, weather, dates, clocks, and other Home Assistant readings at a glance.
 - **Flexible pages of controls** - keep the main screen simple, then open extra pages for rooms, devices, or less common actions.
 - **Local smart home control** - the panel talks to Home Assistant on your own network. It is not a cloud dashboard.
-- **Easy changes later** - rearrange buttons, change icons, adjust colours, back up your setup, and install firmware updates without starting again.
+- **Easy changes later** - rearrange buttons, change icons, adjust the active colour, back up your setup, and install firmware updates without starting again.
 
 ## What You Can Control
 
@@ -44,7 +44,7 @@ If Home Assistant can see it, EspControl is designed to make it easier to put th
 3. **Connect the screen to WiFi** using the setup screen it creates.
 4. **Add it to Home Assistant** when Home Assistant discovers it.
 5. **Allow Home Assistant actions** so the panel is permitted to control your devices.
-6. **Open the panel's web page** and choose the buttons, sensors, pages, colours, and display settings you want.
+6. **Open the panel's web page** and choose the buttons, sensors, pages, active colour, and display settings you want.
 
 After that, the panel runs on its own. You can still change the layout at any time from a phone, tablet, or computer browser.
 
@@ -60,7 +60,7 @@ EspControl supports several low-cost ESP32 touchscreens. Larger screens give you
 | Layout | 1280x800 landscape · 20 card slots | 1024x600 landscape · 15 card slots | 480x800 portrait · 6 card slots | 720x720 square · 9 card slots | 480x480 square · 9 card slots |
 | Processor | ESP32-P4 | ESP32-P4 | ESP32-P4 | ESP32-P4 | ESP32-S3 |
 | Panel | [AliExpress ~£40](https://s.click.aliexpress.com/e/_c4W6TYvp) | [AliExpress ~£40](https://s.click.aliexpress.com/e/_c335W0r5) | [AliExpress ~£24](https://s.click.aliexpress.com/e/_c32jr3eN) | [AliExpress ~£45](https://s.click.aliexpress.com/e/_c3O6ndAX) | [AliExpress ~£16](https://s.click.aliexpress.com/e/_c3sIhvBv) |
-| 3D mount | [MakerWorld](https://makerworld.com/en/models/2490049-guition-p4-10inch-screen-stand#profileId-2736046) | [MakerWorld](https://makerworld.com/en/models/2387421-guition-esp32p4-jc1060p470-7inch-screen-desk-mount#profileId-2614995) | - | [MakerWorld](https://makerworld.com/en/models/2720366-waveshare-esp32-p4-smart-86-box-screen-desk-stand#profileId-3013481) | [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301) |
+| 3D mount | [MakerWorld](https://makerworld.com/en/models/2490049-guition-p4-10inch-screen-stand#profileId-2736046) | [MakerWorld](https://makerworld.com/en/models/2387421-guition-esp32p4-jc1060p470-7inch-screen-desk-mount#profileId-2614995) | [MakerWorld](https://makerworld.com/en/models/2982320-desk-stand-for-4-3-inch-jc4880p443-esp32-screen#profileId-3346161) | [MakerWorld](https://makerworld.com/en/models/2720366-waveshare-esp32-p4-smart-86-box-screen-desk-stand#profileId-3013481) | [MakerWorld](https://makerworld.com/en/models/2581572-guition-esp32s3-4848s040-case-stand#profileId-2847301) |
 
 See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started/install) for full details on each model.
 
@@ -70,11 +70,11 @@ See the [screen guides](https://jtenniswood.github.io/espcontrol/getting-started
 - **Drag-and-drop layout** - move controls around without editing files.
 - **Subpages** - make folder-like pages for rooms or groups of controls.
 - **Different card sizes** - make important controls larger and keep smaller items compact.
-- **Dedicated card types** - Switch, Lights, Action, Option Select, Webhook, Trigger, Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage.
+- **Dedicated card types** - Switch, Lights, Action, Local Action, Option Select, Webhook, Trigger, Sensor, Local Sensor, Doors & Windows, Presence, Slider, Fans, Vacuum, Lawn Mower, Cover, Garage Door, Lock, Alarm, Date & Time, World Clock, Weather, Camera, Media, Climate, Internal Switches, Screen Lock, and Subpage.
 - **Home Assistant action support** - run scenes, scripts, automations, buttons, webhooks, and helper changes directly from the panel.
 - **Camera and media displays** - show camera images, media player state, album art, playback controls, volume, and progress.
 - **Display scheduling** - use idle timers, night schedules, brightness controls, and optional presence sensors so the screen behaves well in real rooms.
-- **Appearance controls** - choose icons, labels, status text, colours, clock display, rotation, and temperature units from the setup page.
+- **Appearance controls** - choose icons, labels, status text, active colour, clock display, rotation, and temperature units from the setup page.
 - **Screensaver and brightness controls** - dim or sleep the display when it is not in use.
 - **Automatic updates** - keep standard firmware current after the first install.
 - **Backup and restore** - save your layout and copy it to another panel.

@@ -55,8 +55,9 @@ inline SunCalcResult recalc_sunrise_sunset(
     const std::string &tz_option, bool use_12h = true) {
   SunCalcResult r = {};
 
-  std::string tz_id = timezone_id_from_option(tz_option);
-  float tz_offset = utc_offset_hours_for_date(year, month, day, tz_option);
+  std::string effective_tz_option = effective_timezone_option(tz_option);
+  std::string tz_id = timezone_id_from_option(effective_tz_option);
+  float tz_offset = utc_offset_hours_for_date(year, month, day, effective_tz_option);
 
   float lat, lon;
   if (!lookup_tz_coords(tz_id, lat, lon)) {
@@ -229,6 +230,18 @@ inline bool screen_schedule_normal_active(const std::string &trigger,
   if (screen_schedule_sensor_trigger(trigger)) return presence_detected;
   if (!time_valid) return false;
   return screen_schedule_in_window(now_h, on_hour, off_hour);
+}
+
+inline bool screen_schedule_blocks_cover_art(const std::string &trigger,
+                                             bool enabled,
+                                             bool presence_detected,
+                                             bool time_valid,
+                                             int now_h,
+                                             int on_hour,
+                                             int off_hour) {
+  return screen_schedule_waiting_for_time(trigger, enabled, time_valid) ||
+         screen_schedule_night_active(trigger, enabled, presence_detected,
+                                      time_valid, now_h, on_hour, off_hour);
 }
 
 // ── Screensaver action helpers ────────────────────────────────────────

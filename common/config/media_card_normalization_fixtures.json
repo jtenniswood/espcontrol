@@ -1,0 +1,137 @@
+[
+  {
+    "name": "playlist content id is preserved",
+    "input": "media_player.living_room;Morning Mix;Music;Auto;playlist;;media;;playlist_content_id=media-source%3A//music/morning%2Cmix,playlist_content_type=music",
+    "expected": {
+      "entity": "media_player.living_room",
+      "label": "Morning Mix",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "playlist",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "playlist_content_id=media-source%3A//music/morning%2Cmix,playlist_content_type=music"
+    }
+  },
+  {
+    "name": "playlist default content type is omitted",
+    "input": "media_player.living_room;Morning Mix;Auto;Auto;playlist;;media;;playlist_content_id=media-source%3A//music/morning,playlist_content_type=playlist,volume_max=40",
+    "expected": {
+      "entity": "media_player.living_room",
+      "label": "Morning Mix",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "playlist",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "playlist_content_id=media-source%3A//music/morning"
+    }
+  },
+  {
+    "name": "default media options are omitted",
+    "input": "media_player.living_room;Play/Pause;Auto;Auto;play_pause;;media;;volume_max=40,large_numbers",
+    "expected": {
+      "entity": "media_player.living_room",
+      "label": "Play/Pause",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "play_pause",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "volume max is preserved for volume mode",
+    "input": "media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=40",
+    "expected": {
+      "entity": "media_player.kitchen",
+      "label": "Kitchen",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "volume",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "volume_max=40"
+    }
+  },
+  {
+    "name": "volume max clamps to lower bound",
+    "input": "media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=0",
+    "expected": {
+      "entity": "media_player.kitchen",
+      "label": "Kitchen",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "volume",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "volume_max=1"
+    }
+  },
+  {
+    "name": "volume max default is omitted above upper bound",
+    "input": "media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=150",
+    "expected": {
+      "entity": "media_player.kitchen",
+      "label": "Kitchen",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "volume",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "position preserves large numbers",
+    "input": "media_player.office;Office;Progress Clock;Auto;position;;media;;large_numbers",
+    "expected": {
+      "entity": "media_player.office",
+      "label": "Office",
+      "icon": "Progress Clock",
+      "icon_on": "Auto",
+      "sensor": "position",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "now playing progress precision is preserved",
+    "input": "media_player.office;;Auto;Auto;now_playing;;media;progress;large_numbers",
+    "expected": {
+      "entity": "media_player.office",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "now_playing",
+      "unit": "",
+      "type": "media",
+      "precision": "progress",
+      "options": ""
+    }
+  },
+  {
+    "name": "legacy controls mode maps to play pause",
+    "input": "media_player.living_room;Living Room;Speaker;Auto;controls;;media",
+    "expected": {
+      "entity": "media_player.living_room",
+      "label": "Living Room",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "play_pause",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  }
+]
