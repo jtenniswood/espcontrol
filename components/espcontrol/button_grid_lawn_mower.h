@@ -145,7 +145,7 @@ inline void apply_lawn_mower_card_state(LawnMowerCardCtx *ctx,
     set_wrapped_button_label_text(ctx->text_lbl, label);
   }
   if (ctx->btn) {
-    apply_control_availability(ctx->btn, ctx->btn, ctx->available, !ctx->status_card);
+    apply_control_availability(ctx->btn, ctx->btn, ctx->available);
   }
   lawn_mower_control_update_modal(ctx);
 }
