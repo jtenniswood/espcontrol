@@ -531,7 +531,7 @@ inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p,
   }
   if (p.type == "plant") {
     if (!p.entity.empty()) {
-      PlantCardCtx *ctx = create_plant_card_context(s, p);
+      PlantCardCtx *ctx = grid_track_runtime_allocation(s.btn, create_plant_card_context(s, p));
       subscribe_plant_card(ctx);
     }
     return true;
@@ -2172,7 +2172,7 @@ inline void grid_phase2(
       }
       if (sb_cfg.type == "plant") {
         if (!sb_cfg.entity.empty()) {
-          PlantCardCtx *ctx = create_plant_card_context(sub_slot, sb_cfg);
+          PlantCardCtx *ctx = grid_delete_with_owner(sb_btn, create_plant_card_context(sub_slot, sb_cfg));
           subscribe_plant_card(ctx);
           add_parent_indicator(sb_cfg.entity);
         }

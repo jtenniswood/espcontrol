@@ -104,7 +104,7 @@ inline std::string plant_status_display_text(const PlantCardCtx *ctx) {
 
 inline void apply_plant_status_card(PlantCardCtx *ctx) {
   if (!ctx) return;
-  if (ctx->btn) apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);
+  if (ctx->btn) apply_control_availability(ctx->btn, ctx->btn, ctx->available);
   if (ctx->icon_lbl) lv_label_set_text(ctx->icon_lbl, find_icon("Leaf"));
   if (ctx->text_lbl) set_wrapped_button_label_text(ctx->text_lbl, plant_status_display_text(ctx));
   notify_dashboard_content_changed();
@@ -112,7 +112,7 @@ inline void apply_plant_status_card(PlantCardCtx *ctx) {
 
 inline void apply_plant_metric_card(PlantCardCtx *ctx) {
   if (!ctx) return;
-  if (ctx->btn) apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);
+  if (ctx->btn) apply_control_availability(ctx->btn, ctx->btn, ctx->available);
   if (ctx->sensor_lbl) lv_label_set_text(ctx->sensor_lbl, ctx->available && !ctx->value.empty() ? ctx->value.c_str() : "--");
   if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, ctx->available ? ctx->unit.c_str() : plant_metric_fallback_unit(ctx->mode));
   if (ctx->text_lbl) {
@@ -155,8 +155,8 @@ inline std::string plant_metric_unit_from_dict(const std::string &dict,
 
 inline void subscribe_plant_card(PlantCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn, false);
-  apply_control_availability(ctx->btn, ctx->btn, false, false);
+  register_ha_control_availability(ctx->btn, ctx->btn);
+  apply_control_availability(ctx->btn, ctx->btn, false);
   if (!plant_card_metric_mode(ctx->mode)) {
     ha_subscribe_state(
       ctx->entity_id,
