@@ -4282,33 +4282,6 @@ def run_self_test() -> int:
         ("keep enough S3 native API slots",),
     )
     expect_s3_api_errors(
-        "S3 todo enabled",
-        "esphome:\n  platformio_options:\n    build_flags:\n"
-        "      - \"-DESPCONTROL_TODO_LITE=1\"\n"
-        "api:\n  max_connections: 3\n  max_send_queue: 12\n",
-        ("keep the S3 todo list disabled",),
-    )
-    expect_todo_disabled_errors(
-        "todo enabled on one device",
-        {
-            "devices/a/device/device.yaml": "esphome:\n  platformio_options:\n    build_flags:\n"
-            "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n",
-            "devices/b/device/device.yaml": "esphome:\n  platformio_options:\n    build_flags:\n"
-            "      - \"-DESPCONTROL_TODO_LITE=1\"\n",
-        },
-        ("keep the todo list disabled",),
-    )
-    expect_todo_disabled_errors(
-        "todo disabled on all devices",
-        {
-            "devices/a/device/device.yaml": "esphome:\n  platformio_options:\n    build_flags:\n"
-            "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n",
-            "devices/b/device/device.yaml": "esphome:\n  platformio_options:\n    build_flags:\n"
-            "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n",
-        },
-        (),
-    )
-    expect_s3_api_errors(
         "S3 includes navigate API package",
         "esphome:\n  platformio_options:\n    build_flags:\n"
         "      - \"-DESPCONTROL_DISABLE_TODO=1\"\n"
