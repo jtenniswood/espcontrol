@@ -502,6 +502,85 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "climate_control": {
+    "label": "All Controls",
+    "allowInSubpage": true,
+    "pickerKey": "climate",
+    "hidden": true,
+    "domains": [
+      "climate"
+    ],
+    "options": [
+      {
+        "name": "label_display",
+        "label": "Label Display",
+        "kind": "choice",
+        "values": [
+          "label",
+          "status",
+          "actual",
+          "target"
+        ],
+        "defaultValue": "label"
+      },
+      {
+        "name": "number_display",
+        "label": "Icon & Temperatures",
+        "kind": "choice",
+        "values": [
+          "icon",
+          "actual",
+          "target"
+        ],
+        "defaultValue": "target"
+      },
+      {
+        "name": "temperature_step",
+        "label": "Temperature Step",
+        "kind": "choice",
+        "values": [
+          "1",
+          "0.5"
+        ],
+        "defaultValue": "1"
+      },
+      {
+        "name": "large_numbers",
+        "label": "Large Temperature Numbers",
+        "kind": "flag"
+      },
+      {
+        "name": "climate_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "defaultValue": "temperature|mode|preset|fan|swing"
+      }
+    ],
+    "behavior": {
+      "climate": {
+        "defaultLabelDisplay": "label",
+        "defaultNumberDisplay": "target",
+        "defaultTemperatureStep": "1",
+        "precisionValues": [
+          "",
+          "1",
+          "2",
+          "3"
+        ]
+      }
+    },
+    "default": {
+      "entity": "",
+      "label": "Climate",
+      "icon": "Thermostat",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "climate_control",
+      "precision": "",
+      "options": ""
+    }
+  },
   "cover": {
     "label": "Cover",
     "allowInSubpage": true,
@@ -769,6 +848,48 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "gate": {
+    "label": "Gate",
+    "allowInSubpage": true,
+    "domains": [
+      "cover"
+    ],
+    "options": [
+      {
+        "name": "gate_mode",
+        "label": "Interaction",
+        "kind": "choice",
+        "values": [
+          "",
+          "open",
+          "close",
+          "stop"
+        ],
+        "defaultValue": ""
+      },
+      {
+        "name": "label_display",
+        "label": "Display",
+        "kind": "choice",
+        "values": [
+          "label",
+          "status"
+        ],
+        "defaultValue": "label"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Gate",
+      "icon_on": "Gate Open",
+      "sensor": "",
+      "unit": "",
+      "type": "gate",
+      "precision": "",
+      "options": ""
+    }
+  },
   "internal": {
     "label": "Internal Switches",
     "allowInSubpage": true,
@@ -963,12 +1084,14 @@ var CARD_CONTRACT_CARDS = {
         "label": "Type",
         "kind": "choice",
         "values": [
+          "control_modal",
           "play_pause",
           "previous",
           "next",
           "volume",
           "position",
-          "now_playing"
+          "now_playing",
+          "playlist"
         ],
         "defaultValue": "play_pause"
       },
@@ -1001,6 +1124,44 @@ var CARD_CONTRACT_CARDS = {
         "max": 100,
         "step": 1,
         "defaultValue": "100"
+      },
+      {
+        "name": "label_display",
+        "label": "Label Display",
+        "kind": "choice",
+        "values": [
+          "label",
+          "status"
+        ],
+        "defaultValue": "status"
+      },
+      {
+        "name": "number_display",
+        "label": "Top Left Display",
+        "kind": "choice",
+        "values": [
+          "icon",
+          "volume"
+        ],
+        "defaultValue": "icon"
+      },
+      {
+        "name": "playlist_content_id",
+        "label": "Media Content ID / URI",
+        "kind": "text"
+      },
+      {
+        "name": "playlist_content_type",
+        "label": "Media Content Type",
+        "kind": "text",
+        "defaultValue": "playlist",
+        "hidden": true,
+        "docsHidden": true
+      },
+      {
+        "name": "playlist_player_source",
+        "label": "Player Source / Input",
+        "kind": "text"
       },
       {
         "name": "large_numbers",
@@ -1271,6 +1432,7 @@ var CARD_CONTRACT_CARDS = {
           "alarm",
           "cover",
           "garage",
+          "gate",
           "lock",
           "vacuum",
           "lawn_mower",
@@ -1498,9 +1660,11 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "lawn_mower": "LM",
   "light_temperature": "N",
   "garage": "R",
+  "gate": "GT",
   "lock": "K",
   "media": "M",
   "climate": "H",
+  "climate_control": "HC",
   "push": "P",
   "screen_lock": "SL",
   "webhook": "WH",
@@ -1536,9 +1700,11 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "LM": "lawn_mower",
   "N": "light_temperature",
   "R": "garage",
+  "GT": "gate",
   "K": "lock",
   "M": "media",
   "H": "climate",
+  "HC": "climate_control",
   "P": "push",
   "SL": "screen_lock",
   "WH": "webhook",
@@ -1563,6 +1729,7 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
   "calendar": true,
   "clock": true,
   "climate": true,
+  "climate_control": true,
   "media": true,
   "subpage": true,
   "timezone": true
@@ -1571,6 +1738,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "actions": "actions",
   "active_color": "active_color",
   "alarm_card_type": "alarm_card_type",
+  "climate_tabs": "climate_tabs",
   "confirm_message": "confirm_message",
   "confirm_no": "confirm_no",
   "confirm_off": "confirm_off",
@@ -1584,6 +1752,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "date_time_mode": "date_time_mode",
   "fan_tabs": "fan_tabs",
   "garage_mode": "garage_mode",
+  "gate_mode": "gate_mode",
   "icon_display": "icon_display",
   "image_icon": "image_icon",
   "image_label": "image_label",
@@ -1603,6 +1772,9 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "on_pattern": "on_pattern",
   "pin_arm": "pin_arm",
   "pin_disarm": "pin_disarm",
+  "playlist_content_id": "playlist_content_id",
+  "playlist_content_type": "playlist_content_type",
+  "playlist_player_source": "playlist_player_source",
   "script_fields": "script_fields",
   "state_high_label": "state_high_label",
   "state_input": "state_input",

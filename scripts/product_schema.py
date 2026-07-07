@@ -9,6 +9,7 @@ without extra dependencies.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,11 @@ from device_profiles import (
 ROOT = Path(__file__).resolve().parent.parent
 CARD_CONTRACT_JSON = ROOT / "common" / "config" / "card_contract.json"
 ENTITY_NAMES_JSON = ROOT / "common" / "config" / "entity_names.json"
+ENTITY_IDENTIFIER_RE = re.compile(r"^[a-z0-9_]+$")
+ICONS_JSON = ROOT / "common" / "assets" / "icons.json"
+COMPATIBILITY_FIXTURES_JSON = ROOT / "compatibility" / "fixtures" / "product_compatibility.json"
+PRODUCT_SNAPSHOT_JSON = ROOT / "product" / "product_snapshot.json"
+PRODUCT_SNAPSHOT_VERSION = 1
 
 SAVED_CONFIG_FIELDS = [
     "entity",
@@ -48,10 +54,19 @@ def rel(path: Path) -> str:
         return str(path)
 
 
+def reject_duplicate_json_keys(path: Path, pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ProductSchemaError(f"{rel(path)} contains duplicate JSON key {key!r}")
+        result[key] = value
+    return result
+
+
 def load_json(path: Path) -> Any:
     try:
         with path.open(encoding="utf-8") as f:
-            return json.load(f)
+            return json.load(f, object_pairs_hook=lambda pairs: reject_duplicate_json_keys(path, pairs))
     except FileNotFoundError as exc:
         raise ProductSchemaError(f"{rel(path)} was not found") from exc
     except json.JSONDecodeError as exc:
@@ -70,6 +85,39 @@ def load_card_contract(path: Path = CARD_CONTRACT_JSON) -> dict[str, Any]:
 
 
 def load_entity_names(path: Path = ENTITY_NAMES_JSON) -> dict[str, Any]:
+    data = load_json(path)
+    if not isinstance(data, dict):
+        raise ProductSchemaError(f"{rel(path)} must contain a JSON object")
+    return data
+
+def validate_entity_identifier_list(entry: dict[str, Any], field: str, entry_path: str, errors: list[str]) -> None:
+    if field not in entry:
+        return
+    values = entry[field]
+    if values == []:
+        return
+    if not isinstance(values, list) or not all(isinstance(value, str) and value for value in values):
+        errors.append(path_error(f"{entry_path}.{field}", "must be a list of non-empty strings"))
+        return
+
+    seen: set[str] = set()
+    for index, value in enumerate(values):
+        value_path = f"{entry_path}.{field}[{index}]"
+        if value in seen:
+            errors.append(path_error(value_path, f"duplicates {value!r}"))
+        seen.add(value)
+        if not ENTITY_IDENTIFIER_RE.fullmatch(value):
+            errors.append(path_error(value_path, "must use lowercase letters, numbers, and underscores only"))
+
+
+def load_icon_registry(path: Path = ICONS_JSON) -> dict[str, Any]:
+    data = load_json(path)
+    if not isinstance(data, dict):
+        raise ProductSchemaError(f"{rel(path)} must contain a JSON object")
+    return data
+
+
+def load_compatibility_fixtures(path: Path = COMPATIBILITY_FIXTURES_JSON) -> dict[str, Any]:
     data = load_json(path)
     if not isinstance(data, dict):
         raise ProductSchemaError(f"{rel(path)} must contain a JSON object")
@@ -110,18 +158,8 @@ def validate_entity_names(data: dict[str, Any]) -> list[str]:
         if isinstance(domain, str) and isinstance(value, str):
             names_by_domain.setdefault(domain, {}).setdefault(value, []).append(key)
 
-        object_ids = entry.get("objectIds", [])
-        if object_ids and (
-            not isinstance(object_ids, list)
-            or not all(isinstance(v, str) and v for v in object_ids)
-        ):
-            errors.append(path_error(f"{entry_path}.objectIds", "must be a list of non-empty strings"))
-        groups = entry.get("groups", [])
-        if groups and (
-            not isinstance(groups, list)
-            or not all(isinstance(v, str) and v for v in groups)
-        ):
-            errors.append(path_error(f"{entry_path}.groups", "must be a list of non-empty strings"))
+        validate_entity_identifier_list(entry, "objectIds", entry_path, errors)
+        validate_entity_identifier_list(entry, "groups", entry_path, errors)
 
     for domain, names in names_by_domain.items():
         for name, entry_keys in names.items():
@@ -172,13 +210,19 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                 if not isinstance(options, list):
                     errors.append(path_error(f"{card_path}.options", "must be a list"))
                 else:
+                    option_names: dict[str, str] = {}
                     for idx, option in enumerate(options):
                         option_path = f"{card_path}.options[{idx}]"
                         if not isinstance(option, dict):
                             errors.append(path_error(option_path, "must be an object"))
                             continue
-                        if not isinstance(option.get("name"), str) or not option.get("name"):
+                        name = option.get("name")
+                        if not isinstance(name, str) or not name:
                             errors.append(path_error(f"{option_path}.name", "must be a non-empty string"))
+                        elif name in option_names:
+                            errors.append(path_error(f"{option_path}.name", f"duplicates {option_names[name]}"))
+                        else:
+                            option_names[name] = f"{option_path}.name"
                         if not isinstance(option.get("label"), str) or not option.get("label"):
                             errors.append(path_error(f"{option_path}.label", "must be a non-empty string"))
                         if "kind" in option and option.get("kind") not in {"choice", "flag", "number", "text"}:
@@ -327,6 +371,76 @@ def validate_card_groups(data: dict[str, Any], errors: list[str]) -> None:
                 errors.append(path_error(f"cardGroups.fan.{card_type}.defaultIcon", "must be a string"))
 
 
+def validate_icon_registry(data: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    names: set[str] = set()
+
+    def validate_icon(entry: Any, entry_path: str) -> None:
+        if not isinstance(entry, dict):
+            errors.append(path_error(entry_path, "must be an object"))
+            return
+        name = entry.get("name")
+        codepoint = entry.get("codepoint")
+        mdi = entry.get("mdi")
+        if not isinstance(name, str) or not name:
+            errors.append(path_error(f"{entry_path}.name", "must be a non-empty string"))
+        elif name in names:
+            errors.append(path_error(f"{entry_path}.name", f"duplicates {name!r}"))
+        else:
+            names.add(name)
+        if not isinstance(codepoint, str) or not codepoint:
+            errors.append(path_error(f"{entry_path}.codepoint", "must be a non-empty string"))
+        if not isinstance(mdi, str) or not mdi:
+            errors.append(path_error(f"{entry_path}.mdi", "must be a non-empty string"))
+        comment = entry.get("comment")
+        if comment is not None and not isinstance(comment, str):
+            errors.append(path_error(f"{entry_path}.comment", "must be a string"))
+
+    validate_icon(data.get("fallback"), "fallback")
+
+    for section in ("structural", "icons"):
+        entries = data.get(section)
+        if not isinstance(entries, list) or not entries:
+            errors.append(path_error(section, "must be a non-empty list"))
+            continue
+        for index, entry in enumerate(entries):
+            validate_icon(entry, f"{section}[{index}]")
+
+    defaults = data.get("domain_defaults")
+    if not isinstance(defaults, dict) or not defaults:
+        errors.append(path_error("domain_defaults", "must be a non-empty object"))
+    else:
+        for domain, icon_name in defaults.items():
+            default_path = f"domain_defaults.{domain}"
+            if not isinstance(domain, str) or not domain:
+                errors.append(path_error("domain_defaults", "keys must be non-empty strings"))
+                continue
+            if not isinstance(icon_name, str) or not icon_name:
+                errors.append(path_error(default_path, "must be a non-empty string"))
+            elif icon_name not in names:
+                errors.append(path_error(default_path, f"references unknown icon {icon_name!r}"))
+    return errors
+
+
+def validate_compatibility_fixtures(data: dict[str, Any], device_slugs: list[str]) -> list[str]:
+    errors: list[str] = []
+    current = data.get("current")
+    legacy = data.get("legacy-v1")
+    if not isinstance(current, dict):
+        errors.append(path_error("current", "must be an object"))
+    if not isinstance(legacy, dict):
+        errors.append(path_error("legacy-v1", "must be an object"))
+    if isinstance(current, dict):
+        profiles = current.get("deviceProfiles")
+        if not isinstance(profiles, dict):
+            errors.append(path_error("current.deviceProfiles", "must be an object"))
+        else:
+            required_slugs = profiles.get("requiredSlugs")
+            if required_slugs != device_slugs:
+                errors.append(path_error("current.deviceProfiles.requiredSlugs", "must match devices/manifest.json device order"))
+    return errors
+
+
 def assert_card_contract_valid(data: dict[str, Any]) -> None:
     errors = validate_card_contract(data)
     if errors:
@@ -342,10 +456,50 @@ def assert_entity_names_valid(data: dict[str, Any]) -> None:
 def validate_product_sources() -> dict[str, list[str]]:
     results: dict[str, list[str]] = {}
     device_data = load_json(DEVICE_MANIFEST)
+    device_slugs = list(device_data.get("devices", {}).keys()) if isinstance(device_data, dict) else []
     results[rel(DEVICE_MANIFEST)] = validate_manifest_data(device_data)
     results[rel(CARD_CONTRACT_JSON)] = validate_card_contract(load_card_contract())
     results[rel(ENTITY_NAMES_JSON)] = validate_entity_names(load_entity_names())
+    results[rel(ICONS_JSON)] = validate_icon_registry(load_icon_registry())
+    results[rel(COMPATIBILITY_FIXTURES_JSON)] = validate_compatibility_fixtures(load_compatibility_fixtures(), device_slugs)
     return results
+
+
+def product_snapshot() -> dict[str, Any]:
+    """Combined, generated view of the product sources for drift checks."""
+    profiles = device_profiles()
+    card_contract = load_card_contract()
+    entity_names = load_entity_names()
+    icon_registry = load_icon_registry()
+    compatibility = load_compatibility_fixtures()
+    return {
+        "schemaVersion": PRODUCT_SNAPSHOT_VERSION,
+        "generatedBy": "scripts/check_product_snapshot.py --update",
+        "sources": {
+            "deviceProfiles": rel(DEVICE_MANIFEST),
+            "cardContract": rel(CARD_CONTRACT_JSON),
+            "entityNames": rel(ENTITY_NAMES_JSON),
+            "icons": rel(ICONS_JSON),
+            "compatibilityFixtures": rel(COMPATIBILITY_FIXTURES_JSON),
+        },
+        "summary": {
+            "deviceProfiles": len(profiles),
+            "cardTypes": len(card_contract.get("cards", {})),
+            "entityNames": len(entity_names.get("entities", [])),
+            "icons": len(icon_registry.get("icons", [])),
+            "structuralIcons": len(icon_registry.get("structural", [])),
+            "compatibilityFixtureGroups": len(compatibility),
+        },
+        "deviceProfiles": profiles,
+        "cardContract": card_contract,
+        "entityNames": entity_names,
+        "icons": icon_registry,
+        "compatibilityFixtures": compatibility,
+    }
+
+
+def product_snapshot_text(snapshot: dict[str, Any] | None = None) -> str:
+    return json.dumps(snapshot or product_snapshot(), indent=2) + "\n"
 
 
 def device_profiles(path: Path = DEVICE_MANIFEST) -> dict[str, dict[str, Any]]:

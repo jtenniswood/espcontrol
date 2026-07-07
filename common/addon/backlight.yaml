@@ -767,7 +767,11 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(media_player_sleep_prevention_enabled).state &&
+              const bool cover_art_touch_pause_active =
+                id(cover_art_manual_pause_until_ms) != 0 &&
+                (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
+              return (id(media_player_sleep_prevention_enabled).state ||
+                      cover_art_touch_pause_active) &&
                      id(cover_art_media_playing) &&
                      id(cover_art_screensaver_enabled).state &&
                      !alarm_display_takeover_active();
@@ -941,13 +945,8 @@ script:
             - lambda: |-
                 lv_obj_t *temperature_labels[] = {
                   id(temperatures),
-                  id(temperature_2),
-                  id(temperature_3),
-                  id(temperature_4),
-                  id(temperature_5),
-                  id(temperature_6),
                 };
-                hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                                  id(display_time),
                                                  id(network_status_button));
                 network_status_hide_modal();
@@ -1002,13 +1001,8 @@ script:
           if (!id(is_clock_showing)) return;
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
-            id(temperature_2),
-            id(temperature_3),
-            id(temperature_4),
-            id(temperature_5),
-            id(temperature_6),
           };
-          hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+          hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                            id(display_time),
                                            id(network_status_button));
           network_status_hide_modal();

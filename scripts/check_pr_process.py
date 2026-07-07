@@ -15,6 +15,19 @@ TEMPLATE = ROOT / ".github" / "pull_request_template.md"
 DOCS_HEADING = "Documentation decision"
 TESTING_HEADING = "Testing"
 STATUS_HEADING = "PR status"
+ISSUE_HEADING = "Issue handling"
+ISSUE_CONFIRMATION = "Do not close related issues until the user confirms the fix works"
+REQUIRED_BODY_HEADINGS = (DOCS_HEADING, TESTING_HEADING, STATUS_HEADING, ISSUE_HEADING)
+TEMPLATE_CHECKLIST_ITEMS = (
+    "Updated public docs or release-facing notes",
+    "No docs needed because this does not change user-visible behavior/configuration",
+    "Docs follow-up needed before merge",
+    "Automated/local checks passed or were run where practical",
+    "Device testing is required before merge",
+    "Device testing is not required",
+    "Ready to merge after user confirmation",
+    ISSUE_CONFIRMATION,
+)
 
 
 def section_text(text: str, heading: str) -> str:
@@ -30,6 +43,30 @@ def section_text(text: str, heading: str) -> str:
 
 def checked_items(section: str) -> list[str]:
     return re.findall(r"^\s*- \[[xX]\] +(.+)$", section, re.MULTILINE)
+
+
+def checklist_items(text: str) -> list[str]:
+    return re.findall(r"^\s*- \[[ xX]\] +(.+)$", text, re.MULTILINE)
+
+
+def has_heading(text: str, heading: str) -> bool:
+    return bool(re.search(rf"^## +{re.escape(heading)}\s*$", text, re.MULTILINE))
+
+
+def uses_pr_template(body: str) -> bool:
+    heading_count = sum(has_heading(body, heading) for heading in REQUIRED_BODY_HEADINGS)
+    if heading_count == len(REQUIRED_BODY_HEADINGS):
+        return True
+
+    if heading_count >= 2:
+        return True
+
+    template_checklist_count = sum(
+        template_item in item
+        for item in checklist_items(body)
+        for template_item in TEMPLATE_CHECKLIST_ITEMS
+    )
+    return template_checklist_count >= 2
 
 
 def docs_notes(section: str) -> str:
@@ -69,8 +106,20 @@ def assert_template_ready() -> None:
     status_items = re.findall(r"^\s*- \[[ xX]\] +(.+)$", status, re.MULTILINE)
     assert len(status_items) >= 5, "PR template must include a clear PR status checklist."
 
+    issue = section_text(text, ISSUE_HEADING)
+    issue_items = re.findall(r"^\s*- \[[ xX]\] +(.+)$", issue, re.MULTILINE)
+    assert any(ISSUE_CONFIRMATION in item for item in issue_items), (
+        "PR template must include the related-issue confirmation."
+    )
+
 
 def assert_pr_body_ready(body: str) -> None:
+    assert body.strip(), "Add a PR description that explains the purpose and testing notes."
+
+    if not uses_pr_template(body):
+        print("PR body does not use the checklist template; skipping template field validation.")
+        return
+
     section = section_text(body, DOCS_HEADING)
     selected = checked_items(section)
     assert selected, (
@@ -115,6 +164,12 @@ def assert_pr_body_ready(body: str) -> None:
     assert status_selected, "Choose one PR status item so the next action is obvious."
     assert len(status_selected) == 1, "Choose exactly one PR status item."
 
+    issue = section_text(body, ISSUE_HEADING)
+    issue_selected = checked_items(issue)
+    assert any(ISSUE_CONFIRMATION in item for item in issue_selected), (
+        "Confirm related issues will stay open until the user confirms the fix works."
+    )
+
 
 def pr_body_from_event(event_path: str | None) -> str | None:
     if not event_path:
@@ -144,7 +199,6 @@ Docs notes:
 - [x] Automated/local checks passed or were run where practical.
 - [x] Device testing is required before merge.
 - [ ] Device testing is not required; explain why in Notes for testing.
-- [ ] Device tested by user.
 
 Affected display/device, if applicable:
 
@@ -162,6 +216,10 @@ Affected display/device, if applicable:
 - [ ] Device test failed; details below.
 - [ ] Device tested successfully.
 - [ ] Ready to merge after user confirmation.
+
+## Issue handling
+
+- [x] Do not close related issues until the user confirms the fix works.
 """
     assert_pr_body_ready(valid)
 
@@ -210,6 +268,54 @@ Affected display/device, if applicable:
     else:
         raise AssertionError("self-test expected multiple PR statuses to fail")
 
+    freeform = """## Purpose
+
+Explain the change in plain language.
+
+## Testing
+
+- python3 scripts/build.py --check
+"""
+    assert_pr_body_ready(freeform)
+
+    freeform_with_template_words = """## Purpose
+
+Device testing is not required because this only changes docs.
+
+## Testing
+
+- Reviewed the wording locally.
+"""
+    assert_pr_body_ready(freeform_with_template_words)
+
+    freeform_with_template_checkbox = """## Purpose
+
+Documentation-only wording change.
+
+## Testing
+
+- [x] Device testing is not required because this only changes docs.
+"""
+    assert_pr_body_ready(freeform_with_template_checkbox)
+
+    partial_template = valid.replace("## PR status", "## Next steps")
+    try:
+        assert_pr_body_ready(partial_template)
+    except AssertionError as error:
+        assert "Missing '## PR status' section." in str(error)
+    else:
+        raise AssertionError("self-test expected partial checklist template to fail")
+
+    empty_freeform = """
+
+"""
+    try:
+        assert_pr_body_ready(empty_freeform)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("self-test expected empty PR body to fail")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -222,13 +328,19 @@ def main() -> int:
     if args.self_test:
         run_self_test()
         print("PR process self-test passed.")
+        return 0
 
     body = pr_body_from_event(args.event_path)
     if body is None:
         print("PR process check skipped outside pull_request events.")
         return 0
 
-    assert_pr_body_ready(body)
+    try:
+        assert_pr_body_ready(body)
+    except AssertionError as error:
+        print(f"::error::{error}")
+        return 1
+
     print("PR process check passed.")
     return 0
 

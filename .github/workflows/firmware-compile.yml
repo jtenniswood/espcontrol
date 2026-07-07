@@ -2,10 +2,11 @@ name: Firmware Compile
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ESPHOME_VERSION: 2026.6.2
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
 permissions:
@@ -38,7 +39,7 @@ jobs:
             --paginate \
             --jq '.[].filename' > changed-files.txt
 
-          if grep -Eq '^(\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_slots)\.py|package(-lock)?\.json)$' changed-files.txt; then
+          if grep -Eq '^(\.github/esphome\.env|\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_slots)\.py|package(-lock)?\.json)$' changed-files.txt; then
             echo "compile_required=true" >> "$GITHUB_OUTPUT"
           else
             echo "compile_required=false" >> "$GITHUB_OUTPUT"
@@ -55,6 +56,7 @@ jobs:
       - uses: actions/checkout@v7.0.0
         with:
           sparse-checkout: |
+            builds/*.yaml
             common/assets/*.yaml
             common/assets/fonts/*
             devices/manifest.json
@@ -104,6 +106,10 @@ jobs:
             find builds -maxdepth 1 -type f -print | sort || true
             exit 1
           fi
+
+      - name: Load ESPHome version
+        working-directory: espcontrol-${{ matrix.slug }}
+        run: cat .github/esphome.env >> "$GITHUB_ENV"
 
       - name: Select Docker command
         run: |

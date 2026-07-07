@@ -32,6 +32,8 @@ struct GridConfig {
   const lv_font_t *sp_large_sensor_font = nullptr;
   int large_sensor_unit_offset_percent = -10;
   const lv_font_t *media_title_font;
+  const lv_font_t *media_control_title_font = nullptr;
+  const lv_font_t *media_control_artist_font = nullptr;
   const lv_font_t *option_select_value_font = nullptr;
   const lv_font_t *volume_number_font;
   const lv_font_t *volume_label_font = nullptr;
@@ -73,6 +75,8 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.fonts.sensor = cfg.sp_sensor_font;
   profile.fonts.large_sensor = cfg.sp_large_sensor_font;
   profile.fonts.media_title = cfg.media_title_font;
+  profile.fonts.media_control_title = cfg.media_control_title_font;
+  profile.fonts.media_control_artist = cfg.media_control_artist_font;
   profile.fonts.option_select_value = cfg.option_select_value_font;
   profile.fonts.volume_number = cfg.volume_number_font;
   profile.fonts.volume_label = cfg.volume_label_font;
@@ -115,8 +119,8 @@ struct CardPalette {
   bool has_off = false;
   bool has_sensor_color = false;
   uint32_t on_val = DEFAULT_SLIDER_COLOR;
-  uint32_t off_val = DEFAULT_OFF_COLOR;
-  uint32_t sensor_val = DEFAULT_TERTIARY_COLOR;
+  uint32_t off_val = SECONDARY_GREY;
+  uint32_t sensor_val = TERTIARY_GREY;
 };
 
 inline lv_coord_t large_sensor_unit_offset_px(const lv_font_t *large_font, int percent) {
@@ -346,6 +350,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_garage_card(s, p);
     return;
   }
+  if (p.type == "gate") {
+    setup_gate_card(s, p);
+    return;
+  }
   if (subpage_parent_sensor_state_enabled(p)) {
     setup_subpage_parent_state_card(
       s, p, display_sensor_font(display), cfg.subpage_chevrons_enabled,
@@ -435,7 +443,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       row_span, col_span);
     return;
   }
-  if (p.type == "climate") {
+  if (climate_card_type(p.type)) {
     setup_climate_control_button(
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl,
       s.text_lbl, p, display_icon_font(display));
@@ -535,6 +543,23 @@ inline bool bind_garage_status_card(BtnSlot &s, const ParsedCfg &p,
   return true;
 }
 
+inline bool bind_gate_status_card(BtnSlot &s, const ParsedCfg &p,
+                                  TransientStatusLabel **status_label_out = nullptr) {
+  if (p.type != "gate" || p.entity.empty()) {
+    return false;
+  }
+  bool show_status = gate_card_show_status(p);
+  std::string fallback_label = p.label.empty() ? espcontrol_i18n(std::string("Gate")) : p.label;
+  TransientStatusLabel *status_label = create_transient_status_label(
+    s.text_lbl, show_status ? "--" : fallback_label);
+  if (status_label_out != nullptr) *status_label_out = status_label;
+  subscribe_gate_state(s.btn, s.icon_lbl, status_label,
+    gate_closed_icon(p.icon), gate_open_icon(p.icon_on), p.entity, show_status);
+  if (!show_status && p.label.empty())
+    subscribe_friendly_name(status_label, p.entity);
+  return true;
+}
+
 inline LockCardCtx *bind_lock_status_card(BtnSlot &s, const ParsedCfg &p,
                                           TransientStatusLabel **status_label_out = nullptr) {
   if (p.type != "lock" || p.entity.empty() || lock_command_mode(p.sensor)) {
@@ -553,6 +578,8 @@ inline LockCardCtx *bind_lock_status_card(BtnSlot &s, const ParsedCfg &p,
     subscribe_friendly_name(status_label, p.entity);
   return ctx;
 }
+
+inline MediaControlCtx *grid_media_control_runtime_for_owner(lv_obj_t *owner);
 
 inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
                                       const GridConfig &cfg,
@@ -592,13 +619,24 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
       lv_obj_move_foreground(s.text_lbl);
     }
     if (slider) slider_refresh_geometry(slider);
-    if (ctx) media_apply_position(ctx);
+    if (ctx) {
+      media_apply_position(ctx);
+      media_schedule_position_refresh(ctx);
+    }
     return;
   }
 
   if (media_playback_button_mode(mode)) {
     if (s.icon_lbl) lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);
     if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+    return;
+  }
+  if (mode == "control_modal") {
+    MediaControlCtx *ctx = grid_media_control_runtime_for_owner(s.btn);
+    setup_media_control_button(
+      s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);
+    if (s.btn) lv_obj_set_user_data(s.btn, ctx);
+    if (ctx) media_control_refresh_parent_card(ctx);
     return;
   }
   if (mode == "volume") return;
@@ -686,6 +724,7 @@ inline void grid_refresh_layout(
   parse_order_string(order_str, NS, parsed);
   clear_spanned_cells(parsed, NS, COLS, order);
   clock_bar_clear_responsive_grid_cards(main_page_obj);
+  navigation_clear_home_targets();
 
   lv_obj_t *first_card = nullptr;
   if (parsed.positions[0] >= 1 && parsed.positions[0] <= NS) {
@@ -713,6 +752,7 @@ inline void grid_refresh_layout(
     if (idx < 1 || idx > NS) continue;
     auto &s = slots[idx - 1];
     ParsedCfg p = parse_cfg(s.config->state);
+    navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     refresh_card_layout(s, p, cfg, row_span);
     if (p.type == "vacuum") {
@@ -921,6 +961,10 @@ inline void grid_delete_fan_card_runtime_ptr(void *ptr) {
   }
 }
 
+inline void grid_delete_media_control_runtime_ptr(void *ptr) {
+  delete_media_control_context(static_cast<MediaControlCtx *>(ptr));
+}
+
 inline void grid_release_runtime_allocations(lv_obj_t *owner) {
   if (owner == nullptr) return;
   std::vector<GridRuntimeAllocation> &allocations = grid_runtime_allocations();
@@ -960,6 +1004,39 @@ inline AlarmActionCtx *grid_track_alarm_action_runtime(lv_obj_t *owner,
       ctx,
       grid_delete_alarm_action_runtime_ptr,
     });
+  }
+  return ctx;
+}
+
+inline MediaControlCtx *grid_track_media_control_runtime(lv_obj_t *owner,
+                                                         MediaControlCtx *ctx) {
+  if (owner != nullptr && ctx != nullptr) {
+    grid_runtime_allocations().push_back({
+      owner,
+      ctx,
+      grid_delete_media_control_runtime_ptr,
+    });
+  }
+  return ctx;
+}
+
+inline MediaControlCtx *grid_media_control_runtime_for_owner(lv_obj_t *owner) {
+  if (owner == nullptr) return nullptr;
+  for (const GridRuntimeAllocation &allocation : grid_runtime_allocations()) {
+    if (allocation.owner == owner &&
+        allocation.deleter == grid_delete_media_control_runtime_ptr) {
+      return static_cast<MediaControlCtx *>(allocation.ptr);
+    }
+  }
+  return nullptr;
+}
+
+inline MediaControlCtx *grid_delete_media_control_with_owner(lv_obj_t *owner,
+                                                             MediaControlCtx *ctx) {
+  if (owner != nullptr && ctx != nullptr) {
+    lv_obj_add_event_cb(owner, [](lv_event_t *e) {
+      delete_media_control_context(static_cast<MediaControlCtx *>(lv_event_get_user_data(e)));
+    }, LV_EVENT_DELETE, ctx);
   }
   return ctx;
 }
@@ -1061,13 +1138,14 @@ inline void grid_phase2(
   bump_ha_subscription_generation();
   weather_forecast_cancel_pending_requests();
   reset_climate_control_refs();
-  reset_ha_control_availability_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
   grid_clear_subpage_parent_targets(slots, NS);
+  navigation_clear_home_targets();
+  // Image-card contexts may still point at widgets inside subpage screens.
+  reset_image_card_pool(cfg);
   navigation_clear_subpages();
   clear_subpage_vacuum_card_text_refs();
-  reset_image_card_pool(cfg);
 
   bool has_on;
   uint32_t on_val = parse_hex_color(on_hex, has_on);
@@ -1106,20 +1184,29 @@ inline void grid_phase2(
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     bool is_1x1_card = card_span_is_single(row_span, col_span);
     if (cfg.info_only && info_only_hidden_card_type(p)) continue;
+    navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
     if (p.type == "push") continue;
     if (bind_image_card(s, p, cfg)) continue;
     if (p.type == "local_sensor" || sensor_card_local_sensor(p)) continue;
     if (bind_basic_sensor_card(s, p, palette)) continue;
     if (bind_passive_card_sources(s, p)) continue;
     if (p.type == "garage") {
-      if (!p.entity.empty()) {
-        if (garage_command_mode(p.sensor)) {
-          subscribe_control_availability(s.btn, s.btn, p.entity);
-        }
-      }
       if (!garage_command_mode(p.sensor) || garage_card_show_status(p)) {
         TransientStatusLabel *status_label = nullptr;
         bind_garage_status_card(s, p, &status_label);
+        grid_track_transient_status_label_runtime(s.btn, status_label);
+      }
+      continue;
+    }
+    if (p.type == "gate") {
+      if (!p.entity.empty()) {
+        if (gate_command_mode(p.sensor)) {
+          subscribe_control_availability(s.btn, s.btn, p.entity);
+        }
+      }
+      if (!gate_command_mode(p.sensor) || gate_card_show_status(p)) {
+        TransientStatusLabel *status_label = nullptr;
+        bind_gate_status_card(s, p, &status_label);
         grid_track_transient_status_label_runtime(s.btn, status_label);
       }
       continue;
@@ -1171,9 +1258,7 @@ inline void grid_phase2(
     }
     if (p.type == "lock") {
       if (!p.entity.empty()) {
-        if (lock_command_mode(p.sensor)) {
-          subscribe_control_availability(s.btn, s.btn, p.entity);
-        } else {
+        if (!lock_command_mode(p.sensor)) {
           TransientStatusLabel *status_label = nullptr;
           grid_track_runtime_allocation(s.btn, bind_lock_status_card(s, p, &status_label));
           grid_track_transient_status_label_runtime(s.btn, status_label);
@@ -1261,8 +1346,8 @@ inline void grid_phase2(
         FanCardCtx *ctx = create_fan_card_context(
           s, p,
           has_on ? on_val : DEFAULT_SLIDER_COLOR,
-          palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
-          palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+          palette.has_off ? palette.off_val : SECONDARY_GREY,
+          palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
           lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
           display_icon_font(display),
           display_main_width_percent(display));
@@ -1275,7 +1360,6 @@ inline void grid_phase2(
       if (!p.entity.empty()) {
         if (p.label.empty())
           subscribe_friendly_name(s.text_lbl, p.entity);
-        subscribe_control_availability(s.btn, s.btn, p.entity);
         CoverCommandCtx *ctx = create_cover_command_context(p);
         grid_track_runtime_allocation(s.btn, ctx);
         lv_obj_set_user_data(s.btn, ctx);
@@ -1334,8 +1418,6 @@ inline void grid_phase2(
         grid_track_runtime_allocation(s.btn, ctx);
         subscribe_vacuum_card_state(ctx);
         lv_obj_set_user_data(s.btn, ctx);
-      } else if (!p.entity.empty()) {
-        subscribe_control_availability(s.btn, s.btn, p.entity);
       }
       continue;
     }
@@ -1346,8 +1428,6 @@ inline void grid_phase2(
         grid_track_runtime_allocation(s.btn, ctx);
         subscribe_lawn_mower_card_state(ctx);
         lv_obj_set_user_data(s.btn, ctx);
-      } else if (!p.entity.empty()) {
-        subscribe_control_availability(s.btn, s.btn, p.entity);
       }
       continue;
     }
@@ -1373,9 +1453,26 @@ inline void grid_phase2(
         std::string mode = media_card_mode(p.sensor);
         if (mode == "play_pause") {
           subscribe_media_state(s.btn, media_play_pause_show_state(p) ? s.text_lbl : nullptr, p.entity);
+        } else if (mode == "playlist") {
+          MediaPlaylistCtx *ctx = grid_track_runtime_allocation(
+            s.btn, create_media_playlist_context(s.btn, p));
+          subscribe_media_playlist_state(ctx);
         } else if (media_playback_button_mode(mode)) {
-          subscribe_control_availability(s.btn, s.btn, p.entity);
           // Previous/next are momentary actions and do not reflect player state.
+        } else if (mode == "control_modal") {
+          MediaControlCtx *ctx = grid_track_media_control_runtime(s.btn, create_media_control_context(
+            s, p,
+            has_on ? on_val : DEFAULT_SLIDER_COLOR,
+            palette.has_off ? palette.off_val : SECONDARY_GREY,
+            palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
+            display_media_control_title_font(display),
+            display_media_control_artist_font(
+              display, display_volume_label_font(
+                display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN))),
+            display_volume_number_font(display),
+            display_icon_font(display),
+            display_volume_width_percent(display)));
+          subscribe_media_control_state(ctx);
         } else if (mode == "volume") {
           MediaVolumeCtx *ctx = create_media_volume_context(
             s.btn, s.text_lbl, p, has_on ? on_val : DEFAULT_SLIDER_COLOR,
@@ -1408,7 +1505,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "climate") {
+    if (climate_card_type(p.type)) {
       if (!p.entity.empty()) {
         ClimateControlCtx *ctx = create_climate_control_context(
           s.btn, s.icon_lbl, s.text_lbl, p,
@@ -1616,7 +1713,7 @@ inline void grid_phase2(
     navigation_register_subpage(
       si + 1, display_order,
       normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")),
-      p.label, sub_scr);
+      sub_scr);
     lv_obj_set_style_bg_color(sub_scr, lv_obj_get_style_bg_color(main_page_obj, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(sub_scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_layout(sub_scr, LV_LAYOUT_GRID);
@@ -1714,9 +1811,7 @@ inline void grid_phase2(
       setup_card_visual(sub_slot, sb_cfg, cfg, palette, rs, cs);
 
       if (sb_cfg.type == "screen_lock") {
-        lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-          lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-          if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
+        lv_obj_add_event_cb(sb_btn, [](lv_event_t *) {
           screen_lock_toggle();
         }, LV_EVENT_CLICKED, nullptr);
         continue;
@@ -1738,7 +1833,6 @@ inline void grid_phase2(
           add_parent_indicator(sb_cfg.entity);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
             lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-            if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
             CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(target);
             if (ctx) cover_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, nullptr);
@@ -1749,7 +1843,6 @@ inline void grid_phase2(
         if (!sb_cfg.entity.empty()) {
           if (sb_cfg.label.empty())
             subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
-          subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
           CoverCommandCtx *ctx = grid_delete_with_owner(sb_btn, create_cover_command_context(sb_cfg));
           subscribe_cover_command_features(ctx);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
@@ -1777,7 +1870,6 @@ inline void grid_phase2(
       if (sb_cfg.type == "garage") {
         if (!sb_cfg.entity.empty()) {
           if (garage_command_mode(sb_cfg.sensor)) {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
             if (garage_card_show_status(sb_cfg)) {
               bind_garage_status_card(sub_slot, sb_cfg);
               add_parent_indicator(sb_cfg.entity);
@@ -1796,10 +1888,31 @@ inline void grid_phase2(
         }
         continue;
       }
+      if (sb_cfg.type == "gate") {
+        if (!sb_cfg.entity.empty()) {
+          if (gate_command_mode(sb_cfg.sensor)) {
+            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+            if (gate_card_show_status(sb_cfg)) {
+              bind_gate_status_card(sub_slot, sb_cfg);
+              add_parent_indicator(sb_cfg.entity);
+            }
+            ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
+              if (c) send_cover_command_action(*c);
+            }, LV_EVENT_CLICKED, ctx);
+          } else {
+            if (bind_gate_status_card(sub_slot, sb_cfg)) {
+              add_parent_indicator(sb_cfg.entity);
+              add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
+            }
+          }
+        }
+        continue;
+      }
       if (sb_cfg.type == "lock") {
         if (!sb_cfg.entity.empty()) {
           if (lock_command_mode(sb_cfg.sensor)) {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
             ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
@@ -1916,8 +2029,8 @@ inline void grid_phase2(
           FanCardCtx *ctx = create_fan_card_context(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
-            palette.has_off ? palette.off_val : DEFAULT_OFF_COLOR,
-            palette.has_sensor_color ? palette.sensor_val : DEFAULT_TERTIARY_COLOR,
+            palette.has_off ? palette.off_val : SECONDARY_GREY,
+            palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
             lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
             display_icon_font(display),
             display_main_width_percent(display));
@@ -1995,8 +2108,6 @@ inline void grid_phase2(
           register_subpage_vacuum_card_text(sub_slot.text_lbl, ctx, sb_cfg);
           if (vacuum_card_mode_needs_state(sb_cfg.sensor)) {
             subscribe_vacuum_card_state(ctx);
-          } else {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
           }
           add_parent_indicator(sb_cfg.entity);
           if (!vacuum_card_read_only(sb_cfg)) {
@@ -2014,8 +2125,6 @@ inline void grid_phase2(
           grid_delete_with_owner(sb_btn, ctx);
           if (lawn_mower_card_mode_needs_state(sb_cfg.sensor)) {
             subscribe_lawn_mower_card_state(ctx);
-          } else {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
           }
           add_parent_indicator(sb_cfg.entity, lawn_mower_state_active_ref);
           if (!lawn_mower_card_read_only(sb_cfg)) {
@@ -2056,12 +2165,23 @@ inline void grid_phase2(
       if (sb_cfg.type == "media") {
         std::string mode = media_card_mode(sb_cfg.sensor);
         if (!sb_cfg.entity.empty()) {
-          if (media_playback_button_mode(mode)) {
+          if (mode == "playlist") {
+            ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
+            MediaPlaylistCtx *playlist_ctx = grid_delete_with_owner(
+              sb_btn, create_media_playlist_context(sub_slot.btn, sb_cfg));
+            subscribe_media_playlist_state(playlist_ctx);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
+              if (c) {
+                ESP_LOGI("button", "Subpage playlist clicked: entity=%s label=%s mode=%s options=%s",
+                         c->entity.c_str(), c->label.c_str(), c->sensor.c_str(), c->options.c_str());
+                send_media_playlist_action(*c);
+              }
+            }, LV_EVENT_CLICKED, ctx);
+          } else if (media_playback_button_mode(mode)) {
             ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
             ctx->sensor = mode;
             lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-              if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
               ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
               if (c) send_media_playback_action(c->entity, media_card_mode(c->sensor));
             }, media_fast_press_mode(mode) ? LV_EVENT_PRESSED : LV_EVENT_CLICKED, ctx);
@@ -2069,8 +2189,24 @@ inline void grid_phase2(
               subscribe_media_state(sub_slot.btn,
                 media_play_pause_show_state(sb_cfg) ? sub_slot.text_lbl : nullptr,
                 sb_cfg.entity);
-            else
-              subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
+          } else if (mode == "control_modal") {
+            MediaControlCtx *ctx = grid_delete_media_control_with_owner(sb_btn, create_media_control_context(
+              sub_slot, sb_cfg,
+              has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              palette.has_off ? palette.off_val : SECONDARY_GREY,
+              palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
+              display_media_control_title_font(display),
+              display_media_control_artist_font(
+                display, display_volume_label_font(
+                  display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN))),
+              display_volume_number_font(display),
+              display_icon_font(display),
+              display_volume_width_percent(display)));
+            subscribe_media_control_state(ctx);
+            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+              MediaControlCtx *ctx = (MediaControlCtx *)lv_event_get_user_data(e);
+              if (ctx) media_control_open_modal(ctx);
+            }, LV_EVENT_CLICKED, ctx);
           } else if (mode == "volume") {
             MediaVolumeCtx *ctx = create_media_volume_context(
               sub_slot.btn, sub_slot.text_lbl, sb_cfg,
@@ -2116,7 +2252,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "climate") {
+      if (climate_card_type(sb_cfg.type)) {
         if (!sb_cfg.entity.empty()) {
           ClimateControlCtx *ctx = create_climate_control_context(
             sub_slot.btn, sub_slot.icon_lbl, sub_slot.text_lbl, sb_cfg,
@@ -2177,8 +2313,6 @@ inline void grid_phase2(
           subscribe_light_control_state(ctx);
           add_parent_indicator(sb_cfg.entity);
           lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            lv_obj_t *target = static_cast<lv_obj_t *>(lv_event_get_target(e));
-            if (target && lv_obj_has_state(target, LV_STATE_DISABLED)) return;
             LightControlCtx *ctx = (LightControlCtx *)lv_event_get_user_data(e);
             if (ctx) light_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
@@ -2321,7 +2455,6 @@ inline void grid_phase2(
 
     lv_obj_set_user_data(slots[si].btn, (void *)sub_scr);
   }
-  if (!ha_api_state_connected()) apply_registered_ha_control_availability(false);
   screen_lock_apply();
   refresh_weather_forecast_cards();
   grid_log_memory("end");

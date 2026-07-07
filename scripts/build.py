@@ -22,7 +22,12 @@ import urllib.request
 from pathlib import Path
 
 from device_profiles import load_device_profiles, public_device_capabilities, web_config
-from product_schema import ProductSchemaError, assert_card_contract_valid
+from check_timezones import AUTO_TIMEZONE_OPTION, load_timezone_select_options, timezone_option_id
+from product_schema import (
+    ProductSchemaError,
+    assert_card_contract_valid,
+    assert_entity_names_valid as assert_product_entity_names_valid,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 MDI_VERSION = "7.4.47"
@@ -112,8 +117,13 @@ def validate_entity_names(data):
         if isinstance(value, str):
             names_by_domain.setdefault(domain, {}).setdefault(value, []).append(key)
         object_ids = entry.get("objectIds", [])
-        if object_ids and (not isinstance(object_ids, list) or not all(isinstance(v, str) and v for v in object_ids)):
+        if object_ids and (
+            not isinstance(object_ids, list)
+            or not all(isinstance(v, str) and v for v in object_ids)
+        ):
             errors.append(f"{key}: objectIds must be a list of strings")
+        elif isinstance(object_ids, list) and len(object_ids) != len(set(object_ids)):
+            errors.append(f"{key}: objectIds must not contain duplicate values")
         groups = entry.get("groups", [])
         if groups and (not isinstance(groups, list) or not all(isinstance(v, str) and v for v in groups)):
             errors.append(f"{key}: groups must be a list of strings")
@@ -126,13 +136,10 @@ def validate_entity_names(data):
 
 
 def assert_entity_names_valid(data):
-    errors = validate_entity_names(data)
-    if not errors:
-        return
-    print("Entity name registry is invalid:")
-    for error in errors:
-        print(f"  {error}")
-    raise BuildError("Entity name validation failed.")
+    try:
+        assert_product_entity_names_valid(data)
+    except ProductSchemaError as exc:
+        raise BuildError(str(exc)) from exc
 
 
 def yaml_quote(value):
@@ -248,6 +255,7 @@ def unescape_compact_string(value):
 
 def load_compact_strings(path):
     strings = {}
+    key_lines = {}
     for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line or line.startswith("#"):
             continue
@@ -257,6 +265,12 @@ def load_compact_strings(path):
         key = key.strip()
         if not key:
             raise BuildError(f"Empty strings key in {path.relative_to(ROOT)}:{line_no}")
+        if key in key_lines:
+            raise BuildError(
+                f"Duplicate strings key {key!r} in {path.relative_to(ROOT)}:"
+                f"{line_no} (first defined on line {key_lines[key]})"
+            )
+        key_lines[key] = line_no
         strings[key] = unescape_compact_string(value)
     return strings
 
@@ -617,6 +631,8 @@ def gen_card_contract_h(data):
         cpp_string_array("CARD_CONTRACT_COVER_CONTROL_TABS", contract_card_option_values(cards, "cover", "cover_tabs")),
         cpp_string_array("CARD_CONTRACT_GARAGE_MODES", contract_card_option_values(cards, "garage", "garage_mode")),
         cpp_string_array("CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES", contract_card_option_values(cards, "garage", "label_display")),
+        cpp_string_array("CARD_CONTRACT_GATE_MODES", contract_card_option_values(cards, "gate", "gate_mode")),
+        cpp_string_array("CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES", contract_card_option_values(cards, "gate", "label_display")),
         cpp_string_array("CARD_CONTRACT_INTERNAL_MODES", contract_card_option_values(cards, "internal", "internal_mode")),
         cpp_string_array("CARD_CONTRACT_LOCK_MODES", contract_card_option_values(cards, "lock", "lock_mode")),
         cpp_string_array("CARD_CONTRACT_MEDIA_MODES", contract_card_option_values(cards, "media", "media_mode")),
@@ -640,6 +656,7 @@ def gen_card_contract_h(data):
             for name, value in option_names.items()
         ),
         f'constexpr const char *CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT = {json.dumps(contract_card_option_default(cards, "garage", "label_display"))};\n',
+        f'constexpr const char *CARD_CONTRACT_GATE_LABEL_DISPLAY_DEFAULT = {json.dumps(contract_card_option_default(cards, "gate", "label_display"))};\n',
         f'constexpr const char *CARD_CONTRACT_COVER_CONTROL_TABS_DEFAULT = {json.dumps(contract_card_option_default(cards, "cover", "cover_tabs"))};\n',
         f'constexpr const char *CARD_CONTRACT_MEDIA_DEFAULT_MODE = {json.dumps(media_behavior["defaultMode"])};\n',
         f'constexpr int CARD_CONTRACT_MEDIA_VOLUME_MAX_MIN = {contract_card_option_int(cards, "media", "volume_max", "min")};\n',
@@ -689,6 +706,16 @@ def gen_card_contract_h(data):
         "inline bool card_contract_garage_label_display_valid(const std::string &mode) {\n",
         "  return card_contract_string_in(mode, CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES,\n",
         "    sizeof(CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_gate_mode_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_GATE_MODES,\n",
+        "    sizeof(CARD_CONTRACT_GATE_MODES) / sizeof(CARD_CONTRACT_GATE_MODES[0]));\n",
+        "}\n",
+        "\n",
+        "inline bool card_contract_gate_label_display_valid(const std::string &mode) {\n",
+        "  return card_contract_string_in(mode, CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES,\n",
+        "    sizeof(CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES[0]));\n",
         "}\n",
         "\n",
         "inline bool card_contract_internal_mode_valid(const std::string &mode) {\n",
@@ -940,6 +967,8 @@ def card_doc_type_name(card_type):
 def summarize_card_options(card):
     options = []
     for option in card.get("options", []):
+        if option.get("docsHidden"):
+            continue
         label = option.get("label") or option["name"]
         values = option.get("values") or []
         if values:
@@ -1385,6 +1414,7 @@ WEB_MODULE_ORDER_PATH = ROOT / "scripts" / "web_modules.json"
 MODEL_ENTRY = ROOT / "src" / "webserver" / "model" / "index.ts"
 MODEL_GENERATED_JS = MODULES_DIR / "model_generated.js"
 TIME_YAML = ROOT / "common" / "addon" / "time.yaml"
+WEB_MODULE_REQUIRES_RE = re.compile(r"^\s*//\s*@web-module-requires:\s*(.*?)\s*$", re.MULTILINE)
 
 CONFIG_START = "__DEVICE_CONFIG_START__"
 CONFIG_END = "__DEVICE_CONFIG_END__"
@@ -1397,7 +1427,56 @@ def load_web_module_order():
     order = load_json(WEB_MODULE_ORDER_PATH)
     if not isinstance(order, list) or not all(isinstance(name, str) and name for name in order):
         raise BuildError(f"Invalid web module order: {WEB_MODULE_ORDER_PATH.relative_to(ROOT)}")
+    actual = sorted(path.stem for path in MODULES_DIR.glob("*.js"))
+    duplicates = sorted({name for name in order if order.count(name) > 1})
+    missing = sorted(set(actual) - set(order))
+    unknown = sorted(set(order) - set(actual))
+    errors = []
+    if duplicates:
+        errors.append("duplicate entries: " + ", ".join(duplicates))
+    if missing:
+        errors.append("missing modules: " + ", ".join(missing))
+    if unknown:
+        errors.append("unknown modules: " + ", ".join(unknown))
+    if errors:
+        raise BuildError(
+            f"{WEB_MODULE_ORDER_PATH.relative_to(ROOT)} does not match "
+            f"{MODULES_DIR.relative_to(ROOT)}: " + "; ".join(errors)
+        )
+    validate_web_module_dependencies(order)
     return order
+
+
+def web_module_requires(path):
+    text = path.read_text()
+    requires = []
+    for match in WEB_MODULE_REQUIRES_RE.finditer(text):
+        raw = match.group(1).strip()
+        if not raw or raw.lower() == "none":
+            continue
+        for name in raw.split(","):
+            name = name.strip()
+            if name:
+                requires.append(name)
+    return requires
+
+
+def validate_web_module_dependencies(order):
+    order_set = set(order)
+    seen = set()
+    errors = []
+    for name in order:
+        path = MODULES_DIR / f"{name}.js"
+        for dependency in web_module_requires(path):
+            if dependency == name:
+                errors.append(f"{name} cannot require itself")
+            elif dependency not in order_set:
+                errors.append(f"{name} requires unknown module {dependency}")
+            elif dependency not in seen:
+                errors.append(f"{name} requires {dependency}, but it is listed later in web_modules.json")
+        seen.add(name)
+    if errors:
+        raise BuildError("Invalid web module dependency order:\n  " + "\n  ".join(errors))
 
 
 def build_config_block(slug, cfg):
@@ -1423,11 +1502,8 @@ def build_web_devices():
 
 def load_timezone_options():
     options = []
-    for match in re.finditer(r'^\s+- "([^"]+)"$', TIME_YAML.read_text(), re.M):
-        option = match.group(1)
-        if option == "Auto (Home Assistant)" or (
-            " (GMT" in option and ("/" in option or option.startswith("UTC "))
-        ):
+    for _line_no, option in load_timezone_select_options():
+        if option == AUTO_TIMEZONE_OPTION or timezone_option_id(option) is not None:
             options.append(option)
     if not options:
         raise BuildError(f"No timezone options found in {TIME_YAML.relative_to(ROOT)}")

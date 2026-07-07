@@ -12,10 +12,16 @@ on:
       - '.github/workflows/pr-testing-guidance.yml'
       - '.github/workflows/release.yml'
       - '.github/pull_request_template.md'
+      - 'AGENTS.md'
+      - 'DEVELOPERS.md'
+      - 'README.md'
+      - 'compatibility/**'
       - 'common/**'
       - 'components/**'
+      - 'dev-docs/**'
       - 'devices/**'
       - 'builds/**'
+      - 'product/**'
       - 'src/**'
       - 'scripts/**'
       - 'docs/**'
@@ -122,7 +128,7 @@ jobs:
     if: >-
       always() &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -155,7 +161,7 @@ jobs:
       always() &&
       needs.validate.result == 'success' &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Prepare self-hosted workspace
         run: |

@@ -111,6 +111,8 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Žádné";
   if (std::strcmp(text, "No options") == 0) return "Žádné možnosti";
   if (std::strcmp(text, "No presets") == 0) return "Žádné předvolby";
+  if (std::strcmp(text, "No sources") == 0) return "Žádné zdroje";
+  if (std::strcmp(text, "Source") == 0) return "Zdroj";
   if (std::strcmp(text, "Not available") == 0) return "Není dostupné";
   if (std::strcmp(text, "Off") == 0) return "Vypnuto";
   if (std::strcmp(text, "On") == 0) return "Zapnuto";
@@ -294,6 +296,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Lav";
   if (std::strcmp(text, "Low target") == 0) return "Lavt mål";
   if (std::strcmp(text, "Media") == 0) return "Medie";
+  if (std::strcmp(text, "Playlist") == 0) return "Afspilningsliste";
   if (std::strcmp(text, "Mode") == 0) return "Tilstand";
   if (std::strcmp(text, "Monthly") == 0) return "Månedligt";
   if (std::strcmp(text, "more") == 0) return "mere";
@@ -316,6 +319,8 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Ingen muligheder";
   if (std::strcmp(text, "No presets") == 0) return "Ingen forvalg";
+  if (std::strcmp(text, "No sources") == 0) return "Ingen kilder";
+  if (std::strcmp(text, "Source") == 0) return "Kilde";
   if (std::strcmp(text, "Not available") == 0) return "Ikke tilgængelig";
   if (std::strcmp(text, "Off") == 0) return "Slukket";
   if (std::strcmp(text, "On") == 0) return "Tændt";
@@ -496,6 +501,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Niedrig";
   if (std::strcmp(text, "Low target") == 0) return "Niedriger Zielwert";
   if (std::strcmp(text, "Media") == 0) return "Medien";
+  if (std::strcmp(text, "Playlist") == 0) return "Wiedergabeliste";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
   if (std::strcmp(text, "Monthly") == 0) return "Monatlich";
   if (std::strcmp(text, "more") == 0) return "weitere";
@@ -514,6 +520,8 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Keine";
   if (std::strcmp(text, "No options") == 0) return "Keine Optionen";
   if (std::strcmp(text, "No presets") == 0) return "Keine Voreinstellungen";
+  if (std::strcmp(text, "No sources") == 0) return "Keine Quellen";
+  if (std::strcmp(text, "Source") == 0) return "Quelle";
   if (std::strcmp(text, "Not available") == 0) return "Nicht verfügbar";
   if (std::strcmp(text, "Off") == 0) return "Aus";
   if (std::strcmp(text, "On") == 0) return "Ein";
@@ -692,6 +700,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Bajo";
   if (std::strcmp(text, "Low target") == 0) return "Objetivo bajo";
   if (std::strcmp(text, "Media") == 0) return "Multimedia";
+  if (std::strcmp(text, "Playlist") == 0) return "Lista de reproducción";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensual";
   if (std::strcmp(text, "more") == 0) return "más";
@@ -713,6 +722,8 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ninguno";
   if (std::strcmp(text, "No options") == 0) return "Sin opciones";
   if (std::strcmp(text, "No presets") == 0) return "Sin preajustes";
+  if (std::strcmp(text, "No sources") == 0) return "Sin fuentes";
+  if (std::strcmp(text, "Source") == 0) return "Fuente";
   if (std::strcmp(text, "Not available") == 0) return "No disponible";
   if (std::strcmp(text, "Off") == 0) return "Apagado";
   if (std::strcmp(text, "On") == 0) return "Encendido";
@@ -899,6 +910,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Ruohonleikkuri";
   if (std::strcmp(text, "Low") == 0) return "Matala";
   if (std::strcmp(text, "Low target") == 0) return "Alaraja";
+  if (std::strcmp(text, "Playlist") == 0) return "Soittolista";
   if (std::strcmp(text, "Medium") == 0) return "Keskitaso";
   if (std::strcmp(text, "Mode") == 0) return "Tila";
   if (std::strcmp(text, "Monthly") == 0) return "Kuukausittain";
@@ -923,6 +935,8 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ei mitään";
   if (std::strcmp(text, "No options") == 0) return "Ei vaihtoehtoja";
   if (std::strcmp(text, "No presets") == 0) return "Ei esiasetuksia";
+  if (std::strcmp(text, "No sources") == 0) return "Ei lähteitä";
+  if (std::strcmp(text, "Source") == 0) return "Lähde";
   if (std::strcmp(text, "Not available") == 0) return "Ei saatavilla";
   if (std::strcmp(text, "Off") == 0) return "Pois";
   if (std::strcmp(text, "On") == 0) return "Päällä";
@@ -1108,6 +1122,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Bas";
   if (std::strcmp(text, "Low target") == 0) return "Cible basse";
   if (std::strcmp(text, "Media") == 0) return "Média";
+  if (std::strcmp(text, "Playlist") == 0) return "Liste de lecture";
   if (std::strcmp(text, "Monthly") == 0) return "Mensuel";
   if (std::strcmp(text, "more") == 0) return "de plus";
   if (std::strcmp(text, "More items") == 0) return "Plus d’éléments";
@@ -1129,6 +1144,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Aucun";
   if (std::strcmp(text, "No options") == 0) return "Aucune option";
   if (std::strcmp(text, "No presets") == 0) return "Aucun préréglage";
+  if (std::strcmp(text, "No sources") == 0) return "Aucune source";
   if (std::strcmp(text, "Not available") == 0) return "Non disponible";
   if (std::strcmp(text, "Off") == 0) return "Éteint";
   if (std::strcmp(text, "On") == 0) return "Allumé";
@@ -1312,6 +1328,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Alacsony";
   if (std::strcmp(text, "Low target") == 0) return "Alacsony célérték";
   if (std::strcmp(text, "Media") == 0) return "Média";
+  if (std::strcmp(text, "Playlist") == 0) return "Lejátszási lista";
   if (std::strcmp(text, "Medium") == 0) return "Közepes";
   if (std::strcmp(text, "Mode") == 0) return "Mód";
   if (std::strcmp(text, "Monthly") == 0) return "Havonta";
@@ -1334,6 +1351,8 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Nincs";
   if (std::strcmp(text, "No options") == 0) return "Nincsenek opciók";
   if (std::strcmp(text, "No presets") == 0) return "Nincsenek előbeállítások";
+  if (std::strcmp(text, "No sources") == 0) return "Nincsenek források";
+  if (std::strcmp(text, "Source") == 0) return "Forrás";
   if (std::strcmp(text, "Not available") == 0) return "Nem érhető el";
   if (std::strcmp(text, "Off") == 0) return "Ki";
   if (std::strcmp(text, "On") == 0) return "Be";
@@ -1545,6 +1564,8 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Nessuno";
   if (std::strcmp(text, "No options") == 0) return "Nessuna opzione";
   if (std::strcmp(text, "No presets") == 0) return "Nessun preset";
+  if (std::strcmp(text, "No sources") == 0) return "Nessuna sorgente";
+  if (std::strcmp(text, "Source") == 0) return "Fonte";
   if (std::strcmp(text, "Not available") == 0) return "Non disponibile";
   if (std::strcmp(text, "Off") == 0) return "Spento";
   if (std::strcmp(text, "On") == 0) return "Acceso";
@@ -1728,6 +1749,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Gressklipper";
   if (std::strcmp(text, "Low") == 0) return "Lav";
   if (std::strcmp(text, "Low target") == 0) return "Lavt mål";
+  if (std::strcmp(text, "Playlist") == 0) return "Spilleliste";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
   if (std::strcmp(text, "Monthly") == 0) return "Månedlig";
   if (std::strcmp(text, "more") == 0) return "flere";
@@ -1750,6 +1772,8 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Ingen alternativer";
   if (std::strcmp(text, "No presets") == 0) return "Ingen forhåndsvalg";
+  if (std::strcmp(text, "No sources") == 0) return "Ingen kilder";
+  if (std::strcmp(text, "Source") == 0) return "Kilde";
   if (std::strcmp(text, "Not available") == 0) return "Ikke tilgjengelig";
   if (std::strcmp(text, "Off") == 0) return "Av";
   if (std::strcmp(text, "On") == 0) return "På";
@@ -1932,6 +1956,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Grasmaaier";
   if (std::strcmp(text, "Low") == 0) return "Laag";
   if (std::strcmp(text, "Low target") == 0) return "Laag doel";
+  if (std::strcmp(text, "Playlist") == 0) return "Afspeellijst";
   if (std::strcmp(text, "Mode") == 0) return "Modus";
   if (std::strcmp(text, "Monthly") == 0) return "Maandelijks";
   if (std::strcmp(text, "more") == 0) return "meer";
@@ -1954,6 +1979,8 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Geen";
   if (std::strcmp(text, "No options") == 0) return "Geen opties";
   if (std::strcmp(text, "No presets") == 0) return "Geen voorinstellingen";
+  if (std::strcmp(text, "No sources") == 0) return "Geen bronnen";
+  if (std::strcmp(text, "Source") == 0) return "Bron";
   if (std::strcmp(text, "Not available") == 0) return "Niet beschikbaar";
   if (std::strcmp(text, "Off") == 0) return "Uit";
   if (std::strcmp(text, "On") == 0) return "Aan";
@@ -2133,6 +2160,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Kosiarka";
   if (std::strcmp(text, "Low") == 0) return "Niski";
   if (std::strcmp(text, "Low target") == 0) return "Niski cel";
+  if (std::strcmp(text, "Playlist") == 0) return "Playlista";
   if (std::strcmp(text, "Mode") == 0) return "Tryb";
   if (std::strcmp(text, "Monthly") == 0) return "Co miesiąc";
   if (std::strcmp(text, "more") == 0) return "więcej";
@@ -2155,6 +2183,8 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Brak";
   if (std::strcmp(text, "No options") == 0) return "Brak opcji";
   if (std::strcmp(text, "No presets") == 0) return "Brak presetów";
+  if (std::strcmp(text, "No sources") == 0) return "Brak źródeł";
+  if (std::strcmp(text, "Source") == 0) return "Źródło";
   if (std::strcmp(text, "Not available") == 0) return "Niedostępne";
   if (std::strcmp(text, "Off") == 0) return "Wyłączone";
   if (std::strcmp(text, "On") == 0) return "Włączone";
@@ -2336,6 +2366,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Baixo";
   if (std::strcmp(text, "Low target") == 0) return "Alvo baixo";
   if (std::strcmp(text, "Media") == 0) return "Mídia";
+  if (std::strcmp(text, "Playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensal";
   if (std::strcmp(text, "more") == 0) return "mais";
@@ -2358,6 +2389,8 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Nenhum";
   if (std::strcmp(text, "No options") == 0) return "Sem opções";
   if (std::strcmp(text, "No presets") == 0) return "Sem predefinições";
+  if (std::strcmp(text, "No sources") == 0) return "Sem fontes";
+  if (std::strcmp(text, "Source") == 0) return "Fonte";
   if (std::strcmp(text, "Not available") == 0) return "Não disponível";
   if (std::strcmp(text, "Off") == 0) return "Desligado";
   if (std::strcmp(text, "On") == 0) return "Ligado";
@@ -2541,6 +2574,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Baixo";
   if (std::strcmp(text, "Low target") == 0) return "Alvo baixo";
   if (std::strcmp(text, "Media") == 0) return "Multimédia";
+  if (std::strcmp(text, "Playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(text, "Mode") == 0) return "Modo";
   if (std::strcmp(text, "Monthly") == 0) return "Mensal";
   if (std::strcmp(text, "more") == 0) return "mais";
@@ -2563,6 +2597,8 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Nenhum";
   if (std::strcmp(text, "No options") == 0) return "Sem opções";
   if (std::strcmp(text, "No presets") == 0) return "Sem predefinições";
+  if (std::strcmp(text, "No sources") == 0) return "Sem fontes";
+  if (std::strcmp(text, "Source") == 0) return "Fonte";
   if (std::strcmp(text, "Not available") == 0) return "Não disponível";
   if (std::strcmp(text, "Off") == 0) return "Desligado";
   if (std::strcmp(text, "On") == 0) return "Ligado";
@@ -2748,6 +2784,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Mașină de tuns iarba";
   if (std::strcmp(text, "Low") == 0) return "Scăzut";
   if (std::strcmp(text, "Low target") == 0) return "Țintă scăzută";
+  if (std::strcmp(text, "Playlist") == 0) return "Listă de redare";
   if (std::strcmp(text, "Medium") == 0) return "Mediu";
   if (std::strcmp(text, "Mode") == 0) return "Mod";
   if (std::strcmp(text, "Monthly") == 0) return "Lunar";
@@ -2771,6 +2808,8 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Niciunul";
   if (std::strcmp(text, "No options") == 0) return "Fără opțiuni";
   if (std::strcmp(text, "No presets") == 0) return "Fără presetări";
+  if (std::strcmp(text, "No sources") == 0) return "Fără surse";
+  if (std::strcmp(text, "Source") == 0) return "Sursă";
   if (std::strcmp(text, "Not available") == 0) return "Indisponibil";
   if (std::strcmp(text, "Off") == 0) return "Oprit";
   if (std::strcmp(text, "On") == 0) return "Pornit";
@@ -2959,6 +2998,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Nízke";
   if (std::strcmp(text, "Low target") == 0) return "Nízky cieľ";
   if (std::strcmp(text, "Media") == 0) return "Médiá";
+  if (std::strcmp(text, "Playlist") == 0) return "Zoznam skladieb";
   if (std::strcmp(text, "Mode") == 0) return "Režim";
   if (std::strcmp(text, "Monthly") == 0) return "Mesačne";
   if (std::strcmp(text, "more") == 0) return "ďalšie";
@@ -2981,6 +3021,8 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Žiadne";
   if (std::strcmp(text, "No options") == 0) return "Žiadne možnosti";
   if (std::strcmp(text, "No presets") == 0) return "Žiadne predvoľby";
+  if (std::strcmp(text, "No sources") == 0) return "Žiadne zdroje";
+  if (std::strcmp(text, "Source") == 0) return "Zdroj";
   if (std::strcmp(text, "Not available") == 0) return "Nie je dostupné";
   if (std::strcmp(text, "Off") == 0) return "Vypnuté";
   if (std::strcmp(text, "On") == 0) return "Zapnuté";
@@ -3168,6 +3210,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Nizko";
   if (std::strcmp(text, "Low target") == 0) return "Nizka ciljna vrednost";
   if (std::strcmp(text, "Media") == 0) return "Predstavnost";
+  if (std::strcmp(text, "Playlist") == 0) return "Seznam predvajanja";
   if (std::strcmp(text, "Medium") == 0) return "Srednje";
   if (std::strcmp(text, "Mode") == 0) return "Način";
   if (std::strcmp(text, "Monthly") == 0) return "Mesečno";
@@ -3188,6 +3231,8 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Brez";
   if (std::strcmp(text, "No options") == 0) return "Ni možnosti";
   if (std::strcmp(text, "No presets") == 0) return "Ni prednastavitev";
+  if (std::strcmp(text, "No sources") == 0) return "Ni virov";
+  if (std::strcmp(text, "Source") == 0) return "Vir";
   if (std::strcmp(text, "Not available") == 0) return "Ni na voljo";
   if (std::strcmp(text, "Off") == 0) return "Izklop";
   if (std::strcmp(text, "On") == 0) return "Vklop";
@@ -3375,6 +3420,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Lawn Mower") == 0) return "Gräsklippare";
   if (std::strcmp(text, "Low") == 0) return "Låg";
   if (std::strcmp(text, "Low target") == 0) return "Lågt mål";
+  if (std::strcmp(text, "Playlist") == 0) return "Spellista";
   if (std::strcmp(text, "Mode") == 0) return "Läge";
   if (std::strcmp(text, "Monthly") == 0) return "Månadsvis";
   if (std::strcmp(text, "more") == 0) return "fler";
@@ -3397,6 +3443,8 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Ingen";
   if (std::strcmp(text, "No options") == 0) return "Inga alternativ";
   if (std::strcmp(text, "No presets") == 0) return "Inga förval";
+  if (std::strcmp(text, "No sources") == 0) return "Inga källor";
+  if (std::strcmp(text, "Source") == 0) return "Källa";
   if (std::strcmp(text, "Not available") == 0) return "Inte tillgänglig";
   if (std::strcmp(text, "Off") == 0) return "Av";
   if (std::strcmp(text, "On") == 0) return "På";
@@ -3579,6 +3627,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Düşük";
   if (std::strcmp(text, "Low target") == 0) return "Düşük hedef";
   if (std::strcmp(text, "Media") == 0) return "Medya";
+  if (std::strcmp(text, "Playlist") == 0) return "Çalma listesi";
   if (std::strcmp(text, "Medium") == 0) return "Orta";
   if (std::strcmp(text, "Mode") == 0) return "Mod";
   if (std::strcmp(text, "Monthly") == 0) return "Aylık";
@@ -3603,6 +3652,8 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Yok";
   if (std::strcmp(text, "No options") == 0) return "Seçenek yok";
   if (std::strcmp(text, "No presets") == 0) return "Ön ayar yok";
+  if (std::strcmp(text, "No sources") == 0) return "Kaynak yok";
+  if (std::strcmp(text, "Source") == 0) return "Kaynak";
   if (std::strcmp(text, "Not available") == 0) return "Mevcut değil";
   if (std::strcmp(text, "Off") == 0) return "Kapalı";
   if (std::strcmp(text, "On") == 0) return "Açık";
@@ -3795,6 +3846,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Low") == 0) return "Низько";
   if (std::strcmp(text, "Low target") == 0) return "Низька ціль";
   if (std::strcmp(text, "Media") == 0) return "Медіа";
+  if (std::strcmp(text, "Playlist") == 0) return "Список відтворення";
   if (std::strcmp(text, "Medium") == 0) return "Середньо";
   if (std::strcmp(text, "Mode") == 0) return "Режим";
   if (std::strcmp(text, "Monthly") == 0) return "Щомісяця";
@@ -3819,6 +3871,8 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "None") == 0) return "Немає";
   if (std::strcmp(text, "No options") == 0) return "Немає параметрів";
   if (std::strcmp(text, "No presets") == 0) return "Немає пресетів";
+  if (std::strcmp(text, "No sources") == 0) return "Немає джерел";
+  if (std::strcmp(text, "Source") == 0) return "Джерело";
   if (std::strcmp(text, "Not available") == 0) return "Недоступно";
   if (std::strcmp(text, "Off") == 0) return "Вимкнено";
   if (std::strcmp(text, "On") == 0) return "Увімкнено";
@@ -4014,6 +4068,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Low";
   if (std::strcmp(key, "low_target") == 0) return "Low target";
   if (std::strcmp(key, "media") == 0) return "Media";
+  if (std::strcmp(key, "playlist") == 0) return "Playlist";
   if (std::strcmp(key, "medium") == 0) return "Medium";
   if (std::strcmp(key, "mode") == 0) return "Mode";
   if (std::strcmp(key, "monthly") == 0) return "Monthly";
@@ -4039,6 +4094,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "none") == 0) return "None";
   if (std::strcmp(key, "no_options") == 0) return "No options";
   if (std::strcmp(key, "no_presets") == 0) return "No presets";
+  if (std::strcmp(key, "no_sources") == 0) return "No sources";
+  if (std::strcmp(key, "source") == 0) return "Source";
   if (std::strcmp(key, "not_available") == 0) return "Not available";
   if (std::strcmp(key, "off") == 0) return "Off";
   if (std::strcmp(key, "on") == 0) return "On";
@@ -4110,6 +4167,8 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "version_unknown") == 0) return "Version unknown";
   if (std::strcmp(key, "volume") == 0) return "Volume";
   if (std::strcmp(key, "waiting_for_home_assistant") == 0) return "Waiting for Home Assistant";
+  if (std::strcmp(key, "home_assistant_connection_lost") == 0) return "Trying to connect to Home Assistant";
+  if (std::strcmp(key, "check_the_status_of_your_home_assistant_server") == 0) return "If this persists, check your server for issues";
   if (std::strcmp(key, "weather") == 0) return "Weather";
   if (std::strcmp(key, "weekly") == 0) return "Weekly";
   if (std::strcmp(key, "window") == 0) return "Window";
@@ -4252,6 +4311,8 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Žádné";
   if (std::strcmp(key, "no_options") == 0) return "Žádné možnosti";
   if (std::strcmp(key, "no_presets") == 0) return "Žádné předvolby";
+  if (std::strcmp(key, "no_sources") == 0) return "Žádné zdroje";
+  if (std::strcmp(key, "source") == 0) return "Zdroj";
   if (std::strcmp(key, "not_available") == 0) return "Není dostupné";
   if (std::strcmp(key, "off") == 0) return "Vypnuto";
   if (std::strcmp(key, "on") == 0) return "Zapnuto";
@@ -4436,6 +4497,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Lav";
   if (std::strcmp(key, "low_target") == 0) return "Lavt mål";
   if (std::strcmp(key, "media") == 0) return "Medie";
+  if (std::strcmp(key, "playlist") == 0) return "Afspilningsliste";
   if (std::strcmp(key, "mode") == 0) return "Tilstand";
   if (std::strcmp(key, "monthly") == 0) return "Månedligt";
   if (std::strcmp(key, "more") == 0) return "mere";
@@ -4458,6 +4520,8 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ingen";
   if (std::strcmp(key, "no_options") == 0) return "Ingen muligheder";
   if (std::strcmp(key, "no_presets") == 0) return "Ingen forvalg";
+  if (std::strcmp(key, "no_sources") == 0) return "Ingen kilder";
+  if (std::strcmp(key, "source") == 0) return "Kilde";
   if (std::strcmp(key, "not_available") == 0) return "Ikke tilgængelig";
   if (std::strcmp(key, "off") == 0) return "Slukket";
   if (std::strcmp(key, "on") == 0) return "Tændt";
@@ -4639,6 +4703,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Niedrig";
   if (std::strcmp(key, "low_target") == 0) return "Niedriger Zielwert";
   if (std::strcmp(key, "media") == 0) return "Medien";
+  if (std::strcmp(key, "playlist") == 0) return "Wiedergabeliste";
   if (std::strcmp(key, "mode") == 0) return "Modus";
   if (std::strcmp(key, "monthly") == 0) return "Monatlich";
   if (std::strcmp(key, "more") == 0) return "weitere";
@@ -4657,6 +4722,8 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Keine";
   if (std::strcmp(key, "no_options") == 0) return "Keine Optionen";
   if (std::strcmp(key, "no_presets") == 0) return "Keine Voreinstellungen";
+  if (std::strcmp(key, "no_sources") == 0) return "Keine Quellen";
+  if (std::strcmp(key, "source") == 0) return "Quelle";
   if (std::strcmp(key, "not_available") == 0) return "Nicht verfügbar";
   if (std::strcmp(key, "off") == 0) return "Aus";
   if (std::strcmp(key, "on") == 0) return "Ein";
@@ -4836,6 +4903,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Bajo";
   if (std::strcmp(key, "low_target") == 0) return "Objetivo bajo";
   if (std::strcmp(key, "media") == 0) return "Multimedia";
+  if (std::strcmp(key, "playlist") == 0) return "Lista de reproducción";
   if (std::strcmp(key, "mode") == 0) return "Modo";
   if (std::strcmp(key, "monthly") == 0) return "Mensual";
   if (std::strcmp(key, "more") == 0) return "más";
@@ -4857,6 +4925,8 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ninguno";
   if (std::strcmp(key, "no_options") == 0) return "Sin opciones";
   if (std::strcmp(key, "no_presets") == 0) return "Sin preajustes";
+  if (std::strcmp(key, "no_sources") == 0) return "Sin fuentes";
+  if (std::strcmp(key, "source") == 0) return "Fuente";
   if (std::strcmp(key, "not_available") == 0) return "No disponible";
   if (std::strcmp(key, "off") == 0) return "Apagado";
   if (std::strcmp(key, "on") == 0) return "Encendido";
@@ -5044,6 +5114,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Ruohonleikkuri";
   if (std::strcmp(key, "low") == 0) return "Matala";
   if (std::strcmp(key, "low_target") == 0) return "Alaraja";
+  if (std::strcmp(key, "playlist") == 0) return "Soittolista";
   if (std::strcmp(key, "medium") == 0) return "Keskitaso";
   if (std::strcmp(key, "mode") == 0) return "Tila";
   if (std::strcmp(key, "monthly") == 0) return "Kuukausittain";
@@ -5068,6 +5139,8 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ei mitään";
   if (std::strcmp(key, "no_options") == 0) return "Ei vaihtoehtoja";
   if (std::strcmp(key, "no_presets") == 0) return "Ei esiasetuksia";
+  if (std::strcmp(key, "no_sources") == 0) return "Ei lähteitä";
+  if (std::strcmp(key, "source") == 0) return "Lähde";
   if (std::strcmp(key, "not_available") == 0) return "Ei saatavilla";
   if (std::strcmp(key, "off") == 0) return "Pois";
   if (std::strcmp(key, "on") == 0) return "Päällä";
@@ -5254,6 +5327,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Bas";
   if (std::strcmp(key, "low_target") == 0) return "Cible basse";
   if (std::strcmp(key, "media") == 0) return "Média";
+  if (std::strcmp(key, "playlist") == 0) return "Liste de lecture";
   if (std::strcmp(key, "monthly") == 0) return "Mensuel";
   if (std::strcmp(key, "more") == 0) return "de plus";
   if (std::strcmp(key, "more_items") == 0) return "Plus d’éléments";
@@ -5275,6 +5349,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Aucun";
   if (std::strcmp(key, "no_options") == 0) return "Aucune option";
   if (std::strcmp(key, "no_presets") == 0) return "Aucun préréglage";
+  if (std::strcmp(key, "no_sources") == 0) return "Aucune source";
   if (std::strcmp(key, "not_available") == 0) return "Non disponible";
   if (std::strcmp(key, "off") == 0) return "Éteint";
   if (std::strcmp(key, "on") == 0) return "Allumé";
@@ -5459,6 +5534,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Alacsony";
   if (std::strcmp(key, "low_target") == 0) return "Alacsony célérték";
   if (std::strcmp(key, "media") == 0) return "Média";
+  if (std::strcmp(key, "playlist") == 0) return "Lejátszási lista";
   if (std::strcmp(key, "medium") == 0) return "Közepes";
   if (std::strcmp(key, "mode") == 0) return "Mód";
   if (std::strcmp(key, "monthly") == 0) return "Havonta";
@@ -5481,6 +5557,8 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Nincs";
   if (std::strcmp(key, "no_options") == 0) return "Nincsenek opciók";
   if (std::strcmp(key, "no_presets") == 0) return "Nincsenek előbeállítások";
+  if (std::strcmp(key, "no_sources") == 0) return "Nincsenek források";
+  if (std::strcmp(key, "source") == 0) return "Forrás";
   if (std::strcmp(key, "not_available") == 0) return "Nem érhető el";
   if (std::strcmp(key, "off") == 0) return "Ki";
   if (std::strcmp(key, "on") == 0) return "Be";
@@ -5693,6 +5771,8 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Nessuno";
   if (std::strcmp(key, "no_options") == 0) return "Nessuna opzione";
   if (std::strcmp(key, "no_presets") == 0) return "Nessun preset";
+  if (std::strcmp(key, "no_sources") == 0) return "Nessuna sorgente";
+  if (std::strcmp(key, "source") == 0) return "Fonte";
   if (std::strcmp(key, "not_available") == 0) return "Non disponibile";
   if (std::strcmp(key, "off") == 0) return "Spento";
   if (std::strcmp(key, "on") == 0) return "Acceso";
@@ -5877,6 +5957,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Gressklipper";
   if (std::strcmp(key, "low") == 0) return "Lav";
   if (std::strcmp(key, "low_target") == 0) return "Lavt mål";
+  if (std::strcmp(key, "playlist") == 0) return "Spilleliste";
   if (std::strcmp(key, "mode") == 0) return "Modus";
   if (std::strcmp(key, "monthly") == 0) return "Månedlig";
   if (std::strcmp(key, "more") == 0) return "flere";
@@ -5899,6 +5980,8 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ingen";
   if (std::strcmp(key, "no_options") == 0) return "Ingen alternativer";
   if (std::strcmp(key, "no_presets") == 0) return "Ingen forhåndsvalg";
+  if (std::strcmp(key, "no_sources") == 0) return "Ingen kilder";
+  if (std::strcmp(key, "source") == 0) return "Kilde";
   if (std::strcmp(key, "not_available") == 0) return "Ikke tilgjengelig";
   if (std::strcmp(key, "off") == 0) return "Av";
   if (std::strcmp(key, "on") == 0) return "På";
@@ -6082,6 +6165,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Grasmaaier";
   if (std::strcmp(key, "low") == 0) return "Laag";
   if (std::strcmp(key, "low_target") == 0) return "Laag doel";
+  if (std::strcmp(key, "playlist") == 0) return "Afspeellijst";
   if (std::strcmp(key, "mode") == 0) return "Modus";
   if (std::strcmp(key, "monthly") == 0) return "Maandelijks";
   if (std::strcmp(key, "more") == 0) return "meer";
@@ -6104,6 +6188,8 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Geen";
   if (std::strcmp(key, "no_options") == 0) return "Geen opties";
   if (std::strcmp(key, "no_presets") == 0) return "Geen voorinstellingen";
+  if (std::strcmp(key, "no_sources") == 0) return "Geen bronnen";
+  if (std::strcmp(key, "source") == 0) return "Bron";
   if (std::strcmp(key, "not_available") == 0) return "Niet beschikbaar";
   if (std::strcmp(key, "off") == 0) return "Uit";
   if (std::strcmp(key, "on") == 0) return "Aan";
@@ -6283,6 +6369,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Kosiarka";
   if (std::strcmp(key, "low") == 0) return "Niski";
   if (std::strcmp(key, "low_target") == 0) return "Niski cel";
+  if (std::strcmp(key, "playlist") == 0) return "Playlista";
   if (std::strcmp(key, "mode") == 0) return "Tryb";
   if (std::strcmp(key, "monthly") == 0) return "Co miesiąc";
   if (std::strcmp(key, "more") == 0) return "więcej";
@@ -6305,6 +6392,8 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Brak";
   if (std::strcmp(key, "no_options") == 0) return "Brak opcji";
   if (std::strcmp(key, "no_presets") == 0) return "Brak presetów";
+  if (std::strcmp(key, "no_sources") == 0) return "Brak źródeł";
+  if (std::strcmp(key, "source") == 0) return "Źródło";
   if (std::strcmp(key, "not_available") == 0) return "Niedostępne";
   if (std::strcmp(key, "off") == 0) return "Wyłączone";
   if (std::strcmp(key, "on") == 0) return "Włączone";
@@ -6487,6 +6576,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Baixo";
   if (std::strcmp(key, "low_target") == 0) return "Alvo baixo";
   if (std::strcmp(key, "media") == 0) return "Mídia";
+  if (std::strcmp(key, "playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(key, "mode") == 0) return "Modo";
   if (std::strcmp(key, "monthly") == 0) return "Mensal";
   if (std::strcmp(key, "more") == 0) return "mais";
@@ -6509,6 +6599,8 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Nenhum";
   if (std::strcmp(key, "no_options") == 0) return "Sem opções";
   if (std::strcmp(key, "no_presets") == 0) return "Sem predefinições";
+  if (std::strcmp(key, "no_sources") == 0) return "Sem fontes";
+  if (std::strcmp(key, "source") == 0) return "Fonte";
   if (std::strcmp(key, "not_available") == 0) return "Não disponível";
   if (std::strcmp(key, "off") == 0) return "Desligado";
   if (std::strcmp(key, "on") == 0) return "Ligado";
@@ -6693,6 +6785,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Baixo";
   if (std::strcmp(key, "low_target") == 0) return "Alvo baixo";
   if (std::strcmp(key, "media") == 0) return "Multimédia";
+  if (std::strcmp(key, "playlist") == 0) return "Lista de reprodução";
   if (std::strcmp(key, "mode") == 0) return "Modo";
   if (std::strcmp(key, "monthly") == 0) return "Mensal";
   if (std::strcmp(key, "more") == 0) return "mais";
@@ -6715,6 +6808,8 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Nenhum";
   if (std::strcmp(key, "no_options") == 0) return "Sem opções";
   if (std::strcmp(key, "no_presets") == 0) return "Sem predefinições";
+  if (std::strcmp(key, "no_sources") == 0) return "Sem fontes";
+  if (std::strcmp(key, "source") == 0) return "Fonte";
   if (std::strcmp(key, "not_available") == 0) return "Não disponível";
   if (std::strcmp(key, "off") == 0) return "Desligado";
   if (std::strcmp(key, "on") == 0) return "Ligado";
@@ -6901,6 +6996,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Mașină de tuns iarba";
   if (std::strcmp(key, "low") == 0) return "Scăzut";
   if (std::strcmp(key, "low_target") == 0) return "Țintă scăzută";
+  if (std::strcmp(key, "playlist") == 0) return "Listă de redare";
   if (std::strcmp(key, "medium") == 0) return "Mediu";
   if (std::strcmp(key, "mode") == 0) return "Mod";
   if (std::strcmp(key, "monthly") == 0) return "Lunar";
@@ -6924,6 +7020,8 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Niciunul";
   if (std::strcmp(key, "no_options") == 0) return "Fără opțiuni";
   if (std::strcmp(key, "no_presets") == 0) return "Fără presetări";
+  if (std::strcmp(key, "no_sources") == 0) return "Fără surse";
+  if (std::strcmp(key, "source") == 0) return "Sursă";
   if (std::strcmp(key, "not_available") == 0) return "Indisponibil";
   if (std::strcmp(key, "off") == 0) return "Oprit";
   if (std::strcmp(key, "on") == 0) return "Pornit";
@@ -7113,6 +7211,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Nízke";
   if (std::strcmp(key, "low_target") == 0) return "Nízky cieľ";
   if (std::strcmp(key, "media") == 0) return "Médiá";
+  if (std::strcmp(key, "playlist") == 0) return "Zoznam skladieb";
   if (std::strcmp(key, "mode") == 0) return "Režim";
   if (std::strcmp(key, "monthly") == 0) return "Mesačne";
   if (std::strcmp(key, "more") == 0) return "ďalšie";
@@ -7135,6 +7234,8 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Žiadne";
   if (std::strcmp(key, "no_options") == 0) return "Žiadne možnosti";
   if (std::strcmp(key, "no_presets") == 0) return "Žiadne predvoľby";
+  if (std::strcmp(key, "no_sources") == 0) return "Žiadne zdroje";
+  if (std::strcmp(key, "source") == 0) return "Zdroj";
   if (std::strcmp(key, "not_available") == 0) return "Nie je dostupné";
   if (std::strcmp(key, "off") == 0) return "Vypnuté";
   if (std::strcmp(key, "on") == 0) return "Zapnuté";
@@ -7323,6 +7424,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Nizko";
   if (std::strcmp(key, "low_target") == 0) return "Nizka ciljna vrednost";
   if (std::strcmp(key, "media") == 0) return "Predstavnost";
+  if (std::strcmp(key, "playlist") == 0) return "Seznam predvajanja";
   if (std::strcmp(key, "medium") == 0) return "Srednje";
   if (std::strcmp(key, "mode") == 0) return "Način";
   if (std::strcmp(key, "monthly") == 0) return "Mesečno";
@@ -7343,6 +7445,8 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Brez";
   if (std::strcmp(key, "no_options") == 0) return "Ni možnosti";
   if (std::strcmp(key, "no_presets") == 0) return "Ni prednastavitev";
+  if (std::strcmp(key, "no_sources") == 0) return "Ni virov";
+  if (std::strcmp(key, "source") == 0) return "Vir";
   if (std::strcmp(key, "not_available") == 0) return "Ni na voljo";
   if (std::strcmp(key, "off") == 0) return "Izklop";
   if (std::strcmp(key, "on") == 0) return "Vklop";
@@ -7531,6 +7635,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "lawn_mower") == 0) return "Gräsklippare";
   if (std::strcmp(key, "low") == 0) return "Låg";
   if (std::strcmp(key, "low_target") == 0) return "Lågt mål";
+  if (std::strcmp(key, "playlist") == 0) return "Spellista";
   if (std::strcmp(key, "mode") == 0) return "Läge";
   if (std::strcmp(key, "monthly") == 0) return "Månadsvis";
   if (std::strcmp(key, "more") == 0) return "fler";
@@ -7553,6 +7658,8 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Ingen";
   if (std::strcmp(key, "no_options") == 0) return "Inga alternativ";
   if (std::strcmp(key, "no_presets") == 0) return "Inga förval";
+  if (std::strcmp(key, "no_sources") == 0) return "Inga källor";
+  if (std::strcmp(key, "source") == 0) return "Källa";
   if (std::strcmp(key, "not_available") == 0) return "Inte tillgänglig";
   if (std::strcmp(key, "off") == 0) return "Av";
   if (std::strcmp(key, "on") == 0) return "På";
@@ -7736,6 +7843,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Düşük";
   if (std::strcmp(key, "low_target") == 0) return "Düşük hedef";
   if (std::strcmp(key, "media") == 0) return "Medya";
+  if (std::strcmp(key, "playlist") == 0) return "Çalma listesi";
   if (std::strcmp(key, "medium") == 0) return "Orta";
   if (std::strcmp(key, "mode") == 0) return "Mod";
   if (std::strcmp(key, "monthly") == 0) return "Aylık";
@@ -7760,6 +7868,8 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Yok";
   if (std::strcmp(key, "no_options") == 0) return "Seçenek yok";
   if (std::strcmp(key, "no_presets") == 0) return "Ön ayar yok";
+  if (std::strcmp(key, "no_sources") == 0) return "Kaynak yok";
+  if (std::strcmp(key, "source") == 0) return "Kaynak";
   if (std::strcmp(key, "not_available") == 0) return "Mevcut değil";
   if (std::strcmp(key, "off") == 0) return "Kapalı";
   if (std::strcmp(key, "on") == 0) return "Açık";
@@ -7953,6 +8063,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "low") == 0) return "Низько";
   if (std::strcmp(key, "low_target") == 0) return "Низька ціль";
   if (std::strcmp(key, "media") == 0) return "Медіа";
+  if (std::strcmp(key, "playlist") == 0) return "Список відтворення";
   if (std::strcmp(key, "medium") == 0) return "Середньо";
   if (std::strcmp(key, "mode") == 0) return "Режим";
   if (std::strcmp(key, "monthly") == 0) return "Щомісяця";
@@ -7977,6 +8088,8 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "none") == 0) return "Немає";
   if (std::strcmp(key, "no_options") == 0) return "Немає параметрів";
   if (std::strcmp(key, "no_presets") == 0) return "Немає пресетів";
+  if (std::strcmp(key, "no_sources") == 0) return "Немає джерел";
+  if (std::strcmp(key, "source") == 0) return "Джерело";
   if (std::strcmp(key, "not_available") == 0) return "Недоступно";
   if (std::strcmp(key, "off") == 0) return "Вимкнено";
   if (std::strcmp(key, "on") == 0) return "Увімкнено";

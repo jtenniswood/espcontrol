@@ -41,7 +41,7 @@ inline bool ha_api_state_connected() {
 
 constexpr size_t HA_READ_INTERNAL_FREE_MIN_BYTES = 8 * 1024;
 constexpr size_t HA_READ_INTERNAL_LARGEST_MIN_BYTES = 4 * 1024;
-constexpr size_t HA_ACTION_INTERNAL_FREE_MIN_BYTES = 12 * 1024;
+constexpr size_t HA_ACTION_INTERNAL_FREE_MIN_BYTES = 8 * 1024;
 constexpr size_t HA_ACTION_INTERNAL_LARGEST_MIN_BYTES = 4 * 1024;
 
 inline bool ha_internal_heap_available(const char *stage,

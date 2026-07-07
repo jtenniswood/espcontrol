@@ -45,6 +45,7 @@ script:
           cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
           cfg.large_sensor_unit_offset_percent = -10;
           cfg.media_title_font = id(font_text_title)->get_lv_font();
+          cfg.media_control_title_font = id(font_cover_art_title)->get_lv_font();
           cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
           cfg.volume_label_font = id(font_text_body)->get_lv_font();
           cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
@@ -126,11 +127,6 @@ script:
           set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
           apply_width_compensation(id(display_time), cfg.width_compensation_percent);
           apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
-          apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
           apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
           // END GENERATED REFRESH GRID WIRING
           #define SP_CFG(n) subpage_##n##_config
@@ -222,6 +218,7 @@ esphome:
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
             cfg.large_sensor_unit_offset_percent = -10;
             cfg.media_title_font = id(font_text_title)->get_lv_font();
+            cfg.media_control_title_font = id(font_cover_art_title)->get_lv_font();
             cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
             cfg.volume_label_font = id(font_text_body)->get_lv_font();
             cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
@@ -303,11 +300,6 @@ esphome:
             set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
             // END GENERATED PHASE 1 GRID WIRING
             grid_phase1(slots, cfg,
@@ -391,6 +383,7 @@ esphome:
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
             cfg.large_sensor_unit_offset_percent = -10;
             cfg.media_title_font = id(font_text_title)->get_lv_font();
+            cfg.media_control_title_font = id(font_cover_art_title)->get_lv_font();
             cfg.volume_number_font = id(font_number_value_large)->get_lv_font();
             cfg.volume_label_font = id(font_text_body)->get_lv_font();
             cfg.climate_card_icon_font = id(font_icon_card)->get_lv_font();
@@ -472,11 +465,6 @@ esphome:
             set_width_compensation_vertical_axis(cfg.width_compensation_vertical);
             apply_width_compensation(id(display_time), cfg.width_compensation_percent);
             apply_width_compensation(id(temperatures), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_2), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_3), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_4), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_5), cfg.width_compensation_percent);
-            apply_width_compensation(id(temperature_6), cfg.width_compensation_percent);
             apply_width_compensation(id(clock_label), cfg.width_compensation_percent);
             // END GENERATED PHASE 2 GRID WIRING
             grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,
@@ -489,8 +477,7 @@ esphome:
         # Phase 3: Temperature + presence subscriptions
         - lambda: |-
             lv_obj_t *temperature_labels[] = {
-              id(temperatures), id(temperature_2), id(temperature_3),
-              id(temperature_4), id(temperature_5), id(temperature_6),
+              id(temperatures),
             };
             grid_phase3(
               id(indoor_temp_enable).state,
@@ -500,7 +487,7 @@ esphome:
               id(clock_bar_temperature_entities).state,
               &id(indoor_temp), &id(outdoor_temp),
               temperature_labels,
-              6,
+              1,
               id(main_page)->obj,
               id(presence_sensor_entity).state,
               &id(presence_detected),

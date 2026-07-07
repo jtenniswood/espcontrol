@@ -7,6 +7,16 @@ function createMdiIcon(name, className) {
   return icon;
 }
 
+function createActionButton(className, label, iconName, ariaLabel) {
+  var btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = className;
+  if (ariaLabel) btn.setAttribute("aria-label", ariaLabel);
+  if (iconName) btn.appendChild(createMdiIcon(iconName));
+  if (label) btn.appendChild(document.createTextNode(label));
+  return btn;
+}
+
 function createDisclosureChevron(className) {
   var wrap = document.createElement("span");
   wrap.className = className;
