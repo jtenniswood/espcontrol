@@ -126,6 +126,17 @@ function setMediaNumberDisplayMode(b, mode) {
   return b.options;
 }
 
+function mediaCoverArtEnabled(b) {
+  return configOptionEnabled(b && b.options, MEDIA_COVER_ART_OPTION);
+}
+
+function setMediaCoverArtEnabled(b, enabled) {
+  if (!b) return "";
+  b.options = setConfigOption(b.options, MEDIA_COVER_ART_OPTION, !!enabled);
+  b.options = normalizeMediaOptions(b.options, b.sensor);
+  return b.options;
+}
+
 function mediaPlaylistContentId(b) {
   return configOptionValue(b && b.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
 }

@@ -1770,6 +1770,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "lawn_mower_mode": "lawn_mower_mode",
   "light_tabs": "light_tabs",
   "lock_mode": "lock_mode",
+  "media_cover_art": "media_cover_art",
   "media_display": "media_display",
   "media_mode": "media_mode",
   "media_now_playing_controls": "media_now_playing_controls",

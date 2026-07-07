@@ -414,6 +414,22 @@ inline void image_card_hide(ImageCardCtx *ctx) {
   if (ctx->widget) lv_obj_add_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN);
 }
 
+inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->media_artwork) return;
+  image_card_release_download_slot(ctx);
+  image_card_clear_widget_source(ctx->widget);
+  if (ctx->image) ctx->image->release();
+  ctx->image_ready = false;
+  ctx->requested_once = false;
+  ctx->source_url.clear();
+  ctx->url.clear();
+  ctx->pending_fallback_picture.clear();
+  ctx->next_picture_retry_ms = 0;
+  ctx->next_download_retry_ms = 0;
+  ctx->last_download_completed_ms = 0;
+  image_card_hide(ctx);
+}
+
 inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {
   ImageCardModalUi &ui = image_card_modal_ui();
   if (!ctx || ui.active != ctx || !ui.panel || !ui.loading_widget) return;
@@ -1689,6 +1705,10 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
   if (url.empty()) {
     ESP_LOGW("image_card", "No usable image URL for %s", ctx->entity_id.c_str());
     image_card_log_diagnostics(ctx, "picture-no-url");
+    if (ctx->media_artwork) {
+      image_card_clear_media_artwork(ctx);
+      return;
+    }
     if (ctx->image_ready) return;
     image_card_hide(ctx);
     if (image_card_startup_retry_active(ctx)) {

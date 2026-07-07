@@ -232,12 +232,38 @@ inline void media_cover_art_refresh_geometry(MediaNowPlayingCtx *ctx) {
   if (ctx->artist_lbl) lv_obj_move_foreground(ctx->artist_lbl);
 }
 
+inline void clear_media_cover_art(MediaNowPlayingCtx *ctx) {
+  if (!ctx) return;
+  if (ctx->cover_art) {
+    lv_obj_t *widget = ctx->cover_art->widget;
+    image_card_clear_media_artwork(ctx->cover_art);
+    ctx->cover_art->active = false;
+    ctx->cover_art->widget = nullptr;
+    ctx->cover_art->btn = nullptr;
+    ctx->cover_art->entity_id.clear();
+    ctx->cover_art->base_url.clear();
+    ctx->cover_art->base_url_provider = nullptr;
+    ctx->cover_art->suspend_display_takeover = nullptr;
+    ctx->cover_art->resume_display_takeover = nullptr;
+    ctx->cover_art->diagnostics_enabled = false;
+    ctx->cover_art->media_artwork = false;
+    if (widget) lv_obj_del(widget);
+    ctx->cover_art = nullptr;
+  }
+  if (ctx->cover_overlay) {
+    lv_obj_del(ctx->cover_overlay);
+    ctx->cover_overlay = nullptr;
+  }
+}
+
 inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
                                   const GridConfig &cfg) {
-  if (!media_cover_art_enabled(p) || p.entity.empty() || !s.sensor_container) return;
+  if (!s.sensor_container) return;
   MediaNowPlayingCtx *media_ctx =
     static_cast<MediaNowPlayingCtx *>(lv_obj_get_user_data(s.sensor_container));
   if (!media_ctx || !media_ctx->btn) return;
+  clear_media_cover_art(media_ctx);
+  if (!media_cover_art_enabled(p) || p.entity.empty()) return;
   ImageCardCtx *art = acquire_image_card_context(cfg);
   if (!art) {
     ESP_LOGW("media_card", "No image downloader available for media cover art: %s",
