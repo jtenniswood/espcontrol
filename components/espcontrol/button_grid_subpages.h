@@ -95,6 +95,12 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     }
     b.options = media_card_options_normalized(b.options, b.sensor);
   }
+  if (b.type == "vacuum") {
+    b.sensor = card_runtime_vacuum_mode(b.sensor);
+    b.unit.clear();
+    b.precision.clear();
+    b.options = vacuum_card_options_normalized(b.options, b.sensor);
+  }
   if (climate_card_type(b.type)) {
     b.sensor.clear();
     b.unit.clear();

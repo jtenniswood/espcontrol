@@ -15,6 +15,8 @@ struct VacuumCardCtx {
   std::string area_id;
   std::string fan_speed;
   std::vector<std::string> fan_speeds;
+  uint32_t supported_features = 0;
+  bool supported_features_known = false;
   bool status_card = false;
   bool available = true;
   bool custom_label = false;
@@ -22,6 +24,9 @@ struct VacuumCardCtx {
   const lv_font_t *icon_font = nullptr;
   int width_compensation_percent = 100;
 };
+
+constexpr uint32_t VACUUM_FEATURE_LOCATE = 512;
+constexpr uint32_t VACUUM_FEATURE_CLEAN_SPOT = 1024;
 
 struct VacuumRoomEntry {
   std::string label;
@@ -203,6 +208,10 @@ inline std::string vacuum_control_title(VacuumCardCtx *ctx) {
   if (!ctx->friendly_name.empty()) return ctx->friendly_name;
   if (!ctx->label.empty()) return ctx->label;
   return espcontrol_i18n(std::string("Vacuum"));
+}
+
+inline bool vacuum_feature_supported(const VacuumCardCtx *ctx, uint32_t feature) {
+  return !ctx || !ctx->supported_features_known || (ctx->supported_features & feature) != 0;
 }
 
 inline bool vacuum_control_tab_from_token(const std::string &value,
@@ -649,13 +658,26 @@ inline void subscribe_vacuum_card_state(VacuumCardCtx *ctx) {
     ctx->entity_id, std::string("friendly_name"),
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef value) {
       ctx->friendly_name = string_ref_limited(value, HA_FRIENDLY_NAME_MAX_LEN);
-      if (!ctx->custom_label && ctx->text_lbl && !ctx->status_card) {
+      if (!ctx->custom_label && ctx->text_lbl && ctx->mode == "modal") {
         set_wrapped_button_label_text(ctx->text_lbl, ctx->friendly_name);
       }
       VacuumControlModalUi &ui = vacuum_control_modal_ui();
       if (ui.active == ctx && ui.title_lbl) {
         std::string title = vacuum_control_title(ctx);
         lv_label_set_text(ui.title_lbl, title.c_str());
+      }
+    })
+  );
+  ha_subscribe_attribute(
+    ctx->entity_id, std::string("supported_features"),
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef value) {
+      std::string raw = string_ref_limited(value, HA_STATE_TEXT_MAX_LEN);
+      char *end = nullptr;
+      unsigned long parsed = std::strtoul(raw.c_str(), &end, 10);
+      if (end != raw.c_str()) {
+        ctx->supported_features = static_cast<uint32_t>(parsed);
+        ctx->supported_features_known = true;
+        if (vacuum_control_modal_ui().active == ctx) vacuum_control_layout_modal(ctx);
       }
     })
   );
@@ -851,12 +873,16 @@ inline void vacuum_control_open_modal(VacuumCardCtx *ctx) {
   vacuum_control_create_action_row(
     ui.controls_box, espcontrol_i18n(std::string("Dock")), find_icon("Home"),
     ctx->label_font, "vacuum.return_to_base");
-  vacuum_control_create_action_row(
-    ui.controls_box, espcontrol_i18n(std::string("Spot Clean")), find_icon("Vacuum"),
-    ctx->label_font, "vacuum.clean_spot");
-  vacuum_control_create_action_row(
-    ui.controls_box, espcontrol_i18n(std::string("Locate")), find_icon("Robot Vacuum Alert"),
-    ctx->label_font, "vacuum.locate");
+  if (vacuum_feature_supported(ctx, VACUUM_FEATURE_CLEAN_SPOT)) {
+    vacuum_control_create_action_row(
+      ui.controls_box, espcontrol_i18n(std::string("Spot Clean")), find_icon("Vacuum"),
+      ctx->label_font, "vacuum.clean_spot");
+  }
+  if (vacuum_feature_supported(ctx, VACUUM_FEATURE_LOCATE)) {
+    vacuum_control_create_action_row(
+      ui.controls_box, espcontrol_i18n(std::string("Locate")), find_icon("Robot Vacuum Alert"),
+      ctx->label_font, "vacuum.locate");
+  }
 
   ui.rooms_box = lv_obj_create(ui.panel);
   lv_obj_set_style_bg_opa(ui.rooms_box, LV_OPA_TRANSP, LV_PART_MAIN);
