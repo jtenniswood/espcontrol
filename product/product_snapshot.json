@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 5,
     "cardTypes": 40,
-    "entityNames": 82,
+    "entityNames": 79,
     "icons": 317,
     "structuralIcons": 18,
     "compatibilityFixtureGroups": 2
@@ -2682,9 +2682,37 @@
         ]
       },
       {
+        "key": "screen_theme",
+        "domain": "select",
+        "name": "Screen: Theme",
+        "objectIds": [
+          "screen__theme",
+          "screen_theme"
+        ],
+        "groups": [
+          "card"
+        ]
+      },
+      {
         "key": "button_on_color",
         "domain": "text",
         "name": "Button On Color",
+        "groups": [
+          "card"
+        ]
+      },
+      {
+        "key": "button_off_color",
+        "domain": "text",
+        "name": "Button Off Color",
+        "groups": [
+          "card"
+        ]
+      },
+      {
+        "key": "sensor_card_color",
+        "domain": "text",
+        "name": "Sensor Card Color",
         "groups": [
           "card"
         ]
@@ -2791,6 +2819,19 @@
         ]
       },
       {
+        "key": "screen_clock_bar_layout",
+        "domain": "text",
+        "name": "Screen: Clock Bar Layout",
+        "objectIds": [
+          "screen__clock_bar_layout",
+          "screen_clock_bar_layout",
+          "clock_bar_layout"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
         "key": "screen_clock_bar_time",
         "domain": "switch",
         "name": "Screen: Clock Bar Time",
@@ -2825,18 +2866,6 @@
         ],
         "groups": [
           "settings"
-        ]
-      },
-      {
-        "key": "voice_services",
-        "domain": "switch",
-        "name": "Voice Services",
-        "objectIds": [
-          "voice_services",
-          "voice_services_enabled"
-        ],
-        "groups": [
-          "settings_voice"
         ]
       },
       {
@@ -2893,9 +2922,6 @@
         "key": "screensaver_mode",
         "domain": "text",
         "name": "Screensaver Mode",
-        "objectIds": [
-          "screensaver_mode"
-        ],
         "groups": [
           "settings"
         ]
@@ -2914,12 +2940,33 @@
         ]
       },
       {
+        "key": "screensaver_pin_required",
+        "domain": "switch",
+        "name": "Screensaver: Require PIN after wake",
+        "objectIds": [
+          "screensaver__pin_required",
+          "screensaver_pin_required"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
+        "key": "screensaver_pin",
+        "domain": "text",
+        "name": "Screensaver: PIN",
+        "objectIds": [
+          "screensaver__pin",
+          "screensaver_pin"
+        ],
+        "groups": [
+          "settings"
+        ]
+      },
+      {
         "key": "presence_sensor_entity",
         "domain": "text",
         "name": "Presence Sensor Entity",
-        "objectIds": [
-          "presence_sensor_entity"
-        ],
         "groups": [
           "settings"
         ]
@@ -2928,11 +2975,6 @@
         "key": "screen_saver_media_player_sleep_prevention",
         "domain": "switch",
         "name": "Screen Saver: Media Player Sleep Prevention",
-        "objectIds": [
-          "screen_saver__media_player_sleep_prevention",
-          "screen_saver_media_player_sleep_prevention",
-          "media_player_sleep_prevention_enabled"
-        ],
         "groups": [
           "settings"
         ]
@@ -2941,9 +2983,6 @@
         "key": "media_player_sleep_prevention_entity",
         "domain": "text",
         "name": "Media Player Sleep Prevention Entity",
-        "objectIds": [
-          "media_player_sleep_prevention_entity"
-        ],
         "groups": [
           "settings"
         ]
@@ -3001,19 +3040,6 @@
         ]
       },
       {
-        "key": "screen_saver_cover_art_touch_pause",
-        "domain": "number",
-        "name": "Screen Saver: Cover Art Touch Pause",
-        "objectIds": [
-          "screen_saver__cover_art_touch_pause",
-          "screen_saver_cover_art_touch_pause",
-          "cover_art_touch_pause"
-        ],
-        "groups": [
-          "settings"
-        ]
-      },
-      {
         "key": "screen_saver_track_overlay_duration",
         "domain": "number",
         "name": "Screen Saver: Show Track Overlay",
@@ -3037,18 +3063,6 @@
           "hide_cover_art_on_external_input",
           "cover_art_hide_external_input",
           "screen_saver__hide_for_external_sources"
-        ],
-        "groups": [
-          "settings"
-        ]
-      },
-      {
-        "key": "home_assistant_artwork_protocol",
-        "domain": "select",
-        "name": "Home Assistant Artwork Protocol",
-        "objectIds": [
-          "home_assistant_artwork_protocol",
-          "cover_art_home_assistant_artwork_protocol"
         ],
         "groups": [
           "settings"
@@ -3125,9 +3139,6 @@
         "key": "home_screen_timeout",
         "domain": "number",
         "name": "Home Screen Timeout",
-        "objectIds": [
-          "home_screen_timeout"
-        ],
         "groups": [
           "settings"
         ]
@@ -3136,11 +3147,6 @@
         "key": "screen_saver_clock",
         "domain": "switch",
         "name": "Screen Saver: Clock",
-        "objectIds": [
-          "screen_saver__clock",
-          "screen_saver_clock",
-          "clock_screensaver_enabled"
-        ],
         "groups": [
           "settings"
         ]
@@ -3149,14 +3155,6 @@
         "key": "screen_timezone",
         "domain": "select",
         "name": "Screen: Timezone",
-        "groups": [
-          "settings"
-        ]
-      },
-      {
-        "key": "screen_active_timezone",
-        "domain": "text_sensor",
-        "name": "Screen: Active Timezone",
         "groups": [
           "settings"
         ]
@@ -3465,11 +3463,6 @@
         "key": "firmware_auto_update",
         "domain": "switch",
         "name": "Firmware: Auto Update",
-        "objectIds": [
-          "firmware__auto_update",
-          "firmware_auto_update",
-          "auto_update_switch"
-        ],
         "groups": [
           "settings"
         ]
@@ -3478,74 +3471,6 @@
         "key": "firmware_update_frequency",
         "domain": "select",
         "name": "Firmware: Update Frequency",
-        "objectIds": [
-          "firmware__update_frequency",
-          "firmware_update_frequency",
-          "update_frequency_select"
-        ],
-        "groups": [
-          "settings"
-        ]
-      },
-      {
-        "key": "esp32_c6_update_available",
-        "domain": "text_sensor",
-        "name": "ESP32-C6: Update Available",
-        "objectIds": [
-          "esp32_c6__update_available",
-          "esp32_c6_update_available",
-          "c6_update_available"
-        ],
-        "groups": [
-          "settings"
-        ]
-      },
-      {
-        "key": "esp32_c6_current_firmware",
-        "domain": "text_sensor",
-        "name": "ESP32-C6: Current Firmware",
-        "objectIds": [
-          "esp32_c6__current_firmware",
-          "esp32_c6_current_firmware",
-          "c6_update_current_firmware"
-        ],
-        "groups": [
-          "settings"
-        ]
-      },
-      {
-        "key": "esp32_c6_latest_firmware",
-        "domain": "text_sensor",
-        "name": "ESP32-C6: Latest Firmware",
-        "objectIds": [
-          "esp32_c6__latest_firmware",
-          "esp32_c6_latest_firmware",
-          "c6_update_latest_firmware"
-        ],
-        "groups": [
-          "settings"
-        ]
-      },
-      {
-        "key": "esp32_c6_check_for_update",
-        "domain": "button",
-        "name": "Firmware ESP32-C6: Check for Update",
-        "objectIds": [
-          "firmware_esp32_c6__check_for_update",
-          "firmware_esp32_c6_check_for_update"
-        ],
-        "groups": [
-          "settings"
-        ]
-      },
-      {
-        "key": "esp32_c6_install_update",
-        "domain": "button",
-        "name": "Firmware ESP32-C6: Install Update",
-        "objectIds": [
-          "firmware_esp32_c6__install_update",
-          "firmware_esp32_c6_install_update"
-        ],
         "groups": [
           "settings"
         ]
