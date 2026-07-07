@@ -979,6 +979,10 @@ inline void grid_delete_media_control_runtime_ptr(void *ptr) {
   delete_media_control_context(static_cast<MediaControlCtx *>(ptr));
 }
 
+inline void grid_delete_timer_card_runtime_ptr(void *ptr) {
+  delete_timer_card_context(static_cast<TimerCardCtx *>(ptr));
+}
+
 inline void grid_release_runtime_allocations(lv_obj_t *owner) {
   if (owner == nullptr) return;
   std::vector<GridRuntimeAllocation> &allocations = grid_runtime_allocations();
@@ -1029,6 +1033,18 @@ inline MediaControlCtx *grid_track_media_control_runtime(lv_obj_t *owner,
       owner,
       ctx,
       grid_delete_media_control_runtime_ptr,
+    });
+  }
+  return ctx;
+}
+
+inline TimerCardCtx *grid_track_timer_card_runtime(lv_obj_t *owner,
+                                                   TimerCardCtx *ctx) {
+  if (owner != nullptr && ctx != nullptr) {
+    grid_runtime_allocations().push_back({
+      owner,
+      ctx,
+      grid_delete_timer_card_runtime_ptr,
     });
   }
   return ctx;
@@ -1543,7 +1559,7 @@ inline void grid_phase2(
     }
     if (p.type == "timer") {
       if (!p.entity.empty()) {
-        create_timer_card_context(s, p);
+        grid_track_timer_card_runtime(s.btn, create_timer_card_context(s, p));
         if (p.label.empty())
           subscribe_friendly_name(s.text_lbl, p.entity);
       }
@@ -2325,6 +2341,9 @@ inline void grid_phase2(
       if (sb_cfg.type == "timer") {
         if (!sb_cfg.entity.empty()) {
           TimerCardCtx *ctx = create_timer_card_context(sub_slot, sb_cfg);
+          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+            delete_timer_card_context(static_cast<TimerCardCtx *>(lv_event_get_user_data(e)));
+          }, LV_EVENT_DELETE, ctx);
           if (sb_cfg.label.empty())
             subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
           if (sp_indicator) {

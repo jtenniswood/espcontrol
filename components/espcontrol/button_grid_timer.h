@@ -84,6 +84,16 @@ struct TimerCardCtx {
   TimerConfirmationCtx confirm;
 };
 
+inline void delete_timer_card_context(TimerCardCtx *ctx) {
+  if (!ctx) return;
+  timer_confirmation_disarm(&ctx->confirm);
+  if (ctx->tick_timer) {
+    lv_timer_del(ctx->tick_timer);
+    ctx->tick_timer = nullptr;
+  }
+  delete ctx;
+}
+
 inline int parse_timer_hms(esphome::StringRef value) {
   int hours = 0;
   int minutes = 0;
