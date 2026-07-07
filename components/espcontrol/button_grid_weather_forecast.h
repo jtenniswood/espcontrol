@@ -228,7 +228,8 @@ inline void apply_weather_forecast_card_text(const WeatherForecastCardRef &ref,
     std::string label = !ref.status_label.empty()
       ? ref.status_label
       : (ref.label.empty()
-          ? (ref.day == "today" ? espcontrol_i18n(std::string("Today")) : espcontrol_i18n(std::string("Tomorrow")))
+          ? (ref.day == "today" ? espcontrol_i18n(std::string("Today")) :
+              (ref.day == "3day" ? espcontrol_i18n(std::string("3-Day Forecast")) : espcontrol_i18n(std::string("Tomorrow"))))
           : ref.label);
     lv_label_set_text(ref.label_lbl, label.c_str());
   }
@@ -422,6 +423,9 @@ struct WeatherForecastPayload {
   bool tomorrow_valid = false;
   float tomorrow_high = WEATHER_FORECAST_TEMP_MISSING;
   float tomorrow_low = WEATHER_FORECAST_TEMP_MISSING;
+  bool three_day_valid = false;
+  float three_day_high = WEATHER_FORECAST_TEMP_MISSING;
+  float three_day_low = WEATHER_FORECAST_TEMP_MISSING;
   std::string unit;
 };
 
@@ -435,20 +439,46 @@ inline bool parse_weather_forecast_payload(const std::string &payload,
   if (p3 == std::string::npos) return false;
   size_t p4 = payload.find('|', p3 + 1);
   if (p4 == std::string::npos) return false;
+  size_t p5 = payload.find('|', p4 + 1);
+  if (p5 == std::string::npos) return false;
+  size_t p6 = payload.find('|', p5 + 1);
+  if (p6 == std::string::npos) return false;
 
   std::string today_high_text = payload.substr(0, p1);
   std::string today_low_text = payload.substr(p1 + 1, p2 - p1 - 1);
   std::string tomorrow_high_text = payload.substr(p2 + 1, p3 - p2 - 1);
   std::string tomorrow_low_text = payload.substr(p3 + 1, p4 - p3 - 1);
-  out.unit = payload.substr(p4 + 1);
+  std::string three_day_high_text = payload.substr(p4 + 1, p5 - p4 - 1);
+  std::string three_day_low_text = payload.substr(p5 + 1, p6 - p5 - 1);
+  out.unit = payload.substr(p6 + 1);
 
   bool today_has_high = parse_weather_forecast_temp(today_high_text, out.today_high);
   bool today_has_low = parse_weather_forecast_temp(today_low_text, out.today_low);
   bool tomorrow_has_high = parse_weather_forecast_temp(tomorrow_high_text, out.tomorrow_high);
   bool tomorrow_has_low = parse_weather_forecast_temp(tomorrow_low_text, out.tomorrow_low);
+  bool three_day_has_high = parse_weather_forecast_temp(three_day_high_text, out.three_day_high);
+  bool three_day_has_low = parse_weather_forecast_temp(three_day_low_text, out.three_day_low);
   out.today_valid = today_has_high || today_has_low;
   out.tomorrow_valid = tomorrow_has_high || tomorrow_has_low;
-  return out.today_valid || out.tomorrow_valid;
+  out.three_day_valid = three_day_has_high || three_day_has_low;
+  return out.today_valid || out.tomorrow_valid || out.three_day_valid;
+}
+
+inline void weather_forecast_extend_range(bool valid, float high, float low,
+                                          bool &range_valid,
+                                          float &range_high, float &range_low) {
+  if (!valid) return;
+  if (high != WEATHER_FORECAST_TEMP_MISSING) {
+    if (!range_valid || range_high == WEATHER_FORECAST_TEMP_MISSING || high > range_high) {
+      range_high = high;
+    }
+  }
+  if (low != WEATHER_FORECAST_TEMP_MISSING) {
+    if (!range_valid || range_low == WEATHER_FORECAST_TEMP_MISSING || low < range_low) {
+      range_low = low;
+    }
+  }
+  range_valid = true;
 }
 
 inline std::string weather_forecast_response_template(const std::string &entity_id) {
@@ -456,21 +486,22 @@ inline std::string weather_forecast_response_template(const std::string &entity_
     "{% set response_data = response if response is defined and response is not none else {} %}"
     "{% set entity_response = response_data if 'forecast' in response_data else (response_data[entity] if entity in response_data else {}) %}"
     "{% set forecasts = entity_response['forecast'] if 'forecast' in entity_response else [] %}"
-    "{% set today_date = now().date() %}{% set tomorrow_date = (now() + timedelta(days=1)).date() %}"
-    "{% set ns = namespace(today=none, tomorrow=none) %}{% for item in forecasts %}"
+    "{% set today_date = now().date() %}{% set tomorrow_date = (now() + timedelta(days=1)).date() %}{% set third_date = (now() + timedelta(days=2)).date() %}"
+    "{% set ns = namespace(today=none, tomorrow=none, third=none) %}{% for item in forecasts %}"
     "{% set item_dt = as_datetime(item['datetime']) if 'datetime' in item else none %}{% set item_date = as_local(item_dt).date() if item_dt is not none else (as_datetime(item['date']).date() if 'date' in item else none) %}"
-    "{% if item_date == today_date and ns.today is none %}{% set ns.today = item %}{% elif item_date == tomorrow_date and ns.tomorrow is none %}{% set ns.tomorrow = item %}{% endif %}"
+    "{% if item_date == today_date and ns.today is none %}{% set ns.today = item %}{% elif item_date == tomorrow_date and ns.tomorrow is none %}{% set ns.tomorrow = item %}{% elif item_date == third_date and ns.third is none %}{% set ns.third = item %}{% endif %}"
     "{% endfor %}"
     "{% set today = ns.today if ns.today is not none else (forecasts[0] if forecasts|length > 0 else none) %}"
     "{% set tomorrow = ns.tomorrow if ns.tomorrow is not none else (forecasts[1] if forecasts|length > 1 else none) %}"
+    "{% set third = ns.third if ns.third is not none else (forecasts[2] if forecasts|length > 2 else none) %}"
     "{% set high_keys = ['temperature','native_temperature','temperature_high','native_temperature_high','high_temperature','max_temperature','temperature_max','temp_high','max_temp','high'] %}"
     "{% set low_keys = ['templow','native_templow','temperature_low','native_temperature_low','low_temperature','min_temperature','temperature_min','temp_low','min_temp','low'] %}"
     "{% set unit_keys = ['temperature_unit','native_temperature_unit','unit_of_measurement','native_unit_of_measurement','unit'] %}"
-    "{% set out = namespace(today_high='', today_low='', tomorrow_high='', tomorrow_low='', unit='') %}"
-    "{% for key in high_keys %}{% if out.today_high == '' and today is not none and key in today %}{% set out.today_high = today[key] %}{% endif %}{% if out.tomorrow_high == '' and tomorrow is not none and key in tomorrow %}{% set out.tomorrow_high = tomorrow[key] %}{% endif %}{% endfor %}"
-    "{% for key in low_keys %}{% if out.today_low == '' and today is not none and key in today %}{% set out.today_low = today[key] %}{% endif %}{% if out.tomorrow_low == '' and tomorrow is not none and key in tomorrow %}{% set out.tomorrow_low = tomorrow[key] %}{% endif %}{% endfor %}"
-    "{% for key in unit_keys %}{% if out.unit == '' and key in entity_response %}{% set out.unit = entity_response[key] %}{% endif %}{% if out.unit == '' and today is not none and key in today %}{% set out.unit = today[key] %}{% endif %}{% if out.unit == '' and tomorrow is not none and key in tomorrow %}{% set out.unit = tomorrow[key] %}{% endif %}{% endfor %}"
-    "{{ out.today_high }}|{{ out.today_low }}|{{ out.tomorrow_high }}|{{ out.tomorrow_low }}|"
+    "{% set out = namespace(today_high='', today_low='', tomorrow_high='', tomorrow_low='', third_high='', third_low='', unit='') %}"
+    "{% for key in high_keys %}{% if out.today_high == '' and today is not none and key in today %}{% set out.today_high = today[key] %}{% endif %}{% if out.tomorrow_high == '' and tomorrow is not none and key in tomorrow %}{% set out.tomorrow_high = tomorrow[key] %}{% endif %}{% if out.third_high == '' and third is not none and key in third %}{% set out.third_high = third[key] %}{% endif %}{% endfor %}"
+    "{% for key in low_keys %}{% if out.today_low == '' and today is not none and key in today %}{% set out.today_low = today[key] %}{% endif %}{% if out.tomorrow_low == '' and tomorrow is not none and key in tomorrow %}{% set out.tomorrow_low = tomorrow[key] %}{% endif %}{% if out.third_low == '' and third is not none and key in third %}{% set out.third_low = third[key] %}{% endif %}{% endfor %}"
+    "{% for key in unit_keys %}{% if out.unit == '' and key in entity_response %}{% set out.unit = entity_response[key] %}{% endif %}{% if out.unit == '' and today is not none and key in today %}{% set out.unit = today[key] %}{% endif %}{% if out.unit == '' and tomorrow is not none and key in tomorrow %}{% set out.unit = tomorrow[key] %}{% endif %}{% if out.unit == '' and third is not none and key in third %}{% set out.unit = third[key] %}{% endif %}{% endfor %}"
+    "{{ out.today_high }}|{{ out.today_low }}|{{ out.tomorrow_high }}|{{ out.tomorrow_low }}|{{ out.third_high }}|{{ out.third_low }}|"
     "{{ out.unit or state_attr(entity, 'temperature_unit') or state_attr(entity, 'native_temperature_unit') or state_attr(entity, 'unit_of_measurement') or '' }}";
 }
 
@@ -797,6 +828,17 @@ inline void request_weather_forecast_entity(const std::string &entity_id,
         forecast.today_high, forecast.today_low, forecast.unit);
       apply_weather_forecast_to_entity(entity_id, "tomorrow", forecast.tomorrow_valid,
         forecast.tomorrow_high, forecast.tomorrow_low, forecast.unit);
+      bool three_day_valid = false;
+      float three_day_high = WEATHER_FORECAST_TEMP_MISSING;
+      float three_day_low = WEATHER_FORECAST_TEMP_MISSING;
+      weather_forecast_extend_range(forecast.today_valid, forecast.today_high,
+        forecast.today_low, three_day_valid, three_day_high, three_day_low);
+      weather_forecast_extend_range(forecast.tomorrow_valid, forecast.tomorrow_high,
+        forecast.tomorrow_low, three_day_valid, three_day_high, three_day_low);
+      weather_forecast_extend_range(forecast.three_day_valid, forecast.three_day_high,
+        forecast.three_day_low, three_day_valid, three_day_high, three_day_low);
+      apply_weather_forecast_to_entity(entity_id, "3day", three_day_valid,
+        three_day_high, three_day_low, forecast.unit);
       weather_forecast_send_next_queued();
     })) {
     apply_weather_forecast_unavailable_for_entity(entity_id);
