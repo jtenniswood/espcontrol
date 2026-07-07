@@ -32,6 +32,7 @@ closing=Closing
 cloudy=Cloudy
 cloudy_alert=Cloudy Alert
 configure=Configure
+confirm=Confirm?
 cool=Cool
 cooling=Cooling
 could_not_complete=Could not complete

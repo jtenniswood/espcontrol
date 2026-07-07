@@ -32,6 +32,7 @@ closing=Stänger
 cloudy=Molnigt
 cloudy_alert=Molnvarning
 configure=Konfigurera
+confirm=Bekräfta?
 cool=Kyla
 cooling=Kyler
 could_not_complete=Kunde inte slutföra

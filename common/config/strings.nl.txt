@@ -32,6 +32,7 @@ closing=Sluit
 cloudy=Bewolkt
 cloudy_alert=Bewolkingswaarschuwing
 configure=Configureren
+confirm=Bevestigen?
 cool=Koelen
 cooling=Koelen actief
 could_not_complete=Kon niet worden voltooid

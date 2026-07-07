@@ -43,6 +43,7 @@ inline const char *espcontrol_i18n_cs(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Zataženo";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Varování oblačnosti";
   if (std::strcmp(text, "Configure") == 0) return "Nastavit";
+  if (std::strcmp(text, "Confirm?") == 0) return "Potvrdit?";
   if (std::strcmp(text, "Cool") == 0) return "Chladit";
   if (std::strcmp(text, "Cooling") == 0) return "Chladí";
   if (std::strcmp(text, "Could not complete") == 0) return "Nelze dokončit";
@@ -253,6 +254,7 @@ inline const char *espcontrol_i18n_da(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Overskyet";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Skyvarsel";
   if (std::strcmp(text, "Configure") == 0) return "Konfigurer";
+  if (std::strcmp(text, "Confirm?") == 0) return "Bekræft?";
   if (std::strcmp(text, "Cool") == 0) return "Køling";
   if (std::strcmp(text, "Cooling") == 0) return "Køler";
   if (std::strcmp(text, "Could not complete") == 0) return "Kunne ikke fuldføre";
@@ -458,6 +460,7 @@ inline const char *espcontrol_i18n_de(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Bewölkt";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Wolkenwarnung";
   if (std::strcmp(text, "Configure") == 0) return "Konfigurieren";
+  if (std::strcmp(text, "Confirm?") == 0) return "Bestätigen?";
   if (std::strcmp(text, "Cool") == 0) return "Kühlen";
   if (std::strcmp(text, "Cooling") == 0) return "Kühlt";
   if (std::strcmp(text, "Could not complete") == 0) return "Konnte nicht abgeschlossen werden";
@@ -661,6 +664,7 @@ inline const char *espcontrol_i18n_es(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Nublado";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Alerta de nubosidad";
   if (std::strcmp(text, "Configure") == 0) return "Configurar";
+  if (std::strcmp(text, "Confirm?") == 0) return "¿Confirmar?";
   if (std::strcmp(text, "Cool") == 0) return "Frío";
   if (std::strcmp(text, "Cooling") == 0) return "Enfriando";
   if (std::strcmp(text, "Could not complete") == 0) return "No se pudo completar";
@@ -871,6 +875,7 @@ inline const char *espcontrol_i18n_fi(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Pilvistä";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Pilvihälytys";
   if (std::strcmp(text, "Configure") == 0) return "Määritä";
+  if (std::strcmp(text, "Confirm?") == 0) return "Vahvista?";
   if (std::strcmp(text, "Cool") == 0) return "Viilennys";
   if (std::strcmp(text, "Cooling") == 0) return "Viilentää";
   if (std::strcmp(text, "Could not complete") == 0) return "Ei voitu suorittaa";
@@ -1088,6 +1093,7 @@ inline const char *espcontrol_i18n_fr(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Nuageux";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Alerte nuageuse";
   if (std::strcmp(text, "Configure") == 0) return "Configurer";
+  if (std::strcmp(text, "Confirm?") == 0) return "Confirmer ?";
   if (std::strcmp(text, "Cool") == 0) return "Froid";
   if (std::strcmp(text, "Cooling") == 0) return "Refroidissement";
   if (std::strcmp(text, "Could not complete") == 0) return "Impossible de terminer";
@@ -1292,6 +1298,7 @@ inline const char *espcontrol_i18n_hu(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Felhős";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Felhőriasztás";
   if (std::strcmp(text, "Configure") == 0) return "Beállítás";
+  if (std::strcmp(text, "Confirm?") == 0) return "Megerősíti?";
   if (std::strcmp(text, "Cool") == 0) return "Hűtés";
   if (std::strcmp(text, "Cooling") == 0) return "Hűtés folyamatban";
   if (std::strcmp(text, "Could not complete") == 0) return "Nem sikerült befejezni";
@@ -1510,6 +1517,7 @@ inline const char *espcontrol_i18n_it(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Nuvoloso";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Allerta nuvole";
   if (std::strcmp(text, "Configure") == 0) return "Configura";
+  if (std::strcmp(text, "Confirm?") == 0) return "Confermare?";
   if (std::strcmp(text, "Cool") == 0) return "Freddo";
   if (std::strcmp(text, "Cooling") == 0) return "Raffreddamento";
   if (std::strcmp(text, "Could not complete") == 0) return "Impossibile completare";
@@ -1720,6 +1728,7 @@ inline const char *espcontrol_i18n_nb(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Overskyet";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Skyvarsel";
   if (std::strcmp(text, "Configure") == 0) return "Konfigurer";
+  if (std::strcmp(text, "Confirm?") == 0) return "Bekreft?";
   if (std::strcmp(text, "Cool") == 0) return "Kjøling";
   if (std::strcmp(text, "Cooling") == 0) return "Kjøler";
   if (std::strcmp(text, "Could not complete") == 0) return "Kunne ikke fullføre";
@@ -1928,6 +1937,7 @@ inline const char *espcontrol_i18n_nl(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Bewolkt";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Bewolkingswaarschuwing";
   if (std::strcmp(text, "Configure") == 0) return "Configureren";
+  if (std::strcmp(text, "Confirm?") == 0) return "Bevestigen?";
   if (std::strcmp(text, "Cool") == 0) return "Koelen";
   if (std::strcmp(text, "Cooling") == 0) return "Koelen actief";
   if (std::strcmp(text, "Could not complete") == 0) return "Kon niet worden voltooid";
@@ -2135,6 +2145,7 @@ inline const char *espcontrol_i18n_pl(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Pochmurno";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Ostrzeżenie o zachmurzeniu";
   if (std::strcmp(text, "Configure") == 0) return "Konfiguruj";
+  if (std::strcmp(text, "Confirm?") == 0) return "Potwierdzić?";
   if (std::strcmp(text, "Cool") == 0) return "Chłodzenie";
   if (std::strcmp(text, "Cooling") == 0) return "Chłodzi";
   if (std::strcmp(text, "Could not complete") == 0) return "Nie można ukończyć";
@@ -2343,6 +2354,7 @@ inline const char *espcontrol_i18n_pt_br(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Nublado";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Alerta de nuvens";
   if (std::strcmp(text, "Configure") == 0) return "Configurar";
+  if (std::strcmp(text, "Confirm?") == 0) return "Confirmar?";
   if (std::strcmp(text, "Cool") == 0) return "Frio";
   if (std::strcmp(text, "Cooling") == 0) return "Resfriando";
   if (std::strcmp(text, "Could not complete") == 0) return "Não foi possível concluir";
@@ -2552,6 +2564,7 @@ inline const char *espcontrol_i18n_pt(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Nublado";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Alerta de nuvens";
   if (std::strcmp(text, "Configure") == 0) return "Configurar";
+  if (std::strcmp(text, "Confirm?") == 0) return "Confirmar?";
   if (std::strcmp(text, "Cool") == 0) return "Frio";
   if (std::strcmp(text, "Cooling") == 0) return "A arrefecer";
   if (std::strcmp(text, "Could not complete") == 0) return "Não foi possível concluir";
@@ -2763,6 +2776,7 @@ inline const char *espcontrol_i18n_ro(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Înnorat";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Alertă nori";
   if (std::strcmp(text, "Configure") == 0) return "Configurează";
+  if (std::strcmp(text, "Confirm?") == 0) return "Confirmați?";
   if (std::strcmp(text, "Cool") == 0) return "Răcire";
   if (std::strcmp(text, "Cooling") == 0) return "Se răcește";
   if (std::strcmp(text, "Could not complete") == 0) return "Nu s-a putut finaliza";
@@ -2980,6 +2994,7 @@ inline const char *espcontrol_i18n_sk(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Zamračené";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Varovanie oblačnosti";
   if (std::strcmp(text, "Configure") == 0) return "Nastaviť";
+  if (std::strcmp(text, "Confirm?") == 0) return "Potvrdiť?";
   if (std::strcmp(text, "Cool") == 0) return "Chladiť";
   if (std::strcmp(text, "Cooling") == 0) return "Chladí";
   if (std::strcmp(text, "Could not complete") == 0) return "Nepodarilo sa dokončiť";
@@ -3192,6 +3207,7 @@ inline const char *espcontrol_i18n_sl(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Oblačno";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Opozorilo za oblake";
   if (std::strcmp(text, "Configure") == 0) return "Nastavi";
+  if (std::strcmp(text, "Confirm?") == 0) return "Potrditi?";
   if (std::strcmp(text, "Cool") == 0) return "Hlajenje";
   if (std::strcmp(text, "Cooling") == 0) return "Hladi";
   if (std::strcmp(text, "Could not complete") == 0) return "Ni bilo mogoče dokončati";
@@ -3407,6 +3423,7 @@ inline const char *espcontrol_i18n_sv(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Molnigt";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Molnvarning";
   if (std::strcmp(text, "Configure") == 0) return "Konfigurera";
+  if (std::strcmp(text, "Confirm?") == 0) return "Bekräfta?";
   if (std::strcmp(text, "Cool") == 0) return "Kyla";
   if (std::strcmp(text, "Cooling") == 0) return "Kyler";
   if (std::strcmp(text, "Could not complete") == 0) return "Kunde inte slutföra";
@@ -3614,6 +3631,7 @@ inline const char *espcontrol_i18n_tr(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Bulutlu";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Bulut uyarısı";
   if (std::strcmp(text, "Configure") == 0) return "Yapılandır";
+  if (std::strcmp(text, "Confirm?") == 0) return "Onayla?";
   if (std::strcmp(text, "Cool") == 0) return "Soğut";
   if (std::strcmp(text, "Cooling") == 0) return "Soğutuyor";
   if (std::strcmp(text, "Could not complete") == 0) return "Tamamlanamadı";
@@ -3834,6 +3852,7 @@ inline const char *espcontrol_i18n_uk(const char *text) {
   if (std::strcmp(text, "Cloudy") == 0) return "Хмарно";
   if (std::strcmp(text, "Cloudy Alert") == 0) return "Попередження про хмарність";
   if (std::strcmp(text, "Configure") == 0) return "Налаштувати";
+  if (std::strcmp(text, "Confirm?") == 0) return "Підтвердити?";
   if (std::strcmp(text, "Cool") == 0) return "Охолодження";
   if (std::strcmp(text, "Cooling") == 0) return "Охолоджується";
   if (std::strcmp(text, "Could not complete") == 0) return "Не вдалося завершити";
@@ -4058,6 +4077,7 @@ inline const char *espcontrol_i18n_key_en(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Cloudy";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Cloudy Alert";
   if (std::strcmp(key, "configure") == 0) return "Configure";
+  if (std::strcmp(key, "confirm") == 0) return "Confirm?";
   if (std::strcmp(key, "cool") == 0) return "Cool";
   if (std::strcmp(key, "cooling") == 0) return "Cooling";
   if (std::strcmp(key, "could_not_complete") == 0) return "Could not complete";
@@ -4283,6 +4303,7 @@ inline const char *espcontrol_i18n_key_cs(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Zataženo";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Varování oblačnosti";
   if (std::strcmp(key, "configure") == 0) return "Nastavit";
+  if (std::strcmp(key, "confirm") == 0) return "Potvrdit?";
   if (std::strcmp(key, "cool") == 0) return "Chladit";
   if (std::strcmp(key, "cooling") == 0) return "Chladí";
   if (std::strcmp(key, "could_not_complete") == 0) return "Nelze dokončit";
@@ -4494,6 +4515,7 @@ inline const char *espcontrol_i18n_key_da(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Overskyet";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Skyvarsel";
   if (std::strcmp(key, "configure") == 0) return "Konfigurer";
+  if (std::strcmp(key, "confirm") == 0) return "Bekræft?";
   if (std::strcmp(key, "cool") == 0) return "Køling";
   if (std::strcmp(key, "cooling") == 0) return "Køler";
   if (std::strcmp(key, "could_not_complete") == 0) return "Kunne ikke fuldføre";
@@ -4700,6 +4722,7 @@ inline const char *espcontrol_i18n_key_de(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Bewölkt";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Wolkenwarnung";
   if (std::strcmp(key, "configure") == 0) return "Konfigurieren";
+  if (std::strcmp(key, "confirm") == 0) return "Bestätigen?";
   if (std::strcmp(key, "cool") == 0) return "Kühlen";
   if (std::strcmp(key, "cooling") == 0) return "Kühlt";
   if (std::strcmp(key, "could_not_complete") == 0) return "Konnte nicht abgeschlossen werden";
@@ -4904,6 +4927,7 @@ inline const char *espcontrol_i18n_key_es(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Nublado";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Alerta de nubosidad";
   if (std::strcmp(key, "configure") == 0) return "Configurar";
+  if (std::strcmp(key, "confirm") == 0) return "¿Confirmar?";
   if (std::strcmp(key, "cool") == 0) return "Frío";
   if (std::strcmp(key, "cooling") == 0) return "Enfriando";
   if (std::strcmp(key, "could_not_complete") == 0) return "No se pudo completar";
@@ -5115,6 +5139,7 @@ inline const char *espcontrol_i18n_key_fi(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Pilvistä";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Pilvihälytys";
   if (std::strcmp(key, "configure") == 0) return "Määritä";
+  if (std::strcmp(key, "confirm") == 0) return "Vahvista?";
   if (std::strcmp(key, "cool") == 0) return "Viilennys";
   if (std::strcmp(key, "cooling") == 0) return "Viilentää";
   if (std::strcmp(key, "could_not_complete") == 0) return "Ei voitu suorittaa";
@@ -5333,6 +5358,7 @@ inline const char *espcontrol_i18n_key_fr(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Nuageux";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Alerte nuageuse";
   if (std::strcmp(key, "configure") == 0) return "Configurer";
+  if (std::strcmp(key, "confirm") == 0) return "Confirmer ?";
   if (std::strcmp(key, "cool") == 0) return "Froid";
   if (std::strcmp(key, "cooling") == 0) return "Refroidissement";
   if (std::strcmp(key, "could_not_complete") == 0) return "Impossible de terminer";
@@ -5538,6 +5564,7 @@ inline const char *espcontrol_i18n_key_hu(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Felhős";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Felhőriasztás";
   if (std::strcmp(key, "configure") == 0) return "Beállítás";
+  if (std::strcmp(key, "confirm") == 0) return "Megerősíti?";
   if (std::strcmp(key, "cool") == 0) return "Hűtés";
   if (std::strcmp(key, "cooling") == 0) return "Hűtés folyamatban";
   if (std::strcmp(key, "could_not_complete") == 0) return "Nem sikerült befejezni";
@@ -5757,6 +5784,7 @@ inline const char *espcontrol_i18n_key_it(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Nuvoloso";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Allerta nuvole";
   if (std::strcmp(key, "configure") == 0) return "Configura";
+  if (std::strcmp(key, "confirm") == 0) return "Confermare?";
   if (std::strcmp(key, "cool") == 0) return "Freddo";
   if (std::strcmp(key, "cooling") == 0) return "Raffreddamento";
   if (std::strcmp(key, "could_not_complete") == 0) return "Impossibile completare";
@@ -5968,6 +5996,7 @@ inline const char *espcontrol_i18n_key_nb(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Overskyet";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Skyvarsel";
   if (std::strcmp(key, "configure") == 0) return "Konfigurer";
+  if (std::strcmp(key, "confirm") == 0) return "Bekreft?";
   if (std::strcmp(key, "cool") == 0) return "Kjøling";
   if (std::strcmp(key, "cooling") == 0) return "Kjøler";
   if (std::strcmp(key, "could_not_complete") == 0) return "Kunne ikke fullføre";
@@ -6177,6 +6206,7 @@ inline const char *espcontrol_i18n_key_nl(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Bewolkt";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Bewolkingswaarschuwing";
   if (std::strcmp(key, "configure") == 0) return "Configureren";
+  if (std::strcmp(key, "confirm") == 0) return "Bevestigen?";
   if (std::strcmp(key, "cool") == 0) return "Koelen";
   if (std::strcmp(key, "cooling") == 0) return "Koelen actief";
   if (std::strcmp(key, "could_not_complete") == 0) return "Kon niet worden voltooid";
@@ -6384,6 +6414,7 @@ inline const char *espcontrol_i18n_key_pl(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Pochmurno";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Ostrzeżenie o zachmurzeniu";
   if (std::strcmp(key, "configure") == 0) return "Konfiguruj";
+  if (std::strcmp(key, "confirm") == 0) return "Potwierdzić?";
   if (std::strcmp(key, "cool") == 0) return "Chłodzenie";
   if (std::strcmp(key, "cooling") == 0) return "Chłodzi";
   if (std::strcmp(key, "could_not_complete") == 0) return "Nie można ukończyć";
@@ -6593,6 +6624,7 @@ inline const char *espcontrol_i18n_key_pt_br(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Nublado";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Alerta de nuvens";
   if (std::strcmp(key, "configure") == 0) return "Configurar";
+  if (std::strcmp(key, "confirm") == 0) return "Confirmar?";
   if (std::strcmp(key, "cool") == 0) return "Frio";
   if (std::strcmp(key, "cooling") == 0) return "Resfriando";
   if (std::strcmp(key, "could_not_complete") == 0) return "Não foi possível concluir";
@@ -6803,6 +6835,7 @@ inline const char *espcontrol_i18n_key_pt(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Nublado";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Alerta de nuvens";
   if (std::strcmp(key, "configure") == 0) return "Configurar";
+  if (std::strcmp(key, "confirm") == 0) return "Confirmar?";
   if (std::strcmp(key, "cool") == 0) return "Frio";
   if (std::strcmp(key, "cooling") == 0) return "A arrefecer";
   if (std::strcmp(key, "could_not_complete") == 0) return "Não foi possível concluir";
@@ -7015,6 +7048,7 @@ inline const char *espcontrol_i18n_key_ro(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Înnorat";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Alertă nori";
   if (std::strcmp(key, "configure") == 0) return "Configurează";
+  if (std::strcmp(key, "confirm") == 0) return "Confirmați?";
   if (std::strcmp(key, "cool") == 0) return "Răcire";
   if (std::strcmp(key, "cooling") == 0) return "Se răcește";
   if (std::strcmp(key, "could_not_complete") == 0) return "Nu s-a putut finaliza";
@@ -7233,6 +7267,7 @@ inline const char *espcontrol_i18n_key_sk(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Zamračené";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Varovanie oblačnosti";
   if (std::strcmp(key, "configure") == 0) return "Nastaviť";
+  if (std::strcmp(key, "confirm") == 0) return "Potvrdiť?";
   if (std::strcmp(key, "cool") == 0) return "Chladiť";
   if (std::strcmp(key, "cooling") == 0) return "Chladí";
   if (std::strcmp(key, "could_not_complete") == 0) return "Nepodarilo sa dokončiť";
@@ -7446,6 +7481,7 @@ inline const char *espcontrol_i18n_key_sl(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Oblačno";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Opozorilo za oblake";
   if (std::strcmp(key, "configure") == 0) return "Nastavi";
+  if (std::strcmp(key, "confirm") == 0) return "Potrditi?";
   if (std::strcmp(key, "cool") == 0) return "Hlajenje";
   if (std::strcmp(key, "cooling") == 0) return "Hladi";
   if (std::strcmp(key, "could_not_complete") == 0) return "Ni bilo mogoče dokončati";
@@ -7662,6 +7698,7 @@ inline const char *espcontrol_i18n_key_sv(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Molnigt";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Molnvarning";
   if (std::strcmp(key, "configure") == 0) return "Konfigurera";
+  if (std::strcmp(key, "confirm") == 0) return "Bekräfta?";
   if (std::strcmp(key, "cool") == 0) return "Kyla";
   if (std::strcmp(key, "cooling") == 0) return "Kyler";
   if (std::strcmp(key, "could_not_complete") == 0) return "Kunde inte slutföra";
@@ -7870,6 +7907,7 @@ inline const char *espcontrol_i18n_key_tr(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Bulutlu";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Bulut uyarısı";
   if (std::strcmp(key, "configure") == 0) return "Yapılandır";
+  if (std::strcmp(key, "confirm") == 0) return "Onayla?";
   if (std::strcmp(key, "cool") == 0) return "Soğut";
   if (std::strcmp(key, "cooling") == 0) return "Soğutuyor";
   if (std::strcmp(key, "could_not_complete") == 0) return "Tamamlanamadı";
@@ -8091,6 +8129,7 @@ inline const char *espcontrol_i18n_key_uk(const char *key) {
   if (std::strcmp(key, "cloudy") == 0) return "Хмарно";
   if (std::strcmp(key, "cloudy_alert") == 0) return "Попередження про хмарність";
   if (std::strcmp(key, "configure") == 0) return "Налаштувати";
+  if (std::strcmp(key, "confirm") == 0) return "Підтвердити?";
   if (std::strcmp(key, "cool") == 0) return "Охолодження";
   if (std::strcmp(key, "cooling") == 0) return "Охолоджується";
   if (std::strcmp(key, "could_not_complete") == 0) return "Не вдалося завершити";

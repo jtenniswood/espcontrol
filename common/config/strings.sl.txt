@@ -32,6 +32,7 @@ closing=Zapiranje
 cloudy=Oblačno
 cloudy_alert=Opozorilo za oblake
 configure=Nastavi
+confirm=Potrditi?
 cool=Hlajenje
 cooling=Hladi
 could_not_complete=Ni bilo mogoče dokončati

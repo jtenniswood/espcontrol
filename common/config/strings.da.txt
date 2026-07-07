@@ -32,6 +32,7 @@ closing=Lukker
 cloudy=Overskyet
 cloudy_alert=Skyvarsel
 configure=Konfigurer
+confirm=Bekræft?
 cool=Køling
 cooling=Køler
 could_not_complete=Kunne ikke fuldføre

@@ -32,6 +32,7 @@ closing=Záródik
 cloudy=Felhős
 cloudy_alert=Felhőriasztás
 configure=Beállítás
+confirm=Megerősíti?
 cool=Hűtés
 cooling=Hűtés folyamatban
 could_not_complete=Nem sikerült befejezni

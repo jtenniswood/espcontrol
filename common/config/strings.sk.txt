@@ -32,6 +32,7 @@ closing=Zatvára sa
 cloudy=Zamračené
 cloudy_alert=Varovanie oblačnosti
 configure=Nastaviť
+confirm=Potvrdiť?
 cool=Chladiť
 cooling=Chladí
 could_not_complete=Nepodarilo sa dokončiť

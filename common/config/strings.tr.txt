@@ -32,6 +32,7 @@ closing=Kapanıyor
 cloudy=Bulutlu
 cloudy_alert=Bulut uyarısı
 configure=Yapılandır
+confirm=Onayla?
 cool=Soğut
 cooling=Soğutuyor
 could_not_complete=Tamamlanamadı

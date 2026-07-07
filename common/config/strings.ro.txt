@@ -32,6 +32,7 @@ closing=Se închide
 cloudy=Înnorat
 cloudy_alert=Alertă nori
 configure=Configurează
+confirm=Confirmați?
 cool=Răcire
 cooling=Se răcește
 could_not_complete=Nu s-a putut finaliza

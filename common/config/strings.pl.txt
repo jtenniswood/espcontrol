@@ -32,6 +32,7 @@ closing=Zamykanie
 cloudy=Pochmurno
 cloudy_alert=Ostrzeżenie o zachmurzeniu
 configure=Konfiguruj
+confirm=Potwierdzić?
 cool=Chłodzenie
 cooling=Chłodzi
 could_not_complete=Nie można ukończyć

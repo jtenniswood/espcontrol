@@ -32,6 +32,7 @@ closing=Закривається
 cloudy=Хмарно
 cloudy_alert=Попередження про хмарність
 configure=Налаштувати
+confirm=Підтвердити?
 cool=Охолодження
 cooling=Охолоджується
 could_not_complete=Не вдалося завершити

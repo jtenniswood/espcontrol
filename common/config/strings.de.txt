@@ -32,6 +32,7 @@ closing=Schließt
 cloudy=Bewölkt
 cloudy_alert=Wolkenwarnung
 configure=Konfigurieren
+confirm=Bestätigen?
 cool=Kühlen
 cooling=Kühlt
 could_not_complete=Konnte nicht abgeschlossen werden

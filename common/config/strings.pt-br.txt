@@ -32,6 +32,7 @@ closing=Fechando
 cloudy=Nublado
 cloudy_alert=Alerta de nuvens
 configure=Configurar
+confirm=Confirmar?
 cool=Frio
 cooling=Resfriando
 could_not_complete=Não foi possível concluir

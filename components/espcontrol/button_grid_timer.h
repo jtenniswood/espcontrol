@@ -242,7 +242,7 @@ inline void handle_timer_card_click(TimerCardCtx *ctx) {
     std::string entity_id = ctx->entity_id;
     auto cancel = [entity_id]() { ha_send_entity_action(entity_id, "timer.cancel"); };
     if (ctx->confirm_enabled) {
-      timer_confirmation_try(&ctx->confirm, ctx->text_lbl, "Confirm?",
+      timer_confirmation_try(&ctx->confirm, ctx->text_lbl, espcontrol_i18n("Confirm?"),
                              ctx->confirm_timeout_secs, cancel);
     } else {
       cancel();
