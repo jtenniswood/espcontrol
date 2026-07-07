@@ -872,9 +872,10 @@ var EspControlModel = (() => {
   }
   function normalizeScheduleMode(value) {
     const mode = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
-    if (mode === "screen_dimmed" || mode === "dimmed" || mode === "always_on" || mode === "always") {
+    if (mode === "screen_dimmed" || mode === "dimmed") {
       return "screen_dimmed";
     }
+    if (mode === "always_on" || mode === "always") return "always_on";
     if (mode === "clock") return "clock";
     return "screen_off";
   }
@@ -900,6 +901,7 @@ var EspControlModel = (() => {
   function scheduleModeOption(value) {
     const mode = normalizeScheduleMode(value);
     if (mode === "screen_dimmed") return "Screen Dimmed";
+    if (mode === "always_on") return "Always On";
     if (mode === "clock") return "Clock";
     return "Screen off";
   }

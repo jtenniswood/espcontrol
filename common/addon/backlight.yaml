@@ -684,8 +684,12 @@ script:
               id(schedule_mode).current_option(),
               id(schedule_presence_detected_mode).current_option(),
               id(schedule_presence_not_detected_mode).current_option());
+            bool sensor_controlled_off_mode =
+              screen_schedule_sensor_trigger(id(screen_schedule_trigger).state) &&
+              (screen_schedule_clock_mode(mode) || !screen_schedule_always_on_mode(mode));
             id(manual_wake_ms) =
-              (schedule_night && !screen_schedule_always_on_mode(mode)) ? millis() : 0;
+              ((schedule_night && !screen_schedule_always_on_mode(mode)) ||
+               sensor_controlled_off_mode) ? millis() : 0;
           }
       - if:
           condition:

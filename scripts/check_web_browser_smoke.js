@@ -777,8 +777,8 @@ async function assertSettingsPage(page, label, options = {}) {
   await nightScheduleCard.getByRole("button", { name: "Sensor" }).click();
   assert.strictEqual(
     await nightScheduleCard.locator("#sp-set-schedule-sensor-mode").inputValue(),
-    "screen_off",
-    `${label}: sensor presence-detected action defaults to screen off`,
+    "always_on",
+    `${label}: sensor presence-detected action defaults to always on`,
   );
   assert.strictEqual(
     await nightScheduleCard.locator("#sp-set-schedule-sensor-not-detected-mode").inputValue(),
