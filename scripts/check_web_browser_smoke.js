@@ -69,6 +69,7 @@ const BUTTON_FIXTURES = [
   "climate.hall;Hall;Thermostat;Auto;;;climate;;",
   "media_player.living;Media;Auto;Auto;play_pause;;media;;",
   "cover.office_blind;Blind;Blinds Open;Blinds;modal;;cover;;cover_tabs=controls%7Cposition%7Ctilt",
+  "alarm_control_panel.house;Alarm;Security;Auto;;;alarm;;",
 ];
 
 function htmlFor(slug) {
@@ -88,8 +89,15 @@ function htmlFor(slug) {
 }
 
 function routeContentType(url) {
-  if (/\.css(?:$|\?)/.test(url)) return "text/css";
-  if (/\.(?:png|jpg|jpeg|gif|webp|svg)(?:$|\?)/.test(url))
+  const pathname = typeof url === "string" ? url : url.pathname;
+  if (
+    typeof url !== "string" &&
+    url.hostname === "fonts.googleapis.com" &&
+    pathname === "/css2"
+  )
+    return "text/css";
+  if (/\.css(?:$|\?)/.test(pathname)) return "text/css";
+  if (/\.(?:png|jpg|jpeg|gif|webp|svg)(?:$|\?)/.test(pathname))
     return "image/svg+xml";
   return "text/plain";
 }
@@ -131,7 +139,7 @@ async function installRoutes(context, slug) {
     }
     await route.fulfill({
       status: 200,
-      contentType: routeContentType(requestUrl.pathname),
+      contentType: routeContentType(requestUrl),
       body: "",
     });
   });
@@ -186,7 +194,7 @@ async function installFakeEventSource(page) {
 
 function seededEvents() {
   const events = [
-    { id: "text-button_order", state: "1,2,3w,4,5" },
+    { id: "text-button_order", state: "1,2,3w,4,5,6" },
     { id: "text-button_on_color", state: "0073FF" },
     { id: "text-button_off_color", state: "CECECE" },
     { id: "text-sensor_card_color", state: "DEDEDE" },
@@ -215,6 +223,19 @@ function seededEvents() {
       option: ["Europe/London (GMT+0)", "America/New_York (GMT-5)"],
     },
     { id: "select-screen__language", state: "en", value: "en", option: ["en"] },
+    {
+      id: "select-home_assistant_artwork_protocol",
+      state: "http",
+      value: "http",
+      option: ["http", "https"],
+    },
+    { id: "switch-firmware__auto_update", state: "ON", value: true },
+    {
+      id: "select-firmware__update_frequency",
+      state: "Daily",
+      value: "Daily",
+      option: ["Hourly", "Daily", "Weekly", "Monthly"],
+    },
     {
       id: "select-screen__clock_format",
       state: "24h",
@@ -245,7 +266,7 @@ function seededEvents() {
   return events;
 }
 
-function rotationStartupBaseEvents(includeRotation = true) {
+function rotationStartupBaseEvents(includeRotation = true, fixtureCount = BUTTON_FIXTURES.length) {
   const events = [
     { id: "text-button_on_color", state: "0073FF" },
     { id: "text-button_off_color", state: "CECECE" },
@@ -259,7 +280,7 @@ function rotationStartupBaseEvents(includeRotation = true) {
       option: ["0", "90", "180", "270"],
     });
   }
-  BUTTON_FIXTURES.forEach((state, index) => {
+  BUTTON_FIXTURES.slice(0, fixtureCount).forEach((state, index) => {
     events.push({ id: `text-button_${index + 1}_config`, state });
   });
   return events;
@@ -398,7 +419,7 @@ function gridTrackCount(value) {
   return value.split(/\s+/).length;
 }
 
-function assertPortraitGridLayout(result, label) {
+function assertPortraitGridLayout(result, label, options = {}) {
   assert(
     !result.loading,
     `${label}: grid should no longer be waiting for startup rotation`,
@@ -414,7 +435,7 @@ function assertPortraitGridLayout(result, label) {
     `${label}: grid should be visible after startup rotation is known`,
   );
   assert(
-    result.visibleCards >= BUTTON_FIXTURES.length,
+    result.visibleCards >= (options.minVisibleCards || BUTTON_FIXTURES.length),
     `${label}: saved cards should render`,
   );
   assert(
@@ -551,7 +572,7 @@ async function assertRotationStartupOrdering(browser) {
     await page.evaluate(
       (events) => window.__seedEspState(events),
       [{ id: "text-button_order", state: "1,2,3w,4,5" }].concat(
-        rotationStartupBaseEvents(false),
+        rotationStartupBaseEvents(false, 5),
       ),
     );
     let layout = await measureRotationStartupLayout(page);
@@ -586,7 +607,9 @@ async function assertRotationStartupOrdering(browser) {
     );
     await page.waitForSelector(".sp-main > .sp-btn");
     layout = await measureRotationStartupLayout(page);
-    assertPortraitGridLayout(layout, "button_order before rotation");
+    assertPortraitGridLayout(layout, "button_order before rotation", {
+      minVisibleCards: 5,
+    });
   } finally {
     await context.close();
   }
@@ -607,7 +630,7 @@ async function assertRotationStartupOrdering(browser) {
     );
     await reversePage.evaluate(
       (events) => window.__seedEspState(events),
-      rotationStartupBaseEvents(true).concat([
+      rotationStartupBaseEvents(true, 5).concat([
         { id: "text-button_order", state: "1,2,3w,4,5" },
       ]),
     );
@@ -615,6 +638,7 @@ async function assertRotationStartupOrdering(browser) {
     assertPortraitGridLayout(
       await measureRotationStartupLayout(reversePage),
       "rotation before button_order",
+      { minVisibleCards: 5 },
     );
   } finally {
     await reverseContext.close();
@@ -637,7 +661,7 @@ async function assertRotationStartupOrdering(browser) {
     await fallbackPage.evaluate(
       (events) => window.__seedEspState(events),
       [{ id: "text-button_order", state: "1,2,3w,4,5" }].concat(
-        rotationStartupBaseEvents(false),
+        rotationStartupBaseEvents(false, 5),
       ),
     );
     let layout = await measureRotationStartupLayout(fallbackPage);
@@ -668,7 +692,7 @@ async function assertRotationStartupOrdering(browser) {
       "rotation fallback: grid should be visible after fallback timeout",
     );
     assert(
-      layout.visibleCards >= BUTTON_FIXTURES.length,
+      layout.visibleCards >= 5,
       "rotation fallback: saved cards should render after fallback timeout",
     );
   } finally {
@@ -1544,6 +1568,132 @@ async function assertCoverSettingsPanels(page, label) {
   });
 }
 
+async function assertAlarmSettingsPanels(page, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  await page.locator('.sp-main [data-slot="6"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+
+  const cardSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Card Settings" }).first();
+  const modalSettings = page.locator(".sp-settings-modal .sp-disclosure").filter({ hasText: "Modal Settings" }).first();
+  assert(await cardSettings.isVisible(), `${label}: alarm card settings panel should render`);
+  assert(await modalSettings.isVisible(), `${label}: alarm modal settings panel should render`);
+  assert(!(await cardSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm card settings panel should start collapsed`);
+  assert(!(await modalSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm modal settings panel should start collapsed`);
+  assert.strictEqual(
+    await page.locator("#sp-inp-alarm-card-type").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: alarm type selector should sit outside collapsible panels`
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-alarm-entity").evaluate((el) => !!el.closest(".sp-disclosure")),
+    false,
+    `${label}: alarm entity field should sit outside collapsible panels`
+  );
+
+  await cardSettings.locator("> .sp-disclosure-button").click();
+  assert(await cardSettings.getByText("Label Display", { exact: true }).isVisible(), `${label}: alarm card settings panel should contain label display controls`);
+  assert(await cardSettings.getByText("Icon Display", { exact: true }).isVisible(), `${label}: alarm card settings panel should contain icon display controls`);
+  const labelInput = page.locator("#sp-inp-alarm-label");
+  await labelInput.waitFor({ state: "attached" });
+  assert.strictEqual(
+    await labelInput.isVisible(),
+    false,
+    `${label}: alarm label input starts hidden when status label display is selected`,
+  );
+
+  await cardSettings
+    .locator(".sp-field")
+    .filter({ hasText: "Label Display" })
+    .getByRole("button", { name: "Name", exact: true })
+    .click();
+  assert(
+    await labelInput.isVisible(),
+    `${label}: alarm label input appears when name label display is selected`,
+  );
+  assert(
+    await labelInput.evaluate((el) => {
+      var field = el.closest(".sp-cond-field");
+      var displayField = field && field.previousElementSibling;
+      return !!(
+        field &&
+        field.classList.contains("sp-visible") &&
+        displayField &&
+        displayField.textContent.indexOf("Label Display") !== -1
+      );
+    }),
+    `${label}: alarm label input is shown directly below label display controls`,
+  );
+
+  await cardSettings
+    .locator(".sp-field")
+    .filter({ hasText: "Label Display" })
+    .getByRole("button", { name: "Status", exact: true })
+    .click();
+  assert.strictEqual(
+    await labelInput.isVisible(),
+    false,
+    `${label}: alarm label input hides again when status label display is selected`,
+  );
+
+  await modalSettings.locator("> .sp-disclosure-button").click();
+  assert(await modalSettings.getByText("Visible Actions", { exact: true }).isVisible(), `${label}: alarm modal settings panel should contain visible actions controls`);
+  const pinSettings = modalSettings.locator(".sp-disclosure").filter({ hasText: "PIN Settings" }).first();
+  assert(await pinSettings.isVisible(), `${label}: alarm modal settings panel should contain PIN settings`);
+  assert(!(await pinSettings.getAttribute("class")).includes("sp-open"), `${label}: alarm PIN settings panel should start collapsed`);
+  await pinSettings.locator("> .sp-disclosure-button").click();
+  assert(await pinSettings.getByText("PIN required for arming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain arming PIN controls`);
+  assert(await pinSettings.getByText("PIN required for disarming", { exact: true }).isVisible(), `${label}: alarm PIN settings panel should contain disarming PIN controls`);
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    var overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
+async function assertPlaylistValidationOpensSourcePanel(page, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  await page.locator('.sp-main [data-slot="4"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+  await page.locator("#sp-inp-media-mode").selectOption("playlist");
+  await page.waitForSelector("#sp-inp-playlist-content-id");
+
+  const sourceSettings = page
+    .locator(".sp-settings-modal .sp-disclosure")
+    .filter({ hasText: "Source" })
+    .first();
+  assert(await sourceSettings.isVisible(), `${label}: playlist source panel should render`);
+  await page.locator("#sp-inp-playlist-content-id").fill("");
+  if ((await sourceSettings.getAttribute("class")).includes("sp-open")) {
+    await sourceSettings.locator("> .sp-disclosure-button").click();
+  }
+  assert(
+    !(await sourceSettings.getAttribute("class")).includes("sp-open"),
+    `${label}: playlist source panel should be collapsed before validation`,
+  );
+
+  await page.getByRole("button", { name: "Save" }).click();
+  await page.waitForFunction(() => {
+    var input = document.querySelector("#sp-inp-playlist-content-id");
+    var disclosure = input && input.closest(".sp-disclosure");
+    return disclosure && disclosure.classList.contains("sp-open");
+  });
+  assert(
+    await page.getByText("Add a media ID before saving.", { exact: true }).isVisible(),
+    `${label}: playlist content ID error should be visible after validation`,
+  );
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    var overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
 function postRecord(requestUrl) {
   const url = new URL(requestUrl);
   const parts = url.pathname
@@ -1657,6 +1807,17 @@ function backupFixture(device, slots) {
       presence_sensor_entity: "binary_sensor.office_presence",
       media_player_sleep_prevention: true,
       media_player_sleep_prevention_entity: "media_player.living",
+      cover_art_screensaver: true,
+      cover_art_media_player_entity: "media_player.living",
+      cover_art_attribute_conditions: "app_id=com.apple.TVMusic",
+      cover_art_delay: 30,
+      cover_art_touch_pause: 180,
+      cover_art_track_overlay_duration: 10,
+      cover_art_hide_external_input: false,
+      home_assistant_artwork_protocol: "https",
+      home_assistant_artwork_port: 9443,
+      firmware_auto_update: false,
+      firmware_update_frequency: "Weekly",
       screensaver_action: "dim",
       clock_brightness_day: 44,
       clock_brightness_night: 22,
@@ -1822,6 +1983,163 @@ async function assertBackupImportSmoke(page, posts, testCase) {
     "backup clock bar time reset",
     before,
   );
+  const screensaverImportPosts = [
+    [
+      { domain: "text", name: "screensaver_mode", action: "set", value: "timer" },
+      "backup screensaver mode import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "presence_sensor_entity",
+        action: "set",
+        value: "binary_sensor.office_presence",
+      },
+      "backup screensaver presence import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "screen_saver__media_player_sleep_prevention",
+        action: "turn_on",
+      },
+      "backup media sleep prevention import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "media_player_sleep_prevention_entity",
+        action: "set",
+        value: "media_player.living",
+      },
+      "backup media sleep prevention entity import",
+    ],
+    [
+      { domain: "switch", name: "screen_saver__cover_art", action: "turn_on" },
+      "backup cover art import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "screen_saver__cover_art_entity",
+        action: "set",
+        value: "media_player.living",
+      },
+      "backup cover art entity import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "screen_saver__cover_art_conditions",
+        action: "set",
+        value: "app_id=com.apple.TVMusic",
+      },
+      "backup cover art conditions import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__cover_art_delay",
+        action: "set",
+        value: "30",
+      },
+      "backup cover art delay import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__cover_art_touch_pause",
+        action: "set",
+        value: "180",
+      },
+      "backup cover art touch pause import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__track_overlay_duration",
+        action: "set",
+        value: "10",
+      },
+      "backup cover art track overlay import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "screen_saver__hide_cover_art_on_external_input",
+        action: "turn_off",
+      },
+      "backup cover art external input import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "home_assistant_artwork_protocol",
+        action: "set",
+        option: "https",
+      },
+      "backup Home Assistant artwork protocol import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "home_assistant_artwork_port",
+        action: "set",
+        value: "9443",
+      },
+      "backup Home Assistant artwork port import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "firmware__auto_update",
+        action: "turn_off",
+      },
+      "backup firmware auto-update import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "firmware__update_frequency",
+        action: "set",
+        option: "Weekly",
+      },
+      "backup firmware update frequency import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "screen_saver__action",
+        action: "set",
+        option: "Screen Dimmed",
+      },
+      "backup screensaver action import",
+    ],
+    [
+      { domain: "switch", name: "screen_saver__clock", action: "turn_off" },
+      "backup clock screensaver switch import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__dimmed_brightness",
+        action: "set",
+        value: "15",
+      },
+      "backup dimmed screensaver brightness import",
+    ],
+    [
+      { domain: "number", name: "screensaver_timeout", action: "set", value: "60" },
+      "backup screensaver timeout import",
+    ],
+    [
+      { domain: "number", name: "home_screen_timeout", action: "set", value: "120" },
+      "backup home screen timeout import",
+    ],
+  ];
+  for (const [expected, label] of screensaverImportPosts) {
+    await waitForPost(posts, expected, label, before);
+  }
   await waitForPost(
     posts,
     {
@@ -2471,7 +2789,8 @@ async function runCase(browser, testCase) {
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+    if (message.type() === "error" || message.type() === "warning")
+      errors.push(`[${message.type()}] ${message.text()}`);
   });
   page.on("request", (request) => {
     const requestUrl = new URL(request.url());
@@ -2516,6 +2835,8 @@ async function runCase(browser, testCase) {
       testCase,
     );
     await assertCoverSettingsPanels(page, testCase.name);
+    await assertAlarmSettingsPanels(page, testCase.name);
+    await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
     if (testCase.exerciseInteractions) {
       await assertMobileTabLayout(page, testCase.name, testCase.viewport);
     }

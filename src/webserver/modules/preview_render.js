@@ -1,4 +1,5 @@
 // ── Preview rendering (unified) ────────────────────────────────────────
+// @web-module-requires: state, screen_rotation_state, grid, config_codec, controls, controls_fields
 
 function previewHtmlValue(typePreview, key, fallback) {
   return typePreview && Object.prototype.hasOwnProperty.call(typePreview, key)
@@ -45,6 +46,7 @@ var CARD_TYPE_PICKER_DETAILS = {
   presence: { icon: "account", description: "Show person or presence status." },
   fan_speed: { icon: "fan", description: "Control fan speed, mode, or direction." },
   garage: { icon: "garage", description: "Show and control a garage door." },
+  gate: { icon: "gate", description: "Show and control a gate." },
   image: { icon: "image", description: "Display an image card where supported." },
   internal: { icon: "power-plug", description: "Control built-in device relays." },
   light_brightness: { icon: "lightbulb", description: "Configure light switch, brightness, or temperature controls." },
@@ -52,6 +54,7 @@ var CARD_TYPE_PICKER_DETAILS = {
   local_sensor: { icon: "gauge", description: "Show a sensor value from this device." },
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
+  media_control: { icon: "music", description: "Open all media controls and volume in a modal." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
@@ -62,7 +65,9 @@ var CARD_TYPE_PICKER_DETAILS = {
 };
 
 var CARD_TYPE_PICKER_DEFAULTS = {
+  climate: "climate_control",
   light_brightness: "light_control",
+  media_control: "media",
 };
 
 function defaultButtonTypeForPicker(key) {
@@ -103,6 +108,13 @@ function buttonTypePickerOptionList(isSub, selectedTypeKey) {
       label: label,
       disabled: false,
     }, buttonTypePickerDetails(td.key, label)));
+    if (td.key === "media") {
+      typeOpts.push(Object.assign({
+        key: "media_control",
+        label: "All Controls",
+        disabled: false,
+      }, buttonTypePickerDetails("media_control", "All Controls")));
+    }
   }
   if (selectedUnsupported) {
     var unsupportedLabel = selectedUnsupported.label + " (not available)";

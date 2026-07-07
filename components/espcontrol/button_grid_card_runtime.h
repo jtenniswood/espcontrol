@@ -134,6 +134,10 @@ constexpr const char *card_runtime_option_name_playlist_content_type() {
   return CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_TYPE;
 }
 
+constexpr const char *card_runtime_option_name_playlist_player_source() {
+  return CARD_CONTRACT_OPTION_NAME_PLAYLIST_PLAYER_SOURCE;
+}
+
 inline bool card_runtime_large_numbers_supported(const std::string &type,
                                                  const std::string &precision) {
   return card_contract_large_numbers_supported(type, precision);
@@ -184,6 +188,20 @@ inline std::string card_runtime_garage_label_display(const std::string &value) {
   return card_contract_garage_label_display_valid(value)
     ? value
     : CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT;
+}
+
+inline bool card_runtime_gate_mode_valid(const std::string &mode) {
+  return card_contract_gate_mode_valid(mode);
+}
+
+inline bool card_runtime_gate_command_mode(const std::string &mode) {
+  return card_runtime_gate_mode_valid(mode) && !mode.empty();
+}
+
+inline std::string card_runtime_gate_label_display(const std::string &value) {
+  return card_contract_gate_label_display_valid(value)
+    ? value
+    : CARD_CONTRACT_GATE_LABEL_DISPLAY_DEFAULT;
 }
 
 inline bool card_runtime_lock_mode_valid(const std::string &mode) {
@@ -345,7 +363,16 @@ inline bool card_runtime_climate_precision_valid(const std::string &precision) {
   return card_contract_climate_precision_valid(precision);
 }
 
+inline constexpr bool card_runtime_weather_forecast_supported() {
+#if defined(ESPCONTROL_DISABLE_WEATHER_FORECAST) && ESPCONTROL_DISABLE_WEATHER_FORECAST
+  return false;
+#else
+  return true;
+#endif
+}
+
 inline bool card_runtime_weather_forecast_precision(const std::string &precision) {
+  if (!card_runtime_weather_forecast_supported()) return false;
   return card_contract_weather_forecast_precision(precision);
 }
 

@@ -62,6 +62,20 @@ function assertGeneratedRotationOptions(slug, generated, key, options) {
   );
 }
 
+function assertGeneratedConfigValue(slug, generated, key, value) {
+  assert(
+    generated.includes(`${key}:${JSON.stringify(value)}`),
+    `${slug}: generated web UI must include ${key} ${JSON.stringify(value)}`
+  );
+}
+
+function generatedDeviceId(generated) {
+  const readable = generated.match(/\bvar\s+DEVICE_ID\s*=\s*"([^"]+)"/);
+  if (readable) return readable[1];
+  const minified = generated.match(/^\(function\(\)\{var\s+[A-Za-z_$][\w$]*="([^"]+)",[A-Za-z_$][\w$]*=\{/);
+  return minified && minified[1];
+}
+
 const hooks = loadHooks();
 assert(hooks, "web test hooks were not exported");
 assert.strictEqual(
@@ -181,6 +195,19 @@ const manifest = JSON.parse(fs.readFileSync(DEVICE_MANIFEST, "utf8"));
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
   const webOutput = path.join(WEB_OUTPUT_DIR, slug, "www.js");
   const generated = fs.readFileSync(webOutput, "utf8");
+  assertGeneratedConfigValue(slug, generated, "slots", device.slots);
+  assertGeneratedConfigValue(slug, generated, "cols", device.layout.cols);
+  assertGeneratedConfigValue(slug, generated, "rows", device.layout.rows);
+  assertGeneratedConfigValue(slug, generated, "screenSize", device.public.screenSize);
+  assert.strictEqual(
+    generatedDeviceId(generated),
+    slug,
+    `${slug}: generated web UI must be built with the matching device id`
+  );
+  assertGeneratedConfigValue(slug, generated, "slots", device.slots);
+  assertGeneratedConfigValue(slug, generated, "cols", device.layout.cols);
+  assertGeneratedConfigValue(slug, generated, "rows", device.layout.rows);
+  assertGeneratedConfigValue(slug, generated, "screenSize", device.public.screenSize);
   const sandbox = createWebSandbox();
   vm.createContext(sandbox);
   vm.runInContext(generated, sandbox, { filename: webOutput });
@@ -228,6 +255,23 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
     Array.from(generatedHooks.timezoneOptionsWithFallback(["UTC (GMT+0)"], "Auto (Home Assistant)", true)).includes("Auto (Home Assistant)"),
     `${slug}: timezone fallback must preserve restored Auto timezone selections`
   );
+  if (((device.web || {}).disabledCardTypes || []).includes("weather_forecast")) {
+    assert.deepStrictEqual(
+      Array.from(generatedHooks.weatherModeOptionValues()),
+      [""],
+      `${slug}: generated web UI must hide weather forecast modes when forecast cards are disabled`
+    );
+    assert.strictEqual(
+      generatedHooks.normalizeWeatherCardMode("today"),
+      "",
+      `${slug}: generated web UI must normalize forecast weather cards back to current conditions`
+    );
+    assert.strictEqual(
+      generatedHooks.weatherCardIsForecastMode({ precision: "today" }),
+      false,
+      `${slug}: generated web UI must not preview disabled weather forecast modes`
+    );
+  }
   assert(
     sandbox.__domEvents.some((event) => event.type === "DOMContentLoaded" && typeof event.listener === "function"),
     `${slug}: generated web UI must register DOMContentLoaded startup wiring`
@@ -373,6 +417,73 @@ assert(/Toggle lights/.test(switchPickerOption.description), "switch picker opti
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Security", type: "alarm" }).iconHtml.includes("mdi-shield-off"),
   "alarm preview defaults to the status icon"
+);
+const mediaControlPickerOption = pickerOptions.find((option) => option.key === "media_control");
+assert(mediaControlPickerOption, "media control appears as a top-level card picker shortcut");
+assert.strictEqual(mediaControlPickerOption.label, "All Controls", "media control picker option has a clear label");
+assert.strictEqual(
+  hooks.defaultButtonTypeForPicker("media_control"),
+  "media",
+  "media control picker shortcut still saves as the media card type"
+);
+assert(
+  Array.from(hooks.mediaModeOptionValues()).includes("control_modal"),
+  "media mode options include the media control modal subtype"
+);
+assert.strictEqual(
+  Array.from(hooks.mediaModeOptionValues())[0],
+  "control_modal",
+  "all media controls appears first in the media mode list"
+);
+const mediaControlIconPreview = hooks.buttonTypePreviewFor("media", {
+  label: "All Controls",
+  icon: "Music",
+  sensor: "control_modal",
+  type: "media",
+});
+assert(
+  mediaControlIconPreview.iconHtml.includes("mdi-music"),
+  "all controls preview uses the selected custom icon"
+);
+const mediaControlConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
+  entity: "media_player.living_room",
+  label: "Speaker",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=status,number_display=volume",
+}));
+assert.strictEqual(
+  mediaControlConfig.options,
+  "number_display=volume",
+  "media control parent card display options survive normalization"
+);
+assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlConfig), "status");
+assert.strictEqual(hooks.mediaNumberDisplayMode(mediaControlConfig), "volume");
+const mediaControlLabelConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
+  entity: "media_player.living_room",
+  label: "Speaker",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=label",
+}));
+assert.strictEqual(mediaControlLabelConfig.options, "label_display=label");
+assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlLabelConfig), "label");
+const mediaControlPreview = hooks.buttonTypePreviewFor("media", mediaControlConfig);
+assert(
+  mediaControlPreview.iconHtml.includes("sp-sensor-preview"),
+  "media control volume display previews as a top-left number"
+);
+assert(
+  mediaControlPreview.labelHtml.includes("Playing"),
+  "media control status label preview uses player state text"
 );
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Alarm", type: "alarm", options: "icon_display=static" }).iconHtml.includes("mdi-bell-ring"),

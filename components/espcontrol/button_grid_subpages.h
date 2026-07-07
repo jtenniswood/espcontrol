@@ -12,7 +12,7 @@ struct SubpageBtn {
   std::string icon_on;
   std::string sensor;     // sensor entity, cover/internal mode, or action name
   std::string unit;
-  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, lock, alarm, alarm_action, media, push, webhook, todo, internal, subpage
+  std::string type;       // button type: "" (toggle), action, sensor, door_window, presence, calendar, timezone, weather_forecast, slider, light_brightness, light_switch, fan_*, cover, garage, gate, lock, alarm, alarm_action, media, push, webhook, todo, internal, subpage
   std::string precision;  // decimal places for sensor display; "text" = text sensor mode
   std::string options;    // comma-delimited card options
 };
@@ -71,7 +71,8 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
       b.sensor = "play_pause";
     } else if (b.sensor != "play_pause" && b.sensor != "previous" &&
                b.sensor != "next" && b.sensor != "volume" &&
-               b.sensor != "position" && b.sensor != "now_playing") {
+               b.sensor != "position" && b.sensor != "now_playing" &&
+               b.sensor != "control_modal" && b.sensor != "playlist") {
       b.sensor = "play_pause";
     }
     if (b.sensor == "previous" && b.label == "Skip Previous") b.label = "Previous";
@@ -79,6 +80,10 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     if (b.sensor == "volume") {
       if (b.label.empty() || b.label == "Media") b.label = "Volume";
       b.icon = "Auto";
+    }
+    if (b.sensor == "playlist") {
+      if (b.label.empty() || b.label == "Media") b.label = "Playlist";
+      if (b.icon.empty() || b.icon == "Auto") b.icon = "Music";
     }
     if (b.sensor == "position" && (b.label.empty() || b.label == "Track")) b.label = "Position";
     if (b.sensor == "now_playing") {
@@ -88,8 +93,9 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     } else {
       b.precision.clear();
     }
+    b.options = media_card_options_normalized(b.options, b.sensor);
   }
-  if (b.type == "climate") {
+  if (climate_card_type(b.type)) {
     b.sensor.clear();
     b.unit.clear();
     b.options = climate_card_options_normalized(b.options);
@@ -100,6 +106,13 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     b.precision.clear();
     if (!b.sensor.empty()) b.icon_on.clear();
     b.options = garage_card_options_normalized(b.options, b.sensor);
+  }
+  if (b.type == "gate") {
+    if (b.sensor != "open" && b.sensor != "close" && b.sensor != "stop") b.sensor.clear();
+    b.unit.clear();
+    b.precision.clear();
+    if (!b.sensor.empty()) b.icon_on.clear();
+    b.options = gate_card_options_normalized(b.options, b.sensor);
   }
   if (b.type == "cover") {
     if (!card_runtime_cover_mode_valid(b.sensor)) b.sensor.clear();
@@ -200,11 +213,11 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   p.precision = b.precision;
   if (!b.type.empty() && b.type != "action" && b.type != "alarm" &&
       b.type != "alarm_action" &&
-      b.type != "climate" && b.type != "cover" && b.type != "garage" &&
+      !climate_card_type(b.type) && b.type != "cover" && b.type != "garage" && b.type != "gate" &&
       b.type != "webhook" &&
       b.type != "todo" &&
       b.type != "sensor" && b.type != "door_window" && b.type != "presence" &&
-      b.type != "subpage" && b.type != "light_control" &&
+      b.type != "subpage" && b.type != "light_control" && b.type != "media" &&
       !fan_card_type(b.type) && !card_large_numbers_supported(p)) {
     b.options.clear();
   }

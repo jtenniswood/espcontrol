@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = ROOT / "common" / "config"
 CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config.h"
 STYLE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_style.h"
+DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
+SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
 BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
@@ -26,6 +28,7 @@ IMAGE_CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "image_card_nor
 
 
 CPP_SOURCE = r'''
+#include <algorithm>
 #include <cassert>
 #include <algorithm>
 #include <cmath>
@@ -391,6 +394,10 @@ int main() {
   assert(media.type == "media");
   assert(media.sensor == "play_pause");
   assert(media.icon == "Auto");
+  auto playlist = parse_cfg("media_player.living;Morning Mix;Music;Auto;playlist;;media;;playlist_content_id=spotify%3Aplaylist%3A1LG2Lnt9EDQS1DqoE8E2uO");
+  assert(playlist.type == "media");
+  assert(playlist.sensor == "playlist");
+  assert(cfg_option_value(playlist.options, "playlist_content_id") == "spotify:playlist:1LG2Lnt9EDQS1DqoE8E2uO");
   auto volume = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=40");
   assert(volume.type == "media");
   assert(volume.sensor == "volume");
@@ -405,6 +412,22 @@ int main() {
   auto now_playing_large = parse_cfg("media_player.office;;Auto;Auto;now_playing;;media;;large_numbers");
   assert(now_playing_large.options == "");
   assert(!card_large_numbers_enabled(now_playing_large));
+  auto media_control_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media;;label_display=status,number_display=volume");
+  assert(media_control_display.type == "media");
+  assert(media_control_display.sensor == "control_modal");
+  assert(media_control_display.options == "number_display=volume");
+  assert(media_control_card_show_status_label(media_control_display));
+  assert(media_control_card_show_volume_number(media_control_display));
+  auto media_control_default_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media;;label_display=label,number_display=icon,large_numbers");
+  assert(media_control_default_display.options == "label_display=label");
+  assert(!media_control_card_show_status_label(media_control_default_display));
+  assert(!media_control_card_show_volume_number(media_control_default_display));
+  auto media_control_implicit_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media");
+  assert(media_control_implicit_display.options == "");
+  assert(media_control_card_show_status_label(media_control_implicit_display));
+  auto media_control_custom_icon = parse_cfg("media_player.living;Speaker;Music;Auto;control_modal;;media");
+  assert(media_control_custom_icon.sensor == "control_modal");
+  assert(media_control_custom_icon.icon == "Music");
   auto volume_uncapped = parse_cfg("media_player.kitchen;Kitchen;Auto;Auto;volume;;media;;volume_max=150");
   assert(volume_uncapped.options == "");
   assert(media_volume_max_percent(volume_uncapped) == 100);
@@ -575,7 +598,7 @@ def compiler() -> str | None:
 
 def pure_config_header() -> str:
     text = CONFIG_HEADER.read_text(encoding="utf-8")
-    marker = "inline const char* weather_icon_for_state"
+    marker = '#include "button_grid_weather_forecast.h"'
     index = text.find(marker)
     if index < 0:
         raise RuntimeError(f"Could not find pure parser boundary in {CONFIG_HEADER}")
@@ -606,12 +629,16 @@ def generated_fixture_assertions(fixtures: list[dict], comment: str, prefix: str
     lines = [f"  // {comment}"]
     for fixture in fixtures:
         name = fixture["name"]
-        input_value = fixture["input"]
         expected = fixture["expected"]
         var_name = prefix + "".join(ch if ch.isalnum() else "_" for ch in name.lower())
-        lines.append(f"  auto {var_name} = parse_cfg({cpp_string(input_value)});")
-        for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
-            lines.append(f"  assert({var_name}.{field} == {cpp_string(expected[field])});")
+        cases = [("input", fixture["input"])]
+        if "canonical" in fixture:
+            cases.append(("canonical", fixture["canonical"]))
+        for case_name, input_value in cases:
+            case_var_name = var_name if case_name == "input" else f"{var_name}_{case_name}"
+            lines.append(f"  auto {case_var_name} = parse_cfg({cpp_string(input_value)});")
+            for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
+                lines.append(f"  assert({case_var_name}.{field} == {cpp_string(expected[field])});")
     return "\n".join(lines) + "\n"
 
 
@@ -644,6 +671,8 @@ def main() -> int:
         (tmp_path / "button_grid_config_pure.h").write_text(pure_config_header(), encoding="utf-8")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
+        shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
+        shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")
         shutil.copy2(CARD_RUNTIME_HEADER, tmp_path / "button_grid_card_runtime.h")
         shutil.copy2(CLOCK_BAR_HEADER, tmp_path / "clock_bar.h")

@@ -12,9 +12,11 @@ inline const char *const CARD_CONTRACT_COVER_MODES[] = {"modal", "", "tilt", "to
 inline const char *const CARD_CONTRACT_COVER_CONTROL_TABS[] = {"position", "controls", "tilt"};
 inline const char *const CARD_CONTRACT_GARAGE_MODES[] = {"", "open", "close"};
 inline const char *const CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES[] = {"label", "status"};
+inline const char *const CARD_CONTRACT_GATE_MODES[] = {"", "open", "close", "stop"};
+inline const char *const CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES[] = {"label", "status"};
 inline const char *const CARD_CONTRACT_INTERNAL_MODES[] = {"switch", "push"};
 inline const char *const CARD_CONTRACT_LOCK_MODES[] = {"", "lock", "unlock"};
-inline const char *const CARD_CONTRACT_MEDIA_MODES[] = {"play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"};
+inline const char *const CARD_CONTRACT_MEDIA_MODES[] = {"control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"};
 inline const char *const CARD_CONTRACT_MEDIA_DISPLAY_MODES[] = {"", "state"};
 inline const char *const CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS[] = {"", "progress", "play_pause"};
 inline const char *const CARD_CONTRACT_MEDIA_LEGACY_MODES[] = {"controls"};
@@ -33,6 +35,7 @@ inline const char *const CARD_CONTRACT_WEATHER_FORECAST_PRECISIONS[] = {"today",
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIONS = "actions";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ACTIVE_COLOR = "active_color";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ALARM_CARD_TYPE = "alarm_card_type";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_CLIMATE_TABS = "climate_tabs";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRM_MESSAGE = "confirm_message";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRM_NO = "confirm_no";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_CONFIRM_OFF = "confirm_off";
@@ -46,6 +49,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_COVER_TABS = "cover_tabs";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_DATE_TIME_MODE = "date_time_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_FAN_TABS = "fan_tabs";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_GARAGE_MODE = "garage_mode";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_GATE_MODE = "gate_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_ICON_DISPLAY = "icon_display";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_ICON = "image_icon";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_IMAGE_LABEL = "image_label";
@@ -67,6 +71,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_PIN_ARM = "pin_arm";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PIN_DISARM = "pin_disarm";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_ID = "playlist_content_id";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_TYPE = "playlist_content_type";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_PLAYLIST_PLAYER_SOURCE = "playlist_player_source";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_SCRIPT_FIELDS = "script_fields";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_HIGH_LABEL = "state_high_label";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_INPUT = "state_input";
@@ -82,6 +87,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_VOLUME_MAX = "volume_max";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_WEATHER_MODE = "weather_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_WEBHOOK_HEADERS = "webhook_headers";
 constexpr const char *CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT = "label";
+constexpr const char *CARD_CONTRACT_GATE_LABEL_DISPLAY_DEFAULT = "label";
 constexpr const char *CARD_CONTRACT_COVER_CONTROL_TABS_DEFAULT = "position|controls|tilt";
 constexpr const char *CARD_CONTRACT_MEDIA_DEFAULT_MODE = "play_pause";
 constexpr int CARD_CONTRACT_MEDIA_VOLUME_MAX_MIN = 1;
@@ -131,6 +137,16 @@ inline bool card_contract_garage_mode_valid(const std::string &mode) {
 inline bool card_contract_garage_label_display_valid(const std::string &mode) {
   return card_contract_string_in(mode, CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES,
     sizeof(CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_GARAGE_LABEL_DISPLAY_MODES[0]));
+}
+
+inline bool card_contract_gate_mode_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_GATE_MODES,
+    sizeof(CARD_CONTRACT_GATE_MODES) / sizeof(CARD_CONTRACT_GATE_MODES[0]));
+}
+
+inline bool card_contract_gate_label_display_valid(const std::string &mode) {
+  return card_contract_string_in(mode, CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES,
+    sizeof(CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES) / sizeof(CARD_CONTRACT_GATE_LABEL_DISPLAY_MODES[0]));
 }
 
 inline bool card_contract_internal_mode_valid(const std::string &mode) {
@@ -281,6 +297,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "calendar") return "Date & Time";
   if (type == "clock") return "Date & Time";
   if (type == "climate") return "Climate";
+  if (type == "climate_control") return "All Controls";
   if (type == "cover") return "Cover";
   if (type == "door_window") return "Doors & Windows";
   if (type == "presence") return "Presence";
@@ -291,6 +308,7 @@ inline const char *card_contract_card_label(const std::string &type) {
   if (type == "fan_control") return "Fans";
   if (type == "fan_switch") return "Fans";
   if (type == "garage") return "Garage Door";
+  if (type == "gate") return "Gate";
   if (type == "internal") return "Internal Switches";
   if (type == "light_brightness") return "Lights";
   if (type == "light_switch") return "Lights";
@@ -323,6 +341,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "calendar") return true;
   if (type == "clock") return true;
   if (type == "climate") return true;
+  if (type == "climate_control") return true;
   if (type == "cover") return true;
   if (type == "door_window") return true;
   if (type == "presence") return true;
@@ -333,6 +352,7 @@ inline bool card_contract_allow_in_subpage(const std::string &type) {
   if (type == "fan_control") return true;
   if (type == "fan_switch") return true;
   if (type == "garage") return true;
+  if (type == "gate") return true;
   if (type == "internal") return true;
   if (type == "light_brightness") return true;
   if (type == "light_switch") return true;
@@ -365,6 +385,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "calendar") return "Auto";
   if (type == "clock") return "Auto";
   if (type == "climate") return "Thermostat";
+  if (type == "climate_control") return "Thermostat";
   if (type == "cover") return "Blinds";
   if (type == "door_window") return "Door";
   if (type == "presence") return "Motion Sensor Off";
@@ -375,6 +396,7 @@ inline const char *card_contract_default_icon_name(const std::string &type) {
   if (type == "fan_control") return "Fan";
   if (type == "fan_switch") return "Fan Off";
   if (type == "garage") return "Garage";
+  if (type == "gate") return "Gate";
   if (type == "internal") return "Lightbulb Outline";
   if (type == "light_brightness") return "Lightbulb Outline";
   if (type == "light_switch") return "Lightbulb Outline";
@@ -407,6 +429,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "calendar") return "Auto";
   if (type == "clock") return "Auto";
   if (type == "climate") return "Auto";
+  if (type == "climate_control") return "Auto";
   if (type == "cover") return "Blinds Open";
   if (type == "door_window") return "Door Open";
   if (type == "presence") return "Motion Sensor";
@@ -417,6 +440,7 @@ inline const char *card_contract_default_icon_on_name(const std::string &type) {
   if (type == "fan_control") return "Auto";
   if (type == "fan_switch") return "Fan";
   if (type == "garage") return "Garage Open";
+  if (type == "gate") return "Gate Open";
   if (type == "internal") return "Lightbulb";
   if (type == "light_brightness") return "Lightbulb";
   if (type == "light_switch") return "Lightbulb";
@@ -500,9 +524,11 @@ inline const char *card_contract_subpage_type_code(const std::string &type) {
   if (type == "lawn_mower") return "LM";
   if (type == "light_temperature") return "N";
   if (type == "garage") return "R";
+  if (type == "gate") return "GT";
   if (type == "lock") return "K";
   if (type == "media") return "M";
   if (type == "climate") return "H";
+  if (type == "climate_control") return "HC";
   if (type == "push") return "P";
   if (type == "screen_lock") return "SL";
   if (type == "webhook") return "WH";
@@ -540,9 +566,11 @@ inline std::string card_contract_subpage_type_from_code(const std::string &code)
   if (code == "LM") return "lawn_mower";
   if (code == "N") return "light_temperature";
   if (code == "R") return "garage";
+  if (code == "GT") return "gate";
   if (code == "K") return "lock";
   if (code == "M") return "media";
   if (code == "H") return "climate";
+  if (code == "HC") return "climate_control";
   if (code == "P") return "push";
   if (code == "SL") return "screen_lock";
   if (code == "WH") return "webhook";

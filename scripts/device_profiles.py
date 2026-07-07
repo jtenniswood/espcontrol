@@ -27,6 +27,45 @@ REQUIRED_FONT_ROLES = (
     "volumeNumber",
     "volumeLabel",
 )
+COVER_ART_SUBSTITUTION_KEYS = (
+    "cover_art_size",
+    "cover_art_decode_size",
+    "cover_art_x",
+    "cover_art_y",
+    "cover_art_accent_x",
+    "cover_art_accent_y",
+    "cover_art_accent_width",
+    "cover_art_accent_height",
+    "cover_art_accent_bg_opa",
+    "cover_art_accent_opa",
+    "cover_art_panel_x",
+    "cover_art_panel_y",
+    "cover_art_panel_width",
+    "cover_art_panel_height",
+    "cover_art_panel_pad_top",
+    "cover_art_panel_pad_bottom",
+    "cover_art_panel_pad_left",
+    "cover_art_panel_pad_right",
+    "cover_art_panel_pad_row",
+    "cover_art_title_font",
+    "cover_art_title_max_height",
+    "cover_art_title_line_space",
+    "cover_art_artist_font",
+    "cover_art_artist_pad_top",
+    "cover_art_artist_long_mode",
+    "cover_art_time_font",
+    "cover_art_time_pad_top",
+    "cover_art_progress_width",
+    "cover_art_progress_height",
+    "cover_art_text_color",
+    "cover_art_square_overlay",
+    "cover_art_live_image_updates",
+)
+COVER_ART_FONT_KEYS = (
+    "cover_art_title_font",
+    "cover_art_artist_font",
+    "cover_art_time_font",
+)
 FONT_ID_RE = re.compile(r"^\s+id:\s+([A-Za-z0-9_]+)\s*$", re.MULTILINE)
 
 
@@ -133,6 +172,29 @@ def validate_public(slug: str, device: dict[str, Any], errors: list[str]) -> Non
         errors.append(device_error(slug, "public.docsPath must start with /screens/"))
 
 
+def public_docs_stem(docs_path: str) -> str:
+    return docs_path.rstrip("/").split("/")[-1]
+
+
+def validate_public_docs_paths(devices: dict[str, Any], errors: list[str]) -> None:
+    seen: dict[str, str] = {}
+    for slug, device in sorted(devices.items()):
+        if not isinstance(slug, str) or not isinstance(device, dict):
+            continue
+        public = device.get("public")
+        if not isinstance(public, dict):
+            continue
+        docs_path = public.get("docsPath")
+        if not isinstance(docs_path, str) or not docs_path:
+            continue
+        stem = public_docs_stem(docs_path)
+        previous = seen.get(stem)
+        if previous is not None:
+            errors.append(device_error(slug, f"public.docsPath stem duplicates {previous}: {stem}"))
+            continue
+        seen[stem] = slug
+
+
 def validate_build(slug: str, firmware: dict[str, Any] | None, errors: list[str]) -> None:
     if firmware is None:
         return
@@ -175,6 +237,14 @@ def validate_fonts(
         elif font_id not in available_ids:
             errors.append(device_error(slug, f"firmware.fonts.{role} references unknown font id {font_id!r}"))
 
+    display = firmware.get("display", {})
+    cover_art = display.get("coverArt") if isinstance(display, dict) else None
+    if isinstance(cover_art, dict):
+        for key in COVER_ART_FONT_KEYS:
+            font_id = cover_art.get(key)
+            if isinstance(font_id, str) and font_id and font_id not in available_ids:
+                errors.append(device_error(slug, f"firmware.display.coverArt.{key} references unknown font id {font_id!r}"))
+
 
 def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> None:
     firmware = device.get("firmware")
@@ -204,6 +274,19 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
         errors.append(device_error(slug, "firmware.display.imageCardDiagnostics must be true or false when set"))
     if "refreshRebuildsSubpages" in display and not isinstance(display["refreshRebuildsSubpages"], bool):
         errors.append(device_error(slug, "firmware.display.refreshRebuildsSubpages must be true or false when set"))
+
+    cover_art = require_object(slug, errors, display.get("coverArt"), "firmware.display.coverArt")
+    if cover_art is not None:
+        missing = sorted(set(COVER_ART_SUBSTITUTION_KEYS) - set(cover_art))
+        extra = sorted(set(cover_art) - set(COVER_ART_SUBSTITUTION_KEYS))
+        if missing:
+            errors.append(device_error(slug, "firmware.display.coverArt is missing: " + ", ".join(missing)))
+        if extra:
+            errors.append(device_error(slug, "firmware.display.coverArt has unknown keys: " + ", ".join(extra)))
+        for key in COVER_ART_SUBSTITUTION_KEYS:
+            value = cover_art.get(key)
+            if not isinstance(value, str) or not value:
+                errors.append(device_error(slug, f"firmware.display.coverArt.{key} must be a non-empty string"))
 
     correction = display.get("colorCorrection")
     if correction is not None:
@@ -355,6 +438,9 @@ def validate_screen_box(slug: str, errors: list[str], value: Any, name: str) -> 
     for key in ("width", "aspect"):
         if not isinstance(screen.get(key), str) or not screen.get(key):
             errors.append(device_error(slug, f"{name}.{key} must be a non-empty string"))
+    width = screen.get("width")
+    if isinstance(width, str) and not re.fullmatch(r"(?:[1-9]\d*(?:\.\d+)?|0\.\d+)%", width):
+        errors.append(device_error(slug, f"{name}.width must be a percentage, for example '100%'"))
     aspect = screen.get("aspect")
     if isinstance(aspect, str) and not re.fullmatch(r"[1-9]\d*/[1-9]\d*", aspect):
         errors.append(device_error(slug, f"{name}.aspect must look like '1024/600'"))
@@ -443,6 +529,7 @@ def validate_manifest_data(data: Any, shared_font_ids: set[str] | None = None) -
     if not isinstance(devices, dict) or not devices:
         return [f"{rel(DEVICE_MANIFEST)} must contain a non-empty devices object"]
 
+    validate_public_docs_paths(devices, errors)
     shared_font_ids = common_font_ids() if shared_font_ids is None else shared_font_ids
     for slug, device in sorted(devices.items()):
         if not isinstance(slug, str) or not slug:
@@ -561,8 +648,10 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "large_sensor_font": fonts["largeSensor"],
         "large_sensor_unit_offset_percent": profile["settings"]["largeSensorUnitOffsetPercent"],
         "media_title_font": fonts["mediaTitle"],
+        "media_control_title_font": fonts.get("mediaControlTitle"),
         "volume_number_font": fonts["volumeNumber"],
         "volume_label_font": fonts["volumeLabel"],
+        "cover_art": copy.deepcopy(display["coverArt"]),
         "climate_card_icon_font": fonts.get("climateCardIcon"),
         "subpage_chevron_font": fonts.get("subpageChevron"),
         "climate_option_title_font": fonts.get("climateOptionTitle"),

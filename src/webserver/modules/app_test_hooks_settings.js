@@ -1,3 +1,5 @@
+// @web-module-requires: environment_state, ntp_state, artwork_state, artwork_post_api, screensaver_state, firmware_version_state, clock_bar_state, clock_bar_post_api, entity_state, firmware_update_state, screensaver_timeout, public_firmware_install, state_loader_api
+
 if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
   registerEspControlTestHookGroup("settings", {
     SSE_ALIAS_GROUPS: SSE_ALIAS_GROUPS,

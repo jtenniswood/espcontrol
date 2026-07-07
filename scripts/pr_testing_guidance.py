@@ -38,6 +38,12 @@ PROCESS_FILES = (
     "scripts/check_pr_process.py",
     "scripts/pr_testing_guidance.py",
 )
+TEST_ONLY_SCRIPT_PREFIXES = (
+    "scripts/check_",
+)
+TEST_ONLY_FILES = {
+    "scripts/pr_testing_guidance.py",
+}
 
 
 @dataclass(frozen=True)
@@ -47,6 +53,7 @@ class Guidance:
     process_related: bool
     process_only: bool
     docs_only: bool
+    test_only: bool
     changed_files: list[str]
 
 
@@ -71,11 +78,24 @@ def paths_from_file(path: Path) -> list[str]:
     return clean_paths(path.read_text(encoding="utf-8").splitlines())
 
 
+def test_only_path(path: str) -> bool:
+    if path in TEST_ONLY_FILES:
+        return True
+    if path.startswith(TEST_ONLY_SCRIPT_PREFIXES):
+        return True
+    return (
+        path.startswith("common/config/")
+        and path.endswith("card_normalization_fixtures.json")
+    )
+
+
 def affected_devices(paths: list[str], slugs: set[str]) -> tuple[set[str], bool]:
     devices: set[str] = set()
     all_devices = False
 
     for path in paths:
+        if test_only_path(path):
+            continue
         parts = path.split("/")
         if len(parts) >= 2 and parts[0] == "devices" and parts[1] in slugs:
             devices.add(parts[1])
@@ -85,6 +105,15 @@ def affected_devices(paths: list[str], slugs: set[str]) -> tuple[set[str], bool]
             if build_slug in slugs:
                 devices.add(build_slug)
                 continue
+        if (
+            len(parts) >= 4
+            and parts[0] == "docs"
+            and parts[1] == "public"
+            and parts[2] == "webserver"
+            and parts[3] in slugs
+        ):
+            devices.add(parts[3])
+            continue
 
         if path in FIRMWARE_WIDE_FILES or path in FIRMWARE_WIDE_SCRIPTS:
             all_devices = True
@@ -115,6 +144,7 @@ def analyze(paths: list[str]) -> Guidance:
         or path.startswith(".github/")
         for path in paths
     ) and not firmware_related
+    test_only = bool(paths) and all(test_only_path(path) for path in paths) and not firmware_related
 
     return Guidance(
         devices=sorted(devices),
@@ -122,6 +152,7 @@ def analyze(paths: list[str]) -> Guidance:
         process_related=process_related,
         process_only=process_only,
         docs_only=docs_only,
+        test_only=test_only,
         changed_files=paths,
     )
 
@@ -185,6 +216,17 @@ def render_markdown(guidance: Guidance) -> str:
                 "Suggested PR status: Ready to merge after review and user confirmation.",
             ]
         )
+    elif guidance.test_only:
+        lines.extend(
+            [
+                "No physical device test is expected from the changed files.",
+                "",
+                "Suggested checks:",
+                "- Confirm the relevant automated checks pass.",
+                "",
+                "Suggested PR status: Ready to merge after review and user confirmation.",
+            ]
+        )
     else:
         lines.extend(
             [
@@ -226,10 +268,15 @@ def run_self_test() -> None:
     assert wide.firmware_related
     assert len(wide.devices) >= 5
 
-    generated_web = analyze(["docs/public/webserver/espcontrol/www.js"])
+    generated_web = analyze(["docs/public/webserver/guition-esp32-p4-jc1060p470/www.js"])
     assert generated_web.firmware_related
     assert not generated_web.docs_only
-    assert len(generated_web.devices) >= 5
+    assert generated_web.devices == ["guition-esp32-p4-jc1060p470"]
+
+    generated_web_unknown = analyze(["docs/public/webserver/unknown-panel/www.js"])
+    assert generated_web_unknown.firmware_related
+    assert not generated_web_unknown.docs_only
+    assert len(generated_web_unknown.devices) >= 5
 
     esphome_version = analyze([".github/esphome.env"])
     assert esphome_version.firmware_related
@@ -243,6 +290,17 @@ def run_self_test() -> None:
     process = analyze([".github/workflows/pr-testing-guidance.yml", "scripts/pr_testing_guidance.py"])
     assert process.process_only
     assert "No physical device test is expected" in render_markdown(process)
+
+    parser_fixtures = analyze([
+        "common/config/parser_runtime_card_normalization_fixtures.json",
+        "scripts/check_config_formats.js",
+        "scripts/check_firmware_parser.py",
+        "scripts/pr_testing_guidance.py",
+    ])
+    assert parser_fixtures.test_only
+    assert parser_fixtures.process_related
+    assert not parser_fixtures.firmware_related
+    assert "No physical device test is expected" in render_markdown(parser_fixtures)
 
 
 def main() -> int:

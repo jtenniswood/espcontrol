@@ -190,7 +190,22 @@ interval:
     then:
       - if:
           condition:
-            lambda: 'return id(cover_art_screensaver_active) && id(cover_art_media_playing);'
+            lambda: |-
+              #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+              bool shared_playing = false;
+              float shared_duration = 0.0f;
+              float shared_position = 0.0f;
+              bool shared_progress = media_playback_state_snapshot(
+                id(cover_art_media_player_entity).state,
+                shared_playing,
+                shared_duration,
+                shared_position);
+              return id(cover_art_screensaver_active) &&
+                     (id(cover_art_media_playing) ||
+                      (shared_progress && shared_playing));
+              #else
+              return id(cover_art_screensaver_active) && id(cover_art_media_playing);
+              #endif
           then:
             - script.execute: cover_art_refresh_progress
 
@@ -713,7 +728,18 @@ script:
           then:
             - lvgl.widget.show: cover_art_accent_overlay
             - lvgl.widget.show: cover_art_track_panel
-            - lvgl.widget.show: cover_art_progress_bar
+            - if:
+                condition:
+                  lambda: |-
+                    #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+                    return media_playback_state_has_progress(id(cover_art_media_player_entity).state);
+                    #else
+                    return true;
+                    #endif
+                then:
+                  - lvgl.widget.show: cover_art_progress_bar
+                else:
+                  - lvgl.widget.hide: cover_art_progress_bar
           else:
             - lvgl.widget.hide: cover_art_accent_overlay
             - lvgl.widget.hide: cover_art_track_panel
@@ -965,7 +991,8 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(cover_art_screensaver_enabled).state &&
+              return id(cover_art_screensaver_active) &&
+                     id(cover_art_screensaver_enabled).state &&
                      id(cover_art_attribute_conditions_match) &&
                      !(id(cover_art_hide_external_input_enabled).state &&
                        id(cover_art_external_input_active));
@@ -983,6 +1010,14 @@ script:
           } else if (!id(cover_art_cached_remote_url).empty() &&
                      id(cover_art_cached_remote_url) != chosen) {
             alternate = id(cover_art_cached_remote_url);
+          }
+          if (id(cover_art_refresh_needed) &&
+              !id(cover_art_cached_remote_url).empty() &&
+              id(cover_art_cached_remote_url) != id(cover_art_url) &&
+              chosen == id(cover_art_url)) {
+            ESP_LOGI("cover_art", "Preferring refreshed artwork URL over stale local artwork cache");
+            alternate = chosen;
+            chosen = id(cover_art_cached_remote_url);
           }
 
           std::string fallback;
@@ -1083,6 +1118,7 @@ script:
                 then:
                   - lambda: |-
                       ESP_LOGI("cover_art", "Keeping current artwork visible; live image updates disabled for this display");
+                  - script.execute: cover_art_deferred_download
                 else:
                   - if:
                       condition:
@@ -1149,14 +1185,29 @@ script:
             return id(cover_art_title);
       - if:
           condition:
-            lambda: 'return !id(cover_art_artist).empty();'
+            lambda: 'return id(cover_art_external_input_active) || !id(cover_art_artist).empty();'
           then:
             - lvgl.label.update:
                 id: cover_art_artist_label
-                text: !lambda 'return id(cover_art_artist);'
+                text: !lambda |-
+                  if (id(cover_art_external_input_active)) {
+                    return espcontrol_i18n(std::string("Source"));
+                  }
+                  return id(cover_art_artist);
             - lvgl.widget.show: cover_art_artist_label
           else:
             - lvgl.widget.hide: cover_art_artist_label
+      - lambda: |-
+          #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+          if (media_playback_state_has_progress(id(cover_art_media_player_entity).state)) {
+            lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+          }
+          #else
+          lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+          #endif
 
   - id: cover_art_refresh_progress
     mode: restart
@@ -1165,8 +1216,45 @@ script:
           float duration = id(cover_art_media_duration);
           float position = id(cover_art_media_position);
           auto now = id(panel_time).now();
+          bool progress_playing = id(cover_art_media_playing);
 
-          if (id(cover_art_media_playing) && now.is_valid()) {
+          #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+          bool shared_playing = false;
+          float shared_duration = 0.0f;
+          float shared_position = 0.0f;
+          bool shared_progress = media_playback_state_snapshot(
+            id(cover_art_media_player_entity).state,
+            shared_playing,
+            shared_duration,
+            shared_position);
+          if (shared_progress) {
+            duration = shared_duration;
+            position = shared_position;
+            progress_playing = shared_playing;
+            id(cover_art_media_duration) = duration;
+            id(cover_art_media_position) = position;
+            id(cover_art_position_anchor) = position;
+            id(cover_art_position_anchor_epoch) = 0;
+            if (now.is_valid()) id(cover_art_last_position_timestamp) = now.timestamp;
+            if (id(cover_art_screensaver_active) && progress_playing) {
+              lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+            }
+          } else {
+            duration = 0.0f;
+            position = 0.0f;
+            id(cover_art_media_duration) = 0.0f;
+            id(cover_art_media_position) = 0.0f;
+            id(cover_art_position_anchor) = 0.0f;
+            id(cover_art_position_anchor_epoch) = 0;
+            id(cover_art_last_position_timestamp) = 0;
+            id(cover_art_last_progress_percent) = -1;
+            lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+          }
+          #endif
+
+          if (progress_playing && now.is_valid()) {
             if (id(cover_art_position_anchor_epoch) != 0) {
               position = id(cover_art_position_anchor) +
                          (float)(now.timestamp - id(cover_art_position_anchor_epoch));
@@ -1218,7 +1306,18 @@ script:
             lambda: 'return id(cover_art_screensaver_active) && id(cover_art_media_playing);'
           then:
             - script.execute: cover_art_sync_track_text
-            - lvgl.widget.show: cover_art_progress_bar
+            - if:
+                condition:
+                  lambda: |-
+                    #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
+                    return media_playback_state_has_progress(id(cover_art_media_player_entity).state);
+                    #else
+                    return true;
+                    #endif
+                then:
+                  - lvgl.widget.show: cover_art_progress_bar
+                else:
+                  - lvgl.widget.hide: cover_art_progress_bar
             - script.execute: cover_art_refresh_progress
             - if:
                 condition:
@@ -1726,6 +1825,7 @@ script:
           bool artist_requested = ha_get_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
           ESP_LOGI("cover_art", "Artist refresh %s", artist_requested ? "requested" : "failed");
 
+          #ifndef ESPCONTROL_LOW_HEAP_COVER_ART
           std::function<void(esphome::StringRef)> handle_media_album =
             [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef album) {
               if (!id(cover_art_screensaver_enabled).state ||
@@ -1754,6 +1854,7 @@ script:
           }
           bool album_requested = ha_get_attribute(cover_entity, std::string("media_album_name"), handle_media_album);
           ESP_LOGI("cover_art", "Album refresh %s", album_requested ? "requested" : "failed");
+          #endif
 
           std::function<void(esphome::StringRef)> handle_media_source =
             [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef source) {
@@ -1762,9 +1863,13 @@ script:
                   cover_entity != id(cover_art_media_player_entity).state) return;
               std::string next = string_ref_limited(source, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
-              bool external = next == "TV" || next == "tv" ||
-                              next == "Line-in" || next == "line-in" ||
-                              next == "Line in" || next == "line in";
+              std::string normalized_source = next;
+              for (char &ch : normalized_source) {
+                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+              }
+              bool external = normalized_source == "tv" ||
+                              normalized_source == "line-in" ||
+                              normalized_source == "line in";
               if (next == id(cover_art_media_source) &&
                   external == id(cover_art_external_input_active)) return;
               id(cover_art_media_source) = next;
@@ -1773,10 +1878,12 @@ script:
               ESP_LOGI("cover_art", "Media source for %s: '%s' (external=%s)",
                        cover_entity.c_str(), next.c_str(), external ? "true" : "false");
               id(cover_art_apply_external_input_policy).execute();
+              id(cover_art_sync_track_text).execute();
               if (id(cover_art_screensaver_active) &&
                   id(cover_art_attribute_conditions_match) &&
                   !(id(cover_art_hide_external_input_enabled).state &&
                     id(cover_art_external_input_active))) {
+                id(cover_art_show_track_overlay).execute();
                 id(cover_art_request_artwork).execute();
               }
             };
@@ -1924,18 +2031,16 @@ script:
               if (cached == url) {
                 const bool process_cached =
                     !url.empty() &&
-                    (id(cover_art_screensaver_active) ||
-                     id(cover_art_refresh_needed) ||
-                     url != id(cover_art_url));
+                    id(cover_art_screensaver_active) &&
+                    (id(cover_art_refresh_needed) ||
+                     url != id(cover_art_url) ||
+                     !id(cover_art_image_available));
                 ESP_LOGI("cover_art", "Artwork %s unchanged (%u chars, url %u chars, active=%s, refresh_needed=%s)",
                          local ? "entity_picture_local" : "entity_picture",
                          (unsigned) path.size(), (unsigned) url.size(),
                          id(cover_art_screensaver_active) ? "true" : "false",
                          id(cover_art_refresh_needed) ? "true" : "false");
                 if (process_cached) {
-                  if (!id(cover_art_screensaver_active) && id(cover_art_refresh_needed)) {
-                    ESP_LOGI("cover_art", "Reprocessing unchanged artwork because refresh is pending");
-                  }
                   id(cover_art_process_cached_artwork).execute();
                 }
                 return;
@@ -1954,7 +2059,7 @@ script:
                        (unsigned) path.size(), (unsigned) url.size(),
                        id(cover_art_screensaver_active) ? "true" : "false");
 
-              if (id(cover_art_screensaver_active) || id(cover_art_refresh_needed)) {
+              if (id(cover_art_screensaver_active)) {
                 id(cover_art_process_cached_artwork).execute();
               }
             };
@@ -2001,6 +2106,7 @@ script:
                    picture_requested ? "requested" : "failed",
                    local_picture_requested ? "requested" : "failed");
 
+          #ifndef ESPCONTROL_LOW_HEAP_COVER_ART
           std::function<void(esphome::StringRef)> handle_media_duration =
             [cover_entity, subscription_generation](esphome::StringRef duration) {
               if (!id(cover_art_screensaver_enabled).state ||
@@ -2088,6 +2194,7 @@ script:
             );
           }
           ha_get_attribute(cover_entity, std::string("media_position_updated_at"), handle_media_position_updated_at);
+          #endif
 
   - id: cover_art_playback_started
     mode: restart

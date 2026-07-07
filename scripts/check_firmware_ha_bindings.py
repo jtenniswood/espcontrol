@@ -32,6 +32,11 @@ CONNECTIVITY_PATHS = (
 )
 
 
+def firmware_weather_header_path(firmware_dir: Path) -> Path:
+    weather_path = firmware_dir / "button_grid_weather_forecast.h"
+    return weather_path if weather_path.exists() else firmware_dir / "button_grid_config.h"
+
+
 def package_api_navigate_enabled(package_path: Path, root: Path) -> bool:
     manifest_path = root / "devices" / "manifest.json"
     if not manifest_path.exists():
@@ -54,10 +59,11 @@ HA_BOUNDARY_ALLOWLIST = {
 }
 DIRECT_HA_PATTERNS = (
     (re.compile(r"\bglobal_api_server\b"), "access Home Assistant API through button_grid_ha.h helpers"),
-    (re.compile(r"->send_homeassistant_action\s*\("), "send Home Assistant actions through button_grid_ha.h helpers"),
-    (re.compile(r"->subscribe_home_assistant_state\s*\("), "subscribe to Home Assistant state through button_grid_ha.h helpers"),
-    (re.compile(r"->get_home_assistant_state\s*\("), "get Home Assistant state through button_grid_ha.h helpers"),
-    (re.compile(r"->register_action_response_callback\s*\("), "register action callbacks through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)send_homeassistant_action\s*\("), "send Home Assistant actions through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)subscribe_home_assistant_state\s*\("), "subscribe to Home Assistant state through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)get_home_assistant_state\s*\("), "get Home Assistant state through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)register_action_response_callback\s*\("), "register action callbacks through button_grid_ha.h helpers"),
+    (re.compile(r"(?:->|\.)handle_action_response\s*\("), "cancel action callbacks through button_grid_ha.h helpers"),
 )
 STATE_HELPER_PATTERN = re.compile(
     r"inline\s+bool\s+ha_subscribe_state\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
@@ -73,6 +79,10 @@ TODO_GET_ITEMS_HELPER_PATTERN = re.compile(
 )
 WEATHER_FORECAST_REQUEST_PATTERN = re.compile(
     r"inline\s+void\s+request_weather_forecast_entity\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+    re.DOTALL,
+)
+MEDIA_CONTROL_STATE_PATTERN = re.compile(
+    r"inline\s+void\s+subscribe_media_control_state\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}\n\ninline\s+bool\s+media_seek_pending_active",
     re.DOTALL,
 )
 COVER_COMMAND_REQUEST_PATTERN = re.compile(
@@ -125,37 +135,6 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
     )
     if any(symbol in text for symbol in retry_symbols):
         errors.append(f"{rel}: do not reintroduce unavailable HA state retry polling")
-    if "ha_resync_persistent_subscriptions" not in text:
-        errors.append(f"{rel}: expose bounded Home Assistant startup subscription resync")
-    if "ha_start_subscription_resync_window" not in text or "ha_run_subscription_resync_window" not in text:
-        errors.append(f"{rel}: run Home Assistant startup resync until the bounded window completes")
-    if "HA_SUBSCRIPTION_RESYNC_WINDOW_MS" not in text or "5 * 60 * 1000" not in text:
-        errors.append(f"{rel}: keep Home Assistant startup resync bounded to five minutes")
-    if "ha_subscription_resync_cursor" not in text:
-        errors.append(f"{rel}: rotate bounded Home Assistant startup resync requests")
-    if "ref.generation != active_generation" not in text:
-        errors.append(f"{rel}: keep Home Assistant startup resync on the active subscription generation")
-    if "ref.persistent" not in text:
-        errors.append(f"{rel}: resync persistent Home Assistant subscriptions only")
-    if not re.search(
-        r"ha_resync_persistent_subscriptions\s*\([^)]*uint32_t\s+scope\s*=\s*HA_SUBSCRIPTION_SCOPE_ALL",
-        text,
-        re.DOTALL,
-    ):
-        errors.append(f"{rel}: include all persistent Home Assistant subscription scopes in reconnect resync")
-    if "completed_cycle || scanned >= refs.size()" not in text:
-        errors.append(f"{rel}: stop Home Assistant startup resync after the cursor covers every tracked subscription")
-    if "if (!ha_api_state_connected()) return;" not in text:
-        errors.append(f"{rel}: wait for Home Assistant state subscription before issuing resync reads")
-    start_match = re.search(
-        r"inline\s+void\s+ha_start_subscription_resync_window\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
-        text,
-        re.DOTALL,
-    )
-    if start_match and "ha_api_state_connected()" in start_match.group("body"):
-        errors.append(f"{rel}: start the reconnect resync window before Home Assistant state subscription is ready")
-    if "retained_cover_art" not in text or "check_generation && generation != ha_subscription_generation()" not in text:
-        errors.append(f"{rel}: resync retained cover-art subscriptions across grid generation changes")
 
     attribute_helper = ATTRIBUTE_HELPER_PATTERN.search(text)
     if not attribute_helper:
@@ -221,14 +200,6 @@ def firmware_unavailable_retry_errors(
         core_text = core_infra_path.read_text(encoding="utf-8")
         if "ha_retry_unavailable_states" in core_text:
             errors.append(f"{core_rel}: do not retry unavailable HA states after reconnects or during maintenance")
-        if "ha_start_subscription_resync_window();" not in core_text:
-            errors.append(f"{core_rel}: resync Home Assistant subscriptions after startup reconnects")
-        if core_text.find("ha_start_subscription_resync_window();") > core_text.find("if (ha_api_state_connected())"):
-            errors.append(f"{core_rel}: open the startup resync window before Home Assistant state subscription is ready")
-        if "ha_run_subscription_resync_window();" not in core_text:
-            errors.append(f"{core_rel}: continue bounded Home Assistant subscription resync during maintenance")
-        if "interval: 5s" not in core_text or "ha_run_subscription_resync_window();" not in core_text:
-            errors.append(f"{core_rel}: keep Home Assistant startup resync active for up to five minutes")
     return errors
 
 
@@ -309,8 +280,8 @@ def firmware_todo_disconnect_errors(firmware_dir: Path, core_infra_path: Path, r
         errors.append(f"{todo_rel}: retry open todo modals that are waiting for Home Assistant")
     if "ctx->available) return" in todo_text:
         errors.append(f"{todo_rel}: allow todo modals to open while waiting for Home Assistant availability")
-    if "apply_control_availability(ctx->btn, ctx->btn, ctx->available, false)" not in todo_text:
-        errors.append(f"{todo_rel}: keep todo cards tappable while Home Assistant availability is pending")
+    if "apply_control_availability(ctx->btn, ctx->btn, ctx->available, false)" in todo_text:
+        errors.append(f"{todo_rel}: do not dim or disable todo cards for unavailable entity states")
     if "on_client_disconnected:" not in core_text or "todo_cancel_pending_request" not in core_text:
         errors.append(f"{core_rel}: cancel pending todo requests when the HA API disconnects")
     if "on_client_connected:" not in core_text or "todo_reload_active_modal" not in core_text:
@@ -365,6 +336,29 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
         body = match.group("body")
         if "register_ha_control_availability(sb_btn, sb_btn)" in body:
             errors.append(f"{rel}: keep subpage trigger cards tappable while Home Assistant availability is pending")
+    return errors
+
+
+def firmware_card_disabled_state_errors(firmware_dir: Path, root: Path) -> list[str]:
+    errors: list[str] = []
+    config_path = firmware_dir / "button_grid_config.h"
+    actions_path = firmware_dir / "button_grid_actions.h"
+    grid_path = firmware_dir / "button_grid_grid.h"
+
+    if config_path.exists():
+        rel = config_path.relative_to(root)
+        text = config_path.read_text(encoding="utf-8")
+        if "apply_control_availability" in text:
+            errors.append(f"{rel}: do not keep a generic helper that dims or disables card controls")
+
+    for path in (actions_path, grid_path):
+        if not path.exists():
+            continue
+        rel = path.relative_to(root)
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"lv_obj_has_state\s*\([^;\n]*LV_STATE_DISABLED", text):
+            errors.append(f"{rel}: card tap handlers must not ignore taps because a card is disabled")
+
     return errors
 
 
@@ -489,7 +483,7 @@ def firmware_ntp_startup_errors(
 
 
 def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]:
-    path = firmware_dir / "button_grid_config.h"
+    path = firmware_weather_header_path(firmware_dir)
     if not path.exists():
         return []
     rel = path.relative_to(root)
@@ -584,7 +578,7 @@ def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]
 
 
 def firmware_weather_disconnect_errors(firmware_dir: Path, core_infra_path: Path, root: Path) -> list[str]:
-    config_path = firmware_dir / "button_grid_config.h"
+    config_path = firmware_weather_header_path(firmware_dir)
     if not config_path.exists() or not core_infra_path.exists():
         return []
     core_rel = core_infra_path.relative_to(root)
@@ -620,7 +614,7 @@ def firmware_weather_reconnect_errors(core_infra_path: Path, root: Path) -> list
         if "ha_api_state_connected()" not in guard_window:
             errors.append(f"{core_rel}: wait for Home Assistant state readiness before forecast reconnect refreshes")
             break
-    if "refresh_weather_forecast_cards();" in body and "delay: 20s" not in body:
+    if "refresh_weather_forecast_cards();" in body and ("delay: 20s" not in body or "delay: 25s" not in body):
         errors.append(f"{core_rel}: retry weather forecast refresh after slow S3 reconnects")
     return errors
 
@@ -667,7 +661,10 @@ def firmware_cover_art_external_input_errors(path: Path, root: Path) -> list[str
         errors.append(f"{rel}: release retired cover art Home Assistant subscriptions")
     if 'ha_get_attribute(cover_entity, std::string("source"), handle_media_source)' not in text:
         errors.append(f"{rel}: refresh the media player source attribute")
-    if 'next == "TV"' not in text or 'next == "Line-in"' not in text:
+    if ('normalized_source == "tv"' not in text or
+            'normalized_source == "line-in"' not in text or
+            'normalized_source == "line in"' not in text or
+            "std::tolower" not in text):
         errors.append(f"{rel}: treat TV and Line-in sources as external inputs")
     if "cover_art_apply_external_input_policy" not in text:
         errors.append(f"{rel}: centralize cover art external-input behavior")
@@ -854,6 +851,16 @@ def firmware_media_sleep_prevention_errors(
                 idle_body,
             ):
                 errors.append(f"{rel}: do not let cover art alone keep the idle timer awake")
+        sleep_body = yaml_script_body(text, "screensaver_sleep_timer")
+        if sleep_body is not None:
+            cover_art_sleep_match = re.search(
+                r"id\(cover_art_screensaver_enabled\)\.state[\s\S]{0,360}"
+                r"id\(cover_art_media_playing\)[\s\S]{0,360}"
+                r"then:\s*\n\s*-\s*script\.execute:\s*([a-zA-Z0-9_]+)",
+                sleep_body,
+            )
+            if cover_art_sleep_match and cover_art_sleep_match.group(1) != "show_cover_art_view":
+                errors.append(f"{rel}: start cover art directly after the normal screensaver timeout")
 
     if display_path.exists():
         rel = display_path.relative_to(root)
@@ -893,6 +900,117 @@ def firmware_media_sleep_prevention_subscription_errors(paths: tuple[Path, ...],
             text,
         ):
             errors.append(f"{rel}: do not drive media sleep prevention from the cover art media player")
+    return errors
+
+
+def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_media.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    match = MEDIA_CONTROL_STATE_PATTERN.search(text)
+    if not match:
+        errors.append(f"{rel}: missing subscribe_media_control_state helper")
+        return errors
+
+    body = match.group("body")
+    marker = "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL"
+    if marker not in body:
+        errors.append(f"{rel}: keep S3 media modal progress metadata behind the low-heap guard")
+        return errors
+
+    always_on, low_heap_excluded = body.split(marker, 1)
+    metadata_helper = ""
+    progress_helper = ""
+    if "inline void media_playback_subscribe_metadata" in text:
+        metadata_helper = text.split("inline void media_playback_subscribe_metadata", 1)[1]
+        metadata_helper = metadata_helper.split(
+            "\n\ninline void media_playback_subscribe_progress", 1
+        )[0]
+    if "inline void media_playback_subscribe_progress" in text:
+        progress_helper = text.split("inline void media_playback_subscribe_progress", 1)[1]
+        progress_helper = progress_helper.split(
+            "\n\ninline void media_playback_subscribe_volume", 1
+        )[0]
+
+    for attr in ("media_title", "media_artist"):
+        if (
+            "media_playback_subscribe_metadata(state)" not in always_on
+            or f'std::string("{attr}")' not in metadata_helper
+        ):
+            errors.append(f"{rel}: keep {attr} subscribed for the S3 media modal")
+    progress_in_always_on = "media_playback_subscribe_progress(state)" in always_on
+    progress_in_low_heap_excluded = "media_playback_subscribe_progress(state)" in low_heap_excluded
+    for attr in ("media_duration", "media_position", "media_position_updated_at"):
+        if (
+            f'std::string("{attr}")' in always_on
+            or progress_in_always_on
+        ):
+            errors.append(f"{rel}: keep {attr} out of the S3 low-heap media modal path")
+        if (
+            not progress_in_always_on
+            and not progress_in_low_heap_excluded
+            or f'std::string("{attr}")' not in progress_helper
+        ):
+            errors.append(f"{rel}: full media modal builds should still subscribe {attr}")
+    return errors
+
+
+def firmware_cover_art_low_heap_progress_errors(
+    firmware_dir: Path, cover_art_path: Path, root: Path
+) -> list[str]:
+    media_path = firmware_dir / "button_grid_media.h"
+    errors: list[str] = []
+
+    if media_path.exists():
+        rel = media_path.relative_to(root)
+        media_text = media_path.read_text(encoding="utf-8")
+        for token in (
+            "struct MediaPlaybackState",
+            "media_playback_ensure_state(entity_id)",
+            "media_playback_attach_slider(state, ctx)",
+            "media_playback_subscribe_state(state)",
+            "media_playback_state_snapshot",
+            "media_playback_state_has_progress",
+        ):
+            if token not in media_text:
+                errors.append(f"{rel}: let S3 cover art reuse shared media playback progress")
+                break
+    else:
+        errors.append(f"{media_path.relative_to(root)}: missing media card helpers")
+
+    if not cover_art_path.exists():
+        return errors
+
+    rel = cover_art_path.relative_to(root)
+    text = cover_art_path.read_text(encoding="utf-8")
+    stripped_low_heap = re.sub(
+        r"#ifndef ESPCONTROL_LOW_HEAP_COVER_ART.*?#endif",
+        "",
+        text,
+        flags=re.DOTALL,
+    )
+    for attr in ("media_duration", "media_position", "media_position_updated_at"):
+        if f'std::string("{attr}")' in stripped_low_heap:
+            errors.append(f"{rel}: keep {attr} out of the S3 low-heap cover art path")
+        if f'std::string("{attr}")' not in text:
+            errors.append(f"{rel}: full cover art builds should still subscribe {attr}")
+
+    refresh_body = yaml_script_body(text, "cover_art_refresh_progress")
+    if not refresh_body:
+        errors.append(f"{rel}: missing cover_art_refresh_progress script")
+    elif (
+        "#ifdef ESPCONTROL_LOW_HEAP_COVER_ART" not in refresh_body
+        or "media_playback_state_snapshot" not in refresh_body
+        or "lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN)" not in refresh_body
+    ):
+        errors.append(f"{rel}: let S3 cover art consume shared progress when a media card provides it")
+
+    if "return media_playback_state_has_progress(id(cover_art_media_player_entity).state);" not in text:
+        errors.append(f"{rel}: show S3 cover art progress only when shared playback progress is available")
+
     return errors
 
 
@@ -1503,6 +1621,49 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
             errors.append(f"{rel}: wait for Home Assistant state subscription, not any API client")
         if "on_client_connected:" in text and "ha_api_state_connected()" not in text:
             errors.append(f"{rel}: only navigate after a Home Assistant state connection is ready")
+        api_connected_match = re.search(
+            r"(?ms)^api:\n(?P<body>.*?)(?:^\S|\Z)",
+            text,
+        )
+        if api_connected_match and "on_client_connected:" in api_connected_match.group("body"):
+            api_connected_body = api_connected_match.group("body")
+            if "script.stop: ha_reconnect_flow" not in api_connected_body:
+                errors.append(f"{rel}: stop the pending Home Assistant waiting screen when HA reconnects")
+            if "script.execute: ha_restore_after_api" not in api_connected_body:
+                errors.append(f"{rel}: restore the display immediately when Home Assistant reconnects")
+            if "wait_until:" in api_connected_body or "timeout: 2s" in api_connected_body:
+                errors.append(f"{rel}: do not delay display restore after Home Assistant reconnects")
+        restore_body = yaml_script_body(text, "ha_restore_after_api")
+        if restore_body is None:
+            errors.append(f"{rel}: define the immediate Home Assistant display restore script")
+        elif "ha_api_connected()" not in restore_body or "navigate_after_api" not in restore_body:
+            errors.append(f"{rel}: return from the Home Assistant waiting screen on API reconnect")
+        body = yaml_script_body(text, "ha_reconnect_flow")
+        if body is None:
+            errors.append(f"{rel}: show a delayed Home Assistant waiting screen after HA disconnects")
+        elif (
+            "delay: 5s" not in body
+            or "ha_api_state_connected()" not in body
+            or "Trying to connect to Home Assistant" not in body
+            or "If this persists, check your server for issues" not in body
+            or "lvgl.page.show: ha_setup_page" not in body
+        ):
+            errors.append(f"{rel}: keep the Home Assistant waiting screen delayed and tied to HA state connection")
+    return errors
+
+
+def firmware_ha_reconnect_flow_errors(core_infra_path: Path, root: Path) -> list[str]:
+    if not core_infra_path.exists():
+        return []
+    rel = core_infra_path.relative_to(root)
+    text = core_infra_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+    if "on_client_disconnected:" not in text or "script.execute: ha_reconnect_flow" not in text:
+        errors.append(f"{rel}: start the Home Assistant waiting screen flow when HA disconnects")
+    if "on_client_connected:" not in text or "id(ha_restore_after_api).execute();" not in text:
+        errors.append(f"{rel}: restore the display immediately when Home Assistant reconnects")
+    if "apply_registered_ha_control_availability" in text:
+        errors.append(f"{rel}: do not dim registered cards when HA disconnects")
     return errors
 
 
@@ -1512,6 +1673,7 @@ def run_scan() -> int:
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_card_disabled_state_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_action_card_script_fields_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
@@ -1527,6 +1689,8 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
+    errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
@@ -1550,6 +1714,7 @@ def run_scan() -> int:
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_todo_disabled_errors(DEVICE_DEVICE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
+    errors.extend(firmware_ha_reconnect_flow_errors(CORE_INFRA_PATH, ROOT))
     if errors:
         print("Firmware Home Assistant binding check failed:")
         for error in errors:
@@ -1905,6 +2070,42 @@ def expect_media_sleep_prevention_errors(
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_media_control_low_heap_metadata_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_media_control_low_heap_metadata_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_art_low_heap_progress_errors(
+    name: str,
+    media_text: str,
+    cover_art_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        cover_art_path = root / "common" / "device" / "screen_cover_art.yaml"
+        firmware_dir.mkdir(parents=True)
+        cover_art_path.parent.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(media_text, encoding="utf-8")
+        cover_art_path.write_text(cover_art_text, encoding="utf-8")
+
+        errors = firmware_cover_art_low_heap_progress_errors(firmware_dir, cover_art_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_image_card_entity_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -2143,8 +2344,18 @@ def run_self_test() -> int:
         ("access Home Assistant API through button_grid_ha.h helpers",),
     )
     expect_errors(
+        "direct action send through reference",
+        {"button_grid_actions.h": "api.send_homeassistant_action(req);\n"},
+        ("send Home Assistant actions through button_grid_ha.h helpers",),
+    )
+    expect_errors(
         "direct state subscription",
         {"button_grid_media.h": "api->subscribe_home_assistant_state(entity, {}, cb);\n"},
+        ("subscribe to Home Assistant state through button_grid_ha.h helpers",),
+    )
+    expect_errors(
+        "direct state subscription through reference",
+        {"button_grid_media.h": "api.subscribe_home_assistant_state(entity, {}, cb);\n"},
         ("subscribe to Home Assistant state through button_grid_ha.h helpers",),
     )
     expect_errors(
@@ -2153,9 +2364,19 @@ def run_self_test() -> int:
         ("get Home Assistant state through button_grid_ha.h helpers",),
     )
     expect_errors(
+        "direct state get through reference",
+        {"button_grid_media.h": "api.get_home_assistant_state(entity, {}, cb);\n"},
+        ("get Home Assistant state through button_grid_ha.h helpers",),
+    )
+    expect_errors(
         "direct callback registration",
         {"button_grid_alarm.h": "api->register_action_response_callback(id, cb);\n"},
         ("register action callbacks through button_grid_ha.h helpers",),
+    )
+    expect_errors(
+        "direct callback cancellation",
+        {"button_grid_alarm.h": "api.handle_action_response(id, false, error);\n"},
+        ("cancel action callbacks through button_grid_ha.h helpers",),
     )
     expect_errors(
         "helper boundary",
@@ -2293,22 +2514,6 @@ def run_self_test() -> int:
             "do not reset removed unavailable HA state retries",
             "do not keep removed unavailable HA state retry helpers",
             "do not retry unavailable HA states",
-        ),
-    )
-    expect_unavailable_retry_errors(
-        "missing bounded startup resync",
-        "inline void bump_ha_subscription_generation() {\n"
-        "  ha_reset_deferred_state_requests();\n"
-        "  ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT);\n"
-        "}\n",
-        "interval:\n"
-        "  - interval: 5s\n"
-        "    then:\n"
-        "      - lambda: |-\n"
-        "          ha_flush_deferred_state_requests();\n",
-        (
-            "resync Home Assistant subscriptions after startup reconnects",
-            "keep Home Assistant startup resync active for up to five minutes",
         ),
     )
     with TemporaryDirectory() as tmp:
@@ -2628,7 +2833,7 @@ def run_self_test() -> int:
         ("allow todo modals to open while waiting",),
     )
     expect_todo_disconnect_errors(
-        "availability disables todo tap",
+        "availability dims todo card",
         "inline void todo_cancel_pending_request(const char *reason) {}\n"
         "inline void todo_reload_active_modal() {}\n"
         "inline void todo_retry_waiting_modal() { waiting_for_ha = true; }\n"
@@ -2636,7 +2841,7 @@ def run_self_test() -> int:
         "  if (!todo_card_context_valid(ctx) || ctx->entity_id.empty()) return;\n"
         "}\n"
         "inline void subscribe_todo_state(TodoCardCtx *ctx) {\n"
-        "  apply_control_availability(ctx->btn, ctx->btn, ctx->available);\n"
+        "  apply_control_availability(ctx->btn, ctx->btn, ctx->available, false);\n"
         "}\n",
         "api:\n"
         "  on_client_connected:\n"
@@ -2647,7 +2852,7 @@ def run_self_test() -> int:
         "  - interval: 5s\n"
         "    then:\n"
         "      - lambda: todo_retry_waiting_modal();\n",
-        ("keep todo cards tappable",),
+        ("do not dim or disable todo cards",),
     )
     expect_action_card_availability_errors(
         "stateless main action registered for availability",
@@ -2995,12 +3200,26 @@ def run_self_test() -> int:
         ("retry weather forecast refresh",),
     )
     expect_weather_reconnect_errors(
-        "guarded weather reconnect refresh with delayed retry",
+        "guarded weather reconnect refresh missing late retry",
         "api:\n"
         "  on_client_connected:\n"
         "    - lambda: |-\n"
         "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n"
         "    - delay: 20s\n"
+        "    - lambda: |-\n"
+        "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n",
+        ("retry weather forecast refresh",),
+    )
+    expect_weather_reconnect_errors(
+        "guarded weather reconnect refresh with delayed retries",
+        "api:\n"
+        "  on_client_connected:\n"
+        "    - lambda: |-\n"
+        "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n"
+        "    - delay: 20s\n"
+        "    - lambda: |-\n"
+        "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n"
+        "    - delay: 25s\n"
         "    - lambda: |-\n"
         "        if (ha_api_state_connected()) refresh_weather_forecast_cards();\n",
         (),
@@ -3052,7 +3271,13 @@ def run_self_test() -> int:
         "      - script.stop: cover_art_request_artwork\n"
         "      - lambda: |-\n"
         "          id(cover_art_hide_external_input_enabled).state && id(cover_art_external_input_active);\n"
-        "          bool external = next == \"TV\" || next == \"Line-in\";\n"
+        "          std::string normalized_source = next;\n"
+        "          for (char &ch : normalized_source) {\n"
+        "            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));\n"
+        "          }\n"
+        "          bool external = normalized_source == \"tv\" ||\n"
+        "                          normalized_source == \"line-in\" ||\n"
+        "                          normalized_source == \"line in\";\n"
         "          ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART);\n"
         "          ha_subscribe_attribute(\n"
         "            cover_entity,\n"
@@ -3270,6 +3495,202 @@ def run_self_test() -> int:
         "          else:\n"
         "            - script.execute: screensaver_idle_check\n",
         (),
+    )
+    expect_media_sleep_prevention_errors(
+        "normal screensaver timeout starts cover art directly",
+        "script:\n"
+        "  - id: screensaver_idle_check\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_active) ||\n"
+        "                     (id(media_player_sleep_prevention_enabled).state &&\n"
+        "                      id(media_player_playing));\n"
+        "  - id: screensaver_sleep_timer\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_enabled).state &&\n"
+        "                     id(cover_art_media_playing) &&\n"
+        "                     !id(cover_art_media_player_entity).state.empty();\n"
+        "          then:\n"
+        "            - script.execute: show_cover_art_view\n",
+        "switch:\n"
+        "  - platform: template\n"
+        "    id: cover_art_screensaver_enabled\n",
+        "script:\n"
+        "  - id: cover_art_playback_started\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(media_player_sleep_prevention_enabled).state ||\n"
+        "                     id(display_asleep);\n"
+        "          then:\n"
+        "            - script.execute: cover_art_delay_timer\n"
+        "          else:\n"
+        "            - script.execute: screensaver_idle_check\n",
+        (),
+    )
+    expect_media_sleep_prevention_errors(
+        "normal screensaver timeout does not add cover art delay",
+        "script:\n"
+        "  - id: screensaver_idle_check\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_active) ||\n"
+        "                     (id(media_player_sleep_prevention_enabled).state &&\n"
+        "                      id(media_player_playing));\n"
+        "  - id: screensaver_sleep_timer\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(cover_art_screensaver_enabled).state &&\n"
+        "                     id(cover_art_media_playing) &&\n"
+        "                     !id(cover_art_media_player_entity).state.empty();\n"
+        "          then:\n"
+        "            - script.execute: cover_art_delay_timer\n",
+        "switch:\n"
+        "  - platform: template\n"
+        "    id: cover_art_screensaver_enabled\n",
+        "script:\n"
+        "  - id: cover_art_playback_started\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return id(media_player_sleep_prevention_enabled).state ||\n"
+        "                     id(display_asleep);\n"
+        "          then:\n"
+        "            - script.execute: cover_art_delay_timer\n"
+        "          else:\n"
+        "            - script.execute: screensaver_idle_check\n",
+        ("start cover art directly after the normal screensaver timeout",),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal keeps title and artist",
+        "inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_artist\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_progress(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_volume(MediaPlaybackState *state) {}\n"
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  MediaPlaybackState *state = media_playback_ensure_state(ctx->entity_id);\n"
+        "  media_playback_subscribe_metadata(state);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "  media_playback_subscribe_progress(state);\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        (),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal lost title and artist",
+        "inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_artist\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_progress(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_volume(MediaPlaybackState *state) {}\n"
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "  media_playback_subscribe_metadata(state);\n"
+        "  media_playback_subscribe_progress(state);\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        (
+            "keep media_title subscribed",
+            "keep media_artist subscribed",
+        ),
+    )
+    expect_media_control_low_heap_metadata_errors(
+        "low heap media modal progress metadata is guarded",
+        "inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_title\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_artist\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_progress(MediaPlaybackState *state) {\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_duration\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position\"), cb);\n"
+        "  ha_subscribe_attribute(entity_id, std::string(\"media_position_updated_at\"), cb);\n"
+        "}\n\n"
+        "inline void media_playback_subscribe_volume(MediaPlaybackState *state) {}\n"
+        "inline void subscribe_media_control_state(MediaControlCtx *ctx) {\n"
+        "  MediaPlaybackState *state = media_playback_ensure_state(ctx->entity_id);\n"
+        "  media_playback_subscribe_metadata(state);\n"
+        "  media_playback_subscribe_progress(state);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_MEDIA_CONTROL\n"
+        "#endif\n"
+        "}\n\n"
+        "inline bool media_seek_pending_active() { return false; }\n",
+        (
+            "keep media_duration out of the S3 low-heap media modal path",
+            "keep media_position out of the S3 low-heap media modal path",
+            "keep media_position_updated_at out of the S3 low-heap media modal path",
+        ),
+    )
+    cover_art_shared_media = (
+        "struct MediaPlaybackState {};\n"
+        "inline void subscribe_media_slider_state(lv_obj_t *btn_ptr, lv_obj_t *slider, const std::string &entity_id) {\n"
+        "  MediaPlaybackState *state = media_playback_ensure_state(entity_id);\n"
+        "  media_playback_attach_slider(state, ctx);\n"
+        "  media_playback_subscribe_state(state);\n"
+        "}\n"
+        "inline bool media_playback_state_snapshot() { return true; }\n"
+        "inline bool media_playback_state_has_progress() { return true; }\n"
+    )
+    expect_cover_art_low_heap_progress_errors(
+        "low heap cover art reuses shared progress",
+        cover_art_shared_media,
+        "script:\n"
+        "  - id: cover_art_refresh_progress\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          #ifdef ESPCONTROL_LOW_HEAP_COVER_ART\n"
+        "          media_playback_state_snapshot(id(cover_art_media_player_entity).state, playing, duration, position);\n"
+        "          lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);\n"
+        "          #endif\n"
+        "          return media_playback_state_has_progress(id(cover_art_media_player_entity).state);\n"
+        "#ifndef ESPCONTROL_LOW_HEAP_COVER_ART\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_duration\"), cb);\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_position\"), cb);\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_position_updated_at\"), cb);\n"
+        "#endif\n",
+        (),
+    )
+    expect_cover_art_low_heap_progress_errors(
+        "low heap cover art direct progress subscriptions",
+        cover_art_shared_media,
+        "script:\n"
+        "  - id: cover_art_refresh_progress\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return false;\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_duration\"), cb);\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_position\"), cb);\n"
+        "ha_subscribe_attribute(cover_entity, std::string(\"media_position_updated_at\"), cb);\n",
+        (
+            "keep media_duration out of the S3 low-heap cover art path",
+            "keep media_position out of the S3 low-heap cover art path",
+            "keep media_position_updated_at out of the S3 low-heap cover art path",
+            "let S3 cover art consume shared progress",
+            "show S3 cover art progress only when shared playback progress is available",
+        ),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",
@@ -3970,10 +4391,28 @@ def run_self_test() -> int:
         "          lambda: 'return ha_api_state_connected();'\n"
         "api:\n"
         "  on_client_connected:\n"
-        "    - delay: 2s\n"
-        "    - if:\n"
-        "        condition:\n"
-        "          lambda: 'return ha_api_state_connected();'\n",
+        "    - script.stop: ha_reconnect_flow\n"
+        "    - script.execute: ha_restore_after_api\n"
+        "script:\n"
+        "  - id: ha_restore_after_api\n"
+        "    mode: restart\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return ha_api_connected();'\n"
+        "          then:\n"
+        "            - script.execute: navigate_after_api\n"
+        "  - id: ha_reconnect_flow\n"
+        "    mode: restart\n"
+        "    then:\n"
+        "      - delay: 5s\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return !ha_api_state_connected();'\n"
+        "          then:\n"
+        "            - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Trying to connect to Home Assistant\"));'\n"
+        "            - lambda: 'lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n(\"If this persists, check your server for issues\"));'\n"
+        "            - lvgl.page.show: ha_setup_page\n",
         (),
     )
     print("Firmware Home Assistant binding self-tests passed.")
