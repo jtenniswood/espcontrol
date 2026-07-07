@@ -31,6 +31,7 @@
   "state_loader_api",
   "artwork_post_api",
   "screen_schedule_post_api",
+  "clock_bar_post_api",
   "controls",
   "controls_shell",
   "settings_page",
