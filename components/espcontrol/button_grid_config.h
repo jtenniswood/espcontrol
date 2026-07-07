@@ -1031,11 +1031,12 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.options = media_card_options_normalized(p.options, p.sensor);
   }
   if (climate_card_type(p.type)) {
+    p.type = "climate_control";
     p.sensor.clear();
     p.unit.clear();
     if (p.icon.empty()) p.icon = "Thermostat";
     p.precision = normalize_climate_precision_config(p.precision);
-    p.options = climate_card_options_normalized(p.options, p.type == "climate_control");
+    p.options = climate_card_options_normalized(p.options, true);
   }
   if (p.type == "garage") {
     if (!card_runtime_garage_mode_valid(p.sensor)) p.sensor.clear();

@@ -159,7 +159,7 @@ function setClimateLabelDisplayMode(b, mode) {
     CLIMATE_LABEL_DISPLAY_OPTION,
     normalized === climateDefaultLabelDisplayMode() ? "" : normalized
   );
-  b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type) && b.type === "climate_control");
+  b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type));
   return b.options;
 }
 
@@ -176,7 +176,7 @@ function setClimateNumberDisplayMode(b, mode) {
     CLIMATE_NUMBER_DISPLAY_OPTION,
     normalized === climateDefaultNumberDisplayMode() ? "" : normalized
   );
-  b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type) && b.type === "climate_control");
+  b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type));
   return b.options;
 }
 
@@ -193,7 +193,7 @@ function setClimateTemperatureStep(b, step) {
     CLIMATE_TEMPERATURE_STEP_OPTION,
     normalized === climateDefaultTemperatureStep() ? "" : normalized
   );
-  b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type) && b.type === "climate_control");
+  b.options = normalizeClimateOptions(b.options, isClimateCardType(b.type));
   return b.options;
 }
 

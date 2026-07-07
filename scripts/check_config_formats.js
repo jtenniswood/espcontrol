@@ -85,6 +85,7 @@ function subpageTypeFromCode(code) {
     LM: "lawn_mower",
     M: "media",
     H: "climate",
+    HC: "climate_control",
     WH: "webhook",
     P: "push",
     SL: "screen_lock",
@@ -309,7 +310,7 @@ assert.deepStrictEqual(buttonShape(hooks.cardContractDefaultConfig("climate")), 
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "",
   options: "",
 }), "generated contract exposes card defaults");
@@ -1847,7 +1848,7 @@ assertButtonRoundTrip(hooks, "climate card", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
 }, false);
 
@@ -1858,7 +1859,7 @@ assertButtonRoundTrip(hooks, "climate card precision 2", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "2",
 }, false);
 
@@ -1869,7 +1870,7 @@ assertButtonRoundTrip(hooks, "climate card firmware precision 3", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "3",
 }, false);
 
@@ -1880,7 +1881,7 @@ assertButtonRoundTrip(hooks, "climate card custom range", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1:16:30",
 }, false);
 
@@ -1891,7 +1892,7 @@ assertButtonRoundTrip(hooks, "climate card negative custom range", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1:-25:5",
 }, false);
 
@@ -1902,7 +1903,7 @@ assertButtonRoundTrip(hooks, "climate card display options", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
   options: "label_display=status,number_display=actual",
 }, false);
@@ -1914,7 +1915,7 @@ assertButtonRoundTrip(hooks, "climate card half-degree step", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
   options: "temperature_step=0.5",
 }, false);
@@ -1926,20 +1927,21 @@ assertButtonRoundTrip(hooks, "climate card icon display", {
   icon_on: "Radiator",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
   options: "number_display=icon",
 }, false);
 
-assertButtonMigration(hooks, "plain climate drops all-controls tabs", "climate.hallway;Hallway;Thermostat;Auto;;;climate;1;climate_tabs=mode%7Ctemperature", {
+assertButtonMigration(hooks, "legacy climate keeps all-controls tabs", "climate.hallway;Hallway;Thermostat;Auto;;;climate;1;climate_tabs=mode%7Ctemperature", {
   entity: "climate.hallway",
   label: "Hallway",
   icon: "Thermostat",
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
+  options: "climate_tabs=mode%7Ctemperature",
 });
 
 assertButtonRoundTrip(hooks, "climate all controls custom tabs", {
@@ -1961,7 +1963,7 @@ assertButtonMigration(hooks, "climate clears ignored fields", "climate.living_ro
   icon_on: "Radiator",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "",
 });
 
@@ -1972,7 +1974,7 @@ assertButtonMigration(hooks, "climate clears legacy options", "climate.living_ro
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
   options: "large_numbers",
 });
@@ -3034,42 +3036,42 @@ assertSubpageRoundTrip(hooks, "media subpage", {
 assertSubpageRoundTrip(hooks, "climate subpage", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate", precision: "1" }),
+    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate_control", precision: "1" }),
   ],
 }, true);
 
 assertSubpageRoundTrip(hooks, "climate subpage custom range", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "0:16:30" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate_control", precision: "0:16:30" }),
   ],
 }, true);
 
 assertSubpageRoundTrip(hooks, "climate subpage negative custom range", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.freezer", label: "Freezer", type: "climate", precision: "1:-25:5" }),
+    buttonShape({ entity: "climate.freezer", label: "Freezer", type: "climate_control", precision: "1:-25:5" }),
   ],
 }, true);
 
 assertSubpageRoundTrip(hooks, "climate subpage display options", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "1", options: "label_display=target,number_display=actual" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate_control", precision: "1", options: "label_display=target,number_display=actual" }),
   ],
 }, true);
 
 assertSubpageRoundTrip(hooks, "climate subpage icon display", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", type: "climate", precision: "1", options: "number_display=icon" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", type: "climate_control", precision: "1", options: "number_display=icon" }),
   ],
 }, true);
 
 const climateIconSubpage = hooks.serializeSubpageConfig({
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", type: "climate", precision: "1", options: "number_display=icon" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", type: "climate_control", precision: "1", options: "number_display=icon" }),
   ],
 });
 assert.deepStrictEqual(
@@ -3384,14 +3386,14 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|M,media_playe
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|H,climate.living_room,Living%20Room,,,,,1")), {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate", precision: "1" }),
+    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate_control", precision: "1" }),
   ],
 }, "compact climate subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|H,climate.hallway,Hallway,,,,,0%3A16%3A30")), {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "0:16:30" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate_control", precision: "0:16:30" }),
   ],
 }, "compact climate range subpage parse");
 

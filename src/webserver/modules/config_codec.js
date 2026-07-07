@@ -110,12 +110,13 @@ function normalizeButtonConfig(b) {
     b.options = normalizeMediaOptions(b.options, b.sensor);
   }
   if (b && isClimateCardType(b.type)) {
+    b.type = "climate_control";
     b.sensor = "";
     b.unit = "";
     if (!b.icon) b.icon = "Thermostat";
     if (!b.icon_on) b.icon_on = "Auto";
     b.precision = normalizeClimatePrecisionConfig(b.precision);
-    b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
+    b.options = normalizeClimateOptions(b.options, true);
   }
   if (b && b.type === "garage") {
     if (b.sensor !== "open" && b.sensor !== "close") b.sensor = "";
@@ -432,7 +433,8 @@ function buttonConfigFields(b) {
     sensor = normalizeCoverMode(sensor, true);
     options = normalizeCoverOptionsForMode(options, sensor);
   } else if (isClimateCardType(type)) {
-    options = normalizeClimateOptions(options, type === "climate_control");
+    type = "climate_control";
+    options = normalizeClimateOptions(options, true);
   } else if (type === "media") {
     options = normalizeMediaOptions(options, sensor);
   } else if (type === "weather") {

@@ -49,8 +49,8 @@
   },
   {
     "name": "climate icon display canonical output is firmware readable",
-    "input": "climate.hallway;Hallway;Thermostat;Radiator;;;climate;1;number_display=icon,large_numbers",
-    "canonical": "climate.hallway;Hallway;Thermostat;Radiator;;;climate;1;number_display=icon",
+    "input": "climate.hallway;Hallway;Thermostat;Radiator;;;climate_control;1;number_display=icon,large_numbers",
+    "canonical": "climate.hallway;Hallway;Thermostat;Radiator;;;climate_control;1;number_display=icon",
     "expected": {
       "entity": "climate.hallway",
       "label": "Hallway",
@@ -58,7 +58,7 @@
       "icon_on": "Radiator",
       "sensor": "",
       "unit": "",
-      "type": "climate",
+      "type": "climate_control",
       "precision": "1",
       "options": "number_display=icon"
     }

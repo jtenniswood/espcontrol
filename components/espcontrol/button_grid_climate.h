@@ -101,7 +101,6 @@ struct ClimateControlCtx {
   int precision = 0;
   std::string label_display = "label";
   std::string number_display = "target";
-  bool all_controls = false;
   int pending_target_tenths = CLIMATE_DEFAULT_TARGET_TENTHS;
   bool pending_temp_send = false;
   lv_timer_t *debounce_timer = nullptr;
@@ -600,7 +599,7 @@ inline ControlModalTabLayout climate_control_calc_tab_layout(
     ClimateControlCtx *ctx, const ControlModalLayout &layout) {
   ClimateControlVisibleTabs visible_tabs = climate_control_visible_tabs(ctx);
   int tab_count = static_cast<int>(visible_tabs.count);
-  bool show_tab_bar = ctx && ctx->all_controls && tab_count > 1;
+  bool show_tab_bar = tab_count > 1;
   return control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);
 }
 
@@ -1376,9 +1375,6 @@ inline void climate_set_dial_controls_visible(bool visible) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   bool show_current = visible && ui.active && ui.active->available && ui.active->has_current;
   bool show_handle = visible && ui.active && climate_modal_temperature_controls_enabled(ui.active);
-  bool show_legacy_options = visible && ui.active && ui.active->available && !ui.active->all_controls &&
-    (!ui.active->hvac_modes.empty() || !ui.active->preset_modes.empty() ||
-     !ui.active->fan_modes.empty() || !ui.active->swing_modes.empty());
   climate_set_obj_visible(ui.arc, visible);
   climate_set_obj_visible(ui.current_dot, show_current);
   climate_set_obj_visible(ui.handle_dot, show_handle);
@@ -1389,7 +1385,7 @@ inline void climate_set_dial_controls_visible(bool visible) {
   bool show_target_selector = visible && ui.active &&
     climate_modal_temperature_controls_enabled(ui.active) && climate_dual_target(ui.active);
   climate_set_obj_visible(ui.target_chip, show_target_selector);
-  climate_set_obj_visible(ui.chips, show_target_selector || show_legacy_options);
+  climate_set_obj_visible(ui.chips, show_target_selector);
 }
 
 inline void climate_set_step_button_enabled(lv_obj_t *btn, bool enabled) {
@@ -1636,12 +1632,6 @@ inline void climate_control_apply_tab_visibility() {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   ClimateControlCtx *ctx = ui.active;
   if (!ctx) return;
-  if (!ctx->all_controls) {
-    climate_set_obj_visible(ui.tab_row, false);
-    climate_set_dial_controls_visible(true);
-    climate_hide_inline_option_list();
-    return;
-  }
   climate_control_ensure_visible_tab(ctx);
   ClimateControlVisibleTabs visible_tabs = climate_control_visible_tabs(ctx);
   bool show_tab_bar = visible_tabs.count > 1;
@@ -1792,19 +1782,11 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   }
   bool dual = temp_enabled && climate_dual_target(ctx);
   climate_update_target_chip(ui.target_chip, ctx, dual);
-  bool show_legacy_chips = ctx->available && !ctx->all_controls;
-  climate_update_option_chip(ui.mode_chip, "Mode", ctx->hvac_mode,
-    show_legacy_chips && !ctx->hvac_modes.empty());
-  climate_update_option_chip(ui.preset_chip, "Preset", ctx->preset_mode,
-    show_legacy_chips && !ctx->preset_modes.empty());
-  climate_update_option_chip(ui.fan_chip, "Fan", ctx->fan_mode,
-    show_legacy_chips && !ctx->fan_modes.empty());
-  climate_update_option_chip(ui.swing_chip, "Swing", ctx->swing_mode,
-    show_legacy_chips && !ctx->swing_modes.empty());
-  bool show_chips = dual ||
-    (show_legacy_chips && (!ctx->hvac_modes.empty() || !ctx->preset_modes.empty() ||
-     !ctx->fan_modes.empty() || !ctx->swing_modes.empty()));
-  climate_set_obj_visible(ui.chips, show_chips);
+  climate_update_option_chip(ui.mode_chip, "Mode", ctx->hvac_mode, false);
+  climate_update_option_chip(ui.preset_chip, "Preset", ctx->preset_mode, false);
+  climate_update_option_chip(ui.fan_chip, "Fan", ctx->fan_mode, false);
+  climate_update_option_chip(ui.swing_chip, "Swing", ctx->swing_mode, false);
+  climate_set_obj_visible(ui.chips, dual);
   climate_set_step_button_enabled(ui.minus_btn, temp_enabled);
   climate_set_step_button_enabled(ui.plus_btn, temp_enabled);
   climate_control_apply_tab_visibility();
@@ -1899,10 +1881,6 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   lv_obj_set_scrollbar_mode(ui.chips, LV_SCROLLBAR_MODE_OFF);
   uint8_t visible_chip_count = 0;
   if (climate_modal_temperature_controls_enabled(ctx) && climate_dual_target(ctx)) visible_chip_count++;
-  if (ctx->available && !ctx->all_controls && !ctx->hvac_modes.empty()) visible_chip_count++;
-  if (ctx->available && !ctx->all_controls && !ctx->preset_modes.empty()) visible_chip_count++;
-  if (ctx->available && !ctx->all_controls && !ctx->fan_modes.empty()) visible_chip_count++;
-  if (ctx->available && !ctx->all_controls && !ctx->swing_modes.empty()) visible_chip_count++;
   lv_coord_t chip_row_w = layout.panel_w * CLIMATE_OPTION_ROW_WIDTH_PERCENT / 100;
   bool p4_86_square = climate_control_uses_p4_86_modal_tuning(layout);
   lv_coord_t option_chip_w = compensated_width(
@@ -2334,7 +2312,6 @@ inline ClimateControlCtx *create_climate_control_context(
       ? CLIMATE_DEFAULT_STEP_TENTHS
       : CLIMATE_WHOLE_NUMBER_STEP_TENTHS;
   ctx->options = p.options;
-  ctx->all_controls = p.type == "climate_control";
   ctx->accent_color = accent_color;
   ctx->secondary_color = secondary_color;
   ctx->tertiary_color = tertiary_color;

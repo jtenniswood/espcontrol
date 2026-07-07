@@ -1,12 +1,5 @@
 // Climate card: thermostat status plus full-screen climate controls.
 var CLIMATE_CARD_METADATA = {
-  type: {
-    label: "Type",
-    options: [
-      ["climate_control", "All Controls"],
-      ["climate", "Legacy Controls"],
-    ],
-  },
   entity: {
     label: "Climate Entity",
     idSuffix: "entity",
@@ -66,30 +59,21 @@ registerButtonType("climate", {
     b.label = "Climate";
     b.sensor = "";
     b.unit = "";
+    b.type = "climate_control";
     b.precision = "";
     b.icon = "Thermostat";
     b.icon_on = "Auto";
     b.options = "";
   },
   renderSettings: function (panel, b, slot, helpers) {
+    if (b.type !== "climate_control") {
+      b.type = "climate_control";
+      helpers.saveField("type", b.type);
+    }
     b.sensor = "";
     b.unit = "";
     if (!b.icon) b.icon = "Thermostat";
     if (!b.icon_on) b.icon_on = "Auto";
-    var typeField = helpers.selectField(
-      CLIMATE_CARD_METADATA.type.label,
-      helpers.idPrefix + "climate-card-type",
-      CLIMATE_CARD_METADATA.type.options,
-      b.type === "climate_control" ? "climate_control" : "climate"
-    );
-    typeField.select.addEventListener("change", function () {
-      b.type = this.value === "climate_control" ? "climate_control" : "climate";
-      helpers.saveField("type", b.type);
-      b.options = normalizeClimateOptions(b.options, b.type === "climate_control");
-      helpers.saveField("options", b.options);
-      scheduleRender();
-    });
-    panel.appendChild(typeField.field);
 
     var climateConfig = parseClimatePrecisionConfig(b.precision);
     var normalizedPrecision = climatePrecisionConfig(
@@ -103,22 +87,20 @@ registerButtonType("climate", {
     }
 
     helpers.renderCardEntityField(panel, b, helpers, CLIMATE_CARD_METADATA);
-    if (b.type === "climate_control") {
-      var modalTabsDisclosure = helpers.disclosureSection(
-        "Modal Settings",
-        helpers.idPrefix + "climate-modal-tabs",
-        b._modalSettingsOpen === true
-      );
-      renderModalTabSettings(modalTabsDisclosure.section, b, helpers, {
-        definitions: climateControlTabDefinitions,
-        tabs: climateControlTabs,
-        normalizeOptions: function (options) { return normalizeClimateOptions(options, true); },
-        setTabs: setClimateControlTabs,
-        idPrefix: "climate-tab-",
-        hideHeading: true,
-      });
-      panel.appendChild(modalTabsDisclosure.panel);
-    }
+    var modalTabsDisclosure = helpers.disclosureSection(
+      "Modal Settings",
+      helpers.idPrefix + "climate-modal-tabs",
+      b._modalSettingsOpen === true
+    );
+    renderModalTabSettings(modalTabsDisclosure.section, b, helpers, {
+      definitions: climateControlTabDefinitions,
+      tabs: climateControlTabs,
+      normalizeOptions: function (options) { return normalizeClimateOptions(options, true); },
+      setTabs: setClimateControlTabs,
+      idPrefix: "climate-tab-",
+      hideHeading: true,
+    });
+    panel.appendChild(modalTabsDisclosure.panel);
 
     var labelField = condField();
     labelField.classList.add("sp-climate-settings-gap");

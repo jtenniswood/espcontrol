@@ -497,7 +497,7 @@ var CARD_CONTRACT_CARDS = {
       "icon_on": "Auto",
       "sensor": "",
       "unit": "",
-      "type": "climate",
+      "type": "climate_control",
       "precision": "",
       "options": ""
     }

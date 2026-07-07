@@ -142,7 +142,7 @@ const structuredSubpageSource = {
   buttons: [
     { entity: "scene.movie", label: "Movie", icon: "Flash", icon_on: "Auto", sensor: "scene.turn_on", unit: "", type: "action", precision: "", options: "state_entity=light.living" },
     { entity: "media_player.living", label: "Living", icon: "Auto", icon_on: "Auto", sensor: "play_pause", unit: "", type: "media", precision: "state", options: "" },
-    { entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", sensor: "", unit: "", type: "climate", precision: "1", options: "number_display=icon" },
+    { entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", sensor: "", unit: "", type: "climate_control", precision: "1", options: "number_display=icon" },
     { entity: "", label: "Temp", icon: "Thermometer", icon_on: "Auto", sensor: "sensor.hallway_temperature", unit: "\u00B0C", type: "sensor", precision: "1", options: "large_numbers" },
     { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", precision: "", options: "" },
   ],
@@ -181,7 +181,7 @@ assert.deepStrictEqual(plain(model.parseStructuredSubpageConfig({
 const layoutPlan = model.planBackupButtonLayout([
   { entity: "light.kitchen", label: "Kitchen" },
   { entity: "weather.home", label: "Weather", type: "weather" },
-  { entity: "climate.hall", label: "Hall", type: "climate" },
+  { entity: "climate.hall", label: "Hall", type: "climate_control" },
   {},
 ], "2w,1,3", 2, 4);
 assert.strictEqual(layoutPlan.importedCount, 4, "backup layout records source slot count");
