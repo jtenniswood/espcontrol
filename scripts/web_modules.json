@@ -42,6 +42,7 @@
   "clock_bar_post_api",
   "controls",
   "controls_shell",
+  "settings_page_helpers",
   "settings_page",
   "controls_fields",
   "preview_render",
