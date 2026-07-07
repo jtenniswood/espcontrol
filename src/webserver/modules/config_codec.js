@@ -1,4 +1,5 @@
 // ── Subpage helpers ────────────────────────────────────────────────────
+// @web-module-requires: model_generated, card_contract_generated, state, grid
 
 var SENSOR_STATE_LABELS_OPTION = cardContractOptionName("state_labels");
 var SENSOR_STATE_INPUT_OPTION = cardContractOptionName("state_input");

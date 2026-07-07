@@ -17,6 +17,7 @@ DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
 COMPAT_FIXTURES = ROOT / "compatibility" / "fixtures" / "product_compatibility.json"
 BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
+BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
 REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
@@ -311,7 +312,7 @@ def test_weather_card_visual_matches_preview() -> None:
     cards = BUTTON_GRID_CARDS.read_text(encoding="utf-8")
     styles = (ROOT / "src" / "webserver" / "modules" / "styles.js").read_text(encoding="utf-8")
     subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
-    config = (ROOT / "components" / "espcontrol" / "button_grid_config.h").read_text(encoding="utf-8")
+    weather_forecast = BUTTON_GRID_WEATHER_FORECAST.read_text(encoding="utf-8")
     assert ".sp-type-badge{display:none}" in styles, "web preview type badges should remain visually hidden"
     assert "set_weather_card_badge" not in cards, (
         "device weather cards should not show the hidden web preview type badge"
@@ -325,13 +326,13 @@ def test_weather_card_visual_matches_preview() -> None:
     assert 'set_weather_card_badge(s, "Weather Partly Cloudy")' not in cards, (
         "forecast weather device card should not render a visible forecast badge"
     )
-    assert '"HA Actions"' not in config, (
+    assert '"HA Actions"' not in weather_forecast, (
         "forecast weather errors should keep the configured/default label like the web preview"
     )
     assert 'lv_label_set_text(s.unit_lbl, display_temperature_unit_symbol())' in cards, (
         "forecast weather placeholder should show the configured unit like the web preview"
     )
-    assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in config, (
+    assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
         "forecast weather unavailable state should keep showing the configured unit"
     )
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
@@ -352,28 +353,28 @@ def test_weather_card_visual_matches_preview() -> None:
         and "lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_match.group(0)
         and "lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);" in setup_match.group(0)
     ), "weather cards must reset inherited icon, value, and label placement before rendering"
-    assert "inline std::string normalize_weather_state" in config, (
+    assert "inline std::string normalize_weather_state" in weather_forecast, (
         "current weather device cards should normalize equivalent weather state spellings before mapping icons"
     )
-    assert 'if (normalized == "partly-cloudy") return "partlycloudy";' in config, (
+    assert 'if (normalized == "partly-cloudy") return "partlycloudy";' in weather_forecast, (
         "current weather device cards should accept the dashed partly-cloudy spelling"
     )
-    assert 'if (normalized.compare(0, 8, "weather-") == 0) normalized = normalized.substr(8);' in config, (
+    assert 'if (normalized.compare(0, 8, "weather-") == 0) normalized = normalized.substr(8);' in weather_forecast, (
         "current weather device cards should accept web weather icon names as state aliases"
     )
-    assert 'if (normalized.compare(0, 4, "mdi-") == 0) normalized = normalized.substr(4);' in config, (
+    assert 'if (normalized.compare(0, 4, "mdi-") == 0) normalized = normalized.substr(4);' in weather_forecast, (
         "current weather device cards should accept web Material Design weather class names as state aliases"
     )
-    assert 'if (normalized == "night") return "clear-night";' in config, (
+    assert 'if (normalized == "night") return "clear-night";' in weather_forecast, (
         "current weather device cards should map the web Weather Night icon name to clear night"
     )
-    assert 'normalized == "night-cloudy"' in config and 'return "night-partly-cloudy";' in config, (
+    assert 'normalized == "night-cloudy"' in weather_forecast and 'return "night-partly-cloudy";' in weather_forecast, (
         "current weather device cards should accept night cloudy aliases for the web weather icon"
     )
-    assert 'normalized == "sunny-off"' in config and 'return "unavailable";' in config, (
+    assert 'normalized == "sunny-off"' in weather_forecast and 'return "unavailable";' in weather_forecast, (
         "current weather device cards should map the web unavailable weather icon name"
     )
-    assert 'normalized == "unknown"' in config and 'return "unavailable";' in config, (
+    assert 'normalized == "unknown"' in weather_forecast and 'return "unavailable";' in weather_forecast, (
         "current weather device cards should render unknown states with the unavailable weather icon"
     )
     assert 'if (b.type == "weather" && !card_runtime_weather_forecast_precision(b.precision))' in subpages, (
@@ -422,8 +423,8 @@ def test_weather_card_visual_matches_preview() -> None:
         ("thunderstorm", "lightning"),
         ("thunderstorms", "lightning"),
     ):
-        assert f'if (normalized == "{alias}") return "{state}";' in config or (
-            f'normalized == "{alias}"' in config and f'return "{state}";' in config
+        assert f'if (normalized == "{alias}") return "{state}";' in weather_forecast or (
+            f'normalized == "{alias}"' in weather_forecast and f'return "{state}";' in weather_forecast
         ), f"current weather device cards should normalize provider alias {alias} to {state}"
     for state, icon_name, label in (
         ("cloudy-alert", "Weather Cloudy Alert", "Cloudy Alert"),
@@ -442,10 +443,10 @@ def test_weather_card_visual_matches_preview() -> None:
         ("sunset-up", "Weather Sunset Up", "Sunset Up"),
         ("tornado", "Weather Tornado", "Tornado"),
     ):
-        assert f'if (normalized == "{state}") return find_icon("{icon_name}");' in config, (
+        assert f'if (normalized == "{state}") return find_icon("{icon_name}");' in weather_forecast, (
             f"current weather device card should map {state} to the matching web weather icon"
         )
-        assert f'if (normalized == "{state}") return espcontrol_i18n(std::string("{label}"));' in config, (
+        assert f'if (normalized == "{state}") return espcontrol_i18n(std::string("{label}"));' in weather_forecast, (
             f"current weather device card should label {state} like the web preview"
         )
 

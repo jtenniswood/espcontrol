@@ -1,4 +1,5 @@
 // ── Button settings panel (unified) ────────────────────────────────────
+// @web-module-requires: state, clock_bar_state, entity_state, grid, config_codec, config_post_api, controls, controls_fields, preview_render
 
 function hideSettingsOverlay() {
   if (els.settingsOverlay) els.settingsOverlay.classList.remove("sp-visible");

@@ -1,4 +1,5 @@
 // ── Clock (minute-aligned) ─────────────────────────────────────────────
+// @web-module-requires: state, environment_state, clock_bar_state
 
 function getTzId(tz) {
   if (typeof isHomeAssistantAutoTimezone === "function" && isHomeAssistantAutoTimezone(tz)) return "UTC";

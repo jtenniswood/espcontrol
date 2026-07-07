@@ -1,4 +1,5 @@
 // ── Settings Page ──────────────────────────────────────────────────────
+// @web-module-requires: state, language_state, environment_state, screen_rotation_state, screen_schedule_state, screen_schedule_post_api, ntp_state, appearance_state, idle_state, artwork_state, artwork_post_api, screensaver_state, firmware_version_state, clock_bar_state, clock_bar_post_api, entity_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, public_firmware_install, state_loader_api, controls, controls_shell
 
 function settingsStatusHeader(title) {
   var header = document.createElement("div");

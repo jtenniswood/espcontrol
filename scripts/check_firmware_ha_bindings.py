@@ -32,6 +32,11 @@ CONNECTIVITY_PATHS = (
 )
 
 
+def firmware_weather_header_path(firmware_dir: Path) -> Path:
+    weather_path = firmware_dir / "button_grid_weather_forecast.h"
+    return weather_path if weather_path.exists() else firmware_dir / "button_grid_config.h"
+
+
 def package_api_navigate_enabled(package_path: Path, root: Path) -> bool:
     manifest_path = root / "devices" / "manifest.json"
     if not manifest_path.exists():
@@ -478,7 +483,7 @@ def firmware_ntp_startup_errors(
 
 
 def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]:
-    path = firmware_dir / "button_grid_config.h"
+    path = firmware_weather_header_path(firmware_dir)
     if not path.exists():
         return []
     rel = path.relative_to(root)
@@ -573,7 +578,7 @@ def firmware_weather_request_errors(firmware_dir: Path, root: Path) -> list[str]
 
 
 def firmware_weather_disconnect_errors(firmware_dir: Path, core_infra_path: Path, root: Path) -> list[str]:
-    config_path = firmware_dir / "button_grid_config.h"
+    config_path = firmware_weather_header_path(firmware_dir)
     if not config_path.exists() or not core_infra_path.exists():
         return []
     core_rel = core_infra_path.relative_to(root)
