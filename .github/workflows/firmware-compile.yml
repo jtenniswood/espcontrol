@@ -2,10 +2,11 @@ name: Firmware Compile
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ESPHOME_VERSION: 2026.6.1
   ESPCONTROL_DOCKER_BUILD_CACHE_KEEP: 2GB
 
 permissions:
@@ -38,7 +39,7 @@ jobs:
             --paginate \
             --jq '.[].filename' > changed-files.txt
 
-          if grep -Eq '^(\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_slots)\.py|package(-lock)?\.json)$' changed-files.txt; then
+          if grep -Eq '^(\.github/esphome\.env|\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_slots)\.py|package(-lock)?\.json)$' changed-files.txt; then
             echo "compile_required=true" >> "$GITHUB_OUTPUT"
           else
             echo "compile_required=false" >> "$GITHUB_OUTPUT"
@@ -55,7 +56,9 @@ jobs:
       - uses: actions/checkout@v7.0.0
         with:
           sparse-checkout: |
+            builds/*.yaml
             common/assets/*.yaml
+            common/assets/fonts/*
             devices/manifest.json
             devices/*/device/fonts.yaml
             scripts/device_matrix.py
@@ -91,8 +94,22 @@ jobs:
         with:
           path: espcontrol-${{ matrix.slug }}
 
-      - run: git sparse-checkout disable || true
+      - name: Normalize checkout
         working-directory: espcontrol-${{ matrix.slug }}
+        run: |
+          git sparse-checkout disable || true
+          git reset --hard HEAD
+          BUILD_FILE="builds/${{ matrix.slug }}.factory.yaml"
+          if [ ! -f "${BUILD_FILE}" ]; then
+            echo "::error::Expected firmware build file is missing: ${BUILD_FILE}"
+            echo "Available build files:"
+            find builds -maxdepth 1 -type f -print | sort || true
+            exit 1
+          fi
+
+      - name: Load ESPHome version
+        working-directory: espcontrol-${{ matrix.slug }}
+        run: cat .github/esphome.env >> "$GITHUB_ENV"
 
       - name: Select Docker command
         run: |
@@ -115,13 +132,17 @@ jobs:
           RUN_CACHE_ROOT="${RUNNER_TEMP}/espcontrol-esphome/${{ github.run_id }}-${{ github.run_attempt }}/${{ matrix.slug }}"
           PLATFORMIO_CACHE="${RUN_CACHE_ROOT}/platformio-${ESPHOME_VERSION}"
           BUILD_CACHE="${RUN_CACHE_ROOT}/build"
+          BUILD_INPUT_DIR=".firmware-builds"
           rm -rf "${RUN_CACHE_ROOT}"
-          mkdir -p "${PLATFORMIO_CACHE}" "${BUILD_CACHE}" builds
+          mkdir -p "${PLATFORMIO_CACHE}" "${BUILD_CACHE}"
           rm -rf .esphome
-          rm -rf builds/.esphome
+          rm -rf "${BUILD_INPUT_DIR}"
+          mkdir -p "${BUILD_INPUT_DIR}"
+          cp builds/*.yaml "${BUILD_INPUT_DIR}/"
           echo "RUN_CACHE_ROOT=${RUN_CACHE_ROOT}" >> "$GITHUB_ENV"
           echo "PLATFORMIO_CACHE=${PLATFORMIO_CACHE}" >> "$GITHUB_ENV"
           echo "BUILD_CACHE=${BUILD_CACHE}" >> "$GITHUB_ENV"
+          echo "BUILD_INPUT_DIR=${BUILD_INPUT_DIR}" >> "$GITHUB_ENV"
 
       - name: Pull ESPHome image
         working-directory: espcontrol-${{ matrix.slug }}
@@ -137,17 +158,23 @@ jobs:
 
       - name: Compile firmware
         working-directory: espcontrol-${{ matrix.slug }}
-        run: >-
-          ${DOCKER} run --rm
-          --user "$(id -u):$(id -g)"
-          -e HOME=/config
-          -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio
-          -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false
-          -v "${PWD}:/config"
-          -v "${PLATFORMIO_CACHE}:/config/.esphome"
-          -v "${BUILD_CACHE}:/config/builds/.esphome"
-          "${ESPHOME_IMAGE}"
-          compile /config/builds/${{ matrix.slug }}.factory.yaml
+        run: |
+          SOURCE_DIR="${PWD}"
+          CONTAINER=$(${DOCKER} create \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/config \
+            -e PLATFORMIO_CORE_DIR=/config/.esphome/platformio \
+            -e PLATFORMIO_SETTING_ENABLE_TELEMETRY=false \
+            -v "${PLATFORMIO_CACHE}:/config/.esphome" \
+            -v "${BUILD_CACHE}:/config/${BUILD_INPUT_DIR}/.esphome" \
+            "${ESPHOME_IMAGE}" \
+            compile /config/${BUILD_INPUT_DIR}/${{ matrix.slug }}.factory.yaml)
+          cleanup() {
+            ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          ${DOCKER} cp "${SOURCE_DIR}/." "${CONTAINER}:/config"
+          ${DOCKER} start -a "${CONTAINER}"
 
       - name: Clean firmware caches
         if: always()

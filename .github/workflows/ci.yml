@@ -3,16 +3,25 @@ name: CI
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
     paths:
       - '.github/workflows/ci.yml'
       - '.github/workflows/nightly-firmware.yml'
+      - '.github/workflows/pr-testing-guidance.yml'
       - '.github/workflows/release.yml'
+      - '.github/pull_request_template.md'
+      - 'AGENTS.md'
+      - 'DEVELOPERS.md'
+      - 'README.md'
+      - 'compatibility/**'
       - 'common/**'
       - 'components/**'
+      - 'dev-docs/**'
       - 'devices/**'
       - 'builds/**'
+      - 'product/**'
       - 'src/**'
       - 'scripts/**'
       - 'docs/**'
@@ -31,6 +40,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-process:
+    name: PR Process
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - name: Check PR documentation decision
+        run: python3 scripts/check_pr_process.py
+
   sync-icons:
     name: Sync Generated Icons
     if: github.event_name != 'pull_request'
@@ -110,7 +128,7 @@ jobs:
     if: >-
       always() &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -143,7 +161,7 @@ jobs:
       always() &&
       needs.validate.result == 'success' &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -168,15 +186,17 @@ jobs:
 
   ci-gate:
     name: CI Gate
-    needs: [validate, docs]
+    needs: [pr-process, validate, docs]
     if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Verify required CI jobs passed
         run: |
-          if [ "${{ needs.validate.result }}" != "success" ] ||
+          if [ "${{ needs.pr-process.result }}" != "success" ] ||
+             [ "${{ needs.validate.result }}" != "success" ] ||
              [ "${{ needs.docs.result }}" != "success" ]; then
             echo "::error::Required CI jobs did not pass."
+            echo "PR Process: ${{ needs.pr-process.result }}"
             echo "Validate Generated Files: ${{ needs.validate.result }}"
             echo "Build Docs: ${{ needs.docs.result }}"
             exit 1

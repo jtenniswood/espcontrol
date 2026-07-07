@@ -47,13 +47,13 @@ inline const char *lawn_mower_state_icon_name(const std::string &state) {
 
 inline std::string lawn_mower_state_label(const std::string &state,
                                           const std::string &fallback) {
-  if (state == "mowing") return "Mowing";
-  if (state == "docked") return "Docked";
-  if (state == "paused") return "Paused";
-  if (state == "returning") return "Returning";
-  if (state == "error") return "Error";
-  if (state == "unavailable") return "Unavailable";
-  if (state == "unknown") return "Unknown";
+  if (state == "mowing") return espcontrol_i18n(std::string("Mowing"));
+  if (state == "docked") return espcontrol_i18n(std::string("Docked"));
+  if (state == "paused") return espcontrol_i18n(std::string("Paused"));
+  if (state == "returning") return espcontrol_i18n(std::string("Returning"));
+  if (state == "error") return espcontrol_i18n(std::string("Error"));
+  if (state == "unavailable") return espcontrol_i18n(std::string("Unavailable"));
+  if (state == "unknown") return espcontrol_i18n(std::string("Unknown"));
   return fallback;
 }
 
@@ -112,15 +112,10 @@ inline void apply_lawn_mower_card_state(LawnMowerCardCtx *ctx,
       : ctx->label;
     set_wrapped_button_label_text(ctx->text_lbl, label);
   }
-  if (ctx->btn) {
-    bool available = !(ctx->state == "unavailable" || ctx->state == "unknown");
-    apply_control_availability(ctx->btn, ctx->btn, available, !ctx->status_card);
-  }
 }
 
 inline void subscribe_lawn_mower_card_state(LawnMowerCardCtx *ctx) {
   if (!ctx || ctx->entity_id.empty()) return;
-  register_ha_control_availability(ctx->btn, ctx->btn, !ctx->status_card);
   ha_subscribe_state(
     ctx->entity_id,
     std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {

@@ -30,3 +30,18 @@ and what needs to change when adding or fixing a card type.
 For small fixes, a pull request is usually enough. For larger changes, especially
 new card types or firmware behaviour, opening an issue first makes it easier to
 agree what should change before you spend time building it.
+
+## Pull Request Testing
+
+Pull requests should make the next step obvious. The PR template asks for the
+practical impact, documentation decision, testing status, and whether a physical
+device test is needed before merge.
+
+When a pull request changes firmware, device configuration, shared display
+files, or web files used by the device, an automated workflow posts suggested
+device testing notes. Treat those notes as the starting point for manual device
+testing after the automated checks pass.
+
+A successful compile or CI run confirms that the project builds. It does not
+replace testing on the affected display when the change touches the on-device
+experience.

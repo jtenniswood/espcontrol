@@ -106,6 +106,12 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "none",
         "`npm run check:backup-contract` and `npm run check:product`",
     ),
+    SourceTruthRow(
+        "`devices/manifest.json`, `common/config/card_contract.json`, `common/config/entity_names.json`, `common/assets/icons.json`, `compatibility/fixtures/product_compatibility.json`",
+        ("product/product_snapshot.json",),
+        "python3 scripts/check_product_snapshot.py --update",
+        "`npm run check:product-snapshot` and `npm run check:product`",
+    ),
 )
 
 
@@ -117,15 +123,18 @@ PUBLIC_DOCS_BY_TYPE: dict[str, str] = {
     "calendar": "docs/card-types/calendar.md",
     "clock": "docs/card-types/calendar.md",
     "climate": "docs/card-types/climate.md",
+    "climate_control": "docs/card-types/climate.md",
     "cover": "docs/card-types/covers.md",
     "door_window": "docs/card-types/doors-windows.md",
     "presence": "docs/card-types/presence.md",
+    "fan_control": "docs/card-types/fans.md",
     "fan_direction": "docs/card-types/fans.md",
     "fan_oscillate": "docs/card-types/fans.md",
     "fan_preset": "docs/card-types/fans.md",
     "fan_speed": "docs/card-types/fans.md",
     "fan_switch": "docs/card-types/fans.md",
     "garage": "docs/card-types/garage-doors.md",
+    "gate": "docs/card-types/gates.md",
     "internal": "docs/card-types/internal-relays.md",
     "light_brightness": "docs/card-types/lights.md",
     "light_control": "docs/card-types/lights.md",
@@ -193,6 +202,12 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "Shared Home Assistant entity names consumed by firmware YAML and the web setup page",
         "`python3 scripts/build.py entities --check`",
         "`npm run check:product` when generated entity files or web behavior changes",
+    ),
+    CheckMatrixRow(
+        "`product/product_snapshot.json`",
+        "Generated combined product model snapshot",
+        "`npm run check:product-snapshot`",
+        "`npm run check:product` when authored product sources also changed",
     ),
     CheckMatrixRow(
         "`common/config/strings.*.txt`",
@@ -278,11 +293,20 @@ def web_registration_map() -> dict[str, str]:
         text = path.read_text()
         for match in re.finditer(r"registerButtonType\(\s*([\"'])(.*?)\1", text):
             out[match.group(2)] = rel(path)
+        for match in re.finditer(
+            r"registerCoverLikeCardType\(\s*\{.*?\btype\s*:\s*([\"'])(.*?)\1",
+            text,
+            flags=re.DOTALL,
+        ):
+            out[match.group(2)] = rel(path)
     return out
 
 
 def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
     out = {card_type: [] for card_type in card_types}
+    extra_by_type = {
+        "weather": ["components/espcontrol/button_grid_weather_forecast.h"],
+    }
     headers = [
         path for path in sorted((ROOT / "components/espcontrol").glob("button_grid*.h"))
         if not path.name.endswith("_generated.h")
@@ -296,6 +320,9 @@ def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
             text = path.read_text(errors="ignore")
             if any(needle in text for needle in needles):
                 out[card_type].append(rel(path))
+        for extra in extra_by_type.get(card_type, []):
+            if extra not in out[card_type]:
+                out[card_type].append(extra)
     return out
 
 
@@ -305,13 +332,15 @@ def option_summary(card: dict) -> str:
         return "None"
     labels = []
     for option in options:
+        if option.get("docsHidden"):
+            continue
         values = option.get("values") or []
         label = option.get("label") or option.get("name") or ""
         if values:
             labels.append(f"{label}: {', '.join('default' if v == '' else str(v) for v in values)}")
         else:
             labels.append(str(label))
-    return "; ".join(labels)
+    return "; ".join(labels) if labels else "None"
 
 
 def docs_link(path: str) -> str:
@@ -344,7 +373,7 @@ def generated_card_map() -> str:
         checks = ["Contract", "Codec", "Parser"]
         if card.get("domains") or card_type in {"action", "push", "webhook", "weather", "image"}:
             checks.append("HA")
-        if "modal" in " ".join(firmware_files.get(card_type, [])).lower() or card_type in {"alarm", "alarm_action", "climate", "media", "option_select", "image"}:
+        if "modal" in " ".join(firmware_files.get(card_type, [])).lower() or card_type in {"alarm", "alarm_action", "climate", "climate_control", "media", "option_select", "image"}:
             checks.append("Modals")
         if card.get("options"):
             checks.append("Backup")
@@ -434,6 +463,40 @@ def check_generated_files(errors: list[str]) -> None:
             errors.append(f"{path} generated section is stale; run python3 scripts/check_dev_docs.py --update")
 
 
+def source_truth_path_targets(value: str) -> list[str]:
+    prefixes = ("common/", "components/", "compatibility/", "devices/", "docs/", "scripts/", "src/")
+    targets: list[str] = []
+    quoted = re.findall(r"`([^`]+)`", value)
+    if value.startswith(("generated ", "no generated ", "compile ")):
+        return [target for target in quoted if target.startswith(prefixes)]
+    targets.extend(target for target in quoted if target.startswith(prefixes))
+    for prefix in prefixes:
+        if value.startswith(prefix):
+            targets.append(value.split(",", 1)[0].split(" ", 1)[0])
+            break
+    return list(dict.fromkeys(targets))
+
+
+def check_source_truth_path(value: str, label: str, errors: list[str]) -> None:
+    for target in source_truth_path_targets(value):
+        if any(marker in target for marker in ("<", ">", "...")):
+            continue
+        matches = sorted(ROOT.glob(target)) if "*" in target else []
+        if "*" in target:
+            if not matches:
+                errors.append(f"source-of-truth {label} pattern has no matches: {target}")
+            continue
+        if not (ROOT / target).exists():
+            errors.append(f"source-of-truth {label} path is missing: {target}")
+
+
+def check_source_truth_paths(errors: list[str]) -> None:
+    for row in SOURCE_TRUTH_ROWS:
+        check_source_truth_path(row.source, "source", errors)
+        for output in row.outputs:
+            check_source_truth_path(output, "output", errors)
+
+
 def check_public_docs(errors: list[str]) -> None:
     card_types = set(contract_cards())
     mapped = set(PUBLIC_DOCS_BY_TYPE)
@@ -455,6 +518,13 @@ def markdown_files() -> list[Path]:
     return [path for path in files if path.exists()]
 
 
+def workflow_files() -> list[Path]:
+    workflow_dir = ROOT / ".github" / "workflows"
+    files = sorted(workflow_dir.glob("*.yml"))
+    files.extend(sorted(workflow_dir.glob("*.yaml")))
+    return files
+
+
 def check_markdown_links(errors: list[str]) -> None:
     link_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     for path in markdown_files():
@@ -474,7 +544,7 @@ def check_referenced_commands(errors: list[str]) -> None:
     scripts = package_scripts()
     npm_re = re.compile(r"\bnpm run ([A-Za-z0-9:_-]+)")
     py_re = re.compile(r"\bpython3 (scripts/[A-Za-z0-9_./-]+)")
-    for path in markdown_files():
+    for path in [*markdown_files(), *workflow_files()]:
         text = path.read_text()
         for cmd in npm_re.findall(text):
             if cmd not in scripts:
@@ -532,6 +602,7 @@ def run_checks() -> list[str]:
     check_package_script(errors)
     check_public_docs(errors)
     check_generated_files(errors)
+    check_source_truth_paths(errors)
     check_markdown_links(errors)
     check_referenced_commands(errors)
     check_referenced_paths(errors)

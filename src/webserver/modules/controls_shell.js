@@ -1,5 +1,39 @@
 // ── Build UI ───────────────────────────────────────────────────────────
 
+function createMdiIcon(name, className) {
+  var icon = document.createElement("span");
+  icon.className = (className || "mdi") + " mdi-" + name;
+  icon.setAttribute("aria-hidden", "true");
+  return icon;
+}
+
+function createActionButton(className, label, iconName, ariaLabel) {
+  var btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = className;
+  if (ariaLabel) btn.setAttribute("aria-label", ariaLabel);
+  if (iconName) btn.appendChild(createMdiIcon(iconName));
+  if (label) btn.appendChild(document.createTextNode(label));
+  return btn;
+}
+
+function createDisclosureChevron(className) {
+  var wrap = document.createElement("span");
+  wrap.className = className;
+  var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M6 9l6 6 6-6");
+  svg.appendChild(path);
+  wrap.appendChild(svg);
+  return wrap;
+}
+
 function showBanner(msg, type) {
   if (!els.banner) return;
   els.banner.textContent = msg;
@@ -15,7 +49,6 @@ function showBanner(msg, type) {
 function buildUI() {
   var root = document.createElement("div");
   root.id = "sp-app";
-  root.setAttribute("data-preview-theme", CFG.previewTheme || "default");
 
   var banner = document.createElement("div");
   banner.className = "sp-banner";
@@ -69,7 +102,8 @@ function buildHeader(parent) {
   docsLink.href = "https://jtenniswood.github.io/espcontrol/";
   docsLink.target = "_blank";
   docsLink.rel = "noopener";
-  docsLink.innerHTML = 'Docs <span class="mdi mdi-arrow-top-right"></span>';
+  docsLink.appendChild(document.createTextNode("Docs "));
+  docsLink.appendChild(createMdiIcon("arrow-top-right"));
   nav.appendChild(docsLink);
 
   header.appendChild(nav);
@@ -122,7 +156,10 @@ function buildScreenPage(parent) {
   modal.className = "sp-settings-modal";
   var closeBtn = document.createElement("button");
   closeBtn.className = "sp-settings-close";
-  closeBtn.innerHTML = "&times;";
+  closeBtn.innerHTML = '<svg class="sp-settings-close-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"></path>' +
+    '</svg>';
+  closeBtn.setAttribute("aria-label", "Close settings");
   closeBtn.addEventListener("click", closeSettings);
   modal.appendChild(closeBtn);
   var config = document.createElement("div");

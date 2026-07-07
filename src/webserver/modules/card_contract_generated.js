@@ -110,6 +110,11 @@ var CARD_CONTRACT_CARDS = {
         ]
       },
       {
+        "name": "script_fields",
+        "label": "Fields",
+        "kind": "text"
+      },
+      {
         "name": "confirm_message",
         "label": "Message",
         "kind": "text",
@@ -282,6 +287,7 @@ var CARD_CONTRACT_CARDS = {
           "home",
           "disarm"
         ],
+        "maxVisibleActions": 3,
         "actions": [
           {
             "value": "away",
@@ -456,6 +462,16 @@ var CARD_CONTRACT_CARDS = {
         "defaultValue": "target"
       },
       {
+        "name": "temperature_step",
+        "label": "Temperature Step",
+        "kind": "choice",
+        "values": [
+          "1",
+          "0.5"
+        ],
+        "defaultValue": "1"
+      },
+      {
         "name": "large_numbers",
         "label": "Large Temperature Numbers",
         "kind": "flag"
@@ -465,6 +481,7 @@ var CARD_CONTRACT_CARDS = {
       "climate": {
         "defaultLabelDisplay": "label",
         "defaultNumberDisplay": "target",
+        "defaultTemperatureStep": "1",
         "precisionValues": [
           "",
           "1",
@@ -481,6 +498,85 @@ var CARD_CONTRACT_CARDS = {
       "sensor": "",
       "unit": "",
       "type": "climate",
+      "precision": "",
+      "options": ""
+    }
+  },
+  "climate_control": {
+    "label": "All Controls",
+    "allowInSubpage": true,
+    "pickerKey": "climate",
+    "hidden": true,
+    "domains": [
+      "climate"
+    ],
+    "options": [
+      {
+        "name": "label_display",
+        "label": "Label Display",
+        "kind": "choice",
+        "values": [
+          "label",
+          "status",
+          "actual",
+          "target"
+        ],
+        "defaultValue": "label"
+      },
+      {
+        "name": "number_display",
+        "label": "Icon & Temperatures",
+        "kind": "choice",
+        "values": [
+          "icon",
+          "actual",
+          "target"
+        ],
+        "defaultValue": "target"
+      },
+      {
+        "name": "temperature_step",
+        "label": "Temperature Step",
+        "kind": "choice",
+        "values": [
+          "1",
+          "0.5"
+        ],
+        "defaultValue": "1"
+      },
+      {
+        "name": "large_numbers",
+        "label": "Large Temperature Numbers",
+        "kind": "flag"
+      },
+      {
+        "name": "climate_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "defaultValue": "temperature|mode|preset|fan|swing"
+      }
+    ],
+    "behavior": {
+      "climate": {
+        "defaultLabelDisplay": "label",
+        "defaultNumberDisplay": "target",
+        "defaultTemperatureStep": "1",
+        "precisionValues": [
+          "",
+          "1",
+          "2",
+          "3"
+        ]
+      }
+    },
+    "default": {
+      "entity": "",
+      "label": "Climate",
+      "icon": "Thermostat",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "climate_control",
       "precision": "",
       "options": ""
     }
@@ -516,6 +612,17 @@ var CARD_CONTRACT_CARDS = {
         "min": 0,
         "max": 100,
         "step": 1
+      },
+      {
+        "name": "cover_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "values": [
+          "position",
+          "controls",
+          "tilt"
+        ],
+        "defaultValue": "position|controls|tilt"
       }
     ],
     "behavior": {
@@ -654,6 +761,33 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "fan_control": {
+    "label": "Fans",
+    "allowInSubpage": true,
+    "pickerKey": "fan_speed",
+    "domains": [
+      "fan"
+    ],
+    "options": [
+      {
+        "name": "fan_tabs",
+        "label": "Visible Tabs",
+        "kind": "text",
+        "defaultValue": "power|speed|preset|oscillation|direction"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Fan",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_control",
+      "precision": "",
+      "options": ""
+    }
+  },
   "fan_switch": {
     "label": "Fans",
     "allowInSubpage": true,
@@ -714,6 +848,48 @@ var CARD_CONTRACT_CARDS = {
       "options": ""
     }
   },
+  "gate": {
+    "label": "Gate",
+    "allowInSubpage": true,
+    "domains": [
+      "cover"
+    ],
+    "options": [
+      {
+        "name": "gate_mode",
+        "label": "Interaction",
+        "kind": "choice",
+        "values": [
+          "",
+          "open",
+          "close",
+          "stop"
+        ],
+        "defaultValue": ""
+      },
+      {
+        "name": "label_display",
+        "label": "Display",
+        "kind": "choice",
+        "values": [
+          "label",
+          "status"
+        ],
+        "defaultValue": "label"
+      }
+    ],
+    "default": {
+      "entity": "",
+      "label": "",
+      "icon": "Gate",
+      "icon_on": "Gate Open",
+      "sensor": "",
+      "unit": "",
+      "type": "gate",
+      "precision": "",
+      "options": ""
+    }
+  },
   "internal": {
     "label": "Internal Switches",
     "allowInSubpage": true,
@@ -742,8 +918,8 @@ var CARD_CONTRACT_CARDS = {
     "default": {
       "entity": "",
       "label": "",
-      "icon": "Power",
-      "icon_on": "Flash",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
       "sensor": "",
       "unit": "",
       "type": "internal",
@@ -832,6 +1008,12 @@ var CARD_CONTRACT_CARDS = {
         "name": "light_tabs",
         "label": "Visible Tabs",
         "kind": "text",
+        "values": [
+          "power",
+          "brightness",
+          "temperature",
+          "color"
+        ],
         "defaultValue": "power|brightness|temperature|color"
       }
     ],
@@ -902,12 +1084,14 @@ var CARD_CONTRACT_CARDS = {
         "label": "Type",
         "kind": "choice",
         "values": [
+          "control_modal",
           "play_pause",
           "previous",
           "next",
           "volume",
           "position",
-          "now_playing"
+          "now_playing",
+          "playlist"
         ],
         "defaultValue": "play_pause"
       },
@@ -940,6 +1124,44 @@ var CARD_CONTRACT_CARDS = {
         "max": 100,
         "step": 1,
         "defaultValue": "100"
+      },
+      {
+        "name": "label_display",
+        "label": "Label Display",
+        "kind": "choice",
+        "values": [
+          "label",
+          "status"
+        ],
+        "defaultValue": "status"
+      },
+      {
+        "name": "number_display",
+        "label": "Top Left Display",
+        "kind": "choice",
+        "values": [
+          "icon",
+          "volume"
+        ],
+        "defaultValue": "icon"
+      },
+      {
+        "name": "playlist_content_id",
+        "label": "Media Content ID / URI",
+        "kind": "text"
+      },
+      {
+        "name": "playlist_content_type",
+        "label": "Media Content Type",
+        "kind": "text",
+        "defaultValue": "playlist",
+        "hidden": true,
+        "docsHidden": true
+      },
+      {
+        "name": "playlist_player_source",
+        "label": "Player Source / Input",
+        "kind": "text"
       },
       {
         "name": "large_numbers",
@@ -1228,6 +1450,7 @@ var CARD_CONTRACT_CARDS = {
           "alarm",
           "cover",
           "garage",
+          "gate",
           "lock",
           "vacuum",
           "lawn_mower",
@@ -1416,6 +1639,7 @@ var CARD_CONTRACT_BRIGHTNESS_SLIDER_TYPES = ["slider", "light_brightness", "fan_
 var CARD_CONTRACT_FAN_DEFAULT_ICONS = {
   "fan_switch": "Fan Off",
   "fan_speed": "Fan Speed 2",
+  "fan_control": "Fan",
   "fan_oscillate": "Fan",
   "fan_direction": "Swap Horizontal",
   "fan_preset": "Fan Auto"
@@ -1439,6 +1663,7 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "option_select": "U",
   "fan_switch": "B",
   "fan_speed": "J",
+  "fan_control": "FC",
   "fan_oscillate": "O",
   "fan_direction": "E",
   "fan_preset": "Z",
@@ -1453,9 +1678,11 @@ var CARD_CONTRACT_SUBPAGE_TYPE_CODES = {
   "lawn_mower": "LM",
   "light_temperature": "N",
   "garage": "R",
+  "gate": "GT",
   "lock": "K",
   "media": "M",
   "climate": "H",
+  "climate_control": "HC",
   "push": "P",
   "screen_lock": "SL",
   "timer": "TM",
@@ -1477,6 +1704,7 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "U": "option_select",
   "B": "fan_switch",
   "J": "fan_speed",
+  "FC": "fan_control",
   "O": "fan_oscillate",
   "E": "fan_direction",
   "Z": "fan_preset",
@@ -1491,9 +1719,11 @@ var CARD_CONTRACT_SUBPAGE_TYPES_BY_CODE = {
   "LM": "lawn_mower",
   "N": "light_temperature",
   "R": "garage",
+  "GT": "gate",
   "K": "lock",
   "M": "media",
   "H": "climate",
+  "HC": "climate_control",
   "P": "push",
   "SL": "screen_lock",
   "TM": "timer",
@@ -1519,10 +1749,67 @@ var CARD_CONTRACT_LARGE_NUMBERS = {
   "calendar": true,
   "clock": true,
   "climate": true,
+  "climate_control": true,
   "media": true,
   "subpage": true,
   "timer": true,
   "timezone": true
+};
+var CARD_CONTRACT_OPTION_NAMES = {
+  "actions": "actions",
+  "active_color": "active_color",
+  "alarm_card_type": "alarm_card_type",
+  "climate_tabs": "climate_tabs",
+  "confirm_message": "confirm_message",
+  "confirm_no": "confirm_no",
+  "confirm_off": "confirm_off",
+  "confirm_on": "confirm_on",
+  "confirm_yes": "confirm_yes",
+  "confirmation_mode": "confirmation_mode",
+  "confirmation_required": "confirmation_required",
+  "cover_mode": "cover_mode",
+  "cover_position": "cover_position",
+  "cover_tabs": "cover_tabs",
+  "date_time_mode": "date_time_mode",
+  "fan_tabs": "fan_tabs",
+  "garage_mode": "garage_mode",
+  "gate_mode": "gate_mode",
+  "icon_display": "icon_display",
+  "image_icon": "image_icon",
+  "image_label": "image_label",
+  "image_modal_mode": "image_modal_mode",
+  "image_refresh": "image_refresh",
+  "image_refresh_mode": "image_refresh_mode",
+  "internal_mode": "internal_mode",
+  "label_display": "label_display",
+  "large_numbers": "large_numbers",
+  "lawn_mower_mode": "lawn_mower_mode",
+  "light_tabs": "light_tabs",
+  "lock_mode": "lock_mode",
+  "media_display": "media_display",
+  "media_mode": "media_mode",
+  "media_now_playing_controls": "media_now_playing_controls",
+  "number_display": "number_display",
+  "on_pattern": "on_pattern",
+  "pin_arm": "pin_arm",
+  "pin_disarm": "pin_disarm",
+  "playlist_content_id": "playlist_content_id",
+  "playlist_content_type": "playlist_content_type",
+  "playlist_player_source": "playlist_player_source",
+  "script_fields": "script_fields",
+  "state_high_label": "state_high_label",
+  "state_input": "state_input",
+  "state_input_2": "state_input_2",
+  "state_labels": "state_labels",
+  "state_low_label": "state_low_label",
+  "state_output": "state_output",
+  "state_output_2": "state_output_2",
+  "subpage_kind": "subpage_kind",
+  "temperature_step": "temperature_step",
+  "vacuum_mode": "vacuum_mode",
+  "volume_max": "volume_max",
+  "weather_mode": "weather_mode",
+  "webhook_headers": "webhook_headers"
 };
 
 function cardContractListContains(list, value) {
@@ -1617,4 +1904,8 @@ function cardContractLargeNumbersSupported(type, precision) {
   if (rule.excludedPrecisions) return !cardContractListContains(rule.excludedPrecisions, precision || "");
   if (rule.precisions) return cardContractListContains(rule.precisions, precision || "");
   return false;
+}
+
+function cardContractOptionName(name) {
+  return CARD_CONTRACT_OPTION_NAMES[name] || name || "";
 }

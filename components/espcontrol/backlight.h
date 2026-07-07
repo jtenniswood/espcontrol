@@ -232,6 +232,18 @@ inline bool screen_schedule_normal_active(const std::string &trigger,
   return screen_schedule_in_window(now_h, on_hour, off_hour);
 }
 
+inline bool screen_schedule_blocks_cover_art(const std::string &trigger,
+                                             bool enabled,
+                                             bool presence_detected,
+                                             bool time_valid,
+                                             int now_h,
+                                             int on_hour,
+                                             int off_hour) {
+  return screen_schedule_waiting_for_time(trigger, enabled, time_valid) ||
+         screen_schedule_night_active(trigger, enabled, presence_detected,
+                                      time_valid, now_h, on_hour, off_hour);
+}
+
 // ── Screensaver action helpers ────────────────────────────────────────
 
 inline bool screensaver_action_clock_mode(const std::string &action) {

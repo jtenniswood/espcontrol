@@ -18,7 +18,7 @@ Use Action cards for shortcuts such as running a scene, starting a script, trigg
 4. Enter the **Entity** for the thing you want the action to use.
 5. If you choose **Set Number Helper**, enter the value.
 6. Choose an **Icon**.
-7. If you choose **Run Script**, optionally turn on **Confirmation Required** if accidental taps would be a problem.
+7. If you choose **Run Script**, optionally add **Fields** if the script needs inputs, and turn on **Confirmation Required** if accidental taps would be a problem.
 8. Optionally turn on **Show State** if a Home Assistant-backed Action card should show a separate Home Assistant state.
 
 ## Run an Existing Home Assistant Script
@@ -35,16 +35,23 @@ For example, to run a script called `script.mettre_de_la_musique`:
 
 When you tap the card, EspControl sends `script.turn_on` to Home Assistant with that script as the target entity. The label is only what appears on the panel, so it can be different from the script name.
 
-For safety-sensitive scripts, turn on **Confirmation Required**. The card will open the same confirmation popup used by Switch cards before it sends `script.turn_on`. You can customise the popup message and the confirm/cancel button text.
+If your script defines fields, add them in **Fields**, one per line:
 
-Action cards do not currently pass script variables or extra data. If a script needs inputs, handle those inside the Home Assistant script, or create a small wrapper script in Home Assistant and point the Action card at that wrapper.
+```text
+room: kitchen
+mode: night
+```
+
+EspControl sends those values with `script.turn_on`, so Home Assistant receives them as the script's field values.
+
+For safety-sensitive scripts, turn on **Confirmation Required**. The card will open the same confirmation popup used by Switch cards before it sends `script.turn_on`. You can customise the popup message and the confirm/cancel button text.
 
 ## Supported Actions
 
 | Action | Example entity | Extra field |
 |---|---|---|
 | **Run Scene** | `scene.movie_mode` | None |
-| **Run Script** | `script.goodnight` | None |
+| **Run Script** | `script.goodnight` | Fields |
 | **Trigger Automation** | `automation.goodnight` | None |
 | **Press Button** | `button.restart_router` | None |
 | **Press Input Button** | `input_button.doorbell` | None |
@@ -94,7 +101,7 @@ Show State has three display modes:
 - **Numeric** — shows a live sensor value, with optional **Unit**, **Unit Precision**, and **Large State Numbers** on larger cards.
 - **Text** — shows the live state text where the card label normally appears.
 
-When the state entity is active, Icon mode highlights the card. If the state entity is unavailable, the card is disabled until Home Assistant reports it as available again. The action target itself stays tappable because many Home Assistant command-only entities, including `button.*` entities, do not report a useful on/off state.
+When the state entity is active, Icon mode highlights the card. Numeric mode highlights the card when the live value is greater than zero, which is useful for counters and count-based indicators. If the state entity is unavailable, the card keeps its normal appearance and clears or falls back from the live state display until Home Assistant reports a usable value again.
 
 ## How It Works on the Panel
 

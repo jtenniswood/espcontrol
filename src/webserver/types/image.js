@@ -134,7 +134,7 @@ registerButtonType("image", {
     renderImageModalSettings(panel, b, helpers);
   },
   renderPreview: function (b, helpers) {
-    var tertiaryColor = (typeof state !== "undefined" && state.sensorColor) ? state.sensorColor : "212121";
+    var tertiaryColor = WEB_UI_COLORS.tertiary;
     var label = imageLabelEnabled(b) ? String((b && b.label) || "Camera").trim() : "";
     var iconName = b && b.icon && b.icon !== "Auto" ? iconSlug(b.icon) : "camera";
     var icon = imageIconEnabled(b) ? '<span class="sp-image-preview-icon mdi mdi-' + iconName + '"></span>' : "";

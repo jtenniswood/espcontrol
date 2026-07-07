@@ -12,6 +12,7 @@ const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
 const DEVICE_MANIFEST = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = path.join(ROOT, "docs", "public", "webserver");
 const ALL_ROTATIONS = ["0", "90", "180", "270"];
+const REQUIRED_HOOK_GROUPS = ["config", "preview", "backup", "settings"];
 
 function createWebSandbox() {
   const domEvents = [];
@@ -39,7 +40,15 @@ function loadHooks() {
   const sandbox = createWebSandbox();
   vm.createContext(sandbox);
   vm.runInContext(loadBundledWebSource(), sandbox, { filename: SOURCE });
+  assertRequiredHookGroups(sandbox.__ESPCONTROL_TEST_HOOKS__.groups);
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
+}
+
+function assertRequiredHookGroups(groups, prefix = "web test hooks") {
+  assert(groups, `${prefix} must expose grouped hook registrations`);
+  for (const group of REQUIRED_HOOK_GROUPS) {
+    assert(groups[group], `${prefix} must include the ${group} hook group`);
+  }
 }
 
 function plain(value) {
@@ -51,6 +60,20 @@ function assertGeneratedRotationOptions(slug, generated, key, options) {
     generated.includes(`${key}:${JSON.stringify(options)}`),
     `${slug}: generated web UI must include ${key} ${JSON.stringify(options)}`
   );
+}
+
+function assertGeneratedConfigValue(slug, generated, key, value) {
+  assert(
+    generated.includes(`${key}:${JSON.stringify(value)}`),
+    `${slug}: generated web UI must include ${key} ${JSON.stringify(value)}`
+  );
+}
+
+function generatedDeviceId(generated) {
+  const readable = generated.match(/\bvar\s+DEVICE_ID\s*=\s*"([^"]+)"/);
+  if (readable) return readable[1];
+  const minified = generated.match(/^\(function\(\)\{var\s+[A-Za-z_$][\w$]*="([^"]+)",[A-Za-z_$][\w$]*=\{/);
+  return minified && minified[1];
 }
 
 const hooks = loadHooks();
@@ -162,11 +185,29 @@ assert.strictEqual(hooks.removedLegacyStateEvent({
   id: "text-screen_saver__cover_art_entity",
   state: "media_player.living_room",
 }), false, "current cover art entity events are not treated as removed legacy events");
+assert.deepStrictEqual(plain(hooks.firmwareFailureStatusFor("Could not download firmware file (404).")), {
+  error: "Firmware update failed: Could not download firmware file (404).",
+  updateState: "",
+  installStatus: "",
+}, "firmware update failures leave a visible status reason");
 
 const manifest = JSON.parse(fs.readFileSync(DEVICE_MANIFEST, "utf8"));
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
   const webOutput = path.join(WEB_OUTPUT_DIR, slug, "www.js");
   const generated = fs.readFileSync(webOutput, "utf8");
+  assertGeneratedConfigValue(slug, generated, "slots", device.slots);
+  assertGeneratedConfigValue(slug, generated, "cols", device.layout.cols);
+  assertGeneratedConfigValue(slug, generated, "rows", device.layout.rows);
+  assertGeneratedConfigValue(slug, generated, "screenSize", device.public.screenSize);
+  assert.strictEqual(
+    generatedDeviceId(generated),
+    slug,
+    `${slug}: generated web UI must be built with the matching device id`
+  );
+  assertGeneratedConfigValue(slug, generated, "slots", device.slots);
+  assertGeneratedConfigValue(slug, generated, "cols", device.layout.cols);
+  assertGeneratedConfigValue(slug, generated, "rows", device.layout.rows);
+  assertGeneratedConfigValue(slug, generated, "screenSize", device.public.screenSize);
   const sandbox = createWebSandbox();
   vm.createContext(sandbox);
   vm.runInContext(generated, sandbox, { filename: webOutput });
@@ -174,6 +215,7 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
     sandbox.__ESPCONTROL_TEST_HOOKS__.config,
     `${slug}: generated web UI must export the same test hooks used by local checks`
   );
+  assertRequiredHookGroups(sandbox.__ESPCONTROL_TEST_HOOKS__.groups, `${slug}: generated web UI`);
   const generatedHooks = sandbox.__ESPCONTROL_TEST_HOOKS__.config;
   const expectedScreenSize = String(device.public.screenSize)
     .toLowerCase()
@@ -213,6 +255,23 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
     Array.from(generatedHooks.timezoneOptionsWithFallback(["UTC (GMT+0)"], "Auto (Home Assistant)", true)).includes("Auto (Home Assistant)"),
     `${slug}: timezone fallback must preserve restored Auto timezone selections`
   );
+  if (((device.web || {}).disabledCardTypes || []).includes("weather_forecast")) {
+    assert.deepStrictEqual(
+      Array.from(generatedHooks.weatherModeOptionValues()),
+      [""],
+      `${slug}: generated web UI must hide weather forecast modes when forecast cards are disabled`
+    );
+    assert.strictEqual(
+      generatedHooks.normalizeWeatherCardMode("today"),
+      "",
+      `${slug}: generated web UI must normalize forecast weather cards back to current conditions`
+    );
+    assert.strictEqual(
+      generatedHooks.weatherCardIsForecastMode({ precision: "today" }),
+      false,
+      `${slug}: generated web UI must not preview disabled weather forecast modes`
+    );
+  }
   assert(
     sandbox.__domEvents.some((event) => event.type === "DOMContentLoaded" && typeof event.listener === "function"),
     `${slug}: generated web UI must register DOMContentLoaded startup wiring`
@@ -359,6 +418,73 @@ assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Security", type: "alarm" }).iconHtml.includes("mdi-shield-off"),
   "alarm preview defaults to the status icon"
 );
+const mediaControlPickerOption = pickerOptions.find((option) => option.key === "media_control");
+assert(mediaControlPickerOption, "media control appears as a top-level card picker shortcut");
+assert.strictEqual(mediaControlPickerOption.label, "All Controls", "media control picker option has a clear label");
+assert.strictEqual(
+  hooks.defaultButtonTypeForPicker("media_control"),
+  "media",
+  "media control picker shortcut still saves as the media card type"
+);
+assert(
+  Array.from(hooks.mediaModeOptionValues()).includes("control_modal"),
+  "media mode options include the media control modal subtype"
+);
+assert.strictEqual(
+  Array.from(hooks.mediaModeOptionValues())[0],
+  "control_modal",
+  "all media controls appears first in the media mode list"
+);
+const mediaControlIconPreview = hooks.buttonTypePreviewFor("media", {
+  label: "All Controls",
+  icon: "Music",
+  sensor: "control_modal",
+  type: "media",
+});
+assert(
+  mediaControlIconPreview.iconHtml.includes("mdi-music"),
+  "all controls preview uses the selected custom icon"
+);
+const mediaControlConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
+  entity: "media_player.living_room",
+  label: "Speaker",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=status,number_display=volume",
+}));
+assert.strictEqual(
+  mediaControlConfig.options,
+  "number_display=volume",
+  "media control parent card display options survive normalization"
+);
+assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlConfig), "status");
+assert.strictEqual(hooks.mediaNumberDisplayMode(mediaControlConfig), "volume");
+const mediaControlLabelConfig = hooks.parseButtonConfig(hooks.serializeButtonConfig({
+  entity: "media_player.living_room",
+  label: "Speaker",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "control_modal",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "label_display=label",
+}));
+assert.strictEqual(mediaControlLabelConfig.options, "label_display=label");
+assert.strictEqual(hooks.mediaLabelDisplayMode(mediaControlLabelConfig), "label");
+const mediaControlPreview = hooks.buttonTypePreviewFor("media", mediaControlConfig);
+assert(
+  mediaControlPreview.iconHtml.includes("sp-sensor-preview"),
+  "media control volume display previews as a top-left number"
+);
+assert(
+  mediaControlPreview.labelHtml.includes("Playing"),
+  "media control status label preview uses player state text"
+);
 assert(
   hooks.buttonTypePreviewFor("alarm", { label: "Alarm", icon: "Alarm", type: "alarm", options: "icon_display=static" }).iconHtml.includes("mdi-bell-ring"),
   "alarm preview uses the selected Alarm icon"
@@ -380,6 +506,8 @@ assert.deepStrictEqual(Array.from(hooks.alarmVisibleActions(hooks.parseButtonCon
 ))), ["away", "home", "night"]);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_speed", false), true);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_speed", true), true);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", false), false);
+assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_control", true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_switch", false), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("fan_oscillate", true), false);
 assert.strictEqual(hooks.buttonTypeVisibleInPickerFor("option_select", false), false);
@@ -787,6 +915,15 @@ const fanSpeedPreview = hooks.buttonTypePreviewFor("fan_speed", {
 assert(fanSpeedPreview.iconHtml.includes("sp-slider-preview"), "fan speed preview keeps the slider preview");
 assert(fanSpeedPreview.labelHtml.includes("mdi-fan-speed-2"), "fan speed preview uses the speed badge");
 
+const fanControlPreview = hooks.buttonTypePreviewFor("fan_control", {
+  entity: "fan.bedroom",
+  label: "Bedroom Fan",
+  icon: "Fan",
+  type: "fan_control",
+});
+assert(!fanControlPreview.iconHtml.includes("sp-slider-preview"), "fan control preview is not an inline slider");
+assert(fanControlPreview.labelHtml.includes("mdi-fan"), "fan control preview uses the fan badge");
+
 const fanSwitchPreview = hooks.buttonTypePreviewFor("fan_switch", {
   entity: "fan.bedroom",
   label: "Bedroom Fan",
@@ -885,7 +1022,7 @@ const coverModalPreview = hooks.buttonTypePreviewFor("cover", {
   sensor: "modal",
   type: "cover",
 });
-assert(!coverModalPreview.iconHtml.includes("sp-slider-preview"), "cover modal preview uses icon-only layout");
+assert(coverModalPreview.iconHtml.includes("sp-slider-preview"), "cover modal preview shows read-only position track");
 assert(coverModalPreview.iconHtml.includes("mdi-blinds"), "cover modal preview uses the cover icon");
 assert(coverModalPreview.labelHtml.includes("mdi-blinds-horizontal"), "cover modal preview uses the cover badge");
 

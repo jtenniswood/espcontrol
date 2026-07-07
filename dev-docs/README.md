@@ -32,6 +32,20 @@ npm run check:product               # product-level safety net
 npm run check:fast                  # broader pre-commit check
 ```
 
+For broad review scans, prefer:
+
+```bash
+rg --files
+rg -n "TODO|FIXME|HACK|XXX" --glob '!docs/public/webserver/**' --glob '!components/libjpeg-turbo-esp32/**' --glob '!components/gsl3680/**' --glob '!**/*generated*'
+```
+
+It respects ignore rules and avoids noisy local folders such as `.cache/`,
+`.esphome/`, `.pio-core/`, `.uv-cache/`, and `.worktrees/`. If `find` is
+needed, prune those folders explicitly so temporary build output does not hide
+source files. Exclude committed generated bundles and vendored libraries when
+looking for maintainability issues; review those through their authored source
+or upstream project instead.
+
 ## Most Common Tasks
 
 | If you need to... | Start here |

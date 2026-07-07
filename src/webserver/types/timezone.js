@@ -43,14 +43,9 @@ registerButtonType("timezone", {
   },
   cardMetadata: DATE_TIME_CARD_METADATA,
   onSelect: function (b) {
+    var defaults = cardContractDefaultConfig("timezone");
+    Object.keys(defaults).forEach(function (key) { b[key] = defaults[key]; });
     b.entity = defaultTimezoneCardEntity();
-    b.label = "";
-    b.icon = "Auto";
-    b.icon_on = "Auto";
-    b.sensor = "";
-    b.unit = "";
-    b.precision = "";
-    b.options = "";
   },
   renderSettings: function (panel, b, slot, helpers) {
     if (!b.entity) b.entity = defaultTimezoneCardEntity();

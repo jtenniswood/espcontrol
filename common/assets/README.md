@@ -3,6 +3,10 @@
 This directory contains internal firmware assets for icons and glyph sets. It is
 repository documentation for maintainers and is not part of the public docs site.
 
+The Material Design Icons font is committed under `common/assets/fonts/` so
+firmware builds do not depend on downloading it during ESPHome configuration.
+Keep its filename version aligned with `MDI_VERSION` in `scripts/build.py`.
+
 ## Font style names
 
 Device fonts use functional style IDs instead of physical names such as

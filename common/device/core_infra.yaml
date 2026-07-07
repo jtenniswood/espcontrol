@@ -22,6 +22,8 @@ api:
         ESP_LOGI("api", "API client connected: %s", client_info.c_str());
         bool is_home_assistant = client_info.find("Home Assistant") != std::string::npos;
         if (is_home_assistant && ha_api_connected()) {
+          id(ha_reconnect_flow).stop();
+          id(ha_restore_after_api).execute();
           if (!client_address.empty()) {
             std::string host = client_address;
             if (host.rfind("::ffff:", 0) == 0) host = host.substr(7);
@@ -41,7 +43,6 @@ api:
           }
           refresh_image_cards();
           if (ha_api_state_connected()) {
-            apply_registered_ha_control_availability(true);
             refresh_weather_forecast_cards();
             ha_flush_deferred_state_requests();
           }
@@ -70,6 +71,13 @@ api:
           ha_flush_deferred_state_requests();
         }
         todo_reload_active_modal();
+    - delay: 25s
+    - lambda: |-
+        if (ha_api_state_connected()) {
+          refresh_weather_forecast_cards();
+          ha_flush_deferred_state_requests();
+        }
+        todo_reload_active_modal();
   on_client_disconnected:
     - lambda: |-
         ESP_LOGW("api", "API client disconnected: %s", client_info.c_str());
@@ -80,7 +88,7 @@ api:
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
         todo_cancel_pending_request("api disconnected");
-        apply_registered_ha_control_availability(false);
+    - script.execute: ha_reconnect_flow
 
 interval:
   - interval: 5s

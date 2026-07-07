@@ -58,6 +58,9 @@ globals:
   - id: screensaver_fade_start_level
     type: float
     initial_value: '1.0'
+  - id: backlight_force_next_write
+    type: bool
+    initial_value: 'false'
   - id: screensaver_clock_target_level
     type: float
     initial_value: '0.35'
@@ -174,8 +177,9 @@ script:
                 condition:
                   lambda: |-
                     return id(cover_art_screensaver_active) ||
+                           alarm_display_takeover_active() ||
                            (id(media_player_sleep_prevention_enabled).state &&
-                            id(cover_art_media_playing));
+                            id(media_player_playing));
                 then:
                   - script.execute: screensaver_idle_check
                 else:
@@ -204,7 +208,10 @@ script:
                   - globals.set:
                       id: screensaver_sensor_sleep_pending
                       value: 'false'
-                  - lambda: 'navigation_return_home(id(main_page)->obj);'
+                  - lambda: |-
+                      if (!alarm_display_takeover_active()) {
+                        navigation_return_home(id(main_page)->obj);
+                      }
                   - if:
                       condition:
                         lambda: |-
@@ -367,23 +374,34 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return !id(display_takeover_suspended);'
+            lambda: 'return id(display_takeover_suspended);'
           then:
-            - script.execute: backlight_force_display_off
-            - delay: 100ms
+            - lambda: 'ESP_LOGD("backlight", "Skipping LVGL pause while image modal is active");'
+          else:
             - if:
                 condition:
                   lambda: |-
-                    return id(screen_rotation_select).current_option() == "90" ||
-                           id(screen_rotation_select).current_option() == "270";
+                    #ifdef ESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF
+                    return false;
+                    #else
+                    return true;
+                    #endif
                 then:
-                  - lvgl.pause:
+                  - script.execute: backlight_force_display_off
+                  - delay: 100ms
+                  - if:
+                      condition:
+                        lambda: |-
+                          return id(screen_rotation_select).current_option() == "90" ||
+                                 id(screen_rotation_select).current_option() == "270";
+                      then:
+                        - lvgl.pause:
+                      else:
+                        - lvgl.pause:
+                            show_snow: true
+                  - script.execute: backlight_force_display_off
                 else:
-                  - lvgl.pause:
-                      show_snow: true
-            - script.execute: backlight_force_display_off
-          else:
-            - lambda: 'ESP_LOGD("backlight", "Skipping LVGL pause while image modal is active");'
+                  - lambda: 'ESP_LOGD("backlight", "Keeping LVGL active during display-off so touch can wake the screen");'
 
   - id: backlight_fade_current_ui_to_black
     mode: restart
@@ -465,15 +483,17 @@ script:
   - id: backlight_schedule_display_off
     mode: restart
     then:
-      - lambda: 'backlight_close_modals_for_display_takeover();'
       - if:
           condition:
-            lambda: 'return !id(display_takeover_suspended) || id(screen_schedule_asleep);'
+            lambda: 'return !alarm_display_takeover_active() && (!id(display_takeover_suspended) || id(screen_schedule_asleep));'
           then:
+            - lambda: 'backlight_close_modals_for_display_takeover();'
             - script.execute: backlight_force_display_off
             - lvgl.resume:
             - script.execute: clock_bar_hide
             - script.wait: clock_bar_hide
+            - script.stop: cover_art_delay_timer
+            - script.execute: hide_cover_art_view
             - script.execute: hide_clock_view
             - globals.set:
                 id: screensaver_dimmed_active
@@ -551,7 +571,67 @@ script:
                 if (std::isnan(val) || val <= 0) val = 60;
                 return (int)(val * 1000);
             - lambda: |-
-                navigation_return_home(id(main_page)->obj);
+                if (!alarm_display_takeover_active()) {
+                  navigation_return_home(id(main_page)->obj);
+                }
+
+  - id: home_screen_idle_restore
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              float val = id(home_screen_timeout).state;
+              if (std::isnan(val) || val <= 0) return false;
+              return lv_disp_get_inactive_time(NULL) >= (uint32_t)(val * 1000);
+          then:
+            - lambda: |-
+                if (!alarm_display_takeover_active()) {
+                  navigation_return_home(id(main_page)->obj);
+                }
+          else:
+            - script.execute: home_screen_idle_check
+
+  - id: display_takeover_resume_restore
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(screensaver_sensor_sleep_pending) &&
+                     id(screensaver_mode).state == "sensor" &&
+                     !id(presence_detected);
+          then:
+            - script.execute: screensaver_sleep_sensor
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                    return id(cover_art_screensaver_enabled).state &&
+                           id(cover_art_media_playing) &&
+                           !id(cover_art_media_player_entity).state.empty() &&
+                           !screen_schedule_blocks_cover_art(
+                             id(screen_schedule_trigger).state,
+                             id(schedule_enabled).state,
+                             id(presence_detected),
+                             now.is_valid(),
+                             now.is_valid() ? now.hour : 0,
+                             (int) id(schedule_on_hour).state,
+                             (int) id(schedule_off_hour).state) &&
+                           (id(cover_art_screensaver_active) ||
+                            id(media_player_sleep_prevention_enabled).state ||
+                            id(display_asleep) ||
+                            id(screen_schedule_asleep) ||
+                            id(screensaver_display_off_active) ||
+                            id(screensaver_dimmed_active) ||
+                            id(is_clock_showing));
+                then:
+                  - script.execute: show_cover_art_view
+                else:
+                  - script.execute: home_screen_idle_restore
+                  - script.execute: screen_schedule_check
+                  - script.execute: screensaver_idle_check
 
   # Wake from screensaver
   - id: screensaver_wake
@@ -599,11 +679,6 @@ script:
           condition:
             lambda: 'return id(cover_art_screensaver_active);'
           then:
-            - lambda: |-
-                float timeout = id(screensaver_timeout).state;
-                if (std::isnan(timeout) || timeout <= 0.0f) timeout = 300.0f;
-                id(cover_art_dismissed_until_ms) = millis() + (uint32_t)(timeout * 1000.0f);
-                ESP_LOGD("cover_art", "Cover art dismissed by touch for %.0fs", timeout);
             - globals.set:
                 id: screensaver_wake_touch_guard_skip_once
                 value: 'true'
@@ -651,6 +726,9 @@ script:
             - globals.set:
                 id: screen_schedule_asleep
                 value: 'false'
+            - globals.set:
+                id: backlight_force_next_write
+                value: 'true'
             - lvgl.resume:
             - lvgl.widget.hide: dim_screensaver_touch_guard
             - script.execute: hide_cover_art_view
@@ -689,9 +767,14 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(media_player_sleep_prevention_enabled).state &&
+              const bool cover_art_touch_pause_active =
+                id(cover_art_manual_pause_until_ms) != 0 &&
+                (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
+              return (id(media_player_sleep_prevention_enabled).state ||
+                      cover_art_touch_pause_active) &&
                      id(cover_art_media_playing) &&
-                     id(cover_art_screensaver_enabled).state;
+                     id(cover_art_screensaver_enabled).state &&
+                     !alarm_display_takeover_active();
           then:
             - script.execute: cover_art_delay_timer
 
@@ -862,13 +945,8 @@ script:
             - lambda: |-
                 lv_obj_t *temperature_labels[] = {
                   id(temperatures),
-                  id(temperature_2),
-                  id(temperature_3),
-                  id(temperature_4),
-                  id(temperature_5),
-                  id(temperature_6),
                 };
-                hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+                hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                                  id(display_time),
                                                  id(network_status_button));
                 network_status_hide_modal();
@@ -923,13 +1001,8 @@ script:
           if (!id(is_clock_showing)) return;
           lv_obj_t *temperature_labels[] = {
             id(temperatures),
-            id(temperature_2),
-            id(temperature_3),
-            id(temperature_4),
-            id(temperature_5),
-            id(temperature_6),
           };
-          hide_clock_bar_top_layer_widgets(temperature_labels, 6,
+          hide_clock_bar_top_layer_widgets(temperature_labels, 1,
                                            id(display_time),
                                            id(network_status_button));
           network_status_hide_modal();

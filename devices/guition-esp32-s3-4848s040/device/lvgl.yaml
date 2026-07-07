@@ -24,51 +24,6 @@ lvgl:
           y: 8
           text_color: 0xFFFFFF
           hidden: true
-      - label:
-          text: "-°C"
-          id: temperature_2
-          text_font: font_text_body
-          align: top_left
-          x: 0
-          y: 0
-          text_color: 0xFFFFFF
-          hidden: true
-      - label:
-          text: "-°C"
-          id: temperature_3
-          text_font: font_text_body
-          align: top_left
-          x: 0
-          y: 0
-          text_color: 0xFFFFFF
-          hidden: true
-      - label:
-          text: "-°C"
-          id: temperature_4
-          text_font: font_text_body
-          align: top_left
-          x: 0
-          y: 0
-          text_color: 0xFFFFFF
-          hidden: true
-      - label:
-          text: "-°C"
-          id: temperature_5
-          text_font: font_text_body
-          align: top_left
-          x: 0
-          y: 0
-          text_color: 0xFFFFFF
-          hidden: true
-      - label:
-          text: "-°C"
-          id: temperature_6
-          text_font: font_text_body
-          align: top_left
-          x: 0
-          y: 0
-          text_color: 0xFFFFFF
-          hidden: true
       # Clock (top-center, updated every minute by time.yaml)
       - label:
           text: "--:--"

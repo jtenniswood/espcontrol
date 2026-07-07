@@ -9,7 +9,7 @@
 substitutions:
   device_slug: "guition-esp32-p4-jc8012p4a1"
   firmware_manifest_slug: "guition-esp32-p4-jc8012p4a1"
-  firmware_version: "dev-jc8012p4a1-20260611-livecheck"
+  firmware_version: "dev"
   screen_width: "1280"
   screen_height: "800"
   content_width: "760"
@@ -36,6 +36,8 @@ substitutions:
   clock_bar_visual_gap: "10"
   voice_clock_bar_hide_code: ""
   voice_clock_bar_apply_code: ""
+  navigate_voice_target_code: |-
+    ESP_LOGW("navigation", "Voice volume target is not available on this device");
   voice_interaction_active_condition: "false"
   clock_font_size: "220"
   clock_cx: "640"

@@ -9,6 +9,7 @@
 substitutions:
   espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
   espcontrol_component_ref: "main"
+  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
 
 # ---------------------------------------------------------------------------
 # ESP32-S3 platform (16MB flash, ESP-IDF framework)
@@ -66,6 +67,13 @@ esphome:
     build_flags:
       - "-DESPCONTROL_DISABLE_TODO=1"
       - "-DESPCONTROL_MAX_GRID_SLOTS=9"
+      - "-DESPCONTROL_LOW_HEAP_MEDIA_CONTROL=1"
+      - "-DESPCONTROL_LOW_HEAP_COVER_ART=1"
+      - "-DESPCONTROL_DISABLE_WEATHER_FORECAST=1"
+    build_src_flags:
+      # Keep C++ literals close to their functions on the S3 firmware image;
+      # the modal code is large enough to otherwise trip Xtensa l32r range limits.
+      - "-mtext-section-literals"
   on_boot:
     - priority: 800
       then:

@@ -10,6 +10,8 @@ struct DisplayFontRoles {
   const lv_font_t *sensor = nullptr;
   const lv_font_t *large_sensor = nullptr;
   const lv_font_t *media_title = nullptr;
+  const lv_font_t *media_control_title = nullptr;
+  const lv_font_t *media_control_artist = nullptr;
   const lv_font_t *option_select_value = nullptr;
   const lv_font_t *volume_number = nullptr;
   const lv_font_t *volume_label = nullptr;
@@ -102,6 +104,18 @@ inline const lv_font_t *display_media_title_font(const DisplayProfile &profile) 
   return profile.fonts.media_title ? profile.fonts.media_title : profile.fonts.sensor;
 }
 
+inline const lv_font_t *display_media_control_title_font(const DisplayProfile &profile) {
+  return profile.fonts.media_control_title
+    ? profile.fonts.media_control_title
+    : display_media_title_font(profile);
+}
+
+inline const lv_font_t *display_media_control_artist_font(
+    const DisplayProfile &profile, const lv_font_t *fallback = nullptr) {
+  if (profile.fonts.media_control_artist) return profile.fonts.media_control_artist;
+  return profile.fonts.volume_label ? profile.fonts.volume_label : fallback;
+}
+
 inline const lv_font_t *display_optional_media_title_font(const DisplayProfile &profile) {
   return profile.fonts.media_title;
 }
@@ -160,6 +174,14 @@ inline bool display_modal_is_4848_size(lv_coord_t width, lv_coord_t height) {
   return width == 480 && height == 480;
 }
 
+inline bool display_modal_is_p4_86_size(lv_coord_t width, lv_coord_t height) {
+  return width == 720 && height == 720;
+}
+
 inline bool display_modal_is_large_landscape_size(lv_coord_t width, lv_coord_t height) {
   return (width == 1280 && height == 800) || (width == 800 && height == 1280);
+}
+
+inline bool display_modal_is_jc1060p470_size(lv_coord_t width, lv_coord_t height) {
+  return (width == 1024 && height == 600) || (width == 600 && height == 1024);
 }

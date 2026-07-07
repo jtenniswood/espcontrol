@@ -10,6 +10,12 @@
     "precision",
     "options"
   ],
+  "optionNames": [
+    "state_low_label",
+    "state_high_label",
+    "image_refresh",
+    "image_refresh_mode"
+  ],
   "cards": {
     "": {
       "label": "Switch",
@@ -87,6 +93,11 @@
           "label": "Confirmation Required",
           "kind": "flag",
           "storage": ["confirm_on"]
+        },
+        {
+          "name": "script_fields",
+          "label": "Fields",
+          "kind": "text"
         },
         {
           "name": "confirm_message",
@@ -219,6 +230,7 @@
         "alarm": {
           "controlPanelValue": "control_panel",
           "defaultActions": ["away", "home", "disarm"],
+          "maxVisibleActions": 3,
           "actions": [
             {
               "value": "away",
@@ -368,6 +380,13 @@
           "defaultValue": "target"
         },
         {
+          "name": "temperature_step",
+          "label": "Temperature Step",
+          "kind": "choice",
+          "values": ["1", "0.5"],
+          "defaultValue": "1"
+        },
+        {
           "name": "large_numbers",
           "label": "Large Temperature Numbers",
           "kind": "flag"
@@ -377,6 +396,7 @@
         "climate": {
           "defaultLabelDisplay": "label",
           "defaultNumberDisplay": "target",
+          "defaultTemperatureStep": "1",
           "precisionValues": ["", "1", "2", "3"]
         }
       },
@@ -388,6 +408,66 @@
         "sensor": "",
         "unit": "",
         "type": "climate",
+        "precision": "",
+        "options": ""
+      }
+    },
+    "climate_control": {
+      "label": "All Controls",
+      "allowInSubpage": true,
+      "pickerKey": "climate",
+      "hidden": true,
+      "domains": ["climate"],
+      "options": [
+        {
+          "name": "label_display",
+          "label": "Label Display",
+          "kind": "choice",
+          "values": ["label", "status", "actual", "target"],
+          "defaultValue": "label"
+        },
+        {
+          "name": "number_display",
+          "label": "Icon & Temperatures",
+          "kind": "choice",
+          "values": ["icon", "actual", "target"],
+          "defaultValue": "target"
+        },
+        {
+          "name": "temperature_step",
+          "label": "Temperature Step",
+          "kind": "choice",
+          "values": ["1", "0.5"],
+          "defaultValue": "1"
+        },
+        {
+          "name": "large_numbers",
+          "label": "Large Temperature Numbers",
+          "kind": "flag"
+        },
+        {
+          "name": "climate_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "defaultValue": "temperature|mode|preset|fan|swing"
+        }
+      ],
+      "behavior": {
+        "climate": {
+          "defaultLabelDisplay": "label",
+          "defaultNumberDisplay": "target",
+          "defaultTemperatureStep": "1",
+          "precisionValues": ["", "1", "2", "3"]
+        }
+      },
+      "default": {
+        "entity": "",
+        "label": "Climate",
+        "icon": "Thermostat",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "climate_control",
         "precision": "",
         "options": ""
       }
@@ -412,6 +492,13 @@
           "min": 0,
           "max": 100,
           "step": 1
+        },
+        {
+          "name": "cover_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "values": ["position", "controls", "tilt"],
+          "defaultValue": "position|controls|tilt"
         }
       ],
       "behavior": {
@@ -535,6 +622,31 @@
         "options": ""
       }
     },
+    "fan_control": {
+      "label": "Fans",
+      "allowInSubpage": true,
+      "pickerKey": "fan_speed",
+      "domains": ["fan"],
+      "options": [
+        {
+          "name": "fan_tabs",
+          "label": "Visible Tabs",
+          "kind": "text",
+          "defaultValue": "power|speed|preset|oscillation|direction"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Fan",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "fan_control",
+        "precision": "",
+        "options": ""
+      }
+    },
     "fan_switch": {
       "label": "Fans",
       "allowInSubpage": true,
@@ -584,6 +696,38 @@
         "options": ""
       }
     },
+    "gate": {
+      "label": "Gate",
+      "allowInSubpage": true,
+      "domains": ["cover"],
+      "options": [
+        {
+          "name": "gate_mode",
+          "label": "Interaction",
+          "kind": "choice",
+          "values": ["", "open", "close", "stop"],
+          "defaultValue": ""
+        },
+        {
+          "name": "label_display",
+          "label": "Display",
+          "kind": "choice",
+          "values": ["label", "status"],
+          "defaultValue": "label"
+        }
+      ],
+      "default": {
+        "entity": "",
+        "label": "",
+        "icon": "Gate",
+        "icon_on": "Gate Open",
+        "sensor": "",
+        "unit": "",
+        "type": "gate",
+        "precision": "",
+        "options": ""
+      }
+    },
     "internal": {
       "label": "Internal Switches",
       "allowInSubpage": true,
@@ -609,8 +753,8 @@
       "default": {
         "entity": "",
         "label": "",
-        "icon": "Power",
-        "icon_on": "Flash",
+        "icon": "Lightbulb Outline",
+        "icon_on": "Lightbulb",
         "sensor": "",
         "unit": "",
         "type": "internal",
@@ -689,6 +833,7 @@
           "name": "light_tabs",
           "label": "Visible Tabs",
           "kind": "text",
+          "values": ["power", "brightness", "temperature", "color"],
           "defaultValue": "power|brightness|temperature|color"
         }
       ],
@@ -750,7 +895,7 @@
           "name": "media_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["play_pause", "previous", "next", "volume", "position", "now_playing"],
+          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
           "defaultValue": "play_pause"
         },
         {
@@ -775,6 +920,38 @@
           "max": 100,
           "step": 1,
           "defaultValue": "100"
+        },
+        {
+          "name": "label_display",
+          "label": "Label Display",
+          "kind": "choice",
+          "values": ["label", "status"],
+          "defaultValue": "status"
+        },
+        {
+          "name": "number_display",
+          "label": "Top Left Display",
+          "kind": "choice",
+          "values": ["icon", "volume"],
+          "defaultValue": "icon"
+        },
+        {
+          "name": "playlist_content_id",
+          "label": "Media Content ID / URI",
+          "kind": "text"
+        },
+        {
+          "name": "playlist_content_type",
+          "label": "Media Content Type",
+          "kind": "text",
+          "defaultValue": "playlist",
+          "hidden": true,
+          "docsHidden": true
+        },
+        {
+          "name": "playlist_player_source",
+          "label": "Player Source / Input",
+          "kind": "text"
         },
         {
           "name": "large_numbers",
@@ -1022,7 +1199,7 @@
           "name": "subpage_kind",
           "label": "Subpage Type",
           "kind": "choice",
-          "values": ["", "switch", "lights", "climate", "presence", "media", "alarm", "cover", "garage", "lock", "vacuum", "lawn_mower", "weather", "sensor", "image"],
+          "values": ["", "switch", "lights", "climate", "presence", "media", "alarm", "cover", "garage", "gate", "lock", "vacuum", "lawn_mower", "weather", "sensor", "image"],
           "defaultValue": ""
         },
         {
@@ -1199,6 +1376,9 @@
       "fan_speed": {
         "defaultIcon": "Fan Speed 2"
       },
+      "fan_control": {
+        "defaultIcon": "Fan"
+      },
       "fan_oscillate": {
         "defaultIcon": "Fan"
       },
@@ -1228,6 +1408,7 @@
     "calendar": true,
     "clock": true,
     "climate": true,
+    "climate_control": true,
     "media": true,
     "subpage": true,
     "timer": true,
@@ -1247,6 +1428,7 @@
     "option_select": "U",
     "fan_switch": "B",
     "fan_speed": "J",
+    "fan_control": "FC",
     "fan_oscillate": "O",
     "fan_direction": "E",
     "fan_preset": "Z",
@@ -1261,9 +1443,11 @@
     "lawn_mower": "LM",
     "light_temperature": "N",
     "garage": "R",
+    "gate": "GT",
     "lock": "K",
     "media": "M",
     "climate": "H",
+    "climate_control": "HC",
     "push": "P",
     "screen_lock": "SL",
     "timer": "TM",

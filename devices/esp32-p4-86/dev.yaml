@@ -8,9 +8,11 @@ substitutions:
   name: "espcontrol-p4-86"
   friendly_name: "EspControl P4-86"
   espcontrol_component_url: "../.."
+  mdi_font_file: "../../common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
   espcontrol_component_ref: "HEAD"
   voice_wake_chime_file: "device/voice_wake_chime.flac"
   voice_timer_alert_file: "device/voice_timer_alert.flac"
+  voice_stt_failure_chime_file: "device/voice_stt_failure_chime.flac"
 
 wifi:
   ssid: !secret wifi_ssid

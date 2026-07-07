@@ -21,6 +21,7 @@ using HomeAssistantActionResponseCallback =
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_ALL = 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1u << 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_PHASE3 = 1u << 2;
 #define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
 #endif
 
@@ -40,7 +41,7 @@ inline bool ha_api_state_connected() {
 
 constexpr size_t HA_READ_INTERNAL_FREE_MIN_BYTES = 8 * 1024;
 constexpr size_t HA_READ_INTERNAL_LARGEST_MIN_BYTES = 4 * 1024;
-constexpr size_t HA_ACTION_INTERNAL_FREE_MIN_BYTES = 12 * 1024;
+constexpr size_t HA_ACTION_INTERNAL_FREE_MIN_BYTES = 8 * 1024;
 constexpr size_t HA_ACTION_INTERNAL_LARGEST_MIN_BYTES = 4 * 1024;
 
 inline bool ha_internal_heap_available(const char *stage,

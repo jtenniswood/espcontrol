@@ -50,7 +50,7 @@ button:
     - label:
         align: bottom_left
         id: button_${num}_text_label
-        text: "Configure"
+        text: !lambda 'return std::string(espcontrol_i18n("Configure"));'
         long_mode: wrap
         width: 100%
     # Subpage marker (shown only for subpage cards by the shared grid code)

@@ -50,6 +50,94 @@ inline const char *card_runtime_option_select_canonical_action() {
   return CARD_CONTRACT_OPTION_SELECT_ACTION;
 }
 
+constexpr const char *card_runtime_option_name_state_labels() {
+  return CARD_CONTRACT_OPTION_NAME_STATE_LABELS;
+}
+
+constexpr const char *card_runtime_option_name_state_input() {
+  return CARD_CONTRACT_OPTION_NAME_STATE_INPUT;
+}
+
+constexpr const char *card_runtime_option_name_state_output() {
+  return CARD_CONTRACT_OPTION_NAME_STATE_OUTPUT;
+}
+
+constexpr const char *card_runtime_option_name_state_input_2() {
+  return CARD_CONTRACT_OPTION_NAME_STATE_INPUT_2;
+}
+
+constexpr const char *card_runtime_option_name_state_output_2() {
+  return CARD_CONTRACT_OPTION_NAME_STATE_OUTPUT_2;
+}
+
+constexpr const char *card_runtime_option_name_state_low_label() {
+  return CARD_CONTRACT_OPTION_NAME_STATE_LOW_LABEL;
+}
+
+constexpr const char *card_runtime_option_name_state_high_label() {
+  return CARD_CONTRACT_OPTION_NAME_STATE_HIGH_LABEL;
+}
+
+constexpr const char *card_runtime_option_name_image_label() {
+  return CARD_CONTRACT_OPTION_NAME_IMAGE_LABEL;
+}
+
+constexpr const char *card_runtime_option_name_image_icon() {
+  return CARD_CONTRACT_OPTION_NAME_IMAGE_ICON;
+}
+
+constexpr const char *card_runtime_option_name_image_modal_mode() {
+  return CARD_CONTRACT_OPTION_NAME_IMAGE_MODAL_MODE;
+}
+
+constexpr const char *card_runtime_option_name_image_refresh() {
+  return CARD_CONTRACT_OPTION_NAME_IMAGE_REFRESH;
+}
+
+constexpr const char *card_runtime_option_name_image_refresh_mode() {
+  return CARD_CONTRACT_OPTION_NAME_IMAGE_REFRESH_MODE;
+}
+
+constexpr const char *card_runtime_option_name_light_tabs() {
+  return CARD_CONTRACT_OPTION_NAME_LIGHT_TABS;
+}
+
+constexpr const char *card_runtime_option_name_cover_tabs() {
+  return CARD_CONTRACT_OPTION_NAME_COVER_TABS;
+}
+
+constexpr const char *card_runtime_option_name_fan_tabs() {
+  return CARD_CONTRACT_OPTION_NAME_FAN_TABS;
+}
+
+constexpr const char *card_runtime_option_name_label_display() {
+  return CARD_CONTRACT_OPTION_NAME_LABEL_DISPLAY;
+}
+
+constexpr const char *card_runtime_option_name_number_display() {
+  return CARD_CONTRACT_OPTION_NAME_NUMBER_DISPLAY;
+}
+
+constexpr const char *card_runtime_option_name_temperature_step() {
+  return CARD_CONTRACT_OPTION_NAME_TEMPERATURE_STEP;
+}
+
+constexpr const char *card_runtime_option_name_volume_max() {
+  return CARD_CONTRACT_OPTION_NAME_VOLUME_MAX;
+}
+
+constexpr const char *card_runtime_option_name_playlist_content_id() {
+  return CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_ID;
+}
+
+constexpr const char *card_runtime_option_name_playlist_content_type() {
+  return CARD_CONTRACT_OPTION_NAME_PLAYLIST_CONTENT_TYPE;
+}
+
+constexpr const char *card_runtime_option_name_playlist_player_source() {
+  return CARD_CONTRACT_OPTION_NAME_PLAYLIST_PLAYER_SOURCE;
+}
+
 inline bool card_runtime_large_numbers_supported(const std::string &type,
                                                  const std::string &precision) {
   return card_contract_large_numbers_supported(type, precision);
@@ -69,6 +157,14 @@ inline bool card_runtime_cover_tilt_mode(const std::string &mode) {
 
 inline bool card_runtime_cover_modal_mode(const std::string &mode) {
   return mode == "modal" && card_runtime_cover_mode_valid(mode);
+}
+
+inline bool card_runtime_cover_control_tab_valid(const std::string &tab) {
+  return card_contract_cover_control_tab_valid(tab);
+}
+
+inline const char *card_runtime_cover_control_tabs_default() {
+  return CARD_CONTRACT_COVER_CONTROL_TABS_DEFAULT;
 }
 
 inline bool card_runtime_cover_command_mode(const std::string &mode) {
@@ -92,6 +188,20 @@ inline std::string card_runtime_garage_label_display(const std::string &value) {
   return card_contract_garage_label_display_valid(value)
     ? value
     : CARD_CONTRACT_GARAGE_LABEL_DISPLAY_DEFAULT;
+}
+
+inline bool card_runtime_gate_mode_valid(const std::string &mode) {
+  return card_contract_gate_mode_valid(mode);
+}
+
+inline bool card_runtime_gate_command_mode(const std::string &mode) {
+  return card_runtime_gate_mode_valid(mode) && !mode.empty();
+}
+
+inline std::string card_runtime_gate_label_display(const std::string &value) {
+  return card_contract_gate_label_display_valid(value)
+    ? value
+    : CARD_CONTRACT_GATE_LABEL_DISPLAY_DEFAULT;
 }
 
 inline bool card_runtime_lock_mode_valid(const std::string &mode) {
@@ -138,6 +248,18 @@ inline bool card_runtime_media_now_playing_control(const std::string &precision)
     sizeof(CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS) / sizeof(CARD_CONTRACT_MEDIA_NOW_PLAYING_CONTROLS[0]));
 }
 
+inline int card_runtime_media_volume_max_min() {
+  return CARD_CONTRACT_MEDIA_VOLUME_MAX_MIN;
+}
+
+inline int card_runtime_media_volume_max_max() {
+  return CARD_CONTRACT_MEDIA_VOLUME_MAX_MAX;
+}
+
+inline int card_runtime_media_volume_max_default() {
+  return CARD_CONTRACT_MEDIA_VOLUME_MAX_DEFAULT;
+}
+
 inline bool card_runtime_alarm_action_mode_valid(const std::string &mode) {
   return card_contract_alarm_action_mode_valid(mode);
 }
@@ -150,6 +272,18 @@ inline const char *card_runtime_alarm_action_mode_at(size_t index) {
   return index < card_runtime_alarm_action_mode_count()
     ? CARD_CONTRACT_ALARM_ACTION_MODES[index]
     : "";
+}
+
+inline size_t card_runtime_alarm_default_action_count() {
+  return card_contract_alarm_default_action_count();
+}
+
+inline const char *card_runtime_alarm_default_action_at(size_t index) {
+  return card_contract_alarm_default_action_at(index);
+}
+
+inline size_t card_runtime_alarm_max_visible_actions() {
+  return CARD_CONTRACT_ALARM_MAX_VISIBLE_ACTIONS;
 }
 
 inline const char *card_runtime_alarm_action_service(const std::string &mode) {
@@ -177,10 +311,32 @@ inline std::string card_runtime_alarm_label_display(const std::string &value) {
     : CARD_CONTRACT_ALARM_LABEL_DISPLAY_DEFAULT;
 }
 
+inline std::string card_runtime_image_modal_mode(const std::string &value) {
+  return card_contract_image_modal_mode_valid(value)
+    ? value
+    : CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT;
+}
+
+inline const char *card_runtime_image_modal_mode_default() {
+  return CARD_CONTRACT_IMAGE_MODAL_MODE_DEFAULT;
+}
+
+inline bool card_runtime_light_control_tab_valid(const std::string &tab) {
+  return card_contract_light_control_tab_valid(tab);
+}
+
+inline const char *card_runtime_light_control_tabs_default() {
+  return CARD_CONTRACT_LIGHT_CONTROL_TABS_DEFAULT;
+}
+
 inline std::string card_runtime_climate_label_display(const std::string &value) {
   return card_contract_climate_label_display_valid(value)
     ? value
     : CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT;
+}
+
+inline const char *card_runtime_climate_label_display_default() {
+  return CARD_CONTRACT_CLIMATE_LABEL_DISPLAY_DEFAULT;
 }
 
 inline std::string card_runtime_climate_number_display(const std::string &value) {
@@ -189,7 +345,34 @@ inline std::string card_runtime_climate_number_display(const std::string &value)
     : CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_DEFAULT;
 }
 
+inline const char *card_runtime_climate_number_display_default() {
+  return CARD_CONTRACT_CLIMATE_NUMBER_DISPLAY_DEFAULT;
+}
+
+inline std::string card_runtime_climate_temperature_step(const std::string &value) {
+  return card_contract_climate_temperature_step_valid(value)
+    ? value
+    : CARD_CONTRACT_CLIMATE_TEMPERATURE_STEP_DEFAULT;
+}
+
+inline const char *card_runtime_climate_temperature_step_default() {
+  return CARD_CONTRACT_CLIMATE_TEMPERATURE_STEP_DEFAULT;
+}
+
+inline bool card_runtime_climate_precision_valid(const std::string &precision) {
+  return card_contract_climate_precision_valid(precision);
+}
+
+inline constexpr bool card_runtime_weather_forecast_supported() {
+#if defined(ESPCONTROL_DISABLE_WEATHER_FORECAST) && ESPCONTROL_DISABLE_WEATHER_FORECAST
+  return false;
+#else
+  return true;
+#endif
+}
+
 inline bool card_runtime_weather_forecast_precision(const std::string &precision) {
+  if (!card_runtime_weather_forecast_supported()) return false;
   return card_contract_weather_forecast_precision(precision);
 }
 
