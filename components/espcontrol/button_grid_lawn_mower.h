@@ -209,7 +209,7 @@ inline void lawn_mower_control_style_action_button(lv_obj_t *btn,
   if (!btn || !ctx) return;
   bool enabled = ctx->available;
   bool active = enabled && lawn_mower_control_button_active(ctx->state, service);
-  uint32_t bg = active ? DEFAULT_SLIDER_COLOR : DARK_BACKGROUND_TERTIARY;
+  uint32_t bg = active ? DEFAULT_SLIDER_COLOR : TERTIARY_GREY;
   uint32_t border = active ? DEFAULT_SLIDER_COLOR : DARK_CONTROL_NEUTRAL;
   lv_obj_set_style_bg_color(btn, lv_color_hex(bg), LV_PART_MAIN);
   lv_obj_set_style_border_color(btn, lv_color_hex(border), LV_PART_MAIN);
