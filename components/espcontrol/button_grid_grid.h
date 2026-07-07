@@ -1869,7 +1869,7 @@ inline void grid_phase2(
       }
       if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;
       if (sb_cfg.type == "local_sensor" || sensor_card_local_sensor(sb_cfg)) continue;
-      if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;
+      if (sb_cfg.type != "plant" && bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;
       if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;
       if (sb_cfg.type == "cover" && cover_modal_mode(sb_cfg.sensor)) {
         if (!sb_cfg.entity.empty()) {
