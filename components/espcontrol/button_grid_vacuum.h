@@ -410,7 +410,7 @@ inline void vacuum_send_selected_rooms(VacuumCardCtx *ctx) {
 inline void vacuum_control_style_tab(lv_obj_t *btn, bool active) {
   if (!btn) return;
   lv_obj_set_style_bg_color(
-    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : TERTIARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
@@ -429,7 +429,7 @@ inline lv_obj_t *vacuum_control_create_tab_button(lv_obj_t *parent, const char *
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
   apply_width_compensation(btn, width_compensation_percent);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(TERTIARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -461,7 +461,7 @@ inline lv_obj_t *vacuum_control_create_action_row(lv_obj_t *parent,
                                                   const char *service) {
   lv_obj_t *btn = control_modal_create_list_row(
     parent, label, false, 56, 16, DARK_CONTROL_NEUTRAL,
-    DARK_BACKGROUND_SECONDARY, font, 100);
+    SECONDARY_GREY, font, 100);
   if (!btn) return nullptr;
   lv_obj_t *value = lv_obj_get_child(btn, 0);
   if (value && icon) {
@@ -533,7 +533,7 @@ inline void vacuum_control_render_room_list() {
   for (size_t i = 0; i < ui.rooms.size(); i++) {
     lv_obj_t *row = control_modal_create_list_row(
       ui.room_list, ui.rooms[i].label, ui.rooms[i].selected, 52, 14,
-      DEFAULT_SLIDER_COLOR, DARK_BACKGROUND_TERTIARY, ui.active->label_font,
+      DEFAULT_SLIDER_COLOR, TERTIARY_GREY, ui.active->label_font,
       ui.active->width_compensation_percent);
     if (!row) continue;
     lv_obj_add_event_cb(row, [](lv_event_t *e) {
@@ -564,7 +564,7 @@ inline void vacuum_control_render_fan_list() {
     const std::string &speed = ui.active->fan_speeds[i];
     lv_obj_t *row = control_modal_create_list_row(
       ui.fan_list, speed, speed == ui.active->fan_speed, 48, 14,
-      DEFAULT_SLIDER_COLOR, DARK_BACKGROUND_TERTIARY, ui.active->label_font,
+      DEFAULT_SLIDER_COLOR, TERTIARY_GREY, ui.active->label_font,
       ui.active->width_compensation_percent);
     if (!row) continue;
     lv_obj_add_event_cb(row, [](lv_event_t *e) {
@@ -844,7 +844,7 @@ inline void vacuum_control_open_modal(VacuumCardCtx *ctx) {
   if (ui.status_lbl) lv_obj_set_style_text_color(ui.status_lbl, lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
 
   ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
@@ -902,7 +902,7 @@ inline void vacuum_control_open_modal(VacuumCardCtx *ctx) {
   }
   lv_obj_t *pick_btn = control_modal_create_text_button(
     ui.rooms_box, espcontrol_i18n(std::string("Choose Rooms")),
-    shell.content_w, shell.content_w, 56, 16, DARK_BACKGROUND_SECONDARY, ctx->label_font);
+    shell.content_w, shell.content_w, 56, 16, SECONDARY_GREY, ctx->label_font);
   if (pick_btn) {
     lv_obj_add_event_cb(pick_btn, [](lv_event_t *) {
       vacuum_control_open_room_picker();
