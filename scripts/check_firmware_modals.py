@@ -566,6 +566,36 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_media_modal_progress_layout_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_media.h"
+    errors: list[str] = []
+
+    if not path.exists():
+        errors.append("components/espcontrol/button_grid_media.h: keep media modal progress layout stable")
+        return errors
+
+    text = path.read_text(encoding="utf-8")
+    required = (
+        "bool progress_layout_ready = false;",
+        "bool progress_refresh_pending = false;",
+        "if (!ui.progress_layout_ready) {\n    ui.progress_refresh_pending = true;\n    return;\n  }",
+        "if (ui.progress_fill) lv_obj_add_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);",
+        "if (ui.progress_handle) lv_obj_add_flag(ui.progress_handle, LV_OBJ_FLAG_HIDDEN);",
+        "ui.progress_layout_ready = false;\n    lv_obj_set_size(ui.progress_slider, progress_slider_w, progress_slider_h);",
+        "lv_obj_update_layout(ui.progress_slider);\n    ui.progress_layout_ready = true;",
+        "media_control_refresh_progress(ctx);\n    if (ui.progress_fill) lv_obj_clear_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);",
+        "lv_obj_clear_flag(ui.progress_slider, LV_OBJ_FLAG_HIDDEN);",
+    )
+    for needle in required:
+        if needle not in text:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: keep media modal progress drawing gated until final layout"
+            )
+            break
+
+    return errors
+
+
 def firmware_network_status_version_errors(root: Path) -> list[str]:
     path = root / "components" / "espcontrol" / "network_status.h"
     errors: list[str] = []
@@ -676,6 +706,7 @@ def run_scan() -> int:
     errors.extend(firmware_cover_control_tab_errors(ROOT))
     errors.extend(firmware_climate_control_tab_errors(ROOT))
     errors.extend(firmware_modal_tab_layout_errors(ROOT))
+    errors.extend(firmware_media_modal_progress_layout_errors(ROOT))
     errors.extend(firmware_network_status_version_errors(ROOT))
 
     if errors:
@@ -866,6 +897,48 @@ def expect_modal_tab_layout_errors(name: str, files: dict[str, str], expected: t
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
             assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_modal_progress_layout_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_media.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_media_modal_progress_layout_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_modal_progress_layout_text() -> str:
+    return (
+        "struct MediaControlModalUi {\n"
+        "  bool progress_layout_ready = false;\n"
+        "  bool progress_refresh_pending = false;\n"
+        "};\n"
+        "inline void media_control_refresh_progress(MediaControlCtx *ctx) {\n"
+        "  if (!ui.progress_layout_ready) {\n"
+        "    ui.progress_refresh_pending = true;\n"
+        "    return;\n"
+        "  }\n"
+        "}\n"
+        "inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {\n"
+        "  if (ui.progress_fill) lv_obj_add_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);\n"
+        "  if (ui.progress_handle) lv_obj_add_flag(ui.progress_handle, LV_OBJ_FLAG_HIDDEN);\n"
+        "}\n"
+        "inline void media_control_layout_modal(MediaControlCtx *ctx) {\n"
+        "  ui.progress_layout_ready = false;\n"
+        "    lv_obj_set_size(ui.progress_slider, progress_slider_w, progress_slider_h);\n"
+        "  lv_obj_update_layout(ui.progress_slider);\n"
+        "    ui.progress_layout_ready = true;\n"
+        "  media_control_refresh_progress(ctx);\n"
+        "    if (ui.progress_fill) lv_obj_clear_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);\n"
+        "  lv_obj_clear_flag(ui.progress_slider, LV_OBJ_FLAG_HIDDEN);\n"
+        "}\n"
+    )
 
 
 def valid_sleep_takeover_files() -> dict[str, str]:
@@ -1173,6 +1246,22 @@ def run_self_test() -> int:
         "media modal stops using shared tab helper",
         missing_shared_tab_helper,
         ("use shared modal tab layout helpers",),
+    )
+    expect_media_modal_progress_layout_errors(
+        "media progress layout gated",
+        valid_media_modal_progress_layout_text(),
+        (),
+    )
+    expect_media_modal_progress_layout_errors(
+        "media progress draws before layout",
+        valid_media_modal_progress_layout_text().replace(
+            "  if (!ui.progress_layout_ready) {\n"
+            "    ui.progress_refresh_pending = true;\n"
+            "    return;\n"
+            "  }\n",
+            "",
+        ),
+        ("progress drawing gated",),
     )
     home_idle_gated = valid_sleep_takeover_files()
     home_idle_gated["common/addon/backlight.yaml"] = (

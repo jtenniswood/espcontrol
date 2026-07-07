@@ -83,6 +83,8 @@ struct MediaControlModalUi {
   MediaControlTab tab = MediaControlTab::CONTROLS;
   bool updating_progress = false;
   bool updating_volume = false;
+  bool progress_layout_ready = false;
+  bool progress_refresh_pending = false;
 };
 
 inline MediaControlModalUi &media_control_modal_ui() {
@@ -1680,6 +1682,11 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
     pct = (int)((seconds * 100.0f / ctx->duration) + 0.5f);
   }
   pct = media_clamp_percent(pct);
+  if (!ui.progress_slider) return;
+  if (!ui.progress_layout_ready) {
+    ui.progress_refresh_pending = true;
+    return;
+  }
   if (ui.progress_slider && !ctx->dragging_progress) {
     ui.updating_progress = true;
     lv_slider_set_value(ui.progress_slider, pct, LV_ANIM_OFF);
@@ -1694,6 +1701,7 @@ inline void media_control_refresh_progress(MediaControlCtx *ctx) {
     bool has_duration = ctx->duration > 0.0f && ctx->available;
     media_control_apply_availability(ui.progress_slider, ui.progress_slider, has_duration);
   }
+  ui.progress_refresh_pending = false;
 }
 
 inline void media_control_refresh_volume(MediaControlCtx *ctx) {
@@ -1916,12 +1924,16 @@ inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
 
   ui.progress_slider = lv_slider_create(ui.content_box);
   if (!ui.progress_slider) return;
+  ui.progress_layout_ready = false;
+  ui.progress_refresh_pending = true;
   lv_obj_add_flag(ui.progress_slider, LV_OBJ_FLAG_HIDDEN);
   media_control_style_progress_slider(
     ui.progress_slider, SECONDARY_GREY, ctx->accent_color);
   ui.progress_fill = media_control_create_progress_fill(
     ui.progress_slider, lv_color_hex(ctx->accent_color));
   ui.progress_handle = media_control_create_progress_handle(ui.progress_slider);
+  if (ui.progress_fill) lv_obj_add_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);
+  if (ui.progress_handle) lv_obj_add_flag(ui.progress_handle, LV_OBJ_FLAG_HIDDEN);
   ui.progress_time_lbl = lv_label_create(ui.content_box);
   if (ui.progress_time_lbl) {
     lv_obj_add_flag(ui.progress_time_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -1934,6 +1946,10 @@ inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {
   lv_obj_add_event_cb(ui.progress_slider, [](lv_event_t *e) {
     MediaControlModalUi &ui = media_control_modal_ui();
     if (!ui.active || ui.updating_progress) return;
+    if (!ui.progress_layout_ready) {
+      ui.progress_refresh_pending = true;
+      return;
+    }
     if (ui.active) ui.active->dragging_progress = true;
     lv_obj_t *slider = static_cast<lv_obj_t *>(lv_event_get_target(e));
     int value = lv_slider_get_value(slider);
@@ -2073,6 +2089,8 @@ inline void media_control_clear_tab_content() {
   ui.volume_plus_btn = nullptr;
   ui.updating_progress = false;
   ui.updating_volume = false;
+  ui.progress_layout_ready = false;
+  ui.progress_refresh_pending = false;
 }
 
 inline void media_control_ensure_tab_content(MediaControlCtx *ctx) {
@@ -2211,6 +2229,7 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_align(ui.artist_lbl, LV_ALIGN_TOP_MID, 0, text_top + title_h + text_gap);
   }
   if (ui.progress_box && ui.progress_slider) {
+    ui.progress_layout_ready = false;
     lv_obj_set_size(ui.progress_slider, progress_slider_w, progress_slider_h);
     lv_obj_set_style_radius(ui.progress_slider, progress_radius, LV_PART_MAIN);
     lv_obj_set_style_radius(ui.progress_slider, 0, LV_PART_INDICATOR);
@@ -2219,11 +2238,13 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     lv_obj_set_style_width(ui.progress_slider, 0, LV_PART_KNOB);
     lv_obj_set_style_height(ui.progress_slider, 0, LV_PART_KNOB);
     lv_obj_align(ui.progress_slider, LV_ALIGN_TOP_MID, 0, progress_slider_y);
-    media_control_update_progress_fill(
-      ui.progress_slider, ui.progress_fill, ui.progress_handle, lv_slider_get_value(ui.progress_slider),
-      lv_color_hex(ctx->accent_color));
-    media_control_update_progress_handle(
-      ui.progress_slider, ui.progress_handle, lv_slider_get_value(ui.progress_slider));
+    lv_obj_update_layout(ui.content_box);
+    lv_obj_update_layout(ui.progress_slider);
+    ui.progress_layout_ready = true;
+    ui.progress_refresh_pending = true;
+    media_control_refresh_progress(ctx);
+    if (ui.progress_fill) lv_obj_clear_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);
+    if (ui.progress_handle) lv_obj_clear_flag(ui.progress_handle, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ui.progress_slider, LV_OBJ_FLAG_HIDDEN);
   }
   if (ui.progress_time_lbl) {
