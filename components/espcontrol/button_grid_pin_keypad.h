@@ -100,7 +100,7 @@ inline lv_obj_t *pin_keypad_create_key_button(lv_obj_t *parent, lv_coord_t width
                                               uint16_t label_zoom = 256) {
   lv_coord_t radius = width < height ? width / 2 : height / 2;
   lv_obj_t *btn = control_modal_create_round_button(
-    parent, width, text, font, DARK_BORDER, DARK_BACKGROUND_TERTIARY,
+    parent, width, text, font, DARK_BORDER, TERTIARY_GREY,
     width_compensation_percent);
   lv_obj_set_size(btn, width, height);
   lv_obj_set_style_radius(btn, radius, LV_PART_MAIN);

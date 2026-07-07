@@ -40,6 +40,7 @@
 #include "button_grid_card_runtime.h"
 #include "button_grid_layout.h"
 #include "button_grid_display.h"
+#include "screen_lock_state.h"
 #include "button_grid_cards.h"
 #include "button_grid_modal.h"
 #include "button_grid_pin_keypad.h"
