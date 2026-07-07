@@ -421,6 +421,8 @@ inline void vacuum_control_style_tab(lv_obj_t *btn, bool active) {
 
 inline void vacuum_control_apply_tab_visibility();
 inline void vacuum_control_layout_modal(VacuumCardCtx *ctx);
+inline void vacuum_control_hide_modal();
+inline void vacuum_control_open_modal(VacuumCardCtx *ctx);
 
 inline lv_obj_t *vacuum_control_create_tab_button(lv_obj_t *parent, const char *icon,
                                                   const lv_font_t *font,
@@ -677,7 +679,10 @@ inline void subscribe_vacuum_card_state(VacuumCardCtx *ctx) {
       if (end != raw.c_str()) {
         ctx->supported_features = static_cast<uint32_t>(parsed);
         ctx->supported_features_known = true;
-        if (vacuum_control_modal_ui().active == ctx) vacuum_control_layout_modal(ctx);
+        if (vacuum_control_modal_ui().active == ctx) {
+          vacuum_control_hide_modal();
+          vacuum_control_open_modal(ctx);
+        }
       }
     })
   );

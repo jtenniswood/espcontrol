@@ -97,7 +97,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
   }
   if (b.type == "vacuum") {
     b.sensor = card_runtime_vacuum_mode(b.sensor);
-    b.unit.clear();
+    if (b.sensor != "clean_area" && b.sensor != "modal") b.unit.clear();
     b.precision.clear();
     b.options = vacuum_card_options_normalized(b.options, b.sensor);
   }
