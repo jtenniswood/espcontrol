@@ -46,8 +46,13 @@ function normalizeMediaOptions(options, mode) {
     if (playerSource) playlistOut = setConfigOptionValue(playlistOut, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION, playerSource);
     return playlistOut;
   }
-  if (mode !== "volume" && mode !== "position") return "";
   var out = "";
+  if (mode === "now_playing") {
+    return configOptionEnabled(options, MEDIA_COVER_ART_OPTION)
+      ? setConfigOption(out, MEDIA_COVER_ART_OPTION, true)
+      : out;
+  }
+  if (mode !== "volume" && mode !== "position") return out;
   var maxVolume = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));
   if (mode === "volume" && maxVolume !== cardContractOptionDefaultValue("media", MEDIA_VOLUME_MAX_OPTION, "100")) {
     out = setConfigOptionValue(out, MEDIA_VOLUME_MAX_OPTION, maxVolume);
