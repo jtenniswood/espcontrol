@@ -1172,7 +1172,8 @@ inline std::string image_card_append_query_param(const std::string &url,
 
 inline bool image_card_home_assistant_proxy_url(const std::string &url) {
   return url.find("/api/camera_proxy/") != std::string::npos ||
-         url.find("/api/image_proxy/") != std::string::npos;
+         url.find("/api/image_proxy/") != std::string::npos ||
+         url.find("/api/media_player_proxy/") != std::string::npos;
 }
 
 inline bool image_card_home_assistant_proxy_authed(const std::string &url) {
@@ -1718,6 +1719,41 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
       image_card_set_loading_state(ctx, "Unavailable", true);
     }
     return;
+  }
+  if (!image_card_home_assistant_proxy_authed(url) &&
+      image_card_valid_access_token(ctx->access_token)) {
+    url = image_card_proxy_path_with_token(url, ctx->access_token);
+  }
+  if (!image_card_home_assistant_proxy_authed(url) &&
+      !ctx->access_token_request_pending) {
+    const std::string entity_id = ctx->entity_id;
+    const std::string retry_picture = raw;
+    const uint32_t generation = ha_subscription_generation();
+    ctx->access_token_request_pending = true;
+    bool requested = ha_get_attribute(
+      entity_id,
+      std::string("access_token"),
+      std::function<void(esphome::StringRef)>(
+        [ctx, entity_id, retry_picture, generation](esphome::StringRef token_ref) {
+          if (!image_card_context_current(ctx, entity_id, generation)) return;
+          ctx->access_token_request_pending = false;
+          std::string token = string_ref_limited(token_ref, 512);
+          if (!image_card_valid_access_token(token)) {
+            ctx->access_token.clear();
+            image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
+            image_card_set_loading_state(ctx, "Loading", true);
+            return;
+          }
+          ctx->access_token = token;
+          image_card_handle_picture(ctx, esphome::StringRef(retry_picture));
+        })
+    );
+    if (requested) {
+      image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
+      image_card_set_loading_state(ctx, "Loading", true);
+      return;
+    }
+    ctx->access_token_request_pending = false;
   }
   if (!image_card_home_assistant_proxy_authed(url)) {
     ESP_LOGW("image_card", "Skipping unauthenticated Home Assistant image proxy for %s",
