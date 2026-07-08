@@ -1176,14 +1176,19 @@ inline bool image_card_home_assistant_proxy_url(const std::string &url) {
          url.find("/api/media_player_proxy/") != std::string::npos;
 }
 
+inline bool image_card_protected_home_assistant_proxy_url(const std::string &url) {
+  return url.find("/api/camera_proxy/") != std::string::npos ||
+         url.find("/api/image_proxy/") != std::string::npos;
+}
+
 inline bool image_card_home_assistant_proxy_authed(const std::string &url) {
-  return !image_card_home_assistant_proxy_url(url) || image_card_query_has_param(url, "token");
+  return !image_card_protected_home_assistant_proxy_url(url) || image_card_query_has_param(url, "token");
 }
 
 inline std::string image_card_sized_url(const std::string &url,
                                         lv_coord_t width,
                                         lv_coord_t height) {
-  if (!image_card_home_assistant_proxy_url(url) || width <= 0 || height <= 0) {
+  if (!image_card_protected_home_assistant_proxy_url(url) || width <= 0 || height <= 0) {
     return url;
   }
   std::string next = image_card_append_query_param(url, "width", static_cast<int>(width));
