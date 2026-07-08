@@ -42,6 +42,16 @@ namespace esphome::web_server_idf {
 
 static const char *const TAG = "web_server_idf";
 
+static bool response_should_skip_cache(const char *content_type) {
+  if (content_type == nullptr) {
+    return false;
+  }
+  return std::strncmp(content_type, "text/html", 9) == 0 ||
+         std::strncmp(content_type, "text/javascript", 15) == 0 ||
+         std::strncmp(content_type, "application/javascript", 22) == 0 ||
+         std::strncmp(content_type, "text/css", 8) == 0;
+}
+
 // Global instance to avoid guard variable (saves 8 bytes)
 // This is initialized at program startup before any threads
 namespace {
@@ -378,6 +388,11 @@ void AsyncWebServerRequest::init_response_(AsyncWebServerResponse *rsp, int code
     httpd_resp_set_type(*this, content_type);
   }
   httpd_resp_set_hdr(*this, "Accept-Ranges", "none");
+  if (response_should_skip_cache(content_type)) {
+    httpd_resp_set_hdr(*this, "Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    httpd_resp_set_hdr(*this, "Pragma", "no-cache");
+    httpd_resp_set_hdr(*this, "Expires", "0");
+  }
 
   for (const auto &header : DefaultHeaders::Instance().headers_) {
     httpd_resp_set_hdr(*this, header.name, header.value);
