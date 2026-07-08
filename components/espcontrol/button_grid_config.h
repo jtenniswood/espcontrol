@@ -309,6 +309,7 @@ inline std::string media_card_options_normalized(const std::string &options,
       ? std::string(MEDIA_COVER_ART_OPTION)
       : "";
   }
+  if (mode == "cover_art") return "";
   if (mode != "volume" && mode != "position") return "";
   std::string out;
   int max_pct = normalize_media_volume_max_percent(
@@ -501,7 +502,8 @@ inline bool image_card_modal_fit_enabled(const ParsedCfg &p) {
 }
 
 inline bool media_cover_art_enabled(const ParsedCfg &p) {
-  return cfg_option_token_present(p.options, MEDIA_COVER_ART_OPTION);
+  return card_runtime_media_mode(p.sensor) == "cover_art" ||
+         cfg_option_token_present(p.options, MEDIA_COVER_ART_OPTION);
 }
 
 inline std::string sensor_card_options_normalized(const std::string &options,
@@ -1020,6 +1022,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     } else {
       p.sensor = card_runtime_media_mode(p.sensor);
     }
+    if (p.sensor == "now_playing" && media_cover_art_enabled(p)) {
+      p.sensor = "cover_art";
+    }
     if (p.sensor == "previous" && p.label == "Skip Previous") p.label = "Previous";
     if (p.sensor == "next" && p.label == "Skip Next") p.label = "Next";
     if (p.sensor == "volume") {
@@ -1033,6 +1038,8 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = "Position";
     if (p.sensor == "now_playing") {
       p.precision = card_runtime_media_now_playing_control(p.precision) ? p.precision : "";
+    } else if (p.sensor == "cover_art") {
+      p.precision.clear();
     } else if (card_runtime_media_state_display_mode(p.sensor) && p.precision == "state") {
       p.precision = "state";
     } else {

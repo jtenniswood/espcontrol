@@ -48,9 +48,10 @@ function normalizeMediaOptions(options, mode) {
   }
   var out = "";
   if (mode === "now_playing") {
-    return configOptionEnabled(options, MEDIA_COVER_ART_OPTION)
-      ? setConfigOption(out, MEDIA_COVER_ART_OPTION, true)
-      : out;
+    return out;
+  }
+  if (mode === "cover_art") {
+    return out;
   }
   if (mode !== "volume" && mode !== "position") return out;
   var maxVolume = normalizeMediaVolumeMax(configOptionValue(options, MEDIA_VOLUME_MAX_OPTION));

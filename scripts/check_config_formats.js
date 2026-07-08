@@ -428,10 +428,11 @@ assert.strictEqual(hooks.internalRelayDefaultIcon("push"), "Gesture Tap", "inter
 assert.strictEqual(hooks.internalRelayDefaultOnIcon(), "Lightbulb", "internal relay on icon is spec-backed");
 assert.deepStrictEqual(
   Array.from(hooks.mediaModeOptionValues()),
-  ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
+  ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
   "media mode options are spec-backed"
 );
 assert.strictEqual(hooks.mediaEditorMode("controls"), "play_pause", "legacy media controls mode maps through spec");
+assert.strictEqual(hooks.mediaEditorMode("cover_art"), "cover_art", "cover art media mode maps through spec");
 assert.strictEqual(hooks.mediaEditorMode("bad"), "play_pause", "invalid media mode falls back through spec");
 assert.deepStrictEqual(
   Array.from(hooks.mediaNowPlayingControlValues()),
@@ -1807,6 +1808,30 @@ assertButtonRoundTrip(hooks, "media now playing play pause control", {
   precision: "play_pause",
 }, false);
 
+assertButtonRoundTrip(hooks, "media cover art card", {
+  entity: "media_player.office",
+  label: "Cover Art",
+  icon: "Music",
+  icon_on: "Auto",
+  sensor: "cover_art",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "",
+}, false);
+
+assertButtonMigration(hooks, "legacy media cover art option becomes cover art subtype", "media_player.office;Now Playing;Auto;Auto;now_playing;;media;;media_cover_art", {
+  entity: "media_player.office",
+  label: "Now Playing",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "cover_art",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "",
+});
+
 assertButtonRoundTrip(hooks, "media control modal card", {
   entity: "media_player.living_room",
   label: "Living Room",
@@ -2209,6 +2234,17 @@ const imageCardForLimit = {
   precision: "",
   options: "",
 };
+const mediaCoverArtCardForLimit = {
+  entity: "media_player.office",
+  label: "Cover Art",
+  icon: "Music",
+  icon_on: "Auto",
+  sensor: "cover_art",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "",
+};
 const switchCardForImageLimit = {
   entity: "switch.kitchen",
   label: "Kitchen",
@@ -2232,6 +2268,10 @@ const imageLimitSnapshot = {
 };
 assert.strictEqual(hooks.imageCardLimit(), 4, "image card editor limit matches firmware downloader slots");
 assert.strictEqual(hooks.imageCardCountForTest(imageLimitSnapshot), 4, "image card count spans main page and subpages");
+assert.strictEqual(hooks.imageCardCountForTest({
+  grid: [1, 2],
+  buttons: [imageCardForLimit, mediaCoverArtCardForLimit],
+}), 2, "cover art media cards use image-card firmware slots");
 assert.strictEqual(hooks.imageCardCandidateAllowedForTest(imageLimitSnapshot, {
   isSub: false,
   slot: 3,
@@ -3029,6 +3069,7 @@ assertSubpageRoundTrip(hooks, "media subpage", {
     buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Auto", sensor: "volume", type: "media", options: "volume_max=40" }),
     buttonShape({ entity: "media_player.office", label: "Office", icon: "Progress Clock", sensor: "position", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "", icon: "Auto", sensor: "now_playing", type: "media" }),
+    buttonShape({ entity: "media_player.office", label: "Cover Art", icon: "Music", sensor: "cover_art", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "Morning Mix", icon: "Music", sensor: "playlist", type: "media", options: "playlist_content_id=spotify%3Aplaylist%3A12345" }),
   ],
 }, true);

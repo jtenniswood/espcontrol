@@ -1091,6 +1091,7 @@ var CARD_CONTRACT_CARDS = {
           "volume",
           "position",
           "now_playing",
+          "cover_art",
           "playlist"
         ],
         "defaultValue": "play_pause"
@@ -1115,11 +1116,6 @@ var CARD_CONTRACT_CARDS = {
           "play_pause"
         ],
         "defaultValue": ""
-      },
-      {
-        "name": "media_cover_art",
-        "label": "Show Cover Art",
-        "kind": "flag"
       },
       {
         "name": "volume_max",

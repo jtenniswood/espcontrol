@@ -89,6 +89,9 @@ function normalizeButtonConfig(b) {
       if (!b.icon || b.icon === "Speaker") b.icon = "Auto";
     }
     b.sensor = mediaEditorMode(b.sensor);
+    if (b.sensor === "now_playing" && mediaCoverArtEnabled(b)) {
+      b.sensor = "cover_art";
+    }
     if (b.sensor === "previous" && b.label === "Skip Previous") b.label = "Previous";
     if (b.sensor === "next" && b.label === "Skip Next") b.label = "Next";
     if (b.sensor === "volume") {
@@ -381,6 +384,9 @@ function buttonConfigFields(b) {
   if (sensor === SENSOR_CARD_LOCAL_SENSOR && precision !== "text" && precision !== "1" && precision !== "2") precision = "";
   if (type === "media") {
     sensor = mediaEditorMode(sensor);
+    if (sensor === "now_playing" && mediaCoverArtEnabled(b)) {
+      sensor = "cover_art";
+    }
     precision = sensor === "now_playing"
       ? mediaNowPlayingControls({ sensor: sensor, precision: precision })
       : (mediaStateDisplayModeSupported(sensor) && precision === "state" ? "state" : "");

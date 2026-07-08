@@ -732,7 +732,7 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   std::string mode = media_card_mode(p.sensor);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
 
-  if (mode == "now_playing") {
+  if (mode == "now_playing" || mode == "cover_art") {
     MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
     if (!ctx) return;
     if (ctx->title_lbl) display_apply_main_width(ctx->title_lbl, display);
@@ -1660,7 +1660,7 @@ inline void grid_phase2(
           grid_track_runtime_allocation(s.btn, ctx);
           subscribe_media_volume_state(ctx);
           if (p.label.empty()) subscribe_friendly_name(s.text_lbl, p.entity);
-        } else if (mode == "now_playing") {
+        } else if (mode == "now_playing" || mode == "cover_art") {
           MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
           setup_media_cover_art(s, p, cfg);
           subscribe_media_now_playing_state(ctx, p.entity);
@@ -2427,7 +2427,7 @@ inline void grid_phase2(
               MediaVolumeCtx *ctx = (MediaVolumeCtx *)lv_event_get_user_data(e);
               if (ctx) media_volume_open_modal(ctx);
             }, LV_EVENT_CLICKED, ctx);
-          } else if (mode == "now_playing") {
+          } else if (mode == "now_playing" || mode == "cover_art") {
             MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(sub_slot.sensor_container);
             setup_media_cover_art(sub_slot, sb_cfg, cfg);
             subscribe_media_now_playing_state(ctx, sb_cfg.entity);

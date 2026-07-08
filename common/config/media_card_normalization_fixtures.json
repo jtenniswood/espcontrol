@@ -120,6 +120,36 @@
     }
   },
   {
+    "name": "cover art subtype drops legacy options",
+    "input": "media_player.office;Cover Art;Music;Auto;cover_art;;media;progress;media_cover_art,large_numbers",
+    "expected": {
+      "entity": "media_player.office",
+      "label": "Cover Art",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "legacy now playing cover art option becomes subtype",
+    "input": "media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art",
+    "expected": {
+      "entity": "media_player.office",
+      "label": "Now Playing",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "legacy controls mode maps to play pause",
     "input": "media_player.living_room;Living Room;Speaker;Auto;controls;;media",
     "expected": {

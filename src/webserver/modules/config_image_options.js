@@ -51,7 +51,13 @@ function imageCardLimitMessage() {
 }
 
 function isImageCard(button) {
-  return !!button && button.type === "image";
+  return !!button && (
+    button.type === "image" ||
+    (button.type === "media" && (
+      button.sensor === "cover_art" ||
+      (button.sensor === "now_playing" && configOptionEnabled(button.options, MEDIA_COVER_ART_OPTION))
+    ))
+  );
 }
 
 function activeGridSlots(grid) {

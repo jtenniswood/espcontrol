@@ -412,6 +412,17 @@ int main() {
   auto now_playing_large = parse_cfg("media_player.office;;Auto;Auto;now_playing;;media;;large_numbers");
   assert(now_playing_large.options == "");
   assert(!card_large_numbers_enabled(now_playing_large));
+  auto cover_art = parse_cfg("media_player.office;Cover Art;Music;Auto;cover_art;;media;;large_numbers");
+  assert(cover_art.type == "media");
+  assert(cover_art.sensor == "cover_art");
+  assert(cover_art.precision == "");
+  assert(cover_art.options == "");
+  assert(media_cover_art_enabled(cover_art));
+  auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
+  assert(legacy_cover_art.sensor == "cover_art");
+  assert(legacy_cover_art.precision == "");
+  assert(legacy_cover_art.options == "");
+  assert(media_cover_art_enabled(legacy_cover_art));
   auto media_control_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media;;label_display=status,number_display=volume");
   assert(media_control_display.type == "media");
   assert(media_control_display.sensor == "control_modal");

@@ -72,6 +72,7 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     } else if (b.sensor != "play_pause" && b.sensor != "previous" &&
                b.sensor != "next" && b.sensor != "volume" &&
                b.sensor != "position" && b.sensor != "now_playing" &&
+               b.sensor != "cover_art" &&
                b.sensor != "control_modal" && b.sensor != "playlist") {
       b.sensor = "play_pause";
     }
@@ -88,6 +89,8 @@ inline SubpageBtn normalize_subpage_btn(SubpageBtn b) {
     if (b.sensor == "position" && (b.label.empty() || b.label == "Track")) b.label = "Position";
     if (b.sensor == "now_playing") {
       b.precision = (b.precision == "progress" || b.precision == "play_pause") ? b.precision : "";
+    } else if (b.sensor == "cover_art") {
+      b.precision.clear();
     } else if ((b.sensor == "play_pause" || b.sensor == "position") && b.precision == "state") {
       b.precision = "state";
     } else {

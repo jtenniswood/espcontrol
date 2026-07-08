@@ -14,7 +14,8 @@
     "state_low_label",
     "state_high_label",
     "image_refresh",
-    "image_refresh_mode"
+    "image_refresh_mode",
+    "media_cover_art"
   ],
   "cards": {
     "": {
@@ -895,7 +896,7 @@
           "name": "media_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
+          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
           "defaultValue": "play_pause"
         },
         {
@@ -911,11 +912,6 @@
           "kind": "choice",
           "values": ["", "progress", "play_pause"],
           "defaultValue": ""
-        },
-        {
-          "name": "media_cover_art",
-          "label": "Show Cover Art",
-          "kind": "flag"
         },
         {
           "name": "volume_max",
