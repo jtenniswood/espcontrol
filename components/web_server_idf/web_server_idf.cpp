@@ -378,6 +378,7 @@ void AsyncWebServerRequest::init_response_(AsyncWebServerResponse *rsp, int code
     httpd_resp_set_type(*this, content_type);
   }
   httpd_resp_set_hdr(*this, "Accept-Ranges", "none");
+  httpd_resp_set_hdr(*this, "Cache-Control", "no-cache");
 
   for (const auto &header : DefaultHeaders::Instance().headers_) {
     httpd_resp_set_hdr(*this, header.name, header.value);
