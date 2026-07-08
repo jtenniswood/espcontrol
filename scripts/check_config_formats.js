@@ -431,6 +431,16 @@ assert.deepStrictEqual(
   ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
   "media mode options are spec-backed"
 );
+assert.deepStrictEqual(
+  Array.from(hooks.vacuumModeOptionValues()),
+  ["modal", "status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"],
+  "vacuum mode options are spec-backed"
+);
+assert.deepStrictEqual(
+  Array.from(hooks.vacuumModeOptionLabels()),
+  ["modal:All Controls", "status:Status", "start_stop:Start / Stop", "dock:Dock", "pause_resume:Pause / Resume", "clean_spot:Spot Clean", "locate:Locate", "clean_area:Clean Area"],
+  "vacuum modal option is visible in the Type dropdown"
+);
 assert.strictEqual(hooks.mediaEditorMode("controls"), "play_pause", "legacy media controls mode maps through spec");
 assert.strictEqual(hooks.mediaEditorMode("bad"), "play_pause", "invalid media mode falls back through spec");
 assert.deepStrictEqual(

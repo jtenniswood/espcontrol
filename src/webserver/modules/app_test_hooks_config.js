@@ -83,6 +83,10 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     internalRelayDefaultIcon: internalRelayDefaultIcon,
     internalRelayDefaultOnIcon: internalRelayDefaultOnIcon,
     mediaModeOptionValues: mediaModeOptionValues,
+    vacuumModeOptionValues: vacuumModeValues,
+    vacuumModeOptionLabels: function () {
+      return VACUUM_CARD_METADATA.mode.options.map(function (option) { return option[0] + ":" + option[1]; });
+    },
     mediaEditorMode: mediaEditorMode,
     mediaNowPlayingControlValues: mediaNowPlayingControlValues,
     mediaNowPlayingControls: mediaNowPlayingControls,

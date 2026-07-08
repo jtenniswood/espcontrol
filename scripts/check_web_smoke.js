@@ -430,10 +430,19 @@ assert(
   Array.from(hooks.mediaModeOptionValues()).includes("control_modal"),
   "media mode options include the media control modal subtype"
 );
+assert(
+  Array.from(hooks.vacuumModeOptionValues()).includes("modal"),
+  "vacuum mode options include the all-controls modal subtype"
+);
 assert.strictEqual(
   Array.from(hooks.mediaModeOptionValues())[0],
   "control_modal",
   "all media controls appears first in the media mode list"
+);
+assert.strictEqual(
+  Array.from(hooks.vacuumModeOptionValues())[0],
+  "modal",
+  "all vacuum controls appears first in the vacuum mode list"
 );
 const mediaControlIconPreview = hooks.buttonTypePreviewFor("media", {
   label: "All Controls",

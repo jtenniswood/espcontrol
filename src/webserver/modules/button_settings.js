@@ -714,5 +714,3 @@ function renderButtonSettings(forceOpen) {
 
   container.appendChild(panel);
 }
-
-
