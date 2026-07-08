@@ -41,6 +41,7 @@ var MEDIA_PLAYLIST_CONTENT_ID_OPTION = cardContractOptionName("playlist_content_
 var MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = cardContractOptionName("playlist_content_type");
 var MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = cardContractOptionName("playlist_player_source");
 var MEDIA_COVER_ART_OPTION = cardContractOptionName("media_cover_art");
+var MEDIA_COVER_ART_ACTION_OPTION = cardContractOptionName("cover_art_action");
 var SUBPAGE_KIND_OPTION = cardContractOptionName("subpage_kind");
 var IMAGE_LABEL_OPTION = cardContractOptionName("image_label");
 var IMAGE_ICON_OPTION = cardContractOptionName("image_icon");

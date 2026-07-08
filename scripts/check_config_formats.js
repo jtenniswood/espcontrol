@@ -768,6 +768,13 @@ assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "co
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 2), 1, "cover art rejects tall size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 3), 1, "cover art rejects wide size");
+const coverArtActionButton = { type: "media", sensor: "cover_art", options: "" };
+assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "play_pause", "cover art defaults to play/pause action");
+hooks.setMediaCoverArtAction(coverArtActionButton, "control_modal");
+assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "control_modal", "cover art stores all controls action");
+assert(coverArtActionButton.options.includes("cover_art_action=control_modal"), "cover art all controls action is encoded");
+hooks.setMediaCoverArtAction(coverArtActionButton, "play_pause");
+assert.strictEqual(coverArtActionButton.options, "", "cover art play/pause action remains the compact default");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, false, 60, 3600), true, "short timeout allowed before limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 60, 3600), false, "short timeout blocked after old limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 10, 3600), true, "short timeout allowed after new limits load");

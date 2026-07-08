@@ -792,6 +792,7 @@ struct MediaVolumeCtx;
 inline void media_volume_open_modal(MediaVolumeCtx *ctx);
 struct MediaControlCtx;
 inline void media_control_open_modal(MediaControlCtx *ctx);
+inline MediaControlCtx *grid_media_control_runtime_for_owner(lv_obj_t *owner);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
 struct ImageCardCtx;
@@ -951,6 +952,13 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       send_media_playlist_action(p);
     } else if (mode == "now_playing" && p.precision == "play_pause") {
       send_media_playback_action(p.entity, "play_pause");
+    } else if (mode == "cover_art") {
+      if (media_cover_art_press_action(p) == "control_modal") {
+        MediaControlCtx *ctx = grid_media_control_runtime_for_owner(btn_obj);
+        if (ctx) media_control_open_modal(ctx);
+      } else {
+        send_media_playback_action(p.entity, "play_pause");
+      }
     } else if (media_playback_button_mode(mode)) {
       send_media_playback_action(p.entity, mode);
     }

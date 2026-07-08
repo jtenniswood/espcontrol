@@ -59,6 +59,7 @@ constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_m
 constexpr const char *IMAGE_REFRESH_OPTION = card_runtime_option_name_image_refresh();
 constexpr const char *IMAGE_REFRESH_MODE_OPTION = card_runtime_option_name_image_refresh_mode();
 constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
+constexpr const char *MEDIA_COVER_ART_ACTION_OPTION = card_runtime_option_name_cover_art_action();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
@@ -309,7 +310,12 @@ inline std::string media_card_options_normalized(const std::string &options,
       ? std::string(MEDIA_COVER_ART_OPTION)
       : "";
   }
-  if (mode == "cover_art") return "";
+  if (mode == "cover_art") {
+    std::string action = cfg_option_value(options, MEDIA_COVER_ART_ACTION_OPTION);
+    return action == "control_modal"
+      ? std::string(MEDIA_COVER_ART_ACTION_OPTION) + "=control_modal"
+      : "";
+  }
   if (mode != "volume" && mode != "position") return "";
   std::string out;
   int max_pct = normalize_media_volume_max_percent(
@@ -504,6 +510,11 @@ inline bool image_card_modal_fit_enabled(const ParsedCfg &p) {
 inline bool media_cover_art_enabled(const ParsedCfg &p) {
   return card_runtime_media_mode(p.sensor) == "cover_art" ||
          cfg_option_token_present(p.options, MEDIA_COVER_ART_OPTION);
+}
+
+inline std::string media_cover_art_press_action(const ParsedCfg &p) {
+  std::string action = cfg_option_value(p.options, MEDIA_COVER_ART_ACTION_OPTION);
+  return action == "control_modal" ? "control_modal" : "play_pause";
 }
 
 inline std::string sensor_card_options_normalized(const std::string &options,

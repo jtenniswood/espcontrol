@@ -51,6 +51,11 @@ function normalizeMediaOptions(options, mode) {
     return out;
   }
   if (mode === "cover_art") {
+    var action = normalizeMediaCoverArtAction(
+      configOptionValue(options, MEDIA_COVER_ART_ACTION_OPTION));
+    if (action !== "play_pause") {
+      out = setConfigOptionValue(out, MEDIA_COVER_ART_ACTION_OPTION, action);
+    }
     return out;
   }
   if (mode !== "volume" && mode !== "position") return out;
@@ -60,6 +65,30 @@ function normalizeMediaOptions(options, mode) {
   }
   out = copyLargeNumbersOption(out, options);
   return out;
+}
+
+function normalizeMediaCoverArtAction(value) {
+  value = String(value || "").trim();
+  var spec = cardContractOptionSpec("media", MEDIA_COVER_ART_ACTION_OPTION);
+  var values = spec && spec.values ? spec.values : ["play_pause", "control_modal"];
+  return values.indexOf(value) >= 0 ? value : "play_pause";
+}
+
+function mediaCoverArtAction(b) {
+  return normalizeMediaCoverArtAction(
+    configOptionValue(b && b.options, MEDIA_COVER_ART_ACTION_OPTION));
+}
+
+function setMediaCoverArtAction(b, value) {
+  if (!b) return "";
+  var normalized = normalizeMediaCoverArtAction(value);
+  b.options = setConfigOptionValue(
+    b.options,
+    MEDIA_COVER_ART_ACTION_OPTION,
+    normalized === "play_pause" ? "" : normalized
+  );
+  b.options = normalizeMediaOptions(b.options, b.sensor);
+  return b.options;
 }
 
 function normalizeMediaLabelDisplayMode(value) {

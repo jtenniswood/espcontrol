@@ -102,6 +102,10 @@ constexpr const char *card_runtime_option_name_media_cover_art() {
   return CARD_CONTRACT_OPTION_NAME_MEDIA_COVER_ART;
 }
 
+constexpr const char *card_runtime_option_name_cover_art_action() {
+  return CARD_CONTRACT_OPTION_NAME_COVER_ART_ACTION;
+}
+
 constexpr const char *card_runtime_option_name_light_tabs() {
   return CARD_CONTRACT_OPTION_NAME_LIGHT_TABS;
 }

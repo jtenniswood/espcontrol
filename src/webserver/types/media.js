@@ -112,6 +112,14 @@ var MEDIA_CARD_METADATA = {
       ["play_pause", "Play/Pause"],
     ],
   },
+  coverArtAction: {
+    label: "Press Action",
+    inputId: "media-cover-art-action",
+    options: [
+      ["play_pause", "Play/Pause"],
+      ["control_modal", "All Controls"],
+    ],
+  },
   controlLabelDisplay: {
     label: "Label",
     inputId: "media-control-label-display",
@@ -478,6 +486,20 @@ registerButtonType("media", {
         }),
       });
       controls.segment.classList.add("sp-segment-scroll");
+    }
+
+    if (b.sensor === "cover_art") {
+      helpers.renderCardSegmentControl(panel, b, helpers, {
+        segment: Object.assign({}, MEDIA_CARD_METADATA.coverArtAction, {
+          inputId: helpers.idPrefix + "media-cover-art-action",
+          value: function () { return mediaCoverArtAction(b); },
+          onSelect: function (button, cardHelpers, value) {
+            setMediaCoverArtAction(button, value);
+            cardHelpers.saveField("options", button.options);
+            renderButtonSettings();
+          },
+        }),
+      });
     }
 
     if (b.sensor === "control_modal") {

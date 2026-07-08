@@ -914,6 +914,13 @@
           "defaultValue": ""
         },
         {
+          "name": "cover_art_action",
+          "label": "Press Action",
+          "kind": "choice",
+          "values": ["play_pause", "control_modal"],
+          "defaultValue": "play_pause"
+        },
+        {
           "name": "volume_max",
           "label": "Maximum Volume",
           "kind": "number",

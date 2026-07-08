@@ -1118,6 +1118,16 @@ var CARD_CONTRACT_CARDS = {
         "defaultValue": ""
       },
       {
+        "name": "cover_art_action",
+        "label": "Press Action",
+        "kind": "choice",
+        "values": [
+          "play_pause",
+          "control_modal"
+        ],
+        "defaultValue": "play_pause"
+      },
+      {
         "name": "volume_max",
         "label": "Maximum Volume",
         "kind": "number",
@@ -1747,6 +1757,7 @@ var CARD_CONTRACT_OPTION_NAMES = {
   "confirm_yes": "confirm_yes",
   "confirmation_mode": "confirmation_mode",
   "confirmation_required": "confirmation_required",
+  "cover_art_action": "cover_art_action",
   "cover_mode": "cover_mode",
   "cover_position": "cover_position",
   "cover_tabs": "cover_tabs",

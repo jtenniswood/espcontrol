@@ -98,6 +98,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     setMediaNumberDisplayMode: setMediaNumberDisplayMode,
     mediaCoverArtEnabled: mediaCoverArtEnabled,
     setMediaCoverArtEnabled: setMediaCoverArtEnabled,
+    mediaCoverArtAction: mediaCoverArtAction,
+    setMediaCoverArtAction: setMediaCoverArtAction,
     mediaPlaylistContentId: mediaPlaylistContentId,
     mediaPlaylistContentType: mediaPlaylistContentType,
     mediaPlaylistPlayerSource: mediaPlaylistPlayerSource,

@@ -1673,6 +1673,22 @@ inline void grid_phase2(
           setup_media_cover_art(s, p, cfg);
           if (mode == "now_playing") subscribe_media_now_playing_state(ctx, p.entity);
           subscribe_media_cover_art(ctx, p.entity);
+          if (mode == "cover_art" && media_cover_art_press_action(p) == "control_modal") {
+            MediaControlCtx *control_ctx = grid_track_media_control_runtime(s.btn, create_media_control_context(
+              s, p,
+              has_on ? on_val : DEFAULT_SLIDER_COLOR,
+              palette.has_off ? palette.off_val : SECONDARY_GREY,
+              palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
+              display_media_control_title_font(display),
+              display_media_control_artist_font(
+                display, display_volume_label_font(
+                  display, lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN))),
+              display_volume_number_font(display),
+              display_icon_font(display),
+              display_volume_width_percent(display)));
+            subscribe_media_control_state(control_ctx);
+            if (ctx && ctx->cover_art) lv_obj_set_user_data(s.btn, ctx->cover_art);
+          }
         } else {
           lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
           if (slider) subscribe_media_slider_state(s.btn, slider, p.entity);
@@ -2440,7 +2456,26 @@ inline void grid_phase2(
             setup_media_cover_art(sub_slot, sb_cfg, cfg);
             if (mode == "now_playing") subscribe_media_now_playing_state(ctx, sb_cfg.entity);
             subscribe_media_cover_art(ctx, sb_cfg.entity);
-            if (media_now_playing_play_pause_enabled(sb_cfg)) {
+            if (mode == "cover_art" && media_cover_art_press_action(sb_cfg) == "control_modal") {
+              MediaControlCtx *control_ctx = grid_delete_media_control_with_owner(sb_btn, create_media_control_context(
+                sub_slot, sb_cfg,
+                has_on ? on_val : DEFAULT_SLIDER_COLOR,
+                palette.has_off ? palette.off_val : SECONDARY_GREY,
+                palette.has_sensor_color ? palette.sensor_val : TERTIARY_GREY,
+                display_media_control_title_font(display),
+                display_media_control_artist_font(
+                  display, display_volume_label_font(
+                    display, lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN))),
+                display_volume_number_font(display),
+                display_icon_font(display),
+                display_volume_width_percent(display)));
+              subscribe_media_control_state(control_ctx);
+              if (ctx && ctx->cover_art) lv_obj_set_user_data(sb_btn, ctx->cover_art);
+              lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+                MediaControlCtx *ctx = (MediaControlCtx *)lv_event_get_user_data(e);
+                if (ctx) media_control_open_modal(ctx);
+              }, LV_EVENT_CLICKED, control_ctx);
+            } else if (mode == "cover_art" || media_now_playing_play_pause_enabled(sb_cfg)) {
               ParsedCfg *click_ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
               lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
                 ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
