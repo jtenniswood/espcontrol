@@ -270,6 +270,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
              p.entity.c_str());
     return;
   }
+  const bool image_only = card_runtime_media_mode(p.sensor) == "cover_art";
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
   lv_obj_t *img = lv_image_create(media_ctx->btn);
 #else
@@ -283,13 +284,16 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   lv_obj_set_style_bg_opa(img, LV_OPA_TRANSP, LV_PART_MAIN);
   image_card_apply_tile_image_align(img);
 
-  lv_obj_t *overlay = lv_obj_create(media_ctx->btn);
-  lv_obj_remove_style_all(overlay);
-  lv_obj_clear_flag(overlay, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_set_style_bg_color(overlay, lv_color_black(), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(overlay, LV_OPA_50, LV_PART_MAIN);
-  lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN);
+  lv_obj_t *overlay = nullptr;
+  if (!image_only) {
+    overlay = lv_obj_create(media_ctx->btn);
+    lv_obj_remove_style_all(overlay);
+    lv_obj_clear_flag(overlay, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(overlay, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(overlay, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN);
+  }
 
   art->widget = img;
   art->btn = media_ctx->btn;
@@ -312,6 +316,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->width_compensation_percent = cfg.width_compensation_percent;
   media_ctx->cover_art = art;
   media_ctx->cover_overlay = overlay;
+  if (image_only && media_ctx->btn) lv_obj_set_user_data(media_ctx->btn, art);
   media_cover_art_refresh_geometry(media_ctx);
   image_card_log_diagnostics(art, "bind-media-artwork");
 }
@@ -351,6 +356,7 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
         image_card_handle_picture(art, picture);
       })
   );
+  subscribe_image_card_access_token(art, entity_id);
   subscribe_image_card_entity_state(art, entity_id);
   image_card_request_picture(art);
 }
@@ -732,7 +738,21 @@ inline void refresh_media_card_layout(BtnSlot &s, const ParsedCfg &p,
   std::string mode = media_card_mode(p.sensor);
   lv_coord_t pad = lv_obj_get_style_radius(s.btn, LV_PART_MAIN) + 4;
 
-  if (mode == "now_playing" || mode == "cover_art") {
+  if (mode == "cover_art") {
+    MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
+    if (!ctx) return;
+    if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (s.text_lbl) {
+      lv_label_set_text(s.text_lbl, "");
+      lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (ctx->title_lbl) lv_obj_add_flag(ctx->title_lbl, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->artist_lbl) lv_obj_add_flag(ctx->artist_lbl, LV_OBJ_FLAG_HIDDEN);
+    media_cover_art_refresh_geometry(ctx);
+    return;
+  }
+
+  if (mode == "now_playing") {
     MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
     if (!ctx) return;
     if (ctx->title_lbl) display_apply_main_width(ctx->title_lbl, display);
@@ -1663,7 +1683,7 @@ inline void grid_phase2(
         } else if (mode == "now_playing" || mode == "cover_art") {
           MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(s.sensor_container);
           setup_media_cover_art(s, p, cfg);
-          subscribe_media_now_playing_state(ctx, p.entity);
+          if (mode == "now_playing") subscribe_media_now_playing_state(ctx, p.entity);
           subscribe_media_cover_art(ctx, p.entity);
         } else {
           lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
@@ -2430,7 +2450,7 @@ inline void grid_phase2(
           } else if (mode == "now_playing" || mode == "cover_art") {
             MediaNowPlayingCtx *ctx = (MediaNowPlayingCtx *)lv_obj_get_user_data(sub_slot.sensor_container);
             setup_media_cover_art(sub_slot, sb_cfg, cfg);
-            subscribe_media_now_playing_state(ctx, sb_cfg.entity);
+            if (mode == "now_playing") subscribe_media_now_playing_state(ctx, sb_cfg.entity);
             subscribe_media_cover_art(ctx, sb_cfg.entity);
             if (media_now_playing_play_pause_enabled(sb_cfg)) {
               ParsedCfg *click_ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
