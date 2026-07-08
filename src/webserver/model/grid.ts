@@ -6,6 +6,7 @@ export const CARD_SIZE_WIDE = 3;
 export const CARD_SIZE_LARGE = 4;
 export const CARD_SIZE_EXTRA_TALL = 5;
 export const CARD_SIZE_EXTRA_WIDE = 6;
+export const CARD_SIZE_EXTRA_LARGE = 7;
 
 export interface CardSizeDefinition {
   size: number;
@@ -30,6 +31,7 @@ export const CARD_SIZE_DEFINITIONS: readonly CardSizeDefinition[] = [
   { size: CARD_SIZE_LARGE, token: "b", rowSpan: 2, colSpan: 2, className: "sp-btn-big" },
   { size: CARD_SIZE_EXTRA_TALL, token: "t", rowSpan: 3, colSpan: 1, className: "sp-btn-extra-tall" },
   { size: CARD_SIZE_EXTRA_WIDE, token: "x", rowSpan: 1, colSpan: 3, className: "sp-btn-extra-wide" },
+  { size: CARD_SIZE_EXTRA_LARGE, token: "q", rowSpan: 3, colSpan: 3, className: "sp-btn-extra-large" },
 ];
 
 export interface ParsedGridOrder {

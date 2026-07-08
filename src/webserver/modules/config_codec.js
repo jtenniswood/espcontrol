@@ -17,7 +17,9 @@ function cardRequiresSquareSize(b) {
 function normalizeCardSizeForConfig(b, size) {
   size = size || CARD_SIZE_SINGLE;
   if (!cardRequiresSquareSize(b)) return size;
-  return size === CARD_SIZE_LARGE ? CARD_SIZE_LARGE : CARD_SIZE_SINGLE;
+  return size === CARD_SIZE_LARGE || size === CARD_SIZE_EXTRA_LARGE
+    ? size
+    : CARD_SIZE_SINGLE;
 }
 
 function normalizeButtonConfig(b) {

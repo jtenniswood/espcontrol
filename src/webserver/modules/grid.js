@@ -33,6 +33,7 @@ var CARD_SIZE_WIDE = EspControlModel.CARD_SIZE_WIDE;
 var CARD_SIZE_LARGE = EspControlModel.CARD_SIZE_LARGE;
 var CARD_SIZE_EXTRA_TALL = EspControlModel.CARD_SIZE_EXTRA_TALL;
 var CARD_SIZE_EXTRA_WIDE = EspControlModel.CARD_SIZE_EXTRA_WIDE;
+var CARD_SIZE_EXTRA_LARGE = EspControlModel.CARD_SIZE_EXTRA_LARGE;
 
 function sizeFromToken(token) {
   return EspControlModel.sizeFromToken(token);
