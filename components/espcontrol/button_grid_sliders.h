@@ -1811,7 +1811,7 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
 
   lv_obj_t *icon = lv_label_create(btn);
   if (icon) {
-    lv_label_set_text(icon, pct <= 50 ? find_icon("Blinds Open") : find_icon("Blinds"));
+    lv_label_set_text(icon, pct <= 50 ? find_icon("Blinds") : find_icon("Blinds Open"));
     lv_obj_set_style_text_color(icon, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     if (icon_font) lv_obj_set_style_text_font(icon, icon_font, LV_PART_MAIN);
