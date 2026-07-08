@@ -23,7 +23,7 @@ Use a Lawn Mower card when you want to show the mower state, start mowing, send 
 | Type | What it does |
 |---|---|
 | **Status** | Shows the mower state, such as mowing, docked, paused, returning, error, unavailable, or unknown. |
-| **Control Panel** | Opens a modal with Start / Resume, Pause, and Dock controls plus the current mower state. |
+| **All Controls** | Opens a modal with Start / Resume, Pause, and Dock controls plus the current mower state. |
 | **Start Mowing** | Sends `lawn_mower.start_mowing`. |
 | **Dock** | Sends `lawn_mower.dock`. |
 | **Pause / Resume** | Sends `lawn_mower.pause` while the mower is mowing, and `lawn_mower.start_mowing` otherwise. |
