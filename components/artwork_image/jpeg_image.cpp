@@ -98,21 +98,26 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
   int target_w = this->image_->get_fixed_width();
   int target_h = this->image_->get_fixed_height();
   if (target_w > 0 && target_h > 0) {
-    // Choose the IDCT output closest to the target artwork size. When two
-    // options are equally close, prefer the smaller decode to reduce libjpeg's
-    // temporary memory peak on ESP32-S3.
+    // Choose the smallest IDCT output that still satisfies the requested
+    // resize mode. Cover mode must keep both dimensions at least as large as
+    // the target so the final buffer can crop instead of stretching.
     constexpr unsigned int denoms[] = {1, 2, 4, 8};
     unsigned int best_denom = 1;
     int best_w = 0;
     int best_h = 0;
     long best_score = LONG_MAX;
     uint64_t best_area = UINT64_MAX;
+    bool found_cover_candidate = false;
+    bool cover_mode = this->image_->get_resize_mode() == ImageResizeMode::COVER;
     for (unsigned int denom : denoms) {
       cinfo.scale_num = 1;
       cinfo.scale_denom = denom;
       jpeg_calc_output_dimensions(&cinfo);
       int candidate_w = static_cast<int>(cinfo.output_width);
       int candidate_h = static_cast<int>(cinfo.output_height);
+      if (cover_mode && (candidate_w < target_w || candidate_h < target_h)) {
+        continue;
+      }
       long score = std::labs(candidate_w - target_w) + std::labs(candidate_h - target_h);
       uint64_t area = static_cast<uint64_t>(candidate_w) * static_cast<uint64_t>(candidate_h);
       if (score < best_score || (score == best_score && area < best_area)) {
@@ -121,7 +126,11 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
         best_denom = denom;
         best_w = candidate_w;
         best_h = candidate_h;
+        found_cover_candidate = true;
       }
+    }
+    if (cover_mode && !found_cover_candidate) {
+      best_denom = 1;
     }
     cinfo.scale_num = 1;
     cinfo.scale_denom = best_denom;
