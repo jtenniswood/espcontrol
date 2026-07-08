@@ -821,6 +821,12 @@ registerButtonType("media", {
       } else if (mode === "cover_art") {
         progressBg =
           '<span class="sp-slider-preview" style="inset:-2px;background:linear-gradient(135deg,#2f4858,#f6ae2d)"></span>';
+        return {
+          iconHtml: progressBg,
+          labelHtml:
+            '<span class="sp-btn-label-row"><span class="sp-btn-label sp-media-now-artist">Now Playing</span>' +
+            '<span class="sp-type-badge mdi mdi-' + MEDIA_CARD_METADATA.preview.badge + '"></span></span>',
+        };
       }
       return {
         iconHtml:
