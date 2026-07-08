@@ -667,6 +667,8 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         slot["width_compensation_percent"] = display["widthCompensationPercent"]
     if display.get("volumeWidthCompensationPercent", 100) != 100:
         slot["volume_width_compensation_percent"] = display["volumeWidthCompensationPercent"]
+    if display.get("mediaArtworkWidthCompensationPercent", 100) != 100:
+        slot["media_artwork_width_compensation_percent"] = display["mediaArtworkWidthCompensationPercent"]
     if display.get("subpageChevronX", 0) != 0:
         slot["subpage_chevron_x"] = display["subpageChevronX"]
     if display.get("subpageChevronY", 2) != 2:

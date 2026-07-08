@@ -338,6 +338,10 @@ def cfg_lines(device: dict) -> list[str]:
         lines.append(
             f"            cfg.volume_width_compensation_percent = {device['volume_width_compensation_percent']};"
         )
+    if device.get("media_artwork_width_compensation_percent", 100) != 100:
+        lines.append(
+            f"            cfg.media_artwork_width_compensation_percent = {device['media_artwork_width_compensation_percent']};"
+        )
     if device.get("color_correction"):
         correction = device["color_correction"]
         lines.append(f"            cfg.color_correction_red_percent = {correction['red']};")

@@ -55,6 +55,7 @@ struct ImageCardCtx {
   uint32_t last_tile_request_started_ms = 0;
   uint32_t last_modal_request_started_ms = 0;
   int width_compensation_percent = 100;
+  int media_artwork_width_compensation_percent = 100;
   bool active = false;
   bool callbacks_bound = false;
   bool modal_callbacks_bound = false;
@@ -673,6 +674,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].last_tile_request_started_ms = 0;
     contexts[i].last_modal_request_started_ms = 0;
     contexts[i].width_compensation_percent = 100;
+    contexts[i].media_artwork_width_compensation_percent = 100;
     if (contexts[i].modal_cleanup_timer) {
       lv_timer_del(contexts[i].modal_cleanup_timer);
       contexts[i].modal_cleanup_timer = nullptr;
@@ -736,17 +738,35 @@ inline bool image_card_position_widget(lv_obj_t *btn, lv_obj_t *widget,
 }
 
 inline void image_card_apply_widget_geometry(lv_obj_t *btn, lv_obj_t *widget,
-                                             esphome::artwork_image::ArtworkImage *image) {
+                                             esphome::artwork_image::ArtworkImage *image,
+                                             lv_coord_t target_width_override = 0) {
   if (!image) return;
   lv_coord_t width = 0;
   lv_coord_t height = 0;
   if (!image_card_position_widget(btn, widget, &width, &height)) return;
+  lv_coord_t target_width = target_width_override > 0 ? target_width_override : width;
   image_card_apply_tile_image_align(widget);
   lv_obj_t *loading = image_card_loading_widget(widget);
   image_card_position_widget(btn, loading);
   image_card_refresh_loading_layout(loading);
-  image->set_target_size(width, height);
+  image->set_target_size(target_width, height);
   image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
+}
+
+inline lv_coord_t image_card_media_artwork_target_width(ImageCardCtx *ctx, lv_coord_t width) {
+  if (!ctx || !ctx->media_artwork || width <= 0) return width;
+  int percent = normalize_width_compensation_percent(ctx->media_artwork_width_compensation_percent);
+  return std::max<lv_coord_t>(1, static_cast<lv_coord_t>(
+    (static_cast<int64_t>(width) * percent + 50) / 100));
+}
+
+inline void image_card_apply_context_widget_geometry(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->image) return;
+  lv_coord_t width = 0;
+  lv_coord_t height = 0;
+  if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
+  image_card_apply_widget_geometry(
+    ctx->btn, ctx->widget, ctx->image, image_card_media_artwork_target_width(ctx, width));
 }
 
 inline void image_card_reset_resized_tile(ImageCardCtx *ctx) {
@@ -763,7 +783,7 @@ inline void image_card_refresh_tile_geometry(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   int previous_width = ctx->image->get_fixed_width();
   int previous_height = ctx->image->get_fixed_height();
-  image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
+  image_card_apply_context_widget_geometry(ctx);
   int current_width = ctx->image->get_fixed_width();
   int current_height = ctx->image->get_fixed_height();
   if (current_width <= 0 || current_height <= 0 ||
@@ -879,7 +899,7 @@ inline void image_card_tile_request_size(lv_coord_t target_width, lv_coord_t tar
 inline void image_card_apply_active_geometry(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   if (image_card_modal_active_for(ctx) && image_card_apply_modal_geometry(ctx, ctx->image)) return;
-  image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
+  image_card_apply_context_widget_geometry(ctx);
 }
 
 inline void setup_image_card(BtnSlot &s) {
@@ -1416,6 +1436,8 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   esphome::artwork_image::ImageResizeMode resize_mode =
     esphome::artwork_image::ImageResizeMode::COVER;
   if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
+  lv_coord_t decode_width = image_card_media_artwork_target_width(ctx, width);
+  lv_coord_t decode_height = height;
   lv_obj_t *loading = image_card_loading_widget(ctx->widget);
   image_card_position_widget(ctx->btn, loading);
   image_card_refresh_loading_layout(loading);
@@ -1434,7 +1456,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
     image_card_log_diagnostics(ctx, "tile-refresh-queued", width, height);
     return;
   }
-  if (!image_card_memory_available(ctx, "tile", width, height)) {
+  if (!image_card_memory_available(ctx, "tile", decode_width, decode_height)) {
     ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
     if (!ctx->image_ready) {
       image_card_hide(ctx);
@@ -1444,7 +1466,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   }
   int request_width = 0;
   int request_height = 0;
-  image_card_tile_request_size(width, height, &request_width, &request_height);
+  image_card_tile_request_size(decode_width, decode_height, &request_width, &request_height);
   ctx->url = image_card_cache_bust_url(
     image_card_sized_url(ctx->source_url, request_width, request_height));
   ctx->requested_once = true;
@@ -1454,7 +1476,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   ctx->next_download_retry_ms = 0;
   ctx->last_tile_request_started_ms = now;
   image_card_schedule_next_refresh(ctx, now);
-  ctx->image->set_target_size(width, height);
+  ctx->image->set_target_size(decode_width, decode_height);
   ctx->image->set_resize_mode(resize_mode);
   ESP_LOGI("image_card", "Downloading camera image for %s", ctx->entity_id.c_str());
   image_card_log_diagnostics(ctx, "tile-download-start", request_width, request_height);
@@ -1563,7 +1585,7 @@ inline void image_card_finish_modal_cleanup(ImageCardCtx *ctx) {
     ctx->modal_image->release();
     ctx->modal_url.clear();
   }
-  image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
+  image_card_apply_context_widget_geometry(ctx);
   if (!ctx->source_url.empty()) {
     image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, "tile");
   }
@@ -1992,6 +2014,7 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
   ctx->diagnostics_enabled = cfg.image_card_diagnostics;
   ctx->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
   ctx->width_compensation_percent = cfg.width_compensation_percent;
+  ctx->media_artwork_width_compensation_percent = 100;
   image_card_log_diagnostics(ctx, "bind-card");
   image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
   image_card_set_loading_state(ctx, "Loading", true);

@@ -22,6 +22,7 @@ struct GridConfig {
   bool subpage_chevrons_enabled = true;
   int width_compensation_percent = 100;
   int volume_width_compensation_percent = 100;
+  int media_artwork_width_compensation_percent = 100;
   int label_lines = 0;
   int label_lines_tall = 0;
   int color_correction_red_percent = COLOR_CORRECTION_RED_PERCENT;
@@ -223,7 +224,7 @@ inline bool info_only_hidden_card_type(const ParsedCfg &p) {
 
 inline void media_cover_art_refresh_geometry(MediaNowPlayingCtx *ctx) {
   if (!ctx || !ctx->cover_art) return;
-  image_card_apply_widget_geometry(ctx->cover_art->btn, ctx->cover_art->widget, ctx->cover_art->image);
+  image_card_apply_context_widget_geometry(ctx->cover_art);
   if (ctx->cover_overlay) image_card_position_widget(ctx->cover_art->btn, ctx->cover_overlay);
   if (ctx->cover_art->widget) lv_obj_move_background(ctx->cover_art->widget);
   if (ctx->cover_overlay) lv_obj_move_foreground(ctx->cover_overlay);
@@ -314,6 +315,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->diagnostics_enabled = cfg.image_card_diagnostics;
   art->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
   art->width_compensation_percent = cfg.width_compensation_percent;
+  art->media_artwork_width_compensation_percent = cfg.media_artwork_width_compensation_percent;
   media_ctx->cover_art = art;
   media_ctx->cover_overlay = overlay;
   if (image_only && media_ctx->btn) lv_obj_set_user_data(media_ctx->btn, art);
