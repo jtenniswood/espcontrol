@@ -505,6 +505,12 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);",
             "tabs_layout.content_gap",
         ),
+        "button_grid_vacuum.h": (
+            "ControlModalTabLayout tabs_layout =\n    control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
+            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
+            "control_modal_layout_tab_button(\n      tab_btn, layout, tabs_layout, visible_index, active,",
+            "tabs_layout.content_gap",
+        ),
     }
     sliders_required = (
         "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
@@ -553,6 +559,7 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
         "button_grid_fan.h",
         "button_grid_media.h",
         "button_grid_sliders.h",
+        "button_grid_vacuum.h",
     ):
         path = firmware_dir / filename
         if not path.exists():
@@ -879,6 +886,14 @@ def valid_modal_tab_layout_files() -> dict[str, str]:
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
             "control_modal_layout_tab_button(\n"
+            "tabs_layout.content_gap\n"
+        ),
+        "components/espcontrol/button_grid_vacuum.h": (
+            "ControlModalTabLayout tabs_layout =\n"
+            "    control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
+            "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
+            "control_modal_layout_tab_button(\n"
+            "      tab_btn, layout, tabs_layout, visible_index, active,\n"
             "tabs_layout.content_gap\n"
         ),
     }

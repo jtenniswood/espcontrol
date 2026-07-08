@@ -764,6 +764,8 @@ inline void vacuum_control_layout_modal(VacuumCardCtx *ctx) {
   VacuumControlModalUi &ui = vacuum_control_modal_ui();
   if (!ctx || !ui.panel) return;
   ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
+  control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, control_modal_card_radius(ctx->btn));
+  control_modal_apply_back_button_layout(ui.back_btn, layout);
   VacuumControlVisibleTabs visible_tabs = vacuum_control_visible_tabs(ctx);
   int tab_count = 0;
   for (uint8_t i = 0; i < visible_tabs.count; i++) {
@@ -772,49 +774,67 @@ inline void vacuum_control_layout_modal(VacuumCardCtx *ctx) {
   }
   if (tab_count < 1) tab_count = 1;
 
-  lv_coord_t content_w = layout.panel_w - layout.inset * 2;
-  if (content_w < 180) content_w = layout.panel_w - layout.inset;
-  lv_obj_set_style_pad_all(ui.panel, layout.inset, LV_PART_MAIN);
-  lv_obj_set_style_pad_row(ui.panel, 10, LV_PART_MAIN);
-  lv_obj_set_layout(ui.panel, LV_LAYOUT_FLEX);
-  lv_obj_set_style_flex_flow(ui.panel, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
-  lv_obj_set_style_flex_main_place(ui.panel, LV_FLEX_ALIGN_START, LV_PART_MAIN);
-  lv_obj_set_style_flex_cross_place(ui.panel, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
-
-  if (ui.title_lbl) lv_obj_set_width(ui.title_lbl, content_w);
-  if (ui.status_lbl) lv_obj_set_width(ui.status_lbl, content_w);
-
   bool show_tab_bar = tab_count > 1;
-  if (ui.tab_row && show_tab_bar) {
-    lv_coord_t tab_size = layout.back_size * 7 / 10;
-    if (tab_size < 44) tab_size = 44;
-    if (tab_size > 64) tab_size = 64;
-    lv_coord_t gap = tab_size / 5;
-    lv_coord_t row_w = tab_size * tab_count + gap * (tab_count - 1) + gap * 2;
-    if (row_w > content_w) row_w = content_w;
-    lv_obj_set_size(ui.tab_row, row_w, tab_size + gap);
-    lv_obj_set_style_radius(ui.tab_row, (tab_size + gap) / 2, LV_PART_MAIN);
-    lv_coord_t x = gap;
-    for (uint8_t i = 0; i < visible_tabs.count; i++) {
-      if (visible_tabs.tabs[i] == VacuumControlTab::FAN && ctx->fan_speeds.empty()) continue;
-      lv_obj_t *btn = vacuum_control_tab_button(ui, visible_tabs.tabs[i]);
-      if (!btn) continue;
-      lv_obj_set_size(btn, tab_size, tab_size);
-      lv_obj_set_style_radius(btn, tab_size / 2, LV_PART_MAIN);
-      lv_obj_align(btn, LV_ALIGN_LEFT_MID, x, 0);
-      x += tab_size + gap;
-    }
+  ControlModalTabLayout tabs_layout =
+    control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);
+  control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);
+  for (uint8_t i = 0, visible_index = 0; show_tab_bar && i < visible_tabs.count; i++) {
+    if (visible_tabs.tabs[i] == VacuumControlTab::FAN && ctx->fan_speeds.empty()) continue;
+    lv_obj_t *tab_btn = vacuum_control_tab_button(ui, visible_tabs.tabs[i]);
+    if (!tab_btn) continue;
+    bool active = visible_tabs.tabs[i] == ui.tab;
+    control_modal_layout_tab_button(
+      tab_btn, layout, tabs_layout, visible_index, active,
+      ctx->width_compensation_percent);
+    visible_index++;
   }
 
-  lv_coord_t available_h = layout.panel_h - layout.inset * 2 - 132;
-  if (show_tab_bar) available_h -= 68;
+  lv_coord_t content_w = layout.panel_w - layout.inset * 2;
+  if (content_w < 180) content_w = layout.panel_w - layout.inset;
+  lv_obj_set_layout(ui.panel, LV_LAYOUT_NONE);
+  lv_obj_set_style_pad_all(ui.panel, 0, LV_PART_MAIN);
+
+  lv_coord_t content_top = show_tab_bar
+    ? layout.inset + tabs_layout.tab_frame_h + tabs_layout.content_gap
+    : layout.inset * 2;
+  lv_coord_t chrome_safe_top = layout.back_inset_y + layout.back_size + layout.inset / 2;
+  if (content_top < chrome_safe_top) content_top = chrome_safe_top;
+  lv_coord_t text_gap = control_modal_scaled_px(8, layout.short_side);
+  if (text_gap < 6) text_gap = 6;
+  lv_coord_t list_gap = control_modal_scaled_px(14, layout.short_side);
+  if (list_gap < 8) list_gap = 8;
+  lv_coord_t title_h = ctx->label_font
+    ? ctx->label_font->line_height
+    : control_modal_scaled_px(28, layout.short_side);
+  lv_coord_t status_h = title_h;
+  lv_coord_t title_y = content_top;
+  lv_coord_t status_y = title_y + title_h + text_gap / 2;
+  lv_coord_t list_top = status_y + status_h + list_gap;
+  lv_coord_t content_bottom = layout.panel_h - layout.inset;
+  lv_coord_t available_h = content_bottom - list_top;
+  if (available_h < 140) available_h = content_bottom - content_top;
   if (available_h < 140) available_h = layout.panel_h / 2;
+
+  if (ui.title_lbl) {
+    lv_obj_set_size(ui.title_lbl, content_w, title_h);
+    lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y);
+  }
+  if (ui.status_lbl) {
+    lv_obj_set_size(ui.status_lbl, content_w, status_h);
+    lv_obj_align(ui.status_lbl, LV_ALIGN_TOP_MID, 0, status_y);
+  }
+
   lv_obj_t *boxes[3] = {ui.controls_box, ui.rooms_box, ui.fan_box};
   for (lv_obj_t *box : boxes) {
     if (!box) continue;
     lv_obj_set_size(box, content_w, available_h);
+    lv_obj_align(box, LV_ALIGN_TOP_LEFT, layout.inset, list_top);
   }
-  if (ui.fan_list) lv_obj_set_size(ui.fan_list, content_w, available_h);
+  if (ui.room_summary_lbl) lv_obj_set_width(ui.room_summary_lbl, content_w);
+  if (ui.fan_list) {
+    lv_obj_set_size(ui.fan_list, content_w, available_h);
+    lv_obj_align(ui.fan_list, LV_ALIGN_TOP_LEFT, 0, 0);
+  }
   lv_obj_move_foreground(ui.back_btn);
 }
 
