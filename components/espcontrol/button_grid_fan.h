@@ -606,22 +606,26 @@ inline lv_obj_t *fan_control_create_tile_button(lv_obj_t *parent, const char *ic
   control_modal_apply_pressed_fill(btn);
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
 
-  lv_obj_t *icon_lbl = lv_label_create(btn);
-  if (icon_lbl) {
-    lv_label_set_text(icon_lbl, icon);
-    lv_obj_set_style_text_color(icon_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    if (icon_font) lv_obj_set_style_text_font(icon_lbl, icon_font, LV_PART_MAIN);
+  if (icon && icon[0]) {
+    lv_obj_t *icon_lbl = lv_label_create(btn);
+    if (icon_lbl) {
+      lv_label_set_text(icon_lbl, icon);
+      lv_obj_set_style_text_color(icon_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+      if (icon_font) lv_obj_set_style_text_font(icon_lbl, icon_font, LV_PART_MAIN);
+    }
   }
 
-  lv_obj_t *label = lv_label_create(btn);
-  if (label) {
-    lv_label_set_text(label, text.c_str());
-    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(label, lv_pct(100));
-    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    if (label_font) lv_obj_set_style_text_font(label, label_font, LV_PART_MAIN);
+  if (!text.empty()) {
+    lv_obj_t *label = lv_label_create(btn);
+    if (label) {
+      lv_label_set_text(label, text.c_str());
+      lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+      lv_obj_set_width(label, lv_pct(100));
+      lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+      if (label_font) lv_obj_set_style_text_font(label, label_font, LV_PART_MAIN);
+    }
   }
   return btn;
 }
@@ -810,8 +814,11 @@ inline void fan_control_layout_tile_children(FanCardCtx *ctx,
     if (!tile || !lv_obj_has_flag(tile, LV_OBJ_FLAG_CLICKABLE)) continue;
     lv_obj_set_size(tile, tile_w, tile_h);
     lv_obj_set_style_radius(tile, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
-    lv_obj_t *label = lv_obj_get_child(tile, 1);
-    if (label) lv_obj_set_width(label, lv_pct(100));
+    uint32_t tile_child_count = lv_obj_get_child_count(tile);
+    for (uint32_t child_index = 0; child_index < tile_child_count; child_index++) {
+      lv_obj_t *label = lv_obj_get_child(tile, child_index);
+      if (label) lv_obj_set_width(label, lv_pct(100));
+    }
   }
 }
 
@@ -942,7 +949,7 @@ inline void fan_control_rebuild_preset_list(FanCardCtx *ctx) {
     const std::string &mode = ctx->preset_modes[i];
     bool selected = fan_lower(fan_trim(mode)) == current;
     lv_obj_t *btn = fan_control_create_tile_button(
-      ui.preset_list, find_icon("Fan Auto"), fan_option_label(mode),
+      ui.preset_list, "", fan_option_label(mode),
       ctx->icon_font, ctx->label_font);
     if (!btn) continue;
     fan_control_style_tile_button(btn, selected, ctx->on_color, SECONDARY_GREY);
@@ -1012,22 +1019,22 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
     lv_obj_add_flag(group, LV_OBJ_FLAG_SCROLLABLE);
   }
   ui.power_on_btn = fan_control_create_tile_button(
-    ui.power_group, find_icon("Power"), espcontrol_i18n(std::string("On")),
+    ui.power_group, find_icon("Power"), "",
     ctx->icon_font, ctx->label_font);
   ui.power_off_btn = fan_control_create_tile_button(
-    ui.power_group, find_icon("Circle Outline"), espcontrol_i18n(std::string("Off")),
+    ui.power_group, find_icon("Circle Outline"), "",
     ctx->icon_font, ctx->label_font);
   ui.oscillation_on_btn = fan_control_create_tile_button(
-    ui.oscillation_group, find_icon("Fan"), espcontrol_i18n(std::string("Oscillating")),
+    ui.oscillation_group, find_icon("Fan"), "",
     ctx->icon_font, ctx->label_font);
   ui.oscillation_off_btn = fan_control_create_tile_button(
-    ui.oscillation_group, find_icon("Circle Outline"), espcontrol_i18n(std::string("Still")),
+    ui.oscillation_group, find_icon("Circle Outline"), "",
     ctx->icon_font, ctx->label_font);
   ui.direction_forward_btn = fan_control_create_tile_button(
-    ui.direction_group, find_icon("Arrow Up"), fan_option_label("forward"),
+    ui.direction_group, find_icon("Arrow Up"), "",
     ctx->icon_font, ctx->label_font);
   ui.direction_reverse_btn = fan_control_create_tile_button(
-    ui.direction_group, find_icon("Arrow Down"), fan_option_label("reverse"),
+    ui.direction_group, find_icon("Arrow Down"), "",
     ctx->icon_font, ctx->label_font);
 
   if (ui.power_on_btn) lv_obj_add_event_cb(ui.power_on_btn, [](lv_event_t *e) {
