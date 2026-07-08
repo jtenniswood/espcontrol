@@ -209,29 +209,32 @@ inline void lawn_mower_control_style_action_button(lv_obj_t *btn,
   if (!btn || !ctx) return;
   bool enabled = ctx->available;
   bool active = enabled && lawn_mower_control_button_active(ctx->state, service);
-  uint32_t bg = active ? DEFAULT_SLIDER_COLOR : TERTIARY_GREY;
-  uint32_t border = active ? DEFAULT_SLIDER_COLOR : DARK_CONTROL_NEUTRAL;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(bg), LV_PART_MAIN);
-  lv_obj_set_style_border_color(btn, lv_color_hex(border), LV_PART_MAIN);
-  lv_obj_set_style_opa(btn, enabled ? LV_OPA_COVER : LV_OPA_50, LV_PART_MAIN);
-  if (enabled) lv_obj_clear_state(btn, LV_STATE_DISABLED);
-  else lv_obj_add_state(btn, LV_STATE_DISABLED);
+  lv_obj_t *label = control_modal_icon_label(btn);
+  lv_obj_set_style_bg_color(
+    btn, lv_color_hex(active ? DEFAULT_SLIDER_COLOR : SECONDARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_color(btn, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, active ? 2 : 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  if (label) {
+    lv_obj_set_style_text_color(
+      label, lv_color_hex(active ? 0xFFFFFF : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  }
+  apply_control_availability(btn, btn, enabled);
 }
 
 inline lv_obj_t *lawn_mower_control_create_action_button(lv_obj_t *parent,
                                                         LawnMowerCardCtx *ctx,
                                                         const char *icon,
-                                                        const char *label,
                                                         const char *service) {
-  lv_obj_t *btn = lv_obj_create(parent);
+  lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
+  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn, 2, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_all(btn, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(btn, 18, LV_PART_MAIN);
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
   control_modal_apply_pressed_fill(btn);
 
   lv_obj_t *icon_lbl = lv_label_create(btn);
@@ -239,16 +242,8 @@ inline lv_obj_t *lawn_mower_control_create_action_button(lv_obj_t *parent,
     lv_label_set_text(icon_lbl, icon);
     if (ctx && ctx->icon_font) lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
     lv_obj_set_style_text_color(icon_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_align(icon_lbl, LV_ALIGN_CENTER, 0, -12);
-  }
-  lv_obj_t *text_lbl = lv_label_create(btn);
-  if (text_lbl) {
-    lv_label_set_text(text_lbl, espcontrol_i18n(label));
-    if (ctx && ctx->label_font) lv_obj_set_style_text_font(text_lbl, ctx->label_font, LV_PART_MAIN);
-    lv_obj_set_style_text_color(text_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_set_width(text_lbl, lv_pct(90));
-    lv_obj_set_style_text_align(text_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_align(text_lbl, LV_ALIGN_CENTER, 0, 22);
+    lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_center(icon_lbl);
   }
 
   lawn_mower_control_style_action_button(btn, ctx, service);
@@ -260,48 +255,76 @@ inline lv_obj_t *lawn_mower_control_create_action_button(lv_obj_t *parent,
   return btn;
 }
 
-inline void lawn_mower_control_layout_modal(LawnMowerCardCtx *ctx,
-                                            const ControlModalLayout &layout) {
+inline void lawn_mower_control_layout_modal(LawnMowerCardCtx *ctx) {
   LawnMowerControlModalUi &ui = lawn_mower_control_modal_ui();
   if (!ctx || !ui.panel) return;
 
+  ControlModalLayout layout = control_modal_calc_layout(ctx->width_compensation_percent);
+  control_modal_apply_panel_layout(ui.overlay, ui.panel, layout, control_modal_card_radius(ctx->btn));
+  control_modal_apply_back_button_layout(ui.back_btn, layout);
   lv_coord_t content_w = layout.panel_w - layout.inset * 2;
   if (content_w < 120) content_w = layout.panel_w;
   lv_coord_t gap = control_modal_scaled_px(12, layout.short_side);
   if (gap < 8) gap = 8;
-  lv_coord_t title_y = layout.inset + layout.back_size / 2;
-  lv_coord_t status_y = title_y + layout.back_size + gap;
-  lv_coord_t button_y = status_y + control_modal_scaled_px(84, layout.short_side);
-  lv_coord_t button_h = control_modal_scaled_px(104, layout.short_side);
-  if (button_h < 72) button_h = 72;
-  lv_coord_t available_h = layout.panel_h - button_y - layout.inset;
-  if (button_h > available_h) button_h = available_h;
-  if (button_h < 56) button_h = 56;
-  lv_coord_t button_w = (content_w - gap * 2) / 3;
-  if (button_w < 56) button_w = 56;
-  lv_coord_t start_x = layout.inset + (content_w - (button_w * 3 + gap * 2)) / 2;
+  lv_coord_t title_y = layout.back_inset_y + layout.back_size / 2 - layout.back_size / 2;
+  lv_coord_t chrome_safe_top = layout.back_inset_y + layout.back_size + layout.inset / 2;
+  lv_coord_t content_top = chrome_safe_top;
+  lv_coord_t content_bottom = layout.panel_h - layout.inset;
+  lv_coord_t content_h = content_bottom - content_top;
+  if (content_h < 160) {
+    content_top = layout.inset * 2;
+    content_h = content_bottom - content_top;
+  }
+  lv_coord_t state_icon_h = control_modal_scaled_px(48, layout.short_side);
+  if (state_icon_h < 34) state_icon_h = 34;
+  lv_coord_t state_label_h = control_modal_scaled_px(30, layout.short_side);
+  if (state_label_h < 24) state_label_h = 24;
+  lv_coord_t state_gap = control_modal_scaled_px(6, layout.short_side);
+  if (state_gap < 4) state_gap = 4;
+  lv_coord_t button_gap = control_modal_scaled_px(10, layout.short_side);
+  if (button_gap < gap) button_gap = gap;
+  lv_coord_t state_block_h = state_icon_h + state_gap + state_label_h;
+  lv_coord_t button_area_h = content_h - state_block_h - gap * 2;
+  if (button_area_h < 64) button_area_h = content_h / 2;
+  lv_coord_t button_size = (content_w - button_gap * 2) / 3;
+  if (button_size > button_area_h) button_size = button_area_h;
+  lv_coord_t max_button_size = control_modal_scaled_px(112, layout.short_side);
+  if (button_size > max_button_size) button_size = max_button_size;
+  if (button_size < 56) button_size = 56;
+  lv_coord_t buttons_total_w = button_size * 3 + button_gap * 2;
+  lv_coord_t button_start_x = layout.inset + (content_w - buttons_total_w) / 2;
+  if (button_start_x < layout.inset) button_start_x = layout.inset;
+  lv_coord_t state_top = content_top + (content_h - state_block_h - button_size - gap) / 2;
+  if (state_top < content_top) state_top = content_top;
+  lv_coord_t button_y = state_top + state_block_h + gap;
+  lv_coord_t button_radius = control_modal_card_radius(ctx->btn);
 
   if (ui.title_lbl) {
     lv_obj_set_width(ui.title_lbl, content_w - layout.back_size - gap);
     apply_width_compensation(ui.title_lbl, ctx->width_compensation_percent);
-    lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y - layout.back_size / 2);
+    lv_obj_align(ui.title_lbl, LV_ALIGN_TOP_MID, 0, title_y);
   }
   if (ui.state_icon_lbl) {
-    lv_obj_align(ui.state_icon_lbl, LV_ALIGN_TOP_MID, 0, status_y);
+    lv_obj_set_height(ui.state_icon_lbl, state_icon_h);
+    lv_obj_align(ui.state_icon_lbl, LV_ALIGN_TOP_MID, 0, state_top);
   }
   if (ui.state_lbl) {
     lv_obj_set_width(ui.state_lbl, content_w);
+    lv_obj_set_height(ui.state_lbl, state_label_h);
     apply_width_compensation(ui.state_lbl, ctx->width_compensation_percent);
-    lv_obj_align(ui.state_lbl, LV_ALIGN_TOP_MID, 0, status_y + control_modal_scaled_px(42, layout.short_side));
+    lv_obj_align(ui.state_lbl, LV_ALIGN_TOP_MID, 0, state_top + state_icon_h + state_gap);
   }
 
   lv_obj_t *buttons[] = {ui.start_btn, ui.pause_btn, ui.dock_btn};
   for (int i = 0; i < 3; i++) {
     if (!buttons[i]) continue;
-    lv_obj_set_size(buttons[i], button_w, button_h);
+    lv_obj_set_size(buttons[i], button_size, button_size);
+    lv_obj_set_style_radius(buttons[i], button_radius, LV_PART_MAIN);
     apply_width_compensation(buttons[i], ctx->width_compensation_percent);
     lv_obj_align(buttons[i], LV_ALIGN_TOP_LEFT,
-                 start_x + i * (button_w + gap), button_y);
+                 button_start_x + i * (button_size + button_gap), button_y);
+    lv_obj_t *label = control_modal_icon_label(buttons[i]);
+    if (label) lv_obj_center(label);
   }
   if (ui.back_btn) lv_obj_move_foreground(ui.back_btn);
 }
@@ -320,6 +343,7 @@ inline void lawn_mower_control_update_modal(LawnMowerCardCtx *ctx) {
   lawn_mower_control_style_action_button(ui.start_btn, ctx, "lawn_mower.start_mowing");
   lawn_mower_control_style_action_button(ui.pause_btn, ctx, "lawn_mower.pause");
   lawn_mower_control_style_action_button(ui.dock_btn, ctx, "lawn_mower.dock");
+  lawn_mower_control_layout_modal(ctx);
 }
 
 inline void lawn_mower_control_hide_modal() {
@@ -341,7 +365,6 @@ inline void lawn_mower_control_open_modal(LawnMowerCardCtx *ctx) {
   ui.back_btn = shell.close_btn;
   if (!ui.panel) return;
 
-  ControlModalLayout &layout = shell.layout;
   ui.title_lbl = control_modal_create_title(
     ui.panel, ctx->label.c_str(), shell.content_w, ctx->label_font,
     ctx->width_compensation_percent);
@@ -361,13 +384,12 @@ inline void lawn_mower_control_open_modal(LawnMowerCardCtx *ctx) {
   }
 
   ui.start_btn = lawn_mower_control_create_action_button(
-    ui.panel, ctx, find_icon("Play"), "Start / Resume", "lawn_mower.start_mowing");
+    ui.panel, ctx, find_icon("Play"), "lawn_mower.start_mowing");
   ui.pause_btn = lawn_mower_control_create_action_button(
-    ui.panel, ctx, find_icon("Pause"), "Pause", "lawn_mower.pause");
+    ui.panel, ctx, find_icon("Pause"), "lawn_mower.pause");
   ui.dock_btn = lawn_mower_control_create_action_button(
-    ui.panel, ctx, find_icon("Home"), "Dock", "lawn_mower.dock");
+    ui.panel, ctx, find_icon("Home"), "lawn_mower.dock");
 
-  lawn_mower_control_layout_modal(ctx, layout);
   lawn_mower_control_update_modal(ctx);
   lv_obj_move_foreground(ui.overlay);
 }
