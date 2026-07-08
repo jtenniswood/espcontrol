@@ -55,6 +55,7 @@ var CARD_TYPE_PICKER_DETAILS = {
   lock: { icon: "lock", description: "Show and control a lock." },
   media: { icon: "speaker", description: "Control media playback or volume." },
   media_control: { icon: "music", description: "Open all media controls and volume in a modal." },
+  media_cover_art: { icon: "album", description: "Show the current track artwork." },
   push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
   sensor: { icon: "gauge", description: "Display sensor values or states." },
   slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
@@ -68,6 +69,7 @@ var CARD_TYPE_PICKER_DEFAULTS = {
   climate: "climate_control",
   light_brightness: "light_control",
   media_control: "media",
+  media_cover_art: "media",
 };
 
 function defaultButtonTypeForPicker(key) {

@@ -844,3 +844,18 @@ registerButtonType("media", {
     };
   },
 });
+
+registerButtonType("media_cover_art", {
+  label: "Cover Art",
+  allowInSubpage: function () { return cardContractAllowInSubpage("media"); },
+  pickerKey: "media_cover_art",
+  hidden: true,
+  hideLabel: true,
+  cardMetadata: MEDIA_CARD_METADATA,
+  defaultConfig: function () {
+    var config = cardContractDefaultConfig("media");
+    config.sensor = "cover_art";
+    config.label = "Cover Art";
+    return config;
+  },
+});

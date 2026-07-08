@@ -387,7 +387,7 @@ function renderButtonSettings(forceOpen) {
     if (newType === "__choose-card-type__") return;
     var pickerType = newType;
     newType = defaultButtonTypeForPicker(newType);
-    var keepMediaEntity = pickerType === "media_control" && b.type === "media";
+    var keepMediaEntity = (pickerType === "media_control" || pickerType === "media_cover_art") && b.type === "media";
     b.type = newType;
     if (state.settingsDraft && state.settingsDraft.key === draftKey) {
       state.settingsDraft.typeSelected = true;
@@ -402,6 +402,15 @@ function renderButtonSettings(forceOpen) {
       b.unit = "";
       b.precision = "";
       b.options = "";
+    }
+    if (pickerType === "media_cover_art") {
+      b.sensor = "cover_art";
+      b.label = "Cover Art";
+      b.icon = "Auto";
+      b.icon_on = "Auto";
+      b.unit = "";
+      b.precision = "";
+      b.options = normalizeMediaOptions(b.options, b.sensor);
     }
     saveField("type", b.type);
     renderButtonSettings();
@@ -571,6 +580,9 @@ function renderButtonSettings(forceOpen) {
     var selectedTypeKey = isNewDraftWithoutType
       ? null
       : buttonTypeRegistryValue(rawTypeDef, "pickerKey", "") || (b.type || "");
+    if (!isNewDraftWithoutType && b.type === "media") {
+      if (mediaEditorMode(b.sensor) === "cover_art") selectedTypeKey = "media_cover_art";
+    }
     var typeOpts = buttonTypePickerOptionList(c.isSub, selectedTypeKey);
     var tf = document.createElement("div");
     tf.className = "sp-field";
