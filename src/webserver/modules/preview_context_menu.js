@@ -76,6 +76,8 @@ function resizeSlot(slot, targetSz) {
   var c = ctx();
   var slotPos = slot === -2 ? c.grid.indexOf(-2) : c.grid.indexOf(slot);
   if (slotPos < 0) return;
+  var button = slot === -2 ? null : c.buttons[slot - 1];
+  targetSz = normalizeCardSizeForConfig(button, targetSz);
   var curSz = c.sizes[slot] || 1;
   if (curSz === targetSz) return;
 
@@ -145,10 +147,12 @@ function addSingleCardMenuItems(slot) {
   var sz = c.sizes[slot] || 1;
   addCtxSubmenu("arrow-expand-all", "Size", function (sub) {
     addSubItem(sub, "", "Single (1x1)", function () { resizeSlot(slot, 1); }, sz === 1);
-    addSubItem(sub, "", "Tall (2x1)", function () { resizeSlot(slot, 2); }, sz === 2);
-    addSubItem(sub, "", "Extra Tall (3x1)", function () { resizeSlot(slot, 5); }, sz === 5);
-    addSubItem(sub, "", "Wide (1x2)", function () { resizeSlot(slot, 3); }, sz === 3);
-    addSubItem(sub, "", "Extra Wide (1x3)", function () { resizeSlot(slot, 6); }, sz === 6);
+    if (!cardRequiresSquareSize(b)) {
+      addSubItem(sub, "", "Tall (2x1)", function () { resizeSlot(slot, 2); }, sz === 2);
+      addSubItem(sub, "", "Extra Tall (3x1)", function () { resizeSlot(slot, 5); }, sz === 5);
+      addSubItem(sub, "", "Wide (1x2)", function () { resizeSlot(slot, 3); }, sz === 3);
+      addSubItem(sub, "", "Extra Wide (1x3)", function () { resizeSlot(slot, 6); }, sz === 6);
+    }
     addSubItem(sub, "", "Large (2x2)", function () { resizeSlot(slot, 4); }, sz === 4);
   });
 

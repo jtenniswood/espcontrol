@@ -87,6 +87,8 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     mediaNowPlayingControlValues: mediaNowPlayingControlValues,
     mediaNowPlayingControls: mediaNowPlayingControls,
     mediaStateDisplayModeSupported: mediaStateDisplayModeSupported,
+    cardRequiresSquareSize: cardRequiresSquareSize,
+    normalizeCardSizeForConfig: normalizeCardSizeForConfig,
     normalizeMediaOptions: normalizeMediaOptions,
     mediaVolumeMax: mediaVolumeMax,
     setMediaVolumeMax: setMediaVolumeMax,

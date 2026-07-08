@@ -10,6 +10,16 @@ function normalizeWithRegisteredCardType(b) {
   return true;
 }
 
+function cardRequiresSquareSize(b) {
+  return !!(b && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art");
+}
+
+function normalizeCardSizeForConfig(b, size) {
+  size = size || CARD_SIZE_SINGLE;
+  if (!cardRequiresSquareSize(b)) return size;
+  return size === CARD_SIZE_LARGE ? CARD_SIZE_LARGE : CARD_SIZE_SINGLE;
+}
+
 function normalizeButtonConfig(b) {
   if (b) b.options = b.options || "";
   if (b && b.type === "local") {

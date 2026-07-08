@@ -248,10 +248,22 @@ function renderButtonSettings(forceOpen) {
     return false;
   }
 
+  function applyCardSizeConstraint(savedButton) {
+    var currentSize = c.sizes[slot] || CARD_SIZE_SINGLE;
+    var nextSize = normalizeCardSizeForConfig(savedButton, currentSize);
+    if (nextSize === currentSize) return false;
+    if (nextSize === CARD_SIZE_SINGLE) delete c.sizes[slot];
+    else c.sizes[slot] = nextSize;
+    clearSpans(c.grid, c.maxSlots);
+    applySpans(c.grid, c.sizes, c.maxSlots);
+    return true;
+  }
+
   function applySettingsDraft() {
     if (!state.settingsDraft || state.settingsDraft.key !== draftKey) return false;
     var draft = state.settingsDraft;
     var savedButton = liveButton;
+    var sizeChanged = false;
     if (draft.isNew) {
       var pos = draft.pos;
       if (pos < 0 || pos >= c.maxSlots || c.grid[pos] !== 0) {
@@ -264,6 +276,7 @@ function renderButtonSettings(forceOpen) {
       savedButton = c.buttons[slot - 1];
       copyButtonConfig(savedButton, draft.button);
       c.grid[pos] = slot;
+      sizeChanged = applyCardSizeConstraint(savedButton);
       if (c.isSub) {
         saveSubpageConfig(state.editingSubpage);
       } else {
@@ -272,11 +285,13 @@ function renderButtonSettings(forceOpen) {
       }
     } else {
       copyButtonConfig(liveButton, draft.button);
+      sizeChanged = applyCardSizeConstraint(liveButton);
     }
     state.settingsDraft = null;
     if (!draft.isNew && c.isSub) {
       saveSubpageConfig(state.editingSubpage);
     } else if (!draft.isNew) {
+      if (sizeChanged) postText(entityName("button_order"), serializeGrid(state.grid));
       saveButtonConfig(slot);
     }
     var savedTypeDef = BUTTON_TYPES[savedButton.type || ""];
@@ -714,5 +729,3 @@ function renderButtonSettings(forceOpen) {
 
   container.appendChild(panel);
 }
-
-
