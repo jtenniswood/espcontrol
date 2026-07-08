@@ -66,7 +66,7 @@ const CASES = casesFromManifest();
 const BUTTON_FIXTURES = [
   "light.kitchen;Kitchen;Lightbulb;Lightbulb",
   "sensor.energy;Energy;Gauge;Auto;sensor.energy;W;sensor;0",
-  "climate.hall;Hall;Thermostat;Auto;;;climate;;",
+  "vacuum.kitchen;Kitchen Vacuum;Auto;Auto;start_stop;;vacuum;;",
   "media_player.living;Media;Auto;Auto;play_pause;;media;;",
   "cover.office_blind;Blind;Blinds Open;Blinds;modal;;cover;;cover_tabs=controls%7Cposition%7Ctilt",
   "alarm_control_panel.house;Alarm;Security;Auto;;;alarm;;",
@@ -1547,6 +1547,43 @@ async function assertCoverSettingsPanels(page, label) {
   });
 }
 
+async function assertVacuumSettingsTypeOptions(page, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.waitForSelector("#sp-screen.sp-page.active");
+  await page.locator('.sp-main [data-slot="3"]').click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.waitForSelector(".sp-settings-overlay.sp-visible");
+
+  assert.strictEqual(
+    await page.locator("#sp-inp-type").inputValue(),
+    "vacuum",
+    `${label}: vacuum card stays under the Vacuum card type`,
+  );
+  const options = await page.locator("#sp-inp-vacuum-type option").evaluateAll(
+    (nodes) => nodes.map((node) => `${node.value}:${node.textContent}`),
+  );
+  assert.deepStrictEqual(
+    options,
+    [
+      "modal:All Controls",
+      "status:Status",
+      "start_stop:Start / Stop",
+      "dock:Dock",
+      "pause_resume:Pause / Resume",
+      "clean_spot:Spot Clean",
+      "locate:Locate",
+      "clean_area:Clean Area",
+    ],
+    `${label}: vacuum type dropdown should expose All Controls as the first sub-style`,
+  );
+
+  await page.locator(".sp-settings-close").click();
+  await page.waitForFunction(() => {
+    var overlay = document.querySelector(".sp-settings-overlay");
+    return overlay && !overlay.classList.contains("sp-visible");
+  });
+}
+
 async function assertAlarmSettingsPanels(page, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -2813,6 +2850,7 @@ async function runCase(browser, testCase) {
       `${testCase.name} after settings`,
       testCase,
     );
+    await assertVacuumSettingsTypeOptions(page, testCase.name);
     await assertCoverSettingsPanels(page, testCase.name);
     await assertAlarmSettingsPanels(page, testCase.name);
     await assertPlaylistValidationOpensSourcePanel(page, testCase.name);
