@@ -332,8 +332,7 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
     std::function<void(esphome::StringRef)>(
       [art, entity_id, generation](esphome::StringRef picture) {
         if (!image_card_context_current(art, entity_id, generation)) return;
-        art->pending_fallback_picture = string_ref_limited(picture, 4096);
-        image_card_request_picture(art);
+        image_card_handle_media_artwork_picture(art, picture, false);
       })
   );
   ha_subscribe_attribute(
@@ -342,23 +341,12 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
     std::function<void(esphome::StringRef)>(
       [art, entity_id, generation](esphome::StringRef picture) {
         if (!image_card_context_current(art, entity_id, generation)) return;
-        std::string local = string_ref_limited(picture, 4096);
-        if (!local.empty() && local != "unknown" && local != "unavailable") {
-          image_card_handle_picture(art, picture);
-          return;
-        }
-        if (!art->pending_fallback_picture.empty()) {
-          std::string fallback = art->pending_fallback_picture;
-          art->pending_fallback_picture.clear();
-          image_card_handle_picture(art, esphome::StringRef(fallback));
-          return;
-        }
-        image_card_handle_picture(art, picture);
+        image_card_handle_media_artwork_picture(art, picture, true);
       })
   );
   subscribe_image_card_access_token(art, entity_id);
   subscribe_image_card_entity_state(art, entity_id);
-  image_card_request_picture(art);
+  image_card_request_media_artwork(art);
 }
 
 inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
