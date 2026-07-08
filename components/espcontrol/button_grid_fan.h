@@ -583,44 +583,86 @@ inline lv_obj_t *fan_control_create_icon_button(lv_obj_t *parent, const char *ic
   return btn;
 }
 
-inline void fan_control_style_binary_button(lv_obj_t *btn, bool active,
-                                            uint32_t active_color,
-                                            uint32_t inactive_color,
-                                            bool active_outline = false) {
-  if (!btn) return;
-  lv_obj_t *label = lv_obj_get_child(btn, 0);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(active ? active_color : inactive_color), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_color(btn, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn, active && active_outline ? 2 : 0, LV_PART_MAIN);
+inline lv_obj_t *fan_control_create_tile_button(lv_obj_t *parent, const char *icon,
+                                                const std::string &text,
+                                                const lv_font_t *icon_font,
+                                                const lv_font_t *label_font) {
+  lv_obj_t *btn = lv_btn_create(parent);
+  if (!btn) return nullptr;
+  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_top(btn, 12, LV_PART_MAIN);
+  lv_obj_set_style_pad_bottom(btn, 12, LV_PART_MAIN);
+  lv_obj_set_style_pad_left(btn, 14, LV_PART_MAIN);
+  lv_obj_set_style_pad_right(btn, 14, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(btn, 8, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(btn, 0, LV_PART_MAIN);
+  lv_obj_set_layout(btn, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(btn, LV_FLEX_FLOW_COLUMN, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(btn, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  control_modal_apply_pressed_fill(btn);
+  lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_t *icon_lbl = lv_label_create(btn);
+  if (icon_lbl) {
+    lv_label_set_text(icon_lbl, icon);
+    lv_obj_set_style_text_color(icon_lbl, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(icon_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (icon_font) lv_obj_set_style_text_font(icon_lbl, icon_font, LV_PART_MAIN);
+  }
+
+  lv_obj_t *label = lv_label_create(btn);
   if (label) {
-    lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? 0xFFFFFF : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_label_set_text(label, text.c_str());
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(label, lv_pct(100));
+    lv_obj_set_style_text_color(label, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    if (label_font) lv_obj_set_style_text_font(label, label_font, LV_PART_MAIN);
+  }
+  return btn;
+}
+
+inline void fan_control_style_tile_button(lv_obj_t *btn, bool active,
+                                          uint32_t active_color,
+                                          uint32_t inactive_color) {
+  if (!btn) return;
+  uint32_t bg_color = active ? active_color : inactive_color;
+  uint32_t text_color = active ? DARK_TEXT_PRIMARY : readable_text_color_for_bg(bg_color);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(bg_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+  uint32_t child_count = lv_obj_get_child_count(btn);
+  for (uint32_t i = 0; i < child_count; i++) {
+    lv_obj_t *child = lv_obj_get_child(btn, i);
+    if (child) lv_obj_set_style_text_color(child, lv_color_hex(text_color), LV_PART_MAIN);
   }
 }
 
 inline void fan_control_apply_power(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
-  fan_control_style_binary_button(ui.power_on_btn, ctx->on, ctx->on_color, SECONDARY_GREY);
-  fan_control_style_binary_button(ui.power_off_btn, !ctx->on, SECONDARY_GREY, SECONDARY_GREY, true);
+  fan_control_style_tile_button(ui.power_on_btn, ctx->on, ctx->on_color, SECONDARY_GREY);
+  fan_control_style_tile_button(ui.power_off_btn, !ctx->on, ctx->on_color, SECONDARY_GREY);
 }
 
 inline void fan_control_apply_oscillation(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
-  fan_control_style_binary_button(ui.oscillation_on_btn, ctx->oscillating, ctx->on_color, SECONDARY_GREY);
-  fan_control_style_binary_button(
-    ui.oscillation_off_btn, !ctx->oscillating, SECONDARY_GREY, SECONDARY_GREY, true);
+  fan_control_style_tile_button(ui.oscillation_on_btn, ctx->oscillating, ctx->on_color, SECONDARY_GREY);
+  fan_control_style_tile_button(ui.oscillation_off_btn, !ctx->oscillating, ctx->on_color, SECONDARY_GREY);
 }
 
 inline void fan_control_apply_direction(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
   bool reverse = ctx->direction == "reverse";
-  fan_control_style_binary_button(ui.direction_forward_btn, !reverse, ctx->on_color, SECONDARY_GREY);
-  fan_control_style_binary_button(ui.direction_reverse_btn, reverse, ctx->on_color, SECONDARY_GREY);
+  fan_control_style_tile_button(ui.direction_forward_btn, !reverse, ctx->on_color, SECONDARY_GREY);
+  fan_control_style_tile_button(ui.direction_reverse_btn, reverse, ctx->on_color, SECONDARY_GREY);
 }
 
 inline void fan_control_set_speed_value(FanCardCtx *ctx, int pct) {
@@ -728,39 +770,71 @@ inline void fan_control_apply_tab_visibility() {
   fan_control_apply_direction(ctx);
 }
 
-inline void fan_control_layout_binary_group(lv_obj_t *group, lv_obj_t *first_btn,
-                                            lv_obj_t *second_btn, lv_coord_t width,
-                                            lv_coord_t height, lv_coord_t center_y) {
+inline lv_coord_t fan_control_tile_gap(const ControlModalLayout &layout) {
+  lv_coord_t gap = control_modal_scaled_px(layout.short_side < 520 ? 10 : 12, layout.short_side);
+  return gap < 8 ? 8 : gap;
+}
+
+inline lv_coord_t fan_control_tile_width(const ControlModalLayout &layout,
+                                         lv_coord_t content_w,
+                                         uint32_t tile_count) {
+  if (tile_count == 0) return content_w;
+  lv_coord_t gap = fan_control_tile_gap(layout);
+  lv_coord_t min_tile_w = layout.short_side < 520 ? 118 : 138;
+  lv_coord_t max_tile_w = layout.short_side < 520 ? 168 : 220;
+  uint32_t columns = (content_w + gap) / (min_tile_w + gap);
+  if (columns < 1) columns = 1;
+  if (columns > tile_count) columns = tile_count;
+  if (columns > 3 && layout.short_side < 520) columns = 3;
+  lv_coord_t tile_w = (content_w - gap * (columns - 1)) / columns;
+  if (tile_w > max_tile_w) tile_w = max_tile_w;
+  if (tile_w < min_tile_w && content_w >= min_tile_w) tile_w = min_tile_w;
+  return tile_w;
+}
+
+inline void fan_control_layout_tile_children(FanCardCtx *ctx,
+                                             lv_obj_t *parent,
+                                             const ControlModalLayout &layout,
+                                             lv_coord_t content_w) {
+  if (!ctx || !parent) return;
+  uint32_t child_count = lv_obj_get_child_count(parent);
+  uint32_t tile_count = 0;
+  for (uint32_t i = 0; i < child_count; i++) {
+    lv_obj_t *child = lv_obj_get_child(parent, i);
+    if (child && lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE)) tile_count++;
+  }
+  lv_coord_t tile_w = fan_control_tile_width(layout, content_w, tile_count);
+  lv_coord_t tile_h = tile_w;
+  for (uint32_t i = 0; i < child_count; i++) {
+    lv_obj_t *tile = lv_obj_get_child(parent, i);
+    if (!tile || !lv_obj_has_flag(tile, LV_OBJ_FLAG_CLICKABLE)) continue;
+    lv_obj_set_size(tile, tile_w, tile_h);
+    lv_obj_set_style_radius(tile, control_modal_card_radius(ctx->btn), LV_PART_MAIN);
+    lv_obj_t *label = lv_obj_get_child(tile, 1);
+    if (label) lv_obj_set_width(label, lv_pct(100));
+  }
+}
+
+inline void fan_control_layout_tile_group(FanCardCtx *ctx,
+                                          lv_obj_t *group,
+                                          lv_coord_t content_w,
+                                          lv_coord_t content_h,
+                                          lv_coord_t top,
+                                          const ControlModalLayout &layout) {
   if (!group) return;
-  lv_obj_set_size(group, width, height);
-  lv_obj_align(group, LV_ALIGN_CENTER, 0, center_y);
-  lv_coord_t radius = width / 4;
-  if (radius < 24) radius = 24;
-  if (radius > 46) radius = 46;
-  lv_obj_set_style_radius(group, radius, LV_PART_MAIN);
-  lv_obj_set_style_clip_corner(group, true, LV_PART_MAIN);
-  lv_coord_t inset = width / 16;
-  if (inset < 8) inset = 8;
-  if (inset > 16) inset = 16;
-  lv_coord_t gap = inset;
-  lv_coord_t button_w = width - inset * 2;
-  lv_coord_t button_h = (height - inset * 2 - gap) / 2;
-  if (button_h < 48) button_h = 48;
-  lv_coord_t button_radius = button_h / 2;
-  if (first_btn) {
-    lv_obj_set_size(first_btn, button_w, button_h);
-    lv_obj_set_style_radius(first_btn, button_radius, LV_PART_MAIN);
-    lv_obj_align(first_btn, LV_ALIGN_TOP_MID, 0, inset);
-    lv_obj_t *label = lv_obj_get_child(first_btn, 0);
-    if (label) light_control_center_icon_label(label);
-  }
-  if (second_btn) {
-    lv_obj_set_size(second_btn, button_w, button_h);
-    lv_obj_set_style_radius(second_btn, button_radius, LV_PART_MAIN);
-    lv_obj_align(second_btn, LV_ALIGN_BOTTOM_MID, 0, -inset);
-    lv_obj_t *label = lv_obj_get_child(second_btn, 0);
-    if (label) light_control_center_icon_label(label);
-  }
+  lv_coord_t gap = fan_control_tile_gap(layout);
+  lv_obj_set_size(group, content_w, content_h);
+  lv_obj_align(group, LV_ALIGN_TOP_LEFT, layout.inset, top);
+  lv_obj_set_style_pad_all(group, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_row(group, gap, LV_PART_MAIN);
+  lv_obj_set_style_pad_column(group, gap, LV_PART_MAIN);
+  lv_obj_set_layout(group, LV_LAYOUT_FLEX);
+  lv_obj_set_style_flex_flow(group, LV_FLEX_FLOW_ROW_WRAP, LV_PART_MAIN);
+  lv_obj_set_style_flex_main_place(group, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(group, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_set_scroll_dir(group, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(group, LV_SCROLLBAR_MODE_OFF);
+  fan_control_layout_tile_children(ctx, group, layout, content_w);
 }
 
 inline void fan_control_layout_modal(FanCardCtx *ctx) {
@@ -795,13 +869,11 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
     if (control_w > max_width) control_w = max_width;
   }
   lv_coord_t center_y = content_top + content_h / 2 - layout.panel_h / 2;
+  lv_coord_t tile_content_w = layout.panel_w - layout.inset * 2;
 
-  fan_control_layout_binary_group(ui.power_group, ui.power_on_btn, ui.power_off_btn,
-                                  control_w, content_h, center_y);
-  fan_control_layout_binary_group(ui.oscillation_group, ui.oscillation_on_btn, ui.oscillation_off_btn,
-                                  control_w, content_h, center_y);
-  fan_control_layout_binary_group(ui.direction_group, ui.direction_forward_btn, ui.direction_reverse_btn,
-                                  control_w, content_h, center_y);
+  fan_control_layout_tile_group(ctx, ui.power_group, tile_content_w, content_h, content_top, layout);
+  fan_control_layout_tile_group(ctx, ui.oscillation_group, tile_content_w, content_h, content_top, layout);
+  fan_control_layout_tile_group(ctx, ui.direction_group, tile_content_w, content_h, content_top, layout);
 
   if (ui.speed_group) {
     lv_obj_set_size(ui.speed_group, control_w, content_h);
@@ -844,8 +916,17 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
   }
 
   if (ui.preset_list) {
-    lv_obj_set_size(ui.preset_list, layout.panel_w - layout.inset * 2, content_h);
+    lv_coord_t gap = fan_control_tile_gap(layout);
+    lv_obj_set_size(ui.preset_list, tile_content_w, content_h);
     lv_obj_align(ui.preset_list, LV_ALIGN_TOP_LEFT, layout.inset, content_top);
+    lv_obj_set_style_pad_all(ui.preset_list, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_row(ui.preset_list, gap, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(ui.preset_list, gap, LV_PART_MAIN);
+    lv_obj_set_layout(ui.preset_list, LV_LAYOUT_FLEX);
+    lv_obj_set_style_flex_flow(ui.preset_list, LV_FLEX_FLOW_ROW_WRAP, LV_PART_MAIN);
+    lv_obj_set_style_flex_main_place(ui.preset_list, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_flex_cross_place(ui.preset_list, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
+    fan_control_layout_tile_children(ctx, ui.preset_list, layout, tile_content_w);
   }
 }
 
@@ -857,15 +938,14 @@ inline void fan_control_rebuild_preset_list(FanCardCtx *ctx) {
     ? FAN_PRESET_MAX_OPTIONS
     : static_cast<int>(ctx->preset_modes.size());
   std::string current = fan_lower(fan_trim(ctx->preset_mode));
-  lv_coord_t row_h = 48;
-  lv_coord_t row_radius = 16;
   for (int i = 0; i < count; i++) {
     const std::string &mode = ctx->preset_modes[i];
     bool selected = fan_lower(fan_trim(mode)) == current;
-    lv_obj_t *btn = control_modal_create_list_row(
-      ui.preset_list, fan_option_label(mode), selected, row_h, row_radius,
-      ctx->on_color, SECONDARY_GREY,
-      ctx->label_font, ctx->width_compensation_percent);
+    lv_obj_t *btn = fan_control_create_tile_button(
+      ui.preset_list, find_icon("Fan Auto"), fan_option_label(mode),
+      ctx->icon_font, ctx->label_font);
+    if (!btn) continue;
+    fan_control_style_tile_button(btn, selected, ctx->on_color, SECONDARY_GREY);
     ui.preset_clicks[i].ctx = ctx;
     ui.preset_clicks[i].mode = mode;
     lv_obj_add_event_cb(btn, [](lv_event_t *e) {
@@ -925,19 +1005,30 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   ui.direction_group = lv_obj_create(ui.panel);
   lv_obj_t *binary_groups[] = {ui.power_group, ui.oscillation_group, ui.direction_group};
   for (lv_obj_t *group : binary_groups) {
-    lv_obj_set_style_bg_color(group, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(group, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(group, LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_border_width(group, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(group, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(group, 0, LV_PART_MAIN);
-    lv_obj_clear_flag(group, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(group, LV_OBJ_FLAG_SCROLLABLE);
   }
-  ui.power_on_btn = fan_control_create_icon_button(ui.power_group, find_icon("Power"), ctx->icon_font);
-  ui.power_off_btn = fan_control_create_icon_button(ui.power_group, find_icon("Circle Outline"), ctx->icon_font);
-  ui.oscillation_on_btn = fan_control_create_icon_button(ui.oscillation_group, find_icon("Fan"), ctx->icon_font);
-  ui.oscillation_off_btn = fan_control_create_icon_button(ui.oscillation_group, find_icon("Circle Outline"), ctx->icon_font);
-  ui.direction_forward_btn = fan_control_create_icon_button(ui.direction_group, find_icon("Arrow Up"), ctx->icon_font);
-  ui.direction_reverse_btn = fan_control_create_icon_button(ui.direction_group, find_icon("Arrow Down"), ctx->icon_font);
+  ui.power_on_btn = fan_control_create_tile_button(
+    ui.power_group, find_icon("Power"), espcontrol_i18n(std::string("On")),
+    ctx->icon_font, ctx->label_font);
+  ui.power_off_btn = fan_control_create_tile_button(
+    ui.power_group, find_icon("Circle Outline"), espcontrol_i18n(std::string("Off")),
+    ctx->icon_font, ctx->label_font);
+  ui.oscillation_on_btn = fan_control_create_tile_button(
+    ui.oscillation_group, find_icon("Fan"), espcontrol_i18n(std::string("Oscillating")),
+    ctx->icon_font, ctx->label_font);
+  ui.oscillation_off_btn = fan_control_create_tile_button(
+    ui.oscillation_group, find_icon("Circle Outline"), espcontrol_i18n(std::string("Still")),
+    ctx->icon_font, ctx->label_font);
+  ui.direction_forward_btn = fan_control_create_tile_button(
+    ui.direction_group, find_icon("Arrow Up"), fan_option_label("forward"),
+    ctx->icon_font, ctx->label_font);
+  ui.direction_reverse_btn = fan_control_create_tile_button(
+    ui.direction_group, find_icon("Arrow Down"), fan_option_label("reverse"),
+    ctx->icon_font, ctx->label_font);
 
   if (ui.power_on_btn) lv_obj_add_event_cb(ui.power_on_btn, [](lv_event_t *e) {
     (void) e;
