@@ -133,6 +133,7 @@ jobs:
           for SLUG in $DEVICE_SLUGS; do
             mkdir -p "firmware/${SLUG}"
             INDEX_ENTRIES=$(mktemp)
+            HAVE_CURRENT=false
             : > "${INDEX_ENTRIES}"
 
             for IDX in $(seq 0 $((RELEASE_COUNT - 1))); do
@@ -151,11 +152,9 @@ jobs:
               fi
               VERSION_PATH=$(printf '%s' "${VERSION}" | sed 's/[^A-Za-z0-9._-]/_/g')
 
-              if [ "${IDX}" -eq 0 ]; then
-                cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
+              if [ "${HAVE_CURRENT}" = false ]; then
                 OTA_OUTPUT="firmware/${SLUG}/${SLUG}.ota.bin"
                 OTA_INDEX_PATH="${SLUG}.ota.bin"
-                download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
               else
                 OTA_OUTPUT="firmware/${SLUG}/versions/${VERSION_PATH}/${SLUG}.ota.bin"
                 OTA_INDEX_PATH="versions/${VERSION_PATH}/${SLUG}.ota.bin"
@@ -163,6 +162,12 @@ jobs:
 
               if ! download_asset "${RELEASE_JSON}" "${SLUG}.ota.bin" "${OTA_OUTPUT}"; then
                 continue
+              fi
+
+              if [ "${HAVE_CURRENT}" = false ]; then
+                cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
+                download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
+                HAVE_CURRENT=true
               fi
 
               OTA_MD5=$(ota_md5 "${MANIFEST_TMP}" "${SLUG}.ota.bin")
