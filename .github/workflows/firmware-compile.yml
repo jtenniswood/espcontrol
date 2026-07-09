@@ -18,7 +18,7 @@ concurrency:
 jobs:
   detect-changes:
     name: Detect Firmware Changes
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       compile_required: ${{ steps.filter.outputs.compile_required }}
     steps:
@@ -47,7 +47,7 @@ jobs:
     name: Prepare Device Matrix
     needs: detect-changes
     if: needs.detect-changes.outputs.compile_required == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
@@ -189,7 +189,7 @@ jobs:
     name: Firmware Compile Gate
     needs: [detect-changes, device-matrix, compile]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Verify firmware compile result
         run: |

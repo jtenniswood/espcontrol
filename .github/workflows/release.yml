@@ -22,7 +22,7 @@ jobs:
   release-notes:
     name: Update Release Notes
     if: github.event_name == 'release' || inputs.release_tag != ''
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v7.0.0
         with:

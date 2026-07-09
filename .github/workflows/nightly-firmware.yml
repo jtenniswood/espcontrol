@@ -16,7 +16,7 @@ concurrency:
 jobs:
   device-matrix:
     name: Prepare Device Matrix
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:

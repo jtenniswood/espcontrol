@@ -128,7 +128,7 @@ jobs:
     if: >-
       always() &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -161,7 +161,7 @@ jobs:
       always() &&
       needs.validate.result == 'success' &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - name: Prepare self-hosted workspace
         run: |

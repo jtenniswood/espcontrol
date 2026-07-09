@@ -35,7 +35,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
@@ -68,7 +68,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
@@ -257,7 +257,7 @@ jobs:
   deploy:
     name: Deploy to Pages
     needs: [build-docs, download-firmware]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
