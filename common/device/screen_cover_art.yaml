@@ -86,15 +86,6 @@ globals:
   - id: cover_art_manual_pause_until_ms
     type: uint32_t
     initial_value: '0'
-  - id: cover_art_accent_r
-    type: int
-    initial_value: '0'
-  - id: cover_art_accent_g
-    type: int
-    initial_value: '0'
-  - id: cover_art_accent_b
-    type: int
-    initial_value: '0'
   - id: cover_art_layout_signature
     type: std::string
     initial_value: '""'
@@ -604,9 +595,6 @@ script:
           int r = (int) (r_wsum / w_total);
           int g = (int) (g_wsum / w_total);
           int b = (int) (b_wsum / w_total);
-          id(cover_art_accent_r) = r;
-          id(cover_art_accent_g) = g;
-          id(cover_art_accent_b) = b;
           ESP_LOGI("cover_art", "Extracted artwork accent color: rgb(%d,%d,%d)", r, g, b);
 
           lv_color_t dark_accent = lv_color_make(r / 3, g / 3, b / 3);
@@ -1352,7 +1340,6 @@ script:
                 else:
                   - script.execute: cover_art_show_black_screen
       - script.execute: cover_art_refresh_progress
-      - script.execute: backlight_apply_brightness
 
   - id: hide_cover_art_view
     mode: restart
@@ -1404,24 +1391,26 @@ script:
             lambda: |-
               bool voice_active = ${voice_interaction_active_condition};
               auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-              return !alarm_display_takeover_active() &&
-                     id(cover_art_screensaver_enabled).state &&
-                     id(cover_art_media_playing) &&
-                     !voice_active &&
+              bool schedule_blocks = screen_schedule_blocks_cover_art(
+                  id(screen_schedule_trigger).state,
+                  id(schedule_enabled).state,
+                  id(presence_detected),
+                  now.is_valid(),
+                  now.is_valid() ? now.hour : 0,
+                  (int) id(schedule_on_hour).state,
+                  (int) id(schedule_off_hour).state);
+              return espcontrol::cover_art::display_allowed(
+                       id(cover_art_screensaver_enabled).state,
+                       id(cover_art_media_playing),
+                       !id(cover_art_media_player_entity).state.empty(),
+                       id(cover_art_attribute_conditions_match),
+                       id(cover_art_hide_external_input_enabled).state,
+                       id(cover_art_external_input_active),
+                       schedule_blocks,
+                       alarm_display_takeover_active(),
+                       voice_active) &&
                      (id(cover_art_manual_pause_until_ms) == 0 ||
-                      (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) <= 0) &&
-                     !screen_schedule_blocks_cover_art(
-                       id(screen_schedule_trigger).state,
-                       id(schedule_enabled).state,
-                       id(presence_detected),
-                       now.is_valid(),
-                       now.is_valid() ? now.hour : 0,
-                       (int) id(schedule_on_hour).state,
-                       (int) id(schedule_off_hour).state) &&
-                     id(cover_art_attribute_conditions_match) &&
-                     !(id(cover_art_hide_external_input_enabled).state &&
-                       id(cover_art_external_input_active)) &&
-                     !id(cover_art_media_player_entity).state.empty();
+                      (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) <= 0);
           then:
             - script.execute: show_cover_art_view
 
@@ -2098,20 +2087,24 @@ script:
           condition:
             lambda: |-
               auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-              return !alarm_display_takeover_active() &&
-                     id(cover_art_screensaver_enabled).state &&
-                     !screen_schedule_blocks_cover_art(
-                       id(screen_schedule_trigger).state,
-                       id(schedule_enabled).state,
-                       id(presence_detected),
-                       now.is_valid(),
-                       now.is_valid() ? now.hour : 0,
-                       (int) id(schedule_on_hour).state,
-                       (int) id(schedule_off_hour).state) &&
-                     id(cover_art_attribute_conditions_match) &&
-                     !(id(cover_art_hide_external_input_enabled).state &&
-                       id(cover_art_external_input_active)) &&
-                     !id(cover_art_media_player_entity).state.empty();
+              bool schedule_blocks = screen_schedule_blocks_cover_art(
+                  id(screen_schedule_trigger).state,
+                  id(schedule_enabled).state,
+                  id(presence_detected),
+                  now.is_valid(),
+                  now.is_valid() ? now.hour : 0,
+                  (int) id(schedule_on_hour).state,
+                  (int) id(schedule_off_hour).state);
+              return espcontrol::cover_art::display_allowed(
+                  id(cover_art_screensaver_enabled).state,
+                  id(cover_art_media_playing),
+                  !id(cover_art_media_player_entity).state.empty(),
+                  id(cover_art_attribute_conditions_match),
+                  id(cover_art_hide_external_input_enabled).state,
+                  id(cover_art_external_input_active),
+                  schedule_blocks,
+                  alarm_display_takeover_active(),
+                  false);
           then:
             - lambda: |-
                 if (!id(cover_art_runtime).image_available) {

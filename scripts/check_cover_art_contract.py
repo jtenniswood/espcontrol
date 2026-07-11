@@ -38,6 +38,23 @@ int main() {
   for (int i = 0; i < MAX_DOWNLOAD_RETRIES; ++i) s.record_failure();
   assert(!s.can_retry() && s.retry_count == MAX_DOWNLOAD_RETRIES);
   s.select_source("recovered"); assert(s.retry_count == 0 && s.can_retry());
+  // Playback stop/disable while a retry is pending must cancel all artwork work.
+  s.begin_download("recovered"); s.record_failure(); s.clear_image();
+  assert(!s.download_active() && !s.needs_download() && s.retry_count == 0);
+  // An entity/track change during retry starts a fresh budget and rejects stale completion.
+  s.select_source("entity-a"); s.begin_download("entity-a"); s.record_failure();
+  s.select_source("entity-b"); assert(s.retry_count == 0 && s.refresh_needed);
+  s.begin_download("entity-b"); assert(!s.apply_download("entity-a"));
+  assert(s.apply_download("entity-b") && s.current_image_loaded());
+  // Rapid play/pause policy changes cannot bypass alarm, voice, schedule, or source filtering.
+  assert(display_allowed(true, true, true, true, false, false, false, false, false));
+  assert(!display_allowed(true, false, true, true, false, false, false, false, false));
+  assert(!display_allowed(true, true, true, false, false, false, false, false, false));
+  assert(!display_allowed(true, true, true, true, false, false, true, false, false));
+  // Rotations remain deterministic when events repeat or arrive after boot.
+  auto portrait_again = cover_art_layout("guition-esp32-p4-jc1060p470", "90", 600, 1024, 600, 260);
+  auto portrait_repeat = cover_art_layout("guition-esp32-p4-jc1060p470", "90", 600, 1024, 600, 260);
+  assert(portrait_again.panel_y == portrait_repeat.panel_y && portrait_again.art_size == 600);
   assert(progress_percent(0, 0) == 0 && progress_percent(30, 120) == 25 && progress_percent(150, 120) == 100);
 }
 '''
