@@ -89,7 +89,7 @@ TASKS = (
          domains=("firmware", "workflow"), inputs=("scripts/local_esphome.py",), cache="never"),
     task("dev-docs", ("python3", "scripts/check_dev_docs.py", "--check"), profiles=FAST,
          domains=("docs",), inputs=MAINTAINER_DOCS + (
-             "scripts/check_dev_docs.py", "package.json", ".github/workflows/**",
+             "docs/**", "scripts/check_dev_docs.py", "package.json", ".github/workflows/**",
              "common/config/card_contract.json", "src/webserver/types/**",
              "components/espcontrol/button_grid*.h",
          ), parallel_safe=True),
@@ -106,7 +106,7 @@ TASKS = (
     task("memory-monitor", ("python3", "scripts/monitor_display_memory.py", "--self-test"), profiles=FAST,
          domains=("firmware",), inputs=("scripts/monitor_display_memory.py",), parallel_safe=True),
     task("cover-art-contract", ("python3", "scripts/check_cover_art_contract.py"), profiles=FAST,
-         domains=("firmware",), inputs=("common/device/screen_cover_art.yaml", "components/espcontrol/cover_art.h", "scripts/check_cover_art_contract.py"),
+         domains=("firmware",), inputs=("common/device/screen_cover_art.yaml", "components/espcontrol/cover_art.h", "components/artwork_image/artwork_image.cpp", "scripts/check_cover_art_contract.py"),
          parallel_safe=True, cache_tools=("c++",)),
     task("web-smoke", ("node", "scripts/check_web_smoke.js"), dependencies=("generated", "device-manifest-output"), profiles=PRODUCT,
          domains=("web", "product"), inputs=("src/webserver/**", "scripts/check_web_smoke.js") + WEB_SOURCE_HELPERS, generated_inputs=("docs/public/webserver/**",), parallel_safe=True),
