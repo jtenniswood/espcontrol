@@ -65,7 +65,7 @@ def package_substitution_lines(device: dict) -> list[str]:
 
 
 def voice_substitution_lines(device: dict) -> list[str]:
-    if device["slug"] != "esp32-p4-86":
+    if not package_data(device).get("localVoiceServices"):
         return [
             '  voice_clock_bar_hide_code: ""',
             '  voice_clock_bar_apply_code: ""',

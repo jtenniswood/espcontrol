@@ -10,6 +10,13 @@
             "chip": "ESP32-P4"
           }
         }
+      },
+      "esp32-s3": {
+        "firmware": {
+          "build": {
+            "chip": "ESP32-S3"
+          }
+        }
       }
     },
     "display": {
@@ -154,6 +161,46 @@
             "deviceFontPackageKey": "fonts_device"
           }
         }
+      },
+      "portrait-panel-p4": {
+        "firmware": {
+          "fonts": {
+            "icon": "font_icon_main",
+            "sensor": "font_number_value",
+            "largeSensor": "font_number_value_large",
+            "mediaTitle": "font_text_title",
+            "mediaControlTitle": "font_cover_art_title",
+            "volumeNumber": "font_number_value_large",
+            "volumeLabel": "font_text_body",
+            "climateCardIcon": "font_icon_card",
+            "subpageChevron": "font_icon_status",
+            "climateOptionTitle": "font_text_body",
+            "climateOptionValue": "font_text_body"
+          },
+          "package": {
+            "deviceFontPackageKey": "fonts_lg"
+          }
+        }
+      },
+      "compact-panel": {
+        "firmware": {
+          "fonts": {
+            "icon": "font_icon_main",
+            "sensor": "font_number_value",
+            "largeSensor": "font_number_value_large",
+            "mediaTitle": "font_text_title",
+            "mediaControlTitle": "font_media_control_title",
+            "volumeNumber": "font_number_value_large",
+            "volumeLabel": "font_text_body",
+            "climateCardIcon": "font_icon_card",
+            "subpageChevron": "font_icon_status",
+            "climateOptionTitle": "font_text_body",
+            "climateOptionValue": "font_text_body"
+          },
+          "package": {
+            "deviceFontPackageKey": "fonts_device"
+          }
+        }
       }
     },
     "network": {
@@ -161,6 +208,24 @@
         "firmware": {
           "package": {
             "esp32C6FirmwareUpdate": true
+          }
+        }
+      },
+      "network-coprocessor": {
+        "firmware": {
+          "package": {
+            "networkCoprocessor": true
+          }
+        }
+      },
+      "ethernet-selection": {
+        "firmware": {
+          "package": {
+            "ethernetSelectable": true,
+            "backlightPwmFrequency": {
+              "wifi": "1000Hz",
+              "ethernet": "20000Hz"
+            }
           }
         }
       }
@@ -207,12 +272,48 @@
         }
       }
     },
-    "audio": {},
-    "input": {}
+    "audio": {
+      "local-voice-services": {
+        "firmware": {
+          "package": {
+            "localVoiceServices": true,
+            "extraPackages": {
+              "voice_assistant": "!include device/voice_assistant.yaml"
+            }
+          }
+        }
+      }
+    },
+    "input": {
+      "touchscreen": {
+        "firmware": {
+          "package": {
+            "touchscreenPackage": true
+          }
+        }
+      },
+      "physical-volume-buttons": {
+        "firmware": {
+          "package": {
+            "extraPackages": {
+              "physical_volume_button": "!include device/physical_volume_button${network_package_suffix}.yaml"
+            }
+          }
+        }
+      }
+    }
   },
   "devices": {
     "guition-esp32-p4-jc1060p470": {
-      "profiles": {},
+      "profiles": {
+        "platform": "esp32-p4",
+        "fonts": "large-panel-p4",
+        "network": [
+          "c6-firmware-update",
+          "network-coprocessor",
+          "ethernet-selection"
+        ]
+      },
       "config": {
         "slots": 15,
         "public": {
@@ -291,22 +392,6 @@
           }
         },
         "firmware": {
-          "build": {
-            "chip": "ESP32-P4"
-          },
-          "fonts": {
-            "icon": "font_icon_main",
-            "sensor": "font_number_value",
-            "largeSensor": "font_number_value_large",
-            "mediaTitle": "font_text_title",
-            "mediaControlTitle": "font_cover_art_title",
-            "volumeNumber": "font_number_value_large",
-            "volumeLabel": "font_text_large",
-            "climateCardIcon": "font_icon_card",
-            "subpageChevron": "font_icon_status",
-            "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
-          },
           "display": {
             "wrapTallLabels": true,
             "imageCardDownloaders": 6,
@@ -380,11 +465,13 @@
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\""
-            },
-            "deviceFontPackageKey": "fonts_device",
-            "networkCoprocessor": true,
-            "esp32C6FirmwareUpdate": true,
-            "ethernetSelectable": true,
+            }
+          }
+        }
+      },
+      "overrides": {
+        "firmware": {
+          "package": {
             "backlightPwmFrequency": {
               "wifi": "1000Hz",
               "ethernet": "20000Hz"
@@ -394,7 +481,11 @@
       }
     },
     "guition-esp32-p4-jc4880p443": {
-      "profiles": {},
+      "profiles": {
+        "platform": "esp32-p4",
+        "fonts": "portrait-panel-p4",
+        "network": "c6-firmware-update"
+      },
       "config": {
         "slots": 6,
         "public": {
@@ -472,22 +563,6 @@
           }
         },
         "firmware": {
-          "build": {
-            "chip": "ESP32-P4"
-          },
-          "fonts": {
-            "icon": "font_icon_main",
-            "sensor": "font_number_value",
-            "largeSensor": "font_number_value_large",
-            "mediaTitle": "font_text_title",
-            "mediaControlTitle": "font_cover_art_title",
-            "volumeNumber": "font_number_value_large",
-            "volumeLabel": "font_text_body",
-            "climateCardIcon": "font_icon_card",
-            "subpageChevron": "font_icon_status",
-            "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
-          },
           "display": {
             "wrapTallLabels": false,
             "imageCardDownloaders": 6,
@@ -564,9 +639,7 @@
               "screen_saver_clock_default_brightness": "\"35\"",
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\""
-            },
-            "deviceFontPackageKey": "fonts_lg",
-            "esp32C6FirmwareUpdate": true
+            }
           }
         }
       }
@@ -602,7 +675,20 @@
       }
     },
     "esp32-p4-86": {
-      "profiles": {},
+      "profiles": {
+        "platform": "esp32-p4",
+        "fonts": "compact-panel",
+        "network": [
+          "c6-firmware-update",
+          "network-coprocessor",
+          "ethernet-selection"
+        ],
+        "audio": "local-voice-services",
+        "input": [
+          "touchscreen",
+          "physical-volume-buttons"
+        ]
+      },
       "config": {
         "slots": 9,
         "public": {
@@ -681,22 +767,6 @@
           }
         },
         "firmware": {
-          "build": {
-            "chip": "ESP32-P4"
-          },
-          "fonts": {
-            "icon": "font_icon_main",
-            "sensor": "font_number_value",
-            "largeSensor": "font_number_value_large",
-            "mediaTitle": "font_text_title",
-            "mediaControlTitle": "font_media_control_title",
-            "volumeNumber": "font_number_value_large",
-            "volumeLabel": "font_text_body",
-            "climateCardIcon": "font_icon_card",
-            "subpageChevron": "font_icon_status",
-            "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
-          },
           "display": {
             "imageCardDownloaders": 6,
             "wrapTallLabels": false,
@@ -772,16 +842,13 @@
               "voice_wake_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_wake_chime.flac\"",
               "voice_timer_alert_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_timer_alert.flac\"",
               "voice_stt_failure_chime_file": "\"https://raw.githubusercontent.com/jtenniswood/espcontrol/main/devices/esp32-p4-86/device/voice_stt_failure_chime.flac\""
-            },
-            "deviceFontPackageKey": "fonts_device",
-            "touchscreenPackage": true,
-            "networkCoprocessor": true,
-            "esp32C6FirmwareUpdate": true,
-            "ethernetSelectable": true,
-            "extraPackages": {
-              "voice_assistant": "!include device/voice_assistant.yaml",
-              "physical_volume_button": "!include device/physical_volume_button${network_package_suffix}.yaml"
-            },
+            }
+          }
+        }
+      },
+      "overrides": {
+        "firmware": {
+          "package": {
             "backlightPwmFrequency": {
               "wifi": "100Hz",
               "ethernet": "20000Hz"
@@ -791,7 +858,10 @@
       }
     },
     "guition-esp32-s3-4848s040": {
-      "profiles": {},
+      "profiles": {
+        "platform": "esp32-s3",
+        "fonts": "compact-panel"
+      },
       "config": {
         "slots": 9,
         "public": {
@@ -879,22 +949,6 @@
           }
         },
         "firmware": {
-          "build": {
-            "chip": "ESP32-S3"
-          },
-          "fonts": {
-            "icon": "font_icon_main",
-            "sensor": "font_number_value",
-            "largeSensor": "font_number_value_large",
-            "mediaTitle": "font_text_title",
-            "mediaControlTitle": "font_media_control_title",
-            "volumeNumber": "font_number_value_large",
-            "volumeLabel": "font_text_body",
-            "climateCardIcon": "font_icon_card",
-            "subpageChevron": "font_icon_status",
-            "climateOptionTitle": "font_text_body",
-            "climateOptionValue": "font_text_body"
-          },
           "display": {
             "wrapTallLabels": false,
             "imageCardDownloaders": 0,
@@ -972,7 +1026,6 @@
               "screen_schedule_clock_min_brightness": "\"1\"",
               "screen_schedule_clock_default_brightness": "\"10\""
             },
-            "deviceFontPackageKey": "fonts_device",
             "apiNavigateAction": false
           }
         }

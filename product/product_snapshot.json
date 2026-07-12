@@ -912,6 +912,7 @@
           },
           "deviceFontPackageKey": "fonts_device",
           "touchscreenPackage": true,
+          "localVoiceServices": true,
           "networkCoprocessor": true,
           "esp32C6FirmwareUpdate": true,
           "ethernetSelectable": true,

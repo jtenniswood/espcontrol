@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 import device_matrix
+import generate_device_slots
 from device_profiles import ROOT, load_device_profiles, public_device_capabilities
 import check_public_firmware
 
@@ -160,6 +161,23 @@ def test_upgrades_do_not_reset_saved_panel_config() -> None:
         assert not re.search(r"id\((?:button|subpage)_\d+_config(?:_ext(?:_\d+)?)?\)\.publish_state\(\"\"\)", text), (
             f"{rel}: must not clear saved button or subpage config"
         )
+
+
+def test_local_voice_generation_uses_capability() -> None:
+    voice_device = {
+        "slug": "semantic-voice-test",
+        "package": {"localVoiceServices": True},
+    }
+    standard_device = {
+        "slug": "esp32-p4-86",
+        "package": {"firmwareVersion": "dev"},
+    }
+    assert "open_device_volume_control" in "\n".join(
+        generate_device_slots.voice_substitution_lines(voice_device)
+    ), "local voice generation must follow the semantic capability"
+    assert "open_device_volume_control" not in "\n".join(
+        generate_device_slots.voice_substitution_lines(standard_device)
+    ), "the device slug alone must not enable local voice generation"
 
 
 def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
@@ -568,6 +586,7 @@ def main() -> int:
     test_generated_web(profiles)
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
+    test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_p4_43_rotation_refresh_rebuilds_subpages()
     test_web_screen_aspect_matches_public_resolution()

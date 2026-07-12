@@ -55,6 +55,23 @@ def package_api_navigate_enabled(package_path: Path, root: Path) -> bool:
     return bool(package.get("apiNavigateAction", True))
 
 
+def package_local_voice_services_enabled(package_path: Path, root: Path) -> bool:
+    manifest_path = root / "devices" / "manifest.json"
+    if not manifest_path.exists():
+        return False
+    try:
+        slug = package_path.relative_to(root / "devices").parts[0]
+    except (ValueError, IndexError):
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return False
+    device = manifest.get("devices", {}).get(slug, {})
+    package = device.get("firmware", {}).get("package", {})
+    return bool(package.get("localVoiceServices"))
+
+
 HA_BOUNDARY_ALLOWLIST = {
     "button_grid_ha.h",
 }
@@ -1587,16 +1604,16 @@ def firmware_navigation_target_errors(
         package_text = package_path.read_text(encoding="utf-8")
         if "navigate_voice_target_code" not in package_text:
             errors.append(f"{package_rel}: define a voice-target navigate hook")
-        if package_path.parts[-2] == "esp32-p4-86":
+        if package_local_voice_services_enabled(package_path, root):
             voice_package_found = True
             if "id(open_device_volume_control).execute();" not in package_text:
-                errors.append(f"{package_rel}: open the 86-P4 voice volume modal for voice navigation aliases")
+                errors.append(f"{package_rel}: open the local voice volume modal for voice navigation aliases")
             if "id(voice_services_enabled).state" not in package_text:
                 errors.append(f"{package_rel}: only open the voice volume modal when Voice Services are enabled")
         elif "open_device_volume_control" in package_text:
-            errors.append(f"{package_rel}: keep the voice volume modal hook limited to the 86-P4 package")
+            errors.append(f"{package_rel}: keep the voice volume modal hook limited to local voice service packages")
     if not voice_package_found:
-        errors.append("devices/esp32-p4-86/packages.yaml: define the voice volume navigate hook")
+        errors.append("devices/manifest.json: define a voice volume navigate hook for a local voice service package")
     return errors
 
 
@@ -2325,6 +2342,7 @@ def expect_navigation_target_errors(
     grid_text: str,
     api_text: str,
     package_texts: dict[str, str],
+    local_voice_slugs: tuple[str, ...],
     expected: tuple[str, ...],
 ) -> None:
     with TemporaryDirectory() as tmp:
@@ -2336,6 +2354,19 @@ def expect_navigation_target_errors(
         (firmware_dir / "button_grid_navigation.h").write_text(navigation_text, encoding="utf-8")
         (firmware_dir / "button_grid_grid.h").write_text(grid_text, encoding="utf-8")
         api_path.write_text(api_text, encoding="utf-8")
+        manifest_path = root / "devices" / "manifest.json"
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "devices": {
+                        slug: {"firmware": {"package": {"localVoiceServices": slug in local_voice_slugs}}}
+                        for slug in package_texts
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
         package_paths: list[Path] = []
         for slug, package_text in package_texts.items():
             package_path = root / "devices" / slug / "packages.yaml"
@@ -4439,8 +4470,10 @@ def run_self_test() -> int:
         "if (navigation_is_voice_target(target) && !navigation_has_home_label_target(target)) { ${navigate_voice_target_code} } else { espcontrol_navigate(target, id(main_page)->obj); }\n",
         {
             "esp32-p4-86": "navigate_voice_target_code: |-\n  if (id(voice_services_enabled).state) { id(open_device_volume_control).execute(); }\n",
+            "future-voice-panel": "navigate_voice_target_code: |-\n  if (id(voice_services_enabled).state) { id(open_device_volume_control).execute(); }\n",
             "other-p4": "navigate_voice_target_code: |-\n  ESP_LOGW(\"navigation\", \"Voice volume target is not available on this device\");\n",
         },
+        ("esp32-p4-86", "future-voice-panel"),
         (),
     )
     expect_connectivity_api_errors(
