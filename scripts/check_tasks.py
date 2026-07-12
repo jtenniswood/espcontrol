@@ -214,10 +214,12 @@ def parse_name_status(output: str) -> set[str]:
 
 
 def changed_paths(root: Path, merge_base: str) -> list[str]:
+    committed = git_output(root, "diff", "--name-status", "-z", "-M", f"{merge_base}..HEAD")
     tracked = git_output(root, "diff", "--name-status", "-z", "-M", merge_base)
     staged = git_output(root, "diff", "--cached", "--name-status", "-z", "-M", merge_base)
     untracked = git_output(root, "ls-files", "--others", "--exclude-standard", "-z")
-    paths = parse_name_status(tracked)
+    paths = parse_name_status(committed)
+    paths.update(parse_name_status(tracked))
     paths.update(parse_name_status(staged))
     paths.update(path for path in untracked.split("\0") if path)
     return sorted(paths)
@@ -714,6 +716,7 @@ def self_test() -> None:
         (repo / "docs/guide.md").write_text("committed\n")
         run_git("add", "docs/guide.md")
         run_git("commit", "-m", "docs change")
+        run_git("restore", "--source=main", "--staged", "--worktree", "docs/guide.md")
         run_git("mv", "src/webserver/old.js", "src/webserver/new.js")
         (repo / "components/espcontrol/example.h").unlink()
         (repo / "devices/catalog.json").write_text('{"changed": true}\n')
