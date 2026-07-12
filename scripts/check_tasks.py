@@ -310,6 +310,36 @@ def self_test() -> None:
             raise AssertionError(f"device slot outputs are not checked before {consumer} consumes them")
 
     registry = validate_registry()
+    package_scripts = json.loads((ROOT / "package.json").read_text())["scripts"]
+    profile_aliases = {
+        "check:product": "product",
+        "check:fast": "fast",
+        "check:ci": "ci",
+        "check:all": "all",
+        "check:release-preflight": "release",
+    }
+    for alias, profile in profile_aliases.items():
+        expected_command = f"python3 scripts/check_tasks.py run {profile}"
+        if package_scripts.get(alias) != expected_command:
+            raise AssertionError(f"{alias} does not route through the {profile} graph")
+
+    public_aliases = {
+        name: command for name, command in package_scripts.items()
+        if name.startswith("check:") and not name.endswith(":legacy")
+    }
+    for alias, command in public_aliases.items():
+        if alias in profile_aliases:
+            continue
+        task_id = alias.removeprefix("check:")
+        if task_id not in registry:
+            raise AssertionError(f"{alias} has no matching registered task")
+        expected_command = f"python3 scripts/check_tasks.py run-task {task_id}"
+        if command != expected_command:
+            raise AssertionError(f"{alias} does not route through run-task {task_id}")
+    missing_legacy = sorted(alias for alias in public_aliases if f"{alias}:legacy" not in package_scripts)
+    if missing_legacy:
+        raise AssertionError(f"public check aliases are missing temporary legacy commands: {missing_legacy}")
+
     if registry["types"].commands != (("npm", "exec", "--", "tsc", "--noEmit"),):
         raise AssertionError("TypeScript checks do not use the project-managed compiler")
     if "icon-groups" not in {item.id for item in plan("fast", "docs")}:

@@ -7,6 +7,17 @@ and when to raise confidence beyond the minimum route.
 Use the smallest check that covers the change while developing, then run the
 broader checks before merging or publishing.
 
+The public npm check commands are now compatibility entry points for the
+dependency-aware task graph. Focused commands include their declared prerequisites
+automatically, while the product, fast, CI, all, and release commands run complete
+assurance profiles. Temporary `:legacy` aliases preserve the previous command
+chains for one release cycle while the migration is observed.
+
+Use `python3 scripts/check_tasks.py list` to see registered tasks or
+`python3 scripts/check_tasks.py plan fast --explain` to preview a profile without
+running it. The registry in `scripts/check_tasks_data.py` is the maintained source
+for task commands, dependencies, profiles, domains, and input paths.
+
 ## Common Checks
 
 | Command | Use when |

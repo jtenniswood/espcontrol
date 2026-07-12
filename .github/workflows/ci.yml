@@ -152,41 +152,8 @@ jobs:
       - name: Install browser runtime
         run: npx playwright install --with-deps chromium
 
-      - run: npm run check:ci
-
-  check-graph-shadow:
-    name: Check Graph Shadow
-    needs: sync-icons
-    if: >-
-      always() &&
-      (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
-    steps:
-      - name: Prepare self-hosted workspace
-        run: |
-          rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?* 2>/dev/null ||
-            sudo rm -rf "${GITHUB_WORKSPACE:?}/"* "${GITHUB_WORKSPACE:?}/".[!.]* "${GITHUB_WORKSPACE:?}/"..?*
-
-      - uses: actions/checkout@v7.0.0
-      - run: git sparse-checkout disable || true
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: |
-          NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"
-          mkdir -p "${NPM_CACHE}"
-          npm ci --prefer-offline --cache "${NPM_CACHE}"
-          bash scripts/prune_actions_cache.sh "${NPM_CACHE}" "${ESPCONTROL_NPM_CACHE_MAX_MB}" --strategy reset
-
-      - name: Install browser runtime
-        run: npx playwright install --with-deps chromium
-
-      - name: Run task graph shadow
-        continue-on-error: true
-        run: python3 scripts/check_tasks.py run ci --summary-json check-task-summary.json
+      - name: Run required check graph
+        run: npm run check:ci -- --summary-json check-task-summary.json
 
       - name: Upload task graph summary
         if: always()
