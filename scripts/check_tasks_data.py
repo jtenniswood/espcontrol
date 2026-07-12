@@ -69,6 +69,19 @@ WEB_SOURCE_HELPERS = ("scripts/web_source.js", "scripts/web_modules.json")
 
 # Declaration order is the stable tie-breaker used by the planner.
 TASKS = (
+    task("firmware-tests", ("cmake", "-E", "remove_directory", "build/tests/firmware"),
+         ("cmake", "-S", "tests/firmware", "-B", "build/tests/firmware"),
+         ("cmake", "--build", "build/tests/firmware"),
+         ("ctest", "--test-dir", "build/tests/firmware", "--output-on-failure"), profiles=FAST,
+         domains=("firmware",), inputs=("tests/firmware/**",), parallel_safe=True,
+         cache="never"),
+    task("web-unit", ("node", "--test", "tests/web/unit/**/*.test.js"), profiles=FAST,
+         domains=("web",), inputs=("tests/web/unit/**", "src/webserver/**"), parallel_safe=True,
+         cache_tools=("node",)),
+    task("mutations", ("python3", "scripts/run_mutations.py"),
+         domains=("firmware", "web"),
+         inputs=("tests/mutations/**", "tests/firmware/**", "tests/web/unit/**", "scripts/run_mutations.py"),
+         cache="never"),
     task("generated", ("python3", "scripts/build.py", "--check"), profiles=PRODUCT,
          domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "src/webserver/**", "compatibility/**", "scripts/build.py", "scripts/web_modules.json"),
          generated_inputs=("components/espcontrol/*_generated.h", "docs/generated/**", "docs/public/**", "product/product_snapshot.json"),

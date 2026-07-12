@@ -78,6 +78,10 @@
     "docs:preview": "vitepress preview docs",
     "test": "npm run check:fast",
     "test:ci": "npm run check:ci",
+    "test:firmware": "python3 scripts/check_tasks.py run-task firmware-tests",
+    "test:web-unit": "python3 scripts/check_tasks.py run-task web-unit",
+    "test:web-browser": "python3 scripts/check_tasks.py run-task web-browser-smoke",
+    "test:mutations": "python3 scripts/check_tasks.py run-task mutations",
     "webserver:build": "python3 scripts/build.py www"
   },
   "devDependencies": {

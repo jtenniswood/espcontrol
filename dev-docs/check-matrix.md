@@ -25,6 +25,9 @@ This detailed routing table is generated directly from `scripts/check_tasks_data
 
 | Task | Domains | Parallel-safe | Cache | Cache environment | Cache tools | Declared inputs | Cache-only inputs | Focused command |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `firmware-tests` | firmware | Yes | never | — | — | `tests/firmware/**` | — | `python3 scripts/check_tasks.py run-task firmware-tests` |
+| `web-unit` | web | Yes | deterministic | — | `node` | `tests/web/unit/**`<br>`src/webserver/**` | — | `python3 scripts/check_tasks.py run-task web-unit` |
+| `mutations` | firmware, web | No | never | — | — | `tests/mutations/**`<br>`tests/firmware/**`<br>`tests/web/unit/**`<br>`scripts/run_mutations.py` | — | `python3 scripts/check_tasks.py run-task mutations` |
 | `generated` | product, firmware, web, docs | Yes | never | — | — | `common/**`<br>`devices/**`<br>`builds/**`<br>`components/espcontrol/**`<br>`src/webserver/**`<br>`compatibility/**`<br>`scripts/build.py`<br>`scripts/web_modules.json` | — | `npm run check:generated` |
 | `device-manifest` | product, firmware | Yes | deterministic | — | — | `common/assets/**`<br>`devices/**`<br>`builds/**`<br>`scripts/check_device_manifest.py` | — | `python3 scripts/check_tasks.py run-task device-manifest` |
 | `device-manifest-output` | product, firmware, docs | Yes | deterministic | — | — | `common/assets/**`<br>`devices/catalog.json`<br>`scripts/generate_device_manifest.py` | — | `python3 scripts/check_tasks.py run-task device-manifest-output` |

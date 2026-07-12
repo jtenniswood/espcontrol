@@ -1,0 +1,11 @@
+[
+  {
+    "id": "foundation-invalid-slot",
+    "patch": "foundation-invalid-slot.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware && ctest --test-dir build/tests/firmware --output-on-failure"
+    ]
+  }
+]
