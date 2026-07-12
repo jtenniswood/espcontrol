@@ -16,20 +16,26 @@ external_components:
 
 esp_afe:
   id: voice_afe_processor
-  type: fd
+  type: sr
   mode: high_perf
-  mic_num: 1
+  mic_num: 2
+  input_format: MMNR
+  se_enabled: true
   aec_enabled: true
   aec_filter_length: 4
-  ns_enabled: true
+  aec_nlp_level: normal
+  ns_enabled: false
+  # AFE VAD is intentionally disabled; Micro Wake Word uses its own VAD below.
   vad_enabled: false
-  vad_mode: 2
-  vad_min_speech_ms: 96
-  vad_min_noise_ms: 600
-  vad_delay_ms: 160
-  agc_enabled: true
-  agc_target_level: 6
-  task_priority: 8
+  # Dual-mic SE/BSS is the active enhancement path, so AFE AGC remains disabled.
+  agc_enabled: false
+  task_priority: 5
+  memory_alloc_mode: more_psram
+  # Keep frame buffers internal to reduce latency, but leave the feed ring in PSRAM.
+  # Moving the feed ring internal as well caused a memory-pressure segfault.
+  feed_buf_in_psram: false
+  feed_ring_in_psram: true
+  fetch_ring_in_psram: false
 
 esp_audio_stack:
   id: voice_audio_stack
@@ -46,7 +52,7 @@ esp_audio_stack:
   processor_id: voice_afe_processor
   use_tdm_reference: true
   tdm_total_slots: 4
-  tdm_mic_slots: [0]
+  tdm_mic_slots: [0, 2]
   tdm_ref_slot: 1
   buffers_in_psram: true
   audio_task_stack_in_psram: true
@@ -56,7 +62,7 @@ esp_audio_stack:
       type: es7210
       address: 0x40
       mic_selected: 0x0F
-      gain_db: 30.0
+      gain_db: 36.0
       ref_channel: 1
       ref_gain_db: 0.0
     output:
@@ -133,7 +139,8 @@ media_player:
     announcement_pipeline:
       speaker: voice_announcement_resampling_speaker
       format: FLAC
-      sample_rate: 48000
+      sample_rate: 16000
+      num_channels: 1
     media_pipeline:
       speaker: voice_media_resampling_speaker
       format: NONE
@@ -191,6 +198,22 @@ media_player:
       - script.execute: refresh_voice_clock_bar_mute_icon
 
 sensor:
+  # Pre/post-AFE diagnostics for evidence-based gain and clipping checks.
+  - platform: esp_afe
+    esp_afe_id: voice_afe_processor
+    input_volume:
+      id: voice_afe_input_volume
+      name: Voice AFE Input Volume
+      entity_category: diagnostic
+      internal: true
+      update_interval: 500ms
+    output_rms:
+      id: voice_afe_output_rms
+      name: Voice AFE Output RMS
+      entity_category: diagnostic
+      internal: true
+      update_interval: 500ms
+
   - platform: sound_level
     id: voice_mic_sound_level
     microphone:
