@@ -153,7 +153,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run required check graph
-        run: python3 scripts/check_tasks.py run ci --summary-json check-task-summary.json
+        run: npm run check:ci -- --summary-json check-task-summary.json
 
       - name: Upload task graph summary
         if: always()
