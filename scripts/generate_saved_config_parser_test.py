@@ -54,6 +54,8 @@ def generate() -> str:
         "inline const char *espcontrol_i18n(const char *text) { return text ? text : \"\"; }",
         "inline std::string espcontrol_i18n(const std::string &text) { return text; }",
         '#include "button_grid_config_parser.h"',
+        "#define ESPCONTROL_SUBPAGE_PARSER_ONLY",
+        '#include "button_grid_subpages.h"',
         "",
         "int main() {",
     ]
@@ -71,6 +73,41 @@ def generate() -> str:
                     lines.append(
                         f"  assert({variable}.{field} == {cpp_string(fixture['expected'][field])});"
                     )
+    issue_248 = (
+        "~B,,4,2,3,,,,8,9,,,1,6,5|X,,Office,Window Closed,Window Open,binary_sensor.office_window_sensor_opening,,window,active_color"
+        "|X,,Linnea 1,Window Closed,Window Open,binary_sensor.linnea_br_window_sensor_opening,,window,active_color"
+        "|X,,Linnea 2,Window Closed,Window Open,binary_sensor.linnea_br_window_2_sensor_opening,,window,active_color"
+        "|X,,Maxime,Window Closed,Window Open,binary_sensor.maxime_br_window_sensor_opening,,window,active_color"
+        "|X,,Study 2,Window Closed,Window Open,binary_sensor.study_window_2_sensor_opening,,window,active_color"
+        "|X,,Study 1,Window Closed,Window Open,binary_sensor.study_window_2_sensor_opening,,window,active_color"
+        "||X,,Master 1,Window Closed,Window Open,binary_sensor.master_bedroom_window_1_sensor,,window,active_color"
+        "|X,,Master 2,Window Closed,Window Open,binary_sensor.master_bedroom_window_2_sensor,,window,active_color"
+        "|X,,Kitchen,Window Closed,Window Open,binary_sensor.kitchen_window_sensor_opening,,window,active_color"
+    )
+    lines.extend(
+        (
+            "  // Issue 248: fixed-size storage chunks can split inside compact card data.",
+            f"  const std::string issue_248_config = {cpp_string(issue_248)};",
+            "  std::string issue_248_joined;",
+            "  for (size_t offset = 0; offset < issue_248_config.size(); offset += 255) {",
+            "    issue_248_joined += issue_248_config.substr(offset, 255);",
+            "  }",
+            "  assert(issue_248_joined == issue_248_config);",
+            "  const auto issue_248_buttons = parse_subpage_config(issue_248_joined);",
+            "  const auto issue_248_expected = parse_subpage_config(issue_248_config);",
+            "  assert(issue_248_buttons.size() == issue_248_expected.size());",
+            "  assert(issue_248_buttons.size() == 10);",
+            "  for (size_t i = 0; i < issue_248_buttons.size(); ++i) {",
+            "    assert(issue_248_buttons[i].entity == issue_248_expected[i].entity);",
+            "    assert(issue_248_buttons[i].label == issue_248_expected[i].label);",
+            "    assert(issue_248_buttons[i].type == issue_248_expected[i].type);",
+            "  }",
+            '  assert(issue_248_buttons.front().label == "Office");',
+            '  assert(issue_248_buttons.front().sensor == "binary_sensor.office_window_sensor_opening");',
+            '  assert(issue_248_buttons.back().label == "Kitchen");',
+            '  assert(issue_248_buttons.back().sensor == "binary_sensor.kitchen_window_sensor_opening");',
+        )
+    )
     lines.extend(("  return 0;", "}", ""))
     return "\n".join(lines)
 
