@@ -104,6 +104,8 @@ Treat saved card config as durable user data.
 - Add fixtures in `compatibility/fixtures/product_compatibility.json` when the
   saved shape changes.
 
+Baseline migration decision: leading and trailing whitespace in saved Media playlist text values is not meaningful. Browser and firmware normalization trim it, and a padded `playlist` content type is treated as the default and omitted. Existing stored strings are still read without a new format and are not rewritten until an existing save or backup-import action persists the normalized value.
+
 ## Where Card Logic Lives
 
 | Concern | Typical path |

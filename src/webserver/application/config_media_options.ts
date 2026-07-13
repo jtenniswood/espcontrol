@@ -36,15 +36,15 @@ export function installConfigMediaOptionsModule(): GlobalDescriptors {
         }
         if (mode === "playlist") {
             var playlistOut: any = "";
-            var contentId: any = configOptionValue(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+            var contentId: any = configOptionValue(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION).trim();
             if (contentId)
                 playlistOut = setConfigOptionValue(playlistOut, MEDIA_PLAYLIST_CONTENT_ID_OPTION, contentId);
             var defaultType: any = cardContractOptionDefaultValue("media", MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, "playlist");
-            var contentType: any = configOptionValue(options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION) || defaultType;
+            var contentType: any = configOptionValue(options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION).trim() || defaultType;
             if (contentType !== defaultType) {
                 playlistOut = setConfigOptionValue(playlistOut, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, contentType);
             }
-            var playerSource: any = configOptionValue(options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION);
+            var playerSource: any = configOptionValue(options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION).trim();
             if (playerSource)
                 playlistOut = setConfigOptionValue(playlistOut, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION, playerSource);
             return playlistOut;

@@ -207,6 +207,12 @@ inline int normalize_media_volume_max_percent(const std::string &value) {
   return static_cast<int>(parsed);
 }
 
+inline std::string trim_saved_option_value(const std::string &value) {
+  const size_t first = value.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos) return "";
+  return value.substr(first, value.find_last_not_of(" \t\r\n") - first + 1);
+}
+
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
   if (mode == "control_modal") {
@@ -228,17 +234,17 @@ inline std::string media_card_options_normalized(const std::string &options,
   }
   if (mode == "playlist") {
     std::string out;
-    std::string content_id = cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+    std::string content_id = trim_saved_option_value(cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_ID_OPTION));
     if (!content_id.empty()) {
       out = std::string(MEDIA_PLAYLIST_CONTENT_ID_OPTION) + "=" + encode_compact_field(content_id);
     }
-    std::string content_type = cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
+    std::string content_type = trim_saved_option_value(cfg_option_value(options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION));
     if (content_type.empty()) content_type = "playlist";
     if (content_type != "playlist") {
       if (!out.empty()) out += ",";
       out += std::string(MEDIA_PLAYLIST_CONTENT_TYPE_OPTION) + "=" + encode_compact_field(content_type);
     }
-    std::string player_source = cfg_option_value(options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION);
+    std::string player_source = trim_saved_option_value(cfg_option_value(options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION));
     if (!player_source.empty()) {
       if (!out.empty()) out += ",";
       out += std::string(MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION) + "=" + encode_compact_field(player_source);
