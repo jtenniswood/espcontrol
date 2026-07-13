@@ -108,6 +108,8 @@ Baseline migration decision: leading and trailing whitespace in saved Media play
 
 Malformed UTF-8 percent runs are preserved as literal saved text, matching the browser's safe decoder. Valid percent-encoded UTF-8 and delimiters continue to decode normally.
 
+When a partly migrated Sensor translation contains both a current state output and a legacy high/low label, the current output wins; the legacy value supplies only the missing input/output parts.
+
 ## Where Card Logic Lives
 
 | Concern | Typical path |

@@ -491,10 +491,10 @@ inline std::string sensor_card_options_normalized(const std::string &options,
     std::string output = cfg_option_value(options, SENSOR_STATE_OUTPUT_OPTION);
     if (input.empty() && !cfg_option_value(options, SENSOR_STATE_HIGH_LABEL_OPTION).empty()) {
       input = "high";
-      output = cfg_option_value(options, SENSOR_STATE_HIGH_LABEL_OPTION);
+      if (output.empty()) output = cfg_option_value(options, SENSOR_STATE_HIGH_LABEL_OPTION);
     } else if (input.empty() && !cfg_option_value(options, SENSOR_STATE_LOW_LABEL_OPTION).empty()) {
       input = "low";
-      output = cfg_option_value(options, SENSOR_STATE_LOW_LABEL_OPTION);
+      if (output.empty()) output = cfg_option_value(options, SENSOR_STATE_LOW_LABEL_OPTION);
     }
     if (!input.empty()) {
       out += ",";

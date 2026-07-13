@@ -118,5 +118,20 @@
       "precision": "text",
       "options": "state_labels,state_input=%25C3%2528,state_output=Invalid"
     }
+  },
+  {
+    "name": "text sensor preserves explicit output during legacy input fallback",
+    "input": "sensor.x;State;Auto;Auto;sensor.x;;sensor;text;state_labels,state_output=Running,state_high_label=Please%20empty",
+    "expected": {
+      "entity": "sensor.x",
+      "label": "State",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.x",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "state_labels,state_input=high,state_output=Running"
+    }
   }
 ]
