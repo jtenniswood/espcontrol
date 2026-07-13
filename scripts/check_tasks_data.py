@@ -157,7 +157,7 @@ TASKS = (
          domains=("web",), inputs=("src/**/*.ts", "tsconfig.json", "package-lock.json"),
          parallel_safe=True, cache_tools=("node_modules/.bin/tsc",)),
     task("saved-config-parity", ("node", "scripts/check_saved_config_parity.js"), profiles=FAST,
-         domains=("firmware", "web"), inputs=("components/espcontrol/button_grid_config_parser.h", "components/espcontrol/button_grid_card_runtime.h", "common/config/card_normalization_fixtures.json", "common/config/*_card_normalization_fixtures.json", "src/webserver/**", "scripts/check_saved_config_parity.js") + WEB_SOURCE_HELPERS + WEB_BUNDLE_INPUTS,
+         domains=("firmware", "web"), inputs=("components/espcontrol/button_grid_config_parser.h", "components/espcontrol/button_grid_card_runtime.h", "components/espcontrol/button_grid_contract_generated.h", "common/config/card_normalization_fixtures.json", "common/config/*_card_normalization_fixtures.json", "src/webserver/**", "scripts/check_saved_config_parity.js") + WEB_SOURCE_HELPERS + WEB_BUNDLE_INPUTS,
          cache_inputs=WEB_BUNDLE_BUILD_HELPERS,
          parallel_safe=True, cache_tools=("c++", "g++", "clang++", "node")),
     task("firmware-parser", ("python3", "scripts/check_firmware_parser.py"), dependencies=("device-slots", "saved-config-parity"), profiles=FAST,
