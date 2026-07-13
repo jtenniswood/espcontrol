@@ -122,6 +122,7 @@ function resizeSlot(slot, targetSz) {
 
 function addBulkCardMenuItems(slots) {
   addCtxItem("clipboard-outline", "Copy " + slots.length + " Cards", function () { copyButtons(slots); });
+  addCtxItem("code-json", "Copy " + slots.length + " Cards as Code", function () { showCopyCardCode(slots); });
   addCtxItem("content-cut", "Cut " + slots.length + " Cards", function () { cutButtons(slots); });
   addCtxItem("delete", "Delete " + slots.length + " Cards", function () { deleteButtons(slots); }, true);
 }
@@ -158,6 +159,7 @@ function addSingleCardMenuItems(slot) {
   });
 
   addCtxItem("clipboard-outline", "Copy", function () { copySlot(slot); });
+  addCtxItem("code-json", "Copy Card Code", function () { showCopyCardCode([slot]); });
   addCtxItem("content-cut", "Cut", function () { cutSlot(slot); });
   addCtxItem("delete", "Delete", function () { deleteSlot(slot); }, true);
 }
@@ -288,8 +290,11 @@ function showEmptySlotMenu(e, pos) {
         pasteButton(pos);
       }
     });
-    addCtxDivider();
   }
+  addCtxItem("code-json", "Paste Card Code…", function () {
+    showPasteCardCode(pos, c.isSub);
+  });
+  addCtxDivider();
   addCtxItem("plus", "Create Card", function () { addSlot(pos); });
   if (!c.isSub) {
     addCtxItem("folder-plus", "Create Subpage", function () { addSubpageSlot(pos); });

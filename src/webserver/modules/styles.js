@@ -218,6 +218,31 @@ var CSS =
   "color:var(--text2);display:flex;align-items:center;justify-content:center;" +
   "font-size:20px;cursor:pointer;z-index:1;line-height:1;padding:0;" +
   "box-shadow:var(--shadow-1);transition:background .2s,border-color .2s,color .2s}" +
+
+  ".sp-transfer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:260;" +
+  "display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;" +
+  "backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
+  ".sp-transfer-dialog{position:relative;width:min(620px,100%);max-height:90vh;overflow:auto;" +
+  "box-sizing:border-box;padding:24px;background:var(--bg);border:1px solid var(--border);" +
+  "border-radius:var(--radius);box-shadow:var(--shadow-3);color:var(--text)}" +
+  ".sp-transfer-dialog h2{margin:0 44px 12px 0;font-size:1.2rem}" +
+  ".sp-transfer-dialog p{margin:0 0 14px;color:var(--text2);line-height:1.45}" +
+  ".sp-transfer-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:999px;" +
+  "border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;" +
+  "display:flex;align-items:center;justify-content:center;padding:0}" +
+  ".sp-transfer-code{width:100%;min-height:170px;box-sizing:border-box;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" +
+  "font-size:.78rem;word-break:break-all}" +
+  ".sp-transfer-note{margin-top:10px!important;font-size:.82rem}" +
+  ".sp-transfer-status,.sp-transfer-error{min-height:20px;margin-top:8px;font-size:.86rem}" +
+  ".sp-transfer-status{color:var(--text2)}.sp-transfer-error{color:#ff8b8b}" +
+  ".sp-transfer-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}" +
+  ".sp-transfer-btn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;" +
+  "padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);" +
+  "color:var(--text);font:inherit;font-weight:600;cursor:pointer}" +
+  ".sp-transfer-btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}" +
+  "@media(max-width:600px){.sp-transfer-overlay{padding:0}.sp-transfer-dialog{width:100%;height:100%;" +
+  "max-height:none;border:0;border-radius:0;padding:20px}.sp-transfer-code{min-height:45vh}" +
+  ".sp-transfer-actions{position:sticky;bottom:0;background:var(--bg);padding-top:12px}}" +
   ".sp-settings-close:hover{background:var(--border);border-color:#4a4d54;color:var(--text)}" +
   ".sp-settings-close:focus-visible{outline:none;border-color:var(--accent);" +
   "box-shadow:0 0 0 3px var(--accent-soft)}" +

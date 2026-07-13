@@ -105,3 +105,16 @@ Read-only cards such as Sensor, Date, Clock, World Clock, and Weather do not aff
 ## Moving Cards Between Pages
 
 You can cut, copy, and paste cards between the home screen and subpages. Right-click a card, choose **Cut** or **Copy**, then right-click an empty space on the destination page and choose **Paste**.
+
+## Copying Cards Between Controllers
+
+To copy a card to another EspControl panel:
+
+1. Right-click the card and choose **Copy Card Code**. If you selected several cards, choose **Copy Cards as Code**.
+2. Use **Copy Code**. Most EspControl pages use a local HTTP address, so your browser may instead select the code and ask you to press **Ctrl+C** or **Command+C**.
+3. Open the setup page for the other controller, right-click an empty position, and choose **Paste Card Code**.
+4. Paste the code into the box and choose **Paste**.
+
+Card codes include the card size and any attached subpage. When the destination screen is a different size, EspControl finds suitable empty positions and may reduce a large card to a single tile. The complete group is checked before anything is saved, so a multi-card transfer is not partly applied when there is insufficient room.
+
+Cards that use an internal relay, local action, or local sensor may need to be edited for the destination controller. Card codes can also contain private webhook URLs or headers, so keep them private and do not post them publicly.

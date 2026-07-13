@@ -78,6 +78,8 @@ When the entity is not active, the card goes back to its off icon and normal lab
 
 Drag and drop any card to reposition it. If you drop it onto an occupied space, the existing card shifts to the next available slot.
 
+To copy cards to another controller without replacing its other settings, use **Copy Card Code** and **Paste Card Code**. See [Copying Cards Between Controllers](/features/subpages#copying-cards-between-controllers) for the steps and compatibility notes.
+
 ### Card Sizes
 
 Right-click a card and open **Size** to choose:

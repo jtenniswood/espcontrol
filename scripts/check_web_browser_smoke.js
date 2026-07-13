@@ -2319,6 +2319,154 @@ async function assertEditAndApplySmoke(page, posts, errors) {
   );
 }
 
+async function openPasteCardCodeDialog(page) {
+  const emptyCell = page.locator(".sp-main .sp-empty-cell").first();
+  assert(await emptyCell.isVisible(), "card transfer test requires an empty destination cell");
+  const pos = await emptyCell.getAttribute("data-pos");
+  await emptyCell.click({ button: "right", force: true });
+  await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
+  await page
+    .locator(".sp-ctx-menu")
+    .getByText("Paste Card Code…", { exact: true })
+    .click();
+  await page.locator(".sp-transfer-dialog").waitFor({ state: "visible" });
+  return { dialog: page.locator(".sp-transfer-dialog"), pos };
+}
+
+async function assertCardTransferSmoke(page, posts, label) {
+  await page.getByRole("tab", { name: "Screen" }).click();
+  await page.locator('.sp-main [data-slot="1"]').click({ button: "right", force: true });
+  await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
+  assert(
+    await page.locator(".sp-ctx-menu").getByText("Copy Card Code", { exact: true }).isVisible(),
+    `${label}: card context menu exposes transfer-code copying`,
+  );
+  await page.locator(".sp-ctx-menu").getByText("Copy Card Code", { exact: true }).click();
+  const copyDialog = page.locator(".sp-transfer-dialog");
+  await copyDialog.waitFor({ state: "visible" });
+  const code = await copyDialog.locator("textarea").inputValue();
+  const envelope = JSON.parse(code);
+  assert.strictEqual(envelope.format, "espcontrol.cards", `${label}: copied card code has the format marker`);
+  assert.strictEqual(envelope.version, 1, `${label}: copied card code uses version 1`);
+  assert.strictEqual(envelope.cards.length, 1, `${label}: single-card code contains one card`);
+  assert(
+    String(envelope.cards[0].entity || "").includes("."),
+    `${label}: copied code preserves the configured entity`,
+  );
+  await copyDialog.getByRole("button", { name: "Copy Code" }).click();
+  await page.waitForFunction(() => {
+    const status = document.querySelector(".sp-transfer-status");
+    return status && /Ctrl\+C|Command\+C|copied/.test(status.textContent || "");
+  });
+  await copyDialog.locator(".sp-transfer-actions").getByRole("button", { name: "Close" }).click();
+
+  const beforePaste = posts.length;
+  const destination = await openPasteCardCodeDialog(page);
+  await destination.dialog.locator("textarea").fill(code);
+  await destination.dialog.getByRole("button", { name: "Paste", exact: true }).click();
+  await page.locator(`.sp-main [data-pos="${destination.pos}"][data-slot]`).waitFor({ state: "visible" });
+  const pastedSlot = await page
+    .locator(`.sp-main [data-pos="${destination.pos}"]`)
+    .getAttribute("data-slot");
+  await waitForAnyPost(
+    posts,
+    [
+      { domain: "text", name: `button_${pastedSlot}_config`, action: "set" },
+      { domain: "text", name: `Button ${pastedSlot} Config`, action: "set" },
+    ],
+    `${label}: transferred card is saved`,
+    beforePaste,
+  );
+  assert(
+    (await page.locator(".sp-banner").textContent()).includes("Card pasted"),
+    `${label}: successful transfer is reported`,
+  );
+
+  const noRoom = JSON.parse(code);
+  noRoom.cards = Array.from({ length: 20 }, () => ({ ...noRoom.cards[0] }));
+  await page.waitForTimeout(500);
+  const beforeNoRoom = posts.length;
+  const noRoomDialog = await openPasteCardCodeDialog(page);
+  await noRoomDialog.dialog.locator("textarea").fill(JSON.stringify(noRoom));
+  await noRoomDialog.dialog.getByRole("button", { name: "Paste", exact: true }).click();
+  await page.waitForFunction(() => {
+    const error = document.querySelector(".sp-transfer-error");
+    return error && /not enough room/.test(error.textContent || "");
+  });
+  assert.strictEqual(posts.length, beforeNoRoom, `${label}: an impossible bulk paste writes nothing`);
+
+  const unknown = JSON.parse(code);
+  unknown.cards[0].type = "not_a_real_card";
+  await noRoomDialog.dialog.locator("textarea").fill(JSON.stringify(unknown));
+  await noRoomDialog.dialog.getByRole("button", { name: "Paste", exact: true }).click();
+  await page.waitForFunction(() => {
+    const error = document.querySelector(".sp-transfer-error");
+    return error && /does not support/.test(error.textContent || "");
+  });
+  assert.strictEqual(posts.length, beforeNoRoom, `${label}: an unknown card type writes nothing`);
+  await noRoomDialog.dialog.getByRole("button", { name: "Cancel" }).click();
+
+  const local = JSON.parse(code);
+  local.cards[0] = {
+    ...local.cards[0],
+    entity: "local_action_key",
+    type: "action",
+    sensor: "local",
+    options: "",
+  };
+  const localDialog = await openPasteCardCodeDialog(page);
+  await localDialog.dialog.locator("textarea").fill(JSON.stringify(local));
+  await localDialog.dialog.getByRole("button", { name: "Paste", exact: true }).click();
+  await page.waitForSelector(".sp-banner.sp-warning");
+  assert(
+    (await page.locator(".sp-banner").textContent()).includes("Review local device references"),
+    `${label}: local-device transfers show a review warning`,
+  );
+
+  const subpage = JSON.parse(code);
+  subpage.cards[0] = {
+    entity: "",
+    label: "Transferred Page",
+    icon: "Folder",
+    icon_on: "Auto",
+    sensor: "generic",
+    unit: "",
+    type: "subpage",
+    precision: "",
+    options: "",
+    size: 3,
+    subpage: {
+      order: ["B", "1"],
+      back_label: "Return",
+      buttons: [{
+        entity: "switch.transferred",
+        label: "Transferred Switch",
+        icon: "Toggle Switch",
+        icon_on: "Toggle Switch",
+        sensor: "",
+        unit: "",
+        type: "",
+        precision: "",
+        options: "",
+      }],
+    },
+  };
+  const beforeSubpage = posts.length;
+  const subpageDialog = await openPasteCardCodeDialog(page);
+  await subpageDialog.dialog.locator("textarea").fill(JSON.stringify(subpage));
+  await subpageDialog.dialog.getByRole("button", { name: "Paste", exact: true }).click();
+  await page.locator(`.sp-main [data-pos="${subpageDialog.pos}"][data-slot]`).waitFor({ state: "visible" });
+  const subpageSlot = await page
+    .locator(`.sp-main [data-pos="${subpageDialog.pos}"]`)
+    .getAttribute("data-slot");
+  await waitForPost(
+    posts,
+    { domain: "text", name: `Subpage ${subpageSlot} Config`, action: "set" },
+    `${label}: transferred subpage configuration is saved`,
+    beforeSubpage,
+  );
+}
+
 async function assertClockBarEditorSmoke(page, posts, label) {
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -2847,6 +2995,7 @@ async function runCase(browser, testCase) {
       await assertClockBarEditorSmoke(page, posts, testCase.name);
       await assertBackupImportSmoke(page, posts, testCase);
       await assertEditAndApplySmoke(page, posts, errors);
+      await assertCardTransferSmoke(page, posts, testCase.name);
     } else if (testCase.exerciseDeviceMocks) {
       await assertBackupImportSmoke(page, posts, testCase);
     }
