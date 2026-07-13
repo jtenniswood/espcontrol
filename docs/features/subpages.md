@@ -112,7 +112,7 @@ To copy a card to another EspControl panel:
 
 1. Right-click the card and choose **Copy Code**. If you selected several cards, choose **Copy Cards as Code**.
 2. The code is selected automatically. Copy it with **Ctrl+C** or **Command+C**.
-3. Open the setup page for the other controller, right-click an empty position, and choose **Paste Card Code**.
+3. Open the setup page for the other controller, right-click an empty position, and choose **Paste Code**.
 4. Paste the code into the box and choose **Paste**.
 
 Card codes include the card size and any attached subpage. When the destination screen is a different size, EspControl finds suitable empty positions and may reduce a large card to a single tile. The complete group is checked before anything is saved, so a multi-card transfer is not partly applied when there is insufficient room.

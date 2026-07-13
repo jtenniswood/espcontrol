@@ -495,13 +495,13 @@ function showCopyCardCode(slots) {
 }
 
 function showPasteCardCode(pos, targetIsSubpage) {
-  var dialog = createCardTransferDialog("Paste Card Code");
+  var dialog = createCardTransferDialog("Paste Code");
   var intro = document.createElement("p");
-  intro.textContent = "Paste the card code below. Nothing is changed until you choose Paste.";
+  intro.textContent = "Paste the code below. Nothing is changed until you choose Paste.";
   dialog.appendChild(intro);
   var textarea = document.createElement("textarea");
   textarea.className = "sp-input sp-textarea sp-transfer-code";
-  textarea.placeholder = "Paste an espcontrol.cards code here";
+  textarea.placeholder = "Paste the code here";
   textarea.setAttribute("aria-label", "Card transfer code");
   dialog.appendChild(textarea);
   var errorText = document.createElement("div");

@@ -2336,10 +2336,16 @@ async function openPasteCardCodeDialog(page) {
   await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
   await page
     .locator(".sp-ctx-menu")
-    .getByText("Paste Card Code…", { exact: true })
+    .getByText("Paste Code…", { exact: true })
     .click();
   await page.locator(".sp-transfer-dialog").waitFor({ state: "visible" });
-  return { dialog: page.locator(".sp-transfer-dialog"), pos };
+  const dialog = page.locator(".sp-transfer-dialog");
+  assert.strictEqual(
+    await dialog.getByRole("heading", { name: "Paste Code", exact: true }).count(),
+    1,
+    "paste dialog uses the concise title",
+  );
+  return { dialog, pos };
 }
 
 async function assertCardTransferSmoke(page, posts, label) {

@@ -291,7 +291,7 @@ function showEmptySlotMenu(e, pos) {
       }
     });
   }
-  addCtxItem("code-json", "Paste Card Code…", function () {
+  addCtxItem("code-json", "Paste Code…", function () {
     showPasteCardCode(pos, c.isSub);
   });
   addCtxDivider();
