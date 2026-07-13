@@ -285,6 +285,6 @@ curl -s "http://<device-ip>/text/Button%20N%20Config?detail=all"
 
 ## Saved-configuration shadow rollout
 
-Saved-configuration normalization moves to generated helpers one card family at a time. The generated shadow catalogue currently covers Action, Sensor, Media, and Vacuum policies. Vacuum is the first complete comparison: tests feed the same raw saved values to the existing browser normalizer, the generated browser helper, and compiled generated C++ code, then require identical complete configurations.
+Saved-configuration normalization moves to generated helpers one card family at a time. The generated shadow catalogue currently covers Action, Sensor, Media, and Vacuum policies. Vacuum and Sensor now have complete comparisons: tests feed the same raw saved values to the existing browser normalizer, the generated browser helper, and compiled generated C++ code, then require identical complete configurations.
 
 Shadow helpers are deliberately not included by production firmware yet, so this stage adds 0 bytes of device flash and 0 bytes of RAM. The shadow check fails if the generated C++ header is included from another firmware header; this preserves the 8 KiB flash guard until a later PR deliberately switches a production family.

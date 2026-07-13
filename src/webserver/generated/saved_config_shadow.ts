@@ -299,6 +299,21 @@ function shaped(input: Partial<CardConfig>): CardConfig {
   };
 }
 
+function optionPresent(options: string, name: string): boolean {
+  return options.split(",").indexOf(name) >= 0;
+}
+function decodeOptionValue(value: string): string {
+  return value.replace(/(%[0-9a-fA-F]{2})+/g, (run) => { try { return decodeURIComponent(run); } catch { return run; } });
+}
+function optionValue(options: string, name: string): string {
+  const prefix = name + "=";
+  for (const part of options.split(",")) if (part.indexOf(prefix) === 0) return decodeOptionValue(part.substring(prefix.length));
+  return "";
+}
+function encodeOptionValue(value: string): string {
+  return value.replace(/[%,;|:]/g, (character) => "%" + character.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0"));
+}
+
 export function normalizeSavedConfigVacuumShadow(input: Partial<CardConfig>): CardConfig | null {
   const config = shaped(input);
   for (const action of Object.values(VACUUM_MIGRATIONS)) {
@@ -319,4 +334,35 @@ export function normalizeSavedConfigVacuumShadow(input: Partial<CardConfig>): Ca
   if (hook.preserveUnitForModes.indexOf(config.sensor) < 0) config.unit = "";
   if (!config.icon || config.icon === "Auto") config.icon = hook.defaultIcons[config.sensor] || hook.defaultIcons.default || "Auto";
   return config;
+}
+
+export function normalizeSavedConfigSensorShadow(input: Partial<CardConfig>): CardConfig | null {
+  const config = shaped(input);
+  if (config.type === "local_sensor") { config.type = "sensor"; config.sensor = "local"; config.icon_on = "Auto"; config.options = ""; }
+  if (config.type !== "sensor") return null;
+  if (config.sensor === "local") {
+    config.icon_on = "Auto"; config.options = "";
+    if (["text", "1", "2"].indexOf(config.precision) < 0) config.precision = "";
+    if (config.precision !== "text" && (!config.icon || config.icon === "Auto")) config.icon = "Auto";
+    return config;
+  }
+  const source = config.options; const out: string[] = [];
+  if (config.precision !== "icon" && config.precision !== "text") {
+    if (optionValue(source, "large_numbers") === "off") out.push("large_numbers=off");
+    else if (optionPresent(source, "large_numbers")) out.push("large_numbers");
+  }
+  if (config.precision === "text" && optionPresent(source, "state_labels")) {
+    out.push("state_labels");
+    let stateInput = optionValue(source, "state_input"); let stateOutput = optionValue(source, "state_output");
+    if (!stateInput && optionValue(source, "state_high_label")) { stateInput = "high"; stateOutput = optionValue(source, "state_high_label"); }
+    else if (!stateInput && optionValue(source, "state_low_label")) { stateInput = "low"; stateOutput = optionValue(source, "state_low_label"); }
+    for (const [name, value] of [["state_input", stateInput], ["state_output", stateOutput], ["state_input_2", optionValue(source, "state_input_2")], ["state_output_2", optionValue(source, "state_output_2")]]) {
+      if (value) out.push(name + "=" + encodeOptionValue(value));
+    }
+  }
+  config.options = out.join(","); return config;
+}
+
+export function normalizeSavedConfigShadow(input: Partial<CardConfig>): CardConfig | null {
+  return normalizeSavedConfigVacuumShadow(input) || normalizeSavedConfigSensorShadow(input);
 }

@@ -641,6 +641,21 @@ def gen_saved_config_shadow_ts(data):
         "  };\n"
         "}\n"
         "\n"
+        "function optionPresent(options: string, name: string): boolean {\n"
+        "  return options.split(\",\").indexOf(name) >= 0;\n"
+        "}\n"
+        "function decodeOptionValue(value: string): string {\n"
+        "  return value.replace(/(%[0-9a-fA-F]{2})+/g, (run) => { try { return decodeURIComponent(run); } catch { return run; } });\n"
+        "}\n"
+        "function optionValue(options: string, name: string): string {\n"
+        "  const prefix = name + \"=\";\n"
+        "  for (const part of options.split(\",\")) if (part.indexOf(prefix) === 0) return decodeOptionValue(part.substring(prefix.length));\n"
+        "  return \"\";\n"
+        "}\n"
+        "function encodeOptionValue(value: string): string {\n"
+        "  return value.replace(/[%,;|:]/g, (character) => \"%\" + character.charCodeAt(0).toString(16).toUpperCase().padStart(2, \"0\"));\n"
+        "}\n"
+        "\n"
         "export function normalizeSavedConfigVacuumShadow(input: Partial<CardConfig>): CardConfig | null {\n"
         "  const config = shaped(input);\n"
         "  for (const action of Object.values(VACUUM_MIGRATIONS)) {\n"
@@ -661,6 +676,37 @@ def gen_saved_config_shadow_ts(data):
         "  if (hook.preserveUnitForModes.indexOf(config.sensor) < 0) config.unit = \"\";\n"
         "  if (!config.icon || config.icon === \"Auto\") config.icon = hook.defaultIcons[config.sensor] || hook.defaultIcons.default || \"Auto\";\n"
         "  return config;\n"
+        "}\n"
+        "\n"
+        "export function normalizeSavedConfigSensorShadow(input: Partial<CardConfig>): CardConfig | null {\n"
+        "  const config = shaped(input);\n"
+        "  if (config.type === \"local_sensor\") { config.type = \"sensor\"; config.sensor = \"local\"; config.icon_on = \"Auto\"; config.options = \"\"; }\n"
+        "  if (config.type !== \"sensor\") return null;\n"
+        "  if (config.sensor === \"local\") {\n"
+        "    config.icon_on = \"Auto\"; config.options = \"\";\n"
+        "    if ([\"text\", \"1\", \"2\"].indexOf(config.precision) < 0) config.precision = \"\";\n"
+        "    if (config.precision !== \"text\" && (!config.icon || config.icon === \"Auto\")) config.icon = \"Auto\";\n"
+        "    return config;\n"
+        "  }\n"
+        "  const source = config.options; const out: string[] = [];\n"
+        "  if (config.precision !== \"icon\" && config.precision !== \"text\") {\n"
+        "    if (optionValue(source, \"large_numbers\") === \"off\") out.push(\"large_numbers=off\");\n"
+        "    else if (optionPresent(source, \"large_numbers\")) out.push(\"large_numbers\");\n"
+        "  }\n"
+        "  if (config.precision === \"text\" && optionPresent(source, \"state_labels\")) {\n"
+        "    out.push(\"state_labels\");\n"
+        "    let stateInput = optionValue(source, \"state_input\"); let stateOutput = optionValue(source, \"state_output\");\n"
+        "    if (!stateInput && optionValue(source, \"state_high_label\")) { stateInput = \"high\"; stateOutput = optionValue(source, \"state_high_label\"); }\n"
+        "    else if (!stateInput && optionValue(source, \"state_low_label\")) { stateInput = \"low\"; stateOutput = optionValue(source, \"state_low_label\"); }\n"
+        "    for (const [name, value] of [[\"state_input\", stateInput], [\"state_output\", stateOutput], [\"state_input_2\", optionValue(source, \"state_input_2\")], [\"state_output_2\", optionValue(source, \"state_output_2\")]]) {\n"
+        "      if (value) out.push(name + \"=\" + encodeOptionValue(value));\n"
+        "    }\n"
+        "  }\n"
+        "  config.options = out.join(\",\"); return config;\n"
+        "}\n"
+        "\n"
+        "export function normalizeSavedConfigShadow(input: Partial<CardConfig>): CardConfig | null {\n"
+        "  return normalizeSavedConfigVacuumShadow(input) || normalizeSavedConfigSensorShadow(input);\n"
         "}\n"
     )
 
@@ -718,6 +764,27 @@ def gen_saved_config_shadow_h(data):
         "  if (!saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES, sizeof(SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES) / sizeof(SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES[0]))) config.unit.clear();\n",
         "  if (config.icon.empty() || config.icon == \"Auto\") config.icon = saved_config_shadow_vacuum_icon(config.sensor);\n",
         "  return true;\n}\n",
+        "\ninline void saved_config_shadow_append_option(std::string &out, const std::string &name, const std::string &value = \"\") {\n",
+        "  if (!out.empty()) out += ','; out += name; if (!value.empty()) out += \"=\" + encode_compact_field(value);\n",
+        "}\n\n",
+        "template<typename Config>\ninline bool normalize_saved_config_sensor_shadow(Config &config) {\n",
+        "  if (config.type == \"local_sensor\") { config.type = \"sensor\"; config.sensor = \"local\"; config.icon_on = \"Auto\"; config.options.clear(); }\n",
+        "  if (config.type != \"sensor\") return false;\n",
+        "  if (config.sensor == \"local\") { config.icon_on = \"Auto\"; config.options.clear(); if (config.precision != \"text\" && config.precision != \"1\" && config.precision != \"2\") config.precision.clear(); if (config.precision != \"text\" && (config.icon.empty() || config.icon == \"Auto\")) config.icon = \"Auto\"; return true; }\n",
+        "  const std::string source = config.options; std::string out;\n",
+        "  if (config.precision != \"icon\" && config.precision != \"text\") append_large_numbers_option(out, source);\n",
+        "  if (config.precision == \"text\" && cfg_option_token_present(source, \"state_labels\")) {\n",
+        "    saved_config_shadow_append_option(out, \"state_labels\"); std::string input = cfg_option_value(source, \"state_input\"); std::string output = cfg_option_value(source, \"state_output\");\n",
+        "    if (input.empty() && !cfg_option_value(source, \"state_high_label\").empty()) { input = \"high\"; output = cfg_option_value(source, \"state_high_label\"); }\n",
+        "    else if (input.empty() && !cfg_option_value(source, \"state_low_label\").empty()) { input = \"low\"; output = cfg_option_value(source, \"state_low_label\"); }\n",
+        "    if (!input.empty()) saved_config_shadow_append_option(out, \"state_input\", input); if (!output.empty()) saved_config_shadow_append_option(out, \"state_output\", output);\n",
+        "    const std::string input_2 = cfg_option_value(source, \"state_input_2\"); const std::string output_2 = cfg_option_value(source, \"state_output_2\");\n",
+        "    if (!input_2.empty()) saved_config_shadow_append_option(out, \"state_input_2\", input_2); if (!output_2.empty()) saved_config_shadow_append_option(out, \"state_output_2\", output_2);\n",
+        "  }\n",
+        "  config.options = out; return true;\n}\n\n",
+        "template<typename Config>\ninline bool normalize_saved_config_shadow(Config &config) {\n",
+        "  if (normalize_saved_config_vacuum_shadow(config)) return true; return normalize_saved_config_sensor_shadow(config);\n",
+        "}\n",
     ])
     return "".join(lines)
 

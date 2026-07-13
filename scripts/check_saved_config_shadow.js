@@ -39,13 +39,13 @@ function parseRawButtonConfig(value) {
   return shape(Object.fromEntries(FIELDS.map((field, index) => [field, decoded[index] || ""])));
 }
 
-function vacuumCases() {
+function shadowCases() {
   const fixtures = JSON.parse(fs.readFileSync(path.join(ROOT, "common/config/vacuum_mower_card_normalization_fixtures.json"), "utf8"));
   const config = (overrides) => Object.assign({
     entity: "vacuum.robot", label: "", icon: "Robot Vacuum", icon_on: "Auto",
     sensor: "start_stop", unit: "", type: "vacuum", precision: "", options: "",
   }, overrides);
-  return fixtures.filter((fixture) => fixture.expected.type === "vacuum").concat([
+  const vacuum = fixtures.filter((fixture) => fixture.expected.type === "vacuum").concat([
     {
       name: "compact vacuum preserves encoded Unicode and area",
       input: "~vacuum.robot,%E5%8E%A8%E6%88%BF%20Vacuum,Auto,Auto,clean_area,zone%3A1,vacuum,text,unknown",
@@ -67,6 +67,8 @@ function vacuumCases() {
       expected: config({}),
     },
   ]);
+  const sensor = JSON.parse(fs.readFileSync(path.join(ROOT, "common/config/sensor_card_normalization_fixtures.json"), "utf8"));
+  return vacuum.concat(sensor);
 }
 
 function compiler() {
@@ -108,7 +110,7 @@ ParsedCfg raw_cfg(const std::string &cfg) {
 }
 void quoted(const std::string &v) { std::cout << '"'; for (char c : v) { if (c == '"' || c == '\\\\') std::cout << '\\\\'; std::cout << c; } std::cout << '"'; }
 void print_cfg(const ParsedCfg &p) { const std::string values[] = {p.entity,p.label,p.icon,p.icon_on,p.sensor,p.unit,p.type,p.precision,p.options}; std::cout << '['; for (int i=0;i<9;++i) { if(i) std::cout << ','; quoted(values[i]); } std::cout << ']'; }
-int main() { const std::vector<std::string> inputs = { ${inputs} }; std::cout << '['; for (size_t i=0;i<inputs.size();++i) { if(i) std::cout << ','; ParsedCfg p=raw_cfg(inputs[i]); normalize_saved_config_vacuum_shadow(p); print_cfg(p); } std::cout << ']'; }
+int main() { const std::vector<std::string> inputs = { ${inputs} }; std::cout << '['; for (size_t i=0;i<inputs.size();++i) { if(i) std::cout << ','; ParsedCfg p=raw_cfg(inputs[i]); normalize_saved_config_shadow(p); print_cfg(p); } std::cout << ']'; }
 `;
 }
 
@@ -126,7 +128,7 @@ function compiledShadow(cases) {
 }
 
 function main() {
-  const cases = vacuumCases();
+  const cases = shadowCases();
   const codec = loadBrowserCodec();
   const shadow = loadTypeScriptModule(path.join(ROOT, "src/webserver/generated/saved_config_shadow.ts"));
   const firmwareShadow = compiledShadow(cases);
@@ -134,18 +136,18 @@ function main() {
   cases.forEach((fixture, index) => {
     const expected = shape(fixture.expected);
     const production = shape(codec.parseButtonConfig(fixture.input));
-    const browserShadow = shape(shadow.normalizeSavedConfigVacuumShadow(parseRawButtonConfig(fixture.input)));
+    const browserShadow = shape(shadow.normalizeSavedConfigShadow(parseRawButtonConfig(fixture.input)));
     const compiled = Object.fromEntries(FIELDS.map((field, fieldIndex) => [field, firmwareShadow[index][fieldIndex]]));
     assert.deepStrictEqual(production, expected, `${fixture.name}: production`);
     assert.deepStrictEqual(browserShadow, expected, `${fixture.name}: browser shadow`);
     assert.deepStrictEqual(compiled, expected, `${fixture.name}: compiled shadow`);
-    assert.deepStrictEqual(shape(shadow.normalizeSavedConfigVacuumShadow(browserShadow)), browserShadow, `${fixture.name}: shadow idempotence`);
+    assert.deepStrictEqual(shape(shadow.normalizeSavedConfigShadow(browserShadow)), browserShadow, `${fixture.name}: shadow idempotence`);
   });
   const firmwareUsers = fs.readdirSync(path.join(ROOT, "components/espcontrol"))
     .filter((name) => name.endsWith(".h") && name !== "button_grid_saved_config_shadow_generated.h")
     .filter((name) => fs.readFileSync(path.join(ROOT, "components/espcontrol", name), "utf8").includes("button_grid_saved_config_shadow_generated"));
   assert.deepStrictEqual(firmwareUsers, [], "shadow header must remain outside production firmware");
-  console.log(`Saved-config shadow agreement passed for ${cases.length} vacuum inputs across browser and compiled C++ helpers.`);
+  console.log(`Saved-config shadow agreement passed for ${cases.length} Vacuum and Sensor inputs across browser and compiled C++ helpers.`);
   console.log("Production firmware footprint delta: 0 bytes flash / 0 bytes RAM (test-only shadow; 8 KiB guard passed).");
 }
 

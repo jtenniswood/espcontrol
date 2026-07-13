@@ -87,3 +87,30 @@ inline bool normalize_saved_config_vacuum_shadow(Config &config) {
   if (config.icon.empty() || config.icon == "Auto") config.icon = saved_config_shadow_vacuum_icon(config.sensor);
   return true;
 }
+
+inline void saved_config_shadow_append_option(std::string &out, const std::string &name, const std::string &value = "") {
+  if (!out.empty()) out += ','; out += name; if (!value.empty()) out += "=" + encode_compact_field(value);
+}
+
+template<typename Config>
+inline bool normalize_saved_config_sensor_shadow(Config &config) {
+  if (config.type == "local_sensor") { config.type = "sensor"; config.sensor = "local"; config.icon_on = "Auto"; config.options.clear(); }
+  if (config.type != "sensor") return false;
+  if (config.sensor == "local") { config.icon_on = "Auto"; config.options.clear(); if (config.precision != "text" && config.precision != "1" && config.precision != "2") config.precision.clear(); if (config.precision != "text" && (config.icon.empty() || config.icon == "Auto")) config.icon = "Auto"; return true; }
+  const std::string source = config.options; std::string out;
+  if (config.precision != "icon" && config.precision != "text") append_large_numbers_option(out, source);
+  if (config.precision == "text" && cfg_option_token_present(source, "state_labels")) {
+    saved_config_shadow_append_option(out, "state_labels"); std::string input = cfg_option_value(source, "state_input"); std::string output = cfg_option_value(source, "state_output");
+    if (input.empty() && !cfg_option_value(source, "state_high_label").empty()) { input = "high"; output = cfg_option_value(source, "state_high_label"); }
+    else if (input.empty() && !cfg_option_value(source, "state_low_label").empty()) { input = "low"; output = cfg_option_value(source, "state_low_label"); }
+    if (!input.empty()) saved_config_shadow_append_option(out, "state_input", input); if (!output.empty()) saved_config_shadow_append_option(out, "state_output", output);
+    const std::string input_2 = cfg_option_value(source, "state_input_2"); const std::string output_2 = cfg_option_value(source, "state_output_2");
+    if (!input_2.empty()) saved_config_shadow_append_option(out, "state_input_2", input_2); if (!output_2.empty()) saved_config_shadow_append_option(out, "state_output_2", output_2);
+  }
+  config.options = out; return true;
+}
+
+template<typename Config>
+inline bool normalize_saved_config_shadow(Config &config) {
+  if (normalize_saved_config_vacuum_shadow(config)) return true; return normalize_saved_config_sensor_shadow(config);
+}
