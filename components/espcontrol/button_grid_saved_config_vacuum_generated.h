@@ -7,6 +7,29 @@
 
 #include <string>
 
+template<typename Config>
+inline bool migrate_saved_config_vacuum_legacy(Config &config) {
+  if (config.type == "action" && config.sensor == "vacuum.start") {
+    config.type = "vacuum";
+    config.sensor = "start_stop";
+    config.unit = "";
+    config.precision = "";
+    config.options = "";
+    config.icon_on = "Auto";
+    return true;
+  }
+  if (config.type == "action" && config.sensor == "vacuum.return_to_base") {
+    config.type = "vacuum";
+    config.sensor = "dock";
+    config.unit = "";
+    config.precision = "";
+    config.options = "";
+    config.icon_on = "Auto";
+    return true;
+  }
+  return false;
+}
+
 inline std::string normalize_saved_config_vacuum_sensor(const std::string &sensor) {
   return sensor == "status" || sensor == "start_stop" || sensor == "dock" || sensor == "pause_resume" || sensor == "clean_spot" || sensor == "locate" || sensor == "clean_area" ? sensor : "start_stop";
 }

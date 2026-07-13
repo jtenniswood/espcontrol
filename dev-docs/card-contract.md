@@ -44,9 +44,9 @@ Generated consumers include:
 - `components/espcontrol/button_grid_saved_config_vacuum_generated.h`
 - `docs/generated/cards/capabilities.md`
 
-Vacuum's routine saved-field policies are generated for both browser and
-firmware. Its mode-specific unit and icon decisions remain in the reviewed
-`normalize_vacuum_fields` hook.
+Vacuum's routine saved-field policies and legacy migration actions are
+generated for both browser and firmware. Its mode-specific unit and icon
+decisions remain in the reviewed `normalize_vacuum_fields` hook.
 
 ## Saved Button Config
 

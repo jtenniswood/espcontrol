@@ -1,5 +1,6 @@
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 import {
+    migrateSavedConfigVacuumLegacy,
     normalizeSavedConfigVacuumIconOn,
     normalizeSavedConfigVacuumOptions,
     normalizeSavedConfigVacuumPrecision,
@@ -39,25 +40,9 @@ export function installConfigCodecModule(): GlobalDescriptors {
             if (b.precision !== "text" && (!b.icon || b.icon === "Auto"))
                 b.icon = "Auto";
         }
-        if (b && b.type === "action" && b.sensor === "vacuum.start") {
-            b.type = "vacuum";
-            b.sensor = "start_stop";
-            b.unit = "";
-            b.precision = "";
-            b.options = "";
-            b.icon_on = "Auto";
+        if (b && migrateSavedConfigVacuumLegacy(b)) {
             if (!b.icon || b.icon === "Auto")
-                b.icon = "Robot Vacuum";
-        }
-        if (b && b.type === "action" && b.sensor === "vacuum.return_to_base") {
-            b.type = "vacuum";
-            b.sensor = "dock";
-            b.unit = "";
-            b.precision = "";
-            b.options = "";
-            b.icon_on = "Auto";
-            if (!b.icon || b.icon === "Auto")
-                b.icon = "Robot Vacuum Variant";
+                b.icon = vacuumModeDefaultIcon(b.sensor);
         }
         if (b && isBrightnessSliderType(b.type) && b.sensor) {
             b.sensor = "";

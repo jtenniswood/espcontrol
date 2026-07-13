@@ -1185,23 +1185,8 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto" || p.icon == "Flash") p.icon = "Gesture Tap";
   }
-  if (p.type == "action" && p.sensor == "vacuum.start") {
-    p.type = "vacuum";
-    p.sensor = "start_stop";
-    p.unit.clear();
-    p.precision.clear();
-    p.options.clear();
-    p.icon_on = "Auto";
-    if (p.icon.empty() || p.icon == "Auto") p.icon = "Robot Vacuum";
-  }
-  if (p.type == "action" && p.sensor == "vacuum.return_to_base") {
-    p.type = "vacuum";
-    p.sensor = "dock";
-    p.unit.clear();
-    p.precision.clear();
-    p.options.clear();
-    p.icon_on = "Auto";
-    if (p.icon.empty() || p.icon == "Auto") p.icon = "Robot Vacuum Variant";
+  if (migrate_saved_config_vacuum_legacy(p)) {
+    if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_vacuum_default_icon_name(p.sensor);
   }
   if (p.type == "action") {
     p.precision.clear();
