@@ -45,6 +45,7 @@ Generated consumers include:
 - `src/webserver/generated/saved_config_media.ts`
 - `src/webserver/generated/saved_config_static.ts`
 - `src/webserver/generated/saved_config_fan.ts`
+- `src/webserver/generated/saved_config_date_time.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
 - `components/espcontrol/button_grid_saved_config_vacuum_generated.h`
 - `components/espcontrol/button_grid_saved_config_sensor_generated.h`
@@ -52,6 +53,7 @@ Generated consumers include:
 - `components/espcontrol/button_grid_saved_config_media_generated.h`
 - `components/espcontrol/button_grid_saved_config_static_generated.h`
 - `components/espcontrol/button_grid_saved_config_fan_generated.h`
+- `components/espcontrol/button_grid_saved_config_date_time_generated.h`
 - `docs/generated/cards/capabilities.md`
 
 Vacuum's routine saved-field policies and legacy migration actions are
@@ -82,6 +84,11 @@ All six Fan card types use generated routing for routine field cleanup and
 option handling. The reviewed `normalize_fan_fields` hook retains only default
 icon decisions, while `normalize_fan_options` keeps Fan Control tab handling in
 its established option helper.
+
+Calendar, Clock, and Timezone cards use generated routing for routine field
+cleanup and option handling. Their reviewed field hook only supplies the
+established default entities for Calendar and Timezone, while the named option
+hook preserves the existing Large Numbers behaviour.
 
 An `allowed` field policy may declare `aliases` whose targets are in its
 allowed-value list. This preserves renamed legacy values before applying the
@@ -350,3 +357,5 @@ form the fully declarative static group; the remaining card families stay on
 their established production paths until their focused migration steps.
 The six Fan types also use generated production routing, with only their named
 icon and Fan Control option hooks kept by hand.
+Calendar, Clock, and Timezone now use generated production routing too, with
+only their named default-entity and Large Numbers option hooks kept by hand.

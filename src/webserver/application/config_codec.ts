@@ -11,6 +11,7 @@ import { migrateSavedConfigActionLegacy, normalizeSavedConfigAction } from "../g
 import { normalizeSavedConfigMedia } from "../generated/saved_config_media";
 import { normalizeSavedConfigStatic } from "../generated/saved_config_static";
 import { normalizeSavedConfigFan } from "../generated/saved_config_fan";
+import { normalizeSavedConfigDateTime } from "../generated/saved_config_date_time";
 export function installConfigCodecModule(): GlobalDescriptors {
     // ── Subpage helpers ────────────────────────────────────────────────────
     function normalizeWithRegisteredCardType(this: any, b?: any) {
@@ -83,6 +84,17 @@ export function installConfigCodecModule(): GlobalDescriptors {
         else {
             b.icon_on = "Auto";
         }
+    }
+    function normalizeSavedConfigDateTimeFields(this: any, b?: any) {
+        if (!b || b.entity)
+            return;
+        if (b.type === "calendar")
+            b.entity = cardContractDefaultConfig("calendar").entity;
+        else if (b.type === "timezone")
+            b.entity = cardContractDefaultConfig("timezone").entity;
+    }
+    function normalizeSavedConfigDateTimeOptions(this: any, options?: any, b?: any) {
+        return normalizeDateTimeOptions(b && b.type || "", options || "", b && b.precision || "");
     }
     function normalizeButtonConfig(this: any, b?: any) {
         if (b)
@@ -178,38 +190,8 @@ export function installConfigCodecModule(): GlobalDescriptors {
         }
         normalizeWithRegisteredCardType(b);
         var normalizedSavedStatic: any = !!(b && normalizeSavedConfigStatic(b));
-        if (b && b.type === "calendar") {
-            if (!b.entity)
-                b.entity = cardContractDefaultConfig("calendar").entity;
-            b.label = "";
-            b.icon = "Auto";
-            b.icon_on = "Auto";
-            b.sensor = "";
-            b.unit = "";
-            b.precision = b.precision === "datetime" ? "datetime" : "";
-            b.options = normalizeDateTimeOptions("calendar", b.options, b.precision);
-        }
-        if (b && b.type === "clock") {
-            b.entity = "";
-            b.label = "";
-            b.icon = "Auto";
-            b.icon_on = "Auto";
-            b.sensor = "";
-            b.unit = "";
-            b.precision = "";
-            b.options = normalizeDateTimeOptions("clock", b.options, b.precision);
-        }
-        if (b && b.type === "timezone") {
-            if (!b.entity)
-                b.entity = cardContractDefaultConfig("timezone").entity;
-            b.label = "";
-            b.icon = "Auto";
-            b.icon_on = "Auto";
-            b.sensor = "";
-            b.unit = "";
-            b.precision = "";
-            b.options = normalizeDateTimeOptions("timezone", b.options, b.precision);
-        }
+        if (b)
+            normalizeSavedConfigDateTime(b, normalizeSavedConfigDateTimeFields, normalizeSavedConfigDateTimeOptions);
         if (b && b.type === "todo") {
             b.sensor = "";
             b.unit = "";

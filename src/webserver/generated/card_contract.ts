@@ -10,7 +10,7 @@ type LargeNumbersRule = true | {
 };
 
 export const CARD_CONTRACT_VERSION = 1 as const;
-export const CARD_CONTRACT_NORMALIZATION_HOOKS = ["normalize_action_fields", "action_large_numbers_supported", "normalize_action_options", "normalize_media_fields", "normalize_media_options", "normalize_fan_fields", "normalize_fan_options", "normalize_sensor_fields", "normalize_sensor_options", "normalize_vacuum_fields"] as const;
+export const CARD_CONTRACT_NORMALIZATION_HOOKS = ["normalize_action_fields", "action_large_numbers_supported", "normalize_action_options", "normalize_media_fields", "normalize_media_options", "normalize_fan_fields", "normalize_fan_options", "normalize_date_time_fields", "normalize_date_time_options", "normalize_sensor_fields", "normalize_sensor_options", "normalize_vacuum_fields"] as const;
 export const CARD_CONTRACT_MIGRATION_ACTIONS: Readonly<Record<string, MigrationActionSpec>> = {
   "legacy_local_action": {
     "when": [
@@ -770,14 +770,63 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "",
           "timezone"
         ],
-        "defaultValue": ""
+        "defaultValue": "",
+        "storageField": "type",
+        "omitDefault": false
       },
       {
         "name": "large_numbers",
         "label": "Large Clock",
-        "kind": "flag"
+        "kind": "flag",
+        "omitDefault": true
       }
     ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "hook",
+          "hook": "normalize_date_time_fields"
+        },
+        "label": {
+          "policy": "clear"
+        },
+        "icon": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "calendar"
+        },
+        "precision": {
+          "policy": "allowed",
+          "values": [
+            "",
+            "datetime"
+          ],
+          "fallback": ""
+        },
+        "options": {
+          "policy": "hook",
+          "hook": "normalize_date_time_options"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "large_numbers"
+      ],
+      "optionHook": "normalize_date_time_options"
+    },
     "default": {
       "entity": "sensor.date",
       "label": "",
@@ -806,14 +855,57 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "",
           "timezone"
         ],
-        "defaultValue": "clock"
+        "defaultValue": "clock",
+        "storageField": "type",
+        "omitDefault": false
       },
       {
         "name": "large_numbers",
         "label": "Large Clock",
-        "kind": "flag"
+        "kind": "flag",
+        "omitDefault": true
       }
     ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "clear"
+        },
+        "label": {
+          "policy": "clear"
+        },
+        "icon": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "clock"
+        },
+        "precision": {
+          "policy": "clear"
+        },
+        "options": {
+          "policy": "hook",
+          "hook": "normalize_date_time_options"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "large_numbers"
+      ],
+      "optionHook": "normalize_date_time_options"
+    },
     "default": {
       "entity": "",
       "label": "",
@@ -2600,14 +2692,58 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "",
           "timezone"
         ],
-        "defaultValue": "timezone"
+        "defaultValue": "timezone",
+        "storageField": "type",
+        "omitDefault": false
       },
       {
         "name": "large_numbers",
         "label": "Large Clock",
-        "kind": "flag"
+        "kind": "flag",
+        "omitDefault": true
       }
     ],
+    "normalization": {
+      "fields": {
+        "entity": {
+          "policy": "hook",
+          "hook": "normalize_date_time_fields"
+        },
+        "label": {
+          "policy": "clear"
+        },
+        "icon": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "icon_on": {
+          "policy": "default",
+          "value": "Auto"
+        },
+        "sensor": {
+          "policy": "clear"
+        },
+        "unit": {
+          "policy": "clear"
+        },
+        "type": {
+          "policy": "default",
+          "value": "timezone"
+        },
+        "precision": {
+          "policy": "clear"
+        },
+        "options": {
+          "policy": "hook",
+          "hook": "normalize_date_time_options"
+        }
+      },
+      "unknownOptions": "drop",
+      "canonicalOptionOrder": [
+        "large_numbers"
+      ],
+      "optionHook": "normalize_date_time_options"
+    },
     "default": {
       "entity": "UTC (GMT+0)",
       "label": "",

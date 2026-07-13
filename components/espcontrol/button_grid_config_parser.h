@@ -11,6 +11,7 @@
 
 #include "button_grid_card_runtime.h"
 #include "button_grid_saved_config_action_generated.h"
+#include "button_grid_saved_config_date_time_generated.h"
 #include "button_grid_saved_config_fan_generated.h"
 #include "button_grid_saved_config_media_generated.h"
 #include "button_grid_saved_config_sensor_generated.h"
@@ -1008,6 +1009,12 @@ inline void normalize_saved_config_fan_fields(ParsedCfg &p) {
   }
 }
 
+inline void normalize_saved_config_date_time_fields(ParsedCfg &p) {
+  if (!p.entity.empty()) return;
+  if (p.type == "calendar") p.entity = "sensor.date";
+  else if (p.type == "timezone") p.entity = "UTC (GMT+0)";
+}
+
 inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
   migrate_saved_config_action_legacy(p);
   const bool was_legacy_text_sensor = p.type == "text_sensor";
@@ -1105,36 +1112,8 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (!image_card_label_enabled(p)) p.label.clear();
   }
   const bool normalized_saved_static = normalize_saved_config_static(p);
-  if (p.type == "calendar") {
-    if (p.entity.empty()) p.entity = "sensor.date";
-    p.label.clear();
-    p.icon = "Auto";
-    p.icon_on = "Auto";
-    p.sensor.clear();
-    p.unit.clear();
-    if (p.precision != "datetime") p.precision.clear();
-    p.options = date_time_card_options_normalized(p.options, p);
-  }
-  if (p.type == "clock") {
-    p.entity.clear();
-    p.label.clear();
-    p.icon = "Auto";
-    p.icon_on = "Auto";
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options = date_time_card_options_normalized(p.options, p);
-  }
-  if (p.type == "timezone") {
-    if (p.entity.empty()) p.entity = "UTC (GMT+0)";
-    p.label.clear();
-    p.icon = "Auto";
-    p.icon_on = "Auto";
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options = date_time_card_options_normalized(p.options, p);
-  }
+  normalize_saved_config_date_time(
+      p, normalize_saved_config_date_time_fields, date_time_card_options_normalized);
   if (p.type == "todo") {
     p.sensor.clear();
     p.unit.clear();
