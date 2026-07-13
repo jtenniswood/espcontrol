@@ -237,7 +237,7 @@
           "label": { "policy": "keep" },
           "icon": { "policy": "hook", "hook": "normalize_vacuum_fields" },
           "icon_on": { "policy": "default", "value": "Auto" },
-          "sensor": { "policy": "allowed", "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"], "fallback": "start_stop" },
+          "sensor": { "policy": "allowed", "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"], "aliases": { "vacuum.start": "start_stop", "vacuum.return_to_base": "dock" }, "fallback": "start_stop" },
           "unit": { "policy": "hook", "hook": "normalize_vacuum_fields" },
           "type": { "policy": "default", "value": "vacuum" },
           "precision": { "policy": "clear" },

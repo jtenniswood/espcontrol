@@ -30,6 +30,36 @@
     }
   },
   {
+    "name": "legacy vacuum start mode alias remains start stop",
+    "input": "vacuum.k11;Legacy Start;Auto;Custom Pressed;vacuum.start;ignored;vacuum;2;ignored=1",
+    "expected": {
+      "entity": "vacuum.k11",
+      "label": "Legacy Start",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "start_stop",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "legacy vacuum dock mode alias remains dock",
+    "input": "vacuum.k11;Legacy Dock;Auto;Custom Pressed;vacuum.return_to_base;ignored;vacuum;2;ignored=1",
+    "expected": {
+      "entity": "vacuum.k11",
+      "label": "Legacy Dock",
+      "icon": "Robot Vacuum Variant",
+      "icon_on": "Auto",
+      "sensor": "dock",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
     "name": "vacuum clean area preserves area id",
     "input": "vacuum.k11;Clean Kitchen;Auto;Auto;clean_area;kitchen;vacuum;text;large_numbers",
     "expected": {

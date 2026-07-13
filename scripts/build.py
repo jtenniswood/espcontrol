@@ -651,6 +651,7 @@ def gen_saved_config_vacuum_ts(data):
     sensor, icon_on = saved_config_vacuum_field_rules(data)
     migrations = saved_config_vacuum_migrations(data)
     sensor_values = json.dumps(sensor["values"], ensure_ascii=False)
+    sensor_aliases = json.dumps(sensor.get("aliases", {}), ensure_ascii=False)
     fallback = json.dumps(sensor["fallback"], ensure_ascii=False)
     icon_on_default = json.dumps(icon_on["value"], ensure_ascii=False)
     migration_lines = ["export function migrateSavedConfigVacuumLegacy(config: CardConfig): boolean {\n"]
@@ -669,8 +670,10 @@ def gen_saved_config_vacuum_ts(data):
         "import type { CardConfig } from \"../contracts/types\";\n\n"
         + "".join(migration_lines)
         +
-        f"const SAVED_CONFIG_VACUUM_SENSOR_VALUES = new Set<string>({sensor_values});\n\n"
+        f"const SAVED_CONFIG_VACUUM_SENSOR_VALUES = new Set<string>({sensor_values});\n"
+        f"const SAVED_CONFIG_VACUUM_SENSOR_ALIASES: Readonly<Record<string, string>> = {sensor_aliases};\n\n"
         "export function normalizeSavedConfigVacuumSensor(sensor: string): string {\n"
+        "  sensor = SAVED_CONFIG_VACUUM_SENSOR_ALIASES[sensor] || sensor;\n"
         f"  return SAVED_CONFIG_VACUUM_SENSOR_VALUES.has(sensor) ? sensor : {fallback};\n"
         "}\n\n"
         "export function normalizeSavedConfigVacuumIconOn(_iconOn: string): string {\n"
@@ -688,6 +691,7 @@ def gen_saved_config_vacuum_ts(data):
 def gen_saved_config_vacuum_h(data):
     sensor, icon_on = saved_config_vacuum_field_rules(data)
     migrations = saved_config_vacuum_migrations(data)
+    sensor_aliases = sensor.get("aliases", {})
     allowed = " || ".join(f"sensor == {json.dumps(value, ensure_ascii=False)}" for value in sensor["values"])
     fallback = json.dumps(sensor["fallback"], ensure_ascii=False)
     icon_on_default = json.dumps(icon_on["value"], ensure_ascii=False)
@@ -709,6 +713,8 @@ def gen_saved_config_vacuum_h(data):
         + "".join(migration_lines)
         +
         "inline std::string normalize_saved_config_vacuum_sensor(const std::string &sensor) {\n"
+        + "".join(f"  if (sensor == {json.dumps(alias, ensure_ascii=False)}) return {json.dumps(target, ensure_ascii=False)};\n" for alias, target in sensor_aliases.items())
+        +
         f"  return {allowed} ? sensor : {fallback};\n"
         "}\n\n"
         "inline std::string normalize_saved_config_vacuum_icon_on(const std::string &) {\n"
@@ -797,7 +803,7 @@ def gen_saved_config_shadow_ts(data):
         "    const policy = spec.fields[field];\n"
         "    if (policy.policy === \"clear\") config[field] = \"\";\n"
         "    else if (policy.policy === \"default\") config[field] = policy.value;\n"
-        "    else if (policy.policy === \"allowed\" && policy.values.indexOf(config[field]) < 0) config[field] = policy.fallback;\n"
+        "    else if (policy.policy === \"allowed\") { config[field] = policy.aliases?.[config[field]] || config[field]; if (policy.values.indexOf(config[field]) < 0) config[field] = policy.fallback; }\n"
         "    else if (policy.policy === \"alias\") config[field] = policy.aliases[config[field]] || config[field];\n"
         "  }\n"
         "  const hook = spec.hookData!.normalize_vacuum_fields as {\n"
@@ -935,7 +941,9 @@ def gen_saved_config_shadow_h(data):
             detail = rule.get("hook", rule.get("value", rule.get("fallback", "")))
             lines.append(f"  {{{json.dumps(field)}, CardContractShadowPolicyKind::{cpp_shadow_policy_kind(rule['policy'])}, {json.dumps(detail)}}},\n")
         lines.append("};\n\n")
-    modes = data["cards"]["vacuum"]["normalization"]["fields"]["sensor"]["values"]
+    vacuum_sensor = data["cards"]["vacuum"]["normalization"]["fields"]["sensor"]
+    modes = vacuum_sensor["values"]
+    mode_aliases = vacuum_sensor.get("aliases", {})
     lines.extend([
         cpp_string_array("SAVED_CONFIG_SHADOW_VACUUM_MODES", modes),
         cpp_string_array("SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES", hook["preserveUnitForModes"]),
@@ -960,6 +968,7 @@ def gen_saved_config_shadow_h(data):
         "  if (config.type == \"action\" && config.sensor == \"vacuum.start\") { config.type = \"vacuum\"; config.sensor = \"start_stop\"; }\n",
         "  if (config.type == \"action\" && config.sensor == \"vacuum.return_to_base\") { config.type = \"vacuum\"; config.sensor = \"dock\"; }\n",
         "  if (config.type != \"vacuum\") return false;\n",
+        *[f"  if (config.sensor == {json.dumps(alias)}) config.sensor = {json.dumps(target)};\n" for alias, target in mode_aliases.items()],
         "  if (!saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_VACUUM_MODES, sizeof(SAVED_CONFIG_SHADOW_VACUUM_MODES) / sizeof(SAVED_CONFIG_SHADOW_VACUUM_MODES[0]))) config.sensor = \"start_stop\";\n",
         "  config.type = \"vacuum\"; config.icon_on = \"Auto\"; config.precision.clear(); config.options.clear();\n",
         "  if (!saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES, sizeof(SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES) / sizeof(SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES[0]))) config.unit.clear();\n",

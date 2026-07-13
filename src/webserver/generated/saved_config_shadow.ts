@@ -190,6 +190,10 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
           "locate",
           "clean_area"
         ],
+        "aliases": {
+          "vacuum.start": "start_stop",
+          "vacuum.return_to_base": "dock"
+        },
         "fallback": "start_stop"
       },
       "unit": {
@@ -334,7 +338,7 @@ export function normalizeSavedConfigVacuumShadow(input: Partial<CardConfig>): Ca
     const policy = spec.fields[field];
     if (policy.policy === "clear") config[field] = "";
     else if (policy.policy === "default") config[field] = policy.value;
-    else if (policy.policy === "allowed" && policy.values.indexOf(config[field]) < 0) config[field] = policy.fallback;
+    else if (policy.policy === "allowed") { config[field] = policy.aliases?.[config[field]] || config[field]; if (policy.values.indexOf(config[field]) < 0) config[field] = policy.fallback; }
     else if (policy.policy === "alias") config[field] = policy.aliases[config[field]] || config[field];
   }
   const hook = spec.hookData!.normalize_vacuum_fields as {

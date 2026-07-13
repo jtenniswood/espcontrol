@@ -88,6 +88,8 @@ inline bool normalize_saved_config_vacuum_shadow(Config &config) {
   if (config.type == "action" && config.sensor == "vacuum.start") { config.type = "vacuum"; config.sensor = "start_stop"; }
   if (config.type == "action" && config.sensor == "vacuum.return_to_base") { config.type = "vacuum"; config.sensor = "dock"; }
   if (config.type != "vacuum") return false;
+  if (config.sensor == "vacuum.start") config.sensor = "start_stop";
+  if (config.sensor == "vacuum.return_to_base") config.sensor = "dock";
   if (!saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_VACUUM_MODES, sizeof(SAVED_CONFIG_SHADOW_VACUUM_MODES) / sizeof(SAVED_CONFIG_SHADOW_VACUUM_MODES[0]))) config.sensor = "start_stop";
   config.type = "vacuum"; config.icon_on = "Auto"; config.precision.clear(); config.options.clear();
   if (!saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES, sizeof(SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES) / sizeof(SAVED_CONFIG_SHADOW_VACUUM_UNIT_MODES[0]))) config.unit.clear();

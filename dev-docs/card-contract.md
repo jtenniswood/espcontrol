@@ -48,6 +48,10 @@ Vacuum's routine saved-field policies and legacy migration actions are
 generated for both browser and firmware. Its mode-specific unit and icon
 decisions remain in the reviewed `normalize_vacuum_fields` hook.
 
+An `allowed` field policy may declare `aliases` whose targets are in its
+allowed-value list. This preserves renamed legacy values before applying the
+fallback; Vacuum uses it for the old service-style Start and Dock modes.
+
 ## Saved Button Config
 
 The setup page stores button configuration in ESPHome text entities, usually

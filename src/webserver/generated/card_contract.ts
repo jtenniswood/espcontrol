@@ -516,6 +516,10 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
             "locate",
             "clean_area"
           ],
+          "aliases": {
+            "vacuum.start": "start_stop",
+            "vacuum.return_to_base": "dock"
+          },
           "fallback": "start_stop"
         },
         "unit": {

@@ -46,6 +46,8 @@ int main() {
   Config unrelated{"action", "light.turn_on", "", "", "", "Auto"};
   assert(!migrate_saved_config_vacuum_legacy(unrelated));
   assert(normalize_saved_config_vacuum_sensor("dock") == "dock");
+  assert(normalize_saved_config_vacuum_sensor("vacuum.start") == "start_stop");
+  assert(normalize_saved_config_vacuum_sensor("vacuum.return_to_base") == "dock");
   assert(normalize_saved_config_vacuum_sensor("unknown") == "start_stop");
   assert(normalize_saved_config_vacuum_icon_on("Custom") == "Auto");
   assert(normalize_saved_config_vacuum_precision("2").empty());
@@ -68,6 +70,7 @@ function main() {
   const fields = contract.cards.vacuum.normalization.fields;
   assert.strictEqual(fields.sensor.policy, "allowed");
   assert.strictEqual(fields.sensor.fallback, "start_stop");
+  assert.deepStrictEqual(fields.sensor.aliases, { "vacuum.start": "start_stop", "vacuum.return_to_base": "dock" });
   assert.strictEqual(fields.icon_on.policy, "default");
   assert.strictEqual(fields.icon_on.value, "Auto");
   assert.strictEqual(fields.precision.policy, "clear");
@@ -84,6 +87,8 @@ function main() {
   assert.strictEqual(dock.sensor, "dock");
   assert.strictEqual(generated.migrateSavedConfigVacuumLegacy({ type: "action", sensor: "light.turn_on" }), false);
   assert.strictEqual(generated.normalizeSavedConfigVacuumSensor("dock"), "dock");
+  assert.strictEqual(generated.normalizeSavedConfigVacuumSensor("vacuum.start"), "start_stop");
+  assert.strictEqual(generated.normalizeSavedConfigVacuumSensor("vacuum.return_to_base"), "dock");
   assert.strictEqual(generated.normalizeSavedConfigVacuumSensor("unknown"), "start_stop");
   assert.strictEqual(generated.normalizeSavedConfigVacuumIconOn("Custom"), "Auto");
   assert.strictEqual(generated.normalizeSavedConfigVacuumPrecision("2"), "");
@@ -99,6 +104,13 @@ function main() {
   assert.match(browser, /iconOn = normalizeSavedConfigVacuumIconOn\(iconOn\);/);
   assert.match(browser, /type === "vacuum"[\s\S]*?normalizeSavedConfigVacuumOptions\(options\)/);
   assert.doesNotMatch(browser, /type === "vacuum" \|\| type === "lawn_mower"/);
+
+  const vacuumCard = fs.readFileSync(path.join(ROOT, "src/webserver/cards/vacuum.ts"), "utf8");
+  assert.match(vacuumCard, /normalizeSavedConfigVacuumSensor\(String\(b\.sensor \|\| ""\)\)/);
+  assert.match(vacuumCard, /normalizeSavedConfigVacuumPrecision\(String\(b\.precision \|\| ""\)\)/);
+  assert.match(vacuumCard, /normalizeSavedConfigVacuumOptions\(String\(b\.options \|\| ""\)\)/);
+  assert.match(vacuumCard, /normalizeSavedConfigVacuumIconOn\(String\(b\.icon_on \|\| ""\)\)/);
+  assert.doesNotMatch(vacuumCard, /normalizeEntityModeCardConfig\(b,/);
 
   const firmware = fs.readFileSync(path.join(ROOT, "components/espcontrol/button_grid_config_parser.h"), "utf8");
   assert.match(firmware, /#include "button_grid_saved_config_vacuum_generated\.h"/);

@@ -92,6 +92,10 @@ def run_self_test() -> int:
     del missing_vacuum_default_icon["cards"]["vacuum"]["normalization"]["hookData"]["normalize_vacuum_fields"]["defaultIcons"]["default"]
     expect_error(validate_card_contract(missing_vacuum_default_icon), "must include default")
 
+    invalid_allowed_alias = copy.deepcopy(card_contract)
+    invalid_allowed_alias["cards"]["vacuum"]["normalization"]["fields"]["sensor"]["aliases"]["vacuum.old"] = "missing_mode"
+    expect_error(validate_card_contract(invalid_allowed_alias), "must map to an allowed value")
+
     invalid_condition = copy.deepcopy(card_contract)
     invalid_condition["cards"]["sensor"]["options"][0]["applicability"][0]["operator"] = "matches"
     expect_error(validate_card_contract(invalid_condition), "must be equals, in, or present")

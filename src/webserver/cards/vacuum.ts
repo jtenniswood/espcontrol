@@ -1,4 +1,10 @@
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import {
+    normalizeSavedConfigVacuumIconOn,
+    normalizeSavedConfigVacuumOptions,
+    normalizeSavedConfigVacuumPrecision,
+    normalizeSavedConfigVacuumSensor,
+} from "../generated/saved_config_vacuum";
 export function registerVacuumCardTypes(): GlobalDescriptors {
     // Vacuum card: touchscreen-friendly controls for Home Assistant vacuum entities.
     var VACUUM_CARD_MODES: any = [
@@ -14,7 +20,7 @@ export function registerVacuumCardTypes(): GlobalDescriptors {
         return entityModeValues("vacuum", "vacuum_mode", VACUUM_CARD_MODES);
     }
     function normalizeVacuumMode(this: any, mode?: any) {
-        return normalizeEntityMode(mode, vacuumModeValues(), "start_stop");
+        return normalizeSavedConfigVacuumSensor(String(mode || ""));
     }
     function vacuumModeNeedsArea(this: any, mode?: any) {
         return normalizeVacuumMode(mode) === "clean_area";
@@ -58,11 +64,15 @@ export function registerVacuumCardTypes(): GlobalDescriptors {
         ]);
     }
     function normalizeVacuumConfig(this: any, b?: any) {
-        normalizeEntityModeCardConfig(b, {
-            normalizeMode: normalizeVacuumMode,
-            defaultIcon: vacuumModeDefaultIcon,
-            keepUnit: vacuumModeNeedsArea,
-        });
+        if (!b)
+            return;
+        b.sensor = normalizeSavedConfigVacuumSensor(String(b.sensor || ""));
+        b.unit = vacuumModeNeedsArea(b.sensor) ? (b.unit || "") : "";
+        b.precision = normalizeSavedConfigVacuumPrecision(String(b.precision || ""));
+        b.options = normalizeSavedConfigVacuumOptions(String(b.options || ""));
+        b.icon_on = normalizeSavedConfigVacuumIconOn(String(b.icon_on || ""));
+        if (!b.icon || b.icon === "Auto")
+            b.icon = vacuumModeDefaultIcon(b.sensor);
     }
     var VACUUM_CARD_METADATA: any = {
         mode: {

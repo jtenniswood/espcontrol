@@ -473,6 +473,14 @@ def validate_card_normalization(
                     errors.append(path_error(f"{rule_path}.values", "must be a non-empty list of strings for allowed"))
                 if not isinstance(rule.get("fallback"), str):
                     errors.append(path_error(f"{rule_path}.fallback", "must be a string for allowed"))
+                aliases = rule.get("aliases")
+                if aliases is not None:
+                    if not isinstance(aliases, dict) or not aliases or not all(
+                        isinstance(key, str) and isinstance(value, str) for key, value in aliases.items()
+                    ):
+                        errors.append(path_error(f"{rule_path}.aliases", "must be a non-empty object of strings for allowed"))
+                    elif isinstance(values, list) and any(target not in values for target in aliases.values()):
+                        errors.append(path_error(f"{rule_path}.aliases", "must map to an allowed value"))
             if policy == "alias":
                 aliases = rule.get("aliases")
                 if not isinstance(aliases, dict) or not aliases or not all(
