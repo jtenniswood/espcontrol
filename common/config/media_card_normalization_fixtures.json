@@ -133,5 +133,20 @@
       "precision": "",
       "options": ""
     }
+  },
+  {
+    "name": "playlist trims saved text and omits the padded default type",
+    "input": "media_player.office;Playlist;Music;Auto;playlist;;media;;playlist_content_id=%20morning%20,playlist_content_type=%20playlist%20,playlist_player_source=%20Kitchen%20",
+    "expected": {
+      "entity": "media_player.office",
+      "label": "Playlist",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "playlist",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "playlist_content_id=morning,playlist_player_source=Kitchen"
+    }
   }
 ]
