@@ -2347,12 +2347,17 @@ async function assertCardTransferSmoke(page, posts, label) {
   await page.locator('.sp-main [data-slot="1"]').click({ button: "right", force: true });
   await page.locator(".sp-ctx-menu").waitFor({ state: "visible" });
   assert(
-    await page.locator(".sp-ctx-menu").getByText("Copy Card Code", { exact: true }).isVisible(),
+    await page.locator(".sp-ctx-menu").getByText("Copy Code", { exact: true }).isVisible(),
     `${label}: card context menu exposes transfer-code copying`,
   );
-  await page.locator(".sp-ctx-menu").getByText("Copy Card Code", { exact: true }).click();
+  await page.locator(".sp-ctx-menu").getByText("Copy Code", { exact: true }).click();
   const copyDialog = page.locator(".sp-transfer-dialog");
   await copyDialog.waitFor({ state: "visible" });
+  assert.strictEqual(
+    await copyDialog.getByRole("heading", { name: "Copy Code", exact: true }).count(),
+    1,
+    `${label}: copy dialog uses the concise title`,
+  );
   const code = await copyDialog.locator("textarea").inputValue();
   const envelope = JSON.parse(code);
   assert.strictEqual(envelope.format, "espcontrol.cards", `${label}: copied card code has the format marker`);

@@ -476,7 +476,7 @@ function showCopyCardCode(slots) {
     showBanner(error.cardTransferMessage || error.message || "Could not create card code.", "error");
     return;
   }
-  var dialog = createCardTransferDialog(slots.length > 1 ? "Copy Card Codes" : "Copy Card Code");
+  var dialog = createCardTransferDialog("Copy Code");
   var intro = document.createElement("p");
   intro.textContent = "Copy this code to another controller.";
   dialog.appendChild(intro);

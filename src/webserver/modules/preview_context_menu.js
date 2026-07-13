@@ -159,7 +159,7 @@ function addSingleCardMenuItems(slot) {
   });
 
   addCtxItem("clipboard-outline", "Copy", function () { copySlot(slot); });
-  addCtxItem("code-json", "Copy Card Code", function () { showCopyCardCode([slot]); });
+  addCtxItem("code-json", "Copy Code", function () { showCopyCardCode([slot]); });
   addCtxItem("content-cut", "Cut", function () { cutSlot(slot); });
   addCtxItem("delete", "Delete", function () { deleteSlot(slot); }, true);
 }
