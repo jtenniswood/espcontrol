@@ -228,9 +228,15 @@ var CSS =
   "font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
   ".sp-transfer-dialog h2{margin:0 44px 12px 0;font-size:1.2rem;font-weight:600}" +
   ".sp-transfer-dialog p{margin:0 0 14px;color:var(--text2);line-height:1.45}" +
-  ".sp-transfer-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:999px;" +
+  ".sp-transfer-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:999px;" +
   "border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;" +
-  "display:flex;align-items:center;justify-content:center;padding:0}" +
+  "display:flex;align-items:center;justify-content:center;padding:0;z-index:1;line-height:1;" +
+  "box-shadow:var(--shadow-1);touch-action:manipulation;" +
+  "transition:background .2s,border-color .2s,color .2s,box-shadow .2s}" +
+  ".sp-transfer-close:hover{background:var(--border);border-color:#4a4d54;color:var(--text)}" +
+  ".sp-transfer-close:focus-visible{outline:none;border-color:var(--accent);" +
+  "box-shadow:0 0 0 3px var(--accent-soft)}" +
+  ".sp-transfer-close-icon{width:20px;height:20px;display:block;fill:currentColor;pointer-events:none}" +
   ".sp-transfer-dialog .sp-transfer-code{width:100%;min-height:170px;box-sizing:border-box;" +
   "font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:400;" +
   "font-size:.78rem;word-break:break-all}" +

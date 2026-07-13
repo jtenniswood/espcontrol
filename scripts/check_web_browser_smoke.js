@@ -2396,7 +2396,23 @@ async function assertCardTransferSmoke(page, posts, label) {
   assert(/Inter|Segoe UI|Roboto|sans-serif/i.test(dialogFont), `${label}: copy dialog uses the web UI font stack`);
   const codeFont = await copyDialog.locator("textarea").evaluate((element) => getComputedStyle(element).fontFamily);
   assert(/ui-monospace|SFMono|Menlo|Consolas|monospace/i.test(codeFont), `${label}: transfer code uses a monospace font`);
-  await copyDialog.getByRole("button", { name: "Close" }).click();
+  const closeControl = await copyDialog.locator(".sp-transfer-close").evaluate((button) => {
+    const rect = button.getBoundingClientRect();
+    const icon = button.querySelector(".sp-transfer-close-icon path");
+    return {
+      buttonType: button.type,
+      hasInlineIcon: !!icon,
+      width: rect.width,
+      height: rect.height,
+      touchAction: getComputedStyle(button).touchAction,
+    };
+  });
+  assert.strictEqual(closeControl.buttonType, "button", `${label}: close control cannot submit another form`);
+  assert(closeControl.hasInlineIcon, `${label}: close control uses a self-contained icon`);
+  assert(closeControl.width >= 36 && closeControl.height >= 36, `${label}: close control has a usable target size`);
+  assert.strictEqual(closeControl.touchAction, "manipulation", `${label}: close control responds promptly to touch`);
+  await copyDialog.locator(".sp-transfer-close").click();
+  await copyDialog.waitFor({ state: "detached" });
 
   const beforePaste = posts.length;
   const destination = await openPasteCardCodeDialog(page);

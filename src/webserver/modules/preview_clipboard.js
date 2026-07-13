@@ -446,7 +446,13 @@ function createCardTransferDialog(title) {
   heading.id = titleId;
   heading.textContent = title;
   dialog.appendChild(heading);
-  var close = createActionButton("sp-transfer-close", "", "close", "Close");
+  var close = document.createElement("button");
+  close.type = "button";
+  close.className = "sp-transfer-close";
+  close.innerHTML = '<svg class="sp-transfer-close-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"></path>' +
+    '</svg>';
+  close.setAttribute("aria-label", "Close");
   close.addEventListener("click", closeCardTransferDialog);
   dialog.appendChild(close);
   overlay.appendChild(dialog);
