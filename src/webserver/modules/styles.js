@@ -224,17 +224,18 @@ var CSS =
   "backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
   ".sp-transfer-dialog{position:relative;width:min(620px,100%);max-height:90vh;overflow:auto;" +
   "box-sizing:border-box;padding:24px;background:var(--bg);border:1px solid var(--border);" +
-  "border-radius:var(--radius);box-shadow:var(--shadow-3);color:var(--text)}" +
-  ".sp-transfer-dialog h2{margin:0 44px 12px 0;font-size:1.2rem}" +
+  "border-radius:var(--radius);box-shadow:var(--shadow-3);color:var(--text);" +
+  "font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
+  ".sp-transfer-dialog h2{margin:0 44px 12px 0;font-size:1.2rem;font-weight:600}" +
   ".sp-transfer-dialog p{margin:0 0 14px;color:var(--text2);line-height:1.45}" +
   ".sp-transfer-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:999px;" +
   "border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;" +
   "display:flex;align-items:center;justify-content:center;padding:0}" +
-  ".sp-transfer-code{width:100%;min-height:170px;box-sizing:border-box;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" +
+  ".sp-transfer-dialog .sp-transfer-code{width:100%;min-height:170px;box-sizing:border-box;" +
+  "font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:400;" +
   "font-size:.78rem;word-break:break-all}" +
   ".sp-transfer-note{margin-top:10px!important;font-size:.82rem}" +
-  ".sp-transfer-status,.sp-transfer-error{min-height:20px;margin-top:8px;font-size:.86rem}" +
-  ".sp-transfer-status{color:var(--text2)}.sp-transfer-error{color:#ff8b8b}" +
+  ".sp-transfer-error{min-height:20px;margin-top:8px;font-size:.86rem;color:#ff8b8b}" +
   ".sp-transfer-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}" +
   ".sp-transfer-btn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;" +
   "padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);" +

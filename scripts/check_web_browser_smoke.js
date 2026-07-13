@@ -2362,12 +2362,41 @@ async function assertCardTransferSmoke(page, posts, label) {
     String(envelope.cards[0].entity || "").includes("."),
     `${label}: copied code preserves the configured entity`,
   );
-  await copyDialog.getByRole("button", { name: "Copy Code" }).click();
-  await page.waitForFunction(() => {
-    const status = document.querySelector(".sp-transfer-status");
-    return status && /Ctrl\+C|Command\+C|copied/.test(status.textContent || "");
-  });
-  await copyDialog.locator(".sp-transfer-actions").getByRole("button", { name: "Close" }).click();
+  assert.strictEqual(
+    await copyDialog.getByText("Copy this code to another controller.", { exact: true }).count(),
+    1,
+    `${label}: copy dialog uses concise guidance`,
+  );
+  assert.strictEqual(
+    await copyDialog.getByRole("button", { name: "Copy Code" }).count(),
+    0,
+    `${label}: copy dialog does not show a non-functional copy button`,
+  );
+  assert.strictEqual(
+    await copyDialog.locator(".sp-transfer-actions").count(),
+    0,
+    `${label}: copy dialog does not show footer actions`,
+  );
+  assert.strictEqual(
+    await copyDialog.getByText(/Press (Command|Ctrl)\+C to copy\./).count(),
+    0,
+    `${label}: copy dialog does not show a clipboard shortcut instruction`,
+  );
+  const copySelection = await copyDialog.locator("textarea").evaluate((textarea) => ({
+    start: textarea.selectionStart,
+    end: textarea.selectionEnd,
+    length: textarea.value.length,
+  }));
+  assert.deepStrictEqual(
+    copySelection,
+    { start: 0, end: copySelection.length, length: copySelection.length },
+    `${label}: card code is selected for manual copying`,
+  );
+  const dialogFont = await copyDialog.evaluate((element) => getComputedStyle(element).fontFamily);
+  assert(/Inter|Segoe UI|Roboto|sans-serif/i.test(dialogFont), `${label}: copy dialog uses the web UI font stack`);
+  const codeFont = await copyDialog.locator("textarea").evaluate((element) => getComputedStyle(element).fontFamily);
+  assert(/ui-monospace|SFMono|Menlo|Consolas|monospace/i.test(codeFont), `${label}: transfer code uses a monospace font`);
+  await copyDialog.getByRole("button", { name: "Close" }).click();
 
   const beforePaste = posts.length;
   const destination = await openPasteCardCodeDialog(page);

@@ -462,18 +462,6 @@ function createCardTransferDialog(title) {
   return dialog;
 }
 
-function cardTransferManualCopyInstruction() {
-  var platform = String(navigator.platform || "");
-  return /Mac|iPhone|iPad/i.test(platform) ? "Press Command+C to copy." : "Press Ctrl+C to copy.";
-}
-
-function selectCardTransferCode(textarea, status) {
-  textarea.focus();
-  textarea.select();
-  textarea.setSelectionRange(0, textarea.value.length);
-  status.textContent = cardTransferManualCopyInstruction();
-}
-
 function showCopyCardCode(slots) {
   var code;
   try {
@@ -484,7 +472,7 @@ function showCopyCardCode(slots) {
   }
   var dialog = createCardTransferDialog(slots.length > 1 ? "Copy Card Codes" : "Copy Card Code");
   var intro = document.createElement("p");
-  intro.textContent = "Copy this code, then open an empty position on the other controller and choose Paste Card Code.";
+  intro.textContent = "Copy this code to another controller.";
   dialog.appendChild(intro);
   var textarea = document.createElement("textarea");
   textarea.className = "sp-input sp-textarea sp-transfer-code";
@@ -496,29 +484,6 @@ function showCopyCardCode(slots) {
   privacy.className = "sp-transfer-note";
   privacy.textContent = "Keep this code private. It can include webhook URLs, headers, or other sensitive configuration.";
   dialog.appendChild(privacy);
-  var status = document.createElement("div");
-  status.className = "sp-transfer-status";
-  status.setAttribute("aria-live", "polite");
-  dialog.appendChild(status);
-  var actions = document.createElement("div");
-  actions.className = "sp-transfer-actions";
-  var cancel = createActionButton("sp-transfer-btn", "Close");
-  cancel.addEventListener("click", closeCardTransferDialog);
-  actions.appendChild(cancel);
-  var copy = createActionButton("sp-transfer-btn sp-transfer-btn-primary", "Copy Code", "content-copy");
-  copy.addEventListener("click", function () {
-    if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(code).then(function () {
-        status.textContent = "Card code copied.";
-      }).catch(function () {
-        selectCardTransferCode(textarea, status);
-      });
-    } else {
-      selectCardTransferCode(textarea, status);
-    }
-  });
-  actions.appendChild(copy);
-  dialog.appendChild(actions);
   textarea.focus();
   textarea.select();
 }
