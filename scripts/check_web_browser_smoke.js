@@ -2345,6 +2345,20 @@ async function openPasteCardCodeDialog(page) {
     1,
     "paste dialog uses the concise title",
   );
+  const cancel = dialog.getByRole("button", { name: "Cancel", exact: true });
+  const paste = dialog.getByRole("button", { name: "Paste", exact: true });
+  assert(
+    await cancel.evaluate((button) =>
+      button.classList.contains("sp-action-btn") && button.classList.contains("sp-cancel-btn"),
+    ),
+    "paste dialog cancel action uses the standard modal button style",
+  );
+  assert(
+    await paste.evaluate((button) =>
+      button.classList.contains("sp-action-btn") && button.classList.contains("sp-save-btn"),
+    ),
+    "paste dialog primary action uses the standard modal button style",
+  );
   return { dialog, pos };
 }
 

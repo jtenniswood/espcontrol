@@ -242,11 +242,7 @@ var CSS =
   "font-size:.78rem;word-break:break-all}" +
   ".sp-transfer-note{margin-top:10px!important;font-size:.82rem}" +
   ".sp-transfer-error{min-height:20px;margin-top:8px;font-size:.86rem;color:#ff8b8b}" +
-  ".sp-transfer-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}" +
-  ".sp-transfer-btn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;" +
-  "padding:9px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);" +
-  "color:var(--text);font:inherit;font-weight:600;cursor:pointer}" +
-  ".sp-transfer-btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}" +
+  ".sp-transfer-actions{justify-content:flex-end}" +
   "@media(max-width:600px){.sp-transfer-overlay{padding:0}.sp-transfer-dialog{width:100%;height:100%;" +
   "max-height:none;border:0;border-radius:0;padding:20px}.sp-transfer-code{min-height:45vh}" +
   ".sp-transfer-actions{position:sticky;bottom:0;background:var(--bg);padding-top:12px}}" +
@@ -384,8 +380,8 @@ var CSS =
   "font-weight:500;cursor:pointer;font-family:inherit;" +
   "transition:background .25s,opacity .25s,box-shadow .25s}" +
   ".sp-action-btn:active{opacity:.85}" +
-  ".sp-delete-btn,.sp-hide-btn{background:var(--surface2);color:var(--text);display:inline-flex;align-items:center;gap:6px}" +
-  ".sp-delete-btn:hover,.sp-hide-btn:hover{background:var(--border);color:var(--text)}" +
+  ".sp-delete-btn,.sp-hide-btn,.sp-cancel-btn{background:var(--surface2);color:var(--text);display:inline-flex;align-items:center;gap:6px}" +
+  ".sp-delete-btn:hover,.sp-hide-btn:hover,.sp-cancel-btn:hover{background:var(--border);color:var(--text)}" +
   ".sp-save-btn{background:var(--accent);color:#fff}" +
   ".sp-save-btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-1)}" +
   ".sp-edit-subpage-btn{background:var(--accent);color:#fff}" +

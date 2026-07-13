@@ -509,11 +509,11 @@ function showPasteCardCode(pos, targetIsSubpage) {
   errorText.setAttribute("aria-live", "assertive");
   dialog.appendChild(errorText);
   var actions = document.createElement("div");
-  actions.className = "sp-transfer-actions";
-  var cancel = createActionButton("sp-transfer-btn", "Cancel");
+  actions.className = "sp-transfer-actions sp-btn-row";
+  var cancel = createActionButton("sp-action-btn sp-cancel-btn", "Cancel");
   cancel.addEventListener("click", closeCardTransferDialog);
   actions.appendChild(cancel);
-  var paste = createActionButton("sp-transfer-btn sp-transfer-btn-primary", "Paste", "content-paste");
+  var paste = createActionButton("sp-action-btn sp-save-btn", "Paste");
   paste.addEventListener("click", function () {
     errorText.textContent = "";
     try {
