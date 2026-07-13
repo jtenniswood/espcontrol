@@ -41,6 +41,8 @@ SAVED_CONFIG_FIELDS = [
     "precision",
     "options",
 ]
+NORMALIZATION_FIELD_POLICIES = {"keep", "clear", "default", "allowed", "alias", "hook"}
+NORMALIZATION_CONDITION_OPERATORS = {"equals", "in", "present"}
 
 
 class ProductSchemaError(RuntimeError):
@@ -175,6 +177,18 @@ def validate_entity_names(data: dict[str, Any]) -> list[str]:
 
 def validate_card_contract(data: dict[str, Any]) -> list[str]:
     errors: list[str] = []
+    if data.get("contractVersion") != 1:
+        errors.append(path_error("contractVersion", "must be 1"))
+
+    hooks = data.get("normalizationHooks")
+    hook_names: set[str] = set()
+    if not isinstance(hooks, list) or not all(isinstance(hook, str) and hook for hook in hooks):
+        errors.append(path_error("normalizationHooks", "must be a list of non-empty strings"))
+    else:
+        hook_names = set(hooks)
+        if len(hook_names) != len(hooks):
+            errors.append(path_error("normalizationHooks", "must not contain duplicates"))
+
     fields = data.get("fields")
     if fields != SAVED_CONFIG_FIELDS:
         errors.append(path_error("fields", "must match the saved button config field order"))
@@ -211,6 +225,21 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                     errors.append(path_error(f"{card_path}.options", "must be a list"))
                 else:
                     option_names: dict[str, str] = {}
+                    storage_names: dict[str, str] = {}
+                    condition_option_names = {
+                        name for name in data.get("optionNames", []) if isinstance(name, str)
+                    }
+                    for candidate in options:
+                        if not isinstance(candidate, dict):
+                            continue
+                        candidate_name = candidate.get("name")
+                        if isinstance(candidate_name, str):
+                            condition_option_names.add(candidate_name)
+                        candidate_storage = candidate.get("storage", [])
+                        if isinstance(candidate_storage, list):
+                            condition_option_names.update(
+                                name for name in candidate_storage if isinstance(name, str)
+                            )
                     for idx, option in enumerate(options):
                         option_path = f"{card_path}.options[{idx}]"
                         if not isinstance(option, dict):
@@ -234,8 +263,38 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                                 or not all(isinstance(item, str) for item in value)
                             ):
                                 errors.append(path_error(f"{option_path}.{key}", "must be a list of strings"))
+                        names = option.get("storage", [name])
+                        if isinstance(names, list):
+                            for storage_name in names:
+                                if not isinstance(storage_name, str) or not storage_name:
+                                    errors.append(path_error(f"{option_path}.storage", "must contain non-empty strings"))
+                                elif storage_name in storage_names:
+                                    errors.append(path_error(f"{option_path}.storage", f"duplicates storage name used by {storage_names[storage_name]}"))
+                                else:
+                                    storage_names[storage_name] = option_path
                         if "defaultValue" in option and not isinstance(option.get("defaultValue"), str):
                             errors.append(path_error(f"{option_path}.defaultValue", "must be a string"))
+                        if option.get("kind") in {"choice", "number"} and "defaultValue" not in option:
+                            errors.append(path_error(f"{option_path}.defaultValue", "is required for choice and number options"))
+                        if "omitDefault" in option and not isinstance(option.get("omitDefault"), bool):
+                            errors.append(path_error(f"{option_path}.omitDefault", "must be a boolean"))
+                        if "storageField" in option and option.get("storageField") not in SAVED_CONFIG_FIELDS:
+                            errors.append(path_error(f"{option_path}.storageField", "must be a saved config field"))
+                        aliases = option.get("aliases")
+                        if aliases is not None and (
+                            not isinstance(aliases, dict)
+                            or not all(isinstance(key, str) and isinstance(value, str) for key, value in aliases.items())
+                        ):
+                            errors.append(path_error(f"{option_path}.aliases", "must be an object of strings"))
+                        validate_normalization_conditions(
+                            option.get("applicability"),
+                            f"{option_path}.applicability",
+                            errors,
+                            condition_option_names,
+                        )
+                        applicability_hook = option.get("applicabilityHook")
+                        if applicability_hook is not None and applicability_hook not in hook_names:
+                            errors.append(path_error(f"{option_path}.applicabilityHook", "must name an allow-listed normalization hook"))
                         for key in ("min", "max", "step"):
                             if key in option and not isinstance(option.get(key), (int, float)):
                                 errors.append(path_error(f"{option_path}.{key}", "must be a number"))
@@ -280,6 +339,17 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                     if not isinstance(default.get(field), str):
                         errors.append(path_error(f"{card_path}.default.{field}", "must be a string"))
 
+            normalization = card.get("normalization")
+            if normalization is not None:
+                validate_card_normalization(
+                    card_path,
+                    normalization,
+                    options if isinstance(options, list) else [],
+                    hook_names,
+                    data.get("migrationActions"),
+                    errors,
+                )
+
     aliases = data.get("migrationAliases", {})
     if not isinstance(aliases, dict):
         errors.append(path_error("migrationAliases", "must be an object"))
@@ -294,6 +364,27 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                     errors.append(path_error(f"{alias_path}.{field}", "is not a saved config field"))
                 if not isinstance(value, str):
                     errors.append(path_error(f"{alias_path}.{field}", "must be a string"))
+            target_type = target.get("type")
+            if isinstance(target_type, str) and isinstance(cards, dict) and target_type not in cards:
+                errors.append(path_error(f"{alias_path}.type", "must reference a card defined in cards"))
+
+    global_option_names = {
+        name for name in data.get("optionNames", []) if isinstance(name, str)
+    }
+    if isinstance(cards, dict):
+        for card in cards.values():
+            if not isinstance(card, dict):
+                continue
+            for option in card.get("options", []):
+                if not isinstance(option, dict):
+                    continue
+                name = option.get("name")
+                if isinstance(name, str):
+                    global_option_names.add(name)
+                storage = option.get("storage", [])
+                if isinstance(storage, list):
+                    global_option_names.update(item for item in storage if isinstance(item, str))
+    validate_migration_actions(data.get("migrationActions"), hook_names, global_option_names, errors)
 
     validate_subpage_type_codes(data, cards, errors)
     validate_option_select(data, errors)
@@ -303,6 +394,164 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
     if not isinstance(large, dict):
         errors.append(path_error("largeNumbers", "must be an object"))
     return errors
+
+
+def validate_normalization_conditions(
+    value: Any,
+    path: str,
+    errors: list[str],
+    allowed_option_names: set[str] | None = None,
+) -> None:
+    if value is None:
+        return
+    if not isinstance(value, list):
+        errors.append(path_error(path, "must be a list"))
+        return
+    for idx, condition in enumerate(value):
+        condition_path = f"{path}[{idx}]"
+        if not isinstance(condition, dict):
+            errors.append(path_error(condition_path, "must be an object"))
+            continue
+        source = condition.get("source")
+        name = condition.get("name")
+        operator = condition.get("operator")
+        if source not in {"field", "option"}:
+            errors.append(path_error(f"{condition_path}.source", "must be field or option"))
+        if not isinstance(name, str) or not name:
+            errors.append(path_error(f"{condition_path}.name", "must be a non-empty string"))
+        elif source == "field" and name not in SAVED_CONFIG_FIELDS:
+            errors.append(path_error(f"{condition_path}.name", "must be a saved config field"))
+        elif source == "option" and allowed_option_names is not None and name not in allowed_option_names:
+            errors.append(path_error(f"{condition_path}.name", "must reference a declared option storage name"))
+        if operator not in NORMALIZATION_CONDITION_OPERATORS:
+            errors.append(path_error(f"{condition_path}.operator", "must be equals, in, or present"))
+        condition_value = condition.get("value")
+        if operator == "equals" and not isinstance(condition_value, str):
+            errors.append(path_error(f"{condition_path}.value", "must be a string for equals"))
+        if operator == "in" and (
+            not isinstance(condition_value, list)
+            or not condition_value
+            or not all(isinstance(item, str) for item in condition_value)
+        ):
+            errors.append(path_error(f"{condition_path}.value", "must be a non-empty list of strings for in"))
+        if operator == "present" and "value" in condition:
+            errors.append(path_error(f"{condition_path}.value", "must be omitted for present"))
+        if "negate" in condition and not isinstance(condition.get("negate"), bool):
+            errors.append(path_error(f"{condition_path}.negate", "must be a boolean"))
+
+
+def validate_card_normalization(
+    card_path: str,
+    normalization: Any,
+    options: list[Any],
+    hook_names: set[str],
+    migration_actions: Any,
+    errors: list[str],
+) -> None:
+    path = f"{card_path}.normalization"
+    if not isinstance(normalization, dict):
+        errors.append(path_error(path, "must be an object"))
+        return
+    fields = normalization.get("fields")
+    if not isinstance(fields, dict) or set(fields) != set(SAVED_CONFIG_FIELDS):
+        errors.append(path_error(f"{path}.fields", "must define every saved config field exactly once"))
+    else:
+        for field, rule in fields.items():
+            rule_path = f"{path}.fields.{field}"
+            if not isinstance(rule, dict):
+                errors.append(path_error(rule_path, "must be an object"))
+                continue
+            policy = rule.get("policy")
+            if policy not in NORMALIZATION_FIELD_POLICIES:
+                errors.append(path_error(f"{rule_path}.policy", "must be keep, clear, default, allowed, alias, or hook"))
+                continue
+            if policy == "default" and not isinstance(rule.get("value"), str):
+                errors.append(path_error(f"{rule_path}.value", "must be a string for default"))
+            if policy == "allowed":
+                values = rule.get("values")
+                if not isinstance(values, list) or not values or not all(isinstance(item, str) for item in values):
+                    errors.append(path_error(f"{rule_path}.values", "must be a non-empty list of strings for allowed"))
+                if not isinstance(rule.get("fallback"), str):
+                    errors.append(path_error(f"{rule_path}.fallback", "must be a string for allowed"))
+            if policy == "alias":
+                aliases = rule.get("aliases")
+                if not isinstance(aliases, dict) or not aliases or not all(
+                    isinstance(key, str) and isinstance(value, str) for key, value in aliases.items()
+                ):
+                    errors.append(path_error(f"{rule_path}.aliases", "must be a non-empty object of strings for alias"))
+            if policy == "hook":
+                hook = rule.get("hook")
+                if hook not in hook_names:
+                    errors.append(path_error(f"{rule_path}.hook", "must name an allow-listed normalization hook"))
+
+    unknown = normalization.get("unknownOptions")
+    if unknown != "drop":
+        errors.append(path_error(f"{path}.unknownOptions", "must be drop for the compatibility rollout"))
+
+    required_storage_names: set[str] = set()
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        if not isinstance(option.get("omitDefault"), bool):
+            errors.append(path_error(f"{path}.options.{option.get('name', '<unknown>')}", "must declare omitDefault"))
+        names = option.get("storage", [option.get("name")])
+        if isinstance(names, list):
+            valid_names = {name for name in names if isinstance(name, str)}
+            if "storageField" not in option and option.get("migration") != "drop":
+                required_storage_names.update(valid_names)
+    order = normalization.get("canonicalOptionOrder")
+    if not isinstance(order, list) or not all(isinstance(name, str) for name in order):
+        errors.append(path_error(f"{path}.canonicalOptionOrder", "must be a list of strings"))
+    else:
+        if len(order) != len(set(order)):
+            errors.append(path_error(f"{path}.canonicalOptionOrder", "must not contain duplicates"))
+        unknown_names = sorted(set(order) - required_storage_names)
+        if unknown_names:
+            errors.append(path_error(f"{path}.canonicalOptionOrder", f"contains unknown storage names: {', '.join(unknown_names)}"))
+        missing_names = sorted(required_storage_names - set(order))
+        if missing_names:
+            errors.append(path_error(f"{path}.canonicalOptionOrder", f"omits storage names: {', '.join(missing_names)}"))
+
+    hook = normalization.get("optionHook")
+    if hook is not None and hook not in hook_names:
+        errors.append(path_error(f"{path}.optionHook", "must name an allow-listed normalization hook"))
+
+    actions = normalization.get("migrationActions", [])
+    if not isinstance(actions, list) or not all(isinstance(name, str) for name in actions):
+        errors.append(path_error(f"{path}.migrationActions", "must be a list of strings"))
+    elif isinstance(migration_actions, dict):
+        for name in actions:
+            if name not in migration_actions:
+                errors.append(path_error(f"{path}.migrationActions", f"references missing action {name!r}"))
+
+
+def validate_migration_actions(
+    value: Any,
+    hook_names: set[str],
+    option_names: set[str],
+    errors: list[str],
+) -> None:
+    if not isinstance(value, dict):
+        errors.append(path_error("migrationActions", "must be an object"))
+        return
+    for name, action in value.items():
+        path = f"migrationActions.{name}"
+        if not isinstance(name, str) or not name or not isinstance(action, dict):
+            errors.append(path_error("migrationActions", "keys must map to objects"))
+            continue
+        validate_normalization_conditions(action.get("when"), f"{path}.when", errors, option_names)
+        updates = action.get("set", {})
+        if not isinstance(updates, dict) or not updates:
+            errors.append(path_error(f"{path}.set", "must be a non-empty object"))
+        else:
+            for field, field_value in updates.items():
+                if field not in SAVED_CONFIG_FIELDS:
+                    errors.append(path_error(f"{path}.set.{field}", "must be a saved config field"))
+                if not isinstance(field_value, str):
+                    errors.append(path_error(f"{path}.set.{field}", "must be a string"))
+        hook = action.get("hook")
+        if hook is not None and hook not in hook_names:
+            errors.append(path_error(f"{path}.hook", "must name an allow-listed normalization hook"))
 
 
 def validate_card_behavior(card_path: str, behavior: dict[str, Any], errors: list[str]) -> None:
@@ -338,6 +587,16 @@ def validate_subpage_type_codes(data: dict[str, Any], cards: Any, errors: list[s
         seen[code] = card_type
         if isinstance(cards, dict) and card_type not in cards:
             errors.append(path_error(code_path, "must also be defined in cards"))
+
+    retired = data.get("retiredSubpageTypeCodes")
+    if not isinstance(retired, list) or not all(isinstance(code, str) and code for code in retired):
+        errors.append(path_error("retiredSubpageTypeCodes", "must be a list of non-empty strings"))
+    else:
+        if len(retired) != len(set(retired)):
+            errors.append(path_error("retiredSubpageTypeCodes", "must not contain duplicates"))
+        reused = sorted(set(retired) & set(seen))
+        if reused:
+            errors.append(path_error("retiredSubpageTypeCodes", f"reuses active codes: {', '.join(reused)}"))
 
 
 def validate_option_select(data: dict[str, Any], errors: list[str]) -> None:

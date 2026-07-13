@@ -3,6 +3,10 @@
 `common/config/card_contract.json` is the source of truth for card type metadata.
 It keeps the web setup page and firmware aligned.
 
+`contractVersion` versions the authored contract language. It is deliberately
+separate from backup envelope versions and the legacy/compact saved-string
+encoding. Changing the contract version does not make users resave cards.
+
 ## What the Contract Defines
 
 Each card entry can define:
@@ -13,6 +17,24 @@ Each card entry can define:
 - `options` - typed settings stored in the compact `options` field.
 - `default` - default saved config for a new card.
 - aliases or picker metadata where supported by the schema.
+
+Pilot card definitions also contain a `normalization` section. It records a
+policy for every saved field, the canonical stored-option order, the current
+unknown-option policy, named migration actions, and any reviewed custom hook.
+Hooks must be listed in `normalizationHooks`; arbitrary executable expressions
+are not accepted in JSON.
+
+Option `applicability` conditions use only:
+
+- equality (`equals`)
+- membership (`in`)
+- presence (`present`)
+- optional negation (`negate`)
+
+The validator rejects missing field policies, unknown hooks, duplicate storage
+names, missing choice/number defaults, aliases to missing cards, invalid
+conditions, duplicate compact codes, and reuse of a code listed in
+`retiredSubpageTypeCodes`.
 
 Generated consumers include:
 

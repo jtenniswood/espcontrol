@@ -58,6 +58,18 @@ def assert_contains(text: str, needle: str, label: str) -> None:
 def assert_ts_contract(data: dict, ts: str) -> None:
     assert_contains(
         ts,
+        f"export const CARD_CONTRACT_VERSION = {data['contractVersion']} as const;",
+        "typed web card contract version",
+    )
+    assert_contains(
+        ts,
+        "export const CARD_CONTRACT_MIGRATION_ACTIONS:",
+        "typed web card contract migration actions",
+    )
+    for hook in data["normalizationHooks"]:
+        assert_contains(ts, json.dumps(hook), f"typed web card contract hook {hook}")
+    assert_contains(
+        ts,
         f"export const CARD_CONFIG_FIELDS = {json.dumps(data['fields'])} as const",
         "typed web card contract",
     )
@@ -84,6 +96,11 @@ def assert_ts_contract(data: dict, ts: str) -> None:
 
 
 def assert_h_contract(data: dict, header: str) -> None:
+    assert_contains(
+        header,
+        f"constexpr int CARD_CONTRACT_VERSION = {data['contractVersion']};",
+        "firmware card contract version",
+    )
     for card_type, card in data["cards"].items():
         escaped_type = re.escape(cpp_string(card_type))
         escaped_label = re.escape(cpp_string(card["label"]))

@@ -1,4 +1,15 @@
 {
+  "contractVersion": 1,
+  "normalizationHooks": [
+    "normalize_action_fields",
+    "action_large_numbers_supported",
+    "normalize_action_options",
+    "normalize_media_fields",
+    "normalize_media_options",
+    "normalize_sensor_fields",
+    "normalize_sensor_options",
+    "normalize_vacuum_fields"
+  ],
   "fields": [
     "entity",
     "label",
@@ -86,38 +97,113 @@
         {
           "name": "large_numbers",
           "label": "Large State Numbers",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true,
+          "applicabilityHook": "action_large_numbers_supported"
+        },
+        {
+          "name": "state_entity",
+          "label": "State Entity",
+          "kind": "text",
+          "hidden": true,
+          "docsHidden": true,
+          "omitDefault": true
+        },
+        {
+          "name": "state_unit",
+          "label": "State Unit",
+          "kind": "text",
+          "hidden": true,
+          "docsHidden": true,
+          "omitDefault": true,
+          "applicability": [
+            { "source": "option", "name": "state_entity", "operator": "present" },
+            { "source": "option", "name": "state_precision", "operator": "in", "value": ["icon", "text"], "negate": true }
+          ]
+        },
+        {
+          "name": "state_precision",
+          "label": "State Precision",
+          "kind": "choice",
+          "values": ["", "0", "1", "2", "icon", "text"],
+          "defaultValue": "",
+          "hidden": true,
+          "docsHidden": true,
+          "omitDefault": true,
+          "applicability": [
+            { "source": "option", "name": "state_entity", "operator": "present" }
+          ]
         },
         {
           "name": "confirmation_required",
           "label": "Confirmation Required",
           "kind": "flag",
-          "storage": ["confirm_on"]
+          "storage": ["confirm_on"],
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" }
+          ]
         },
         {
           "name": "script_fields",
           "label": "Fields",
-          "kind": "text"
+          "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" }
+          ]
         },
         {
           "name": "confirm_message",
           "label": "Message",
           "kind": "text",
-          "defaultValue": "Run this script?"
+          "defaultValue": "Run this script?",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+            { "source": "option", "name": "confirm_on", "operator": "present" }
+          ]
         },
         {
           "name": "confirm_yes",
           "label": "Confirm Button",
           "kind": "text",
-          "defaultValue": "Yes"
+          "defaultValue": "Yes",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+            { "source": "option", "name": "confirm_on", "operator": "present" }
+          ]
         },
         {
           "name": "confirm_no",
           "label": "Cancel Button",
           "kind": "text",
-          "defaultValue": "No"
+          "defaultValue": "No",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+            { "source": "option", "name": "confirm_on", "operator": "present" }
+          ]
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_action_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_action_fields" },
+          "sensor": { "policy": "hook", "hook": "normalize_action_fields" },
+          "unit": { "policy": "hook", "hook": "normalize_action_fields" },
+          "type": { "policy": "hook", "hook": "normalize_action_fields" },
+          "precision": { "policy": "hook", "hook": "normalize_action_fields" },
+          "options": { "policy": "hook", "hook": "normalize_action_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["state_entity", "state_unit", "state_precision", "large_numbers", "script_fields", "confirm_on", "confirm_message", "confirm_yes", "confirm_no"],
+        "optionHook": "normalize_action_options",
+        "migrationActions": ["legacy_local_action", "legacy_option_select", "legacy_vacuum_start", "legacy_vacuum_dock"]
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -140,9 +226,27 @@
           "label": "Type",
           "kind": "choice",
           "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"],
-          "defaultValue": "start_stop"
+          "defaultValue": "start_stop",
+          "storageField": "sensor",
+          "omitDefault": false
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_vacuum_fields" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "allowed", "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"], "fallback": "start_stop" },
+          "unit": { "policy": "hook", "hook": "normalize_vacuum_fields" },
+          "type": { "policy": "default", "value": "vacuum" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": [],
+        "migrationActions": ["legacy_vacuum_start", "legacy_vacuum_dock"]
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -896,21 +1000,34 @@
           "label": "Type",
           "kind": "choice",
           "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
-          "defaultValue": "play_pause"
+          "defaultValue": "play_pause",
+          "storageField": "sensor",
+          "omitDefault": false,
+          "aliases": { "controls": "play_pause" }
         },
         {
           "name": "media_display",
           "label": "Type",
           "kind": "choice",
           "values": ["", "state"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "precision",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["play_pause", "position"] }
+          ]
         },
         {
           "name": "media_now_playing_controls",
           "label": "Controls",
           "kind": "choice",
           "values": ["", "progress", "play_pause"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "precision",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "now_playing" }
+          ]
         },
         {
           "name": "volume_max",
@@ -919,26 +1036,42 @@
           "min": 1,
           "max": 100,
           "step": 1,
-          "defaultValue": "100"
+          "defaultValue": "100",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "volume"] }
+          ]
         },
         {
           "name": "label_display",
           "label": "Label Display",
           "kind": "choice",
           "values": ["label", "status"],
-          "defaultValue": "status"
+          "defaultValue": "status",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "control_modal" }
+          ]
         },
         {
           "name": "number_display",
           "label": "Top Left Display",
           "kind": "choice",
           "values": ["icon", "volume"],
-          "defaultValue": "icon"
+          "defaultValue": "icon",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "control_modal" }
+          ]
         },
         {
           "name": "playlist_content_id",
           "label": "Media Content ID / URI",
-          "kind": "text"
+          "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "playlist" }
+          ]
         },
         {
           "name": "playlist_content_type",
@@ -946,19 +1079,47 @@
           "kind": "text",
           "defaultValue": "playlist",
           "hidden": true,
-          "docsHidden": true
+          "docsHidden": true,
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "playlist" }
+          ]
         },
         {
           "name": "playlist_player_source",
           "label": "Player Source / Input",
-          "kind": "text"
+          "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "playlist" }
+          ]
         },
         {
           "name": "large_numbers",
           "label": "Large Media Numbers",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["volume", "position"] }
+          ]
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "hook", "hook": "normalize_media_fields" },
+          "icon": { "policy": "hook", "hook": "normalize_media_fields" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "hook", "hook": "normalize_media_fields" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "media" },
+          "precision": { "policy": "hook", "hook": "normalize_media_fields" },
+          "options": { "policy": "hook", "hook": "normalize_media_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["label_display", "number_display", "volume_max", "playlist_content_id", "playlist_content_type", "playlist_player_source", "large_numbers"],
+        "optionHook": "normalize_media_options"
+      },
       "behavior": {
         "media": {
           "defaultMode": "play_pause",
@@ -1073,6 +1234,10 @@
           "name": "large_numbers",
           "label": "Large Sensor Numbers",
           "kind": "flag",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "in", "value": ["icon", "text"], "negate": true }
+          ],
           "supportedWhen": {
             "precisionNot": ["icon", "text"]
           }
@@ -1083,6 +1248,10 @@
           "kind": "flag",
           "hidden": true,
           "migration": "drop",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "type", "operator": "present", "negate": true }
+          ],
           "supportedWhen": {
             "never": true
           }
@@ -1091,6 +1260,10 @@
           "name": "state_labels",
           "label": "Status Translation",
           "kind": "flag",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
@@ -1099,6 +1272,10 @@
           "name": "state_input",
           "label": "Input Status",
           "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
@@ -1107,6 +1284,10 @@
           "name": "state_output",
           "label": "Display Text",
           "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
@@ -1115,6 +1296,10 @@
           "name": "state_input_2",
           "label": "Input Status 2",
           "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
@@ -1123,11 +1308,32 @@
           "name": "state_output_2",
           "label": "Display Text 2",
           "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_sensor_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_sensor_fields" },
+          "sensor": { "policy": "hook", "hook": "normalize_sensor_fields" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "sensor" },
+          "precision": { "policy": "hook", "hook": "normalize_sensor_fields" },
+          "options": { "policy": "hook", "hook": "normalize_sensor_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["large_numbers", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+        "optionHook": "normalize_sensor_options",
+        "migrationActions": ["legacy_local_sensor", "legacy_sensor_state_high_label", "legacy_sensor_state_low_label"]
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1321,6 +1527,59 @@
       }
     }
   },
+  "migrationActions": {
+    "legacy_local_action": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "local" }
+      ],
+      "set": { "type": "action", "sensor": "local", "unit": "", "precision": "", "options": "", "icon_on": "Auto" },
+      "hook": "normalize_action_fields"
+    },
+    "legacy_option_select": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "option_select" }
+      ],
+      "set": { "type": "action", "sensor": "input_select.select_option", "unit": "", "precision": "", "options": "", "icon_on": "Auto" },
+      "hook": "normalize_action_fields"
+    },
+    "legacy_vacuum_start": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "action" },
+        { "source": "field", "name": "sensor", "operator": "equals", "value": "vacuum.start" }
+      ],
+      "set": { "type": "vacuum", "sensor": "start_stop", "unit": "", "precision": "", "options": "", "icon_on": "Auto" },
+      "hook": "normalize_vacuum_fields"
+    },
+    "legacy_vacuum_dock": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "action" },
+        { "source": "field", "name": "sensor", "operator": "equals", "value": "vacuum.return_to_base" }
+      ],
+      "set": { "type": "vacuum", "sensor": "dock", "unit": "", "precision": "", "options": "", "icon_on": "Auto" },
+      "hook": "normalize_vacuum_fields"
+    },
+    "legacy_local_sensor": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "local_sensor" }
+      ],
+      "set": { "type": "sensor", "sensor": "local", "icon_on": "Auto", "options": "" },
+      "hook": "normalize_sensor_fields"
+    },
+    "legacy_sensor_state_high_label": {
+      "when": [
+        { "source": "option", "name": "state_high_label", "operator": "present" }
+      ],
+      "set": { "type": "sensor" },
+      "hook": "normalize_sensor_options"
+    },
+    "legacy_sensor_state_low_label": {
+      "when": [
+        { "source": "option", "name": "state_low_label", "operator": "present" }
+      ],
+      "set": { "type": "sensor" },
+      "hook": "normalize_sensor_options"
+    }
+  },
   "migrationAliases": {
     "option_select": {
       "type": "action",
@@ -1397,6 +1656,7 @@
     "subpage": true,
     "timezone": true
   },
+  "retiredSubpageTypeCodes": [],
   "subpageTypeCodes": {
     "action": "A",
     "calendar": "D",
