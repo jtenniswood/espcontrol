@@ -103,5 +103,20 @@
       "precision": "text",
       "options": ""
     }
+  },
+  {
+    "name": "text sensor preserves malformed UTF-8 percent runs",
+    "input": "sensor.x;State;Auto;Auto;sensor.x;;sensor;text;state_labels,state_input=%C3%28,state_output=Invalid",
+    "expected": {
+      "entity": "sensor.x",
+      "label": "State",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.x",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "state_labels,state_input=%25C3%2528,state_output=Invalid"
+    }
   }
 ]
