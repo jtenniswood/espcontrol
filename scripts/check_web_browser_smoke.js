@@ -2483,6 +2483,16 @@ async function assertCardTransferSmoke(page, posts, label) {
     return error && /does not support/.test(error.textContent || "");
   });
   assert.strictEqual(posts.length, beforeNoRoom, `${label}: an unknown card type writes nothing`);
+
+  const oversized = JSON.parse(code);
+  oversized.cards[0].label = "x".repeat(300);
+  await noRoomDialog.dialog.locator("textarea").fill(JSON.stringify(oversized));
+  await noRoomDialog.dialog.getByRole("button", { name: "Paste", exact: true }).click();
+  await page.waitForFunction(() => {
+    const error = document.querySelector(".sp-transfer-error");
+    return error && /settings are too large/.test(error.textContent || "");
+  });
+  assert.strictEqual(posts.length, beforeNoRoom, `${label}: an oversized card config writes nothing`);
   await noRoomDialog.dialog.getByRole("button", { name: "Cancel" }).click();
 
   const local = JSON.parse(code);

@@ -282,7 +282,11 @@ function planMainClipboardPaste(entries, pos) {
     if (placement.pos < 0) return { error: "There is not enough room to paste every card." };
     if (placement.size !== requestedSize) resized++;
 
-    nextButtons[newSlot - 1] = clipboardButtonConfig(entry);
+    var buttonConfig = clipboardButtonConfig(entry);
+    if (serializeButtonConfig(buttonConfig).length > 255) {
+      return { error: "A copied card's settings are too large for this controller." };
+    }
+    nextButtons[newSlot - 1] = buttonConfig;
     if (placement.size === 1) delete nextSizes[newSlot];
     else nextSizes[newSlot] = placement.size;
     placeSlotAt(nextGrid, newSlot, placement.pos, placement.size);
