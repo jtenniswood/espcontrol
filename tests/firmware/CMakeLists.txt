@@ -13,3 +13,31 @@ target_compile_features(ha_read_coordinator_test PRIVATE cxx_std_17)
 target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(ha_read_coordinator_test PRIVATE ../../components/espcontrol)
 add_test(NAME ha_read_coordinator_test COMMAND ha_read_coordinator_test)
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+file(GLOB SAVED_CONFIG_FIXTURES
+  CONFIGURE_DEPENDS
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/*_card_normalization_fixtures.json
+)
+list(APPEND SAVED_CONFIG_FIXTURES
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../common/config/card_normalization_fixtures.json
+)
+set(SAVED_CONFIG_TEST_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/saved_config_parser_test.cpp)
+add_custom_command(
+  OUTPUT ${SAVED_CONFIG_TEST_SOURCE}
+  COMMAND
+    ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_saved_config_parser_test.py
+    --output ${SAVED_CONFIG_TEST_SOURCE}
+  DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/generate_saved_config_parser_test.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_config_parser.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../components/espcontrol/button_grid_subpages.h
+    ${SAVED_CONFIG_FIXTURES}
+  VERBATIM
+)
+add_executable(saved_config_parser_test ${SAVED_CONFIG_TEST_SOURCE})
+target_compile_features(saved_config_parser_test PRIVATE cxx_std_17)
+target_compile_options(saved_config_parser_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(saved_config_parser_test PRIVATE ../../components/espcontrol)
+add_test(NAME saved_config_parser_test COMMAND saved_config_parser_test)

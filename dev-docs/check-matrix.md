@@ -25,7 +25,7 @@ This detailed routing table is generated directly from `scripts/check_tasks_data
 
 | Task | Domains | Parallel-safe | Cache | Cache environment | Cache tools | Declared inputs | Cache-only inputs | Focused command |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `firmware-tests` | firmware | Yes | never | — | — | `tests/firmware/**` | — | `python3 scripts/check_tasks.py run-task firmware-tests` |
+| `firmware-tests` | firmware | Yes | never | — | — | `tests/firmware/**`<br>`components/espcontrol/button_grid_config_parser.h`<br>`components/espcontrol/button_grid_subpages.h`<br>`common/config/card_normalization_fixtures.json`<br>`common/config/*_card_normalization_fixtures.json`<br>`scripts/generate_saved_config_parser_test.py`<br>`src/webserver/modules/config_codec.js` | — | `python3 scripts/check_tasks.py run-task firmware-tests` |
 | `web-unit` | web | Yes | deterministic | — | `node` | `tests/web/unit/**`<br>`src/webserver/**` | — | `python3 scripts/check_tasks.py run-task web-unit` |
 | `mutations` | firmware, web | No | never | — | — | `tests/mutations/**`<br>`tests/firmware/**`<br>`tests/web/unit/**`<br>`scripts/run_mutations.py` | — | `python3 scripts/check_tasks.py run-task mutations` |
 | `generated` | product, firmware, web, docs | Yes | never | — | — | `common/**`<br>`devices/**`<br>`builds/**`<br>`components/espcontrol/**`<br>`src/webserver/**`<br>`compatibility/**`<br>`scripts/build.py`<br>`scripts/build_web_bundle.js`<br>`scripts/web_source.js`<br>`scripts/web_modules.json` | — | `npm run check:generated` |

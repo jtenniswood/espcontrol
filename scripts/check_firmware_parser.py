@@ -13,8 +13,7 @@ from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = ROOT / "common" / "config"
-CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config.h"
-STYLE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_style.h"
+PARSER_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config_parser.h"
 DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
 SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
@@ -59,6 +58,21 @@ class StringRef {
 struct lv_obj_t {
   int flags = 0;
   std::string text;
+};
+constexpr int MAX_GRID_SLOTS = 25;
+inline int bounded_grid_slots(int num_slots) {
+  if (num_slots < 0) return 0;
+  return num_slots > MAX_GRID_SLOTS ? MAX_GRID_SLOTS : num_slots;
+}
+struct BtnSlot {
+  esphome::text::Text *config = nullptr;
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *text_lbl = nullptr;
+  lv_obj_t *sensor_container = nullptr;
+  lv_obj_t *sensor_lbl = nullptr;
+  lv_obj_t *unit_lbl = nullptr;
+  lv_obj_t *subpage_lbl = nullptr;
 };
 struct lv_disp_t {};
 struct lv_font_t {};
@@ -144,7 +158,7 @@ inline void lv_obj_move_foreground(lv_obj_t *) {}
 inline void lv_obj_move_background(lv_obj_t *) { lv_obj_move_background_calls++; }
 
 #include "temperature_unit.h"
-#include "button_grid_config_pure.h"
+#include "button_grid_config_parser.h"
 #include "backlight.h"
 #include "button_grid_layout.h"
 
@@ -596,15 +610,6 @@ def compiler() -> str | None:
     return None
 
 
-def pure_config_header() -> str:
-    text = CONFIG_HEADER.read_text(encoding="utf-8")
-    marker = '#include "button_grid_weather_forecast.h"'
-    index = text.find(marker)
-    if index < 0:
-        raise RuntimeError(f"Could not find pure parser boundary in {CONFIG_HEADER}")
-    return text[:index] + "\n" + STYLE_HEADER.read_text(encoding="utf-8")
-
-
 def check_clock_bar_visual_gaps() -> None:
     expected = {
         "esp32-p4-86": '"12"',
@@ -668,7 +673,7 @@ def main() -> int:
         return 1
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
-        (tmp_path / "button_grid_config_pure.h").write_text(pure_config_header(), encoding="utf-8")
+        shutil.copy2(PARSER_HEADER, tmp_path / "button_grid_config_parser.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")

@@ -20,5 +20,18 @@
       "python3",
       "scripts/check_firmware_ha_bindings.py"
     ]
+  },
+  {
+    "id": "saved-config-compact-marker",
+    "patch": "saved-config-compact-marker.patch",
+    "command": [
+      "sh",
+      "-c",
+      "cmake -S tests/firmware -B build/tests/firmware && cmake --build build/tests/firmware && ctest --test-dir build/tests/firmware --output-on-failure"
+    ],
+    "legacy_command": [
+      "python3",
+      "scripts/check_firmware_parser.py"
+    ]
   }
 ]

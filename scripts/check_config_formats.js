@@ -35,124 +35,6 @@ function loadHooks(search) {
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }
 
-function splitFields(value, delim) {
-  const out = [];
-  let start = 0;
-  while (start <= value.length) {
-    let end = value.indexOf(delim, start);
-    if (end < 0) end = value.length;
-    out.push(value.slice(start, end));
-    start = end + 1;
-  }
-  return out;
-}
-
-function decodeField(value) {
-  return String(value || "").replace(/%([0-9a-fA-F]{2})/g, (_, hex) => {
-    return String.fromCharCode(parseInt(hex, 16));
-  });
-}
-
-function subpageTypeFromCode(code) {
-  return {
-    A: "action",
-    U: "option_select",
-    D: "calendar",
-    CK: "clock",
-    T: "timezone",
-    S: "sensor",
-    LS: "local_sensor",
-    X: "door_window",
-    PR: "presence",
-    W: "weather",
-    F: "weather_forecast",
-    B: "fan_switch",
-    J: "fan_speed",
-    FC: "fan_control",
-    O: "fan_oscillate",
-    E: "fan_direction",
-    Z: "fan_preset",
-    V: "light_brightness",
-    Q: "light_switch",
-    Y: "alarm",
-    AA: "alarm_action",
-    L: "slider",
-    C: "cover",
-    N: "light_temperature",
-    R: "garage",
-    GT: "gate",
-    K: "lock",
-    LM: "lawn_mower",
-    M: "media",
-    H: "climate",
-    HC: "climate_control",
-    WH: "webhook",
-    P: "push",
-    SL: "screen_lock",
-    I: "internal",
-    G: "subpage",
-  }[code || ""] || (code || "");
-}
-
-function firmwareParseButtonConfig(str) {
-  const compact = str && str[0] === "~";
-  const parts = compact ? splitFields(str.slice(1), ",").map(decodeField) : splitFields(str || "", ";");
-  return {
-    entity: parts[0] || "",
-    label: parts[1] || "",
-    icon: parts[2] || "",
-    icon_on: parts[3] || "",
-    sensor: parts[4] || "",
-    unit: parts[5] || "",
-    type: parts[6] || "",
-    precision: parts[7] || "",
-    options: parts[8] || "",
-  };
-}
-
-function firmwareParseSubpageConfig(str) {
-  if (!str) return { order: [], buttons: [] };
-  const compact = str[0] === "~";
-  const body = compact ? str.slice(1) : str;
-  const pipes = splitFields(body, "|");
-  const order = pipes[0] ? pipes[0].split(",").map((s) => {
-    const token = s.trim();
-    const eq = token.indexOf("=");
-    return eq >= 0 ? token.slice(0, eq) : token;
-  }) : [];
-  const buttons = [];
-  for (let i = 1; i < pipes.length; i++) {
-    if (compact) {
-      const f = splitFields(pipes[i], ",");
-      buttons.push({
-        type: subpageTypeFromCode(f[0] || ""),
-        entity: decodeField(f[1]),
-        label: decodeField(f[2]),
-        icon: decodeField(f[3]) || "Auto",
-        icon_on: decodeField(f[4]) || "Auto",
-        sensor: decodeField(f[5]),
-        unit: decodeField(f[6]),
-        precision: decodeField(f[7]),
-        options: decodeField(f[8]),
-      });
-    } else {
-      const f = splitFields(pipes[i], ":");
-      buttons.push({
-        entity: f[0] || "",
-        label: f[1] || "",
-        icon: f[2] || "Auto",
-        icon_on: f[3] || "Auto",
-        sensor: f[4] || "",
-        unit: f[5] || "",
-        type: f[6] || "",
-        precision: f[7] || "",
-        options: f[8] || "",
-      });
-    }
-  }
-  return { order, buttons };
-}
-
 function buttonShape(b) {
   return {
     entity: b.entity || "",
@@ -178,7 +60,6 @@ function assertButtonRoundTrip(hooks, name, button, expectCompact) {
   const encoded = hooks.serializeButtonConfig(button);
   assert.strictEqual(encoded[0] === "~", expectCompact, `${name}: compact marker`);
   assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(encoded)), buttonShape(button), `${name}: web round-trip`);
-  assert.deepStrictEqual(buttonShape(firmwareParseButtonConfig(encoded)), buttonShape(button), `${name}: firmware parse`);
 }
 
 function assertButtonMigration(hooks, name, encoded, expected) {
@@ -194,7 +75,6 @@ function assertSubpageRoundTrip(hooks, name, subpage, expectCompact) {
   const encoded = hooks.serializeSubpageConfig(subpage);
   assert.strictEqual(encoded[0] === "~", expectCompact, `${name}: compact marker`);
   assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig(encoded)), subpageShape(subpage), `${name}: web round-trip`);
-  assert.deepStrictEqual(subpageShape(firmwareParseSubpageConfig(encoded)), subpageShape(subpage), `${name}: firmware parse`);
   return encoded;
 }
 
@@ -3446,9 +3326,9 @@ const issue248NineCardChunks = hooks.splitSubpageConfigChunks(issue248NineCardCo
 assert(issue248NineCardChunks, "issue 248 nine-card config should fit in four fixed chunks");
 assert(issue248NineCardChunks.some((chunk) => chunk.length === 255), "issue 248 chunks may split inside card data");
 assert.deepStrictEqual(
-  subpageShape(firmwareParseSubpageConfig(issue248NineCardChunks.join(""))),
+  subpageShape(hooks.parseSubpageConfig(issue248NineCardChunks.join(""))),
   subpageShape(hooks.parseSubpageConfig(issue248NineCardConfig)),
-  "issue 248 fixed chunks reassemble before firmware parse"
+  "issue 248 fixed chunks reassemble before web parse"
 );
 
 const fullJc1060DoorWindowSubpage = {
@@ -3487,9 +3367,9 @@ assert(fullJc1060Encoded.length <= 8 * 255, "full jc1060 subpage should fit eigh
 const fullJc1060Chunks = hooks.splitSubpageConfigChunks(fullJc1060Encoded, 8, 255);
 assert(fullJc1060Chunks, "full jc1060 subpage should split into eight chunks");
 assert.deepStrictEqual(
-  subpageShape(firmwareParseSubpageConfig(fullJc1060Chunks.join(""))),
+  subpageShape(hooks.parseSubpageConfig(fullJc1060Chunks.join(""))),
   subpageShape(fullJc1060DoorWindowSubpage),
-  "full jc1060 chunks reassemble before firmware parse"
+  "full jc1060 chunks reassemble before web parse"
 );
 
 const largeSubpage = {
