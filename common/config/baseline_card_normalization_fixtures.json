@@ -70,6 +70,16 @@
     "expected": { "entity": "scene.movie", "label": "Movie", "icon": "Flash", "icon_on": "Auto", "sensor": "scene.turn_on", "unit": "", "type": "action", "precision": "", "options": "state_entity=sensor.power,state_unit=W,state_precision=0,large_numbers" }
   },
   {
+    "name": "action state preserves large numbers without precision",
+    "input": "scene.movie;Movie;Flash;Auto;scene.turn_on;;action;;state_entity=sensor.power,large_numbers",
+    "expected": { "entity": "scene.movie", "label": "Movie", "icon": "Flash", "icon_on": "Auto", "sensor": "scene.turn_on", "unit": "", "type": "action", "precision": "", "options": "state_entity=sensor.power,large_numbers" }
+  },
+  {
+    "name": "legacy text sensor type becomes a text-mode sensor",
+    "input": "sensor.washer;Washer;Washer;Swapped;sensor.washer;unit;text_sensor;2;state_labels,state_input=on,state_output=Running",
+    "expected": { "entity": "", "label": "", "icon": "Washer", "icon_on": "Auto", "sensor": "sensor.washer", "unit": "", "type": "sensor", "precision": "text", "options": "state_labels,state_input=on,state_output=Running" }
+  },
+  {
     "name": "unknown card type drops unknown options",
     "input": "sensor.x;Mystery;Auto;Auto;sensor.y;W;future_card;2;future_option=1",
     "expected": { "entity": "sensor.x", "label": "Mystery", "icon": "Auto", "icon_on": "Auto", "sensor": "sensor.y", "unit": "W", "type": "future_card", "precision": "2", "options": "" }

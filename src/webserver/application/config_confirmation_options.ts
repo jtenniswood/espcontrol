@@ -145,7 +145,7 @@ export function installConfigConfirmationOptionsModule(): GlobalDescriptors {
         }
         var stateUnit: any = configOptionValue(options, ACTION_CARD_STATE_UNIT_OPTION);
         if (!stateUnit && rawPrecision !== "0" && rawPrecision !== "1" && rawPrecision !== "2") {
-            return out;
+            return copyLargeNumbersOption(out, options);
         }
         var statePrecision: any = rawPrecision === "1" || rawPrecision === "2" ? rawPrecision : "0";
         if (stateUnit)

@@ -916,6 +916,15 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.precision != "text" && p.precision != "1" && p.precision != "2") p.precision.clear();
     if (p.precision != "text" && (p.icon.empty() || p.icon == "Auto")) p.icon = "Auto";
   }
+  if (p.type == "text_sensor") {
+    p.type = "sensor";
+    p.precision = "text";
+    p.entity.clear();
+    p.label.clear();
+    p.unit.clear();
+    p.icon_on = "Auto";
+    if (p.icon.empty()) p.icon = "Auto";
+  }
   // Slider cards used to store "h" here for horizontal layout. Sliders are
   // now always vertical, so treat any saved slider sensor value as legacy.
   if (brightness_slider_type(p.type) && !p.sensor.empty()) p.sensor.clear();
