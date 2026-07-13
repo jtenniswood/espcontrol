@@ -17,9 +17,60 @@ function replaceDeviceConfig(source) {
   );
   const match = source.match(pattern);
   if (!match) throw new Error("Device config markers are missing from the web entry");
-  const replacement = "  var DEVICE_ID = deviceId;\n  var CFG = deviceConfig;\n";
+  const replacement = "  var DEVICE_ID = deviceId;\n  var CFG = deviceConfig;\n  var defaultTimezoneOptions = function () { return defaultTimezoneOptionsForDevice(deviceConfig); };\n";
   const directImports = `import { deviceId, deviceConfig } from "./src/webserver/device_config.ts";
 import * as EspControlModel from "./src/webserver/model/index.ts";
+import {
+  normalizeClockBrightness,
+  normalizeHexColor,
+  normalizeHomeAssistantArtworkPort,
+  normalizeHomeAssistantArtworkProtocol,
+  normalizeHour,
+  normalizeLanguage,
+  normalizeNtpServer,
+  normalizeScheduleClockBrightness,
+  normalizeScheduleDimmedBrightness,
+  normalizeScheduleMode,
+  normalizeScheduleTrigger,
+  normalizeScheduleWakeBrightness,
+  normalizeScheduleWakeTimeout,
+  normalizeScreensaverAction,
+  normalizeScreensaverDimmedBrightness,
+  normalizeTemperatureUnit,
+  normalizeTimeOfDay,
+  scheduleModeOption,
+  screensaverActionOption,
+} from "./src/webserver/model/index.ts";
+import { WEB_UI_COLORS, defaultTheme } from "./src/webserver/state/ui_tokens.ts";
+import {
+  AUTO_TIMEZONE_OPTION,
+  DEFAULT_COLOR_PRESET,
+  FALLBACK_TIMEZONE_OPTION,
+  LANGUAGE_LABELS,
+  NTP_SERVER_DEFAULTS,
+  THEME_PRESETS,
+  defaultTimezoneOptionsForDevice,
+} from "./src/webserver/state/app_state.ts";
+import { state } from "./src/webserver/state/app_instance.ts";
+import { SSE_ALIAS_GROUPS, applySseHandlerAliases } from "./src/webserver/state/event_aliases.ts";
+import {
+  applyClockBarStateValue,
+  entityStateKeys,
+  isRemovedLegacyStateEvent,
+  parseEntityEventData,
+  resetStateForConnection,
+} from "./src/webserver/state/event_state.ts";
+import {
+  isC6FirmwareCheckButtonEvent,
+  isC6FirmwareCurrentEvent,
+  isC6FirmwareInstallButtonEvent,
+  isC6FirmwareLatestEvent,
+  isC6FirmwareUpdateAvailableEvent,
+  isFirmwareCheckButtonEvent,
+  isFirmwareInstallButtonEvent,
+  isFirmwareUpdateEvent,
+  isFirmwareVersionEvent,
+} from "./src/webserver/state/firmware_events.ts";
 import {
   configOptionEnabled,
   configOptionValue,

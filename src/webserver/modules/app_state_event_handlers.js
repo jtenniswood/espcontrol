@@ -1,29 +1,6 @@
 // ── State Event Handlers ──────────────────────────────────────────
 // @web-module-requires: state, language_state, environment_state, screen_rotation_state, screen_schedule_state, ntp_state, appearance_state, idle_state, artwork_state, screensaver_state, firmware_version_state, clock_bar_state, entity_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, app_status_preview
 
-function applyClockBarStateValue(val, d, matchedKey) {
-  var keys = entityStateKeys(d);
-  uniquePush(keys, matchedKey);
-  var nextOn = d && d.value === true || val === "ON";
-  var sourceKey = matchedKey || keys[0] || "clock_bar";
-  if (!state._clockBarStateValues) state._clockBarStateValues = {};
-  state._clockBarStateValues[sourceKey] = nextOn;
-
-  var previous = state.clockBarOn;
-  state.clockBarOn = Object.keys(state._clockBarStateValues).some(function (key) {
-    return state._clockBarStateValues[key] === true;
-  });
-  return state.clockBarOn !== previous;
-}
-
-function isRemovedLegacyStateEvent(id, d) {
-  var keys = entityStateKeys(d || {});
-  uniquePush(keys, id);
-  return keys.indexOf("text-screen_saver__cover_art_fallback_server") !== -1 ||
-    keys.indexOf("text-screen_saver_cover_art_fallback_server") !== -1 ||
-    keys.indexOf("text-cover_art_fallback_server") !== -1;
-}
-
 function createSseHandlers() {
   return {
     "text-button_order": function (val) {
@@ -56,7 +33,7 @@ function createSseHandlers() {
       updateClockBarItemUi();
     },
     "switch-screen__clock_bar": function (val, d, key) {
-      if (applyClockBarStateValue(val, d, key)) syncClockBarUi();
+      if (applyClockBarStateValue(state, val, d, key)) syncClockBarUi();
     },
     "text-clock_bar_temperature_entities": function (val) {
       applyClockBarTemperatureEntities(normalizeClockBarTemperatureEntities(val), false);

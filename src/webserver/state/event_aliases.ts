@@ -1,6 +1,9 @@
-// ── Device event compatibility aliases ────────────────────────────────
+import type { EntityEvent } from "./types";
 
-var SSE_ALIAS_GROUPS = {
+export type SseHandler = (value: string, event: EntityEvent, matchedKey: string) => void;
+export type SseHandlers = Record<string, SseHandler>;
+
+export const SSE_ALIAS_GROUPS = {
   clockBar: ["switch-screen__clock_bar", "switch-screen_clock_bar", "switch-clock_bar_enabled"],
   clockBarTime: ["switch-screen__clock_bar_time", "switch-screen_clock_bar_time", "switch-clock_bar_time_enabled"],
   clockBarTemperatureEntities: ["text-clock_bar_temperature_entities", "text-clock_bar__temperature_entities"],
@@ -33,4 +36,45 @@ var SSE_ALIAS_GROUPS = {
   ntpServer3: ["text-screen__ntp_server_3", "text-ntp_server_3"],
   firmwareAutoUpdate: ["switch-firmware__auto_update", "switch-firmware_auto_update", "switch-auto_update_switch"],
   firmwareUpdateFrequency: ["select-firmware__update_frequency", "select-firmware_update_frequency", "select-update_frequency_select"],
-};
+} as const;
+
+function addSseAliases(handlers: SseHandlers, names: readonly string[], canonical: string): void {
+  const handler = handlers[canonical];
+  if (!handler) throw new Error(`Missing canonical SSE handler: ${canonical}`);
+  for (const name of names) handlers[name] = handler;
+}
+
+export function applySseHandlerAliases(handlers: SseHandlers): void {
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBar, "switch-screen__clock_bar");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarTime, "switch-screen__clock_bar_time");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.clockBarTemperatureEntities, "text-clock_bar_temperature_entities");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.networkStatus, "switch-screen__network_status_icon");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.voiceServices, "switch-voice_services");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.temperatureDegreeSymbol, "switch-screen__temperature_degree_symbol");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.subpageChevron, "switch-screen__subpage_chevron");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.screensaverTimeout, "number-screensaver_timeout");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.clockScreensaver, "switch-screen_saver__clock");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPrevention, "switch-screen_saver__media_player_sleep_prevention");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.mediaPlayerSleepPreventionEntity, "text-media_player_sleep_prevention_entity");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArt, "switch-screen_saver__cover_art");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtEntity, "text-screen_saver__cover_art_entity");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtConditions, "text-screen_saver__cover_art_conditions");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtDelay, "number-screen_saver__cover_art_delay");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.trackOverlayDuration, "number-screen_saver__track_overlay_duration");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.coverArtHideExternalInput, "switch-screen_saver__hide_cover_art_on_external_input");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkProtocol, "select-home_assistant_artwork_protocol");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.homeAssistantArtworkPort, "number-home_assistant_artwork_port");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleTrigger, "text-screen__schedule_trigger");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleWakeTimeout, "number-screen__schedule_wake_timeout");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleWakeBrightness, "number-screen__schedule_wake_brightness");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleDimmedBrightness, "number-screen__schedule_dimmed_brightness");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleClockBrightness, "number-screen__schedule_clock_brightness");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.scheduleClockTextColor, "text-screen__schedule_clock_text_color");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.screenActiveTimezone, "text_sensor-screen__active_timezone");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.screenLanguage, "select-screen__language");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.ntpServer1, "text-screen__ntp_server_1");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.ntpServer2, "text-screen__ntp_server_2");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.ntpServer3, "text-screen__ntp_server_3");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.firmwareAutoUpdate, "switch-firmware__auto_update");
+  addSseAliases(handlers, SSE_ALIAS_GROUPS.firmwareUpdateFrequency, "select-firmware__update_frequency");
+}

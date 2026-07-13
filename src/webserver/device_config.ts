@@ -1,10 +1,4 @@
-export interface DeviceConfig {
-  slots: number;
-  cols: number;
-  rows: number;
-  screenSize: string;
-  [key: string]: unknown;
-}
+import type { DeviceConfig } from "./state/types";
 
 declare const __ESPCONTROL_DEVICE_ID__: string;
 declare const __ESPCONTROL_DEVICE_CONFIG__: DeviceConfig;

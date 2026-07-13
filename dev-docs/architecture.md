@@ -21,6 +21,7 @@ outputs. For the hard edit/rebuild/check contract, use
 | Icons | `common/assets/icons.json` and `common/assets/*glyphs.yaml` | Icon names, glyphs, and font glyph sets. |
 | Firmware UI | `components/espcontrol/*.h` | LVGL card grid, card renderers, modals, config parsing, Home Assistant bindings. |
 | Web setup page | `src/webserver/` | Browser UI for configuring cards, settings, backup/restore, and previews. |
+| Typed web state | `src/webserver/state/` | Device configuration and application state types, isolated state creation, event aliases, and event parsing. |
 | Device config | `devices/<slug>/` | ESPHome entry points and per-device display/font/pin config. |
 | Build scripts | `scripts/` | Generators, validators, smoke checks, and release helpers. |
 

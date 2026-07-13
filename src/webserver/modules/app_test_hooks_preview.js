@@ -12,31 +12,6 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.screensaverAction = oldScreensaverAction;
       return visible;
     },
-    clockBarStateAfterEvents: function (events) {
-      var oldClockBarOn = state.clockBarOn;
-      var oldSourceValues = state._clockBarStateValues;
-      state.clockBarOn = false;
-      state._clockBarStateValues = {};
-      (events || []).forEach(function (event) {
-        var keys = entityStateKeys(event || {});
-        var matchedKey = "";
-        for (var i = 0; i < keys.length; i++) {
-          if (SSE_ALIAS_GROUPS.clockBar.indexOf(keys[i]) !== -1) {
-            matchedKey = keys[i];
-            break;
-          }
-        }
-        applyClockBarStateValue(
-          event && event.state != null ? String(event.state) : "",
-          event || {},
-          matchedKey
-        );
-      });
-      var result = state.clockBarOn;
-      state.clockBarOn = oldClockBarOn;
-      state._clockBarStateValues = oldSourceValues;
-      return result;
-    },
     webserverMockNow: webserverMockNow,
     webserverNow: webserverNow,
     previewHtmlValue: previewHtmlValue,

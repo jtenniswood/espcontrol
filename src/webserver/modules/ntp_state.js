@@ -1,10 +1,6 @@
 // ── NTP State ──────────────────────────────────────────────────────────
 // @web-module-requires: state
 
-function normalizeNtpServer(value, fallback) {
-  return EspControlModel.normalizeNtpServer(value, fallback);
-}
-
 function hasCustomNtpServers() {
   return normalizeNtpServer(state.ntpServer1, NTP_SERVER_DEFAULTS[0]) !== NTP_SERVER_DEFAULTS[0] ||
     normalizeNtpServer(state.ntpServer2, NTP_SERVER_DEFAULTS[1]) !== NTP_SERVER_DEFAULTS[1] ||

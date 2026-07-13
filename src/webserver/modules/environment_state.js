@@ -25,10 +25,6 @@ function timezoneOptionsWithFallback(options, selected, preserveSelectedAuto) {
   return list;
 }
 
-function normalizeTemperatureUnit(value) {
-  return EspControlModel.normalizeTemperatureUnit(value);
-}
-
 function monthNameForIndex(index) {
   var monthIndex = parseInt(index, 10);
   if (!isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return "Date";

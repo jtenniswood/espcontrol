@@ -1,46 +1,6 @@
 // ── Screen Schedule State ──────────────────────────────────────────────
 // @web-module-requires: state
 
-function normalizeHour(value, fallback) {
-  return EspControlModel.normalizeHour(value, fallback);
-}
-
-function normalizeTimeOfDay(value, fallback) {
-  return EspControlModel.normalizeTimeOfDay(value, fallback);
-}
-
-function normalizeScheduleWakeTimeout(value) {
-  return EspControlModel.normalizeScheduleWakeTimeout(value);
-}
-
-function normalizeScheduleWakeBrightness(value) {
-  return EspControlModel.normalizeScheduleWakeBrightness(value);
-}
-
-function normalizeScheduleClockBrightness(value) {
-  return EspControlModel.normalizeScheduleClockBrightness(value);
-}
-
-function normalizeHexColor(value, fallback) {
-  return EspControlModel.normalizeHexColor(value, fallback);
-}
-
-function normalizeScheduleDimmedBrightness(value) {
-  return EspControlModel.normalizeScheduleDimmedBrightness(value);
-}
-
-function normalizeScheduleMode(value) {
-  return EspControlModel.normalizeScheduleMode(value);
-}
-
-function normalizeScheduleTrigger(value, scheduleEnabled) {
-  return EspControlModel.normalizeScheduleTrigger(value, scheduleEnabled);
-}
-
-function scheduleModeOption(value) {
-  return EspControlModel.scheduleModeOption(value);
-}
-
 function formatDuration(seconds) {
   seconds = normalizeScheduleWakeTimeout(seconds);
   if (seconds < 60) return seconds + " second" + (seconds === 1 ? "" : "s");

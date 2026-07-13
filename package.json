@@ -34,6 +34,7 @@
     "check:release-confidence": "python3 scripts/check_tasks.py run-task release-confidence",
     "check:release-changelog": "python3 scripts/check_tasks.py run-task release-changelog",
     "check:release-preflight": "python3 scripts/check_tasks.py run release",
+    "check:state-contract": "python3 scripts/check_tasks.py run-task state-contract",
     "check:timezones": "python3 scripts/check_tasks.py run-task timezones",
     "check:types": "python3 scripts/check_tasks.py run-task types",
     "check:web-smoke": "python3 scripts/check_tasks.py run-task web-smoke",

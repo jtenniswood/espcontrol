@@ -1,6 +1,4 @@
 [
-  "style_tokens",
-  "state_defaults",
   "firmware_metadata",
   "styles",
   "state",
@@ -58,10 +56,7 @@
   "backup_contract",
   "app_backup",
   "app_status_preview",
-  "firmware_event_matchers",
   "app_title",
-  "app_event_aliases",
-  "app_event_alias_wiring",
   "app_config_events",
   "app_state_event_handlers",
   "app_events",

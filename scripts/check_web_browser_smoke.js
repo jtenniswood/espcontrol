@@ -2230,7 +2230,7 @@ async function entitySuggestionValues(
   return suggestions.jsonValue();
 }
 
-async function assertEditAndApplySmoke(page, posts, errors) {
+async function assertEditSmoke(page, posts, errors) {
   const before = posts.length;
   await page.getByRole("tab", { name: "Screen" }).click();
   await page.waitForSelector("#sp-screen.sp-page.active");
@@ -2301,6 +2301,15 @@ async function assertEditAndApplySmoke(page, posts, errors) {
     before,
   );
 
+  assert.deepStrictEqual(
+    errors,
+    [],
+    "browser errors were reported during edit interactions",
+  );
+}
+
+async function assertApplySmoke(page, posts, errors) {
+  const before = posts.length;
   await page.getByRole("button", { name: "Apply Configuration" }).click();
   await waitForPost(
     posts,
@@ -2455,10 +2464,12 @@ async function assertCardTransferSmoke(page, posts, label) {
   const subpageDialog = await openPasteCardCodeDialog(page);
   await subpageDialog.dialog.locator("textarea").fill(JSON.stringify(subpage));
   await subpageDialog.dialog.getByRole("button", { name: "Paste", exact: true }).click();
-  await page.locator(`.sp-main [data-pos="${subpageDialog.pos}"][data-slot]`).waitFor({ state: "visible" });
-  const subpageSlot = await page
-    .locator(`.sp-main [data-pos="${subpageDialog.pos}"]`)
-    .getAttribute("data-slot");
+  const transferredSubpage = page
+    .locator(".sp-main [data-slot]")
+    .filter({ hasText: "Transferred Page" })
+    .first();
+  await transferredSubpage.waitFor({ state: "visible" });
+  const subpageSlot = await transferredSubpage.getAttribute("data-slot");
   await waitForPost(
     posts,
     { domain: "text", name: `Subpage ${subpageSlot} Config`, action: "set" },
@@ -2994,8 +3005,9 @@ async function runCase(browser, testCase) {
     if (testCase.exerciseInteractions) {
       await assertClockBarEditorSmoke(page, posts, testCase.name);
       await assertBackupImportSmoke(page, posts, testCase);
-      await assertEditAndApplySmoke(page, posts, errors);
+      await assertEditSmoke(page, posts, errors);
       await assertCardTransferSmoke(page, posts, testCase.name);
+      await assertApplySmoke(page, posts, errors);
     } else if (testCase.exerciseDeviceMocks) {
       await assertBackupImportSmoke(page, posts, testCase);
     }

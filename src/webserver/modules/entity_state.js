@@ -239,17 +239,6 @@ function entityInput(id, value, placeholder, domains) {
   return attachEntitySuggestions(el, domains);
 }
 
-function entityStateKeys(data) {
-  var keys = [];
-  [data && data.id, data && data.name_id].forEach(function (id) {
-    var parsed = parseEntityId(id);
-    uniquePush(keys, id);
-    if (parsed && parsed.domain && parsed.objectId) uniquePush(keys, parsed.domain + "-" + parsed.objectId);
-    if (parsed && parsed.domain && parsed.name) uniquePush(keys, parsed.domain + ":" + parsed.name);
-  });
-  return keys;
-}
-
 function rememberEntityPostPath(data) {
   var preferred = parseEntityId(data && data.name_id) || parseEntityId(data && data.id);
   if (data && data.domain && data.name) rememberEntityName(data.domain + "." + esphomeObjectId(data.name), data.name);

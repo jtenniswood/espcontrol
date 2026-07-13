@@ -1,4 +1,4 @@
-// @web-module-requires: style_tokens
+// @web-module-requires: none
 var CSS =
   ":root{" +
   "--bg:#1b1b1f;--surface:#202127;--surface2:#2e2e32;--border:#3c3f44;" +

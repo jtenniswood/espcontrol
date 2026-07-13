@@ -1,11 +1,6 @@
 // ── Language State ─────────────────────────────────────────────────────
 // @web-module-requires: state
 
-function normalizeLanguage(value) {
-  var language = String(value == null ? "" : value).trim().toLowerCase();
-  return language || "en";
-}
-
 function languageLabel(value) {
   value = normalizeLanguage(value);
   return LANGUAGE_LABELS[value] || value;

@@ -1,15 +1,11 @@
 // ── SSE ────────────────────────────────────────────────────────────────
-// @web-module-requires: state, firmware_version_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, state_loader_api, config_codec, app_backup, app_status_preview, firmware_event_matchers, app_event_alias_wiring, app_title, app_config_events, app_state_event_handlers
+// @web-module-requires: state, firmware_version_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, api, state_loader_api, config_codec, app_backup, app_status_preview, app_title, app_config_events, app_state_event_handlers
 
 function connectEvents() {
   if (_eventSource) { _eventSource.close(); _eventSource = null; }
 
   function markConnected() {
-    state.selectedSlots = [];
-    state.lastClickedSlot = -1;
-    state.editingSubpage = null;
-    state.subpageSelectedSlots = [];
-    state.subpageLastClicked = -1;
+    resetStateForConnection(state);
     orderReceived = false;
     setConfigLocked(false);
     if (els.banner) els.banner.className = "sp-banner";
@@ -118,8 +114,8 @@ function connectEvents() {
   });
   source.addEventListener("ping", handleWebServerPingEvent);
   source.addEventListener("state", function (e) {
-    var d;
-    try { d = JSON.parse(e.data); } catch (_) { return; }
+    var d = parseEntityEventData(e.data);
+    if (!d) return;
     handleState(d);
   });
 

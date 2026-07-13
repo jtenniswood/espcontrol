@@ -2,7 +2,6 @@
 
 if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
   registerEspControlTestHookGroup("settings", {
-    SSE_ALIAS_GROUPS: SSE_ALIAS_GROUPS,
     normalizeTemperatureUnit: normalizeTemperatureUnit,
     normalizeHomeAssistantArtworkPort: normalizeHomeAssistantArtworkPort,
     defaultTimezoneOptions: defaultTimezoneOptions,
@@ -10,11 +9,6 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     effectiveTimezoneOptionForWeb: effectiveTimezoneOptionForWeb,
     normalizeScreensaverAction: normalizeScreensaverAction,
     screensaverActionOption: screensaverActionOption,
-    removedLegacyStateEvent: function (event) {
-      var keys = entityStateKeys(event || {});
-      var id = keys[0] || event && event.id || "";
-      return isRemovedLegacyStateEvent(id, event || {});
-    },
     normalizeScreensaverDimmedBrightness: normalizeScreensaverDimmedBrightness,
     firmwareVersionFromMetadata: firmwareVersionFromMetadata,
     firmwareInfoFromPublicManifest: firmwareInfoFromPublicManifest,
