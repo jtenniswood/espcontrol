@@ -7,17 +7,11 @@ function buildClipboardEntry(slot) {
   if (slot < 1) return null;
   var c = ctx();
   var src = c.buttons[slot - 1];
-  var entry = {
-    entity: src.entity, label: src.label, icon: src.icon,
-    icon_on: src.icon_on, sensor: src.sensor, unit: src.unit,
-    type: src.type || "", precision: src.precision || "",
-    options: src.options || "",
-    subpageConfig: null, size: c.sizes[slot] || 1,
-  };
+  var subpageConfig = null;
   if (!c.isSub && src.type === "subpage" && state.subpages[slot]) {
-    entry.subpageConfig = serializeSubpageConfig(state.subpages[slot]);
+    subpageConfig = serializeSubpageConfig(state.subpages[slot]);
   }
-  return entry;
+  return ClipboardFeature.createClipboardEntry(src, c.sizes[slot] || 1, subpageConfig);
 }
 
 function copySlot(slot) {
@@ -372,7 +366,6 @@ function performClipboardPaste(entries, pos, targetIsSubpage) {
     showImageCardLimitBanner();
     return { ok: false, error: imageCardLimitMessage() };
   }
-
   var plan = targetIsSubpage
     ? planSubpageClipboardPaste(entries, pos)
     : planMainClipboardPaste(entries, pos);

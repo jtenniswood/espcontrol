@@ -22,6 +22,7 @@ outputs. For the hard edit/rebuild/check contract, use
 | Firmware UI | `components/espcontrol/*.h` | LVGL card grid, card renderers, modals, config parsing, Home Assistant bindings. |
 | Web setup page | `src/webserver/` | Browser UI for configuring cards, settings, backup/restore, and previews. |
 | Typed web state | `src/webserver/state/` | Device configuration and application state types, isolated state creation, event aliases, and event parsing. |
+| Typed device API | `src/webserver/api/` | Injectable HTTP transport and ordered request queue; UI modules retain user-facing reactions. |
 | Device config | `devices/<slug>/` | ESPHome entry points and per-device display/font/pin config. |
 | Build scripts | `scripts/` | Generators, validators, smoke checks, and release helpers. |
 

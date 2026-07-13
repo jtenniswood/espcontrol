@@ -6,11 +6,15 @@
 var ctxMenu = null;
 
 function positionMenu(menu, e) {
-  var w = menu.offsetWidth, h = menu.offsetHeight;
-  var x = Math.max(4, Math.min(e.clientX, window.innerWidth - w - 4));
-  var y = Math.max(4, Math.min(e.clientY, window.innerHeight - h - 4));
-  menu.style.left = x + "px";
-  menu.style.top = y + "px";
+  var position = PreviewFeature.clampMenuPosition(
+    { x: e.clientX, y: e.clientY },
+    menu.offsetWidth,
+    menu.offsetHeight,
+    window.innerWidth,
+    window.innerHeight
+  );
+  menu.style.left = position.x + "px";
+  menu.style.top = position.y + "px";
 }
 
 function addCtxItem(icon, text, handler, danger) {

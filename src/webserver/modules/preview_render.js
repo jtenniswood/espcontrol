@@ -2,16 +2,11 @@
 // @web-module-requires: state, screen_rotation_state, grid, config_codec, controls, controls_fields
 
 function previewHtmlValue(typePreview, key, fallback) {
-  return typePreview && Object.prototype.hasOwnProperty.call(typePreview, key)
-    ? typePreview[key]
-    : fallback;
+  return PreviewFeature.previewValue(typePreview, key, fallback);
 }
 
 function buttonTypeRegistryValue(typeDef, key, fallback) {
-  if (!typeDef || !Object.prototype.hasOwnProperty.call(typeDef, key)) return fallback;
-  var value = typeDef[key];
-  if (typeof value === "function") value = value();
-  return value == null ? fallback : value;
+  return PreviewFeature.registryValue(typeDef, key, fallback);
 }
 
 function buttonTypeDisabledForDevice(key) {
@@ -20,108 +15,25 @@ function buttonTypeDisabledForDevice(key) {
 }
 
 function buttonTypeInfoOnlyVisible(key) {
-  if (!CFG.infoOnly) return true;
-  return [
-    "sensor",
-    "calendar",
-    "clock",
-    "door_window",
-    "image",
-    "local_sensor",
-    "presence",
-    "timezone",
-    "weather",
-    "weather_forecast",
-  ].indexOf(key || "") !== -1;
+  return PreviewFeature.infoOnlyCardVisible(key || "", !!CFG.infoOnly);
 }
 
-var CARD_TYPE_PICKER_DETAILS = {
-  "": { icon: "toggle-switch", description: "Toggle lights, switches, helpers, or fans." },
-  action: { icon: "flash", description: "Run a Home Assistant or local action." },
-  alarm: { icon: "shield-home", description: "Control or trigger alarm panel actions." },
-  calendar: { icon: "calendar-clock", description: "Show date, time, or world clock values." },
-  climate: { icon: "thermostat", description: "Show climate status and temperature controls." },
-  cover: { icon: "window-shutter", description: "Control blinds, curtains, or covers." },
-  door_window: { icon: "door-open", description: "Show open or closed sensor state." },
-  presence: { icon: "account", description: "Show person or presence status." },
-  fan_speed: { icon: "fan", description: "Control fan speed, mode, or direction." },
-  garage: { icon: "garage", description: "Show and control a garage door." },
-  gate: { icon: "gate", description: "Show and control a gate." },
-  image: { icon: "image", description: "Display an image card where supported." },
-  internal: { icon: "power-plug", description: "Control built-in device relays." },
-  light_brightness: { icon: "lightbulb", description: "Configure light switch, brightness, or temperature controls." },
-  lawn_mower: { icon: "robot-mower", description: "Show or control a robotic lawn mower." },
-  local_sensor: { icon: "gauge", description: "Show a sensor value from this device." },
-  lock: { icon: "lock", description: "Show and control a lock." },
-  media: { icon: "speaker", description: "Control media playback or volume." },
-  media_control: { icon: "music", description: "Open all media controls and volume in a modal." },
-  push: { icon: "gesture-tap-button", description: "Fire a momentary button event." },
-  sensor: { icon: "gauge", description: "Display sensor values or states." },
-  slider: { icon: "tune-vertical", description: "Adjust a numeric or brightness value." },
-  subpage: { icon: "view-grid-plus", description: "Open a nested page of cards." },
-  webhook: { icon: "webhook", description: "Send a direct HTTP request." },
-  vacuum: { icon: "robot-vacuum", description: "Show or control a vacuum cleaner." },
-  weather: { icon: "weather-partly-cloudy", description: "Show weather or forecast data." },
-};
-
-var CARD_TYPE_PICKER_DEFAULTS = {
-  climate: "climate_control",
-  light_brightness: "light_control",
-  media_control: "media",
-};
-
 function defaultButtonTypeForPicker(key) {
-  return Object.prototype.hasOwnProperty.call(CARD_TYPE_PICKER_DEFAULTS, key)
-    ? CARD_TYPE_PICKER_DEFAULTS[key]
-    : key;
+  return PreviewFeature.defaultCardTypeForPicker(key);
 }
 
 function buttonTypePickerDetails(key, label) {
-  var details = CARD_TYPE_PICKER_DETAILS[key || ""] || {};
-  return {
-    icon: details.icon || "card-outline",
-    description: details.description || ("Configure a " + (label || "card") + " card."),
-  };
+  return PreviewFeature.cardTypePickerDetails(key || "", label || "");
 }
 
 function buttonTypePickerOptionList(isSub, selectedTypeKey) {
-  var typeOpts = [];
-  var selectedUnsupported = null;
-  var hasSelectedType = selectedTypeKey !== null && selectedTypeKey !== undefined;
-  for (var k in BUTTON_TYPES) {
-    var td = BUTTON_TYPES[k];
-    var typeKey = k;
-    var pickerKey = buttonTypeRegistryValue(td, "pickerKey", "");
-    var allowInSubpage = !!buttonTypeRegistryValue(td, "allowInSubpage", false);
-    var label = buttonTypeRegistryValue(td, "label", td.key || "Toggle");
-    if (buttonTypeDisabledForDevice(typeKey) || buttonTypeDisabledForDevice(pickerKey)) continue;
-    if (!buttonTypeInfoOnlyVisible(typeKey) || (pickerKey && !buttonTypeInfoOnlyVisible(pickerKey))) {
-      if (hasSelectedType && (selectedTypeKey === typeKey || (pickerKey && selectedTypeKey === pickerKey))) {
-        selectedUnsupported = { key: selectedTypeKey, label: label };
-      }
-      continue;
-    }
-    if (pickerKey && pickerKey !== typeKey) continue;
-    if (isSub && !allowInSubpage) continue;
-    if (td.isAvailable && !td.isAvailable({ isSub: isSub }) && selectedTypeKey !== typeKey) continue;
-    typeOpts.push(Object.assign({
-      key: typeKey,
-      label: label,
-      disabled: false,
-    }, buttonTypePickerDetails(typeKey, label)));
-  }
-  if (selectedUnsupported) {
-    var unsupportedLabel = selectedUnsupported.label + " (not available)";
-    typeOpts.push(Object.assign({
-      key: selectedUnsupported.key,
-      label: unsupportedLabel,
-      disabled: true,
-    }, buttonTypePickerDetails(selectedUnsupported.key, unsupportedLabel)));
-  }
-  typeOpts.sort(function (a, b) {
-    return a.label.localeCompare(b.label);
-  });
-  return typeOpts;
+  return PreviewFeature.cardTypePickerOptions(
+    BUTTON_TYPES,
+    CFG.disabledCardTypes || [],
+    !!CFG.infoOnly,
+    !!isSub,
+    selectedTypeKey
+  );
 }
 
 function buttonTypePickerKeys(isSub, selectedTypeKey) {

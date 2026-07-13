@@ -1,18 +1,12 @@
 // ── POST queue ─────────────────────────────────────────────────────────
 // @web-module-requires: state, screen_schedule_state, artwork_state, screensaver_state, firmware_version_state, clock_bar_state, firmware_update_state, screensaver_timeout, c6_firmware_ui, entity_state
 
-var _postQueue = Promise.resolve();
-var _postThrottleMs = 0;
+var _deviceApi = createDeviceApi(function (url, init) { return fetch(url, init); });
+var _postQueue = Promise.resolve(null);
 var _postQueueHadError = false;
 
-function postDelay(ms) {
-  ms = parseInt(ms, 10) || 0;
-  if (ms <= 0) return Promise.resolve();
-  return new Promise(function (resolve) { setTimeout(resolve, ms); });
-}
-
 function setPostThrottle(ms) {
-  _postThrottleMs = Math.max(0, parseInt(ms, 10) || 0);
+  _deviceApi.setPostThrottle(ms);
 }
 
 function postQueueIdle() {
@@ -28,58 +22,53 @@ function postQueueHadError() {
 }
 
 function postQuiet(url) {
-  return fetch(url, { method: "POST", keepalive: true }).catch(function () {
-    return null;
+  return _deviceApi.postQuiet(url).then(function (result) {
+    return result.ok || result.kind === "http-error" ? result.value : null;
   });
 }
 
 function post(url, fallbackUrl, errorMessage) {
   var urls = Array.isArray(url) ? url.slice() : [url];
   if (fallbackUrl) urls.push(fallbackUrl);
-  var throttleMs = _postThrottleMs;
-  _postQueue = _postQueue.then(function () {
-    return postFirstAvailable(urls).then(function (r) {
-      if (r && !r.ok) {
-        _postQueueHadError = true;
-        showBanner(errorMessage || ("Request failed: " + r.status), "error");
-      }
-      return postDelay(throttleMs).then(function () { return r; });
-    }).catch(function () {
+  _postQueue = _deviceApi.enqueuePost(urls).then(function (result) {
+    var failure = requestFailureInfo(result, errorMessage);
+    if (failure && failure.reconnect) {
       _postQueueHadError = true;
       setConfigLocked(true, "Reconnecting to device\u2026");
-      showBanner("Cannot reach device \u2014 is it connected?", "error");
+      showBanner(failure.message, "error");
       setTimeout(connectEvents, 5000);
-    });
+      return null;
+    }
+    if (failure) {
+      _postQueueHadError = true;
+      showBanner(failure.message, "error");
+    }
+    return result.value;
   });
   return _postQueue;
 }
 
 function postOptional(url) {
   var urls = Array.isArray(url) ? url.slice() : [url];
-  var throttleMs = _postThrottleMs;
-  _postQueue = _postQueue.then(function () {
-    return postFirstAvailable(urls).then(function (r) {
-      return postDelay(throttleMs).then(function () { return r; });
-    }).catch(function () {
+  _postQueue = _deviceApi.enqueuePost(urls).then(function (result) {
+    var failure = requestFailureInfo(result);
+    if (failure && failure.reconnect) {
       _postQueueHadError = true;
       setConfigLocked(true, "Reconnecting to device\u2026");
-      showBanner("Cannot reach device \u2014 is it connected?", "error");
+      showBanner(failure.message, "error");
       setTimeout(connectEvents, 5000);
-    });
+      return null;
+    }
+    return result.value;
   });
   return _postQueue;
 }
 
 function postFirstAvailable(urls) {
-  var index = 0;
-  function tryNext() {
-    return fetch(urls[index], { method: "POST" }).then(function (r) {
-      if (r.ok || index >= urls.length - 1) return r;
-      index++;
-      return tryNext();
-    });
-  }
-  return tryNext();
+  return _deviceApi.postFirstAvailable(urls).then(function (result) {
+    if (result.kind === "network-error") throw result.error;
+    return result.value;
+  });
 }
 
 function postText(name, value) {
@@ -202,13 +191,11 @@ function postSwitchWithObjectIds(name, objectIds, on, errorMessage) {
 }
 
 function getJsonQuietly(path, callback) {
-  return fetch(path, { cache: "no-store" }).then(function (r) {
-    if (!r.ok) return null;
-    return r.json();
-  }).then(function (data) {
+  return _deviceApi.getJson(path).then(function (result) {
+    var data = result.ok ? result.value : null;
     if (data && callback) callback(data);
     return data;
-  }).catch(function () {});
+  });
 }
 
 function getJsonFirst(paths, callback) {

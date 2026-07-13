@@ -14,7 +14,6 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
     },
     webserverMockNow: webserverMockNow,
     webserverNow: webserverNow,
-    previewHtmlValue: previewHtmlValue,
     buttonTypePreviewFor: function (type, button, options) {
       var oldTimezone = state.timezone;
       var oldActiveTimezone = state.activeTimezone;
@@ -56,9 +55,6 @@ if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
       state.firmwareVersion = oldVersion;
       state.firmwareVersionRefreshPending = oldPending;
       return label;
-    },
-    findDuplicatePlacementFor: function (grid, start, size, maxSlots) {
-      return findDuplicatePlacement(grid.slice(), start, size, maxSlots || NUM_SLOTS);
     },
     importedButtonOrderFor: function (orderStr, existingSizes) {
       var oldSizes = state.sizes;

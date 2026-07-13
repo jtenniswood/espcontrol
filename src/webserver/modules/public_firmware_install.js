@@ -49,8 +49,10 @@ function installPublicFirmwareViaWebOta(info) {
     var uploadResponseReceived = false;
     return ensurePublicFirmwareOtaUrl(info).then(function (otaUrl) {
       if (!otaUrl) throw new Error("Firmware file is not available yet.");
-      return fetch(otaUrl, { cache: "no-store" });
-    }).then(function (response) {
+      return _deviceApi.request(otaUrl, { cache: "no-store" });
+    }).then(function (result) {
+      if (result.kind === "network-error") throw result.error;
+      var response = result.value;
       if (!response.ok) throw new Error("Could not download firmware file (" + response.status + ").");
       return response.blob();
     }).then(function (blob) {
@@ -58,8 +60,10 @@ function installPublicFirmwareViaWebOta(info) {
       var form = new FormData();
       form.append("file", blob, filename);
       uploadStarted = true;
-      return fetch("/update", { method: "POST", body: form });
-    }).then(function (response) {
+      return _deviceApi.request("/update", { method: "POST", body: form });
+    }).then(function (result) {
+      if (result.kind === "network-error") throw result.error;
+      var response = result.value;
       uploadResponseReceived = true;
       return response.text().catch(function () {
         return "";

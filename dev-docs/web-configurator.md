@@ -13,6 +13,7 @@ server. It is written as plain JavaScript modules and bundled into a single
 | `src/webserver/types/` | Card-specific settings panels and previews. |
 | `src/webserver/model/*.ts` | Typed model sources. |
 | `src/webserver/state/*.ts` | Typed device configuration, application state factory, event aliases, and event parsing. |
+| `src/webserver/api/*.ts` | Injectable HTTP transport, ordered POST queue, typed request results, and failure classification. |
 | `src/webserver/generated/card_contract.ts` | Typed card metadata generated from the shared contract. |
 | `scripts/web_modules.json` | Explicit order for shared modules. |
 | `docs/public/webserver/<slug>/www.js` | Generated per-device bundles used for bundled firmware and hosted compatibility. |
@@ -24,6 +25,9 @@ bundle build, with no separate JavaScript generation step.
 The application exposes one mutable state instance created by
 `createInitialState(deviceConfig)`; tests create isolated instances from the
 same factory.
+Controllers keep responsibility for banners, reconnect scheduling, and UI
+locking; the typed device API owns transport, fallback attempts, throttling,
+keepalive requests, and JSON decoding.
 
 ## Build
 
