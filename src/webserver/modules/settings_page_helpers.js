@@ -3,26 +3,18 @@
 
 // ── Settings UI helpers ─────────────────────────────────────────────
 
+var _settingsUiFeature = createSettingsUiFeature({
+  document: document,
+  textSpan: textSpan,
+  createDisclosureChevron: createDisclosureChevron,
+});
+
 function settingsStatusHeader(title) {
-  var header = document.createElement("div");
-  header.className = "sp-settings-status-header";
-
-  var label = document.createElement("div");
-  label.className = "sp-settings-status-title";
-  label.textContent = title;
-  header.appendChild(label);
-
-  return header;
+  return _settingsUiFeature.settingsStatusHeader(title);
 }
 
 function appendSettingsSection(parent, title, cards) {
-  var visibleCards = cards.filter(Boolean);
-  if (!visibleCards.length) return;
-
-  parent.appendChild(settingsStatusHeader(title));
-  visibleCards.forEach(function (card) {
-    parent.appendChild(card);
-  });
+  _settingsUiFeature.appendSettingsSection(parent, title, cards);
 }
 
 function openVoiceServicesSettings() {
@@ -40,62 +32,29 @@ function coverArtTrackOverlayDurationSupported() {
 }
 
 function infoPanel(id, text) {
-  var panel = document.createElement("div");
-  panel.className = "sp-info-panel";
-  panel.id = id;
-  panel.setAttribute("role", "note");
-  var icon = document.createElement("span");
-  icon.className = "mdi mdi-information-outline";
-  icon.setAttribute("aria-hidden", "true");
-  var message = document.createElement("span");
-  message.textContent = text;
-  panel.appendChild(icon);
-  panel.appendChild(message);
-  return panel;
+  return _settingsUiFeature.infoPanel(id, text);
 }
 
 function statusBadge(label) {
-  var badge = document.createElement("span");
-  badge.setAttribute("aria-label", label);
-  badge.appendChild(textSpan("", "sp-card-badge-dot"));
-  badge.appendChild(textSpan("ON"));
-  return badge;
+  return _settingsUiFeature.statusBadge(label);
 }
 
 function inlineDisclosure(title, bodyElement, defaultOpen) {
-  var panel = document.createElement("div");
-  panel.className = "sp-disclosure" + (defaultOpen ? " sp-open" : "");
-  var button = document.createElement("button");
-  button.type = "button";
-  button.className = "sp-disclosure-button";
-  button.setAttribute("aria-expanded", defaultOpen ? "true" : "false");
-  var label = document.createElement("span");
-  label.textContent = title;
-  var chevron = createDisclosureChevron("sp-disclosure-chevron");
-  button.appendChild(label);
-  button.appendChild(chevron);
-  var body = document.createElement("div");
-  body.className = "sp-disclosure-body";
-  body.appendChild(bodyElement);
-  button.addEventListener("click", function () {
-    var open = !panel.classList.contains("sp-open");
-    panel.classList.toggle("sp-open", open);
-    button.setAttribute("aria-expanded", open ? "true" : "false");
-  });
-  panel.appendChild(button);
-  panel.appendChild(body);
-  return panel;
+  return _settingsUiFeature.inlineDisclosure(title, bodyElement, defaultOpen);
 }
 
 // ── Settings sync helpers ───────────────────────────────────────────
 
 function syncClockScreensaverControls() {
-  var mode = normalizeScreensaverAction(state.screensaverAction);
-  var dayBrightness = Math.round(state.clockBrightnessDay) + "%";
-  var nightBrightness = Math.round(state.clockBrightnessNight) + "%";
-  var dimBrightness = Math.round(state.screensaverDimmedBrightness) + "%";
-  var clockDisplay = mode === "clock" ? "" : "none";
-  var dimDisplay = mode === "dim" ? "" : "none";
+  var controlState = screensaverControlState(
+    state.screensaverAction,
+    state.clockBrightnessDay,
+    state.clockBrightnessNight,
+    state.screensaverDimmedBrightness
+  );
+  var mode = controlState.mode;
+  var clockDisplay = controlState.clockVisible ? "" : "none";
+  var dimDisplay = controlState.dimVisible ? "" : "none";
 
   state.clockScreensaverOn = mode === "clock";
   syncClockBarUi();
@@ -108,27 +67,27 @@ function syncClockScreensaverControls() {
   syncOptionalClockBrightness(els.setSensorDimBrightnessField, els.setSensorClockField, dimDisplay);
   if (els.setDimBrightness) {
     els.setDimBrightness.value = state.screensaverDimmedBrightness;
-    els.setDimBrightnessVal.textContent = dimBrightness;
+    els.setDimBrightnessVal.textContent = controlState.dimBrightnessLabel;
   }
   if (els.setSensorDimBrightness) {
     els.setSensorDimBrightness.value = state.screensaverDimmedBrightness;
-    els.setSensorDimBrightnessVal.textContent = dimBrightness;
+    els.setSensorDimBrightnessVal.textContent = controlState.dimBrightnessLabel;
   }
   if (els.setClockBrightnessDay) {
     els.setClockBrightnessDay.value = state.clockBrightnessDay;
-    els.setClockBrightnessDayVal.textContent = dayBrightness;
+    els.setClockBrightnessDayVal.textContent = controlState.dayBrightnessLabel;
   }
   if (els.setClockBrightnessNight) {
     els.setClockBrightnessNight.value = state.clockBrightnessNight;
-    els.setClockBrightnessNightVal.textContent = nightBrightness;
+    els.setClockBrightnessNightVal.textContent = controlState.nightBrightnessLabel;
   }
   if (els.setSensorClockBrightnessDay) {
     els.setSensorClockBrightnessDay.value = state.clockBrightnessDay;
-    els.setSensorClockBrightnessDayVal.textContent = dayBrightness;
+    els.setSensorClockBrightnessDayVal.textContent = controlState.dayBrightnessLabel;
   }
   if (els.setSensorClockBrightnessNight) {
     els.setSensorClockBrightnessNight.value = state.clockBrightnessNight;
-    els.setSensorClockBrightnessNightVal.textContent = nightBrightness;
+    els.setSensorClockBrightnessNightVal.textContent = controlState.nightBrightnessLabel;
   }
 }
 
@@ -171,7 +130,7 @@ function syncCoverArtScreensaverUi() {
     setSelectValue(
       els.setCoverArtTrackOverlayDuration,
       value,
-      value < 0 ? "Always" : value > 0 ? formatDuration(value) : "Never");
+      timedSettingLabel(value, formatDuration));
   }
   if (els.setCoverArtHideExternalInputToggle) {
     els.setCoverArtHideExternalInputToggle.checked = !!state.coverArtHideExternalInputOn;

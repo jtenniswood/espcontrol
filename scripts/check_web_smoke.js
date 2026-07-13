@@ -1333,8 +1333,6 @@ assert.deepStrictEqual(
 );
 
 assert.strictEqual(hooks.normalizeScreensaverAction("Screen Dimmed"), "dim");
-assert.strictEqual(hooks.previewHtmlValue({ labelHtml: "" }, "labelHtml", "fallback"), "");
-assert.strictEqual(hooks.previewHtmlValue({}, "labelHtml", "fallback"), "fallback");
 assert.strictEqual(hooks.webserverMockNow().toISOString(), "2026-01-01T09:00:00.000Z");
 assert.notStrictEqual(
   hooks.webserverNow().toISOString(),

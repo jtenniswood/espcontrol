@@ -7,17 +7,11 @@ function buildClipboardEntry(slot) {
   if (slot < 1) return null;
   var c = ctx();
   var src = c.buttons[slot - 1];
-  var entry = {
-    entity: src.entity, label: src.label, icon: src.icon,
-    icon_on: src.icon_on, sensor: src.sensor, unit: src.unit,
-    type: src.type || "", precision: src.precision || "",
-    options: src.options || "",
-    subpageConfig: null, size: c.sizes[slot] || 1,
-  };
+  var subpageConfig = null;
   if (!c.isSub && src.type === "subpage" && state.subpages[slot]) {
-    entry.subpageConfig = serializeSubpageConfig(state.subpages[slot]);
+    subpageConfig = serializeSubpageConfig(state.subpages[slot]);
   }
-  return entry;
+  return ClipboardFeature.createClipboardEntry(src, c.sizes[slot] || 1, subpageConfig);
 }
 
 function copySlot(slot) {
@@ -59,33 +53,27 @@ function pasteButton(pos) {
     showImageCardLimitBanner();
     return;
   }
-  var lastSlot = -1;
-  for (var i = 0; i < entries.length; i++) {
-    var newSlot = firstFreeSlot();
-    if (newSlot < 0) break;
-    var e = entries[i];
-    var placement = findDuplicatePlacement(state.grid, pos, e.size || 1, NUM_SLOTS);
-    if (placement.pos < 0) break;
-    var cell = placement.pos;
-    var placeSize = placement.size;
-    state.buttons[newSlot - 1] = {
-      entity: e.entity, label: e.label, icon: e.icon,
-      icon_on: e.icon_on, sensor: e.sensor, unit: e.unit,
-      type: e.type || "", precision: e.precision || "",
-      options: e.options || "",
-    };
-    if (placeSize === 1) delete state.sizes[newSlot]; else state.sizes[newSlot] = placeSize;
-    placeSlotAt(state.grid, newSlot, cell, placeSize);
-    if (e.subpageConfig) {
-      var spCopy = parseSubpageConfig(e.subpageConfig);
+  var used = {};
+  state.grid.forEach(function (slot) { if (slot > 0) used[slot] = true; });
+  var availableSlots = [];
+  for (var slot = 1; slot <= NUM_SLOTS; slot++) { if (!used[slot]) availableSlots.push(slot); }
+  var plan = ClipboardFeature.planClipboardPaste(
+    entries, state.grid, state.sizes, pos, availableSlots, NUM_SLOTS, GRID_COLS
+  );
+  state.grid = plan.grid;
+  state.sizes = plan.sizes;
+  plan.placements.forEach(function (placement) {
+    var newSlot = placement.slot;
+    state.buttons[newSlot - 1] = placement.button;
+    if (placement.subpageConfig) {
+      var spCopy = parseSubpageConfig(placement.subpageConfig);
       spCopy.sizes = {};
       buildSubpageGrid(spCopy);
       state.subpages[newSlot] = spCopy;
     }
     saveButtonConfig(newSlot);
     saveSubpageEntity(newSlot);
-    lastSlot = newSlot;
-  }
+  });
   postText(entityName("button_order"), serializeGrid(state.grid));
   state.clipboard = null;
   state.selectedSlots = [];
@@ -103,27 +91,22 @@ function pasteSubpageButton(pos) {
     showImageCardLimitBanner();
     return;
   }
-  var lastSlot = -1;
-  for (var i = 0; i < entries.length; i++) {
-    var e = entries[i];
-    var placement = findDuplicatePlacement(sp.grid, pos, e.size || 1, maxPos);
-    if (placement.pos < 0) break;
-    var cell = placement.pos;
-    var placeSize = placement.size;
-    var newSlot = subpageFirstFreeSlot(sp);
+  var used = {};
+  sp.grid.forEach(function (slot) { if (slot > 0) used[slot] = true; });
+  var availableSlots = [];
+  for (var slot = 1; slot <= maxPos; slot++) { if (!used[slot]) availableSlots.push(slot); }
+  var plan = ClipboardFeature.planClipboardPaste(
+    entries, sp.grid, sp.sizes, pos, availableSlots, maxPos, GRID_COLS
+  );
+  sp.grid = plan.grid;
+  sp.sizes = plan.sizes;
+  plan.placements.forEach(function (placement) {
+    var newSlot = placement.slot;
     while (sp.buttons.length < newSlot) {
       sp.buttons.push(emptyButtonConfig());
     }
-    sp.buttons[newSlot - 1] = {
-      entity: e.entity, label: e.label, icon: e.icon,
-      icon_on: e.icon_on, sensor: e.sensor, unit: e.unit,
-      type: e.type || "", precision: e.precision || "",
-      options: e.options || "",
-    };
-    if (placeSize === 1) delete sp.sizes[newSlot]; else sp.sizes[newSlot] = placeSize;
-    placeSlotAt(sp.grid, newSlot, cell, placeSize);
-    lastSlot = newSlot;
-  }
+    sp.buttons[newSlot - 1] = placement.button;
+  });
   sp.order = serializeSubpageGrid(sp);
   state.clipboard = null;
   saveSubpageConfig(homeSlot);

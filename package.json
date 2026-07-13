@@ -13,6 +13,7 @@
     "check:device-matrix": "python3 scripts/check_tasks.py run-task device-matrix",
     "check:device-profiles": "python3 scripts/check_tasks.py run-task device-profiles",
     "check:device-api": "python3 scripts/check_tasks.py run-task device-api",
+    "check:preview-features": "python3 scripts/check_tasks.py run-task preview-features",
     "check:fast": "python3 scripts/check_tasks.py run fast",
     "check:parallel": "python3 scripts/check_tasks.py run fast --jobs 4",
     "check:firmware-card-runtime": "python3 scripts/check_tasks.py run-task firmware-card-runtime",

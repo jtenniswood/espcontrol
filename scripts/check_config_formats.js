@@ -588,8 +588,6 @@ Object.entries(current.generatedContract.migrationAliases).forEach(([alias, expe
     `generated contract exposes ${alias} migration alias`
   );
 });
-assert.strictEqual(hooks.previewHtmlValue({ labelHtml: "" }, "labelHtml", "fallback"), "", "empty preview label suppresses fallback");
-assert.strictEqual(hooks.previewHtmlValue({}, "labelHtml", "fallback"), "fallback", "missing preview label uses fallback");
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "°F", "fahrenheit unit normalization");
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "°C", "centigrade unit normalization");
 assert.strictEqual(hooks.normalizeScreensaverAction("Screen Dimmed"), "dim", "dimmed screensaver action normalization");
@@ -604,16 +602,6 @@ assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 49), "wifi-strength-2", 
 assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 74), "wifi-strength-3", "wifi preview third strength icon");
 assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 100), "wifi-strength-4", "wifi preview fourth strength icon");
 assert.strictEqual(hooks.networkPreviewIconSlug("ethernet", 100), "ethernet", "ethernet preview icon");
-const duplicateWrapGrid = Array.from({ length: 20 }, (_, i) => i + 1);
-duplicateWrapGrid[1] = 0;
-duplicateWrapGrid[2] = 0;
-const duplicateWidePlacement = hooks.findDuplicatePlacementFor(duplicateWrapGrid, 19, 3, 20);
-assert.strictEqual(duplicateWidePlacement.pos, 1, "duplicate placement wraps to earlier slots when a matching space exists");
-assert.strictEqual(duplicateWidePlacement.size, 3, "duplicate placement preserves card size when the wrapped space fits");
-duplicateWrapGrid[2] = 3;
-const duplicateFallbackPlacement = hooks.findDuplicatePlacementFor(duplicateWrapGrid, 19, 3, 20);
-assert.strictEqual(duplicateFallbackPlacement.pos, 1, "duplicate placement still wraps when copied size will not fit");
-assert.strictEqual(duplicateFallbackPlacement.size, 1, "duplicate placement falls back to a normal card when the copied size will not fit");
 const importedPlainOrder = hooks.importedButtonOrderFor("1,2,3", { 1: 2 });
 assert.deepStrictEqual({
   grid: Array.from(importedPlainOrder.grid),
@@ -630,12 +618,6 @@ assert.deepStrictEqual(Array.from(importedExtraTallOrder.grid.slice(0, 11)), [1,
 const importedExtraWideOrder = hooks.importedButtonOrderFor("1x,2,3", {});
 assert.strictEqual(importedExtraWideOrder.sizes["1"], 6, "imported extra wide sizing is preserved");
 assert.deepStrictEqual(Array.from(importedExtraWideOrder.grid.slice(0, 5)), [1, -1, -1, 2, 3], "extra wide spans three columns");
-const duplicateExtraWideGrid = Array.from({ length: 20 }, (_, i) => i + 1);
-duplicateExtraWideGrid[1] = 0;
-duplicateExtraWideGrid[2] = 3;
-const duplicateExtraWideFallback = hooks.findDuplicatePlacementFor(duplicateExtraWideGrid, 19, 6, 20);
-assert.strictEqual(duplicateExtraWideFallback.pos, 1, "extra wide duplicate placement falls back to a free single slot");
-assert.strictEqual(duplicateExtraWideFallback.size, 1, "extra wide duplicate placement falls back to normal size when no matching space fits");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, false, 60, 3600), true, "short timeout allowed before limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 60, 3600), false, "short timeout blocked after old limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 10, 3600), true, "short timeout allowed after new limits load");
