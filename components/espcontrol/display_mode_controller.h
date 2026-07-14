@@ -101,6 +101,10 @@ class DisplayModeController {
     return takeover_depth_[takeover_index(kind)] != 0;
   }
 
+  bool request_active(DisplayRequestSource source) const {
+    return requests_[source_index(source)].active;
+  }
+
   DisplayTransition resolve() const {
     DisplayTransition result;
     result.previous_mode = current_mode_;

@@ -1566,18 +1566,71 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             errors.append(f"{rel}: let the night screen schedule override timer screensaver actions")
 
     schedule_off_body = yaml_script_body(text, "backlight_schedule_display_off")
+    controller_off_body = yaml_script_body(text, "display_mode_effect_off")
+    reconcile_body = yaml_script_body(text, "display_mode_reconcile")
     if schedule_off_body is None:
         errors.append(f"{rel}: missing backlight_schedule_display_off script")
-    elif (
+    elif not (
+        controller_off_body is not None
+        and "script.stop: cover_art_delay_timer" in controller_off_body
+        and "script.execute: hide_cover_art_view" in controller_off_body
+    ) and (
         "script.stop: cover_art_delay_timer" not in schedule_off_body
         or "script.execute: hide_cover_art_view" not in schedule_off_body
     ):
         errors.append(f"{rel}: screen schedule display-off should clear cover art before forcing the screen off")
 
+    if reconcile_body is not None and "DisplayRequestSource::SCREEN_SCHEDULE" in reconcile_body and (
+        "if (schedule_night && id(cover_art_screensaver_active))" not in reconcile_body
+        and not (
+            "if (id(cover_art_screensaver_active))" in reconcile_body
+            and "id(cover_art_screensaver_active) = false;" in reconcile_body
+            and "id(hide_cover_art_view).execute();" in reconcile_body
+        )
+    ):
+        errors.append(f"{rel}: scheduled night modes should clear active cover art before resolving")
+
     schedule_path = backlight_path.with_name("backlight_schedule.yaml")
     if schedule_path.exists():
         schedule_rel = schedule_path.relative_to(root)
         schedule_text = schedule_path.read_text(encoding="utf-8")
+        migrated_live_schedule = (
+            reconcile_body is not None
+            and "schedule_was_active" in reconcile_body
+            and "DisplayRequestSource::BOOT_GUARD" in reconcile_body
+            and "DisplayRequestSource::SCREEN_SCHEDULE" in reconcile_body
+        )
+        if migrated_live_schedule:
+            boot_guard_index = schedule_text.find("script.execute: screen_schedule_boot_guard")
+            boot_guard_prefix = schedule_text[:boot_guard_index] if boot_guard_index != -1 else ""
+            if (
+                "priority: -190" not in boot_guard_prefix
+                or "screen_schedule_waiting_for_time(" not in boot_guard_prefix
+                or "screen_schedule_night_active(" not in boot_guard_prefix
+                or "id(screen_schedule_asleep) =" not in boot_guard_prefix
+            ):
+                errors.append(
+                    f"{schedule_rel}: publish the live fail-dark schedule before the loading screen can light the panel"
+                )
+
+            loading_path = backlight_path.parent.parent / "device" / "screen_loading.yaml"
+            if loading_path.exists():
+                loading_rel = loading_path.relative_to(root)
+                loading_text = loading_path.read_text(encoding="utf-8")
+                setup_index = loading_text.find("id: connectivity_setup_display_active")
+                setup_true_index = loading_text.find("value: 'true'", setup_index)
+                reconcile_index = loading_text.find("script.execute: display_mode_reconcile", setup_true_index)
+                if not (0 <= setup_index < setup_true_index < reconcile_index):
+                    errors.append(
+                        f"{loading_rel}: bypass the boot guard before showing WiFi setup"
+                    )
+                if reconcile_body is None or (
+                    "id(connectivity_setup_display_active)" not in reconcile_body
+                    or "!connectivity_setup" not in reconcile_body
+                ):
+                    errors.append(
+                        f"{rel}: let connectivity setup override boot guard and scheduled night requests"
+                    )
         sleep_body = yaml_script_body(schedule_text, "screen_schedule_sleep")
         if sleep_body is None:
             errors.append(f"{schedule_rel}: missing screen_schedule_sleep script")
@@ -1586,7 +1639,17 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             asleep_true_index = sleep_body.find("value: 'true'", asleep_index)
             request_index = sleep_body.find("DisplayRequestSource::SCREEN_SCHEDULE")
             reconcile_index = sleep_body.find("script.execute: display_mode_reconcile")
-            if not (
+            controller_reconciles_live_schedule = (
+                "screen_schedule_night_active(" in text
+                and "controller.request(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE" in text
+                and "schedule_was_active" in text
+                and "controller.clear(espcontrol::DisplayRequestSource::IDLE_TIMER)" in text
+                and "controller.clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR)" in text
+                and "restore_value: true" not in text[text.find("id: screen_schedule_asleep"):text.find("id: backlight_manual_off")]
+                and "id: screen_schedule_asleep" not in sleep_body
+                and reconcile_index != -1
+            )
+            if not controller_reconciles_live_schedule and not (
                 0 <= asleep_index <= asleep_true_index < request_index < reconcile_index
             ):
                 errors.append(
@@ -1597,6 +1660,16 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
     if wake_body is None:
         errors.append(f"{rel}: missing screensaver_presence_wake script")
     else:
+        controller_presence_wake = (
+            "script.execute: display_mode_clear_automatic" in wake_body
+            and "screen_schedule_night_active(" in text
+            and "DisplayRequestSource::SCREEN_SCHEDULE" in text
+        )
+        if controller_presence_wake and (
+            "id(cover_art_screensaver_active)" not in wake_body
+            or "script.execute: screensaver_wake" not in wake_body
+        ):
+            errors.append(f"{rel}: clear cover art when presence wakes the screensaver")
         wake_index = wake_body.find("script.execute: screensaver_wake")
         pre_wake_body = wake_body[:wake_index] if wake_index != -1 else wake_body
         required_tokens = (
@@ -1604,13 +1677,15 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             "screen_schedule_night_active(",
             "id(screen_schedule_check).execute();",
         )
-        if wake_index == -1 or any(token not in pre_wake_body for token in required_tokens):
+        if not controller_presence_wake and (
+            wake_index == -1 or any(token not in pre_wake_body for token in required_tokens)
+        ):
             errors.append(f"{rel}: let the night screen schedule override sensor screensaver wake")
         disabled_wake_index = pre_wake_body.rfind("if (!id(schedule_enabled).state) return true;")
         schedule_check_index = pre_wake_body.find("id(screen_schedule_check).execute();")
-        if disabled_wake_index == -1 or (
+        if not controller_presence_wake and (disabled_wake_index == -1 or (
             schedule_check_index != -1 and disabled_wake_index < schedule_check_index
-        ):
+        )):
             errors.append(f"{rel}: let sensor screensaver wake when the screen schedule is disabled")
 
     return errors
@@ -4588,6 +4663,34 @@ def run_self_test() -> int:
         "night schedule overrides timer and sensor screensaver",
         valid_schedule_screensaver_override,
         (),
+        valid_schedule_sleep_order,
+    )
+    migrated_schedule_reconcile = (
+        valid_schedule_screensaver_override
+        + "  - id: display_mode_reconcile\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          if (schedule_night) {\n"
+        "            controller.request(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE,\n"
+        "                               espcontrol::DisplayMode::CLOCK);\n"
+        "            if (id(cover_art_screensaver_active)) {\n"
+        "              id(cover_art_screensaver_active) = false;\n"
+        "              id(hide_cover_art_view).execute();\n"
+        "            }\n"
+        "          }\n"
+    )
+    expect_screen_schedule_screensaver_override_errors(
+        "migrated schedule clears active cover art",
+        migrated_schedule_reconcile,
+        (),
+        valid_schedule_sleep_order,
+    )
+    expect_screen_schedule_screensaver_override_errors(
+        "migrated schedule leaves active cover art visible",
+        migrated_schedule_reconcile.replace(
+            "              id(hide_cover_art_view).execute();\n", "", 1
+        ),
+        ("scheduled night modes should clear active cover art",),
         valid_schedule_sleep_order,
     )
     expect_screen_schedule_screensaver_override_errors(

@@ -85,6 +85,9 @@ esphome:
                 - lambda: 'return !wifi::global_wifi_component->has_sta();'
             then:
               - globals.set:
+                  id: connectivity_setup_display_active
+                  value: 'true'
+              - globals.set:
                   id: screen_schedule_asleep
                   value: 'false'
               - globals.set:

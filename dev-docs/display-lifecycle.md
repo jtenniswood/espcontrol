@@ -48,7 +48,7 @@ model to reproduce inside the controller.
 | Flag | Current meaning | Notes |
 |---|---|---|
 | `display_asleep` | The normal active UI is not fully awake. | Also becomes true for setup dimming, so it cannot identify a mode alone. |
-| `screen_schedule_asleep` | The schedule owns the current clock or off state. | Persisted across reboot to support fail-dark boot behaviour. |
+| `screen_schedule_asleep` | The schedule owns the current clock or off state. | Compatibility output only; boot behaviour is recalculated from live schedule and time inputs. |
 | `backlight_manual_off` | A touchscreen long-press requested display off. | Cleared by the next wake. |
 | `manual_wake_ms` | Start time of a temporary off-hours wake. | Zero means no temporary wake. |
 | `screensaver_display_off_active` | The display-off presentation is selected. | Physical PWM must also be off. |

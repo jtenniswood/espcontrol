@@ -158,6 +158,50 @@ int main() {
   CHECK(rapid.complete_transition(clock_generation.generation, DisplayMode::CLOCK));
   CHECK(!rapid.transition_required(rapid.resolve()));
 
+  // Display-off lifecycle sequences always re-resolve current requests rather
+  // than restoring the presentation that happened to be visible before them.
+  DisplayModeController lifecycle;
+  CHECK(lifecycle.request(DisplayRequestSource::PRESENCE_SENSOR,
+                          DisplayMode::DISPLAY_OFF));
+  CHECK(decision_is(lifecycle, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::PRESENCE_SENSOR));
+  CHECK(lifecycle.clear(DisplayRequestSource::PRESENCE_SENSOR));
+  CHECK(decision_is(lifecycle, DisplayMode::ACTIVE));
+
+  CHECK(lifecycle.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                          DisplayMode::DISPLAY_OFF));
+  CHECK(lifecycle.request_active(DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(lifecycle.request(DisplayRequestSource::IDLE_TIMER,
+                          DisplayMode::DISPLAY_OFF));
+  CHECK(lifecycle.request(DisplayRequestSource::USER_WAKE, DisplayMode::ACTIVE));
+  CHECK(decision_is(lifecycle, DisplayMode::ACTIVE,
+                    DisplayRequestSource::USER_WAKE));
+  CHECK(lifecycle.clear(DisplayRequestSource::USER_WAKE));
+  CHECK(decision_is(lifecycle, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::SCREEN_SCHEDULE));
+  // A scheduled morning wake clears the automatic request that was hidden
+  // beneath the higher-priority night schedule.
+  CHECK(lifecycle.clear(DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(!lifecycle.request_active(DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(lifecycle.clear(DisplayRequestSource::IDLE_TIMER));
+  CHECK(decision_is(lifecycle, DisplayMode::ACTIVE));
+  CHECK(lifecycle.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                          DisplayMode::DISPLAY_OFF));
+  CHECK(lifecycle.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                          DisplayMode::CLOCK));
+  CHECK(decision_is(lifecycle, DisplayMode::CLOCK,
+                    DisplayRequestSource::SCREEN_SCHEDULE));
+
+  // Invalid boot time fails dark even when the live night schedule would
+  // otherwise select a clock presentation.
+  CHECK(lifecycle.request(DisplayRequestSource::BOOT_GUARD,
+                          DisplayMode::DISPLAY_OFF));
+  CHECK(decision_is(lifecycle, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::BOOT_GUARD));
+  CHECK(lifecycle.clear(DisplayRequestSource::BOOT_GUARD));
+  CHECK(decision_is(lifecycle, DisplayMode::CLOCK,
+                    DisplayRequestSource::SCREEN_SCHEDULE));
+
   // A source change at the same visible mode still needs the adapter so it can
   // select the winning source's brightness and compatibility state.
   CHECK(rapid.clear(DisplayRequestSource::SCREEN_SCHEDULE));

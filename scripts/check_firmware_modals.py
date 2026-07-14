@@ -228,7 +228,17 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
                 )
             if "navigation_return_home(id(main_page)->obj);" not in home_idle_body:
                 errors.append("common/addon/backlight.yaml: home-return idle must use navigation_return_home")
-        if "Skipping automatic display-off while image modal is active" not in text:
+        controller_off_body = yaml_script_body(text, "display_mode_effect_off")
+        controller_owns_automatic_off = (
+            controller_off_body is not None
+            and "DisplayRequestSource::IDLE_TIMER" in controller_off_body
+            and "DisplayRequestSource::PRESENCE_SENSOR" in controller_off_body
+            and "backlight_close_modals_for_display_takeover();" in controller_off_body
+        )
+        if (
+            "Skipping automatic display-off while image modal is active" not in text
+            and not controller_owns_automatic_off
+        ):
             errors.append("common/addon/backlight.yaml: keep automatic idle display-off blocked by image modals")
         if "backlight_close_modals_for_display_takeover();" not in text:
             errors.append("common/addon/backlight.yaml: close modals before manual or scheduled display-off")
@@ -264,7 +274,20 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         errors.append("common/addon/backlight_schedule.yaml: close modals before scheduled takeover")
     else:
         text = schedule_path.read_text(encoding="utf-8")
-        if text.count("backlight_close_modals_for_display_takeover();") < 2:
+        backlight_text = backlight_path.read_text(encoding="utf-8") if backlight_path.exists() else ""
+        controller_closes_scheduled_takeover = (
+            "id: display_mode_effect_off" in backlight_text
+            and "DisplayRequestSource::SCREEN_SCHEDULE" in backlight_text
+            and "backlight_close_modals_for_display_takeover();" in backlight_text
+        )
+        controller_closes_clock_takeover = (
+            "id: display_mode_apply_transition" in backlight_text
+            and "schedule_owned" in backlight_text
+        )
+        if (
+            text.count("backlight_close_modals_for_display_takeover();") < 2
+            and not (controller_closes_scheduled_takeover and controller_closes_clock_takeover)
+        ):
             errors.append(
                 "common/addon/backlight_schedule.yaml: close modals before scheduled sleep and clock takeover"
             )
