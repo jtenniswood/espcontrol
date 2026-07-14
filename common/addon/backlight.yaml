@@ -557,7 +557,11 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return id(cover_art_screensaver_active);'
+            lambda: |-
+              const std::string &state = id(cover_art_last_playback_state);
+              return id(cover_art_screensaver_active) ||
+                     (id(cover_art_media_playing) &&
+                      state != "playing" && state != "buffering" && state != "paused");
           then:
             - script.execute: screensaver_idle_check
           else:
@@ -968,8 +972,11 @@ script:
                 condition:
                   lambda: |-
                     auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                    const std::string &state = id(cover_art_last_playback_state);
+                    const bool playback_active = state == "playing" || state == "buffering";
                     return id(cover_art_screensaver_enabled).state &&
                            id(cover_art_media_playing) &&
+                           playback_active &&
                            !id(cover_art_media_player_entity).state.empty() &&
                            !screen_schedule_blocks_cover_art(
                              id(screen_schedule_trigger).state,
