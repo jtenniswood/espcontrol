@@ -1,0 +1,355 @@
+{
+  "inventoryVersion": 1,
+  "lifecycleVocabulary": {
+    "subscriptions": ["none", "state", "attributes", "local", "time", "action_response", "http"],
+    "actions": ["none", "home_assistant_service", "local", "http", "navigation", "modal"],
+    "modalOwners": ["none", "alarm", "cover", "image", "media", "todo"]
+  },
+  "types": {
+    "": {
+      "classification": "canonical",
+      "canonicalType": "",
+      "webRegistration": "",
+      "firmwareFamily": "TOGGLE",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "toggle", "config": { "entity": "switch.example" } }]
+    },
+    "action": {
+      "classification": "canonical",
+      "canonicalType": "action",
+      "webRegistration": "action",
+      "firmwareFamily": "ACTION",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "service", "config": { "entity": "scene.example", "sensor": "scene.turn_on" } },
+        { "name": "local", "config": { "entity": "zoom_mute", "sensor": "local" }, "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" } }
+      ]
+    },
+    "vacuum": {
+      "classification": "canonical",
+      "canonicalType": "vacuum",
+      "webRegistration": "vacuum",
+      "firmwareFamily": "VACUUM",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "status", "config": { "entity": "vacuum.example", "sensor": "status" }, "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" } },
+        { "name": "start_stop", "config": { "entity": "vacuum.example", "sensor": "start_stop" } },
+        { "name": "dock", "config": { "entity": "vacuum.example", "sensor": "dock" } },
+        { "name": "pause_resume", "config": { "entity": "vacuum.example", "sensor": "pause_resume" } },
+        { "name": "clean_spot", "config": { "entity": "vacuum.example", "sensor": "clean_spot" } },
+        { "name": "locate", "config": { "entity": "vacuum.example", "sensor": "locate" } },
+        { "name": "clean_area", "config": { "entity": "vacuum.example", "sensor": "clean_area", "unit": "kitchen" } }
+      ]
+    },
+    "lawn_mower": {
+      "classification": "canonical",
+      "canonicalType": "lawn_mower",
+      "webRegistration": "lawn_mower",
+      "firmwareFamily": "MOWER",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "status", "config": { "entity": "lawn_mower.example", "sensor": "status" }, "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" } },
+        { "name": "start_mowing", "config": { "entity": "lawn_mower.example", "sensor": "start_mowing" } },
+        { "name": "dock", "config": { "entity": "lawn_mower.example", "sensor": "dock" } },
+        { "name": "pause_resume", "config": { "entity": "lawn_mower.example", "sensor": "pause_resume" } }
+      ]
+    },
+    "alarm": {
+      "classification": "canonical",
+      "canonicalType": "alarm",
+      "webRegistration": "alarm",
+      "firmwareFamily": "ALARM",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service", "modal"], "modalOwner": "alarm" },
+      "modes": [{ "name": "control_panel", "config": { "entity": "alarm_control_panel.example", "type": "alarm" } }]
+    },
+    "alarm_action": {
+      "classification": "canonical",
+      "canonicalType": "alarm_action",
+      "webRegistration": "alarm_action",
+      "firmwareFamily": "ALARM_ACTION",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "away", "config": { "entity": "alarm_control_panel.example", "sensor": "away" } },
+        { "name": "home", "config": { "entity": "alarm_control_panel.example", "sensor": "home" } },
+        { "name": "night", "config": { "entity": "alarm_control_panel.example", "sensor": "night" } },
+        { "name": "vacation", "config": { "entity": "alarm_control_panel.example", "sensor": "vacation" } },
+        { "name": "disarm", "config": { "entity": "alarm_control_panel.example", "sensor": "disarm" } }
+      ]
+    },
+    "calendar": {
+      "classification": "canonical",
+      "canonicalType": "calendar",
+      "webRegistration": "calendar",
+      "firmwareFamily": "DATE_TIME",
+      "lifecycle": { "subscriptions": ["state", "time"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [{ "name": "date", "config": { "type": "calendar" } }]
+    },
+    "clock": {
+      "classification": "canonical",
+      "canonicalType": "clock",
+      "webRegistration": "clock",
+      "firmwareFamily": "DATE_TIME",
+      "lifecycle": { "subscriptions": ["time"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [{ "name": "local_time", "config": { "type": "clock" } }]
+    },
+    "climate": {
+      "classification": "canonical",
+      "canonicalType": "climate_control",
+      "webRegistration": "climate",
+      "firmwareFamily": "CLIMATE",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [{ "name": "status", "config": { "entity": "climate.example", "type": "climate" } }]
+    },
+    "climate_control": {
+      "classification": "canonical",
+      "canonicalType": "climate_control",
+      "webRegistration": "climate_control",
+      "firmwareFamily": "CLIMATE",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "all_controls", "config": { "entity": "climate.example", "type": "climate_control" } }]
+    },
+    "cover": {
+      "classification": "canonical",
+      "canonicalType": "cover",
+      "webRegistration": "cover",
+      "firmwareFamily": "COVER",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "modal", "config": { "entity": "cover.example", "sensor": "modal" }, "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service", "modal"], "modalOwner": "cover" } },
+        { "name": "position", "config": { "entity": "cover.example", "sensor": "" } },
+        { "name": "tilt", "config": { "entity": "cover.example", "sensor": "tilt" } },
+        { "name": "toggle", "config": { "entity": "cover.example", "sensor": "toggle" } },
+        { "name": "open", "config": { "entity": "cover.example", "sensor": "open" } },
+        { "name": "close", "config": { "entity": "cover.example", "sensor": "close" } },
+        { "name": "stop", "config": { "entity": "cover.example", "sensor": "stop" } },
+        { "name": "set_position", "config": { "entity": "cover.example", "sensor": "set_position" } }
+      ]
+    },
+    "door_window": {
+      "classification": "canonical",
+      "canonicalType": "door_window",
+      "webRegistration": "door_window",
+      "firmwareFamily": "OCCUPANCY",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [
+        { "name": "door", "config": { "sensor": "binary_sensor.example", "precision": "door" } },
+        { "name": "window", "config": { "sensor": "binary_sensor.example", "precision": "window" } }
+      ]
+    },
+    "presence": {
+      "classification": "canonical",
+      "canonicalType": "presence",
+      "webRegistration": "presence",
+      "firmwareFamily": "OCCUPANCY",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [{ "name": "presence", "config": { "sensor": "binary_sensor.example" } }]
+    },
+    "fan_direction": {
+      "classification": "canonical", "canonicalType": "fan_direction", "webRegistration": "fan_direction", "firmwareFamily": "FAN",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "direction", "config": { "entity": "fan.example" } }]
+    },
+    "fan_oscillate": {
+      "classification": "canonical", "canonicalType": "fan_oscillate", "webRegistration": "fan_oscillate", "firmwareFamily": "FAN",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "oscillate", "config": { "entity": "fan.example" } }]
+    },
+    "fan_preset": {
+      "classification": "canonical", "canonicalType": "fan_preset", "webRegistration": "fan_preset", "firmwareFamily": "FAN",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "preset", "config": { "entity": "fan.example" } }]
+    },
+    "fan_speed": {
+      "classification": "canonical", "canonicalType": "fan_speed", "webRegistration": "fan_speed", "firmwareFamily": "FAN",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "speed", "config": { "entity": "fan.example" } }]
+    },
+    "fan_control": {
+      "classification": "canonical", "canonicalType": "fan_control", "webRegistration": "fan_control", "firmwareFamily": "FAN",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "all_controls", "config": { "entity": "fan.example" } }]
+    },
+    "fan_switch": {
+      "classification": "canonical", "canonicalType": "fan_switch", "webRegistration": "fan_switch", "firmwareFamily": "FAN",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "power", "config": { "entity": "fan.example" } }]
+    },
+    "garage": {
+      "classification": "canonical", "canonicalType": "garage", "webRegistration": "garage", "firmwareFamily": "ACCESS",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "toggle", "config": { "entity": "cover.example", "sensor": "" } },
+        { "name": "open", "config": { "entity": "cover.example", "sensor": "open" } },
+        { "name": "close", "config": { "entity": "cover.example", "sensor": "close" } }
+      ]
+    },
+    "gate": {
+      "classification": "canonical", "canonicalType": "gate", "webRegistration": "gate", "firmwareFamily": "ACCESS",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "toggle", "config": { "entity": "cover.example", "sensor": "" } },
+        { "name": "open", "config": { "entity": "cover.example", "sensor": "open" } },
+        { "name": "close", "config": { "entity": "cover.example", "sensor": "close" } },
+        { "name": "stop", "config": { "entity": "cover.example", "sensor": "stop" } }
+      ]
+    },
+    "internal": {
+      "classification": "canonical", "canonicalType": "internal", "webRegistration": "internal", "firmwareFamily": "INTERNAL",
+      "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" },
+      "modes": [
+        { "name": "switch", "config": { "entity": "relay_1", "sensor": "switch" } },
+        { "name": "push", "config": { "entity": "relay_1", "sensor": "push" } }
+      ]
+    },
+    "light_brightness": {
+      "classification": "canonical", "canonicalType": "light_brightness", "webRegistration": "light_brightness", "firmwareFamily": "SLIDER",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "brightness", "config": { "entity": "light.example" } }]
+    },
+    "light_switch": {
+      "classification": "canonical", "canonicalType": "light_switch", "webRegistration": "light_switch", "firmwareFamily": "TOGGLE",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "power", "config": { "entity": "light.example" } }]
+    },
+    "light_temperature": {
+      "classification": "canonical", "canonicalType": "light_temperature", "webRegistration": "light_temperature", "firmwareFamily": "LIGHT_TEMPERATURE",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "temperature", "config": { "entity": "light.example" } }]
+    },
+    "light_control": {
+      "classification": "canonical", "canonicalType": "light_control", "webRegistration": "light_control", "firmwareFamily": "LIGHT_CONTROL",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "all_controls", "config": { "entity": "light.example" } }]
+    },
+    "lock": {
+      "classification": "canonical", "canonicalType": "lock", "webRegistration": "lock", "firmwareFamily": "ACCESS",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "toggle", "config": { "entity": "lock.example", "sensor": "" } },
+        { "name": "lock", "config": { "entity": "lock.example", "sensor": "lock" } },
+        { "name": "unlock", "config": { "entity": "lock.example", "sensor": "unlock" } }
+      ]
+    },
+    "media": {
+      "classification": "canonical", "canonicalType": "media", "webRegistration": "media", "firmwareFamily": "MEDIA",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [
+        { "name": "control_modal", "config": { "entity": "media_player.example", "sensor": "control_modal" }, "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service", "modal"], "modalOwner": "media" } },
+        { "name": "play_pause", "config": { "entity": "media_player.example", "sensor": "play_pause" } },
+        { "name": "previous", "config": { "entity": "media_player.example", "sensor": "previous" } },
+        { "name": "next", "config": { "entity": "media_player.example", "sensor": "next" } },
+        { "name": "volume", "config": { "entity": "media_player.example", "sensor": "volume" } },
+        { "name": "position", "config": { "entity": "media_player.example", "sensor": "position" } },
+        { "name": "now_playing", "config": { "entity": "media_player.example", "sensor": "now_playing" }, "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["none"], "modalOwner": "none" } },
+        { "name": "cover_art", "config": { "entity": "media_player.example", "sensor": "cover_art" } },
+        { "name": "playlist", "config": { "entity": "media_player.example", "sensor": "playlist", "options": "playlist_content_id=example" } }
+      ]
+    },
+    "option_select": {
+      "classification": "accepted_legacy_input", "canonicalType": "action", "webRegistration": "action", "firmwareFamily": "OPTION_SELECT",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "legacy_option_select", "config": { "entity": "input_select.example", "type": "option_select" } }]
+    },
+    "push": {
+      "classification": "canonical", "canonicalType": "push", "webRegistration": "push", "firmwareFamily": "PUSH",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["local"], "modalOwner": "none" },
+      "modes": [{ "name": "event", "config": { "label": "Trigger" } }]
+    },
+    "screen_lock": {
+      "classification": "canonical", "canonicalType": "screen_lock", "webRegistration": "screen_lock", "firmwareFamily": "SCREEN_LOCK",
+      "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" },
+      "modes": [{ "name": "toggle", "config": {} }]
+    },
+    "webhook": {
+      "classification": "canonical", "canonicalType": "webhook", "webRegistration": "webhook", "firmwareFamily": "WEBHOOK",
+      "lifecycle": { "subscriptions": ["http"], "actions": ["http"], "modalOwner": "none" },
+      "modes": [
+        { "name": "get", "config": { "entity": "https://example.invalid/hook", "sensor": "GET" } },
+        { "name": "post", "config": { "entity": "https://example.invalid/hook", "sensor": "POST", "unit": "{}" } }
+      ]
+    },
+    "sensor": {
+      "classification": "canonical", "canonicalType": "sensor", "webRegistration": "sensor", "firmwareFamily": "SENSOR",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [
+        { "name": "numeric", "config": { "sensor": "sensor.example", "precision": "1" } },
+        { "name": "text", "config": { "sensor": "sensor.example", "precision": "text" } },
+        { "name": "icon", "config": { "sensor": "binary_sensor.example", "precision": "icon" } },
+        { "name": "local", "config": { "entity": "room_temp", "sensor": "local", "precision": "1" }, "lifecycle": { "subscriptions": ["local"], "actions": ["none"], "modalOwner": "none" } }
+      ]
+    },
+    "local_sensor": {
+      "classification": "accepted_legacy_input", "canonicalType": "sensor", "webRegistration": "sensor", "firmwareFamily": "LOCAL_SENSOR",
+      "lifecycle": { "subscriptions": ["local"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [{ "name": "legacy_local_sensor", "config": { "entity": "room_temp", "type": "local_sensor", "precision": "1" } }]
+    },
+    "slider": {
+      "classification": "canonical", "canonicalType": "slider", "webRegistration": "slider", "firmwareFamily": "SLIDER",
+      "lifecycle": { "subscriptions": ["state"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "modes": [{ "name": "numeric", "config": { "entity": "input_number.example" } }]
+    },
+    "subpage": {
+      "classification": "canonical", "canonicalType": "subpage", "webRegistration": "subpage", "firmwareFamily": "SUBPAGE",
+      "lifecycle": { "subscriptions": ["none"], "actions": ["navigation"], "modalOwner": "none" },
+      "modes": [{ "name": "navigation", "config": { "entity": "1", "label": "Rooms" } }]
+    },
+    "timezone": {
+      "classification": "canonical", "canonicalType": "timezone", "webRegistration": "timezone", "firmwareFamily": "DATE_TIME",
+      "lifecycle": { "subscriptions": ["time"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [{ "name": "timezone", "config": { "entity": "Europe/London", "type": "timezone" } }]
+    },
+    "weather": {
+      "classification": "canonical", "canonicalType": "weather", "webRegistration": "weather", "firmwareFamily": "WEATHER",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [
+        { "name": "current", "config": { "entity": "weather.example", "precision": "" } },
+        { "name": "today", "config": { "entity": "weather.example", "precision": "today" }, "lifecycle": { "subscriptions": ["state", "attributes", "action_response"], "actions": ["none"], "modalOwner": "none" } },
+        { "name": "tomorrow", "config": { "entity": "weather.example", "precision": "tomorrow" }, "lifecycle": { "subscriptions": ["state", "attributes", "action_response"], "actions": ["none"], "modalOwner": "none" } }
+      ]
+    },
+    "image": {
+      "classification": "canonical", "canonicalType": "image", "webRegistration": "image", "firmwareFamily": "IMAGE",
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["modal"], "modalOwner": "image" },
+      "modes": [{ "name": "image", "config": { "entity": "camera.example" } }]
+    },
+    "weather_forecast": {
+      "classification": "accepted_legacy_input", "canonicalType": "weather", "webRegistration": "weather_forecast", "firmwareFamily": "WEATHER",
+      "lifecycle": { "subscriptions": ["state", "attributes", "action_response"], "actions": ["none"], "modalOwner": "none" },
+      "modes": [{ "name": "legacy_forecast", "config": { "entity": "weather.example", "type": "weather_forecast" } }]
+    }
+  },
+  "runtimeOnlyTypes": {
+    "local": {
+      "classification": "accepted_legacy_input",
+      "canonicalType": "action",
+      "surfaces": ["web_parser", "firmware"],
+      "firmwareFamily": "ACTION",
+      "config": { "entity": "zoom_mute", "type": "local", "sensor": "local" },
+      "lifecycle": { "subscriptions": ["local"], "actions": ["local"], "modalOwner": "none" }
+    },
+    "text_sensor": {
+      "classification": "accepted_legacy_input",
+      "canonicalType": "sensor",
+      "surfaces": ["web_parser", "firmware"],
+      "firmwareFamily": "SENSOR",
+      "config": { "entity": "sensor.example", "type": "text_sensor" },
+      "lifecycle": { "subscriptions": ["state"], "actions": ["none"], "modalOwner": "none" }
+    },
+    "todo": {
+      "classification": "accepted_legacy_input",
+      "canonicalType": "todo",
+      "surfaces": ["web_parser", "firmware"],
+      "firmwareFamily": "TODO",
+      "config": { "entity": "todo.example", "type": "todo" },
+      "lifecycle": { "subscriptions": ["action_response"], "actions": ["home_assistant_service", "modal"], "modalOwner": "todo" }
+    },
+    "media_cover_art": {
+      "classification": "obsolete_implementation_residue",
+      "canonicalType": "media",
+      "surfaces": ["web_registry"],
+      "webRegistration": "media_cover_art",
+      "config": { "entity": "media_player.example", "type": "media", "sensor": "cover_art" },
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" }
+    }
+  }
+}

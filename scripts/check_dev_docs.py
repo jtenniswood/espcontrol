@@ -51,6 +51,16 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`npm run check:card-contract-outputs` and `npm run check:product`",
     ),
     SourceTruthRow(
+        "common/config/card_runtime_inventory.json",
+        (
+            "common/config/card_runtime_baseline_fixtures.json",
+            "compatibility/fixtures/card_runtime_surface_baseline.json",
+            "docs/generated/cards/runtime-coverage.md",
+        ),
+        "node scripts/generate_card_runtime_coverage.js",
+        "`npm run check:card-runtime-coverage` and `npm run check:saved-config-parity`",
+    ),
+    SourceTruthRow(
         "common/config/entity_names.json",
         ("common/config/entity_names.yaml", "src/webserver/generated/entity_catalog.ts"),
         "python3 scripts/build.py entities",
@@ -173,6 +183,12 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "Card metadata, defaults, domains, picker grouping, option definitions, generated card capability docs",
         "`npm run check:card-contract-outputs`",
         "`npm run check:product` when firmware, web, backup, or release-facing generated output changes",
+    ),
+    CheckMatrixRow(
+        "`common/config/card_runtime_inventory.json`, card registrations, or the firmware family registry",
+        "Card runtime coverage, legacy classification, picker/preview baseline, and lifecycle responsibilities",
+        "`npm run check:card-runtime-coverage`",
+        "`npm run check:product` when the reviewed baseline or a runtime registration changes",
     ),
     CheckMatrixRow(
         "`src/webserver/`",
