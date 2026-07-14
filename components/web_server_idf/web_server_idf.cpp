@@ -64,6 +64,12 @@ static constexpr const char *ESPCONTROL_PROJECT_VERSION = ESPHOME_PROJECT_VERSIO
 static constexpr const char *ESPCONTROL_PROJECT_VERSION = "";
 #endif
 
+#ifdef ESPCONTROL_DEVICE_SLUG
+static constexpr const char *ESPCONTROL_DEVICE_PROFILE = ESPCONTROL_DEVICE_SLUG;
+#else
+static constexpr const char *ESPCONTROL_DEVICE_PROFILE = "";
+#endif
+
 void append_json_string(std::string &out, const char *value) {
   out.push_back('"');
   for (const char *p = value; p != nullptr && *p != '\0'; ++p) {
@@ -99,6 +105,8 @@ std::string firmware_version_json() {
   append_json_string(out, ESPCONTROL_PROJECT_VERSION);
   out.append(",\"firmware_version\":");
   append_json_string(out, ESPCONTROL_PROJECT_VERSION);
+  out.append(",\"device_slug\":");
+  append_json_string(out, ESPCONTROL_DEVICE_PROFILE);
   out.append(",\"version\":");
   append_json_string(out, ESPCONTROL_PROJECT_VERSION);
   out.push_back('}');

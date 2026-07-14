@@ -20,6 +20,7 @@ VALID_CHIP_FAMILIES = {"ESP32-P4", "ESP32-S3"}
 VALID_DRAG_MODES = {"swap", "displace"}
 VALID_ROTATIONS = {"0", "90", "180", "270"}
 VALID_DISPLAY_MODES = {"color"}
+IMAGE_CARD_PICKER_TYPES = ("image", "media_cover_art")
 REQUIRED_FONT_ROLES = (
     "icon",
     "sensor",
@@ -85,6 +86,7 @@ PROFILE_CATEGORIES = (
 )
 CANONICAL_DEVICE_KEYS = (
     "slots",
+    "capabilities",
     "public",
     "layout",
     "rotation",
@@ -368,6 +370,18 @@ def validate_layout(slug: str, device: dict[str, Any], errors: list[str]) -> Non
             )
 
 
+def validate_capabilities(slug: str, device: dict[str, Any], errors: list[str]) -> None:
+    capabilities = require_object(slug, errors, device.get("capabilities"), "capabilities")
+    if capabilities is None:
+        return
+    unknown = sorted(set(capabilities) - {"imageSlots"})
+    if unknown:
+        errors.append(device_error(slug, "capabilities has unknown keys: " + ", ".join(unknown)))
+    image_slots = capabilities.get("imageSlots")
+    if not isinstance(image_slots, int) or isinstance(image_slots, bool) or not 0 <= image_slots <= 6:
+        errors.append(device_error(slug, "capabilities.imageSlots must be an integer from 0 to 6"))
+
+
 def validate_public(slug: str, device: dict[str, Any], errors: list[str]) -> None:
     public = require_object(slug, errors, device.get("public"), "public")
     if public is None:
@@ -466,6 +480,11 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
         errors.append(device_error(slug, "firmware.display.wrapTallLabels must be true or false"))
     if "infoOnly" in display and not isinstance(display["infoOnly"], bool):
         errors.append(device_error(slug, "firmware.display.infoOnly must be true or false when set"))
+    if "imageCardDownloaders" in display:
+        errors.append(device_error(
+            slug,
+            "firmware.display.imageCardDownloaders has moved to capabilities.imageSlots",
+        ))
 
     if "mode" in display and display["mode"] not in VALID_DISPLAY_MODES:
         valid = ", ".join(sorted(VALID_DISPLAY_MODES))
@@ -478,10 +497,6 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
     ):
         if key in display and not is_number(display[key]):
             errors.append(device_error(slug, f"firmware.display.{key} must be a number when set"))
-    if "imageCardDownloaders" in display:
-        value = display["imageCardDownloaders"]
-        if not isinstance(value, int) or isinstance(value, bool) or value < 0 or value > 6:
-            errors.append(device_error(slug, "firmware.display.imageCardDownloaders must be an integer from 0 to 6 when set"))
     if "imageCardDiagnostics" in display and not isinstance(display["imageCardDiagnostics"], bool):
         errors.append(device_error(slug, "firmware.display.imageCardDiagnostics must be true or false when set"))
     if "refreshRebuildsSubpages" in display and not isinstance(display["refreshRebuildsSubpages"], bool):
@@ -753,6 +768,7 @@ def validate_manifest_data(data: Any, shared_font_ids: set[str] | None = None) -
             continue
         validate_public(slug, device, errors)
         validate_layout(slug, device, errors)
+        validate_capabilities(slug, device, errors)
         validate_fonts(slug, device, shared_font_ids, errors)
         validate_display(slug, device, errors)
         validate_rotation(slug, device, errors)
@@ -768,6 +784,7 @@ def normalized_device_profile(slug: str, device: dict[str, Any], settings: dict[
     return {
         "slug": slug,
         "slots": device["slots"],
+        "capabilities": copy.deepcopy(device["capabilities"]),
         "public": copy.deepcopy(device["public"]),
         "layout": copy.deepcopy(device["layout"]),
         "rotation": copy.deepcopy(device.get("rotation") or {}),
@@ -821,24 +838,24 @@ def web_features(profile: dict[str, Any]) -> dict[str, Any]:
 def web_config(profile: dict[str, Any]) -> dict[str, Any]:
     layout = profile["layout"]
     features = web_features(profile)
-    display = profile["firmware"].get("display") or {}
-    image_card_limit = display.get("imageCardDownloaders", 4)
+    image_slot_capacity = profile["capabilities"]["imageSlots"]
     cfg: dict[str, Any] = {
         "slots": profile["slots"],
         "cols": layout["cols"],
         "rows": layout["rows"],
         "screenSize": profile["public"]["screenSize"],
         "largeSensorUnitOffsetPercent": profile["settings"]["largeSensorUnitOffsetPercent"],
-        "imageCardLimit": image_card_limit,
+        "imageSlotCapacity": image_slot_capacity,
     }
     for key, value in profile["web"].items():
         cfg[key] = copy.deepcopy(value)
         if key == "dragAnimation" and features:
             cfg["features"] = copy.deepcopy(features)
-    if image_card_limit == 0:
+    if image_slot_capacity == 0:
         disabled = list(cfg.get("disabledCardTypes") or [])
-        if "image" not in disabled:
-            disabled.append("image")
+        for card_type in IMAGE_CARD_PICKER_TYPES:
+            if card_type not in disabled:
+                disabled.append(card_type)
         cfg["disabledCardTypes"] = disabled
     if features and "features" not in cfg:
         cfg["features"] = copy.deepcopy(features)
@@ -895,8 +912,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
             "green": correction.get("greenPercent", 100),
             "blue": correction.get("bluePercent", 100),
         }
-    if display.get("imageCardDownloaders", 4) != 4:
-        slot["image_card_downloaders"] = display["imageCardDownloaders"]
+    slot["image_slot_capacity"] = profile["capabilities"]["imageSlots"]
     if display.get("imageCardDiagnostics"):
         slot["image_card_diagnostics"] = True
     if display.get("refreshRebuildsSubpages"):
@@ -921,6 +937,7 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "resolution": profile["public"]["resolution"],
         "orientation": profile["public"]["orientation"],
         "slots": profile["slots"],
+        "imageSlots": profile["capabilities"]["imageSlots"],
         "grid": {
             "rows": profile["layout"]["rows"],
             "cols": profile["layout"]["cols"],
@@ -931,7 +948,6 @@ def public_device_capability(profile: dict[str, Any]) -> dict[str, Any]:
         "ethernetManualInstall": bool(package.get("ethernetSelectable")),
         "subpages": "subpage" not in profile["web"].get("disabledCardTypes", []),
     }
-    display = profile["firmware"].get("display") or {}
     return capability
 
 

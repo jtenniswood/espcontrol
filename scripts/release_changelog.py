@@ -148,7 +148,7 @@ BUG_FIX_SUBJECT_PREFIXES = (
 )
 DEVICE_SPECIFIC_PATH_PATTERNS = (
     re.compile(r"^devices/([^/]+)/"),
-    re.compile(r"^docs/public/webserver/([^/]+)/"),
+    re.compile(r"^docs/public/webserver/([^/]+)/www\.js$"),
     re.compile(r"^builds/([^/.]+)(?:\.factory)?\.yaml$"),
 )
 FEATURE_SECTION = "User-facing features"
