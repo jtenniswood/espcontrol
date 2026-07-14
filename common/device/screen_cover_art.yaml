@@ -1590,6 +1590,7 @@ script:
                        id(cover_art_media_playing) ? "true" : "false");
               auto now = id(panel_time).now();
               if (playing) {
+                id(cover_art_delayed_playback_stopped).stop();
                 bool was_playing = id(cover_art_media_playing);
                 id(cover_art_media_playing) = true;
                 if (now.is_valid() && id(cover_art_position_anchor_epoch) == 0) {
@@ -1600,6 +1601,7 @@ script:
               }
 
               if (state_text == "paused") {
+                id(cover_art_delayed_playback_stopped).stop();
                 if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
                 id(cover_art_media_playing) = false;
                 id(cover_art_position_anchor) = id(cover_art_media_position);
@@ -1613,7 +1615,7 @@ script:
                 return;
               }
 
-              id(cover_art_playback_stopped).execute();
+              id(cover_art_delayed_playback_stopped).execute();
             };
           if (!already_subscribed) {
             bool state_subscribed = ha_subscribe_state(
@@ -2107,9 +2109,22 @@ script:
                 else:
                   - script.execute: screensaver_idle_check
 
+  - id: cover_art_delayed_playback_stopped
+    mode: restart
+    then:
+      - delay: 2s
+      - if:
+          condition:
+            lambda: |-
+              const std::string &state = id(cover_art_last_playback_state);
+              return state != "playing" && state != "buffering" && state != "paused";
+          then:
+            - script.execute: cover_art_playback_stopped
+
   - id: cover_art_playback_stopped
     mode: restart
     then:
+      - script.stop: cover_art_delayed_playback_stopped
       - globals.set:
           id: cover_art_media_playing
           value: 'false'

@@ -852,6 +852,39 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     return errors
 
 
+def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str]:
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    delayed_body = yaml_script_body(text, "cover_art_delayed_playback_stopped")
+    if not delayed_body:
+        errors.append(f"{rel}: buffer brief non-playing states between tracks")
+    else:
+        if "delay: 2s" not in delayed_body:
+            errors.append(f"{rel}: keep the cover art stop grace period at two seconds")
+        if "script.execute: cover_art_playback_stopped" not in delayed_body:
+            errors.append(f"{rel}: apply a sustained playback stop after the grace period")
+        if (
+            'state != "playing"' not in delayed_body
+            or 'state != "buffering"' not in delayed_body
+            or 'state != "paused"' not in delayed_body
+        ):
+            errors.append(f"{rel}: recheck playback before applying a delayed stop")
+
+    if "id(cover_art_delayed_playback_stopped).execute();" not in text:
+        errors.append(f"{rel}: delay non-playing playback transitions")
+    if text.count("id(cover_art_delayed_playback_stopped).stop();") < 2:
+        errors.append(f"{rel}: cancel a pending stop when playback resumes or pauses")
+
+    stopped_body = yaml_script_body(text, "cover_art_playback_stopped")
+    if not stopped_body or "script.stop: cover_art_delayed_playback_stopped" not in stopped_body:
+        errors.append(f"{rel}: cancel pending playback grace during an immediate stop")
+    return errors
+
+
 def firmware_cover_art_disable_errors(path: Path, root: Path) -> list[str]:
     if not path.exists():
         return []
@@ -1821,6 +1854,7 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_external_input_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_stale_image_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_refresh_errors(COVER_ART_PATH, ROOT))
+    errors.extend(firmware_cover_art_playback_grace_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_touch_cover_art_delay_errors(DEVICE_TOUCH_PATHS, ROOT))
@@ -2161,6 +2195,20 @@ def expect_cover_art_refresh_errors(name: str, text: str, expected: tuple[str, .
         path.write_text(text, encoding="utf-8")
 
         errors = firmware_cover_art_refresh_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_art_playback_grace_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "device" / "screen_cover_art.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_cover_art_playback_grace_errors(path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3623,6 +3671,43 @@ def run_self_test() -> int:
         "          }\n"
         "          ha_subscribe_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n"
         "          ha_get_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n",
+        (),
+    )
+    expect_cover_art_playback_grace_errors(
+        "missing cover art playback grace",
+        "script:\n"
+        "  - id: cover_art_playback_stopped\n"
+        "    then:\n"
+        "      - lambda: id(cover_art_media_playing) = false;\n",
+        (
+            "buffer brief non-playing states between tracks",
+            "delay non-playing playback transitions",
+            "cancel a pending stop when playback resumes or pauses",
+            "cancel pending playback grace during an immediate stop",
+        ),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace present",
+        "script:\n"
+        "  - id: cover_art_resubscribe\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          id(cover_art_delayed_playback_stopped).stop();\n"
+        "          id(cover_art_delayed_playback_stopped).stop();\n"
+        "          id(cover_art_delayed_playback_stopped).execute();\n"
+        "  - id: cover_art_delayed_playback_stopped\n"
+        "    mode: restart\n"
+        "    then:\n"
+        "      - delay: 2s\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return state != \"playing\" && state != \"buffering\" && state != \"paused\";\n"
+        "          then:\n"
+        "            - script.execute: cover_art_playback_stopped\n"
+        "  - id: cover_art_playback_stopped\n"
+        "    then:\n"
+        "      - script.stop: cover_art_delayed_playback_stopped\n",
         (),
     )
     expect_cover_art_disable_errors(
