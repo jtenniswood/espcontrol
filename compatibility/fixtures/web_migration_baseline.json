@@ -100,11 +100,11 @@
     ]
   },
   "bundleSizes": {
-    "guition-esp32-p4-jc1060p470": { "minified": 575586, "gzip": 137621 },
-    "guition-esp32-p4-jc4880p443": { "minified": 575621, "gzip": 137638 },
-    "guition-esp32-p4-jc8012p4a1": { "minified": 575602, "gzip": 137629 },
-    "guition-esp32-p4-jc8012p4a1-v2": { "minified": 575605, "gzip": 137631 },
-    "esp32-p4-86": { "minified": 575628, "gzip": 137631 },
-    "guition-esp32-s3-4848s040": { "minified": 575786, "gzip": 137680 }
+    "guition-esp32-p4-jc1060p470": { "minified": 580636, "gzip": 138742 },
+    "guition-esp32-p4-jc4880p443": { "minified": 580671, "gzip": 138761 },
+    "guition-esp32-p4-jc8012p4a1": { "minified": 580652, "gzip": 138751 },
+    "guition-esp32-p4-jc8012p4a1-v2": { "minified": 580655, "gzip": 138755 },
+    "esp32-p4-86": { "minified": 580678, "gzip": 138751 },
+    "guition-esp32-s3-4848s040": { "minified": 580836, "gzip": 138804 }
   }
 }

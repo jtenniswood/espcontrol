@@ -419,8 +419,9 @@ function normalizedMediaVolume(value: string): string {
   if (!isFinite(parsed)) return MEDIA_VOLUME_DEFAULT; return String(Math.max(MEDIA_VOLUME_MIN, Math.min(MEDIA_VOLUME_MAX, parsed)));
 }
 export function normalizeSavedConfigMediaShadow(input: Partial<CardConfig>): CardConfig | null {
-  const config = shaped(input); if (config.type !== "media") return null; const rawMode = config.sensor;
+  const config = shaped(input); if (config.type !== "media") return null; const rawMode = config.sensor; const source = config.options;
   const aliasedMode = MEDIA_MODE_ALIASES[rawMode] || rawMode; config.sensor = MEDIA_MODES.indexOf(aliasedMode as typeof MEDIA_MODES[number]) >= 0 ? aliasedMode : MEDIA_DEFAULT_MODE;
+  if (config.sensor === "now_playing" && optionPresent(source, "media_cover_art")) config.sensor = "cover_art";
   if (rawMode === "controls" && (!config.icon || config.icon === "Speaker")) config.icon = "Auto";
   if (config.sensor === "previous" && config.label === "Skip Previous") config.label = "Previous";
   if (config.sensor === "next" && config.label === "Skip Next") config.label = "Next";
@@ -429,7 +430,7 @@ export function normalizeSavedConfigMediaShadow(input: Partial<CardConfig>): Car
   if (config.sensor === "position" && (!config.label || config.label === "Track")) config.label = "Position";
   if (config.sensor === "now_playing") config.precision = MEDIA_NOW_PLAYING_CONTROLS.indexOf(config.precision as typeof MEDIA_NOW_PLAYING_CONTROLS[number]) >= 0 ? config.precision : "";
   else if (MEDIA_STATE_DISPLAY_MODES.indexOf(config.sensor as typeof MEDIA_STATE_DISPLAY_MODES[number]) < 0 || config.precision !== "state") config.precision = "";
-  const source = config.options; const out: string[] = []; const maxVolume = normalizedMediaVolume(optionValue(source, "volume_max"));
+  const out: string[] = []; const maxVolume = normalizedMediaVolume(optionValue(source, "volume_max"));
   if (config.sensor === "control_modal") {
     if (optionValue(source, "label_display").trim() === "label") out.push("label_display=label"); if (optionValue(source, "number_display").trim() === "volume") out.push("number_display=volume"); if (maxVolume !== MEDIA_VOLUME_DEFAULT) out.push("volume_max=" + maxVolume);
   } else if (config.sensor === "playlist") {

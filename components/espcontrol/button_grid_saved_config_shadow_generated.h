@@ -200,7 +200,9 @@ inline bool normalize_saved_config_media_shadow(Config &config) {
   if (config.icon.empty()) config.icon = "Auto";
   if (config.icon_on.empty()) config.icon_on = "Auto";
   const std::string raw_mode = config.sensor;
+  const std::string source = config.options;
   config.sensor = saved_config_shadow_media_mode(raw_mode);
+  if (config.sensor == "now_playing" && cfg_option_token_present(source, "media_cover_art")) config.sensor = "cover_art";
   if (raw_mode == "controls" && (config.icon.empty() || config.icon == "Speaker")) config.icon = "Auto";
   if (config.sensor == "previous" && config.label == "Skip Previous") config.label = "Previous";
   if (config.sensor == "next" && config.label == "Skip Next") config.label = "Next";
@@ -215,7 +217,7 @@ inline bool normalize_saved_config_media_shadow(Config &config) {
   if (config.sensor == "position" && (config.label.empty() || config.label == "Track")) config.label = "Position";
   if (config.sensor == "now_playing") { if (!saved_config_shadow_string_in(config.precision, SAVED_CONFIG_SHADOW_MEDIA_NOW_PLAYING_CONTROLS, sizeof(SAVED_CONFIG_SHADOW_MEDIA_NOW_PLAYING_CONTROLS) / sizeof(SAVED_CONFIG_SHADOW_MEDIA_NOW_PLAYING_CONTROLS[0]))) config.precision.clear(); }
   else if (!saved_config_shadow_string_in(config.sensor, SAVED_CONFIG_SHADOW_MEDIA_STATE_DISPLAY_MODES, sizeof(SAVED_CONFIG_SHADOW_MEDIA_STATE_DISPLAY_MODES) / sizeof(SAVED_CONFIG_SHADOW_MEDIA_STATE_DISPLAY_MODES[0])) || config.precision != "state") config.precision.clear();
-  const std::string source = config.options; std::string out; const int max_volume = saved_config_shadow_media_volume(cfg_option_value(source, "volume_max"));
+  std::string out; const int max_volume = saved_config_shadow_media_volume(cfg_option_value(source, "volume_max"));
   if (config.sensor == "control_modal") {
     if (saved_config_shadow_trim(cfg_option_value(source, "label_display")) == "label") saved_config_shadow_append_option(out, "label_display", "label");
     if (saved_config_shadow_trim(cfg_option_value(source, "number_display")) == "volume") saved_config_shadow_append_option(out, "number_display", "volume");
