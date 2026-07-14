@@ -26,8 +26,8 @@ function freshWebOutputDir(options = {}) {
   return outputDir;
 }
 
-function loadBuiltWebSource(slug = "guition-esp32-p4-jc1060p470") {
-  return fs.readFileSync(path.join(freshWebOutputDir(), slug, "www.js"), "utf8");
+function loadBuiltWebSource() {
+  return fs.readFileSync(path.join(freshWebOutputDir(), "www.js"), "utf8");
 }
 
 module.exports = { freshWebOutputDir, loadBuiltWebSource };
