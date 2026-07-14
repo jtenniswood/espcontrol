@@ -868,6 +868,55 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     return errors
 
 
+def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str]:
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    delayed_body = yaml_script_body(text, "cover_art_delayed_playback_stopped")
+    if not delayed_body:
+        errors.append(f"{rel}: buffer brief non-playing states between tracks")
+    else:
+        if "delay: 2s" not in delayed_body:
+            errors.append(f"{rel}: keep the cover art stop grace period at two seconds")
+        if "script.execute: cover_art_playback_stopped" not in delayed_body:
+            errors.append(f"{rel}: apply a sustained playback stop after the grace period")
+        if (
+            'state != "playing"' not in delayed_body
+            or 'state != "buffering"' not in delayed_body
+            or 'state != "paused"' not in delayed_body
+        ):
+            errors.append(f"{rel}: recheck playback before applying a delayed stop")
+
+    if "id(cover_art_delayed_playback_stopped).execute();" not in text:
+        errors.append(f"{rel}: delay non-playing playback transitions")
+    if not re.search(
+        r"id\(cover_art_delay_interrupted_by_transition\)\s*=\s*"
+        r"id\(cover_art_delay_interrupted_by_transition\)\s*\|\|\s*"
+        r"id\(cover_art_delay_timer\)\.is_running\(\);\s+"
+        r"id\(cover_art_delay_timer\)\.stop\(\);\s+"
+        r"id\(cover_art_delayed_playback_stopped\)\.execute\(\);",
+        text,
+    ):
+        errors.append(f"{rel}: remember and cancel a pending cover art opening when playback stops")
+    if (
+        "bool restart_cover_art_delay = id(cover_art_delay_interrupted_by_transition);" not in text
+        or "if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();" not in text
+    ):
+        errors.append(f"{rel}: restart an interrupted cover art opening when playback resumes")
+    if text.count("id(cover_art_delayed_playback_stopped).stop();") < 2:
+        errors.append(f"{rel}: cancel a pending stop when playback resumes or pauses")
+    if "url.empty() && id(cover_art_delayed_playback_stopped).is_running()" not in text:
+        errors.append(f"{rel}: keep cached artwork when Home Assistant clears it during a brief playback transition")
+
+    stopped_body = yaml_script_body(text, "cover_art_playback_stopped")
+    if not stopped_body or "script.stop: cover_art_delayed_playback_stopped" not in stopped_body:
+        errors.append(f"{rel}: cancel pending playback grace during an immediate stop")
+    return errors
+
+
 def firmware_cover_art_disable_errors(path: Path, root: Path) -> list[str]:
     if not path.exists():
         return []
@@ -909,6 +958,15 @@ def firmware_media_sleep_prevention_errors(
                 errors.append(f"{rel}: do not let cover art alone keep the idle timer awake")
         sleep_body = yaml_script_body(text, "screensaver_sleep_timer")
         if sleep_body is not None:
+            if "id(cover_art_media_playing)" in sleep_body and not re.search(
+                r"id\(cover_art_last_playback_state\)[\s\S]{0,240}"
+                r'state != "playing"[\s\S]{0,120}'
+                r'state != "buffering"[\s\S]{0,120}'
+                r'state != "paused"[\s\S]{0,240}'
+                r"script\.execute:\s*screensaver_idle_check",
+                sleep_body,
+            ):
+                errors.append(f"{rel}: keep the normal screensaver idle during cover art stop grace")
             cover_art_sleep_match = re.search(
                 r"id\(cover_art_screensaver_enabled\)\.state[\s\S]{0,360}"
                 r"id\(cover_art_media_playing\)[\s\S]{0,360}"
@@ -934,6 +992,15 @@ def firmware_media_sleep_prevention_errors(
             or "show_after_seconds > 0.0f" not in text
         ):
             errors.append(f"{rel}: restart positive Show After delay after touches in disabled screensaver mode")
+
+        takeover_restore_body = yaml_script_body(text, "display_takeover_resume_restore")
+        if takeover_restore_body is not None and "script.execute: show_cover_art_view" in takeover_restore_body:
+            if (
+                "id(cover_art_last_playback_state)" not in takeover_restore_body
+                or 'state == "playing"' not in takeover_restore_body
+                or 'state == "buffering"' not in takeover_restore_body
+            ):
+                errors.append(f"{rel}: keep takeover restore from showing cover art during stop grace")
 
     if display_path.exists():
         rel = display_path.relative_to(root)
@@ -1913,6 +1980,7 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_external_input_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_stale_image_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_refresh_errors(COVER_ART_PATH, ROOT))
+    errors.extend(firmware_cover_art_playback_grace_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_touch_cover_art_delay_errors(DEVICE_TOUCH_PATHS, ROOT))
@@ -2267,6 +2335,20 @@ def expect_cover_art_refresh_errors(name: str, text: str, expected: tuple[str, .
         path.write_text(text, encoding="utf-8")
 
         errors = firmware_cover_art_refresh_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_art_playback_grace_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "device" / "screen_cover_art.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_cover_art_playback_grace_errors(path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3752,6 +3834,52 @@ def run_self_test() -> int:
         "          ha_get_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n",
         (),
     )
+    expect_cover_art_playback_grace_errors(
+        "missing cover art playback grace",
+        "script:\n"
+        "  - id: cover_art_playback_stopped\n"
+        "    then:\n"
+        "      - lambda: id(cover_art_media_playing) = false;\n",
+        (
+            "buffer brief non-playing states between tracks",
+            "delay non-playing playback transitions",
+            "remember and cancel a pending cover art opening when playback stops",
+            "restart an interrupted cover art opening when playback resumes",
+            "cancel a pending stop when playback resumes or pauses",
+            "keep cached artwork when Home Assistant clears it during a brief playback transition",
+            "cancel pending playback grace during an immediate stop",
+        ),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace present",
+        "script:\n"
+        "  - id: cover_art_resubscribe\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          bool restart_cover_art_delay = id(cover_art_delay_interrupted_by_transition);\n"
+        "          if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();\n"
+        "          id(cover_art_delayed_playback_stopped).stop();\n"
+        "          id(cover_art_delayed_playback_stopped).stop();\n"
+        "          id(cover_art_delay_interrupted_by_transition) =\n"
+        "            id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running();\n"
+        "          id(cover_art_delay_timer).stop();\n"
+        "          id(cover_art_delayed_playback_stopped).execute();\n"
+        "          if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) return;\n"
+        "  - id: cover_art_delayed_playback_stopped\n"
+        "    mode: restart\n"
+        "    then:\n"
+        "      - delay: 2s\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return state != \"playing\" && state != \"buffering\" && state != \"paused\";\n"
+        "          then:\n"
+        "            - script.execute: cover_art_playback_stopped\n"
+        "  - id: cover_art_playback_stopped\n"
+        "    then:\n"
+        "      - script.stop: cover_art_delayed_playback_stopped\n",
+        (),
+    )
     expect_cover_art_disable_errors(
         "independent media sleep prevention when cover art is disabled",
         "script:\n"
@@ -3855,6 +3983,15 @@ def run_self_test() -> int:
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
+        "              const std::string &state = id(cover_art_last_playback_state);\n"
+        "              return id(cover_art_screensaver_active) ||\n"
+        "                     (id(cover_art_media_playing) &&\n"
+        "                      state != \"playing\" && state != \"buffering\" && state != \"paused\");\n"
+        "          then:\n"
+        "            - script.execute: screensaver_idle_check\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
         "              return id(cover_art_screensaver_enabled).state &&\n"
         "                     id(cover_art_media_playing) &&\n"
         "                     !id(cover_art_media_player_entity).state.empty();\n"
@@ -3917,7 +4054,24 @@ def run_self_test() -> int:
         "            - script.execute: cover_art_delay_timer\n"
         "          else:\n"
         "            - script.execute: screensaver_idle_check\n",
-        ("start cover art directly after the normal screensaver timeout",),
+        (
+            "start cover art directly after the normal screensaver timeout",
+            "keep the normal screensaver idle during cover art stop grace",
+        ),
+    )
+    expect_media_sleep_prevention_errors(
+        "takeover restore trusts delayed playing flag",
+        "script:\n"
+        "  - id: display_takeover_resume_restore\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return id(cover_art_media_playing);'\n"
+        "          then:\n"
+        "            - script.execute: show_cover_art_view\n",
+        "",
+        "",
+        ("keep takeover restore from showing cover art during stop grace",),
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",
