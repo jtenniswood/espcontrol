@@ -54,7 +54,7 @@ script:
     then:
       - script.stop: screensaver_idle_check
       - script.stop: home_screen_idle_check
-      - script.stop: setup_screen_dim
+      - script.execute: setup_screen_dim_cancel
       - lambda: |-
           media_volume_hide_modal();
           climate_control_hide_modal();
@@ -93,7 +93,7 @@ script:
   - id: show_update_complete_next_boot
     mode: single
     then:
-      - script.stop: setup_screen_dim
+      - script.execute: setup_screen_dim_cancel
       - lambda: |-
           lv_label_set_text(id(loading_status_icon), "${icon_check}");
           lv_label_set_text(id(loading_status_title), espcontrol_i18n("Update complete"));

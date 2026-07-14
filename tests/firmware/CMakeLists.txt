@@ -17,6 +17,12 @@ target_include_directories(button_grid_foundations_test PRIVATE
 )
 add_test(NAME button_grid_foundations_test COMMAND button_grid_foundations_test)
 
+add_executable(display_mode_controller_test display_mode_controller_test.cpp)
+target_compile_features(display_mode_controller_test PRIVATE cxx_std_17)
+target_compile_options(display_mode_controller_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(display_mode_controller_test PRIVATE ../../components/espcontrol)
+add_test(NAME display_mode_controller_test COMMAND display_mode_controller_test)
+
 add_executable(ha_read_coordinator_test ha_read_coordinator_test.cpp)
 target_compile_features(ha_read_coordinator_test PRIVATE cxx_std_17)
 target_compile_options(ha_read_coordinator_test PRIVATE -Wall -Wextra -Werror)

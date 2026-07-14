@@ -87,6 +87,11 @@ globals:
   - id: screensaver_action_dimmed
     type: bool
     initial_value: 'false'
+  - id: display_mode_shadow_observer
+    type: espcontrol::DisplayModeShadowObserver
+  - id: setup_screen_dimmed_shadow_active
+    type: bool
+    initial_value: 'false'
 
 esphome:
   on_boot:
@@ -569,9 +574,27 @@ script:
       - script.execute: backlight_schedule_display_off
 
   # Setup screen burn-in protection
+  - id: setup_screen_dim_cancel
+    mode: restart
+    then:
+      - script.stop: setup_screen_dim
+      - if:
+          condition:
+            lambda: 'return id(setup_screen_dimmed_shadow_active);'
+          then:
+            - globals.set:
+                id: display_asleep
+                value: 'false'
+      - globals.set:
+          id: setup_screen_dimmed_shadow_active
+          value: 'false'
+
   - id: setup_screen_dim
     mode: restart
     then:
+      - globals.set:
+          id: setup_screen_dimmed_shadow_active
+          value: 'false'
       - delay: 120s
       - if:
           condition:
@@ -585,6 +608,9 @@ script:
           then:
             - script.execute: backlight_force_display_off
           else:
+            - globals.set:
+                id: setup_screen_dimmed_shadow_active
+                value: 'true'
             - globals.set:
                 id: display_asleep
                 value: 'true'
@@ -1067,6 +1093,60 @@ interval:
   - interval: 1s
     then:
       - script.execute: clock_screensaver_keep_on_top
+      - lambda: |-
+          espcontrol::LegacyDisplayState legacy;
+          legacy.display_asleep = id(display_asleep);
+          legacy.screen_schedule_asleep = id(screen_schedule_asleep);
+          legacy.backlight_manual_off = id(backlight_manual_off);
+          legacy.temporary_user_wake = id(manual_wake_ms) != 0;
+          legacy.display_off_active = id(screensaver_display_off_active);
+          legacy.dimmed_active = id(screensaver_dimmed_active);
+          legacy.clock_showing = id(is_clock_showing);
+          legacy.cover_art_active = id(cover_art_screensaver_active);
+          legacy.interactive_takeover = id(display_takeover_suspended);
+          legacy.critical_takeover = alarm_display_takeover_active();
+          const bool setup_dim_shape = legacy.display_asleep &&
+              !legacy.screen_schedule_asleep && !legacy.backlight_manual_off &&
+              !legacy.display_off_active && !legacy.dimmed_active &&
+              !legacy.clock_showing && !legacy.cover_art_active &&
+              !legacy.interactive_takeover && !legacy.critical_takeover;
+          if (!setup_dim_shape) id(setup_screen_dimmed_shadow_active) = false;
+          legacy.setup_screen = setup_dim_shape && id(setup_screen_dimmed_shadow_active);
+
+          auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+          const bool boot_guard_active = screen_schedule_waiting_for_time(
+              id(screen_schedule_trigger).state, id(schedule_enabled).state, now.is_valid());
+          const bool schedule_night = screen_schedule_night_active(
+              id(screen_schedule_trigger).state,
+              id(schedule_enabled).state,
+              id(presence_detected),
+              now.is_valid(),
+              now.is_valid() ? now.hour : 0,
+              (int) id(schedule_on_hour).state,
+              (int) id(schedule_off_hour).state);
+          const bool schedule_active_ui = schedule_night && id(schedule_mode_always_on);
+          const bool presence_owned_sleep = id(screensaver_mode).state == "sensor";
+
+          const auto observation = id(display_mode_shadow_observer).observe(
+              legacy, presence_owned_sleep, boot_guard_active, schedule_active_ui);
+          if (observation.mismatch &&
+              (observation.mismatch_changed || observation.decision_changed)) {
+            ESP_LOGW("display_mode_shadow",
+                     "Mismatch: controller=%s source=%s takeover=%s legacy=%s stable=%s generation=%u",
+                     espcontrol::display_mode_name(observation.decision.target_mode),
+                     espcontrol::display_request_source_name(observation.decision.winning_source),
+                     espcontrol::display_takeover_name(observation.decision.winning_takeover),
+                     espcontrol::display_mode_name(observation.legacy.mode),
+                     observation.legacy.stable ? "true" : "false",
+                     (unsigned) observation.decision.generation);
+          } else if (observation.decision_changed) {
+            ESP_LOGI("display_mode_shadow",
+                     "Decision: mode=%s source=%s takeover=%s generation=%u",
+                     espcontrol::display_mode_name(observation.decision.target_mode),
+                     espcontrol::display_request_source_name(observation.decision.winning_source),
+                     espcontrol::display_takeover_name(observation.decision.winning_takeover),
+                     (unsigned) observation.decision.generation);
+          }
   - interval: 30s
     then:
       - if:
