@@ -22,6 +22,12 @@ int main() {
       espcontrol::cards::family_for_type("not_a_card") != Family::UNKNOWN) {
     return EXIT_FAILURE;
   }
+  if (!espcontrol::cards::uses_slider_visual("light_brightness") ||
+      !espcontrol::cards::uses_slider_visual("cover") ||
+      !espcontrol::cards::uses_slider_visual("fan_speed") ||
+      espcontrol::cards::uses_slider_visual("fan_switch")) {
+    return EXIT_FAILURE;
+  }
   const char *contract_card_types[] = {
     "", "action", "alarm", "alarm_action", "calendar", "climate",
     "climate_control", "clock", "cover", "door_window", "fan_control",

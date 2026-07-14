@@ -12,6 +12,11 @@ struct SourceSelection {
   bool preferred_refreshed_remote{false};
 };
 
+enum class RemoteUpdatePolicy {
+  START_NEW_GENERATION,
+  PRESERVE_LOCAL,
+};
+
 // Owns the ordering rules for Home Assistant's remote and local artwork URLs.
 // A new remote URL starts a new artwork generation, so any cached local URL is
 // discarded until the matching local attribute arrives.
@@ -25,11 +30,15 @@ struct SourceCandidates {
     return local ? local_url : remote_url;
   }
 
-  bool update(bool local, const std::string &url) {
+  bool update(
+      bool local, const std::string &url,
+      RemoteUpdatePolicy remote_policy = RemoteUpdatePolicy::START_NEW_GENERATION) {
     std::string &candidate = local ? local_url : remote_url;
     if (candidate == url) return false;
     candidate = url;
-    if (!local) local_url.clear();
+    if (!local && remote_policy == RemoteUpdatePolicy::START_NEW_GENERATION) {
+      local_url.clear();
+    }
     return true;
   }
 
