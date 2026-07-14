@@ -9,6 +9,9 @@ globals:
   - id: cover_art_media_playing
     type: bool
     initial_value: 'false'
+  - id: cover_art_delay_interrupted_by_transition
+    type: bool
+    initial_value: 'false'
   - id: cover_art_runtime
     type: espcontrol::cover_art::RuntimeState
   - id: cover_art_pending_remote_url
@@ -1590,17 +1593,20 @@ script:
                        id(cover_art_media_playing) ? "true" : "false");
               auto now = id(panel_time).now();
               if (playing) {
+                bool restart_cover_art_delay = id(cover_art_delay_interrupted_by_transition);
+                id(cover_art_delay_interrupted_by_transition) = false;
                 id(cover_art_delayed_playback_stopped).stop();
                 bool was_playing = id(cover_art_media_playing);
                 id(cover_art_media_playing) = true;
                 if (now.is_valid() && id(cover_art_position_anchor_epoch) == 0) {
                   id(cover_art_last_position_timestamp) = now.timestamp;
                 }
-                if (!was_playing) id(cover_art_playback_started).execute();
+                if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();
                 return;
               }
 
               if (state_text == "paused") {
+                id(cover_art_delay_interrupted_by_transition) = false;
                 id(cover_art_delayed_playback_stopped).stop();
                 if (id(cover_art_screensaver_active)) id(cover_art_refresh_progress).execute();
                 id(cover_art_media_playing) = false;
@@ -1615,6 +1621,8 @@ script:
                 return;
               }
 
+              id(cover_art_delay_interrupted_by_transition) =
+                id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running();
               id(cover_art_delay_timer).stop();
               id(cover_art_delayed_playback_stopped).execute();
             };
@@ -2126,6 +2134,9 @@ script:
     mode: restart
     then:
       - script.stop: cover_art_delayed_playback_stopped
+      - globals.set:
+          id: cover_art_delay_interrupted_by_transition
+          value: 'false'
       - globals.set:
           id: cover_art_media_playing
           value: 'false'
