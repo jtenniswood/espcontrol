@@ -15,13 +15,20 @@ export {
   cardConfigChanged,
   cloneCardConfig,
   copyCardConfig,
-  decodeConfigField,
   emptyCardConfig,
+  parseRawButtonConfig,
+} from "./card";
+
+export {
+  configOptionEnabled,
+  configOptionValue,
+  decodeConfigField,
   encodeConfigField,
   legacyButtonConfigSafe,
-  parseRawButtonConfig,
+  setConfigOption,
+  setConfigOptionValue,
   trimConfigFields,
-} from "./card";
+} from "./config_primitives";
 
 export {
   CARD_SIZE_DEFINITIONS,
@@ -75,6 +82,7 @@ export {
   normalizeHexColor,
   normalizeHour,
   normalizeHomeAssistantArtworkPort,
+  normalizeHomeAssistantArtworkProtocol,
   normalizeLanguage,
   normalizeNtpServer,
   normalizeScheduleClockBrightness,

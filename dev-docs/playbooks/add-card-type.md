@@ -6,7 +6,7 @@ configured, rendered, previewed, or saved.
 ## Edit First
 
 - `common/config/card_contract.json`
-- `src/webserver/types/<type>.js`
+- `src/webserver/cards/<type>.ts`
 - `components/espcontrol/button_grid_<type>.h`
 
 Only edit these first. Add parser or wiring files after the contract, web type,
@@ -23,9 +23,9 @@ and firmware behavior show the real shape of the change.
 
 - [ ] Add or update the card entry in `common/config/card_contract.json`.
 - [ ] Add or update the web settings and preview in
-      `src/webserver/types/<type>.js`.
+      `src/webserver/cards/<type>.ts`.
 - [ ] If options are saved, preserve them in
-      `src/webserver/modules/config_codec.js`.
+      `src/webserver/application/config_codec.ts`.
 - [ ] Add or update firmware rendering/runtime behavior in
       `components/espcontrol/button_grid_<type>.h`.
 - [ ] Include the card header from `components/espcontrol/button_grid.h`.
@@ -47,7 +47,7 @@ Do not edit generated files directly. The source-to-generated mapping is in
 
 Expected generated files commonly include:
 
-- `src/webserver/modules/card_contract_generated.js`
+- `src/webserver/generated/card_contract.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
 - `docs/generated/cards/capabilities.md`
 - `docs/public/webserver/*/www.js`

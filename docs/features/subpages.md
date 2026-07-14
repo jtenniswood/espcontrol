@@ -80,7 +80,7 @@ The `target` value can be:
 - `home` or `main` to open the home screen.
 - The **Label** you set on a home-screen card, such as `Lights`, `Heating`, `Camera`, or `Media`. Matching is not case-sensitive, so `lights` and `Lights` work the same way.
 - `slot:3` to activate the card in home-screen slot 3.
-- `voice`, `mic`, `microphone`, `speaker`, `volume`, or `device_volume` on the ESP32-P4-86 to open the device volume and microphone control popup when **Voice Services** are enabled.
+- `voice`, `mic`, `microphone`, `speaker`, `volume`, or `device_volume` on voice-enabled ESP32-P4-86 firmware to open the device volume and microphone control popup when **Voice Services** are enabled.
 
 You do not need to know a page number. Use the same label you gave the card on the home screen.
 

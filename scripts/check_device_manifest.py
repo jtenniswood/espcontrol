@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate devices/manifest.json before generators consume it."""
+"""Validate the composed device catalog before generators consume it."""
 
 from __future__ import annotations
 
@@ -8,10 +8,11 @@ import copy
 import sys
 
 from device_profiles import (
-    DEVICE_MANIFEST,
+    DEVICE_CATALOG,
     DeviceProfileError,
     common_font_ids,
-    load_manifest_data,
+    compose_catalog_data,
+    load_catalog_data,
     public_docs_stem,
     rel,
     validate_manifest_data,
@@ -29,7 +30,7 @@ def first_device(data: dict) -> tuple[str, dict]:
 
 
 def run_self_test() -> int:
-    data = load_manifest_data(DEVICE_MANIFEST)
+    data = load_catalog_data(DEVICE_CATALOG)
     fonts = common_font_ids()
     assert validate_manifest_data(data, fonts) == []
 
@@ -43,6 +44,80 @@ def run_self_test() -> int:
         validate_manifest_data(invalid_slots, fonts),
         f"{slug}: slots must equal layout.cols * layout.rows",
     )
+
+    catalog = {
+        "settings": {},
+        "profiles": {
+            "platform": {"p4": {"firmware": {"build": {"chip": "ESP32-P4"}}}},
+            "display": {"panel": {"layout": {"cols": 4}, "tags": ["display"]}},
+            "fonts": {},
+            "network": {},
+            "artwork": {},
+            "audio": {},
+            "input": {},
+        },
+        "devices": {
+            "example": {
+                "profiles": {"platform": "p4", "display": ["panel"]},
+                "config": {"slots": 8},
+                "overrides": {"layout": {"cols": 5}, "tags": ["override"]},
+            }
+        },
+    }
+    composed = compose_catalog_data(catalog)
+    assert list(composed["devices"]) == ["example"]
+    assert list(composed["devices"]["example"]) == ["slots", "layout", "firmware", "tags"]
+    assert composed["devices"]["example"]["layout"]["cols"] == 5
+    assert composed["devices"]["example"]["tags"] == ["override"]
+
+    def expect_catalog_error(mutator, expected: str) -> None:
+        invalid = copy.deepcopy(catalog)
+        mutator(invalid)
+        try:
+            compose_catalog_data(invalid)
+        except DeviceProfileError as exc:
+            if expected not in str(exc):
+                raise AssertionError(f"expected {expected!r}, got {str(exc)!r}") from exc
+        else:
+            raise AssertionError(f"expected catalog error containing {expected!r}")
+
+    expect_catalog_error(
+        lambda value: value["devices"]["example"]["profiles"].update({"hardware": "p4"}),
+        "unknown categories",
+    )
+    expect_catalog_error(
+        lambda value: value["devices"]["example"]["profiles"].update({"fonts": "missing"}),
+        "missing profile reference",
+    )
+    expect_catalog_error(
+        lambda value: value["devices"]["example"]["config"].update({"layout": {"cols": 4}}),
+        "config collides",
+    )
+    expect_catalog_error(
+        lambda value: value["devices"]["example"]["overrides"].update({"newField": True}),
+        "override must replace",
+    )
+    expect_catalog_error(
+        lambda value: value["profiles"]["display"]["panel"].update({"bad": None}),
+        "null values are not allowed",
+    )
+    conflicting = copy.deepcopy(catalog)
+    conflicting["profiles"]["network"]["wifi"] = {"firmware": {"build": {"chip": "ESP32-S3"}}}
+    conflicting["devices"]["example"]["profiles"]["network"] = "wifi"
+    try:
+        compose_catalog_data(conflicting)
+    except DeviceProfileError as exc:
+        assert "conflicting profile values" in str(exc)
+        assert "profiles.platform.p4" in str(exc) and "profiles.network.wifi" in str(exc)
+    else:
+        raise AssertionError("expected conflicting profile leaves to fail")
+
+    ordered = copy.deepcopy(catalog)
+    ordered["devices"] = {
+        "second": ordered["devices"]["example"],
+        "first": copy.deepcopy(ordered["devices"]["example"]),
+    }
+    assert list(compose_catalog_data(ordered)["devices"]) == ["second", "first"]
 
     invalid_font = copy.deepcopy(data)
     slug, device = first_device(invalid_font)
@@ -92,19 +167,19 @@ def main(argv: list[str] | None = None) -> int:
         return run_self_test()
 
     try:
-        data = load_manifest_data(DEVICE_MANIFEST)
+        data = load_catalog_data(DEVICE_CATALOG)
     except DeviceProfileError as exc:
         print(f"ERROR: {exc}")
         return 1
 
     errors = validate_manifest_data(data)
     if errors:
-        print(f"ERROR: {rel(DEVICE_MANIFEST)} failed validation:")
+        print(f"ERROR: {rel(DEVICE_CATALOG)} failed validation:")
         for error in errors:
             print(f"  - {error}")
         return 1
 
-    print(f"{rel(DEVICE_MANIFEST)} passed validation.")
+    print(f"{rel(DEVICE_CATALOG)} passed validation.")
     return 0
 
 

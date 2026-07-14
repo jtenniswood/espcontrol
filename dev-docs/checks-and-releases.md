@@ -7,6 +7,76 @@ and when to raise confidence beyond the minimum route.
 Use the smallest check that covers the change while developing, then run the
 broader checks before merging or publishing.
 
+The public npm check commands are now compatibility entry points for the
+dependency-aware task graph. Focused commands include their declared prerequisites
+automatically, while the product, fast, CI, all, and release commands run complete
+assurance profiles. Temporary `:legacy` aliases preserve the previous command
+chains for one release cycle while the migration is observed.
+
+Use `python3 scripts/check_tasks.py list` to see registered tasks or
+`python3 scripts/check_tasks.py plan fast --explain` to preview a profile without
+running it. The registry in `scripts/check_tasks_data.py` is the maintained source
+for task commands, dependencies, profiles, domains, input paths, and parallel
+safety.
+
+All existing check aliases and CI use one worker by default. For an opt-in local
+fast run with no more than four workers, use:
+
+```bash
+npm run check:parallel
+```
+
+Only dependency-independent tasks explicitly marked parallel-safe may overlap.
+Their output is captured and replayed as complete task blocks. Browser, release,
+Git-state, and shared-output checks always run alone; release profiles use one
+worker even if a larger `--jobs` value is requested. After the first failure, no
+new tasks start, already-running tasks finish, and dependent tasks are reported
+as blocked.
+
+The initial Darwin arm64 benchmark on 2026-07-12 ran the complete non-browser
+fast profile 20 times sequentially and 20 times with four workers. Every run
+passed with the same task statuses and left the tracked diff fingerprint
+unchanged. Median duration improved from 11.850 seconds to 9.635 seconds, an
+18.7% reduction. Because that is below the planned 20% threshold, parallel mode
+remains explicit-only through `check:parallel`; normal npm aliases and CI retain
+their one-worker default.
+
+Successful deterministic local checks are cached by content. Entries live under
+the repository's shared Git directory, so linked worktrees can reuse them without
+copying or restoring generated files. A cache key includes the task and command,
+dependency keys, every declared authored and generated input, the runner and
+registry, lockfiles, operating system and architecture, tool versions, and each
+environment variable declared by the task. Any change to those values causes a
+fresh check.
+
+Use `--no-cache` on a profile run when fresh local execution is required. Inspect
+or remove the shared entries with:
+
+```bash
+python3 scripts/check_tasks.py cache status
+python3 scripts/check_tasks.py cache clear
+```
+
+Only successful status is stored, and corrupt entries are treated as misses.
+Local-artifact, PR-process, Git-history, release-confidence, changelog,
+firmware-release, external-state, and shared-output checks are never cached.
+Browser smoke is eligible only when Playwright, Node, the resolved browser
+executable, generated layouts, and all web inputs are fingerprinted. `CI=true`
+disables result caching entirely, so CI always validates from scratch.
+
+For an advisory local route based on everything changed from `main`, including
+committed, staged, unstaged, renamed, deleted, and untracked files, run:
+
+```bash
+python3 scripts/check_tasks.py changed --explain
+```
+
+This command never reduces CI coverage. Unknown paths and changes to shared
+script helpers, generators, validators, the task runner, registry, package lock,
+or workflow definitions select the complete fast profile. Profiles can also be
+narrowed explicitly by domain, for example
+`python3 scripts/check_tasks.py run ci --domain web`.
+
 ## Common Checks
 
 | Command | Use when |

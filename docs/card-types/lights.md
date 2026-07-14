@@ -27,6 +27,7 @@ The Lights card is a guided card type for Home Assistant `light` entities. It ke
 All Controls gives one card a full-screen popup for the main light controls.
 
 - Tapping the card opens tabs for brightness, colour temperature, and colour presets.
+- The power tab toggles the light when you tap anywhere on its on/off control.
 - The brightness tab lets you drag from 0 to 100 percent.
 - The colour temperature tab lets you move between warm and cool white.
 - The colour tab provides preset colour swatches for RGB-capable lights.

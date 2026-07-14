@@ -22,9 +22,9 @@
 
 static const char *const TAG = "artwork_image";
 static const char *const CONTENT_TYPE_HEADER_NAME = "content-type";
-static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 3000;
+static constexpr uint32_t RETIRED_BUFFER_GRACE_MS = 300;
 static constexpr size_t MAX_RETIRED_IMAGE_BUFFERS = 1;
-static constexpr size_t MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
+static constexpr size_t ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE = 2 * 1024 * 1024;
 static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 
 #include "image_decoder.h"
@@ -140,6 +140,9 @@ ArtworkImage::ArtworkImage(const std::string &url, int width, int height, ImageF
       buffer_(nullptr),
       download_buffer_(download_buffer_size),
       download_buffer_initial_size_(download_buffer_size),
+      // Compressed JPEG/PNG data can be larger than the resized RGB565 output.
+      // Keep the transfer limit independent from the decoded image dimensions.
+      max_download_buffer_size_(ABSOLUTE_MAX_DOWNLOAD_BUFFER_SIZE),
       format_(format),
       resize_mode_(resize_mode),
       fixed_width_(width),
@@ -283,6 +286,7 @@ void ArtworkImage::update() {
   }
   this->last_http_status_ = 0;
   this->last_error_was_ha_media_proxy_ = false;
+  this->peak_download_buffer_size_ = this->download_buffer_.size();
   ESP_LOGI(TAG, "Updating image %s", sanitize_artwork_url_for_log(this->url_).c_str());
   ESP_LOGD(TAG, "Artwork URL source: %s", classify_artwork_url_for_log(this->url_));
   this->log_state_("request-start");
@@ -505,8 +509,9 @@ size_t ArtworkImage::get_sane_content_length_() const {
     return 0;
   }
   size_t content_length = this->downloader_->content_length;
-  if (content_length > MAX_DOWNLOAD_BUFFER_SIZE) {
-    ESP_LOGW(TAG, "Ignoring invalid artwork content length: %zu", content_length);
+  if (content_length > this->max_download_buffer_size_) {
+    ESP_LOGW(TAG, "Ignoring artwork content length beyond transfer limit: %zu > %zu",
+             content_length, this->max_download_buffer_size_);
     return 0;
   }
   return content_length;
@@ -590,6 +595,16 @@ void ArtworkImage::loop() {
     this->finish_download_();
     return;
   }
+  if (this->decoder_->is_decoding()) {
+    if (!this->decode_buffered_data_()) {
+      this->fail_download_();
+      return;
+    }
+    if (this->decoder_->is_finished()) {
+      this->finish_download_();
+    }
+    return;
+  }
   if (this->downloader_ == nullptr) {
     ESP_LOGE(TAG, "Downloader not instantiated; cannot download");
     return;
@@ -632,6 +647,9 @@ void ArtworkImage::loop() {
     }
     if (this->decoder_->is_finished()) {
       this->finish_download_();
+      return;
+    }
+    if (this->decoder_->is_decoding()) {
       return;
     }
     ESP_LOGE(TAG, "HTTP transfer finished before image decoder completed");
@@ -1001,16 +1019,19 @@ bool ArtworkImage::ensure_download_buffer_capacity_() {
 
   size_t current_size = this->download_buffer_.size();
   size_t target_size = current_size == 0 ? this->download_buffer_initial_size_ : current_size * 2;
-  if (target_size > MAX_DOWNLOAD_BUFFER_SIZE) {
-    target_size = MAX_DOWNLOAD_BUFFER_SIZE;
+  if (target_size > this->max_download_buffer_size_) {
+    target_size = this->max_download_buffer_size_;
   }
   if (target_size <= current_size) {
-    ESP_LOGE(TAG, "Artwork download exceeded %zu bytes", MAX_DOWNLOAD_BUFFER_SIZE);
+    ESP_LOGE(TAG, "Artwork download exceeded transfer limit of %zu bytes",
+             this->max_download_buffer_size_);
     return false;
   }
 
   ESP_LOGD(TAG, "Growing download buffer from %zu to %zu bytes", current_size, target_size);
-  return this->download_buffer_.resize(target_size) == target_size;
+  bool resized = this->download_buffer_.resize(target_size) == target_size;
+  if (resized) this->peak_download_buffer_size_ = std::max(this->peak_download_buffer_size_, target_size);
+  return resized;
 }
 
 bool ArtworkImage::decode_buffered_data_() {
@@ -1045,8 +1066,9 @@ void ArtworkImage::finish_download_() {
   }
   const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   this->log_state_("download-complete");
-  ESP_LOGD(TAG, "Image fully downloaded, read %zu bytes, width/height = %d/%d",
-           bytes_read, this->width_, this->height_);
+  ESP_LOGD(TAG, "Image fully downloaded: bytes=%zu image=%dx%d peak_download_buffer=%zu budget=%zu",
+           bytes_read, this->width_, this->height_, this->peak_download_buffer_size_,
+           this->max_download_buffer_size_);
   ESP_LOGD(TAG, "Total time: %" PRIu32 "s", (uint32_t) (::time(nullptr) - this->start_time_));
   this->end_connection_();
   this->log_state_("download-resources-released");

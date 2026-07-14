@@ -73,7 +73,7 @@ def validate_esphome_env(path: Path) -> None:
     assert len(lines) == 1, f"{path}: expected exactly one ESPHOME_VERSION line"
     assert ESPHOME_ENV_RE.fullmatch(lines[0]), (
         f"{path}: expected ESPHOME_VERSION to be a stable numeric ESPHome release, "
-        "for example ESPHOME_VERSION=2026.6.4"
+        "for example ESPHOME_VERSION=2026.6.5"
     )
 
 
@@ -82,16 +82,16 @@ def test_esphome_env_format() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
         valid = base / "valid.env"
-        valid.write_text("ESPHOME_VERSION=2026.6.4\n", encoding="utf-8")
+        valid.write_text("ESPHOME_VERSION=2026.6.5\n", encoding="utf-8")
         validate_esphome_env(valid)
 
         for value in (
             "",
-            "export ESPHOME_VERSION=2026.6.4\n",
-            "ESPHOME_VERSION=\"2026.6.4\"\n",
-            "ESPHOME_VERSION=2026.6.4-beta.1\n",
-            "OTHER_VERSION=2026.6.4\n",
-            "ESPHOME_VERSION=2026.6.4\nEXTRA=value\n",
+            "export ESPHOME_VERSION=2026.6.5\n",
+            "ESPHOME_VERSION=\"2026.6.5\"\n",
+            "ESPHOME_VERSION=2026.6.5-beta.1\n",
+            "OTHER_VERSION=2026.6.5\n",
+            "ESPHOME_VERSION=2026.6.5\nEXTRA=value\n",
         ):
             invalid = base / "invalid.env"
             invalid.write_text(value, encoding="utf-8")

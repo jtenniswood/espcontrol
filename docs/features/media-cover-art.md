@@ -15,7 +15,7 @@ You will find these controls in **Settings > Sleep & Schedule > Media Cover Art*
 - **Show Cover Art** - enables the cover art display and keeps the screen awake while artwork is shown.
 - **Media Player Entity** - chooses the media player entity to watch, such as `media_player.living_room`.
 - **Show After** - chooses whether cover art appears immediately or waits for the selected delay.
-- **After Touch, Show Again** - chooses how long cover art waits before returning after you dismiss it by touch.
+- **Show After** also controls how long cover art waits before returning after you dismiss it by touch.
 - **Show Track Details For** - controls how long track information is shown over the artwork on the 4-inch square displays.
 - **Advanced Options** - contains source and filtering controls you may not need every day.
 - **Hide for external source inputs** - hides cover art when the selected media player source is `TV` or `Line-in`.

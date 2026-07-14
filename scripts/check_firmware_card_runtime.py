@@ -23,6 +23,8 @@ CONTRACT_INCLUDE_ALLOWLIST = {
 # guard still blocks direct generated-contract access in that file.
 MODE_ARRAY_ALLOWLIST = CARD_RUNTIME_BOUNDARY_FILES | {
     "button_grid_alarm.h",
+    # Generated from the same contract and compiled only by the parity test.
+    "button_grid_saved_config_shadow_generated.h",
 }
 
 DIRECT_CONTRACT_PATTERN = re.compile(r"\b(?:card_contract_[A-Za-z0-9_]+|CARD_CONTRACT_[A-Z0-9_]+)\b")

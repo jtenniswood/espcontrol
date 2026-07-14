@@ -123,6 +123,8 @@ const ICON_GROUPS = {
   'Blinds Open': 'Covers & Shading',
   'Arrow Down': 'Covers & Shading',
   'Arrow Up': 'Covers & Shading',
+  'Chevron Left': 'Covers & Shading',
+  'Chevron Right': 'Covers & Shading',
   'Chevron Down': 'Covers & Shading',
   'Chevron Up': 'Covers & Shading',
   'Curtains': 'Covers & Shading',

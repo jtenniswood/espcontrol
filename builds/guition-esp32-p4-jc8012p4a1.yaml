@@ -7,6 +7,7 @@
 # =============================================================================
 
 substitutions:
+  cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-jc8012p4a1"
   friendly_name: "EspControl 10inch"
   espcontrol_component_url: "file:///config"

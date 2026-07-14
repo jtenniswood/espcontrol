@@ -5,10 +5,10 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const { loadBundledWebSource } = require("./web_source");
+const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
-const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
+const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
 
 function loadHooks() {
@@ -28,7 +28,7 @@ function loadHooks() {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  vm.runInContext(loadBundledWebSource(), sandbox, { filename: SOURCE });
+  vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }
 

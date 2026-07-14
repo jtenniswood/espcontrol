@@ -10,7 +10,7 @@ import sys
 from product_schema import CARD_CONTRACT_JSON, ROOT, load_card_contract, validate_card_contract
 
 
-CARD_CONTRACT_JS = ROOT / "src" / "webserver" / "modules" / "card_contract_generated.js"
+CARD_CONTRACT_TS = ROOT / "src" / "webserver" / "generated" / "card_contract.ts"
 CARD_CONTRACT_H = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_CAPABILITY_DOCS = ROOT / "docs" / "generated" / "cards" / "capabilities.md"
 OPTION_CONSTANT_RE = re.compile(r'^constexpr const char \*(CARD_CONTRACT_OPTION_NAME_[A-Z0-9_]+) = ("(?:[^"\\]|\\.)*");$', re.M)
@@ -55,35 +55,52 @@ def assert_contains(text: str, needle: str, label: str) -> None:
     assert needle in text, f"{label} missing {needle!r}"
 
 
-def assert_js_contract(data: dict, js: str) -> None:
+def assert_ts_contract(data: dict, ts: str) -> None:
     assert_contains(
-        js,
-        f"var CARD_CONFIG_FIELDS = {json.dumps(data['fields'])};",
-        "web card contract",
+        ts,
+        f"export const CARD_CONTRACT_VERSION = {data['contractVersion']} as const;",
+        "typed web card contract version",
     )
     assert_contains(
-        js,
-        f"var CARD_CONTRACT_OPTION_NAMES = {json.dumps(option_names(data), indent=2)};",
-        "web card contract option names",
+        ts,
+        "export const CARD_CONTRACT_MIGRATION_ACTIONS:",
+        "typed web card contract migration actions",
+    )
+    for hook in data["normalizationHooks"]:
+        assert_contains(ts, json.dumps(hook), f"typed web card contract hook {hook}")
+    assert_contains(
+        ts,
+        f"export const CARD_CONFIG_FIELDS = {json.dumps(data['fields'])} as const",
+        "typed web card contract",
+    )
+    assert_contains(
+        ts,
+        f"export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {json.dumps(option_names(data), indent=2)};",
+        "typed web card contract option names",
     )
     for card_type, card in data["cards"].items():
-        assert_contains(js, json.dumps(card_type), f"web card contract card {card_type_name(card_type)}")
-        assert_contains(js, json.dumps(card["label"]), f"web card contract card {card_type_name(card_type)} label")
+        assert_contains(ts, json.dumps(card_type), f"web card contract card {card_type_name(card_type)}")
+        assert_contains(ts, json.dumps(card["label"]), f"web card contract card {card_type_name(card_type)} label")
         for field, value in card["default"].items():
-            assert_contains(js, json.dumps(field), f"web card contract card {card_type_name(card_type)} default field {field}")
+            assert_contains(ts, json.dumps(field), f"web card contract card {card_type_name(card_type)} default field {field}")
             if value:
-                assert_contains(js, json.dumps(value), f"web card contract card {card_type_name(card_type)} default value {field}")
+                assert_contains(ts, json.dumps(value), f"web card contract card {card_type_name(card_type)} default value {field}")
     for alias, target in data.get("migrationAliases", {}).items():
-        assert_contains(js, json.dumps(alias), f"web card contract migration alias {alias}")
+        assert_contains(ts, json.dumps(alias), f"web card contract migration alias {alias}")
         for field, value in target.items():
-            assert_contains(js, json.dumps(field), f"web card contract migration alias {alias} field {field}")
-            assert_contains(js, json.dumps(value), f"web card contract migration alias {alias} value {field}")
+            assert_contains(ts, json.dumps(field), f"web card contract migration alias {alias} field {field}")
+            assert_contains(ts, json.dumps(value), f"web card contract migration alias {alias} value {field}")
     for card_type, code in data["subpageTypeCodes"].items():
-        assert_contains(js, json.dumps(card_type), f"web card contract subpage type {card_type}")
-        assert_contains(js, json.dumps(code), f"web card contract subpage code {code}")
+        assert_contains(ts, json.dumps(card_type), f"web card contract subpage type {card_type}")
+        assert_contains(ts, json.dumps(code), f"web card contract subpage code {code}")
 
 
 def assert_h_contract(data: dict, header: str) -> None:
+    assert_contains(
+        header,
+        f"constexpr int CARD_CONTRACT_VERSION = {data['contractVersion']};",
+        "firmware card contract version",
+    )
     for card_type, card in data["cards"].items():
         escaped_type = re.escape(cpp_string(card_type))
         escaped_label = re.escape(cpp_string(card["label"]))
@@ -151,10 +168,10 @@ def main() -> int:
             print(f"  - {error}")
         return 1
 
-    js = CARD_CONTRACT_JS.read_text(encoding="utf-8")
+    ts = CARD_CONTRACT_TS.read_text(encoding="utf-8")
     header = CARD_CONTRACT_H.read_text(encoding="utf-8")
     docs = CARD_CAPABILITY_DOCS.read_text(encoding="utf-8")
-    assert_js_contract(data, js)
+    assert_ts_contract(data, ts)
     assert_h_contract(data, header)
     assert_docs_contract(data, docs)
     print("Generated card contract outputs match the authored contract.")

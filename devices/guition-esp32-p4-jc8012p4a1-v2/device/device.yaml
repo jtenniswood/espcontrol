@@ -1,0 +1,590 @@
+# =============================================================================
+# DEVICE - Guition ESP32-P4 JC8012P4A1 V2 hardware definition
+# =============================================================================
+# Pin assignments, peripherals, and platform config for the 10.1" touch panel.
+# Includes the ESP32-P4 main SoC, ESP32-C6 hosted WiFi co-processor, MIPI
+# DSI display, GSL3680 capacitive touchscreen, and backlight PWM.
+# =============================================================================
+
+substitutions:
+  espcontrol_component_url: "https://github.com/jtenniswood/espcontrol"
+  espcontrol_component_ref: "main"
+  mdi_font_file: "https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf"
+
+# ---------------------------------------------------------------------------
+# ESP32-P4 platform (16MB flash, ESP-IDF framework)
+# ---------------------------------------------------------------------------
+esp32:
+  variant: esp32p4
+  flash_size: 16MB
+  cpu_frequency: 360MHZ
+  engineering_sample: true
+  framework:
+    type: esp-idf
+    # stick to recommended version, currently 5.5.4, 55.03.39 with tool-esptoolpy 5.3.0. No issues
+    #version: 5.5.2
+    # pioarduino 55.03.38-1 pulls tool-esptoolpy 5.2.0, which can install
+    # incompletely in ESPHome containers and then fail while creating .bin files.
+    #platform_version: 55.03.37
+    advanced:
+      enable_idf_experimental_features: true
+      execute_from_psram: true
+      disable_vfs_support_termios: false
+      disable_vfs_support_select: false
+      disable_vfs_support_dir: false
+    sdkconfig_options:
+      CONFIG_SDMMC_HOST_DEFAULT: "y"
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: "y"
+      # HTTPS firmware checks need more stack on ESP32-P4; the default main
+      # task stack can trip the stack protector during mbedTLS setup.
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      # Native OTA and display startup can block loopTask briefly on this
+      # panel. Use the ESP-IDF maximum so those longer operations can finish.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "60"
+      # The 10.1" firmware image is large enough that yielding during every
+      # flash erase can make native OTA preparation exceed ESPHome's uploader
+      # timeout before the progress bar starts.
+      CONFIG_SPI_FLASH_YIELD_DURING_ERASE: "n"
+      # ESPHome 2026.5 / ESP-IDF 5.5.2 can make ESP-Hosted preallocate a
+      # large internal DMA buffer pool before ESPHome starts. On P4 display
+      # builds this can fail with "HS_MP: mempool create failed: no mem" and
+      # trigger OTA rollback, so use dynamic buffers and keep hosted task
+      # stacks in PSRAM.
+      CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
+      CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
+      CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
+      CONFIG_LOG_DEFAULT_LEVEL: "2"
+
+# ---------------------------------------------------------------------------
+# External components
+# ---------------------------------------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: ${espcontrol_component_url}
+      ref: ${espcontrol_component_ref}
+      path: components
+    components: [espcontrol, web_server_idf, artwork_image, gsl3680]
+    refresh: 1s
+
+espcontrol:
+
+# ---------------------------------------------------------------------------
+# ESPHome core (device name from substitutions)
+# ---------------------------------------------------------------------------
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - "-Wno-deprecated-declarations"
+      - "-DESPCONTROL_DISABLE_TODO=1"
+      # Force PlatformIO to rebuild cached ESPHome objects after the 2026.5
+      # core/scheduler/watchdog changes; stale 2026.4 objects can boot-loop.
+      - "-DESPCONTROL_ESPHOME_2026_5_REBUILD=1"
+      # Separate marker for the JC8012P4A1 boot-loop fix so ESPHome cannot
+      # silently reuse the earlier build that still crashes.
+      - "-DESPCONTROL_JC8012P4A1_BOOTFIX_20260526=1"
+      # Rebuild marker for the JC8012P4A1 watchdog increase.
+      - "-DESPCONTROL_JC8012P4A1_WDT_20260526=1"
+      # Rebuild marker for USB-C serial logging over the panel UART bridge.
+      - "-DESPCONTROL_JC8012P4A1_USB_LOGGER_UART0_20260528=1"
+      # Rebuild marker for the faster native OTA flash preparation path.
+      - "-DESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1"
+      # Rebuild marker for the image-card LVGL transition boot-loop fix.
+      - "-DESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1"
+      # Rebuild marker for bad restore crash recovery.
+      - "-DESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1"
+      # Keep LVGL active while the backlight is off so the GSL3680 touch
+      # controller can still deliver the wake tap from display-off screensaver.
+      - "-DESPCONTROL_KEEP_LVGL_ACTIVE_ON_DISPLAY_OFF=1"
+      # Rebuild marker for noisy/multi-contact wake taps on the GSL3680 panel.
+      - "-DESPCONTROL_JC8012P4A1_GSL3680_WAKE_TAP_20260625=1"
+      # Rebuild marker for restoring native display-space GSL3680 touch scaling.
+      - "-DESPCONTROL_JC8012P4A1_GSL3680_TOUCH_SCALE_20260626=1"
+    build_src_flags:
+      - "-Wno-literal-suffix"
+  on_boot:
+    - priority: 260
+      then:
+        - if:
+            condition:
+              lambda: |-
+                #ifdef USE_ESP32_CRASH_HANDLER
+                return esphome::esp32::crash_handler_has_data();
+                #else
+                return false;
+                #endif
+            then:
+              - lambda: |-
+                  #ifdef USE_ESP32_CRASH_HANDLER
+                  esphome::esp32::crash_handler_clear();
+                  #endif
+                  id(jc8012p4a1_v2_safe_mode).mark_successful();
+                  global_preferences->sync();
+                  ESP_LOGW("jc8012p4a1_v2", "Cleared saved crash report before API logging; rebooting once");
+              - delay: 500ms
+              - lambda: |-
+                  App.safe_reboot();
+    - priority: 250
+      then:
+        - lambda: |-
+            ESP_LOGI("jc8012p4a1_v2", "Bootfix marker 2026-05-26 active");
+    - priority: -100
+      then:
+        - lambda: 'id(screen_rotation_ready) = true;'
+        - script.execute: apply_screen_rotation
+
+# ---------------------------------------------------------------------------
+# ESP32-C6 co-processor (provides WiFi/BLE via SDIO)
+# ---------------------------------------------------------------------------
+esp32_hosted:
+  variant: esp32c6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  active_high: true
+  sdio_frequency: 20MHz
+
+# ---------------------------------------------------------------------------
+# PSRAM (video frame buffer memory)
+# ---------------------------------------------------------------------------
+psram:
+  mode: hex
+  speed: 200MHz
+
+# ---------------------------------------------------------------------------
+# OTA updates (ESPHome native + HTTP-based)
+# ---------------------------------------------------------------------------
+ota:
+  - platform: esphome
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+  - platform: http_request
+    on_begin:
+      then:
+        - script.execute: show_update_writing
+        - script.wait: show_update_writing
+    on_end:
+      then:
+        - globals.set:
+            id: firmware_update_complete_pending
+            value: 'true'
+        - lambda: 'global_preferences->sync();'
+    on_error:
+      then:
+        - script.execute: show_update_failed
+
+safe_mode:
+  id: jc8012p4a1_v2_safe_mode
+
+# ---------------------------------------------------------------------------
+# Shared infrastructure (API, logging, web server, restart button)
+# ---------------------------------------------------------------------------
+packages:
+  core_infra: !include ../../../common/device/core_infra.yaml
+
+# The 10.1" panel's USB-C serial output is exposed through a UART0 bridge.
+# ESPHome defaults ESP32-P4 logging to USB_SERIAL_JTAG, which leaves this port
+# showing only early ROM boot text and no application logs.
+logger:
+  hardware_uart: UART0
+
+# ---------------------------------------------------------------------------
+# Power management (LDO channel for DSI PHY)
+# ---------------------------------------------------------------------------
+esp_ldo:
+  - channel: 3
+    id: dsi_phy_enable
+    voltage: 2.5V
+    adjustable: True
+
+# ---------------------------------------------------------------------------
+# Backlight (LEDC PWM output + monochromatic light entity)
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO23
+    id: gpio_backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: gpio_backlight_pwm
+    name: Display Backlight
+    icon: mdi:lightbulb-on
+    id: display_backlight
+    restore_mode: RESTORE_DEFAULT_ON
+    default_transition_length: 0s
+    gamma_correct: 1.0
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: |-
+                auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
+                return (id(screen_schedule_asleep) &&
+                        !id(schedule_mode_clock)) ||
+                       screen_schedule_waiting_for_time(
+                         id(screen_schedule_trigger).state,
+                         id(schedule_enabled).state,
+                         now.is_valid());
+            then:
+              - script.execute: backlight_force_display_off
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(screensaver_display_off_active);'
+                  then:
+                    - script.execute: screensaver_wake
+    on_turn_off:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(display_takeover_suspended);'
+            then:
+              - lambda: 'ESP_LOGD("backlight", "Restoring backlight after OFF event while image modal is active");'
+              - delay: 10ms
+              - script.execute: backlight_apply_brightness
+            else:
+              - if:
+                  condition:
+                    lambda: |-
+                      return !id(display_asleep) &&
+                             !id(screen_schedule_asleep) &&
+                             !id(screensaver_display_off_active) &&
+                             !id(screensaver_dimmed_active);
+                  then:
+                    - script.execute: screen_schedule_manual_sleep
+
+# ---------------------------------------------------------------------------
+# I2C bus and touchscreen (GSL3680 capacitive, wakes screensaver on touch)
+# ---------------------------------------------------------------------------
+i2c:
+  - id: bus_a
+    sda: GPIO07
+    scl: GPIO08
+    frequency: 400kHz
+    sda_pullup_enabled: False
+    scl_pullup_enabled: False
+
+touchscreen:
+  - platform: gsl3680
+    id: my_touchscreen
+    reset_pin: GPIO22
+    interrupt_pin: GPIO21
+    transform:
+      swap_xy: false
+      mirror_x: true
+      mirror_y: false
+    on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
+      - script.execute: screensaver_wake
+
+# ---------------------------------------------------------------------------
+# Display (10.1" V2/new-panel 800x1280 native MIPI DSI panel)
+# ---------------------------------------------------------------------------
+display:
+  - platform: mipi_dsi
+    id: my_display
+    model: CUSTOM
+    color_order: RGB
+    pixel_mode: 16bit
+    pclk_frequency: 70MHz
+    lanes: 2
+    lane_bit_rate: 840Mbps
+    hsync_pulse_width: 20
+    hsync_back_porch: 20
+    hsync_front_porch: 40
+    vsync_pulse_width: 4
+    vsync_back_porch: 10
+    vsync_front_porch: 30
+    reset_pin:
+      number: GPIO27
+    update_interval: never
+    auto_clear_enabled: false
+    dimensions:
+      width: 800
+      height: 1280
+    init_sequence:
+      - [0xE0, 0x00]
+      - [0xE1, 0x93]
+      - [0xE2, 0x65]
+      - [0xE3, 0xF8]
+      - [0x80, 0x01]
+      - [0xE0, 0x01]
+      - [0x00, 0x00]
+      - [0x01, 0x44]
+      - [0x03, 0x10]
+      - [0x04, 0x38]
+      - [0x0C, 0x74]
+      - [0x17, 0x00]
+      - [0x18, 0xAF]
+      - [0x19, 0x00]
+      - [0x1A, 0x00]
+      - [0x1B, 0xAF]
+      - [0x1C, 0x00]
+      - [0x35, 0x26]
+      - [0x37, 0x09]
+      - [0x38, 0x04]
+      - [0x39, 0x00]
+      - [0x3A, 0x01]
+      - [0x3C, 0x78]
+      - [0x3D, 0xFF]
+      - [0x3E, 0xFF]
+      - [0x3F, 0x7F]
+      - [0x40, 0x06]
+      - [0x41, 0xA0]
+      - [0x42, 0x81]
+      - [0x43, 0x1E]
+      - [0x44, 0x0D]
+      - [0x45, 0x28]
+      - [0x55, 0x02]
+      - [0x57, 0x69]
+      - [0x59, 0x0A]
+      - [0x5A, 0x2A]
+      - [0x5B, 0x17]
+      - [0x5D, 0x7F]
+      - [0x5E, 0x6B]
+      - [0x5F, 0x5C]
+      - [0x60, 0x50]
+      - [0x61, 0x4C]
+      - [0x62, 0x3E]
+      - [0x63, 0x41]
+      - [0x64, 0x2B]
+      - [0x65, 0x43]
+      - [0x66, 0x42]
+      - [0x67, 0x43]
+      - [0x68, 0x62]
+      - [0x69, 0x52]
+      - [0x6A, 0x5A]
+      - [0x6B, 0x4C]
+      - [0x6C, 0x48]
+      - [0x6D, 0x3A]
+      - [0x6E, 0x28]
+      - [0x6F, 0x10]
+      - [0x70, 0x7F]
+      - [0x71, 0x6B]
+      - [0x72, 0x5C]
+      - [0x73, 0x50]
+      - [0x74, 0x4C]
+      - [0x75, 0x3E]
+      - [0x76, 0x41]
+      - [0x77, 0x2B]
+      - [0x78, 0x43]
+      - [0x79, 0x42]
+      - [0x7A, 0x43]
+      - [0x7B, 0x62]
+      - [0x7C, 0x52]
+      - [0x7D, 0x5A]
+      - [0x7E, 0x4C]
+      - [0x7F, 0x48]
+      - [0x80, 0x3A]
+      - [0x81, 0x28]
+      - [0x82, 0x10]
+      - [0xE0, 0x02]
+      - [0x00, 0x42]
+      - [0x01, 0x42]
+      - [0x02, 0x40]
+      - [0x03, 0x40]
+      - [0x04, 0x5E]
+      - [0x05, 0x5E]
+      - [0x06, 0x5F]
+      - [0x07, 0x5F]
+      - [0x08, 0x5F]
+      - [0x09, 0x57]
+      - [0x0A, 0x57]
+      - [0x0B, 0x77]
+      - [0x0C, 0x77]
+      - [0x0D, 0x47]
+      - [0x0E, 0x47]
+      - [0x0F, 0x45]
+      - [0x10, 0x45]
+      - [0x11, 0x4B]
+      - [0x12, 0x4B]
+      - [0x13, 0x49]
+      - [0x14, 0x49]
+      - [0x15, 0x5F]
+      - [0x16, 0x41]
+      - [0x17, 0x41]
+      - [0x18, 0x40]
+      - [0x19, 0x40]
+      - [0x1A, 0x5E]
+      - [0x1B, 0x5E]
+      - [0x1C, 0x5F]
+      - [0x1D, 0x5F]
+      - [0x1E, 0x5F]
+      - [0x1F, 0x57]
+      - [0x20, 0x57]
+      - [0x21, 0x77]
+      - [0x22, 0x77]
+      - [0x23, 0x46]
+      - [0x24, 0x46]
+      - [0x25, 0x44]
+      - [0x26, 0x44]
+      - [0x27, 0x4A]
+      - [0x28, 0x4A]
+      - [0x29, 0x48]
+      - [0x2A, 0x48]
+      - [0x2B, 0x5F]
+      - [0x2C, 0x01]
+      - [0x2D, 0x01]
+      - [0x2E, 0x00]
+      - [0x2F, 0x00]
+      - [0x30, 0x1F]
+      - [0x31, 0x1F]
+      - [0x32, 0x1E]
+      - [0x33, 0x1E]
+      - [0x34, 0x1F]
+      - [0x35, 0x17]
+      - [0x36, 0x17]
+      - [0x37, 0x37]
+      - [0x38, 0x37]
+      - [0x39, 0x08]
+      - [0x3A, 0x08]
+      - [0x3B, 0x0A]
+      - [0x3C, 0x0A]
+      - [0x3D, 0x04]
+      - [0x3E, 0x04]
+      - [0x3F, 0x06]
+      - [0x40, 0x06]
+      - [0x41, 0x1F]
+      - [0x42, 0x02]
+      - [0x43, 0x02]
+      - [0x44, 0x00]
+      - [0x45, 0x00]
+      - [0x46, 0x1F]
+      - [0x47, 0x1F]
+      - [0x48, 0x1E]
+      - [0x49, 0x1E]
+      - [0x4A, 0x1F]
+      - [0x4B, 0x17]
+      - [0x4C, 0x17]
+      - [0x4D, 0x37]
+      - [0x4E, 0x37]
+      - [0x4F, 0x09]
+      - [0x50, 0x09]
+      - [0x51, 0x0B]
+      - [0x52, 0x0B]
+      - [0x53, 0x05]
+      - [0x54, 0x05]
+      - [0x55, 0x07]
+      - [0x56, 0x07]
+      - [0x57, 0x1F]
+      - [0x58, 0x40]
+      - [0x5B, 0x30]
+      - [0x5C, 0x00]
+      - [0x5D, 0x34]
+      - [0x5E, 0x05]
+      - [0x5F, 0x02]
+      - [0x63, 0x00]
+      - [0x64, 0x6A]
+      - [0x67, 0x73]
+      - [0x68, 0x07]
+      - [0x69, 0x08]
+      - [0x6A, 0x6A]
+      - [0x6B, 0x08]
+      - [0x6C, 0x00]
+      - [0x6D, 0x00]
+      - [0x6E, 0x00]
+      - [0x6F, 0x88]
+      - [0x75, 0xFF]
+      - [0x77, 0xDD]
+      - [0x78, 0x2C]
+      - [0x79, 0x15]
+      - [0x7A, 0x17]
+      - [0x7D, 0x14]
+      - [0x7E, 0x82]
+      - [0xE0, 0x04]
+      - [0x00, 0x0E]
+      - [0x02, 0xB3]
+      - [0x09, 0x60]
+      - [0x0E, 0x48]
+      - [0x37, 0x58]
+      - [0x2B, 0x0F]
+      - [0xE0, 0x05]
+      - [0x15, 0x1D]
+      - [0xE0, 0x00]
+      - [0xE6, 0x02]
+      - [0xE7, 0x0C]
+      - [0x11, 0x00]
+      - delay 120ms
+      - [0x29, 0x00]
+      - delay 20ms
+
+# ---------------------------------------------------------------------------
+# LVGL base (display binding, must be before any page definitions)
+# ---------------------------------------------------------------------------
+lvgl:
+  id: main_lvgl
+  displays: my_display
+  rotation: 90
+  byte_order: little_endian
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3s
+
+script:
+  - id: apply_screen_rotation
+    then:
+      - if:
+          condition:
+            lambda: 'return id(screen_rotation_select).current_option() == "90";'
+          then:
+            - lvgl.display.set_rotation: 180
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(screen_rotation_select).current_option() == "180";'
+                then:
+                  - lvgl.display.set_rotation: 270
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(screen_rotation_select).current_option() == "270";'
+                      then:
+                        - lvgl.display.set_rotation: 0
+                      else:
+                        - lvgl.display.set_rotation: 90
+      - script.execute: cover_art_apply_responsive_layout
+
+select:
+  - platform: template
+    name: "${entity_screen_rotation}"
+    internal: true
+    disabled_by_default: true
+    id: screen_rotation_select
+    entity_category: config
+    icon: "mdi:screen-rotation"
+    optimistic: true
+    restore_value: true
+    initial_option: "180"
+    options:
+      - "0"
+      - "90"
+      - "180"
+      - "270"
+    on_value:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(screen_rotation_ready);'
+            then:
+              - script.execute: apply_screen_rotation
+              - script.execute: refresh_button_grid

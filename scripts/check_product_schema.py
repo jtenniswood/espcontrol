@@ -32,6 +32,13 @@ def first_card_with_options(cards: dict) -> tuple[str, dict]:
     raise AssertionError("card contract fixture needs at least one card with options")
 
 
+def first_card_with_normalization(cards: dict) -> tuple[str, dict]:
+    for card_type, card in cards.items():
+        if card.get("normalization"):
+            return card_type, card
+    raise AssertionError("card contract fixture needs at least one normalized card")
+
+
 def run_self_test() -> int:
     results = validate_product_sources()
     assert all(not errors for errors in results.values())
@@ -52,10 +59,46 @@ def run_self_test() -> int:
     invalid_fields["fields"] = list(reversed(invalid_fields["fields"]))
     expect_error(validate_card_contract(invalid_fields), "must match the saved button config field order")
 
+    invalid_version = copy.deepcopy(card_contract)
+    invalid_version["contractVersion"] = 2
+    expect_error(validate_card_contract(invalid_version), "contractVersion: must be 1")
+
     invalid_option = copy.deepcopy(card_contract)
     _, card = first_card_with_options(invalid_option["cards"])
     card["options"][0]["kind"] = "toggle"
     expect_error(validate_card_contract(invalid_option), "must be choice, flag, number, or text")
+
+    missing_option_default = copy.deepcopy(card_contract)
+    _, card = first_card_with_options(missing_option_default["cards"])
+    choice = next(option for option in card["options"] if option.get("kind") in {"choice", "number"})
+    choice.pop("defaultValue", None)
+    expect_error(validate_card_contract(missing_option_default), "is required for choice and number options")
+
+    duplicate_storage = copy.deepcopy(card_contract)
+    action_options = duplicate_storage["cards"]["action"]["options"]
+    action_options[1]["storage"] = ["large_numbers"]
+    expect_error(validate_card_contract(duplicate_storage), "duplicates storage name")
+
+    invalid_hook = copy.deepcopy(card_contract)
+    _, normalized_card = first_card_with_normalization(invalid_hook["cards"])
+    normalized_card["normalization"]["fields"]["icon"] = {"policy": "hook", "hook": "run_arbitrary_code"}
+    expect_error(validate_card_contract(invalid_hook), "must name an allow-listed normalization hook")
+
+    invalid_hook_data = copy.deepcopy(card_contract)
+    invalid_hook_data["cards"]["vacuum"]["normalization"]["hookData"]["unlisted_hook"] = {}
+    expect_error(validate_card_contract(invalid_hook_data), "contains hooks outside the allow-list")
+
+    missing_vacuum_default_icon = copy.deepcopy(card_contract)
+    del missing_vacuum_default_icon["cards"]["vacuum"]["normalization"]["hookData"]["normalize_vacuum_fields"]["defaultIcons"]["default"]
+    expect_error(validate_card_contract(missing_vacuum_default_icon), "must include default")
+
+    invalid_allowed_alias = copy.deepcopy(card_contract)
+    invalid_allowed_alias["cards"]["vacuum"]["normalization"]["fields"]["sensor"]["aliases"]["vacuum.old"] = "missing_mode"
+    expect_error(validate_card_contract(invalid_allowed_alias), "must map to an allowed value")
+
+    invalid_condition = copy.deepcopy(card_contract)
+    invalid_condition["cards"]["sensor"]["options"][0]["applicability"][0]["operator"] = "matches"
+    expect_error(validate_card_contract(invalid_condition), "must be equals, in, or present")
 
     invalid_subpage_codes = copy.deepcopy(card_contract)
     code_items = list(invalid_subpage_codes["subpageTypeCodes"].items())
@@ -65,6 +108,14 @@ def run_self_test() -> int:
     invalid_alias = copy.deepcopy(card_contract)
     invalid_alias.setdefault("migrationAliases", {})["self_test_alias"] = {"not_a_field": "value"}
     expect_error(validate_card_contract(invalid_alias), "is not a saved config field")
+
+    missing_alias_target = copy.deepcopy(card_contract)
+    missing_alias_target["migrationAliases"]["self_test_alias"] = {"type": "missing_card"}
+    expect_error(validate_card_contract(missing_alias_target), "must reference a card defined in cards")
+
+    reused_retired_code = copy.deepcopy(card_contract)
+    reused_retired_code["retiredSubpageTypeCodes"] = [next(iter(reused_retired_code["subpageTypeCodes"].values()))]
+    expect_error(validate_card_contract(reused_retired_code), "reuses active codes")
 
     with TemporaryDirectory() as tmp:
         root = Path(tmp)

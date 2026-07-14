@@ -24,6 +24,7 @@ on:
       - 'product/**'
       - 'src/**'
       - 'scripts/**'
+      - 'tests/**'
       - 'docs/**'
       - 'package.json'
       - 'package-lock.json'
@@ -75,13 +76,13 @@ jobs:
           if git diff --quiet -- \
             common/assets/icon_glyphs.yaml \
             components/espcontrol/icons.h \
-            src/webserver/entry.js; then
+            src/webserver/entry.ts; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: steps.icon_changes.outputs.changed == 'true'
         with:
           node-version: 24
@@ -104,7 +105,7 @@ jobs:
           if git diff --quiet -- \
             common/assets/icon_glyphs.yaml \
             components/espcontrol/icons.h \
-            src/webserver/entry.js \
+            src/webserver/entry.ts \
             docs/public/webserver/*/www.js; then
             echo "Generated icon files are already up to date."
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -116,7 +117,7 @@ jobs:
           git add \
             common/assets/icon_glyphs.yaml \
             components/espcontrol/icons.h \
-            src/webserver/entry.js \
+            src/webserver/entry.ts \
             docs/public/webserver/*/www.js
           git commit -m "Build generated icon files"
           git push
@@ -128,7 +129,7 @@ jobs:
     if: >-
       always() &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -138,9 +139,29 @@ jobs:
       - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
+
+      - name: Ensure CMake is available
+        shell: bash
+        run: |
+          if command -v cmake >/dev/null 2>&1; then
+            CMAKE_VERSION="$(cmake --version | awk 'NR == 1 { print $3 }')"
+            if python3 -c \
+              'import sys; sys.exit(0 if tuple(map(int, sys.argv[1].split(".")[:2])) >= (3, 20) else 1)' \
+              "${CMAKE_VERSION}"; then
+              cmake --version
+              exit 0
+            fi
+            echo "CMake ${CMAKE_VERSION} is older than the required version 3.20; installing the pinned fallback."
+          fi
+
+          CMAKE_VENV="${RUNNER_TEMP}/espcontrol-cmake"
+          python3 -m venv "${CMAKE_VENV}"
+          "${CMAKE_VENV}/bin/python" -m pip install --disable-pip-version-check --no-cache-dir "cmake==3.31.10"
+          echo "${CMAKE_VENV}/bin" >> "${GITHUB_PATH}"
+          "${CMAKE_VENV}/bin/cmake" --version
 
       - name: Install dependencies
         run: |
@@ -152,7 +173,16 @@ jobs:
       - name: Install browser runtime
         run: npx playwright install --with-deps chromium
 
-      - run: npm run check:ci
+      - name: Run required check graph
+        run: npm run check:ci -- --summary-json check-task-summary.json
+
+      - name: Upload task graph summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: check-task-graph-summary
+          path: check-task-summary.json
+          if-no-files-found: warn
 
   docs:
     name: Build Docs
@@ -161,7 +191,7 @@ jobs:
       always() &&
       needs.validate.result == 'success' &&
       (github.event_name == 'pull_request' || needs.sync-icons.outputs.changed != 'true')
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - name: Prepare self-hosted workspace
         run: |
@@ -171,7 +201,7 @@ jobs:
       - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 

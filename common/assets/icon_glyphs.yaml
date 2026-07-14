@@ -1,7 +1,5 @@
 # --- GENERATED:ICONS START ---
 - "\U000F0493"  # mdi-cog (Auto fallback)
-- "\U000F0141"  # mdi-chevron-left (Back button)
-- "\U000F0142"  # mdi-chevron-right (Subpage indicator)
 - "\U000F0156"  # mdi-close (Modal close button)
 - "\U000F024B"  # mdi-folder (Default subpage indicator)
 - "\U000F01DA"  # mdi-download (Firmware install update entity)
@@ -18,6 +16,8 @@
 - "\U000F07D0"  # mdi-home-assistant (Setup screens)
 - "\U000F02E9"  # mdi-image (Image card loading state)
 - "\U000F02ED"  # mdi-image-broken (Image card unavailable state)
+- "\U000F0141"  # mdi-chevron-left
+- "\U000F0142"  # mdi-chevron-right
 - "\U000F0004"  # mdi-account
 - "\U000F001B"  # mdi-air-conditioner
 - "\U000F0D43"  # mdi-air-filter

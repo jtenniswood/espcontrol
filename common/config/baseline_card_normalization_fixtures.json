@@ -1,0 +1,112 @@
+[
+  {
+    "name": "empty saved slot uses model icon defaults",
+    "input": "",
+    "expected": { "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" }
+  },
+  {
+    "name": "switch with omitted icons uses model defaults",
+    "input": "switch.printer;Printer;;;sensor.power;W;;1;large_numbers",
+    "expected": { "entity": "switch.printer", "label": "Printer", "icon": "Auto", "icon_on": "Auto", "sensor": "sensor.power", "unit": "W", "type": "", "precision": "1", "options": "large_numbers" }
+  },
+  {
+    "name": "slider clears stale sensor and options",
+    "input": "number.level;Level;Tune;Auto;sensor.level;%;slider;2;large_numbers,unknown=1",
+    "expected": { "entity": "number.level", "label": "Level", "icon": "Tune", "icon_on": "Auto", "sensor": "", "unit": "%", "type": "slider", "precision": "2", "options": "" }
+  },
+  {
+    "name": "light brightness clears stale sensor and options",
+    "input": "light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;sensor.level;%;light_brightness;2;large_numbers,unknown=1",
+    "expected": { "entity": "light.kitchen", "label": "Kitchen", "icon": "Lightbulb Outline", "icon_on": "Lightbulb", "sensor": "", "unit": "%", "type": "light_brightness", "precision": "2", "options": "" }
+  },
+  {
+    "name": "light switch clears display-only fields",
+    "input": "light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;sensor.level;%;light_switch;2;large_numbers",
+    "expected": { "entity": "light.kitchen", "label": "Kitchen", "icon": "Lightbulb Outline", "icon_on": "Lightbulb", "sensor": "", "unit": "", "type": "light_switch", "precision": "", "options": "" }
+  },
+  {
+    "name": "light temperature drops unsupported options",
+    "input": "light.kitchen;Kitchen;Thermometer;Auto;sensor.temp;K;light_temperature;2;large_numbers",
+    "expected": { "entity": "light.kitchen", "label": "Kitchen", "icon": "Thermometer", "icon_on": "Auto", "sensor": "sensor.temp", "unit": "K", "type": "light_temperature", "precision": "2", "options": "" }
+  },
+  {
+    "name": "fan switch uses its default icon pair",
+    "input": "fan.office;Office;Auto;Auto;sensor.x;W;fan_switch;2;large_numbers",
+    "expected": { "entity": "fan.office", "label": "Office", "icon": "Fan Off", "icon_on": "Fan", "sensor": "", "unit": "", "type": "fan_switch", "precision": "", "options": "" }
+  },
+  {
+    "name": "fan speed uses its default icon",
+    "input": "fan.office;Speed;Auto;Auto;sensor.x;W;fan_speed;2;large_numbers",
+    "expected": { "entity": "fan.office", "label": "Speed", "icon": "Fan Speed 2", "icon_on": "Auto", "sensor": "", "unit": "", "type": "fan_speed", "precision": "", "options": "" }
+  },
+  {
+    "name": "fan preset uses its default icon",
+    "input": "fan.office;Preset;Auto;Auto;sensor.x;W;fan_preset;2;large_numbers",
+    "expected": { "entity": "fan.office", "label": "Preset", "icon": "Fan Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "fan_preset", "precision": "", "options": "" }
+  },
+  {
+    "name": "fan oscillation uses its default icon",
+    "input": "fan.office;Oscillate;Auto;Auto;sensor.x;W;fan_oscillate;2;large_numbers",
+    "expected": { "entity": "fan.office", "label": "Oscillate", "icon": "Fan", "icon_on": "Auto", "sensor": "", "unit": "", "type": "fan_oscillate", "precision": "", "options": "" }
+  },
+  {
+    "name": "fan direction uses its default icon",
+    "input": "fan.office;Direction;Auto;Auto;sensor.x;W;fan_direction;2;large_numbers",
+    "expected": { "entity": "fan.office", "label": "Direction", "icon": "Swap Horizontal", "icon_on": "Auto", "sensor": "", "unit": "", "type": "fan_direction", "precision": "", "options": "" }
+  },
+  {
+    "name": "fan control cleans duplicate tabs",
+    "input": "fan.office;Fan;Auto;Auto;sensor.x;W;fan_control;2;fan_tabs=speed%7Cpower%7Cspeed",
+    "expected": { "entity": "fan.office", "label": "Fan", "icon": "Fan", "icon_on": "Auto", "sensor": "", "unit": "", "type": "fan_control", "precision": "", "options": "fan_tabs=speed%7Cpower" }
+  },
+  {
+    "name": "gate stop command clears ignored fields",
+    "input": "cover.gate;Gate;Gate;Gate Open;stop;W;gate;2;label_display=status,unknown=1",
+    "expected": { "entity": "cover.gate", "label": "Gate", "icon": "Gate", "icon_on": "Auto", "sensor": "stop", "unit": "", "type": "gate", "precision": "", "options": "label_display=status" }
+  },
+  {
+    "name": "subpage keeps supported number display option",
+    "input": ";Rooms;View Grid;Auto;sensor.room;C;subpage;1;large_numbers,unknown=1",
+    "expected": { "entity": "", "label": "Rooms", "icon": "View Grid", "icon_on": "Auto", "sensor": "sensor.room", "unit": "C", "type": "subpage", "precision": "1", "options": "large_numbers" }
+  },
+  {
+    "name": "legacy option select becomes an action",
+    "input": "select.scene;Scene;Chevron Down;Auto;ignored;W;option_select;2;large_numbers",
+    "expected": { "entity": "select.scene", "label": "Scene", "icon": "Flash", "icon_on": "Auto", "sensor": "input_select.select_option", "unit": "", "type": "action", "precision": "", "options": "" }
+  },
+  {
+    "name": "action state explicitly preserves zero precision",
+    "input": "scene.movie;Movie;Flash;Auto;scene.turn_on;;action;;state_entity=sensor.power,state_unit=W,state_precision=0,large_numbers",
+    "expected": { "entity": "scene.movie", "label": "Movie", "icon": "Flash", "icon_on": "Auto", "sensor": "scene.turn_on", "unit": "", "type": "action", "precision": "", "options": "state_entity=sensor.power,state_unit=W,state_precision=0,large_numbers" }
+  },
+  {
+    "name": "action state preserves large numbers without precision",
+    "input": "scene.movie;Movie;Flash;Auto;scene.turn_on;;action;;state_entity=sensor.power,large_numbers",
+    "expected": { "entity": "scene.movie", "label": "Movie", "icon": "Flash", "icon_on": "Auto", "sensor": "scene.turn_on", "unit": "", "type": "action", "precision": "", "options": "state_entity=sensor.power,large_numbers" }
+  },
+  {
+    "name": "legacy text sensor type becomes a text-mode sensor",
+    "input": "sensor.washer;Washer;Washer;Swapped;sensor.washer;unit;text_sensor;2;state_labels,state_input=on,state_output=Running",
+    "expected": { "entity": "", "label": "", "icon": "Washer", "icon_on": "Auto", "sensor": "sensor.washer", "unit": "", "type": "sensor", "precision": "text", "options": "state_labels,state_input=on,state_output=Running" }
+  },
+  {
+    "name": "unknown card type drops unknown options",
+    "input": "sensor.x;Mystery;Auto;Auto;sensor.y;W;future_card;2;future_option=1",
+    "expected": { "entity": "sensor.x", "label": "Mystery", "icon": "Auto", "icon_on": "Auto", "sensor": "sensor.y", "unit": "W", "type": "future_card", "precision": "2", "options": "" }
+  },
+  {
+    "name": "compact Unicode and encoded delimiter survive",
+    "input": "~sensor.energy,K%C3%BCche%3B%20%E2%98%95,Gauge,Auto,sensor.energy,kWh,sensor,1,large_numbers",
+    "expected": { "entity": "sensor.energy", "label": "Küche; ☕", "icon": "Gauge", "icon_on": "Auto", "sensor": "sensor.energy", "unit": "kWh", "type": "sensor", "precision": "1", "options": "large_numbers" }
+  },
+  {
+    "name": "malformed compact escapes remain literal",
+    "input": "~sensor.x,Bad%2,Gauge,Auto,sensor.x,,sensor,text,state_labels%2Cstate_input=on%2Cstate_output=Yes%ZZ",
+    "expected": { "entity": "sensor.x", "label": "Bad%2", "icon": "Gauge", "icon_on": "Auto", "sensor": "sensor.x", "unit": "", "type": "sensor", "precision": "text", "options": "state_labels,state_input=on,state_output=Yes%25ZZ" }
+  },
+  {
+    "name": "exact 255 byte legacy card remains intact",
+    "input": "sensor.long;LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL;Gauge;Auto;sensor.long;kWh;sensor;1;large_numbers",
+    "expected": { "entity": "sensor.long", "label": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", "icon": "Gauge", "icon_on": "Auto", "sensor": "sensor.long", "unit": "kWh", "type": "sensor", "precision": "1", "options": "large_numbers" }
+  }
+]

@@ -5,7 +5,7 @@ device-specific ESPHome YAML.
 
 ## Edit First
 
-- `devices/manifest.json`
+- `devices/catalog.json`
 - `devices/<slug>/packages.yaml`
 - `devices/<slug>/dev.yaml`
 - `devices/<slug>/esphome.yaml`
@@ -23,18 +23,23 @@ shared behavior change.
 
 ## Checklist
 
-- [ ] Add or update the device entry in `devices/manifest.json`.
+- [ ] Add or update the device entry in `devices/catalog.json`.
+- [ ] Select profiles for shared capabilities instead of copying those fields
+      into the device `config` block.
+- [ ] Use explicit `overrides` only when a device must replace an inherited
+      profile value.
 - [ ] Add or update the per-device ESPHome files under `devices/<slug>/`.
 - [ ] Confirm `layout.cols * layout.rows` equals the device slot count.
 - [ ] Confirm required `firmware.fonts` roles are mapped.
 - [ ] Confirm the public screen docs path and release metadata are correct.
-- [ ] Review web preview sizing in the manifest `web` section.
+- [ ] Review web preview sizing in the catalog `web` configuration.
 - [ ] Use `dev.yaml` for local compile checks and `esphome.yaml` for the
       production package shape.
 
 ## Regenerate
 
 ```bash
+python3 scripts/generate_device_manifest.py
 python3 scripts/build.py
 python3 scripts/generate_device_slots.py
 ```
@@ -56,7 +61,7 @@ Expected generated files commonly include:
 - Generated files for unrelated devices change without a manifest reason.
 - Release-facing files under `builds/` change unexpectedly.
 - A generated block was edited by hand.
-- The new device cannot be represented with manifest fields.
+- The new device cannot be represented with catalog profiles and configuration fields.
 
 ## Verify
 

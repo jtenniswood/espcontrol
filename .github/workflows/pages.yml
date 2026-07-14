@@ -35,7 +35,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v7.0.0
       - run: git sparse-checkout disable || true
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
 
@@ -68,7 +68,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Prepare self-hosted workspace
         run: rm -rf "${GITHUB_WORKSPACE}/.esphome" || sudo rm -rf "${GITHUB_WORKSPACE}/.esphome"
@@ -133,6 +133,7 @@ jobs:
           for SLUG in $DEVICE_SLUGS; do
             mkdir -p "firmware/${SLUG}"
             INDEX_ENTRIES=$(mktemp)
+            HAVE_CURRENT=false
             : > "${INDEX_ENTRIES}"
 
             for IDX in $(seq 0 $((RELEASE_COUNT - 1))); do
@@ -151,11 +152,9 @@ jobs:
               fi
               VERSION_PATH=$(printf '%s' "${VERSION}" | sed 's/[^A-Za-z0-9._-]/_/g')
 
-              if [ "${IDX}" -eq 0 ]; then
-                cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
+              if [ "${HAVE_CURRENT}" = false ]; then
                 OTA_OUTPUT="firmware/${SLUG}/${SLUG}.ota.bin"
                 OTA_INDEX_PATH="${SLUG}.ota.bin"
-                download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
               else
                 OTA_OUTPUT="firmware/${SLUG}/versions/${VERSION_PATH}/${SLUG}.ota.bin"
                 OTA_INDEX_PATH="versions/${VERSION_PATH}/${SLUG}.ota.bin"
@@ -163,6 +162,12 @@ jobs:
 
               if ! download_asset "${RELEASE_JSON}" "${SLUG}.ota.bin" "${OTA_OUTPUT}"; then
                 continue
+              fi
+
+              if [ "${HAVE_CURRENT}" = false ]; then
+                cp "${MANIFEST_TMP}" "firmware/${SLUG}/manifest.json"
+                download_asset "${RELEASE_JSON}" "${SLUG}.factory.bin" "firmware/${SLUG}/${SLUG}.factory.bin" || true
+                HAVE_CURRENT=true
               fi
 
               OTA_MD5=$(ota_md5 "${MANIFEST_TMP}" "${SLUG}.ota.bin")
@@ -229,7 +234,7 @@ jobs:
       - name: Verify firmware assets
         run: |
           MISSING=false
-          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 esp32-p4-86"
+          OPTIONAL_FIRMWARE_SLUGS="guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 esp32-p4-86"
           for SLUG in $DEVICE_SLUGS; do
             MANIFEST="firmware/${SLUG}/manifest.json"
             if [ ! -f "$MANIFEST" ]; then
@@ -252,7 +257,7 @@ jobs:
   deploy:
     name: Deploy to Pages
     needs: [build-docs, download-firmware]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -291,6 +296,6 @@ jobs:
           python3 scripts/check_public_firmware.py
           --base-url "${{ steps.deployment.outputs.page_url }}"
           --manifest devices/manifest.json
-          --optional-stable-slugs guition-esp32-p4-jc8012p4a1 esp32-p4-86
+          --optional-stable-slugs guition-esp32-p4-jc8012p4a1 guition-esp32-p4-jc8012p4a1-v2 esp32-p4-86
           --retries 5
           --delay 20

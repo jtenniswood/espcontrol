@@ -10,6 +10,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from check_tasks_data import PROFILES, TASKS
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +43,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     SourceTruthRow(
         "common/config/card_contract.json",
         (
-            "src/webserver/modules/card_contract_generated.js",
+            "src/webserver/generated/card_contract.ts",
             "components/espcontrol/button_grid_contract_generated.h",
             "docs/generated/cards/capabilities.md",
         ),
@@ -50,9 +52,15 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "common/config/entity_names.json",
-        ("common/config/entity_names.yaml", "src/webserver/modules/entity_catalog.js"),
+        ("common/config/entity_names.yaml", "src/webserver/generated/entity_catalog.ts"),
         "python3 scripts/build.py entities",
         "`python3 scripts/build.py entities --check` and `npm run check:product`",
+    ),
+    SourceTruthRow(
+        "devices/catalog.json",
+        ("devices/manifest.json",),
+        "python3 scripts/generate_device_manifest.py",
+        "`python3 scripts/generate_device_manifest.py --check` and `npm run check:product`",
     ),
     SourceTruthRow(
         "devices/manifest.json",
@@ -71,7 +79,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         (
             "generated sections inside `common/assets/icon_glyphs.yaml`",
             "generated sections inside `components/espcontrol/icons.h`",
-            "generated sections inside `src/webserver/entry.js`",
+            "`src/webserver/generated/icons.ts`",
         ),
         "python3 scripts/build.py icons",
         "`python3 scripts/build.py icons --check` and `npm run check:product`",
@@ -90,8 +98,8 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "src/webserver/model/index.ts",
-        ("src/webserver/modules/model_generated.js",),
-        "python3 scripts/build.py model",
+        ("no intermediate output; imported directly into each web bundle",),
+        "python3 scripts/build.py www",
         "`npm run check:model-contract`",
     ),
     SourceTruthRow(
@@ -107,7 +115,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`npm run check:backup-contract` and `npm run check:product`",
     ),
     SourceTruthRow(
-        "`devices/manifest.json`, `common/config/card_contract.json`, `common/config/entity_names.json`, `common/assets/icons.json`, `compatibility/fixtures/product_compatibility.json`",
+        "`devices/catalog.json`, `common/config/card_contract.json`, `common/config/entity_names.json`, `common/assets/icons.json`, `compatibility/fixtures/product_compatibility.json`",
         ("product/product_snapshot.json",),
         "python3 scripts/check_product_snapshot.py --update",
         "`npm run check:product-snapshot` and `npm run check:product`",
@@ -167,7 +175,7 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:product` when firmware, web, backup, or release-facing generated output changes",
     ),
     CheckMatrixRow(
-        "`src/webserver/`, `scripts/web_modules.json`",
+        "`src/webserver/`",
         "Web configurator behavior, settings panels, preview rendering, backup UI, served `www.js` bundles",
         "`npm run check:web-smoke`",
         "`npm run check:web-browser-smoke` for browser behavior; `npm run check:product` before release-facing commits",
@@ -179,7 +187,7 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:fast` or compile affected firmware when display layout or device behavior changes",
     ),
     CheckMatrixRow(
-        "`src/webserver/modules/config_codec.js`, `components/espcontrol/button_grid_config.h`, `compatibility/fixtures/product_compatibility.json`",
+        "`src/webserver/application/config_codec.ts`, `components/espcontrol/button_grid_config.h`, `compatibility/fixtures/product_compatibility.json`",
         "Saved card strings, backup/import/export shape, migration compatibility",
         "`npm run check:backup-contract` and `npm run check:firmware-parser`",
         "`npm run check:product` when compact config, backup, or migration behavior changes",
@@ -218,7 +226,7 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`src/webserver/model/*.ts`, `src/webserver/contracts/*.ts`",
         "Typed model shape and generated browser model constants",
         "`npm run check:model-contract` and `npm run check:types`",
-        "`npm run check:product` when backup, web, or generated model behavior changes",
+        "`npm run check:product` when backup, web, or model behavior changes",
     ),
     CheckMatrixRow(
         "`docs/`, `dev-docs/`, `DEVELOPERS.md`, `README.md`",
@@ -261,6 +269,21 @@ def markdown_table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> str
     return "\n".join(lines)
 
 
+def validate_check_guidance(value: str) -> str:
+    """Keep generated command guidance tied to registered tasks and profiles."""
+    task_ids = {item.id for item in TASKS}
+    aliases = {f"check:{item.id}" for item in TASKS}
+    aliases.update(f"check:{profile}" for profile in PROFILES if profile != "release")
+    aliases.add("check:release-preflight")
+    for alias in re.findall(r"npm run (check:[\w:-]+)", value):
+        if alias not in aliases:
+            raise ValueError(f"developer guidance references an unregistered check alias: {alias}")
+        task_id = alias.removeprefix("check:")
+        if task_id not in task_ids and task_id not in PROFILES and alias != "check:release-preflight":
+            raise ValueError(f"developer guidance references an unknown task: {task_id}")
+    return value
+
+
 def source_truth_table() -> str:
     def code_if_path(value: str) -> str:
         if value.startswith(("generated ", "no generated ", "compile ")):
@@ -273,7 +296,7 @@ def source_truth_table() -> str:
     for row in SOURCE_TRUTH_ROWS:
         source = code_if_path(row.source)
         outputs = "<br>".join(code_if_path(output) for output in row.outputs)
-        rows.append((source, outputs, f"`{row.generator}`" if row.generator != "none" else "none", row.checks))
+        rows.append((source, outputs, f"`{row.generator}`" if row.generator != "none" else "none", validate_check_guidance(row.checks)))
     return markdown_table(("Authored source", "Generated outputs", "Generator", "Required check"), rows)
 
 
@@ -288,7 +311,7 @@ def package_scripts() -> set[str]:
 
 def web_registration_map() -> dict[str, str]:
     out: dict[str, str] = {}
-    for path in sorted((ROOT / "src/webserver/types").glob("*.js")):
+    for path in sorted((ROOT / "src/webserver/cards").glob("*.ts")):
         text = path.read_text()
         for match in re.finditer(r"registerButtonType\(\s*([\"'])(.*?)\1", text):
             out[match.group(2)] = rel(path)
@@ -317,6 +340,10 @@ def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
             needles = (f'"{card_type}"',)
         for path in headers:
             text = path.read_text(errors="ignore")
+            for include in re.findall(r'#include\s+"(button_grid_saved_config_[^"/]*_generated\.h)"', text):
+                generated = path.parent / include
+                if generated.exists():
+                    text += "\n" + generated.read_text(errors="ignore")
             if any(needle in text for needle in needles):
                 out[card_type].append(rel(path))
         for extra in extra_by_type.get(card_type, []):
@@ -395,7 +422,7 @@ def generated_card_map() -> str:
         + markdown_table(("Public card page", "Covered saved type"), public_rows),
         "## Generated Matrix\n\n"
         "This table is generated from the card contract, `registerButtonType(...)` calls in "
-        "`src/webserver/types/`, and matching firmware header references under "
+        "`src/webserver/cards/`, and matching firmware header references under "
         "`components/espcontrol/`.\n\n"
         + markdown_table((
             "Type",
@@ -413,10 +440,53 @@ def generated_card_map() -> str:
 
 def generated_check_matrix() -> str:
     rows = [
-        (row.changed_paths, row.task, row.run_first, row.broaden_when)
+        (
+            row.changed_paths,
+            row.task,
+            validate_check_guidance(row.run_first),
+            validate_check_guidance(row.broaden_when),
+        )
         for row in CHECK_MATRIX_ROWS
     ]
-    return markdown_table(("Changed paths", "Likely task", "Run first", "Broaden when"), rows)
+    registered_rows = []
+    package = read_json("package.json")["scripts"]  # type: ignore[index]
+    for item in TASKS:
+        alias = f"check:{item.id}"
+        command = f"`npm run {alias}`" if alias in package else f"`python3 scripts/check_tasks.py run-task {item.id}`"
+        inputs = "<br>".join(f"`{path}`" for path in item.inputs)
+        cache_inputs = "<br>".join(f"`{path}`" for path in item.cache_inputs) or "—"
+        cache_env = "<br>".join(f"`{name}`" for name in item.cache_env) or "—"
+        cache_tools = "<br>".join(f"`{name}`" for name in item.cache_tools) or "—"
+        registered_rows.append((
+            f"`{item.id}`",
+            ", ".join(item.domains),
+            "Yes" if item.parallel_safe else "No",
+            item.cache,
+            cache_env,
+            cache_tools,
+            inputs,
+            cache_inputs,
+            command,
+        ))
+    return "\n\n".join((
+        markdown_table(("Changed paths", "Likely task", "Run first", "Broaden when"), rows),
+        "### Registered Check Tasks\n\n"
+        "This detailed routing table is generated directly from `scripts/check_tasks_data.py`.\n\n"
+        + markdown_table(
+            (
+                "Task",
+                "Domains",
+                "Parallel-safe",
+                "Cache",
+                "Cache environment",
+                "Cache tools",
+                "Declared inputs",
+                "Cache-only inputs",
+                "Focused command",
+            ),
+            registered_rows,
+        ),
+    ))
 
 
 def update_generated_files() -> None:

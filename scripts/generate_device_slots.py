@@ -34,6 +34,7 @@ def package_data(device: dict) -> dict:
 def package_substitution_lines(device: dict) -> list[str]:
     package = package_data(device)
     lines = [
+        '  cover_art_placeholder_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/common/assets/cover_art_placeholder.svg"',
         f'  device_slug: "{device["slug"]}"',
         f'  firmware_manifest_slug: "{device["slug"]}"',
     ]
@@ -64,7 +65,7 @@ def package_substitution_lines(device: dict) -> list[str]:
 
 
 def voice_substitution_lines(device: dict) -> list[str]:
-    if device["slug"] != "esp32-p4-86":
+    if not package_data(device).get("localVoiceServices"):
         return [
             '  voice_clock_bar_hide_code: ""',
             '  voice_clock_bar_apply_code: ""',
@@ -377,35 +378,10 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("            cfg.temperature_unit = id(temperature_unit_select).current_option();")
     lines.append("            cfg.timezone = id(timezone_select).current_option();")
     lines.append("            cfg.suspend_display_takeover = []() {")
-    lines.append("              id(display_takeover_suspended) = true;")
-    lines.append("              id(screensaver_idle_check).stop();")
-    lines.append("              id(screensaver_sleep_timer).stop();")
-    lines.append("              id(screensaver_sleep_sensor).stop();")
-    lines.append("              id(screensaver_sleep_display_off).stop();")
-    lines.append("              id(backlight_sleep_display_off).stop();")
-    lines.append("              id(backlight_fade_current_ui_to_black).stop();")
-    lines.append("              id(backlight_schedule_display_off).stop();")
-    lines.append("              id(show_cover_art_view).stop();")
-    lines.append("              id(cover_art_delay_timer).stop();")
-    lines.append("              id(cover_art_show_track_overlay).stop();")
-    lines.append("              id(show_clock_view).stop();")
-    lines.append("              id(show_dimmed_view).stop();")
-    lines.append("              id(clock_screensaver_refresh_brightness).stop();")
-    lines.append("              id(screensaver_dimmed_refresh_brightness).stop();")
-    lines.append("              id(display_asleep) = false;")
-    lines.append("              id(cover_art_screensaver_active) = false;")
-    lines.append("              id(screensaver_display_off_active) = false;")
-    lines.append("              id(screensaver_dimmed_active) = false;")
-    lines.append("              lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              id(backlight_apply_brightness).execute();")
+    lines.append("              id(display_takeover_suspend).execute();")
     lines.append("            };")
     lines.append("            cfg.resume_display_takeover = []() {")
-    lines.append("              id(display_takeover_suspended) = false;")
-    lines.append("              id(display_takeover_resume_restore).execute();")
+    lines.append("              id(display_takeover_resume).execute();")
     lines.append("            };")
     if image_card_count > 0:
         lines.append("            static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {")

@@ -5,7 +5,7 @@ fixtures are parsed or serialized.
 
 ## Edit First
 
-- `src/webserver/modules/config_codec.js`
+- `src/webserver/application/config_codec.ts`
 - `components/espcontrol/button_grid_config.h`
 - `compatibility/fixtures/product_compatibility.json`
 
@@ -37,14 +37,14 @@ Run this when the change also touches contract, model, web, or generated inputs:
 python3 scripts/build.py
 ```
 
-Do not edit generated model, contract, or web bundle outputs directly. The
+Do not edit generated contract or web bundle outputs directly. The TypeScript
+model is authored source. The
 source-to-generated mapping is in
 [Source of Truth Contract](../source-of-truth.md).
 
 Expected generated files depend on the source touched. Common examples include:
 
-- `src/webserver/modules/model_generated.js`
-- `src/webserver/modules/card_contract_generated.js`
+- `src/webserver/generated/card_contract.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
 - `docs/public/webserver/*/www.js`
 - `docs/generated/cards/capabilities.md`

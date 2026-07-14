@@ -1,0 +1,22 @@
+[
+  {
+    "name": "generic subpage keeps supported state display",
+    "input": ";Rooms;View Grid;Custom;sensor.room;C;subpage;1;large_numbers,unknown=1",
+    "expected": { "entity": "", "label": "Rooms", "icon": "View Grid", "icon_on": "Custom", "sensor": "sensor.room", "unit": "C", "type": "subpage", "precision": "1", "options": "large_numbers" }
+  },
+  {
+    "name": "climate preset fills display defaults and uses indicator mode",
+    "input": ";;Auto;Custom;sensor.temperature;C;subpage;2;subpage_kind=climate,large_numbers,unknown=1",
+    "expected": { "entity": "", "label": "Climate", "icon": "Thermostat", "icon_on": "Auto", "sensor": "indicator", "unit": "", "type": "subpage", "precision": "", "options": "subpage_kind=climate" }
+  },
+  {
+    "name": "lights preset preserves custom label and icon",
+    "input": ";My Lights;Star;Custom;sensor.power;W;subpage;2;subpage_kind=lights,large_numbers=off",
+    "expected": { "entity": "", "label": "My Lights", "icon": "Star", "icon_on": "Auto", "sensor": "indicator", "unit": "", "type": "subpage", "precision": "", "options": "subpage_kind=lights" }
+  },
+  {
+    "name": "invalid preset remains generic and drops the preset option",
+    "input": ";Rooms;View Grid;Custom;sensor.room;C;subpage;1;subpage_kind=invalid,large_numbers=off,unknown=1",
+    "expected": { "entity": "", "label": "Rooms", "icon": "View Grid", "icon_on": "Custom", "sensor": "sensor.room", "unit": "C", "type": "subpage", "precision": "1", "options": "large_numbers=off" }
+  }
+]

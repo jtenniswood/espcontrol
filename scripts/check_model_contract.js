@@ -4,24 +4,43 @@
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
-const vm = require("vm");
+const { loadTypeScriptModule } = require("./load_typescript_module");
 
 const ROOT = path.resolve(__dirname, "..");
-const MODEL_JS = path.join(ROOT, "src", "webserver", "modules", "model_generated.js");
+const MODEL_ENTRY = path.join(ROOT, "src", "webserver", "model", "index.ts");
+const PRIMITIVES_ENTRY = path.join(ROOT, "src", "webserver", "model", "config_primitives.ts");
+const CARD_CONTRACT_ENTRY = path.join(ROOT, "src", "webserver", "generated", "card_contract.ts");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
 
-function loadModel() {
-  const sandbox = {};
-  sandbox.window = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(MODEL_JS, "utf8"), sandbox, { filename: MODEL_JS });
-  assert(sandbox.EspControlModel, "EspControlModel was not exported");
-  return sandbox.EspControlModel;
-}
-
-const model = loadModel();
+const model = loadTypeScriptModule(MODEL_ENTRY);
+const primitives = loadTypeScriptModule(PRIMITIVES_ENTRY);
+const cardContract = loadTypeScriptModule(CARD_CONTRACT_ENTRY);
 const fixtures = JSON.parse(fs.readFileSync(COMPAT_FIXTURES, "utf8"));
 const current = fixtures.current;
+
+assert.deepStrictEqual(
+  cardContract.CARD_CONFIG_FIELDS,
+  ["entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"],
+  "typed generated card contract exports the saved fields"
+);
+assert.strictEqual(cardContract.cardContractCardLabel("media"), "Media", "typed card contract is directly testable");
+assert.strictEqual(cardContract.cardContractSubpageTypeFromCode("M"), "media", "typed card contract decodes subpage types");
+assert.deepStrictEqual(cardContract.CARD_CONFIG_FIELDS, current.generatedContract.fields, "generated card contract preserves saved field order");
+assert.strictEqual(primitives.setConfigOption("alpha,beta", "alpha", false), "beta", "option flags are directly testable");
+assert.strictEqual(
+  primitives.configOptionValue(primitives.setConfigOptionValue("alpha", "message", "Kitchen, Main"), "message"),
+  "Kitchen, Main",
+  "option values preserve encoded punctuation"
+);
+assert.strictEqual(model.backOrderToken("B", "Back"), "B", "default back label keeps compact B token");
+assert.strictEqual(model.backLabelFromOrder(["1", "B", "2"]), "Back", "missing back label defaults to Back");
+for (const token of ["Bw", "Bt", "Bx"]) {
+  assert.deepStrictEqual(
+    model.parseBackOrderToken(`${token}=Return%20Home`),
+    { token, label: "Return Home" },
+    `${token} back order token decodes its custom label`
+  );
+}
 
 function plain(value) {
   return JSON.parse(JSON.stringify(value));

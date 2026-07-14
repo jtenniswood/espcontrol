@@ -119,6 +119,12 @@ bool handle_firmware_version_request(AsyncWebServerRequest *request) {
   return true;
 }
 
+void apply_no_cache_headers(httpd_req_t *req) {
+  httpd_resp_set_hdr(req, "Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  httpd_resp_set_hdr(req, "Pragma", "no-cache");
+  httpd_resp_set_hdr(req, "Expires", "0");
+}
+
 // Non-blocking send function to prevent watchdog timeouts when TCP buffers are full
 /**
  * Sends data on a socket in non-blocking mode.
@@ -352,6 +358,7 @@ void AsyncWebServerRequest::redirect(const std::string &url) {
   httpd_resp_set_status(*this, "302 Found");
   httpd_resp_set_hdr(*this, "Location", url.c_str());
   httpd_resp_set_hdr(*this, "Connection", "close");
+  apply_no_cache_headers(*this);
   httpd_resp_send(*this, nullptr, 0);
 }
 
@@ -378,7 +385,7 @@ void AsyncWebServerRequest::init_response_(AsyncWebServerResponse *rsp, int code
     httpd_resp_set_type(*this, content_type);
   }
   httpd_resp_set_hdr(*this, "Accept-Ranges", "none");
-  httpd_resp_set_hdr(*this, "Cache-Control", "no-cache");
+  apply_no_cache_headers(*this);
 
   for (const auto &header : DefaultHeaders::Instance().headers_) {
     httpd_resp_set_hdr(*this, header.name, header.value);

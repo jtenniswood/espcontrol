@@ -45,7 +45,6 @@ substitutions:
   entity_screen_saver_cover_art_entity: "Screen Saver: Cover Art Entity"
   entity_screen_saver_cover_art_conditions: "Screen Saver: Cover Art Conditions"
   entity_screen_saver_cover_art_delay: "Screen Saver: Cover Art Delay"
-  entity_screen_saver_cover_art_touch_pause: "Screen Saver: Cover Art Touch Pause"
   entity_screen_saver_track_overlay_duration: "Screen Saver: Show Track Overlay"
   entity_screen_saver_hide_cover_art_external_input: "Screen Saver: Hide for external sources"
   entity_home_assistant_artwork_protocol: "Home Assistant Artwork Protocol"

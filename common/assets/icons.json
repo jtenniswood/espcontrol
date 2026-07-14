@@ -6,18 +6,6 @@
   },
   "structural": [
     {
-      "name": "Chevron Left",
-      "codepoint": "F0141",
-      "mdi": "chevron-left",
-      "comment": "Back button"
-    },
-    {
-      "name": "Chevron Right",
-      "codepoint": "F0142",
-      "mdi": "chevron-right",
-      "comment": "Subpage indicator"
-    },
-    {
       "name": "Close",
       "codepoint": "F0156",
       "mdi": "close",
@@ -115,6 +103,16 @@
     }
   ],
   "icons": [
+    {
+      "name": "Chevron Left",
+      "codepoint": "F0141",
+      "mdi": "chevron-left"
+    },
+    {
+      "name": "Chevron Right",
+      "codepoint": "F0142",
+      "mdi": "chevron-right"
+    },
     {
       "name": "Account",
       "codepoint": "F0004",

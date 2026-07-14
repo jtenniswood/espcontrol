@@ -1,0 +1,24 @@
+# =============================================================================
+# DEV CONFIG - Local development entry point (10" P4 panel)
+# =============================================================================
+# Flash with: esphome run dev.yaml
+# =============================================================================
+
+substitutions:
+  cover_art_placeholder_file: "../../common/assets/cover_art_placeholder.svg"
+  name: "espcontrol-10inch-p4-v2"
+  friendly_name: "EspControl 10inch P4 V2"
+  espcontrol_component_url: "../.."
+  mdi_font_file: "../../common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  espcontrol_component_ref: "HEAD"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+web_server:
+  js_url: ""
+  js_include: "../../docs/public/webserver/guition-esp32-p4-jc8012p4a1-v2/www.js"
+
+packages:
+  espcontrol: !include packages.yaml

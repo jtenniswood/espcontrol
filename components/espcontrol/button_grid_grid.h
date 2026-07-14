@@ -1756,6 +1756,16 @@ inline void grid_phase2(
         s, p,
         has_on ? on_val : DEFAULT_SLIDER_COLOR,
         off_val,
+        display_climate_option_title_font(display)
+          ? display_climate_option_title_font(display)
+          : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+        display_climate_option_value_font(display)
+          ? display_climate_option_value_font(display)
+          : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+        display_climate_option_title_font(display)
+          ? display_climate_option_title_font(display)
+          : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
+        display_climate_card_icon_font(display),
         display_icon_font(display),
         display_volume_width_percent(display));
       grid_track_runtime_allocation(s.btn, ctx);
@@ -2021,6 +2031,16 @@ inline void grid_phase2(
             sub_slot, sb_cfg,
             has_on ? on_val : DEFAULT_SLIDER_COLOR,
             off_val,
+            display_climate_option_title_font(display)
+              ? display_climate_option_title_font(display)
+              : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_climate_option_value_font(display)
+              ? display_climate_option_value_font(display)
+              : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_climate_option_title_font(display)
+              ? display_climate_option_title_font(display)
+              : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
+            display_climate_card_icon_font(display),
             display_icon_font(display),
             display_volume_width_percent(display));
           grid_delete_with_owner(sb_btn, ctx);

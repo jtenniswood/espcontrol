@@ -116,7 +116,7 @@ size_t DownloadBuffer::read(size_t len) {
     len = this->unread_;
   }
   this->unread_ -= len;
-  if (this->unread_ > 0) {
+  if (len > 0 && this->unread_ > 0) {
     memmove(this->data(), this->data(len), this->unread_);
   }
   return this->unread_;

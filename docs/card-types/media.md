@@ -6,7 +6,7 @@ description:
 
 # Media
 
-A Media card controls a Home Assistant `media_player` entity. It can work as a simple playback button, a volume control, a track position control, or a now-playing display.
+A Media card controls a Home Assistant `media_player` entity. It can work as a simple playback button, a volume control, a track position control, a now-playing display, or a cover-art tile.
 
 ![Wide media card showing now-playing title and artist](/images/card-media.png)
 
@@ -21,6 +21,7 @@ A Media card controls a Home Assistant `media_player` entity. It can work as a s
    - **Volume Button**
    - **Track Position**
    - **Now Playing**
+   - **Cover Art**
    - **Media Content**
 3. Enter the media player entity, for example `media_player.living_room`.
 4. Set a label or icon if the selected type shows those fields.
@@ -60,6 +61,17 @@ You can choose optional controls:
 - **Play/Pause** makes the card tappable so it toggles playback.
 
 Now Playing works best on wider or larger cards because it has more room for track text.
+
+## Cover Art
+
+Cover Art shows the current artwork reported by the selected media player. Choose a square card size: **1x1**, **2x2**, or **3x3**. EspControl crops the image to fill the tile without stretching it.
+
+Choose what happens when the artwork is tapped:
+
+- **Play/Pause** toggles playback.
+- **All Controls** opens the full media controls popup.
+
+Cover Art uses one of the display's shared image download slots. If all slots are already used by image or cover-art cards, remove one before adding another. Artwork availability and update speed depend on the media player integration and the `entity_picture` information it supplies to Home Assistant.
 
 ## All Controls
 

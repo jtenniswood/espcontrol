@@ -26,6 +26,12 @@ def docs_stem(capability: dict) -> str:
     return capability["docsPath"].rstrip("/").split("/")[-1]
 
 
+def remove_suffix(value: str, suffix: str) -> str:
+    if value.endswith(suffix):
+        return value[:-len(suffix)]
+    return value
+
+
 def assert_same_slugs(expected: list[str], actual: list[str], label: str) -> None:
     assert actual == expected, f"{label} slugs differ: {actual} != {expected}"
 
@@ -83,8 +89,8 @@ def test_public_firmware_manifest(profile_slugs: list[str]) -> None:
 
 def test_generated_device_docs(devices: list[dict]) -> None:
     expected_stems = [docs_stem(capability) for capability in devices]
-    actual_grid_stems = sorted(path.name.removesuffix("-grid.md") for path in DEVICE_DOCS_DIR.glob("*-grid.md"))
-    actual_install_stems = sorted(path.name.removesuffix("-install.md") for path in DEVICE_DOCS_DIR.glob("*-install.md"))
+    actual_grid_stems = sorted(remove_suffix(path.name, "-grid.md") for path in DEVICE_DOCS_DIR.glob("*-grid.md"))
+    actual_install_stems = sorted(remove_suffix(path.name, "-install.md") for path in DEVICE_DOCS_DIR.glob("*-install.md"))
     assert_same_names(expected_stems, actual_grid_stems, "generated screen grid doc")
     assert_same_names(expected_stems, actual_install_stems, "generated screen install doc")
     for capability in devices:

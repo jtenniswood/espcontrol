@@ -265,7 +265,6 @@ export interface BackupPanelSettingsState {
   coverArtMediaPlayerEntity: string;
   coverArtAttributeConditions: string;
   coverArtDelay: unknown;
-  coverArtTouchPause: unknown;
   coverArtTrackOverlayDuration: unknown;
   coverArtHideExternalInput: boolean;
   coverArtHomeAssistantProtocol: string;
@@ -373,7 +372,6 @@ export function normalizeBackupPanelSettings(
     coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
     coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
     coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
-    coverArtTouchPause: objectValue(settings, "cover_art_touch_pause") != null ? settings.cover_art_touch_pause : 120,
     coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input

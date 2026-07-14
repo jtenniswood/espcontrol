@@ -70,7 +70,8 @@ The panel includes hundreds of icons from the Material Design Icons set. If the 
 
 The home screen has a grid of card slots sized to fill the screen:
 
-- **10.1-inch JC8012P4A1** — 20 cards (4 rows, 5 columns)
+- **10.1-inch JC8012P4A1 original panel** — 20 cards (4 rows, 5 columns), for rear case marking `2620` or lower
+- **10.1-inch JC8012P4A1 new panel** — 20 cards (4 rows, 5 columns), for rear case marking `2624` or higher
 - **7-inch JC1060P470** — 15 cards (3 rows, 5 columns)
 - **4.3-inch JC4880P443** — 6 cards (3 rows, 2 columns)
 - **4-inch ESP32-P4 86 Panel** — 9 cards (3 rows, 3 columns)
@@ -90,7 +91,8 @@ Yes. In the [Setup](/features/setup) **Settings** tab, under **Backup**, you can
 
 EspControl currently supports these touchscreen panels:
 
-- **JC8012P4A1** — 10.1-inch, 1280x800 landscape orientation (ESP32-P4)
+- **JC8012P4A1 original panel** — 10.1-inch, 1280x800 landscape orientation (ESP32-P4), for rear case marking `2620` or lower
+- **JC8012P4A1 new panel** — 10.1-inch, 1280x800 landscape orientation (ESP32-P4), for rear case marking `2624` or higher
 - **JC1060P470** — 7-inch, 1024x600, landscape orientation (ESP32-P4)
 - **JC4880P443** — 4.3-inch, 480x800, portrait orientation (ESP32-P4)
 - **ESP32-P4 86 Panel** — 4-inch, 720x720, square (ESP32-P4)

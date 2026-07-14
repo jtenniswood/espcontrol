@@ -17,6 +17,8 @@ struct IconEntry {
 
 static const IconEntry ICON_ENTRIES[] = {
     // --- GENERATED:ICONS START ---
+    {"Chevron Left",               "\U000F0141"},
+    {"Chevron Right",              "\U000F0142"},
     {"Account",                    "\U000F0004"},
     {"Air Conditioner",            "\U000F001B"},
     {"Air Filter",                 "\U000F0D43"},

@@ -52,7 +52,7 @@ def test_future_release_uses_latest_tag() -> None:
     original_root = release_changelog.ROOT
     try:
         release_changelog.ROOT = repo
-        write(repo, "src/webserver/types/light_temperature.js", "export const type = 'light';\n")
+        write(repo, "src/webserver/cards/light_temperature.ts", "export const type = 'light';\n")
         commit(repo, "Add light brightness card type (#12)")
         full_hash = git(repo, "rev-parse", "HEAD")
         text = release_changelog.build_changelog(

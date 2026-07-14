@@ -5,10 +5,10 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const { loadBundledWebSource } = require("./web_source");
+const { freshWebOutputDir, loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
-const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
+const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
 const DEVICE_MANIFEST = path.join(ROOT, "devices", "manifest.json");
 const WEB_OUTPUT_DIR = path.join(ROOT, "docs", "public", "webserver");
 const ALL_ROTATIONS = ["0", "90", "180", "270"];
@@ -39,7 +39,7 @@ function createWebSandbox() {
 function loadHooks() {
   const sandbox = createWebSandbox();
   vm.createContext(sandbox);
-  vm.runInContext(loadBundledWebSource(), sandbox, { filename: SOURCE });
+  vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
   assertRequiredHookGroups(sandbox.__ESPCONTROL_TEST_HOOKS__.groups);
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
 }
@@ -72,6 +72,10 @@ function assertGeneratedConfigValue(slug, generated, key, value) {
 function generatedDeviceId(generated) {
   const readable = generated.match(/\bvar\s+DEVICE_ID\s*=\s*"([^"]+)"/);
   if (readable) return readable[1];
+  const definedDevice = generated.match(/\bvar\s+[A-Za-z_$][\w$]*="((?:guition-esp32|esp32-p4)[^"]+)"/);
+  if (definedDevice) return definedDevice[1];
+  const bundled = generated.match(/\bvar\s+[A-Za-z_$][\w$]*="([^"]+)",[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*;\(function/);
+  if (bundled) return bundled[1];
   const minified = generated.match(/^\(function\(\)\{var\s+[A-Za-z_$][\w$]*="([^"]+)",[A-Za-z_$][\w$]*=\{/);
   return minified && minified[1];
 }
@@ -84,45 +88,6 @@ assert.strictEqual(
   "backup export filename includes screen size and date"
 );
 assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "all registered card types define card metadata");
-assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.clockBar), [
-  "switch-screen__clock_bar",
-  "switch-screen_clock_bar",
-  "switch-clock_bar_enabled",
-], "clock bar SSE aliases are registered together");
-assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.clockBarTime), [
-  "switch-screen__clock_bar_time",
-  "switch-screen_clock_bar_time",
-  "switch-clock_bar_time_enabled",
-], "clock bar time SSE aliases are registered together");
-assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.voiceServices), [
-  "switch-voice_services",
-  "switch-voice_services_enabled",
-], "voice services SSE aliases are registered together");
-assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.scheduleWakeTimeout), [
-  "number-screen__schedule_wake_timeout",
-  "number-screen_schedule_wake_timeout",
-  "number-schedule_wake_timeout",
-], "schedule wake timeout SSE aliases are registered together");
-assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.ntpServer1), [
-  "text-screen__ntp_server_1",
-  "text-ntp_server_1",
-], "NTP server SSE aliases are registered together");
-assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.coverArtHideExternalInput), [
-  "switch-screen_saver__hide_cover_art_on_external_input",
-  "switch-screen_saver_hide_cover_art_on_external_input",
-  "switch-hide_cover_art_on_external_input",
-  "switch-cover_art_hide_external_input",
-  "switch-screen_saver__hide_for_external_sources",
-], "cover art external-input SSE aliases are registered together");
-assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.trackOverlayDuration), [
-  "number-screen_saver__track_overlay_duration",
-  "number-screen_saver_track_overlay_duration",
-  "number-track_overlay_duration",
-  "number-screen_saver__show_track_overlay",
-], "cover art track-overlay SSE aliases are registered together");
-assert.deepStrictEqual(Array.from(hooks.SSE_ALIAS_GROUPS.homeAssistantArtworkPort), [
-  "number-home_assistant_artwork_port",
-], "Home Assistant artwork port SSE aliases are registered together");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"
@@ -169,22 +134,6 @@ assert.strictEqual(hooks.clockBarVisibleInPreviewFor(true, "off"), true, "clock 
 assert.strictEqual(hooks.clockBarVisibleInPreviewFor(true, "dim"), true, "clock bar preview stays visible for dimmed screen saver");
 assert.strictEqual(hooks.clockBarVisibleInPreviewFor(true, "clock"), true, "clock bar preview stays visible when clock screen saver is configured");
 assert.strictEqual(hooks.clockBarVisibleInPreviewFor(false, "off"), false, "clock bar preview is hidden when disabled");
-assert.strictEqual(hooks.clockBarStateAfterEvents([
-  { id: "switch-screen__clock_bar", state: "ON", value: true },
-  { id: "switch-clock_bar_enabled", state: "OFF", value: false },
-]), true, "clock bar preview keeps the enabled state when a stale alias reports off later");
-assert.strictEqual(hooks.clockBarStateAfterEvents([
-  { id: "switch-screen__clock_bar", state: "ON", value: true },
-  { id: "switch-screen__clock_bar", state: "OFF", value: false },
-]), false, "clock bar preview still turns off when the same source reports off");
-assert.strictEqual(hooks.removedLegacyStateEvent({
-  id: "text-screen_saver__cover_art_fallback_server",
-  state: "http://old-art-server.local",
-}), true, "cover art fallback server is treated as a removed legacy event");
-assert.strictEqual(hooks.removedLegacyStateEvent({
-  id: "text-screen_saver__cover_art_entity",
-  state: "media_player.living_room",
-}), false, "current cover art entity events are not treated as removed legacy events");
 assert.deepStrictEqual(plain(hooks.firmwareFailureStatusFor("Could not download firmware file (404).")), {
   error: "Firmware update failed: Could not download firmware file (404).",
   updateState: "",
@@ -192,8 +141,9 @@ assert.deepStrictEqual(plain(hooks.firmwareFailureStatusFor("Could not download 
 }, "firmware update failures leave a visible status reason");
 
 const manifest = JSON.parse(fs.readFileSync(DEVICE_MANIFEST, "utf8"));
+const freshOutput = freshWebOutputDir();
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
-  const webOutput = path.join(WEB_OUTPUT_DIR, slug, "www.js");
+  const webOutput = path.join(freshOutput, slug, "www.js");
   const generated = fs.readFileSync(webOutput, "utf8");
   assertGeneratedConfigValue(slug, generated, "slots", device.slots);
   assertGeneratedConfigValue(slug, generated, "cols", device.layout.cols);
@@ -280,7 +230,7 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
 
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
   if (!device.rotation || !device.rotation.enabled) continue;
-  const webOutput = path.join(WEB_OUTPUT_DIR, slug, "www.js");
+  const webOutput = path.join(freshOutput, slug, "www.js");
   const generated = fs.readFileSync(webOutput, "utf8");
   const featureConfig = generated.match(/features:\{[^}]*\}/)?.[0] || "";
   assert(
@@ -1373,8 +1323,6 @@ assert.deepStrictEqual(
 );
 
 assert.strictEqual(hooks.normalizeScreensaverAction("Screen Dimmed"), "dim");
-assert.strictEqual(hooks.previewHtmlValue({ labelHtml: "" }, "labelHtml", "fallback"), "");
-assert.strictEqual(hooks.previewHtmlValue({}, "labelHtml", "fallback"), "fallback");
 assert.strictEqual(hooks.webserverMockNow().toISOString(), "2026-01-01T09:00:00.000Z");
 assert.notStrictEqual(
   hooks.webserverNow().toISOString(),

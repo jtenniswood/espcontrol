@@ -248,11 +248,17 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         if (
             "cfg.suspend_display_takeover" not in text
             or "cfg.resume_display_takeover" not in text
-            or "id(display_takeover_suspended) = true;" not in text
-            or "id(display_takeover_suspended) = false;" not in text
-            or "id(display_takeover_resume_restore).execute();" not in text
+            or "id(display_takeover_suspend).execute();" not in text
+            or "id(display_takeover_resume).execute();" not in text
         ):
             errors.append("scripts/generate_device_slots.py: generate explicit display-takeover guard hooks")
+        backlight_text = backlight_path.read_text(encoding="utf-8") if backlight_path.exists() else ""
+        if (
+            "id: display_takeover_suspend" not in backlight_text
+            or "id: display_takeover_resume" not in backlight_text
+            or "id: cover_art_screensaver_active" not in backlight_text
+        ):
+            errors.append("common/addon/backlight.yaml: centralize display-takeover lifecycle cleanup")
 
     if not schedule_path.exists():
         errors.append("common/addon/backlight_schedule.yaml: close modals before scheduled takeover")
@@ -388,6 +394,12 @@ def firmware_light_control_brightness_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_sliders.h: refresh brightness slider from light on/off and brightness updates")
     if "light_control_set_modal_value(ui.active, light_control_display_pct(ui.active));" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: update brightness slider immediately when the light power button is used")
+    if (
+        "bool turn_on = !ui.active->on;" not in text
+        or "lv_obj_add_event_cb(ui.power_group" not in text
+        or "lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);" not in text
+    ):
+        errors.append("components/espcontrol/button_grid_sliders.h: toggle light power from the whole modal control")
 
     return errors
 
@@ -980,6 +992,12 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "  - id: display_takeover_suspended\n"
             "  - id: screensaver_sensor_sleep_pending\n"
             "script:\n"
+            "  - id: display_takeover_suspend\n"
+            "    then:\n"
+            "      - globals.set: { id: cover_art_screensaver_active, value: 'false' }\n"
+            "  - id: display_takeover_resume\n"
+            "    then:\n"
+            "      - script.execute: display_takeover_resume_restore\n"
             "  - id: display_takeover_resume_restore\n"
             "    then:\n"
             "      - if:\n"
@@ -1016,12 +1034,10 @@ def valid_sleep_takeover_files() -> dict[str, str]:
         ),
         "scripts/generate_device_slots.py": (
             "cfg.suspend_display_takeover = []() {\n"
-            "  id(display_takeover_suspended) = true;\n"
-            "  id(screensaver_idle_check).stop();\n"
+            "  id(display_takeover_suspend).execute();\n"
             "};\n"
             "cfg.resume_display_takeover = []() {\n"
-            "  id(display_takeover_suspended) = false;\n"
-            "  id(display_takeover_resume_restore).execute();\n"
+            "  id(display_takeover_resume).execute();\n"
             "};\n"
         ),
     }
