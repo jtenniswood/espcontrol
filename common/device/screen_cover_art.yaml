@@ -17,12 +17,6 @@ globals:
   - id: cover_art_pending_local_url
     type: std::string
     initial_value: '""'
-  - id: cover_art_cached_remote_url
-    type: std::string
-    initial_value: '""'
-  - id: cover_art_cached_local_url
-    type: std::string
-    initial_value: '""'
   - id: cover_art_request_id
     type: int
     initial_value: '0'
@@ -709,8 +703,7 @@ script:
                       then:
                         - lambda: |-
                             ESP_LOGW("cover_art", "Home Assistant artwork proxy returned 404; requesting fresh artwork attributes");
-                            id(cover_art_cached_remote_url).clear();
-                            id(cover_art_cached_local_url).clear();
+                            id(cover_art_runtime).sources.clear();
                             id(cover_art_runtime).refresh_needed = true;
                         - script.execute: cover_art_resubscribe
                   - if:
@@ -742,8 +735,6 @@ script:
           id(cover_art_runtime).clear_image();
           id(cover_art_pending_remote_url).clear();
           id(cover_art_pending_local_url).clear();
-          id(cover_art_cached_remote_url).clear();
-          id(cover_art_cached_local_url).clear();
           id(cover_art_artwork_pending_count) = 0;
           id(cover_art_request_id)++;
           id(cover_art_title).clear();
@@ -907,21 +898,14 @@ script:
     mode: restart
     then:
       - lambda: |-
-          std::string chosen = id(cover_art_cached_local_url);
-          std::string alternate;
-          if (chosen.empty()) {
-            chosen = id(cover_art_cached_remote_url);
-          } else if (!id(cover_art_cached_remote_url).empty() &&
-                     id(cover_art_cached_remote_url) != chosen) {
-            alternate = id(cover_art_cached_remote_url);
-          }
-          if (id(cover_art_runtime).refresh_needed &&
-              !id(cover_art_cached_remote_url).empty() &&
-              id(cover_art_cached_remote_url) != id(cover_art_runtime).source_url &&
-              chosen == id(cover_art_runtime).source_url) {
+          espcontrol::artwork::SourceSelection selection =
+              id(cover_art_runtime).sources.select(
+                  id(cover_art_runtime).source_url,
+                  id(cover_art_runtime).refresh_needed);
+          std::string chosen = selection.primary;
+          std::string alternate = selection.fallback;
+          if (selection.preferred_refreshed_remote) {
             ESP_LOGD("cover_art", "Preferring refreshed artwork URL over stale local artwork cache");
-            alternate = chosen;
-            chosen = id(cover_art_cached_remote_url);
           }
 
           std::string fallback;
@@ -1479,8 +1463,7 @@ script:
           id(cover_art_pending_local_url).clear();
           id(cover_art_runtime).fallback_url.clear();
 
-          if (!id(cover_art_cached_local_url).empty() ||
-              !id(cover_art_cached_remote_url).empty()) {
+          if (!id(cover_art_runtime).sources.empty()) {
             id(cover_art_use_cached_artwork).execute();
             return;
           }
@@ -1913,8 +1896,7 @@ script:
                 }
               }
 
-              std::string &cached = local ? id(cover_art_cached_local_url) : id(cover_art_cached_remote_url);
-              if (cached == url) {
+              if (id(cover_art_runtime).sources.get(local) == url) {
                 const bool process_cached =
                     !url.empty() &&
                     id(cover_art_screensaver_active) &&
@@ -1931,10 +1913,7 @@ script:
                 }
                 return;
               }
-              cached = url;
-              if (!local) {
-                id(cover_art_cached_local_url).clear();
-              }
+              id(cover_art_runtime).sources.update(local, url);
               if (!url.empty() && url != id(cover_art_runtime).source_url) {
                 id(cover_art_runtime).refresh_needed = true;
                 id(cover_art_runtime).retry_url.clear();

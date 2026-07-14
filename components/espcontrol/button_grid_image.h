@@ -10,6 +10,7 @@
 #endif
 
 #include "esphome/core/version.h"
+#include "artwork_controller.h"
 #include <cstring>
 
 constexpr uint32_t IMAGE_CARD_STARTUP_RETRY_MS = 45000;
@@ -70,8 +71,7 @@ struct ImageCardCtx {
   bool media_artwork = false;
   lv_obj_t *media_overlay = nullptr;
   std::string pending_fallback_picture;
-  std::string media_cached_remote_url;
-  std::string media_cached_local_url;
+  espcontrol::artwork::SourceCandidates media_artwork_sources;
   lv_timer_t *media_artwork_timer = nullptr;
   lv_timer_t *modal_cleanup_timer = nullptr;
   uint8_t startup_download_errors = 0;
@@ -429,8 +429,7 @@ inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
   ctx->source_url.clear();
   ctx->url.clear();
   ctx->pending_fallback_picture.clear();
-  ctx->media_cached_remote_url.clear();
-  ctx->media_cached_local_url.clear();
+  ctx->media_artwork_sources.clear();
   if (ctx->media_artwork_timer) {
     lv_timer_del(ctx->media_artwork_timer);
     ctx->media_artwork_timer = nullptr;
@@ -695,8 +694,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].media_artwork = false;
     contexts[i].media_overlay = nullptr;
     contexts[i].pending_fallback_picture.clear();
-    contexts[i].media_cached_remote_url.clear();
-    contexts[i].media_cached_local_url.clear();
+    contexts[i].media_artwork_sources.clear();
     if (contexts[i].media_artwork_timer) {
       lv_timer_del(contexts[i].media_artwork_timer);
       contexts[i].media_artwork_timer = nullptr;
@@ -1851,8 +1849,9 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
 
 inline void image_card_process_media_artwork(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
-  std::string chosen = ctx->media_cached_local_url;
-  if (chosen.empty()) chosen = ctx->media_cached_remote_url;
+  const espcontrol::artwork::SourceSelection selection =
+      ctx->media_artwork_sources.select(ctx->source_url, false);
+  const std::string &chosen = selection.primary;
   if (chosen.empty()) {
     image_card_clear_media_artwork(ctx);
     return;
@@ -1880,12 +1879,11 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
   std::string raw = string_ref_limited(picture, 4096);
   std::string url = image_card_join_url(image_card_base_url(ctx), raw);
+  ctx->media_artwork_sources.update(local, url);
   if (local) {
     if (!url.empty() && url != ctx->source_url) ctx->startup_download_errors = 0;
-    ctx->media_cached_local_url = url;
     if (!url.empty()) ctx->pending_fallback_picture.clear();
   } else {
-    ctx->media_cached_remote_url = url;
     ctx->pending_fallback_picture = raw;
     if (!url.empty() && url != ctx->source_url) {
       ctx->startup_download_errors = 0;
