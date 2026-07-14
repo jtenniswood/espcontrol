@@ -1,0 +1,1322 @@
+[
+  {
+    "name": "switch: toggle",
+    "input": "~switch.example,,Auto,Auto,,,,,",
+    "expected": {
+      "entity": "switch.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "action: service",
+    "input": "~scene.example,,Flash,Auto,scene.turn_on,,action,,",
+    "expected": {
+      "entity": "scene.example",
+      "label": "",
+      "icon": "Flash",
+      "icon_on": "Auto",
+      "sensor": "scene.turn_on",
+      "unit": "",
+      "type": "action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "action: local",
+    "input": "~zoom_mute,,Flash,Auto,local,,action,,",
+    "expected": {
+      "entity": "zoom_mute",
+      "label": "",
+      "icon": "Gesture Tap",
+      "icon_on": "Auto",
+      "sensor": "local",
+      "unit": "",
+      "type": "action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "vacuum: status",
+    "input": "~vacuum.example,,Robot%20Vacuum,Auto,status,,vacuum,,",
+    "expected": {
+      "entity": "vacuum.example",
+      "label": "",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "status",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "vacuum: start_stop",
+    "input": "~vacuum.example,,Robot%20Vacuum,Auto,start_stop,,vacuum,,",
+    "expected": {
+      "entity": "vacuum.example",
+      "label": "",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "start_stop",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "vacuum: dock",
+    "input": "~vacuum.example,,Robot%20Vacuum,Auto,dock,,vacuum,,",
+    "expected": {
+      "entity": "vacuum.example",
+      "label": "",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "dock",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "vacuum: pause_resume",
+    "input": "~vacuum.example,,Robot%20Vacuum,Auto,pause_resume,,vacuum,,",
+    "expected": {
+      "entity": "vacuum.example",
+      "label": "",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "pause_resume",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "vacuum: clean_spot",
+    "input": "~vacuum.example,,Robot%20Vacuum,Auto,clean_spot,,vacuum,,",
+    "expected": {
+      "entity": "vacuum.example",
+      "label": "",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "clean_spot",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "vacuum: locate",
+    "input": "~vacuum.example,,Robot%20Vacuum,Auto,locate,,vacuum,,",
+    "expected": {
+      "entity": "vacuum.example",
+      "label": "",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "locate",
+      "unit": "",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "vacuum: clean_area",
+    "input": "~vacuum.example,,Robot%20Vacuum,Auto,clean_area,kitchen,vacuum,,",
+    "expected": {
+      "entity": "vacuum.example",
+      "label": "",
+      "icon": "Robot Vacuum",
+      "icon_on": "Auto",
+      "sensor": "clean_area",
+      "unit": "kitchen",
+      "type": "vacuum",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lawn_mower: status",
+    "input": "~lawn_mower.example,,Robot%20Mower,Auto,status,,lawn_mower,,",
+    "expected": {
+      "entity": "lawn_mower.example",
+      "label": "",
+      "icon": "Robot Mower",
+      "icon_on": "Auto",
+      "sensor": "status",
+      "unit": "",
+      "type": "lawn_mower",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lawn_mower: start_mowing",
+    "input": "~lawn_mower.example,,Robot%20Mower,Auto,start_mowing,,lawn_mower,,",
+    "expected": {
+      "entity": "lawn_mower.example",
+      "label": "",
+      "icon": "Robot Mower",
+      "icon_on": "Auto",
+      "sensor": "start_mowing",
+      "unit": "",
+      "type": "lawn_mower",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lawn_mower: dock",
+    "input": "~lawn_mower.example,,Robot%20Mower,Auto,dock,,lawn_mower,,",
+    "expected": {
+      "entity": "lawn_mower.example",
+      "label": "",
+      "icon": "Robot Mower",
+      "icon_on": "Auto",
+      "sensor": "dock",
+      "unit": "",
+      "type": "lawn_mower",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lawn_mower: pause_resume",
+    "input": "~lawn_mower.example,,Robot%20Mower,Auto,pause_resume,,lawn_mower,,",
+    "expected": {
+      "entity": "lawn_mower.example",
+      "label": "",
+      "icon": "Robot Mower",
+      "icon_on": "Auto",
+      "sensor": "pause_resume",
+      "unit": "",
+      "type": "lawn_mower",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "alarm: control_panel",
+    "input": "~alarm_control_panel.example,,Security,Auto,,,alarm,,",
+    "expected": {
+      "entity": "alarm_control_panel.example",
+      "label": "",
+      "icon": "Security",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "alarm",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "alarm_action: away",
+    "input": "~alarm_control_panel.example,Arm%20Away,Shield%20Lock,Auto,away,,alarm_action,,",
+    "expected": {
+      "entity": "alarm_control_panel.example",
+      "label": "Arm Away",
+      "icon": "Shield Lock",
+      "icon_on": "Auto",
+      "sensor": "away",
+      "unit": "",
+      "type": "alarm_action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "alarm_action: home",
+    "input": "~alarm_control_panel.example,Arm%20Away,Shield%20Lock,Auto,home,,alarm_action,,",
+    "expected": {
+      "entity": "alarm_control_panel.example",
+      "label": "Arm Away",
+      "icon": "Shield Lock",
+      "icon_on": "Auto",
+      "sensor": "home",
+      "unit": "",
+      "type": "alarm_action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "alarm_action: night",
+    "input": "~alarm_control_panel.example,Arm%20Away,Shield%20Lock,Auto,night,,alarm_action,,",
+    "expected": {
+      "entity": "alarm_control_panel.example",
+      "label": "Arm Away",
+      "icon": "Shield Lock",
+      "icon_on": "Auto",
+      "sensor": "night",
+      "unit": "",
+      "type": "alarm_action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "alarm_action: vacation",
+    "input": "~alarm_control_panel.example,Arm%20Away,Shield%20Lock,Auto,vacation,,alarm_action,,",
+    "expected": {
+      "entity": "alarm_control_panel.example",
+      "label": "Arm Away",
+      "icon": "Shield Lock",
+      "icon_on": "Auto",
+      "sensor": "vacation",
+      "unit": "",
+      "type": "alarm_action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "alarm_action: disarm",
+    "input": "~alarm_control_panel.example,Arm%20Away,Shield%20Lock,Auto,disarm,,alarm_action,,",
+    "expected": {
+      "entity": "alarm_control_panel.example",
+      "label": "Arm Away",
+      "icon": "Shield Lock",
+      "icon_on": "Auto",
+      "sensor": "disarm",
+      "unit": "",
+      "type": "alarm_action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "calendar: date",
+    "input": "~sensor.date,,Auto,Auto,,,calendar,,",
+    "expected": {
+      "entity": "sensor.date",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "calendar",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "clock: local_time",
+    "input": "~,,Auto,Auto,,,clock,,",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "clock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "climate: status",
+    "input": "~climate.example,Climate,Thermostat,Auto,,,climate,,",
+    "expected": {
+      "entity": "climate.example",
+      "label": "Climate",
+      "icon": "Thermostat",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "climate_control",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "climate_control: all_controls",
+    "input": "~climate.example,Climate,Thermostat,Auto,,,climate_control,,",
+    "expected": {
+      "entity": "climate.example",
+      "label": "Climate",
+      "icon": "Thermostat",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "climate_control",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "cover: modal",
+    "input": "~cover.example,,Blinds,Blinds%20Open,modal,,cover,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "modal",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "cover: position",
+    "input": "~cover.example,,Blinds,Blinds%20Open,,,cover,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "cover: tilt",
+    "input": "~cover.example,,Blinds,Blinds%20Open,tilt,,cover,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "tilt",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "cover: toggle",
+    "input": "~cover.example,,Blinds,Blinds%20Open,toggle,,cover,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "toggle",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "cover: open",
+    "input": "~cover.example,,Blinds,Blinds%20Open,open,,cover,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "open",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "cover: close",
+    "input": "~cover.example,,Blinds,Blinds%20Open,close,,cover,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "close",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "cover: stop",
+    "input": "~cover.example,,Blinds,Blinds%20Open,stop,,cover,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "stop",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "cover: set_position",
+    "input": "~cover.example,,Blinds,Blinds%20Open,set_position,,cover,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Blinds",
+      "icon_on": "Blinds Open",
+      "sensor": "set_position",
+      "unit": "",
+      "type": "cover",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "door_window: door",
+    "input": "~,,Door,Door%20Open,binary_sensor.example,,door_window,door,active_color",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Door",
+      "icon_on": "Door Open",
+      "sensor": "binary_sensor.example",
+      "unit": "",
+      "type": "door_window",
+      "precision": "door",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "door_window: window",
+    "input": "~,,Door,Door%20Open,binary_sensor.example,,door_window,window,active_color",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Door",
+      "icon_on": "Door Open",
+      "sensor": "binary_sensor.example",
+      "unit": "",
+      "type": "door_window",
+      "precision": "window",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "presence: presence",
+    "input": "~,,Motion%20Sensor%20Off,Motion%20Sensor,binary_sensor.example,,presence,,active_color",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Motion Sensor Off",
+      "icon_on": "Motion Sensor",
+      "sensor": "binary_sensor.example",
+      "unit": "",
+      "type": "presence",
+      "precision": "",
+      "options": "active_color"
+    }
+  },
+  {
+    "name": "fan_direction: direction",
+    "input": "~fan.example,,Swap%20Horizontal,Auto,,,fan_direction,,",
+    "expected": {
+      "entity": "fan.example",
+      "label": "",
+      "icon": "Swap Horizontal",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_direction",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "fan_oscillate: oscillate",
+    "input": "~fan.example,,Fan,Auto,,,fan_oscillate,,",
+    "expected": {
+      "entity": "fan.example",
+      "label": "",
+      "icon": "Fan",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_oscillate",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "fan_preset: preset",
+    "input": "~fan.example,,Fan%20Auto,Auto,,,fan_preset,,",
+    "expected": {
+      "entity": "fan.example",
+      "label": "",
+      "icon": "Fan Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_preset",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "fan_speed: speed",
+    "input": "~fan.example,,Fan%20Speed%202,Auto,,,fan_speed,,",
+    "expected": {
+      "entity": "fan.example",
+      "label": "",
+      "icon": "Fan Speed 2",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_speed",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "fan_control: all_controls",
+    "input": "~fan.example,,Fan,Auto,,,fan_control,,",
+    "expected": {
+      "entity": "fan.example",
+      "label": "",
+      "icon": "Fan",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_control",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "fan_switch: power",
+    "input": "~fan.example,,Fan%20Off,Fan,,,fan_switch,,",
+    "expected": {
+      "entity": "fan.example",
+      "label": "",
+      "icon": "Fan Off",
+      "icon_on": "Fan",
+      "sensor": "",
+      "unit": "",
+      "type": "fan_switch",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "garage: toggle",
+    "input": "~cover.example,,Garage,Garage%20Open,,,garage,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Garage",
+      "icon_on": "Garage Open",
+      "sensor": "",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "garage: open",
+    "input": "~cover.example,,Garage,Garage%20Open,open,,garage,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Garage",
+      "icon_on": "Auto",
+      "sensor": "open",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "garage: close",
+    "input": "~cover.example,,Garage,Garage%20Open,close,,garage,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Garage",
+      "icon_on": "Auto",
+      "sensor": "close",
+      "unit": "",
+      "type": "garage",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "gate: toggle",
+    "input": "~cover.example,,Gate,Gate%20Open,,,gate,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Gate",
+      "icon_on": "Gate Open",
+      "sensor": "",
+      "unit": "",
+      "type": "gate",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "gate: open",
+    "input": "~cover.example,,Gate,Gate%20Open,open,,gate,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Gate",
+      "icon_on": "Auto",
+      "sensor": "open",
+      "unit": "",
+      "type": "gate",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "gate: close",
+    "input": "~cover.example,,Gate,Gate%20Open,close,,gate,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Gate",
+      "icon_on": "Auto",
+      "sensor": "close",
+      "unit": "",
+      "type": "gate",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "gate: stop",
+    "input": "~cover.example,,Gate,Gate%20Open,stop,,gate,,",
+    "expected": {
+      "entity": "cover.example",
+      "label": "",
+      "icon": "Gate",
+      "icon_on": "Auto",
+      "sensor": "stop",
+      "unit": "",
+      "type": "gate",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "internal: switch",
+    "input": "~relay_1,,Lightbulb%20Outline,Lightbulb,switch,,internal,,",
+    "expected": {
+      "entity": "relay_1",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "switch",
+      "unit": "",
+      "type": "internal",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "internal: push",
+    "input": "~relay_1,,Lightbulb%20Outline,Lightbulb,push,,internal,,",
+    "expected": {
+      "entity": "relay_1",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "push",
+      "unit": "",
+      "type": "internal",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "light_brightness: brightness",
+    "input": "~light.example,,Lightbulb%20Outline,Lightbulb,,,light_brightness,,",
+    "expected": {
+      "entity": "light.example",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "light_brightness",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "light_switch: power",
+    "input": "~light.example,,Lightbulb%20Outline,Lightbulb,,,light_switch,,",
+    "expected": {
+      "entity": "light.example",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "light_switch",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "light_temperature: temperature",
+    "input": "~light.example,,Lightbulb,Auto,,2000-6500,light_temperature,,",
+    "expected": {
+      "entity": "light.example",
+      "label": "",
+      "icon": "Lightbulb",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "2000-6500",
+      "type": "light_temperature",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "light_control: all_controls",
+    "input": "~light.example,,Lightbulb%20Outline,Lightbulb,,,light_control,,",
+    "expected": {
+      "entity": "light.example",
+      "label": "",
+      "icon": "Lightbulb Outline",
+      "icon_on": "Lightbulb",
+      "sensor": "",
+      "unit": "",
+      "type": "light_control",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lock: toggle",
+    "input": "~lock.example,,Lock,Lock%20Open,,,lock,,",
+    "expected": {
+      "entity": "lock.example",
+      "label": "",
+      "icon": "Lock",
+      "icon_on": "Lock Open",
+      "sensor": "",
+      "unit": "",
+      "type": "lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lock: lock",
+    "input": "~lock.example,,Lock,Lock%20Open,lock,,lock,,",
+    "expected": {
+      "entity": "lock.example",
+      "label": "",
+      "icon": "Lock",
+      "icon_on": "Auto",
+      "sensor": "lock",
+      "unit": "",
+      "type": "lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "lock: unlock",
+    "input": "~lock.example,,Lock,Lock%20Open,unlock,,lock,,",
+    "expected": {
+      "entity": "lock.example",
+      "label": "",
+      "icon": "Lock",
+      "icon_on": "Auto",
+      "sensor": "unlock",
+      "unit": "",
+      "type": "lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: control_modal",
+    "input": "~media_player.example,,Auto,Auto,control_modal,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "control_modal",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: play_pause",
+    "input": "~media_player.example,,Auto,Auto,play_pause,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "play_pause",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: previous",
+    "input": "~media_player.example,,Auto,Auto,previous,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "previous",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: next",
+    "input": "~media_player.example,,Auto,Auto,next,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "next",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: volume",
+    "input": "~media_player.example,,Auto,Auto,volume,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "Volume",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "volume",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: position",
+    "input": "~media_player.example,,Auto,Auto,position,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "Position",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "position",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: now_playing",
+    "input": "~media_player.example,,Auto,Auto,now_playing,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "now_playing",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: cover_art",
+    "input": "~media_player.example,,Auto,Auto,cover_art,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media: playlist",
+    "input": "~media_player.example,,Auto,Auto,playlist,,media,,playlist_content_id%3Dexample",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "Playlist",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "playlist",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "playlist_content_id=example"
+    }
+  },
+  {
+    "name": "option_select: legacy_option_select",
+    "input": "~input_select.example,,Flash,Auto,input_select.select_option,,option_select,,",
+    "expected": {
+      "entity": "input_select.example",
+      "label": "",
+      "icon": "Flash",
+      "icon_on": "Auto",
+      "sensor": "input_select.select_option",
+      "unit": "",
+      "type": "action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "push: event",
+    "input": "~,Trigger,Gesture%20Tap,Auto,,,push,,",
+    "expected": {
+      "entity": "",
+      "label": "Trigger",
+      "icon": "Gesture Tap",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "push",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "screen_lock: toggle",
+    "input": "~,,Lock,Lock%20Open,,,screen_lock,,",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Lock",
+      "icon_on": "Lock Open",
+      "sensor": "",
+      "unit": "",
+      "type": "screen_lock",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "webhook: get",
+    "input": "~https%3A%2F%2Fexample.invalid%2Fhook,,Auto,Auto,GET,,webhook,,",
+    "expected": {
+      "entity": "https://example.invalid/hook",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "GET",
+      "unit": "",
+      "type": "webhook",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "webhook: post",
+    "input": "~https%3A%2F%2Fexample.invalid%2Fhook,,Auto,Auto,POST,%7B%7D,webhook,,",
+    "expected": {
+      "entity": "https://example.invalid/hook",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "POST",
+      "unit": "{}",
+      "type": "webhook",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "sensor: numeric",
+    "input": "~,,Auto,Auto,sensor.example,,sensor,1,",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.example",
+      "unit": "",
+      "type": "sensor",
+      "precision": "1",
+      "options": ""
+    }
+  },
+  {
+    "name": "sensor: text",
+    "input": "~,,Auto,Auto,sensor.example,,sensor,text,",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.example",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": ""
+    }
+  },
+  {
+    "name": "sensor: icon",
+    "input": "~,,Auto,Auto,binary_sensor.example,,sensor,icon,",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "binary_sensor.example",
+      "unit": "",
+      "type": "sensor",
+      "precision": "icon",
+      "options": ""
+    }
+  },
+  {
+    "name": "sensor: local",
+    "input": "~room_temp,,Auto,Auto,local,,sensor,1,",
+    "expected": {
+      "entity": "room_temp",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "local",
+      "unit": "",
+      "type": "sensor",
+      "precision": "1",
+      "options": ""
+    }
+  },
+  {
+    "name": "local_sensor: legacy_local_sensor",
+    "input": "~room_temp,,Auto,Auto,local,,local_sensor,1,",
+    "expected": {
+      "entity": "room_temp",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "local",
+      "unit": "",
+      "type": "sensor",
+      "precision": "1",
+      "options": ""
+    }
+  },
+  {
+    "name": "slider: numeric",
+    "input": "~input_number.example,,Auto,Auto,,,slider,,",
+    "expected": {
+      "entity": "input_number.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "slider",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "subpage: navigation",
+    "input": "~1,Rooms,Auto,Auto,,,subpage,,",
+    "expected": {
+      "entity": "1",
+      "label": "Rooms",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "subpage",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "timezone: timezone",
+    "input": "~Europe%2FLondon,,Auto,Auto,,,timezone,,",
+    "expected": {
+      "entity": "Europe/London",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "timezone",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: current",
+    "input": "~weather.example,,Auto,Auto,,,weather,,",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: today",
+    "input": "~weather.example,,Auto,Auto,,,weather,today,",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "today",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather: tomorrow",
+    "input": "~weather.example,,Auto,Auto,,,weather,tomorrow,",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "tomorrow",
+      "options": ""
+    }
+  },
+  {
+    "name": "image: image",
+    "input": "~camera.example,,Auto,Auto,,,image,,",
+    "expected": {
+      "entity": "camera.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "image",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "weather_forecast: legacy_forecast",
+    "input": "~weather.example,,Auto,Auto,,,weather_forecast,tomorrow,",
+    "expected": {
+      "entity": "weather.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "weather",
+      "precision": "tomorrow",
+      "options": ""
+    }
+  },
+  {
+    "name": "local: accepted_legacy_input",
+    "input": "~zoom_mute,,,,local,,local,,",
+    "expected": {
+      "entity": "zoom_mute",
+      "label": "",
+      "icon": "Gesture Tap",
+      "icon_on": "Auto",
+      "sensor": "local",
+      "unit": "",
+      "type": "action",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "text_sensor: accepted_legacy_input",
+    "input": "~sensor.example,,,,,,text_sensor,,",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": ""
+    }
+  },
+  {
+    "name": "todo: accepted_legacy_input",
+    "input": "~todo.example,,,,,,todo,,",
+    "expected": {
+      "entity": "todo.example",
+      "label": "",
+      "icon": "Check",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "todo",
+      "precision": "",
+      "options": ""
+    }
+  },
+  {
+    "name": "media_cover_art: obsolete_implementation_residue",
+    "input": "~media_player.example,,Auto,Auto,cover_art,,media,,",
+    "expected": {
+      "entity": "media_player.example",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "cover_art",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": ""
+    }
+  }
+]

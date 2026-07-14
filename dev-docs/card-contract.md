@@ -68,6 +68,16 @@ subpages both resolve the same `Family` before choosing their surface-specific
 widget and lifecycle adapter. The registry test covers every authored contract
 type and checks that subpage capability still matches the contract.
 
+The pre-driver-migration runtime baseline is authored in
+`common/config/card_runtime_inventory.json`. It classifies contract and
+runtime-only types, lists meaningful modes, and records the broad subscription,
+action, and modal responsibilities that later driver migrations must preserve.
+Run `npm run check:card-runtime-coverage` to check the generated parser fixtures,
+web picker/preview fingerprints, firmware-family coverage, and
+`docs/generated/cards/runtime-coverage.md` report. Regenerate them with
+`node scripts/generate_card_runtime_coverage.js` only when a reviewed behaviour
+change intentionally updates the baseline.
+
 Vacuum's routine saved-field policies and legacy migration actions are
 generated for both browser and firmware. Its mode-specific unit and icon
 decisions remain in the reviewed `normalize_vacuum_fields` hook.
