@@ -118,8 +118,8 @@ class GeneratedOutputTransaction:
         try:
             for path, content in self._staged.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
-                originals[path] = path.read_bytes() if path.exists() else None
                 target_mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
+                originals[path] = (path.read_bytes(), target_mode) if path.exists() else None
                 with tempfile.NamedTemporaryFile(
                     mode="w",
                     encoding="utf-8",
@@ -143,6 +143,7 @@ class GeneratedOutputTransaction:
                 if original is None:
                     path.unlink(missing_ok=True)
                     continue
+                original_content, original_mode = original
                 with tempfile.NamedTemporaryFile(
                     mode="wb",
                     dir=path.parent,
@@ -150,9 +151,10 @@ class GeneratedOutputTransaction:
                     suffix=".tmp",
                     delete=False,
                 ) as handle:
-                    handle.write(original)
+                    handle.write(original_content)
                     handle.flush()
                     os.fsync(handle.fileno())
+                    os.chmod(handle.name, original_mode)
                     rollback_path = Path(handle.name)
                 os.replace(rollback_path, path)
             raise BuildError(f"Unable to publish generated outputs; restored the previous set: {exc}") from exc
@@ -217,6 +219,8 @@ def run_generated_transaction_self_test():
             raise BuildError("Generated transaction self-test did not exercise rollback")
         if first.read_text(encoding="utf-8") != "first-new" or second.read_text(encoding="utf-8") != "second-new":
             raise BuildError("Generated transaction did not restore the previous set")
+        if first.stat().st_mode & 0o777 != 0o640:
+            raise BuildError("Generated transaction rollback did not restore file permissions")
 
         marker = "espcontrol-generated-overlay-self-test"
         entry_path = ROOT / "src" / "webserver" / "entry.ts"
