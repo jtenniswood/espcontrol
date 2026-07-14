@@ -1,9 +1,81 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")
+
 usage() {
   echo "Usage: $0 CACHE_PATH MAX_MB [--strategy oldest|reset] [--protect PATH ...]" >&2
+  echo "       $0 --self-test" >&2
 }
+
+write_kb() {
+  local path=$1
+  local kb=$2
+  python3 - "$path" "$kb" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_bytes(b"x" * (int(sys.argv[2]) * 1024))
+PY
+}
+
+assert_exists() {
+  local path=$1
+  local label=$2
+  if [ ! -e "$path" ]; then
+    echo "::error::self-test failed: ${label} should exist" >&2
+    exit 1
+  fi
+}
+
+assert_missing() {
+  local path=$1
+  local label=$2
+  if [ -e "$path" ]; then
+    echo "::error::self-test failed: ${label} should have been removed" >&2
+    exit 1
+  fi
+}
+
+run_self_test() {
+  local tmp
+  tmp=$(mktemp -d)
+  SELF_TEST_TMP=$tmp
+  trap 'rm -rf "$SELF_TEST_TMP"' EXIT
+
+  local reset_cache="$tmp/reset"
+  write_kb "$reset_cache/remove.bin" 2048
+  write_kb "$reset_cache/keep/protected.bin" 1
+  bash "$SCRIPT_PATH" "$reset_cache" 1 --strategy reset --protect "$reset_cache/keep" >/dev/null
+  assert_missing "$reset_cache/remove.bin" "reset strategy unprotected entry"
+  assert_exists "$reset_cache/keep/protected.bin" "reset strategy protected entry"
+
+  local oldest_cache="$tmp/oldest"
+  write_kb "$oldest_cache/remove-first.bin" 2048
+  write_kb "$oldest_cache/remove-later.bin" 2048
+  write_kb "$oldest_cache/keep/protected.bin" 1
+  touch -t 202401010000 "$oldest_cache/remove-first.bin"
+  touch -t 202402010000 "$oldest_cache/remove-later.bin"
+  touch -t 202301010000 "$oldest_cache/keep"
+  bash "$SCRIPT_PATH" "$oldest_cache" 3 --strategy oldest --protect "$oldest_cache/keep" >/dev/null
+  assert_missing "$oldest_cache/remove-first.bin" "oldest strategy oldest unprotected entry"
+  assert_exists "$oldest_cache/remove-later.bin" "oldest strategy newer unprotected entry"
+  assert_exists "$oldest_cache/keep/protected.bin" "oldest strategy protected entry"
+
+  if bash "$SCRIPT_PATH" "$tmp/invalid" 1 --strategy unknown >/dev/null 2>&1; then
+    echo "::error::self-test failed: invalid strategy should fail" >&2
+    exit 1
+  fi
+
+  echo "Cache pruning self-tests passed."
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+  run_self_test
+  exit 0
+fi
 
 if [ "$#" -lt 2 ]; then
   usage

@@ -18,7 +18,7 @@ concurrency:
 jobs:
   detect-changes:
     name: Detect Firmware Changes
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       compile_required: ${{ steps.filter.outputs.compile_required }}
     steps:
@@ -37,7 +37,7 @@ jobs:
             --paginate \
             --jq '.[].filename' > changed-files.txt
 
-          if grep -Eq '^(\.github/esphome\.env|\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_slots)\.py|package(-lock)?\.json)$' changed-files.txt; then
+          if grep -Eq '^(\.github/esphome\.env|\.github/workflows/(firmware-compile|nightly-firmware|release)\.yml|common/.*|components/.*|devices/.*|builds/.*|src/webserver/.*|docs/public/webserver/.*|scripts/(build|device_matrix|device_profiles|generate_device_manifest|generate_device_slots)\.py|package(-lock)?\.json)$' changed-files.txt; then
             echo "compile_required=true" >> "$GITHUB_OUTPUT"
           else
             echo "compile_required=false" >> "$GITHUB_OUTPUT"
@@ -47,15 +47,17 @@ jobs:
     name: Prepare Device Matrix
     needs: detect-changes
     if: needs.detect-changes.outputs.compile_required == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7.0.0
         with:
           sparse-checkout: |
+            builds/*.yaml
             common/assets/*.yaml
             common/assets/fonts/*
+            devices/catalog.json
             devices/manifest.json
             devices/*/device/fonts.yaml
             scripts/device_matrix.py
@@ -188,7 +190,7 @@ jobs:
     name: Firmware Compile Gate
     needs: [detect-changes, device-matrix, compile]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Verify firmware compile result
         run: |

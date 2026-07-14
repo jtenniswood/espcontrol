@@ -19,7 +19,7 @@
         "icon_on": "Auto",
         "sensor": "",
         "unit": "",
-        "type": "climate",
+        "type": "climate_control",
         "precision": "1",
         "options": "label_display=status,number_display=actual"
       },
@@ -180,6 +180,7 @@
         "guition-esp32-p4-jc1060p470",
         "guition-esp32-p4-jc4880p443",
         "guition-esp32-p4-jc8012p4a1",
+        "guition-esp32-p4-jc8012p4a1-v2",
         "seeed-esp32-p4-reterminal-d1001",
         "esp32-p4-86",
         "guition-esp32-s3-4848s040"

@@ -259,6 +259,8 @@ touchscreen:
     reset_pin: GPIO22
     interrupt_pin: GPIO21
     on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
       - script.execute: screensaver_wake
 
 # ---------------------------------------------------------------------------

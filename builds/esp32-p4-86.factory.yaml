@@ -5,6 +5,7 @@
 # =============================================================================
 
 substitutions:
+  cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
   firmware_version: "0.0.0"
   espcontrol_component_url: "file:///config"
   mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"

@@ -1,0 +1,112 @@
+{
+  "deviceProfiles": [
+    "guition-esp32-p4-jc1060p470",
+    "guition-esp32-p4-jc4880p443",
+    "guition-esp32-p4-jc8012p4a1",
+    "guition-esp32-p4-jc8012p4a1-v2",
+    "seeed-esp32-p4-reterminal-d1001",
+    "esp32-p4-86",
+    "guition-esp32-s3-4848s040"
+  ],
+  "button": {
+    "input": "~media_player.kitchen,Morning%2C Mix,Music,Auto,playlist,,media,,playlist_content_id=media-source%253A//music/morning%252Cmix=50%2525%2Cplaylist_player_source=Kitchen%252C Main=Zone 50%2525",
+    "normalized": {
+      "entity": "media_player.kitchen",
+      "label": "Morning, Mix",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "playlist",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "playlist_content_id=media-source%3A//music/morning%2Cmix=50%25,playlist_player_source=Kitchen%2C Main=Zone 50%25"
+    },
+    "serialized": "media_player.kitchen;Morning, Mix;Music;Auto;playlist;;media;;playlist_content_id=media-source%3A//music/morning%2Cmix=50%25,playlist_player_source=Kitchen%2C Main=Zone 50%25"
+  },
+  "subpage": {
+    "input": "~1,B=Return%20Home,2d|A,scene.movie,Movie,Flash,Auto,scene.turn_on,,,state_entity=light.living|M,media_player.living,Living,Speaker,Auto,play_pause,,,",
+    "serialized": "~1,B=Return Home,2d|A,scene.movie,Movie,Flash,,scene.turn_on,,,state_entity=light.living|M,media_player.living,Living,Speaker,,play_pause"
+  },
+  "settings": {
+    "panelInput": {
+      "timezone": "Europe/London (GMT+0)",
+      "temperature_unit": "fahrenheit",
+      "language": "en",
+      "screensaver_mode": "clock",
+      "screen_rotation": "90",
+      "home_assistant_artwork_protocol": "https",
+      "home_assistant_artwork_port": 8123,
+      "firmware_update_frequency": "Weekly"
+    },
+    "panelNormalized": {
+      "indoorTempEnable": false, "outdoorTempEnable": false, "indoorTempEntity": "", "outdoorTempEntity": "",
+      "clockBarTemperatureEntities": [], "clockBar": false, "clockBarTime": true, "networkStatusIcon": true,
+      "voiceServices": false, "temperatureDegreeSymbol": true, "subpageChevron": true,
+      "timezone": "Europe/London (GMT+0)", "temperatureUnit": "°F", "language": "en", "clockFormat": "12h",
+      "hasNtpServer1": false, "hasNtpServer2": false, "hasNtpServer3": false,
+      "ntpServer1": "pool.ntp.org", "ntpServer2": "time.nist.gov", "ntpServer3": "time.google.com",
+      "screensaverMode": "disabled", "presenceSensorEntity": "", "mediaPlayerSleepPrevention": false,
+      "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtMediaPlayerEntity": "",
+      "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
+      "coverArtHideExternalInput": true, "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
+      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false,
+      "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
+      "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
+    },
+    "screenInput": {
+      "brightness_day": 80,
+      "brightness_night": 20,
+      "schedule_trigger": "time",
+      "schedule_on_hour": 6,
+      "schedule_off_hour": 23,
+      "schedule_mode": "clock",
+      "schedule_wake_timeout": 30
+    },
+    "screenNormalized": {
+      "brightnessDayVal": 80, "brightnessNightVal": 20, "automaticBrightnessEnabled": true,
+      "brightnessDawnTime": "06:00", "brightnessDuskTime": "18:00", "scheduleTrigger": "time",
+      "scheduleEnabled": true, "scheduleOnHour": 6, "scheduleOffHour": 23, "scheduleMode": "clock",
+      "scheduleWakeTimeout": 30, "scheduleWakeBrightness": 10, "scheduleDimmedBrightness": 10,
+      "scheduleClockBrightness": 10, "scheduleClockTextColor": "FFFFFF"
+    }
+  },
+  "backup": {
+    "version": 2,
+    "format": "espcontrol.backup",
+    "device": "panel-a",
+    "source": { "device": "panel-a", "slots": 2 },
+    "exported_at": "2026-07-12T12:00:00.000Z",
+    "button_order": "1,2d",
+    "button_on_color": "0073FF",
+    "buttons": [
+      { "entity": "light.kitchen", "label": "Kitchen", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "switch", "precision": "", "options": "" },
+      { "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" }
+    ],
+    "subpages": {},
+    "subpage_objects": {},
+    "settings": { "timezone": "Europe/London (GMT+0)" },
+    "screen": { "brightness_day": 80 }
+  },
+  "postUrls": {
+    "voiceServicesOn": [
+      "/switch/voice_services/turn_on",
+      "/switch/voice_services_enabled/turn_on",
+      "/switch/Voice%20Services/turn_on"
+    ],
+    "coverArtDelay30": [
+      "/number/screen_saver__cover_art_delay/set?value=30",
+      "/number/screen_saver_cover_art_delay/set?value=30",
+      "/number/cover_art_delay/set?value=30",
+      "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
+    ]
+  },
+  "bundleSizes": {
+    "guition-esp32-p4-jc1060p470": { "minified": 575586, "gzip": 137621 },
+    "guition-esp32-p4-jc4880p443": { "minified": 575621, "gzip": 137638 },
+    "guition-esp32-p4-jc8012p4a1": { "minified": 575602, "gzip": 137629 },
+    "guition-esp32-p4-jc8012p4a1-v2": { "minified": 575605, "gzip": 137631 },
+    "seeed-esp32-p4-reterminal-d1001": { "minified": 575603, "gzip": 137629 },
+    "esp32-p4-86": { "minified": 575628, "gzip": 137631 },
+    "guition-esp32-s3-4848s040": { "minified": 575786, "gzip": 137680 }
+  }
+}

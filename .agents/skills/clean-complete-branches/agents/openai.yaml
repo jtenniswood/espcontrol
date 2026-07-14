@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean Complete Branches"
+  short_description: "Remove completed branches and worktrees"
+  default_prompt: "Use $clean-complete-branches to clean up completed local worktrees, local branches, and GitHub branches after merged PRs."

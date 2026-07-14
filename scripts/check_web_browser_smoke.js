@@ -6,10 +6,11 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { chromium } = require("playwright");
+const { freshWebOutputDir } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
 const MANIFEST_PATH = path.join(ROOT, "devices", "manifest.json");
-const WEB_OUTPUT_DIR = path.join(ROOT, "docs", "public", "webserver");
+const WEB_OUTPUT_DIR = freshWebOutputDir();
 const FAILURE_DIR = path.join(ROOT, ".cache", "web-browser-smoke");
 
 function readManifest() {
@@ -89,8 +90,15 @@ function htmlFor(slug) {
 }
 
 function routeContentType(url) {
-  if (/\.css(?:$|\?)/.test(url)) return "text/css";
-  if (/\.(?:png|jpg|jpeg|gif|webp|svg)(?:$|\?)/.test(url))
+  const pathname = typeof url === "string" ? url : url.pathname;
+  if (
+    typeof url !== "string" &&
+    url.hostname === "fonts.googleapis.com" &&
+    pathname === "/css2"
+  )
+    return "text/css";
+  if (/\.css(?:$|\?)/.test(pathname)) return "text/css";
+  if (/\.(?:png|jpg|jpeg|gif|webp|svg)(?:$|\?)/.test(pathname))
     return "image/svg+xml";
   return "text/plain";
 }
@@ -132,7 +140,7 @@ async function installRoutes(context, slug) {
     }
     await route.fulfill({
       status: 200,
-      contentType: routeContentType(requestUrl.pathname),
+      contentType: routeContentType(requestUrl),
       body: "",
     });
   });
@@ -216,6 +224,19 @@ function seededEvents() {
       option: ["Europe/London (GMT+0)", "America/New_York (GMT-5)"],
     },
     { id: "select-screen__language", state: "en", value: "en", option: ["en"] },
+    {
+      id: "select-home_assistant_artwork_protocol",
+      state: "http",
+      value: "http",
+      option: ["http", "https"],
+    },
+    { id: "switch-firmware__auto_update", state: "ON", value: true },
+    {
+      id: "select-firmware__update_frequency",
+      state: "Daily",
+      value: "Daily",
+      option: ["Hourly", "Daily", "Weekly", "Monthly"],
+    },
     {
       id: "select-screen__clock_format",
       state: "24h",
@@ -1303,32 +1324,41 @@ async function assertEmptyCellSettings(page, posts, label) {
     before,
     `${label}: opening a new card draft should not post immediately`,
   );
-  assert(
-    await page.locator("#sp-card-type-picker").isVisible(),
-    `${label}: new card draft shows the card type grid`,
+  assert.strictEqual(
+    await page.locator("#sp-card-type-picker").count(),
+    0,
+    `${label}: new card draft uses the compact type dropdown instead of the old grid`,
   );
-  const switchTypeOption = page.getByRole("button", {
-    name: "Switch card type",
+  assert(
+    await page.locator("#sp-inp-type").isVisible(),
+    `${label}: new card draft shows the card type dropdown`,
+  );
+  const initialTypeSelection = await page.locator("#sp-inp-type").evaluate((select) => {
+    return {
+      selectedIndex: select.selectedIndex,
+      value: select.value,
+      firstValue: select.options.length ? select.options[0].value : null,
+      firstLabel: select.options.length ? select.options[0].textContent : null,
+    };
   });
-  assert(
-    await switchTypeOption.isVisible(),
-    `${label}: new card draft shows Switch as a card type`,
-  );
-  assert(
-    (
-      await switchTypeOption.locator(".sp-card-type-icon").getAttribute("class")
-    ).includes("mdi-toggle-switch"),
-    `${label}: card type picker preserves pre-slugged MDI icon names`,
+  assert.strictEqual(
+    initialTypeSelection.selectedIndex,
+    0,
+    `${label}: new card draft defaults to the first card type option`,
   );
   assert.strictEqual(
-    await page.locator("#sp-inp-type").count(),
-    0,
-    `${label}: new card draft does not show the compact type dropdown before selection`,
+    initialTypeSelection.value,
+    initialTypeSelection.firstValue,
+    `${label}: new card draft selected value matches the first card type option`,
   );
   assert.strictEqual(
-    await page.locator(".sp-settings-modal .sp-save-btn").count(),
-    0,
-    `${label}: new card draft hides Save until a type is selected`,
+    initialTypeSelection.firstLabel,
+    "Action",
+    `${label}: new card draft first card type option should be Action`,
+  );
+  assert(
+    await page.locator(".sp-settings-modal .sp-save-btn").isVisible(),
+    `${label}: new card draft shows Save once the first card type is selected by default`,
   );
   assert.strictEqual(
     await page.locator(".sp-settings-modal .sp-delete-btn").count(),
@@ -1413,7 +1443,7 @@ async function assertEmptyCellSettings(page, posts, label) {
   assert.strictEqual(
     posts.length,
     before,
-    `${label}: closing a new card draft before choosing a type should not post`,
+    `${label}: closing a new card draft without saving should not post`,
   );
   await page
     .locator(`.sp-main [data-pos="${pos}"].sp-empty-cell`)
@@ -1421,11 +1451,34 @@ async function assertEmptyCellSettings(page, posts, label) {
 
   await page.locator(`.sp-main [data-pos="${pos}"]`).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
+  await page.locator("#sp-inp-label").fill("Keep this label");
+  await page.locator("#sp-inp-entity").fill("switch.keep_this_entity");
+  await page.locator("#sp-inp-action").selectOption({ label: "Run Script" });
+  await page.locator("#sp-inp-type").selectOption({ label: "Switch" });
   await page.locator("#sp-inp-entity").waitFor({ state: "visible" });
+  assert.strictEqual(
+    await page.locator("#sp-inp-label").inputValue(),
+    "Keep this label",
+    `${label}: changing the default card type preserves the typed label`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-entity").inputValue(),
+    "switch.keep_this_entity",
+    `${label}: changing the default card type preserves the typed entity`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-icon").inputValue(),
+    "Auto",
+    `${label}: changing the default Action card type clears its icon default`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-sensor-when-on-toggle").isChecked(),
+    false,
+    `${label}: changing the default Action card type clears its active display default`,
+  );
   assert(
     await page.locator(".sp-settings-modal .sp-save-btn").isVisible(),
-    `${label}: selecting a card type shows Save`,
+    `${label}: changing the default card type keeps Save visible`,
   );
   assert.strictEqual(
     await page.locator(".sp-settings-modal .sp-delete-btn").count(),
@@ -1449,7 +1502,7 @@ async function assertEmptyCellSettings(page, posts, label) {
 
   await page.locator(`.sp-main [data-pos="${pos}"]`).click();
   await page.waitForSelector(".sp-settings-overlay.sp-visible");
-  await page.getByRole("button", { name: "Switch card type" }).click();
+  await page.locator("#sp-inp-type").selectOption({ label: "Switch" });
   await page.locator("#sp-inp-label").fill("New Card");
   await page.locator("#sp-inp-entity").fill("switch.new_card");
   await page.getByRole("button", { name: "Save" }).click();
@@ -1766,6 +1819,16 @@ function backupFixture(device, slots) {
       presence_sensor_entity: "binary_sensor.office_presence",
       media_player_sleep_prevention: true,
       media_player_sleep_prevention_entity: "media_player.living",
+      cover_art_screensaver: true,
+      cover_art_media_player_entity: "media_player.living",
+      cover_art_attribute_conditions: "app_id=com.apple.TVMusic",
+      cover_art_delay: 30,
+      cover_art_track_overlay_duration: 10,
+      cover_art_hide_external_input: false,
+      home_assistant_artwork_protocol: "https",
+      home_assistant_artwork_port: 9443,
+      firmware_auto_update: false,
+      firmware_update_frequency: "Weekly",
       screensaver_action: "dim",
       clock_brightness_day: 44,
       clock_brightness_night: 22,
@@ -1931,6 +1994,154 @@ async function assertBackupImportSmoke(page, posts, testCase) {
     "backup clock bar time reset",
     before,
   );
+  const screensaverImportPosts = [
+    [
+      { domain: "text", name: "screensaver_mode", action: "set", value: "timer" },
+      "backup screensaver mode import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "presence_sensor_entity",
+        action: "set",
+        value: "binary_sensor.office_presence",
+      },
+      "backup screensaver presence import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "screen_saver__media_player_sleep_prevention",
+        action: "turn_on",
+      },
+      "backup media sleep prevention import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "media_player_sleep_prevention_entity",
+        action: "set",
+        value: "media_player.living",
+      },
+      "backup media sleep prevention entity import",
+    ],
+    [
+      { domain: "switch", name: "screen_saver__cover_art", action: "turn_on" },
+      "backup cover art import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "screen_saver__cover_art_entity",
+        action: "set",
+        value: "media_player.living",
+      },
+      "backup cover art entity import",
+    ],
+    [
+      {
+        domain: "text",
+        name: "screen_saver__cover_art_conditions",
+        action: "set",
+        value: "app_id=com.apple.TVMusic",
+      },
+      "backup cover art conditions import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__cover_art_delay",
+        action: "set",
+        value: "30",
+      },
+      "backup cover art delay import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__track_overlay_duration",
+        action: "set",
+        value: "10",
+      },
+      "backup cover art track overlay import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "screen_saver__hide_cover_art_on_external_input",
+        action: "turn_off",
+      },
+      "backup cover art external input import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "home_assistant_artwork_protocol",
+        action: "set",
+        option: "https",
+      },
+      "backup Home Assistant artwork protocol import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "home_assistant_artwork_port",
+        action: "set",
+        value: "9443",
+      },
+      "backup Home Assistant artwork port import",
+    ],
+    [
+      {
+        domain: "switch",
+        name: "firmware__auto_update",
+        action: "turn_off",
+      },
+      "backup firmware auto-update import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "firmware__update_frequency",
+        action: "set",
+        option: "Weekly",
+      },
+      "backup firmware update frequency import",
+    ],
+    [
+      {
+        domain: "select",
+        name: "screen_saver__action",
+        action: "set",
+        option: "Screen Dimmed",
+      },
+      "backup screensaver action import",
+    ],
+    [
+      { domain: "switch", name: "screen_saver__clock", action: "turn_off" },
+      "backup clock screensaver switch import",
+    ],
+    [
+      {
+        domain: "number",
+        name: "screen_saver__dimmed_brightness",
+        action: "set",
+        value: "15",
+      },
+      "backup dimmed screensaver brightness import",
+    ],
+    [
+      { domain: "number", name: "screensaver_timeout", action: "set", value: "60" },
+      "backup screensaver timeout import",
+    ],
+    [
+      { domain: "number", name: "home_screen_timeout", action: "set", value: "120" },
+      "backup home screen timeout import",
+    ],
+  ];
+  for (const [expected, label] of screensaverImportPosts) {
+    await waitForPost(posts, expected, label, before);
+  }
   await waitForPost(
     posts,
     {
@@ -2580,7 +2791,8 @@ async function runCase(browser, testCase) {
 
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+    if (message.type() === "error" || message.type() === "warning")
+      errors.push(`[${message.type()}] ${message.text()}`);
   });
   page.on("request", (request) => {
     const requestUrl = new URL(request.url());

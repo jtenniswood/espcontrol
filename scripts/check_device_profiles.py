@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 import device_matrix
+import generate_device_slots
 from device_profiles import ROOT, load_device_profiles, public_device_capabilities
 import check_public_firmware
 
@@ -17,6 +18,7 @@ DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
 COMPAT_FIXTURES = ROOT / "compatibility" / "fixtures" / "product_compatibility.json"
 BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
+BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
 REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
     r'"\U000F0996"': "mdi-progress-clock",
@@ -90,6 +92,13 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
 
 
 def test_generated_web(profiles: dict[str, dict]) -> None:
+    expected_slugs = set(profiles)
+    actual_slugs = {path.name for path in WEB_OUTPUT_DIR.iterdir() if path.is_dir()}
+    stale_slugs = sorted(actual_slugs - expected_slugs)
+    assert not stale_slugs, (
+        "generated web bundle folder has no device profile: " + ", ".join(stale_slugs)
+    )
+
     for slug, profile in profiles.items():
         path = WEB_OUTPUT_DIR / slug / "www.js"
         assert path.is_file(), f"{slug}: generated web bundle is missing"
@@ -154,6 +163,23 @@ def test_upgrades_do_not_reset_saved_panel_config() -> None:
         )
 
 
+def test_local_voice_generation_uses_capability() -> None:
+    voice_device = {
+        "slug": "semantic-voice-test",
+        "package": {"localVoiceServices": True},
+    }
+    standard_device = {
+        "slug": "esp32-p4-86",
+        "package": {"firmwareVersion": "dev"},
+    }
+    assert "open_device_volume_control" in "\n".join(
+        generate_device_slots.voice_substitution_lines(voice_device)
+    ), "local voice generation must follow the semantic capability"
+    assert "open_device_volume_control" not in "\n".join(
+        generate_device_slots.voice_substitution_lines(standard_device)
+    ), "the device slug alone must not enable local voice generation"
+
+
 def test_square_s3_reapplies_clock_bar_after_screen_changes() -> None:
     slug = "guition-esp32-s3-4848s040"
     sensors = (ROOT / "devices" / slug / "device" / "sensors.yaml").read_text(encoding="utf-8")
@@ -206,6 +232,56 @@ def web_screen_width_percent(profile: dict) -> float:
     return float(width[:-1])
 
 
+def parse_resolution(profile: dict) -> tuple[int, int]:
+    resolution = str(profile["public"]["resolution"]).strip()
+    match = re.fullmatch(r"([1-9]\d*)\s*x\s*([1-9]\d*)", resolution)
+    assert match, f"{profile['slug']}: public resolution must look like '1024 x 600'"
+    return int(match.group(1)), int(match.group(2))
+
+
+def parse_aspect(profile: dict, key_path: str, value: str) -> tuple[int, int]:
+    match = re.fullmatch(r"([1-9]\d*)/([1-9]\d*)", str(value).strip())
+    assert match, f"{profile['slug']}: {key_path} must look like '1024/600'"
+    return int(match.group(1)), int(match.group(2))
+
+
+def orientation_for(width: int, height: int) -> str:
+    if width == height:
+        return "Square"
+    return "Landscape" if width > height else "Portrait"
+
+
+def assert_same_ratio(slug: str, label: str, left: tuple[int, int], right: tuple[int, int]) -> None:
+    assert left[0] * right[1] == left[1] * right[0], (
+        f"{slug}: {label} must match the public screen resolution"
+    )
+
+
+def test_web_screen_aspect_matches_public_resolution() -> None:
+    profiles = load_device_profiles()
+    for slug, profile in profiles.items():
+        resolution = parse_resolution(profile)
+        assert profile["public"]["orientation"] == orientation_for(*resolution), (
+            f"{slug}: public orientation must match public resolution"
+        )
+        screen = parse_aspect(profile, "web.screen.aspect", profile["web"]["screen"]["aspect"])
+        assert_same_ratio(slug, "web.screen.aspect", screen, resolution)
+
+        portrait = profile["web"].get("portrait")
+        if portrait:
+            portrait_screen = parse_aspect(
+                profile,
+                "web.portrait.screen.aspect",
+                portrait["screen"]["aspect"],
+            )
+            assert_same_ratio(
+                slug,
+                "web.portrait.screen.aspect",
+                portrait_screen,
+                (resolution[1], resolution[0]),
+            )
+
+
 def test_web_grid_spacing_matches_across_screen_sizes() -> None:
     profiles = load_device_profiles()
     expected = None
@@ -252,9 +328,9 @@ def test_climate_card_icon_glyphs() -> None:
 
 def test_weather_card_visual_matches_preview() -> None:
     cards = BUTTON_GRID_CARDS.read_text(encoding="utf-8")
-    styles = (ROOT / "src" / "webserver" / "modules" / "styles.js").read_text(encoding="utf-8")
+    styles = (ROOT / "src" / "webserver" / "application" / "styles.ts").read_text(encoding="utf-8")
     subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
-    config = (ROOT / "components" / "espcontrol" / "button_grid_config.h").read_text(encoding="utf-8")
+    weather_forecast = BUTTON_GRID_WEATHER_FORECAST.read_text(encoding="utf-8")
     assert ".sp-type-badge{display:none}" in styles, "web preview type badges should remain visually hidden"
     assert "set_weather_card_badge" not in cards, (
         "device weather cards should not show the hidden web preview type badge"
@@ -268,13 +344,13 @@ def test_weather_card_visual_matches_preview() -> None:
     assert 'set_weather_card_badge(s, "Weather Partly Cloudy")' not in cards, (
         "forecast weather device card should not render a visible forecast badge"
     )
-    assert '"HA Actions"' not in config, (
+    assert '"HA Actions"' not in weather_forecast, (
         "forecast weather errors should keep the configured/default label like the web preview"
     )
     assert 'lv_label_set_text(s.unit_lbl, display_temperature_unit_symbol())' in cards, (
         "forecast weather placeholder should show the configured unit like the web preview"
     )
-    assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in config, (
+    assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
         "forecast weather unavailable state should keep showing the configured unit"
     )
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
@@ -295,28 +371,28 @@ def test_weather_card_visual_matches_preview() -> None:
         and "lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_match.group(0)
         and "lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);" in setup_match.group(0)
     ), "weather cards must reset inherited icon, value, and label placement before rendering"
-    assert "inline std::string normalize_weather_state" in config, (
+    assert "inline std::string normalize_weather_state" in weather_forecast, (
         "current weather device cards should normalize equivalent weather state spellings before mapping icons"
     )
-    assert 'if (normalized == "partly-cloudy") return "partlycloudy";' in config, (
+    assert 'if (normalized == "partly-cloudy") return "partlycloudy";' in weather_forecast, (
         "current weather device cards should accept the dashed partly-cloudy spelling"
     )
-    assert 'if (normalized.compare(0, 8, "weather-") == 0) normalized = normalized.substr(8);' in config, (
+    assert 'if (normalized.compare(0, 8, "weather-") == 0) normalized = normalized.substr(8);' in weather_forecast, (
         "current weather device cards should accept web weather icon names as state aliases"
     )
-    assert 'if (normalized.compare(0, 4, "mdi-") == 0) normalized = normalized.substr(4);' in config, (
+    assert 'if (normalized.compare(0, 4, "mdi-") == 0) normalized = normalized.substr(4);' in weather_forecast, (
         "current weather device cards should accept web Material Design weather class names as state aliases"
     )
-    assert 'if (normalized == "night") return "clear-night";' in config, (
+    assert 'if (normalized == "night") return "clear-night";' in weather_forecast, (
         "current weather device cards should map the web Weather Night icon name to clear night"
     )
-    assert 'normalized == "night-cloudy"' in config and 'return "night-partly-cloudy";' in config, (
+    assert 'normalized == "night-cloudy"' in weather_forecast and 'return "night-partly-cloudy";' in weather_forecast, (
         "current weather device cards should accept night cloudy aliases for the web weather icon"
     )
-    assert 'normalized == "sunny-off"' in config and 'return "unavailable";' in config, (
+    assert 'normalized == "sunny-off"' in weather_forecast and 'return "unavailable";' in weather_forecast, (
         "current weather device cards should map the web unavailable weather icon name"
     )
-    assert 'normalized == "unknown"' in config and 'return "unavailable";' in config, (
+    assert 'normalized == "unknown"' in weather_forecast and 'return "unavailable";' in weather_forecast, (
         "current weather device cards should render unknown states with the unavailable weather icon"
     )
     assert 'if (b.type == "weather" && !card_runtime_weather_forecast_precision(b.precision))' in subpages, (
@@ -365,8 +441,8 @@ def test_weather_card_visual_matches_preview() -> None:
         ("thunderstorm", "lightning"),
         ("thunderstorms", "lightning"),
     ):
-        assert f'if (normalized == "{alias}") return "{state}";' in config or (
-            f'normalized == "{alias}"' in config and f'return "{state}";' in config
+        assert f'if (normalized == "{alias}") return "{state}";' in weather_forecast or (
+            f'normalized == "{alias}"' in weather_forecast and f'return "{state}";' in weather_forecast
         ), f"current weather device cards should normalize provider alias {alias} to {state}"
     for state, icon_name, label in (
         ("cloudy-alert", "Weather Cloudy Alert", "Cloudy Alert"),
@@ -385,10 +461,10 @@ def test_weather_card_visual_matches_preview() -> None:
         ("sunset-up", "Weather Sunset Up", "Sunset Up"),
         ("tornado", "Weather Tornado", "Tornado"),
     ):
-        assert f'if (normalized == "{state}") return find_icon("{icon_name}");' in config, (
+        assert f'if (normalized == "{state}") return find_icon("{icon_name}");' in weather_forecast, (
             f"current weather device card should map {state} to the matching web weather icon"
         )
-        assert f'if (normalized == "{state}") return espcontrol_i18n(std::string("{label}"));' in config, (
+        assert f'if (normalized == "{state}") return espcontrol_i18n(std::string("{label}"));' in weather_forecast, (
             f"current weather device card should label {state} like the web preview"
         )
 
@@ -510,8 +586,10 @@ def main() -> int:
     test_generated_web(profiles)
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
+    test_local_voice_generation_uses_capability()
     test_square_s3_reapplies_clock_bar_after_screen_changes()
     test_p4_43_rotation_refresh_rebuilds_subpages()
+    test_web_screen_aspect_matches_public_resolution()
     test_web_grid_spacing_matches_across_screen_sizes()
     test_setup_icon_glyphs()
     test_weather_card_visual_matches_preview()

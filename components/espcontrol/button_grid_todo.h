@@ -715,7 +715,7 @@ struct TodoCardCtx {
   const lv_font_t *label_font = nullptr;
   const lv_font_t *list_font = nullptr;
   const lv_font_t *icon_font = nullptr;
-  uint32_t secondary_color = DEFAULT_OFF_COLOR;
+  uint32_t secondary_color = SECONDARY_GREY;
   int width_compensation_percent = 100;
   bool available = false;
 };

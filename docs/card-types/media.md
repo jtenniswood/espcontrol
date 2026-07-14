@@ -51,7 +51,7 @@ Seeking depends on the media player integration. Some players expose progress bu
 
 ## Now Playing
 
-Now Playing shows the media title and artist from Home Assistant.
+Now Playing shows the media title and artist from Home Assistant. For TV or Line-in sources that do not provide artist data, the artist line shows **Source** instead of reusing the previous track's artist.
 
 You can choose optional controls:
 

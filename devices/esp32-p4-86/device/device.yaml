@@ -51,6 +51,24 @@ esp32:
       # stacks in PSRAM.
       CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
       CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
+      # The ESP32-C6 hosted WiFi link shares scarce internal/DMA memory with
+      # the full-duplex TDM audio path. Keep network bursts small while testing
+      # dual-mic SE/AEC stability.
+      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: "y"
+      CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM: "16"
+      CONFIG_WIFI_RMT_DYNAMIC_TX_BUFFER_NUM: "16"
+      CONFIG_WIFI_RMT_AMPDU_RX_ENABLED: "n"
+      CONFIG_WIFI_RMT_AMPDU_TX_ENABLED: "n"
+      CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM: "8"
+      CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM: "16"
+      CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM: "16"
+      CONFIG_ESP_WIFI_AMPDU_RX_ENABLED: "n"
+      CONFIG_ESP_WIFI_AMPDU_TX_ENABLED: "n"
+      CONFIG_LWIP_TCP_SND_BUF_DEFAULT: "16384"
+      CONFIG_LWIP_TCP_WND_DEFAULT: "16384"
+      CONFIG_LWIP_TCP_RECVMBOX_SIZE: "16"
+      CONFIG_LWIP_TCPIP_RECVMBOX_SIZE: "16"
       CONFIG_FREERTOS_THREAD_LOCAL_STORAGE_POINTERS: "1"
       CONFIG_LOG_DEFAULT_LEVEL: "2"
 
@@ -67,6 +85,9 @@ external_components:
     refresh: 1s
 
 espcontrol:
+
+network:
+  enable_high_performance: false
 
 # ---------------------------------------------------------------------------
 # ESPHome core (device name from substitutions)

@@ -2,64 +2,32 @@
 "use strict";
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
+const childProcess = require("child_process");
 
 const ROOT = path.resolve(__dirname, "..");
-const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
-const MODULES_DIR = path.join(ROOT, "src", "webserver", "modules");
-const TYPES_DIR = path.join(ROOT, "src", "webserver", "types");
-const WEB_MODULE_ORDER = require("./web_modules.json");
+const outputDirectories = new Map();
 
-function indentChunk(text) {
-  return text.trimEnd().split(/\r?\n/).map((line) => {
-    return line.trim() ? `  ${line}` : "";
-  }).join("\n");
-}
-
-function replaceMarkedBlock(source, startTag, endTag, content, required) {
-  const pattern = new RegExp(
-    `(^[^\\n]*${startTag}[^\\n]*\\n)(.*?)(^[^\\n]*${endTag}[^\\n]*$)`,
-    "ms"
-  );
-  const match = source.match(pattern);
-  if (!match) {
-    if (required) throw new Error(`Missing source markers: ${startTag} / ${endTag}`);
-    return source;
+function freshWebOutputDir(options = {}) {
+  const testHooks = options.testHooks !== false;
+  const key = testHooks ? "test" : "production";
+  if (outputDirectories.has(key)) return outputDirectories.get(key);
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), `espcontrol-web-${key}-`));
+  const args = [path.join(ROOT, "scripts", "build.py"), "www", "--temporary-output", outputDir];
+  if (testHooks) args.push("--test-hooks");
+  const result = childProcess.spawnSync("python3", args, { cwd: ROOT, encoding: "utf8" });
+  if (result.status !== 0) {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+    throw new Error(result.stderr || result.stdout || "Fresh web bundle build failed");
   }
-  return source.slice(0, match.index + match[1].length) +
-    content +
-    source.slice(match.index + match[1].length + match[2].length);
+  outputDirectories.set(key, outputDir);
+  process.once("exit", () => fs.rmSync(outputDir, { recursive: true, force: true }));
+  return outputDir;
 }
 
-function loadButtonTypes() {
-  if (!fs.existsSync(TYPES_DIR)) return "";
-  return fs.readdirSync(TYPES_DIR)
-    .filter((name) => name.endsWith(".js"))
-    .sort()
-    .map((name) => {
-      const typePath = path.join(TYPES_DIR, name);
-      return `  // --- type: ${path.basename(name, ".js")} ---\n${indentChunk(fs.readFileSync(typePath, "utf8"))}`;
-    })
-    .join("\n") + "\n";
+function loadBuiltWebSource(slug = "guition-esp32-p4-jc1060p470") {
+  return fs.readFileSync(path.join(freshWebOutputDir(), slug, "www.js"), "utf8");
 }
 
-function loadWebModules() {
-  return WEB_MODULE_ORDER.map((name) => {
-    const modulePath = path.join(MODULES_DIR, `${name}.js`);
-    if (!fs.existsSync(modulePath)) {
-      throw new Error(`Missing web module: ${path.relative(ROOT, modulePath)}`);
-    }
-    return `  // --- module: ${name} ---\n${indentChunk(fs.readFileSync(modulePath, "utf8"))}`;
-  }).join("\n") + "\n";
-}
-
-function loadBundledWebSource() {
-  let source = fs.readFileSync(SOURCE, "utf8");
-  source = replaceMarkedBlock(source, "__BUTTON_TYPES_START__", "__BUTTON_TYPES_END__", loadButtonTypes(), false);
-  source = replaceMarkedBlock(source, "__WEB_MODULES_START__", "__WEB_MODULES_END__", loadWebModules(), true);
-  return source;
-}
-
-module.exports = {
-  loadBundledWebSource,
-};
+module.exports = { freshWebOutputDir, loadBuiltWebSource };

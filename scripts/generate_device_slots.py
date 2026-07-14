@@ -34,6 +34,7 @@ def package_data(device: dict) -> dict:
 def package_substitution_lines(device: dict) -> list[str]:
     package = package_data(device)
     lines = [
+        '  cover_art_placeholder_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/common/assets/cover_art_placeholder.svg"',
         f'  device_slug: "{device["slug"]}"',
         f'  firmware_manifest_slug: "{device["slug"]}"',
     ]
@@ -64,7 +65,7 @@ def package_substitution_lines(device: dict) -> list[str]:
 
 
 def voice_substitution_lines(device: dict) -> list[str]:
-    if device["slug"] != "esp32-p4-86":
+    if not package_data(device).get("localVoiceServices"):
         return [
             '  voice_clock_bar_hide_code: ""',
             '  voice_clock_bar_apply_code: ""',
@@ -102,217 +103,7 @@ def voice_substitution_lines(device: dict) -> list[str]:
 
 
 def cover_art_substitution_lines(device: dict) -> list[str]:
-    layouts = {
-        "guition-esp32-s3-4848s040": {
-            "cover_art_size": "480",
-            "cover_art_decode_size": "320",
-            "cover_art_x": "0",
-            "cover_art_y": "0",
-            "cover_art_accent_x": "0",
-            "cover_art_accent_y": "0",
-            "cover_art_accent_width": "480",
-            "cover_art_accent_height": "480",
-            "cover_art_accent_bg_opa": "80%",
-            "cover_art_accent_opa": "80%",
-            "cover_art_panel_x": "0",
-            "cover_art_panel_y": "0",
-            "cover_art_panel_width": "480",
-            "cover_art_panel_height": "480",
-            "cover_art_panel_pad_top": "24",
-            "cover_art_panel_pad_bottom": "16",
-            "cover_art_panel_pad_left": "24",
-            "cover_art_panel_pad_right": "24",
-            "cover_art_panel_pad_row": "0",
-            "cover_art_title_font": "font_cover_art_title",
-            "cover_art_title_max_height": "330",
-            "cover_art_title_line_space": "0",
-            "cover_art_artist_font": "font_cover_art_artist",
-            "cover_art_artist_pad_top": "6",
-            "cover_art_artist_long_mode": "dot",
-            "cover_art_time_font": "font_cover_art_time",
-            "cover_art_time_pad_top": "12",
-            "cover_art_progress_width": "480",
-            "cover_art_progress_height": "4",
-            "cover_art_text_color": "0xFFFFFF",
-            "cover_art_square_overlay": "true",
-            "cover_art_live_image_updates": "false",
-        },
-        "esp32-p4-86": {
-            "cover_art_size": "720",
-            "cover_art_decode_size": "720",
-            "cover_art_x": "0",
-            "cover_art_y": "0",
-            "cover_art_accent_x": "0",
-            "cover_art_accent_y": "0",
-            "cover_art_accent_width": "720",
-            "cover_art_accent_height": "720",
-            "cover_art_accent_bg_opa": "80%",
-            "cover_art_accent_opa": "80%",
-            "cover_art_panel_x": "0",
-            "cover_art_panel_y": "0",
-            "cover_art_panel_width": "720",
-            "cover_art_panel_height": "720",
-            "cover_art_panel_pad_top": "36",
-            "cover_art_panel_pad_bottom": "24",
-            "cover_art_panel_pad_left": "36",
-            "cover_art_panel_pad_right": "36",
-            "cover_art_panel_pad_row": "0",
-            "cover_art_title_font": "font_cover_art_title",
-            "cover_art_title_max_height": "495",
-            "cover_art_title_line_space": "0",
-            "cover_art_artist_font": "font_cover_art_artist",
-            "cover_art_artist_pad_top": "9",
-            "cover_art_artist_long_mode": "dot",
-            "cover_art_time_font": "font_cover_art_time",
-            "cover_art_time_pad_top": "18",
-            "cover_art_progress_width": "720",
-            "cover_art_progress_height": "4",
-            "cover_art_text_color": "0xFFFFFF",
-            "cover_art_square_overlay": "true",
-            "cover_art_live_image_updates": "false",
-        },
-        "guition-esp32-p4-jc4880p443": {
-            "cover_art_size": "480",
-            "cover_art_decode_size": "480",
-            "cover_art_x": "0",
-            "cover_art_y": "0",
-            "cover_art_accent_x": "0",
-            "cover_art_accent_y": "480",
-            "cover_art_accent_width": "480",
-            "cover_art_accent_height": "320",
-            "cover_art_accent_bg_opa": "100%",
-            "cover_art_accent_opa": "100%",
-            "cover_art_panel_x": "24",
-            "cover_art_panel_y": "514",
-            "cover_art_panel_width": "432",
-            "cover_art_panel_height": "262",
-            "cover_art_panel_pad_top": "0",
-            "cover_art_panel_pad_bottom": "0",
-            "cover_art_panel_pad_left": "0",
-            "cover_art_panel_pad_right": "0",
-            "cover_art_panel_pad_row": "0",
-            "cover_art_title_font": "font_cover_art_title",
-            "cover_art_title_max_height": "130",
-            "cover_art_title_line_space": "0",
-            "cover_art_artist_font": "font_cover_art_artist",
-            "cover_art_artist_pad_top": "10",
-            "cover_art_artist_long_mode": "dot",
-            "cover_art_time_font": "font_cover_art_time",
-            "cover_art_time_pad_top": "14",
-            "cover_art_progress_width": "480",
-            "cover_art_progress_height": "4",
-            "cover_art_text_color": "0xFFFFFF",
-            "cover_art_square_overlay": "false",
-            "cover_art_live_image_updates": "false",
-        },
-        "guition-esp32-p4-jc8012p4a1": {
-            "cover_art_size": "800",
-            "cover_art_decode_size": "800",
-            "cover_art_x": "0",
-            "cover_art_y": "0",
-            "cover_art_accent_x": "800",
-            "cover_art_accent_y": "0",
-            "cover_art_accent_width": "480",
-            "cover_art_accent_height": "800",
-            "cover_art_accent_bg_opa": "100%",
-            "cover_art_accent_opa": "100%",
-            "cover_art_panel_x": "840",
-            "cover_art_panel_y": "40",
-            "cover_art_panel_width": "400",
-            "cover_art_panel_height": "720",
-            "cover_art_panel_pad_top": "0",
-            "cover_art_panel_pad_bottom": "0",
-            "cover_art_panel_pad_left": "0",
-            "cover_art_panel_pad_right": "0",
-            "cover_art_panel_pad_row": "0",
-            "cover_art_title_font": "font_cover_art_title",
-            "cover_art_title_max_height": "506",
-            "cover_art_title_line_space": "0",
-            "cover_art_artist_font": "font_cover_art_artist",
-            "cover_art_artist_pad_top": "4",
-            "cover_art_artist_long_mode": "wrap",
-            "cover_art_time_font": "font_cover_art_time",
-            "cover_art_time_pad_top": "12",
-            "cover_art_progress_width": "1280",
-            "cover_art_progress_height": "4",
-            "cover_art_text_color": "0xFFF5E0",
-            "cover_art_square_overlay": "false",
-            "cover_art_live_image_updates": "false",
-        },
-        "seeed-esp32-p4-reterminal-d1001": {
-            "cover_art_size": "800",
-            "cover_art_decode_size": "800",
-            "cover_art_x": "0",
-            "cover_art_y": "0",
-            "cover_art_accent_x": "800",
-            "cover_art_accent_y": "0",
-            "cover_art_accent_width": "480",
-            "cover_art_accent_height": "800",
-            "cover_art_accent_bg_opa": "100%",
-            "cover_art_accent_opa": "100%",
-            "cover_art_panel_x": "840",
-            "cover_art_panel_y": "40",
-            "cover_art_panel_width": "400",
-            "cover_art_panel_height": "720",
-            "cover_art_panel_pad_top": "0",
-            "cover_art_panel_pad_bottom": "0",
-            "cover_art_panel_pad_left": "0",
-            "cover_art_panel_pad_right": "0",
-            "cover_art_panel_pad_row": "0",
-            "cover_art_title_font": "font_cover_art_title",
-            "cover_art_title_max_height": "506",
-            "cover_art_title_line_space": "0",
-            "cover_art_artist_font": "font_cover_art_artist",
-            "cover_art_artist_pad_top": "4",
-            "cover_art_artist_long_mode": "wrap",
-            "cover_art_time_font": "font_cover_art_time",
-            "cover_art_time_pad_top": "12",
-            "cover_art_progress_width": "1280",
-            "cover_art_progress_height": "4",
-            "cover_art_text_color": "0xFFF5E0",
-            "cover_art_square_overlay": "false",
-            "cover_art_live_image_updates": "false",
-        },
-        "guition-esp32-p4-jc1060p470": {
-            "cover_art_size": "600",
-            "cover_art_decode_size": "600",
-            "cover_art_x": "0",
-            "cover_art_y": "0",
-            "cover_art_accent_x": "585",
-            "cover_art_accent_y": "0",
-            "cover_art_accent_width": "439",
-            "cover_art_accent_height": "600",
-            "cover_art_accent_bg_opa": "100%",
-            "cover_art_accent_opa": "100%",
-            "cover_art_panel_x": "615",
-            "cover_art_panel_y": "34",
-            "cover_art_panel_width": "377",
-            "cover_art_panel_height": "430",
-            "cover_art_panel_pad_top": "0",
-            "cover_art_panel_pad_bottom": "0",
-            "cover_art_panel_pad_left": "0",
-            "cover_art_panel_pad_right": "0",
-            "cover_art_panel_pad_row": "0",
-            "cover_art_title_font": "font_cover_art_title",
-            "cover_art_title_max_height": "260",
-            "cover_art_title_line_space": "-8",
-            "cover_art_artist_font": "font_cover_art_artist",
-            "cover_art_artist_pad_top": "10",
-            "cover_art_artist_long_mode": "dot",
-            "cover_art_time_font": "font_cover_art_time",
-            "cover_art_time_pad_top": "14",
-            "cover_art_progress_width": "1024",
-            "cover_art_progress_height": "4",
-            "cover_art_text_color": "0xFFFFFF",
-            "cover_art_square_overlay": "false",
-            "cover_art_live_image_updates": "false",
-        },
-    }
-    layout = layouts.get(device["slug"])
-    if not layout:
-        return []
-    layout = {**layout}
-    layout.setdefault("cover_art_live_image_updates", "true")
+    layout = device.get("cover_art") or {}
     return [f'  {key}: "{value}"' for key, value in layout.items()]
 
 
@@ -583,35 +374,10 @@ def cfg_lines(device: dict) -> list[str]:
     lines.append("            cfg.temperature_unit = id(temperature_unit_select).current_option();")
     lines.append("            cfg.timezone = id(timezone_select).current_option();")
     lines.append("            cfg.suspend_display_takeover = []() {")
-    lines.append("              id(display_takeover_suspended) = true;")
-    lines.append("              id(screensaver_idle_check).stop();")
-    lines.append("              id(screensaver_sleep_timer).stop();")
-    lines.append("              id(screensaver_sleep_sensor).stop();")
-    lines.append("              id(screensaver_sleep_display_off).stop();")
-    lines.append("              id(backlight_sleep_display_off).stop();")
-    lines.append("              id(backlight_fade_current_ui_to_black).stop();")
-    lines.append("              id(backlight_schedule_display_off).stop();")
-    lines.append("              id(show_cover_art_view).stop();")
-    lines.append("              id(cover_art_delay_timer).stop();")
-    lines.append("              id(cover_art_show_track_overlay).stop();")
-    lines.append("              id(show_clock_view).stop();")
-    lines.append("              id(show_dimmed_view).stop();")
-    lines.append("              id(clock_screensaver_refresh_brightness).stop();")
-    lines.append("              id(screensaver_dimmed_refresh_brightness).stop();")
-    lines.append("              id(display_asleep) = false;")
-    lines.append("              id(cover_art_screensaver_active) = false;")
-    lines.append("              id(screensaver_display_off_active) = false;")
-    lines.append("              id(screensaver_dimmed_active) = false;")
-    lines.append("              lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);")
-    lines.append("              id(backlight_apply_brightness).execute();")
+    lines.append("              id(display_takeover_suspend).execute();")
     lines.append("            };")
     lines.append("            cfg.resume_display_takeover = []() {")
-    lines.append("              id(display_takeover_suspended) = false;")
-    lines.append("              id(display_takeover_resume_restore).execute();")
+    lines.append("              id(display_takeover_resume).execute();")
     lines.append("            };")
     if image_card_count > 0:
         lines.append("            static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {")

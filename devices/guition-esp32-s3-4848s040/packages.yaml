@@ -7,6 +7,7 @@
 # =============================================================================
 
 substitutions:
+  cover_art_placeholder_file: "https://raw.githubusercontent.com/jtenniswood/espcontrol/main/common/assets/cover_art_placeholder.svg"
   device_slug: "guition-esp32-s3-4848s040"
   firmware_manifest_slug: "guition-esp32-s3-4848s040"
   firmware_version: "dev"

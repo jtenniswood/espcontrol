@@ -101,6 +101,9 @@ def require_build(manifest: dict, url: str) -> dict:
 def verify_versions_index(base_url: str, slug: str, latest_version: str) -> None:
     url = versions_url(base_url, slug)
     data = fetch_json(url)
+    device = str(data.get("device", "")).strip()
+    if device != slug:
+        raise PublicFirmwareError(f"{url} device {device!r} must match slug {slug!r}")
     entries = data.get("versions")
     if not isinstance(entries, list) or not entries:
         raise PublicFirmwareError(f"{url} must contain a non-empty versions list")
@@ -279,6 +282,16 @@ def self_test() -> None:
                 pass
             else:
                 raise PublicFirmwareError("self-test expected missing required firmware to fail")
+            versions_index = base / "firmware" / "required-panel" / "versions.json"
+            versions_data = json.loads(versions_index.read_text(encoding="utf-8"))
+            versions_data["device"] = "wrong-panel"
+            versions_index.write_text(json.dumps(versions_data), encoding="utf-8")
+            try:
+                verify_public_firmware(url, ["required-panel"], set(), 1, 0)
+            except PublicFirmwareError:
+                pass
+            else:
+                raise PublicFirmwareError("self-test expected mismatched versions device to fail")
         finally:
             server.shutdown()
             thread.join(timeout=5)

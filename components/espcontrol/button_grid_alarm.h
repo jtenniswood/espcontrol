@@ -36,8 +36,8 @@ struct AlarmCardCtx {
   const lv_font_t *icon_font = nullptr;
   const lv_font_t *arming_title_font = nullptr;
   uint32_t on_color = DEFAULT_SLIDER_COLOR;
-  uint32_t off_color = DEFAULT_OFF_COLOR;
-  uint32_t tertiary_color = DEFAULT_TERTIARY_COLOR;
+  uint32_t off_color = SECONDARY_GREY;
+  uint32_t tertiary_color = TERTIARY_GREY;
   int width_compensation_percent = 100;
   int grid_cols = 3;
   bool available = false;
@@ -97,6 +97,14 @@ struct AlarmDeferredAction {
   lv_timer_t *timer = nullptr;
   bool submit_pin = false;
 };
+
+inline bool alarm_card_show_status_icon(const ParsedCfg &p) {
+  return normalize_alarm_icon_display(cfg_option_value(p.options, "icon_display")) == "status";
+}
+
+inline bool alarm_card_show_status_label(const ParsedCfg &p) {
+  return normalize_alarm_label_display(cfg_option_value(p.options, "label_display")) == "status";
+}
 
 inline AlarmControlModalUi &alarm_control_modal_ui() {
   static AlarmControlModalUi ui;
@@ -797,7 +805,7 @@ inline uint32_t alarm_control_active_color(AlarmCardCtx *ctx, const std::string 
 }
 
 inline uint32_t alarm_control_inactive_color(AlarmCardCtx *ctx) {
-  return ctx ? ctx->off_color : DEFAULT_OFF_COLOR;
+  return ctx ? ctx->off_color : SECONDARY_GREY;
 }
 
 inline lv_coord_t alarm_control_mode_button_radius(const ControlModalLayout &layout,
@@ -981,7 +989,7 @@ inline lv_obj_t *alarm_create_key_button(lv_obj_t *parent, lv_coord_t width,
                                          uint16_t label_zoom = 256) {
   lv_coord_t radius = width < height ? width / 2 : height / 2;
   lv_obj_t *btn = control_modal_create_round_button(
-    parent, width, text, font, DARK_BORDER, DARK_BACKGROUND_TERTIARY,
+    parent, width, text, font, DARK_BORDER, SECONDARY_GREY,
     width_compensation_percent);
   lv_obj_set_size(btn, width, height);
   lv_obj_set_style_radius(btn, radius, LV_PART_MAIN);

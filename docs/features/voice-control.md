@@ -358,4 +358,3 @@ After installing or updating Voice Control, test:
 8. Mute and unmute the microphone from Home Assistant.
 9. Open the local volume control from the clock bar or BOOT/Key2 button.
 10. If using cover art, confirm it hides during a voice turn and restores afterwards.
-

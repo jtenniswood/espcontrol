@@ -41,7 +41,7 @@ class Commit:
 CATEGORIES = (
     Category(
         "User-facing features and setup",
-        paths=("src/webserver/", "docs/public/webserver/"),
+        paths=("src/webserver/", "docs/public/webserver/", "docs/public/device-profiles.json"),
         keywords=(
             "action",
             "backlight",
@@ -109,7 +109,7 @@ INTERNAL_PATHS = (
     "renovate.json",
     "scripts/",
 )
-PUBLIC_DOC_PATHS = ("docs/public/webserver/",)
+PUBLIC_SETUP_PATHS = ("docs/public/webserver/", "docs/public/device-profiles.json")
 PUBLIC_RELEASE_SCRIPT_PATHS = (
     "scripts/firmware_release.py",
     "scripts/check_firmware_release.py",
@@ -329,6 +329,8 @@ def touches_any_path(path: str, prefixes: tuple[str, ...]) -> bool:
 
 def is_internal_change(commit: Commit) -> bool:
     subject = commit.subject.lower()
+    if any(touches_any_path(path, PUBLIC_SETUP_PATHS) for path in commit.files):
+        return False
     if touches_any(commit, PUBLIC_RELEASE_SCRIPT_PATHS) and any(
         keyword in subject
         for keyword in (
@@ -348,7 +350,7 @@ def is_internal_change(commit: Commit) -> bool:
     if any(keyword in subject for keyword in INTERNAL_SUBJECT_KEYWORDS):
         return True
     return bool(commit.files) and all(
-        touches_any_path(path, INTERNAL_PATHS) and not touches_any_path(path, PUBLIC_DOC_PATHS)
+        touches_any_path(path, INTERNAL_PATHS) and not touches_any_path(path, PUBLIC_SETUP_PATHS)
         for path in commit.files
     )
 
@@ -450,6 +452,7 @@ def release_affects_all_devices(commits: list[Commit]) -> bool:
         "common/",
         "components/",
         "devices/manifest.json",
+        "docs/public/device-profiles.json",
         *PUBLIC_RELEASE_SCRIPT_PATHS,
         "src/webserver/",
     )

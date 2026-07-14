@@ -23,8 +23,8 @@ struct FanCardCtx {
   const char *icon_off_glyph = nullptr;
   const char *icon_on_glyph = nullptr;
   uint32_t on_color = DEFAULT_SLIDER_COLOR;
-  uint32_t off_color = DEFAULT_OFF_COLOR;
-  uint32_t tertiary_color = DEFAULT_TERTIARY_COLOR;
+  uint32_t off_color = SECONDARY_GREY;
+  uint32_t tertiary_color = TERTIARY_GREY;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
   int width_compensation_percent = 100;
@@ -517,14 +517,14 @@ inline void fan_control_style_tab(lv_obj_t *btn, bool active, uint32_t accent_co
   if (!btn) return;
   (void) accent_color;
   lv_obj_set_style_bg_color(
-    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+    btn, lv_color_hex(active ? DARK_TEXT_PRIMARY : SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   if (label) {
     lv_obj_set_style_text_color(
-      label, lv_color_hex(active ? DEFAULT_TERTIARY_COLOR : DARK_TEXT_PRIMARY), LV_PART_MAIN);
+      label, lv_color_hex(active ? TERTIARY_GREY : DARK_TEXT_PRIMARY), LV_PART_MAIN);
   }
 }
 
@@ -533,7 +533,7 @@ inline lv_obj_t *fan_control_create_tab_button(lv_obj_t *parent, const char *ico
                                                FanControlTab tab) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_TERTIARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -565,7 +565,7 @@ inline lv_obj_t *fan_control_create_icon_button(lv_obj_t *parent, const char *ic
                                                 const lv_font_t *font) {
   lv_obj_t *btn = lv_btn_create(parent);
   if (!btn) return nullptr;
-  lv_obj_set_style_bg_color(btn, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -585,12 +585,14 @@ inline lv_obj_t *fan_control_create_icon_button(lv_obj_t *parent, const char *ic
 
 inline void fan_control_style_binary_button(lv_obj_t *btn, bool active,
                                             uint32_t active_color,
-                                            uint32_t inactive_color) {
+                                            uint32_t inactive_color,
+                                            bool active_outline = false) {
   if (!btn) return;
   lv_obj_t *label = lv_obj_get_child(btn, 0);
   lv_obj_set_style_bg_color(btn, lv_color_hex(active ? active_color : inactive_color), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(btn, active ? LV_OPA_COVER : LV_OPA_TRANSP, LV_PART_MAIN);
-  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+  lv_obj_set_style_border_color(btn, lv_color_hex(DARK_TEXT_PRIMARY), LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, active && active_outline ? 2 : 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
   if (label) {
     lv_obj_set_style_text_color(
@@ -601,23 +603,24 @@ inline void fan_control_style_binary_button(lv_obj_t *btn, bool active,
 inline void fan_control_apply_power(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
-  fan_control_style_binary_button(ui.power_on_btn, ctx->on, ctx->on_color, DARK_BACKGROUND_SECONDARY);
-  fan_control_style_binary_button(ui.power_off_btn, !ctx->on, DARK_BACKGROUND_TERTIARY, DARK_BACKGROUND_SECONDARY);
+  fan_control_style_binary_button(ui.power_on_btn, ctx->on, ctx->on_color, SECONDARY_GREY);
+  fan_control_style_binary_button(ui.power_off_btn, !ctx->on, SECONDARY_GREY, SECONDARY_GREY, true);
 }
 
 inline void fan_control_apply_oscillation(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
-  fan_control_style_binary_button(ui.oscillation_on_btn, ctx->oscillating, ctx->on_color, DARK_BACKGROUND_SECONDARY);
-  fan_control_style_binary_button(ui.oscillation_off_btn, !ctx->oscillating, DARK_BACKGROUND_TERTIARY, DARK_BACKGROUND_SECONDARY);
+  fan_control_style_binary_button(ui.oscillation_on_btn, ctx->oscillating, ctx->on_color, SECONDARY_GREY);
+  fan_control_style_binary_button(
+    ui.oscillation_off_btn, !ctx->oscillating, SECONDARY_GREY, SECONDARY_GREY, true);
 }
 
 inline void fan_control_apply_direction(FanCardCtx *ctx) {
   FanControlModalUi &ui = fan_control_modal_ui();
   if (!ctx || ui.active != ctx) return;
   bool reverse = ctx->direction == "reverse";
-  fan_control_style_binary_button(ui.direction_forward_btn, !reverse, ctx->on_color, DARK_BACKGROUND_SECONDARY);
-  fan_control_style_binary_button(ui.direction_reverse_btn, reverse, ctx->on_color, DARK_BACKGROUND_SECONDARY);
+  fan_control_style_binary_button(ui.direction_forward_btn, !reverse, ctx->on_color, SECONDARY_GREY);
+  fan_control_style_binary_button(ui.direction_reverse_btn, reverse, ctx->on_color, SECONDARY_GREY);
 }
 
 inline void fan_control_set_speed_value(FanCardCtx *ctx, int pct) {
@@ -861,7 +864,7 @@ inline void fan_control_rebuild_preset_list(FanCardCtx *ctx) {
     bool selected = fan_lower(fan_trim(mode)) == current;
     lv_obj_t *btn = control_modal_create_list_row(
       ui.preset_list, fan_option_label(mode), selected, row_h, row_radius,
-      ctx->on_color, DARK_BACKGROUND_SECONDARY,
+      ctx->on_color, SECONDARY_GREY,
       ctx->label_font, ctx->width_compensation_percent);
     ui.preset_clicks[i].ctx = ctx;
     ui.preset_clicks[i].mode = mode;
@@ -905,7 +908,7 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   if (!ui.panel) return;
 
   ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
   lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
   lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
@@ -922,7 +925,7 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   ui.direction_group = lv_obj_create(ui.panel);
   lv_obj_t *binary_groups[] = {ui.power_group, ui.oscillation_group, ui.direction_group};
   for (lv_obj_t *group : binary_groups) {
-    lv_obj_set_style_bg_color(group, lv_color_hex(DARK_BACKGROUND_SECONDARY), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(group, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(group, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_border_width(group, 0, LV_PART_MAIN);
     lv_obj_set_style_shadow_width(group, 0, LV_PART_MAIN);
@@ -1095,7 +1098,7 @@ inline void fan_preset_open(FanCardCtx *ctx) {
     bool selected = fan_lower(fan_trim(mode)) == current;
     lv_obj_t *btn = control_modal_create_list_row(
       ui.list, fan_option_label(mode), selected, row_h, row_radius,
-      ctx->on_color, DARK_BACKGROUND_SECONDARY,
+      ctx->on_color, SECONDARY_GREY,
       ctx->label_font, ctx->width_compensation_percent);
     ui.option_clicks[i].ctx = ctx;
     ui.option_clicks[i].mode = mode;

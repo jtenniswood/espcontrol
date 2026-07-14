@@ -1,0 +1,82 @@
+[
+  {
+    "name": "compact delimiter card canonicalizes for firmware",
+    "input": "~sensor.energy,Energy%3B%20Now,Gauge,Auto,sensor.energy,kWh,sensor,1,large_numbers",
+    "canonical": "~sensor.energy,Energy%3B Now,Gauge,Auto,sensor.energy,kWh,sensor,1,large_numbers",
+    "expected": {
+      "entity": "sensor.energy",
+      "label": "Energy; Now",
+      "icon": "Gauge",
+      "icon_on": "Auto",
+      "sensor": "sensor.energy",
+      "unit": "kWh",
+      "type": "sensor",
+      "precision": "1",
+      "options": "large_numbers"
+    }
+  },
+  {
+    "name": "media playlist canonical output is firmware readable",
+    "input": "media_player.living_room;Morning Mix;Music;Auto;playlist;;media;;playlist_content_id=media-source%3A//music/morning%2Cmix,playlist_content_type=music,volume_max=40",
+    "canonical": "media_player.living_room;Morning Mix;Music;Auto;playlist;;media;;playlist_content_id=media-source%3A//music/morning%2Cmix,playlist_content_type=music",
+    "expected": {
+      "entity": "media_player.living_room",
+      "label": "Morning Mix",
+      "icon": "Music",
+      "icon_on": "Auto",
+      "sensor": "playlist",
+      "unit": "",
+      "type": "media",
+      "precision": "",
+      "options": "playlist_content_id=media-source%3A//music/morning%2Cmix,playlist_content_type=music"
+    }
+  },
+  {
+    "name": "switch confirmation canonical output is firmware readable",
+    "input": "switch.printer;Printer;Printer 3D;Auto;;;;;large_numbers,on_pattern=stripes,confirm_off,confirm_on,confirm_message=Check%20first?,confirm_yes=Do%20it,confirm_no=Nope,ignored=1",
+    "canonical": "switch.printer;Printer;Printer 3D;Auto;;;;;large_numbers,on_pattern=stripes,confirm_off,confirm_on,confirm_message=Check first?,confirm_yes=Do it,confirm_no=Nope",
+    "expected": {
+      "entity": "switch.printer",
+      "label": "Printer",
+      "icon": "Printer 3D",
+      "icon_on": "Auto",
+      "sensor": "",
+      "unit": "",
+      "type": "",
+      "precision": "",
+      "options": "large_numbers,on_pattern=stripes,confirm_off,confirm_on,confirm_message=Check first?,confirm_yes=Do it,confirm_no=Nope"
+    }
+  },
+  {
+    "name": "climate icon display canonical output is firmware readable",
+    "input": "climate.hallway;Hallway;Thermostat;Radiator;;;climate_control;1;number_display=icon,large_numbers",
+    "canonical": "climate.hallway;Hallway;Thermostat;Radiator;;;climate_control;1;number_display=icon",
+    "expected": {
+      "entity": "climate.hallway",
+      "label": "Hallway",
+      "icon": "Thermostat",
+      "icon_on": "Radiator",
+      "sensor": "",
+      "unit": "",
+      "type": "climate_control",
+      "precision": "1",
+      "options": "number_display=icon"
+    }
+  },
+  {
+    "name": "compact sensor labels canonicalize for firmware",
+    "input": "~sensor.bin_level,Bin,Trash Can,Auto,sensor.bin_level,,sensor,text,state_labels%2Cstate_input=high%2Cstate_output=Please%20empty%2Cstate_input_2=low%2Cstate_output_2=Full",
+    "canonical": "sensor.bin_level;Bin;Trash Can;Auto;sensor.bin_level;;sensor;text;state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full",
+    "expected": {
+      "entity": "sensor.bin_level",
+      "label": "Bin",
+      "icon": "Trash Can",
+      "icon_on": "Auto",
+      "sensor": "sensor.bin_level",
+      "unit": "",
+      "type": "sensor",
+      "precision": "text",
+      "options": "state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full"
+    }
+  }
+]

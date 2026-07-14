@@ -57,6 +57,7 @@ Some ESP32-P4 displays use a separate ESP32-C6 chip for WiFi. EspControl exposes
 
 - **7-inch JC1060P470**
 - **10.1-inch JC8012P4A1**
+- **10.1-inch JC8012P4A1 new panel**
 - **4.3-inch JC4880P443**
 - **4-inch ESP32-P4-86**
 

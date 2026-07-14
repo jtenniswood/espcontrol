@@ -66,35 +66,10 @@ script:
           cfg.temperature_unit = id(temperature_unit_select).current_option();
           cfg.timezone = id(timezone_select).current_option();
           cfg.suspend_display_takeover = []() {
-            id(display_takeover_suspended) = true;
-            id(screensaver_idle_check).stop();
-            id(screensaver_sleep_timer).stop();
-            id(screensaver_sleep_sensor).stop();
-            id(screensaver_sleep_display_off).stop();
-            id(backlight_sleep_display_off).stop();
-            id(backlight_fade_current_ui_to_black).stop();
-            id(backlight_schedule_display_off).stop();
-            id(show_cover_art_view).stop();
-            id(cover_art_delay_timer).stop();
-            id(cover_art_show_track_overlay).stop();
-            id(show_clock_view).stop();
-            id(show_dimmed_view).stop();
-            id(clock_screensaver_refresh_brightness).stop();
-            id(screensaver_dimmed_refresh_brightness).stop();
-            id(display_asleep) = false;
-            id(cover_art_screensaver_active) = false;
-            id(screensaver_display_off_active) = false;
-            id(screensaver_dimmed_active) = false;
-            lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
-            id(backlight_apply_brightness).execute();
+            id(display_takeover_suspend).execute();
           };
           cfg.resume_display_takeover = []() {
-            id(display_takeover_suspended) = false;
-            id(display_takeover_resume_restore).execute();
+            id(display_takeover_resume).execute();
           };
           static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
             id(image_card_download_1),
@@ -195,35 +170,10 @@ esphome:
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
             cfg.suspend_display_takeover = []() {
-              id(display_takeover_suspended) = true;
-              id(screensaver_idle_check).stop();
-              id(screensaver_sleep_timer).stop();
-              id(screensaver_sleep_sensor).stop();
-              id(screensaver_sleep_display_off).stop();
-              id(backlight_sleep_display_off).stop();
-              id(backlight_fade_current_ui_to_black).stop();
-              id(backlight_schedule_display_off).stop();
-              id(show_cover_art_view).stop();
-              id(cover_art_delay_timer).stop();
-              id(cover_art_show_track_overlay).stop();
-              id(show_clock_view).stop();
-              id(show_dimmed_view).stop();
-              id(clock_screensaver_refresh_brightness).stop();
-              id(screensaver_dimmed_refresh_brightness).stop();
-              id(display_asleep) = false;
-              id(cover_art_screensaver_active) = false;
-              id(screensaver_display_off_active) = false;
-              id(screensaver_dimmed_active) = false;
-              lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
-              id(backlight_apply_brightness).execute();
+              id(display_takeover_suspend).execute();
             };
             cfg.resume_display_takeover = []() {
-              id(display_takeover_suspended) = false;
-              id(display_takeover_resume_restore).execute();
+              id(display_takeover_resume).execute();
             };
             static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
               id(image_card_download_1),
@@ -385,35 +335,10 @@ esphome:
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
             cfg.suspend_display_takeover = []() {
-              id(display_takeover_suspended) = true;
-              id(screensaver_idle_check).stop();
-              id(screensaver_sleep_timer).stop();
-              id(screensaver_sleep_sensor).stop();
-              id(screensaver_sleep_display_off).stop();
-              id(backlight_sleep_display_off).stop();
-              id(backlight_fade_current_ui_to_black).stop();
-              id(backlight_schedule_display_off).stop();
-              id(show_cover_art_view).stop();
-              id(cover_art_delay_timer).stop();
-              id(cover_art_show_track_overlay).stop();
-              id(show_clock_view).stop();
-              id(show_dimmed_view).stop();
-              id(clock_screensaver_refresh_brightness).stop();
-              id(screensaver_dimmed_refresh_brightness).stop();
-              id(display_asleep) = false;
-              id(cover_art_screensaver_active) = false;
-              id(screensaver_display_off_active) = false;
-              id(screensaver_dimmed_active) = false;
-              lv_obj_add_flag(id(cover_art_screensaver), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_accent_overlay), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_track_panel), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_add_flag(id(dim_screensaver_touch_guard), LV_OBJ_FLAG_HIDDEN);
-              id(backlight_apply_brightness).execute();
+              id(display_takeover_suspend).execute();
             };
             cfg.resume_display_takeover = []() {
-              id(display_takeover_suspended) = false;
-              id(display_takeover_resume_restore).execute();
+              id(display_takeover_resume).execute();
             };
             static esphome::artwork_image::ArtworkImage *image_card_downloaders[] = {
               id(image_card_download_1),

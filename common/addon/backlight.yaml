@@ -147,6 +147,43 @@ esphome:
       - lambda: 'id(clock_brightness_legacy_sync_ready) = true;'
 
 script:
+  # Single ownership point for camera/image modal takeover. Keeping this here
+  # prevents every device slot from reaching into cover-art internals directly.
+  - id: display_takeover_suspend
+    mode: restart
+    then:
+      - globals.set: { id: display_takeover_suspended, value: 'true' }
+      - script.stop: screensaver_idle_check
+      - script.stop: screensaver_sleep_timer
+      - script.stop: screensaver_sleep_sensor
+      - script.stop: screensaver_sleep_display_off
+      - script.stop: backlight_sleep_display_off
+      - script.stop: backlight_fade_current_ui_to_black
+      - script.stop: backlight_schedule_display_off
+      - script.stop: show_cover_art_view
+      - script.stop: cover_art_delay_timer
+      - script.stop: cover_art_show_track_overlay
+      - script.stop: show_clock_view
+      - script.stop: show_dimmed_view
+      - script.stop: clock_screensaver_refresh_brightness
+      - script.stop: screensaver_dimmed_refresh_brightness
+      - globals.set: { id: display_asleep, value: 'false' }
+      - globals.set: { id: cover_art_screensaver_active, value: 'false' }
+      - globals.set: { id: screensaver_display_off_active, value: 'false' }
+      - globals.set: { id: screensaver_dimmed_active, value: 'false' }
+      - lvgl.widget.hide: cover_art_screensaver
+      - lvgl.widget.hide: cover_art_accent_overlay
+      - lvgl.widget.hide: cover_art_track_panel
+      - lvgl.widget.hide: cover_art_progress_bar
+      - lvgl.widget.hide: dim_screensaver_touch_guard
+      - script.execute: backlight_apply_brightness
+
+  - id: display_takeover_resume
+    mode: restart
+    then:
+      - globals.set: { id: display_takeover_suspended, value: 'false' }
+      - script.execute: display_takeover_resume_restore
+
   # Screensaver idle timer (restartable)
   - id: screensaver_idle_check
     mode: restart
@@ -635,7 +672,10 @@ script:
 
   # Wake from screensaver
   - id: screensaver_wake
-    mode: restart
+    # A held or noisy touch can emit another event before the restore delays
+    # below finish. Do not restart midway through that restore, otherwise the
+    # clock overlay can remain visible indefinitely.
+    mode: single
     then:
       - script.stop: screen_schedule_sleep
       - script.stop: backlight_fade_current_ui_to_black
@@ -767,11 +807,22 @@ script:
       - if:
           condition:
             lambda: |-
-              const bool cover_art_touch_pause_active =
+              const bool cover_art_touch_return_pending =
                 id(cover_art_manual_pause_until_ms) != 0 &&
                 (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
+              const bool cover_art_immediate_return =
+                id(cover_art_manual_pause_until_ms) != 0 &&
+                !std::isnan(id(cover_art_delay).state) && id(cover_art_delay).state <= 0.0f;
+              float show_after_seconds = id(cover_art_delay).state;
+              if (std::isnan(show_after_seconds) || show_after_seconds < 0.0f) show_after_seconds = 10.0f;
+              const bool cover_art_disabled_mode_delay =
+                id(screensaver_mode).state != "timer" &&
+                id(screensaver_mode).state != "sensor" &&
+                show_after_seconds > 0.0f;
               return (id(media_player_sleep_prevention_enabled).state ||
-                      cover_art_touch_pause_active) &&
+                      cover_art_touch_return_pending ||
+                      cover_art_immediate_return ||
+                      cover_art_disabled_mode_delay) &&
                      id(cover_art_media_playing) &&
                      id(cover_art_screensaver_enabled).state &&
                      !alarm_display_takeover_active();

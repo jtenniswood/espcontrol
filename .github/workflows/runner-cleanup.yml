@@ -1,6 +1,11 @@
 name: Runner Disk Cleanup
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/runner-cleanup.yml'
+      - 'scripts/reclaim_actions_disk.sh'
   schedule:
     - cron: '15 3 * * *'
   workflow_dispatch:

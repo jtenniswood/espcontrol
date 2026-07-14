@@ -5,6 +5,7 @@
 # =============================================================================
 
 substitutions:
+  cover_art_placeholder_file: "../../common/assets/cover_art_placeholder.svg"
   name: "espcontrol-43inch-p4"
   friendly_name: "EspControl 4.3inch P4"
   espcontrol_component_url: "../.."

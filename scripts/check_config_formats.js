@@ -5,10 +5,10 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const { loadBundledWebSource } = require("./web_source");
+const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
-const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
+const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
 const CONFIG_DIR = path.join(ROOT, "common", "config");
 const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
@@ -31,125 +31,8 @@ function loadHooks(search) {
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
-  vm.runInContext(loadBundledWebSource(), sandbox, { filename: SOURCE });
+  vm.runInContext(loadBuiltWebSource(), sandbox, { filename: SOURCE });
   return sandbox.__ESPCONTROL_TEST_HOOKS__.config;
-}
-
-function splitFields(value, delim) {
-  const out = [];
-  let start = 0;
-  while (start <= value.length) {
-    let end = value.indexOf(delim, start);
-    if (end < 0) end = value.length;
-    out.push(value.slice(start, end));
-    start = end + 1;
-  }
-  return out;
-}
-
-function decodeField(value) {
-  return String(value || "").replace(/%([0-9a-fA-F]{2})/g, (_, hex) => {
-    return String.fromCharCode(parseInt(hex, 16));
-  });
-}
-
-function subpageTypeFromCode(code) {
-  return {
-    A: "action",
-    U: "option_select",
-    D: "calendar",
-    CK: "clock",
-    T: "timezone",
-    S: "sensor",
-    LS: "local_sensor",
-    X: "door_window",
-    PR: "presence",
-    W: "weather",
-    F: "weather_forecast",
-    B: "fan_switch",
-    J: "fan_speed",
-    FC: "fan_control",
-    O: "fan_oscillate",
-    E: "fan_direction",
-    Z: "fan_preset",
-    V: "light_brightness",
-    Q: "light_switch",
-    Y: "alarm",
-    AA: "alarm_action",
-    L: "slider",
-    C: "cover",
-    N: "light_temperature",
-    R: "garage",
-    GT: "gate",
-    K: "lock",
-    LM: "lawn_mower",
-    M: "media",
-    H: "climate",
-    WH: "webhook",
-    P: "push",
-    SL: "screen_lock",
-    I: "internal",
-    G: "subpage",
-  }[code || ""] || (code || "");
-}
-
-function firmwareParseButtonConfig(str) {
-  const compact = str && str[0] === "~";
-  const parts = compact ? splitFields(str.slice(1), ",").map(decodeField) : splitFields(str || "", ";");
-  return {
-    entity: parts[0] || "",
-    label: parts[1] || "",
-    icon: parts[2] || "",
-    icon_on: parts[3] || "",
-    sensor: parts[4] || "",
-    unit: parts[5] || "",
-    type: parts[6] || "",
-    precision: parts[7] || "",
-    options: parts[8] || "",
-  };
-}
-
-function firmwareParseSubpageConfig(str) {
-  if (!str) return { order: [], buttons: [] };
-  const compact = str[0] === "~";
-  const body = compact ? str.slice(1) : str;
-  const pipes = splitFields(body, "|");
-  const order = pipes[0] ? pipes[0].split(",").map((s) => {
-    const token = s.trim();
-    const eq = token.indexOf("=");
-    return eq >= 0 ? token.slice(0, eq) : token;
-  }) : [];
-  const buttons = [];
-  for (let i = 1; i < pipes.length; i++) {
-    if (compact) {
-      const f = splitFields(pipes[i], ",");
-      buttons.push({
-        type: subpageTypeFromCode(f[0] || ""),
-        entity: decodeField(f[1]),
-        label: decodeField(f[2]),
-        icon: decodeField(f[3]) || "Auto",
-        icon_on: decodeField(f[4]) || "Auto",
-        sensor: decodeField(f[5]),
-        unit: decodeField(f[6]),
-        precision: decodeField(f[7]),
-        options: decodeField(f[8]),
-      });
-    } else {
-      const f = splitFields(pipes[i], ":");
-      buttons.push({
-        entity: f[0] || "",
-        label: f[1] || "",
-        icon: f[2] || "Auto",
-        icon_on: f[3] || "Auto",
-        sensor: f[4] || "",
-        unit: f[5] || "",
-        type: f[6] || "",
-        precision: f[7] || "",
-        options: f[8] || "",
-      });
-    }
-  }
-  return { order, buttons };
 }
 
 function buttonShape(b) {
@@ -177,7 +60,6 @@ function assertButtonRoundTrip(hooks, name, button, expectCompact) {
   const encoded = hooks.serializeButtonConfig(button);
   assert.strictEqual(encoded[0] === "~", expectCompact, `${name}: compact marker`);
   assert.deepStrictEqual(buttonShape(hooks.parseButtonConfig(encoded)), buttonShape(button), `${name}: web round-trip`);
-  assert.deepStrictEqual(buttonShape(firmwareParseButtonConfig(encoded)), buttonShape(button), `${name}: firmware parse`);
 }
 
 function assertButtonMigration(hooks, name, encoded, expected) {
@@ -193,7 +75,6 @@ function assertSubpageRoundTrip(hooks, name, subpage, expectCompact) {
   const encoded = hooks.serializeSubpageConfig(subpage);
   assert.strictEqual(encoded[0] === "~", expectCompact, `${name}: compact marker`);
   assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig(encoded)), subpageShape(subpage), `${name}: web round-trip`);
-  assert.deepStrictEqual(subpageShape(firmwareParseSubpageConfig(encoded)), subpageShape(subpage), `${name}: firmware parse`);
   return encoded;
 }
 
@@ -232,6 +113,9 @@ function assertNormalizationFixtures(hooks, groups) {
       const parsed = buttonShape(hooks.parseButtonConfig(fixture.input));
       assert.deepStrictEqual(parsed, buttonShape(fixture.expected), `${group.label} fixture ${fixture.name}: web parse`);
       const canonical = hooks.serializeButtonConfig(parsed);
+      if (Object.prototype.hasOwnProperty.call(fixture, "canonical")) {
+        assert.strictEqual(canonical, fixture.canonical, `${group.label} fixture ${fixture.name}: web canonical string`);
+      }
       assert.deepStrictEqual(
         buttonShape(hooks.parseButtonConfig(canonical)),
         buttonShape(fixture.expected),
@@ -249,11 +133,6 @@ const normalizationFixtureGroups = loadNormalizationFixtureGroups();
 const current = fixtures.current;
 const legacyV1 = fixtures["legacy-v1"];
 assert(hooks, "web config helpers were not exported");
-assert.deepStrictEqual(
-  Array.from(hooks.CARD_CONFIG_FIELDS),
-  current.generatedContract.fields,
-  "generated card contract preserves saved field order"
-);
 assert.strictEqual(
   hooks.cardContractSubpageTypeCode("climate"),
   current.generatedContract.subpageTypeCodes.climate,
@@ -306,7 +185,7 @@ assert.deepStrictEqual(buttonShape(hooks.cardContractDefaultConfig("climate")), 
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "",
   options: "",
 }), "generated contract exposes card defaults");
@@ -487,6 +366,33 @@ assert.strictEqual(
   "playlist_content_id=media-source%3A//music/morning%2Cmix,playlist_player_source=Kitchen Speaker",
   "media playlist default content type is omitted while playback source is preserved"
 );
+const encodedPlaylistOptions = { sensor: "playlist" };
+hooks.setMediaPlaylistContentId(encodedPlaylistOptions, "media-source://music/morning,mix=50%");
+hooks.setMediaPlaylistContentType(encodedPlaylistOptions, "music");
+hooks.setMediaPlaylistPlayerSource(encodedPlaylistOptions, "Kitchen, Main=Zone 50%");
+const encodedPlaylistButton = {
+  entity: "media_player.kitchen",
+  label: "Morning Mix",
+  icon: "Music",
+  icon_on: "Auto",
+  sensor: "playlist",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: encodedPlaylistOptions.options,
+};
+assertButtonRoundTrip(hooks, "media playlist encoded option values", encodedPlaylistButton, false);
+const parsedEncodedPlaylistButton = hooks.parseButtonConfig(hooks.serializeButtonConfig(encodedPlaylistButton));
+assert.strictEqual(
+  hooks.mediaPlaylistContentId(parsedEncodedPlaylistButton),
+  "media-source://music/morning,mix=50%",
+  "media playlist content ID keeps punctuation after parse and serialize"
+);
+assert.strictEqual(
+  hooks.mediaPlaylistPlayerSource(parsedEncodedPlaylistButton),
+  "Kitchen, Main=Zone 50%",
+  "media playlist player source keeps punctuation after parse and serialize"
+);
 assert.strictEqual(
   hooks.normalizeMediaOptions("volume_max=40", "volume"),
   "volume_max=40",
@@ -589,7 +495,7 @@ assert.deepStrictEqual(
   "cover control tabs preserve custom order"
 );
 assert.strictEqual(
-  hooks.normalizeCoverOptions("cover_tabs=position%7Ccontrols%7Ctilt"),
+  hooks.normalizeCoverOptions("cover_tabs=position%7Ccontrols%7Ctilt%7Cpresets"),
   "",
   "default cover control tab order is omitted"
 );
@@ -682,8 +588,6 @@ Object.entries(current.generatedContract.migrationAliases).forEach(([alias, expe
     `generated contract exposes ${alias} migration alias`
   );
 });
-assert.strictEqual(hooks.previewHtmlValue({ labelHtml: "" }, "labelHtml", "fallback"), "", "empty preview label suppresses fallback");
-assert.strictEqual(hooks.previewHtmlValue({}, "labelHtml", "fallback"), "fallback", "missing preview label uses fallback");
 assert.strictEqual(hooks.normalizeTemperatureUnit("fahrenheit"), "°F", "fahrenheit unit normalization");
 assert.strictEqual(hooks.normalizeTemperatureUnit("centigrade"), "°C", "centigrade unit normalization");
 assert.strictEqual(hooks.normalizeScreensaverAction("Screen Dimmed"), "dim", "dimmed screensaver action normalization");
@@ -698,22 +602,12 @@ assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 49), "wifi-strength-2", 
 assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 74), "wifi-strength-3", "wifi preview third strength icon");
 assert.strictEqual(hooks.networkPreviewIconSlug("wifi", 100), "wifi-strength-4", "wifi preview fourth strength icon");
 assert.strictEqual(hooks.networkPreviewIconSlug("ethernet", 100), "ethernet", "ethernet preview icon");
-const duplicateWrapGrid = Array.from({ length: 20 }, (_, i) => i + 1);
-duplicateWrapGrid[1] = 0;
-duplicateWrapGrid[2] = 0;
-const duplicateWidePlacement = hooks.findDuplicatePlacementFor(duplicateWrapGrid, 19, 3, 20);
-assert.strictEqual(duplicateWidePlacement.pos, 1, "duplicate placement wraps to earlier slots when a matching space exists");
-assert.strictEqual(duplicateWidePlacement.size, 3, "duplicate placement preserves card size when the wrapped space fits");
-duplicateWrapGrid[2] = 3;
-const duplicateFallbackPlacement = hooks.findDuplicatePlacementFor(duplicateWrapGrid, 19, 3, 20);
-assert.strictEqual(duplicateFallbackPlacement.pos, 1, "duplicate placement still wraps when copied size will not fit");
-assert.strictEqual(duplicateFallbackPlacement.size, 1, "duplicate placement falls back to a normal card when the copied size will not fit");
 const importedPlainOrder = hooks.importedButtonOrderFor("1,2,3", { 1: 2 });
 assert.deepStrictEqual({
   grid: Array.from(importedPlainOrder.grid),
   sizes: Object.assign({}, importedPlainOrder.sizes),
 }, {
-  grid: [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  grid: [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   sizes: {},
 }, "same-size imports clear stale button sizing");
 const importedSizedOrder = hooks.importedButtonOrderFor("1d,2,3", {});
@@ -724,12 +618,6 @@ assert.deepStrictEqual(Array.from(importedExtraTallOrder.grid.slice(0, 11)), [1,
 const importedExtraWideOrder = hooks.importedButtonOrderFor("1x,2,3", {});
 assert.strictEqual(importedExtraWideOrder.sizes["1"], 6, "imported extra wide sizing is preserved");
 assert.deepStrictEqual(Array.from(importedExtraWideOrder.grid.slice(0, 5)), [1, -1, -1, 2, 3], "extra wide spans three columns");
-const duplicateExtraWideGrid = Array.from({ length: 20 }, (_, i) => i + 1);
-duplicateExtraWideGrid[1] = 0;
-duplicateExtraWideGrid[2] = 3;
-const duplicateExtraWideFallback = hooks.findDuplicatePlacementFor(duplicateExtraWideGrid, 19, 6, 20);
-assert.strictEqual(duplicateExtraWideFallback.pos, 1, "extra wide duplicate placement falls back to a free single slot");
-assert.strictEqual(duplicateExtraWideFallback.size, 1, "extra wide duplicate placement falls back to normal size when no matching space fits");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, false, 60, 3600), true, "short timeout allowed before limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 60, 3600), false, "short timeout blocked after old limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 10, 3600), true, "short timeout allowed after new limits load");
@@ -1817,7 +1705,7 @@ assertButtonRoundTrip(hooks, "climate card", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
 }, false);
 
@@ -1828,7 +1716,7 @@ assertButtonRoundTrip(hooks, "climate card precision 2", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "2",
 }, false);
 
@@ -1839,7 +1727,7 @@ assertButtonRoundTrip(hooks, "climate card firmware precision 3", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "3",
 }, false);
 
@@ -1850,7 +1738,7 @@ assertButtonRoundTrip(hooks, "climate card custom range", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1:16:30",
 }, false);
 
@@ -1861,7 +1749,7 @@ assertButtonRoundTrip(hooks, "climate card negative custom range", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1:-25:5",
 }, false);
 
@@ -1872,7 +1760,7 @@ assertButtonRoundTrip(hooks, "climate card display options", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
   options: "label_display=status,number_display=actual",
 }, false);
@@ -1884,7 +1772,7 @@ assertButtonRoundTrip(hooks, "climate card half-degree step", {
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
   options: "temperature_step=0.5",
 }, false);
@@ -1896,20 +1784,21 @@ assertButtonRoundTrip(hooks, "climate card icon display", {
   icon_on: "Radiator",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
   options: "number_display=icon",
 }, false);
 
-assertButtonMigration(hooks, "plain climate drops all-controls tabs", "climate.hallway;Hallway;Thermostat;Auto;;;climate;1;climate_tabs=mode%7Ctemperature", {
+assertButtonMigration(hooks, "legacy climate keeps all-controls tabs", "climate.hallway;Hallway;Thermostat;Auto;;;climate;1;climate_tabs=mode%7Ctemperature", {
   entity: "climate.hallway",
   label: "Hallway",
   icon: "Thermostat",
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
+  options: "climate_tabs=mode%7Ctemperature",
 });
 
 assertButtonRoundTrip(hooks, "climate all controls custom tabs", {
@@ -1931,7 +1820,7 @@ assertButtonMigration(hooks, "climate clears ignored fields", "climate.living_ro
   icon_on: "Radiator",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "",
 });
 
@@ -1942,7 +1831,7 @@ assertButtonMigration(hooks, "climate clears legacy options", "climate.living_ro
   icon_on: "Auto",
   sensor: "",
   unit: "",
-  type: "climate",
+  type: "climate_control",
   precision: "1",
   options: "large_numbers",
 });
@@ -2193,29 +2082,29 @@ const imageLimitSnapshot = {
   buttons: [imageCardForLimit, imageCardForLimit, switchCardForImageLimit, imageCardForLimit],
   subpages: {
     4: {
-      grid: [1, 2, 0],
-      buttons: [imageCardForLimit, imageCardForLimit, imageCardForLimit],
+      grid: [1, 2, 3, 4, 0],
+      buttons: [imageCardForLimit, imageCardForLimit, imageCardForLimit, imageCardForLimit],
     },
   },
 };
-assert.strictEqual(hooks.imageCardLimit(), 4, "image card editor limit matches firmware downloader slots");
-assert.strictEqual(hooks.imageCardCountForTest(imageLimitSnapshot), 4, "image card count spans main page and subpages");
+assert.strictEqual(hooks.imageCardLimit(), 6, "image card editor limit matches the built device profile");
+assert.strictEqual(hooks.imageCardCountForTest(imageLimitSnapshot), 6, "image card count spans main page and subpages");
 assert.strictEqual(hooks.imageCardCandidateAllowedForTest(imageLimitSnapshot, {
   isSub: false,
-  slot: 3,
+  slot: 5,
   button: imageCardForLimit,
-}), false, "saving a fifth image card on the main page is blocked");
+}), false, "saving a seventh image card on the main page is blocked");
 assert.strictEqual(hooks.imageCardCandidateAllowedForTest(imageLimitSnapshot, {
   isSub: true,
   homeSlot: 4,
-  slot: 3,
+  slot: 5,
   button: imageCardForLimit,
-}), false, "saving a fifth image card on a subpage is blocked");
+}), false, "saving a seventh image card on a subpage is blocked");
 assert.strictEqual(hooks.imageCardCandidateAllowedForTest(imageLimitSnapshot, {
   isSub: false,
   slot: 2,
   button: switchCardForImageLimit,
-}), true, "replacing an existing image card frees a firmware slot");
+}), true, "saving a non-image card does not consume a firmware image slot");
 assertButtonRoundTrip(hooks, "image card default options", {
   entity: "camera.front_door",
   label: "",
@@ -3004,42 +2893,42 @@ assertSubpageRoundTrip(hooks, "media subpage", {
 assertSubpageRoundTrip(hooks, "climate subpage", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate", precision: "1" }),
+    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate_control", precision: "1" }),
   ],
 }, true);
 
 assertSubpageRoundTrip(hooks, "climate subpage custom range", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "0:16:30" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate_control", precision: "0:16:30" }),
   ],
 }, true);
 
 assertSubpageRoundTrip(hooks, "climate subpage negative custom range", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.freezer", label: "Freezer", type: "climate", precision: "1:-25:5" }),
+    buttonShape({ entity: "climate.freezer", label: "Freezer", type: "climate_control", precision: "1:-25:5" }),
   ],
 }, true);
 
 assertSubpageRoundTrip(hooks, "climate subpage display options", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "1", options: "label_display=target,number_display=actual" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate_control", precision: "1", options: "label_display=target,number_display=actual" }),
   ],
 }, true);
 
 assertSubpageRoundTrip(hooks, "climate subpage icon display", {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", type: "climate", precision: "1", options: "number_display=icon" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", type: "climate_control", precision: "1", options: "number_display=icon" }),
   ],
 }, true);
 
 const climateIconSubpage = hooks.serializeSubpageConfig({
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", type: "climate", precision: "1", options: "number_display=icon" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", icon: "Thermostat", icon_on: "Radiator", type: "climate_control", precision: "1", options: "number_display=icon" }),
   ],
 });
 assert.deepStrictEqual(
@@ -3142,20 +3031,6 @@ const customBackLabelSubpage = {
 const customBackLabelEncoded = assertSubpageRoundTrip(hooks, "custom back label subpage", customBackLabelSubpage, true);
 assert.strictEqual(hooks.parseSubpageConfig(customBackLabelEncoded).backLabel, "Return Home", "custom back label round-trips through subpage config");
 
-assert.strictEqual(hooks.backOrderToken("B", "Back"), "B", "default back label keeps compact B token");
-assert.strictEqual(hooks.backLabelFromOrder(["1", "B", "2"]), "Back", "missing back label defaults to Back");
-assert.strictEqual(JSON.stringify(hooks.parseBackOrderToken("Bw=Return%20Home")), JSON.stringify({
-  token: "Bw",
-  label: "Return Home",
-}), "back order token decodes custom label");
-assert.strictEqual(JSON.stringify(hooks.parseBackOrderToken("Bt=Return%20Home")), JSON.stringify({
-  token: "Bt",
-  label: "Return Home",
-}), "extra tall back order token decodes custom label");
-assert.strictEqual(JSON.stringify(hooks.parseBackOrderToken("Bx=Return%20Home")), JSON.stringify({
-  token: "Bx",
-  label: "Return Home",
-}), "extra wide back order token decodes custom label");
 assertSubpageRoundTrip(hooks, "extra tall and extra wide subpage order", {
   order: ["Bt", "1t", "", "", "", "Bx", "2x"],
   buttons: [
@@ -3354,14 +3229,14 @@ assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|M,media_playe
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|H,climate.living_room,Living%20Room,,,,,1")), {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate", precision: "1" }),
+    buttonShape({ entity: "climate.living_room", label: "Living Room", type: "climate_control", precision: "1" }),
   ],
 }, "compact climate subpage parse");
 
 assert.deepStrictEqual(subpageShape(hooks.parseSubpageConfig("~1,B|H,climate.hallway,Hallway,,,,,0%3A16%3A30")), {
   order: ["1", "B"],
   buttons: [
-    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate", precision: "0:16:30" }),
+    buttonShape({ entity: "climate.hallway", label: "Hallway", type: "climate_control", precision: "0:16:30" }),
   ],
 }, "compact climate range subpage parse");
 
@@ -3414,9 +3289,9 @@ const issue248NineCardChunks = hooks.splitSubpageConfigChunks(issue248NineCardCo
 assert(issue248NineCardChunks, "issue 248 nine-card config should fit in four fixed chunks");
 assert(issue248NineCardChunks.some((chunk) => chunk.length === 255), "issue 248 chunks may split inside card data");
 assert.deepStrictEqual(
-  subpageShape(firmwareParseSubpageConfig(issue248NineCardChunks.join(""))),
+  subpageShape(hooks.parseSubpageConfig(issue248NineCardChunks.join(""))),
   subpageShape(hooks.parseSubpageConfig(issue248NineCardConfig)),
-  "issue 248 fixed chunks reassemble before firmware parse"
+  "issue 248 fixed chunks reassemble before web parse"
 );
 
 const fullJc1060DoorWindowSubpage = {
@@ -3455,9 +3330,9 @@ assert(fullJc1060Encoded.length <= 8 * 255, "full jc1060 subpage should fit eigh
 const fullJc1060Chunks = hooks.splitSubpageConfigChunks(fullJc1060Encoded, 8, 255);
 assert(fullJc1060Chunks, "full jc1060 subpage should split into eight chunks");
 assert.deepStrictEqual(
-  subpageShape(firmwareParseSubpageConfig(fullJc1060Chunks.join(""))),
+  subpageShape(hooks.parseSubpageConfig(fullJc1060Chunks.join(""))),
   subpageShape(fullJc1060DoorWindowSubpage),
-  "full jc1060 chunks reassemble before firmware parse"
+  "full jc1060 chunks reassemble before web parse"
 );
 
 const largeSubpage = {

@@ -13,13 +13,35 @@ from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = ROOT / "common" / "config"
-CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config.h"
-STYLE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_style.h"
+PARSER_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config_parser.h"
+DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
+SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
+SAVED_CONFIG_VACUUM_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_vacuum_generated.h"
+SAVED_CONFIG_SENSOR_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_sensor_generated.h"
+SAVED_CONFIG_ACTION_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_action_generated.h"
+SAVED_CONFIG_MEDIA_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_media_generated.h"
+SAVED_CONFIG_STATIC_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_static_generated.h"
+SAVED_CONFIG_FAN_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_fan_generated.h"
+SAVED_CONFIG_DATE_TIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_date_time_generated.h"
+SAVED_CONFIG_MOWER_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_mower_generated.h"
+SAVED_CONFIG_OCCUPANCY_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_occupancy_generated.h"
+SAVED_CONFIG_ACCESS_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_access_generated.h"
+SAVED_CONFIG_SECURITY_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_security_generated.h"
+SAVED_CONFIG_WEATHER_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_weather_generated.h"
+SAVED_CONFIG_IMAGE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_image_generated.h"
+SAVED_CONFIG_CLIMATE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_climate_generated.h"
+SAVED_CONFIG_LIGHT_CONTROL_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_light_control_generated.h"
+SAVED_CONFIG_WEBHOOK_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_webhook_generated.h"
+SAVED_CONFIG_SUBPAGE_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_subpage_generated.h"
+SAVED_CONFIG_SWITCH_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_switch_generated.h"
 BACKLIGHT_HEADER = ROOT / "components" / "espcontrol" / "backlight.h"
 CLOCK_BAR_HEADER = ROOT / "components" / "espcontrol" / "clock_bar.h"
 LAYOUT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_layout.h"
+LIMITS_HEADER = ROOT / "components" / "espcontrol" / "button_grid_limits.h"
+STRING_HEADER = ROOT / "components" / "espcontrol" / "button_grid_string.h"
+BUTTON_GRID_FACADE = ROOT / "components" / "espcontrol" / "button_grid.h"
 CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "card_normalization_fixtures.json"
 DEVICES_DIR = ROOT / "devices"
 IMAGE_CARD_NORMALIZATION_FIXTURES = ROOT / "common" / "config" / "image_card_normalization_fixtures.json"
@@ -57,6 +79,21 @@ class StringRef {
 struct lv_obj_t {
   int flags = 0;
   std::string text;
+};
+constexpr int MAX_GRID_SLOTS = 25;
+inline int bounded_grid_slots(int num_slots) {
+  if (num_slots < 0) return 0;
+  return num_slots > MAX_GRID_SLOTS ? MAX_GRID_SLOTS : num_slots;
+}
+struct BtnSlot {
+  esphome::text::Text *config = nullptr;
+  lv_obj_t *btn = nullptr;
+  lv_obj_t *icon_lbl = nullptr;
+  lv_obj_t *text_lbl = nullptr;
+  lv_obj_t *sensor_container = nullptr;
+  lv_obj_t *sensor_lbl = nullptr;
+  lv_obj_t *unit_lbl = nullptr;
+  lv_obj_t *subpage_lbl = nullptr;
 };
 struct lv_disp_t {};
 struct lv_font_t {};
@@ -142,7 +179,7 @@ inline void lv_obj_move_foreground(lv_obj_t *) {}
 inline void lv_obj_move_background(lv_obj_t *) { lv_obj_move_background_calls++; }
 
 #include "temperature_unit.h"
-#include "button_grid_config_pure.h"
+#include "button_grid_config_parser.h"
 #include "backlight.h"
 #include "button_grid_layout.h"
 
@@ -363,7 +400,7 @@ int main() {
   auto light_control_bad_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=bad%7Cpower%7Cpower");
   assert(light_control_bad_tabs.options == "light_tabs=power");
 
-  auto cover_default_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=position%7Ccontrols%7Ctilt");
+  auto cover_default_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=position%7Ccontrols%7Ctilt%7Cpresets");
   assert(cover_default_tabs.type == "cover");
   assert(cover_default_tabs.options == "");
   auto cover_custom_tabs = parse_cfg("cover.office;Office Blind;Blinds;Blinds Open;modal;;cover;;cover_tabs=controls%7Cposition");
@@ -594,15 +631,6 @@ def compiler() -> str | None:
     return None
 
 
-def pure_config_header() -> str:
-    text = CONFIG_HEADER.read_text(encoding="utf-8")
-    marker = "inline const char* weather_icon_for_state"
-    index = text.find(marker)
-    if index < 0:
-        raise RuntimeError(f"Could not find pure parser boundary in {CONFIG_HEADER}")
-    return text[:index] + "\n" + STYLE_HEADER.read_text(encoding="utf-8")
-
-
 def check_clock_bar_visual_gaps() -> None:
     expected = {
         "esp32-p4-86": '"12"',
@@ -628,12 +656,16 @@ def generated_fixture_assertions(fixtures: list[dict], comment: str, prefix: str
     lines = [f"  // {comment}"]
     for fixture in fixtures:
         name = fixture["name"]
-        input_value = fixture["input"]
         expected = fixture["expected"]
         var_name = prefix + "".join(ch if ch.isalnum() else "_" for ch in name.lower())
-        lines.append(f"  auto {var_name} = parse_cfg({cpp_string(input_value)});")
-        for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
-            lines.append(f"  assert({var_name}.{field} == {cpp_string(expected[field])});")
+        cases = [("input", fixture["input"])]
+        if "canonical" in fixture:
+            cases.append(("canonical", fixture["canonical"]))
+        for case_name, input_value in cases:
+            case_var_name = var_name if case_name == "input" else f"{var_name}_{case_name}"
+            lines.append(f"  auto {case_var_name} = parse_cfg({cpp_string(input_value)});")
+            for field in ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options"):
+                lines.append(f"  assert({case_var_name}.{field} == {cpp_string(expected[field])});")
     return "\n".join(lines) + "\n"
 
 
@@ -655,7 +687,19 @@ def generated_card_normalization_assertions() -> str:
     return "".join(chunks)
 
 
+def check_button_grid_facade() -> None:
+    """Keep the YAML compatibility entry point free of behaviour code."""
+    for line_number, line in enumerate(BUTTON_GRID_FACADE.read_text(encoding="utf-8").splitlines(), 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("//") or stripped.startswith("#"):
+            continue
+        raise RuntimeError(
+            f"{BUTTON_GRID_FACADE}:{line_number}: button_grid.h is an include-only compatibility facade"
+        )
+
+
 def main() -> int:
+    check_button_grid_facade()
     check_clock_bar_visual_gaps()
     cxx = compiler()
     if not cxx:
@@ -663,14 +707,36 @@ def main() -> int:
         return 1
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
-        (tmp_path / "button_grid_config_pure.h").write_text(pure_config_header(), encoding="utf-8")
+        shutil.copy2(PARSER_HEADER, tmp_path / "button_grid_config_parser.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
+        shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
+        shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")
         shutil.copy2(CARD_RUNTIME_HEADER, tmp_path / "button_grid_card_runtime.h")
+        shutil.copy2(SAVED_CONFIG_VACUUM_HEADER, tmp_path / "button_grid_saved_config_vacuum_generated.h")
+        shutil.copy2(SAVED_CONFIG_SENSOR_HEADER, tmp_path / "button_grid_saved_config_sensor_generated.h")
+        shutil.copy2(SAVED_CONFIG_ACTION_HEADER, tmp_path / "button_grid_saved_config_action_generated.h")
+        shutil.copy2(SAVED_CONFIG_MEDIA_HEADER, tmp_path / "button_grid_saved_config_media_generated.h")
+        shutil.copy2(SAVED_CONFIG_STATIC_HEADER, tmp_path / "button_grid_saved_config_static_generated.h")
+        shutil.copy2(SAVED_CONFIG_FAN_HEADER, tmp_path / "button_grid_saved_config_fan_generated.h")
+        shutil.copy2(SAVED_CONFIG_DATE_TIME_HEADER, tmp_path / "button_grid_saved_config_date_time_generated.h")
+        shutil.copy2(SAVED_CONFIG_MOWER_HEADER, tmp_path / "button_grid_saved_config_mower_generated.h")
+        shutil.copy2(SAVED_CONFIG_OCCUPANCY_HEADER, tmp_path / "button_grid_saved_config_occupancy_generated.h")
+        shutil.copy2(SAVED_CONFIG_ACCESS_HEADER, tmp_path / "button_grid_saved_config_access_generated.h")
+        shutil.copy2(SAVED_CONFIG_SECURITY_HEADER, tmp_path / "button_grid_saved_config_security_generated.h")
+        shutil.copy2(SAVED_CONFIG_WEATHER_HEADER, tmp_path / "button_grid_saved_config_weather_generated.h")
+        shutil.copy2(SAVED_CONFIG_IMAGE_HEADER, tmp_path / "button_grid_saved_config_image_generated.h")
+        shutil.copy2(SAVED_CONFIG_CLIMATE_HEADER, tmp_path / "button_grid_saved_config_climate_generated.h")
+        shutil.copy2(SAVED_CONFIG_LIGHT_CONTROL_HEADER, tmp_path / "button_grid_saved_config_light_control_generated.h")
+        shutil.copy2(SAVED_CONFIG_WEBHOOK_HEADER, tmp_path / "button_grid_saved_config_webhook_generated.h")
+        shutil.copy2(SAVED_CONFIG_SUBPAGE_HEADER, tmp_path / "button_grid_saved_config_subpage_generated.h")
+        shutil.copy2(SAVED_CONFIG_SWITCH_HEADER, tmp_path / "button_grid_saved_config_switch_generated.h")
         shutil.copy2(CLOCK_BAR_HEADER, tmp_path / "clock_bar.h")
         shutil.copy2(BACKLIGHT_HEADER, tmp_path / "backlight.h")
         shutil.copy2(LAYOUT_HEADER, tmp_path / "button_grid_layout.h")
+        shutil.copy2(LIMITS_HEADER, tmp_path / "button_grid_limits.h")
+        shutil.copy2(STRING_HEADER, tmp_path / "button_grid_string.h")
         lvgl_stub = tmp_path / "esphome" / "components" / "lvgl" / "lvgl_esphome.h"
         lvgl_stub.parent.mkdir(parents=True, exist_ok=True)
         lvgl_stub.write_text("", encoding="utf-8")
@@ -682,6 +748,8 @@ def main() -> int:
         )
         defines_stub = tmp_path / "esphome" / "core" / "defines.h"
         defines_stub.write_text("", encoding="utf-8")
+        string_ref_stub = tmp_path / "esphome" / "core" / "string_ref.h"
+        string_ref_stub.write_text("", encoding="utf-8")
         log_stub = tmp_path / "esphome" / "core" / "log.h"
         log_stub.write_text("", encoding="utf-8")
         network_stub = tmp_path / "esphome" / "components" / "network" / "util.h"

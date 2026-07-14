@@ -58,16 +58,18 @@ or upstream project instead.
 | Work out which check to run | [Check Matrix](check-matrix.md) |
 | Diagnose a broken behavior | [Failure Cookbook](failure-cookbook.md) |
 | Understand why the repo is shaped this way | [Architecture Decision Records](adr/README.md) |
+| Compare compiled firmware module size and RAM | [Firmware Module Migration Baseline](firmware-module-baseline.md) |
 
 ## Fast Orientation
 
 - The hard ownership map is [Source of Truth Contract](source-of-truth.md):
   edit authored sources, never generated outputs.
-- Product metadata starts in `devices/manifest.json`.
+- Product metadata starts in `devices/catalog.json`; `devices/manifest.json` is generated for compatibility.
 - Card behavior starts in `common/config/card_contract.json`.
 - Shared Home Assistant entity names start in `common/config/entity_names.json`.
 - Web setup code lives under `src/webserver/`.
-- Firmware UI code lives mostly in `components/espcontrol/*.h`.
+- Firmware UI code lives in `components/espcontrol/`, with `button_grid.h` as
+  the compatibility entry point and focused headers/compiled modules behind it.
 - Device entry points live under `devices/<device-slug>/`.
 - Generated public web bundles are written to `docs/public/webserver/<slug>/www.js`.
 - Generated public docs are written under `docs/generated/`.
@@ -78,8 +80,8 @@ or upstream project instead.
 |---|---|
 | `common/` | Shared ESPHome YAML, theme, screens, addons, config, assets, icon lists, and glyph sets. |
 | `common/config/card_contract.json` | Source of truth for card metadata, options, defaults, generated web constants, and generated firmware constants. |
-| `components/espcontrol/*.h` | Header-only C++ for the on-device LVGL UI, grid, card faces, modals, parser, and Home Assistant bindings. |
-| `src/webserver/` | Web configurator source. `types/<card>.js` holds card-specific panels; `modules/` holds shared setup-page logic. |
+| `components/espcontrol/` | C++ for the on-device LVGL UI. `button_grid.h` is the YAML compatibility facade; focused headers and compiled modules own the implementation. |
+| `src/webserver/` | TypeScript web configurator source. `cards/<card>.ts` holds card-specific registrations; `application/` holds shared setup-page logic. |
 | `devices/<slug>/` | Per-device ESPHome entry points, package manifests, fonts, display drivers, pins, and local development config. |
 | `docs/public/webserver/<slug>/www.js` | Generated configurator bundles served to devices at runtime. |
 | `scripts/` | Build scripts, generators, validators, smoke checks, and release helpers. |
@@ -110,8 +112,12 @@ start in the contract and flow outward from there.
 - [Check Matrix](check-matrix.md) - generated path-to-check routing table.
 - [Architecture Decision Records](adr/README.md) - accepted structural decisions
   that should not be undone casually.
+- [Firmware Module Migration Baseline](firmware-module-baseline.md) - clean
+  factory-build flash, static-RAM, duration, and linker results for module work.
 - [Card Contract](card-contract.md) - how card metadata moves from JSON into the
   web UI and firmware.
+- [Saved-Configuration Normalization Baseline](saved-config-normalization-baseline.md) -
+  current browser/firmware normalization rules and their shared parity check.
 - [Card Type Map](card-type-map.md) - per-card starting points for web files,
   firmware headers, option storage, modals, Home Assistant subscriptions, and
   checks.
@@ -119,6 +125,11 @@ start in the contract and flow outward from there.
   served by the device.
 - [Firmware](firmware.md) - the on-device LVGL grid, card runtime, modals, fonts,
   and parser notes.
+- [Cover Art Mode](cover-art-mode.md) - ownership, presentation, memory budgets,
+  and behavioural checks for the now-playing takeover.
+- [Display Lifecycle Transition Contract](display-lifecycle.md) - current mode
+  flags, request priority, takeover restoration, invariants, and the event
+  sequences required by the centralised lifecycle migration.
 - [Font Guidelines](font-guidelines.md) - how to reuse existing firmware font
   roles and avoid unnecessary new font sizes.
 - [Devices and Builds](devices-and-builds.md) - device profiles, generated

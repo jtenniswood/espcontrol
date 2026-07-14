@@ -9,16 +9,19 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
 from pathlib import Path
+import re
 from tempfile import TemporaryDirectory
 from threading import Thread
 
 import firmware_release
 
 
-SLUG = "demo-panel"
+SLUG = "guition-esp32-s3-4848s040"
 VERSION = "v9.8.7"
 CHIP = "ESP32-S3"
 PROJECT_NAME = "jtenniswood.espcontrol"
+ESPHOME_ENV = Path(__file__).resolve().parents[1] / ".github" / "esphome.env"
+ESPHOME_ENV_RE = re.compile(r"^ESPHOME_VERSION=20[0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}$")
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -63,6 +66,41 @@ def run_fails(args: list[str]) -> None:
     with redirect_stderr(io.StringIO()):
         code = firmware_release.main(args)
     assert code != 0, f"{args} unexpectedly passed"
+
+
+def validate_esphome_env(path: Path) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1, f"{path}: expected exactly one ESPHOME_VERSION line"
+    assert ESPHOME_ENV_RE.fullmatch(lines[0]), (
+        f"{path}: expected ESPHOME_VERSION to be a stable numeric ESPHome release, "
+        "for example ESPHOME_VERSION=2026.6.5"
+    )
+
+
+def test_esphome_env_format() -> None:
+    validate_esphome_env(ESPHOME_ENV)
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        valid = base / "valid.env"
+        valid.write_text("ESPHOME_VERSION=2026.6.5\n", encoding="utf-8")
+        validate_esphome_env(valid)
+
+        for value in (
+            "",
+            "export ESPHOME_VERSION=2026.6.5\n",
+            "ESPHOME_VERSION=\"2026.6.5\"\n",
+            "ESPHOME_VERSION=2026.6.5-beta.1\n",
+            "OTHER_VERSION=2026.6.5\n",
+            "ESPHOME_VERSION=2026.6.5\nEXTRA=value\n",
+        ):
+            invalid = base / "invalid.env"
+            invalid.write_text(value, encoding="utf-8")
+            try:
+                validate_esphome_env(invalid)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"invalid ESPHome env value passed validation: {value!r}")
 
 
 def make_release_files(base: Path, slug: str = SLUG, version: str = VERSION) -> tuple[Path, Path, Path]:
@@ -163,6 +201,40 @@ def test_wrong_manifest_version_fails() -> None:
         ])
 
 
+def test_missing_chip_family_fails() -> None:
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        manifest, factory, ota = make_release_files(base)
+        data = json.loads(manifest.read_text())
+        data["builds"][0].pop("chipFamily")
+        manifest.write_text(json.dumps(data))
+        run_fails([
+            "verify-files",
+            "--slug", SLUG,
+            "--version", VERSION,
+            "--manifest", str(manifest),
+            "--factory", str(factory),
+            "--ota", str(ota),
+        ])
+
+
+def test_wrong_chip_family_fails() -> None:
+    with TemporaryDirectory() as tmp:
+        base = Path(tmp)
+        manifest, factory, ota = make_release_files(base)
+        data = json.loads(manifest.read_text())
+        data["builds"][0]["chipFamily"] = "ESP32-P4"
+        manifest.write_text(json.dumps(data))
+        run_fails([
+            "verify-files",
+            "--slug", SLUG,
+            "--version", VERSION,
+            "--manifest", str(manifest),
+            "--factory", str(factory),
+            "--ota", str(ota),
+        ])
+
+
 def test_wrong_md5_fails() -> None:
     with TemporaryDirectory() as tmp:
         base = Path(tmp)
@@ -233,10 +305,13 @@ def test_public_pages_verification() -> None:
 
 
 def main() -> int:
+    test_esphome_env_format()
     test_valid_files_and_directory()
     test_placeholder_fails()
     test_unrelated_placeholder_strings_pass()
     test_wrong_manifest_version_fails()
+    test_missing_chip_family_fails()
+    test_wrong_chip_family_fails()
     test_wrong_md5_fails()
     test_missing_asset_fails()
     test_wrong_slug_path_fails()

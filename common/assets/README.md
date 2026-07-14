@@ -122,7 +122,7 @@ This patches the generated icon sections in:
 
 - `common/assets/icon_glyphs.yaml` — LVGL font glyph codepoints
 - `components/espcontrol/icons.h` — C++ icon lookup table and domain defaults
-- `src/webserver/entry.js` — web UI icon picker names and domain defaults
+- `src/webserver/generated/icons.ts` — web UI icon picker names and domain defaults
 
 Run `python3 scripts/build.py` to also rebuild the generated per-device web UI bundles under `docs/public/webserver/.../www.js`.
 

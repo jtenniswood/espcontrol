@@ -10,7 +10,7 @@ No critical issues were found in this pass. I did not find an obvious data-loss 
 
 ### 2.1 Dynamic HTML fragments in the web UI
 
-- Where: `src/webserver/modules/button_settings.js`, `src/webserver/modules/preview_interactions.js`, `src/webserver/modules/app_status_preview.js`, and related helpers in `src/webserver/modules/state.js`.
+- Where: `src/webserver/application/button_settings.ts`, `src/webserver/application/preview_interactions.ts`, `src/webserver/application/app_status_preview.ts`, and related helpers in `src/webserver/application/state.ts`.
 - Why it matters: Several UI controls were assembled with `innerHTML`. Most user-facing text was escaped, but this pattern is easy to get wrong when new fields are added. It also makes future edits harder because markup, data, and escaping rules are mixed together.
 - Recommendation: Prefer small DOM helper functions (`textContent`, `classList`, explicit child elements) for interactive controls and dynamic labels.
 - Safe to fix now: Yes. This is low-risk because it preserves the same visible elements while reducing accidental HTML injection risk.
@@ -18,7 +18,7 @@ No critical issues were found in this pass. I did not find an obvious data-loss 
 
 ### 2.2 Duplicated POST retry handling
 
-- Where: `src/webserver/modules/api.js`.
+- Where: `src/webserver/application/api.ts`.
 - Why it matters: `post()` and `postOptional()` had almost identical retry loops. Any future change to reconnect behavior, fallback URL ordering, or failure messaging would have to be made in two places.
 - Recommendation: Move the shared "try each POST URL until one succeeds or the list is exhausted" logic into one helper.
 - Safe to fix now: Yes. The behavior is small, local, and covered by existing web smoke checks.
@@ -42,7 +42,7 @@ No critical issues were found in this pass. I did not find an obvious data-loss 
 
 ### 2.5 Web card normalization remains concentrated in one large file
 
-- Where: `src/webserver/modules/config_codec.js`, especially `normalizeButtonConfig()` and `buttonConfigFields()`.
+- Where: `src/webserver/application/config_codec.ts`, especially `normalizeButtonConfig()` and `buttonConfigFields()`.
 - Why it matters: Card rules, migration rules, serialization details, and some UI-specific logic live together. The TypeScript model already owns several lower-level parsing helpers, so future card changes have to be checked across multiple conceptual layers.
 - Recommendation: Gradually move pure card normalization rules into the typed model layer, then let the UI module call those helpers.
 - Safe to fix now: Wait. This touches saved configuration compatibility and should be sliced by card type with focused contract tests.
@@ -60,7 +60,7 @@ No critical issues were found in this pass. I did not find an obvious data-loss 
 
 ### 3.1 Repeated status badge markup
 
-- Where: `src/webserver/modules/settings_page.js`.
+- Where: `src/webserver/application/settings_page.ts`.
 - Why it matters: Several settings cards build the same "ON" badge markup by hand. It is not broken, but it adds noise and makes small UI changes repetitive.
 - Recommendation: Add a tiny `statusBadge(label)` helper and use it for schedule, clock bar, screensaver, idle, and cover art badges.
 - Safe to fix now: Yes, but lower value than the safety/duplication fixes above.
@@ -68,7 +68,7 @@ No critical issues were found in this pass. I did not find an obvious data-loss 
 
 ### 3.2 Generated and vendored files dominate simple scans
 
-- Where: `docs/public/webserver/**`, `components/libjpeg-turbo-esp32/**`, and generated files such as `src/webserver/modules/model_generated.js`.
+- Where: `docs/public/webserver/**`, `components/libjpeg-turbo-esp32/**`, and generated files such as `src/webserver/generated/card_contract.ts`.
 - Why it matters: Basic repository scans produce noisy results unless generated and vendor paths are excluded. That makes cleanup work look worse than it is.
 - Recommendation: Add a short note or helper command for maintainability scans that excludes generated bundles and vendored libraries.
 - Safe to fix now: Yes, but documentation-only and not required for this pass.

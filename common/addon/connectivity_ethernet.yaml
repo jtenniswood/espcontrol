@@ -88,8 +88,8 @@ script:
           then:
             - script.execute: clock_bar_hide
             - lambda: |-
-                lv_label_set_text(id(ha_setup_title), espcontrol_i18n("Home Assistant Offline"));
-                lv_label_set_text(id(ha_setup_instructions), espcontrol_i18n("Check the status of your Home Assistant server"));
+                lv_label_set_text(id(ha_setup_title), espcontrol_i18n("Connecting to\nHome Assistant"));
+                lv_label_set_text(id(ha_setup_instructions), "");
                 lv_label_set_text(id(ha_setup_path), "");
             - lvgl.page.show: ha_setup_page
             - script.execute: setup_screen_dim

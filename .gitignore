@@ -2,6 +2,7 @@
 .cache/
 .worktrees/
 node_modules/
+/build/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 .esphome/

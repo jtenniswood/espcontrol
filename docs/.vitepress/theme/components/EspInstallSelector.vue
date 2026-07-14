@@ -28,6 +28,7 @@
         <span class="device-copy">
           <span class="device-name">{{ device.size }}</span>
           <span class="device-meta">{{ device.name }} - {{ device.resolution }}</span>
+          <span v-if="device.revision" class="device-revision">{{ device.revision }}</span>
           <span class="device-tags">
             <span>{{ device.orientation }}</span>
             <span>{{ device.slots }} buttons</span>
@@ -71,7 +72,21 @@ import { withBase } from 'vitepress'
 const devices = [
   {
     slug: 'guition-esp32-p4-jc8012p4a1',
-    name: 'JC8012P4A1',
+    name: 'JC8012P4A1 original panel',
+    revision: 'Rear case 2620 or lower',
+    size: '10.1 in',
+    resolution: '1280 x 800',
+    orientation: 'Landscape',
+    slots: 20,
+    cols: 5,
+    rows: 4,
+    aspect: '1280 / 800',
+    shape: 'landscape'
+  },
+  {
+    slug: 'guition-esp32-p4-jc8012p4a1-v2',
+    name: 'JC8012P4A1 new panel',
+    revision: 'Rear case 2624 or higher',
     size: '10.1 in',
     resolution: '1280 x 800',
     orientation: 'Landscape',
@@ -268,6 +283,13 @@ onMounted(async () => {
   color: var(--vp-c-text-2);
   font-size: 13px;
   line-height: 1.3;
+}
+
+.device-revision {
+  color: var(--vp-c-brand-1);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .device-tags {

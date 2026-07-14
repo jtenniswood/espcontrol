@@ -36,7 +36,7 @@ def yaml_script_body(text: str, script_id: str) -> str | None:
 
 def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
     allocation_pattern = re.compile(r"\bnew\s+(" + "|".join(FORBIDDEN_ALLOCATIONS) + r")\b")
-    layer_top_pattern = re.compile(r"\blv_obj_create\s*\(\s*lv_layer_top\s*\(\s*\)\s*\)")
+    layer_top_pattern = re.compile(r"\blv_layer_top\s*\(\s*\)")
     manual_overlay_delete_pattern = re.compile(r"\blv_obj_del\s*\(\s*(?:ui\.)?(?:menu_)?overlay\s*\)")
     errors: list[str] = []
 
@@ -51,7 +51,7 @@ def firmware_modal_errors(firmware_dir: Path, root: Path) -> list[str]:
             if path.name not in LAYER_TOP_ALLOWLIST and layer_top_pattern.search(line):
                 rel = path.relative_to(root)
                 errors.append(
-                    f"{rel}:{line_no}: open modal overlays through button_grid_modal.h helpers"
+                    f"{rel}:{line_no}: route modal top-layer access through button_grid_modal.h helpers"
                 )
             if path.name not in MANUAL_OVERLAY_DELETE_ALLOWLIST and manual_overlay_delete_pattern.search(line):
                 rel = path.relative_to(root)
@@ -248,11 +248,17 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         if (
             "cfg.suspend_display_takeover" not in text
             or "cfg.resume_display_takeover" not in text
-            or "id(display_takeover_suspended) = true;" not in text
-            or "id(display_takeover_suspended) = false;" not in text
-            or "id(display_takeover_resume_restore).execute();" not in text
+            or "id(display_takeover_suspend).execute();" not in text
+            or "id(display_takeover_resume).execute();" not in text
         ):
             errors.append("scripts/generate_device_slots.py: generate explicit display-takeover guard hooks")
+        backlight_text = backlight_path.read_text(encoding="utf-8") if backlight_path.exists() else ""
+        if (
+            "id: display_takeover_suspend" not in backlight_text
+            or "id: display_takeover_resume" not in backlight_text
+            or "id: cover_art_screensaver_active" not in backlight_text
+        ):
+            errors.append("common/addon/backlight.yaml: centralize display-takeover lifecycle cleanup")
 
     if not schedule_path.exists():
         errors.append("common/addon/backlight_schedule.yaml: close modals before scheduled takeover")
@@ -388,6 +394,12 @@ def firmware_light_control_brightness_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_sliders.h: refresh brightness slider from light on/off and brightness updates")
     if "light_control_set_modal_value(ui.active, light_control_display_pct(ui.active));" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: update brightness slider immediately when the light power button is used")
+    if (
+        "bool turn_on = !ui.active->on;" not in text
+        or "lv_obj_add_event_cb(ui.power_group" not in text
+        or "lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);" not in text
+    ):
+        errors.append("components/espcontrol/button_grid_sliders.h: toggle light power from the whole modal control")
 
     return errors
 
@@ -451,10 +463,10 @@ def firmware_climate_control_tab_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_climate.h: filter climate tabs using Home Assistant capabilities")
     if "ui.tab = climate_control_first_visible_tab(ctx);" not in text:
         errors.append("components/espcontrol/button_grid_climate.h: fall back when the active climate tab disappears")
-    if "bool show_tab_bar = ctx && ctx->all_controls && tab_count > 1;" not in text:
-        errors.append("components/espcontrol/button_grid_climate.h: hide climate modal tabs unless All Controls has multiple visible controls")
-    if 'ctx->all_controls = p.type == "climate_control";' not in text:
-        errors.append("components/espcontrol/button_grid_climate.h: keep climate tabs scoped to the All Controls subtype")
+    if "bool show_tab_bar = tab_count > 1;" not in text:
+        errors.append("components/espcontrol/button_grid_climate.h: hide climate modal tabs unless multiple controls are visible")
+    if "all_controls" in text:
+        errors.append("components/espcontrol/button_grid_climate.h: remove the legacy climate/all-controls split")
     if "climate_set_dial_controls_visible(show_temperature)" not in text:
         errors.append("components/espcontrol/button_grid_climate.h: keep temperature controls scoped to the temperature tab")
     if "climate_open_inline_option_list(ctx, climate_control_tab_kind(ui.tab))" not in text:
@@ -562,6 +574,36 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
             if needle in text:
                 errors.append(f"components/espcontrol/{filename}: keep modal tab sizing in button_grid_modal.h")
                 break
+
+    return errors
+
+
+def firmware_media_modal_progress_layout_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_media.h"
+    errors: list[str] = []
+
+    if not path.exists():
+        errors.append("components/espcontrol/button_grid_media.h: keep media modal progress layout stable")
+        return errors
+
+    text = path.read_text(encoding="utf-8")
+    required = (
+        "bool progress_layout_ready = false;",
+        "bool progress_refresh_pending = false;",
+        "if (!ui.progress_layout_ready) {\n    ui.progress_refresh_pending = true;\n    return;\n  }",
+        "if (ui.progress_fill) lv_obj_add_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);",
+        "if (ui.progress_handle) lv_obj_add_flag(ui.progress_handle, LV_OBJ_FLAG_HIDDEN);",
+        "ui.progress_layout_ready = false;\n    lv_obj_set_size(ui.progress_slider, progress_slider_w, progress_slider_h);",
+        "lv_obj_update_layout(ui.progress_slider);\n    ui.progress_layout_ready = true;",
+        "media_control_refresh_progress(ctx);\n    if (ui.progress_fill) lv_obj_clear_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);",
+        "lv_obj_clear_flag(ui.progress_slider, LV_OBJ_FLAG_HIDDEN);",
+    )
+    for needle in required:
+        if needle not in text:
+            errors.append(
+                "components/espcontrol/button_grid_media.h: keep media modal progress drawing gated until final layout"
+            )
+            break
 
     return errors
 
@@ -676,6 +718,7 @@ def run_scan() -> int:
     errors.extend(firmware_cover_control_tab_errors(ROOT))
     errors.extend(firmware_climate_control_tab_errors(ROOT))
     errors.extend(firmware_modal_tab_layout_errors(ROOT))
+    errors.extend(firmware_media_modal_progress_layout_errors(ROOT))
     errors.extend(firmware_network_status_version_errors(ROOT))
 
     if errors:
@@ -868,6 +911,48 @@ def expect_modal_tab_layout_errors(name: str, files: dict[str, str], expected: t
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_media_modal_progress_layout_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_media.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_media_modal_progress_layout_errors(root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def valid_media_modal_progress_layout_text() -> str:
+    return (
+        "struct MediaControlModalUi {\n"
+        "  bool progress_layout_ready = false;\n"
+        "  bool progress_refresh_pending = false;\n"
+        "};\n"
+        "inline void media_control_refresh_progress(MediaControlCtx *ctx) {\n"
+        "  if (!ui.progress_layout_ready) {\n"
+        "    ui.progress_refresh_pending = true;\n"
+        "    return;\n"
+        "  }\n"
+        "}\n"
+        "inline void media_control_create_progress_tab_content(MediaControlCtx *ctx) {\n"
+        "  if (ui.progress_fill) lv_obj_add_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);\n"
+        "  if (ui.progress_handle) lv_obj_add_flag(ui.progress_handle, LV_OBJ_FLAG_HIDDEN);\n"
+        "}\n"
+        "inline void media_control_layout_modal(MediaControlCtx *ctx) {\n"
+        "  ui.progress_layout_ready = false;\n"
+        "    lv_obj_set_size(ui.progress_slider, progress_slider_w, progress_slider_h);\n"
+        "  lv_obj_update_layout(ui.progress_slider);\n"
+        "    ui.progress_layout_ready = true;\n"
+        "  media_control_refresh_progress(ctx);\n"
+        "    if (ui.progress_fill) lv_obj_clear_flag(ui.progress_fill, LV_OBJ_FLAG_HIDDEN);\n"
+        "  lv_obj_clear_flag(ui.progress_slider, LV_OBJ_FLAG_HIDDEN);\n"
+        "}\n"
+    )
+
+
 def valid_sleep_takeover_files() -> dict[str, str]:
     return {
         "components/espcontrol/backlight.h": (
@@ -907,6 +992,12 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "  - id: display_takeover_suspended\n"
             "  - id: screensaver_sensor_sleep_pending\n"
             "script:\n"
+            "  - id: display_takeover_suspend\n"
+            "    then:\n"
+            "      - globals.set: { id: cover_art_screensaver_active, value: 'false' }\n"
+            "  - id: display_takeover_resume\n"
+            "    then:\n"
+            "      - script.execute: display_takeover_resume_restore\n"
             "  - id: display_takeover_resume_restore\n"
             "    then:\n"
             "      - if:\n"
@@ -943,12 +1034,10 @@ def valid_sleep_takeover_files() -> dict[str, str]:
         ),
         "scripts/generate_device_slots.py": (
             "cfg.suspend_display_takeover = []() {\n"
-            "  id(display_takeover_suspended) = true;\n"
-            "  id(screensaver_idle_check).stop();\n"
+            "  id(display_takeover_suspend).execute();\n"
             "};\n"
             "cfg.resume_display_takeover = []() {\n"
-            "  id(display_takeover_suspended) = false;\n"
-            "  id(display_takeover_resume_restore).execute();\n"
+            "  id(display_takeover_resume).execute();\n"
             "};\n"
         ),
     }
@@ -963,7 +1052,12 @@ def run_self_test() -> int:
     expect_errors(
         "ad hoc top layer",
         {"button_grid_climate.h": "lv_obj_t *overlay = lv_obj_create(lv_layer_top());\n"},
-        ("open modal overlays through button_grid_modal.h helpers",),
+        ("route modal top-layer access through button_grid_modal.h helpers",),
+    )
+    expect_errors(
+        "ad hoc top layer reference",
+        {"button_grid_alarm.h": "lv_obj_move_foreground(lv_layer_top());\n"},
+        ("route modal top-layer access through button_grid_modal.h helpers",),
     )
     expect_errors(
         "shared helpers",
@@ -1168,6 +1262,22 @@ def run_self_test() -> int:
         "media modal stops using shared tab helper",
         missing_shared_tab_helper,
         ("use shared modal tab layout helpers",),
+    )
+    expect_media_modal_progress_layout_errors(
+        "media progress layout gated",
+        valid_media_modal_progress_layout_text(),
+        (),
+    )
+    expect_media_modal_progress_layout_errors(
+        "media progress draws before layout",
+        valid_media_modal_progress_layout_text().replace(
+            "  if (!ui.progress_layout_ready) {\n"
+            "    ui.progress_refresh_pending = true;\n"
+            "    return;\n"
+            "  }\n",
+            "",
+        ),
+        ("progress drawing gated",),
     )
     home_idle_gated = valid_sleep_takeover_files()
     home_idle_gated["common/addon/backlight.yaml"] = (

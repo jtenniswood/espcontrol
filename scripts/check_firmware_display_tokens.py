@@ -27,7 +27,10 @@ RULES: tuple[tuple[re.Pattern[str], str, set[str]], ...] = (
         DISPLAY_BOUNDARY_FILES,
     ),
     (
-        re.compile(r"\blayout\.(?:sw|sh)\s*=="),
+        re.compile(
+            r"(?:\blayout\.(?:sw|sh)\s*(?:==|!=|<=|>=|<|>)\s*-?\d|"
+            r"-?\d+\s*(?:==|!=|<=|>=|<|>)\s*layout\.(?:sw|sh)\b)"
+        ),
         "route modal screen-size tuning through named modal display helpers",
         DISPLAY_BOUNDARY_FILES,
     ),
@@ -68,6 +71,18 @@ def run_self_test() -> None:
         (
             {"button_grid_climate.h": "if (layout.sw == 480 && layout.sh == 480) return true;\n"},
             ("route modal screen-size tuning through named modal display helpers",),
+        ),
+        (
+            {"button_grid_climate.h": "if (layout.sw <= 480 || layout.sh >= 480) return true;\n"},
+            ("route modal screen-size tuning through named modal display helpers",),
+        ),
+        (
+            {"button_grid_climate.h": "if (480 >= layout.sw || 480 <= layout.sh) return true;\n"},
+            ("route modal screen-size tuning through named modal display helpers",),
+        ),
+        (
+            {"button_grid_climate.h": "if (layout.sh > layout.sw) return true;\n"},
+            (),
         ),
         (
             {"button_grid_alarm.h": "auto w = lv_disp_get_hor_res(disp);\n"},

@@ -1,0 +1,31 @@
+# =============================================================================
+# BUILD PROFILE - Guition ESP32-P4 JC8012P4A1 V2 (10.1" landscape)
+# =============================================================================
+# CI/local build entry point. Includes the full device package and adds
+# MAC suffix for unique naming. Bundles the matching web UI so branch/release
+# builds do not load the shared GitHub Pages copy from main.
+# =============================================================================
+
+substitutions:
+  cover_art_placeholder_file: "../common/assets/cover_art_placeholder.svg"
+  name: "espcontrol-jc8012p4a1-v2"
+  friendly_name: "EspControl 10inch V2"
+  espcontrol_component_url: "file:///config"
+  mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  espcontrol_component_ref: "HEAD"
+
+esphome:
+  name_add_mac_suffix: true
+
+packages:
+  espcontrol: !include ../devices/guition-esp32-p4-jc8012p4a1-v2/packages.yaml
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:
+
+web_server:
+  js_url: ""
+  js_include: "../docs/public/webserver/guition-esp32-p4-jc8012p4a1-v2/www.js"

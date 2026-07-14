@@ -32,7 +32,7 @@ entry point CI uses, so the test matches what a release build would do.
 ```bash
 docker run --rm \
   -v "/Users/jtenniswood/Library/CloudStorage/Dropbox/Git/espcontrol:/config" \
-  ghcr.io/esphome/esphome:2026.6.2 \
+  ghcr.io/esphome/esphome:2026.6.5 \
   compile /config/builds/<slug>.factory.yaml
 ```
 
@@ -41,10 +41,10 @@ Run devices sequentially because each compile is resource-intensive. Use a
 stalled too early. If a compile backgrounds, poll the terminal output until it
 finishes and read the result.
 
-If `ghcr.io/esphome/esphome:2026.6.2` is missing, pull it first:
+If `ghcr.io/esphome/esphome:2026.6.5` is missing, pull it first:
 
 ```bash
-docker pull ghcr.io/esphome/esphome:2026.6.2
+docker pull ghcr.io/esphome/esphome:2026.6.5
 ```
 
 ### 2. Interpret Results
