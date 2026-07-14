@@ -705,6 +705,185 @@
         }
       }
     },
+    "seeed-esp32-p4-reterminal-d1001": {
+      "slots": 20,
+      "public": {
+        "name": "Seeed reTerminal D1001",
+        "docsPath": "/screens/reterminal-d1001",
+        "screenSize": "8 inches",
+        "resolution": "1280 x 800",
+        "orientation": "Landscape"
+      },
+      "layout": {
+        "cols": 5,
+        "rows": 4,
+        "firmwareGrid": "5x4",
+        "portraitCols": 4
+      },
+      "rotation": {
+        "enabled": true,
+        "options": [
+          "0",
+          "90",
+          "180",
+          "270"
+        ],
+        "displayOffset": 180
+      },
+      "web": {
+        "dragMode": "swap",
+        "dragAnimation": true,
+        "screen": {
+          "width": "100%",
+          "aspect": "1280/800"
+        },
+        "portrait": {
+          "cols": 4,
+          "rows": 5,
+          "screen": {
+            "width": "63%",
+            "aspect": "800/1280"
+          }
+        },
+        "topbar": {
+          "height": 3.59,
+          "padding": "0.47cqw",
+          "fontSize": 1.72
+        },
+        "grid": {
+          "top": 4.7,
+          "compactTop": 0.39,
+          "left": 0.39,
+          "right": 0.39,
+          "bottom": 0.39,
+          "gap": 0.76,
+          "fr": "1fr"
+        },
+        "btn": {
+          "radius": 0.86,
+          "padding": 1.41,
+          "iconSize": 4.1,
+          "labelSize": 1.88,
+          "labelLines": 2,
+          "labelLinesDouble": 3
+        },
+        "emptyCell": {
+          "radius": 0.86
+        },
+        "sensorBadge": {
+          "top": 0.86,
+          "right": 0.86,
+          "fontSize": 1.41
+        },
+        "subpageBadge": {
+          "bottom": 0.86,
+          "right": 0.86,
+          "fontSize": 1.56
+        }
+      },
+      "firmware": {
+        "build": {
+          "chip": "ESP32-P4"
+        },
+        "fonts": {
+          "icon": "font_icon_main",
+          "sensor": "font_number_value",
+          "largeSensor": "font_number_value_large",
+          "mediaTitle": "font_text_title",
+          "mediaControlTitle": "font_cover_art_title",
+          "volumeNumber": "font_number_value_large",
+          "volumeLabel": "font_text_large",
+          "climateCardIcon": "font_icon_card",
+          "subpageChevron": "font_icon_status",
+          "climateOptionTitle": "font_text_body",
+          "climateOptionValue": "font_text_body"
+        },
+        "display": {
+          "wrapTallLabels": true,
+          "imageCardDownloaders": 6,
+          "imageCardDiagnostics": true,
+          "subpageChevronX": 4,
+          "subpageChevronY": -2,
+          "coverArt": {
+            "cover_art_size": "800",
+            "cover_art_decode_size": "800",
+            "cover_art_x": "0",
+            "cover_art_y": "0",
+            "cover_art_accent_x": "800",
+            "cover_art_accent_y": "0",
+            "cover_art_accent_width": "480",
+            "cover_art_accent_height": "800",
+            "cover_art_accent_bg_opa": "100%",
+            "cover_art_accent_opa": "100%",
+            "cover_art_panel_x": "840",
+            "cover_art_panel_y": "40",
+            "cover_art_panel_width": "400",
+            "cover_art_panel_height": "720",
+            "cover_art_panel_pad_top": "0",
+            "cover_art_panel_pad_bottom": "0",
+            "cover_art_panel_pad_left": "0",
+            "cover_art_panel_pad_right": "0",
+            "cover_art_panel_pad_row": "0",
+            "cover_art_title_font": "font_cover_art_title",
+            "cover_art_title_max_height": "506",
+            "cover_art_title_line_space": "0",
+            "cover_art_artist_font": "font_cover_art_artist",
+            "cover_art_artist_pad_top": "4",
+            "cover_art_artist_long_mode": "wrap",
+            "cover_art_time_font": "font_cover_art_time",
+            "cover_art_time_pad_top": "12",
+            "cover_art_progress_width": "1280",
+            "cover_art_progress_height": "4",
+            "cover_art_text_color": "0xFFF5E0",
+            "cover_art_square_overlay": "false",
+            "cover_art_live_image_updates": "false"
+          }
+        },
+        "package": {
+          "firmwareVersion": "dev",
+          "substitutions": {
+            "screen_width": "\"1280\"",
+            "screen_height": "\"800\"",
+            "content_width": "\"760\"",
+            "setup_icon_font_id": "font_icon_main",
+            "setup_title_font_id": "font_text_title",
+            "setup_body_font_id": "font_text_body",
+            "setup_pad_row": "\"20\"",
+            "setup_loading_pad_row": "\"40\"",
+            "setup_action_button_width": "\"200\"",
+            "setup_action_button_height": "\"56\"",
+            "setup_action_button_radius": "\"12\"",
+            "icon_font": "font_icon_main",
+            "subpage_chevron_font": "font_icon_status",
+            "label_font": "font_text_body",
+            "media_title_font": "font_text_title",
+            "unit_font": "font_text_body",
+            "sensor_value_font": "font_number_value",
+            "padding": "18px",
+            "radius": "11px",
+            "main_page_card_gap": "\"10\"",
+            "main_page_pad_top": "\"46\"",
+            "main_page_compact_pad_top": "\"5\"",
+            "clock_bar_item_gap": "\"78\"",
+            "clock_bar_visual_gap": "\"10\"",
+            "clock_font_size": "\"220\"",
+            "clock_cx": "\"640\"",
+            "clock_cy": "\"400\"",
+            "screen_saver_clock_min_brightness": "\"1\"",
+            "screen_saver_clock_default_brightness": "\"35\"",
+            "screen_schedule_clock_min_brightness": "\"1\"",
+            "screen_schedule_clock_default_brightness": "\"10\""
+          },
+          "deviceFontPackageKey": "fonts_device",
+          "esp32C6FirmwareUpdate": true,
+          "extraPackages": {
+            "power": "!include device/power.yaml",
+            "audio": "!include device/audio.yaml",
+            "microphone": "!include device/microphone.yaml"
+          }
+        }
+      }
+    },
     "esp32-p4-86": {
       "slots": 9,
       "public": {

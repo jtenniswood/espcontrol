@@ -1,0 +1,132 @@
+# =============================================================================
+# AUDIO - reTerminal D1001 speaker / media player (Feature B)
+# =============================================================================
+# ES8311 codec -> external Class-D amp -> 2 W mono speaker.
+#
+# The D1001 wires the ES8311 (playback) and ES7210 (mics, Feature C) on two
+# SEPARATE I2S peripherals, unlike the Waveshare p4-86 which shares one
+# full-duplex TDM bus via the esp_audio_stack external component. So here we
+# use stock ESPHome i2s_audio with a dedicated output bus; the mic gets its own
+# bus in device/microphone.yaml.
+#
+# Pins (Seeed reTerminal D1001 wiki "Pin Assignment" + BSP header H:L63-67):
+#   ES8311  MCLK GPIO33 · BCLK GPIO32 · WS/LRCK GPIO31 · DOUT GPIO30
+#   ES8311  I2C 0x18 on the expander bus (GPIO20/21)
+#   EN_PA   PCA9535 P13 -> ESPHome xl9535 pin 13 (BSP bit 11); HIGH enables the
+#           external amplifier (Seeed wiki PA table; BSP H:L69, C:L1418).
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Output I2S bus (clocks live on the bus; DOUT lives on the speaker platform).
+# ---------------------------------------------------------------------------
+i2s_audio:
+  - id: i2s_out
+    i2s_bclk_pin: GPIO32
+    i2s_lrclk_pin: GPIO31
+    i2s_mclk_pin: GPIO33
+
+# ---------------------------------------------------------------------------
+# ES8311 DAC (volume/mute for the speaker) on the expander I2C bus.
+# ---------------------------------------------------------------------------
+audio_dac:
+  - platform: es8311
+    id: es8311_dac
+    address: 0x18
+    i2c_id: bus_expander
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    use_mclk: true
+
+# ---------------------------------------------------------------------------
+# External amplifier enable. Gated on media activity (default OFF); driven by
+# the media_player triggers below so the amp only draws current / avoids idle
+# hiss while audio is playing.
+# ---------------------------------------------------------------------------
+switch:
+  - platform: gpio
+    id: speaker_amp_enable
+    internal: true
+    restore_mode: ALWAYS_OFF
+    pin:
+      xl9535: xl9535_hub
+      number: 13
+
+# ---------------------------------------------------------------------------
+# Speaker pipeline: media + announcement resamplers -> mixer -> ES8311 speaker.
+# Buffers/tasks kept in PSRAM to protect the internal-RAM/LVGL budget.
+# ---------------------------------------------------------------------------
+speaker:
+  - platform: i2s_audio
+    id: onboard_speaker
+    i2s_audio_id: i2s_out
+    dac_type: external
+    i2s_dout_pin: GPIO30
+    audio_dac: es8311_dac
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    channel: mono
+    buffer_duration: 500ms
+    timeout: 500ms
+
+  - platform: mixer
+    id: mixing_speaker
+    output_speaker: onboard_speaker
+    num_channels: 1
+    task_stack_in_psram: true
+    source_speakers:
+      - id: announcement_mixing_input
+        timeout: never
+        buffer_duration: 500ms
+      - id: media_mixing_input
+        timeout: never
+        buffer_duration: 500ms
+
+  - platform: resampler
+    id: announcement_resampling_speaker
+    output_speaker: announcement_mixing_input
+    sample_rate: 48000
+    bits_per_sample: 16
+    buffer_duration: 500ms
+    task_stack_in_psram: true
+
+  - platform: resampler
+    id: media_resampling_speaker
+    output_speaker: media_mixing_input
+    sample_rate: 48000
+    bits_per_sample: 16
+    buffer_duration: 500ms
+    task_stack_in_psram: true
+
+# ---------------------------------------------------------------------------
+# Media player - Home Assistant can cast TTS/announcements and media to the
+# panel. Decode happens on-device. Conservative volume for the 2 W driver.
+# ---------------------------------------------------------------------------
+media_player:
+  - platform: speaker
+    id: onboard_media_player
+    name: Speaker
+    icon: mdi:speaker
+    buffer_size: 1000000
+    task_stack_in_psram: true
+    volume_min: 0.0
+    volume_max: 0.85
+    volume_initial: 0.5
+    volume_increment: 0.05
+    announcement_pipeline:
+      speaker: announcement_resampling_speaker
+      format: FLAC
+      sample_rate: 48000
+    media_pipeline:
+      speaker: media_resampling_speaker
+      format: NONE
+      sample_rate: 48000
+    on_announcement:
+      - switch.turn_on: speaker_amp_enable
+      - delay: 100ms # let the amp settle before audio starts (avoids a pop)
+    on_play:
+      - switch.turn_on: speaker_amp_enable
+      - delay: 100ms
+    on_pause:
+      - switch.turn_off: speaker_amp_enable
+    on_idle:
+      - switch.turn_off: speaker_amp_enable

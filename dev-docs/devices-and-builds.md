@@ -167,6 +167,7 @@ deliberately.
 | `ESPCONTROL_JC8012P4A1_OTA_PREP_20260528=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for JC8012P4A1 OTA preparation changes. | A later required rebuild marker supersedes it. |
 | `ESPCONTROL_JC8012P4A1_IMAGE_CARD_BOOTFIX_20260611=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for an image-card boot fix. | A later required rebuild marker supersedes it. |
 | `ESPCONTROL_JC8012P4A1_RESTORE_CRASH_RECOVERY_20260611=1` | `guition-esp32-p4-jc8012p4a1` | Cache-busting marker for restore crash recovery. | A later required rebuild marker supersedes it. |
+| `ESPCONTROL_RETERMINAL_D1001_BOOTFIX_20260607=1` | `seeed-esp32-p4-reterminal-d1001` | Cache-busting marker for the initial reTerminal D1001 bring-up. | A later required rebuild marker supersedes it. |
 
 Per-device `platformio_options.build_src_flags` should stay even narrower:
 

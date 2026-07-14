@@ -78,6 +78,25 @@
       "subpages": true
     },
     {
+      "slug": "seeed-esp32-p4-reterminal-d1001",
+      "installSlug": "seeed-esp32-p4-reterminal-d1001",
+      "name": "Seeed reTerminal D1001",
+      "docsPath": "/screens/reterminal-d1001",
+      "screenSize": "8 inches",
+      "resolution": "1280 x 800",
+      "orientation": "Landscape",
+      "slots": 20,
+      "grid": {
+        "rows": 4,
+        "cols": 5
+      },
+      "chipFamily": "ESP32-P4",
+      "relays": 0,
+      "rotation": true,
+      "ethernetManualInstall": false,
+      "subpages": true
+    },
+    {
       "slug": "esp32-p4-86",
       "installSlug": "esp32-p4-86",
       "name": "ESP32-P4 86 Panel",

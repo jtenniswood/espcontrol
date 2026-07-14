@@ -674,6 +674,35 @@
         }
       }
     },
+    "seeed-esp32-p4-reterminal-d1001": {
+      "profiles": {
+        "platform": "esp32-p4",
+        "display": "jc8012p4a1-1280x800",
+        "fonts": "large-panel-p4",
+        "network": "c6-firmware-update",
+        "artwork": "landscape-1280x800"
+      },
+      "config": {
+        "public": {
+          "name": "Seeed reTerminal D1001",
+          "docsPath": "/screens/reterminal-d1001"
+        },
+        "firmware": {
+          "package": {
+            "extraPackages": {
+              "power": "!include device/power.yaml",
+              "audio": "!include device/audio.yaml",
+              "microphone": "!include device/microphone.yaml"
+            }
+          }
+        }
+      },
+      "overrides": {
+        "public": {
+          "screenSize": "8 inches"
+        }
+      }
+    },
     "esp32-p4-86": {
       "profiles": {
         "platform": "esp32-p4",

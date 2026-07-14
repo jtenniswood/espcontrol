@@ -1,0 +1,126 @@
+# =============================================================================
+# MICROPHONE - reTerminal D1001 room-noise + sound detection (Feature C)
+# =============================================================================
+# Dual mics -> ES7210 4-channel ADC on its own I2S bus (separate from the
+# ES8311 output bus in device/audio.yaml, so mic + speaker run concurrently).
+#
+# Pins (Seeed reTerminal D1001 wiki "Pin Mapping Table" + BSP header H:L57-61):
+#   ES7210  MCLK GPIO29 · BCLK GPIO28 · WS/LRCK GPIO27 · SDOUT->P4 DIN GPIO26
+#   ES7210  I2C 0x40 on the expander bus (GPIO20/21)
+#
+# "Speech detection" here is a loudness gate (sound_level RMS over a tunable
+# threshold), not a true speech classifier - stock micro_wake_word cannot
+# expose a VAD binary_sensor and voice_assistant streaming is out of scope.
+#
+# NOTE: the sound_level dB scale is dBFS (0 = full scale, negative below), so
+# the threshold default is negative and MUST be calibrated on hardware using
+# the exposed "Noise Level" reading. Flagged for on-device tuning.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Input I2S bus (clocks on the bus; DIN on the microphone platform below).
+# ---------------------------------------------------------------------------
+i2s_audio:
+  - id: i2s_in
+    i2s_bclk_pin: GPIO28
+    i2s_lrclk_pin: GPIO27
+    i2s_mclk_pin: GPIO29
+
+# ---------------------------------------------------------------------------
+# ES7210 ADC - I2C register config only; the audio path is the i2s_audio
+# microphone below (the two are not id-linked, they just share the wiring).
+# ---------------------------------------------------------------------------
+audio_adc:
+  - platform: es7210
+    id: es7210_adc
+    address: 0x40
+    i2c_id: bus_expander
+    sample_rate: 16000
+    bits_per_sample: 16bit
+    mic_gain: 24db
+
+microphone:
+  - platform: i2s_audio
+    id: onboard_mic
+    i2s_audio_id: i2s_in
+    adc_type: external
+    i2s_din_pin: GPIO26
+    channel: left
+    sample_rate: 16000
+    bits_per_sample: 32bit
+
+# ---------------------------------------------------------------------------
+# Software mic mute (privacy). The D1001 exposes no hardware mic-disable line,
+# so this suppresses all published mic-derived signals (Sound Detected off,
+# Noise Level blanked); capture continues internally but nothing leaves the
+# device or drives automations while muted.
+# ---------------------------------------------------------------------------
+switch:
+  - platform: template
+    name: "Microphone Mute"
+    id: mic_muted
+    icon: mdi:microphone-off
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+# ---------------------------------------------------------------------------
+# Tunable detection threshold (dBFS). Calibrate against the Noise Level sensor.
+# ---------------------------------------------------------------------------
+number:
+  - platform: template
+    name: "Sound Detection Threshold"
+    id: sound_detect_threshold
+    icon: mdi:volume-vibrate
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_value: -45
+    min_value: -90
+    max_value: 0
+    step: 1
+    unit_of_measurement: dB
+
+# ---------------------------------------------------------------------------
+# Room-noise level (RMS dB), slowly smoothed. sound_level actively drives the
+# mic (passive: false) since nothing else captures on this device.
+# ---------------------------------------------------------------------------
+sensor:
+  - platform: sound_level
+    id: mic_sound_level
+    microphone:
+      microphone: onboard_mic
+      gain_factor: 4
+    measurement_duration: 1000ms
+    passive: false
+    rms:
+      name: "Noise Level"
+      id: noise_level_rms
+      icon: mdi:microphone
+      unit_of_measurement: dB
+      accuracy_decimals: 0
+      entity_category: diagnostic
+      filters:
+        - lambda: "return id(mic_muted).state ? NAN : x;" # privacy blank when muted
+        - exponential_moving_average:
+            alpha: 0.3
+            send_every: 1
+    peak:
+      id: noise_level_peak
+      internal: true
+
+# ---------------------------------------------------------------------------
+# "Sound Detected" - loudness gate. Occupancy-style debounce (delayed_off) so
+# it stays on through natural conversation pauses.
+# ---------------------------------------------------------------------------
+binary_sensor:
+  - platform: template
+    name: "Sound Detected"
+    id: sound_detected
+    device_class: sound
+    icon: mdi:account-voice
+    lambda: |-
+      if (id(mic_muted).state) return false;
+      if (isnan(id(noise_level_rms).state)) return {};
+      return id(noise_level_rms).state > id(sound_detect_threshold).state;
+    filters:
+      - delayed_off: 12s

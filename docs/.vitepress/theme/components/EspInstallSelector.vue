@@ -97,6 +97,18 @@ const devices = [
     shape: 'landscape'
   },
   {
+    slug: 'seeed-esp32-p4-reterminal-d1001',
+    name: 'Seeed reTerminal D1001',
+    size: '8 in',
+    resolution: '1280 x 800',
+    orientation: 'Landscape',
+    slots: 20,
+    cols: 5,
+    rows: 4,
+    aspect: '1280 / 800',
+    shape: 'landscape'
+  },
+  {
     slug: 'guition-esp32-p4-jc1060p470',
     name: 'JC1060P470',
     size: '7 in',

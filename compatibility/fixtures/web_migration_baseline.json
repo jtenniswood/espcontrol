@@ -4,6 +4,7 @@
     "guition-esp32-p4-jc4880p443",
     "guition-esp32-p4-jc8012p4a1",
     "guition-esp32-p4-jc8012p4a1-v2",
+    "seeed-esp32-p4-reterminal-d1001",
     "esp32-p4-86",
     "guition-esp32-s3-4848s040"
   ],
@@ -104,6 +105,7 @@
     "guition-esp32-p4-jc4880p443": { "minified": 575621, "gzip": 137638 },
     "guition-esp32-p4-jc8012p4a1": { "minified": 575602, "gzip": 137629 },
     "guition-esp32-p4-jc8012p4a1-v2": { "minified": 575605, "gzip": 137631 },
+    "seeed-esp32-p4-reterminal-d1001": { "minified": 575603, "gzip": 137629 },
     "esp32-p4-86": { "minified": 575628, "gzip": 137631 },
     "guition-esp32-s3-4848s040": { "minified": 575786, "gzip": 137680 }
   }

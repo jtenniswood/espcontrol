@@ -1,0 +1,30 @@
+# =============================================================================
+# BUILD PROFILE - Seeed reTerminal D1001 (8" landscape)
+# =============================================================================
+# CI/local build entry point. Includes the full device package and adds
+# MAC suffix for unique naming. Bundles the matching web UI so branch/release
+# builds do not load the shared GitHub Pages copy from main.
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-d1001"
+  friendly_name: "EspControl reTerminal D1001"
+  espcontrol_component_url: "file:///config"
+  mdi_font_file: "/config/common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  espcontrol_component_ref: "HEAD"
+
+esphome:
+  name_add_mac_suffix: true
+
+packages:
+  espcontrol: !include ../devices/seeed-esp32-p4-reterminal-d1001/packages.yaml
+
+wifi:
+  ap:
+    ssid: "${friendly_name}"
+
+captive_portal:
+
+web_server:
+  js_url: ""
+  js_include: "../docs/public/webserver/seeed-esp32-p4-reterminal-d1001/www.js"

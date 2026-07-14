@@ -48,7 +48,7 @@ const model = loadModel();
 assert.deepStrictEqual(
   Object.keys(manifest.devices || {}),
   fixture.deviceProfiles,
-  "browser and VM coverage must retain the six characterized device profiles in stable order"
+  "browser and VM coverage must retain the characterized device profiles in stable order"
 );
 
 const button = hooks.parseButtonConfig(fixture.button.input);

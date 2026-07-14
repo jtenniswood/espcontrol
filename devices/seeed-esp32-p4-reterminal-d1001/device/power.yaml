@@ -1,0 +1,150 @@
+# =============================================================================
+# POWER - reTerminal D1001 battery & external-power reporting (Feature A)
+# =============================================================================
+# 2500 mAh Li-ion with USB-C charging. All constants traced to Seeed's BSP
+# (github.com/Seeed-Studio/reTerminal-D1001), file
+#   components/esp32_p4_re_terminal_d1001/{include/esp32_p4_re_terminal_d1001.h,
+#                                          src/esp32_p4_re_terminal_d1001.c}
+# referenced below as H:<line> / C:<line>.
+#
+# Measurement path (C L907-995, L1090-1091, L1415):
+#   - Battery voltage: ADC1_CH2 on GPIO18, read through a 2:1 divider
+#     (firmware does adc_cali_mV * 2). 12 dB atten, 12-bit, calibrated.   H L81
+#   - VBUS/USB voltage: ADC1_CH1 on GPIO17, same 2:1 divider.            H L88
+#   - The divider is gated by BAT_READ_EN on the XL9535 expander bit 6
+#     (ESPHome port-0 pin 6); must be HIGH to read.                       H L85, C L1415
+#   - Charge status: GPIO15, HIGH = charge done / not charging,
+#     LOW = charging (C L1042-1046, L1136-1138).                          H L82
+#   - External power present: VBUS > 4000 mV, the same threshold the BSP
+#     charge task uses to treat USB as connected (C L1133).
+#   - Battery %: Seeed's 21-point Li-ion discharge curve
+#     (battery_level_percent_table, C L97) — 5 % steps, 3262 mV = 0 %,
+#     4047 mV = 100 %, linearly interpolated between points.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Battery-read enable. Gates the ADC divider; the BSP drives it HIGH at boot
+# and leaves it on (C L1415). Internal — not a user-facing entity.
+# ---------------------------------------------------------------------------
+switch:
+  - platform: gpio
+    id: battery_read_enable
+    internal: true
+    restore_mode: ALWAYS_ON
+    pin:
+      xl9535: xl9535_hub
+      number: 6
+
+# ---------------------------------------------------------------------------
+# Device-local flag the UI layer (alert banner, separate task) can consume,
+# since Home Assistant may be unreachable during a real outage.
+# ---------------------------------------------------------------------------
+globals:
+  - id: power_outage_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+sensor:
+  # Battery voltage — slow telemetry (60 s), lightly smoothed.
+  - platform: adc
+    pin: GPIO18
+    name: "Battery Voltage"
+    id: battery_voltage
+    attenuation: 12db
+    update_interval: 60s
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    entity_category: diagnostic
+    icon: mdi:battery-heart-variant
+    filters:
+      - multiply: 2.0 # 2:1 hardware divider (BSP: adc_cali_mV * 2)
+      - exponential_moving_average:
+          alpha: 0.4
+          send_every: 1
+
+  # Battery level (%) — Seeed's 21-point discharge curve, piecewise-linear.
+  # Event-driven copy of Battery Voltage so it updates on the same 60 s tick.
+  - platform: copy
+    source_id: battery_voltage
+    name: "Battery Level"
+    id: battery_level
+    device_class: battery
+    state_class: measurement
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          // x is battery volts; Seeed table is in mV (BSP C:L97).
+          static const int TBL[21] = {3262, 3390, 3467, 3554, 3619, 3659, 3686,
+                                      3710, 3731, 3752, 3774, 3797, 3827, 3855,
+                                      3880, 3901, 3915, 3934, 3958, 3978, 4047};
+          const float mv = x * 1000.0f;
+          if (mv <= TBL[0]) return 0.0f;
+          if (mv >= TBL[20]) return 100.0f;
+          for (int i = 1; i < 21; i++) {
+            if (mv < TBL[i]) {
+              const float span = (float) (TBL[i] - TBL[i - 1]);
+              return (i - 1) * 5.0f + 5.0f * (mv - TBL[i - 1]) / span;
+            }
+          }
+          return 100.0f;
+
+  # VBUS/USB sense — fast (2 s) so an outage is caught within ~5 s. Internal;
+  # exposed indirectly via External Power / Power Outage below.
+  - platform: adc
+    pin: GPIO17
+    id: usb_voltage
+    internal: true
+    attenuation: 12db
+    update_interval: 2s
+    filters:
+      - multiply: 2.0 # same 2:1 divider
+
+binary_sensor:
+  # Charging — GPIO15 is HIGH when not charging (done/idle), LOW while
+  # charging, so invert. Open-drain charger pin, so enable the pull-up.
+  - platform: gpio
+    name: "Charging"
+    id: battery_charging
+    device_class: battery_charging
+    pin:
+      number: GPIO15
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 300ms
+      - delayed_off: 300ms
+
+  # External (USB-C) power present — most direct hardware signal (VBUS ADC).
+  # Preferred over "charging" because a full battery stops charging while
+  # still on external power.
+  - platform: template
+    name: "External Power"
+    id: external_power
+    device_class: plug
+    lambda: |-
+      if (isnan(id(usb_voltage).state)) return {};  // unknown until first read
+      return id(usb_voltage).state >= 4.0f;         // VBUS > 4 V (BSP C:L1133)
+
+  # Power outage — inverse of External Power. delayed_on debounces cable
+  # wiggles/brownouts; recovery is instant. Also mirrored to a device-local
+  # global for the on-screen alert banner.
+  - platform: template
+    name: "Power Outage"
+    id: power_outage
+    device_class: problem
+    lambda: |-
+      if (isnan(id(usb_voltage).state)) return {};
+      return id(usb_voltage).state < 4.0f;
+    filters:
+      - delayed_on: 4s
+    on_state:
+      then:
+        - globals.set:
+            id: power_outage_active
+            value: !lambda "return x;"

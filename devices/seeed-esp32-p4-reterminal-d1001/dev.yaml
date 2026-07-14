@@ -1,0 +1,23 @@
+# =============================================================================
+# DEV CONFIG - Local development entry point (8" reTerminal D1001)
+# =============================================================================
+# Flash with: esphome run dev.yaml
+# =============================================================================
+
+substitutions:
+  name: "espcontrol-d1001"
+  friendly_name: "EspControl reTerminal D1001"
+  espcontrol_component_url: "../.."
+  mdi_font_file: "../../common/assets/fonts/materialdesignicons-webfont-7.4.47.ttf"
+  espcontrol_component_ref: "HEAD"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+web_server:
+  js_url: ""
+  js_include: "../../docs/public/webserver/seeed-esp32-p4-reterminal-d1001/www.js"
+
+packages:
+  espcontrol: !include packages.yaml

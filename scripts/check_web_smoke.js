@@ -72,7 +72,7 @@ function assertGeneratedConfigValue(slug, generated, key, value) {
 function generatedDeviceId(generated) {
   const readable = generated.match(/\bvar\s+DEVICE_ID\s*=\s*"([^"]+)"/);
   if (readable) return readable[1];
-  const definedDevice = generated.match(/\bvar\s+[A-Za-z_$][\w$]*="((?:guition-esp32|esp32-p4)[^"]+)"/);
+  const definedDevice = generated.match(/\bvar\s+[A-Za-z_$][\w$]*="((?:guition-esp32|seeed-esp32|esp32-p4)[^"]+)"/);
   if (definedDevice) return definedDevice[1];
   const bundled = generated.match(/\bvar\s+[A-Za-z_$][\w$]*="([^"]+)",[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*;\(function/);
   if (bundled) return bundled[1];
