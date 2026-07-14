@@ -1879,7 +1879,11 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
   std::string raw = string_ref_limited(picture, 4096);
   std::string url = image_card_join_url(image_card_base_url(ctx), raw);
-  ctx->media_artwork_sources.update(local, url);
+  // These two attribute requests run independently. A delayed remote callback
+  // must not discard a newer local proxy URL that has already arrived.
+  ctx->media_artwork_sources.update(
+      local, url,
+      espcontrol::artwork::RemoteUpdatePolicy::PRESERVE_LOCAL);
   if (local) {
     if (!url.empty() && url != ctx->source_url) ctx->startup_download_errors = 0;
     if (!url.empty()) ctx->pending_fallback_picture.clear();
