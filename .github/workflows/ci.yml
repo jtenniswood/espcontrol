@@ -143,6 +143,20 @@ jobs:
         with:
           node-version: 24
 
+      - name: Ensure CMake is available
+        shell: bash
+        run: |
+          if command -v cmake >/dev/null 2>&1; then
+            cmake --version
+            exit 0
+          fi
+
+          CMAKE_VENV="${RUNNER_TEMP}/espcontrol-cmake"
+          python3 -m venv "${CMAKE_VENV}"
+          "${CMAKE_VENV}/bin/python" -m pip install --disable-pip-version-check --no-cache-dir "cmake==3.31.10"
+          echo "${CMAKE_VENV}/bin" >> "${GITHUB_PATH}"
+          "${CMAKE_VENV}/bin/cmake" --version
+
       - name: Install dependencies
         run: |
           NPM_CACHE="${HOME}/.cache/espcontrol-actions/npm"
