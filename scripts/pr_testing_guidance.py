@@ -268,15 +268,10 @@ def run_self_test() -> None:
     assert wide.firmware_related
     assert len(wide.devices) >= 5
 
-    generated_web = analyze(["docs/public/webserver/guition-esp32-p4-jc1060p470/www.js"])
+    generated_web = analyze(["docs/public/webserver/www.js"])
     assert generated_web.firmware_related
     assert not generated_web.docs_only
-    assert generated_web.devices == ["guition-esp32-p4-jc1060p470"]
-
-    generated_web_unknown = analyze(["docs/public/webserver/unknown-panel/www.js"])
-    assert generated_web_unknown.firmware_related
-    assert not generated_web_unknown.docs_only
-    assert len(generated_web_unknown.devices) >= 5
+    assert len(generated_web.devices) >= 5
 
     esphome_version = analyze([".github/esphome.env"])
     assert esphome_version.firmware_related

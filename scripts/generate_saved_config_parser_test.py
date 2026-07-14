@@ -63,6 +63,26 @@ def generate() -> str:
                     lines.append(
                         f"  assert({variable}.{field} == {cpp_string(fixture['expected'][field])});"
                     )
+    lines.extend(
+        (
+            "  // Media behaviour consumes a typed versioned view, not raw option strings.",
+            '  ParsedCfg typed_media{"media_player.kitchen", "Kitchen", "Auto", "Auto", "playlist", "", "media", "",',
+            '                        "volume_max=150,playlist_content_id=morning,playlist_player_source=Kitchen%2C Main,large_numbers"};',
+            "  const auto media_config = espcontrol::media::decode_config_v1(typed_media);",
+            "  assert(media_config.version == 1);",
+            "  assert(media_config.mode == espcontrol::media::Mode::PLAYLIST);",
+            "  assert(media_config.max_volume_percent == 100);",
+            '  assert(media_config.playlist_content_id == "morning");',
+            '  assert(media_config.playlist_content_type == "playlist");',
+            '  assert(media_config.playlist_player_source == "Kitchen, Main");',
+            "  assert(media_config.large_numbers);",
+            '  ParsedCfg legacy_media{"", "", "", "", "controls", "", "media", "state", "volume_max=0"};',
+            "  const auto legacy_media_config = espcontrol::media::decode_config_v1(legacy_media);",
+            "  assert(legacy_media_config.mode == espcontrol::media::Mode::PLAY_PAUSE);",
+            "  assert(legacy_media_config.state_display == espcontrol::media::StateDisplay::STATE);",
+            "  assert(legacy_media_config.max_volume_percent == 1);",
+        )
+    )
     issue_248 = (
         "~B,,4,2,3,,,,8,9,,,1,6,5|X,,Office,Window Closed,Window Open,binary_sensor.office_window_sensor_opening,,window,active_color"
         "|X,,Linnea 1,Window Closed,Window Open,binary_sensor.linnea_br_window_sensor_opening,,window,active_color"

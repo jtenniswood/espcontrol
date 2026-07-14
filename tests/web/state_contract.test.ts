@@ -30,6 +30,7 @@ function deviceConfig(overrides: Partial<DeviceConfig> = {}): DeviceConfig {
     screenSize: "test",
     dragMode: "swap",
     dragAnimation: true,
+    imageSlotCapacity: 4,
     screen: { width: "100%", aspect: "1/1" },
     ...overrides,
   };

@@ -79,6 +79,49 @@ assert.deepStrictEqual(plain(model.parseRawButtonConfig([
   options: nestedPlaylistOptions,
 }, "compact button parsing preserves nested encoded option values");
 
+assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
+  type: "media",
+  entity: "media_player.kitchen",
+  sensor: "playlist",
+  precision: "state",
+  options: nestedPlaylistOptions + ",volume_max=150,large_numbers",
+})), {
+  version: 1,
+  entity: "media_player.kitchen",
+  mode: "playlist",
+  stateDisplay: "label",
+  nowPlayingControl: "none",
+  coverArtAction: "play_pause",
+  controlLabelDisplay: "status",
+  controlNumberDisplay: "icon",
+  maxVolumePercent: 100,
+  playlist: {
+    contentId: "media-source://music/morning,mix=50%",
+    contentType: "playlist",
+    playerSource: "Kitchen, Main=Zone 50%",
+  },
+  largeNumbers: true,
+}, "Media saved strings cross a versioned typed boundary before application code uses them");
+assert.strictEqual(model.decodeMediaCardConfigV1({ type: "sensor" }), null, "Media decoder rejects other card types");
+assert.deepStrictEqual(plain(model.decodeMediaCardConfigV1({
+  type: "media",
+  sensor: "controls",
+  precision: "state",
+  options: "media_cover_art,cover_art_action=control_modal,volume_max=0",
+})), {
+  version: 1,
+  entity: "",
+  mode: "play_pause",
+  stateDisplay: "state",
+  nowPlayingControl: "none",
+  coverArtAction: "control_modal",
+  controlLabelDisplay: "status",
+  controlNumberDisplay: "icon",
+  maxVolumePercent: 1,
+  playlist: { contentId: "", contentType: "playlist", playerSource: "" },
+  largeNumbers: false,
+}, "Media decoder canonicalises legacy and out-of-range values without changing storage");
+
 assert.deepStrictEqual(plain(model.parseGridOrder("1,2d,3w", 8, 4)), {
   grid: [1, 2, 3, -1, 0, -1, 0, 0],
   sizes: { 2: 2, 3: 3 },

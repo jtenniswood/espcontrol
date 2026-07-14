@@ -359,6 +359,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
                               int row_span = 1,
                               int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
+  const auto family = card_runtime_family(p.type);
   reset_card_slot_dynamic_children(s);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
@@ -373,7 +374,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   if (s.sensor_container) lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);
   if (s.text_lbl) lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
   set_subpage_chevron_visible(
-    s, p.type == "subpage" && cfg.subpage_chevrons_enabled,
+    s, family == espcontrol::cards::Family::SUBPAGE && cfg.subpage_chevrons_enabled,
     cfg.subpage_chevron_x, cfg.subpage_chevron_y,
     cfg.subpage_chevron_text_width_percent);
 
@@ -385,11 +386,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
   screen_lock_register_controlled_button(s.btn);
 
-  if (p.type == "image") {
+  if (family == espcontrol::cards::Family::IMAGE) {
     setup_image_card(s);
     return;
   }
-  if (p.type == "screen_lock") {
+  if (family == espcontrol::cards::Family::SCREEN_LOCK) {
     setup_screen_lock_card(s, p);
     return;
   }
@@ -403,7 +404,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_text_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     return;
   }
-  if (p.type == "sensor") {
+  if (family == espcontrol::cards::Family::SENSOR) {
     if (p.sensor.empty()) return;
     setup_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     if (large_number_square_card_layout(row_span, col_span) &&
@@ -474,7 +475,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     }
     return;
   }
-  if (p.type == "weather") {
+  if (family == espcontrol::cards::Family::WEATHER) {
     setup_weather_card(s, palette.has_sensor_color, palette.sensor_val);
     return;
   }
@@ -497,11 +498,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_lock_card(s, p);
     return;
   }
-  if (p.type == "alarm") {
+  if (family == espcontrol::cards::Family::ALARM) {
     setup_alarm_card(s, p);
     return;
   }
-  if (p.type == "alarm_action") {
+  if (family == espcontrol::cards::Family::ALARM_ACTION) {
     setup_alarm_action_card(s, p);
     return;
   }
@@ -513,32 +514,33 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_fan_control_card(s, p);
     return;
   }
-  if (p.type == "cover" && cover_modal_mode(p.sensor)) {
+  if (family == espcontrol::cards::Family::COVER && cover_modal_mode(p.sensor)) {
     setup_cover_modal_card(s, p);
     return;
   }
-  if (p.type == "cover" && cover_command_mode(p.sensor)) {
+  if (family == espcontrol::cards::Family::COVER && cover_command_mode(p.sensor)) {
     setup_cover_command_card(s, p);
     return;
   }
-  if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
+  if (family == espcontrol::cards::Family::COVER && cover_toggle_mode(p.sensor)) {
     setup_cover_toggle_card(s, p);
     return;
   }
-  if (p.type == "internal") {
+  if (family == espcontrol::cards::Family::INTERNAL) {
     setup_internal_relay_card(s, p);
     return;
   }
-  if (p.type == "local" || action_card_local_action(p)) {
+  if (family == espcontrol::cards::Family::ACTION &&
+      (p.type == "local" || action_card_local_action(p))) {
     setup_local_action_card(s, p);
     return;
   }
-  if (p.type == "local_sensor" || sensor_card_local_sensor(p)) {
+  if (family == espcontrol::cards::Family::LOCAL_SENSOR || sensor_card_local_sensor(p)) {
     if (p.entity.empty()) return;
     setup_local_sensor_card(s, p, palette.has_sensor_color, palette.sensor_val);
     return;
   }
-  if (p.type == "action") {
+  if (family == espcontrol::cards::Family::ACTION) {
     if (action_card_option_select(p)) {
       setup_option_select_card(
         s, p, palette.has_sensor_color, palette.sensor_val,
@@ -549,22 +551,22 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_action_card(s, p);
     return;
   }
-  if (p.type == "vacuum") {
+  if (family == espcontrol::cards::Family::VACUUM) {
     setup_vacuum_card(s, p);
     return;
   }
-  if (p.type == "lawn_mower") {
+  if (family == espcontrol::cards::Family::MOWER) {
     setup_lawn_mower_card(s, p);
     return;
   }
-  if (p.type == "option_select") {
+  if (family == espcontrol::cards::Family::OPTION_SELECT) {
     setup_option_select_card(
       s, p, palette.has_sensor_color, palette.sensor_val,
       display_option_select_value_font_or(
         display, s.text_lbl ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr));
     return;
   }
-  if (p.type == "todo") {
+  if (family == espcontrol::cards::Family::TODO) {
     setup_todo_card(s, p, palette.off_val);
     if (large_number_square_card_layout(row_span, col_span) &&
         card_large_numbers_active_for_layout(p, row_span, col_span) &&
@@ -574,7 +576,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     }
     return;
   }
-  if (p.type == "media") {
+  if (family == espcontrol::cards::Family::MEDIA) {
     setup_media_card(s, p,
       palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR,
       palette.off_val,
@@ -585,21 +587,21 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       row_span, col_span);
     return;
   }
-  if (climate_card_type(p.type)) {
+  if (family == espcontrol::cards::Family::CLIMATE) {
     setup_climate_control_button(
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl,
       s.text_lbl, p, display_icon_font(display));
     return;
   }
-  if (p.type == "light_control") {
+  if (family == espcontrol::cards::Family::LIGHT_CONTROL) {
     setup_light_control_card(s, p);
     return;
   }
-  if (brightness_slider_type(p.type) || p.type == "cover") {
+  if (espcontrol::cards::uses_slider_visual(p.type)) {
     setup_slider_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
     return;
   }
-  if (p.type == "light_temperature") {
+  if (family == espcontrol::cards::Family::LIGHT_TEMPERATURE) {
     setup_light_temp_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
     return;
   }
@@ -1339,14 +1341,15 @@ inline void grid_phase2(
     std::string scfg = s.config->state;
 
     ParsedCfg p = parse_cfg(scfg);
+    const auto family = card_runtime_family(p.type);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
     bool is_1x1_card = card_span_is_single(row_span, col_span);
     if (cfg.info_only && info_only_hidden_card_type(p)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
-    if (p.type == "push") continue;
+    if (family == espcontrol::cards::Family::PUSH) continue;
     if (bind_image_card(s, p, cfg)) continue;
-    if (p.type == "local_sensor" || sensor_card_local_sensor(p)) continue;
+    if (family == espcontrol::cards::Family::LOCAL_SENSOR || sensor_card_local_sensor(p)) continue;
     if (bind_basic_sensor_card(s, p, palette)) continue;
     if (bind_passive_card_sources(s, p)) continue;
     if (p.type == "garage") {
@@ -1425,7 +1428,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "alarm") {
+    if (family == espcontrol::cards::Family::ALARM) {
       if (!p.entity.empty()) {
         AlarmCardCtx *ctx = create_alarm_card_context(
           s, p, main_page_obj, NS, COLS,
@@ -1450,7 +1453,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "alarm_action") {
+    if (family == espcontrol::cards::Family::ALARM_ACTION) {
       if (!p.entity.empty()) {
         AlarmCardCtx *alarm_action_card = new AlarmCardCtx();
         alarm_action_card->entity_id = p.entity;
@@ -1538,7 +1541,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "internal") {
+    if (family == espcontrol::cards::Family::INTERNAL) {
       if (!p.entity.empty() && !internal_relay_push_mode(p)) {
         bool internal_has_icon_on = !p.icon_on.empty() && p.icon_on != "Auto";
         const char *internal_icon_on = internal_has_icon_on ? find_icon(p.icon_on.c_str()) : nullptr;
@@ -1547,7 +1550,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "action") {
+    if (family == espcontrol::cards::Family::ACTION && p.type == "action") {
       if (action_card_option_select(p)) {
         if (!p.entity.empty()) {
           OptionSelectCtx *ctx = create_option_select_context(
@@ -1570,7 +1573,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "vacuum") {
+    if (family == espcontrol::cards::Family::VACUUM) {
       lv_obj_set_user_data(s.btn, nullptr);
       if (!p.entity.empty() && vacuum_card_mode_needs_state(p.sensor)) {
         VacuumCardCtx *ctx = create_vacuum_card_context(s, p);
@@ -1580,7 +1583,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "lawn_mower") {
+    if (family == espcontrol::cards::Family::MOWER) {
       lv_obj_set_user_data(s.btn, nullptr);
       if (!p.entity.empty() && lawn_mower_card_mode_needs_state(p.sensor)) {
         LawnMowerCardCtx *ctx = create_lawn_mower_card_context(s, p);
@@ -1590,7 +1593,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "option_select") {
+    if (family == espcontrol::cards::Family::OPTION_SELECT) {
       if (!p.entity.empty()) {
         OptionSelectCtx *ctx = create_option_select_context(
           s, p,
@@ -1604,7 +1607,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "todo") {
+    if (family == espcontrol::cards::Family::TODO) {
       if (!p.entity.empty()) {
         TodoCardCtx *ctx = create_todo_card_context(
           s, p,
@@ -1629,7 +1632,7 @@ inline void grid_phase2(
     if (p.type == "local") {
       continue;
     }
-    if (p.type == "media") {
+    if (family == espcontrol::cards::Family::MEDIA) {
       if (!p.entity.empty()) {
         std::string mode = media_card_mode(p.sensor);
         if (mode == "play_pause") {
@@ -1704,7 +1707,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (climate_card_type(p.type)) {
+    if (family == espcontrol::cards::Family::CLIMATE) {
       if (!p.entity.empty()) {
         ClimateControlCtx *ctx = create_climate_control_context(
           s.btn, s.icon_lbl, s.text_lbl, p,
@@ -1736,7 +1739,7 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "light_control") {
+    if (family == espcontrol::cards::Family::LIGHT_CONTROL) {
       if (!p.entity.empty()) {
         LightControlCtx *ctx = create_light_control_context(
           s, p,
@@ -2003,6 +2006,7 @@ inline void grid_phase2(
       if (bn < 1 || bn > (int)sp_btns.size()) continue;
       auto &sb = sp_btns[bn - 1];
       ParsedCfg sb_cfg = parsed_cfg_from_subpage_btn(sb);
+      const auto family = card_runtime_family(sb_cfg.type);
       int col, row;
       if (sp_ord.has_back_token) { col = gp % COLS; row = gp / COLS; }
       else { int op = gp + 1; col = op % COLS; row = op / COLS; }
@@ -2019,14 +2023,14 @@ inline void grid_phase2(
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, cfg, palette, rs, cs);
 
-      if (sb_cfg.type == "screen_lock") {
+      if (family == espcontrol::cards::Family::SCREEN_LOCK) {
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *) {
           screen_lock_toggle();
         }, LV_EVENT_CLICKED, nullptr);
         continue;
       }
       if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;
-      if (sb_cfg.type == "local_sensor" || sensor_card_local_sensor(sb_cfg)) continue;
+      if (family == espcontrol::cards::Family::LOCAL_SENSOR || sensor_card_local_sensor(sb_cfg)) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;
       if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;
       if (sb_cfg.type == "cover" && cover_modal_mode(sb_cfg.sensor)) {
@@ -2151,7 +2155,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "alarm") {
+      if (family == espcontrol::cards::Family::ALARM) {
         ParsedCfg alarm_cfg = sb_cfg;
         if (alarm_cfg.entity.empty()) alarm_cfg.entity = p.entity;
         if (alarm_cfg.options.empty()) alarm_cfg.options = p.options;
@@ -2185,7 +2189,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "alarm_action") {
+      if (family == espcontrol::cards::Family::ALARM_ACTION) {
         std::string action_entity = sb_cfg.entity.empty() ? p.entity : sb_cfg.entity;
         if (!action_entity.empty()) {
           AlarmCardCtx *alarm_action_card = new AlarmCardCtx();
@@ -2262,7 +2266,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "push") {
+      if (family == espcontrol::cards::Family::PUSH) {
         std::string push_label = sb_cfg.label.empty() ? espcontrol_i18n(std::string("Push")) : sb_cfg.label;
         std::string *label = grid_delete_with_owner(sb_btn, new std::string(push_label));
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
@@ -2274,7 +2278,7 @@ inline void grid_phase2(
         }, LV_EVENT_CLICKED, label);
         continue;
       }
-      if (sb_cfg.type == "action") {
+      if (family == espcontrol::cards::Family::ACTION && sb_cfg.type == "action") {
         if (!sb_cfg.entity.empty() && !sb_cfg.sensor.empty()) {
           if (action_card_local_action(sb_cfg)) {
             std::string *key = grid_delete_with_owner(sb_btn, new std::string(sb_cfg.entity));
@@ -2320,7 +2324,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "vacuum") {
+      if (family == espcontrol::cards::Family::VACUUM) {
         if (!sb_cfg.entity.empty()) {
           VacuumCardCtx *ctx = create_vacuum_card_context(sub_slot, sb_cfg);
           grid_delete_with_owner(sb_btn, ctx);
@@ -2338,7 +2342,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "lawn_mower") {
+      if (family == espcontrol::cards::Family::MOWER) {
         if (!sb_cfg.entity.empty()) {
           LawnMowerCardCtx *ctx = create_lawn_mower_card_context(sub_slot, sb_cfg);
           grid_delete_with_owner(sb_btn, ctx);
@@ -2355,7 +2359,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "webhook") {
+      if (family == espcontrol::cards::Family::WEBHOOK) {
         ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
         lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
           ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
@@ -2363,7 +2367,7 @@ inline void grid_phase2(
         }, LV_EVENT_CLICKED, ctx);
         continue;
       }
-      if (sb_cfg.type == "todo") {
+      if (family == espcontrol::cards::Family::TODO) {
         if (!sb_cfg.entity.empty()) {
           TodoCardCtx *ctx = create_todo_card_context(
             sub_slot, sb_cfg,
@@ -2389,7 +2393,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "option_select") {
+      if (family == espcontrol::cards::Family::OPTION_SELECT) {
         if (!sb_cfg.entity.empty()) {
           OptionSelectCtx *ctx = create_option_select_context(
             sub_slot, sb_cfg,
@@ -2407,7 +2411,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "media") {
+      if (family == espcontrol::cards::Family::MEDIA) {
         std::string mode = media_card_mode(sb_cfg.sensor);
         if (!sb_cfg.entity.empty()) {
           if (mode == "playlist") {
@@ -2518,7 +2522,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (climate_card_type(sb_cfg.type)) {
+      if (family == espcontrol::cards::Family::CLIMATE) {
         if (!sb_cfg.entity.empty()) {
           ClimateControlCtx *ctx = create_climate_control_context(
             sub_slot.btn, sub_slot.icon_lbl, sub_slot.text_lbl, sb_cfg,
@@ -2585,7 +2589,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "internal") {
+      if (family == espcontrol::cards::Family::INTERNAL) {
         bool push_mode = internal_relay_push_mode(sb_cfg);
         if (!push_mode && !sb_cfg.entity.empty()) {
           bool internal_has_icon_on = !sb_cfg.icon_on.empty() && sb_cfg.icon_on != "Auto";
@@ -2621,7 +2625,7 @@ inline void grid_phase2(
         }
         continue;
       }
-      if (sb_cfg.type == "light_temperature") {
+      if (family == espcontrol::cards::Family::LIGHT_TEMPERATURE) {
         if (!sb_cfg.entity.empty()) {
           lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
           if (slider) {

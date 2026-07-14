@@ -229,7 +229,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 slot: slot,
                 button: b,
             });
-            if (count <= imageCardLimit())
+            if (count <= imageSlotCapacity())
                 return true;
             showImageCardLimitBanner();
             return false;
