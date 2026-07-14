@@ -708,11 +708,37 @@ def firmware_climate_step_errors(root: Path) -> list[str]:
     return errors
 
 
+def firmware_climate_option_selection_errors(root: Path) -> list[str]:
+    path = root / "components" / "espcontrol" / "button_grid_climate.h"
+    if not path.exists():
+        return []
+
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    match = re.search(
+        r"inline\s+bool\s+climate_option_selected\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        text,
+        re.S,
+    )
+    if match is None:
+        return [f"{rel}: keep climate option selection state matching"]
+
+    body = match.group("body")
+    if (
+        "climate_option_current_value(ctx, kind)" not in body
+        or "climate_lower(climate_trim(value))" not in body
+        or "climate_lower(climate_trim(current))" not in body
+    ):
+        return [f"{rel}: match climate option state without case sensitivity"]
+    return []
+
+
 def run_scan() -> int:
     errors = firmware_modal_errors(FIRMWARE_DIR, ROOT)
     errors.extend(firmware_modal_sleep_takeover_errors(ROOT))
     errors.extend(firmware_subpage_modal_wiring_errors(ROOT))
     errors.extend(firmware_climate_step_errors(ROOT))
+    errors.extend(firmware_climate_option_selection_errors(ROOT))
     errors.extend(firmware_light_control_brightness_errors(ROOT))
     errors.extend(firmware_light_control_tab_errors(ROOT))
     errors.extend(firmware_cover_control_tab_errors(ROOT))
@@ -834,6 +860,20 @@ def expect_climate_step_errors(name: str, text: str, expected: tuple[str, ...]) 
 
         errors = firmware_climate_step_errors(root)
 
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_climate_option_selection_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "components" / "espcontrol" / "button_grid_climate.h"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_climate_option_selection_errors(root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -1207,6 +1247,31 @@ def run_self_test() -> int:
             "  climate_apply_selected_target(ui.active, value, true, false);\n"
             "  climate_selected_target(ui.active) - climate_effective_step_tenths(ui.active);\n"
             "  climate_selected_target(ui.active) + climate_effective_step_tenths(ui.active);\n"
+            "}\n"
+        ),
+        (),
+    )
+    expect_climate_option_selection_errors(
+        "climate option selection is case-sensitive",
+        (
+            "inline bool climate_option_selected(ClimateControlCtx *ctx,\n"
+            "                                    const std::string &kind,\n"
+            "                                    const std::string &value) {\n"
+            "  if (!ctx) return false;\n"
+            "  return value == climate_option_current_value(ctx, kind);\n"
+            "}\n"
+        ),
+        ("match climate option state without case sensitivity",),
+    )
+    expect_climate_option_selection_errors(
+        "climate option selection ignores attribute case",
+        (
+            "inline bool climate_option_selected(ClimateControlCtx *ctx,\n"
+            "                                    const std::string &kind,\n"
+            "                                    const std::string &value) {\n"
+            "  if (!ctx) return false;\n"
+            "  std::string current = climate_option_current_value(ctx, kind);\n"
+            "  return climate_lower(climate_trim(value)) == climate_lower(climate_trim(current));\n"
             "}\n"
         ),
         (),
