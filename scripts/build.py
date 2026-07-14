@@ -243,7 +243,7 @@ def run_generated_transaction_self_test():
         )
         if result.returncode != 0:
             raise BuildError(result.stderr.strip() or "Generated overlay self-test could not build a web bundle")
-        bundle = (bundle_root / slug / "www.js").read_text(encoding="utf-8")
+        bundle = (bundle_root / "www.js").read_text(encoding="utf-8")
         if marker not in bundle:
             raise BuildError("Web bundle did not consume the staged generated overlay")
 
@@ -3327,6 +3327,12 @@ def gen_device_grid_snippet(capability):
     relays = capability.get("relays", 0)
     relay_text = "No built-in relays" if relays == 0 else f"{relays} built-in relay" + ("" if relays == 1 else "s")
     ethernet = "Yes, manual ESPHome install only" if capability.get("ethernetManualInstall") else "No"
+    image_slots = capability["imageSlots"]
+    image_slot_text = (
+        "Not supported"
+        if image_slots == 0
+        else f"Up to {image_slots} simultaneous Image or Media Cover Art cards"
+    )
     if capability.get("subpages", True):
         layout_text = (
             f"The home screen uses a **{rows}-row x {cols}-column** grid, giving you "
@@ -3347,6 +3353,7 @@ def gen_device_grid_snippet(capability):
         f"| Screen | {capability['screenSize']}, {capability['resolution']}, {capability['orientation']} |\n"
         f"| Processor | {capability['chipFamily']} |\n"
         f"| Built-in relays | {relay_text} |\n"
+        f"| Image-based cards | {image_slot_text} |\n"
         f"| Rotation support | {'Yes' if capability.get('rotation') else 'No'} |\n"
         f"| Browser install slug | `{capability['installSlug']}` |\n"
         f"| Ethernet option | {ethernet} |\n"
@@ -3675,7 +3682,7 @@ def load_timezone_options():
 
 
 def build_www(check_only=False, output_dir=None, test_hooks=False):
-    """Build per-device www.js from the single source template."""
+    """Build one shared www.js containing the validated device profiles."""
     devices = build_web_devices()
     temporary_root = None
     if output_dir is None:
@@ -3703,29 +3710,29 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
         raise BuildError(result.stderr.strip() or "esbuild failed while building web bundles")
 
     if output_dir is not None:
-        print(f"Built {len(devices)} www.js bundle(s) in {build_root}")
+        print(f"Built shared www.js bundle and {len(devices)} compatibility loader(s) in {build_root}")
         return []
 
-    dirty = []
+    outputs = [(WWW_OUTPUT_DIR / "www.js", (build_root / "www.js").read_text())]
+    outputs.extend(
+        (WWW_OUTPUT_DIR / slug / "www.js", (build_root / slug / "www.js").read_text())
+        for slug in devices
+    )
+    dirty = [
+        str(path.relative_to(WWW_OUTPUT_DIR))
+        for path, generated in outputs
+        if not path.exists() or path.read_text() != generated
+    ]
 
-    for slug in devices:
-        output_path = WWW_OUTPUT_DIR / slug / "www.js"
-        generated = (build_root / slug / "www.js").read_text()
-
-        if output_path.exists():
-            current = output_path.read_text()
-            if current == generated:
-                continue
-
-        dirty.append(slug)
-
-        if not check_only:
-            write_generated_text(output_path, generated)
+    if not check_only:
+        for path, generated in outputs:
+            if not path.exists() or path.read_text() != generated:
+                write_generated_text(path, generated)
 
     if check_only and dirty:
         print("www.js outputs are out of date. Run 'python scripts/build.py www' to fix:")
-        for slug in dirty:
-            print(f"  docs/public/webserver/{slug}/www.js")
+        for relative_path in dirty:
+            print(f"  docs/public/webserver/{relative_path}")
     if temporary_root:
         temporary_root.cleanup()
     return dirty

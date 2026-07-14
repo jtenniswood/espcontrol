@@ -10,6 +10,7 @@
       "resolution": "1024 x 600",
       "orientation": "Landscape",
       "slots": 15,
+      "imageSlots": 6,
       "grid": {
         "rows": 3,
         "cols": 5
@@ -29,6 +30,7 @@
       "resolution": "480 x 800",
       "orientation": "Portrait",
       "slots": 6,
+      "imageSlots": 6,
       "grid": {
         "rows": 3,
         "cols": 2
@@ -48,6 +50,7 @@
       "resolution": "1280 x 800",
       "orientation": "Landscape",
       "slots": 20,
+      "imageSlots": 6,
       "grid": {
         "rows": 4,
         "cols": 5
@@ -67,6 +70,7 @@
       "resolution": "1280 x 800",
       "orientation": "Landscape",
       "slots": 20,
+      "imageSlots": 6,
       "grid": {
         "rows": 4,
         "cols": 5
@@ -86,6 +90,7 @@
       "resolution": "720 x 720",
       "orientation": "Square",
       "slots": 9,
+      "imageSlots": 6,
       "grid": {
         "rows": 3,
         "cols": 3
@@ -105,6 +110,7 @@
       "resolution": "480 x 480",
       "orientation": "Square",
       "slots": 9,
+      "imageSlots": 0,
       "grid": {
         "rows": 3,
         "cols": 3
