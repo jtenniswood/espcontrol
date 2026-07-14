@@ -135,6 +135,48 @@ int main() {
     CHECK(decision_is(isolated, DisplayMode::ACTIVE));
   }
 
+  // Cover art is a media request, not a saved presentation. Higher-priority
+  // requests temporarily hide it, and clearing media restores whatever is
+  // currently underneath rather than assuming the active UI.
+  DisplayModeController cover_art;
+  const uint32_t activation_generation = cover_art.generation();
+  CHECK(cover_art.generation_is_current(activation_generation));
+  CHECK(cover_art.request(DisplayRequestSource::MEDIA_PLAYBACK,
+                          DisplayMode::COVER_ART));
+  const auto first_art = cover_art.resolve();
+  CHECK(decision_is(cover_art, DisplayMode::COVER_ART,
+                    DisplayRequestSource::MEDIA_PLAYBACK));
+  CHECK(!cover_art.generation_is_current(activation_generation));
+  CHECK(cover_art.complete_transition(first_art));
+
+  CHECK(cover_art.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED));
+  const uint32_t artwork_generation = cover_art.generation();
+  CHECK(decision_is(cover_art, DisplayMode::COVER_ART,
+                    DisplayRequestSource::MEDIA_PLAYBACK));
+  CHECK(cover_art.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                          DisplayMode::DISPLAY_OFF));
+  CHECK(!cover_art.generation_is_current(artwork_generation));
+  CHECK(decision_is(cover_art, DisplayMode::DISPLAY_OFF,
+                    DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(cover_art.clear(DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(decision_is(cover_art, DisplayMode::COVER_ART,
+                    DisplayRequestSource::MEDIA_PLAYBACK));
+
+  const uint32_t dismissed_generation = cover_art.generation();
+  CHECK(cover_art.clear(DisplayRequestSource::MEDIA_PLAYBACK));
+  CHECK(!cover_art.transition_is_current(dismissed_generation,
+                                         DisplayMode::COVER_ART));
+  CHECK(decision_is(cover_art, DisplayMode::DIMMED,
+                    DisplayRequestSource::IDLE_TIMER));
+  CHECK(cover_art.request(DisplayRequestSource::MEDIA_PLAYBACK,
+                          DisplayMode::COVER_ART));
+  const uint32_t replacement_generation = cover_art.generation();
+  CHECK(replacement_generation > dismissed_generation);
+  CHECK(!cover_art.transition_is_current(dismissed_generation,
+                                         DisplayMode::COVER_ART));
+  CHECK(cover_art.transition_is_current(replacement_generation,
+                                        DisplayMode::COVER_ART));
+
   // Each effective change invalidates older delayed work, including cover-art work.
   const DisplayTransition stale_cover_art = controller.resolve();
   CHECK(controller.clear(DisplayRequestSource::MEDIA_PLAYBACK));

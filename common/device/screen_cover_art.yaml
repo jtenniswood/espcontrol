@@ -12,6 +12,15 @@ globals:
   - id: cover_art_delay_interrupted_by_transition
     type: bool
     initial_value: 'false'
+  - id: cover_art_transition_generation
+    type: uint32_t
+    initial_value: '0'
+  - id: cover_art_delay_generation
+    type: uint32_t
+    initial_value: '0'
+  - id: cover_art_download_generation
+    type: uint32_t
+    initial_value: '0'
   - id: cover_art_runtime
     type: espcontrol::cover_art::RuntimeState
   - id: cover_art_pending_remote_url
@@ -132,9 +141,25 @@ artwork_image:
     buffer_size: 65536
     allow_insecure_local_urls: true
     on_download_finished:
-      - script.execute: cover_art_apply_downloaded_image
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_download_generation) != 0 &&
+                     id(cover_art_download_generation) == id(cover_art_transition_generation) &&
+                     id(display_mode_controller).transition_is_current(
+                         id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.execute: cover_art_apply_downloaded_image
     on_error:
-      - script.execute: cover_art_download_failed
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_download_generation) != 0 &&
+                     id(cover_art_download_generation) == id(cover_art_transition_generation) &&
+                     id(display_mode_controller).transition_is_current(
+                         id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.execute: cover_art_download_failed
 
 interval:
   - interval: 5s
@@ -473,6 +498,15 @@ script:
       - if:
           condition:
             lambda: |-
+              return id(cover_art_download_generation) == 0 ||
+                     id(cover_art_download_generation) != id(cover_art_transition_generation) ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_apply_downloaded_image
+      - if:
+          condition:
+            lambda: |-
               std::string expected_url = id(cover_art_runtime).effective_download_url.empty()
                   ? id(cover_art_runtime).source_url
                   : id(cover_art_runtime).effective_download_url;
@@ -502,8 +536,22 @@ script:
             - script.execute: cover_art_apply_responsive_layout
             - script.execute: cover_art_extract_accent_color
             - script.wait: cover_art_extract_accent_color
+            - if:
+                condition:
+                  lambda: |-
+                    return !id(display_mode_controller).transition_is_current(
+                        id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+                then:
+                  - script.stop: cover_art_apply_downloaded_image
             - script.execute: cover_art_clear_image_source
             - script.wait: cover_art_clear_image_source
+            - if:
+                condition:
+                  lambda: |-
+                    return !id(display_mode_controller).transition_is_current(
+                        id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+                then:
+                  - script.stop: cover_art_apply_downloaded_image
             - lvgl.widget.update:
                 id: cover_art_image_widget
                 opa: 100%
@@ -525,6 +573,14 @@ script:
   - id: cover_art_extract_accent_color
     mode: queued
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_download_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_extract_accent_color
       - lambda: |-
           auto *img = id(cover_art_downloaded_image);
           int img_w = img->get_width();
@@ -614,6 +670,14 @@ script:
   - id: cover_art_show_black_screen
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_show_black_screen
       - script.stop: cover_art_show_track_overlay
       - script.execute: cover_art_apply_responsive_layout
       - lambda: 'id(cover_art_runtime).image_available = false;'
@@ -654,6 +718,15 @@ script:
   - id: cover_art_download_failed
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_download_generation) == 0 ||
+                     id(cover_art_download_generation) != id(cover_art_transition_generation) ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_download_failed
       - if:
           condition:
             lambda: 'return !id(cover_art_screensaver_enabled).state;'
@@ -728,6 +801,8 @@ script:
       - script.stop: cover_art_deferred_request_artwork
       - script.stop: cover_art_prepare_download
       - script.stop: cover_art_retry_download
+      - script.execute: display_mode_clear_cover_art
+      - script.wait: display_mode_apply_transition
       - globals.set:
           id: cover_art_media_playing
           value: 'false'
@@ -758,7 +833,6 @@ script:
       - script.execute: cover_art_clear_image_source
       - script.wait: cover_art_clear_image_source
       - artwork_image.release: cover_art_downloaded_image
-      - script.execute: hide_cover_art_view
       - if:
           condition:
             lambda: 'return id(media_player_sleep_prevention_enabled).state;'
@@ -769,6 +843,14 @@ script:
   - id: cover_art_download
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_download
       - if:
           condition:
             lambda: |-
@@ -827,6 +909,7 @@ script:
                 std::string effective_url = needs_artwork_refresh
                     ? refresh_ha_media_proxy_url(id(cover_art_runtime).source_url)
                     : id(cover_art_runtime).source_url;
+                id(cover_art_download_generation) = id(cover_art_transition_generation);
                 id(cover_art_runtime).begin_download(effective_url);
                 ESP_LOGI("cover_art", "Downloading artwork URL (%u chars, download %u chars, active=%s, image_available=%s, refresh_needed=%s)",
                          (unsigned) id(cover_art_runtime).source_url.size(),
@@ -844,6 +927,14 @@ script:
     mode: restart
     then:
       - delay: !lambda 'return espcontrol::cover_art::DEFERRED_DOWNLOAD_MS;'
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_deferred_download
       - if:
           condition:
             lambda: |-
@@ -868,6 +959,14 @@ script:
       - if:
           condition:
             lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_deferred_request_artwork
+      - if:
+          condition:
+            lambda: |-
               return id(cover_art_screensaver_active) &&
                      id(cover_art_screensaver_enabled).state &&
                      id(cover_art_media_playing) &&
@@ -887,6 +986,14 @@ script:
       - if:
           condition:
             lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_process_cached_artwork
+      - if:
+          condition:
+            lambda: |-
               return id(cover_art_screensaver_active) &&
                      espcontrol::cover_art::feature_allowed(
                        id(cover_art_screensaver_enabled).state,
@@ -900,6 +1007,14 @@ script:
   - id: cover_art_use_cached_artwork
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_use_cached_artwork
       - lambda: |-
           espcontrol::artwork::SourceSelection selection =
               id(cover_art_runtime).sources.select(
@@ -973,6 +1088,14 @@ script:
       - if:
           condition:
             lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_prepare_download
+      - if:
+          condition:
+            lambda: |-
               return !id(cover_art_runtime).source_url.empty() &&
                      espcontrol::cover_art::feature_allowed(
                        id(cover_art_screensaver_enabled).state,
@@ -1015,6 +1138,15 @@ script:
       - if:
           condition:
             lambda: |-
+              return id(cover_art_download_generation) == 0 ||
+                     id(cover_art_download_generation) != id(cover_art_transition_generation) ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_retry_download
+      - if:
+          condition:
+            lambda: |-
               return !id(cover_art_runtime).source_url.empty() &&
                      id(cover_art_screensaver_enabled).state &&
                      id(cover_art_attribute_conditions_match) &&
@@ -1029,6 +1161,14 @@ script:
                 if (attempt < 0) attempt = 0;
                 if (attempt > 4) attempt = 4;
                 return delays[attempt];
+            - if:
+                condition:
+                  lambda: |-
+                    return id(cover_art_download_generation) == 0 ||
+                           !id(display_mode_controller).transition_is_current(
+                               id(cover_art_download_generation), espcontrol::DisplayMode::COVER_ART);
+                then:
+                  - script.stop: cover_art_retry_download
             - if:
                 condition:
                   lambda: |-
@@ -1086,6 +1226,14 @@ script:
   - id: cover_art_refresh_progress
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_refresh_progress
       - lambda: |-
           float duration = id(cover_art_media_duration);
           float position = id(cover_art_media_position);
@@ -1172,6 +1320,14 @@ script:
     then:
       - if:
           condition:
+            lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_show_track_overlay
+      - if:
+          condition:
             lambda: 'return id(cover_art_screensaver_active) && id(cover_art_media_playing);'
           then:
             - script.execute: cover_art_sync_track_text
@@ -1209,7 +1365,12 @@ script:
                         - delay: !lambda 'return (uint32_t)(id(cover_art_track_overlay_duration).state * 1000);'
                         - if:
                             condition:
-                              lambda: 'return id(cover_art_screensaver_active) && id(cover_art_runtime).image_available && ${cover_art_square_overlay};'
+                              lambda: |-
+                                return id(cover_art_screensaver_active) &&
+                                       id(cover_art_runtime).image_available &&
+                                       ${cover_art_square_overlay} &&
+                                       id(display_mode_controller).transition_is_current(
+                                           id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
                             then:
                               - lvgl.widget.hide: cover_art_accent_overlay
                               - lvgl.widget.hide: cover_art_track_panel
@@ -1225,7 +1386,6 @@ script:
                 level: DEBUG
                 tag: cover_art
                 format: "Skipping cover art while alarm display takeover is active"
-            - script.execute: hide_cover_art_view
             - script.stop: show_cover_art_view
       - if:
           condition:
@@ -1233,7 +1393,7 @@ script:
               return id(cover_art_manual_pause_until_ms) != 0 &&
                      (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
           then:
-            - script.execute: cover_art_delay_timer
+            - script.execute: cover_art_start_delay
             - script.stop: show_cover_art_view
       - if:
           condition:
@@ -1252,7 +1412,6 @@ script:
                 level: DEBUG
                 tag: cover_art
                 format: "Skipping cover art while screen schedule night mode is active"
-            - script.execute: hide_cover_art_view
             - script.stop: show_cover_art_view
       - if:
           condition:
@@ -1262,10 +1421,32 @@ script:
                 level: DEBUG
                 tag: cover_art
                 format: "Skipping cover art while voice interaction is active"
-            - script.execute: hide_cover_art_view
-            - script.wait: hide_cover_art_view
+            - script.execute: display_mode_clear_cover_art
             - script.execute: clock_bar_apply
             - script.stop: show_cover_art_view
+      - script.stop: cover_art_delay_timer
+      - script.execute: display_mode_request_cover_art
+
+  # Compatibility dismissal entry point. The controller request is the only
+  # source of truth; the adapter performs the actual widget and image cleanup.
+  - id: hide_cover_art_view
+    mode: restart
+    then:
+      - script.stop: cover_art_delay_timer
+      - script.execute: display_mode_clear_cover_art
+
+  - id: display_mode_effect_cover_art
+    mode: restart
+    parameters:
+      generation: int
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(display_mode_controller).transition_is_current(
+                  static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: display_mode_effect_cover_art
       - script.stop: cover_art_delay_timer
       - script.stop: backlight_fade_current_ui_to_black
       - script.stop: backlight_sleep_display_off
@@ -1278,20 +1459,13 @@ script:
       - script.stop: clock_screensaver_refresh_brightness
       - script.execute: cover_art_sync_track_text
       - lambda: |-
+          if (!id(display_mode_controller).transition_is_current(
+                static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART)) {
+            id(display_mode_effect_cover_art).stop();
+          }
           if (id(cover_art_runtime).loaded_url.empty()) {
             id(cover_art_runtime).image_available = false;
           }
-      - globals.set:
-          id: display_asleep
-          value: 'true'
-      - globals.set:
-          id: cover_art_screensaver_active
-          value: 'true'
-      - globals.set:
-          id: screensaver_display_off_active
-          value: 'false'
-      - script.execute: display_mode_reconcile
-      - script.wait: display_mode_apply_transition
       - lvgl.resume:
       - lambda: 'navigation_return_home(id(main_page)->obj);'
       - script.execute: hide_clock_view
@@ -1326,15 +1500,31 @@ script:
                   - script.execute: cover_art_show_black_screen
       - script.execute: cover_art_refresh_progress
 
-  - id: hide_cover_art_view
+  - id: cover_art_hide_effect
     mode: restart
+    parameters:
+      generation: int
+      target_mode: int
     then:
+      - if:
+          condition:
+            lambda: |-
+              return !id(display_mode_controller).transition_is_current(
+                  static_cast<uint32_t>(generation),
+                  static_cast<espcontrol::DisplayMode>(target_mode));
+          then:
+            - script.stop: cover_art_hide_effect
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
       - script.stop: cover_art_deferred_request_artwork
-      - globals.set:
-          id: cover_art_screensaver_active
-          value: 'false'
+      - script.stop: cover_art_deferred_download
+      - script.stop: cover_art_prepare_download
+      - script.stop: cover_art_retry_download
+      - globals.set: { id: cover_art_transition_generation, value: '0' }
+      - globals.set: { id: cover_art_download_generation, value: '0' }
+      - lambda: |-
+          id(cover_art_runtime).effective_download_url.clear();
+          id(cover_art_runtime).active_download_source_url.clear();
       - lvgl.widget.hide: cover_art_screensaver
       - lvgl.widget.hide: cover_art_accent_overlay
       - lvgl.widget.hide: cover_art_track_panel
@@ -1345,6 +1535,12 @@ script:
           then:
             - script.execute: cover_art_clear_image_source
             - script.wait: cover_art_clear_image_source
+            - lambda: |-
+                if (!id(display_mode_controller).transition_is_current(
+                      static_cast<uint32_t>(generation),
+                      static_cast<espcontrol::DisplayMode>(target_mode))) {
+                  id(cover_art_hide_effect).stop();
+                }
             - artwork_image.release: cover_art_downloaded_image
             - lambda: |-
                 id(cover_art_runtime).image_available = false;
@@ -1352,6 +1548,14 @@ script:
                 id(cover_art_runtime).effective_download_url.clear();
                 id(cover_art_runtime).active_download_source_url.clear();
       - script.execute: clock_bar_apply
+
+  - id: cover_art_start_delay
+    mode: restart
+    then:
+      - globals.set:
+          id: cover_art_delay_generation
+          value: !lambda 'return id(display_mode_controller).generation();'
+      - script.execute: cover_art_delay_timer
 
   - id: cover_art_delay_timer
     mode: restart
@@ -1374,6 +1578,8 @@ script:
       - if:
           condition:
             lambda: |-
+              if (!id(display_mode_controller).generation_is_current(
+                    id(cover_art_delay_generation))) return false;
               bool voice_active = ${voice_interaction_active_condition};
               auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
               bool schedule_blocks = screen_schedule_blocks_cover_art(
@@ -1449,6 +1655,14 @@ script:
   - id: cover_art_request_artwork
     mode: restart
     then:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_art_transition_generation) == 0 ||
+                     !id(display_mode_controller).transition_is_current(
+                         id(cover_art_transition_generation), espcontrol::DisplayMode::COVER_ART);
+          then:
+            - script.stop: cover_art_request_artwork
       - lambda: |-
           if (!id(cover_art_screensaver_enabled).state ||
               !id(cover_art_screensaver_active) ||
@@ -1624,7 +1838,8 @@ script:
               id(cover_art_delay_interrupted_by_transition) =
                 id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running();
               id(cover_art_delay_timer).stop();
-              id(cover_art_delayed_playback_stopped).execute();
+              id(cover_art_delayed_playback_stopped).execute(
+                  static_cast<int32_t>(id(display_mode_controller).generation()));
             };
           if (!already_subscribed) {
             bool state_subscribed = ha_subscribe_state(
@@ -2119,14 +2334,32 @@ script:
                            id(screensaver_dimmed_active) ||
                            id(is_clock_showing);
                 then:
-                  - script.execute: cover_art_delay_timer
+                  - script.execute: cover_art_start_delay
                 else:
                   - script.execute: screensaver_idle_check
 
   - id: cover_art_delayed_playback_stopped
     mode: restart
+    parameters:
+      generation: int
     then:
       - delay: 2s
+      - if:
+          condition:
+            lambda: |-
+              return !id(display_mode_controller).generation_is_current(
+                  static_cast<uint32_t>(generation));
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    const std::string &state = id(cover_art_last_playback_state);
+                    return state != "playing" && state != "buffering" && state != "paused";
+                then:
+                  # The obsolete callback may retire its old request from live
+                  # playback state, but it must not touch presentation widgets.
+                  - script.execute: display_mode_clear_cover_art
+            - script.stop: cover_art_delayed_playback_stopped
       - if:
           condition:
             lambda: |-
@@ -2162,9 +2395,7 @@ script:
   - id: cover_art_return_home_after_playback
     mode: restart
     then:
-      - script.execute: hide_cover_art_view
-      - script.wait: hide_cover_art_view
-      - script.execute: display_mode_reconcile
+      - script.execute: display_mode_clear_cover_art
       - script.wait: display_mode_apply_transition
       - if:
           condition:

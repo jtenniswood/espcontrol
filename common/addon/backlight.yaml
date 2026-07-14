@@ -159,7 +159,7 @@ esphome:
 
 script:
   # The controller owns decisions; this adapter is the only path that applies
-  # migrated ACTIVE, SETUP_DIMMED, DIMMED, CLOCK, and DISPLAY_OFF transitions.
+  # migrated ACTIVE, SETUP_DIMMED, DIMMED, CLOCK, COVER_ART, and DISPLAY_OFF transitions.
   - id: display_mode_apply_transition
     mode: restart
     parameters:
@@ -184,6 +184,16 @@ script:
                 if (schedule_owned && transition.target_mode == espcontrol::DisplayMode::CLOCK) {
                   backlight_close_modals_for_display_takeover();
                 }
+            - if:
+                condition:
+                  lambda: 'return target_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                then:
+                  - globals.set: { id: cover_art_screensaver_active, value: 'false' }
+                  - script.execute:
+                      id: cover_art_hide_effect
+                      generation: !lambda 'return generation;'
+                      target_mode: !lambda 'return target_mode;'
+                  - script.wait: cover_art_hide_effect
             - if:
                 condition:
                   lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::ACTIVE);'
@@ -294,12 +304,26 @@ script:
                                               id(display_mode_controller).complete_transition(
                                                   static_cast<uint32_t>(generation), espcontrol::DisplayMode::DISPLAY_OFF);
                                         else:
-                                          # Cover-art remains legacy-owned until its staged migration.
-                                          - globals.set: { id: screensaver_dimmed_active, value: 'false' }
-                                          - globals.set: { id: setup_screen_dimmed_shadow_active, value: 'false' }
-                                          - lambda: 'id(is_clock_showing) = false;'
-                                          - lvgl.widget.hide: dim_screensaver_touch_guard
-                                          - script.execute: hide_clock_view
+                                          - if:
+                                              condition:
+                                                lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::COVER_ART);'
+                                              then:
+                                                - globals.set: { id: display_asleep, value: 'true' }
+                                                - globals.set: { id: screensaver_display_off_active, value: 'false' }
+                                                - globals.set: { id: screensaver_dimmed_active, value: 'false' }
+                                                - globals.set: { id: setup_screen_dimmed_shadow_active, value: 'false' }
+                                                - globals.set: { id: cover_art_screensaver_active, value: 'true' }
+                                                - globals.set:
+                                                    id: cover_art_transition_generation
+                                                    value: !lambda 'return static_cast<uint32_t>(generation);'
+                                                - lambda: 'id(is_clock_showing) = false;'
+                                                - script.execute:
+                                                    id: display_mode_effect_cover_art
+                                                    generation: !lambda 'return generation;'
+                                                - script.wait: display_mode_effect_cover_art
+                                                - lambda: |-
+                                                    id(display_mode_controller).complete_transition(
+                                                        static_cast<uint32_t>(generation), espcontrol::DisplayMode::COVER_ART);
 
   - id: display_mode_effect_active
     mode: restart
@@ -394,6 +418,7 @@ script:
               (int) id(schedule_off_hour).state);
           const bool schedule_was_active = controller.request_active(
               espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
+          const bool schedule_ended = schedule_was_active && !schedule_night;
 
           // Entering normal hours is a deliberate scheduled wake. Discard an
           // automatic sleep request that was hidden beneath the night schedule,
@@ -417,19 +442,9 @@ script:
             controller.request(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE,
                                schedule_mode);
 
-            // A live night schedule replaces an existing cover-art
-            // presentation, including non-off modes such as Clock and
-            // Screen Dimmed/Always On. Clear its legacy state before the
-            // controller mirrors the media request below.
-            if (id(cover_art_screensaver_active)) {
-              id(cover_art_screensaver_active) = false;
-              id(hide_cover_art_view).execute();
-            }
           } else {
             controller.clear(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
           }
-          set_request(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK,
-                      id(cover_art_screensaver_active), espcontrol::DisplayMode::COVER_ART);
 
           const bool interactive = id(display_takeover_suspended);
           if (interactive != controller.takeover_active(
@@ -445,12 +460,21 @@ script:
             else controller.end_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);
           }
 
+          // Playback that began while the night schedule was blocking the
+          // display did not yet create a media request. Re-evaluate it from
+          // live state when normal hours resume.
+          if (schedule_ended && id(cover_art_media_playing) &&
+              id(cover_art_screensaver_enabled).state) {
+            id(cover_art_playback_started).execute();
+          }
+
           const auto transition = controller.resolve();
           const bool migrated_target =
               transition.target_mode == espcontrol::DisplayMode::ACTIVE ||
               transition.target_mode == espcontrol::DisplayMode::SETUP_DIMMED ||
               transition.target_mode == espcontrol::DisplayMode::DIMMED ||
               transition.target_mode == espcontrol::DisplayMode::CLOCK ||
+              transition.target_mode == espcontrol::DisplayMode::COVER_ART ||
               transition.target_mode == espcontrol::DisplayMode::DISPLAY_OFF;
 
           bool compatibility_mismatch = false;
@@ -472,6 +496,12 @@ script:
                   id(screensaver_dimmed_active) || !id(is_clock_showing);
               break;
             case espcontrol::DisplayMode::COVER_ART:
+              compatibility_mismatch = !id(display_asleep) ||
+                  !id(cover_art_screensaver_active) ||
+                  id(screensaver_display_off_active) ||
+                  id(screensaver_dimmed_active) ||
+                  id(setup_screen_dimmed_shadow_active) || id(is_clock_showing);
+              break;
             case espcontrol::DisplayMode::DISPLAY_OFF:
               compatibility_mismatch = !id(display_asleep) ||
                   !id(screensaver_display_off_active) ||
@@ -487,6 +517,25 @@ script:
               static_cast<int32_t>(transition.generation),
               static_cast<int32_t>(transition.target_mode),
               static_cast<int32_t>(transition.previous_mode));
+
+  - id: display_mode_request_cover_art
+    mode: restart
+    then:
+      - lambda: |-
+          id(display_mode_controller).request(
+              espcontrol::DisplayRequestSource::MEDIA_PLAYBACK,
+              espcontrol::DisplayMode::COVER_ART);
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
+
+  - id: display_mode_clear_cover_art
+    mode: restart
+    then:
+      - lambda: |-
+          id(display_mode_controller).clear(
+              espcontrol::DisplayRequestSource::MEDIA_PLAYBACK);
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
 
   - id: display_mode_request_automatic
     mode: restart
@@ -550,12 +599,7 @@ script:
       - script.stop: show_dimmed_view
       - script.stop: clock_screensaver_refresh_brightness
       - script.stop: screensaver_dimmed_refresh_brightness
-      - globals.set: { id: cover_art_screensaver_active, value: 'false' }
       - globals.set: { id: screensaver_display_off_active, value: 'false' }
-      - lvgl.widget.hide: cover_art_screensaver
-      - lvgl.widget.hide: cover_art_accent_overlay
-      - lvgl.widget.hide: cover_art_track_panel
-      - lvgl.widget.hide: cover_art_progress_bar
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
@@ -917,7 +961,6 @@ script:
             id(display_mode_effect_off).stop();
           }
       - script.execute: hide_clock_view
-      - script.execute: hide_cover_art_view
       - lvgl.widget.hide: dim_screensaver_touch_guard
       - lvgl.page.show: screen_off_page
       - script.execute: clock_bar_hide
@@ -1144,12 +1187,9 @@ script:
                       id: screensaver_wake_touch_guard_active
                       value: 'false'
             - globals.set:
-                id: cover_art_screensaver_active
-                value: 'false'
-            - globals.set:
                 id: backlight_force_next_write
                 value: 'true'
-            - script.execute: hide_cover_art_view
+            - script.execute: display_mode_clear_cover_art
             - script.execute: display_mode_reconcile
             - script.wait: display_mode_apply_transition
       - script.execute: screensaver_idle_check
@@ -1177,7 +1217,7 @@ script:
                      id(cover_art_screensaver_enabled).state &&
                      !alarm_display_takeover_active();
           then:
-            - script.execute: cover_art_delay_timer
+            - script.execute: cover_art_start_delay
 
   - id: screensaver_wake_touch_guard_clear
     mode: restart

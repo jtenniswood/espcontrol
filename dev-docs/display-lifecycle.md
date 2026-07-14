@@ -8,6 +8,13 @@ The lifecycle controller will decide **what should be visible**. ESPHome scripts
 remain responsible for the physical effects: fades, LVGL page and widget changes,
 touch guards, image release, and backlight writes.
 
+Cover-art visibility is controller-owned through the `MEDIA_PLAYBACK` request.
+Artwork URLs, decoded-image/cache state, track metadata and progress remain in
+the cover-art runtime. Delayed activation and every asynchronous artwork effect
+carry the display generation that created them, so a dismissed or replaced
+cover-art view cannot be reopened or modified by an older callback. The S3
+display still releases its decoded image whenever the controller hides cover art.
+
 ## Scope and ownership
 
 The current behaviour is spread across:
