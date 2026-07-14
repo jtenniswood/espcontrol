@@ -117,6 +117,7 @@
           "wrapTallLabels": true,
           "imageCardDownloaders": 6,
           "volumeWidthCompensationPercent": 95,
+          "mediaArtworkWidthCompensationPercent": 98,
           "coverArt": {
             "cover_art_size": "600",
             "cover_art_decode_size": "600",
@@ -1170,7 +1171,8 @@
       "state_low_label",
       "state_high_label",
       "image_refresh",
-      "image_refresh_mode"
+      "image_refresh_mode",
+      "media_cover_art"
     ],
     "cards": {
       "": {
@@ -3548,6 +3550,7 @@
               "volume",
               "position",
               "now_playing",
+              "cover_art",
               "playlist"
             ],
             "defaultValue": "play_pause",
@@ -3602,9 +3605,23 @@
             ]
           },
           {
-            "name": "media_cover_art",
-            "label": "Show Cover Art",
-            "kind": "flag"
+            "name": "cover_art_action",
+            "label": "Press Action",
+            "kind": "choice",
+            "values": [
+              "play_pause",
+              "control_modal"
+            ],
+            "defaultValue": "play_pause",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "sensor",
+                "operator": "equals",
+                "value": "cover_art"
+              }
+            ]
           },
           {
             "name": "volume_max",
@@ -3768,6 +3785,7 @@
           "canonicalOptionOrder": [
             "label_display",
             "number_display",
+            "cover_art_action",
             "volume_max",
             "playlist_content_id",
             "playlist_content_type",
