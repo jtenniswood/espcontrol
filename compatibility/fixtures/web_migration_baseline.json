@@ -105,6 +105,6 @@
     "guition-esp32-p4-jc8012p4a1": { "minified": 581864, "gzip": 139247 },
     "guition-esp32-p4-jc8012p4a1-v2": { "minified": 581867, "gzip": 139250 },
     "esp32-p4-86": { "minified": 581890, "gzip": 139254 },
-    "guition-esp32-s3-4848s040": { "minified": 582048, "gzip": 139306 }
+    "guition-esp32-s3-4848s040": { "minified": 582066, "gzip": 139310 }
   }
 }
