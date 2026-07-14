@@ -1256,7 +1256,8 @@ inline bool climate_option_selected(ClimateControlCtx *ctx,
                                     const std::string &value) {
   if (!ctx) return false;
   if (kind == "hvac") return climate_hvac_service_value(value) == ctx->hvac_mode;
-  return value == climate_option_current_value(ctx, kind);
+  std::string current = climate_option_current_value(ctx, kind);
+  return climate_lower(climate_trim(value)) == climate_lower(climate_trim(current));
 }
 
 inline const char *climate_option_icon(const std::string &kind, const std::string &value) {
