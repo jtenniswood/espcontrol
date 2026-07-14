@@ -30,6 +30,7 @@ static const IconEntry ICON_ENTRIES[] = {
     {"Application",                "\U000F0614"},
     {"Arrow Down",                 "\U000F0045"},
     {"Arrow Up",                   "\U000F005D"},
+    {"Arrow Up Down",              "\U000F0E79"},
     {"Battery",                    "\U000F0079"},
     {"Battery 10%",                "\U000F007A"},
     {"Battery 20%",                "\U000F007B"},

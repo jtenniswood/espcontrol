@@ -115,6 +115,7 @@ const ICON_GROUPS = {
   'Thermostat Auto': 'Climate & Air',
   'Thermostat Box': 'Climate & Air',
   'Home-Thermostat': 'Climate & Air',
+  'Arrow Up Down': 'Climate & Air',
   'Swap Horizontal': 'Climate & Air',
 
   'Blinds': 'Covers & Shading',

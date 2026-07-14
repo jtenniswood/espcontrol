@@ -169,6 +169,11 @@
       "mdi": "arrow-up"
     },
     {
+      "name": "Arrow Up Down",
+      "codepoint": "F0E79",
+      "mdi": "arrow-up-down"
+    },
+    {
       "name": "Battery",
       "codepoint": "F0079",
       "mdi": "battery"
