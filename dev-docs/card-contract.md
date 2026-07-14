@@ -62,6 +62,12 @@ Generated consumers include:
 - `components/espcontrol/button_grid_saved_config_access_generated.h`
 - `docs/generated/cards/capabilities.md`
 
+Firmware card types then cross the shared runtime registry in
+`components/espcontrol/button_grid_card_registry.h`. The main grid and
+subpages both resolve the same `Family` before choosing their surface-specific
+widget and lifecycle adapter. The registry test covers every authored contract
+type and checks that subpage capability still matches the contract.
+
 Vacuum's routine saved-field policies and legacy migration actions are
 generated for both browser and firmware. Its mode-specific unit and icon
 decisions remain in the reviewed `normalize_vacuum_fields` hook.
@@ -192,6 +198,7 @@ Action state, script-field, and confirmation text values also ignore leading and
 | Web parsing/serialization | `src/webserver/application/config_codec.ts` |
 | Firmware parsing | `components/espcontrol/button_grid_config.h` |
 | Firmware rendering/runtime | `components/espcontrol/button_grid_<type>.h` |
+| Shared firmware family registry | `components/espcontrol/button_grid_card_registry.h` |
 | Grid setup/runtime wiring | `components/espcontrol/button_grid_grid.h` |
 | Shared generated constants | `button_grid_contract_generated.h` and `src/webserver/generated/card_contract.ts` |
 
@@ -207,9 +214,10 @@ order:
 4. Add firmware rendering/runtime behavior in
    `components/espcontrol/button_grid_<type>.h`.
 5. Include the new header from `components/espcontrol/button_grid.h`.
-6. Wire visual setup and runtime/subscription behavior in
-   `components/espcontrol/button_grid_grid.h`. There are usually main-grid and
-   subpage call sites.
+6. Assign the type to a `Family` in `button_grid_card_registry.h`, then wire its
+   visual and runtime adapters in `button_grid_grid.h`. Both the main grid and
+   subpages must route through that shared family; surface-specific ownership
+   or navigation can remain in the adapter.
 7. If firmware parsing must understand new fields or options, update
    `components/espcontrol/button_grid_config.h`.
 8. If the card opens a full-screen modal, add a `ControlModalKind` value and use

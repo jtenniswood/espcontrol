@@ -42,6 +42,8 @@ constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
 constexpr const char *IMAGE_REFRESH_OPTION = card_runtime_option_name_image_refresh();
 constexpr const char *IMAGE_REFRESH_MODE_OPTION = card_runtime_option_name_image_refresh_mode();
+constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
+constexpr const char *MEDIA_COVER_ART_ACTION_OPTION = card_runtime_option_name_cover_art_action();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
 constexpr const char *LIGHT_CONTROL_DEFAULT_TABS_VALUE = "power|brightness|temperature|color";
 constexpr const char *COVER_CONTROL_TABS_OPTION = card_runtime_option_name_cover_tabs();
@@ -266,6 +268,8 @@ inline std::string trim_saved_option_value(const std::string &value) {
   return value.substr(first, value.find_last_not_of(" \t\r\n") - first + 1);
 }
 
+#include "button_grid_media_config.h"
+
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
   if (mode == "control_modal") {
@@ -304,6 +308,16 @@ inline std::string media_card_options_normalized(const std::string &options,
     }
     return out;
   }
+  if (mode == "now_playing") {
+    return cfg_option_token_present(options, MEDIA_COVER_ART_OPTION)
+      ? std::string(MEDIA_COVER_ART_OPTION)
+      : "";
+  }
+  if (mode == "cover_art") {
+    return cfg_option_value(options, MEDIA_COVER_ART_ACTION_OPTION) == "control_modal"
+      ? std::string(MEDIA_COVER_ART_ACTION_OPTION) + "=control_modal"
+      : "";
+  }
   if (mode != "volume" && mode != "position") return "";
   std::string out;
   int max_pct = normalize_media_volume_max_percent(
@@ -319,6 +333,9 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
   const std::string raw_mode = p.sensor;
   if (raw_mode == "controls" && (p.icon.empty() || p.icon == "Speaker")) p.icon = "Auto";
   p.sensor = card_runtime_media_mode(p.sensor);
+  if (p.sensor == "now_playing" && cfg_option_token_present(p.options, MEDIA_COVER_ART_OPTION)) {
+    p.sensor = "cover_art";
+  }
   if (p.sensor == "previous" && p.label == "Skip Previous") p.label = "Previous";
   if (p.sensor == "next" && p.label == "Skip Next") p.label = "Next";
   if (p.sensor == "volume") {
@@ -332,6 +349,8 @@ inline void normalize_saved_config_media_fields(ParsedCfg &p) {
   if (p.sensor == "position" && (p.label.empty() || p.label == "Track")) p.label = "Position";
   if (p.sensor == "now_playing") {
     p.precision = card_runtime_media_now_playing_control(p.precision) ? p.precision : "";
+  } else if (p.sensor == "cover_art") {
+    p.precision.clear();
   } else if (card_runtime_media_state_display_mode(p.sensor) && p.precision == "state") {
     p.precision = "state";
   } else {
@@ -517,6 +536,17 @@ inline bool image_card_icon_enabled(const ParsedCfg &p) {
 inline bool image_card_modal_fit_enabled(const ParsedCfg &p) {
   return normalize_image_modal_mode(
     cfg_option_value(p.options, IMAGE_MODAL_MODE_OPTION)) == "fit";
+}
+
+inline bool media_cover_art_enabled(const ParsedCfg &p) {
+  return espcontrol::media::decode_config_v1(p).mode == espcontrol::media::Mode::COVER_ART;
+}
+
+inline std::string media_cover_art_press_action(const ParsedCfg &p) {
+  return espcontrol::media::decode_config_v1(p).cover_art_action ==
+             espcontrol::media::CoverArtAction::CONTROL_MODAL
+    ? "control_modal"
+    : "play_pause";
 }
 
 inline std::string sensor_card_options_normalized(const std::string &options,

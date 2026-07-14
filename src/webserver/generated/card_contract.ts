@@ -2541,6 +2541,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "volume",
           "position",
           "now_playing",
+          "cover_art",
           "playlist"
         ],
         "defaultValue": "play_pause",
@@ -2591,6 +2592,25 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
             "name": "sensor",
             "operator": "equals",
             "value": "now_playing"
+          }
+        ]
+      },
+      {
+        "name": "cover_art_action",
+        "label": "Press Action",
+        "kind": "choice",
+        "values": [
+          "play_pause",
+          "control_modal"
+        ],
+        "defaultValue": "play_pause",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "sensor",
+            "operator": "equals",
+            "value": "cover_art"
           }
         ]
       },
@@ -2756,6 +2776,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "canonicalOptionOrder": [
         "label_display",
         "number_display",
+        "cover_art_action",
         "volume_max",
         "playlist_content_id",
         "playlist_content_type",
@@ -3791,6 +3812,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "confirm_yes": "confirm_yes",
   "confirmation_mode": "confirmation_mode",
   "confirmation_required": "confirmation_required",
+  "cover_art_action": "cover_art_action",
   "cover_mode": "cover_mode",
   "cover_position": "cover_position",
   "cover_tabs": "cover_tabs",
@@ -3810,6 +3832,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "lawn_mower_mode": "lawn_mower_mode",
   "light_tabs": "light_tabs",
   "lock_mode": "lock_mode",
+  "media_cover_art": "media_cover_art",
   "media_display": "media_display",
   "media_mode": "media_mode",
   "media_now_playing_controls": "media_now_playing_controls",

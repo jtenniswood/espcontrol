@@ -32,17 +32,18 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
     function imageRefreshMode(this: any, b?: any) {
         return normalizeImageRefreshMode(configOptionValue(b && b.options, IMAGE_REFRESH_MODE_OPTION));
     }
-    function imageCardLimit(this: any) {
-        return IMAGE_CARD_LIMIT;
+    function imageSlotCapacity(this: any) {
+        return IMAGE_SLOT_CAPACITY;
     }
-    function imageCardLimitMessage(this: any) {
-        if (IMAGE_CARD_LIMIT <= 0)
+    function imageSlotCapacityMessage(this: any) {
+        if (IMAGE_SLOT_CAPACITY <= 0)
             return "Image cards are not available on this display.";
-        return "Image cards use shared firmware download slots. You can save up to " +
-            IMAGE_CARD_LIMIT + " image cards total across the main page and subpages.";
+        return "Image and Media Cover Art cards use shared image slots. You can save up to " +
+            IMAGE_SLOT_CAPACITY + " of these cards across the main page and subpages.";
     }
     function isImageCard(this: any, button?: any) {
-        return !!button && button.type === "image";
+        return !!button && (button.type === "image" ||
+            (button.type === "media" && mediaEditorMode(button.sensor) === "cover_art"));
     }
     function activeGridSlots(this: any, grid?: any) {
         var slots: any = [];
@@ -120,10 +121,10 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
         extraCount = parseInt(extraCount || 0, 10);
         if (!isFinite(extraCount) || extraCount <= 0)
             return true;
-        return imageCardCountWithCandidate() + extraCount <= IMAGE_CARD_LIMIT;
+        return imageCardCountWithCandidate() + extraCount <= IMAGE_SLOT_CAPACITY;
     }
     function showImageCardLimitBanner(this: any) {
-        showBanner(imageCardLimitMessage(), "error");
+        showBanner(imageSlotCapacityMessage(), "error");
     }
     function imageModalMode(this: any, b?: any) {
         return normalizeImageModalMode(configOptionValue(b && b.options, IMAGE_MODAL_MODE_OPTION));
@@ -197,8 +198,8 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
         "normalizeImageModalMode": staticGlobal(normalizeImageModalMode),
         "imageRefreshInterval": staticGlobal(imageRefreshInterval),
         "imageRefreshMode": staticGlobal(imageRefreshMode),
-        "imageCardLimit": staticGlobal(imageCardLimit),
-        "imageCardLimitMessage": staticGlobal(imageCardLimitMessage),
+        "imageSlotCapacity": staticGlobal(imageSlotCapacity),
+        "imageSlotCapacityMessage": staticGlobal(imageSlotCapacityMessage),
         "isImageCard": staticGlobal(isImageCard),
         "activeGridSlots": staticGlobal(activeGridSlots),
         "imageCardCountInButtons": staticGlobal(imageCardCountInButtons),

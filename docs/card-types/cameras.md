@@ -41,7 +41,7 @@ If your Home Assistant instance uses a custom port, open **Settings > System > H
 
 Camera images use more memory than normal control cards, so EspControl limits how many can be active at once.
 
-ESP32-P4 screens support up to **6 Camera cards total**. This limit is shared across the main page and all subpages combined. For example, 4 Camera cards on the main page and 2 Camera cards inside subpages reaches the limit.
+ESP32-P4 screens provide **6 shared image slots**. Each Camera card or Media card set to **Cover Art** uses one slot, across the main page and all subpages combined. For example, 4 Camera cards and 2 Media Cover Art cards use all 6 slots.
 
 If you see a **Too many** message or a warning while saving, reduce the number of Camera cards across the main page and subpages.
 

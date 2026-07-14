@@ -5,6 +5,17 @@
 // through this helper.
 
 #include "button_grid_contract_generated.h"
+#include "button_grid_card_registry.h"
+
+inline espcontrol::cards::Registration card_runtime_registration(const std::string &type) {
+  const bool legacy_runtime_type = type == "local" || type == "text_sensor" || type == "todo";
+  return espcontrol::cards::registration_for_type(
+      type, legacy_runtime_type ? true : card_contract_allow_in_subpage(type));
+}
+
+inline espcontrol::cards::Family card_runtime_family(const std::string &type) {
+  return espcontrol::cards::family_for_type(type);
+}
 
 inline const char *card_runtime_label(const std::string &type) {
   return card_contract_card_label(type);
@@ -96,6 +107,14 @@ constexpr const char *card_runtime_option_name_image_refresh() {
 
 constexpr const char *card_runtime_option_name_image_refresh_mode() {
   return CARD_CONTRACT_OPTION_NAME_IMAGE_REFRESH_MODE;
+}
+
+constexpr const char *card_runtime_option_name_media_cover_art() {
+  return CARD_CONTRACT_OPTION_NAME_MEDIA_COVER_ART;
+}
+
+constexpr const char *card_runtime_option_name_cover_art_action() {
+  return CARD_CONTRACT_OPTION_NAME_COVER_ART_ACTION;
 }
 
 constexpr const char *card_runtime_option_name_light_tabs() {

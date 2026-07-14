@@ -229,16 +229,30 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 slot: slot,
                 button: b,
             });
-            if (count <= imageCardLimit())
+            if (count <= imageSlotCapacity())
                 return true;
             showImageCardLimitBanner();
             return false;
+        }
+        function applyCardSizeConstraint(this: any, savedButton?: any) {
+            var currentSize: any = c.sizes[slot] || CARD_SIZE_SINGLE;
+            var nextSize: any = normalizeCardSizeForConfig(savedButton, currentSize);
+            if (nextSize === currentSize)
+                return false;
+            if (nextSize === CARD_SIZE_SINGLE)
+                delete c.sizes[slot];
+            else
+                c.sizes[slot] = nextSize;
+            clearSpans(c.grid, c.maxSlots);
+            applySpans(c.grid, c.sizes, c.maxSlots);
+            return true;
         }
         function applySettingsDraft(this: any) {
             if (!state.settingsDraft || state.settingsDraft.key !== draftKey)
                 return false;
             var draft: any = state.settingsDraft;
             var savedButton: any = liveButton;
+            var sizeChanged: any = false;
             if (draft.isNew) {
                 var pos: any = draft.pos;
                 if (pos < 0 || pos >= c.maxSlots || c.grid[pos] !== 0) {
@@ -251,6 +265,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 savedButton = c.buttons[slot - 1];
                 copyButtonConfig(savedButton, draft.button);
                 c.grid[pos] = slot;
+                sizeChanged = applyCardSizeConstraint(savedButton);
                 if (c.isSub) {
                     saveSubpageConfig(state.editingSubpage);
                 }
@@ -261,12 +276,15 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             }
             else {
                 copyButtonConfig(liveButton, draft.button);
+                sizeChanged = applyCardSizeConstraint(liveButton);
             }
             state.settingsDraft = null;
             if (!draft.isNew && c.isSub) {
                 saveSubpageConfig(state.editingSubpage);
             }
             else if (!draft.isNew) {
+                if (sizeChanged)
+                    postText(entityName("button_order"), serializeGrid(state.grid));
                 saveButtonConfig(slot);
             }
             var savedTypeDef: any = BUTTON_TYPES[savedButton.type || ""];
@@ -391,7 +409,7 @@ export function installButtonSettingsModule(): GlobalDescriptors {
         function selectCardType(this: any, newType?: any) {
             var pickerType: any = newType;
             newType = defaultButtonTypeForPicker(newType);
-            var keepMediaEntity: any = pickerType === "media_control" && b.type === "media";
+            var keepMediaEntity: any = (pickerType === "media_control" || pickerType === "media_cover_art") && b.type === "media";
             clearAutomaticTypeDefaults();
             if (isNewDraft && b.type === "action" && newType !== "action") {
                 b.sensor = "";
@@ -414,6 +432,15 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 b.unit = "";
                 b.precision = "";
                 b.options = "";
+            }
+            if (pickerType === "media_cover_art") {
+                b.sensor = "cover_art";
+                b.label = "Cover Art";
+                b.icon = "Auto";
+                b.icon_on = "Auto";
+                b.unit = "";
+                b.precision = "";
+                b.options = normalizeMediaOptions(b.options, b.sensor);
             }
             saveField("type", b.type);
             renderButtonSettings();
@@ -531,6 +558,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
             var selectedTypeKey: any = isNewDraftWithoutType
                 ? null
                 : buttonTypeRegistryValue(rawTypeDef, "pickerKey", "") || (b.type || "");
+            if (!isNewDraftWithoutType && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art")
+                selectedTypeKey = "media_cover_art";
             var typeOpts: any = buttonTypePickerOptionList(c.isSub, selectedTypeKey);
             if (isNewDraftWithoutType) {
                 for (var defaultTypeIndex: any = 0; defaultTypeIndex < typeOpts.length; defaultTypeIndex++) {

@@ -48,7 +48,8 @@
     "state_low_label",
     "state_high_label",
     "image_refresh",
-    "image_refresh_mode"
+    "image_refresh_mode",
+    "media_cover_art"
   ],
   "cards": {
     "": {
@@ -1486,7 +1487,7 @@
           "name": "media_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
+          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
           "defaultValue": "play_pause",
           "storageField": "sensor",
           "omitDefault": false,
@@ -1514,6 +1515,17 @@
           "omitDefault": true,
           "applicability": [
             { "source": "field", "name": "sensor", "operator": "equals", "value": "now_playing" }
+          ]
+        },
+        {
+          "name": "cover_art_action",
+          "label": "Press Action",
+          "kind": "choice",
+          "values": ["play_pause", "control_modal"],
+          "defaultValue": "play_pause",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "cover_art" }
           ]
         },
         {
@@ -1604,7 +1616,7 @@
           "options": { "policy": "hook", "hook": "normalize_media_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["label_display", "number_display", "volume_max", "playlist_content_id", "playlist_content_type", "playlist_player_source", "large_numbers"],
+        "canonicalOptionOrder": ["label_display", "number_display", "cover_art_action", "volume_max", "playlist_content_id", "playlist_content_type", "playlist_player_source", "large_numbers"],
         "optionHook": "normalize_media_options"
       },
       "behavior": {

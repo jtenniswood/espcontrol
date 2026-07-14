@@ -30,7 +30,7 @@ MODE_ARRAY_ALLOWLIST = CARD_RUNTIME_BOUNDARY_FILES | {
 DIRECT_CONTRACT_PATTERN = re.compile(r"\b(?:card_contract_[A-Za-z0-9_]+|CARD_CONTRACT_[A-Z0-9_]+)\b")
 CONTRACT_INCLUDE_PATTERN = re.compile(r'#\s*include\s+[<"]button_grid_contract_generated\.h[>"]')
 MODE_ARRAY_PATTERN = re.compile(
-    r"\{[^}\n]*\"(?:play_pause|previous|next|volume|position|now_playing|"
+    r"\{[^}\n]*\"(?:play_pause|previous|next|volume|position|now_playing|cover_art|"
     r"open|close|stop|set_position|tilt|toggle|lock|unlock|away|home|night|vacation|disarm)\""
 )
 SERVICE_MAPPING_PATTERN = re.compile(

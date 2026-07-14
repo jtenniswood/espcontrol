@@ -2428,14 +2428,25 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);
     return;
   }
-  if (mode == "now_playing") {
+  if (mode == "now_playing" || mode == "cover_art") {
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
     MediaNowPlayingCtx *ctx = new MediaNowPlayingCtx();
     ctx->btn = s.btn;
-    ctx->play_pause_background = media_now_playing_play_pause_enabled(p);
-    if (media_now_playing_progress_enabled(p)) {
+    ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
+    if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
       ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color, p.entity);
+    }
+    lv_obj_set_user_data(s.sensor_container, (void *)ctx);
+    if (mode == "cover_art") {
+      if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (s.sensor_lbl) lv_obj_add_flag(s.sensor_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (s.unit_lbl) lv_obj_add_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (s.text_lbl) {
+        lv_label_set_text(s.text_lbl, "");
+        lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+      }
+      return;
     }
     lv_obj_t *title_lbl = lv_label_create(s.btn);
     lv_obj_set_style_text_color(title_lbl, text_color, LV_PART_MAIN);
@@ -2443,11 +2454,10 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     s.sensor_lbl = title_lbl;
     ctx->title_lbl = title_lbl;
     ctx->artist_lbl = s.text_lbl;
-    lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad,
       row_span == 1, ctx->play_pause_background,
-      media_now_playing_progress_enabled(p) ? pad : 0);
+      mode == "now_playing" && media_now_playing_progress_enabled(p) ? pad : 0);
     return;
   }
   if (mode == "position") {

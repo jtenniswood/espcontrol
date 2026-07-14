@@ -14,10 +14,12 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = ROOT / "common" / "config"
 PARSER_HEADER = ROOT / "components" / "espcontrol" / "button_grid_config_parser.h"
+MEDIA_CONFIG_HEADER = ROOT / "components" / "espcontrol" / "button_grid_media_config.h"
 DISPLAY_COLOR_HEADER = ROOT / "components" / "espcontrol" / "display_color.h"
 SCREEN_LOCK_STATE_HEADER = ROOT / "components" / "espcontrol" / "screen_lock_state.h"
 CONTRACT_HEADER = ROOT / "components" / "espcontrol" / "button_grid_contract_generated.h"
 CARD_RUNTIME_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_runtime.h"
+CARD_REGISTRY_HEADER = ROOT / "components" / "espcontrol" / "button_grid_card_registry.h"
 SAVED_CONFIG_VACUUM_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_vacuum_generated.h"
 SAVED_CONFIG_SENSOR_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_sensor_generated.h"
 SAVED_CONFIG_ACTION_HEADER = ROOT / "components" / "espcontrol" / "button_grid_saved_config_action_generated.h"
@@ -199,6 +201,9 @@ int main() {
   assert(row_span == 3 && col_span == 1);
   grid_token_spans('x', row_span, col_span);
   assert(row_span == 1 && col_span == 3);
+  grid_token_spans('q', row_span, col_span);
+  assert(row_span == 3 && col_span == 3);
+  assert(grid_token_has_span_suffix('q'));
 
   assert(clock_bar_equal_fr_track_size(434, 3, 0) == 145);
   assert(clock_bar_equal_fr_track_size(434, 3, 1) == 145);
@@ -448,6 +453,17 @@ int main() {
   auto now_playing_large = parse_cfg("media_player.office;;Auto;Auto;now_playing;;media;;large_numbers");
   assert(now_playing_large.options == "");
   assert(!card_large_numbers_enabled(now_playing_large));
+  auto cover_art = parse_cfg("media_player.office;Cover Art;Music;Auto;cover_art;;media;;large_numbers");
+  assert(cover_art.type == "media");
+  assert(cover_art.sensor == "cover_art");
+  assert(cover_art.precision == "");
+  assert(cover_art.options == "");
+  assert(media_cover_art_enabled(cover_art));
+  auto legacy_cover_art = parse_cfg("media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art");
+  assert(legacy_cover_art.sensor == "cover_art");
+  assert(legacy_cover_art.precision == "");
+  assert(legacy_cover_art.options == "");
+  assert(media_cover_art_enabled(legacy_cover_art));
   auto media_control_display = parse_cfg("media_player.living;Speaker;Auto;Auto;control_modal;;media;;label_display=status,number_display=volume");
   assert(media_control_display.type == "media");
   assert(media_control_display.sensor == "control_modal");
@@ -708,12 +724,14 @@ def main() -> int:
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         shutil.copy2(PARSER_HEADER, tmp_path / "button_grid_config_parser.h")
+        shutil.copy2(MEDIA_CONFIG_HEADER, tmp_path / "button_grid_media_config.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "temperature_unit.h", tmp_path / "temperature_unit.h")
         shutil.copy2(ROOT / "components" / "espcontrol" / "sun_calc.h", tmp_path / "sun_calc.h")
         shutil.copy2(DISPLAY_COLOR_HEADER, tmp_path / "display_color.h")
         shutil.copy2(SCREEN_LOCK_STATE_HEADER, tmp_path / "screen_lock_state.h")
         shutil.copy2(CONTRACT_HEADER, tmp_path / "button_grid_contract_generated.h")
         shutil.copy2(CARD_RUNTIME_HEADER, tmp_path / "button_grid_card_runtime.h")
+        shutil.copy2(CARD_REGISTRY_HEADER, tmp_path / "button_grid_card_registry.h")
         shutil.copy2(SAVED_CONFIG_VACUUM_HEADER, tmp_path / "button_grid_saved_config_vacuum_generated.h")
         shutil.copy2(SAVED_CONFIG_SENSOR_HEADER, tmp_path / "button_grid_saved_config_sensor_generated.h")
         shutil.copy2(SAVED_CONFIG_ACTION_HEADER, tmp_path / "button_grid_saved_config_action_generated.h")

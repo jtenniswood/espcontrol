@@ -40,6 +40,8 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
     var MEDIA_PLAYLIST_CONTENT_ID_OPTION: any = cardContractOptionName("playlist_content_id");
     var MEDIA_PLAYLIST_CONTENT_TYPE_OPTION: any = cardContractOptionName("playlist_content_type");
     var MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION: any = cardContractOptionName("playlist_player_source");
+    var MEDIA_COVER_ART_OPTION: any = cardContractOptionName("media_cover_art");
+    var MEDIA_COVER_ART_ACTION_OPTION: any = cardContractOptionName("cover_art_action");
     var SUBPAGE_KIND_OPTION: any = cardContractOptionName("subpage_kind");
     var IMAGE_LABEL_OPTION: any = cardContractOptionName("image_label");
     var IMAGE_ICON_OPTION: any = cardContractOptionName("image_icon");
@@ -50,7 +52,7 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
     var COVER_CONTROL_TABS_OPTION: any = cardContractOptionName("cover_tabs");
     var CLIMATE_CONTROL_TABS_OPTION: any = cardContractOptionName("climate_tabs");
     var FAN_CONTROL_TABS_OPTION: any = cardContractOptionName("fan_tabs");
-    var IMAGE_CARD_LIMIT: any = Math.max(0, parseInt(CFG && CFG.imageCardLimit != null ? CFG.imageCardLimit : 4, 10) || 0);
+    var IMAGE_SLOT_CAPACITY: any = Math.max(0, parseInt(CFG.imageSlotCapacity, 10) || 0);
     function largeNumbersExplicitlyDisabled(this: any, options?: any) {
         return configOptionValue(options, SENSOR_LARGE_NUMBERS_OPTION) === SENSOR_LARGE_NUMBERS_OFF_VALUE;
     }
@@ -130,6 +132,8 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
         "MEDIA_PLAYLIST_CONTENT_ID_OPTION": liveGlobal(() => MEDIA_PLAYLIST_CONTENT_ID_OPTION, (value?: any) => { MEDIA_PLAYLIST_CONTENT_ID_OPTION = value; }),
         "MEDIA_PLAYLIST_CONTENT_TYPE_OPTION": liveGlobal(() => MEDIA_PLAYLIST_CONTENT_TYPE_OPTION, (value?: any) => { MEDIA_PLAYLIST_CONTENT_TYPE_OPTION = value; }),
         "MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION": liveGlobal(() => MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION, (value?: any) => { MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION = value; }),
+        "MEDIA_COVER_ART_OPTION": liveGlobal(() => MEDIA_COVER_ART_OPTION, (value?: any) => { MEDIA_COVER_ART_OPTION = value; }),
+        "MEDIA_COVER_ART_ACTION_OPTION": liveGlobal(() => MEDIA_COVER_ART_ACTION_OPTION, (value?: any) => { MEDIA_COVER_ART_ACTION_OPTION = value; }),
         "SUBPAGE_KIND_OPTION": liveGlobal(() => SUBPAGE_KIND_OPTION, (value?: any) => { SUBPAGE_KIND_OPTION = value; }),
         "IMAGE_LABEL_OPTION": liveGlobal(() => IMAGE_LABEL_OPTION, (value?: any) => { IMAGE_LABEL_OPTION = value; }),
         "IMAGE_ICON_OPTION": liveGlobal(() => IMAGE_ICON_OPTION, (value?: any) => { IMAGE_ICON_OPTION = value; }),
@@ -140,7 +144,7 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
         "COVER_CONTROL_TABS_OPTION": liveGlobal(() => COVER_CONTROL_TABS_OPTION, (value?: any) => { COVER_CONTROL_TABS_OPTION = value; }),
         "CLIMATE_CONTROL_TABS_OPTION": liveGlobal(() => CLIMATE_CONTROL_TABS_OPTION, (value?: any) => { CLIMATE_CONTROL_TABS_OPTION = value; }),
         "FAN_CONTROL_TABS_OPTION": liveGlobal(() => FAN_CONTROL_TABS_OPTION, (value?: any) => { FAN_CONTROL_TABS_OPTION = value; }),
-        "IMAGE_CARD_LIMIT": liveGlobal(() => IMAGE_CARD_LIMIT, (value?: any) => { IMAGE_CARD_LIMIT = value; }),
+        "IMAGE_SLOT_CAPACITY": liveGlobal(() => IMAGE_SLOT_CAPACITY, (value?: any) => { IMAGE_SLOT_CAPACITY = value; }),
         "largeNumbersExplicitlyDisabled": staticGlobal(largeNumbersExplicitlyDisabled),
         "copyLargeNumbersOption": staticGlobal(copyLargeNumbersOption),
         "cardContractOptionSpec": staticGlobal(cardContractOptionSpec),

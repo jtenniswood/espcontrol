@@ -235,11 +235,11 @@ def package_file_text(device: dict) -> str:
                     include_line(
                         "image_cards",
                         "!include ../../common/device/image_cards.yaml"
-                        if int(device.get("image_card_downloaders", 4)) == 4
-                        else f"!include ../../common/device/image_cards_{int(device.get('image_card_downloaders', 4))}.yaml",
+                        if int(device["image_slot_capacity"]) == 4
+                        else f"!include ../../common/device/image_cards_{int(device['image_slot_capacity'])}.yaml",
                     )
                 ]
-                if int(device.get("image_card_downloaders", 4)) > 0
+                if int(device["image_slot_capacity"]) > 0
                 else []
             ),
             "  # ---------------------------------------------------------------------------",
@@ -308,7 +308,7 @@ def macro_array(name: str, macro: str, slots: int, per_line: int = 4, indent: st
 
 
 def cfg_lines(device: dict) -> list[str]:
-    image_card_count = int(device.get("image_card_downloaders", 4))
+    image_card_count = int(device["image_slot_capacity"])
     lines = [
         "            GridConfig cfg = {};",
         f"            cfg.num_slots = {device['slots']};",
@@ -338,6 +338,10 @@ def cfg_lines(device: dict) -> list[str]:
     if device.get("volume_width_compensation_percent", 100) != 100:
         lines.append(
             f"            cfg.volume_width_compensation_percent = {device['volume_width_compensation_percent']};"
+        )
+    if device.get("media_artwork_width_compensation_percent", 100) != 100:
+        lines.append(
+            f"            cfg.media_artwork_width_compensation_percent = {device['media_artwork_width_compensation_percent']};"
         )
     if device.get("color_correction"):
         correction = device["color_correction"]

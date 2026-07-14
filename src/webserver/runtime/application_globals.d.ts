@@ -37,6 +37,7 @@ declare global {
   var CARD_CONTRACT_SUBPAGE_TYPE_CODES: any;
   var CARD_ON_PATTERN_OPTION: any;
   var CARD_SIZE_DEFINITIONS: any;
+  var CARD_SIZE_EXTRA_LARGE: any;
   var CARD_SIZE_EXTRA_TALL: any;
   var CARD_SIZE_EXTRA_WIDE: any;
   var CARD_SIZE_LARGE: any;
@@ -85,7 +86,7 @@ declare global {
   var ICON_EXCEPTIONS: any;
   var ICON_NAMES: any;
   var ICON_OPTIONS: any;
-  var IMAGE_CARD_LIMIT: any;
+  var IMAGE_SLOT_CAPACITY: any;
   var IMAGE_CARD_METADATA: any;
   var IMAGE_ICON_OPTION: any;
   var IMAGE_LABEL_OPTION: any;
@@ -105,6 +106,8 @@ declare global {
   var LOCK_CARD_METADATA: any;
   var MAX_CLOCK_BAR_TEMPERATURES: any;
   var MEDIA_CARD_METADATA: any;
+  var MEDIA_COVER_ART_ACTION_OPTION: any;
+  var MEDIA_COVER_ART_OPTION: any;
   var MEDIA_LABEL_DISPLAY_OPTION: any;
   var MEDIA_NUMBER_DISPLAY_OPTION: any;
   var MEDIA_PLAYLIST_CONTENT_ID_OPTION: any;
@@ -314,6 +317,7 @@ declare global {
   var cardContractOptionSupportedFor: any;
   var cardContractOptions: any;
   var cardContractPickerKey: any;
+  var cardRequiresSquareSize: any;
   var cardContractSubpageTypeCode: any;
   var cardContractSubpageTypeFromCode: any;
   var cardIconHtml: any;
@@ -551,8 +555,8 @@ declare global {
   var imageCardCountInClipboardEntry: any;
   var imageCardCountInSubpage: any;
   var imageCardCountWithCandidate: any;
-  var imageCardLimit: any;
-  var imageCardLimitMessage: any;
+  var imageSlotCapacity: any;
+  var imageSlotCapacityMessage: any;
   var imageIconEnabled: any;
   var imageLabelEnabled: any;
   var imageModalMode: any;
@@ -645,6 +649,7 @@ declare global {
   var markSpannedCells: any;
   var mdiIcon: any;
   var mediaBehaviorSpec: any;
+  var mediaCoverArtAction: any;
   var mediaDefaultMode: any;
   var mediaEditorMode: any;
   var mediaEditorValidMode: any;
@@ -733,8 +738,10 @@ declare global {
   var normalizeLightControlType: any;
   var normalizeLockMode: any;
   var normalizeMediaLabelDisplayMode: any;
+  var normalizeMediaCoverArtAction: any;
   var normalizeMediaNumberDisplayMode: any;
   var normalizeMediaOptions: any;
+  var normalizeCardSizeForConfig: any;
   var normalizeMediaVolumeMax: any;
   var normalizeNetworkTransport: any;
   var normalizeNtpServer: any;
@@ -1015,6 +1022,7 @@ declare global {
   var setLightControlTabs: any;
   var setLightControlType: any;
   var setMediaLabelDisplayMode: any;
+  var setMediaCoverArtAction: any;
   var setMediaNumberDisplayMode: any;
   var setMediaPlaylistContentId: any;
   var setMediaPlaylistContentType: any;

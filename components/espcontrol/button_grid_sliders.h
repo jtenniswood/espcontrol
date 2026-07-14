@@ -51,6 +51,8 @@ struct MediaNowPlayingCtx {
   lv_obj_t *title_lbl = nullptr;
   lv_obj_t *artist_lbl = nullptr;
   lv_obj_t *progress_slider = nullptr;
+  ImageCardCtx *cover_art = nullptr;
+  lv_obj_t *cover_overlay = nullptr;
   lv_obj_t *btn = nullptr;
   char artist[HA_STATE_TEXT_MAX_LEN + 1] = {};
   bool external_source = false;
@@ -2934,6 +2936,7 @@ inline const char *media_default_icon(const std::string &mode,
   if (mode == "volume") return find_icon("Volume High");
   if (mode == "position") return find_icon("Progress Clock");
   if (mode == "now_playing") return find_icon("Music");
+  if (mode == "cover_art") return find_icon("Music");
   if (mode == "playlist") return find_icon("Music");
   return find_icon("Play Pause");
 }
@@ -2945,6 +2948,7 @@ inline std::string media_default_label(const std::string &mode) {
   if (mode == "position") return espcontrol_i18n(std::string("Position"));
   if (mode == "play_pause") return espcontrol_i18n(std::string("Play/Pause"));
   if (mode == "control_modal") return espcontrol_i18n(std::string("All Controls"));
+  if (mode == "cover_art") return espcontrol_i18n(std::string("Cover Art"));
   if (mode == "playlist") return espcontrol_i18n(std::string("Playlist"));
   return espcontrol_i18n(std::string("Media"));
 }

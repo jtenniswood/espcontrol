@@ -74,6 +74,8 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         var slotPos: any = slot === -2 ? c.grid.indexOf(-2) : c.grid.indexOf(slot);
         if (slotPos < 0)
             return;
+        var button: any = slot === -2 ? null : c.buttons[slot - 1];
+        targetSz = normalizeCardSizeForConfig(button, targetSz);
         var curSz: any = c.sizes[slot] || 1;
         if (curSz === targetSz)
             return;
@@ -147,11 +149,15 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         var sz: any = c.sizes[slot] || 1;
         addCtxSubmenu("arrow-expand-all", "Size", function (this: any, sub?: any) {
             addSubItem(sub, "", "Single (1x1)", function (this: any) { resizeSlot(slot, 1); }, sz === 1);
-            addSubItem(sub, "", "Tall (2x1)", function (this: any) { resizeSlot(slot, 2); }, sz === 2);
-            addSubItem(sub, "", "Extra Tall (3x1)", function (this: any) { resizeSlot(slot, 5); }, sz === 5);
-            addSubItem(sub, "", "Wide (1x2)", function (this: any) { resizeSlot(slot, 3); }, sz === 3);
-            addSubItem(sub, "", "Extra Wide (1x3)", function (this: any) { resizeSlot(slot, 6); }, sz === 6);
+            if (!cardRequiresSquareSize(b)) {
+                addSubItem(sub, "", "Tall (2x1)", function (this: any) { resizeSlot(slot, 2); }, sz === 2);
+                addSubItem(sub, "", "Extra Tall (3x1)", function (this: any) { resizeSlot(slot, 5); }, sz === 5);
+                addSubItem(sub, "", "Wide (1x2)", function (this: any) { resizeSlot(slot, 3); }, sz === 3);
+                addSubItem(sub, "", "Extra Wide (1x3)", function (this: any) { resizeSlot(slot, 6); }, sz === 6);
+            }
             addSubItem(sub, "", "Large (2x2)", function (this: any) { resizeSlot(slot, 4); }, sz === 4);
+            if (cardRequiresSquareSize(b))
+                addSubItem(sub, "", "Extra Large (3x3)", function (this: any) { resizeSlot(slot, 7); }, sz === 7);
         });
         addCtxDivider();
         addCtxItem("content-copy", "Duplicate", function (this: any) {

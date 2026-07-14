@@ -88,7 +88,11 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             mediaNowPlayingControlValues: mediaNowPlayingControlValues,
             mediaNowPlayingControls: mediaNowPlayingControls,
             mediaStateDisplayModeSupported: mediaStateDisplayModeSupported,
+            cardRequiresSquareSize: cardRequiresSquareSize,
+            normalizeCardSizeForConfig: normalizeCardSizeForConfig,
             normalizeMediaOptions: normalizeMediaOptions,
+            mediaCoverArtAction: mediaCoverArtAction,
+            setMediaCoverArtAction: setMediaCoverArtAction,
             mediaVolumeMax: mediaVolumeMax,
             setMediaVolumeMax: setMediaVolumeMax,
             mediaLabelDisplayMode: mediaLabelDisplayMode,
@@ -115,7 +119,7 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             imageModalMode: imageModalMode,
             imageRefreshInterval: imageRefreshInterval,
             imageRefreshMode: imageRefreshMode,
-            imageCardLimit: imageCardLimit,
+            imageSlotCapacity: imageSlotCapacity,
             imageCardCountForTest: function (this: any, snapshot?: any, candidate?: any) {
                 var oldGrid: any = state.grid;
                 var oldButtons: any = state.buttons;
@@ -140,7 +144,7 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
                 state.buttons = (snapshot && snapshot.buttons) || [];
                 state.subpages = (snapshot && snapshot.subpages) || {};
                 try {
-                    return imageCardCountWithCandidate(candidate) <= imageCardLimit();
+                    return imageCardCountWithCandidate(candidate) <= imageSlotCapacity();
                 }
                 finally {
                     state.grid = oldGrid;

@@ -36,6 +36,17 @@ export function installConfigCodecModule(): GlobalDescriptors {
         typeDef.normalizeConfig(b);
         return true;
     }
+    function cardRequiresSquareSize(this: any, b?: any) {
+        return !!(b && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art");
+    }
+    function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
+        size = size || CARD_SIZE_SINGLE;
+        if (!cardRequiresSquareSize(b))
+            return size;
+        return size === CARD_SIZE_LARGE || size === CARD_SIZE_EXTRA_LARGE
+            ? size
+            : CARD_SIZE_SINGLE;
+    }
     function normalizeSavedConfigSensorFields(this: any, b?: any, wasLegacyTextSensor?: any) {
         if (!b)
             return;
@@ -58,7 +69,8 @@ export function installConfigCodecModule(): GlobalDescriptors {
         var rawMediaMode: any = b.sensor;
         if (rawMediaMode === "controls" && (!b.icon || b.icon === "Speaker"))
             b.icon = "Auto";
-        b.sensor = mediaEditorMode(b.sensor);
+        var mediaConfig: any = EspControlModel.decodeMediaCardConfigV1(b);
+        b.sensor = mediaConfig ? mediaConfig.mode : mediaEditorMode(b.sensor);
         if (b.sensor === "previous" && b.label === "Skip Previous")
             b.label = "Previous";
         if (b.sensor === "next" && b.label === "Skip Next")
@@ -77,8 +89,12 @@ export function installConfigCodecModule(): GlobalDescriptors {
         if (b.sensor === "position" && (!b.label || b.label === "Track"))
             b.label = "Position";
         if (b.sensor === "now_playing")
-            b.precision = mediaNowPlayingControls(b);
-        else if (mediaStateDisplayModeSupported(b.sensor) && b.precision === "state")
+            b.precision = mediaConfig && mediaConfig.nowPlayingControl !== "none"
+                ? mediaConfig.nowPlayingControl
+                : "";
+        else if (b.sensor === "cover_art")
+            b.precision = "";
+        else if (mediaStateDisplayModeSupported(b.sensor) && mediaConfig && mediaConfig.stateDisplay === "state")
             b.precision = "state";
         else
             b.precision = "";
@@ -380,6 +396,8 @@ export function installConfigCodecModule(): GlobalDescriptors {
             precision = "";
         if (type === "media") {
             sensor = mediaEditorMode(sensor);
+            if (sensor === "now_playing" && configOptionEnabled(b && b.options, MEDIA_COVER_ART_OPTION))
+                sensor = "cover_art";
             precision = sensor === "now_playing"
                 ? mediaNowPlayingControls({ sensor: sensor, precision: precision })
                 : (mediaStateDisplayModeSupported(sensor) && precision === "state" ? "state" : "");
@@ -827,6 +845,8 @@ export function installConfigCodecModule(): GlobalDescriptors {
     return {
         "normalizeWithRegisteredCardType": staticGlobal(normalizeWithRegisteredCardType),
         "normalizeButtonConfig": staticGlobal(normalizeButtonConfig),
+        "cardRequiresSquareSize": staticGlobal(cardRequiresSquareSize),
+        "normalizeCardSizeForConfig": staticGlobal(normalizeCardSizeForConfig),
         "isBrightnessSliderType": staticGlobal(isBrightnessSliderType),
         "isFanCardType": staticGlobal(isFanCardType),
         "isClimateCardType": staticGlobal(isClimateCardType),
