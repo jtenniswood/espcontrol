@@ -43,6 +43,15 @@ SAVED_CONFIG_FIELDS = [
 ]
 NORMALIZATION_FIELD_POLICIES = {"keep", "clear", "default", "default_if_empty", "allowed", "alias", "hook"}
 NORMALIZATION_CONDITION_OPERATORS = {"equals", "in", "present"}
+RUNTIME_CAPABILITIES = [
+    "informationOnly",
+    "subscriptions",
+    "actions",
+    "numericControl",
+    "modal",
+    "runtimeAllocation",
+    "subpage",
+]
 
 
 class ProductSchemaError(RuntimeError):
@@ -173,6 +182,128 @@ def validate_entity_names(data: dict[str, Any]) -> list[str]:
                     )
                 )
     return errors
+
+
+def validate_card_runtime(runtime: Any, cards: Any, errors: list[str]) -> None:
+    path = "runtime"
+    if not isinstance(runtime, dict):
+        errors.append(path_error(path, "must be an object"))
+        return
+    unexpected_runtime_keys = sorted(set(runtime) - {"drivers", "capabilities", "specs"})
+    if unexpected_runtime_keys:
+        errors.append(path_error(path, f"contains unsupported keys: {', '.join(unexpected_runtime_keys)}"))
+
+    drivers = runtime.get("drivers")
+    driver_names: set[str] = set()
+    if not isinstance(drivers, list) or not drivers:
+        errors.append(path_error(f"{path}.drivers", "must be a non-empty list"))
+    else:
+        for index, driver in enumerate(drivers):
+            driver_path = f"{path}.drivers[{index}]"
+            if not isinstance(driver, str) or not ENTITY_IDENTIFIER_RE.fullmatch(driver):
+                errors.append(path_error(driver_path, "must be a lowercase identifier"))
+            elif driver in driver_names:
+                errors.append(path_error(driver_path, f"duplicates {driver!r}"))
+            else:
+                driver_names.add(driver)
+
+    if runtime.get("capabilities") != RUNTIME_CAPABILITIES:
+        errors.append(path_error(f"{path}.capabilities", "must list every supported runtime capability in contract order"))
+
+    specs = runtime.get("specs")
+    if not isinstance(specs, dict):
+        errors.append(path_error(f"{path}.specs", "must be an object"))
+        return
+    if not isinstance(cards, dict):
+        return
+    missing_specs = sorted(set(cards) - set(specs))
+    extra_specs = sorted(set(specs) - set(cards))
+    if missing_specs:
+        errors.append(path_error(f"{path}.specs", f"missing card types: {', '.join(item or '<switch>' for item in missing_specs)}"))
+    if extra_specs:
+        errors.append(path_error(f"{path}.specs", f"contains unknown card types: {', '.join(item or '<switch>' for item in extra_specs)}"))
+
+    used_drivers: set[str] = set()
+    mode_keys = {"modeField", "defaultDriver", "modes"}
+    for card_type, spec in specs.items():
+        card_path = f"{path}.specs.{card_type or '<switch>'}"
+        if not isinstance(spec, dict):
+            errors.append(path_error(card_path, "must be an object"))
+            continue
+        unexpected_spec_keys = sorted(set(spec) - ({"driver", "capabilities"} | mode_keys))
+        if unexpected_spec_keys:
+            errors.append(path_error(card_path, f"contains unsupported keys: {', '.join(unexpected_spec_keys)}"))
+
+        driver = spec.get("driver")
+        if driver not in driver_names:
+            errors.append(path_error(f"{card_path}.driver", "must name a permitted runtime driver"))
+        elif isinstance(driver, str):
+            used_drivers.add(driver)
+
+        capabilities = spec.get("capabilities")
+        if not isinstance(capabilities, dict) or set(capabilities) != set(RUNTIME_CAPABILITIES):
+            errors.append(path_error(f"{card_path}.capabilities", "must define every runtime capability exactly once"))
+        else:
+            for capability in RUNTIME_CAPABILITIES:
+                if not isinstance(capabilities.get(capability), bool):
+                    errors.append(path_error(f"{card_path}.capabilities.{capability}", "must be a boolean"))
+            card = cards.get(card_type)
+            if isinstance(card, dict) and capabilities.get("subpage") != card.get("allowInSubpage"):
+                errors.append(path_error(f"{card_path}.capabilities.subpage", "must match allowInSubpage"))
+
+        present_mode_keys = mode_keys & set(spec)
+        if present_mode_keys and present_mode_keys != mode_keys:
+            missing = sorted(mode_keys - present_mode_keys)
+            errors.append(path_error(card_path, f"mode-aware specs must also define: {', '.join(missing)}"))
+            continue
+        if not present_mode_keys:
+            continue
+
+        mode_field = spec.get("modeField")
+        if mode_field not in SAVED_CONFIG_FIELDS:
+            errors.append(path_error(f"{card_path}.modeField", "must be a saved config field"))
+        default_driver = spec.get("defaultDriver")
+        if default_driver not in driver_names:
+            errors.append(path_error(f"{card_path}.defaultDriver", "must name a permitted runtime driver"))
+        elif isinstance(default_driver, str):
+            used_drivers.add(default_driver)
+        modes = spec.get("modes")
+        if not isinstance(modes, dict) or not modes:
+            errors.append(path_error(f"{card_path}.modes", "must be a non-empty object"))
+            continue
+        for mode, mode_driver in modes.items():
+            if not isinstance(mode, str):
+                errors.append(path_error(f"{card_path}.modes", "keys must be strings"))
+            if mode_driver not in driver_names:
+                errors.append(path_error(f"{card_path}.modes.{mode}", "must name a permitted runtime driver"))
+            elif isinstance(mode_driver, str):
+                used_drivers.add(mode_driver)
+
+        card = cards.get(card_type)
+        options = card.get("options", []) if isinstance(card, dict) else []
+        mode_options = [
+            option for option in options
+            if isinstance(option, dict) and option.get("storageField") == mode_field
+        ]
+        if len(mode_options) != 1:
+            errors.append(path_error(f"{card_path}.modeField", "must identify exactly one choice option stored in that field"))
+            continue
+        mode_option = mode_options[0]
+        allowed_modes = mode_option.get("values")
+        if not isinstance(allowed_modes, list) or set(modes) != set(allowed_modes):
+            errors.append(path_error(f"{card_path}.modes", "must map every declared mode value exactly once"))
+        default_mode = mode_option.get("defaultValue")
+        if isinstance(default_mode, str) and modes.get(default_mode) != default_driver:
+            errors.append(path_error(f"{card_path}.defaultDriver", "must match the declared default mode"))
+        default_config = card.get("default") if isinstance(card, dict) else None
+        if isinstance(default_config, dict) and isinstance(mode_field, str):
+            config_mode = default_config.get(mode_field)
+            if isinstance(config_mode, str) and modes.get(config_mode) != default_driver:
+                errors.append(path_error(f"{card_path}.defaultDriver", "must match the default card configuration"))
+
+    unused_drivers = sorted(driver_names - used_drivers)
+    if unused_drivers:
+        errors.append(path_error(f"{path}.drivers", f"contains unused drivers: {', '.join(unused_drivers)}"))
 
 
 def validate_card_contract(data: dict[str, Any]) -> list[str]:
@@ -349,6 +480,8 @@ def validate_card_contract(data: dict[str, Any]) -> list[str]:
                     data.get("migrationActions"),
                     errors,
                 )
+
+    validate_card_runtime(data.get("runtime"), cards, errors)
 
     aliases = data.get("migrationAliases", {})
     if not isinstance(aliases, dict):

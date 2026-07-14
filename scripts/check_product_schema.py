@@ -63,6 +63,30 @@ def run_self_test() -> int:
     invalid_version["contractVersion"] = 2
     expect_error(validate_card_contract(invalid_version), "contractVersion: must be 1")
 
+    missing_runtime_spec = copy.deepcopy(card_contract)
+    missing_runtime_spec["runtime"]["specs"].pop("clock")
+    expect_error(validate_card_contract(missing_runtime_spec), "missing card types: clock")
+
+    invalid_runtime_driver = copy.deepcopy(card_contract)
+    invalid_runtime_driver["runtime"]["specs"]["clock"]["driver"] = "arbitrary_code"
+    expect_error(validate_card_contract(invalid_runtime_driver), "must name a permitted runtime driver")
+
+    incomplete_runtime_capabilities = copy.deepcopy(card_contract)
+    incomplete_runtime_capabilities["runtime"]["specs"]["clock"]["capabilities"].pop("subscriptions")
+    expect_error(validate_card_contract(incomplete_runtime_capabilities), "must define every runtime capability exactly once")
+
+    mismatched_subpage_capability = copy.deepcopy(card_contract)
+    mismatched_subpage_capability["runtime"]["specs"]["subpage"]["capabilities"]["subpage"] = True
+    expect_error(validate_card_contract(mismatched_subpage_capability), "must match allowInSubpage")
+
+    incomplete_runtime_modes = copy.deepcopy(card_contract)
+    incomplete_runtime_modes["runtime"]["specs"]["cover"]["modes"].pop("tilt")
+    expect_error(validate_card_contract(incomplete_runtime_modes), "must map every declared mode value exactly once")
+
+    unused_runtime_driver = copy.deepcopy(card_contract)
+    unused_runtime_driver["runtime"]["drivers"].append("unused_driver")
+    expect_error(validate_card_contract(unused_runtime_driver), "contains unused drivers: unused_driver")
+
     invalid_option = copy.deepcopy(card_contract)
     _, card = first_card_with_options(invalid_option["cards"])
     card["options"][0]["kind"] = "toggle"

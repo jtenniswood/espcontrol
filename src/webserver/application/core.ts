@@ -1,4 +1,5 @@
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import { CARD_RUNTIME_SPECS } from "../generated/card_contract";
 export function installCore(): GlobalDescriptors {
     var DEVICE_ID: any = deviceId;
     var CFG: any = deviceConfig;
@@ -145,9 +146,12 @@ export function installCore(): GlobalDescriptors {
             renderPreview: null,
             contextMenuItems: null,
             cardMetadata: null,
+            runtimeSpec: null,
             defaultConfig: null,
             normalizeConfig: null,
-        }, def);
+        }, def, {
+            runtimeSpec: CARD_RUNTIME_SPECS[key] || null,
+        });
     }
     function subpageStateDisplayMode(this: any, b?: any) {
         if (!b || !b.sensor)

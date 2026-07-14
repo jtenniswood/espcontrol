@@ -7,48 +7,48 @@ It records the pre-migration baseline; it does not move executable behaviour int
 - Runtime-only types: 4
 - Baseline cases: 88
 
-| Contract type | Classification | Canonical saved type | Web registration | Firmware family | Cases |
-|---|---|---|---|---|---:|
-| (switch) | canonical | (switch) | (switch) | TOGGLE | 1 |
-| action | canonical | action | action | ACTION | 2 |
-| vacuum | canonical | vacuum | vacuum | VACUUM | 7 |
-| lawn_mower | canonical | lawn_mower | lawn_mower | MOWER | 4 |
-| alarm | canonical | alarm | alarm | ALARM | 1 |
-| alarm_action | canonical | alarm_action | alarm_action | ALARM_ACTION | 5 |
-| calendar | canonical | calendar | calendar | DATE_TIME | 1 |
-| clock | canonical | clock | clock | DATE_TIME | 1 |
-| climate | canonical | climate_control | climate | CLIMATE | 1 |
-| climate_control | canonical | climate_control | climate_control | CLIMATE | 1 |
-| cover | canonical | cover | cover | COVER | 8 |
-| door_window | canonical | door_window | door_window | OCCUPANCY | 2 |
-| presence | canonical | presence | presence | OCCUPANCY | 1 |
-| fan_direction | canonical | fan_direction | fan_direction | FAN | 1 |
-| fan_oscillate | canonical | fan_oscillate | fan_oscillate | FAN | 1 |
-| fan_preset | canonical | fan_preset | fan_preset | FAN | 1 |
-| fan_speed | canonical | fan_speed | fan_speed | FAN | 1 |
-| fan_control | canonical | fan_control | fan_control | FAN | 1 |
-| fan_switch | canonical | fan_switch | fan_switch | FAN | 1 |
-| garage | canonical | garage | garage | ACCESS | 3 |
-| gate | canonical | gate | gate | ACCESS | 4 |
-| internal | canonical | internal | internal | INTERNAL | 2 |
-| light_brightness | canonical | light_brightness | light_brightness | SLIDER | 1 |
-| light_switch | canonical | light_switch | light_switch | TOGGLE | 1 |
-| light_temperature | canonical | light_temperature | light_temperature | LIGHT_TEMPERATURE | 1 |
-| light_control | canonical | light_control | light_control | LIGHT_CONTROL | 1 |
-| lock | canonical | lock | lock | ACCESS | 3 |
-| media | canonical | media | media | MEDIA | 9 |
-| option_select | accepted_legacy_input | action | action | OPTION_SELECT | 1 |
-| push | canonical | push | push | PUSH | 1 |
-| screen_lock | canonical | screen_lock | screen_lock | SCREEN_LOCK | 1 |
-| webhook | canonical | webhook | webhook | WEBHOOK | 2 |
-| sensor | canonical | sensor | sensor | SENSOR | 4 |
-| local_sensor | accepted_legacy_input | sensor | sensor | LOCAL_SENSOR | 1 |
-| slider | canonical | slider | slider | SLIDER | 1 |
-| subpage | canonical | subpage | subpage | SUBPAGE | 1 |
-| timezone | canonical | timezone | timezone | DATE_TIME | 1 |
-| weather | canonical | weather | weather | WEATHER | 3 |
-| image | canonical | image | image | IMAGE | 1 |
-| weather_forecast | accepted_legacy_input | weather | weather_forecast | WEATHER | 1 |
+| Contract type | Classification | Runtime driver | Capabilities | Canonical saved type | Web registration | Firmware family | Cases |
+|---|---|---|---|---|---|---|---:|
+| (switch) | canonical | toggle | subscriptions, actions, subpage | (switch) | (switch) | TOGGLE | 1 |
+| action | canonical | action | subscriptions, actions, runtimeAllocation, subpage | action | action | ACTION | 2 |
+| vacuum | canonical | vacuum | subscriptions, actions, runtimeAllocation, subpage | vacuum | vacuum | VACUUM | 7 |
+| lawn_mower | canonical | lawn_mower | subscriptions, actions, runtimeAllocation, subpage | lawn_mower | lawn_mower | MOWER | 4 |
+| alarm | canonical | alarm | subscriptions, actions, modal, runtimeAllocation, subpage | alarm | alarm | ALARM | 1 |
+| alarm_action | canonical | alarm_action | subscriptions, actions, runtimeAllocation, subpage | alarm_action | alarm_action | ALARM_ACTION | 5 |
+| calendar | canonical | date_time | informationOnly, subscriptions, subpage | calendar | calendar | DATE_TIME | 1 |
+| clock | canonical | date_time | informationOnly, subscriptions, subpage | clock | clock | DATE_TIME | 1 |
+| climate | canonical | climate | subscriptions, runtimeAllocation, subpage | climate_control | climate | CLIMATE | 1 |
+| climate_control | canonical | climate | subscriptions, actions, numericControl, runtimeAllocation, subpage | climate_control | climate_control | CLIMATE | 1 |
+| cover | canonical | cover | subscriptions, actions, numericControl, modal, runtimeAllocation, subpage | cover | cover | COVER | 8 |
+| door_window | canonical | status_entity | informationOnly, subscriptions, subpage | door_window | door_window | OCCUPANCY | 2 |
+| presence | canonical | status_entity | informationOnly, subscriptions, subpage | presence | presence | OCCUPANCY | 1 |
+| fan_direction | canonical | fan | subscriptions, actions, runtimeAllocation, subpage | fan_direction | fan_direction | FAN | 1 |
+| fan_oscillate | canonical | fan | subscriptions, actions, runtimeAllocation, subpage | fan_oscillate | fan_oscillate | FAN | 1 |
+| fan_preset | canonical | fan | subscriptions, actions, runtimeAllocation, subpage | fan_preset | fan_preset | FAN | 1 |
+| fan_speed | canonical | fan | subscriptions, actions, numericControl, runtimeAllocation, subpage | fan_speed | fan_speed | FAN | 1 |
+| fan_control | canonical | fan_control | subscriptions, actions, numericControl, runtimeAllocation, subpage | fan_control | fan_control | FAN | 1 |
+| fan_switch | canonical | fan | subscriptions, actions, runtimeAllocation, subpage | fan_switch | fan_switch | FAN | 1 |
+| garage | canonical | access | subscriptions, actions, runtimeAllocation, subpage | garage | garage | ACCESS | 3 |
+| gate | canonical | access | subscriptions, actions, runtimeAllocation, subpage | gate | gate | ACCESS | 4 |
+| internal | canonical | internal | subscriptions, actions, subpage | internal | internal | INTERNAL | 2 |
+| light_brightness | canonical | numeric | subscriptions, actions, numericControl, runtimeAllocation, subpage | light_brightness | light_brightness | SLIDER | 1 |
+| light_switch | canonical | toggle | subscriptions, actions, subpage | light_switch | light_switch | TOGGLE | 1 |
+| light_temperature | canonical | light_temperature | subscriptions, actions, numericControl, runtimeAllocation, subpage | light_temperature | light_temperature | LIGHT_TEMPERATURE | 1 |
+| light_control | canonical | light_control | subscriptions, actions, numericControl, runtimeAllocation, subpage | light_control | light_control | LIGHT_CONTROL | 1 |
+| lock | canonical | access | subscriptions, actions, runtimeAllocation, subpage | lock | lock | ACCESS | 3 |
+| media | canonical | media | subscriptions, actions, numericControl, modal, runtimeAllocation, subpage | media | media | MEDIA | 9 |
+| option_select | accepted_legacy_input | option_select | subscriptions, actions, runtimeAllocation, subpage | action | action | OPTION_SELECT | 1 |
+| push | canonical | push | actions, subpage | push | push | PUSH | 1 |
+| screen_lock | canonical | screen_lock | subscriptions, actions, subpage | screen_lock | screen_lock | SCREEN_LOCK | 1 |
+| webhook | canonical | webhook | subscriptions, actions, subpage | webhook | webhook | WEBHOOK | 2 |
+| sensor | canonical | sensor | informationOnly, subscriptions, runtimeAllocation, subpage | sensor | sensor | SENSOR | 4 |
+| local_sensor | accepted_legacy_input | sensor | informationOnly, subscriptions, subpage | sensor | sensor | LOCAL_SENSOR | 1 |
+| slider | canonical | numeric | subscriptions, actions, numericControl, runtimeAllocation, subpage | slider | slider | SLIDER | 1 |
+| subpage | canonical | subpage | actions, runtimeAllocation | subpage | subpage | SUBPAGE | 1 |
+| timezone | canonical | date_time | informationOnly, subscriptions, subpage | timezone | timezone | DATE_TIME | 1 |
+| weather | canonical | weather | informationOnly, subscriptions, subpage | weather | weather | WEATHER | 3 |
+| image | canonical | image | informationOnly, subscriptions, actions, modal, runtimeAllocation, subpage | image | image | IMAGE | 1 |
+| weather_forecast | accepted_legacy_input | weather | informationOnly, subscriptions, subpage | weather | weather_forecast | WEATHER | 1 |
 
 ## Runtime-only type decisions
 

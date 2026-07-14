@@ -36,6 +36,24 @@ names, missing choice/number defaults, aliases to missing cards, invalid
 conditions, duplicate compact codes, and reuse of a code listed in
 `retiredSubpageTypeCodes`.
 
+The top-level `runtime` section gives every contract card a generated behaviour
+identity without putting executable behaviour in JSON. Each entry selects a
+permitted handwritten `driver` and declares all capability flags:
+
+- `informationOnly`
+- `subscriptions`
+- `actions`
+- `numericControl`
+- `modal`
+- `runtimeAllocation`
+- `subpage`
+
+Mode-aware cards also declare `modeField`, `defaultDriver`, and an exhaustive
+`modes` mapping. Cover and Media currently use this to resolve their canonical
+`sensor` mode to a more specific driver. The validator requires one runtime
+entry per card, exact capability coverage, permitted and used driver names,
+subpage agreement, and a mapping for every declared mode value.
+
 Generated consumers include:
 
 - `src/webserver/generated/card_contract.ts`
@@ -67,6 +85,13 @@ Firmware card types then cross the shared runtime registry in
 subpages both resolve the same `Family` before choosing their surface-specific
 widget and lifecycle adapter. The registry test covers every authored contract
 type and checks that subpage capability still matches the contract.
+
+The generated web `CARD_RUNTIME_SPECS` registry is attached to matching
+`BUTTON_TYPES` registrations as `runtimeSpec`. Firmware receives matching
+`CardTypeId`, `CardDriverId`, capability flags, and a canonical-config resolver
+in `button_grid_contract_generated.h`. These are metadata only at this stage:
+the existing web rendering and firmware `Family` dispatch remain in control
+until a later driver-migration PR switches one reviewed family at a time.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and
@@ -217,23 +242,27 @@ Action state, script-field, and confirmation text values also ignore leading and
 A card type usually spans the contract, setup page, and firmware. Work in this
 order:
 
-1. Register the card in `common/config/card_contract.json`.
+1. Register the card and its runtime driver/capabilities in
+   `common/config/card_contract.json`.
 2. Add web settings and preview behavior in `src/webserver/cards/<type>.ts`.
 3. If it stores options, update web parsing and option preservation in
    `src/webserver/application/config_codec.ts`.
 4. Add firmware rendering/runtime behavior in
    `components/espcontrol/button_grid_<type>.h`.
 5. Include the new header from `components/espcontrol/button_grid.h`.
-6. Assign the type to a `Family` in `button_grid_card_registry.h`, then wire its
-   visual and runtime adapters in `button_grid_grid.h`. Both the main grid and
-   subpages must route through that shared family; surface-specific ownership
-   or navigation can remain in the adapter.
+6. While legacy dispatch remains active, assign the type to a `Family` in
+   `button_grid_card_registry.h`, then wire its visual and runtime adapters in
+   `button_grid_grid.h`. Both the main grid and subpages must route through the
+   same implementation; surface-specific ownership or navigation can remain in
+   the adapter.
 7. If firmware parsing must understand new fields or options, update
    `components/espcontrol/button_grid_config.h`.
 8. If the card opens a full-screen modal, add a `ControlModalKind` value and use
    the shared `control_modal_open_shell(...)` helper.
-9. Rebuild, run checks, flash a `dev.yaml` build, and verify the setting survives
-   a setup-page reload.
+9. Add compatibility fixtures plus runtime inventory modes and lifecycle
+   expectations for subscriptions, actions, modal ownership, and cleanup.
+10. Rebuild, run checks, flash a `dev.yaml` build, and verify both main-grid and
+    subpage use, reload persistence, reconnect behaviour, actions, and cleanup.
 
 ## Worked Example: Hello Card
 
@@ -255,6 +284,28 @@ Add the contract entry:
   }
 }
 ```
+
+Also add `hello` to `runtime.drivers` and declare its runtime spec. A static
+card has no subscriptions, actions, numeric control, modal, or allocation:
+
+```json
+"hello": {
+  "driver": "hello",
+  "capabilities": {
+    "informationOnly": true,
+    "subscriptions": false,
+    "actions": false,
+    "numericControl": false,
+    "modal": false,
+    "runtimeAllocation": false,
+    "subpage": true
+  }
+}
+```
+
+Add a matching `card_runtime_inventory.json` case and compatibility fixture so
+normalisation, picker visibility, preview, lifecycle, and both runtime surfaces
+are protected before implementing the card.
 
 Regenerate the shared outputs:
 

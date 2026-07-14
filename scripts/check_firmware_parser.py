@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -703,6 +704,69 @@ def generated_card_normalization_assertions() -> str:
     return "".join(chunks)
 
 
+def runtime_enum_name(value: str, empty_name: str = "SWITCH") -> str:
+    if not value:
+        return empty_name
+    return re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_").upper()
+
+
+def runtime_capability_enum_name(value: str) -> str:
+    words = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
+    return f"CAPABILITY_{runtime_enum_name(words)}"
+
+
+def generated_card_runtime_assertions() -> str:
+    contract = json.loads((ROOT / "common" / "config" / "card_contract.json").read_text(encoding="utf-8"))
+    runtime = contract["runtime"]
+    lines = [
+        "  struct RuntimeConfig {",
+        *(f"    std::string {field};" for field in contract["fields"]),
+        "  };",
+    ]
+    for index, (card_type, spec) in enumerate(runtime["specs"].items()):
+        variable = f"runtime_{index}_{runtime_enum_name(card_type).lower()}"
+        lines.append(f"  RuntimeConfig {variable}_config{{}};")
+        lines.append(f"  {variable}_config.type = {cpp_string(card_type)};")
+        if "modeField" in spec:
+            default_mode = contract["cards"][card_type]["default"][spec["modeField"]]
+            lines.append(f"  {variable}_config.{spec['modeField']} = {cpp_string(default_mode)};")
+            expected_driver = spec["defaultDriver"]
+        else:
+            expected_driver = spec["driver"]
+        lines.append(
+            f"  auto {variable} = espcontrol::card_runtime::resolve_card_runtime({variable}_config);"
+        )
+        lines.append(
+            f"  assert({variable}.type == espcontrol::card_runtime::CardTypeId::{runtime_enum_name(card_type)});"
+        )
+        lines.append(
+            f"  assert({variable}.driver == espcontrol::card_runtime::CardDriverId::{runtime_enum_name(expected_driver)});"
+        )
+        for capability, enabled in spec["capabilities"].items():
+            prefix = "" if enabled else "!"
+            lines.append(
+                f"  assert({prefix}espcontrol::card_runtime::has_capability({variable}, "
+                f"espcontrol::card_runtime::{runtime_capability_enum_name(capability)}));"
+            )
+        for mode_index, (mode, driver) in enumerate(spec.get("modes", {}).items()):
+            mode_var = f"{variable}_mode_{mode_index}"
+            lines.append(f"  {variable}_config.{spec['modeField']} = {cpp_string(mode)};")
+            lines.append(
+                f"  auto {mode_var} = espcontrol::card_runtime::resolve_card_runtime({variable}_config);"
+            )
+            lines.append(
+                f"  assert({mode_var}.driver == espcontrol::card_runtime::CardDriverId::{runtime_enum_name(driver)});"
+            )
+    lines.extend([
+        "  RuntimeConfig unknown_runtime_config{};",
+        '  unknown_runtime_config.type = "not_a_card";',
+        "  auto unknown_runtime = espcontrol::card_runtime::resolve_card_runtime(unknown_runtime_config);",
+        "  assert(unknown_runtime.type == espcontrol::card_runtime::CardTypeId::UNKNOWN);",
+        "  assert(unknown_runtime.driver == espcontrol::card_runtime::CardDriverId::UNKNOWN);",
+    ])
+    return "\n".join(lines) + "\n"
+
+
 def check_button_grid_facade() -> None:
     """Keep the YAML compatibility entry point free of behaviour code."""
     for line_number, line in enumerate(BUTTON_GRID_FACADE.read_text(encoding="utf-8").splitlines(), 1):
@@ -780,7 +844,12 @@ def main() -> int:
         source = tmp_path / "check_firmware_parser.cpp"
         binary = tmp_path / "check_firmware_parser"
         source.write_text(
-            CPP_SOURCE.replace("  return 0;\n}", generated_card_normalization_assertions() + "\n  return 0;\n}"),
+            CPP_SOURCE.replace(
+                "  return 0;\n}",
+                generated_card_normalization_assertions()
+                + generated_card_runtime_assertions()
+                + "\n  return 0;\n}",
+            ),
             encoding="utf-8",
         )
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)

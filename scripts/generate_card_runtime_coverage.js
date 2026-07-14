@@ -280,6 +280,32 @@ function contractRegistrationChecks(inventory, contract, hooks) {
   }
 }
 
+function runtimeContractChecks(inventory, contract, hooks) {
+  for (const [type, inventorySpec] of Object.entries(inventory.types)) {
+    const runtimeSpec = contract.runtime.specs[type];
+    if (!runtimeSpec) throw new Error(`${type || "<switch>"}: generated runtime metadata is missing`);
+    const registeredSpec = hooks.buttonTypeGeneratedRuntimeSpec(type);
+    if (hooks.buttonTypeRuntimeSpec(type) && JSON.stringify(plain(registeredSpec)) !== JSON.stringify(runtimeSpec)) {
+      throw new Error(`${type || "<switch>"}: web registration does not use the generated runtime spec`);
+    }
+    const lifecycles = [inventorySpec.lifecycle].concat(
+      inventorySpec.modes.map((mode) => mergedLifecycle(inventorySpec, mode))
+    );
+    const expected = {
+      informationOnly: !!hooks.buttonTypeInfoOnlySupported(type),
+      subscriptions: lifecycles.some((lifecycle) => !lifecycle.subscriptions.includes("none")),
+      actions: lifecycles.some((lifecycle) => !lifecycle.actions.includes("none")),
+      modal: lifecycles.some((lifecycle) => lifecycle.modalOwner !== "none" || lifecycle.actions.includes("modal")),
+      subpage: !!contract.cards[type].allowInSubpage,
+    };
+    for (const [capability, value] of Object.entries(expected)) {
+      if (runtimeSpec.capabilities[capability] !== value) {
+        throw new Error(`${type || "<switch>"}: runtime capability ${capability} differs from the baseline`);
+      }
+    }
+  }
+}
+
 function reportMarkdown(inventory, contract, cases) {
   const counts = new Map();
   for (const item of cases.surface) counts.set(item.sourceType, (counts.get(item.sourceType) || 0) + 1);
@@ -293,11 +319,13 @@ function reportMarkdown(inventory, contract, cases) {
     `- Runtime-only types: ${Object.keys(inventory.runtimeOnlyTypes).length}`,
     `- Baseline cases: ${cases.surface.length}`,
     "",
-    "| Contract type | Classification | Canonical saved type | Web registration | Firmware family | Cases |",
-    "|---|---|---|---|---|---:|",
+    "| Contract type | Classification | Runtime driver | Capabilities | Canonical saved type | Web registration | Firmware family | Cases |",
+    "|---|---|---|---|---|---|---|---:|",
   ];
   for (const [type, spec] of Object.entries(inventory.types)) {
-    lines.push(`| ${type || "(switch)"} | ${spec.classification} | ${spec.canonicalType || "(switch)"} | ${spec.webRegistration || (spec.webRegistration === "" ? "(switch)" : "—")} | ${spec.firmwareFamily} | ${counts.get(type) || 0} |`);
+    const runtime = contract.runtime.specs[type];
+    const enabledCapabilities = contract.runtime.capabilities.filter((capability) => runtime.capabilities[capability]);
+    lines.push(`| ${type || "(switch)"} | ${spec.classification} | ${runtime.driver} | ${enabledCapabilities.join(", ") || "none"} | ${spec.canonicalType || "(switch)"} | ${spec.webRegistration || (spec.webRegistration === "" ? "(switch)" : "—")} | ${spec.firmwareFamily} | ${counts.get(type) || 0} |`);
   }
   lines.push("", "## Runtime-only type decisions", "", "| Runtime type | Classification | Canonical type | Surfaces | Reason |", "|---|---|---|---|---|");
   const reasons = {
@@ -337,6 +365,7 @@ function main() {
   const firmwareTypes = firmwareRegistrations();
   validateInventory(inventory, contract, webTypes, parserTypes, firmwareTypes);
   contractRegistrationChecks(inventory, contract, hooks);
+  runtimeContractChecks(inventory, contract, hooks);
   const cases = generateCases(inventory, contract, hooks);
   writeOrCheck(NORMALIZATION_PATH, formatJson(cases.normalization), check);
   writeOrCheck(SURFACE_PATH, formatJson({ baselineVersion: 1, cases: cases.surface }), check);

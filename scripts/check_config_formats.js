@@ -13,6 +13,7 @@ const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_co
 const CONFIG_DIR = path.join(ROOT, "common", "config");
 const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
 const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "image_card_normalization_fixtures.json");
+const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, "card_contract.json"), "utf8"));
 
 function loadHooks(search) {
   const sandbox = {
@@ -218,6 +219,21 @@ assertButtonTypeSpecBacked("sensor", "sensor card");
 assertButtonTypeSpecBacked("slider", "slider card");
 assertButtonTypeSpecBacked("cover", "cover card");
 assertButtonTypeSpecBacked("light_brightness", "light brightness card");
+for (const [type, expectedRuntimeSpec] of Object.entries(CARD_CONTRACT.runtime.specs)) {
+  if (!hooks.buttonTypeRuntimeSpec(type)) continue;
+  const actualRuntimeSpec = hooks.buttonTypeGeneratedRuntimeSpec(type);
+  assert(actualRuntimeSpec, `${type || "switch"} generated runtime spec is merged into its web registration`);
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(actualRuntimeSpec)),
+    expectedRuntimeSpec,
+    `${type || "switch"} web registration uses the generated runtime spec`
+  );
+}
+assert.deepStrictEqual(
+  Array.from(hooks.buttonTypesMissingRuntimeSpec()),
+  ["media_cover_art"],
+  "only the documented obsolete helper registration lacks a standalone runtime spec"
+);
 assertButtonTypeSpecBacked("light_switch", "light switch card");
 assertButtonTypeSpecBacked("light_temperature", "light temperature card");
 assertButtonTypeSpecBacked("light_control", "full light control card");

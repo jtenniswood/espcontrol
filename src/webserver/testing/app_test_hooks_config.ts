@@ -1,4 +1,5 @@
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
+import { infoOnlyCardVisible } from "../features/preview";
 export function installAppTestHooksConfig(): GlobalDescriptors {
     if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         registerEspControlTestHookGroup("config", {
@@ -222,6 +223,23 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
                         missing.push(key);
                 }
                 return missing.sort();
+            },
+            buttonTypesMissingRuntimeSpec: function (this: any) {
+                var missing: any = [];
+                for (var key in BUTTON_TYPES) {
+                    if (!BUTTON_TYPES[key].runtimeSpec)
+                        missing.push(key);
+                }
+                return missing.sort();
+            },
+            buttonTypeInfoOnlySupported: function (this: any, type?: any) {
+                return infoOnlyCardVisible(type || "", true);
+            },
+            buttonTypeGeneratedRuntimeSpec: function (this: any, type?: any) {
+                var typeDef: any = BUTTON_TYPES[type || ""];
+                return typeDef && typeDef.runtimeSpec
+                    ? JSON.parse(JSON.stringify(typeDef.runtimeSpec))
+                    : null;
             },
             buttonTypeDefaultConfig: function (this: any, type?: any) {
                 var typeDef: any = BUTTON_TYPES[type || ""];

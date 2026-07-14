@@ -11,6 +11,28 @@ export type SavedConfigField =
 
 export type CardConfig = Record<SavedConfigField, string>;
 
+export interface CardRuntimeCapabilities {
+  informationOnly: boolean;
+  subscriptions: boolean;
+  actions: boolean;
+  numericControl: boolean;
+  modal: boolean;
+  runtimeAllocation: boolean;
+  subpage: boolean;
+}
+
+export interface CardRuntimeSpec {
+  driver: string;
+  capabilities: CardRuntimeCapabilities;
+  modeField?: SavedConfigField;
+  defaultDriver?: string;
+  modes?: Readonly<Record<string, string>>;
+}
+
+export interface ResolvedCardRuntimeSpec extends CardRuntimeSpec {
+  driver: string;
+}
+
 export interface NormalizationCondition {
   source: "field" | "option";
   name: string;
