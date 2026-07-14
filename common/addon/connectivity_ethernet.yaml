@@ -17,7 +17,7 @@ ethernet:
   phy_addr: 1
   on_connect:
     - script.execute: ntp_servers_apply_after_network
-    - script.stop: setup_screen_dim
+    - script.execute: setup_screen_dim_cancel
     - lambda: |-
         ESP_LOGI("connectivity", "Ethernet connected (%lu ms)", millis());
         lv_label_set_text(id(loading_status_label), espcontrol_i18n("Connected"));
@@ -67,7 +67,7 @@ script:
                       condition:
                         lambda: 'return id(button_order).state.empty();'
                       then:
-                        - script.stop: setup_screen_dim
+                        - script.execute: setup_screen_dim_cancel
                         - script.execute: clock_bar_hide
                         - lvgl.page.show: ha_actions_page
                       else:
@@ -97,7 +97,7 @@ script:
   - id: navigate_after_api
     mode: restart
     then:
-      - script.stop: setup_screen_dim
+      - script.execute: setup_screen_dim_cancel
       - if:
           condition:
             lambda: 'return !id(button_order).state.empty();'

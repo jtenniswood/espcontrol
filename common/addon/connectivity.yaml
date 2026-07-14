@@ -40,7 +40,7 @@ wifi:
     - script.execute: network_status_refresh
     - script.execute: ntp_servers_apply_after_network
     - script.stop: wifi_reconnect_flow
-    - script.stop: setup_screen_dim
+    - script.execute: setup_screen_dim_cancel
     - lambda: |-
         ESP_LOGI("connectivity", "WiFi connected (%lu ms)", millis());
         lv_label_set_text(id(loading_status_label), espcontrol_i18n("Connected"));
@@ -89,7 +89,7 @@ script:
                       condition:
                         lambda: 'return id(button_order).state.empty();'
                       then:
-                        - script.stop: setup_screen_dim
+                        - script.execute: setup_screen_dim_cancel
                         - script.execute: clock_bar_hide
                         - lvgl.page.show: ha_actions_page
                       else:
@@ -114,20 +114,16 @@ script:
     then:
       - lvgl.resume:
       - globals.set:
-          id: display_asleep
-          value: 'false'
-      - globals.set:
           id: screen_schedule_asleep
           value: 'false'
       - globals.set:
           id: screensaver_display_off_active
           value: 'false'
       - globals.set:
-          id: screensaver_dimmed_active
-          value: 'false'
-      - globals.set:
           id: backlight_manual_off
           value: 'false'
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
       - script.execute: clock_bar_hide
       - lambda: |-
           std::string msg = std::string(espcontrol_i18n("Connect to WiFi")) +
@@ -181,7 +177,7 @@ script:
   - id: navigate_after_api
     mode: restart
     then:
-      - script.stop: setup_screen_dim
+      - script.execute: setup_screen_dim_cancel
       - if:
           condition:
             lambda: 'return !id(button_order).state.empty();'

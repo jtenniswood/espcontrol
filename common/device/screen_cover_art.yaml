@@ -1303,9 +1303,8 @@ script:
       - globals.set:
           id: screensaver_display_off_active
           value: 'false'
-      - globals.set:
-          id: screensaver_dimmed_active
-          value: 'false'
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
       - lvgl.resume:
       - lambda: 'navigation_return_home(id(main_page)->obj);'
       - script.execute: hide_clock_view
@@ -2152,20 +2151,10 @@ script:
   - id: cover_art_return_home_after_playback
     mode: restart
     then:
-      - if:
-          condition:
-            lambda: |-
-              return id(cover_art_screensaver_active) &&
-                     !id(screen_schedule_asleep) &&
-                     !id(screensaver_display_off_active) &&
-                     !id(screensaver_dimmed_active) &&
-                     !id(is_clock_showing);
-          then:
-            - globals.set:
-                id: display_asleep
-                value: 'false'
       - script.execute: hide_cover_art_view
       - script.wait: hide_cover_art_view
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
       - if:
           condition:
             lambda: |-

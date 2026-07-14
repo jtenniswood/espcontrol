@@ -456,6 +456,7 @@ script:
               return waiting_for_time ||
                      (!id(schedule_mode_always_on) && !id(schedule_mode_clock));
           then:
+            - script.execute: display_mode_reconcile
             - globals.set:
                 id: display_asleep
                 value: 'true'
@@ -484,6 +485,16 @@ script:
   - id: screen_schedule_sleep
     mode: restart
     then:
+      # Publish the schedule marker before reconciliation so the controller
+      # cannot clear this higher-priority request while the off effect runs.
+      - globals.set:
+          id: screen_schedule_asleep
+          value: 'true'
+      - lambda: |-
+          id(display_mode_controller).request(
+              espcontrol::DisplayRequestSource::SCREEN_SCHEDULE,
+              espcontrol::DisplayMode::DISPLAY_OFF);
+      - script.execute: display_mode_reconcile
       - lambda: 'backlight_close_modals_for_display_takeover();'
       - script.stop: screensaver_idle_check
       - script.stop: home_screen_idle_check
@@ -499,9 +510,6 @@ script:
           value: '0'
       - script.execute: backlight_sleep_display_off
       - script.wait: backlight_sleep_display_off
-      - globals.set:
-          id: screen_schedule_asleep
-          value: 'true'
       - lambda: 'global_preferences->sync();'
 
   # ---------------------------------------------------------------------------
@@ -519,9 +527,6 @@ script:
           id: screensaver_display_off_active
           value: 'false'
       - globals.set:
-          id: screensaver_dimmed_active
-          value: 'false'
-      - globals.set:
           id: cover_art_screensaver_active
           value: 'false'
       - globals.set:
@@ -534,21 +539,9 @@ script:
           id: backlight_force_next_write
           value: 'true'
       - lambda: 'global_preferences->sync();'
-      - lvgl.resume:
-      - script.execute: hide_clock_view
       - script.execute: hide_cover_art_view
-      - lvgl.widget.hide: dim_screensaver_touch_guard
-      - if:
-          condition:
-            lambda: 'return lv_scr_act() == id(screen_off_page)->obj;'
-          then:
-            - script.execute: navigate_after_api
-      - delay: 100ms
-      - globals.set:
-          id: display_asleep
-          value: 'false'
-      - script.execute: clock_bar_apply
-      - script.execute: backlight_apply_brightness
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
       - script.execute: screensaver_idle_check
       - script.execute: home_screen_idle_check
 
@@ -567,9 +560,6 @@ script:
           id: screensaver_display_off_active
           value: 'false'
       - globals.set:
-          id: screensaver_dimmed_active
-          value: 'false'
-      - globals.set:
           id: cover_art_screensaver_active
           value: 'false'
       - globals.set:
@@ -581,21 +571,9 @@ script:
       - globals.set:
           id: backlight_force_next_write
           value: 'true'
-      - lvgl.resume:
-      - script.execute: hide_clock_view
       - script.execute: hide_cover_art_view
-      - lvgl.widget.hide: dim_screensaver_touch_guard
-      - if:
-          condition:
-            lambda: 'return lv_scr_act() == id(screen_off_page)->obj;'
-          then:
-            - script.execute: navigate_after_api
-      - delay: 50ms
-      - globals.set:
-          id: display_asleep
-          value: 'false'
-      - script.execute: clock_bar_apply
-      - script.execute: backlight_apply_brightness
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
       - script.execute: home_screen_idle_check
 
   # ---------------------------------------------------------------------------
@@ -621,18 +599,11 @@ script:
           id: screensaver_display_off_active
           value: 'false'
       - globals.set:
-          id: screensaver_dimmed_active
-          value: 'false'
-      - globals.set:
           id: cover_art_screensaver_active
           value: 'false'
-      - globals.set:
-          id: display_asleep
-          value: 'true'
-      - lvgl.resume:
-      - lvgl.widget.hide: dim_screensaver_touch_guard
       - script.execute: hide_cover_art_view
-      - script.execute: show_clock_view
+      - script.execute: display_mode_reconcile
+      - script.wait: display_mode_apply_transition
       - lambda: 'global_preferences->sync();'
 
   # ---------------------------------------------------------------------------
