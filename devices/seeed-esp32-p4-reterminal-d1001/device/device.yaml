@@ -321,6 +321,8 @@ touchscreen:
       mirror_x: true
       mirror_y: true
     on_touch:
+      - script.execute: cover_art_pause_after_touch
+      - script.wait: cover_art_pause_after_touch
       - script.execute: screensaver_wake
 
 # ---------------------------------------------------------------------------
