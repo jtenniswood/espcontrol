@@ -69,9 +69,8 @@ export function installConfigCodecModule(): GlobalDescriptors {
         var rawMediaMode: any = b.sensor;
         if (rawMediaMode === "controls" && (!b.icon || b.icon === "Speaker"))
             b.icon = "Auto";
-        b.sensor = mediaEditorMode(b.sensor);
-        if (b.sensor === "now_playing" && configOptionEnabled(b.options, MEDIA_COVER_ART_OPTION))
-            b.sensor = "cover_art";
+        var mediaConfig: any = EspControlModel.decodeMediaCardConfigV1(b);
+        b.sensor = mediaConfig ? mediaConfig.mode : mediaEditorMode(b.sensor);
         if (b.sensor === "previous" && b.label === "Skip Previous")
             b.label = "Previous";
         if (b.sensor === "next" && b.label === "Skip Next")
@@ -90,10 +89,12 @@ export function installConfigCodecModule(): GlobalDescriptors {
         if (b.sensor === "position" && (!b.label || b.label === "Track"))
             b.label = "Position";
         if (b.sensor === "now_playing")
-            b.precision = mediaNowPlayingControls(b);
+            b.precision = mediaConfig && mediaConfig.nowPlayingControl !== "none"
+                ? mediaConfig.nowPlayingControl
+                : "";
         else if (b.sensor === "cover_art")
             b.precision = "";
-        else if (mediaStateDisplayModeSupported(b.sensor) && b.precision === "state")
+        else if (mediaStateDisplayModeSupported(b.sensor) && mediaConfig && mediaConfig.stateDisplay === "state")
             b.precision = "state";
         else
             b.precision = "";
