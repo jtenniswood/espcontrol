@@ -53,7 +53,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     SourceTruthRow(
         "common/config/card_runtime_inventory.json",
         (
-            "common/config/card_runtime_baseline_fixtures.json",
+            "common/config/card_runtime_baseline_card_normalization_fixtures.json",
             "compatibility/fixtures/card_runtime_surface_baseline.json",
             "docs/generated/cards/runtime-coverage.md",
         ),

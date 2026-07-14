@@ -1306,7 +1306,7 @@
   },
   {
     "name": "media_cover_art: obsolete_implementation_residue",
-    "input": "~media_player.example,,,,cover_art,,media,,",
+    "input": "~media_player.example,,Auto,Auto,cover_art,,media,,",
     "expected": {
       "entity": "media_player.example",
       "label": "",

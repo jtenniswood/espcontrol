@@ -348,7 +348,7 @@
       "canonicalType": "media",
       "surfaces": ["web_registry"],
       "webRegistration": "media_cover_art",
-      "config": { "entity": "media_player.example", "type": "media", "sensor": "cover_art" },
+      "config": { "entity": "media_player.example", "icon": "Auto", "icon_on": "Auto", "type": "media", "sensor": "cover_art" },
       "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" }
     }
   }

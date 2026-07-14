@@ -209,7 +209,7 @@ TASKS = (
              "scripts/generate_card_runtime_coverage.js",
          ) + WEB_SOURCE_HELPERS + WEB_BUNDLE_INPUTS,
          generated_inputs=(
-             "common/config/card_runtime_baseline_fixtures.json",
+             "common/config/card_runtime_baseline_card_normalization_fixtures.json",
              "compatibility/fixtures/card_runtime_surface_baseline.json",
              "docs/generated/cards/runtime-coverage.md",
          ),
