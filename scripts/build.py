@@ -119,6 +119,7 @@ class GeneratedOutputTransaction:
             for path, content in self._staged.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 originals[path] = path.read_bytes() if path.exists() else None
+                target_mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
                 with tempfile.NamedTemporaryFile(
                     mode="w",
                     encoding="utf-8",
@@ -130,6 +131,7 @@ class GeneratedOutputTransaction:
                     handle.write(content)
                     handle.flush()
                     os.fsync(handle.fileno())
+                    os.chmod(handle.name, target_mode)
                     prepared[path] = Path(handle.name)
 
             for path, staged_path in prepared.items():
@@ -178,17 +180,22 @@ def run_generated_transaction_self_test():
         root = Path(directory)
         first = root / "first.txt"
         second = root / "second.txt"
+        third = root / "third.txt"
         first.write_text("first-old", encoding="utf-8")
         second.write_text("second-old", encoding="utf-8")
+        first.chmod(0o640)
 
         transaction = GeneratedOutputTransaction()
         transaction.stage_text(first, "first-new")
         transaction.stage_text(second, "second-new")
+        transaction.stage_text(third, "third-new")
         if first.read_text(encoding="utf-8") != "first-old" or second.read_text(encoding="utf-8") != "second-old":
             raise BuildError("Generated transaction changed files before commit")
         transaction.commit()
         if first.read_text(encoding="utf-8") != "first-new" or second.read_text(encoding="utf-8") != "second-new":
             raise BuildError("Generated transaction did not publish the complete set")
+        if first.stat().st_mode & 0o777 != 0o640 or third.stat().st_mode & 0o777 != 0o644:
+            raise BuildError("Generated transaction did not preserve safe file permissions")
 
         replacements = 0
 
