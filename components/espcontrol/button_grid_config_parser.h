@@ -11,8 +11,22 @@
 
 #include "button_grid_card_runtime.h"
 #include "button_grid_saved_config_action_generated.h"
+#include "button_grid_saved_config_access_generated.h"
+#include "button_grid_saved_config_security_generated.h"
+#include "button_grid_saved_config_weather_generated.h"
+#include "button_grid_saved_config_image_generated.h"
+#include "button_grid_saved_config_climate_generated.h"
+#include "button_grid_saved_config_light_control_generated.h"
+#include "button_grid_saved_config_webhook_generated.h"
+#include "button_grid_saved_config_subpage_generated.h"
+#include "button_grid_saved_config_switch_generated.h"
+#include "button_grid_saved_config_date_time_generated.h"
+#include "button_grid_saved_config_fan_generated.h"
 #include "button_grid_saved_config_media_generated.h"
+#include "button_grid_saved_config_mower_generated.h"
+#include "button_grid_saved_config_occupancy_generated.h"
 #include "button_grid_saved_config_sensor_generated.h"
+#include "button_grid_saved_config_static_generated.h"
 #include "button_grid_saved_config_vacuum_generated.h"
 
 constexpr const char *SENSOR_STATE_LABELS_OPTION = card_runtime_option_name_state_labels();
@@ -997,155 +1011,216 @@ inline void normalize_saved_config_action_fields(ParsedCfg &p) {
   p.precision.clear();
 }
 
-inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
-  migrate_saved_config_action_legacy(p);
-  const bool was_legacy_text_sensor = p.type == "text_sensor";
-  migrate_saved_config_sensor_legacy(p);
-  // Slider cards used to store "h" here for horizontal layout. Sliders are
-  // now always vertical, so treat any saved slider sensor value as legacy.
-  if (brightness_slider_type(p.type) && !p.sensor.empty()) p.sensor.clear();
-  if (fan_card_type(p.type)) {
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options = p.type == "fan_control" ? fan_control_card_options_normalized(p.options) : "";
-    if (p.icon.empty() || p.icon == "Auto") p.icon = fan_card_default_icon_name(p.type);
-    if (p.type == "fan_switch") {
-      if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Fan";
-    } else {
-      p.icon_on = "Auto";
-    }
+inline void normalize_saved_config_fan_fields(ParsedCfg &p) {
+  if (p.icon.empty() || p.icon == "Auto") p.icon = fan_card_default_icon_name(p.type);
+  if (p.type == "fan_switch") {
+    if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Fan";
+  } else {
+    p.icon_on = "Auto";
   }
-  if (p.type == "weather_forecast") {
-    p.type = "weather";
-    p.precision = "tomorrow";
-    if (p.label == "Weather") p.label.clear();
+}
+
+inline void normalize_saved_config_date_time_fields(ParsedCfg &p) {
+  if (!p.entity.empty()) return;
+  if (p.type == "calendar") p.entity = "sensor.date";
+  else if (p.type == "timezone") p.entity = "UTC (GMT+0)";
+}
+
+inline void normalize_saved_config_mower_fields(ParsedCfg &p) {
+  p.sensor = card_runtime_lawn_mower_mode(p.sensor);
+  if (p.icon.empty() || p.icon == "Auto") {
+    p.icon = card_runtime_lawn_mower_default_icon_name(p.sensor);
   }
-  if (p.type == "weather" && !card_runtime_weather_forecast_precision(p.precision)) {
-    p.precision.clear();
+}
+
+inline void normalize_saved_config_occupancy_fields(ParsedCfg &p) {
+  if (p.type == "door_window") {
+    p.precision = normalize_door_window_subtype(p.precision);
+    if (p.icon.empty() || p.icon == "Auto") p.icon = door_window_closed_icon_name(p.precision);
+    if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = door_window_open_icon_name(p.precision);
+  } else if (p.type == "presence") {
+    if (p.icon.empty() || p.icon == "Auto") p.icon = "Motion Sensor Off";
+    if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
   }
-  if (p.type == "weather") {
-    p.sensor.clear();
-    p.options = weather_card_options_normalized(p.options, p);
-  }
-  normalize_saved_config_media(p, normalize_saved_config_media_fields,
-                               media_card_options_normalized);
-  if (climate_card_type(p.type)) {
-    p.type = "climate_control";
-    p.sensor.clear();
-    p.unit.clear();
-    if (p.icon.empty()) p.icon = "Thermostat";
-    p.precision = normalize_climate_precision_config(p.precision);
-    p.options = climate_card_options_normalized(p.options, true);
-  }
+}
+
+inline std::string normalize_saved_config_occupancy_options(
+    const std::string &options, const ParsedCfg &p) {
+  return p.type == "door_window" ? door_window_card_options_normalized(options)
+                                  : presence_card_options_normalized(options);
+}
+
+inline void normalize_saved_config_access_fields(ParsedCfg &p) {
   if (p.type == "garage") {
     if (!card_runtime_garage_mode_valid(p.sensor)) p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
     if (!p.sensor.empty()) p.icon_on = "Auto";
-    p.options = garage_card_options_normalized(p.options, p.sensor);
-  }
-  if (p.type == "gate") {
+  } else if (p.type == "gate") {
     if (!card_runtime_gate_mode_valid(p.sensor)) p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
     if (!p.sensor.empty()) p.icon_on = "Auto";
-    p.options = gate_card_options_normalized(p.options, p.sensor);
-  }
-  if (p.type == "lock") {
+  } else if (p.type == "cover") {
+    if (!card_runtime_cover_mode_valid(p.sensor)) p.sensor.clear();
+    if (p.sensor != "set_position") p.unit.clear();
+  } else if (p.type == "lock") {
     if (!card_runtime_lock_mode_valid(p.sensor)) p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options.clear();
     if (!p.sensor.empty()) {
       p.icon_on = "Auto";
     } else if (p.icon_on.empty() || p.icon_on == "Auto") {
       p.icon_on = "Lock Open";
     }
   }
-  if (p.type == "cover") {
-    if (!card_runtime_cover_mode_valid(p.sensor)) p.sensor.clear();
-    p.precision.clear();
-    if (p.sensor != "set_position") p.unit.clear();
-    p.options = cover_card_options_normalized(p.options, p.sensor);
-  }
+}
+
+inline std::string normalize_saved_config_access_options(
+    const std::string &options, const ParsedCfg &p) {
+  if (p.type == "garage") return garage_card_options_normalized(options, p.sensor);
+  if (p.type == "gate") return gate_card_options_normalized(options, p.sensor);
+  return cover_card_options_normalized(options, p.sensor);
+}
+
+inline void normalize_saved_config_security_fields(ParsedCfg &p) {
   if (p.type == "alarm") {
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.icon_on = "Auto";
     if (p.icon.empty() || p.icon == "Auto") p.icon = "Security";
-    p.options = alarm_card_options_normalized(p.options);
+    return;
   }
-  if (p.type == "alarm_action") {
-    if (!alarm_action_mode_valid(p.sensor)) p.sensor = "away";
-    p.unit.clear();
-    p.precision.clear();
-    p.icon_on = "Auto";
-    if (p.icon.empty() || p.icon == "Auto" || alarm_action_legacy_icon_name(p.sensor, p.icon)) {
-      p.icon = alarm_action_icon_name(p.sensor);
-    }
-    p.options = alarm_card_options_normalized(p.options);
+  if (!alarm_action_mode_valid(p.sensor)) p.sensor = "away";
+  if (p.icon.empty() || p.icon == "Auto" || alarm_action_legacy_icon_name(p.sensor, p.icon)) {
+    p.icon = alarm_action_icon_name(p.sensor);
   }
-  if (p.type == "webhook") {
-    p.sensor = normalize_webhook_method(p.sensor);
-    if (p.sensor == "GET" || p.sensor == "DELETE") p.unit.clear();
-    p.precision.clear();
-    p.icon_on = "Auto";
-    if (p.icon.empty()) p.icon = "Auto";
-    p.options = webhook_card_options_normalized(p.options);
-  }
-  if (p.type == "image") {
-    p.icon_on = "Auto";
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options = image_card_options_normalized(p.options);
-    p.icon = image_card_icon_enabled(p)
-      ? (p.icon.empty() || p.icon == "Auto" ? "Camera" : p.icon)
-      : "Auto";
-    if (!image_card_label_enabled(p)) p.label.clear();
-  }
-  if (p.type == "screen_lock") {
-    p.entity.clear();
-    p.label.clear();
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options.clear();
-    p.icon = "Lock";
-    p.icon_on = "Lock Open";
-  }
-  if (p.type == "calendar") {
-    if (p.entity.empty()) p.entity = "sensor.date";
-    p.label.clear();
-    p.icon = "Auto";
-    p.icon_on = "Auto";
-    p.sensor.clear();
-    p.unit.clear();
-    if (p.precision != "datetime") p.precision.clear();
-    p.options = date_time_card_options_normalized(p.options, p);
-  }
-  if (p.type == "clock") {
-    p.entity.clear();
-    p.label.clear();
-    p.icon = "Auto";
-    p.icon_on = "Auto";
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options = date_time_card_options_normalized(p.options, p);
-  }
-  if (p.type == "timezone") {
-    if (p.entity.empty()) p.entity = "UTC (GMT+0)";
-    p.label.clear();
-    p.icon = "Auto";
-    p.icon_on = "Auto";
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options = date_time_card_options_normalized(p.options, p);
-  }
+}
+
+inline std::string normalize_saved_config_security_options(
+    const std::string &options, const ParsedCfg &) {
+  return alarm_card_options_normalized(options);
+}
+
+inline void normalize_saved_config_weather_fields(ParsedCfg &p, bool was_legacy_forecast) {
+  if (was_legacy_forecast && p.label == "Weather") p.label.clear();
+  if (!card_runtime_weather_forecast_precision(p.precision)) p.precision.clear();
+}
+
+inline std::string normalize_saved_config_weather_options(
+    const std::string &options, const ParsedCfg &p) {
+  return weather_card_options_normalized(options, p);
+}
+
+inline void normalize_saved_config_image_fields(ParsedCfg &p) {
+  p.icon = image_card_icon_enabled(p)
+    ? (p.icon.empty() || p.icon == "Auto" ? "Camera" : p.icon)
+    : "Auto";
+  if (!image_card_label_enabled(p)) p.label.clear();
+}
+
+inline std::string normalize_saved_config_image_options(
+    const std::string &options, const ParsedCfg &) {
+  return image_card_options_normalized(options);
+}
+
+inline void normalize_saved_config_climate_fields(ParsedCfg &p) {
+  if (p.icon.empty()) p.icon = "Thermostat";
+  if (p.icon_on.empty()) p.icon_on = "Auto";
+  p.precision = normalize_climate_precision_config(p.precision);
+}
+
+inline std::string normalize_saved_config_climate_options(
+    const std::string &options, const ParsedCfg &) {
+  return climate_card_options_normalized(options, true);
+}
+
+inline std::string normalize_saved_config_light_control_options(
+    const std::string &options, const ParsedCfg &) {
+  return light_control_card_options_normalized(options);
+}
+
+inline void normalize_saved_config_webhook_fields(ParsedCfg &p) {
+  p.sensor = normalize_webhook_method(p.sensor);
+  if (p.sensor == "GET" || p.sensor == "DELETE") p.unit.clear();
+  if (p.icon.empty()) p.icon = "Auto";
+}
+
+inline std::string normalize_saved_config_webhook_options(
+    const std::string &options, const ParsedCfg &) {
+  return webhook_card_options_normalized(options);
+}
+
+inline const char *saved_config_subpage_default_label(const std::string &kind) {
+  if (kind == "switch") return "Switch";
+  if (kind == "lights") return "Lighting";
+  if (kind == "climate") return "Climate";
+  if (kind == "presence") return "Presence";
+  if (kind == "media") return "Media";
+  if (kind == "alarm") return "Alarm";
+  if (kind == "cover") return "Cover";
+  if (kind == "garage") return "Garage";
+  if (kind == "gate") return "Gate";
+  if (kind == "lock") return "Lock";
+  if (kind == "vacuum") return "Vacuum";
+  if (kind == "lawn_mower") return "Lawn Mower";
+  if (kind == "weather") return "Weather";
+  if (kind == "sensor") return "Sensor";
+  if (kind == "image") return "Camera";
+  return "";
+}
+
+inline const char *saved_config_subpage_default_icon(const std::string &kind) {
+  if (kind == "switch") return "Power Plug";
+  if (kind == "lights") return "Lightbulb";
+  if (kind == "climate") return "Thermostat";
+  if (kind == "presence") return "Account";
+  if (kind == "media") return "Speaker";
+  if (kind == "alarm") return "Security";
+  if (kind == "cover") return "Blinds";
+  if (kind == "garage") return "Garage";
+  if (kind == "gate") return "Gate";
+  if (kind == "lock") return "Lock";
+  if (kind == "vacuum") return "Robot Vacuum";
+  if (kind == "lawn_mower") return "Robot Mower";
+  if (kind == "weather") return "Weather Partly Cloudy";
+  if (kind == "sensor") return "Gauge";
+  if (kind == "image") return "Camera";
+  return "";
+}
+
+inline void normalize_saved_config_subpage_fields(ParsedCfg &p) {
+  const std::string kind = normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind"));
+  if (kind.empty()) return;
+  if (p.label.empty()) p.label = saved_config_subpage_default_label(kind);
+  if (p.icon.empty() || p.icon == "Auto") p.icon = saved_config_subpage_default_icon(kind);
+  p.icon_on = "Auto";
+  p.sensor = "indicator";
+  p.unit.clear();
+  p.precision.clear();
+}
+
+inline std::string normalize_saved_config_subpage_options(
+    const std::string &options, const ParsedCfg &p) {
+  return subpage_card_options_normalized(options, p.sensor, p.precision);
+}
+
+inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
+  migrate_saved_config_action_legacy(p);
+  const bool was_legacy_text_sensor = p.type == "text_sensor";
+  migrate_saved_config_sensor_legacy(p);
+  const bool normalized_saved_fan = normalize_saved_config_fan(
+      p, normalize_saved_config_fan_fields, fan_control_card_options_normalized);
+  const bool was_legacy_weather_forecast = migrate_saved_config_weather_legacy(p);
+  normalize_saved_config_weather(
+      p, was_legacy_weather_forecast, normalize_saved_config_weather_fields,
+      normalize_saved_config_weather_options);
+  normalize_saved_config_media(p, normalize_saved_config_media_fields,
+                               media_card_options_normalized);
+  normalize_saved_config_climate(
+      p, normalize_saved_config_climate_fields, normalize_saved_config_climate_options);
+  const bool normalized_saved_access = normalize_saved_config_access(
+      p, normalize_saved_config_access_fields, normalize_saved_config_access_options);
+  normalize_saved_config_security(
+      p, normalize_saved_config_security_fields, normalize_saved_config_security_options);
+  normalize_saved_config_webhook(
+      p, normalize_saved_config_webhook_fields, normalize_saved_config_webhook_options);
+  normalize_saved_config_image(
+      p, normalize_saved_config_image_fields, normalize_saved_config_image_options);
+  const bool normalized_saved_static = normalize_saved_config_static(p);
+  normalize_saved_config_date_time(
+      p, normalize_saved_config_date_time_fields, date_time_card_options_normalized);
   if (p.type == "todo") {
     p.sensor.clear();
     p.unit.clear();
@@ -1154,21 +1229,9 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     if (p.icon.empty() || p.icon == "Auto") p.icon = "Check";
     p.options = todo_card_options_normalized(p.options);
   }
-  if (p.type == "light_switch") {
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options.clear();
-  }
-  if (p.type == "light_control") {
-    p.sensor.clear();
-    p.unit.clear();
-    p.precision.clear();
-    p.options = light_control_card_options_normalized(p.options);
-  }
-  if (p.type == "subpage") {
-    p.options = subpage_card_options_normalized(p.options, p.sensor, p.precision);
-  }
+  normalize_saved_config_light_control(p, normalize_saved_config_light_control_options);
+  normalize_saved_config_subpage(
+      p, normalize_saved_config_subpage_fields, normalize_saved_config_subpage_options);
   normalize_saved_config_action(p, normalize_saved_config_action_fields,
                                 action_card_options_normalized);
   if (migrate_saved_config_vacuum_legacy(p)) {
@@ -1182,34 +1245,13 @@ inline ParsedCfg normalize_parsed_cfg(ParsedCfg p) {
     p.icon_on = normalize_saved_config_vacuum_icon_on(p.icon_on);
     if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_vacuum_default_icon_name(p.sensor);
   }
-  if (p.type == "lawn_mower") {
-    p.sensor = card_runtime_lawn_mower_mode(p.sensor);
-    p.unit.clear();
-    p.precision.clear();
-    p.options.clear();
-    p.icon_on = "Auto";
-    if (p.icon.empty() || p.icon == "Auto") p.icon = card_runtime_lawn_mower_default_icon_name(p.sensor);
-  }
-  if (p.type.empty()) {
-    p.options = switch_card_options_normalized(p.options);
-  }
-  if (p.type == "door_window") {
-    p.entity.clear();
-    p.unit.clear();
-    p.precision = normalize_door_window_subtype(p.precision);
-    if (p.icon.empty() || p.icon == "Auto") p.icon = door_window_closed_icon_name(p.precision);
-    if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = door_window_open_icon_name(p.precision);
-    p.options = door_window_card_options_normalized(p.options);
-  }
-  if (p.type == "presence") {
-    p.entity.clear();
-    p.unit.clear();
-    p.precision.clear();
-    if (p.icon.empty() || p.icon == "Auto") p.icon = "Motion Sensor Off";
-    if (p.icon_on.empty() || p.icon_on == "Auto") p.icon_on = "Motion Sensor";
-    p.options = presence_card_options_normalized(p.options);
-  }
-  if (!p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "cover" && p.type != "garage" && p.type != "gate" && p.type != "webhook" && p.type != "screen_lock" && p.type != "todo" && p.type != "sensor" && p.type != "door_window" && p.type != "presence" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && p.type != "lawn_mower" && !fan_card_type(p.type) && !card_large_numbers_supported(p)) {
+  const bool normalized_saved_mower =
+      normalize_saved_config_mower(p, normalize_saved_config_mower_fields);
+  normalize_saved_config_switch(p, switch_card_options_normalized);
+  const bool normalized_saved_occupancy = normalize_saved_config_occupancy(
+      p, normalize_saved_config_occupancy_fields,
+      normalize_saved_config_occupancy_options);
+  if (!normalized_saved_static && !normalized_saved_fan && !normalized_saved_mower && !normalized_saved_occupancy && !normalized_saved_access && !p.type.empty() && p.type != "action" && p.type != "alarm" && p.type != "alarm_action" && !climate_card_type(p.type) && p.type != "webhook" && p.type != "todo" && p.type != "sensor" && p.type != "media" && p.type != "subpage" && p.type != "image" && p.type != "light_control" && p.type != "vacuum" && !card_large_numbers_supported(p)) {
     p.options.clear();
   }
   normalize_saved_config_sensor(p, was_legacy_text_sensor,

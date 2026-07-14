@@ -41,7 +41,7 @@ SAVED_CONFIG_FIELDS = [
     "precision",
     "options",
 ]
-NORMALIZATION_FIELD_POLICIES = {"keep", "clear", "default", "allowed", "alias", "hook"}
+NORMALIZATION_FIELD_POLICIES = {"keep", "clear", "default", "default_if_empty", "allowed", "alias", "hook"}
 NORMALIZATION_CONDITION_OPERATORS = {"equals", "in", "present"}
 
 
@@ -463,10 +463,10 @@ def validate_card_normalization(
                 continue
             policy = rule.get("policy")
             if policy not in NORMALIZATION_FIELD_POLICIES:
-                errors.append(path_error(f"{rule_path}.policy", "must be keep, clear, default, allowed, alias, or hook"))
+                errors.append(path_error(f"{rule_path}.policy", "must be keep, clear, default, default_if_empty, allowed, alias, or hook"))
                 continue
-            if policy == "default" and not isinstance(rule.get("value"), str):
-                errors.append(path_error(f"{rule_path}.value", "must be a string for default"))
+            if policy in {"default", "default_if_empty"} and not isinstance(rule.get("value"), str):
+                errors.append(path_error(f"{rule_path}.value", f"must be a string for {policy}"))
             if policy == "allowed":
                 values = rule.get("values")
                 if not isinstance(values, list) or not values or not all(isinstance(item, str) for item in values):

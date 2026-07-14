@@ -56,6 +56,34 @@ SAVED_CONFIG_ACTION_TS = ROOT / "src" / "webserver" / "generated" / "saved_confi
 SAVED_CONFIG_ACTION_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_action_generated.h"
 SAVED_CONFIG_MEDIA_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_media.ts"
 SAVED_CONFIG_MEDIA_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_media_generated.h"
+SAVED_CONFIG_STATIC_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_static.ts"
+SAVED_CONFIG_STATIC_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_static_generated.h"
+SAVED_CONFIG_FAN_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_fan.ts"
+SAVED_CONFIG_FAN_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_fan_generated.h"
+SAVED_CONFIG_DATE_TIME_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_date_time.ts"
+SAVED_CONFIG_DATE_TIME_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_date_time_generated.h"
+SAVED_CONFIG_MOWER_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_mower.ts"
+SAVED_CONFIG_MOWER_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_mower_generated.h"
+SAVED_CONFIG_OCCUPANCY_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_occupancy.ts"
+SAVED_CONFIG_OCCUPANCY_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_occupancy_generated.h"
+SAVED_CONFIG_ACCESS_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_access.ts"
+SAVED_CONFIG_ACCESS_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_access_generated.h"
+SAVED_CONFIG_SECURITY_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_security.ts"
+SAVED_CONFIG_SECURITY_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_security_generated.h"
+SAVED_CONFIG_WEATHER_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_weather.ts"
+SAVED_CONFIG_WEATHER_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_weather_generated.h"
+SAVED_CONFIG_IMAGE_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_image.ts"
+SAVED_CONFIG_IMAGE_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_image_generated.h"
+SAVED_CONFIG_CLIMATE_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_climate.ts"
+SAVED_CONFIG_CLIMATE_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_climate_generated.h"
+SAVED_CONFIG_LIGHT_CONTROL_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_light_control.ts"
+SAVED_CONFIG_LIGHT_CONTROL_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_light_control_generated.h"
+SAVED_CONFIG_WEBHOOK_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_webhook.ts"
+SAVED_CONFIG_WEBHOOK_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_webhook_generated.h"
+SAVED_CONFIG_SUBPAGE_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_subpage.ts"
+SAVED_CONFIG_SUBPAGE_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_subpage_generated.h"
+SAVED_CONFIG_SWITCH_TS = ROOT / "src" / "webserver" / "generated" / "saved_config_switch.ts"
+SAVED_CONFIG_SWITCH_H = ROOT / "components" / "espcontrol" / "button_grid_saved_config_switch_generated.h"
 CARD_DOCS_DIR = ROOT / "docs" / "generated" / "cards"
 DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
@@ -1006,6 +1034,1225 @@ def gen_saved_config_media_h(data):
     )
 
 
+SAVED_CONFIG_STATIC_CARD_TYPES = (
+    "internal",
+    "light_brightness",
+    "light_switch",
+    "light_temperature",
+    "push",
+    "screen_lock",
+    "slider",
+)
+
+
+def saved_config_static_normalizations(data):
+    normalizations = []
+    for card_type in SAVED_CONFIG_STATIC_CARD_TYPES:
+        normalization = data["cards"][card_type].get("normalization")
+        if not normalization:
+            raise BuildError(f"static saved-config card {card_type} requires authored normalization")
+        if normalization.get("migrationActions") or normalization.get("optionHook"):
+            raise BuildError(f"static saved-config card {card_type} must be fully declarative")
+        hooks = [
+            field for field, rule in normalization["fields"].items()
+            if rule.get("policy") == "hook"
+        ]
+        if hooks:
+            raise BuildError(f"static saved-config card {card_type} has unsupported hooks: {', '.join(hooks)}")
+        normalizations.append((card_type, normalization))
+    return normalizations
+
+
+def saved_config_declarative_field_lines(field, rule, language):
+    policy = rule["policy"]
+    target = f"config.{field}"
+    if policy == "keep":
+        return []
+    if policy == "clear":
+        return [f"    {target} = \"\";\n"] if language == "ts" else [f"    {target}.clear();\n"]
+    if policy == "default":
+        return [f"    {target} = {json.dumps(rule['value'], ensure_ascii=False)};\n"]
+    if policy == "default_if_empty":
+        value = json.dumps(rule["value"], ensure_ascii=False)
+        if language == "ts":
+            return [f"    if (!{target}) {target} = {value};\n"]
+        return [f"    if ({target}.empty()) {target} = {value};\n"]
+    if policy in ("alias", "allowed"):
+        lines = []
+        for alias, value in rule.get("aliases", {}).items():
+            operator = "===" if language == "ts" else "=="
+            lines.append(
+                f"    if ({target} {operator} {json.dumps(alias, ensure_ascii=False)}) "
+                f"{target} = {json.dumps(value, ensure_ascii=False)};\n"
+            )
+        if policy == "allowed":
+            operator = "!==" if language == "ts" else "!="
+            invalid = " && ".join(
+                f"{target} {operator} {json.dumps(value, ensure_ascii=False)}"
+                for value in rule["values"]
+            )
+            lines.append(f"    if ({invalid}) {target} = {json.dumps(rule['fallback'], ensure_ascii=False)};\n")
+        return lines
+    raise BuildError(f"unsupported declarative saved-config policy {policy!r} for {field}")
+
+
+def gen_saved_config_static_ts(data):
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG STATIC CARD HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export function normalizeSavedConfigStatic(config: CardConfig): boolean {\n",
+    ]
+    for card_type, normalization in saved_config_static_normalizations(data):
+        lines.append(f"  if (config.type === {json.dumps(card_type)}) {{\n")
+        for field in data["fields"]:
+            lines.extend(saved_config_declarative_field_lines(field, normalization["fields"][field], "ts"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_static_h(data):
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG STATIC CARD HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config>\n",
+        "inline bool normalize_saved_config_static(Config &config) {\n",
+    ]
+    for card_type, normalization in saved_config_static_normalizations(data):
+        lines.append(f"  if (config.type == {json.dumps(card_type)}) {{\n")
+        for field in data["fields"]:
+            lines.extend(saved_config_declarative_field_lines(field, normalization["fields"][field], "cpp"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+SAVED_CONFIG_FAN_CARD_TYPES = (
+    "fan_direction",
+    "fan_oscillate",
+    "fan_preset",
+    "fan_speed",
+    "fan_control",
+    "fan_switch",
+)
+
+
+def saved_config_fan_normalizations(data):
+    normalizations = []
+    for card_type in SAVED_CONFIG_FAN_CARD_TYPES:
+        normalization = data["cards"][card_type].get("normalization")
+        if not normalization:
+            raise BuildError(f"fan saved-config card {card_type} requires authored normalization")
+        field_hooks = {
+            rule.get("hook") for field, rule in normalization["fields"].items()
+            if field != "options" and rule.get("policy") == "hook"
+        }
+        if field_hooks != {"normalize_fan_fields"}:
+            raise BuildError(f"fan saved-config card {card_type} requires the authored Fan field hook")
+        option_rule = normalization["fields"]["options"]
+        if card_type == "fan_control":
+            if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_fan_options":
+                raise BuildError("fan_control saved-config normalization requires the authored Fan option hook")
+            if normalization.get("optionHook") != "normalize_fan_options":
+                raise BuildError("fan_control saved-config optionHook must name normalize_fan_options")
+        elif option_rule.get("policy") != "clear" or normalization.get("optionHook") is not None:
+            raise BuildError(f"fan saved-config card {card_type} must declaratively clear options")
+        normalizations.append((card_type, normalization))
+    return normalizations
+
+
+def gen_saved_config_fan_ts(data):
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG FAN HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigFanFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigFanOptionHook = (options: string) => string;\n\n",
+        "export function normalizeSavedConfigFan(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigFanFieldHook,\n",
+        "  normalizeOptions: SavedConfigFanOptionHook,\n",
+        "): boolean {\n",
+    ]
+    for card_type, normalization in saved_config_fan_normalizations(data):
+        lines.append(f"  if (config.type === {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_fan_fields":
+                    if not field_hook_called:
+                        lines.append("    normalizeFields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_fan_options":
+                    lines.append("    config.options = normalizeOptions(config.options || \"\");\n")
+                else:
+                    raise BuildError(f"unsupported Fan saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_fan_h(data):
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG FAN HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_fan(Config &config, FieldHook normalize_fields,\n",
+        "                                      OptionHook normalize_options) {\n",
+    ]
+    for card_type, normalization in saved_config_fan_normalizations(data):
+        lines.append(f"  if (config.type == {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_fan_fields":
+                    if not field_hook_called:
+                        lines.append("    normalize_fields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_fan_options":
+                    lines.append("    config.options = normalize_options(config.options);\n")
+                else:
+                    raise BuildError(f"unsupported Fan saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+SAVED_CONFIG_DATE_TIME_CARD_TYPES = ("calendar", "clock", "timezone")
+
+
+def saved_config_date_time_normalizations(data):
+    normalizations = []
+    for card_type in SAVED_CONFIG_DATE_TIME_CARD_TYPES:
+        normalization = data["cards"][card_type].get("normalization")
+        if not normalization:
+            raise BuildError(f"date/time saved-config card {card_type} requires authored normalization")
+        field_hooks = {
+            rule.get("hook") for field, rule in normalization["fields"].items()
+            if field != "options" and rule.get("policy") == "hook"
+        }
+        expected_hooks = set() if card_type == "clock" else {"normalize_date_time_fields"}
+        if field_hooks != expected_hooks:
+            raise BuildError(f"date/time saved-config card {card_type} has unexpected field hooks")
+        option_rule = normalization["fields"]["options"]
+        if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_date_time_options":
+            raise BuildError(f"date/time saved-config card {card_type} requires the authored option hook")
+        if normalization.get("optionHook") != "normalize_date_time_options":
+            raise BuildError(f"date/time saved-config card {card_type} has an unexpected optionHook")
+        normalizations.append((card_type, normalization))
+    return normalizations
+
+
+def gen_saved_config_date_time_ts(data):
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG DATE/TIME HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigDateTimeFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigDateTimeOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigDateTime(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigDateTimeFieldHook,\n",
+        "  normalizeOptions: SavedConfigDateTimeOptionHook,\n",
+        "): boolean {\n",
+    ]
+    for card_type, normalization in saved_config_date_time_normalizations(data):
+        lines.append(f"  if (config.type === {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_date_time_fields":
+                    if not field_hook_called:
+                        lines.append("    normalizeFields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_date_time_options":
+                    lines.append("    config.options = normalizeOptions(config.options || \"\", config);\n")
+                else:
+                    raise BuildError(f"unsupported date/time saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_date_time_h(data):
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG DATE/TIME HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_date_time(Config &config, FieldHook normalize_fields,\n",
+        "                                            OptionHook normalize_options) {\n",
+    ]
+    for card_type, normalization in saved_config_date_time_normalizations(data):
+        lines.append(f"  if (config.type == {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_date_time_fields":
+                    if not field_hook_called:
+                        lines.append("    normalize_fields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_date_time_options":
+                    lines.append("    config.options = normalize_options(config.options, config);\n")
+                else:
+                    raise BuildError(f"unsupported date/time saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+def saved_config_mower_normalization(data):
+    normalization = data["cards"]["lawn_mower"].get("normalization")
+    if not normalization:
+        raise BuildError("lawn mower saved-config card requires authored normalization")
+    field_hooks = {
+        rule.get("hook") for field, rule in normalization["fields"].items()
+        if field != "options" and rule.get("policy") == "hook"
+    }
+    if field_hooks != {"normalize_mower_fields"}:
+        raise BuildError("lawn mower saved-config card requires the authored field hook")
+    if normalization["fields"]["options"].get("policy") != "clear":
+        raise BuildError("lawn mower saved-config card must declaratively clear options")
+    if normalization.get("migrationActions") or normalization.get("optionHook"):
+        raise BuildError("lawn mower saved-config card has unexpected migration or option hooks")
+    return normalization
+
+
+def gen_saved_config_mower_ts(data):
+    normalization = saved_config_mower_normalization(data)
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG LAWN MOWER HELPER - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigMowerFieldHook = (config: CardConfig) => void;\n\n",
+        "export function normalizeSavedConfigMower(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigMowerFieldHook,\n",
+        "): boolean {\n",
+        '  if (config.type === "lawn_mower") {\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") != "normalize_mower_fields":
+                raise BuildError(f"unsupported lawn mower saved-config hook {rule.get('hook')!r}")
+            if not field_hook_called:
+                lines.append("    normalizeFields(config);\n")
+                field_hook_called = True
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+    lines.append("    return true;\n  }\n  return false;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_mower_h(data):
+    normalization = saved_config_mower_normalization(data)
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG LAWN MOWER HELPER - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook>\n",
+        "inline bool normalize_saved_config_mower(Config &config, FieldHook normalize_fields) {\n",
+        '  if (config.type == "lawn_mower") {\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") != "normalize_mower_fields":
+                raise BuildError(f"unsupported lawn mower saved-config hook {rule.get('hook')!r}")
+            if not field_hook_called:
+                lines.append("    normalize_fields(config);\n")
+                field_hook_called = True
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+    lines.append("    return true;\n  }\n  return false;\n}\n")
+    return "".join(lines)
+
+
+SAVED_CONFIG_OCCUPANCY_CARD_TYPES = ("door_window", "presence")
+
+
+def saved_config_occupancy_normalizations(data):
+    normalizations = []
+    for card_type in SAVED_CONFIG_OCCUPANCY_CARD_TYPES:
+        normalization = data["cards"][card_type].get("normalization")
+        if not normalization:
+            raise BuildError(f"occupancy saved-config card {card_type} requires authored normalization")
+        field_hooks = {
+            rule.get("hook") for field, rule in normalization["fields"].items()
+            if field != "options" and rule.get("policy") == "hook"
+        }
+        if field_hooks != {"normalize_occupancy_fields"}:
+            raise BuildError(f"occupancy saved-config card {card_type} requires the authored field hook")
+        option_rule = normalization["fields"]["options"]
+        if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_occupancy_options":
+            raise BuildError(f"occupancy saved-config card {card_type} requires the authored option hook")
+        if normalization.get("optionHook") != "normalize_occupancy_options":
+            raise BuildError(f"occupancy saved-config card {card_type} has an unexpected optionHook")
+        normalizations.append((card_type, normalization))
+    return normalizations
+
+
+def gen_saved_config_occupancy_ts(data):
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG OCCUPANCY HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigOccupancyFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigOccupancyOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigOccupancy(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigOccupancyFieldHook,\n",
+        "  normalizeOptions: SavedConfigOccupancyOptionHook,\n",
+        "): boolean {\n",
+    ]
+    for card_type, normalization in saved_config_occupancy_normalizations(data):
+        lines.append(f"  if (config.type === {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_occupancy_fields":
+                    if not field_hook_called:
+                        lines.append("    normalizeFields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_occupancy_options":
+                    lines.append("    config.options = normalizeOptions(config.options || \"\", config);\n")
+                else:
+                    raise BuildError(f"unsupported occupancy saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_occupancy_h(data):
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG OCCUPANCY HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_occupancy(Config &config, FieldHook normalize_fields,\n",
+        "                                             OptionHook normalize_options) {\n",
+    ]
+    for card_type, normalization in saved_config_occupancy_normalizations(data):
+        lines.append(f"  if (config.type == {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_occupancy_fields":
+                    if not field_hook_called:
+                        lines.append("    normalize_fields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_occupancy_options":
+                    lines.append("    config.options = normalize_options(config.options, config);\n")
+                else:
+                    raise BuildError(f"unsupported occupancy saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+SAVED_CONFIG_ACCESS_CARD_TYPES = ("cover", "garage", "gate", "lock")
+
+
+def saved_config_access_normalizations(data):
+    normalizations = []
+    for card_type in SAVED_CONFIG_ACCESS_CARD_TYPES:
+        normalization = data["cards"][card_type].get("normalization")
+        if not normalization:
+            raise BuildError(f"access saved-config card {card_type} requires authored normalization")
+        field_hooks = {
+            rule.get("hook") for field, rule in normalization["fields"].items()
+            if field != "options" and rule.get("policy") == "hook"
+        }
+        if field_hooks != {"normalize_access_fields"}:
+            raise BuildError(f"access saved-config card {card_type} requires the authored field hook")
+        option_rule = normalization["fields"]["options"]
+        if card_type == "lock":
+            if option_rule.get("policy") != "clear" or normalization.get("optionHook") is not None:
+                raise BuildError("lock saved-config normalization must declaratively clear options")
+        else:
+            if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_access_options":
+                raise BuildError(f"access saved-config card {card_type} requires the authored option hook")
+            if normalization.get("optionHook") != "normalize_access_options":
+                raise BuildError(f"access saved-config card {card_type} has an unexpected optionHook")
+        normalizations.append((card_type, normalization))
+    return normalizations
+
+
+def gen_saved_config_access_ts(data):
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG ACCESS HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigAccessFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigAccessOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigAccess(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigAccessFieldHook,\n",
+        "  normalizeOptions: SavedConfigAccessOptionHook,\n",
+        "): boolean {\n",
+    ]
+    for card_type, normalization in saved_config_access_normalizations(data):
+        lines.append(f"  if (config.type === {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_access_fields":
+                    if not field_hook_called:
+                        lines.append("    normalizeFields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_access_options":
+                    lines.append("    config.options = normalizeOptions(config.options || \"\", config);\n")
+                else:
+                    raise BuildError(f"unsupported access saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_access_h(data):
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG ACCESS HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_access(Config &config, FieldHook normalize_fields,\n",
+        "                                          OptionHook normalize_options) {\n",
+    ]
+    for card_type, normalization in saved_config_access_normalizations(data):
+        lines.append(f"  if (config.type == {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_access_fields":
+                    if not field_hook_called:
+                        lines.append("    normalize_fields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_access_options":
+                    lines.append("    config.options = normalize_options(config.options, config);\n")
+                else:
+                    raise BuildError(f"unsupported access saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+SAVED_CONFIG_SECURITY_CARD_TYPES = ("alarm", "alarm_action")
+
+
+def saved_config_security_normalizations(data):
+    normalizations = []
+    for card_type in SAVED_CONFIG_SECURITY_CARD_TYPES:
+        normalization = data["cards"][card_type].get("normalization")
+        if not normalization:
+            raise BuildError(f"security saved-config card {card_type} requires authored normalization")
+        field_hooks = {
+            rule.get("hook") for field, rule in normalization["fields"].items()
+            if field != "options" and rule.get("policy") == "hook"
+        }
+        if field_hooks != {"normalize_security_fields"}:
+            raise BuildError(f"security saved-config card {card_type} requires the authored field hook")
+        option_rule = normalization["fields"]["options"]
+        if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_security_options":
+            raise BuildError(f"security saved-config card {card_type} requires the authored option hook")
+        if normalization.get("optionHook") != "normalize_security_options":
+            raise BuildError(f"security saved-config card {card_type} has an unexpected optionHook")
+        normalizations.append((card_type, normalization))
+    return normalizations
+
+
+def gen_saved_config_security_ts(data):
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG SECURITY HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigSecurityFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigSecurityOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigSecurity(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigSecurityFieldHook,\n",
+        "  normalizeOptions: SavedConfigSecurityOptionHook,\n",
+        "): boolean {\n",
+    ]
+    for card_type, normalization in saved_config_security_normalizations(data):
+        lines.append(f"  if (config.type === {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_security_fields":
+                    if not field_hook_called:
+                        lines.append("    normalizeFields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_security_options":
+                    lines.append("    config.options = normalizeOptions(config.options || \"\", config);\n")
+                else:
+                    raise BuildError(f"unsupported security saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_security_h(data):
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG SECURITY HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_security(Config &config, FieldHook normalize_fields,\n",
+        "                                            OptionHook normalize_options) {\n",
+    ]
+    for card_type, normalization in saved_config_security_normalizations(data):
+        lines.append(f"  if (config.type == {json.dumps(card_type)}) {{\n")
+        field_hook_called = False
+        for field in data["fields"]:
+            rule = normalization["fields"][field]
+            if rule.get("policy") == "hook":
+                if rule.get("hook") == "normalize_security_fields":
+                    if not field_hook_called:
+                        lines.append("    normalize_fields(config);\n")
+                        field_hook_called = True
+                elif rule.get("hook") == "normalize_security_options":
+                    lines.append("    config.options = normalize_options(config.options, config);\n")
+                else:
+                    raise BuildError(f"unsupported security saved-config hook {rule.get('hook')!r}")
+            else:
+                lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+        lines.append("    return true;\n  }\n")
+    lines.append("  return false;\n}\n")
+    return "".join(lines)
+
+
+def saved_config_weather_normalization(data):
+    normalization = data["cards"]["weather"].get("normalization")
+    if not normalization:
+        raise BuildError("weather saved-config card requires authored normalization")
+    field_hooks = {
+        rule.get("hook") for field, rule in normalization["fields"].items()
+        if field != "options" and rule.get("policy") == "hook"
+    }
+    if field_hooks != {"normalize_weather_fields"}:
+        raise BuildError("weather saved-config card requires the authored field hook")
+    option_rule = normalization["fields"]["options"]
+    if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_weather_options":
+        raise BuildError("weather saved-config card requires the authored option hook")
+    if normalization.get("optionHook") != "normalize_weather_options":
+        raise BuildError("weather saved-config card has an unexpected optionHook")
+    if normalization.get("migrationActions") != ["legacy_weather_forecast"]:
+        raise BuildError("weather saved-config card requires the legacy forecast migration")
+    migration = data["migrationActions"]["legacy_weather_forecast"]
+    if migration.get("set") != {"type": "weather", "precision": "tomorrow"}:
+        raise BuildError("legacy weather forecast migration has unexpected field updates")
+    return normalization
+
+
+def gen_saved_config_weather_ts(data):
+    normalization = saved_config_weather_normalization(data)
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG WEATHER HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigWeatherFieldHook = (config: CardConfig, wasLegacyForecast: boolean) => void;\n",
+        "export type SavedConfigWeatherOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function migrateSavedConfigWeatherLegacy(config: CardConfig): boolean {\n",
+        '  if (config.type !== "weather_forecast") return false;\n',
+        '  config.type = "weather";\n',
+        '  config.precision = "tomorrow";\n',
+        "  return true;\n",
+        "}\n\n",
+        "export function normalizeSavedConfigWeather(\n",
+        "  config: CardConfig,\n",
+        "  wasLegacyForecast: boolean,\n",
+        "  normalizeFields: SavedConfigWeatherFieldHook,\n",
+        "  normalizeOptions: SavedConfigWeatherOptionHook,\n",
+        "): boolean {\n",
+        '  if (config.type !== "weather") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_weather_fields":
+                if not field_hook_called:
+                    lines.append("  normalizeFields(config, wasLegacyForecast);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_weather_options":
+                lines.append('  config.options = normalizeOptions(config.options || "", config);\n')
+            else:
+                raise BuildError(f"unsupported weather saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_weather_h(data):
+    normalization = saved_config_weather_normalization(data)
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG WEATHER HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config>\n",
+        "inline bool migrate_saved_config_weather_legacy(Config &config) {\n",
+        '  if (config.type != "weather_forecast") return false;\n',
+        '  config.type = "weather";\n',
+        '  config.precision = "tomorrow";\n',
+        "  return true;\n",
+        "}\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_weather(Config &config, bool was_legacy_forecast,\n",
+        "                                           FieldHook normalize_fields,\n",
+        "                                           OptionHook normalize_options) {\n",
+        '  if (config.type != "weather") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_weather_fields":
+                if not field_hook_called:
+                    lines.append("  normalize_fields(config, was_legacy_forecast);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_weather_options":
+                lines.append("  config.options = normalize_options(config.options, config);\n")
+            else:
+                raise BuildError(f"unsupported weather saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def saved_config_image_normalization(data):
+    normalization = data["cards"]["image"].get("normalization")
+    if not normalization:
+        raise BuildError("image saved-config card requires authored normalization")
+    field_hooks = {
+        rule.get("hook") for field, rule in normalization["fields"].items()
+        if field != "options" and rule.get("policy") == "hook"
+    }
+    if field_hooks != {"normalize_image_fields"}:
+        raise BuildError("image saved-config card requires the authored field hook")
+    option_rule = normalization["fields"]["options"]
+    if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_image_options":
+        raise BuildError("image saved-config card requires the authored option hook")
+    if normalization.get("optionHook") != "normalize_image_options":
+        raise BuildError("image saved-config card has an unexpected optionHook")
+    return normalization
+
+
+def gen_saved_config_image_ts(data):
+    normalization = saved_config_image_normalization(data)
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG IMAGE HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigImageFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigImageOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigImage(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigImageFieldHook,\n",
+        "  normalizeOptions: SavedConfigImageOptionHook,\n",
+        "): boolean {\n",
+        '  if (config.type !== "image") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_image_fields":
+                if not field_hook_called:
+                    lines.append("  normalizeFields(config);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_image_options":
+                lines.append('  config.options = normalizeOptions(config.options || "", config);\n')
+            else:
+                raise BuildError(f"unsupported image saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_image_h(data):
+    normalization = saved_config_image_normalization(data)
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG IMAGE HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_image(Config &config, FieldHook normalize_fields,\n",
+        "                                         OptionHook normalize_options) {\n",
+        '  if (config.type != "image") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_image_fields":
+                if not field_hook_called:
+                    lines.append("  normalize_fields(config);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_image_options":
+                lines.append("  config.options = normalize_options(config.options, config);\n")
+            else:
+                raise BuildError(f"unsupported image saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def saved_config_climate_normalization(data):
+    climate = data["cards"]["climate"].get("normalization")
+    control = data["cards"]["climate_control"].get("normalization")
+    if not climate or not control:
+        raise BuildError("climate saved-config cards require authored normalization")
+    if climate["fields"] != control["fields"]:
+        raise BuildError("climate saved-config cards must share field normalization")
+    field_hooks = {
+        rule.get("hook") for field, rule in control["fields"].items()
+        if field != "options" and rule.get("policy") == "hook"
+    }
+    if field_hooks != {"normalize_climate_fields"}:
+        raise BuildError("climate saved-config cards require the authored field hook")
+    option_rule = control["fields"]["options"]
+    if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_climate_options":
+        raise BuildError("climate saved-config cards require the authored option hook")
+    if control.get("optionHook") != "normalize_climate_options":
+        raise BuildError("climate saved-config cards have an unexpected optionHook")
+    return control
+
+
+def gen_saved_config_climate_ts(data):
+    normalization = saved_config_climate_normalization(data)
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG CLIMATE HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigClimateFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigClimateOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigClimate(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigClimateFieldHook,\n",
+        "  normalizeOptions: SavedConfigClimateOptionHook,\n",
+        "): boolean {\n",
+        '  if (config.type !== "climate" && config.type !== "climate_control") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_climate_fields":
+                if not field_hook_called:
+                    lines.append("  normalizeFields(config);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_climate_options":
+                lines.append('  config.options = normalizeOptions(config.options || "", config);\n')
+            else:
+                raise BuildError(f"unsupported climate saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_climate_h(data):
+    normalization = saved_config_climate_normalization(data)
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG CLIMATE HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_climate(Config &config, FieldHook normalize_fields,\n",
+        "                                           OptionHook normalize_options) {\n",
+        '  if (config.type != "climate" && config.type != "climate_control") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_climate_fields":
+                if not field_hook_called:
+                    lines.append("  normalize_fields(config);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_climate_options":
+                lines.append("  config.options = normalize_options(config.options, config);\n")
+            else:
+                raise BuildError(f"unsupported climate saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def saved_config_light_control_normalization(data):
+    normalization = data["cards"]["light_control"].get("normalization")
+    if not normalization:
+        raise BuildError("light control saved-config card requires authored normalization")
+    option_rule = normalization["fields"]["options"]
+    if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_light_control_options":
+        raise BuildError("light control saved-config card requires the authored option hook")
+    if normalization.get("optionHook") != "normalize_light_control_options":
+        raise BuildError("light control saved-config card has an unexpected optionHook")
+    return normalization
+
+
+def gen_saved_config_light_control_ts(data):
+    normalization = saved_config_light_control_normalization(data)
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG LIGHT CONTROL HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigLightControlOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigLightControl(\n",
+        "  config: CardConfig,\n",
+        "  normalizeOptions: SavedConfigLightControlOptionHook,\n",
+        "): boolean {\n",
+        '  if (config.type !== "light_control") return false;\n',
+    ]
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") != "normalize_light_control_options":
+                raise BuildError(f"unsupported light control saved-config hook {rule.get('hook')!r}")
+            lines.append('  config.options = normalizeOptions(config.options || "", config);\n')
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_light_control_h(data):
+    normalization = saved_config_light_control_normalization(data)
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG LIGHT CONTROL HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename OptionHook>\n",
+        "inline bool normalize_saved_config_light_control(Config &config,\n",
+        "                                                 OptionHook normalize_options) {\n",
+        '  if (config.type != "light_control") return false;\n',
+    ]
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") != "normalize_light_control_options":
+                raise BuildError(f"unsupported light control saved-config hook {rule.get('hook')!r}")
+            lines.append("  config.options = normalize_options(config.options, config);\n")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def saved_config_webhook_normalization(data):
+    normalization = data["cards"]["webhook"].get("normalization")
+    if not normalization:
+        raise BuildError("webhook saved-config card requires authored normalization")
+    field_hooks = {
+        rule.get("hook") for field, rule in normalization["fields"].items()
+        if field != "options" and rule.get("policy") == "hook"
+    }
+    if field_hooks != {"normalize_webhook_fields"}:
+        raise BuildError("webhook saved-config card requires the authored field hook")
+    option_rule = normalization["fields"]["options"]
+    if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_webhook_options":
+        raise BuildError("webhook saved-config card requires the authored option hook")
+    if normalization.get("optionHook") != "normalize_webhook_options":
+        raise BuildError("webhook saved-config card has an unexpected optionHook")
+    return normalization
+
+
+def gen_saved_config_webhook_ts(data):
+    normalization = saved_config_webhook_normalization(data)
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG WEBHOOK HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigWebhookFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigWebhookOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigWebhook(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigWebhookFieldHook,\n",
+        "  normalizeOptions: SavedConfigWebhookOptionHook,\n",
+        "): boolean {\n",
+        '  if (config.type !== "webhook") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_webhook_fields":
+                if not field_hook_called:
+                    lines.append("  normalizeFields(config);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_webhook_options":
+                lines.append('  config.options = normalizeOptions(config.options || "", config);\n')
+            else:
+                raise BuildError(f"unsupported webhook saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_webhook_h(data):
+    normalization = saved_config_webhook_normalization(data)
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG WEBHOOK HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_webhook(Config &config, FieldHook normalize_fields,\n",
+        "                                           OptionHook normalize_options) {\n",
+        '  if (config.type != "webhook") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_webhook_fields":
+                if not field_hook_called:
+                    lines.append("  normalize_fields(config);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_webhook_options":
+                lines.append("  config.options = normalize_options(config.options, config);\n")
+            else:
+                raise BuildError(f"unsupported webhook saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def saved_config_subpage_normalization(data):
+    normalization = data["cards"]["subpage"].get("normalization")
+    if not normalization:
+        raise BuildError("subpage saved-config card requires authored normalization")
+    field_hooks = {
+        rule.get("hook") for field, rule in normalization["fields"].items()
+        if field != "options" and rule.get("policy") == "hook"
+    }
+    if field_hooks != {"normalize_subpage_fields"}:
+        raise BuildError("subpage saved-config card requires the authored field hook")
+    option_rule = normalization["fields"]["options"]
+    if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_subpage_options":
+        raise BuildError("subpage saved-config card requires the authored option hook")
+    if normalization.get("optionHook") != "normalize_subpage_options":
+        raise BuildError("subpage saved-config card has an unexpected optionHook")
+    return normalization
+
+
+def gen_saved_config_subpage_ts(data):
+    normalization = saved_config_subpage_normalization(data)
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG SUBPAGE HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigSubpageFieldHook = (config: CardConfig) => void;\n",
+        "export type SavedConfigSubpageOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigSubpage(\n",
+        "  config: CardConfig,\n",
+        "  normalizeFields: SavedConfigSubpageFieldHook,\n",
+        "  normalizeOptions: SavedConfigSubpageOptionHook,\n",
+        "): boolean {\n",
+        '  if (config.type !== "subpage") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_subpage_fields":
+                if not field_hook_called:
+                    lines.append("  normalizeFields(config);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_subpage_options":
+                lines.append('  config.options = normalizeOptions(config.options || "", config);\n')
+            else:
+                raise BuildError(f"unsupported subpage saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_subpage_h(data):
+    normalization = saved_config_subpage_normalization(data)
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG SUBPAGE HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename FieldHook, typename OptionHook>\n",
+        "inline bool normalize_saved_config_subpage(Config &config, FieldHook normalize_fields,\n",
+        "                                           OptionHook normalize_options) {\n",
+        '  if (config.type != "subpage") return false;\n',
+    ]
+    field_hook_called = False
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") == "normalize_subpage_fields":
+                if not field_hook_called:
+                    lines.append("  normalize_fields(config);\n")
+                    field_hook_called = True
+            elif rule.get("hook") == "normalize_subpage_options":
+                lines.append("  config.options = normalize_options(config.options, config);\n")
+            else:
+                raise BuildError(f"unsupported subpage saved-config hook {rule.get('hook')!r}")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def saved_config_switch_normalization(data):
+    normalization = data["cards"][""].get("normalization")
+    if not normalization:
+        raise BuildError("switch saved-config card requires authored normalization")
+    option_rule = normalization["fields"]["options"]
+    if option_rule.get("policy") != "hook" or option_rule.get("hook") != "normalize_switch_options":
+        raise BuildError("switch saved-config card requires the authored option hook")
+    if normalization.get("optionHook") != "normalize_switch_options":
+        raise BuildError("switch saved-config card has an unexpected optionHook")
+    return normalization
+
+
+def gen_saved_config_switch_ts(data):
+    normalization = saved_config_switch_normalization(data)
+    lines = [
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG SWITCH HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n",
+        'import type { CardConfig } from "../contracts/types";\n\n',
+        "export type SavedConfigSwitchOptionHook = (options: string, config: CardConfig) => string;\n\n",
+        "export function normalizeSavedConfigSwitch(\n",
+        "  config: CardConfig,\n",
+        "  normalizeOptions: SavedConfigSwitchOptionHook,\n",
+        "): boolean {\n",
+        '  if (config.type !== "") return false;\n',
+    ]
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") != "normalize_switch_options":
+                raise BuildError(f"unsupported switch saved-config hook {rule.get('hook')!r}")
+            lines.append('  config.options = normalizeOptions(config.options || "", config);\n')
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "ts"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
+def gen_saved_config_switch_h(data):
+    normalization = saved_config_switch_normalization(data)
+    lines = [
+        "#pragma once\n\n",
+        "// =============================================================================\n",
+        "// GENERATED SAVED-CONFIG SWITCH HELPERS - do not edit by hand\n",
+        "// Generated by scripts/build.py from common/config/card_contract.json.\n",
+        "// =============================================================================\n\n",
+        "template<typename Config, typename OptionHook>\n",
+        "inline bool normalize_saved_config_switch(Config &config,\n",
+        "                                         OptionHook normalize_options) {\n",
+        '  if (!config.type.empty()) return false;\n',
+    ]
+    for field in data["fields"]:
+        rule = normalization["fields"][field]
+        if rule.get("policy") == "hook":
+            if rule.get("hook") != "normalize_switch_options":
+                raise BuildError(f"unsupported switch saved-config hook {rule.get('hook')!r}")
+            lines.append("  config.options = normalize_options(config.options);\n")
+        else:
+            lines.extend(saved_config_declarative_field_lines(field, rule, "cpp"))
+    lines.append("  return true;\n}\n")
+    return "".join(lines)
+
+
 def gen_saved_config_shadow_ts(data):
     policies = shadow_pilot_policies(data)
     media = data["cards"]["media"]
@@ -1847,6 +3094,34 @@ def sync_card_contract(check_only=False):
         (SAVED_CONFIG_ACTION_H, gen_saved_config_action_h(data)),
         (SAVED_CONFIG_MEDIA_TS, gen_saved_config_media_ts(data)),
         (SAVED_CONFIG_MEDIA_H, gen_saved_config_media_h(data)),
+        (SAVED_CONFIG_STATIC_TS, gen_saved_config_static_ts(data)),
+        (SAVED_CONFIG_STATIC_H, gen_saved_config_static_h(data)),
+        (SAVED_CONFIG_FAN_TS, gen_saved_config_fan_ts(data)),
+        (SAVED_CONFIG_FAN_H, gen_saved_config_fan_h(data)),
+        (SAVED_CONFIG_DATE_TIME_TS, gen_saved_config_date_time_ts(data)),
+        (SAVED_CONFIG_DATE_TIME_H, gen_saved_config_date_time_h(data)),
+        (SAVED_CONFIG_MOWER_TS, gen_saved_config_mower_ts(data)),
+        (SAVED_CONFIG_MOWER_H, gen_saved_config_mower_h(data)),
+        (SAVED_CONFIG_OCCUPANCY_TS, gen_saved_config_occupancy_ts(data)),
+        (SAVED_CONFIG_OCCUPANCY_H, gen_saved_config_occupancy_h(data)),
+        (SAVED_CONFIG_ACCESS_TS, gen_saved_config_access_ts(data)),
+        (SAVED_CONFIG_ACCESS_H, gen_saved_config_access_h(data)),
+        (SAVED_CONFIG_SECURITY_TS, gen_saved_config_security_ts(data)),
+        (SAVED_CONFIG_SECURITY_H, gen_saved_config_security_h(data)),
+        (SAVED_CONFIG_WEATHER_TS, gen_saved_config_weather_ts(data)),
+        (SAVED_CONFIG_WEATHER_H, gen_saved_config_weather_h(data)),
+        (SAVED_CONFIG_IMAGE_TS, gen_saved_config_image_ts(data)),
+        (SAVED_CONFIG_IMAGE_H, gen_saved_config_image_h(data)),
+        (SAVED_CONFIG_CLIMATE_TS, gen_saved_config_climate_ts(data)),
+        (SAVED_CONFIG_CLIMATE_H, gen_saved_config_climate_h(data)),
+        (SAVED_CONFIG_LIGHT_CONTROL_TS, gen_saved_config_light_control_ts(data)),
+        (SAVED_CONFIG_LIGHT_CONTROL_H, gen_saved_config_light_control_h(data)),
+        (SAVED_CONFIG_WEBHOOK_TS, gen_saved_config_webhook_ts(data)),
+        (SAVED_CONFIG_WEBHOOK_H, gen_saved_config_webhook_h(data)),
+        (SAVED_CONFIG_SUBPAGE_TS, gen_saved_config_subpage_ts(data)),
+        (SAVED_CONFIG_SUBPAGE_H, gen_saved_config_subpage_h(data)),
+        (SAVED_CONFIG_SWITCH_TS, gen_saved_config_switch_ts(data)),
+        (SAVED_CONFIG_SWITCH_H, gen_saved_config_switch_h(data)),
         (CARD_DOCS_DIR / "capabilities.md", gen_card_capability_docs(data)),
     ]
     dirty = []
