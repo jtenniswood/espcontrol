@@ -8,7 +8,25 @@ const esbuild = require("esbuild");
 const ROOT = path.resolve(__dirname, "..");
 const ENTRY = path.join(ROOT, "src", "webserver", "entry.ts");
 
-async function bundleDevice(slug, config, testHooks) {
+function overlayPlugin(overlays) {
+  const normalized = new Map(
+    Object.entries(overlays || {}).map(([filePath, content]) => [path.resolve(filePath), content]),
+  );
+  return {
+    name: "generated-output-overlay",
+    setup(build) {
+      build.onLoad({ filter: /.*/ }, (args) => {
+        const contents = normalized.get(path.resolve(args.path));
+        if (contents === undefined) return null;
+        const extension = path.extname(args.path).slice(1);
+        const loader = extension === "ts" ? "ts" : extension === "json" ? "json" : "text";
+        return { contents, loader };
+      });
+    },
+  };
+}
+
+async function bundleDevice(slug, config, testHooks, overlays) {
   const result = await esbuild.build({
     bundle: true,
     define: {
@@ -21,6 +39,7 @@ async function bundleDevice(slug, config, testHooks) {
     logLevel: "silent",
     minify: true,
     platform: "browser",
+    plugins: [overlayPlugin(overlays)],
     target: "es2020",
     write: false,
   });
@@ -34,7 +53,7 @@ async function main() {
   for (const [slug, config] of Object.entries(request.devices)) {
     const outputPath = path.join(request.outputDir, slug, "www.js");
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-    fs.writeFileSync(outputPath, await bundleDevice(slug, config, !!request.testHooks));
+    fs.writeFileSync(outputPath, await bundleDevice(slug, config, !!request.testHooks, request.overlays));
   }
 }
 

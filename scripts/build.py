@@ -12,8 +12,10 @@ Usage:
     python scripts/build.py www           # build www.js only
     python scripts/build.py www --temporary-output DIR  # isolated fresh bundles
     python scripts/build.py icons --check # check icons only
+    python scripts/build.py --self-test    # verify transactional publishing
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -91,6 +93,150 @@ DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
 
 class BuildError(RuntimeError):
     pass
+
+
+class GeneratedOutputTransaction:
+    """Stage generated text and promote the complete set only after success."""
+
+    def __init__(self, replace_file=os.replace):
+        self._staged = {}
+        self._replace_file = replace_file
+
+    def stage_text(self, path, content):
+        self._staged[Path(path).resolve()] = content
+
+    def overlays(self):
+        return {str(path): content for path, content in self._staged.items()}
+
+    def commit(self):
+        if not self._staged:
+            return
+
+        prepared = {}
+        originals = {}
+        replaced = []
+        try:
+            for path, content in self._staged.items():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                originals[path] = path.read_bytes() if path.exists() else None
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    encoding="utf-8",
+                    dir=path.parent,
+                    prefix=f".{path.name}.",
+                    suffix=".tmp",
+                    delete=False,
+                ) as handle:
+                    handle.write(content)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                    prepared[path] = Path(handle.name)
+
+            for path, staged_path in prepared.items():
+                self._replace_file(staged_path, path)
+                replaced.append(path)
+        except Exception as exc:
+            for path in reversed(replaced):
+                original = originals[path]
+                if original is None:
+                    path.unlink(missing_ok=True)
+                    continue
+                with tempfile.NamedTemporaryFile(
+                    mode="wb",
+                    dir=path.parent,
+                    prefix=f".{path.name}.rollback.",
+                    suffix=".tmp",
+                    delete=False,
+                ) as handle:
+                    handle.write(original)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                    rollback_path = Path(handle.name)
+                os.replace(rollback_path, path)
+            raise BuildError(f"Unable to publish generated outputs; restored the previous set: {exc}") from exc
+        finally:
+            for staged_path in prepared.values():
+                staged_path.unlink(missing_ok=True)
+
+
+GENERATED_TRANSACTION = None
+
+
+def write_generated_text(path, content):
+    if GENERATED_TRANSACTION is None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        action = "updated"
+    else:
+        GENERATED_TRANSACTION.stage_text(path, content)
+        action = "staged"
+    print(f"  {action} {path.relative_to(ROOT)}")
+
+
+def run_generated_transaction_self_test():
+    with tempfile.TemporaryDirectory(prefix="espcontrol-generated-transaction-") as directory:
+        root = Path(directory)
+        first = root / "first.txt"
+        second = root / "second.txt"
+        first.write_text("first-old", encoding="utf-8")
+        second.write_text("second-old", encoding="utf-8")
+
+        transaction = GeneratedOutputTransaction()
+        transaction.stage_text(first, "first-new")
+        transaction.stage_text(second, "second-new")
+        if first.read_text(encoding="utf-8") != "first-old" or second.read_text(encoding="utf-8") != "second-old":
+            raise BuildError("Generated transaction changed files before commit")
+        transaction.commit()
+        if first.read_text(encoding="utf-8") != "first-new" or second.read_text(encoding="utf-8") != "second-new":
+            raise BuildError("Generated transaction did not publish the complete set")
+
+        replacements = 0
+
+        def fail_second_replace(source, destination):
+            nonlocal replacements
+            replacements += 1
+            if replacements == 2:
+                raise OSError("simulated publish failure")
+            os.replace(source, destination)
+
+        transaction = GeneratedOutputTransaction(replace_file=fail_second_replace)
+        transaction.stage_text(first, "first-broken")
+        transaction.stage_text(second, "second-broken")
+        try:
+            transaction.commit()
+        except BuildError:
+            pass
+        else:
+            raise BuildError("Generated transaction self-test did not exercise rollback")
+        if first.read_text(encoding="utf-8") != "first-new" or second.read_text(encoding="utf-8") != "second-new":
+            raise BuildError("Generated transaction did not restore the previous set")
+
+        marker = "espcontrol-generated-overlay-self-test"
+        entry_path = ROOT / "src" / "webserver" / "entry.ts"
+        entry_overlay = entry_path.read_text(encoding="utf-8") + (
+            f'\n(globalThis as Record<string, unknown>)["{marker}"] = true;\n'
+        )
+        slug, config = next(iter(build_web_devices().items()))
+        bundle_root = root / "bundle"
+        result = subprocess.run(
+            ["node", str(ROOT / "scripts" / "build_web_bundle.js")],
+            input=json.dumps({
+                "outputDir": str(bundle_root),
+                "devices": {slug: config},
+                "testHooks": False,
+                "overlays": {str(entry_path): entry_overlay},
+            }),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise BuildError(result.stderr.strip() or "Generated overlay self-test could not build a web bundle")
+        bundle = (bundle_root / slug / "www.js").read_text(encoding="utf-8")
+        if marker not in bundle:
+            raise BuildError("Web bundle did not consume the staged generated overlay")
+
+    print("Generated output transaction self-test passed.")
 
 
 def load_json(path):
@@ -262,9 +408,7 @@ def sync_entity_names(check_only=False):
     for path, content in outputs:
         if path.exists() and path.read_text() == content:
             continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
-        print(f"  updated {path.relative_to(ROOT)}")
+        write_generated_text(path, content)
     return dirty
 
 
@@ -456,9 +600,7 @@ def sync_i18n(check_only=False):
         return dirty
 
     if dirty:
-        I18N_GENERATED_H.parent.mkdir(parents=True, exist_ok=True)
-        I18N_GENERATED_H.write_text(generated, encoding="utf-8")
-        print(f"  updated {I18N_GENERATED_H.relative_to(ROOT)}")
+        write_generated_text(I18N_GENERATED_H, generated)
     return dirty
 
 
@@ -3142,9 +3284,7 @@ def sync_card_contract(check_only=False):
     for path, content in outputs:
         if path.exists() and path.read_text() == content:
             continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
-        print(f"  updated {path.relative_to(ROOT)}")
+        write_generated_text(path, content)
     return dirty
 
 
@@ -3239,9 +3379,7 @@ def sync_device_capabilities(check_only=False):
     for path, generated in outputs.items():
         if path.exists() and path.read_text() == generated:
             continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(generated)
-        print(f"  updated {path.relative_to(ROOT)}")
+        write_generated_text(path, generated)
     return dirty
 
 
@@ -3492,8 +3630,7 @@ def sync_icons(check_only=False):
     for path, content in file_contents.items():
         original = path.read_text()
         if content != original:
-            path.write_text(content)
-            print(f"  updated {path.relative_to(ROOT)}")
+            write_generated_text(path, content)
     return dirty
 
 
@@ -3539,7 +3676,12 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
 
     result = subprocess.run(
         ["node", str(ROOT / "scripts" / "build_web_bundle.js")],
-        input=json.dumps({"outputDir": str(build_root), "devices": devices, "testHooks": test_hooks}),
+        input=json.dumps({
+            "outputDir": str(build_root),
+            "devices": devices,
+            "testHooks": test_hooks,
+            "overlays": GENERATED_TRANSACTION.overlays() if GENERATED_TRANSACTION is not None else {},
+        }),
         text=True,
         capture_output=True,
         check=False,
@@ -3567,9 +3709,7 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
         dirty.append(slug)
 
         if not check_only:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(generated)
-            print(f"  updated docs/public/webserver/{slug}/www.js")
+            write_generated_text(output_path, generated)
 
     if check_only and dirty:
         print("www.js outputs are out of date. Run 'python scripts/build.py www' to fix:")
@@ -3585,7 +3725,15 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
 # ===========================================================================
 
 def main():
+    global GENERATED_TRANSACTION
     args = sys.argv[1:]
+    if args == ["--self-test"]:
+        try:
+            run_generated_transaction_self_test()
+        except BuildError as exc:
+            print(exc)
+            return 1
+        return 0
     check_only = "--check" in args
     test_hooks = "--test-hooks" in args
     args = [arg for arg in args if arg != "--test-hooks"]
@@ -3602,6 +3750,10 @@ def main():
         commands = ["all"]
 
     exit_code = 0
+    transaction = None
+    if not check_only and temporary_output is None:
+        transaction = GeneratedOutputTransaction()
+        GENERATED_TRANSACTION = transaction
 
     try:
         for cmd in commands:
@@ -3674,9 +3826,13 @@ def main():
                 print(f"Unknown command: {cmd}")
                 print("Usage: python scripts/build.py [all|entities|contract|devices|icons|i18n|www] [--check]")
                 exit_code = 1
+        if exit_code == 0 and transaction is not None:
+            transaction.commit()
     except (BuildError, ProductSchemaError) as exc:
         print(exc)
         return 1
+    finally:
+        GENERATED_TRANSACTION = None
 
     return exit_code
 
