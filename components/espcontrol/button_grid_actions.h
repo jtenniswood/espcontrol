@@ -833,7 +833,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||
       p.type == "weather_forecast") return;
   if (p.type == "screen_lock") {
-    screen_lock_toggle();
+    screen_lock_handle_tap(btn_obj);
   } else if (p.type == "push") {
     std::string label = p.label;
     if (label.empty()) {

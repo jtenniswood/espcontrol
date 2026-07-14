@@ -2894,10 +2894,45 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
     "label": "Screen Lock",
     "allowInSubpage": true,
     "domains": [],
+    "options": [
+      {
+        "name": "lock_display",
+        "label": "When Locked",
+        "kind": "choice",
+        "values": [
+          "screensaver",
+          "screen_off"
+        ],
+        "defaultValue": "screensaver",
+        "storageField": "sensor",
+        "omitDefault": false
+      },
+      {
+        "name": "unlock",
+        "label": "Unlock With",
+        "kind": "choice",
+        "values": [
+          "immediate",
+          "gesture",
+          "pin"
+        ],
+        "defaultValue": "immediate",
+        "storageField": "unit",
+        "omitDefault": false
+      },
+      {
+        "name": "pin",
+        "label": "PIN",
+        "kind": "text",
+        "defaultValue": "",
+        "storageField": "entity",
+        "omitDefault": true
+      }
+    ],
     "normalization": {
       "fields": {
         "entity": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "label": {
           "policy": "clear"
@@ -2911,10 +2946,10 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
           "value": "Lock Open"
         },
         "sensor": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "unit": {
-          "policy": "clear"
+          "policy": "keep"
         },
         "type": {
           "policy": "default",
@@ -2935,8 +2970,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "label": "",
       "icon": "Lock",
       "icon_on": "Lock Open",
-      "sensor": "",
-      "unit": "",
+      "sensor": "screensaver",
+      "unit": "immediate",
       "type": "screen_lock",
       "precision": "",
       "options": ""
@@ -3831,6 +3866,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "large_numbers": "large_numbers",
   "lawn_mower_mode": "lawn_mower_mode",
   "light_tabs": "light_tabs",
+  "lock_display": "lock_display",
   "lock_mode": "lock_mode",
   "media_cover_art": "media_cover_art",
   "media_display": "media_display",
@@ -3838,6 +3874,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "media_now_playing_controls": "media_now_playing_controls",
   "number_display": "number_display",
   "on_pattern": "on_pattern",
+  "pin": "pin",
   "pin_arm": "pin_arm",
   "pin_disarm": "pin_disarm",
   "playlist_content_id": "playlist_content_id",
@@ -3856,6 +3893,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "state_unit": "state_unit",
   "subpage_kind": "subpage_kind",
   "temperature_step": "temperature_step",
+  "unlock": "unlock",
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",

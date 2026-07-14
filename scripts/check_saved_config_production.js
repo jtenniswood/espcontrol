@@ -153,8 +153,11 @@ int main() {
   ));
   Config screen_lock{"screen_lock", "stale", "unit", "2", "unknown=1", "Auto", "switch.stale", "Stale", "Security"};
   assert(normalize_saved_config_static(screen_lock));
-  assert(screen_lock.entity.empty() && screen_lock.label.empty() && screen_lock.sensor.empty());
-  assert(screen_lock.unit.empty() && screen_lock.precision.empty() && screen_lock.options.empty());
+  // Screen-lock modes reuse the sensor (lock display), unit (unlock method)
+  // and entity (PIN) fields, so those are kept; label, precision and options
+  // are stripped and the lock icons are forced.
+  assert(screen_lock.sensor == "stale" && screen_lock.unit == "unit" && screen_lock.entity == "switch.stale");
+  assert(screen_lock.label.empty() && screen_lock.precision.empty() && screen_lock.options.empty());
   assert(screen_lock.icon == "Lock" && screen_lock.icon_on == "Lock Open");
   Config light_switch{"light_switch", "stale", "unit", "2", "unknown=1", "Custom", "light.kitchen", "Kitchen", "Custom"};
   assert(normalize_saved_config_static(light_switch));
@@ -625,8 +628,9 @@ function main() {
   };
   assert.strictEqual(generatedStatic.normalizeSavedConfigStatic(screenLock), true);
   assert.deepStrictEqual(screenLock, {
-    type: "screen_lock", entity: "", label: "", icon: "Lock", icon_on: "Lock Open",
-    sensor: "", unit: "", precision: "", options: "",
+    // Modes reuse entity (PIN), sensor (lock display) and unit (unlock method).
+    type: "screen_lock", entity: "switch.stale", label: "", icon: "Lock", icon_on: "Lock Open",
+    sensor: "stale", unit: "unit", precision: "", options: "",
   });
   const internal = { type: "internal", entity: "relay_1", sensor: "push", options: "unknown=1" };
   assert.strictEqual(generatedStatic.normalizeSavedConfigStatic(internal), true);

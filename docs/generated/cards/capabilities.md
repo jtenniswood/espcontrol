@@ -39,7 +39,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Media | media | media_player | Yes | Own picker item | Type: control_modal, play_pause, previous, next, volume, position, now_playing, cover_art, playlist; Type: default, state; Controls: default, progress, play_pause; Press Action: play_pause, control_modal; Maximum Volume: 1-100; Label Display: label, status; Top Left Display: icon, volume; Media Content ID / URI; Player Source / Input; Large Media Numbers | Visible |
 | Option Select | option_select | select, input_select | Yes | Own picker item | None | Hidden |
 | Trigger | push | None | Yes | Own picker item | None | Visible |
-| Screen Lock | screen_lock | None | Yes | Own picker item | None | Visible |
+| Screen Lock | screen_lock | None | Yes | Own picker item | When Locked: screensaver, screen_off; Unlock With: immediate, gesture, pin; PIN | Visible |
 | Webhook | webhook | None | Yes | Own picker item | Headers | Visible |
 | Sensor | sensor | sensor, binary_sensor, text_sensor | Yes | Own picker item | Large Sensor Numbers; Active Color; Status Translation; Input Status; Display Text; Input Status 2; Display Text 2 | Visible |
 | Local Sensor | local_sensor | sensor, text_sensor | Yes | Sensor (sensor) | None | Hidden |

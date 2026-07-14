@@ -140,8 +140,14 @@ inline void screen_lock_register_card(const BtnSlot &s, const ParsedCfg &p) {
   ref.text_lbl = s.text_lbl;
   ref.locked_icon = screen_lock_locked_icon(p);
   ref.unlocked_icon = screen_lock_unlocked_icon(p);
+  ref.text_font = s.text_lbl ? lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN) : nullptr;
+  ref.icon_font = s.icon_lbl ? lv_obj_get_style_text_font(s.icon_lbl, LV_PART_MAIN) : nullptr;
   screen_lock_card_refs().push_back(ref);
   screen_lock_register_controlled_button(s.btn);
+  // Last registered lock card wins. The three configurable options live in
+  // spare ParsedCfg base fields (see card contract): sensor -> lock display,
+  // unit -> unlock method, entity -> PIN digits.
+  screen_lock_set_options(p.sensor, p.unit, p.entity);
 }
 
 inline void setup_screen_lock_card(BtnSlot &s, const ParsedCfg &p) {

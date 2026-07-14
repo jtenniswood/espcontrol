@@ -3915,10 +3915,45 @@
         "label": "Screen Lock",
         "allowInSubpage": true,
         "domains": [],
+        "options": [
+          {
+            "name": "lock_display",
+            "label": "When Locked",
+            "kind": "choice",
+            "values": [
+              "screensaver",
+              "screen_off"
+            ],
+            "defaultValue": "screensaver",
+            "storageField": "sensor",
+            "omitDefault": false
+          },
+          {
+            "name": "unlock",
+            "label": "Unlock With",
+            "kind": "choice",
+            "values": [
+              "immediate",
+              "gesture",
+              "pin"
+            ],
+            "defaultValue": "immediate",
+            "storageField": "unit",
+            "omitDefault": false
+          },
+          {
+            "name": "pin",
+            "label": "PIN",
+            "kind": "text",
+            "defaultValue": "",
+            "storageField": "entity",
+            "omitDefault": true
+          }
+        ],
         "normalization": {
           "fields": {
             "entity": {
-              "policy": "clear"
+              "policy": "keep"
             },
             "label": {
               "policy": "clear"
@@ -3932,10 +3967,10 @@
               "value": "Lock Open"
             },
             "sensor": {
-              "policy": "clear"
+              "policy": "keep"
             },
             "unit": {
-              "policy": "clear"
+              "policy": "keep"
             },
             "type": {
               "policy": "default",
@@ -3956,8 +3991,8 @@
           "label": "",
           "icon": "Lock",
           "icon_on": "Lock Open",
-          "sensor": "",
-          "unit": "",
+          "sensor": "screensaver",
+          "unit": "immediate",
           "type": "screen_lock",
           "precision": "",
           "options": ""

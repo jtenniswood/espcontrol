@@ -35,12 +35,9 @@ export function normalizeSavedConfigStatic(config: CardConfig): boolean {
     return true;
   }
   if (config.type === "screen_lock") {
-    config.entity = "";
     config.label = "";
     config.icon = "Lock";
     config.icon_on = "Lock Open";
-    config.sensor = "";
-    config.unit = "";
     config.type = "screen_lock";
     config.precision = "";
     config.options = "";

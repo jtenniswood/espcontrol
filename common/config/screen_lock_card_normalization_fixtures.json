@@ -15,30 +15,30 @@
     }
   },
   {
-    "name": "screen lock strips non local fields",
+    "name": "screen lock keeps lock-mode fields and strips the rest",
     "input": "switch.should_not_save;Screen Lock;Auto;Auto;sensor.should_not_save;%;screen_lock;2;large_numbers",
     "expected": {
-      "entity": "",
+      "entity": "switch.should_not_save",
       "label": "",
       "icon": "Lock",
       "icon_on": "Lock Open",
-      "sensor": "",
-      "unit": "",
+      "sensor": "sensor.should_not_save",
+      "unit": "%",
       "type": "screen_lock",
       "precision": "",
       "options": ""
     }
   },
   {
-    "name": "screen lock forces contract icons",
+    "name": "screen lock forces contract icons but keeps mode fields",
     "input": "light.kitchen;Custom Label;Security;Auto;lock;ignored;screen_lock;text;ignored=1",
     "expected": {
-      "entity": "",
+      "entity": "light.kitchen",
       "label": "",
       "icon": "Lock",
       "icon_on": "Lock Open",
-      "sensor": "",
-      "unit": "",
+      "sensor": "lock",
+      "unit": "ignored",
       "type": "screen_lock",
       "precision": "",
       "options": ""

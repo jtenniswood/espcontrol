@@ -32,6 +32,8 @@ enum class ControlModalKind {
   COVER_CONTROL,
   LIGHT_CONTROL,
   MEDIA_CONTROL,
+  SCREEN_LOCK_GESTURE,
+  SCREEN_LOCK_PIN,
 };
 
 using ControlModalCloseCallback = void (*)();

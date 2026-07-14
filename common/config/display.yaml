@@ -37,6 +37,38 @@ esphome:
             set_display_temperature_degree_symbol(id(temperature_degree_symbol_enabled).state);
         - script.execute: clock_bar_hide
         - script.execute: clock_bar_apply
+    # Screen Lock v2: let the C++ lock mechanism drive the screensaver / screen
+    # off / wake, and keep the HA-exposed entities in sync with device taps,
+    # gestures and PIN unlocks. Both callbacks mirror the backlight display
+    # takeover callback pattern.
+    - priority: -140
+      then:
+        - lambda: |-
+            set_screen_lock_display_callback([](ScreenLockDisplayAction action) {
+              switch (action) {
+                case ScreenLockDisplayAction::SCREENSAVER:
+                  // Do not fight an active cover-art or alarm display takeover.
+                  if (id(cover_art_screensaver_active) || alarm_display_takeover_active()) return;
+                  // Close any open control modal (climate/light/cover/media): its
+                  // overlay lives on the top layer, is not disabled by the lock,
+                  // and would otherwise stay operable / cover the unlock card.
+                  control_modal_force_close_active();
+                  id(screensaver_sleep_timer).execute();
+                  break;
+                case ScreenLockDisplayAction::SCREEN_OFF:
+                  if (alarm_display_takeover_active()) return;
+                  control_modal_force_close_active();
+                  id(backlight_sleep_display_off).execute();
+                  break;
+                case ScreenLockDisplayAction::WAKE:
+                  id(screensaver_wake).execute();
+                  break;
+              }
+            });
+            set_screen_lock_publish_callback([](bool locked) {
+              id(screen_lock_locked_sensor).publish_state(locked);
+              id(screen_lock_switch).publish_state(locked);
+            });
 
 script:
   - id: clock_bar_hide
@@ -135,7 +167,29 @@ script:
                                     id(outdoor_temp_enable).state,
                                     id(indoor_temp), id(outdoor_temp));
 
+binary_sensor:
+  # Screen Lock v2: HA-exposed locked-state indicator. State is published from
+  # the C++ publish callback, so it follows taps, gestures, PIN and HA changes.
+  - platform: template
+    name: "Screen Locked"
+    id: screen_lock_locked_sensor
+    icon: "mdi:lock"
+
 switch:
+  # Screen Lock v2: first HA-exposed (non-internal) entity. Lets Home Assistant
+  # lock/unlock the panel; on-device taps/gestures/PIN keep it in sync via the
+  # publish callback. Harmless on devices with no screen-lock card (the lock
+  # mechanism clamps to unlocked when no lock card is registered).
+  - platform: template
+    name: "Screen Lock"
+    id: screen_lock_switch
+    icon: "mdi:lock"
+    optimistic: false
+    turn_on_action:
+      - lambda: "screen_lock_set_enabled(true);"
+    turn_off_action:
+      - lambda: "screen_lock_set_enabled(false);"
+
   - platform: template
     name: "${entity_screen_clock_bar}"
     internal: true

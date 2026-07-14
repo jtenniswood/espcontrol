@@ -55,5 +55,6 @@
 #include "button_grid_media.h"
 #include "button_grid_subpages.h"
 #include "button_grid_alarm.h"
+#include "button_grid_screen_lock.h"
 #include "button_grid_navigation.h"
 #include "button_grid_grid.h"

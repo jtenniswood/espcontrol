@@ -37,12 +37,9 @@ inline bool normalize_saved_config_static(Config &config) {
     return true;
   }
   if (config.type == "screen_lock") {
-    config.entity.clear();
     config.label.clear();
     config.icon = "Lock";
     config.icon_on = "Lock Open";
-    config.sensor.clear();
-    config.unit.clear();
     config.type = "screen_lock";
     config.precision.clear();
     config.options.clear();

@@ -38,19 +38,49 @@
       "firmware_update_frequency": "Weekly"
     },
     "panelNormalized": {
-      "indoorTempEnable": false, "outdoorTempEnable": false, "indoorTempEntity": "", "outdoorTempEntity": "",
-      "clockBarTemperatureEntities": [], "clockBar": false, "clockBarTime": true, "networkStatusIcon": true,
-      "voiceServices": false, "temperatureDegreeSymbol": true, "subpageChevron": true,
-      "timezone": "Europe/London (GMT+0)", "temperatureUnit": "°F", "language": "en", "clockFormat": "12h",
-      "hasNtpServer1": false, "hasNtpServer2": false, "hasNtpServer3": false,
-      "ntpServer1": "pool.ntp.org", "ntpServer2": "time.nist.gov", "ntpServer3": "time.google.com",
-      "screensaverMode": "disabled", "presenceSensorEntity": "", "mediaPlayerSleepPrevention": false,
-      "mediaPlayerSleepPreventionEntity": "", "coverArtScreensaver": false, "coverArtMediaPlayerEntity": "",
-      "coverArtAttributeConditions": "", "coverArtDelay": 10, "coverArtTrackOverlayDuration": 5,
-      "coverArtHideExternalInput": true, "coverArtHomeAssistantProtocol": "https", "coverArtHomeAssistantPort": 8123,
-      "autoUpdate": true, "updateFrequency": "Weekly", "screensaverAction": "off", "clockScreensaver": false,
-      "clockBrightnessDay": 35, "clockBrightnessNight": 35, "screensaverDimmedBrightness": 10,
-      "screensaverTimeout": 300, "homeScreenTimeout": 60, "screenRotation": "90"
+      "indoorTempEnable": false,
+      "outdoorTempEnable": false,
+      "indoorTempEntity": "",
+      "outdoorTempEntity": "",
+      "clockBarTemperatureEntities": [],
+      "clockBar": false,
+      "clockBarTime": true,
+      "networkStatusIcon": true,
+      "voiceServices": false,
+      "temperatureDegreeSymbol": true,
+      "subpageChevron": true,
+      "timezone": "Europe/London (GMT+0)",
+      "temperatureUnit": "°F",
+      "language": "en",
+      "clockFormat": "12h",
+      "hasNtpServer1": false,
+      "hasNtpServer2": false,
+      "hasNtpServer3": false,
+      "ntpServer1": "pool.ntp.org",
+      "ntpServer2": "time.nist.gov",
+      "ntpServer3": "time.google.com",
+      "screensaverMode": "disabled",
+      "presenceSensorEntity": "",
+      "mediaPlayerSleepPrevention": false,
+      "mediaPlayerSleepPreventionEntity": "",
+      "coverArtScreensaver": false,
+      "coverArtMediaPlayerEntity": "",
+      "coverArtAttributeConditions": "",
+      "coverArtDelay": 10,
+      "coverArtTrackOverlayDuration": 5,
+      "coverArtHideExternalInput": true,
+      "coverArtHomeAssistantProtocol": "https",
+      "coverArtHomeAssistantPort": 8123,
+      "autoUpdate": true,
+      "updateFrequency": "Weekly",
+      "screensaverAction": "off",
+      "clockScreensaver": false,
+      "clockBrightnessDay": 35,
+      "clockBrightnessNight": 35,
+      "screensaverDimmedBrightness": 10,
+      "screensaverTimeout": 300,
+      "homeScreenTimeout": 60,
+      "screenRotation": "90"
     },
     "screenInput": {
       "brightness_day": 80,
@@ -62,29 +92,66 @@
       "schedule_wake_timeout": 30
     },
     "screenNormalized": {
-      "brightnessDayVal": 80, "brightnessNightVal": 20, "automaticBrightnessEnabled": true,
-      "brightnessDawnTime": "06:00", "brightnessDuskTime": "18:00", "scheduleTrigger": "time",
-      "scheduleEnabled": true, "scheduleOnHour": 6, "scheduleOffHour": 23, "scheduleMode": "clock",
-      "scheduleWakeTimeout": 30, "scheduleWakeBrightness": 10, "scheduleDimmedBrightness": 10,
-      "scheduleClockBrightness": 10, "scheduleClockTextColor": "FFFFFF"
+      "brightnessDayVal": 80,
+      "brightnessNightVal": 20,
+      "automaticBrightnessEnabled": true,
+      "brightnessDawnTime": "06:00",
+      "brightnessDuskTime": "18:00",
+      "scheduleTrigger": "time",
+      "scheduleEnabled": true,
+      "scheduleOnHour": 6,
+      "scheduleOffHour": 23,
+      "scheduleMode": "clock",
+      "scheduleWakeTimeout": 30,
+      "scheduleWakeBrightness": 10,
+      "scheduleDimmedBrightness": 10,
+      "scheduleClockBrightness": 10,
+      "scheduleClockTextColor": "FFFFFF"
     }
   },
   "backup": {
     "version": 2,
     "format": "espcontrol.backup",
     "device": "panel-a",
-    "source": { "device": "panel-a", "slots": 2 },
+    "source": {
+      "device": "panel-a",
+      "slots": 2
+    },
     "exported_at": "2026-07-12T12:00:00.000Z",
     "button_order": "1,2d",
     "button_on_color": "0073FF",
     "buttons": [
-      { "entity": "light.kitchen", "label": "Kitchen", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "switch", "precision": "", "options": "" },
-      { "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" }
+      {
+        "entity": "light.kitchen",
+        "label": "Kitchen",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "switch",
+        "precision": "",
+        "options": ""
+      },
+      {
+        "entity": "",
+        "label": "",
+        "icon": "Auto",
+        "icon_on": "Auto",
+        "sensor": "",
+        "unit": "",
+        "type": "",
+        "precision": "",
+        "options": ""
+      }
     ],
     "subpages": {},
     "subpage_objects": {},
-    "settings": { "timezone": "Europe/London (GMT+0)" },
-    "screen": { "brightness_day": 80 }
+    "settings": {
+      "timezone": "Europe/London (GMT+0)"
+    },
+    "screen": {
+      "brightness_day": 80
+    }
   },
   "postUrls": {
     "voiceServicesOn": [
@@ -99,5 +166,8 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSize": { "minified": 586754, "gzip": 140251 }
+  "bundleSize": {
+    "minified": 589081,
+    "gzip": 140865
+  }
 }

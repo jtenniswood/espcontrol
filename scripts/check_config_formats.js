@@ -913,8 +913,21 @@ assert.deepStrictEqual(
     precision: "2",
     options: "large_numbers",
   }))),
-  buttonShape(screenLockCard),
-  "screen lock card strips non-local config fields"
+  buttonShape({
+    // The screen-lock modes reuse the entity (PIN), sensor (lock display) and
+    // unit (unlock method) fields, so those are kept; label, precision and
+    // options are stripped and the lock icons are forced.
+    entity: "switch.should_not_save",
+    label: "",
+    icon: "Lock",
+    icon_on: "Lock Open",
+    sensor: "sensor.should_not_save",
+    unit: "%",
+    type: "screen_lock",
+    precision: "",
+    options: "",
+  }),
+  "screen lock card keeps mode fields and strips the rest"
 );
 
 assertButtonRoundTrip(hooks, "webhook post json", {

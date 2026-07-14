@@ -2024,8 +2024,8 @@ inline void grid_phase2(
       setup_card_visual(sub_slot, sb_cfg, cfg, palette, rs, cs);
 
       if (family == espcontrol::cards::Family::SCREEN_LOCK) {
-        lv_obj_add_event_cb(sb_btn, [](lv_event_t *) {
-          screen_lock_toggle();
+        lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
+          screen_lock_handle_tap(static_cast<lv_obj_t *>(lv_event_get_target(e)));
         }, LV_EVENT_CLICKED, nullptr);
         continue;
       }

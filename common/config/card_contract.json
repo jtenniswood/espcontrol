@@ -1703,14 +1703,42 @@
       "label": "Screen Lock",
       "allowInSubpage": true,
       "domains": [],
+      "options": [
+        {
+          "name": "lock_display",
+          "label": "When Locked",
+          "kind": "choice",
+          "values": ["screensaver", "screen_off"],
+          "defaultValue": "screensaver",
+          "storageField": "sensor",
+          "omitDefault": false
+        },
+        {
+          "name": "unlock",
+          "label": "Unlock With",
+          "kind": "choice",
+          "values": ["immediate", "gesture", "pin"],
+          "defaultValue": "immediate",
+          "storageField": "unit",
+          "omitDefault": false
+        },
+        {
+          "name": "pin",
+          "label": "PIN",
+          "kind": "text",
+          "defaultValue": "",
+          "storageField": "entity",
+          "omitDefault": true
+        }
+      ],
       "normalization": {
         "fields": {
-          "entity": { "policy": "clear" },
+          "entity": { "policy": "keep" },
           "label": { "policy": "clear" },
           "icon": { "policy": "default", "value": "Lock" },
           "icon_on": { "policy": "default", "value": "Lock Open" },
-          "sensor": { "policy": "clear" },
-          "unit": { "policy": "clear" },
+          "sensor": { "policy": "keep" },
+          "unit": { "policy": "keep" },
           "type": { "policy": "default", "value": "screen_lock" },
           "precision": { "policy": "clear" },
           "options": { "policy": "clear" }
@@ -1723,8 +1751,8 @@
         "label": "",
         "icon": "Lock",
         "icon_on": "Lock Open",
-        "sensor": "",
-        "unit": "",
+        "sensor": "screensaver",
+        "unit": "immediate",
         "type": "screen_lock",
         "precision": "",
         "options": ""

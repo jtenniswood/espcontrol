@@ -352,7 +352,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         if (type === "screen_lock")
             label = "";
         var sensor: any = isActionOptionSelect ? ACTION_CARD_OPTION_SELECT_ACTION :
-            (isBrightnessSliderType(type) || type === "calendar" || type === "clock" || isClimateCardType(type) || type === "light_switch" || type === "light_control" || type === "alarm" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.sensor || "");
+            (isBrightnessSliderType(type) || type === "calendar" || type === "clock" || isClimateCardType(type) || type === "light_switch" || type === "light_control" || type === "alarm" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.sensor || "");
         if (type === "lock" && sensor !== "lock" && sensor !== "unlock")
             sensor = "";
         if (b && b.type === "local")
@@ -360,7 +360,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         if (b && (b.type === "local_sensor" || sensorCardIsLocal(b)))
             sensor = SENSOR_CARD_LOCAL_SENSOR;
         var isLocalAction: any = type === "action" && sensor === ACTION_CARD_LOCAL_ACTION;
-        var unit: any = (isActionOptionSelect || type === "calendar" || type === "clock" || isClimateCardType(type) || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "lock" || type === "screen_lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.unit || "");
+        var unit: any = (isActionOptionSelect || type === "calendar" || type === "clock" || isClimateCardType(type) || type === "light_switch" || type === "light_control" || type === "alarm" || type === "alarm_action" || type === "lock" || type === "timezone" || isFanCardType(type)) ? "" : (b && b.unit || "");
         if (isLocalAction)
             unit = "";
         var icon: any = b && b.icon || "Auto";
@@ -568,7 +568,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
             precision = "";
         }
         return trimConfigFields([
-            (type === "door_window" || type === "presence" || type === "screen_lock") ? "" : (b && b.entity || ""),
+            (type === "door_window" || type === "presence") ? "" : (b && b.entity || ""),
             label,
             icon,
             iconOn,
