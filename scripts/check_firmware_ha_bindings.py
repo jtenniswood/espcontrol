@@ -892,6 +892,8 @@ def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str
         errors.append(f"{rel}: restart an interrupted cover art opening when playback resumes")
     if text.count("id(cover_art_delayed_playback_stopped).stop();") < 2:
         errors.append(f"{rel}: cancel a pending stop when playback resumes or pauses")
+    if "url.empty() && id(cover_art_delayed_playback_stopped).is_running()" not in text:
+        errors.append(f"{rel}: keep cached artwork when Home Assistant clears it during a brief playback transition")
 
     stopped_body = yaml_script_body(text, "cover_art_playback_stopped")
     if not stopped_body or "script.stop: cover_art_delayed_playback_stopped" not in stopped_body:
@@ -3717,6 +3719,7 @@ def run_self_test() -> int:
             "remember and cancel a pending cover art opening when playback stops",
             "restart an interrupted cover art opening when playback resumes",
             "cancel a pending stop when playback resumes or pauses",
+            "keep cached artwork when Home Assistant clears it during a brief playback transition",
             "cancel pending playback grace during an immediate stop",
         ),
     )
@@ -3734,6 +3737,7 @@ def run_self_test() -> int:
         "            id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running();\n"
         "          id(cover_art_delay_timer).stop();\n"
         "          id(cover_art_delayed_playback_stopped).execute();\n"
+        "          if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) return;\n"
         "  - id: cover_art_delayed_playback_stopped\n"
         "    mode: restart\n"
         "    then:\n"
