@@ -1483,9 +1483,14 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             errors.append(f"{rel}: let the night screen schedule override timer screensaver actions")
 
     schedule_off_body = yaml_script_body(text, "backlight_schedule_display_off")
+    controller_off_body = yaml_script_body(text, "display_mode_effect_off")
     if schedule_off_body is None:
         errors.append(f"{rel}: missing backlight_schedule_display_off script")
-    elif (
+    elif not (
+        controller_off_body is not None
+        and "script.stop: cover_art_delay_timer" in controller_off_body
+        and "script.execute: hide_cover_art_view" in controller_off_body
+    ) and (
         "script.stop: cover_art_delay_timer" not in schedule_off_body
         or "script.execute: hide_cover_art_view" not in schedule_off_body
     ):
@@ -1503,7 +1508,14 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             asleep_true_index = sleep_body.find("value: 'true'", asleep_index)
             request_index = sleep_body.find("DisplayRequestSource::SCREEN_SCHEDULE")
             reconcile_index = sleep_body.find("script.execute: display_mode_reconcile")
-            if not (
+            controller_reconciles_live_schedule = (
+                "screen_schedule_night_active(" in text
+                and "controller.request(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE" in text
+                and "restore_value: true" not in text[text.find("id: screen_schedule_asleep"):text.find("id: backlight_manual_off")]
+                and "id: screen_schedule_asleep" not in sleep_body
+                and reconcile_index != -1
+            )
+            if not controller_reconciles_live_schedule and not (
                 0 <= asleep_index <= asleep_true_index < request_index < reconcile_index
             ):
                 errors.append(
@@ -1514,6 +1526,11 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
     if wake_body is None:
         errors.append(f"{rel}: missing screensaver_presence_wake script")
     else:
+        controller_presence_wake = (
+            "script.execute: display_mode_clear_automatic" in wake_body
+            and "screen_schedule_night_active(" in text
+            and "DisplayRequestSource::SCREEN_SCHEDULE" in text
+        )
         wake_index = wake_body.find("script.execute: screensaver_wake")
         pre_wake_body = wake_body[:wake_index] if wake_index != -1 else wake_body
         required_tokens = (
@@ -1521,13 +1538,15 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             "screen_schedule_night_active(",
             "id(screen_schedule_check).execute();",
         )
-        if wake_index == -1 or any(token not in pre_wake_body for token in required_tokens):
+        if not controller_presence_wake and (
+            wake_index == -1 or any(token not in pre_wake_body for token in required_tokens)
+        ):
             errors.append(f"{rel}: let the night screen schedule override sensor screensaver wake")
         disabled_wake_index = pre_wake_body.rfind("if (!id(schedule_enabled).state) return true;")
         schedule_check_index = pre_wake_body.find("id(screen_schedule_check).execute();")
-        if disabled_wake_index == -1 or (
+        if not controller_presence_wake and (disabled_wake_index == -1 or (
             schedule_check_index != -1 and disabled_wake_index < schedule_check_index
-        ):
+        )):
             errors.append(f"{rel}: let sensor screensaver wake when the screen schedule is disabled")
 
     return errors
