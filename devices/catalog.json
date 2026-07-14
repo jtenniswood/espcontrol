@@ -396,6 +396,7 @@
             "wrapTallLabels": true,
             "imageCardDownloaders": 6,
             "volumeWidthCompensationPercent": 95,
+            "mediaArtworkWidthCompensationPercent": 98,
             "coverArt": {
               "cover_art_size": "600",
               "cover_art_decode_size": "600",

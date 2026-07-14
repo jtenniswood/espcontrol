@@ -471,7 +471,11 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
         valid = ", ".join(sorted(VALID_DISPLAY_MODES))
         errors.append(device_error(slug, f"firmware.display.mode must be one of {valid} when set"))
 
-    for key in ("widthCompensationPercent", "volumeWidthCompensationPercent"):
+    for key in (
+        "widthCompensationPercent",
+        "volumeWidthCompensationPercent",
+        "mediaArtworkWidthCompensationPercent",
+    ):
         if key in display and not is_number(display[key]):
             errors.append(device_error(slug, f"firmware.display.{key} must be a number when set"))
     if "imageCardDownloaders" in display:
