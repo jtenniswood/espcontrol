@@ -93,4 +93,12 @@ inline bool is_family(const std::string &type, Family family) {
   return family_for_type(type) == family;
 }
 
+// Visual behavior can cut across entity families. Fan speed remains a fan for
+// binding and commands, but it uses the same slider presentation as lights.
+inline bool uses_slider_visual(const std::string &type) {
+  const Family family = family_for_type(type);
+  return family == Family::SLIDER || family == Family::COVER ||
+         type == "fan_speed";
+}
+
 }  // namespace espcontrol::cards
