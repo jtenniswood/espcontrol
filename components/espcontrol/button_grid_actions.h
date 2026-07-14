@@ -698,14 +698,14 @@ inline uint32_t next_media_playlist_call_id() {
 
 inline void send_media_playlist_action(const ParsedCfg &p) {
   if (p.entity.empty()) return;
-  std::string content_id = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+  const auto config = espcontrol::media::decode_config_v1(p);
+  const std::string &content_id = config.playlist_content_id;
   if (content_id.empty()) {
     ESP_LOGW("media", "Playlist button for %s has no media content ID", p.entity.c_str());
     return;
   }
-  std::string content_type = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
-  if (content_type.empty()) content_type = "playlist";
-  std::string player_source = cfg_option_value(p.options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION);
+  const std::string &content_type = config.playlist_content_type;
+  const std::string &player_source = config.playlist_player_source;
   ESP_LOGI("media", "Playlist button: entity=%s content_type=%s content_id=%s playback_device=%s",
            p.entity.c_str(), content_type.c_str(), content_id.c_str(),
            player_source.empty() ? "(none)" : player_source.c_str());

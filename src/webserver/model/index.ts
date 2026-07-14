@@ -119,6 +119,21 @@ export type {
   DraftCardConfig,
 } from "./card";
 
+export {
+  MEDIA_CARD_CONFIG_VERSION,
+  decodeMediaCardConfigV1,
+} from "./media_card";
+
+export type {
+  MediaCardConfigV1,
+  MediaCardMode,
+  MediaControlLabelDisplay,
+  MediaControlNumberDisplay,
+  MediaCoverArtAction,
+  MediaNowPlayingControl,
+  MediaStateDisplay,
+} from "./media_card";
+
 export type {
   ParsedGridOrder,
   SlotSizeMap,

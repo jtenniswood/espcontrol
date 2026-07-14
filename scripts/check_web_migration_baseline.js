@@ -89,14 +89,15 @@ assert.deepStrictEqual(Array.from(hooks.coverArtDelayPostUrls(30)), fixture.post
   "cover-art fallback request ordering changed");
 
 const freshOutput = freshWebOutputDir({ testHooks: false });
+const bytes = fs.readFileSync(path.join(freshOutput, "www.js"));
+const source = bytes.toString("utf8");
+assert(/^\s*(?:["']use strict["'];)?\(\(\)=>\{/.test(source),
+  "shared bundle must remain a normal browser IIFE");
+assert(!/\b(?:import|export)\s/.test(source), "shared bundle must not require module script loading");
 for (const slug of fixture.deviceProfiles) {
-  const bytes = fs.readFileSync(path.join(freshOutput, slug, "www.js"));
-  const source = bytes.toString("utf8");
-  assert(/^\s*(?:["']use strict["'];)?\(\(\)=>\{/.test(source),
-    `${slug}: bundle must remain a normal browser IIFE`);
-  assert(!/\b(?:import|export)\s/.test(source), `${slug}: bundle must not require module script loading`);
-  assert.deepStrictEqual({ minified: bytes.length, gzip: zlib.gzipSync(bytes, { level: 9, mtime: 0 }).length },
-    fixture.bundleSizes[slug], `${slug}: minified or compressed migration baseline changed`);
+  assert(source.includes(slug), `${slug}: shared bundle is missing its device profile`);
 }
+assert.deepStrictEqual({ minified: bytes.length, gzip: zlib.gzipSync(bytes, { level: 9, mtime: 0 }).length },
+  fixture.bundleSize, "shared minified or compressed migration baseline changed");
 
 console.log("Web migration characterization baseline checks passed.");

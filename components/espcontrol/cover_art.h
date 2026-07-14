@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <string>
 
+#include "artwork_controller.h"
+
 namespace espcontrol::cover_art {
 
 constexpr int MAX_DOWNLOAD_RETRIES = 5;
@@ -17,6 +19,7 @@ constexpr size_t MAX_ARTWORK_URL_LENGTH = 4096;
 constexpr int ACCENT_SAMPLE_GRID = 20;
 
 struct RuntimeState {
+  espcontrol::artwork::SourceCandidates sources;
   std::string source_url, effective_download_url, active_download_source_url;
   std::string loaded_url, last_good_url, retry_url, fallback_url;
   int retry_count{0};
@@ -50,6 +53,7 @@ struct RuntimeState {
   }
   bool begin_retry() { if (!can_retry()) return false; ++retry_count; return true; }
   void clear_image() {
+    sources.clear();
     source_url.clear(); effective_download_url.clear(); active_download_source_url.clear(); loaded_url.clear();
     last_good_url.clear();
     retry_url.clear(); fallback_url.clear(); retry_count = 0; image_available = false; refresh_needed = false;

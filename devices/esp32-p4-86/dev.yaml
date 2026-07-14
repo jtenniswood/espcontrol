@@ -24,4 +24,4 @@ packages:
 
 web_server:
   js_url: ""
-  js_include: "../../docs/public/webserver/esp32-p4-86/www.js"
+  js_include: "../../docs/public/webserver/www.js"

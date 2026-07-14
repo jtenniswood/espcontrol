@@ -22,6 +22,8 @@ function createWebSandbox() {
     setTimeout,
     clearTimeout,
     requestAnimationFrame(fn) { return setTimeout(fn, 0); },
+    URL,
+    location: { href: "http://espcontrol.test/" },
     document: {
       readyState: "loading",
       activeElement: null,
@@ -67,17 +69,6 @@ function assertGeneratedConfigValue(slug, generated, key, value) {
     generated.includes(`${key}:${JSON.stringify(value)}`),
     `${slug}: generated web UI must include ${key} ${JSON.stringify(value)}`
   );
-}
-
-function generatedDeviceId(generated) {
-  const readable = generated.match(/\bvar\s+DEVICE_ID\s*=\s*"([^"]+)"/);
-  if (readable) return readable[1];
-  const definedDevice = generated.match(/\bvar\s+[A-Za-z_$][\w$]*="((?:guition-esp32|esp32-p4)[^"]+)"/);
-  if (definedDevice) return definedDevice[1];
-  const bundled = generated.match(/\bvar\s+[A-Za-z_$][\w$]*="([^"]+)",[A-Za-z_$][\w$]*=[A-Za-z_$][\w$]*;\(function/);
-  if (bundled) return bundled[1];
-  const minified = generated.match(/^\(function\(\)\{var\s+[A-Za-z_$][\w$]*="([^"]+)",[A-Za-z_$][\w$]*=\{/);
-  return minified && minified[1];
 }
 
 const hooks = loadHooks();
@@ -142,23 +133,32 @@ assert.deepStrictEqual(plain(hooks.firmwareFailureStatusFor("Could not download 
 
 const manifest = JSON.parse(fs.readFileSync(DEVICE_MANIFEST, "utf8"));
 const freshOutput = freshWebOutputDir();
+const webOutput = path.join(freshOutput, "www.js");
+const generated = fs.readFileSync(webOutput, "utf8");
+
+const hostedSandbox = createWebSandbox();
+hostedSandbox.document.currentScript = {
+  getAttribute() { return "/webserver/www.js?device=guition-esp32-s3-4848s040"; },
+};
+vm.createContext(hostedSandbox);
+vm.runInContext(generated, hostedSandbox, { filename: webOutput });
+assert.strictEqual(
+  hostedSandbox.__ESPCONTROL_TEST_HOOKS__.config.imageSlotCapacity(),
+  0,
+  "shared hosted bundle selects the device profile from its script URL",
+);
+
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
-  const webOutput = path.join(freshOutput, slug, "www.js");
-  const generated = fs.readFileSync(webOutput, "utf8");
   assertGeneratedConfigValue(slug, generated, "slots", device.slots);
   assertGeneratedConfigValue(slug, generated, "cols", device.layout.cols);
   assertGeneratedConfigValue(slug, generated, "rows", device.layout.rows);
   assertGeneratedConfigValue(slug, generated, "screenSize", device.public.screenSize);
-  assert.strictEqual(
-    generatedDeviceId(generated),
-    slug,
-    `${slug}: generated web UI must be built with the matching device id`
-  );
   assertGeneratedConfigValue(slug, generated, "slots", device.slots);
   assertGeneratedConfigValue(slug, generated, "cols", device.layout.cols);
   assertGeneratedConfigValue(slug, generated, "rows", device.layout.rows);
   assertGeneratedConfigValue(slug, generated, "screenSize", device.public.screenSize);
   const sandbox = createWebSandbox();
+  sandbox.__ESPCONTROL_DEVICE_PROFILE__ = slug;
   vm.createContext(sandbox);
   vm.runInContext(generated, sandbox, { filename: webOutput });
   assert(
@@ -230,8 +230,6 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
 
 for (const [slug, device] of Object.entries(manifest.devices || {})) {
   if (!device.rotation || !device.rotation.enabled) continue;
-  const webOutput = path.join(freshOutput, slug, "www.js");
-  const generated = fs.readFileSync(webOutput, "utf8");
   const featureConfig = generated.match(/features:\{[^}]*\}/)?.[0] || "";
   assert(
     /features:\{[^}]*screenRotation:!0/.test(generated),
@@ -1473,4 +1471,33 @@ assert.strictEqual(
   false
 );
 
-console.log("Web UI smoke tests passed.");
+async function verifyLocalFirmwareProfileSelection() {
+  const productionOutput = freshWebOutputDir({ testHooks: false });
+  const productionBundle = fs.readFileSync(path.join(productionOutput, "www.js"), "utf8");
+  const sandbox = createWebSandbox();
+  const requested = [];
+  sandbox.document.currentScript = null;
+  sandbox.document.querySelector = () => ({ getAttribute() { return "/0.js"; } });
+  sandbox.fetch = (url) => {
+    requested.push(url);
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ device_slug: "guition-esp32-s3-4848s040" }),
+    });
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(productionBundle, sandbox, { filename: "shared-local-www.js" });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepStrictEqual(requested, ["/espcontrol/version.json"]);
+  assert(
+    sandbox.__domEvents.some((event) => event.type === "DOMContentLoaded"),
+    "shared local bundle starts after resolving the firmware device profile",
+  );
+}
+
+verifyLocalFirmwareProfileSelection()
+  .then(() => console.log("Web UI smoke tests passed."))
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });

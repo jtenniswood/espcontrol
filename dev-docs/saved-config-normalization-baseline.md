@@ -53,7 +53,7 @@ same parity test as part of `firmware-parser`.
 | Internal / push / screen lock | Validate internal switch/push mode and icons; push drops unsupported options; screen lock owns all fields and forces its icon pair | Declarative | `cards/internal.ts`, `normalizeButtonConfig` | internal/push and screen-lock branches |
 | Slider / light brightness | Remove retired slider-direction value from `sensor`; drop unsupported options | Migration + Declarative | brightness-slider branch | `brightness_slider_type` branch |
 | Light switch / temperature / control | Switch clears sensor/unit/precision/options; temperature retains display fields but drops unsupported options; control clears display-only fields and normalizes tabs | Declarative | `cards/light_temperature.ts`, `config_modal_tab_options.ts` | light branches and `light_control_card_options_normalized` |
-| Media | Validate mode; migrate `controls`; update legacy labels/icons; apply mode-specific precision; normalize volume limit, label/number display, playlist fields, and applicable `large_numbers`; omit defaults and inapplicable options | Declarative + Migration + Hook | `config_media_options.ts`, `cards/media.ts` | media helpers and media branch |
+| Media | Validate mode; migrate `controls`; update legacy labels/icons; apply mode-specific precision; normalize volume limit, label/number display, playlist fields, and applicable `large_numbers`; omit defaults and inapplicable options. After normalization, decode compact fields through the versioned `MediaCardConfigV1` / `ConfigV1` boundary before behaviour consumes them. | Declarative + Migration + Hook | `model/media_card.ts`, `config_media_options.ts`, `cards/media.ts` | `button_grid_media_config.h`, media helpers and media branch |
 | Sensor / local sensor | Local mode clears remote-only options; validate numeric/icon/text precision; keep `large_numbers` only for numeric mode; normalize active colour and text-state mappings; migrate old high/low label keys | Declarative + Migration + Hook | `config_sensor_options.ts` | `sensor_card_options_normalized`, sensor branches |
 | Subpage | Apply named visual preset; validate kind; keep `large_numbers` only for a suitable non-indicator sensor and numeric precision; drop unknown options | Declarative + Hook | `config_subpage_options.ts`, card preset helper | `subpage_card_options_normalized` and runtime preset handling |
 | Weather | Alias `weather_forecast` to tomorrow; clear sensor; validate current/today/tomorrow mode; only forecast modes keep `large_numbers`; clear legacy default label | Declarative + Migration | `cards/weather.ts`, `normalizeButtonConfig` | weather branches and `weather_card_options_normalized` |
@@ -69,5 +69,9 @@ same parity test as part of `firmware-parser`.
   the browser without changing the saved wire format.
 - Backup envelope versions (1 and 2), compact/legacy saved-string selection,
   and runtime-only behaviour remain separate from the normalization contract.
+- A typed runtime configuration version does not change the saved wire format.
+  It is an internal compatibility seam so future Media-card versions can migrate
+  once at the boundary instead of spreading string parsing through UI and
+  firmware behaviour.
 - A future generated implementation must match this corpus before it can replace
   any production family branch.

@@ -99,12 +99,5 @@
       "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30"
     ]
   },
-  "bundleSizes": {
-    "guition-esp32-p4-jc1060p470": { "minified": 580636, "gzip": 138742 },
-    "guition-esp32-p4-jc4880p443": { "minified": 580671, "gzip": 138761 },
-    "guition-esp32-p4-jc8012p4a1": { "minified": 580652, "gzip": 138751 },
-    "guition-esp32-p4-jc8012p4a1-v2": { "minified": 580655, "gzip": 138755 },
-    "esp32-p4-86": { "minified": 580678, "gzip": 138751 },
-    "guition-esp32-s3-4848s040": { "minified": 580836, "gzip": 138804 }
-  }
+  "bundleSize": { "minified": 586754, "gzip": 140251 }
 }

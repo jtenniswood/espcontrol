@@ -268,6 +268,8 @@ inline std::string trim_saved_option_value(const std::string &value) {
   return value.substr(first, value.find_last_not_of(" \t\r\n") - first + 1);
 }
 
+#include "button_grid_media_config.h"
+
 inline std::string media_card_options_normalized(const std::string &options,
                                                  const std::string &mode) {
   if (mode == "control_modal") {
@@ -537,12 +539,12 @@ inline bool image_card_modal_fit_enabled(const ParsedCfg &p) {
 }
 
 inline bool media_cover_art_enabled(const ParsedCfg &p) {
-  return card_runtime_media_mode(p.sensor) == "cover_art" ||
-         cfg_option_token_present(p.options, MEDIA_COVER_ART_OPTION);
+  return espcontrol::media::decode_config_v1(p).mode == espcontrol::media::Mode::COVER_ART;
 }
 
 inline std::string media_cover_art_press_action(const ParsedCfg &p) {
-  return cfg_option_value(p.options, MEDIA_COVER_ART_ACTION_OPTION) == "control_modal"
+  return espcontrol::media::decode_config_v1(p).cover_art_action ==
+             espcontrol::media::CoverArtAction::CONTROL_MODAL
     ? "control_modal"
     : "play_pause";
 }

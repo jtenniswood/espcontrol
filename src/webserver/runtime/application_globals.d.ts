@@ -86,7 +86,7 @@ declare global {
   var ICON_EXCEPTIONS: any;
   var ICON_NAMES: any;
   var ICON_OPTIONS: any;
-  var IMAGE_CARD_LIMIT: any;
+  var IMAGE_SLOT_CAPACITY: any;
   var IMAGE_CARD_METADATA: any;
   var IMAGE_ICON_OPTION: any;
   var IMAGE_LABEL_OPTION: any;
@@ -555,8 +555,8 @@ declare global {
   var imageCardCountInClipboardEntry: any;
   var imageCardCountInSubpage: any;
   var imageCardCountWithCandidate: any;
-  var imageCardLimit: any;
-  var imageCardLimitMessage: any;
+  var imageSlotCapacity: any;
+  var imageSlotCapacityMessage: any;
   var imageIconEnabled: any;
   var imageLabelEnabled: any;
   var imageModalMode: any;

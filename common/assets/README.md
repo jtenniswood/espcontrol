@@ -124,7 +124,7 @@ This patches the generated icon sections in:
 - `components/espcontrol/icons.h` — C++ icon lookup table and domain defaults
 - `src/webserver/generated/icons.ts` — web UI icon picker names and domain defaults
 
-Run `python3 scripts/build.py` to also rebuild the generated per-device web UI bundles under `docs/public/webserver/.../www.js`.
+Run `python3 scripts/build.py` to also rebuild the shared web UI bundle at `docs/public/webserver/www.js`.
 
 ## 4. Verify
 
