@@ -3767,9 +3767,9 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "capabilities": {
       "informationOnly": false,
       "subscriptions": true,
-      "actions": false,
-      "numericControl": false,
-      "modal": false,
+      "actions": true,
+      "numericControl": true,
+      "modal": true,
       "runtimeAllocation": true,
       "subpage": true
     }
@@ -3781,7 +3781,7 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
       "subscriptions": true,
       "actions": true,
       "numericControl": true,
-      "modal": false,
+      "modal": true,
       "runtimeAllocation": true,
       "subpage": true
     }

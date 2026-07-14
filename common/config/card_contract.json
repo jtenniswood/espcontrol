@@ -104,8 +104,8 @@
       "alarm_action": {"driver": "alarm_action", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "calendar": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
       "clock": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
-      "climate": {"driver": "climate", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
-      "climate_control": {"driver": "climate", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "climate": {"driver": "climate", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true}},
+      "climate_control": {"driver": "climate", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true}},
       "cover": {
         "driver": "cover",
         "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true},

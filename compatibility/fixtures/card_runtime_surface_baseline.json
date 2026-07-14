@@ -712,9 +712,9 @@
           "attributes"
         ],
         "actions": [
-          "none"
+          "modal"
         ],
-        "modalOwner": "none"
+        "modalOwner": "climate"
       }
     },
     {
@@ -744,9 +744,10 @@
           "attributes"
         ],
         "actions": [
-          "home_assistant_service"
+          "home_assistant_service",
+          "modal"
         ],
-        "modalOwner": "none"
+        "modalOwner": "climate"
       }
     },
     {

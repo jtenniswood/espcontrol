@@ -17,8 +17,8 @@ It records the pre-migration baseline; it does not move executable behaviour int
 | alarm_action | canonical | alarm_action | subscriptions, actions, runtimeAllocation, subpage | alarm_action | alarm_action | ALARM_ACTION | 5 |
 | calendar | canonical | date_time | informationOnly, subscriptions, subpage | calendar | calendar | DATE_TIME | 1 |
 | clock | canonical | date_time | informationOnly, subscriptions, subpage | clock | clock | DATE_TIME | 1 |
-| climate | canonical | climate | subscriptions, runtimeAllocation, subpage | climate_control | climate | CLIMATE | 1 |
-| climate_control | canonical | climate | subscriptions, actions, numericControl, runtimeAllocation, subpage | climate_control | climate_control | CLIMATE | 1 |
+| climate | canonical | climate | subscriptions, actions, numericControl, modal, runtimeAllocation, subpage | climate_control | climate | CLIMATE | 1 |
+| climate_control | canonical | climate | subscriptions, actions, numericControl, modal, runtimeAllocation, subpage | climate_control | climate_control | CLIMATE | 1 |
 | cover | canonical | cover | subscriptions, actions, numericControl, modal, runtimeAllocation, subpage | cover | cover | COVER | 8 |
 | door_window | canonical | status_entity | informationOnly, subscriptions, subpage | door_window | door_window | OCCUPANCY | 2 |
 | presence | canonical | status_entity | informationOnly, subscriptions, subpage | presence | presence | OCCUPANCY | 1 |
@@ -65,4 +65,4 @@ The inventory records broad observable responsibilities so later family migratio
 
 - Subscriptions: none, state, attributes, local, time, action_response, http
 - Actions: none, home_assistant_service, local, http, navigation, modal
-- Modal owners: none, alarm, cover, image, media, todo
+- Modal owners: none, alarm, climate, cover, image, media, todo

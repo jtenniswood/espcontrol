@@ -3,7 +3,7 @@
   "lifecycleVocabulary": {
     "subscriptions": ["none", "state", "attributes", "local", "time", "action_response", "http"],
     "actions": ["none", "home_assistant_service", "local", "http", "navigation", "modal"],
-    "modalOwners": ["none", "alarm", "cover", "image", "media", "todo"]
+    "modalOwners": ["none", "alarm", "climate", "cover", "image", "media", "todo"]
   },
   "types": {
     "": {
@@ -97,7 +97,7 @@
       "canonicalType": "climate_control",
       "webRegistration": "climate",
       "firmwareFamily": "CLIMATE",
-      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["none"], "modalOwner": "none" },
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["modal"], "modalOwner": "climate" },
       "modes": [{ "name": "status", "config": { "entity": "climate.example", "type": "climate" } }]
     },
     "climate_control": {
@@ -105,7 +105,7 @@
       "canonicalType": "climate_control",
       "webRegistration": "climate_control",
       "firmwareFamily": "CLIMATE",
-      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service"], "modalOwner": "none" },
+      "lifecycle": { "subscriptions": ["state", "attributes"], "actions": ["home_assistant_service", "modal"], "modalOwner": "climate" },
       "modes": [{ "name": "all_controls", "config": { "entity": "climate.example", "type": "climate_control" } }]
     },
     "cover": {

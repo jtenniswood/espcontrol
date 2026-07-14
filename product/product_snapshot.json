@@ -1332,9 +1332,9 @@
           "capabilities": {
             "informationOnly": false,
             "subscriptions": true,
-            "actions": false,
-            "numericControl": false,
-            "modal": false,
+            "actions": true,
+            "numericControl": true,
+            "modal": true,
             "runtimeAllocation": true,
             "subpage": true
           }
@@ -1346,7 +1346,7 @@
             "subscriptions": true,
             "actions": true,
             "numericControl": true,
-            "modal": false,
+            "modal": true,
             "runtimeAllocation": true,
             "subpage": true
           }
