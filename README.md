@@ -54,6 +54,8 @@ Start here: [Install EspControl](https://jtenniswood.github.io/espcontrol/gettin
 
 EspControl supports several low-cost ESP32 touchscreens. Larger screens give you more room for controls; smaller screens are useful beside doors, on desks, or in individual rooms.
 
+The Seeed reTerminal D1001 profile is community-supported rather than officially supported. Device-specific testing and help depend on owners and community contributors.
+
 | | 10.1" JC8012P4A1 | 8" Seeed reTerminal D1001 | 7" JC1060P470 | 4.3" JC4880P443 | 4" ESP32-P4 86 Panel | 4" 4848S040 |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
 | Image | Image pending | Image pending | ![7-inch JC1060P470](docs/public/images/jc1060p470-hero.jpg) | ![4.3-inch JC4880P443](docs/public/images/jc4880p443-hero.jpg) | Image pending | ![4-inch 4848S040](docs/public/images/4848s040-hero.jpg) |

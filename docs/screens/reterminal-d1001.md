@@ -8,6 +8,10 @@ description:
 
 The **Seeed reTerminal D1001** is an 8-inch touchscreen powered by an **ESP32-P4** processor and ESP32-C6 WiFi co-processor. EspControl uses it in landscape orientation, with a 1280x800 layout and room for **20 cards** on the home screen.
 
+::: warning Community-supported device
+This profile is maintained by community contributors rather than officially supported by EspControl. Device-specific testing and help depend on D1001 owners in the community.
+:::
+
 ## Specifications
 
 | | |
