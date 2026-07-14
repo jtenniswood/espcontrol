@@ -60,16 +60,11 @@ def test_public_device_profiles(profile_slugs: list[str]) -> list[dict]:
 
 
 def test_web_bundles(profile_slugs: list[str]) -> None:
-    actual_slugs = [
-        path.name
-        for path in WEB_OUTPUT_DIR.iterdir()
-        if path.is_dir()
-    ]
-    assert_same_names(profile_slugs, actual_slugs, "generated setup page bundle directory")
+    bundle = WEB_OUTPUT_DIR / "www.js"
+    assert bundle.is_file(), "shared generated setup page bundle is missing"
+    source = bundle.read_text(encoding="utf-8")
     for slug in profile_slugs:
-        bundle = WEB_OUTPUT_DIR / slug / "www.js"
-        assert bundle.is_file(), f"{slug}: generated setup page bundle is missing"
-        assert slug in bundle.read_text(encoding="utf-8"), f"{slug}: generated setup page bundle has wrong device id"
+        assert slug in source, f"{slug}: shared setup page bundle is missing the device profile"
 
 
 def test_firmware_release_matrix(profile_slugs: list[str]) -> None:

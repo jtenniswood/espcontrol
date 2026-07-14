@@ -118,132 +118,145 @@ import { installAppTestHooksSettings } from "./testing/app_test_hooks_settings";
 
 declare const __ESPCONTROL_TEST_HOOKS_ENABLED__: boolean;
 
-installStaticGlobals({
-  ...DeviceConfig,
-  EspControlModel: Model,
-  ...Model,
-  ...DeviceApi,
-  ...RequestFailure,
-  PreviewGridFeature,
-  PreviewFeature,
-  ClipboardFeature,
-  createBackupFeature: BackupFeature.createBackupFeature,
-  createSettingsUiFeature: SettingsFeature.createSettingsUiFeature,
-  screensaverControlState: SettingsFeature.screensaverControlState,
-  timedSettingLabel: SettingsFeature.timedSettingLabel,
-  ...UiTokens,
-  ...AppState,
-  ...AppInstance,
-  ...EventAliases,
-  ...EventState,
-  ...FirmwareEvents,
-  ...ConfigPrimitives,
-  ...CardContract,
-  ...Icons,
-  ENTITY_CATALOG,
-  defaultTimezoneOptions: () => AppState.defaultTimezoneOptionsForDevice(DeviceConfig.deviceConfig),
-});
+function startEspControl(): void {
+  AppInstance.initializeAppState();
+  installStaticGlobals({
+    ...DeviceConfig,
+    EspControlModel: Model,
+    ...Model,
+    ...DeviceApi,
+    ...RequestFailure,
+    PreviewGridFeature,
+    PreviewFeature,
+    ClipboardFeature,
+    createBackupFeature: BackupFeature.createBackupFeature,
+    createSettingsUiFeature: SettingsFeature.createSettingsUiFeature,
+    screensaverControlState: SettingsFeature.screensaverControlState,
+    timedSettingLabel: SettingsFeature.timedSettingLabel,
+    ...UiTokens,
+    ...AppState,
+    ...AppInstance,
+    ...EventAliases,
+    ...EventState,
+    ...FirmwareEvents,
+    ...ConfigPrimitives,
+    ...CardContract,
+    ...Icons,
+    ENTITY_CATALOG,
+    defaultTimezoneOptions: () =>
+      AppState.defaultTimezoneOptionsForDevice(DeviceConfig.deviceConfig),
+  });
 
-installGlobals(installCore());
-installGlobals(installFirmwareMetadataModule());
-installGlobals(installStylesModule());
-installGlobals(installStateModule());
-installGlobals(installLanguageStateModule());
-installGlobals(installEnvironmentStateModule());
-installGlobals(installScreenRotationStateModule());
-installGlobals(installScreenScheduleStateModule());
-installGlobals(installNtpStateModule());
-installGlobals(installAppearanceStateModule());
-installGlobals(installIdleStateModule());
-installGlobals(installArtworkStateModule());
-installGlobals(installScreensaverStateModule());
-installGlobals(installFirmwareVersionStateModule());
-installGlobals(installEntityStateModule());
-installGlobals(installClockBarStateModule());
-installGlobals(installFirmwareUpdateStateModule());
-installGlobals(installScreensaverTimeoutModule());
-installGlobals(installC6FirmwareUiModule());
-installGlobals(installGridModule());
-installGlobals(installApiModule());
-installGlobals(installFirmwareUpdatePostApiModule());
-installGlobals(installPublicFirmwareInstallModule());
-installGlobals(installConfigOptionCoreModule());
-installGlobals(installConfigMediaOptionsModule());
-installGlobals(installConfigImageOptionsModule());
-installGlobals(installConfigModalTabOptionsModule());
-installGlobals(installConfigSubpageOptionsModule());
-installGlobals(installConfigSensorOptionsModule());
-installGlobals(installConfigConfirmationOptionsModule());
-installGlobals(installConfigAccessClimateAlarmOptionsModule());
-installGlobals(installConfigCodecModule());
-installGlobals(installConfigPostApiModule());
-installGlobals(installStateLoaderApiModule());
-installGlobals(installArtworkPostApiModule());
-installGlobals(installScreenSchedulePostApiModule());
-installGlobals(installClockBarPostApiModule());
-installGlobals(installControlsModule());
-installGlobals(installControlsShellModule());
-installGlobals(installSettingsPageHelpersModule());
-installGlobals(installSettingsScheduleSectionModule());
-installGlobals(installSettingsCoverArtSectionModule());
-installGlobals(installSettingsSystemSectionModule());
-installGlobals(installSettingsPageModule());
-installGlobals(installControlsFieldsModule());
-installGlobals(installPreviewRenderModule());
-installGlobals(installButtonSettingsSelectionModule());
-installGlobals(installButtonSettingsRenderQueueModule());
-installGlobals(installButtonSettingsIconPickerModule());
-installGlobals(installButtonSettingsModule());
-installGlobals(installPreviewGridPlacementModule());
-installGlobals(installPreviewContextMenuModule());
-installGlobals(installPreviewClipboardModule());
-installGlobals(installPreviewInteractionsModule());
-installGlobals(installBackupContractModule());
-installGlobals(installAppBackupModule());
-installGlobals(installAppStatusPreviewModule());
-installGlobals(installAppTitleModule());
-installGlobals(installAppConfigEventsModule());
-installGlobals(installAppStateEventHandlersModule());
-installGlobals(installAppEventsModule());
-installGlobals(installAppModule());
+  installGlobals(installCore());
+  installGlobals(installFirmwareMetadataModule());
+  installGlobals(installStylesModule());
+  installGlobals(installStateModule());
+  installGlobals(installLanguageStateModule());
+  installGlobals(installEnvironmentStateModule());
+  installGlobals(installScreenRotationStateModule());
+  installGlobals(installScreenScheduleStateModule());
+  installGlobals(installNtpStateModule());
+  installGlobals(installAppearanceStateModule());
+  installGlobals(installIdleStateModule());
+  installGlobals(installArtworkStateModule());
+  installGlobals(installScreensaverStateModule());
+  installGlobals(installFirmwareVersionStateModule());
+  installGlobals(installEntityStateModule());
+  installGlobals(installClockBarStateModule());
+  installGlobals(installFirmwareUpdateStateModule());
+  installGlobals(installScreensaverTimeoutModule());
+  installGlobals(installC6FirmwareUiModule());
+  installGlobals(installGridModule());
+  installGlobals(installApiModule());
+  installGlobals(installFirmwareUpdatePostApiModule());
+  installGlobals(installPublicFirmwareInstallModule());
+  installGlobals(installConfigOptionCoreModule());
+  installGlobals(installConfigMediaOptionsModule());
+  installGlobals(installConfigImageOptionsModule());
+  installGlobals(installConfigModalTabOptionsModule());
+  installGlobals(installConfigSubpageOptionsModule());
+  installGlobals(installConfigSensorOptionsModule());
+  installGlobals(installConfigConfirmationOptionsModule());
+  installGlobals(installConfigAccessClimateAlarmOptionsModule());
+  installGlobals(installConfigCodecModule());
+  installGlobals(installConfigPostApiModule());
+  installGlobals(installStateLoaderApiModule());
+  installGlobals(installArtworkPostApiModule());
+  installGlobals(installScreenSchedulePostApiModule());
+  installGlobals(installClockBarPostApiModule());
+  installGlobals(installControlsModule());
+  installGlobals(installControlsShellModule());
+  installGlobals(installSettingsPageHelpersModule());
+  installGlobals(installSettingsScheduleSectionModule());
+  installGlobals(installSettingsCoverArtSectionModule());
+  installGlobals(installSettingsSystemSectionModule());
+  installGlobals(installSettingsPageModule());
+  installGlobals(installControlsFieldsModule());
+  installGlobals(installPreviewRenderModule());
+  installGlobals(installButtonSettingsSelectionModule());
+  installGlobals(installButtonSettingsRenderQueueModule());
+  installGlobals(installButtonSettingsIconPickerModule());
+  installGlobals(installButtonSettingsModule());
+  installGlobals(installPreviewGridPlacementModule());
+  installGlobals(installPreviewContextMenuModule());
+  installGlobals(installPreviewClipboardModule());
+  installGlobals(installPreviewInteractionsModule());
+  installGlobals(installBackupContractModule());
+  installGlobals(installAppBackupModule());
+  installGlobals(installAppStatusPreviewModule());
+  installGlobals(installAppTitleModule());
+  installGlobals(installAppConfigEventsModule());
+  installGlobals(installAppStateEventHandlersModule());
+  installGlobals(installAppEventsModule());
+  installGlobals(installAppModule());
 
-// Card registration order is explicit and intentionally matches the established picker/runtime order.
-installGlobals(registerActionCardTypes());
-installGlobals(registerAlarmCardTypes());
-installGlobals(registerCalendarCardTypes());
-installGlobals(registerClimateCardTypes());
-installGlobals(registerClockCardTypes());
-installGlobals(registerCoverLikeCardHelpers());
-installGlobals(registerDoorWindowCardTypes());
-installGlobals(registerEntityModeCardHelpers());
-installGlobals(registerFanCardTypes());
-installGlobals(registerGarageCardTypes());
-installGlobals(registerGateCardTypes());
-installGlobals(registerImageCardTypes());
-installGlobals(registerInternalCardTypes());
-installGlobals(registerLawnMowerCardTypes());
-installGlobals(registerLightTemperatureCardTypes());
-installGlobals(registerLockCardTypes());
-installGlobals(registerMediaCardTypes());
-installGlobals(registerPresenceCardTypes());
-installGlobals(registerPushCardTypes());
-installGlobals(registerScreenLockCardTypes());
-installGlobals(registerSensorCardTypes());
-installGlobals(registerSliderCardTypes());
-installGlobals(registerSubpageCardTypes());
-installGlobals(registerSwitchCardTypes());
-installGlobals(registerTimezoneCardTypes());
-installGlobals(registerVacuumCardTypes());
-installGlobals(registerWeatherCardTypes());
-installGlobals(registerWeatherForecastCardTypes());
-installGlobals(registerWebhookCardTypes());
+  // Card registration order is explicit and intentionally matches the established picker/runtime order.
+  installGlobals(registerActionCardTypes());
+  installGlobals(registerAlarmCardTypes());
+  installGlobals(registerCalendarCardTypes());
+  installGlobals(registerClimateCardTypes());
+  installGlobals(registerClockCardTypes());
+  installGlobals(registerCoverLikeCardHelpers());
+  installGlobals(registerDoorWindowCardTypes());
+  installGlobals(registerEntityModeCardHelpers());
+  installGlobals(registerFanCardTypes());
+  installGlobals(registerGarageCardTypes());
+  installGlobals(registerGateCardTypes());
+  installGlobals(registerImageCardTypes());
+  installGlobals(registerInternalCardTypes());
+  installGlobals(registerLawnMowerCardTypes());
+  installGlobals(registerLightTemperatureCardTypes());
+  installGlobals(registerLockCardTypes());
+  installGlobals(registerMediaCardTypes());
+  installGlobals(registerPresenceCardTypes());
+  installGlobals(registerPushCardTypes());
+  installGlobals(registerScreenLockCardTypes());
+  installGlobals(registerSensorCardTypes());
+  installGlobals(registerSliderCardTypes());
+  installGlobals(registerSubpageCardTypes());
+  installGlobals(registerSwitchCardTypes());
+  installGlobals(registerTimezoneCardTypes());
+  installGlobals(registerVacuumCardTypes());
+  installGlobals(registerWeatherCardTypes());
+  installGlobals(registerWeatherForecastCardTypes());
+  installGlobals(registerWebhookCardTypes());
 
-if (__ESPCONTROL_TEST_HOOKS_ENABLED__) {
-  installGlobals(installAppTestHooks());
-  installGlobals(installAppTestHooksConfig());
-  installGlobals(installAppTestHooksPreview());
-  installGlobals(installAppTestHooksBackup());
-  installGlobals(installAppTestHooksSettings());
+  if (__ESPCONTROL_TEST_HOOKS_ENABLED__) {
+    installGlobals(installAppTestHooks());
+    installGlobals(installAppTestHooksConfig());
+    installGlobals(installAppTestHooksPreview());
+    installGlobals(installAppTestHooksBackup());
+    installGlobals(installAppTestHooksSettings());
+  }
+
+  installGlobals(installAppStartModule());
 }
 
-installGlobals(installAppStartModule());
+const deviceConfigReady = DeviceConfig.initializeDeviceConfig();
+if (deviceConfigReady) {
+  void deviceConfigReady.then(startEspControl).catch((error) => {
+    console.error("Unable to start EspControl", error);
+  });
+} else {
+  startEspControl();
+}
