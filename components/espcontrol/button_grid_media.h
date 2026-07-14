@@ -782,7 +782,6 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
     }
   }
 
-  media_control_apply_availability(ctx->btn, ctx->btn, ctx->available);
   set_card_checked_state(ctx->btn, ctx->available && ctx->playing);
   media_control_refresh_parent_card(ctx);
   MediaControlModalUi &ui = media_control_modal_ui();
@@ -1728,7 +1727,6 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   std::string artist = media_control_artist_text(ctx);
   if (ui.title_lbl) lv_label_set_text(ui.title_lbl, title.c_str());
   if (ui.artist_lbl) lv_label_set_text(ui.artist_lbl, artist.c_str());
-  media_control_apply_availability(ui.panel, ui.panel, ctx->available, false);
   media_control_refresh_play_icon(ctx);
   media_control_refresh_progress(ctx);
   media_control_refresh_volume(ctx);
