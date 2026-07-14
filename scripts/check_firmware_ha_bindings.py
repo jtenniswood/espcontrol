@@ -940,6 +940,15 @@ def firmware_media_sleep_prevention_errors(
                 errors.append(f"{rel}: do not let cover art alone keep the idle timer awake")
         sleep_body = yaml_script_body(text, "screensaver_sleep_timer")
         if sleep_body is not None:
+            if "id(cover_art_media_playing)" in sleep_body and not re.search(
+                r"id\(cover_art_last_playback_state\)[\s\S]{0,240}"
+                r'state != "playing"[\s\S]{0,120}'
+                r'state != "buffering"[\s\S]{0,120}'
+                r'state != "paused"[\s\S]{0,240}'
+                r"script\.execute:\s*screensaver_idle_check",
+                sleep_body,
+            ):
+                errors.append(f"{rel}: keep the normal screensaver idle during cover art stop grace")
             cover_art_sleep_match = re.search(
                 r"id\(cover_art_screensaver_enabled\)\.state[\s\S]{0,360}"
                 r"id\(cover_art_media_playing\)[\s\S]{0,360}"
@@ -3834,6 +3843,15 @@ def run_self_test() -> int:
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
+        "              const std::string &state = id(cover_art_last_playback_state);\n"
+        "              return id(cover_art_screensaver_active) ||\n"
+        "                     (id(cover_art_media_playing) &&\n"
+        "                      state != \"playing\" && state != \"buffering\" && state != \"paused\");\n"
+        "          then:\n"
+        "            - script.execute: screensaver_idle_check\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
         "              return id(cover_art_screensaver_enabled).state &&\n"
         "                     id(cover_art_media_playing) &&\n"
         "                     !id(cover_art_media_player_entity).state.empty();\n"
@@ -3896,7 +3914,10 @@ def run_self_test() -> int:
         "            - script.execute: cover_art_delay_timer\n"
         "          else:\n"
         "            - script.execute: screensaver_idle_check\n",
-        ("start cover art directly after the normal screensaver timeout",),
+        (
+            "start cover art directly after the normal screensaver timeout",
+            "keep the normal screensaver idle during cover art stop grace",
+        ),
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",

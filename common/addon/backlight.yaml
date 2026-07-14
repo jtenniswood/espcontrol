@@ -557,7 +557,11 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return id(cover_art_screensaver_active);'
+            lambda: |-
+              const std::string &state = id(cover_art_last_playback_state);
+              return id(cover_art_screensaver_active) ||
+                     (id(cover_art_media_playing) &&
+                      state != "playing" && state != "buffering" && state != "paused");
           then:
             - script.execute: screensaver_idle_check
           else:
