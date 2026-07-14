@@ -26,6 +26,8 @@ A Media card controls a Home Assistant `media_player` entity. It can work as a s
 3. Enter the media player entity, for example `media_player.living_room`.
 4. Set a label or icon if the selected type shows those fields.
 
+If Home Assistant reports the media player as unavailable, the card keeps its normal appearance. A card set to show the live state can still say **Unavailable**, and controls will work again when Home Assistant can accept actions for the player.
+
 ## Playback Buttons
 
 **Play/Pause Button**, **Previous Button**, and **Next Button** send the matching Home Assistant media player action when tapped.
