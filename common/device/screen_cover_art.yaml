@@ -1615,6 +1615,7 @@ script:
                 return;
               }
 
+              id(cover_art_delay_timer).stop();
               id(cover_art_delayed_playback_stopped).execute();
             };
           if (!already_subscribed) {

@@ -876,6 +876,12 @@ def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str
 
     if "id(cover_art_delayed_playback_stopped).execute();" not in text:
         errors.append(f"{rel}: delay non-playing playback transitions")
+    if not re.search(
+        r"id\(cover_art_delay_timer\)\.stop\(\);\s+"
+        r"id\(cover_art_delayed_playback_stopped\)\.execute\(\);",
+        text,
+    ):
+        errors.append(f"{rel}: cancel a pending cover art opening when playback stops")
     if text.count("id(cover_art_delayed_playback_stopped).stop();") < 2:
         errors.append(f"{rel}: cancel a pending stop when playback resumes or pauses")
 
@@ -3682,6 +3688,7 @@ def run_self_test() -> int:
         (
             "buffer brief non-playing states between tracks",
             "delay non-playing playback transitions",
+            "cancel a pending cover art opening when playback stops",
             "cancel a pending stop when playback resumes or pauses",
             "cancel pending playback grace during an immediate stop",
         ),
@@ -3694,6 +3701,7 @@ def run_self_test() -> int:
         "      - lambda: |-\n"
         "          id(cover_art_delayed_playback_stopped).stop();\n"
         "          id(cover_art_delayed_playback_stopped).stop();\n"
+        "          id(cover_art_delay_timer).stop();\n"
         "          id(cover_art_delayed_playback_stopped).execute();\n"
         "  - id: cover_art_delayed_playback_stopped\n"
         "    mode: restart\n"
