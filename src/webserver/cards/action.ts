@@ -30,7 +30,9 @@ export function registerActionCardTypes(): GlobalDescriptors {
             return b === ACTION_CARD_LOCAL_ACTION;
         return !!(b && (b.type === "action" || b.type === "local") && b.sensor === ACTION_CARD_LOCAL_ACTION);
     }
-    function normalizeActionCardConfig(this: any, b?: any) {
+    function normalizeSavedConfigActionFields(this: any, b?: any) {
+        if (!b)
+            return;
         if (b && b.sensor === "select.select_option")
             b.sensor = ACTION_CARD_OPTION_SELECT_ACTION;
         if (!b.sensor)
@@ -54,9 +56,12 @@ export function registerActionCardTypes(): GlobalDescriptors {
             if (!b.icon || b.icon === "Auto" || b.icon === "Flash")
                 b.icon = "Gesture Tap";
         }
-        else {
-            b.options = normalizeActionOptions(b.options, b.sensor);
-        }
+    }
+    function normalizeActionCardConfig(this: any, b?: any) {
+        if (!b)
+            return;
+        normalizeSavedConfigActionFields(b);
+        b.options = normalizeActionOptions(b.options, b.sensor);
     }
     var ACTION_CARD_STATE_ENTITY_OPTION: any = "state_entity";
     var ACTION_CARD_STATE_UNIT_OPTION: any = "state_unit";
@@ -587,6 +592,7 @@ export function registerActionCardTypes(): GlobalDescriptors {
         "actionCardInfo": staticGlobal(actionCardInfo),
         "actionCardIsOptionSelect": staticGlobal(actionCardIsOptionSelect),
         "actionCardIsLocal": staticGlobal(actionCardIsLocal),
+        "normalizeSavedConfigActionFields": staticGlobal(normalizeSavedConfigActionFields),
         "normalizeActionCardConfig": staticGlobal(normalizeActionCardConfig),
         "ACTION_CARD_STATE_ENTITY_OPTION": liveGlobal(() => ACTION_CARD_STATE_ENTITY_OPTION, (value?: any) => { ACTION_CARD_STATE_ENTITY_OPTION = value; }),
         "ACTION_CARD_STATE_UNIT_OPTION": liveGlobal(() => ACTION_CARD_STATE_UNIT_OPTION, (value?: any) => { ACTION_CARD_STATE_UNIT_OPTION = value; }),

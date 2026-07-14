@@ -25,3 +25,12 @@ inline bool migrate_saved_config_sensor_legacy(Config &config) {
   }
   return false;
 }
+
+template<typename Config, typename FieldHook, typename OptionHook>
+inline bool normalize_saved_config_sensor(Config &config, bool was_legacy_text_sensor,
+                                          FieldHook normalize_fields, OptionHook normalize_options) {
+  if (config.type != "sensor") return false;
+  normalize_fields(config, was_legacy_text_sensor);
+  config.options = normalize_options(config.options, config.precision);
+  return true;
+}

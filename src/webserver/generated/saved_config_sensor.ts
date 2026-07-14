@@ -23,3 +23,18 @@ export function migrateSavedConfigSensorLegacy(config: CardConfig): boolean {
   }
   return false;
 }
+
+export type SavedConfigSensorFieldHook = (config: CardConfig, wasLegacyTextSensor: boolean) => void;
+export type SavedConfigSensorOptionHook = (options: string, precision: string) => string;
+
+export function normalizeSavedConfigSensor(
+  config: CardConfig,
+  wasLegacyTextSensor: boolean,
+  normalizeFields: SavedConfigSensorFieldHook,
+  normalizeOptions: SavedConfigSensorOptionHook,
+): boolean {
+  if (config.type !== "sensor") return false;
+  normalizeFields(config, wasLegacyTextSensor);
+  config.options = normalizeOptions(config.options || "", config.precision || "");
+  return true;
+}

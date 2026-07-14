@@ -1,5 +1,15 @@
 [
   {
+    "name": "empty saved slot uses model icon defaults",
+    "input": "",
+    "expected": { "entity": "", "label": "", "icon": "Auto", "icon_on": "Auto", "sensor": "", "unit": "", "type": "", "precision": "", "options": "" }
+  },
+  {
+    "name": "switch with omitted icons uses model defaults",
+    "input": "switch.printer;Printer;;;sensor.power;W;;1;large_numbers",
+    "expected": { "entity": "switch.printer", "label": "Printer", "icon": "Auto", "icon_on": "Auto", "sensor": "sensor.power", "unit": "W", "type": "", "precision": "1", "options": "large_numbers" }
+  },
+  {
     "name": "slider clears stale sensor and options",
     "input": "number.level;Level;Tune;Auto;sensor.level;%;slider;2;large_numbers,unknown=1",
     "expected": { "entity": "number.level", "label": "Level", "icon": "Tune", "icon_on": "Auto", "sensor": "", "unit": "%", "type": "slider", "precision": "2", "options": "" }

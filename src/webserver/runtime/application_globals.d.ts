@@ -674,6 +674,7 @@ declare global {
   var networkPreviewIconSlug: any;
   var newCardDraftKey: any;
   var normalizeActionCardConfig: any;
+  var normalizeSavedConfigActionFields: any;
   var normalizeActionOptions: any;
   var normalizeAlarmActionList: any;
   var normalizeAlarmIconDisplayMode: any;
