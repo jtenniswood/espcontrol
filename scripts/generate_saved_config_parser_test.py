@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "common" / "config"
 FIELDS = ("entity", "label", "icon", "icon_on", "sensor", "unit", "type", "precision", "options")
+FIXTURE_SUFFIX = "_card_normalization_fixtures.json"
 
 
 def cpp_string(value: str) -> str:
@@ -20,8 +21,8 @@ def cpp_string(value: str) -> str:
 def fixture_groups() -> list[tuple[str, list[dict]]]:
     shared = json.loads((CONFIG_DIR / "card_normalization_fixtures.json").read_text(encoding="utf-8"))
     groups = [(label, fixtures) for label, fixtures in sorted(shared.items())]
-    for path in sorted(CONFIG_DIR.glob("*_card_normalization_fixtures.json")):
-        label = path.name.removesuffix("_card_normalization_fixtures.json").replace("_", " ")
+    for path in sorted(CONFIG_DIR.glob(f"*{FIXTURE_SUFFIX}")):
+        label = path.name[:-len(FIXTURE_SUFFIX)].replace("_", " ")
         groups.append((label, json.loads(path.read_text(encoding="utf-8"))))
     return groups
 
