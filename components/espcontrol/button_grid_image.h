@@ -68,6 +68,7 @@ struct ImageCardCtx {
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
   bool media_artwork = false;
+  lv_obj_t *media_overlay = nullptr;
   std::string pending_fallback_picture;
   std::string media_cached_remote_url;
   std::string media_cached_local_url;
@@ -438,6 +439,7 @@ inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
   ctx->next_download_retry_ms = 0;
   ctx->last_download_completed_ms = 0;
   image_card_hide(ctx);
+  if (ctx->media_overlay) lv_obj_add_flag(ctx->media_overlay, LV_OBJ_FLAG_HIDDEN);
 }
 
 inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {
@@ -546,6 +548,10 @@ inline void image_card_apply_downloaded(ImageCardCtx *ctx) {
   image_card_set_widget_source(ctx->widget, ctx->image);
   lv_obj_clear_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_background(ctx->widget);
+  if (ctx->media_overlay) {
+    lv_obj_clear_flag(ctx->media_overlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ctx->media_overlay);
+  }
   lv_obj_invalidate(ctx->widget);
   if (ctx->btn) lv_obj_invalidate(ctx->btn);
   notify_dashboard_content_changed();
@@ -687,6 +693,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
     contexts[i].media_artwork = false;
+    contexts[i].media_overlay = nullptr;
     contexts[i].pending_fallback_picture.clear();
     contexts[i].media_cached_remote_url.clear();
     contexts[i].media_cached_local_url.clear();
@@ -1317,6 +1324,7 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
           if (!image_card_context_current(ctx, entity_id, generation)) return;
           std::string local = string_ref_limited(picture, 4096);
           if (!local.empty() && local != "unknown" && local != "unavailable") {
+            ctx->pending_fallback_picture.clear();
             image_card_handle_picture(ctx, picture);
             return;
           }
@@ -1844,13 +1852,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
 inline void image_card_process_media_artwork(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
   std::string chosen = ctx->media_cached_local_url;
-  if (chosen.empty()) {
-    chosen = ctx->media_cached_remote_url;
-  } else if (!ctx->media_cached_remote_url.empty() &&
-             ctx->media_cached_remote_url != chosen &&
-             (ctx->source_url.empty() || ctx->media_cached_remote_url != ctx->source_url)) {
-    chosen = ctx->media_cached_remote_url;
-  }
+  if (chosen.empty()) chosen = ctx->media_cached_remote_url;
   if (chosen.empty()) {
     image_card_clear_media_artwork(ctx);
     return;
@@ -1879,7 +1881,9 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
   std::string raw = string_ref_limited(picture, 4096);
   std::string url = image_card_join_url(image_card_base_url(ctx), raw);
   if (local) {
+    if (!url.empty() && url != ctx->source_url) ctx->startup_download_errors = 0;
     ctx->media_cached_local_url = url;
+    if (!url.empty()) ctx->pending_fallback_picture.clear();
   } else {
     ctx->media_cached_remote_url = url;
     ctx->pending_fallback_picture = raw;
@@ -2010,6 +2014,7 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
   ctx->timer_only = image_card_timer_only_refresh(p);
   ctx->modal_fit = image_card_modal_fit_enabled(p);
   ctx->media_artwork = false;
+  ctx->media_overlay = nullptr;
   ctx->pending_fallback_picture.clear();
   ctx->diagnostics_enabled = cfg.image_card_diagnostics;
   ctx->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;

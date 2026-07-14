@@ -198,6 +198,9 @@ int main() {
   assert(row_span == 3 && col_span == 1);
   grid_token_spans('x', row_span, col_span);
   assert(row_span == 1 && col_span == 3);
+  grid_token_spans('q', row_span, col_span);
+  assert(row_span == 3 && col_span == 3);
+  assert(grid_token_has_span_suffix('q'));
 
   assert(clock_bar_equal_fr_track_size(434, 3, 0) == 145);
   assert(clock_bar_equal_fr_track_size(434, 3, 1) == 145);

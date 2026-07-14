@@ -224,7 +224,7 @@ inline bool info_only_hidden_card_type(const ParsedCfg &p) {
 
 inline void media_cover_art_refresh_geometry(MediaNowPlayingCtx *ctx) {
   if (!ctx || !ctx->cover_art) return;
-  image_card_apply_context_widget_geometry(ctx->cover_art);
+  image_card_refresh_tile_geometry(ctx->cover_art);
   if (ctx->cover_overlay) image_card_position_widget(ctx->cover_art->btn, ctx->cover_overlay);
   if (ctx->cover_art->widget) lv_obj_move_background(ctx->cover_art->widget);
   if (ctx->cover_overlay) lv_obj_move_foreground(ctx->cover_overlay);
@@ -248,6 +248,7 @@ inline void clear_media_cover_art(MediaNowPlayingCtx *ctx) {
     ctx->cover_art->resume_display_takeover = nullptr;
     ctx->cover_art->diagnostics_enabled = false;
     ctx->cover_art->media_artwork = false;
+    ctx->cover_art->media_overlay = nullptr;
     if (widget) lv_obj_del(widget);
     ctx->cover_art = nullptr;
   }
@@ -311,6 +312,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->timer_only = false;
   art->modal_fit = false;
   art->media_artwork = true;
+  art->media_overlay = overlay;
   art->pending_fallback_picture.clear();
   art->diagnostics_enabled = cfg.image_card_diagnostics;
   art->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
@@ -931,6 +933,8 @@ inline void grid_phase1(
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   display_set_width_axis(display);
+  // Clear image references before visual setup removes their old LVGL widgets.
+  reset_image_card_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
