@@ -388,6 +388,22 @@ def firmware_card_disabled_state_errors(firmware_dir: Path, root: Path) -> list[
     return errors
 
 
+def firmware_media_card_availability_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_media.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    if "media_control_apply_availability(ctx->btn, ctx->btn" in text:
+        errors.append(f"{rel}: do not dim or disable media cards for unavailable entity states")
+    if "media_control_apply_availability(ui.panel, ui.panel" in text:
+        errors.append(f"{rel}: do not dim the media control panel for unavailable entity states")
+
+    return errors
+
+
 def firmware_action_card_script_fields_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_actions.h"
     if not path.exists():
@@ -1876,6 +1892,7 @@ def run_scan() -> int:
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_card_disabled_state_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_card_availability_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_action_card_script_fields_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
@@ -2025,6 +2042,20 @@ def expect_action_card_availability_errors(name: str, text: str, expected: tuple
         (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
 
         errors = firmware_action_card_availability_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_card_availability_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_media_card_availability_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -3198,6 +3229,27 @@ def run_self_test() -> int:
         "if (sb_cfg.type == \"push\") {\n"
         "  std::string push_label = sb_cfg.label.empty() ? espcontrol_i18n(std::string(\"Push\")) : sb_cfg.label;\n"
         "  continue;\n"
+        "}\n",
+        (),
+    )
+    expect_media_card_availability_errors(
+        "unavailable entity dims media card",
+        "inline void media_playback_apply_state_to_control(MediaPlaybackState *state, MediaControlCtx *ctx) {\n"
+        "  media_control_apply_availability(ctx->btn, ctx->btn, ctx->available);\n"
+        "}\n",
+        ("do not dim or disable media cards",),
+    )
+    expect_media_card_availability_errors(
+        "unavailable entity dims media panel",
+        "inline void media_control_refresh_modal(MediaControlCtx *ctx) {\n"
+        "  media_control_apply_availability(ui.panel, ui.panel, ctx->available, false);\n"
+        "}\n",
+        ("do not dim the media control panel",),
+    )
+    expect_media_card_availability_errors(
+        "media progress remains guarded",
+        "inline void media_control_refresh_progress(MediaControlCtx *ctx) {\n"
+        "  media_control_apply_availability(ui.progress_slider, ui.progress_slider, has_duration);\n"
         "}\n",
         (),
     )
