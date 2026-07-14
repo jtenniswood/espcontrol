@@ -975,6 +975,15 @@ def firmware_media_sleep_prevention_errors(
         ):
             errors.append(f"{rel}: restart positive Show After delay after touches in disabled screensaver mode")
 
+        takeover_restore_body = yaml_script_body(text, "display_takeover_resume_restore")
+        if takeover_restore_body is not None and "script.execute: show_cover_art_view" in takeover_restore_body:
+            if (
+                "id(cover_art_last_playback_state)" not in takeover_restore_body
+                or 'state == "playing"' not in takeover_restore_body
+                or 'state == "buffering"' not in takeover_restore_body
+            ):
+                errors.append(f"{rel}: keep takeover restore from showing cover art during stop grace")
+
     if display_path.exists():
         rel = display_path.relative_to(root)
         text = display_path.read_text(encoding="utf-8")
@@ -3918,6 +3927,20 @@ def run_self_test() -> int:
             "start cover art directly after the normal screensaver timeout",
             "keep the normal screensaver idle during cover art stop grace",
         ),
+    )
+    expect_media_sleep_prevention_errors(
+        "takeover restore trusts delayed playing flag",
+        "script:\n"
+        "  - id: display_takeover_resume_restore\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return id(cover_art_media_playing);'\n"
+        "          then:\n"
+        "            - script.execute: show_cover_art_view\n",
+        "",
+        "",
+        ("keep takeover restore from showing cover art during stop grace",),
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",
