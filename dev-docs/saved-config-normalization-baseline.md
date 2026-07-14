@@ -30,7 +30,7 @@ same parity test as part of `firmware-parser`.
 | Read nine legacy semicolon fields and compact `~` comma fields | Platform | `EspControlModel.parseRawButtonConfig` | `parse_cfg` |
 | Percent-decode compact delimiters and UTF-8; leave malformed escapes literal | Platform | `EspControlModel.decodeConfigField` | `decode_compact_field` |
 | Write the existing safe legacy form when possible, otherwise the existing compact form | Platform | `serializeButtonConfig` | Firmware reads but does not rewrite stored card data |
-| Treat missing icons as `Auto` at the browser model boundary | Declarative | `buttonShape`/model defaults and `normalizeButtonConfig` | Card-family normalization in `normalize_parsed_cfg` |
+| Treat missing icons as `Auto` at the model boundary | Declarative | `buttonShape`/model defaults and generated card normalization | Generated card normalization before firmware runtime use |
 | Parse comma-separated options, preserve canonical order, percent-encode option values, and omit defaults | Declarative | `config_option_core.ts` and family option modules | `cfg_option_*`, `*_card_options_normalized` |
 | Remove unrecognized or inapplicable options | Declarative | final preservation guard in `normalizeButtonConfig` | final option guard in `normalize_parsed_cfg` |
 | Allow `large_numbers` only for supported type/mode/precision combinations | Declarative + Hook | `cardLargeNumbersSupported` | `card_large_numbers_supported` |
