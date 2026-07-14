@@ -4,6 +4,7 @@
 #include "cover_art.h"
 
 using espcontrol::artwork::SourceCandidates;
+using espcontrol::artwork::RemoteUpdatePolicy;
 using espcontrol::cover_art::RuntimeState;
 
 int main() {
@@ -30,6 +31,15 @@ int main() {
   assert(!sources.update(false, "remote-b"));
   assert(!sources.update(true, ""));
   assert(sources.select("remote-b", false).primary == "remote-b");
+
+  // Media-card remote/local requests can finish out of order. A delayed
+  // remote callback must preserve the newer local result.
+  sources.clear();
+  assert(sources.update(true, "local-new"));
+  assert(sources.update(false, "remote-old", RemoteUpdatePolicy::PRESERVE_LOCAL));
+  selected = sources.select("", false);
+  assert(selected.primary == "local-new");
+  assert(selected.fallback == "remote-old");
 
   // When a stable local proxy URL still points at the previous track, a fresh
   // remote URL wins for the refresh and the local URL remains the fallback.

@@ -597,8 +597,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     setup_light_control_card(s, p);
     return;
   }
-  if (family == espcontrol::cards::Family::SLIDER ||
-      family == espcontrol::cards::Family::COVER) {
+  if (espcontrol::cards::uses_slider_visual(p.type)) {
     setup_slider_visual(s, p, palette.has_on ? palette.on_val : DEFAULT_SLIDER_COLOR);
     return;
   }
