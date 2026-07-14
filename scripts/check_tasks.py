@@ -51,6 +51,15 @@ LOCKFILES = (
 )
 
 
+def path_is_within(path: Path, root: Path) -> bool:
+    """Return whether path is inside root without requiring Python 3.9."""
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
 def validate_registry(tasks: tuple[Task, ...] = TASKS) -> dict[str, Task]:
     registry: dict[str, Task] = {}
     for item in tasks:
@@ -527,7 +536,7 @@ class CacheKeyBuilder:
         for command in item.commands:
             if len(command) > 1 and Path(command[1]).suffix == ".py":
                 candidate = (self.root / command[1]).absolute()
-                if candidate.is_relative_to(self.root.absolute()) and candidate.exists():
+                if path_is_within(candidate, self.root.absolute()) and candidate.exists():
                     pending.append(candidate)
 
         discovered: set[Path] = set()
@@ -553,7 +562,7 @@ class CacheKeyBuilder:
                     local = next((path.absolute() for path in candidates if path.exists()), None)
                     if (
                         local is not None
-                        and local.is_relative_to(self.root.absolute())
+                        and path_is_within(local, self.root.absolute())
                         and local not in discovered
                     ):
                         pending.append(local)
@@ -1206,7 +1215,7 @@ def self_test() -> None:
     for alias, command in public_aliases.items():
         if alias in profile_aliases or alias == "check:parallel":
             continue
-        task_id = alias.removeprefix("check:")
+        task_id = alias[len("check:"):]
         if task_id not in registry:
             raise AssertionError(f"{alias} has no matching registered task")
         expected_command = f"python3 scripts/check_tasks.py run-task {task_id}"
