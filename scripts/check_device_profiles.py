@@ -58,8 +58,8 @@ def assert_profile_slugs(profile_slugs: list[str], values: list[str], label: str
     assert values == profile_slugs, f"{label} slugs differ: {values} != {profile_slugs}"
 
 
-def image_card_limit(profile: dict) -> int:
-    return int(profile["firmware"].get("display", {}).get("imageCardDownloaders", 4))
+def image_slot_capacity(profile: dict) -> int:
+    return int(profile["capabilities"]["imageSlots"])
 
 
 def test_public_device_capabilities(profile_slugs: list[str]) -> None:
@@ -83,6 +83,12 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
         assert capability["screenSize"] in grid, f"{stem}: grid snippet missing screen size"
         assert capability["resolution"] in grid, f"{stem}: grid snippet missing resolution"
         assert capability["chipFamily"] in grid, f"{stem}: grid snippet missing chip family"
+        image_capacity_text = (
+            "Not supported"
+            if capability["imageSlots"] == 0
+            else f'Up to {capability["imageSlots"]} simultaneous Image or Media Cover Art cards'
+        )
+        assert image_capacity_text in grid, f"{stem}: grid snippet missing image capacity"
         assert f'`{capability["installSlug"]}`' in grid, f"{stem}: grid snippet missing install slug"
         relay_text = "No built-in relays" if capability["relays"] == 0 else f"{capability['relays']} built-in relay"
         assert relay_text in grid, f"{stem}: grid snippet missing relay availability"
@@ -104,9 +110,9 @@ def test_generated_web(profiles: dict[str, dict]) -> None:
         assert path.is_file(), f"{slug}: generated web bundle is missing"
         text = path.read_text(encoding="utf-8")
         assert slug in text, f"{slug}: generated web bundle has wrong device id"
-        limit = image_card_limit(profile)
-        assert f"imageCardLimit:{limit}" in text or f'"imageCardLimit":{limit}' in text, (
-            f"{slug}: generated web bundle has wrong image card limit"
+        capacity = image_slot_capacity(profile)
+        assert f"imageSlotCapacity:{capacity}" in text or f'"imageSlotCapacity":{capacity}' in text, (
+            f"{slug}: generated web bundle has wrong image slot capacity"
         )
 
 
@@ -121,17 +127,17 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
         assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
-        limit = image_card_limit(profile)
-        if limit > 0:
-            package_name = "image_cards.yaml" if limit == 4 else f"image_cards_{limit}.yaml"
+        capacity = image_slot_capacity(profile)
+        if capacity > 0:
+            package_name = "image_cards.yaml" if capacity == 4 else f"image_cards_{capacity}.yaml"
             assert package_name in package, f"{slug}: packages.yaml missing {package_name}"
-            assert f"cfg.image_card_image_count = {limit};" in sensors, (
+            assert f"cfg.image_card_image_count = {capacity};" in sensors, (
                 f"{slug}: sensors.yaml missing image-card downloader count"
             )
-            assert f"id(image_card_download_{limit})," in sensors, (
+            assert f"id(image_card_download_{capacity})," in sensors, (
                 f"{slug}: sensors.yaml missing final image-card tile downloader"
             )
-            assert f"id(image_card_modal_download_{limit})," in sensors, (
+            assert f"id(image_card_modal_download_{capacity})," in sensors, (
                 f"{slug}: sensors.yaml missing final image-card modal downloader"
             )
         else:
