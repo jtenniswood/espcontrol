@@ -9,7 +9,7 @@ from pathlib import Path
 
 import device_matrix
 import generate_device_slots
-from device_profiles import ROOT, load_device_profiles, public_device_capabilities
+from device_profiles import ROOT, load_device_profiles, public_device_capabilities, web_config
 import check_public_firmware
 
 
@@ -60,6 +60,16 @@ def assert_profile_slugs(profile_slugs: list[str], values: list[str], label: str
 
 def image_slot_capacity(profile: dict) -> int:
     return int(profile["capabilities"]["imageSlots"])
+
+
+def test_zero_image_capacity_disables_all_image_card_pickers(profiles: dict[str, dict]) -> None:
+    for slug, profile in profiles.items():
+        if image_slot_capacity(profile) != 0:
+            continue
+        disabled = set(web_config(profile).get("disabledCardTypes", []))
+        assert {"image", "media_cover_art"} <= disabled, (
+            f"{slug}: zero image capacity must disable Image and Media Cover Art cards"
+        )
 
 
 def test_public_device_capabilities(profile_slugs: list[str]) -> None:
@@ -590,6 +600,7 @@ def main() -> int:
     assert profile_slugs == compatibility_required_slugs(), "current compatibility device slug fixture is stale"
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profiles)
+    test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()

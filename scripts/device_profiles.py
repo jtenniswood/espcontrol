@@ -20,6 +20,7 @@ VALID_CHIP_FAMILIES = {"ESP32-P4", "ESP32-S3"}
 VALID_DRAG_MODES = {"swap", "displace"}
 VALID_ROTATIONS = {"0", "90", "180", "270"}
 VALID_DISPLAY_MODES = {"color"}
+IMAGE_CARD_PICKER_TYPES = ("image", "media_cover_art")
 REQUIRED_FONT_ROLES = (
     "icon",
     "sensor",
@@ -852,8 +853,9 @@ def web_config(profile: dict[str, Any]) -> dict[str, Any]:
             cfg["features"] = copy.deepcopy(features)
     if image_slot_capacity == 0:
         disabled = list(cfg.get("disabledCardTypes") or [])
-        if "image" not in disabled:
-            disabled.append("image")
+        for card_type in IMAGE_CARD_PICKER_TYPES:
+            if card_type not in disabled:
+                disabled.append(card_type)
         cfg["disabledCardTypes"] = disabled
     if features and "features" not in cfg:
         cfg["features"] = copy.deepcopy(features)
