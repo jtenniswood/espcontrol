@@ -119,6 +119,7 @@ class GeneratedOutputTransaction:
             for path, content in self._staged.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 originals[path] = path.read_bytes() if path.exists() else None
+                target_mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
                 with tempfile.NamedTemporaryFile(
                     mode="w",
                     encoding="utf-8",
@@ -130,6 +131,7 @@ class GeneratedOutputTransaction:
                     handle.write(content)
                     handle.flush()
                     os.fsync(handle.fileno())
+                    os.chmod(handle.name, target_mode)
                     prepared[path] = Path(handle.name)
 
             for path, staged_path in prepared.items():
@@ -178,17 +180,22 @@ def run_generated_transaction_self_test():
         root = Path(directory)
         first = root / "first.txt"
         second = root / "second.txt"
+        third = root / "third.txt"
         first.write_text("first-old", encoding="utf-8")
         second.write_text("second-old", encoding="utf-8")
+        first.chmod(0o640)
 
         transaction = GeneratedOutputTransaction()
         transaction.stage_text(first, "first-new")
         transaction.stage_text(second, "second-new")
+        transaction.stage_text(third, "third-new")
         if first.read_text(encoding="utf-8") != "first-old" or second.read_text(encoding="utf-8") != "second-old":
             raise BuildError("Generated transaction changed files before commit")
         transaction.commit()
         if first.read_text(encoding="utf-8") != "first-new" or second.read_text(encoding="utf-8") != "second-new":
             raise BuildError("Generated transaction did not publish the complete set")
+        if first.stat().st_mode & 0o777 != 0o640 or third.stat().st_mode & 0o777 != 0o644:
+            raise BuildError("Generated transaction did not preserve safe file permissions")
 
         replacements = 0
 
@@ -232,7 +239,7 @@ def run_generated_transaction_self_test():
         )
         if result.returncode != 0:
             raise BuildError(result.stderr.strip() or "Generated overlay self-test could not build a web bundle")
-        bundle = (bundle_root / slug / "www.js").read_text(encoding="utf-8")
+        bundle = (bundle_root / "www.js").read_text(encoding="utf-8")
         if marker not in bundle:
             raise BuildError("Web bundle did not consume the staged generated overlay")
 
@@ -3671,7 +3678,7 @@ def load_timezone_options():
 
 
 def build_www(check_only=False, output_dir=None, test_hooks=False):
-    """Build per-device www.js from the single source template."""
+    """Build one shared www.js containing the validated device profiles."""
     devices = build_web_devices()
     temporary_root = None
     if output_dir is None:
@@ -3699,29 +3706,29 @@ def build_www(check_only=False, output_dir=None, test_hooks=False):
         raise BuildError(result.stderr.strip() or "esbuild failed while building web bundles")
 
     if output_dir is not None:
-        print(f"Built {len(devices)} www.js bundle(s) in {build_root}")
+        print(f"Built shared www.js bundle and {len(devices)} compatibility loader(s) in {build_root}")
         return []
 
-    dirty = []
+    outputs = [(WWW_OUTPUT_DIR / "www.js", (build_root / "www.js").read_text())]
+    outputs.extend(
+        (WWW_OUTPUT_DIR / slug / "www.js", (build_root / slug / "www.js").read_text())
+        for slug in devices
+    )
+    dirty = [
+        str(path.relative_to(WWW_OUTPUT_DIR))
+        for path, generated in outputs
+        if not path.exists() or path.read_text() != generated
+    ]
 
-    for slug in devices:
-        output_path = WWW_OUTPUT_DIR / slug / "www.js"
-        generated = (build_root / slug / "www.js").read_text()
-
-        if output_path.exists():
-            current = output_path.read_text()
-            if current == generated:
-                continue
-
-        dirty.append(slug)
-
-        if not check_only:
-            write_generated_text(output_path, generated)
+    if not check_only:
+        for path, generated in outputs:
+            if not path.exists() or path.read_text() != generated:
+                write_generated_text(path, generated)
 
     if check_only and dirty:
         print("www.js outputs are out of date. Run 'python scripts/build.py www' to fix:")
-        for slug in dirty:
-            print(f"  docs/public/webserver/{slug}/www.js")
+        for relative_path in dirty:
+            print(f"  docs/public/webserver/{relative_path}")
     if temporary_root:
         temporary_root.cleanup()
     return dirty

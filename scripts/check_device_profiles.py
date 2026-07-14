@@ -98,22 +98,34 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
 
 
 def test_generated_web(profiles: dict[str, dict]) -> None:
-    expected_slugs = set(profiles)
-    actual_slugs = {path.name for path in WEB_OUTPUT_DIR.iterdir() if path.is_dir()}
-    stale_slugs = sorted(actual_slugs - expected_slugs)
-    assert not stale_slugs, (
-        "generated web bundle folder has no device profile: " + ", ".join(stale_slugs)
-    )
+    path = WEB_OUTPUT_DIR / "www.js"
+    assert path.is_file(), "shared generated web bundle is missing"
+    text = path.read_text(encoding="utf-8")
 
     for slug, profile in profiles.items():
-        path = WEB_OUTPUT_DIR / slug / "www.js"
-        assert path.is_file(), f"{slug}: generated web bundle is missing"
-        text = path.read_text(encoding="utf-8")
-        assert slug in text, f"{slug}: generated web bundle has wrong device id"
+        assert slug in text, f"{slug}: shared generated web bundle is missing the device profile"
+        loader_path = WEB_OUTPUT_DIR / slug / "www.js"
+        loader = loader_path.read_text(encoding="utf-8")
+        assert len(loader) < 1024, f"{slug}: compatibility loader unexpectedly contains a full web bundle"
+        assert 'new URL("../www.js"' in loader and slug in loader, (
+            f"{slug}: compatibility loader does not launch the shared bundle"
+        )
         capacity = image_slot_capacity(profile)
         assert f"imageSlotCapacity:{capacity}" in text or f'"imageSlotCapacity":{capacity}' in text, (
             f"{slug}: generated web bundle has wrong image slot capacity"
         )
+
+    core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
+    assert "webserver/www.js?device=${device_slug}" in core, "hosted web URL does not select a shared profile"
+    assert 'ESPCONTROL_DEVICE_SLUG=\\"${device_slug}\\"' in core, "firmware build does not expose its profile slug"
+    server = (ROOT / "components" / "web_server_idf" / "web_server_idf.cpp").read_text(encoding="utf-8")
+    assert '\\"device_slug\\"' in server and "ESPCONTROL_DEVICE_PROFILE" in server, (
+        "firmware metadata endpoint does not expose the shared web profile"
+    )
+    for slug in profiles:
+        for suffix in (".yaml", ".factory.yaml"):
+            build = (ROOT / "builds" / f"{slug}{suffix}").read_text(encoding="utf-8")
+            assert 'docs/public/webserver/www.js"' in build, f"{slug}{suffix}: firmware does not embed shared web bundle"
 
 
 def test_generated_yaml(profiles: dict[str, dict]) -> None:
