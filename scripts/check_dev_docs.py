@@ -104,7 +104,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "src/webserver/",
-        ("docs/public/webserver/*/www.js",),
+        ("docs/public/webserver/www.js",),
         "python3 scripts/build.py www",
         "`npm run check:web-smoke` and `npm run check:product`",
     ),

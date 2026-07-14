@@ -2133,7 +2133,7 @@ const imageLimitSnapshot = {
     },
   },
 };
-assert.strictEqual(hooks.imageCardLimit(), 6, "image card editor limit matches the built device profile");
+assert.strictEqual(hooks.imageSlotCapacity(), 6, "image card editor capacity matches the built device profile");
 assert.strictEqual(hooks.imageCardCountForTest(imageLimitSnapshot), 6, "image card count spans main page and subpages");
 assert.strictEqual(hooks.imageCardCountForTest({
   grid: [1, 2],

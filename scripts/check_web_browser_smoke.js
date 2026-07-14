@@ -83,7 +83,7 @@ function htmlFor(slug) {
     "</head>",
     "<body>",
     "<esp-app></esp-app>",
-    `<script src="/webserver/${slug}/www.js"></script>`,
+    `<script src="/webserver/www.js?device=${slug}"></script>`,
     "</body>",
     "</html>",
   ].join("");
@@ -104,7 +104,7 @@ function routeContentType(url) {
 }
 
 async function installRoutes(context, slug) {
-  const scriptPath = path.join(WEB_OUTPUT_DIR, slug, "www.js");
+  const scriptPath = path.join(WEB_OUTPUT_DIR, "www.js");
   assert(
     fs.existsSync(scriptPath),
     `${slug}: generated web UI does not exist at ${scriptPath}`,
@@ -125,7 +125,7 @@ async function installRoutes(context, slug) {
     }
     if (
       requestUrl.hostname === "espcontrol.test" &&
-      requestUrl.pathname === `/webserver/${slug}/www.js`
+      requestUrl.pathname === "/webserver/www.js"
     ) {
       await route.fulfill({
         status: 200,
