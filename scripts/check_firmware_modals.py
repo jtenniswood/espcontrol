@@ -471,6 +471,16 @@ def firmware_climate_control_tab_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_climate.h: keep temperature controls scoped to the temperature tab")
     if "climate_open_inline_option_list(ctx, climate_control_tab_kind(ui.tab))" not in text:
         errors.append("components/espcontrol/button_grid_climate.h: show non-temperature climate controls as tab pages")
+    if (
+        "case ClimateControlTab::SWING:\n      return !ctx->swing_modes.empty();" not in text
+        or 'subscribe_list("swing_modes", &ClimateControlCtx::swing_modes);' not in text
+    ):
+        errors.append("components/espcontrol/button_grid_climate.h: show the swing tab only when Home Assistant exposes swing modes")
+    if (
+        'climate_send_action(ctx->entity_id, "climate.set_swing_mode", {{"swing_mode", value}});' not in text
+        or 'ui.tab_row, find_icon("Arrow Up Down"), ctx->icon_font,' not in text
+    ):
+        errors.append("components/espcontrol/button_grid_climate.h: keep the swing mode action and requested tab icon")
 
     return errors
 
