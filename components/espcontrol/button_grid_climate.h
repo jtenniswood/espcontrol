@@ -2057,7 +2057,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     ui.tab_row, find_icon("Fan"), ctx->icon_font,
     ClimateControlTab::FAN, ctx->width_compensation_percent);
   ui.swing_tab = climate_control_create_tab_button(
-    ui.tab_row, find_icon("Swap Horizontal"), ctx->icon_font,
+    ui.tab_row, find_icon("Arrow Up Down"), ctx->icon_font,
     ClimateControlTab::SWING, ctx->width_compensation_percent);
 
   ui.menu_view = lv_obj_create(ui.panel);
