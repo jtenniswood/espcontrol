@@ -8,10 +8,6 @@
 #include "esphome/core/log.h"
 #include "esphome/core/version.h"
 
-#ifdef USE_API_HOMEASSISTANT_STATES
-#include "esphome/components/api/api_server.h"
-#endif
-
 #if defined(USE_LVGL) && ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 4, 0)
 #include "src/misc/cache/instance/lv_image_cache.h"
 #endif
@@ -1131,32 +1127,21 @@ void ArtworkImage::start_pending_update_() {
 void ArtworkImage::log_state_(const char *stage) {
   size_t heap_free = 0;
   size_t heap_largest = this->allocator_.get_max_free_block_size();
-  size_t internal_free = 0;
-  size_t internal_largest = 0;
 #ifdef USE_ESP32
   heap_free = heap_caps_get_free_size(MALLOC_CAP_8BIT);
   heap_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-  internal_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-  internal_largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-#endif
-  size_t api_state_subscriptions = 0;
-#ifdef USE_API_HOMEASSISTANT_STATES
-  if (esphome::api::global_api_server != nullptr) {
-    api_state_subscriptions = esphome::api::global_api_server->get_state_subs().size();
-  }
 #endif
   size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   size_t content_length = this->downloader_ ? this->downloader_->content_length : 0;
   size_t retired_bytes = this->retired_buffer_bytes_();
   ESP_LOGD(TAG,
-           "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu retired_bytes=%zu heap_free=%zu heap_largest=%zu internal_free=%zu internal_largest=%zu api_state_subs=%zu pending=%s",
+           "State %-24s url_len=%zu http=%zu/%zu dl_buf=%zu/%zu image=%dx%d content=%dx%d@%d,%d decode=%dx%d content=%dx%d@%d,%d retired=%zu retired_bytes=%zu heap_free=%zu heap_largest=%zu pending=%s",
            stage, this->url_.size(), bytes_read, content_length, this->download_buffer_.unread(),
            this->download_buffer_.size(), this->buffer_width_, this->buffer_height_, this->buffer_content_width_,
            this->buffer_content_height_, this->buffer_offset_x_, this->buffer_offset_y_, this->decode_buffer_width_,
            this->decode_buffer_height_, this->decode_content_width_, this->decode_content_height_,
            this->decode_offset_x_, this->decode_offset_y_, this->retired_buffers_.size(), retired_bytes, heap_free,
-           heap_largest, internal_free, internal_largest, api_state_subscriptions,
-           this->update_pending_ ? "yes" : "no");
+           heap_largest, this->update_pending_ ? "yes" : "no");
 }
 
 void ArtworkImage::end_connection_() {
