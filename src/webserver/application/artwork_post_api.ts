@@ -26,7 +26,7 @@ export function installArtworkPostApiModule(): GlobalDescriptors {
         return post(coverArtHideExternalInputPostUrls(on));
     }
     function coverArtDelayPostUrls(this: any, value?: any) {
-        return entityPostUrls("number", entityName("screen_saver_cover_art_delay"), entityObjectIds("screen_saver_cover_art_delay"), "set?value=" + encodeURIComponent(value));
+        return entityPostUrls("number", entityName("screen_saver_cover_art_delay"), entityObjectIds("screen_saver_cover_art_delay"), "set?value=" + encodeURIComponent(normalizeCoverArtDelay(value)));
     }
     function postCoverArtDelay(this: any, value?: any) {
         return post(coverArtDelayPostUrls(value));

@@ -79,6 +79,18 @@ assert.strictEqual(
   "backup export filename includes screen size and date"
 );
 assert.deepStrictEqual(Array.from(hooks.buttonTypesMissingCardMetadata()), [], "all registered card types define card metadata");
+assert.deepStrictEqual(
+  plain(hooks.cardSizeMenuOptions({ type: "image" })).slice(-2),
+  [
+    { size: 8, label: "Max wide (3x2)" },
+    { size: 9, label: "Max tall (2x3)" },
+  ],
+  "camera card size menu exposes the two max shapes"
+);
+assert(
+  !plain(hooks.cardSizeMenuOptions({ type: "sensor" })).some((option) => option.size === 8 || option.size === 9),
+  "non-camera card size menus do not expose max shapes"
+);
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_hide_cover_art_external_input")).includes("screen_saver__hide_cover_art_on_external_input"),
   "cover art external-input post aliases include the full generated object id"
@@ -101,6 +113,13 @@ assert.deepStrictEqual(Array.from(hooks.coverArtDelayPostUrls(30)), [
   "/number/cover_art_delay/set?value=30",
   "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=30",
 ], "cover art delay posts include all firmware object id aliases");
+assert.deepStrictEqual(Array.from(hooks.coverArtDelayPostUrls(0)), [
+  "/number/screen_saver__cover_art_delay/set?value=3",
+  "/number/screen_saver_cover_art_delay/set?value=3",
+  "/number/cover_art_delay/set?value=3",
+  "/number/Screen%20Saver%3A%20Cover%20Art%20Delay/set?value=3",
+], "legacy immediate cover art delay posts as three seconds");
+assert.strictEqual(hooks.normalizeCoverArtDelay(0), 3, "cover art delay UI normalizes legacy immediate values");
 assert(
   Array.from(hooks.entityLookupNames("screen_saver_track_overlay_duration")).includes("screen_saver__show_track_overlay"),
   "cover art track-overlay post aliases include the legacy show-track-overlay object id"
@@ -766,6 +785,16 @@ const sensorIconPreview = hooks.buttonTypePreviewFor("sensor", {
 });
 assert(sensorIconPreview.iconHtml.includes("mdi-door"), "sensor icon preview uses the selected icon");
 assert(sensorIconPreview.labelHtml.includes("mdi-toggle-switch"), "sensor icon preview uses the icon badge");
+
+const sensorTimePreview = hooks.buttonTypePreviewFor("sensor", {
+  sensor: "sensor.ups_runtime",
+  label: "UPS Runtime",
+  type: "sensor",
+  precision: "time",
+  options: "time_unit=hours,large_numbers",
+}, { cardSize: 4 });
+assert.strictEqual(previewSensorValue(sensorTimePreview), "1h 30m", "sensor Time preview shows compact duration formatting");
+assert(!sensorTimePreview.iconHtml.includes("sp-sensor-preview-large"), "sensor Time preview remains on the normal responsive layout");
 
 const legacyForecastPreview = hooks.buttonTypePreviewFor("weather_forecast", {
   entity: "weather.forecast_home",

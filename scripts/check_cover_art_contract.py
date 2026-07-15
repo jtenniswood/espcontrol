@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = r'''
 #include <cassert>
+#include <limits>
 #include "cover_art.h"
 using namespace espcontrol::cover_art;
 int main() {
@@ -56,7 +57,14 @@ int main() {
   auto portrait_again = cover_art_layout("guition-esp32-p4-jc1060p470", "90", 600, 1024, 600, 260);
   auto portrait_repeat = cover_art_layout("guition-esp32-p4-jc1060p470", "90", 600, 1024, 600, 260);
   assert(portrait_again.panel_y == portrait_repeat.panel_y && portrait_again.art_size == 600);
+  const float infinity = std::numeric_limits<float>::infinity();
+  const float invalid = std::numeric_limits<float>::quiet_NaN();
+  assert(progress_available(120.0f));
+  assert(!progress_available(0.0f) && !progress_available(-1.0f));
+  assert(!progress_available(infinity) && !progress_available(invalid));
   assert(progress_percent(0, 0) == 0 && progress_percent(30, 120) == 25 && progress_percent(150, 120) == 100);
+  assert(progress_percent(30, infinity) == 0 && progress_percent(30, invalid) == 0);
+  assert(progress_percent(invalid, 120) == 0);
 }
 '''
 with tempfile.TemporaryDirectory(prefix="cover-art-contract-") as temp_dir:
@@ -75,4 +83,39 @@ for required in (
 ):
     if required not in downloader:
         raise SystemExit(f"Artwork downloader memory contract missing: {required}")
+
+cover_art = (ROOT / "common" / "device" / "screen_cover_art.yaml").read_text(encoding="utf-8")
+resubscribe_start = cover_art.find("  - id: cover_art_resubscribe")
+resubscribe_end = cover_art.find("\n  - id:", resubscribe_start + 1)
+if resubscribe_start < 0 or resubscribe_end < 0:
+    raise SystemExit("Cover art subscription lifecycle contract missing")
+resubscribe = cover_art[resubscribe_start:resubscribe_end]
+if "ha_get_" in resubscribe:
+    raise SystemExit("Cover art must use live subscriptions instead of retained one-shot reads")
+proxy_404_start = cover_art.find("last_error_was_ha_media_proxy_not_found()")
+proxy_404_end = cover_art.find("- script.execute: cover_art_retry_download", proxy_404_start)
+if proxy_404_start < 0 or proxy_404_end < 0:
+    raise SystemExit("Cover art proxy 404 recovery contract missing")
+proxy_404_recovery = cover_art[proxy_404_start:proxy_404_end]
+if "script.execute: cover_art_resubscribe" in proxy_404_recovery:
+    raise SystemExit("Cover art proxy 404 recovery must reuse subscriptions instead of retaining one-shot reads")
+if "id(cover_art_runtime).sources.clear()" in proxy_404_recovery:
+    raise SystemExit("Cover art proxy 404 recovery must preserve newly queued subscription candidates")
+for required in (
+    "id(cover_art_runtime).refresh_needed = true",
+    "preserving subscribed artwork candidates while waiting for an update",
+):
+    if required not in proxy_404_recovery:
+        raise SystemExit(f"Cover art proxy 404 recovery contract missing: {required}")
+
+media = (ROOT / "components" / "espcontrol" / "button_grid_media.h").read_text(encoding="utf-8")
+metadata_start = media.find("inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {")
+metadata_end = media.find("inline void media_playback_subscribe_progress", metadata_start)
+if metadata_start < 0 or metadata_end < 0:
+    raise SystemExit("Media metadata subscription contract missing")
+metadata = media[metadata_start:metadata_end]
+if 'state->entity_id, std::string("media_artist")' in metadata:
+    raise SystemExit("Media track changes must not retain duplicate one-shot metadata reads")
+if "state->artist.clear()" in metadata:
+    raise SystemExit("Media title updates must preserve an unchanged subscribed artist")
 print("Cover art policy, layout, and state contract checks passed.")

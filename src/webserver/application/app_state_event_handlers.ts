@@ -166,7 +166,7 @@ export function installAppStateEventHandlersModule(): GlobalDescriptors {
                 syncInput(els.setCoverArtConditions, val);
             },
             "number-screen_saver__cover_art_delay": function (this: any, val?: any) {
-                state.coverArtDelay = parseFloat(val) || 0;
+                state.coverArtDelay = normalizeCoverArtDelay(val);
                 syncCoverArtScreensaverUi();
             },
             "number-screen_saver__track_overlay_duration": function (this: any, val?: any) {

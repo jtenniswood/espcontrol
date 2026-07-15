@@ -27,16 +27,20 @@ export function registerSensorCardTypes(): GlobalDescriptors {
             rerender: true,
             requiredMessage: "Add a sensor entity before saving.",
         },
-        segment: {
+        mode: {
             label: "Type",
+            idSuffix: "sensor-type",
             options: [
-                ["icon", "Icon"],
                 ["numeric", "Numeric"],
+                ["time", "Time"],
                 ["text", "Text"],
+                ["icon", "Icon"],
             ],
             value: function (this: any, b?: any) {
                 if (b.precision === "icon")
                     return "icon";
+                if (b.precision === "time")
+                    return "time";
                 return b.precision === "text" ? "text" : "numeric";
             },
         },
@@ -44,7 +48,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
             label: "Large Sensor Numbers",
             idSuffix: "large-sensor-numbers",
             supported: function (this: any, b?: any) {
-                return !sensorCardIsLocal(b) && b.precision !== "icon" && b.precision !== "text";
+                return !sensorCardIsLocal(b) && b.precision !== "icon" && b.precision !== "text" && b.precision !== "time";
             },
         },
         preview: {
@@ -109,19 +113,17 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 renderSensorLocalSettings(panel, b, slot, helpers);
                 return;
             }
-            var displayMode: any = b.precision === "icon" || b.precision === "text" ? b.precision : "numeric";
+            var displayMode: any = b.precision === "icon" || b.precision === "text" || b.precision === "time" ? b.precision : "numeric";
             var isTextMode: any = displayMode === "text";
-            helpers.renderCardEntityField(panel, b, helpers, SENSOR_CARD_METADATA);
-            var mode: any = helpers.renderCardSegmentControl(panel, b, helpers, {
-                segment: Object.assign({}, SENSOR_CARD_METADATA.segment, {
-                    onSelect: function (this: any, button?: any, cardHelpers?: any, value?: any) {
-                        setMode(value, true);
+            var modeField: any = helpers.renderCardModeSelector(panel, b, helpers, {
+                mode: Object.assign({}, SENSOR_CARD_METADATA.mode, {
+                    onChange: function (this: any) {
+                        setMode(this.value, true);
                     },
                 }),
             });
-            var iconBtn: any = mode.buttons.icon;
-            var numericBtn: any = mode.buttons.numeric;
-            var textBtn: any = mode.buttons.text;
+            var modeSelect: any = modeField.select;
+            helpers.renderCardEntityField(panel, b, helpers, SENSOR_CARD_METADATA);
             var numericSection: any = condField();
             var labelField: any = helpers.renderCardTextField(numericSection, b, helpers, {
                 label: "Label",
@@ -148,6 +150,26 @@ export function registerSensorCardTypes(): GlobalDescriptors {
             numericSection.appendChild(precisionField.field);
             helpers.renderCardLargeNumbersToggle(numericSection, b, helpers, SENSOR_CARD_METADATA);
             panel.appendChild(numericSection);
+            var timeSection: any = condField();
+            helpers.renderCardTextField(timeSection, b, helpers, {
+                label: "Label",
+                idSuffix: "time-label",
+                field: "label",
+                placeholder: "e.g. UPS Runtime",
+                rerender: true,
+            });
+            var timeUnitField: any = helpers.selectField("Input Unit", helpers.idPrefix + "time-unit", [
+                ["", "Auto"],
+                ["seconds", "Seconds"],
+                ["minutes", "Minutes"],
+                ["hours", "Hours"],
+                ["days", "Days"],
+            ], sensorTimeUnit(b), function (this: any) {
+                setSensorTimeUnit(b, this.value);
+                helpers.saveField("options", b.options);
+            });
+            timeSection.appendChild(timeUnitField.field);
+            panel.appendChild(timeSection);
             var textSection: any = condField();
             var textIconPicker: any = helpers.renderCardIconPicker(textSection, b, helpers, {
                 pickerIdSuffix: "icon-picker",
@@ -232,18 +254,41 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                     advanced.classList.remove("sp-visible");
             }
             function setMode(this: any, mode?: any, persist?: any) {
-                displayMode = mode === "icon" || mode === "text" ? mode : "numeric";
+                displayMode = mode === "icon" || mode === "text" || mode === "time" ? mode : "numeric";
                 isTextMode = displayMode === "text";
-                iconBtn.classList.toggle("active", displayMode === "icon");
-                numericBtn.classList.toggle("active", displayMode === "numeric");
-                textBtn.classList.toggle("active", isTextMode);
+                modeSelect.value = displayMode;
                 numericSection.classList.toggle("sp-visible", displayMode === "numeric");
+                timeSection.classList.toggle("sp-visible", displayMode === "time");
                 textSection.classList.toggle("sp-visible", isTextMode);
                 iconSection.classList.toggle("sp-visible", displayMode === "icon");
                 syncAdvancedVisibility();
+                if (displayMode === "time")
+                    timeUnitField.select.value = sensorTimeUnit(b);
                 if (!persist)
                     return;
-                if (isTextMode) {
+                if (displayMode === "time") {
+                    b.precision = "time";
+                    b.unit = "";
+                    b.icon = "Auto";
+                    b.icon_on = "Auto";
+                    b.options = normalizeSensorOptions(b.options, "time");
+                    unitInp.value = "";
+                    helpers.saveField("precision", "time");
+                    helpers.saveField("unit", "");
+                    helpers.saveField("icon", "Auto");
+                    helpers.saveField("icon_on", "Auto");
+                    helpers.saveField("options", b.options);
+                    advancedToggle.input.checked = false;
+                    advanced.classList.remove("sp-visible");
+                    inputTextInp.value = "";
+                    outputTextInp.value = "";
+                    inputText2Inp.value = "";
+                    outputText2Inp.value = "";
+                    resetIconPicker(textIconPicker, "Auto", "cog");
+                    resetIconPicker(offIconPicker, "Auto", "cog");
+                    resetIconPicker(onIconPicker, "Auto", "cog");
+                }
+                else if (isTextMode) {
                     b.precision = "text";
                     b.label = "";
                     b.unit = "";
@@ -311,6 +356,12 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 return {
                     iconHtml: '<span class="sp-btn-icon mdi mdi-' + iconName + '"></span>',
                     labelHtml: cardBadgeLabelHtml(helpers, "State", SENSOR_CARD_METADATA.preview.textBadge),
+                };
+            }
+            if (b.precision === "time") {
+                return {
+                    iconHtml: cardSensorPreviewHtml(b, helpers, "1h 30m", ""),
+                    labelHtml: cardBadgeLabelHtml(helpers, b.label || b.sensor || "Sensor", SENSOR_CARD_METADATA.preview.numericBadge),
                 };
             }
             var label: any = b.label || b.sensor || "Sensor";

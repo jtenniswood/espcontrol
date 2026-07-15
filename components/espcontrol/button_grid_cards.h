@@ -23,6 +23,7 @@ inline void setup_sensor_card(BtnSlot &s, const ParsedCfg &p,
   }
   lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
   lv_obj_clear_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
+  if (p.precision == "time") lv_label_set_text(s.unit_lbl, "");
   if (!p.unit.empty()) {
     std::string unit = trim_display_unit(p.unit);
     lv_label_set_text(s.unit_lbl, unit.c_str());

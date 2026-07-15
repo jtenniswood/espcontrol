@@ -2511,6 +2511,7 @@ def gen_saved_config_shadow_ts(data):
         "  if (config.type === \"text_sensor\") { config.type = \"sensor\"; config.precision = \"text\"; config.entity = \"\"; config.label = \"\"; config.unit = \"\"; config.icon_on = \"Auto\"; }\n"
         "  if (config.type === \"local_sensor\") { config.type = \"sensor\"; config.sensor = \"local\"; config.icon_on = \"Auto\"; config.options = \"\"; }\n"
         "  if (config.type !== \"sensor\") return null;\n"
+        "  if (config.sensor !== \"local\" && config.precision === \"time\") { config.unit = \"\"; config.icon = \"Auto\"; config.icon_on = \"Auto\"; }\n"
         "  if (config.sensor === \"local\") {\n"
         "    config.icon_on = \"Auto\"; config.options = \"\";\n"
         "    if ([\"text\", \"1\", \"2\"].indexOf(config.precision) < 0) config.precision = \"\";\n"
@@ -2518,7 +2519,7 @@ def gen_saved_config_shadow_ts(data):
         "    return config;\n"
         "  }\n"
         "  const source = config.options; const out: string[] = [];\n"
-        "  if (config.precision !== \"icon\" && config.precision !== \"text\") {\n"
+        "  if (config.precision !== \"icon\" && config.precision !== \"text\" && config.precision !== \"time\") {\n"
         "    if (optionValue(source, \"large_numbers\") === \"off\") out.push(\"large_numbers=off\");\n"
         "    else if (optionPresent(source, \"large_numbers\")) out.push(\"large_numbers\");\n"
         "  }\n"
@@ -2532,6 +2533,7 @@ def gen_saved_config_shadow_ts(data):
         "      if (trimmed) out.push(name + \"=\" + encodeOptionValue(trimmed));\n"
         "    }\n"
         "  }\n"
+        "  if (config.precision === \"time\") { const timeUnit = optionValue(source, \"time_unit\"); if ([\"seconds\", \"minutes\", \"hours\", \"days\"].indexOf(timeUnit) >= 0) out.push(\"time_unit=\" + timeUnit); }\n"
         "  config.options = out.join(\",\"); return config;\n"
         "}\n"
         "\n"
@@ -2683,9 +2685,10 @@ def gen_saved_config_shadow_h(data):
         "  if (config.type != \"sensor\") return false;\n",
         "  if (config.icon.empty()) config.icon = \"Auto\";\n",
         "  if (config.icon_on.empty()) config.icon_on = \"Auto\";\n",
+        "  if (config.sensor != \"local\" && config.precision == \"time\") { config.unit.clear(); config.icon = \"Auto\"; config.icon_on = \"Auto\"; }\n",
         "  if (config.sensor == \"local\") { config.icon_on = \"Auto\"; config.options.clear(); if (config.precision != \"text\" && config.precision != \"1\" && config.precision != \"2\") config.precision.clear(); if (config.precision != \"text\" && (config.icon.empty() || config.icon == \"Auto\")) config.icon = \"Auto\"; return true; }\n",
         "  const std::string source = config.options; std::string out;\n",
-        "  if (config.precision != \"icon\" && config.precision != \"text\") append_large_numbers_option(out, source);\n",
+        "  if (config.precision != \"icon\" && config.precision != \"text\" && config.precision != \"time\") append_large_numbers_option(out, source);\n",
         "  if (config.precision == \"text\" && cfg_option_token_present(source, \"state_labels\")) {\n",
         "    saved_config_shadow_append_option(out, \"state_labels\"); std::string input = cfg_option_value(source, \"state_input\"); std::string output = cfg_option_value(source, \"state_output\");\n",
         "    if (input.empty() && !cfg_option_value(source, \"state_high_label\").empty()) { input = \"high\"; if (output.empty()) output = cfg_option_value(source, \"state_high_label\"); }\n",
@@ -2698,6 +2701,7 @@ def gen_saved_config_shadow_h(data):
         "    if (!input_2_trimmed.empty()) saved_config_shadow_append_option(out, \"state_input_2\", input_2_trimmed);\n",
         "    if (!output_2_trimmed.empty()) saved_config_shadow_append_option(out, \"state_output_2\", output_2_trimmed);\n",
         "  }\n",
+        "  if (config.precision == \"time\") { const std::string time_unit = cfg_option_value(source, \"time_unit\"); if (time_unit == \"seconds\" || time_unit == \"minutes\" || time_unit == \"hours\" || time_unit == \"days\") saved_config_shadow_append_option(out, \"time_unit\", time_unit); }\n",
         "  config.options = out; return true;\n}\n\n",
         "template<typename Config>\ninline bool normalize_saved_config_action_shadow(Config &config) {\n",
         "  if (config.type == \"local\") { config.type = \"action\"; config.sensor = \"local\"; }\n",

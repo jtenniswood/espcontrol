@@ -3,6 +3,7 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
     if (typeof globalThis !== "undefined" && globalThis.__ESPCONTROL_TEST_HOOKS__) {
         registerEspControlTestHookGroup("settings", {
             normalizeTemperatureUnit: normalizeTemperatureUnit,
+            normalizeCoverArtDelay: normalizeCoverArtDelay,
             normalizeHomeAssistantArtworkPort: normalizeHomeAssistantArtworkPort,
             defaultTimezoneOptions: defaultTimezoneOptions,
             timezoneOptionsWithFallback: timezoneOptionsWithFallback,

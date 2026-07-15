@@ -98,9 +98,9 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
             els.setCoverArtBadge.className = "sp-card-badge" + (state.coverArtScreensaverOn ? "" : " sp-hidden");
         }
         if (els.setCoverArtDelay) {
-            var coverArtDelay: any = Math.max(0, parseFloat(state.coverArtDelay) || 0);
+            var coverArtDelay: any = normalizeCoverArtDelay(state.coverArtDelay);
             state.coverArtDelay = coverArtDelay;
-            setSelectValue(els.setCoverArtDelay, coverArtDelay, coverArtDelay > 0 ? formatDuration(coverArtDelay) : "Immediately");
+            setSelectValue(els.setCoverArtDelay, coverArtDelay, formatDuration(coverArtDelay));
         }
         if (els.setCoverArtTrackOverlayDuration) {
             var value: any = state.coverArtTrackOverlayDuration;

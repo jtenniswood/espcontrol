@@ -29,6 +29,20 @@ export function installConfigSensorOptionsModule(): GlobalDescriptors {
             b.options = setConfigOption(b.options, SENSOR_LARGE_NUMBERS_OPTION, true);
         return b.options;
     }
+    function normalizeSensorTimeUnit(this: any, value?: any) {
+        value = String(value || "").trim().toLowerCase();
+        return value === "seconds" || value === "minutes" || value === "hours" || value === "days" ? value : "";
+    }
+    function sensorTimeUnit(this: any, b?: any) {
+        return normalizeSensorTimeUnit(b ? configOptionValue(b.options, SENSOR_TIME_UNIT_OPTION) : "");
+    }
+    function setSensorTimeUnit(this: any, b?: any, value?: any) {
+        if (!b)
+            return "";
+        b.options = setConfigOptionValue(b.options, SENSOR_TIME_UNIT_OPTION, normalizeSensorTimeUnit(value));
+        b.options = normalizeSensorOptions(b.options, b.precision);
+        return b.options;
+    }
     function sensorActiveColorEnabled(this: any, b?: any) {
         return !!(b && b.type === "sensor" &&
             configOptionEnabled(b.options, SENSOR_ACTIVE_COLOR_OPTION));
@@ -117,6 +131,8 @@ export function installConfigSensorOptionsModule(): GlobalDescriptors {
             out = setConfigOptionValue(out, SENSOR_STATE_INPUT_2_OPTION, configOptionValue(options, SENSOR_STATE_INPUT_2_OPTION));
             out = setConfigOptionValue(out, SENSOR_STATE_OUTPUT_2_OPTION, configOptionValue(options, SENSOR_STATE_OUTPUT_2_OPTION));
         }
+        if (precision === "time")
+            out = setConfigOptionValue(out, SENSOR_TIME_UNIT_OPTION, normalizeSensorTimeUnit(configOptionValue(options, SENSOR_TIME_UNIT_OPTION)));
         return out;
     }
     function normalizeDateTimeOptions(this: any, type?: any, options?: any, precision?: any) {
@@ -190,6 +206,9 @@ export function installConfigSensorOptionsModule(): GlobalDescriptors {
         "cardLargeNumbersEnabled": staticGlobal(cardLargeNumbersEnabled),
         "sensorLargeNumbersEnabled": staticGlobal(sensorLargeNumbersEnabled),
         "setSensorLargeNumbersEnabled": staticGlobal(setSensorLargeNumbersEnabled),
+        "normalizeSensorTimeUnit": staticGlobal(normalizeSensorTimeUnit),
+        "sensorTimeUnit": staticGlobal(sensorTimeUnit),
+        "setSensorTimeUnit": staticGlobal(setSensorTimeUnit),
         "sensorActiveColorEnabled": staticGlobal(sensorActiveColorEnabled),
         "setSensorActiveColorEnabled": staticGlobal(setSensorActiveColorEnabled),
         "sensorStateLabelsEnabled": staticGlobal(sensorStateLabelsEnabled),

@@ -11,6 +11,19 @@ struct ToggleTextSensorCtx {
   bool on = false;
 };
 
+struct TimeSensorCtx {
+  lv_obj_t *sensor_lbl = nullptr;
+  lv_obj_t *unit_lbl = nullptr;
+  std::string entity_id;
+  std::string manual_unit;
+  std::string state;
+  std::string auto_unit;
+  bool has_state = false;
+  bool has_auto_unit = false;
+  std::string warned_unit;
+  bool warned_unit_set = false;
+};
+
 inline std::string label_text_or_empty(lv_obj_t *label) {
   if (!label) return "";
   const char *text = lv_label_get_text(label);
@@ -94,6 +107,68 @@ inline void subscribe_sensor_value(lv_obj_t *sensor_lbl, const std::string &sens
         lv_label_set_text(sensor_lbl, "");
         if (unit_lbl) lv_label_set_text(unit_lbl, "");
       }
+    })
+  );
+}
+
+inline void apply_time_sensor_value(TimeSensorCtx *ctx) {
+  if (!ctx || !ctx->sensor_lbl) return;
+  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  if (!ctx->has_state || (ctx->manual_unit.empty() && !ctx->has_auto_unit)) {
+    lv_label_set_text(ctx->sensor_lbl, "");
+    return;
+  }
+
+  const std::string &input_unit = ctx->manual_unit.empty() ? ctx->auto_unit : ctx->manual_unit;
+  double multiplier = 0.0;
+  if (!duration_unit_seconds_multiplier(input_unit, multiplier)) {
+    lv_label_set_text(ctx->sensor_lbl, "");
+    if (ctx->manual_unit.empty() &&
+        (!ctx->warned_unit_set || ctx->warned_unit != input_unit)) {
+      ESP_LOGW("sensors", "Time sensor %s has unsupported or missing unit_of_measurement '%s'",
+               ctx->entity_id.c_str(), input_unit.c_str());
+      ctx->warned_unit = input_unit;
+      ctx->warned_unit_set = true;
+    }
+    return;
+  }
+  ctx->warned_unit.clear();
+  ctx->warned_unit_set = false;
+
+  char output[48];
+  if (!format_duration_sensor_state(output, sizeof(output),
+                                    ctx->state, ctx->has_state,
+                                    ctx->auto_unit, ctx->has_auto_unit,
+                                    ctx->manual_unit)) {
+    lv_label_set_text(ctx->sensor_lbl, "");
+    return;
+  }
+  lv_label_set_text(ctx->sensor_lbl, output);
+}
+
+inline void subscribe_time_sensor_value(TimeSensorCtx *ctx, const std::string &sensor_id,
+                                        const std::string &manual_unit) {
+  if (!ctx) return;
+  ctx->entity_id = sensor_id;
+  ctx->manual_unit = manual_unit;
+  if (ctx->unit_lbl) lv_label_set_text(ctx->unit_lbl, "");
+  ha_subscribe_state(
+    sensor_id,
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef state) {
+      if (!ctx) return;
+      ctx->state.assign(state.c_str(), state.size());
+      ctx->has_state = true;
+      apply_time_sensor_value(ctx);
+    })
+  );
+  if (!manual_unit.empty()) return;
+  ha_subscribe_attribute(
+    sensor_id, "unit_of_measurement",
+    std::function<void(esphome::StringRef)>([ctx](esphome::StringRef unit) {
+      if (!ctx) return;
+      ctx->auto_unit.assign(unit.c_str(), unit.size());
+      ctx->has_auto_unit = true;
+      apply_time_sensor_value(ctx);
     })
   );
 }
