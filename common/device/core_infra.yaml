@@ -139,6 +139,9 @@ web_server:
       name: "Firmware"
       sorting_weight: 40
 button:
+  - platform: restart
+    name: "${entity_display_restart}"
+
   - platform: template
     name: "Apply Configuration"
     internal: true

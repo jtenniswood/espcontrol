@@ -113,15 +113,9 @@ script:
     mode: restart
     then:
       - lvgl.resume:
-      - globals.set:
-          id: screen_schedule_asleep
-          value: 'false'
-      - globals.set:
-          id: screensaver_display_off_active
-          value: 'false'
-      - globals.set:
-          id: backlight_manual_off
-          value: 'false'
+      - lambda: |-
+          id(display_mode_controller).clear(
+              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
       - script.execute: clock_bar_hide

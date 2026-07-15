@@ -229,22 +229,22 @@ int main() {
   lv_obj_t main_page;
   lv_active_screen = &main_page;
   auto awake_clock_bar = clock_bar_resolve_visibility(
-    true, &main_page, false, false, false, false, false, false);
+    true, &main_page, espcontrol::DisplayMode::ACTIVE, false);
   assert(awake_clock_bar.reserve_space);
   assert(awake_clock_bar.visible);
 
   auto clock_screensaver_clock_bar = clock_bar_resolve_visibility(
-    true, &main_page, false, false, true, false, false, false);
+    true, &main_page, espcontrol::DisplayMode::CLOCK, false);
   assert(clock_screensaver_clock_bar.reserve_space);
   assert(!clock_screensaver_clock_bar.visible);
 
   auto dismissing_screensaver_clock_bar = clock_bar_resolve_visibility(
-    true, &main_page, true, false, false, false, false, false);
+    true, &main_page, espcontrol::DisplayMode::DISPLAY_OFF, false);
   assert(dismissing_screensaver_clock_bar.reserve_space);
   assert(!dismissing_screensaver_clock_bar.visible);
 
   auto screen_schedule_clock_bar = clock_bar_resolve_visibility(
-    true, &main_page, true, true, true, false, false, false);
+    true, &main_page, espcontrol::DisplayMode::CLOCK, true);
   assert(!screen_schedule_clock_bar.reserve_space);
   assert(!screen_schedule_clock_bar.visible);
 
