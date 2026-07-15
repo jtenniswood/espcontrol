@@ -95,32 +95,11 @@ inline ImageCardCtx *image_card_contexts() {
 inline void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay_ms,
                                                const char *reason);
 
-inline ImageCardCtx *&image_card_active_download_context() {
-  static ImageCardCtx *ctx = nullptr;
-  return ctx;
-}
-
-inline void image_card_start_next_queued_download(ImageCardCtx *finished_ctx) {
-  ImageCardCtx *contexts = image_card_contexts();
-  for (int i = 0; i < IMAGE_CARD_MAX_CONTEXTS; i++) {
-    ImageCardCtx *next = &contexts[i];
-    if (!next->active || !next->download_queued || next == finished_ctx) continue;
-    next->download_queued = false;
-    image_card_schedule_source_refresh(next, IMAGE_CARD_API_RETRY_INTERVAL_MS,
-                                       "image download queue");
-    return;
-  }
-}
-
 inline void image_card_release_download_slot(ImageCardCtx *ctx, bool start_next = true) {
   if (!ctx) return;
   ctx->download_active = false;
   ctx->download_queued = false;
-  ImageCardCtx *&active = image_card_active_download_context();
-  if (active == ctx) {
-    active = nullptr;
-    if (start_next) image_card_start_next_queued_download(ctx);
-  }
+  (void) start_next;
 }
 
 inline ImageCardModalUi &image_card_modal_ui() {
@@ -1453,15 +1432,6 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
     image_card_log_diagnostics(ctx, "tile-refresh-duplicate", width, height);
     return;
   }
-  ImageCardCtx *active_download = image_card_active_download_context();
-  if (active_download && active_download != ctx) {
-    ctx->download_queued = true;
-    ctx->next_download_retry_ms = now + IMAGE_CARD_API_RETRY_INTERVAL_MS;
-    ESP_LOGD("image_card", "Deferring image refresh for %s while %s is downloading",
-             ctx->entity_id.c_str(), active_download->entity_id.c_str());
-    image_card_log_diagnostics(ctx, "tile-refresh-queued", width, height);
-    return;
-  }
   if (!image_card_memory_available(ctx, "tile", decode_width, decode_height)) {
     ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
     if (!ctx->image_ready) {
@@ -1478,7 +1448,6 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   ctx->requested_once = true;
   ctx->download_active = true;
   ctx->download_queued = false;
-  image_card_active_download_context() = ctx;
   ctx->next_download_retry_ms = 0;
   ctx->last_tile_request_started_ms = now;
   image_card_schedule_next_refresh(ctx, now);

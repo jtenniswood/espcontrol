@@ -93,6 +93,50 @@ void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *
   }
 }
 
+void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes, const uint8_t *data) {
+  if (this->failed_ || data == nullptr || width <= 0 || height <= 0 ||
+      stride_bytes < static_cast<size_t>(width) * 2) {
+    return;
+  }
+  int bpp_bytes = this->image_->get_bpp() / 8;
+  if (bpp_bytes < 2) return;
+
+  int content_width = this->image_->decode_content_width_ > 0 ? this->image_->decode_content_width_
+                                                              : this->image_->decode_buffer_width_;
+  int content_height = this->image_->decode_content_height_ > 0 ? this->image_->decode_content_height_
+                                                                : this->image_->decode_buffer_height_;
+  if (content_width <= 0 || content_height <= 0) return;
+
+  int start_x = std::max(0, this->x_offset_);
+  int start_y = std::max(0, this->y_offset_);
+  int end_x = std::min(this->image_->decode_buffer_width_, this->x_offset_ + content_width);
+  int end_y = std::min(this->image_->decode_buffer_height_, this->y_offset_ + content_height);
+  if (bpp_bytes == 2 && this->x_offset_ == 0 && this->y_offset_ == 0 &&
+      width == this->image_->decode_buffer_width_ && height == this->image_->decode_buffer_height_ &&
+      content_width == width && content_height == height) {
+    size_t row_bytes = static_cast<size_t>(width) * 2;
+    for (int y = 0; y < height; y++) {
+      memcpy(this->image_->decode_buffer_ + static_cast<size_t>(y) * row_bytes,
+             data + static_cast<size_t>(y) * stride_bytes, row_bytes);
+    }
+    return;
+  }
+
+  for (int dst_y = start_y; dst_y < end_y; dst_y++) {
+    int src_y = std::min(height - 1, (dst_y - this->y_offset_) * height / content_height);
+    const uint8_t *source_row = data + static_cast<size_t>(src_y) * stride_bytes;
+    uint8_t *destination = this->image_->decode_buffer_ + this->image_->get_position_(start_x, dst_y);
+    for (int dst_x = start_x; dst_x < end_x; dst_x++) {
+      int src_x = std::min(width - 1, (dst_x - this->x_offset_) * width / content_width);
+      const uint8_t *source = source_row + static_cast<size_t>(src_x) * 2;
+      destination[0] = source[0];
+      destination[1] = source[1];
+      if (bpp_bytes > 2) destination[2] = 0xFF;
+      destination += bpp_bytes;
+    }
+  }
+}
+
 DownloadBuffer::DownloadBuffer(size_t size) : size_(size) {
   this->buffer_ = this->allocator_.allocate(size);
   this->reset();

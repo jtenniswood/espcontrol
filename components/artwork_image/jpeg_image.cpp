@@ -14,6 +14,7 @@
 #include <cstring>
 
 #include "artwork_image.h"
+#include "p4_jpeg_backend.h"
 static const char *const TAG = "artwork_image.jpeg";
 
 namespace esphome {
@@ -54,6 +55,24 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
   if (size < this->download_size_) {
     ESP_LOGV(TAG, "Download not complete. Size: %zu/%zu", size, this->download_size_);
     return 0;
+  }
+  if (!this->decode_started_ && this->image_->hardware_acceleration_enabled() &&
+      this->image_->image_type() == image::ImageType::IMAGE_TYPE_RGB565) {
+    HardwareJpegFrame frame;
+    bool decoded = try_decode_p4_jpeg(buffer, size, this->image_->get_fixed_width(),
+                                     this->image_->get_fixed_height(),
+                                     this->image_->get_resize_mode() == ImageResizeMode::COVER,
+                                     this->image_->is_big_endian(), frame);
+    if (decoded) {
+      if (!this->set_size(frame.width, frame.height)) {
+        release_p4_jpeg_workspace();
+        return DECODE_ERROR_OUT_OF_MEMORY;
+      }
+      this->draw_rgb565_frame(frame.width, frame.height, frame.stride_bytes, frame.data);
+      release_p4_jpeg_workspace();
+      this->decoded_bytes_ = size;
+      return static_cast<int>(size);
+    }
   }
   if (!this->decode_started_) {
     int ret = this->start_decode_(buffer, size);

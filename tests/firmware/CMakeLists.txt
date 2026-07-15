@@ -35,6 +35,12 @@ target_compile_options(artwork_controller_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(artwork_controller_test PRIVATE ../../components/espcontrol)
 add_test(NAME artwork_controller_test COMMAND artwork_controller_test)
 
+add_executable(image_service_test image_service_test.cpp)
+target_compile_features(image_service_test PRIVATE cxx_std_17)
+target_compile_options(image_service_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(image_service_test PRIVATE ../../components/artwork_image)
+add_test(NAME image_service_test COMMAND image_service_test)
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS

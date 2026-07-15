@@ -138,6 +138,7 @@ artwork_image:
     byte_order: LITTLE_ENDIAN
     placeholder: cover_art_placeholder
     resize: ${cover_art_decode_size}x${cover_art_decode_size}
+    priority: COVER_ART
     buffer_size: 65536
     allow_insecure_local_urls: true
     on_download_finished:

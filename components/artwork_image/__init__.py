@@ -50,6 +50,8 @@ CONF_PLACEHOLDER = "placeholder"
 CONF_TRANSPARENCY = "transparency"
 CONF_UPDATE = "update"
 CONF_RESIZE_MODE = "resize_mode"
+CONF_PRIORITY = "priority"
+CONF_HARDWARE_ACCELERATION = "hardware_acceleration"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +59,7 @@ artwork_image_ns = cg.esphome_ns.namespace("artwork_image")
 
 ImageFormat = artwork_image_ns.enum("ImageFormat")
 ImageResizeMode = artwork_image_ns.enum("ImageResizeMode")
+ImageRequestPriority = artwork_image_ns.enum("ImageRequestPriority", is_class=True)
 
 
 class Format:
@@ -119,6 +122,14 @@ class JPEGFormat(Format):
             shutil.copytree(src_path, dest_path)
 
 
+class BMPFormat(Format):
+    def __init__(self):
+        super().__init__("BMP")
+
+    def actions(self):
+        cg.add_define("USE_ARTWORK_IMAGE_BMP_SUPPORT")
+
+
 class PNGFormat(Format):
     def __init__(self):
         super().__init__("PNG")
@@ -135,12 +146,14 @@ class AutoFormat(Format):
     def actions(self):
         JPEGFormat().actions()
         PNGFormat().actions()
+        BMPFormat().actions()
 
 
 IMAGE_FORMATS = {
     x.image_type: x
     for x in (
         AutoFormat(),
+        BMPFormat(),
         JPEGFormat(),
         PNGFormat(),
     )
@@ -166,6 +179,9 @@ ARTWORK_IMAGE_SCHEMA = (
             cv.Optional(CONF_RESIZE_MODE, default="FIT"): cv.one_of(
                 "FIT", "COVER", upper=True
             ),
+            cv.Optional(CONF_PRIORITY, default="BACKGROUND"): cv.one_of(
+                "BACKGROUND", "TILE", "COVER_ART", "MODAL", upper=True
+            ),
             cv.Optional(CONF_BYTE_ORDER): cv.one_of(
                 "BIG_ENDIAN", "LITTLE_ENDIAN", upper=True
             ),
@@ -181,6 +197,7 @@ ARTWORK_IMAGE_SCHEMA = (
             cv.Optional(CONF_PLACEHOLDER): cv.use_id(Image_),
             cv.Optional(CONF_BUFFER_SIZE, default=65536): cv.int_range(256, 524288),
             cv.Optional(CONF_ALLOW_INSECURE_LOCAL_URLS, default=False): cv.boolean,
+            cv.Optional(CONF_HARDWARE_ACCELERATION, default=True): cv.boolean,
             cv.Optional(CONF_ON_DOWNLOAD_FINISHED): automation.validate_automation({}),
             cv.Optional(CONF_ON_ERROR): automation.validate_automation({}),
         }
@@ -189,8 +206,14 @@ ARTWORK_IMAGE_SCHEMA = (
 )
 
 
+_SOCKET_RESERVED = False
+
+
 def _consume_sockets(config):
-    """Reserve one outbound HTTP socket for each artwork image instance."""
+    """Reserve the one outbound socket owned by the shared image service."""
+    global _SOCKET_RESERVED
+    if _SOCKET_RESERVED:
+        return config
     try:
         from esphome.components import socket
     except ImportError:
@@ -198,8 +221,8 @@ def _consume_sockets(config):
 
     consume_sockets = getattr(socket, "consume_sockets", None)
     if consume_sockets is not None:
-        image_id = getattr(config[CONF_ID], "id", str(config[CONF_ID]))
-        consume_sockets(1, f"artwork_image_{image_id}")(config)
+        consume_sockets(1, "artwork_image_service")(config)
+        _SOCKET_RESERVED = True
     return config
 
 
@@ -306,6 +329,8 @@ async def to_code(config):
     )
     await cg.register_component(var, config)
     await cg.register_parented(var, config[CONF_HTTP_REQUEST_ID])
+    cg.add(var.set_request_priority(getattr(ImageRequestPriority, config[CONF_PRIORITY])))
+    cg.add(var.set_hardware_acceleration(config[CONF_HARDWARE_ACCELERATION]))
 
     for key, value in config.get(CONF_REQUEST_HEADERS, {}).items():
         if isinstance(value, Lambda):
