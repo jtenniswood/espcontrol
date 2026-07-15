@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = r'''
 #include <cassert>
+#include <limits>
 #include "cover_art.h"
 using namespace espcontrol::cover_art;
 int main() {
@@ -56,7 +57,14 @@ int main() {
   auto portrait_again = cover_art_layout("guition-esp32-p4-jc1060p470", "90", 600, 1024, 600, 260);
   auto portrait_repeat = cover_art_layout("guition-esp32-p4-jc1060p470", "90", 600, 1024, 600, 260);
   assert(portrait_again.panel_y == portrait_repeat.panel_y && portrait_again.art_size == 600);
+  const float infinity = std::numeric_limits<float>::infinity();
+  const float invalid = std::numeric_limits<float>::quiet_NaN();
+  assert(progress_available(120.0f));
+  assert(!progress_available(0.0f) && !progress_available(-1.0f));
+  assert(!progress_available(infinity) && !progress_available(invalid));
   assert(progress_percent(0, 0) == 0 && progress_percent(30, 120) == 25 && progress_percent(150, 120) == 100);
+  assert(progress_percent(30, infinity) == 0 && progress_percent(30, invalid) == 0);
+  assert(progress_percent(invalid, 120) == 0);
 }
 '''
 with tempfile.TemporaryDirectory(prefix="cover-art-contract-") as temp_dir:

@@ -1336,6 +1336,156 @@ def firmware_cover_art_low_heap_progress_errors(
     return errors
 
 
+def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> list[str]:
+    errors: list[str] = []
+    if not path.exists():
+        return errors
+
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    time_widget = re.search(
+        r"(?ms)^\s+- label:\n\s+id: cover_art_time_label\n(?P<body>.*?)(?=^\s+- bar:)",
+        text,
+    )
+    if time_widget is None or "hidden: true" not in time_widget.group("body"):
+        errors.append(f"{rel}: initialize cover art playback time hidden")
+
+    full_build_guard = (
+        "return espcontrol::cover_art::progress_available("
+        "id(cover_art_media_duration));"
+    )
+    for script_id in ("cover_art_show_black_screen", "cover_art_show_track_overlay"):
+        body = yaml_script_body(text, script_id)
+        if body is None or full_build_guard not in body:
+            errors.append(f"{rel}: guard every cover art progress reveal with usable duration")
+
+    sync_body = yaml_script_body(text, "cover_art_sync_track_text")
+    if sync_body is None or any(
+        token not in sync_body
+        for token in (
+            "espcontrol::cover_art::progress_available(id(cover_art_media_duration))",
+            "lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)",
+            "lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN)",
+        )
+    ):
+        errors.append(f"{rel}: hide cover art playback time when duration is unavailable")
+
+    refresh_body = yaml_script_body(text, "cover_art_refresh_progress")
+    if refresh_body is None or any(
+        token not in refresh_body
+        for token in (
+            "espcontrol::cover_art::progress_available(duration)",
+            "lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF)",
+            'lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00")',
+            "lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)",
+            "lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN)",
+            "lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)",
+            "lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN)",
+        )
+    ):
+        errors.append(f"{rel}: hide and reset unavailable cover art progress")
+
+    duration_handler_match = re.search(
+        r"handle_media_duration\s*=\s*.*?\{(?P<body>.*?)\n\s*\};\n\s*if\s*\(!already_subscribed\)",
+        text,
+        re.DOTALL,
+    )
+    duration_handler = duration_handler_match.group("body") if duration_handler_match else ""
+    if (
+        "const bool next_progress_available =" not in duration_handler
+        or "if (!next_progress_available)" not in duration_handler
+        or "next_duration = 0.0f" not in duration_handler
+    ):
+        errors.append(f"{rel}: normalize invalid cover art durations")
+    if any(
+        token not in duration_handler
+        for token in (
+            "id(cover_art_media_position) = 0.0f",
+            "id(cover_art_position_anchor) = 0.0f",
+            "id(cover_art_position_anchor_epoch) = 0",
+            "id(cover_art_last_position_timestamp) = 0",
+        )
+    ):
+        errors.append(f"{rel}: reset cover art position when duration becomes unavailable")
+    if "current_progress_available" in duration_handler:
+        errors.append(f"{rel}: preserve fresh cover art position when duration arrives late")
+    if "id(cover_art_last_duration_callback_ms) = millis()" not in duration_handler:
+        errors.append(f"{rel}: track cover art duration callback freshness")
+
+    duration_invalidator_match = re.search(
+        r"invalidate_stale_media_duration\s*=\s*\[\]\(\)\s*\{(?P<body>.*?)\n\s*\};",
+        text,
+        re.DOTALL,
+    )
+    duration_invalidator = (
+        duration_invalidator_match.group("body") if duration_invalidator_match else ""
+    )
+    if any(
+        token not in duration_invalidator
+        for token in (
+            "id(cover_art_last_duration_callback_ms)",
+            "millis() - last_duration_ms",
+            "duration_callback_is_fresh",
+            "if (!duration_callback_is_fresh)",
+            "id(cover_art_media_duration) = 0.0f",
+        )
+    ):
+        errors.append(f"{rel}: preserve fresh cover art duration when metadata arrives late")
+    if any(
+        token in duration_invalidator
+        for token in (
+            "id(cover_art_media_position) = 0.0f",
+            "id(cover_art_position_anchor) = 0.0f",
+            "id(cover_art_position_anchor_epoch) = 0",
+            "id(cover_art_last_position_timestamp) = 0",
+        )
+    ):
+        errors.append(f"{rel}: preserve fresh cover art position while invalidating stale metadata")
+
+    for metadata_name, assignment in (
+        ("title", "id(cover_art_title) = next"),
+        ("artist", "id(cover_art_artist) = next"),
+        ("album", "id(cover_art_album) = next"),
+        ("source", "id(cover_art_media_source) = next"),
+    ):
+        handler_match = re.search(
+            rf"handle_media_{metadata_name}\s*=\s*.*?\{{(?P<body>.*?)\n\s*\}};\n\s*if\s*\(!already_subscribed\)",
+            text,
+            re.DOTALL,
+        )
+        handler = handler_match.group("body") if handler_match else ""
+        metadata_assignment = handler.find(assignment)
+        duration_invalidation = handler.find("invalidate_stale_media_duration()")
+        if (
+            metadata_assignment < 0
+            or duration_invalidation < 0
+            or duration_invalidation > metadata_assignment
+        ):
+            errors.append(
+                f"{rel}: mark stale cover art duration unavailable when media {metadata_name} changes"
+            )
+        if any(
+            token in handler
+            for token in (
+                "id(cover_art_media_position) = 0.0f",
+                "id(cover_art_position_anchor) = 0.0f",
+                "id(cover_art_position_anchor_epoch) = 0",
+                "id(cover_art_last_position_timestamp) = 0",
+            )
+        ):
+            errors.append(
+                f"{rel}: preserve fresh cover art position when {metadata_name} metadata arrives late"
+            )
+        if metadata_name == "album":
+            progress_refresh = handler.find("id(cover_art_sync_track_text).execute()")
+            if progress_refresh < 0 or progress_refresh < duration_invalidation:
+                errors.append(
+                    f"{rel}: refresh cover art progress immediately when media album changes"
+                )
+
+    return errors
+
+
 def firmware_image_card_entity_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_image.h"
     if not path.exists():
@@ -2220,6 +2370,7 @@ def run_scan() -> int:
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
+    errors.extend(firmware_cover_art_progress_visibility_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
@@ -2683,6 +2834,22 @@ def expect_cover_art_low_heap_progress_errors(
         cover_art_path.write_text(cover_art_text, encoding="utf-8")
 
         errors = firmware_cover_art_low_heap_progress_errors(firmware_dir, cover_art_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_art_progress_visibility_errors(
+    name: str, text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "device" / "screen_cover_art.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_cover_art_progress_visibility_errors(path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -4551,6 +4718,203 @@ def run_self_test() -> int:
             "let S3 cover art consume shared progress",
             "show S3 cover art progress only when shared playback progress is available",
         ),
+    )
+    cover_art_progress_visibility = (
+        "lvgl:\n"
+        "  widgets:\n"
+        "    - label:\n"
+        "        id: cover_art_time_label\n"
+        "        hidden: true\n"
+        "    - bar:\n"
+        "        id: cover_art_progress_bar\n"
+        "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          bool available = espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+        "          lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);\n"
+        "          lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);\n"
+        "  - id: cover_art_refresh_progress\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          bool available = espcontrol::cover_art::progress_available(duration);\n"
+        "          lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);\n"
+        "          lv_label_set_text(id(cover_art_time_label), \"0:00  /  0:00\");\n"
+        "          lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);\n"
+        "          lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);\n"
+        "          lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);\n"
+        "          lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);\n"
+        "  - id: cover_art_show_black_screen\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+        "  - id: cover_art_show_track_overlay\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+        "std::function<void()> invalidate_stale_media_duration = []() {\n"
+        "  const uint32_t last_duration_ms = id(cover_art_last_duration_callback_ms);\n"
+        "  const bool duration_callback_is_fresh = last_duration_ms != 0 &&\n"
+        "    (uint32_t)(millis() - last_duration_ms) <= 250;\n"
+        "  if (!duration_callback_is_fresh) {\n"
+        "    id(cover_art_media_duration) = 0.0f;\n"
+        "  }\n"
+        "};\n"
+        "# title callback\n"
+        "std::function<void(esphome::StringRef)> handle_media_title = [](esphome::StringRef title) {\n"
+        "  invalidate_stale_media_duration();\n"
+        "  id(cover_art_title) = next;\n"
+        "};\n"
+        "if (!already_subscribed) {}\n"
+        "# artist callback\n"
+        "std::function<void(esphome::StringRef)> handle_media_artist = [](esphome::StringRef artist) {\n"
+        "  invalidate_stale_media_duration();\n"
+        "  id(cover_art_artist) = next;\n"
+        "};\n"
+        "if (!already_subscribed) {}\n"
+        "# album callback\n"
+        "std::function<void(esphome::StringRef)> handle_media_album = [](esphome::StringRef album) {\n"
+        "  invalidate_stale_media_duration();\n"
+        "  id(cover_art_album) = next;\n"
+        "  id(cover_art_sync_track_text).execute();\n"
+        "};\n"
+        "if (!already_subscribed) {}\n"
+        "# source callback\n"
+        "std::function<void(esphome::StringRef)> handle_media_source = [](esphome::StringRef source) {\n"
+        "  invalidate_stale_media_duration();\n"
+        "  id(cover_art_media_source) = next;\n"
+        "};\n"
+        "if (!already_subscribed) {}\n"
+        "# duration callback\n"
+        "std::function<void(esphome::StringRef)> handle_media_duration = [](esphome::StringRef duration) {\n"
+        "  id(cover_art_last_duration_callback_ms) = millis();\n"
+        "  const bool next_progress_available = espcontrol::cover_art::progress_available(next_duration);\n"
+        "  if (!next_progress_available) {\n"
+        "    next_duration = 0.0f;\n"
+        "    id(cover_art_media_position) = 0.0f;\n"
+        "    id(cover_art_position_anchor) = 0.0f;\n"
+        "    id(cover_art_position_anchor_epoch) = 0;\n"
+        "    id(cover_art_last_position_timestamp) = 0;\n"
+        "  }\n"
+        "};\n"
+        "if (!already_subscribed) {}\n"
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art progress hides without duration",
+        cover_art_progress_visibility,
+        (),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "unguarded cover art progress",
+        cover_art_progress_visibility
+        .replace("        hidden: true\n", "")
+        .replace(
+            "return espcontrol::cover_art::progress_available(id(cover_art_media_duration));",
+            "return true;",
+        )
+        .replace(
+            "bool available = espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n",
+            "",
+        )
+        .replace(
+            "bool available = espcontrol::cover_art::progress_available(duration);\n",
+            "",
+        )
+        .replace(
+            "  if (!next_progress_available) {\n",
+            "  if (true) {\n",
+        ),
+        (
+            "initialize cover art playback time hidden",
+            "guard every cover art progress reveal",
+            "hide cover art playback time",
+            "hide and reset unavailable cover art progress",
+            "normalize invalid cover art durations",
+        ),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art progress keeps stale position state",
+        cover_art_progress_visibility.replace(
+            "    id(cover_art_media_position) = 0.0f;\n",
+            "",
+        ),
+        ("reset cover art position when duration becomes unavailable",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art progress discards fresh position before late duration",
+        cover_art_progress_visibility.replace(
+            "  const bool next_progress_available = espcontrol::cover_art::progress_available(next_duration);\n",
+            "  const bool current_progress_available = espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+            "  const bool next_progress_available = espcontrol::cover_art::progress_available(next_duration);\n",
+        ),
+        ("preserve fresh cover art position when duration arrives late",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art track change keeps stale duration",
+        cover_art_progress_visibility.replace(
+            "  invalidate_stale_media_duration();\n",
+            "",
+            1,
+        ),
+        ("mark stale cover art duration unavailable when media title changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art title change discards a fresh position",
+        cover_art_progress_visibility.replace(
+            "  invalidate_stale_media_duration();\n",
+            "  invalidate_stale_media_duration();\n"
+            "  id(cover_art_media_position) = 0.0f;\n",
+            1,
+        ),
+        ("preserve fresh cover art position when title metadata arrives late",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art artist change keeps stale duration",
+        cover_art_progress_visibility.replace(
+            "handle_media_artist = [](esphome::StringRef artist) {\n"
+            "  invalidate_stale_media_duration();\n",
+            "handle_media_artist = [](esphome::StringRef artist) {\n",
+            1,
+        ),
+        ("mark stale cover art duration unavailable when media artist changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art album change keeps stale duration",
+        cover_art_progress_visibility.replace(
+            "handle_media_album = [](esphome::StringRef album) {\n"
+            "  invalidate_stale_media_duration();\n",
+            "handle_media_album = [](esphome::StringRef album) {\n",
+            1,
+        ),
+        ("mark stale cover art duration unavailable when media album changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art album change delays progress refresh",
+        cover_art_progress_visibility.replace(
+            "  id(cover_art_sync_track_text).execute();\n",
+            "",
+            1,
+        ),
+        ("refresh cover art progress immediately when media album changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art source change keeps stale duration",
+        cover_art_progress_visibility.replace(
+            "handle_media_source = [](esphome::StringRef source) {\n"
+            "  invalidate_stale_media_duration();\n",
+            "handle_media_source = [](esphome::StringRef source) {\n",
+            1,
+        ),
+        ("mark stale cover art duration unavailable when media source changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art metadata discards a fresh duration",
+        cover_art_progress_visibility.replace(
+            "  if (!duration_callback_is_fresh) {\n",
+            "  if (true) {\n",
+            1,
+        ),
+        ("preserve fresh cover art duration when metadata arrives late",),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",
