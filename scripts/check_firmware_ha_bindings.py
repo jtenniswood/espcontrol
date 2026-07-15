@@ -1496,8 +1496,8 @@ def firmware_artwork_image_auth_errors(path: Path, root: Path) -> list[str]:
         or "container->status_code = HTTP_CODE_OK;" not in text
     ):
         errors.append(f"{rel}: allow Home Assistant media proxy artwork to fall back to image-byte detection")
-    if "download_buffer_.shrink_to(this->download_buffer_initial_size_)" not in text:
-        errors.append(f"{rel}: release oversized artwork download buffers after image requests")
+    if "download_buffer_.shrink_to(0)" not in text:
+        errors.append(f"{rel}: fully release artwork download buffers after image requests")
     return errors
 
 
@@ -5031,7 +5031,7 @@ def run_self_test() -> int:
         "  }\n"
         "}\n"
         "void ArtworkImage::end_connection_() {\n"
-        "  this->download_buffer_.shrink_to(this->download_buffer_initial_size_);\n"
+        "  this->download_buffer_.shrink_to(0);\n"
         "}\n",
         (),
     )

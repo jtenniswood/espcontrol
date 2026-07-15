@@ -71,7 +71,7 @@ for required in (
     "max_download_buffer_size_",
     "peak_download_buffer_size_",
     "Artwork download exceeded transfer limit",
-    "shrink_to(this->download_buffer_initial_size_)",
+    "shrink_to(0)",
 ):
     if required not in downloader:
         raise SystemExit(f"Artwork downloader memory contract missing: {required}")
