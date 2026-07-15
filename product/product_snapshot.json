@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 81,
+    "entityNames": 82,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -5654,6 +5654,11 @@
         "groups": [
           "subpage_slot"
         ]
+      },
+      {
+        "key": "display_restart",
+        "domain": "button",
+        "name": "Restart"
       },
       {
         "key": "indoor_temp_enable",
