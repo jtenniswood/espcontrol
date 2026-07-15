@@ -1472,6 +1472,12 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
             errors.append(
                 f"{rel}: preserve fresh cover art position when {metadata_name} metadata arrives late"
             )
+        if metadata_name == "album":
+            progress_refresh = handler.find("id(cover_art_sync_track_text).execute()")
+            if progress_refresh < 0 or progress_refresh < duration_invalidation:
+                errors.append(
+                    f"{rel}: refresh cover art progress immediately when media album changes"
+                )
 
     return errors
 
@@ -4766,6 +4772,7 @@ def run_self_test() -> int:
         "std::function<void(esphome::StringRef)> handle_media_album = [](esphome::StringRef album) {\n"
         "  invalidate_stale_media_duration();\n"
         "  id(cover_art_album) = next;\n"
+        "  id(cover_art_sync_track_text).execute();\n"
         "};\n"
         "if (!already_subscribed) {}\n"
         "# source callback\n"
@@ -4876,6 +4883,15 @@ def run_self_test() -> int:
             1,
         ),
         ("mark stale cover art duration unavailable when media album changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art album change delays progress refresh",
+        cover_art_progress_visibility.replace(
+            "  id(cover_art_sync_track_text).execute();\n",
+            "",
+            1,
+        ),
+        ("refresh cover art progress immediately when media album changes",),
     )
     expect_cover_art_progress_visibility_errors(
         "cover art source change keeps stale duration",

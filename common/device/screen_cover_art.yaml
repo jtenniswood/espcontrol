@@ -1972,6 +1972,7 @@ script:
               invalidate_stale_media_duration();
               id(cover_art_album) = next;
               mark_artwork_refresh_needed();
+              id(cover_art_sync_track_text).execute();
               if (id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART)) {
                 id(cover_art_request_artwork).execute();
               } else {
