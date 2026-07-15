@@ -1,4 +1,5 @@
 #include "bmp_image.h"
+#include "bmp_stream.h"
 
 #ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
 
@@ -14,7 +15,7 @@ static const char *const TAG = "artwork_image.bmp";
 int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
   size_t index = 0;
   if (this->current_index_ == 0) {
-    if (size < 14) return 0;
+    if (size < bmp::FILE_HEADER_SIZE) return 0;
 
     if (buffer[0] != 'B' || buffer[1] != 'M') {
       ESP_LOGE(TAG, "Not a BMP file");
@@ -22,11 +23,15 @@ int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
     }
     this->download_size_ = encode_uint32(buffer[5], buffer[4], buffer[3], buffer[2]);
     this->data_offset_ = encode_uint32(buffer[13], buffer[12], buffer[11], buffer[10]);
-    if (this->data_offset_ < 34) {
-      ESP_LOGE(TAG, "Invalid BMP data offset: %zu", this->data_offset_);
-      return DECODE_ERROR_UNSUPPORTED_FORMAT;
+    if (!bmp::has_complete_header(size, this->data_offset_)) {
+      if (this->data_offset_ < bmp::REQUIRED_HEADER_SIZE) {
+        ESP_LOGE(TAG, "Invalid BMP data offset: %zu", this->data_offset_);
+        return DECODE_ERROR_UNSUPPORTED_FORMAT;
+      }
+      // Keep the buffered header until the pixel-data offset is available.
+      // HTTP responses are allowed to split the BMP header across reads.
+      return 0;
     }
-    if (size < this->data_offset_) return 0;
 
     this->width_ = encode_uint32(buffer[21], buffer[20], buffer[19], buffer[18]);
     this->height_ = encode_uint32(buffer[25], buffer[24], buffer[23], buffer[22]);
@@ -38,14 +43,14 @@ int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
       return DECODE_ERROR_UNSUPPORTED_FORMAT;
     }
     if (this->bits_per_pixel_ == 24) {
-      this->row_bytes_ = static_cast<size_t>(this->width_) * 3;
+      this->row_bytes_ = bmp::row_bytes(this->width_, 24);
     } else if (this->bits_per_pixel_ == 1) {
-      this->row_bytes_ = (static_cast<size_t>(this->width_) + 7) / 8;
+      this->row_bytes_ = bmp::row_bytes(this->width_, 1);
     } else {
       ESP_LOGE(TAG, "Unsupported BMP depth: %u bits", this->bits_per_pixel_);
       return DECODE_ERROR_UNSUPPORTED_FORMAT;
     }
-    this->row_stride_ = (this->row_bytes_ + 3) & ~static_cast<size_t>(3);
+    this->row_stride_ = bmp::row_stride(this->width_, this->bits_per_pixel_);
     if (this->compression_method_ != 0) {
       ESP_LOGE(TAG, "Unsupported BMP compression method: %" PRIu32, this->compression_method_);
       return DECODE_ERROR_UNSUPPORTED_FORMAT;

@@ -41,6 +41,12 @@ target_compile_options(image_service_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(image_service_test PRIVATE ../../components/artwork_image)
 add_test(NAME image_service_test COMMAND image_service_test)
 
+add_executable(bmp_stream_test bmp_stream_test.cpp)
+target_compile_features(bmp_stream_test PRIVATE cxx_std_17)
+target_compile_options(bmp_stream_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(bmp_stream_test PRIVATE ../../components/artwork_image)
+add_test(NAME bmp_stream_test COMMAND bmp_stream_test)
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS
