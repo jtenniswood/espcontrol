@@ -307,6 +307,7 @@ lvgl:
                       text_color: ${cover_art_text_color}
                       text_opa: 80%
                       text_align: left
+                      hidden: true
             - bar:
                 id: cover_art_progress_bar
                 align: bottom_mid
@@ -703,7 +704,7 @@ script:
                     #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
                     return media_playback_state_has_progress(id(cover_art_media_player_entity).state);
                     #else
-                    return true;
+                    return espcontrol::cover_art::progress_available(id(cover_art_media_duration));
                     #endif
                 then:
                   - lvgl.widget.show: cover_art_progress_bar
@@ -1213,15 +1214,18 @@ script:
             - lvgl.widget.hide: cover_art_artist_label
       - lambda: |-
           #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
-          if (media_playback_state_has_progress(id(cover_art_media_player_entity).state)) {
+          const bool progress_available =
+            media_playback_state_has_progress(id(cover_art_media_player_entity).state);
+          #else
+          const bool progress_available =
+            espcontrol::cover_art::progress_available(id(cover_art_media_duration));
+          #endif
+          if (progress_available) {
             lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
           } else {
             lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
           }
-          #else
-          lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
-          #endif
 
   - id: cover_art_refresh_progress
     mode: restart
@@ -1258,10 +1262,6 @@ script:
             id(cover_art_position_anchor) = position;
             id(cover_art_position_anchor_epoch) = 0;
             if (now.is_valid()) id(cover_art_last_position_timestamp) = now.timestamp;
-            if (id(cover_art_screensaver_active) && progress_playing) {
-              lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
-              lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
-            }
           } else {
             duration = 0.0f;
             position = 0.0f;
@@ -1270,11 +1270,25 @@ script:
             id(cover_art_position_anchor) = 0.0f;
             id(cover_art_position_anchor_epoch) = 0;
             id(cover_art_last_position_timestamp) = 0;
-            id(cover_art_last_progress_percent) = -1;
-            lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
           }
           #endif
+
+          const bool progress_available =
+            espcontrol::cover_art::progress_available(duration);
+          if (!progress_available) {
+            id(cover_art_media_duration) = 0.0f;
+            id(cover_art_last_progress_percent) = -1;
+            lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
+            lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
+            lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
+
+          if (id(cover_art_screensaver_active)) {
+            lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);
+          }
 
           if (progress_playing && now.is_valid()) {
             if (id(cover_art_position_anchor_epoch) != 0) {
@@ -1337,7 +1351,7 @@ script:
                     #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
                     return media_playback_state_has_progress(id(cover_art_media_player_entity).state);
                     #else
-                    return true;
+                    return espcontrol::cover_art::progress_available(id(cover_art_media_duration));
                     #endif
                 then:
                   - lvgl.widget.show: cover_art_progress_bar
@@ -2211,6 +2225,7 @@ script:
                   cover_entity != id(cover_art_media_player_entity).state) return;
               std::string value = string_ref_limited(duration, HA_SHORT_STATE_MAX_LEN);
               float next_duration = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
+              if (!espcontrol::cover_art::progress_available(next_duration)) next_duration = 0.0f;
               if (std::fabs(next_duration - id(cover_art_media_duration)) < 0.05f) return;
               id(cover_art_media_duration) = next_duration;
               id(cover_art_last_progress_percent) = -1;

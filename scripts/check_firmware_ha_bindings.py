@@ -1296,6 +1296,64 @@ def firmware_cover_art_low_heap_progress_errors(
     return errors
 
 
+def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> list[str]:
+    errors: list[str] = []
+    if not path.exists():
+        return errors
+
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    time_widget = re.search(
+        r"(?ms)^\s+- label:\n\s+id: cover_art_time_label\n(?P<body>.*?)(?=^\s+- bar:)",
+        text,
+    )
+    if time_widget is None or "hidden: true" not in time_widget.group("body"):
+        errors.append(f"{rel}: initialize cover art playback time hidden")
+
+    full_build_guard = (
+        "return espcontrol::cover_art::progress_available("
+        "id(cover_art_media_duration));"
+    )
+    for script_id in ("cover_art_show_black_screen", "cover_art_show_track_overlay"):
+        body = yaml_script_body(text, script_id)
+        if body is None or full_build_guard not in body:
+            errors.append(f"{rel}: guard every cover art progress reveal with usable duration")
+
+    sync_body = yaml_script_body(text, "cover_art_sync_track_text")
+    if sync_body is None or any(
+        token not in sync_body
+        for token in (
+            "espcontrol::cover_art::progress_available(id(cover_art_media_duration))",
+            "lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)",
+            "lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN)",
+        )
+    ):
+        errors.append(f"{rel}: hide cover art playback time when duration is unavailable")
+
+    refresh_body = yaml_script_body(text, "cover_art_refresh_progress")
+    if refresh_body is None or any(
+        token not in refresh_body
+        for token in (
+            "espcontrol::cover_art::progress_available(duration)",
+            "lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF)",
+            'lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00")',
+            "lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)",
+            "lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN)",
+            "lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)",
+            "lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN)",
+        )
+    ):
+        errors.append(f"{rel}: hide and reset unavailable cover art progress")
+
+    if (
+        "if (!espcontrol::cover_art::progress_available(next_duration)) "
+        "next_duration = 0.0f;"
+    ) not in text:
+        errors.append(f"{rel}: normalize invalid cover art durations")
+
+    return errors
+
+
 def firmware_image_card_entity_errors(firmware_dir: Path, root: Path) -> list[str]:
     path = firmware_dir / "button_grid_image.h"
     if not path.exists():
@@ -2123,6 +2181,7 @@ def run_scan() -> int:
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
     errors.extend(firmware_media_control_low_heap_metadata_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_cover_art_low_heap_progress_errors(FIRMWARE_DIR, COVER_ART_PATH, ROOT))
+    errors.extend(firmware_cover_art_progress_visibility_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_image_card_entity_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_base_url_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_image_card_quality_errors(FIRMWARE_DIR, ROOT))
@@ -2585,6 +2644,22 @@ def expect_cover_art_low_heap_progress_errors(
         cover_art_path.write_text(cover_art_text, encoding="utf-8")
 
         errors = firmware_cover_art_low_heap_progress_errors(firmware_dir, cover_art_path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_art_progress_visibility_errors(
+    name: str, text: str, expected: tuple[str, ...]
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "device" / "screen_cover_art.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_cover_art_progress_visibility_errors(path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -4442,6 +4517,75 @@ def run_self_test() -> int:
             "keep media_position_updated_at out of the S3 low-heap cover art path",
             "let S3 cover art consume shared progress",
             "show S3 cover art progress only when shared playback progress is available",
+        ),
+    )
+    cover_art_progress_visibility = (
+        "lvgl:\n"
+        "  widgets:\n"
+        "    - label:\n"
+        "        id: cover_art_time_label\n"
+        "        hidden: true\n"
+        "    - bar:\n"
+        "        id: cover_art_progress_bar\n"
+        "script:\n"
+        "  - id: cover_art_sync_track_text\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          bool available = espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+        "          lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);\n"
+        "          lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);\n"
+        "  - id: cover_art_refresh_progress\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          bool available = espcontrol::cover_art::progress_available(duration);\n"
+        "          lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);\n"
+        "          lv_label_set_text(id(cover_art_time_label), \"0:00  /  0:00\");\n"
+        "          lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);\n"
+        "          lv_obj_add_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);\n"
+        "          lv_obj_clear_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);\n"
+        "          lv_obj_clear_flag(id(cover_art_progress_bar), LV_OBJ_FLAG_HIDDEN);\n"
+        "  - id: cover_art_show_black_screen\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+        "  - id: cover_art_show_track_overlay\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          return espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+        "# duration callback\n"
+        "if (!espcontrol::cover_art::progress_available(next_duration)) next_duration = 0.0f;\n"
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art progress hides without duration",
+        cover_art_progress_visibility,
+        (),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "unguarded cover art progress",
+        cover_art_progress_visibility
+        .replace("        hidden: true\n", "")
+        .replace(
+            "return espcontrol::cover_art::progress_available(id(cover_art_media_duration));",
+            "return true;",
+        )
+        .replace(
+            "bool available = espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n",
+            "",
+        )
+        .replace(
+            "bool available = espcontrol::cover_art::progress_available(duration);\n",
+            "",
+        )
+        .replace(
+            "if (!espcontrol::cover_art::progress_available(next_duration)) next_duration = 0.0f;\n",
+            "",
+        ),
+        (
+            "initialize cover art playback time hidden",
+            "guard every cover art progress reveal",
+            "hide cover art playback time",
+            "hide and reset unavailable cover art progress",
+            "normalize invalid cover art durations",
         ),
     )
     expect_image_card_entity_errors(

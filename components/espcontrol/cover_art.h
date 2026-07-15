@@ -3,6 +3,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <string>
 
@@ -126,8 +127,11 @@ inline Layout cover_art_layout(const std::string &slug, const std::string &rotat
   return Layout{screen_width,screen_height,x,y,art_size,x,y,art_size,art_size,x,y,art_size,art_size,
                 title_height,art_size >= 700 ? 36 : 24,false};
 }
+inline bool progress_available(float duration) {
+  return std::isfinite(duration) && duration > 0.0f;
+}
 inline int progress_percent(float position, float duration) {
-  if (duration <= 0.0f) return 0;
+  if (!progress_available(duration) || !std::isfinite(position)) return 0;
   return std::max(0, std::min(100, static_cast<int>((position / duration) * 100.0f + 0.5f)));
 }
 
