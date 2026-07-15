@@ -21,7 +21,8 @@ class BmpDecoder : public ImageDecoder {
   uint16_t bits_per_pixel_{0};
   uint32_t compression_method_{0};
   size_t data_offset_{0};
-  uint8_t padding_bytes_{0};
+  size_t row_bytes_{0};
+  size_t row_stride_{0};
 };
 
 }  // namespace artwork_image
