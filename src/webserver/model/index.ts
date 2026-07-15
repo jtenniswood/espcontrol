@@ -20,6 +20,16 @@ export {
 } from "./card";
 
 export {
+  CARD_TRANSFER_FORMAT,
+  CARD_TRANSFER_MAX_BYTES,
+  CARD_TRANSFER_MAX_CARDS,
+  CARD_TRANSFER_VERSION,
+  createCardTransferCode,
+  normalizeCardTransferEnvelope,
+  parseCardTransferCode,
+} from "./card_transfer";
+
+export {
   configOptionEnabled,
   configOptionValue,
   decodeConfigField,
@@ -133,6 +143,12 @@ export type {
   MediaNowPlayingControl,
   MediaStateDisplay,
 } from "./media_card";
+
+export type {
+  CardTransferEntry,
+  CardTransferEnvelope,
+  CardTransferSource,
+} from "./card_transfer";
 
 export type {
   ParsedGridOrder,
