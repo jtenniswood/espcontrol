@@ -116,4 +116,6 @@ if metadata_start < 0 or metadata_end < 0:
 metadata = media[metadata_start:metadata_end]
 if 'state->entity_id, std::string("media_artist")' in metadata:
     raise SystemExit("Media track changes must not retain duplicate one-shot metadata reads")
+if "state->artist.clear()" in metadata:
+    raise SystemExit("Media title updates must preserve an unchanged subscribed artist")
 print("Cover art policy, layout, and state contract checks passed.")

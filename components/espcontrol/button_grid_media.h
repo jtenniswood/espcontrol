@@ -997,9 +997,6 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
       [state, generation](esphome::StringRef value) {
         if (!media_playback_generation_valid(state, generation)) return;
         state->title = media_playback_metadata_value(value, HA_STATE_TEXT_MAX_LEN);
-        if (!media_control_low_heap_mode()) {
-          state->artist.clear();
-        }
         media_playback_apply_metadata_consumers(state);
       })
   );
