@@ -130,6 +130,7 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
     }
     function addBulkCardMenuItems(this: any, slots?: any) {
         addCtxItem("clipboard-outline", "Copy " + slots.length + " Cards", function (this: any) { copyButtons(slots); });
+        addCtxItem("code-json", "Copy " + slots.length + " Cards as Code", function (this: any) { showCopyCardCode(slots); });
         addCtxItem("content-cut", "Cut " + slots.length + " Cards", function (this: any) { cutButtons(slots); });
         addCtxItem("delete", "Delete " + slots.length + " Cards", function (this: any) { deleteButtons(slots); }, true);
     }
@@ -181,6 +182,7 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
             }
         });
         addCtxItem("clipboard-outline", "Copy", function (this: any) { copySlot(slot); });
+        addCtxItem("code-json", "Copy Code", function (this: any) { showCopyCardCode([slot]); });
         addCtxItem("content-cut", "Cut", function (this: any) { cutSlot(slot); });
         addCtxItem("delete", "Delete", function (this: any) { deleteSlot(slot); }, true);
     }
@@ -307,8 +309,11 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
                     pasteButton(pos);
                 }
             });
-            addCtxDivider();
         }
+        addCtxItem("code-json", "Paste Code…", function (this: any) {
+            showPasteCardCode(pos, c.isSub);
+        });
+        addCtxDivider();
         addCtxItem("plus", "Create Card", function (this: any) { addSlot(pos); });
         if (!c.isSub) {
             addCtxItem("folder-plus", "Create Subpage", function (this: any) { addSubpageSlot(pos); });

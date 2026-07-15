@@ -15,11 +15,13 @@ You will find these controls in **Settings > Sleep & Schedule > Media Cover Art*
 - **Show Cover Art** - enables the cover art display and keeps the screen awake while artwork is shown.
 - **Media Player Entity** - chooses the media player entity to watch, such as `media_player.living_room`.
 - **Show After** - chooses whether cover art appears immediately or waits for the selected delay.
-- **Show After** also controls how long cover art waits before returning after you dismiss it by touch.
+- **Show After** also controls how long cover art waits before returning after you dismiss it by touch. The countdown restarts after every touch, so cover art returns only after the selected time has passed since your most recent touch.
 - **Show Track Details For** - controls how long track information is shown over the artwork on the 4-inch square displays.
 - **Advanced Options** - contains source and filtering controls you may not need every day.
 - **Hide for external source inputs** - hides cover art when the selected media player source is `TV` or `Line-in`.
 - **Advanced Filtering** - reveals **Only Show When**, which limits cover art to matching media player attributes, such as `app_id=com.apple.TVMusic` or `app_id=com.apple.TVMusic; media_content_type=music`.
+
+Playback time and the progress bar appear only when Home Assistant provides a usable media duration. Live radio streams without a duration continue to show artwork and track details without an empty progress line.
 
 If cover art is shown for `TV` or `Line-in` instead of hidden, the artist line shows **Source** because these inputs normally do not provide artist data.
 
