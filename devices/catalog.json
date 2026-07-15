@@ -143,6 +143,68 @@
         }
       }
     },
+    "modal": {
+      "wide-landscape": {
+        "firmware": {
+          "display": {
+            "modal": {
+              "layoutFamily": "wide-landscape",
+              "density": "comfortable",
+              "memoryTier": "standard",
+              "baseTouchTarget": 57
+            }
+          }
+        }
+      },
+      "compact-portrait": {
+        "firmware": {
+          "display": {
+            "modal": {
+              "layoutFamily": "compact-portrait",
+              "density": "compact",
+              "memoryTier": "standard",
+              "baseTouchTarget": 46
+            }
+          }
+        }
+      },
+      "large-landscape": {
+        "firmware": {
+          "display": {
+            "modal": {
+              "layoutFamily": "large-landscape",
+              "density": "spacious",
+              "memoryTier": "standard",
+              "baseTouchTarget": 76
+            }
+          }
+        }
+      },
+      "large-square": {
+        "firmware": {
+          "display": {
+            "modal": {
+              "layoutFamily": "large-square",
+              "density": "comfortable",
+              "memoryTier": "standard",
+              "baseTouchTarget": 69
+            }
+          }
+        }
+      },
+      "compact-square-constrained": {
+        "firmware": {
+          "display": {
+            "modal": {
+              "layoutFamily": "compact-square",
+              "density": "compact",
+              "memoryTier": "constrained",
+              "baseTouchTarget": 46
+            }
+          }
+        }
+      }
+    },
     "fonts": {
       "large-panel-p4": {
         "firmware": {
@@ -309,6 +371,7 @@
     "guition-esp32-p4-jc1060p470": {
       "profiles": {
         "platform": "esp32-p4",
+        "modal": "wide-landscape",
         "fonts": "large-panel-p4",
         "network": [
           "c6-firmware-update",
@@ -488,6 +551,7 @@
     "guition-esp32-p4-jc4880p443": {
       "profiles": {
         "platform": "esp32-p4",
+        "modal": "compact-portrait",
         "fonts": "portrait-panel-p4",
         "network": "c6-firmware-update"
       },
@@ -655,6 +719,7 @@
       "profiles": {
         "platform": "esp32-p4",
         "display": "jc8012p4a1-1280x800",
+        "modal": "large-landscape",
         "fonts": "large-panel-p4",
         "network": "c6-firmware-update",
         "artwork": "landscape-1280x800"
@@ -670,6 +735,7 @@
       "profiles": {
         "platform": "esp32-p4",
         "display": "jc8012p4a1-1280x800",
+        "modal": "large-landscape",
         "fonts": "large-panel-p4",
         "network": "c6-firmware-update",
         "artwork": "landscape-1280x800"
@@ -684,6 +750,7 @@
     "esp32-p4-86": {
       "profiles": {
         "platform": "esp32-p4",
+        "modal": "large-square",
         "fonts": "compact-panel",
         "network": [
           "c6-firmware-update",
@@ -869,6 +936,7 @@
     "guition-esp32-s3-4848s040": {
       "profiles": {
         "platform": "esp32-s3",
+        "modal": "compact-square-constrained",
         "fonts": "compact-panel"
       },
       "config": {

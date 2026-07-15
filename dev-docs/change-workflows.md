@@ -64,7 +64,7 @@ npm run check:product
 
 Playbook: [Add or change a supported device](playbooks/add-supported-device.md).
 
-1. Add or update the device entry in `devices/manifest.json`.
+1. Add or update the device entry and its modal profile in `devices/catalog.json`.
 2. Add or update `devices/<slug>/packages.yaml`, `dev.yaml`, `esphome.yaml`, and
    files under `devices/<slug>/device/`.
 3. Confirm the device has the required font roles in `firmware.fonts`.
@@ -73,6 +73,7 @@ Playbook: [Add or change a supported device](playbooks/add-supported-device.md).
 ```bash
 python3 scripts/build.py
 python3 scripts/generate_device_slots.py
+npm run check:firmware-modal-layouts
 npm run check:device-matrix
 npm run check:device-profiles
 npm run check:product

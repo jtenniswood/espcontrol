@@ -102,10 +102,35 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_modal.h: provide shared modal lifecycle helpers")
     else:
         text = modal_path.read_text(encoding="utf-8")
-        if "control_modal_force_close_active" not in text or "control_modal_close_active_internal(false)" not in text:
+        if (
+            "enum class ControlModalDismissPolicy" not in text
+            or "control_modal_force_close_active" not in text
+            or "control_modal_close_active_internal(false)" not in text
+            or "control_modal_close_for_display_takeover" not in text
+            or "PRESERVE_DURING_DISPLAY_TAKEOVER" not in text
+        ):
             errors.append(
-                "components/espcontrol/button_grid_modal.h: provide a forced modal close path for display takeover"
+                "components/espcontrol/button_grid_modal.h: centralize modal dismissal policy for display takeover"
             )
+        kind_enum = re.search(r"enum class ControlModalKind\s*\{(?P<body>.*?)\};", text, re.S)
+        definition = re.search(
+            r"inline\s+ControlModalDefinition\s+control_modal_definition\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+            text,
+            re.S,
+        )
+        if kind_enum is None or definition is None:
+            errors.append("components/espcontrol/button_grid_modal.h: define every modal type through the shared registry")
+        else:
+            kinds = re.findall(r"\b([A-Z][A-Z0-9_]*)\b", kind_enum.group("body"))
+            missing = [
+                kind for kind in kinds
+                if kind != "NONE" and f"ControlModalKind::{kind}" not in definition.group("body")
+            ]
+            if missing:
+                errors.append(
+                    "components/espcontrol/button_grid_modal.h: register modal definitions for "
+                    + ", ".join(missing)
+                )
 
     if not navigation_path.exists():
         errors.append("components/espcontrol/button_grid_navigation.h: close modals before display takeover")
@@ -121,17 +146,13 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
             text,
             re.S,
         )
-        if hide_modals is None or "control_modal_close_active();" not in hide_modals.group("body"):
+        if hide_modals is None or "control_modal_force_close_active();" not in hide_modals.group("body"):
             errors.append(
                 "components/espcontrol/button_grid_navigation.h: return-home navigation must close active shared modals"
             )
-        elif (
-            "cover_control_hide_modal();" not in hide_modals.group("body")
-            or "light_control_hide_modal();" not in hide_modals.group("body")
-            or "fan_control_hide_modal();" not in hide_modals.group("body")
-        ):
+        elif re.search(r"\b[A-Za-z0-9_]+_hide_modal\s*\(\s*\)\s*;", hide_modals.group("body")):
             errors.append(
-                "components/espcontrol/button_grid_navigation.h: return-home navigation must explicitly clear fan, cover, and light modals"
+                "components/espcontrol/button_grid_navigation.h: keep modal-type cleanup out of navigation"
             )
         if return_home is None or "navigation_hide_modals();" not in return_home.group("body"):
             errors.append(
@@ -139,10 +160,10 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
             )
         if (
             "navigation_close_modals_for_display_takeover" not in text
-            or "control_modal_force_close_active();" not in text
+            or "control_modal_close_for_display_takeover(alarm_display_takeover_active());" not in text
         ):
             errors.append(
-                "components/espcontrol/button_grid_navigation.h: close modals through a display-takeover helper"
+                "components/espcontrol/button_grid_navigation.h: preserve alarm controls only during an active alarm takeover"
             )
 
     if not image_path.exists():
@@ -445,10 +466,10 @@ def firmware_cover_control_tab_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_sliders.h: hide cover modal tabs when only one control is visible")
     if "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);" not in text:
         errors.append("components/espcontrol/button_grid_sliders.h: keep cover modal tab row hidden through the shared tab layout helper")
-    if "lv_coord_t content_top = show_tab_bar" not in text:
-        errors.append("components/espcontrol/button_grid_sliders.h: position cover modal content from explicit top and bottom bounds")
-    if "lv_coord_t content_center_y = content_top + content_h / 2 - layout.panel_h / 2;" not in text:
-        errors.append("components/espcontrol/button_grid_sliders.h: center cover modal controls within their available space")
+    if "control_modal_calc_content_layout(\n    layout, tabs_layout, show_tab_bar, 160)" not in text:
+        errors.append("components/espcontrol/button_grid_sliders.h: position cover modal content with the shared content recipe")
+    if "lv_coord_t content_center_y = content.center_y;" not in text:
+        errors.append("components/espcontrol/button_grid_sliders.h: center cover modal controls within their planned content space")
 
     return errors
 
@@ -468,8 +489,8 @@ def firmware_light_control_tab_errors(root: Path) -> list[str]:
         errors.append("components/espcontrol/button_grid_sliders.h: hide light and cover modal tabs when only one control is visible")
     if text.count("control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);") < 2:
         errors.append("components/espcontrol/button_grid_sliders.h: keep single-tab modal rows hidden through the shared tab layout helper")
-    if "lv_coord_t content_top = show_tab_bar" not in text:
-        errors.append("components/espcontrol/button_grid_sliders.h: let single-control modals use the tab row space")
+    if text.count("control_modal_calc_content_layout(\n    layout, tabs_layout, show_tab_bar, 160)") < 2:
+        errors.append("components/espcontrol/button_grid_sliders.h: let single-control modals use the shared content recipe")
 
     return errors
 
@@ -516,7 +537,20 @@ def firmware_climate_control_tab_errors(root: Path) -> list[str]:
 def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
     firmware_dir = root / "components" / "espcontrol"
     modal_path = firmware_dir / "button_grid_modal.h"
+    geometry_path = firmware_dir / "button_grid_modal_layout.h"
     errors: list[str] = []
+
+    if not geometry_path.exists():
+        errors.append("components/espcontrol/button_grid_modal_layout.h: provide a testable modal tab layout recipe")
+    else:
+        geometry_text = geometry_path.read_text(encoding="utf-8")
+        if (
+            "struct TabLayout" not in geometry_text
+            or "constexpr TabLayout calculate_tabs" not in geometry_text
+            or "struct ContentLayout" not in geometry_text
+            or "constexpr ContentLayout calculate_content" not in geometry_text
+        ):
+            errors.append("components/espcontrol/button_grid_modal_layout.h: keep modal tab and content geometry in shared recipes")
 
     if not modal_path.exists():
         errors.append("components/espcontrol/button_grid_modal.h: provide shared modal tab layout helpers")
@@ -526,10 +560,11 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
             "struct ControlModalTabLayout",
             "inline ControlModalTabLayout control_modal_calc_tab_layout",
             "inline void control_modal_apply_tab_row",
+            "inline lv_obj_t *control_modal_create_tab_row",
             "inline void control_modal_layout_tab_button",
             "inline lv_coord_t control_modal_shared_tab_content_gap",
-            "CONTROL_MODAL_P4_86_TAB_REF_PX",
-            "CONTROL_MODAL_JC4880P443_TAB_CONTENT_GAP_REF_PX",
+            "control_modal_calc_content_layout",
+            "espcontrol::modal::calculate_tabs",
         )
         for needle in required:
             if needle not in text:
@@ -542,25 +577,29 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);",
             "return control_modal_shared_tab_content_gap(layout);",
+            "ui.tab_row = control_modal_create_tab_row(ui.panel);",
         ),
         "button_grid_fan.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);",
-            "tabs_layout.content_gap",
+            "control_modal_calc_content_layout(",
+            "ui.tab_row = control_modal_create_tab_row(ui.panel);",
         ),
         "button_grid_media.h": (
             "control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true)",
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);",
-            "tabs_layout.content_gap",
+            "control_modal_calc_content_layout(",
+            "ui.tab_row = control_modal_create_tab_row(ui.panel);",
         ),
     }
     sliders_required = (
         "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);",
         "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);",
         "control_modal_layout_tab_button(",
-        "tabs_layout.content_gap",
+        "control_modal_calc_content_layout(",
+        "ui.tab_row = control_modal_create_tab_row(ui.panel);",
     )
     for filename, required in required_by_file.items():
         path = firmware_dir / filename
@@ -585,7 +624,8 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
         if (
             text.count("ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);") < 2
             or text.count("control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);") < 2
-            or text.count("tabs_layout.content_gap") < 2
+            or text.count("control_modal_calc_content_layout(") < 2
+            or text.count("ui.tab_row = control_modal_create_tab_row(ui.panel);") < 2
         ):
             errors.append("components/espcontrol/button_grid_sliders.h: use shared modal tab layout helpers for light and cover tabs")
 
@@ -610,7 +650,7 @@ def firmware_modal_tab_layout_errors(root: Path) -> list[str]:
         text = path.read_text(encoding="utf-8")
         for needle in forbidden_tab_math:
             if needle in text:
-                errors.append(f"components/espcontrol/{filename}: keep modal tab sizing in button_grid_modal.h")
+                errors.append(f"components/espcontrol/{filename}: keep modal tab sizing in button_grid_modal_layout.h")
                 break
 
     return errors
@@ -934,13 +974,19 @@ def expect_network_status_version_errors(name: str, header_text: str, expected: 
 
 def valid_modal_tab_layout_files() -> dict[str, str]:
     return {
+        "components/espcontrol/button_grid_modal_layout.h": (
+            "struct TabLayout {};\n"
+            "constexpr TabLayout calculate_tabs() {}\n"
+            "struct ContentLayout {};\n"
+            "constexpr ContentLayout calculate_content() {}\n"
+        ),
         "components/espcontrol/button_grid_modal.h": (
-            "constexpr lv_coord_t CONTROL_MODAL_P4_86_TAB_REF_PX = 50;\n"
-            "constexpr lv_coord_t CONTROL_MODAL_JC4880P443_TAB_CONTENT_GAP_REF_PX = 12;\n"
             "struct ControlModalTabLayout {};\n"
             "inline lv_coord_t control_modal_shared_tab_content_gap(const ControlModalLayout &layout) { return 0; }\n"
-            "inline ControlModalTabLayout control_modal_calc_tab_layout(const ControlModalLayout &layout, int tab_count, bool show_tab_bar) {}\n"
+            "inline ControlModalTabLayout control_modal_calc_tab_layout(const ControlModalLayout &layout, int tab_count, bool show_tab_bar) { return espcontrol::modal::calculate_tabs(); }\n"
+            "inline ContentLayout control_modal_calc_content_layout() {}\n"
             "inline void control_modal_apply_tab_row(lv_obj_t *tab_row, const ControlModalLayout &layout, const ControlModalTabLayout &tabs_layout) {}\n"
+            "inline lv_obj_t *control_modal_create_tab_row(lv_obj_t *panel) {}\n"
             "inline void control_modal_layout_tab_button(lv_obj_t *tab_btn, const ControlModalLayout &layout, const ControlModalTabLayout &tabs_layout, int index, bool active) {}\n"
         ),
         "components/espcontrol/button_grid_climate.h": (
@@ -948,28 +994,33 @@ def valid_modal_tab_layout_files() -> dict[str, str]:
             "return control_modal_shared_tab_content_gap(layout);\n"
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);\n"
+            "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_fan.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
             "control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);\n"
-            "tabs_layout.content_gap\n"
+            "control_modal_calc_content_layout(\n"
+            "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_media.h": (
             "control_modal_calc_tab_layout(layout, MEDIA_CONTROL_TAB_COUNT, true)\n"
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
             "control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);\n"
-            "tabs_layout.content_gap\n"
+            "control_modal_calc_content_layout(\n"
+            "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
         "components/espcontrol/button_grid_sliders.h": (
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
             "control_modal_layout_tab_button(\n"
-            "tabs_layout.content_gap\n"
+            "control_modal_calc_content_layout(\n"
+            "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
             "ControlModalTabLayout tabs_layout = control_modal_calc_tab_layout(layout, tab_count, show_tab_bar);\n"
             "control_modal_apply_tab_row(ui.tab_row, layout, tabs_layout);\n"
             "control_modal_layout_tab_button(\n"
-            "tabs_layout.content_gap\n"
+            "control_modal_calc_content_layout(\n"
+            "ui.tab_row = control_modal_create_tab_row(ui.panel);\n"
         ),
     }
 
@@ -1038,22 +1089,26 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "inline void backlight_close_modals_for_display_takeover() {}\n"
         ),
         "components/espcontrol/button_grid_modal.h": (
+            "enum class ControlModalKind { NONE };\n"
+            "enum class ControlModalDismissPolicy { PRESERVE_DURING_DISPLAY_TAKEOVER };\n"
+            "struct ControlModalDefinition {};\n"
+            "inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {\n"
+            "  return {};\n"
+            "}\n"
             "inline void control_modal_close_active_internal(bool honor_close_guard) {}\n"
             "inline void control_modal_force_close_active() { control_modal_close_active_internal(false); }\n"
+            "inline void control_modal_close_for_display_takeover(bool preserve_policy_active) {}\n"
         ),
         "components/espcontrol/button_grid_navigation.h": (
             "inline void navigation_hide_modals() {\n"
-            "  control_modal_close_active();\n"
-            "  fan_control_hide_modal();\n"
-            "  cover_control_hide_modal();\n"
-            "  light_control_hide_modal();\n"
+            "  control_modal_force_close_active();\n"
             "}\n"
             "inline bool navigation_return_home(lv_obj_t *main_page_obj) {\n"
             "  navigation_hide_modals();\n"
             "  return true;\n"
             "}\n"
             "inline void navigation_close_modals_for_display_takeover() {\n"
-            "  control_modal_force_close_active();\n"
+            "  control_modal_close_for_display_takeover(alarm_display_takeover_active());\n"
             "}\n"
         ),
         "components/espcontrol/button_grid_grid.h": (
@@ -1071,6 +1126,7 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "bool critical_takeover_active = false;\n"
             "ctx->begin_display_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);\n"
             "ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);\n"
+            "ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER\n"
         ),
         "common/addon/backlight.yaml": (
             "globals:\n"
@@ -1154,8 +1210,8 @@ def run_self_test() -> int:
         },
         (
             "expose an early display-takeover modal hook",
-            "provide a forced modal close path for display takeover",
-            "close modals through a display-takeover helper",
+            "centralize modal dismissal policy for display takeover",
+            "preserve alarm controls only during an active alarm takeover",
             "register the display-takeover modal hook",
             "close modals before manual or scheduled display-off",
             "close modals before scheduled sleep and clock takeover",
@@ -1165,6 +1221,19 @@ def run_self_test() -> int:
         "display takeover close",
         valid_sleep_takeover_files(),
         (),
+    )
+    unconditional_alarm_preservation = valid_sleep_takeover_files()
+    navigation_path = "components/espcontrol/button_grid_navigation.h"
+    unconditional_alarm_preservation[navigation_path] = unconditional_alarm_preservation[
+        navigation_path
+    ].replace(
+        "control_modal_close_for_display_takeover(alarm_display_takeover_active());",
+        "control_modal_close_for_display_takeover();",
+    )
+    expect_sleep_takeover_errors(
+        "manual alarm modal preservation",
+        unconditional_alarm_preservation,
+        ("preserve alarm controls only during an active alarm takeover",),
     )
     expect_subpage_modal_wiring_errors(
         "media refresh preserves modal context",
@@ -1345,7 +1414,7 @@ def run_self_test() -> int:
     expect_modal_tab_layout_errors(
         "modal tab layout drifts back to local sizing",
         old_tab_layout,
-        ("keep modal tab sizing in button_grid_modal.h",),
+        ("keep modal tab sizing in button_grid_modal_layout.h",),
     )
     missing_shared_tab_helper = valid_modal_tab_layout_files()
     missing_shared_tab_helper["components/espcontrol/button_grid_media.h"] = (

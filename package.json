@@ -22,6 +22,7 @@
     "check:firmware-ha-bindings": "python3 scripts/check_tasks.py run-task firmware-ha-bindings",
     "check:firmware-parser": "python3 scripts/check_tasks.py run-task firmware-parser",
     "check:firmware-modals": "python3 scripts/check_tasks.py run-task firmware-modals",
+    "check:firmware-modal-layouts": "python3 scripts/check_tasks.py run-task firmware-modal-layouts",
     "check:firmware-release": "python3 scripts/check_tasks.py run-task firmware-release",
     "check:generated": "python3 scripts/check_tasks.py run-task generated",
     "check:local-artifacts": "python3 scripts/check_tasks.py run-task local-artifacts",

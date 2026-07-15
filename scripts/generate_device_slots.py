@@ -343,6 +343,39 @@ def cfg_lines(device: dict) -> list[str]:
         lines.append(
             f"            cfg.media_artwork_width_compensation_percent = {device['media_artwork_width_compensation_percent']};"
         )
+    modal = device["modal"]
+    modal_family = {
+        "compact-square": "COMPACT_SQUARE",
+        "large-square": "LARGE_SQUARE",
+        "compact-portrait": "COMPACT_PORTRAIT",
+        "wide-landscape": "WIDE_LANDSCAPE",
+        "large-landscape": "LARGE_LANDSCAPE",
+    }[modal["layoutFamily"]]
+    modal_density = {
+        "compact": "COMPACT",
+        "comfortable": "COMFORTABLE",
+        "spacious": "SPACIOUS",
+    }[modal["density"]]
+    modal_memory_tier = {
+        "standard": "STANDARD",
+        "constrained": "CONSTRAINED",
+    }[modal["memoryTier"]]
+    lines.append(
+        "            cfg.modal_profile.layout_family = "
+        f"DisplayModalLayoutFamily::{modal_family};"
+    )
+    lines.append(
+        "            cfg.modal_profile.density = "
+        f"DisplayModalDensity::{modal_density};"
+    )
+    lines.append(
+        "            cfg.modal_profile.memory_tier = "
+        f"DisplayModalMemoryTier::{modal_memory_tier};"
+    )
+    lines.append(
+        "            cfg.modal_profile.base_touch_target = "
+        f"{modal['baseTouchTarget']};"
+    )
     if device.get("color_correction"):
         correction = device["color_correction"]
         lines.append(f"            cfg.color_correction_red_percent = {correction['red']};")

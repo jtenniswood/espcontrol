@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1508" height="370" viewBox="0 0 1508 370" role="img" aria-labelledby="title desc">
+<title id="title">EspControl modal layout profiles</title>
+<desc id="desc">Generated reference showing the shared modal shell, tabs, content region, and back button on each display family.</desc>
+<style>
+text { font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
+.background { fill: #11151d; } .screen { fill: #090c12; stroke: #344054; stroke-width: 2; }
+.panel { fill: #222936; stroke: #475467; stroke-width: 1.5; }
+.tab-frame { fill: #344054; } .tab { fill: #667085; } .tab.selected { fill: #5e8bff; }
+.content { fill: #161b24; stroke: #98a2b3; stroke-width: 1.5; stroke-dasharray: 5 4; }
+.back { fill: #f2f4f7; stroke: #98a2b3; stroke-width: 1; }
+.title { fill: #f9fafb; font-size: 24px; font-weight: 700; }
+.subtitle { fill: #98a2b3; font-size: 13px; } .device { fill: #f2f4f7; font-size: 13px; font-weight: 600; }
+.profile { fill: #b2ccff; font-size: 12px; } .meta { fill: #98a2b3; font-size: 11px; }
+</style>
+<rect width="1508" height="370" class="background"/>
+<text x="24.0" y="31.0" class="title" text-anchor="start">Device-aware modal layout reference</text>
+<text x="24.0" y="52.0" class="subtitle" text-anchor="start">Generated from the geometry contract; dashed areas are modal content regions.</text>
+<g id="guition-esp32-p4-jc1060p470">
+<rect x="24.0" y="91.8" width="250.0" height="146.5" rx="8" class="screen"/>
+<rect x="25.2" y="102.0" width="247.6" height="135.0" rx="6" class="panel"/>
+<rect x="97.0" y="107.9" width="103.8" height="22.7" rx="11.4" class="tab-frame"/>
+<circle cx="108.4" cy="119.2" r="9.2" class="tab selected"/>
+<circle cx="128.6" cy="119.2" r="8.2" class="tab"/>
+<circle cx="148.9" cy="119.2" r="8.2" class="tab"/>
+<circle cx="169.1" cy="119.2" r="8.2" class="tab"/>
+<circle cx="189.4" cy="119.2" r="8.2" class="tab"/>
+<rect x="30.6" y="138.6" width="236.8" height="93.0" rx="4" class="content"/>
+<circle cx="37.5" cy="114.3" r="7.0" class="back"/>
+<text x="149.0" y="288.0" class="device" text-anchor="middle">p4-jc1060p470</text>
+<text x="149.0" y="308.0" class="profile" text-anchor="middle">wide-landscape · comfortable</text>
+<text x="149.0" y="326.0" class="meta" text-anchor="middle">1024×600 · standard memory</text>
+</g>
+<g id="guition-esp32-p4-jc4880p443">
+<rect x="384.0" y="70.0" width="114.0" height="190.0" rx="8" class="screen"/>
+<rect x="385.2" y="81.9" width="111.6" height="176.9" rx="6" class="panel"/>
+<rect x="405.4" y="86.6" width="87.4" height="19.0" rx="9.5" class="tab-frame"/>
+<circle cx="414.9" cy="96.1" r="7.7" class="tab selected"/>
+<circle cx="432.0" cy="96.1" r="6.9" class="tab"/>
+<circle cx="449.1" cy="96.1" r="6.9" class="tab"/>
+<circle cx="466.2" cy="96.1" r="6.9" class="tab"/>
+<circle cx="483.3" cy="96.1" r="6.9" class="tab"/>
+<rect x="389.5" y="108.0" width="103.1" height="146.5" rx="4" class="content"/>
+<circle cx="397.8" cy="94.5" r="5.5" class="back"/>
+<text x="441.0" y="288.0" class="device" text-anchor="middle">p4-jc4880p443</text>
+<text x="441.0" y="308.0" class="profile" text-anchor="middle">compact-portrait · compact</text>
+<text x="441.0" y="326.0" class="meta" text-anchor="middle">480×800 · standard memory</text>
+</g>
+<g id="guition-esp32-p4-jc8012p4a1">
+<rect x="608.0" y="86.9" width="250.0" height="156.2" rx="8" class="screen"/>
+<rect x="609.0" y="95.9" width="248.0" height="146.3" rx="6" class="panel"/>
+<rect x="689.6" y="102.1" width="86.7" height="17.2" rx="8.6" class="tab-frame"/>
+<circle cx="698.2" cy="110.7" r="7.0" class="tab selected"/>
+<circle cx="715.6" cy="110.7" r="6.2" class="tab"/>
+<circle cx="733.0" cy="110.7" r="6.2" class="tab"/>
+<circle cx="750.4" cy="110.7" r="6.2" class="tab"/>
+<circle cx="767.8" cy="110.7" r="6.2" class="tab"/>
+<rect x="614.8" y="125.9" width="236.3" height="110.4" rx="4" class="content"/>
+<circle cx="622.3" cy="109.1" r="7.4" class="back"/>
+<text x="733.0" y="288.0" class="device" text-anchor="middle">p4-jc8012p4a1</text>
+<text x="733.0" y="308.0" class="profile" text-anchor="middle">large-landscape · spacious</text>
+<text x="733.0" y="326.0" class="meta" text-anchor="middle">1280×800 · standard memory</text>
+</g>
+<g id="esp32-p4-86">
+<rect x="930.0" y="70.0" width="190.0" height="190.0" rx="8" class="screen"/>
+<rect x="932.1" y="85.8" width="185.8" height="172.6" rx="6" class="panel"/>
+<rect x="961.9" y="93.5" width="125.9" height="27.7" rx="13.9" class="tab-frame"/>
+<circle cx="975.8" cy="107.3" r="11.1" class="tab selected"/>
+<circle cx="1000.3" cy="107.3" r="9.9" class="tab"/>
+<circle cx="1024.9" cy="107.3" r="9.9" class="tab"/>
+<circle cx="1049.4" cy="107.3" r="9.9" class="tab"/>
+<circle cx="1074.0" cy="107.3" r="9.9" class="tab"/>
+<rect x="939.2" y="132.5" width="171.5" height="118.8" rx="4" class="content"/>
+<circle cx="948.3" cy="102.1" r="9.1" class="back"/>
+<text x="1025.0" y="288.0" class="device" text-anchor="middle">esp32-p4-86</text>
+<text x="1025.0" y="308.0" class="profile" text-anchor="middle">large-square · comfortable</text>
+<text x="1025.0" y="326.0" class="meta" text-anchor="middle">720×720 · standard memory</text>
+</g>
+<g id="guition-esp32-s3-4848s040">
+<rect x="1222.0" y="70.0" width="190.0" height="190.0" rx="8" class="screen"/>
+<rect x="1224.0" y="85.8" width="186.0" height="172.6" rx="6" class="panel"/>
+<rect x="1256.4" y="93.8" width="121.1" height="26.1" rx="13.1" class="tab-frame"/>
+<circle cx="1269.5" cy="106.8" r="10.7" class="tab selected"/>
+<circle cx="1293.2" cy="106.8" r="9.5" class="tab"/>
+<circle cx="1317.0" cy="106.8" r="9.5" class="tab"/>
+<circle cx="1340.8" cy="106.8" r="9.5" class="tab"/>
+<circle cx="1364.5" cy="106.8" r="9.5" class="tab"/>
+<rect x="1231.1" y="125.4" width="171.8" height="125.9" rx="4" class="content"/>
+<circle cx="1240.2" cy="102.1" r="9.1" class="back"/>
+<text x="1317.0" y="288.0" class="device" text-anchor="middle">s3-4848s040</text>
+<text x="1317.0" y="308.0" class="profile" text-anchor="middle">compact-square · compact</text>
+<text x="1317.0" y="326.0" class="meta" text-anchor="middle">480×480 · constrained memory</text>
+</g>
+</svg>

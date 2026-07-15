@@ -83,7 +83,7 @@ constexpr lv_coord_t MEDIA_VOLUME_CONTROLS_GAP_REF_PX = DISPLAY_MODAL_CONTROLS_G
 constexpr lv_coord_t MEDIA_VOLUME_CONTROLS_DOWN_REF_PX = DISPLAY_MODAL_CONTROLS_DOWN_REF_PX;
 constexpr lv_coord_t MEDIA_VOLUME_TITLE_GAP_REF_PX = DISPLAY_MODAL_TITLE_GAP_REF_PX;
 constexpr lv_coord_t MEDIA_VOLUME_UNIT_Y_REF_PX = -22;
-constexpr lv_coord_t MEDIA_VOLUME_JC4880P443_BUTTON_REF_PX = 96;
+constexpr lv_coord_t MEDIA_VOLUME_COMPACT_PORTRAIT_BUTTON_REF_PX = 96;
 constexpr lv_coord_t MEDIA_VOLUME_MIC_BUTTON_OFFSET_REF_PX = 8;
 constexpr int MEDIA_VOLUME_MIC_ICON_ZOOM = 210;
 
@@ -766,7 +766,7 @@ inline lv_coord_t light_control_modal_control_width(const ControlModalLayout &la
                                                     lv_coord_t card_width,
                                                     lv_coord_t content_height) {
   lv_coord_t width = card_width;
-  if (control_modal_uses_jc1060p470_tuning(layout)) {
+  if (control_modal_uses_wide_landscape_tuning(layout)) {
     lv_coord_t max_width = content_height * 9 / 16;
     if (max_width < control_modal_scaled_px(160, layout.short_side))
       max_width = control_modal_scaled_px(160, layout.short_side);
@@ -793,15 +793,12 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);
   }
 
-  lv_coord_t content_top = show_tab_bar
-    ? layout.inset + tabs_layout.tab_frame_h + tabs_layout.content_gap
-    : layout.inset * 2;
-  lv_coord_t content_bottom = layout.panel_h - layout.inset;
-  lv_coord_t slider_h = content_bottom - content_top;
-  if (slider_h < 160) slider_h = layout.panel_h / 2;
+  const espcontrol::modal::ContentLayout content = control_modal_calc_content_layout(
+    layout, tabs_layout, show_tab_bar, 160);
+  lv_coord_t slider_h = content.height;
   lv_coord_t slider_w = light_control_modal_control_width(
     layout, control_modal_home_card_width(ctx->btn, layout), slider_h);
-  lv_coord_t content_center_y = content_top + slider_h / 2 - layout.panel_h / 2;
+  lv_coord_t content_center_y = content.center_y;
   light_control_layout_power(
     ui.power_group, ui.power_on_btn, ui.power_off_btn, slider_w, slider_h,
     content_center_y, ctx->width_compensation_percent);
@@ -825,12 +822,12 @@ inline void light_control_layout_modal(LightControlCtx *ctx) {
     ui.temp_slider, ui.temp_slider_handle, light_control_kelvin_to_pct(ctx, ctx->current_kelvin));
   if (ui.color_grid) {
     lv_coord_t grid_side = layout.panel_w - layout.inset * 3;
-    lv_coord_t color_safe_top = content_top;
+    lv_coord_t color_safe_top = content.top;
     if (!show_tab_bar) {
       lv_coord_t chrome_safe_top = layout.back_inset_y + layout.back_size + layout.inset / 2;
       if (color_safe_top < chrome_safe_top) color_safe_top = chrome_safe_top;
     }
-    lv_coord_t max_grid_h = content_bottom - color_safe_top;
+    lv_coord_t max_grid_h = content.bottom - color_safe_top;
     if (grid_side > max_grid_h) grid_side = max_grid_h;
     if (grid_side < 180) grid_side = 180;
     lv_obj_set_size(ui.color_grid, grid_side, grid_side);
@@ -878,7 +875,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   if (!ctx || !ctx->available) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::LIGHT_CONTROL, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0141", false, light_control_hide_modal);
+    ctx->icon_font, light_control_hide_modal);
   LightControlModalUi &ui = light_control_modal_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;
@@ -887,13 +884,7 @@ inline void light_control_open_modal(LightControlCtx *ctx) {
   ui.tab = light_control_first_visible_tab(ctx);
   if (!ui.panel) return;
 
-  ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
+  ui.tab_row = control_modal_create_tab_row(ui.panel);
   ui.power_tab = light_control_create_tab_button(
     ui.tab_row, find_icon("Power"), ctx->icon_font,
     LightControlTab::POWER, ctx->width_compensation_percent);
@@ -1192,7 +1183,7 @@ inline ControlModalLayout media_volume_step_button_layout(const ControlModalLayo
   ControlModalLayout controls_layout = layout;
   if (control_modal_uses_compact_portrait_tuning(layout)) {
     controls_layout.btn_size = control_modal_scaled_px(
-      MEDIA_VOLUME_JC4880P443_BUTTON_REF_PX, layout.short_side);
+      MEDIA_VOLUME_COMPACT_PORTRAIT_BUTTON_REF_PX, layout.short_side);
     controls_layout.controls_center_y = layout.arc_size / 2 -
       controls_layout.btn_size / 2 - layout.inset +
       control_modal_controls_down_px(layout);
@@ -1853,24 +1844,24 @@ inline lv_obj_t *cover_control_create_preset_button(lv_obj_t *parent, int pct,
 
 inline bool cover_control_uses_compact_portrait_option_grid(const ControlModalLayout &layout) {
   return control_modal_uses_compact_portrait_tuning(layout) &&
-         !control_modal_uses_4848_control_tuning(layout) &&
+         !control_modal_uses_compact_control_tuning(layout) &&
          layout.sh > layout.sw;
 }
 
 inline bool cover_control_uses_wide_option_fit(const ControlModalLayout &layout) {
   return control_modal_uses_large_landscape_tuning(layout) ||
-         control_modal_uses_jc1060p470_tuning(layout) ||
+         control_modal_uses_wide_landscape_tuning(layout) ||
          cover_control_uses_compact_portrait_option_grid(layout);
 }
 
 inline lv_coord_t cover_control_option_tile_max(const ControlModalLayout &layout) {
   if (cover_control_uses_compact_portrait_option_grid(layout)) return 220;
-  return control_modal_uses_jc1060p470_tuning(layout) ? 162 : 178;
+  return control_modal_uses_wide_landscape_tuning(layout) ? 162 : 178;
 }
 
 inline lv_coord_t cover_control_option_tile_min(const ControlModalLayout &layout) {
   if (cover_control_uses_compact_portrait_option_grid(layout)) return 220;
-  return control_modal_uses_jc1060p470_tuning(layout) ? 124 : 132;
+  return control_modal_uses_wide_landscape_tuning(layout) ? 124 : 132;
 }
 
 inline lv_coord_t cover_control_option_tile_height(const ControlModalLayout &layout,
@@ -2041,13 +2032,11 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
       tab_btn, layout, tabs_layout, i, active, ctx->width_compensation_percent);
   }
 
-  lv_coord_t content_top = show_tab_bar
-    ? layout.inset + tabs_layout.tab_frame_h + tabs_layout.content_gap
-    : layout.inset * 2;
-  lv_coord_t content_bottom = layout.panel_h - layout.inset;
-  lv_coord_t content_h = content_bottom - content_top;
-  if (content_h < 160) content_h = layout.panel_h / 2;
-  lv_coord_t content_center_y = content_top + content_h / 2 - layout.panel_h / 2;
+  const espcontrol::modal::ContentLayout content = control_modal_calc_content_layout(
+    layout, tabs_layout, show_tab_bar, 160);
+  lv_coord_t content_top = content.top;
+  lv_coord_t content_h = content.height;
+  lv_coord_t content_center_y = content.center_y;
   lv_coord_t content_w = control_modal_home_card_width(ctx->btn, layout);
   cover_control_layout_slider(ui.position_slider, content_w, content_h, content_center_y);
   lv_obj_update_layout(ui.panel);
@@ -2104,7 +2093,7 @@ inline void cover_control_layout_modal(CoverControlCtx *ctx) {
     if (cover_control_uses_wide_option_fit(layout)) {
       lv_coord_t max_tile_w = cover_control_option_tile_max(layout);
       lv_coord_t min_tile_w = cover_control_option_tile_min(layout);
-      int max_columns = control_modal_uses_jc1060p470_tuning(layout) ? 5 : 6;
+      int max_columns = control_modal_uses_wide_landscape_tuning(layout) ? 5 : 6;
       int fitted_columns = (content_w + tile_gap) / (max_tile_w + tile_gap);
       if (fitted_columns < 1) fitted_columns = 1;
       if (fitted_columns > max_columns) fitted_columns = max_columns;
@@ -2258,7 +2247,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   if (!ctx || !ctx->available) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::COVER_CONTROL, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0141", false, cover_control_hide_modal);
+    ctx->icon_font, cover_control_hide_modal);
   CoverControlModalUi &ui = cover_control_modal_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;
@@ -2267,13 +2256,7 @@ inline void cover_control_open_modal(CoverControlCtx *ctx) {
   ui.tab = cover_control_first_visible_tab(ctx);
   if (!ui.panel) return;
 
-  ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
+  ui.tab_row = control_modal_create_tab_row(ui.panel);
   ui.position_tab = cover_control_create_tab_button(
     ui.tab_row, find_icon("View Headline"), ctx->icon_font,
     CoverControlTab::POSITION, ctx->width_compensation_percent);
@@ -3180,7 +3163,7 @@ inline void media_volume_open_modal(MediaVolumeCtx *ctx) {
   if (!ctx || !ctx->available) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::MEDIA_VOLUME, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0141", false, media_volume_hide_modal);
+    ctx->icon_font, media_volume_hide_modal);
   MediaVolumeModalUi &ui = media_volume_modal_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;

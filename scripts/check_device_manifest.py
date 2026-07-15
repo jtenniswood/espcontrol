@@ -66,6 +66,7 @@ def run_self_test() -> int:
         "profiles": {
             "platform": {"p4": {"firmware": {"build": {"chip": "ESP32-P4"}}}},
             "display": {"panel": {"layout": {"cols": 4}, "tags": ["display"]}},
+            "modal": {},
             "fonts": {},
             "network": {},
             "artwork": {},
@@ -149,6 +150,14 @@ def run_self_test() -> int:
     expect_error(
         validate_manifest_data(invalid_chip, fonts),
         f"{slug}: firmware.build.chip must be one of",
+    )
+
+    invalid_modal_family = copy.deepcopy(data)
+    slug, device = first_device(invalid_modal_family)
+    device["firmware"]["display"]["modal"]["layoutFamily"] = "device-specific-magic"
+    expect_error(
+        validate_manifest_data(invalid_modal_family, fonts),
+        f"{slug}: firmware.display.modal.layoutFamily must be one of",
     )
 
     invalid_web = copy.deepcopy(data)

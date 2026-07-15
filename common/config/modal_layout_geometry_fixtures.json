@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "layouts": [
+    {
+      "slug": "guition-esp32-p4-jc1060p470",
+      "profile": {
+        "family": "wide-landscape",
+        "density": "comfortable",
+        "memoryTier": "standard",
+        "baseTouchTarget": 57
+      },
+      "viewport": {"width": 1024, "height": 600},
+      "panelInsets": {"left": 5, "top": 42, "right": 5, "bottom": 5},
+      "expected": {
+        "panel": {"x": 5, "y": 42, "width": 1014, "height": 553},
+        "shortSide": 600,
+        "inset": 22,
+        "back": {"size": 57, "x": 22, "y": 22},
+        "buttonSize": 100,
+        "arc": {"size": 475, "stroke": 21, "centerX": 0},
+        "controlsCenterY": 192,
+        "tabs": {"size": 67, "selectedSize": 75, "gap": 16, "frameWidth": 425, "frameHeight": 93, "safeLeft": 90, "rowLeft": 294, "contentGap": 35},
+        "content": {"top": 150, "bottom": 531, "width": 970, "height": 381, "centerY": 64}
+      }
+    },
+    {
+      "slug": "guition-esp32-p4-jc4880p443",
+      "profile": {
+        "family": "compact-portrait",
+        "density": "compact",
+        "memoryTier": "standard",
+        "baseTouchTarget": 46
+      },
+      "viewport": {"width": 480, "height": 800},
+      "panelInsets": {"left": 5, "top": 50, "right": 5, "bottom": 5},
+      "expected": {
+        "panel": {"x": 5, "y": 50, "width": 470, "height": 745},
+        "shortSide": 480,
+        "inset": 18,
+        "back": {"size": 46, "x": 30, "y": 30},
+        "buttonSize": 80,
+        "arc": {"size": 434, "stroke": 17, "centerX": 0},
+        "controlsCenterY": 181,
+        "tabs": {"size": 58, "selectedSize": 65, "gap": 14, "frameWidth": 368, "frameHeight": 80, "safeLeft": 85, "rowLeft": 85, "contentGap": 12},
+        "content": {"top": 110, "bottom": 727, "width": 434, "height": 617, "centerY": 46}
+      }
+    },
+    {
+      "slug": "guition-esp32-p4-jc8012p4a1",
+      "profile": {
+        "family": "large-landscape",
+        "density": "spacious",
+        "memoryTier": "standard",
+        "baseTouchTarget": 76
+      },
+      "viewport": {"width": 1280, "height": 800},
+      "panelInsets": {"left": 5, "top": 46, "right": 5, "bottom": 5},
+      "expected": {
+        "panel": {"x": 5, "y": 46, "width": 1270, "height": 749},
+        "shortSide": 800,
+        "inset": 30,
+        "back": {"size": 76, "x": 30, "y": 30},
+        "buttonSize": 133,
+        "arc": {"size": 643, "stroke": 28, "centerX": 0},
+        "controlsCenterY": 261,
+        "tabs": {"size": 64, "selectedSize": 72, "gap": 25, "frameWidth": 444, "frameHeight": 88, "safeLeft": 121, "rowLeft": 413, "contentGap": 36},
+        "content": {"top": 154, "bottom": 719, "width": 1210, "height": 565, "centerY": 62}
+      }
+    },
+    {
+      "slug": "esp32-p4-86",
+      "profile": {
+        "family": "large-square",
+        "density": "comfortable",
+        "memoryTier": "standard",
+        "baseTouchTarget": 69
+      },
+      "viewport": {"width": 720, "height": 720},
+      "panelInsets": {"left": 8, "top": 60, "right": 8, "bottom": 6},
+      "expected": {
+        "panel": {"x": 8, "y": 60, "width": 704, "height": 654},
+        "shortSide": 720,
+        "inset": 27,
+        "back": {"size": 69, "x": 27, "y": 27},
+        "buttonSize": 120,
+        "arc": {"size": 558, "stroke": 25, "centerX": 0},
+        "controlsCenterY": 225,
+        "tabs": {"size": 75, "selectedSize": 84, "gap": 18, "frameWidth": 477, "frameHeight": 105, "safeLeft": 109, "rowLeft": 113, "contentGap": 45},
+        "content": {"top": 177, "bottom": 627, "width": 650, "height": 450, "centerY": 75}
+      }
+    },
+    {
+      "slug": "guition-esp32-s3-4848s040",
+      "profile": {
+        "family": "compact-square",
+        "density": "compact",
+        "memoryTier": "constrained",
+        "baseTouchTarget": 46
+      },
+      "viewport": {"width": 480, "height": 480},
+      "panelInsets": {"left": 5, "top": 40, "right": 5, "bottom": 4},
+      "expected": {
+        "panel": {"x": 5, "y": 40, "width": 470, "height": 436},
+        "shortSide": 480,
+        "inset": 18,
+        "back": {"size": 46, "x": 18, "y": 18},
+        "buttonSize": 80,
+        "arc": {"size": 373, "stroke": 17, "centerX": 0},
+        "controlsCenterY": 150,
+        "tabs": {"size": 48, "selectedSize": 54, "gap": 12, "frameWidth": 306, "frameHeight": 66, "safeLeft": 73, "rowLeft": 82, "contentGap": 16},
+        "content": {"top": 100, "bottom": 418, "width": 434, "height": 318, "centerY": 41}
+      }
+    }
+  ]
+}

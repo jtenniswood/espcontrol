@@ -780,21 +780,18 @@ inline void fan_control_layout_modal(FanCardCtx *ctx) {
     control_modal_layout_tab_button(tab_btn, layout, tabs_layout, i, active);
   }
 
-  lv_coord_t content_top = show_tab_bar
-    ? layout.inset + tabs_layout.tab_frame_h + tabs_layout.content_gap
-    : layout.inset * 2;
   lv_coord_t chrome_safe_top = layout.back_inset_y + layout.back_size + layout.inset / 2;
-  if (!show_tab_bar && content_top < chrome_safe_top) content_top = chrome_safe_top;
-  lv_coord_t content_bottom = layout.panel_h - layout.inset;
-  lv_coord_t content_h = content_bottom - content_top;
-  if (content_h < 160) content_h = layout.panel_h / 2;
+  const espcontrol::modal::ContentLayout content = control_modal_calc_content_layout(
+    layout, tabs_layout, show_tab_bar, 160, show_tab_bar ? 0 : chrome_safe_top);
+  lv_coord_t content_top = content.top;
+  lv_coord_t content_h = content.height;
   lv_coord_t control_w = control_modal_home_card_width(ctx->btn, layout);
   if (control_w > layout.panel_w - layout.inset * 3) control_w = layout.panel_w - layout.inset * 3;
-  if (control_modal_uses_jc1060p470_tuning(layout)) {
+  if (control_modal_uses_wide_landscape_tuning(layout)) {
     lv_coord_t max_width = content_h * 9 / 16;
     if (control_w > max_width) control_w = max_width;
   }
-  lv_coord_t center_y = content_top + content_h / 2 - layout.panel_h / 2;
+  lv_coord_t center_y = content.center_y;
 
   fan_control_layout_binary_group(ui.power_group, ui.power_on_btn, ui.power_off_btn,
                                   control_w, content_h, center_y);
@@ -898,7 +895,7 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   if (visible_tabs.count == 0) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::FAN_CONTROL, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0141", false, fan_control_hide_modal);
+    ctx->icon_font, fan_control_hide_modal);
   FanControlModalUi &ui = fan_control_modal_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;
@@ -907,13 +904,7 @@ inline void fan_control_open_modal(FanCardCtx *ctx) {
   ui.tab = fan_control_first_visible_tab(ctx);
   if (!ui.panel) return;
 
-  ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
+  ui.tab_row = control_modal_create_tab_row(ui.panel);
   ui.power_tab = fan_control_create_tab_button(ui.tab_row, find_icon("Power"), ctx->icon_font, FanControlTab::POWER);
   ui.speed_tab = fan_control_create_tab_button(ui.tab_row, find_icon("Fan Speed 2"), ctx->icon_font, FanControlTab::SPEED);
   ui.preset_tab = fan_control_create_tab_button(ui.tab_row, find_icon("Fan Auto"), ctx->icon_font, FanControlTab::PRESET);
@@ -1062,7 +1053,7 @@ inline void fan_preset_open(FanCardCtx *ctx) {
   if (!fan_control_supported(ctx)) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::FAN_PRESET, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0156", true, fan_preset_close);
+    ctx->icon_font, fan_preset_close);
   FanPresetUi &ui = fan_preset_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;

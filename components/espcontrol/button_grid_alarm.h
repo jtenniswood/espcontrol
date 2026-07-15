@@ -1080,7 +1080,7 @@ inline void alarm_pin_open_modal(AlarmActionCtx *action) {
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::ALARM_PIN, action->card->btn,
     action->card->width_compensation_percent, icon_font,
-    "\U000F0141", false, alarm_pin_hide_modal);
+    alarm_pin_hide_modal);
 
   AlarmPinModalUi &ui = alarm_pin_modal_ui();
   ui.active_action = *action;
@@ -1243,11 +1243,11 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
 
   uint32_t primary_color = alarm_control_active_color(ctx, "");
   uint32_t primary_text_color = readable_text_color_for_bg(primary_color);
-  bool jc4880p443_layout = control_modal_uses_compact_portrait_tuning(layout);
+  bool compact_portrait_layout = control_modal_uses_compact_portrait_tuning(layout);
   lv_coord_t status_center_y = -control_modal_scaled_px(64, layout.short_side);
   lv_coord_t countdown_gap = control_modal_scaled_px(28, layout.short_side);
   lv_coord_t disarm_extra_padding = 0;
-  if (jc4880p443_layout) {
+  if (compact_portrait_layout) {
     status_center_y = -control_modal_scaled_px(56, layout.short_side);
     countdown_gap = control_modal_scaled_px(34, layout.short_side);
     disarm_extra_padding = control_modal_scaled_px(24, layout.short_side);
@@ -1285,8 +1285,8 @@ inline void alarm_control_create_arming_view(AlarmControlModalUi &ui,
   if (progress_w < progress_h * 4) progress_w = progress_h * 4;
   lv_coord_t progress_gap = control_modal_scaled_px(20, layout.short_side);
   if (progress_gap < 14) progress_gap = 14;
-  if (jc4880p443_layout) progress_gap = control_modal_scaled_px(24, layout.short_side);
-  if (jc4880p443_layout && progress_gap < 16) progress_gap = 16;
+  if (compact_portrait_layout) progress_gap = control_modal_scaled_px(24, layout.short_side);
+  if (compact_portrait_layout && progress_gap < 16) progress_gap = 16;
   lv_coord_t progress_center_y = countdown_y + countdown_h / 2 + progress_gap + progress_h / 2;
 
   ui.arming_progress = lv_obj_create(ui.arming_view);
@@ -1358,7 +1358,7 @@ inline void alarm_control_open_modal(AlarmCardCtx *ctx) {
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::ALARM_CONTROL, ctx->btn, ctx->width_compensation_percent,
-    icon_font, "\U000F0141", false, alarm_control_hide_modal);
+    icon_font, alarm_control_hide_modal);
 
   AlarmControlModalUi &ui = alarm_control_modal_ui();
   ui.active = ctx;

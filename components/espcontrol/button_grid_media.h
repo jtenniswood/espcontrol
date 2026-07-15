@@ -2130,11 +2130,11 @@ inline void media_control_layout_modal(MediaControlCtx *ctx) {
     control_modal_layout_tab_button(tabs[i].btn, layout, tabs_layout, i, active);
   }
 
-  lv_coord_t content_top =
-    layout.inset + tabs_layout.tab_frame_h + tabs_layout.content_gap;
-  lv_coord_t content_w = layout.panel_w - layout.inset * 2;
-  lv_coord_t content_h = layout.panel_h - content_top - layout.inset;
-  if (content_h < 180) content_h = layout.panel_h / 2;
+  const espcontrol::modal::ContentLayout content = control_modal_calc_content_layout(
+    layout, tabs_layout, true, 180);
+  lv_coord_t content_top = content.top;
+  lv_coord_t content_w = content.width;
+  lv_coord_t content_h = content.height;
   if (ui.content_box) {
     lv_obj_set_size(ui.content_box, content_w, content_h);
     lv_obj_align(ui.content_box, LV_ALIGN_TOP_MID, 0, content_top);
@@ -2346,7 +2346,7 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   if (!ctx || !ctx->available) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::MEDIA_CONTROL, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0141", false, media_control_hide_modal);
+    ctx->icon_font, media_control_hide_modal);
   MediaControlModalUi &ui = media_control_modal_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;
@@ -2355,17 +2355,11 @@ inline void media_control_open_modal(MediaControlCtx *ctx) {
   ui.tab = MediaControlTab::CONTROLS;
   if (!ui.panel) return;
 
-  ui.tab_row = lv_obj_create(ui.panel);
+  ui.tab_row = control_modal_create_tab_row(ui.panel);
   if (!ui.tab_row) {
     media_control_hide_modal();
     return;
   }
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
   ui.controls_tab = media_control_create_tab_button(
     ui.tab_row, find_icon("Speaker"), ctx->icon_font,
     MediaControlTab::CONTROLS, ctx->width_compensation_percent);

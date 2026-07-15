@@ -35,9 +35,14 @@ RULES: tuple[tuple[re.Pattern[str], str, set[str]], ...] = (
         DISPLAY_BOUNDARY_FILES,
     ),
     (
-        re.compile(r"\bcontrol_modal_is_jc4880p443_size\s*\("),
-        "use named modal tuning helpers instead of direct device-size checks",
-        {"button_grid_modal.h"},
+        re.compile(r"\bdisplay_modal_is_[A-Za-z0-9_]*_size\s*\("),
+        "select a declarative modal profile instead of inferring one from display dimensions",
+        set(),
+    ),
+    (
+        re.compile(r"\b[A-Za-z0-9_]*(?:jc1060|jc4880|jc8012|p4_86|4848)[A-Za-z0-9_]*\b", re.IGNORECASE),
+        "name modal layout decisions by semantic profile rather than a device model",
+        set(),
     ),
     (
         re.compile(r"\b(?:CONTROL|DISPLAY)_MODAL_[A-Z0-9_]+_REF_PX\b"),
@@ -56,7 +61,20 @@ def check_root(root: Path) -> list[str]:
     failures: list[str] = []
     for path in firmware_headers(root):
         filename = path.name
-        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        constant_lines: dict[str, int] = {}
+        for line_no, line in enumerate(lines, start=1):
+            constant = re.search(r"\bconstexpr\s+[^;=]+\b([A-Z][A-Z0-9_]+)\s*=", line)
+            if constant:
+                name = constant.group(1)
+                if name in constant_lines:
+                    rel = path.relative_to(root)
+                    failures.append(
+                        f"{rel}:{line_no}: keep firmware constant names unique "
+                        f"({name} was first declared on line {constant_lines[name]})"
+                    )
+                else:
+                    constant_lines[name] = line_no
             for pattern, message, allowed_files in RULES:
                 if filename in allowed_files:
                     continue
@@ -89,8 +107,8 @@ def run_self_test() -> None:
             ("read display dimensions through button_grid_display.h/button_grid_modal.h helpers",),
         ),
         (
-            {"button_grid_alarm.h": "if (control_modal_is_jc4880p443_size(layout)) return;\n"},
-            ("use named modal tuning helpers instead of direct device-size checks",),
+            {"button_grid_alarm.h": "if (display_modal_is_compact_size(layout)) return;\n"},
+            ("select a declarative modal profile instead of inferring one from display dimensions",),
         ),
         (
             {"button_grid_climate.h": "auto px = CONTROL_MODAL_BUTTON_REF_PX;\n"},
@@ -98,11 +116,27 @@ def run_self_test() -> None:
         ),
         (
             {"button_grid_modal.h": "return display_modal_is_jc4880p443_size(layout.sw, layout.sh);\n"},
+            (
+                "select a declarative modal profile instead of inferring one from display dimensions",
+                "name modal layout decisions by semantic profile rather than a device model",
+            ),
+        ),
+        (
+            {"button_grid_climate.h": "if (control_modal_uses_compact_square_tuning(layout)) return true;\n"},
             (),
         ),
         (
-            {"button_grid_climate.h": "if (control_modal_uses_4848_tuning(layout)) return true;\n"},
-            (),
+            {"button_grid_climate.h": "if (control_modal_uses_jc1060_tuning(layout)) return true;\n"},
+            ("name modal layout decisions by semantic profile rather than a device model",),
+        ),
+        (
+            {
+                "button_grid_climate.h": (
+                    "constexpr int CLIMATE_MODAL_WIDE_OPTION_GAP = 12;\n"
+                    "constexpr int CLIMATE_MODAL_WIDE_OPTION_GAP = 16;\n"
+                )
+            },
+            ("keep firmware constant names unique",),
         ),
     )
     for files, expected in cases:
