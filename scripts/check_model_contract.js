@@ -185,6 +185,15 @@ assert.deepStrictEqual(parsedTransfer.cards[0], transferCard,
   "card transfer preserves punctuation-heavy card configuration and size");
 assert.deepStrictEqual(parsedTransfer.cards[1], transferSubpageCard,
   "card transfer preserves a structured subpage");
+const extraLargeTransferCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [{ ...transferCard, size: model.CARD_SIZE_EXTRA_LARGE }],
+);
+assert.strictEqual(
+  model.parseCardTransferCode(extraLargeTransferCode).cards[0].size,
+  model.CARD_SIZE_EXTRA_LARGE,
+  "card transfer accepts the supported 3x3 card size",
+);
 
 function assertTransferError(value, expected) {
   assert.throws(
@@ -200,7 +209,7 @@ assertTransferError({ format: "espcontrol.cards", version: 2, source: { device: 
   "newer version");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [] },
   "no cards");
-assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: 7 }] },
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_EXTRA_LARGE + 1 }] },
   "invalid size");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, options: 42 }] },
   "invalid options field");

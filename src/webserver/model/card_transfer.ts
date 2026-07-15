@@ -1,5 +1,6 @@
 import type { CardConfig } from "../contracts/types";
 import { CARD_CONFIG_FIELDS, cloneCardConfig } from "./card";
+import { CARD_SIZE_DEFINITIONS } from "./grid";
 import {
   parseStructuredSubpageConfig,
   structuredSubpageFromParsed,
@@ -96,7 +97,8 @@ function normalizeTransferEntry(value: unknown, index: number): CardTransferEntr
   const context = "card " + (index + 1);
   if (!isRecord(value)) throw transferError("Invalid card code - " + context + " must be an object");
   const card = normalizeTransferCard(value, context);
-  if (!Number.isInteger(value.size) || (value.size as number) < 1 || (value.size as number) > 6) {
+  if (!Number.isInteger(value.size) ||
+      !CARD_SIZE_DEFINITIONS.some((definition) => definition.size === value.size)) {
     throw transferError("Invalid card code - " + context + " has an invalid size");
   }
   const entry: CardTransferEntry = { ...card, size: value.size as number };
