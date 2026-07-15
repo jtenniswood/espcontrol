@@ -4,6 +4,7 @@
 
 using esphome::artwork_image::bmp::has_complete_header;
 using esphome::artwork_image::bmp::has_complete_monochrome_palette;
+using esphome::artwork_image::bmp::is_within_pixel_array;
 using esphome::artwork_image::bmp::palette_offset;
 using esphome::artwork_image::bmp::row_bytes;
 using esphome::artwork_image::bmp::row_stride;
@@ -36,4 +37,12 @@ int main() {
 
   assert(row_bytes(3, 24) == 9);
   assert(row_stride(3, 24) == 12);
+
+  // Bytes after the declared rows are metadata, not additional pixels.
+  assert(is_within_pixel_array(54, 54, 12, 2));
+  assert(is_within_pixel_array(77, 54, 12, 2));
+  assert(!is_within_pixel_array(78, 54, 12, 2));
+  assert(!is_within_pixel_array(79, 54, 12, 2));
+  assert(!is_within_pixel_array(53, 54, 12, 2));
+  assert(!is_within_pixel_array(54, 54, 0, 2));
 }

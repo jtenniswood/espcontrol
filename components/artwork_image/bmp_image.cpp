@@ -70,7 +70,9 @@ int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
   }
 
   if (this->bits_per_pixel_ == 1) {
-    while (index < size) {
+    while (index < size &&
+           bmp::is_within_pixel_array(this->current_index_, this->data_offset_,
+                                      this->row_stride_, this->height_)) {
       size_t row_offset = (this->current_index_ - this->data_offset_) % this->row_stride_;
       uint8_t current_byte = buffer[index++];
       this->current_index_++;
@@ -89,7 +91,9 @@ int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
       }
     }
   } else if (this->bits_per_pixel_ == 24) {
-    while (index < size) {
+    while (index < size &&
+           bmp::is_within_pixel_array(this->current_index_, this->data_offset_,
+                                      this->row_stride_, this->height_)) {
       size_t row_offset = (this->current_index_ - this->data_offset_) % this->row_stride_;
       if (row_offset >= this->row_bytes_) {
         index++;
@@ -112,6 +116,9 @@ int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
     }
   }
 
+  // BMP files may contain profile or other metadata after the declared rows.
+  // Consume those bytes without interpreting them as pixels.
+  this->current_index_ += size - index;
   this->decoded_bytes_ += size;
   return size;
 }

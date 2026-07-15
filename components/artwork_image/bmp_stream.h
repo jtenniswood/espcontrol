@@ -25,6 +25,12 @@ constexpr size_t row_stride(size_t width, uint16_t bits_per_pixel) {
   return ((width * bits_per_pixel + 31) / 32) * 4;
 }
 
+constexpr bool is_within_pixel_array(size_t index, size_t data_offset,
+                                     size_t stride, size_t height) {
+  return stride != 0 && index >= data_offset &&
+         (index - data_offset) / stride < height;
+}
+
 constexpr bool has_complete_monochrome_palette(size_t data_offset, size_t dib_header_size) {
   return dib_header_size >= INFO_HEADER_SIZE &&
          data_offset >= FILE_HEADER_SIZE + MONOCHROME_PALETTE_SIZE &&
