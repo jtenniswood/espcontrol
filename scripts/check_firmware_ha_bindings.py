@@ -902,9 +902,12 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     pause_body = yaml_script_body(text, "cover_art_pause_after_touch")
     if pause_body is not None and (
         "target_mode_is(espcontrol::DisplayMode::COVER_ART)" not in pause_body
+        or "id(cover_art_manual_pause_until_ms) != 0" not in pause_body
         or "id(cover_art_manual_pause_until_ms) = 1;" not in pause_body
     ):
-        errors.append(f"{rel}: only arm cover art return after an active cover-art dismissal")
+        errors.append(
+            f"{rel}: arm cover art return after dismissal and restart its countdown after every touch"
+        )
     return errors
 
 
@@ -4129,6 +4132,18 @@ def run_self_test() -> int:
             "track/source metadata changes as stale artwork",
             "subscribe to and refresh the media_album_name attribute",
         ),
+    )
+    expect_cover_art_refresh_errors(
+        "cover art touch delay ignores later touches",
+        "script:\n"
+        "  - id: cover_art_pause_after_touch\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART);'\n"
+        "          then:\n"
+        "            - lambda: 'id(cover_art_manual_pause_until_ms) = 1;'\n",
+        ("restart its countdown after every touch",),
     )
     expect_cover_art_refresh_errors(
         "stale cover refresh guard present",
