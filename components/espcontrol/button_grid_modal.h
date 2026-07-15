@@ -12,9 +12,6 @@ constexpr lv_coord_t CONTROL_MODAL_INSET_REF_PX = DISPLAY_MODAL_INSET_REF_PX;
 constexpr lv_coord_t CONTROL_MODAL_CONTROLS_GAP_REF_PX = DISPLAY_MODAL_CONTROLS_GAP_REF_PX;
 constexpr lv_coord_t CONTROL_MODAL_CONTROLS_DOWN_REF_PX = DISPLAY_MODAL_CONTROLS_DOWN_REF_PX;
 constexpr lv_coord_t CONTROL_MODAL_TITLE_GAP_REF_PX = DISPLAY_MODAL_TITLE_GAP_REF_PX;
-constexpr lv_coord_t CONTROL_MODAL_P4_86_TAB_REF_PX = 50;
-constexpr lv_coord_t CONTROL_MODAL_P4_86_TAB_CONTENT_GAP_REF_PX = 30;
-constexpr lv_coord_t CONTROL_MODAL_JC4880P443_TAB_CONTENT_GAP_REF_PX = 12;
 
 enum class ControlModalKind {
   NONE,
@@ -36,10 +33,77 @@ enum class ControlModalKind {
 
 using ControlModalCloseCallback = void (*)();
 
+enum class ControlModalDismissPolicy {
+  DISMISS,
+  PRESERVE_DURING_DISPLAY_TAKEOVER,
+};
+
+enum class ControlModalPresentation {
+  ARC_CONTROL,
+  TABBED_CONTROL,
+  LIST,
+  CONFIRMATION,
+  STATUS,
+  KEYPAD,
+  IMAGE,
+};
+
+enum class ControlModalChrome {
+  BACK,
+  CLOSE,
+};
+
+struct ControlModalDefinition {
+  ControlModalPresentation presentation = ControlModalPresentation::LIST;
+  ControlModalChrome chrome = ControlModalChrome::BACK;
+  ControlModalDismissPolicy dismiss_policy = ControlModalDismissPolicy::DISMISS;
+};
+
+inline ControlModalDefinition control_modal_definition(ControlModalKind kind) {
+  switch (kind) {
+    case ControlModalKind::MEDIA_VOLUME:
+      return {ControlModalPresentation::ARC_CONTROL, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::CLIMATE:
+    case ControlModalKind::FAN_CONTROL:
+    case ControlModalKind::COVER_CONTROL:
+    case ControlModalKind::LIGHT_CONTROL:
+    case ControlModalKind::MEDIA_CONTROL:
+      return {ControlModalPresentation::TABBED_CONTROL, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::SWITCH_CONFIRMATION:
+      return {ControlModalPresentation::CONFIRMATION, ControlModalChrome::CLOSE,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::OPTION_SELECT:
+    case ControlModalKind::FAN_PRESET:
+      return {ControlModalPresentation::LIST, ControlModalChrome::CLOSE,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::NETWORK_STATUS:
+      return {ControlModalPresentation::STATUS, ControlModalChrome::CLOSE,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::ALARM_PIN:
+      return {ControlModalPresentation::KEYPAD, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::ALARM_CONTROL:
+      return {ControlModalPresentation::TABBED_CONTROL, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER};
+    case ControlModalKind::IMAGE_CARD:
+      return {ControlModalPresentation::IMAGE, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::TODO_LIST:
+      return {ControlModalPresentation::LIST, ControlModalChrome::BACK,
+              ControlModalDismissPolicy::DISMISS};
+    case ControlModalKind::NONE:
+      return {};
+  }
+  return {};
+}
+
 struct ControlModalActive {
   ControlModalKind kind = ControlModalKind::NONE;
   lv_obj_t *overlay = nullptr;
   ControlModalCloseCallback close_callback = nullptr;
+  ControlModalDismissPolicy dismiss_policy = ControlModalDismissPolicy::DISMISS;
   uint32_t close_guard_until_ms = 0;
   bool closing = false;
 };
@@ -66,11 +130,13 @@ inline void control_modal_delete_overlay(ControlModalKind kind, lv_obj_t *&overl
 }
 
 inline void control_modal_set_active(ControlModalKind kind, lv_obj_t *overlay,
-                                     ControlModalCloseCallback close_callback) {
+                                     ControlModalCloseCallback close_callback,
+                                     ControlModalDismissPolicy dismiss_policy) {
   ControlModalActive &active = control_modal_active();
   active.kind = kind;
   active.overlay = overlay;
   active.close_callback = close_callback;
+  active.dismiss_policy = dismiss_policy;
   active.close_guard_until_ms = 0;
   active.closing = false;
 }
@@ -104,6 +170,15 @@ inline void control_modal_close_active() {
 
 inline void control_modal_force_close_active() {
   control_modal_close_active_internal(false);
+}
+
+inline void control_modal_close_for_display_takeover() {
+  const ControlModalActive &active = control_modal_active();
+  if (active.kind == ControlModalKind::NONE ||
+      active.dismiss_policy == ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER) {
+    return;
+  }
+  control_modal_force_close_active();
 }
 
 struct ControlModalGridMetrics {
@@ -159,6 +234,7 @@ struct ControlModalLayout {
   lv_coord_t value_center_y = 0;
   lv_coord_t title_gap = CONTROL_MODAL_TITLE_GAP_REF_PX;
   lv_coord_t controls_center_y = 0;
+  DisplayModalProfile profile;
 };
 
 struct ControlModalTabLayout {
@@ -237,37 +313,38 @@ inline lv_coord_t control_modal_scaled_px(lv_coord_t px, lv_coord_t short_side) 
   return display_modal_scaled_px(px, short_side);
 }
 
-inline bool control_modal_is_jc4880p443_size(const ControlModalLayout &layout) {
-  return display_modal_is_jc4880p443_size(layout.sw, layout.sh);
-}
-
 inline bool control_modal_uses_compact_portrait_tuning(const ControlModalLayout &layout) {
-  return control_modal_is_jc4880p443_size(layout);
+  return display_modal_uses_family(
+    layout.profile, DisplayModalLayoutFamily::COMPACT_PORTRAIT);
 }
 
 inline bool control_modal_uses_square_tuning(const ControlModalLayout &layout) {
-  return display_modal_is_square_size(layout.sw, layout.sh);
+  return display_modal_is_square_family(layout.profile);
 }
 
-inline bool control_modal_uses_4848_tuning(const ControlModalLayout &layout) {
-  return display_modal_is_4848_size(layout.sw, layout.sh);
+inline bool control_modal_uses_compact_square_tuning(const ControlModalLayout &layout) {
+  return display_modal_uses_family(
+    layout.profile, DisplayModalLayoutFamily::COMPACT_SQUARE);
 }
 
-inline bool control_modal_uses_4848_control_tuning(const ControlModalLayout &layout) {
-  return control_modal_uses_4848_tuning(layout) ||
-         control_modal_is_jc4880p443_size(layout);
+inline bool control_modal_uses_compact_control_tuning(const ControlModalLayout &layout) {
+  return control_modal_uses_compact_square_tuning(layout) ||
+         control_modal_uses_compact_portrait_tuning(layout);
 }
 
-inline bool control_modal_uses_p4_86_tuning(const ControlModalLayout &layout) {
-  return display_modal_is_p4_86_size(layout.sw, layout.sh);
+inline bool control_modal_uses_large_square_tuning(const ControlModalLayout &layout) {
+  return display_modal_uses_family(
+    layout.profile, DisplayModalLayoutFamily::LARGE_SQUARE);
 }
 
 inline bool control_modal_uses_large_landscape_tuning(const ControlModalLayout &layout) {
-  return display_modal_is_large_landscape_size(layout.sw, layout.sh);
+  return display_modal_uses_family(
+    layout.profile, DisplayModalLayoutFamily::LARGE_LANDSCAPE);
 }
 
-inline bool control_modal_uses_jc1060p470_tuning(const ControlModalLayout &layout) {
-  return display_modal_is_jc1060p470_size(layout.sw, layout.sh);
+inline bool control_modal_uses_wide_landscape_tuning(const ControlModalLayout &layout) {
+  return display_modal_uses_family(
+    layout.profile, DisplayModalLayoutFamily::WIDE_LANDSCAPE);
 }
 
 inline lv_coord_t control_modal_screen_width(lv_coord_t fallback = 480) {
@@ -275,143 +352,92 @@ inline lv_coord_t control_modal_screen_width(lv_coord_t fallback = 480) {
   return disp ? lv_disp_get_hor_res(disp) : fallback;
 }
 
-inline bool control_modal_current_is_jc4880p443_size() {
-  lv_disp_t *disp = lv_disp_get_default();
-  lv_coord_t width = disp ? lv_disp_get_hor_res(disp) : 0;
-  lv_coord_t height = disp ? lv_disp_get_ver_res(disp) : 0;
-  return display_modal_is_jc4880p443_size(width, height);
+inline bool control_modal_current_uses_compact_portrait_tuning() {
+  return display_modal_uses_family(
+    display_active_modal_profile(), DisplayModalLayoutFamily::COMPACT_PORTRAIT);
 }
 
-inline bool control_modal_current_is_4848_size() {
-  lv_disp_t *disp = lv_disp_get_default();
-  lv_coord_t width = disp ? lv_disp_get_hor_res(disp) : 0;
-  lv_coord_t height = disp ? lv_disp_get_ver_res(disp) : 0;
-  return display_modal_is_4848_size(width, height);
+inline bool control_modal_current_uses_compact_square_tuning() {
+  return display_modal_uses_family(
+    display_active_modal_profile(), DisplayModalLayoutFamily::COMPACT_SQUARE);
 }
 
 inline lv_coord_t control_modal_controls_down_px(const ControlModalLayout &layout) {
   return control_modal_scaled_px(CONTROL_MODAL_CONTROLS_DOWN_REF_PX, layout.short_side);
 }
 
-inline lv_coord_t control_modal_control_tab_min_size(const ControlModalLayout &layout) {
-  if (control_modal_uses_large_landscape_tuning(layout)) return 64;
-  if (control_modal_uses_compact_portrait_tuning(layout)) return 72;
-  return 48;
-}
-
-inline lv_coord_t control_modal_control_tab_size(const ControlModalLayout &layout) {
-  if (control_modal_uses_compact_portrait_tuning(layout)) {
-    lv_coord_t size = control_modal_scaled_px(72, layout.short_side);
-    lv_coord_t min_size = control_modal_control_tab_min_size(layout);
-    lv_coord_t max_size = 76;
-    if (size < min_size) size = min_size;
-    if (size > max_size) size = max_size;
-    return size;
-  }
-  lv_coord_t size = layout.back_size * (control_modal_uses_large_landscape_tuning(layout) ? 4 : 7) /
-                    (control_modal_uses_large_landscape_tuning(layout) ? 5 : 10);
-  lv_coord_t min_size = control_modal_control_tab_min_size(layout);
-  lv_coord_t max_size = control_modal_uses_large_landscape_tuning(layout) ? 88 : 68;
-  if (size < min_size) size = min_size;
-  if (size > max_size) size = max_size;
-  return size;
-}
-
-inline lv_coord_t control_modal_card_tab_size(const ControlModalLayout &layout) {
-  if (control_modal_uses_jc1060p470_tuning(layout))
-    return control_modal_scaled_px(54, layout.short_side);
-  return control_modal_control_tab_size(layout);
-}
-
-inline lv_coord_t control_modal_prominent_card_tab_size(const ControlModalLayout &layout) {
-  if (control_modal_uses_compact_portrait_tuning(layout))
-    return control_modal_scaled_px(58, layout.short_side);
-  return control_modal_card_tab_size(layout);
-}
-
-inline lv_coord_t control_modal_shared_tab_size(const ControlModalLayout &layout) {
-  if (control_modal_uses_p4_86_tuning(layout))
-    return control_modal_scaled_px(CONTROL_MODAL_P4_86_TAB_REF_PX, layout.short_side);
-  return control_modal_prominent_card_tab_size(layout);
-}
-
-inline lv_coord_t control_modal_control_tab_gap(const ControlModalLayout &layout,
-                                                lv_coord_t tab_size) {
-  lv_coord_t gap = control_modal_uses_large_landscape_tuning(layout)
-    ? tab_size * 2 / 5
-    : tab_size / 4;
-  lv_coord_t min_gap = control_modal_uses_large_landscape_tuning(layout) ? 24 : 12;
-  if (gap < min_gap) gap = min_gap;
-  return gap;
-}
-
-inline lv_coord_t control_modal_control_tab_content_gap(const ControlModalLayout &layout) {
-  if (!control_modal_uses_large_landscape_tuning(layout)) return 16;
-  lv_coord_t gap = control_modal_scaled_px(22, layout.short_side);
-  if (gap < 28) gap = 28;
-  return gap;
-}
-
-inline lv_coord_t control_modal_card_tab_content_gap(const ControlModalLayout &layout) {
-  if (control_modal_uses_jc1060p470_tuning(layout))
-    return control_modal_scaled_px(28, layout.short_side);
-  return control_modal_control_tab_content_gap(layout);
-}
-
-inline lv_coord_t control_modal_prominent_card_tab_content_gap(const ControlModalLayout &layout) {
-  if (control_modal_uses_compact_portrait_tuning(layout))
-    return control_modal_scaled_px(30, layout.short_side);
-  return control_modal_card_tab_content_gap(layout);
+inline espcontrol::modal::FrameLayout control_modal_geometry_frame(
+    const ControlModalLayout &layout) {
+  espcontrol::modal::FrameLayout frame;
+  frame.screen_width = layout.sw;
+  frame.screen_height = layout.sh;
+  frame.short_side = layout.short_side;
+  frame.panel_x = layout.panel_x;
+  frame.panel_y = layout.panel_y;
+  frame.panel_width = layout.panel_w;
+  frame.panel_height = layout.panel_h;
+  frame.inset = layout.inset;
+  frame.back_inset_x = layout.back_inset_x;
+  frame.back_inset_y = layout.back_inset_y;
+  frame.back_size = layout.back_size;
+  frame.button_size = layout.btn_size;
+  frame.arc_stroke = layout.arc_stroke;
+  frame.controls_gap = layout.controls_gap;
+  frame.arc_size = layout.arc_size;
+  frame.arc_center_x = layout.arc_center_x;
+  frame.arc_center_y = layout.arc_center_y;
+  frame.value_center_y = layout.value_center_y;
+  frame.title_gap = layout.title_gap;
+  frame.controls_center_y = layout.controls_center_y;
+  return frame;
 }
 
 inline lv_coord_t control_modal_shared_tab_content_gap(const ControlModalLayout &layout) {
-  if (control_modal_uses_p4_86_tuning(layout))
-    return control_modal_scaled_px(CONTROL_MODAL_P4_86_TAB_CONTENT_GAP_REF_PX, layout.short_side);
-  if (control_modal_uses_compact_portrait_tuning(layout))
-    return control_modal_scaled_px(CONTROL_MODAL_JC4880P443_TAB_CONTENT_GAP_REF_PX, layout.short_side);
-  return control_modal_prominent_card_tab_content_gap(layout);
+  return espcontrol::modal::shared_tab_content_gap(
+    layout.profile, control_modal_geometry_frame(layout));
 }
 
 inline ControlModalTabLayout control_modal_calc_tab_layout(
     const ControlModalLayout &layout, int tab_count, bool show_tab_bar,
     bool avoid_back_button = true) {
   ControlModalTabLayout tabs_layout;
-  tabs_layout.tab_count = tab_count < 1 ? 1 : tab_count;
-  tabs_layout.show_tab_bar = show_tab_bar && tabs_layout.tab_count > 1;
-  tabs_layout.tab_size = control_modal_shared_tab_size(layout);
-  tabs_layout.selected_tab_size = tabs_layout.tab_size + tabs_layout.tab_size / 8;
-  tabs_layout.tab_frame_pad = tabs_layout.tab_size / 5;
-  tabs_layout.tab_gap = control_modal_control_tab_gap(layout, tabs_layout.tab_size);
-  tabs_layout.tabs_total_w =
-    tabs_layout.tab_size * tabs_layout.tab_count + tabs_layout.tab_gap * (tabs_layout.tab_count - 1);
-  tabs_layout.tab_frame_w = tabs_layout.tabs_total_w + tabs_layout.tab_frame_pad * 2;
-  tabs_layout.tab_frame_h = tabs_layout.tab_size + tabs_layout.tab_frame_pad * 2;
-  tabs_layout.tab_safe_left = layout.back_inset_x + layout.back_size + layout.inset / 2;
-  tabs_layout.centered_left = (layout.panel_w - tabs_layout.tab_frame_w) / 2;
-  tabs_layout.row_left = tabs_layout.centered_left;
-  tabs_layout.content_gap = control_modal_shared_tab_content_gap(layout);
-  lv_coord_t min_tab_size = control_modal_control_tab_min_size(layout);
-  while (tabs_layout.show_tab_bar &&
-         avoid_back_button &&
-         !control_modal_uses_compact_portrait_tuning(layout) &&
-         !control_modal_uses_p4_86_tuning(layout) &&
-         tabs_layout.row_left < tabs_layout.tab_safe_left &&
-         tabs_layout.tab_size > min_tab_size) {
-    tabs_layout.tab_size--;
-    tabs_layout.selected_tab_size = tabs_layout.tab_size + tabs_layout.tab_size / 8;
-    tabs_layout.tab_frame_pad = tabs_layout.tab_size / 5;
-    tabs_layout.tab_gap = control_modal_control_tab_gap(layout, tabs_layout.tab_size);
-    tabs_layout.tabs_total_w =
-      tabs_layout.tab_size * tabs_layout.tab_count + tabs_layout.tab_gap * (tabs_layout.tab_count - 1);
-    tabs_layout.tab_frame_w = tabs_layout.tabs_total_w + tabs_layout.tab_frame_pad * 2;
-    tabs_layout.tab_frame_h = tabs_layout.tab_size + tabs_layout.tab_frame_pad * 2;
-    tabs_layout.centered_left = (layout.panel_w - tabs_layout.tab_frame_w) / 2;
-    tabs_layout.row_left = tabs_layout.centered_left;
-  }
-  if (avoid_back_button && tabs_layout.row_left < tabs_layout.tab_safe_left)
-    tabs_layout.row_left = tabs_layout.tab_safe_left;
-  if (!tabs_layout.show_tab_bar) tabs_layout.tab_frame_h = 0;
+  espcontrol::modal::TabRequest request;
+  request.tab_count = tab_count;
+  request.show_tab_bar = show_tab_bar;
+  request.avoid_back_button = avoid_back_button;
+  const espcontrol::modal::TabLayout planned = espcontrol::modal::calculate_tabs(
+    layout.profile, control_modal_geometry_frame(layout), request);
+  tabs_layout.tab_count = planned.tab_count;
+  tabs_layout.show_tab_bar = planned.show_tab_bar;
+  tabs_layout.tab_size = planned.tab_size;
+  tabs_layout.selected_tab_size = planned.selected_tab_size;
+  tabs_layout.tab_frame_pad = planned.frame_padding;
+  tabs_layout.tab_gap = planned.tab_gap;
+  tabs_layout.tabs_total_w = planned.tabs_total_width;
+  tabs_layout.tab_frame_w = planned.frame_width;
+  tabs_layout.tab_frame_h = planned.frame_height;
+  tabs_layout.tab_safe_left = planned.safe_left;
+  tabs_layout.centered_left = planned.centered_left;
+  tabs_layout.row_left = planned.row_left;
+  tabs_layout.content_gap = planned.content_gap;
   return tabs_layout;
+}
+
+inline espcontrol::modal::ContentLayout control_modal_calc_content_layout(
+    const ControlModalLayout &layout,
+    const ControlModalTabLayout &tabs_layout,
+    bool show_tab_bar,
+    lv_coord_t minimum_height = 0,
+    lv_coord_t safe_top = 0) {
+  espcontrol::modal::ContentRequest request;
+  request.show_tab_bar = show_tab_bar;
+  request.tab_frame_height = tabs_layout.tab_frame_h;
+  request.tab_content_gap = tabs_layout.content_gap;
+  request.top_without_tabs = layout.inset * 2;
+  request.safe_top = safe_top;
+  request.minimum_height = minimum_height;
+  request.fallback_height = layout.panel_h / 2;
+  return espcontrol::modal::calculate_content(control_modal_geometry_frame(layout), request);
 }
 
 inline void control_modal_apply_tab_row(lv_obj_t *tab_row,
@@ -428,6 +454,19 @@ inline void control_modal_apply_tab_row(lv_obj_t *tab_row,
   }
 }
 
+inline lv_obj_t *control_modal_create_tab_row(lv_obj_t *panel) {
+  if (!panel) return nullptr;
+  lv_obj_t *tab_row = lv_obj_create(panel);
+  if (!tab_row) return nullptr;
+  lv_obj_set_style_bg_color(tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(tab_row, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(tab_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_shadow_width(tab_row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(tab_row, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(tab_row, LV_OBJ_FLAG_SCROLLABLE);
+  return tab_row;
+}
+
 inline void control_modal_center_tab_icon(lv_obj_t *label) {
   if (!label) return;
   lv_obj_update_layout(label);
@@ -438,7 +477,7 @@ inline void control_modal_center_tab_icon(lv_obj_t *label) {
 
 inline uint16_t control_modal_tab_icon_zoom(const ControlModalLayout &layout) {
   return (control_modal_uses_compact_portrait_tuning(layout) ||
-          control_modal_uses_p4_86_tuning(layout)) ? 220 : 180;
+          control_modal_uses_large_square_tuning(layout)) ? 220 : 180;
 }
 
 inline void control_modal_layout_tab_button(lv_obj_t *tab_btn,
@@ -493,62 +532,46 @@ inline lv_coord_t control_modal_home_card_width(lv_obj_t *btn,
 
 inline ControlModalLayout control_modal_calc_layout(int width_compensation_percent,
                                                     bool allow_compact_portrait_tuning = true) {
-  ControlModalLayout layout;
   lv_disp_t *disp = lv_disp_get_default();
-  layout.sw = disp ? lv_disp_get_hor_res(disp) : 480;
-  layout.sh = disp ? lv_disp_get_ver_res(disp) : 480;
-  layout.short_side = layout.sw < layout.sh ? layout.sw : layout.sh;
-
-  layout.panel_x = 4;
-  layout.panel_y = 0;
-  layout.panel_w = layout.sw - layout.panel_x - 4;
-  layout.panel_h = layout.sh;
+  espcontrol::modal::FrameRequest request;
+  request.screen_width = disp ? lv_disp_get_hor_res(disp) : 480;
+  request.screen_height = disp ? lv_disp_get_ver_res(disp) : 480;
+  request.width_compensation_percent = width_compensation_percent;
+  request.width_compensation_vertical = width_compensation_vertical_axis();
+  request.allow_compact_portrait_tuning = allow_compact_portrait_tuning;
   ControlModalGridMetrics &metrics = control_modal_grid_metrics();
   if (metrics.page) {
     lv_obj_update_layout(metrics.page);
-    layout.panel_x = lv_obj_get_style_pad_left(metrics.page, LV_PART_MAIN);
-    layout.panel_y = lv_obj_get_style_pad_top(metrics.page, LV_PART_MAIN);
-    layout.panel_w = layout.sw - layout.panel_x - lv_obj_get_style_pad_right(metrics.page, LV_PART_MAIN);
-    layout.panel_h = layout.sh - layout.panel_y - lv_obj_get_style_pad_bottom(metrics.page, LV_PART_MAIN);
+    request.panel_left = lv_obj_get_style_pad_left(metrics.page, LV_PART_MAIN);
+    request.panel_top = lv_obj_get_style_pad_top(metrics.page, LV_PART_MAIN);
+    request.panel_right = lv_obj_get_style_pad_right(metrics.page, LV_PART_MAIN);
+    request.panel_bottom = lv_obj_get_style_pad_bottom(metrics.page, LV_PART_MAIN);
   }
 
-  layout.back_size = control_modal_scaled_px(CONTROL_MODAL_BACK_BUTTON_REF_PX, layout.short_side);
-  layout.btn_size = control_modal_scaled_px(CONTROL_MODAL_BUTTON_REF_PX, layout.short_side);
-  layout.inset = control_modal_scaled_px(CONTROL_MODAL_INSET_REF_PX, layout.short_side);
-  if (layout.inset < 8) layout.inset = 8;
-  layout.back_inset_x = layout.inset;
-  layout.back_inset_y = layout.inset;
-  if (allow_compact_portrait_tuning && control_modal_uses_compact_portrait_tuning(layout)) {
-    lv_coord_t back_offset = control_modal_scaled_px(12, layout.short_side);
-    layout.back_inset_x += back_offset;
-    layout.back_inset_y += back_offset;
-  }
-  layout.arc_stroke = control_modal_scaled_px(CONTROL_MODAL_ARC_STROKE_REF_PX, layout.short_side);
-  layout.controls_gap = control_modal_scaled_px(CONTROL_MODAL_CONTROLS_GAP_REF_PX, layout.short_side);
-  layout.title_gap = control_modal_scaled_px(CONTROL_MODAL_TITLE_GAP_REF_PX, layout.short_side);
-
-  layout.arc_size = layout.panel_w < layout.panel_h ? layout.panel_w : layout.panel_h;
-  layout.arc_size -= layout.inset * 2;
-  lv_coord_t reserved_bottom = layout.btn_size / 3 + layout.inset;
-  lv_coord_t available_h = layout.panel_h - layout.inset * 2;
-  if (available_h > reserved_bottom) {
-    lv_coord_t fit_h = available_h - reserved_bottom + layout.arc_stroke;
-    if (layout.arc_size > fit_h) layout.arc_size = fit_h;
-  }
-  if (layout.arc_size < 74) layout.arc_size = 74;
-
-  int width_percent = normalize_width_compensation_percent(width_compensation_percent);
-  lv_coord_t visible_arc_w = compensated_width(layout.arc_size, width_percent);
-  if (visible_arc_w > layout.panel_w - layout.inset * 2) {
-    layout.arc_size = (layout.panel_w - layout.inset * 2) * 100 / width_percent;
-    visible_arc_w = compensated_width(layout.arc_size, width_percent);
-  }
-
-  layout.arc_center_x = (layout.arc_size - visible_arc_w) / 2;
-  layout.arc_center_y = 0;
-  layout.value_center_y = layout.arc_stroke / 2;
-  layout.controls_center_y = layout.arc_size / 2 - layout.btn_size / 2 - layout.inset +
-    control_modal_controls_down_px(layout);
+  DisplayModalProfile profile = display_active_modal_profile();
+  espcontrol::modal::FrameLayout frame = espcontrol::modal::calculate_frame(profile, request);
+  ControlModalLayout layout;
+  layout.sw = frame.screen_width;
+  layout.sh = frame.screen_height;
+  layout.short_side = frame.short_side;
+  layout.panel_x = frame.panel_x;
+  layout.panel_y = frame.panel_y;
+  layout.panel_w = frame.panel_width;
+  layout.panel_h = frame.panel_height;
+  layout.inset = frame.inset;
+  layout.back_inset_x = frame.back_inset_x;
+  layout.back_inset_y = frame.back_inset_y;
+  layout.back_size = frame.back_size;
+  layout.btn_size = frame.button_size;
+  layout.arc_stroke = frame.arc_stroke;
+  layout.controls_gap = frame.controls_gap;
+  layout.arc_size = frame.arc_size;
+  layout.arc_center_x = frame.arc_center_x;
+  layout.arc_center_y = frame.arc_center_y;
+  layout.value_center_y = frame.value_center_y;
+  layout.title_gap = frame.title_gap;
+  layout.controls_center_y = frame.controls_center_y;
+  layout.profile = profile;
   return layout;
 }
 
@@ -729,10 +752,11 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
                                                   lv_obj_t *source_btn,
                                                   int width_compensation_percent,
                                                   const lv_font_t *icon_font,
-                                                  const char *button_text,
-                                                  bool button_top_right,
                                                   ControlModalCloseCallback close_callback) {
   control_modal_close_active();
+  const ControlModalDefinition definition = control_modal_definition(kind);
+  const bool button_top_right = definition.chrome == ControlModalChrome::CLOSE;
+  const char *button_text = button_top_right ? "\U000F0156" : "\U000F0141";
 
   ControlModalShell shell;
   shell.layout = control_modal_calc_layout(width_compensation_percent);
@@ -774,7 +798,7 @@ inline ControlModalShell control_modal_open_shell(ControlModalKind kind,
     }, LV_EVENT_CLICKED, nullptr);
   }
 
-  control_modal_set_active(kind, shell.overlay, close_callback);
+  control_modal_set_active(kind, shell.overlay, close_callback, definition.dismiss_policy);
   return shell;
 }
 

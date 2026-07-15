@@ -56,6 +56,10 @@ script:
           cfg.subpage_chevron_x = 4;
           cfg.subpage_chevron_y = -2;
           cfg.wrap_tall_labels = true;
+          cfg.modal_profile.layout_family = DisplayModalLayoutFamily::LARGE_LANDSCAPE;
+          cfg.modal_profile.density = DisplayModalDensity::SPACIOUS;
+          cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+          cfg.modal_profile.base_touch_target = 76;
           cfg.icon_font = id(font_icon_main)->get_lv_font();
           cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
           cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
@@ -166,6 +170,10 @@ esphome:
             cfg.subpage_chevron_x = 4;
             cfg.subpage_chevron_y = -2;
             cfg.wrap_tall_labels = true;
+            cfg.modal_profile.layout_family = DisplayModalLayoutFamily::LARGE_LANDSCAPE;
+            cfg.modal_profile.density = DisplayModalDensity::SPACIOUS;
+            cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+            cfg.modal_profile.base_touch_target = 76;
             cfg.icon_font = id(font_icon_main)->get_lv_font();
             cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
@@ -345,6 +353,10 @@ esphome:
             cfg.subpage_chevron_x = 4;
             cfg.subpage_chevron_y = -2;
             cfg.wrap_tall_labels = true;
+            cfg.modal_profile.layout_family = DisplayModalLayoutFamily::LARGE_LANDSCAPE;
+            cfg.modal_profile.density = DisplayModalDensity::SPACIOUS;
+            cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+            cfg.modal_profile.base_touch_target = 76;
             cfg.icon_font = id(font_icon_main)->get_lv_font();
             cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();

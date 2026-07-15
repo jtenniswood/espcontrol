@@ -52,6 +52,10 @@ script:
           cfg.wrap_tall_labels = true;
           cfg.volume_width_compensation_percent = 95;
           cfg.media_artwork_width_compensation_percent = 98;
+          cfg.modal_profile.layout_family = DisplayModalLayoutFamily::WIDE_LANDSCAPE;
+          cfg.modal_profile.density = DisplayModalDensity::COMFORTABLE;
+          cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+          cfg.modal_profile.base_touch_target = 57;
           cfg.icon_font = id(font_icon_main)->get_lv_font();
           cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
           cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
@@ -157,6 +161,10 @@ esphome:
             cfg.wrap_tall_labels = true;
             cfg.volume_width_compensation_percent = 95;
             cfg.media_artwork_width_compensation_percent = 98;
+            cfg.modal_profile.layout_family = DisplayModalLayoutFamily::WIDE_LANDSCAPE;
+            cfg.modal_profile.density = DisplayModalDensity::COMFORTABLE;
+            cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+            cfg.modal_profile.base_touch_target = 57;
             cfg.icon_font = id(font_icon_main)->get_lv_font();
             cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
@@ -323,6 +331,10 @@ esphome:
             cfg.wrap_tall_labels = true;
             cfg.volume_width_compensation_percent = 95;
             cfg.media_artwork_width_compensation_percent = 98;
+            cfg.modal_profile.layout_family = DisplayModalLayoutFamily::WIDE_LANDSCAPE;
+            cfg.modal_profile.density = DisplayModalDensity::COMFORTABLE;
+            cfg.modal_profile.memory_tier = DisplayModalMemoryTier::STANDARD;
+            cfg.modal_profile.base_touch_target = 57;
             cfg.icon_font = id(font_icon_main)->get_lv_font();
             cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();

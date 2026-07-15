@@ -14,41 +14,41 @@ constexpr int CLIMATE_DEFAULT_STEP_TENTHS = 5;
 constexpr int CLIMATE_WHOLE_NUMBER_STEP_TENTHS = 10;
 constexpr uint32_t CLIMATE_TEMP_DEBOUNCE_MS = 450;
 constexpr int CLIMATE_MODAL_ARC_SIZE_PERCENT = 88;
-constexpr int CLIMATE_MODAL_JC4880P443_ARC_SIZE_PERCENT = 96;
+constexpr int CLIMATE_MODAL_COMPACT_PORTRAIT_ARC_SIZE_PERCENT = 96;
 constexpr lv_coord_t CLIMATE_MODAL_ARC_UP_REF_PX = 30;
 constexpr lv_coord_t CLIMATE_MODAL_SQUARE_ARC_UP_REF_PX = 24;
 constexpr lv_coord_t CLIMATE_MODAL_STEP_BUTTONS_UP_REF_PX = 42;
-constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_STEP_BUTTONS_UP_REF_PX = 18;
-constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_VALUE_DOWN_REF_PX = 24;
-constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_OPTION_CHIP_BOTTOM_PX = 36;
+constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_STEP_BUTTONS_UP_REF_PX = 18;
+constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_VALUE_DOWN_REF_PX = 24;
+constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 36;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_STEP_BUTTONS_UP_REF_PX = 18;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_VALUE_DOWN_REF_PX = 12;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 16;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_LANDSCAPE_CONTROLS_DOWN_REF_PX = 12;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_STEP_BUTTONS_UP_REF_PX = 36;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_TAB_CONTENT_GAP_REF_PX = 12;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_STATUS_DOWN_REF_PX = 16;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_UNIT_Y_REF_PX = -38;
-constexpr uint16_t CLIMATE_MODAL_JC4880P443_TARGET_ZOOM = 214;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_STEP_BUTTONS_UP_REF_PX = 36;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_TAB_CONTENT_GAP_REF_PX = 12;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_STATUS_DOWN_REF_PX = 16;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_UNIT_Y_REF_PX = -38;
+constexpr uint16_t CLIMATE_MODAL_COMPACT_PORTRAIT_TARGET_ZOOM = 214;
 constexpr lv_coord_t CLIMATE_MODAL_SQUARE_STEP_BUTTONS_UP_REF_PX = 18;
-constexpr lv_coord_t CLIMATE_MODAL_4848_STEP_BUTTONS_UP_REF_PX = 18;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_LABELS_DOWN_REF_PX = 22;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_CONTROL_STEP_BUTTONS_UP_REF_PX = 18;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_LABELS_DOWN_REF_PX = 22;
 constexpr lv_coord_t CLIMATE_MODAL_SQUARE_LABELS_DOWN_REF_PX = 18;
-constexpr lv_coord_t CLIMATE_MODAL_4848_LABELS_DOWN_REF_PX = 12;
-constexpr lv_coord_t CLIMATE_MODAL_4848_OPTION_CHIP_W_REF_PX = 200;
-constexpr lv_coord_t CLIMATE_MODAL_4848_OPTION_CHIP_GAP_REF_PX = 12;
-constexpr lv_coord_t CLIMATE_MODAL_P4_86_OPTION_CHIP_W_REF_PX = 280;
-constexpr lv_coord_t CLIMATE_MODAL_P4_86_TAB_REF_PX = 50;
-constexpr lv_coord_t CLIMATE_MODAL_P4_86_TAB_CONTENT_GAP_REF_PX = 30;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_CONTROL_LABELS_DOWN_REF_PX = 12;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_CONTROL_OPTION_CHIP_W_REF_PX = 200;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_CONTROL_OPTION_CHIP_GAP_REF_PX = 12;
+constexpr lv_coord_t CLIMATE_MODAL_LARGE_SQUARE_OPTION_CHIP_W_REF_PX = 280;
+constexpr lv_coord_t CLIMATE_MODAL_LARGE_SQUARE_TAB_REF_PX = 50;
+constexpr lv_coord_t CLIMATE_MODAL_LARGE_SQUARE_TAB_CONTENT_GAP_REF_PX = 30;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 4;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX = 178;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX = 132;
-constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_OPTION_TILE_MAX_PX = 162;
-constexpr lv_coord_t CLIMATE_MODAL_JC1060P470_OPTION_TILE_MIN_PX = 124;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_MAX_PX = 220;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_MIN_PX = 220;
-constexpr lv_coord_t CLIMATE_MODAL_JC4880P443_OPTION_TILE_H_PX = 120;
-constexpr int CLIMATE_MODAL_JC4880P443_OPTION_ICON_ZOOM = 178;
+constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX = 162;
+constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX = 124;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_MAX_PX = 220;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_MIN_PX = 220;
+constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_H_PX = 120;
+constexpr int CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM = 178;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_MIN_H_PX = 56;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_PAD_Y_REF_PX = 6;
 constexpr lv_coord_t CLIMATE_MODAL_OPTION_CHIP_TEXT_GAP_PX = 2;
@@ -687,37 +687,37 @@ inline bool climate_control_uses_square_modal_tuning(const ControlModalLayout &l
   return control_modal_uses_square_tuning(layout);
 }
 
-inline bool climate_control_uses_4848_modal_tuning(const ControlModalLayout &layout) {
-  return control_modal_uses_4848_control_tuning(layout);
+inline bool climate_control_uses_compact_control_modal_tuning(const ControlModalLayout &layout) {
+  return control_modal_uses_compact_control_tuning(layout);
 }
 
-inline bool climate_control_uses_p4_86_modal_tuning(const ControlModalLayout &layout) {
-  return control_modal_uses_p4_86_tuning(layout);
+inline bool climate_control_uses_large_square_modal_tuning(const ControlModalLayout &layout) {
+  return control_modal_uses_large_square_tuning(layout);
 }
 
 inline bool climate_control_uses_large_landscape_modal_tuning(const ControlModalLayout &layout) {
   return control_modal_uses_large_landscape_tuning(layout);
 }
 
-inline bool climate_control_uses_jc1060p470_modal_tuning(const ControlModalLayout &layout) {
-  return control_modal_uses_jc1060p470_tuning(layout);
+inline bool climate_control_uses_wide_landscape_modal_tuning(const ControlModalLayout &layout) {
+  return control_modal_uses_wide_landscape_tuning(layout);
 }
 
 inline bool climate_control_uses_compact_portrait_modal_tuning(const ControlModalLayout &layout) {
   return control_modal_uses_compact_portrait_tuning(layout) &&
-         !climate_control_uses_4848_modal_tuning(layout) &&
+         !climate_control_uses_compact_control_modal_tuning(layout) &&
          layout.sh > layout.sw;
 }
 
 inline lv_coord_t climate_control_step_buttons_up_ref(const ControlModalLayout &layout) {
-  if (climate_control_uses_jc1060p470_modal_tuning(layout))
-    return CLIMATE_MODAL_JC1060P470_STEP_BUTTONS_UP_REF_PX;
+  if (climate_control_uses_wide_landscape_modal_tuning(layout))
+    return CLIMATE_MODAL_WIDE_LANDSCAPE_STEP_BUTTONS_UP_REF_PX;
   if (climate_control_uses_large_landscape_modal_tuning(layout))
     return CLIMATE_MODAL_LARGE_LANDSCAPE_STEP_BUTTONS_UP_REF_PX;
   if (climate_control_uses_compact_portrait_modal_tuning(layout))
-    return CLIMATE_MODAL_JC4880P443_STEP_BUTTONS_UP_REF_PX;
-  if (climate_control_uses_4848_modal_tuning(layout))
-    return CLIMATE_MODAL_4848_STEP_BUTTONS_UP_REF_PX;
+    return CLIMATE_MODAL_COMPACT_PORTRAIT_STEP_BUTTONS_UP_REF_PX;
+  if (climate_control_uses_compact_control_modal_tuning(layout))
+    return CLIMATE_MODAL_COMPACT_CONTROL_STEP_BUTTONS_UP_REF_PX;
   if (climate_control_uses_square_modal_tuning(layout))
     return CLIMATE_MODAL_SQUARE_STEP_BUTTONS_UP_REF_PX;
   return CLIMATE_MODAL_STEP_BUTTONS_UP_REF_PX;
@@ -728,14 +728,14 @@ inline lv_coord_t climate_control_step_buttons_down_ref(const ControlModalLayout
 }
 
 inline lv_coord_t climate_control_labels_down_ref(const ControlModalLayout &layout) {
-  if (climate_control_uses_jc1060p470_modal_tuning(layout))
-    return CLIMATE_MODAL_JC1060P470_VALUE_DOWN_REF_PX;
+  if (climate_control_uses_wide_landscape_modal_tuning(layout))
+    return CLIMATE_MODAL_WIDE_LANDSCAPE_VALUE_DOWN_REF_PX;
   if (climate_control_uses_large_landscape_modal_tuning(layout))
     return CLIMATE_MODAL_LARGE_LANDSCAPE_VALUE_DOWN_REF_PX;
   if (climate_control_uses_compact_portrait_modal_tuning(layout))
-    return CLIMATE_MODAL_JC4880P443_LABELS_DOWN_REF_PX;
-  if (climate_control_uses_4848_modal_tuning(layout))
-    return CLIMATE_MODAL_4848_LABELS_DOWN_REF_PX;
+    return CLIMATE_MODAL_COMPACT_PORTRAIT_LABELS_DOWN_REF_PX;
+  if (climate_control_uses_compact_control_modal_tuning(layout))
+    return CLIMATE_MODAL_COMPACT_CONTROL_LABELS_DOWN_REF_PX;
   if (climate_control_uses_square_modal_tuning(layout))
     return CLIMATE_MODAL_SQUARE_LABELS_DOWN_REF_PX;
   return 0;
@@ -747,19 +747,19 @@ inline lv_coord_t climate_control_tab_content_gap(const ControlModalLayout &layo
 
 inline lv_coord_t climate_control_unit_y_ref(const ControlModalLayout &layout) {
   return climate_control_uses_compact_portrait_modal_tuning(layout)
-    ? CLIMATE_MODAL_JC4880P443_UNIT_Y_REF_PX
+    ? CLIMATE_MODAL_COMPACT_PORTRAIT_UNIT_Y_REF_PX
     : MEDIA_VOLUME_UNIT_Y_REF_PX;
 }
 
 inline lv_coord_t climate_control_status_translate_y(const ControlModalLayout &layout) {
   return climate_control_uses_compact_portrait_modal_tuning(layout)
-    ? control_modal_scaled_px(CLIMATE_MODAL_JC4880P443_STATUS_DOWN_REF_PX, layout.short_side)
+    ? control_modal_scaled_px(CLIMATE_MODAL_COMPACT_PORTRAIT_STATUS_DOWN_REF_PX, layout.short_side)
     : 0;
 }
 
 inline uint16_t climate_control_target_zoom(const ControlModalLayout &layout) {
   return climate_control_uses_compact_portrait_modal_tuning(layout)
-    ? CLIMATE_MODAL_JC4880P443_TARGET_ZOOM
+    ? CLIMATE_MODAL_COMPACT_PORTRAIT_TARGET_ZOOM
     : 256;
 }
 
@@ -793,30 +793,30 @@ inline lv_coord_t climate_option_chip_height(ClimateControlCtx *ctx,
 
 inline bool climate_control_uses_wide_landscape_option_fit(const ControlModalLayout &layout) {
   return climate_control_uses_large_landscape_modal_tuning(layout) ||
-         climate_control_uses_jc1060p470_modal_tuning(layout) ||
+         climate_control_uses_wide_landscape_modal_tuning(layout) ||
          climate_control_uses_compact_portrait_modal_tuning(layout);
 }
 
 inline lv_coord_t climate_control_wide_option_tile_max(const ControlModalLayout &layout) {
   if (climate_control_uses_compact_portrait_modal_tuning(layout))
-    return CLIMATE_MODAL_JC4880P443_OPTION_TILE_MAX_PX;
-  return climate_control_uses_jc1060p470_modal_tuning(layout)
-    ? CLIMATE_MODAL_JC1060P470_OPTION_TILE_MAX_PX
+    return CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_MAX_PX;
+  return climate_control_uses_wide_landscape_modal_tuning(layout)
+    ? CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX
     : CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX;
 }
 
 inline lv_coord_t climate_control_wide_option_tile_min(const ControlModalLayout &layout) {
   if (climate_control_uses_compact_portrait_modal_tuning(layout))
-    return CLIMATE_MODAL_JC4880P443_OPTION_TILE_MIN_PX;
-  return climate_control_uses_jc1060p470_modal_tuning(layout)
-    ? CLIMATE_MODAL_JC1060P470_OPTION_TILE_MIN_PX
+    return CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_MIN_PX;
+  return climate_control_uses_wide_landscape_modal_tuning(layout)
+    ? CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX
     : CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX;
 }
 
 inline lv_coord_t climate_control_option_tile_height(const ControlModalLayout &layout,
                                                      lv_coord_t tile_w) {
   return climate_control_uses_compact_portrait_modal_tuning(layout)
-    ? CLIMATE_MODAL_JC4880P443_OPTION_TILE_H_PX
+    ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_H_PX
     : tile_w;
 }
 
@@ -847,7 +847,7 @@ inline ControlModalLayout climate_control_calc_layout(ClimateControlCtx *ctx) {
     ctx ? ctx->width_compensation_percent : 100,
     false);
   int arc_size_percent = climate_control_uses_compact_portrait_modal_tuning(layout)
-    ? CLIMATE_MODAL_JC4880P443_ARC_SIZE_PERCENT
+    ? CLIMATE_MODAL_COMPACT_PORTRAIT_ARC_SIZE_PERCENT
     : CLIMATE_MODAL_ARC_SIZE_PERCENT;
   layout.arc_size = layout.arc_size * arc_size_percent / 100;
   if (layout.arc_size < 74) layout.arc_size = 74;
@@ -1594,7 +1594,7 @@ inline void climate_open_inline_option_list(ClimateControlCtx *ctx, const std::s
         lv_obj_set_style_text_font(icon_lbl, ctx->icon_font, LV_PART_MAIN);
       }
       if (compact_portrait_layout && !ctx->card_icon_font) lv_obj_set_style_transform_zoom(
-        icon_lbl, CLIMATE_MODAL_JC4880P443_OPTION_ICON_ZOOM, LV_PART_MAIN);
+        icon_lbl, CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_ICON_ZOOM, LV_PART_MAIN);
 
       lv_obj_t *label = lv_label_create(content_parent);
       lv_label_set_text(label, climate_option_label(option).c_str());
@@ -1797,7 +1797,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   ClimateControlModalUi &ui = climate_control_modal_ui();
   if (!ctx || !ui.overlay || !ui.panel) return;
   ControlModalLayout layout = climate_control_calc_layout(ctx);
-  bool tune_4848 = climate_control_uses_4848_modal_tuning(layout);
+  bool compact_control = climate_control_uses_compact_control_modal_tuning(layout);
   bool compact_portrait = climate_control_uses_compact_portrait_modal_tuning(layout);
   if (ui.target_lbl) {
     lv_obj_set_style_transform_zoom(ui.target_lbl, climate_control_target_zoom(layout), LV_PART_MAIN);
@@ -1826,9 +1826,9 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   lv_coord_t chip_h = climate_option_chip_height(ctx, layout);
   lv_coord_t chip_gap = compact_portrait
     ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_CHIP_GAP_PX
-    : control_modal_scaled_px(tune_4848 ? CLIMATE_MODAL_4848_OPTION_CHIP_GAP_REF_PX : 24,
+    : control_modal_scaled_px(compact_control ? CLIMATE_MODAL_COMPACT_CONTROL_OPTION_CHIP_GAP_REF_PX : 24,
         layout.short_side);
-  if (!compact_portrait && chip_gap < (tune_4848 ? 10 : 16)) chip_gap = tune_4848 ? 10 : 16;
+  if (!compact_portrait && chip_gap < (compact_control ? 10 : 16)) chip_gap = compact_control ? 10 : 16;
 
   control_modal_apply_panel_layout(ui.overlay, ui.panel, layout,
     control_modal_card_radius(ctx->btn));
@@ -1883,10 +1883,10 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   uint8_t visible_chip_count = 0;
   if (climate_modal_temperature_controls_enabled(ctx) && climate_dual_target(ctx)) visible_chip_count++;
   lv_coord_t chip_row_w = layout.panel_w * CLIMATE_OPTION_ROW_WIDTH_PERCENT / 100;
-  bool p4_86_square = climate_control_uses_p4_86_modal_tuning(layout);
+  bool large_square = climate_control_uses_large_square_modal_tuning(layout);
   lv_coord_t option_chip_w = compensated_width(
-    tune_4848 ? CLIMATE_MODAL_4848_OPTION_CHIP_W_REF_PX :
-      (p4_86_square ? CLIMATE_MODAL_P4_86_OPTION_CHIP_W_REF_PX :
+    compact_control ? CLIMATE_MODAL_COMPACT_CONTROL_OPTION_CHIP_W_REF_PX :
+      (large_square ? CLIMATE_MODAL_LARGE_SQUARE_OPTION_CHIP_W_REF_PX :
         (compact_portrait ? CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_CHIP_W_PX :
           (layout.short_side < 520 ? (roomy_landscape ? 224 : (medium_landscape ? 240 : 180)) : 240))),
     ctx->width_compensation_percent);
@@ -1896,7 +1896,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
   }
   if (climate_control_uses_wide_landscape_option_fit(layout) && visible_chip_count > 1) {
     lv_coord_t fitted_w = (chip_row_w - chip_gap * (visible_chip_count - 1)) / visible_chip_count;
-    lv_coord_t min_chip_w = climate_control_uses_jc1060p470_modal_tuning(layout) ? 132 : 148;
+    lv_coord_t min_chip_w = climate_control_uses_wide_landscape_modal_tuning(layout) ? 132 : 148;
     if (fitted_w >= min_chip_w && fitted_w < option_chip_w) option_chip_w = fitted_w;
   }
   auto layout_option_chip = [&](lv_obj_t *chip) {
@@ -1918,8 +1918,8 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     lv_obj_scroll_to_x(ui.chips, 0, LV_ANIM_OFF);
     lv_obj_set_style_flex_main_place(ui.chips, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
   }
-  lv_coord_t chip_bottom = climate_control_uses_jc1060p470_modal_tuning(layout)
-    ? CLIMATE_MODAL_JC1060P470_OPTION_CHIP_BOTTOM_PX
+  lv_coord_t chip_bottom = climate_control_uses_wide_landscape_modal_tuning(layout)
+    ? CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX
     : (climate_control_uses_large_landscape_modal_tuning(layout)
       ? CLIMATE_MODAL_LARGE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX
       : (roomy_landscape ? CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX : layout.inset));
@@ -1966,7 +1966,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
       if (climate_control_uses_wide_landscape_option_fit(layout)) {
         lv_coord_t max_tile_w = climate_control_wide_option_tile_max(layout);
         lv_coord_t min_tile_w = climate_control_wide_option_tile_min(layout);
-        int max_columns = climate_control_uses_jc1060p470_modal_tuning(layout) ? 5 : 6;
+        int max_columns = climate_control_uses_wide_landscape_modal_tuning(layout) ? 5 : 6;
         int fitted_columns = (content_w + tile_gap) / (max_tile_w + tile_gap);
         if (fitted_columns < 1) fitted_columns = 1;
         if (fitted_columns > max_columns) fitted_columns = max_columns;
@@ -2029,7 +2029,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   if (!ctx || !ctx->available) return;
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::CLIMATE, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0141", false, climate_control_hide_modal);
+    ctx->icon_font, climate_control_hide_modal);
   ClimateControlModalUi &ui = climate_control_modal_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;
@@ -2037,13 +2037,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   ui.back_btn = shell.close_btn;
   ui.tab = climate_control_first_visible_tab(ctx);
 
-  ui.tab_row = lv_obj_create(ui.panel);
-  lv_obj_set_style_bg_color(ui.tab_row, lv_color_hex(SECONDARY_GREY), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(ui.tab_row, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_shadow_width(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(ui.tab_row, 0, LV_PART_MAIN);
-  lv_obj_clear_flag(ui.tab_row, LV_OBJ_FLAG_SCROLLABLE);
+  ui.tab_row = control_modal_create_tab_row(ui.panel);
   ui.temperature_tab = climate_control_create_tab_button(
     ui.tab_row, find_icon("Thermometer"), ctx->icon_font,
     ClimateControlTab::TEMPERATURE, ctx->width_compensation_percent);

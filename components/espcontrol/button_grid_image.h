@@ -25,7 +25,7 @@ constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;
 constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;
 constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;
-constexpr lv_coord_t IMAGE_CARD_JC4880P443_MODAL_BACK_BUTTON_REF_PX = 58;
+constexpr lv_coord_t IMAGE_CARD_COMPACT_PORTRAIT_MODAL_BACK_BUTTON_REF_PX = 58;
 constexpr const char *IMAGE_CARD_LOADING_ICON = "\U000F02E9";
 
 struct ImageCardCtx {
@@ -197,7 +197,7 @@ inline void image_card_style_modal_back_button(lv_obj_t *btn,
   if (!control_modal_uses_compact_portrait_tuning(layout)) return;
 
   lv_coord_t size = control_modal_scaled_px(
-    IMAGE_CARD_JC4880P443_MODAL_BACK_BUTTON_REF_PX, layout.short_side);
+    IMAGE_CARD_COMPACT_PORTRAIT_MODAL_BACK_BUTTON_REF_PX, layout.short_side);
   if (size <= layout.back_size) return;
   lv_obj_set_size(btn, size, size);
   lv_obj_set_style_radius(btn, size / 2, LV_PART_MAIN);
@@ -864,7 +864,7 @@ inline bool image_card_modal_refresh_supported() {
 
 inline bool image_card_tile_prefetches_modal_quality() {
   return image_card_modal_refresh_supported() &&
-         !control_modal_current_is_jc4880p443_size();
+         !control_modal_current_uses_compact_portrait_tuning();
 }
 
 inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,
@@ -1666,7 +1666,7 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::IMAGE_CARD, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0141", false, image_card_hide_modal);
+    ctx->icon_font, image_card_hide_modal);
   if (!shell.overlay || !shell.panel || !shell.close_btn) {
     ESP_LOGW("image_card", "Unable to open image modal for %s: modal shell setup failed",
              ctx->entity_id.c_str());

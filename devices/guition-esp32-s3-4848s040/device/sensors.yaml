@@ -42,6 +42,10 @@ script:
           cfg.subpage_chevron_x = 3;
           cfg.subpage_chevron_y = -2;
           cfg.subpage_chevron_text_width_percent = 96;
+          cfg.modal_profile.layout_family = DisplayModalLayoutFamily::COMPACT_SQUARE;
+          cfg.modal_profile.density = DisplayModalDensity::COMPACT;
+          cfg.modal_profile.memory_tier = DisplayModalMemoryTier::CONSTRAINED;
+          cfg.modal_profile.base_touch_target = 46;
           cfg.icon_font = id(font_icon_main)->get_lv_font();
           cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
           cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
@@ -120,6 +124,10 @@ esphome:
             cfg.subpage_chevron_x = 3;
             cfg.subpage_chevron_y = -2;
             cfg.subpage_chevron_text_width_percent = 96;
+            cfg.modal_profile.layout_family = DisplayModalLayoutFamily::COMPACT_SQUARE;
+            cfg.modal_profile.density = DisplayModalDensity::COMPACT;
+            cfg.modal_profile.memory_tier = DisplayModalMemoryTier::CONSTRAINED;
+            cfg.modal_profile.base_touch_target = 46;
             cfg.icon_font = id(font_icon_main)->get_lv_font();
             cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();
@@ -223,6 +231,10 @@ esphome:
             cfg.subpage_chevron_x = 3;
             cfg.subpage_chevron_y = -2;
             cfg.subpage_chevron_text_width_percent = 96;
+            cfg.modal_profile.layout_family = DisplayModalLayoutFamily::COMPACT_SQUARE;
+            cfg.modal_profile.density = DisplayModalDensity::COMPACT;
+            cfg.modal_profile.memory_tier = DisplayModalMemoryTier::CONSTRAINED;
+            cfg.modal_profile.base_touch_target = 46;
             cfg.icon_font = id(font_icon_main)->get_lv_font();
             cfg.sp_sensor_font = id(font_number_value)->get_lv_font();
             cfg.sp_large_sensor_font = id(font_number_value_large)->get_lv_font();

@@ -23,6 +23,7 @@ struct GridConfig {
   int width_compensation_percent = 100;
   int volume_width_compensation_percent = 100;
   int media_artwork_width_compensation_percent = 100;
+  DisplayModalProfile modal_profile;
   int label_lines = 0;
   int label_lines_tall = 0;
   int color_correction_red_percent = COLOR_CORRECTION_RED_PERCENT;
@@ -93,6 +94,7 @@ inline DisplayProfile display_profile_from_grid_config(const GridConfig &cfg) {
   profile.color.red_percent = cfg.color_correction_red_percent;
   profile.color.green_percent = cfg.color_correction_green_percent;
   profile.color.blue_percent = cfg.color_correction_blue_percent;
+  profile.modal = cfg.modal_profile;
   return profile;
 }
 
@@ -869,7 +871,7 @@ inline void grid_refresh_layout(
   ESP_LOGI("sensors", "Grid refresh: layout start (%lu ms)", esphome::millis());
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
-  display_set_width_axis(display);
+  display_activate_profile(display);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   // When the grid shape changes, LVGL can otherwise lay out children that
@@ -934,7 +936,7 @@ inline void grid_phase1(
   set_backlight_display_takeover_callback(navigation_close_modals_for_display_takeover);
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
-  display_set_width_axis(display);
+  display_activate_profile(display);
   // Clear image references before visual setup removes their old LVGL widgets.
   reset_image_card_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
@@ -1270,7 +1272,7 @@ inline void grid_phase2(
   grid_log_memory("start");
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
   const DisplayProfile display = display_profile_from_grid_config(cfg);
-  display_set_width_axis(display);
+  display_activate_profile(display);
   set_switch_confirmation_message_font(display_switch_confirmation_message_font(display));
   set_switch_confirmation_icon_font(display_icon_font(display));
   int NS = bounded_grid_slots(cfg.num_slots);

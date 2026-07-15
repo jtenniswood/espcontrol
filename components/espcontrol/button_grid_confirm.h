@@ -78,7 +78,7 @@ inline void switch_confirmation_open_modal(const ParsedCfg &p, lv_obj_t *btn_obj
 
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::SWITCH_CONFIRMATION, btn_obj, 100, icon_font,
-    "\U000F0156", true, switch_confirmation_hide_modal);
+    switch_confirmation_hide_modal);
   SwitchConfirmationModalUi &ui = switch_confirmation_modal_ui();
   ui.cfg = p;
   ui.btn_obj = btn_obj;

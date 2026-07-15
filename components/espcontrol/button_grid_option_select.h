@@ -231,7 +231,7 @@ inline void option_select_open_modal(OptionSelectCtx *ctx) {
   }
   ControlModalShell shell = control_modal_open_shell(
     ControlModalKind::OPTION_SELECT, ctx->btn, ctx->width_compensation_percent,
-    ctx->icon_font, "\U000F0156", true, option_select_hide_modal);
+    ctx->icon_font, option_select_hide_modal);
   OptionSelectModalUi &ui = option_select_modal_ui();
   ui.active = ctx;
   ui.overlay = shell.overlay;
