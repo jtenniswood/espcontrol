@@ -23,6 +23,7 @@ class BmpDecoder : public ImageDecoder {
   size_t data_offset_{0};
   size_t row_bytes_{0};
   size_t row_stride_{0};
+  Color palette_[2]{Color(0, 0, 0), Color(255, 255, 255)};
 };
 
 }  // namespace artwork_image

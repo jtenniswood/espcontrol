@@ -46,6 +46,15 @@ int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
       this->row_bytes_ = bmp::row_bytes(this->width_, 24);
     } else if (this->bits_per_pixel_ == 1) {
       this->row_bytes_ = bmp::row_bytes(this->width_, 1);
+      size_t dib_header_size = encode_uint32(buffer[17], buffer[16], buffer[15], buffer[14]);
+      if (!bmp::has_complete_monochrome_palette(this->data_offset_, dib_header_size)) {
+        ESP_LOGE(TAG, "Unsupported or missing 1-bit BMP palette");
+        return DECODE_ERROR_UNSUPPORTED_FORMAT;
+      }
+      size_t palette_offset = bmp::palette_offset(dib_header_size);
+      this->palette_[0] = Color(buffer[palette_offset + 2], buffer[palette_offset + 1], buffer[palette_offset]);
+      palette_offset += bmp::PALETTE_ENTRY_SIZE;
+      this->palette_[1] = Color(buffer[palette_offset + 2], buffer[palette_offset + 1], buffer[palette_offset]);
     } else {
       ESP_LOGE(TAG, "Unsupported BMP depth: %u bits", this->bits_per_pixel_);
       return DECODE_ERROR_UNSUPPORTED_FORMAT;
@@ -73,7 +82,7 @@ int HOT BmpDecoder::decode(uint8_t *buffer, size_t size) {
              bit++) {
           size_t x = this->paint_index_ % this->width_;
           size_t y = (this->height_ - 1) - (this->paint_index_ / this->width_);
-          Color color = (current_byte & (1 << (7 - bit))) ? display::COLOR_ON : display::COLOR_OFF;
+          Color color = this->palette_[(current_byte >> (7 - bit)) & 0x01];
           this->draw(x, y, 1, 1, color);
           this->paint_index_++;
         }
