@@ -160,10 +160,10 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
             )
         if (
             "navigation_close_modals_for_display_takeover" not in text
-            or "control_modal_close_for_display_takeover();" not in text
+            or "control_modal_close_for_display_takeover(alarm_display_takeover_active());" not in text
         ):
             errors.append(
-                "components/espcontrol/button_grid_navigation.h: close modals through a display-takeover helper"
+                "components/espcontrol/button_grid_navigation.h: preserve alarm controls only during an active alarm takeover"
             )
 
     if not image_path.exists():
@@ -1096,7 +1096,7 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "}\n"
             "inline void control_modal_close_active_internal(bool honor_close_guard) {}\n"
             "inline void control_modal_force_close_active() { control_modal_close_active_internal(false); }\n"
-            "inline void control_modal_close_for_display_takeover() {}\n"
+            "inline void control_modal_close_for_display_takeover(bool preserve_policy_active) {}\n"
         ),
         "components/espcontrol/button_grid_navigation.h": (
             "inline void navigation_hide_modals() {\n"
@@ -1107,7 +1107,7 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "  return true;\n"
             "}\n"
             "inline void navigation_close_modals_for_display_takeover() {\n"
-            "  control_modal_close_for_display_takeover();\n"
+            "  control_modal_close_for_display_takeover(alarm_display_takeover_active());\n"
             "}\n"
         ),
         "components/espcontrol/button_grid_grid.h": (
@@ -1210,7 +1210,7 @@ def run_self_test() -> int:
         (
             "expose an early display-takeover modal hook",
             "centralize modal dismissal policy for display takeover",
-            "close modals through a display-takeover helper",
+            "preserve alarm controls only during an active alarm takeover",
             "register the display-takeover modal hook",
             "close modals before manual or scheduled display-off",
             "close modals before scheduled sleep and clock takeover",
@@ -1220,6 +1220,19 @@ def run_self_test() -> int:
         "display takeover close",
         valid_sleep_takeover_files(),
         (),
+    )
+    unconditional_alarm_preservation = valid_sleep_takeover_files()
+    navigation_path = "components/espcontrol/button_grid_navigation.h"
+    unconditional_alarm_preservation[navigation_path] = unconditional_alarm_preservation[
+        navigation_path
+    ].replace(
+        "control_modal_close_for_display_takeover(alarm_display_takeover_active());",
+        "control_modal_close_for_display_takeover();",
+    )
+    expect_sleep_takeover_errors(
+        "manual alarm modal preservation",
+        unconditional_alarm_preservation,
+        ("preserve alarm controls only during an active alarm takeover",),
     )
     expect_subpage_modal_wiring_errors(
         "media refresh preserves modal context",

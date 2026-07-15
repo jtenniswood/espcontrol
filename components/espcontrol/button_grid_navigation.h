@@ -58,7 +58,7 @@ inline void navigation_hide_modals() {
 
 inline void navigation_close_modals_for_display_takeover() {
   control_modal_close_nested_menu();
-  control_modal_close_for_display_takeover();
+  control_modal_close_for_display_takeover(alarm_display_takeover_active());
 }
 
 inline bool navigation_return_home(lv_obj_t *main_page_obj) {

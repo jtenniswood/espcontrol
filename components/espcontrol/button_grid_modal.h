@@ -172,10 +172,11 @@ inline void control_modal_force_close_active() {
   control_modal_close_active_internal(false);
 }
 
-inline void control_modal_close_for_display_takeover() {
+inline void control_modal_close_for_display_takeover(bool preserve_policy_active) {
   const ControlModalActive &active = control_modal_active();
   if (active.kind == ControlModalKind::NONE ||
-      active.dismiss_policy == ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER) {
+      (active.dismiss_policy == ControlModalDismissPolicy::PRESERVE_DURING_DISPLAY_TAKEOVER &&
+       preserve_policy_active)) {
     return;
   }
   control_modal_force_close_active();
