@@ -55,6 +55,7 @@ or upstream project instead.
 | Change saved settings, backups, or compact config strings | [Change Saved Config](playbooks/change-saved-config.md) and [Compatibility Contract](compatibility-contract.md) |
 | Add or change supported hardware | [Add or Change a Supported Device](playbooks/add-supported-device.md) |
 | Change icons, glyphs, or firmware font roles | [Change Fonts or Icons](playbooks/change-fonts-or-icons.md) and [Font Guidelines](font-guidelines.md) |
+| Change device modal layouts or modal lifecycle | [Modal Layout System](modal-layout-system.md) |
 | Work out which check to run | [Check Matrix](check-matrix.md) |
 | Diagnose a broken behavior | [Failure Cookbook](failure-cookbook.md) |
 | Understand why the repo is shaped this way | [Architecture Decision Records](adr/README.md) |
@@ -125,6 +126,8 @@ start in the contract and flow outward from there.
   served by the device.
 - [Firmware](firmware.md) - the on-device LVGL grid, card runtime, modals, fonts,
   and parser notes.
+- [Modal Layout System](modal-layout-system.md) - device profiles, shared layout
+  recipes, modal definitions, lifecycle ownership, and visual regression checks.
 - [Cover Art Mode](cover-art-mode.md) - ownership, presentation, memory budgets,
   and behavioural checks for the now-playing takeover.
 - [Display Lifecycle Transition Contract](display-lifecycle.md) - current mode

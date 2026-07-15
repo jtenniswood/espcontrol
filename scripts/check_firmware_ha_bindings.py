@@ -1585,7 +1585,7 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: keep modal-quality image refresh enabled on the 4.3-inch P4 screen")
     if (
         "image_card_tile_prefetches_modal_quality" not in text
-        or "!control_modal_current_is_jc4880p443_size()" not in text
+        or "!control_modal_current_uses_compact_portrait_tuning()" not in text
     ):
         errors.append(f"{rel}: keep 4.3-inch P4 tile downloads sized to the tile before modal open")
     if "Closing image modal" not in text:
@@ -5042,7 +5042,7 @@ def run_self_test() -> int:
         "}\n"
         "inline bool image_card_tile_prefetches_modal_quality() {\n"
         "  return image_card_modal_refresh_supported() &&\n"
-        "         !control_modal_current_is_jc4880p443_size();\n"
+        "         !control_modal_current_uses_compact_portrait_tuning();\n"
         "}\n"
         "inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,\n"
         "                                         int *target_width, int *target_height) {}\n"

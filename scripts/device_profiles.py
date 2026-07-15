@@ -20,6 +20,15 @@ VALID_CHIP_FAMILIES = {"ESP32-P4", "ESP32-S3"}
 VALID_DRAG_MODES = {"swap", "displace"}
 VALID_ROTATIONS = {"0", "90", "180", "270"}
 VALID_DISPLAY_MODES = {"color"}
+VALID_MODAL_LAYOUT_FAMILIES = {
+    "compact-square",
+    "large-square",
+    "compact-portrait",
+    "wide-landscape",
+    "large-landscape",
+}
+VALID_MODAL_DENSITIES = {"compact", "comfortable", "spacious"}
+VALID_MODAL_MEMORY_TIERS = {"standard", "constrained"}
 IMAGE_CARD_PICKER_TYPES = ("image", "media_cover_art")
 REQUIRED_FONT_ROLES = (
     "icon",
@@ -78,6 +87,7 @@ class DeviceProfileError(RuntimeError):
 PROFILE_CATEGORIES = (
     "platform",
     "display",
+    "modal",
     "fonts",
     "network",
     "artwork",
@@ -490,6 +500,41 @@ def validate_display(slug: str, device: dict[str, Any], errors: list[str]) -> No
         valid = ", ".join(sorted(VALID_DISPLAY_MODES))
         errors.append(device_error(slug, f"firmware.display.mode must be one of {valid} when set"))
 
+    modal = require_object(slug, errors, display.get("modal"), "firmware.display.modal")
+    if modal is not None:
+        unknown_modal = sorted(
+            set(modal) - {"layoutFamily", "density", "memoryTier", "baseTouchTarget"}
+        )
+        if unknown_modal:
+            errors.append(device_error(
+                slug,
+                "firmware.display.modal has unknown keys: " + ", ".join(unknown_modal),
+            ))
+        if modal.get("layoutFamily") not in VALID_MODAL_LAYOUT_FAMILIES:
+            valid = ", ".join(sorted(VALID_MODAL_LAYOUT_FAMILIES))
+            errors.append(device_error(
+                slug,
+                f"firmware.display.modal.layoutFamily must be one of {valid}",
+            ))
+        if modal.get("density") not in VALID_MODAL_DENSITIES:
+            valid = ", ".join(sorted(VALID_MODAL_DENSITIES))
+            errors.append(device_error(
+                slug,
+                f"firmware.display.modal.density must be one of {valid}",
+            ))
+        if modal.get("memoryTier") not in VALID_MODAL_MEMORY_TIERS:
+            valid = ", ".join(sorted(VALID_MODAL_MEMORY_TIERS))
+            errors.append(device_error(
+                slug,
+                f"firmware.display.modal.memoryTier must be one of {valid}",
+            ))
+        base_touch_target = modal.get("baseTouchTarget")
+        if not is_positive_int(base_touch_target):
+            errors.append(device_error(
+                slug,
+                "firmware.display.modal.baseTouchTarget must be a positive integer",
+            ))
+
     for key in (
         "widthCompensationPercent",
         "volumeWidthCompensationPercent",
@@ -889,6 +934,7 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "wrap_tall_labels": display["wrapTallLabels"],
         "info_only": bool(display.get("infoOnly")),
         "display_mode": display.get("mode", "color"),
+        "modal": copy.deepcopy(display["modal"]),
         "package": firmware.get("package"),
     }
     if "portraitCols" in layout:
