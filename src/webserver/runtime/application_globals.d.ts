@@ -41,6 +41,8 @@ declare global {
   var CARD_SIZE_EXTRA_TALL: any;
   var CARD_SIZE_EXTRA_WIDE: any;
   var CARD_SIZE_LARGE: any;
+  var CARD_SIZE_MAX_TALL: any;
+  var CARD_SIZE_MAX_WIDE: any;
   var CARD_SIZE_SINGLE: any;
   var CARD_SIZE_TALL: any;
   var CARD_SIZE_WIDE: any;
@@ -318,6 +320,7 @@ declare global {
   var cardContractOptions: any;
   var cardContractPickerKey: any;
   var cardRequiresSquareSize: any;
+  var cardSupportsMaxSize: any;
   var cardContractSubpageTypeCode: any;
   var cardContractSubpageTypeFromCode: any;
   var cardIconHtml: any;
@@ -332,6 +335,7 @@ declare global {
   var cardOnPattern: any;
   var cardSensorPreviewHtml: any;
   var cardSizeClass: any;
+  var cardSizeMenuOptions: any;
   var cardSizeDefinition: any;
   var cardStateEntities: any;
   var cardTypePickerDetails: any;

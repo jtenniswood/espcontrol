@@ -104,7 +104,7 @@ export function installStylesModule(): GlobalDescriptors {
         "overflow:hidden;word-break:break-word;min-height:0}" +
         ".sp-image-label-shadow{position:absolute;inset:1px -1px -1px 1px;color:rgba(0,0,0,.5)}" +
         ".sp-image-label-main{position:relative;color:#fff}" +
-        ".sp-btn-double .sp-image-label-text,.sp-btn-wide .sp-image-label-text,.sp-btn-extra-tall .sp-image-label-text,.sp-btn-extra-wide .sp-image-label-text,.sp-btn-big .sp-image-label-text,.sp-btn-extra-large .sp-image-label-text{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+        ".sp-btn-double .sp-image-label-text,.sp-btn-wide .sp-image-label-text,.sp-btn-extra-tall .sp-image-label-text,.sp-btn-extra-wide .sp-image-label-text,.sp-btn-big .sp-image-label-text,.sp-btn-extra-large .sp-image-label-text,.sp-btn-max-wide .sp-image-label-text,.sp-btn-max-tall .sp-image-label-text{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-media-h-slider{position:absolute;left:8%;right:8%;bottom:10%;height:7.5%;border-radius:999px;" +
         "background:var(--screen-tertiary);overflow:hidden;pointer-events:none}" +
         ".sp-media-h-slider span{display:block;width:62%;height:100%;background:#fff;border-radius:999px}" +
@@ -134,6 +134,8 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-btn-extra-large .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-btn-extra-large .sp-btn-label-row .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-btn-extra-large .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+        ".sp-btn-max-wide{grid-row:span 2;grid-column:span 3}" +
+        ".sp-btn-max-tall{grid-row:span 3;grid-column:span 2}" +
         ".sp-empty-cell{border:2px dashed rgba(255,255,255,.15);background:transparent;" +
         "border-radius:var(--empty-r);display:flex;align-items:center;justify-content:center;" +
         "cursor:pointer;transition:border-color .2s,background-color .2s}" +

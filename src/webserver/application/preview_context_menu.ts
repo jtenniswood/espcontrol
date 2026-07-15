@@ -133,6 +133,25 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         addCtxItem("content-cut", "Cut " + slots.length + " Cards", function (this: any) { cutButtons(slots); });
         addCtxItem("delete", "Delete " + slots.length + " Cards", function (this: any) { deleteButtons(slots); }, true);
     }
+    function cardSizeMenuOptions(this: any, b?: any) {
+        var options: any = [
+            { size: CARD_SIZE_SINGLE, label: "Single (1x1)" },
+        ];
+        if (!cardRequiresSquareSize(b)) {
+            options.push({ size: CARD_SIZE_TALL, label: "Tall (2x1)" });
+            options.push({ size: CARD_SIZE_EXTRA_TALL, label: "Extra Tall (3x1)" });
+            options.push({ size: CARD_SIZE_WIDE, label: "Wide (1x2)" });
+            options.push({ size: CARD_SIZE_EXTRA_WIDE, label: "Extra Wide (1x3)" });
+        }
+        options.push({ size: CARD_SIZE_LARGE, label: "Large (2x2)" });
+        if (cardRequiresSquareSize(b))
+            options.push({ size: CARD_SIZE_EXTRA_LARGE, label: "Extra Large (3x3)" });
+        if (cardSupportsMaxSize(b)) {
+            options.push({ size: CARD_SIZE_MAX_WIDE, label: "Max wide (3x2)" });
+            options.push({ size: CARD_SIZE_MAX_TALL, label: "Max tall (2x3)" });
+        }
+        return options;
+    }
     function addSingleCardMenuItems(this: any, slot?: any) {
         if (slot === -2) {
             addBackButtonMenuItems();
@@ -148,16 +167,9 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         }
         var sz: any = c.sizes[slot] || 1;
         addCtxSubmenu("arrow-expand-all", "Size", function (this: any, sub?: any) {
-            addSubItem(sub, "", "Single (1x1)", function (this: any) { resizeSlot(slot, 1); }, sz === 1);
-            if (!cardRequiresSquareSize(b)) {
-                addSubItem(sub, "", "Tall (2x1)", function (this: any) { resizeSlot(slot, 2); }, sz === 2);
-                addSubItem(sub, "", "Extra Tall (3x1)", function (this: any) { resizeSlot(slot, 5); }, sz === 5);
-                addSubItem(sub, "", "Wide (1x2)", function (this: any) { resizeSlot(slot, 3); }, sz === 3);
-                addSubItem(sub, "", "Extra Wide (1x3)", function (this: any) { resizeSlot(slot, 6); }, sz === 6);
-            }
-            addSubItem(sub, "", "Large (2x2)", function (this: any) { resizeSlot(slot, 4); }, sz === 4);
-            if (cardRequiresSquareSize(b))
-                addSubItem(sub, "", "Extra Large (3x3)", function (this: any) { resizeSlot(slot, 7); }, sz === 7);
+            cardSizeMenuOptions(b).forEach(function (this: any, option?: any) {
+                addSubItem(sub, "", option.label, function (this: any) { resizeSlot(slot, option.size); }, sz === option.size);
+            });
         });
         addCtxDivider();
         addCtxItem("content-copy", "Duplicate", function (this: any) {
@@ -319,6 +331,7 @@ export function installPreviewContextMenuModule(): GlobalDescriptors {
         "addSubItem": staticGlobal(addSubItem),
         "resizeSlot": staticGlobal(resizeSlot),
         "addBulkCardMenuItems": staticGlobal(addBulkCardMenuItems),
+        "cardSizeMenuOptions": staticGlobal(cardSizeMenuOptions),
         "addSingleCardMenuItems": staticGlobal(addSingleCardMenuItems),
         "addClockBarMenuItems": staticGlobal(addClockBarMenuItems),
         "showSelectionMenu": staticGlobal(showSelectionMenu),

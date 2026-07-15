@@ -131,6 +131,24 @@ assert.strictEqual(
   "1,2d,3w",
   "grid serialization preserves sparse spanned layout"
 );
+assert.deepStrictEqual(plain(model.parseGridOrder("1h", 9, 3)), {
+  grid: [1, -1, -1, -1, -1, -1, 0, 0, 0],
+  sizes: { 1: 8 },
+}, "max-wide grid order reserves three columns across two rows");
+assert.deepStrictEqual(plain(model.parseGridOrder("1v", 9, 3)), {
+  grid: [1, -1, 0, -1, -1, 0, -1, -1, 0],
+  sizes: { 1: 9 },
+}, "max-tall grid order reserves two columns across three rows");
+assert.strictEqual(
+  model.serializeGridOrder([1, -1, -1, -1, -1, -1, 0, 0, 0], { 1: 8 }),
+  "1h",
+  "max-wide grid order serializes with its saved token"
+);
+assert.strictEqual(
+  model.serializeGridOrder([1, -1, 0, -1, -1, 0, -1, -1, 0], { 1: 9 }),
+  "1v",
+  "max-tall grid order serializes with its saved token"
+);
 const currentLayout = model.parseGridOrder(current.layoutImport.order, 20, 5);
 assert.deepStrictEqual(
   plain(currentLayout.grid.slice(0, current.layoutImport.expectedGridPrefix.length)),
