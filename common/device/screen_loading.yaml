@@ -87,12 +87,6 @@ esphome:
               - globals.set:
                   id: connectivity_setup_display_active
                   value: 'true'
-              - globals.set:
-                  id: screen_schedule_asleep
-                  value: 'false'
-              - globals.set:
-                  id: screensaver_display_off_active
-                  value: 'false'
               - script.execute: display_mode_reconcile
               - script.wait: display_mode_apply_transition
               - lambda: |-
@@ -106,7 +100,7 @@ esphome:
             condition:
               lambda: |-
                 return wifi::global_wifi_component->has_sta() &&
-                       (id(screen_schedule_asleep) ||
+                       (id(display_mode_controller).target_schedule_inactive() ||
                         screen_schedule_waiting_for_time(
                           id(screen_schedule_trigger).state,
                           id(schedule_enabled).state,
