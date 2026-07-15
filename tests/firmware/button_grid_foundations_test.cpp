@@ -31,8 +31,15 @@ int main() {
   const auto door = card_runtime_context("door_window");
   const auto presence = card_runtime_context("presence");
   const auto image = card_runtime_context("image");
+  const auto clock = card_runtime_context("clock");
+  const auto timezone = card_runtime_context("timezone");
+  const auto calendar = card_runtime_context("calendar");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
       door.legacy_dispatch || presence.legacy_dispatch ||
+      clock.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
+      timezone.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
+      clock.legacy_dispatch || timezone.legacy_dispatch ||
+      !calendar.legacy_dispatch ||
       !card_runtime_information_only(image) || card_runtime_passive(image) ||
       !image.legacy_dispatch) {
     return EXIT_FAILURE;

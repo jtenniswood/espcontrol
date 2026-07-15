@@ -71,10 +71,13 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
 }
 
 inline bool driver_uses_legacy_dispatch(
-    espcontrol::card_runtime::CardDriverId driver) {
+    const espcontrol::card_runtime::CardRuntimeSpec &runtime) {
   using Driver = espcontrol::card_runtime::CardDriverId;
-  switch (driver) {
+  using Type = espcontrol::card_runtime::CardTypeId;
+  switch (runtime.driver) {
     case Driver::STATUS_ENTITY: return false;
+    case Driver::DATE_TIME:
+      return runtime.type != Type::CLOCK && runtime.type != Type::TIMEZONE;
     default: return true;
   }
 }
@@ -89,7 +92,7 @@ inline Context context_for(const std::string &type, const std::string &mode,
   context.surface = surface;
   context.known = context.runtime.type != CardTypeId::UNKNOWN;
   context.allow_in_subpage = has_capability(context.runtime, CAPABILITY_SUBPAGE);
-  context.legacy_dispatch = driver_uses_legacy_dispatch(context.runtime.driver);
+  context.legacy_dispatch = driver_uses_legacy_dispatch(context.runtime);
 
   // These saved-config types predate the generated contract. Keep them on the
   // established dispatcher until they receive their own generated definition.
