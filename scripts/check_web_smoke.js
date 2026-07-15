@@ -774,6 +774,16 @@ const sensorIconPreview = hooks.buttonTypePreviewFor("sensor", {
 assert(sensorIconPreview.iconHtml.includes("mdi-door"), "sensor icon preview uses the selected icon");
 assert(sensorIconPreview.labelHtml.includes("mdi-toggle-switch"), "sensor icon preview uses the icon badge");
 
+const sensorTimePreview = hooks.buttonTypePreviewFor("sensor", {
+  sensor: "sensor.ups_runtime",
+  label: "UPS Runtime",
+  type: "sensor",
+  precision: "time",
+  options: "time_unit=hours,large_numbers",
+}, { cardSize: 4 });
+assert.strictEqual(previewSensorValue(sensorTimePreview), "1h 30m", "sensor Time preview shows compact duration formatting");
+assert(!sensorTimePreview.iconHtml.includes("sp-sensor-preview-large"), "sensor Time preview remains on the normal responsive layout");
+
 const legacyForecastPreview = hooks.buttonTypePreviewFor("weather_forecast", {
   entity: "weather.forecast_home",
   type: "weather_forecast",

@@ -3030,7 +3030,8 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
             "operator": "in",
             "value": [
               "icon",
-              "text"
+              "text",
+              "time"
             ],
             "negate": true
           }
@@ -3038,7 +3039,35 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "supportedWhen": {
           "precisionNot": [
             "icon",
-            "text"
+            "text",
+            "time"
+          ]
+        }
+      },
+      {
+        "name": "time_unit",
+        "label": "Input Unit",
+        "kind": "choice",
+        "values": [
+          "",
+          "seconds",
+          "minutes",
+          "hours",
+          "days"
+        ],
+        "defaultValue": "",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "precision",
+            "operator": "equals",
+            "value": "time"
+          }
+        ],
+        "supportedWhen": {
+          "precision": [
+            "time"
           ]
         }
       },
@@ -3196,6 +3225,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "unknownOptions": "drop",
       "canonicalOptionOrder": [
         "large_numbers",
+        "time_unit",
         "state_labels",
         "state_input",
         "state_output",
@@ -4363,6 +4393,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "state_unit": "state_unit",
   "subpage_kind": "subpage_kind",
   "temperature_step": "temperature_step",
+  "time_unit": "time_unit",
   "vacuum_mode": "vacuum_mode",
   "volume_max": "volume_max",
   "weather_mode": "weather_mode",

@@ -570,13 +570,13 @@ const sensorOptionSpecs = hooks.cardContractOptions("sensor");
 const sensorOptionByName = Object.fromEntries(sensorOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(sensorOptionSpecs, (option) => option.name),
-  ["large_numbers", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+  ["large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
   "sensor option specs preserve current option order"
 );
 assert.deepStrictEqual(
   Array.from(sensorOptionByName.large_numbers.supportedWhen.precisionNot),
-  ["icon", "text"],
-  "sensor large-number option spec excludes icon and text sensor modes"
+  ["icon", "text", "time"],
+  "sensor large-number option spec excludes icon, text, and time sensor modes"
 );
 assert.strictEqual(
   hooks.cardContractOptionSupportedFor("sensor", "large_numbers", { precision: "" }),
@@ -593,6 +593,12 @@ assert.strictEqual(
   false,
   "sensor large-number option blocks icon mode"
 );
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("sensor", "large_numbers", { precision: "time" }),
+  false,
+  "sensor large-number option blocks time mode"
+);
+assert.deepStrictEqual(Array.from(sensorOptionByName.time_unit.values), ["", "seconds", "minutes", "hours", "days"], "time sensor input unit choices are contract-backed");
 assert.strictEqual(sensorOptionByName.active_color.hidden, true, "sensor active-colour option spec remains hidden");
 assert.strictEqual(sensorOptionByName.active_color.migration, "drop", "sensor active-colour option spec documents cleanup");
 assert.strictEqual(
@@ -806,6 +812,20 @@ assert.strictEqual(
 
 const parsedActiveSensor = hooks.parseButtonConfig(";;;;binary_sensor.patio_door;;sensor;text;active_color");
 assert.strictEqual(hooks.sensorActiveColorEnabled(parsedActiveSensor), false, "sensor active colour removed");
+
+const autoTimeSensor = hooks.parseButtonConfig("sensor.ups_runtime;UPS Runtime;Clock;Bell;sensor.ups_runtime;hours;sensor;time;large_numbers,time_unit=weeks,state_labels");
+assert.strictEqual(autoTimeSensor.precision, "time", "time sensor mode round-trips");
+assert.strictEqual(autoTimeSensor.unit, "", "time sensor clears the normal unit field");
+assert.strictEqual(autoTimeSensor.icon, "Auto", "time sensor clears icon settings");
+assert.strictEqual(autoTimeSensor.icon_on, "Auto", "time sensor clears on icon settings");
+assert.strictEqual(autoTimeSensor.options, "", "invalid time units normalize to Auto and incompatible options are removed");
+assert.strictEqual(hooks.sensorTimeUnit(autoTimeSensor), "", "Auto time unit is represented by an omitted option");
+hooks.setSensorTimeUnit(autoTimeSensor, "hours");
+assert.strictEqual(autoTimeSensor.options, "time_unit=hours", "manual time unit persists");
+assert.strictEqual(hooks.sensorTimeUnit(autoTimeSensor), "hours", "manual time unit reads back");
+autoTimeSensor.precision = "";
+autoTimeSensor.options = hooks.normalizeSensorOptions(autoTimeSensor.options, autoTimeSensor.precision);
+assert.strictEqual(autoTimeSensor.options, "", "switching away from Time removes the time unit");
 
 const stateLabelSensor = hooks.parseButtonConfig(";;;;sensor.bin_level;;sensor;text;state_labels,state_input=high,state_output=Please%20empty,state_input_2=low,state_output_2=Full");
 assert.strictEqual(hooks.sensorStateLabelsEnabled(stateLabelSensor), true, "sensor text state labels enabled");

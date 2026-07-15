@@ -1499,6 +1499,47 @@ async function assertEmptyCellSettings(page, posts, label) {
     0,
     `${label}: unsaved new card keeps Delete hidden after type selection`,
   );
+  await page.locator("#sp-inp-type").selectOption({ label: "Sensor" });
+  const sensorTypeOptions = await page.locator("#sp-inp-sensor-type option").allTextContents();
+  assert.deepStrictEqual(
+    sensorTypeOptions,
+    ["Numeric", "Time", "Text", "Icon"],
+    `${label}: Home Assistant Sensor uses the Numeric, Time, Text, and Icon Type dropdown`,
+  );
+  await page.locator("#sp-inp-sensor-type").selectOption("time");
+  assert(
+    await page.locator("#sp-inp-time-unit").isVisible(),
+    `${label}: Time type shows the input unit dropdown`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-time-unit").inputValue(),
+    "",
+    `${label}: Time input unit defaults to Auto`,
+  );
+  assert.strictEqual(
+    await page.locator("#sp-inp-unit").isVisible(),
+    false,
+    `${label}: Time type hides the normal unit field`,
+  );
+  await page.locator("#sp-inp-time-unit").selectOption("hours");
+  await page.locator("#sp-inp-sensor-type").selectOption("numeric");
+  await page.locator("#sp-inp-sensor-type").selectOption("time");
+  assert.strictEqual(
+    await page.locator("#sp-inp-time-unit").inputValue(),
+    "",
+    `${label}: switching away from Time clears its manual input unit`,
+  );
+  await page.getByRole("button", { name: "Local Sensor", exact: true }).click();
+  assert.strictEqual(
+    await page.locator("#sp-inp-sensor-type").count(),
+    0,
+    `${label}: Local Sensor keeps its existing configuration controls`,
+  );
+  assert(
+    await page.getByRole("button", { name: "Numeric", exact: true }).isVisible() &&
+      await page.getByRole("button", { name: "Text", exact: true }).isVisible(),
+    `${label}: Local Sensor retains its Numeric and Text mode buttons`,
+  );
   await page.locator(".sp-settings-close").click();
   await page.waitForFunction(() => {
     var overlay = document.querySelector(".sp-settings-overlay");

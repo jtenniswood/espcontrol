@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,7 @@ constexpr const char *SENSOR_STATE_INPUT_2_OPTION = card_runtime_option_name_sta
 constexpr const char *SENSOR_STATE_OUTPUT_2_OPTION = card_runtime_option_name_state_output_2();
 constexpr const char *SENSOR_STATE_LOW_LABEL_OPTION = card_runtime_option_name_state_low_label();
 constexpr const char *SENSOR_STATE_HIGH_LABEL_OPTION = card_runtime_option_name_state_high_label();
+constexpr const char *SENSOR_TIME_UNIT_OPTION = card_runtime_option_name_time_unit();
 constexpr const char *IMAGE_LABEL_OPTION = card_runtime_option_name_image_label();
 constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
@@ -552,7 +554,7 @@ inline std::string media_cover_art_press_action(const ParsedCfg &p) {
 inline std::string sensor_card_options_normalized(const std::string &options,
                                                   const std::string &precision) {
   std::string out;
-  if (precision != "icon" && precision != "text" &&
+  if (precision != "icon" && precision != "text" && precision != "time" &&
       (cfg_option_token_present(options, "large_numbers") ||
        large_numbers_explicitly_disabled(options))) {
     append_large_numbers_option(out, options);
@@ -588,12 +590,25 @@ inline std::string sensor_card_options_normalized(const std::string &options,
       out += std::string(SENSOR_STATE_OUTPUT_2_OPTION) + "=" + encode_compact_field(output_2);
     }
   }
+  if (precision == "time") {
+    std::string time_unit = cfg_option_value(options, SENSOR_TIME_UNIT_OPTION);
+    if (time_unit == "seconds" || time_unit == "minutes" ||
+        time_unit == "hours" || time_unit == "days") {
+      if (!out.empty()) out += ",";
+      out += std::string(SENSOR_TIME_UNIT_OPTION) + "=" + time_unit;
+    }
+  }
   return out;
 }
 
 inline void normalize_saved_config_sensor_fields(ParsedCfg &p,
                                                  bool was_legacy_text_sensor) {
   if (was_legacy_text_sensor && p.icon.empty()) p.icon = "Auto";
+  if (!sensor_card_local_sensor(p) && p.precision == "time") {
+    p.unit.clear();
+    p.icon = "Auto";
+    p.icon_on = "Auto";
+  }
   if (!sensor_card_local_sensor(p)) return;
   p.icon_on = "Auto";
   p.options.clear();
@@ -1497,6 +1512,76 @@ inline std::string trim_display_unit(const std::string &unit) {
     end--;
   }
   return unit.substr(start, end - start);
+}
+
+inline bool duration_unit_seconds_multiplier(const std::string &raw_unit,
+                                             double &multiplier) {
+  const std::string unit = trim_display_unit(raw_unit);
+  if (unit == "seconds" || unit == "s") multiplier = 1.0;
+  else if (unit == "minutes" || unit == "min") multiplier = 60.0;
+  else if (unit == "hours" || unit == "h") multiplier = 3600.0;
+  else if (unit == "days" || unit == "d") multiplier = 86400.0;
+  else if (unit == "ms") multiplier = 0.001;
+  else if (unit == "µs") multiplier = 0.000001;
+  else return false;
+  return true;
+}
+
+inline bool format_duration_value(char *buffer, size_t buffer_size,
+                                  double value, const std::string &input_unit) {
+  if (!buffer || buffer_size == 0) return false;
+  buffer[0] = '\0';
+  double multiplier = 0.0;
+  if (!std::isfinite(value) || value < 0.0 ||
+      !duration_unit_seconds_multiplier(input_unit, multiplier)) return false;
+  const double converted = value * multiplier;
+  if (!std::isfinite(converted) || converted < 0.0 ||
+      converted >= static_cast<double>(std::numeric_limits<uint64_t>::max())) return false;
+
+  const uint64_t total_seconds = static_cast<uint64_t>(std::floor(converted));
+  if (total_seconds == 0) {
+    std::snprintf(buffer, buffer_size, "0s");
+    return true;
+  }
+
+  const uint64_t values[] = {
+    total_seconds / 86400ULL,
+    (total_seconds % 86400ULL) / 3600ULL,
+    (total_seconds % 3600ULL) / 60ULL,
+    total_seconds % 60ULL,
+  };
+  const char *suffixes[] = {"d", "h", "m", "s"};
+  size_t used = 0;
+  int components = 0;
+  for (int i = 0; i < 4 && components < 2; ++i) {
+    if (values[i] == 0) continue;
+    const int written = std::snprintf(
+      buffer + used, buffer_size - used, components == 0 ? "%llu%s" : " %llu%s",
+      static_cast<unsigned long long>(values[i]), suffixes[i]);
+    if (written < 0 || static_cast<size_t>(written) >= buffer_size - used) {
+      buffer[0] = '\0';
+      return false;
+    }
+    used += static_cast<size_t>(written);
+    ++components;
+  }
+  return components > 0;
+}
+
+inline bool format_duration_sensor_state(char *buffer, size_t buffer_size,
+                                         const std::string &state, bool has_state,
+                                         const std::string &auto_unit, bool has_auto_unit,
+                                         const std::string &manual_unit = "") {
+  if (!buffer || buffer_size == 0) return false;
+  buffer[0] = '\0';
+  if (!has_state || (manual_unit.empty() && !has_auto_unit)) return false;
+  const std::string &input_unit = manual_unit.empty() ? auto_unit : manual_unit;
+  char *end = nullptr;
+  const char *begin = state.c_str();
+  const double value = std::strtod(begin, &end);
+  while (end && *end && std::isspace(static_cast<unsigned char>(*end))) ++end;
+  if (end == begin || !end || *end != '\0') return false;
+  return format_duration_value(buffer, buffer_size, value, input_unit);
 }
 
 inline bool is_text_sensor_card(const std::string &type, const std::string &precision) {

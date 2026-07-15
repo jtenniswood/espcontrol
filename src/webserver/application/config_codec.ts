@@ -52,6 +52,11 @@ export function installConfigCodecModule(): GlobalDescriptors {
             return;
         if (wasLegacyTextSensor && !b.icon)
             b.icon = "Auto";
+        if (!sensorCardIsLocal(b) && b.precision === "time") {
+            b.unit = "";
+            b.icon = "Auto";
+            b.icon_on = "Auto";
+        }
         if (sensorCardIsLocal(b)) {
             b.type = "sensor";
             b.sensor = SENSOR_CARD_LOCAL_SENSOR;

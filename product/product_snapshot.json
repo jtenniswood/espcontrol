@@ -4610,7 +4610,8 @@
                 "operator": "in",
                 "value": [
                   "icon",
-                  "text"
+                  "text",
+                  "time"
                 ],
                 "negate": true
               }
@@ -4618,7 +4619,35 @@
             "supportedWhen": {
               "precisionNot": [
                 "icon",
-                "text"
+                "text",
+                "time"
+              ]
+            }
+          },
+          {
+            "name": "time_unit",
+            "label": "Input Unit",
+            "kind": "choice",
+            "values": [
+              "",
+              "seconds",
+              "minutes",
+              "hours",
+              "days"
+            ],
+            "defaultValue": "",
+            "omitDefault": true,
+            "applicability": [
+              {
+                "source": "field",
+                "name": "precision",
+                "operator": "equals",
+                "value": "time"
+              }
+            ],
+            "supportedWhen": {
+              "precision": [
+                "time"
               ]
             }
           },
@@ -4776,6 +4805,7 @@
           "unknownOptions": "drop",
           "canonicalOptionOrder": [
             "large_numbers",
+            "time_unit",
             "state_labels",
             "state_input",
             "state_output",
