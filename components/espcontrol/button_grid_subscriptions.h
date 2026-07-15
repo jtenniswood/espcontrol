@@ -164,48 +164,6 @@ inline void subscribe_sensor_text_card_value(lv_obj_t *text_lbl, const ParsedCfg
   );
 }
 
-inline void subscribe_door_window_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
-                                        const std::string &sensor_id,
-                                        const char *closed_icon, const char *open_icon,
-                                        bool active_color,
-                                        uint32_t on_color,
-                                        uint32_t sensor_color) {
-  ha_subscribe_state(
-    sensor_id,
-    std::function<void(esphome::StringRef)>(
-      [btn_ptr, icon_lbl, closed_icon, open_icon, active_color, on_color, sensor_color](esphome::StringRef state) {
-        bool unavailable = ha_state_unavailable_ref(state);
-        bool open = !unavailable && is_entity_on_ref(state);
-        lv_label_set_text(icon_lbl, open ? open_icon : closed_icon);
-        if (btn_ptr && active_color) {
-          lv_obj_set_style_bg_color(btn_ptr, lv_color_hex(open ? on_color : sensor_color),
-            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-        }
-      })
-  );
-}
-
-inline void subscribe_presence_state(lv_obj_t *btn_ptr, lv_obj_t *icon_lbl,
-                                     const std::string &sensor_id,
-                                     const char *clear_icon, const char *detected_icon,
-                                     bool active_color,
-                                     uint32_t on_color,
-                                     uint32_t sensor_color) {
-  ha_subscribe_state(
-    sensor_id,
-    std::function<void(esphome::StringRef)>(
-      [btn_ptr, icon_lbl, clear_icon, detected_icon, active_color, on_color, sensor_color](esphome::StringRef state) {
-        bool unavailable = ha_state_unavailable_ref(state);
-        bool detected = !unavailable && presence_detected_ref(state);
-        lv_label_set_text(icon_lbl, detected ? detected_icon : clear_icon);
-        if (btn_ptr && active_color) {
-          lv_obj_set_style_bg_color(btn_ptr, lv_color_hex(detected ? on_color : sensor_color),
-            static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-        }
-      })
-  );
-}
-
 inline void subscribe_weather_state(lv_obj_t *icon_lbl, lv_obj_t *text_lbl, const std::string &entity_id) {
   ESP_LOGI("weather", "Subscribing to current weather state for %s", entity_id.c_str());
   uint32_t generation = ha_subscription_generation();

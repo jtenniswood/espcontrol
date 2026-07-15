@@ -70,6 +70,15 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
   }
 }
 
+inline bool driver_uses_legacy_dispatch(
+    espcontrol::card_runtime::CardDriverId driver) {
+  using Driver = espcontrol::card_runtime::CardDriverId;
+  switch (driver) {
+    case Driver::STATUS_ENTITY: return false;
+    default: return true;
+  }
+}
+
 inline Context context_for(const std::string &type, const std::string &mode,
                            Surface surface = Surface::MAIN_GRID) {
   using namespace espcontrol::card_runtime;
@@ -80,6 +89,7 @@ inline Context context_for(const std::string &type, const std::string &mode,
   context.surface = surface;
   context.known = context.runtime.type != CardTypeId::UNKNOWN;
   context.allow_in_subpage = has_capability(context.runtime, CAPABILITY_SUBPAGE);
+  context.legacy_dispatch = driver_uses_legacy_dispatch(context.runtime.driver);
 
   // These saved-config types predate the generated contract. Keep them on the
   // established dispatcher until they receive their own generated definition.

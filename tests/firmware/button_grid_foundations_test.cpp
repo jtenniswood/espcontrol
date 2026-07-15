@@ -29,9 +29,12 @@ int main() {
     return EXIT_FAILURE;
   }
   const auto door = card_runtime_context("door_window");
+  const auto presence = card_runtime_context("presence");
   const auto image = card_runtime_context("image");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
-      !card_runtime_information_only(image) || card_runtime_passive(image)) {
+      door.legacy_dispatch || presence.legacy_dispatch ||
+      !card_runtime_information_only(image) || card_runtime_passive(image) ||
+      !image.legacy_dispatch) {
     return EXIT_FAILURE;
   }
   struct TestConfig {

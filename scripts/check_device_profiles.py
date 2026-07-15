@@ -583,7 +583,7 @@ def test_current_weather_state_keeps_normal_card_visuals() -> None:
         "dashboard reconfiguration must cancel stale weather forecast action responses"
     )
     assert (
-        "if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;" in grid
+        "if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)) continue;" in grid
         and "if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;" in grid
     ), "subpage weather cards must use the same passive weather binding path as main-grid weather cards"
     assert (

@@ -387,24 +387,6 @@ inline const char *door_window_open_icon(const ParsedCfg &p) {
   return find_icon(door_window_open_icon_name(p.precision));
 }
 
-inline void setup_door_window_card(BtnSlot &s, const ParsedCfg &p,
-                                   bool has_sensor_color, uint32_t sensor_val) {
-  if (has_sensor_color) {
-    lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
-      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-  }
-  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(s.icon_lbl, door_window_closed_icon(p));
-  std::string label = p.label.empty()
-    ? (normalize_door_window_subtype(p.precision) == "window"
-        ? espcontrol_i18n(std::string("Window"))
-        : espcontrol_i18n(std::string("Door")))
-    : p.label;
-  lv_label_set_text(s.text_lbl, label.c_str());
-}
-
 inline const char *presence_clear_icon(const ParsedCfg &p) {
   if (!p.icon.empty() && p.icon != "Auto") return find_icon(p.icon.c_str());
   return find_icon("Motion Sensor Off");
@@ -413,20 +395,6 @@ inline const char *presence_clear_icon(const ParsedCfg &p) {
 inline const char *presence_detected_icon(const ParsedCfg &p) {
   if (!p.icon_on.empty() && p.icon_on != "Auto") return find_icon(p.icon_on.c_str());
   return find_icon("Motion Sensor");
-}
-
-inline void setup_presence_card(BtnSlot &s, const ParsedCfg &p,
-                                bool has_sensor_color, uint32_t sensor_val) {
-  if (has_sensor_color) {
-    lv_obj_set_style_bg_color(s.btn, lv_color_hex(sensor_val),
-      static_cast<lv_style_selector_t>(LV_PART_MAIN) | static_cast<lv_style_selector_t>(LV_STATE_DEFAULT));
-  }
-  lv_obj_clear_flag(s.btn, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
-  lv_label_set_text(s.icon_lbl, presence_clear_icon(p));
-  std::string label = p.label.empty() ? espcontrol_i18n(std::string("Presence")) : p.label;
-  lv_label_set_text(s.text_lbl, label.c_str());
 }
 
 inline bool subpage_parent_sensor_state_enabled(const ParsedCfg &p) {

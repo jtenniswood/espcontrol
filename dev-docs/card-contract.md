@@ -89,9 +89,11 @@ type and checks that subpage capability still matches the contract.
 The generated web `CARD_RUNTIME_SPECS` registry is attached to matching
 `BUTTON_TYPES` registrations as `runtimeSpec`. Firmware receives matching
 `CardTypeId`, `CardDriverId`, capability flags, and a canonical-config resolver
-in `button_grid_contract_generated.h`. These are metadata only at this stage:
-the existing web rendering and firmware `Family` dispatch remain in control
-until a later driver-migration PR switches one reviewed family at a time.
+in `button_grid_contract_generated.h`. Door/Window and Presence cards now use
+the shared handwritten `STATUS_ENTITY` lifecycle driver for main-grid and
+subpage visual setup, data binding, passive interaction, layout refresh, and
+cleanup. Other families remain on the existing `Family` dispatch until their
+reviewed migration PR switches them one family at a time.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and

@@ -45,6 +45,7 @@ LAWN_MOWER_HEADER = "button_grid_lawn_mower.h"
 GRID_HEADER = "button_grid_grid.h"
 ACTION_HEADER = "button_grid_actions.h"
 IMAGE_HEADER = "button_grid_image.h"
+STATUS_ENTITY_HEADER = "button_grid_status_entity_driver.h"
 
 
 def service_mapping_line_allowed(line: str) -> bool:
@@ -120,6 +121,7 @@ def check_root(root: Path) -> list[str]:
     grid_header = root / "components" / "espcontrol" / GRID_HEADER
     if grid_header.exists():
         text = grid_header.read_text(encoding="utf-8")
+        compact_grid = re.sub(r"\s+", " ", text)
         if (
             "card_runtime_context(p)" not in text
             or "card_runtime_information_only(context)" not in text
@@ -129,6 +131,20 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route main and subpage setup through the shared card context"
             )
+        if (
+            "status_entity_driver_setup_visual( s, p, context, palette)" not in compact_grid
+            or "status_entity_driver_bind_data( s, p, context, palette)" not in compact_grid
+            or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
+            or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: route main and subpage status entities through the shared driver"
+            )
+        for direct_branch in ('p.type == "door_window"', 'p.type == "presence"'):
+            if direct_branch in text:
+                failures.append(
+                    f"components/espcontrol/{GRID_HEADER}: keep status-entity type overrides inside the shared driver"
+                )
         if 'parent_subpage_kind == "lawn_mower"' not in text or "lawn_mower_state_active_ref" not in text:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route mower subpage parent indicators through mower active-state handling"
@@ -166,6 +182,27 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{IMAGE_HEADER}: reset every image-card context, including disabled slots"
             )
+    status_entity_header = root / "components" / "espcontrol" / STATUS_ENTITY_HEADER
+    if status_entity_header.exists():
+        text = status_entity_header.read_text(encoding="utf-8")
+        required = (
+            "status_entity_driver_setup_visual",
+            "status_entity_driver_bind_data",
+            "status_entity_driver_attach_interaction",
+            "status_entity_driver_refresh_layout",
+            "status_entity_driver_cleanup",
+            "case Type::DOOR_WINDOW: return is_entity_on_ref(state);",
+            "case Type::PRESENCE: return presence_detected_ref(state);",
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{STATUS_ENTITY_HEADER}: missing shared status-entity lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{STATUS_ENTITY_HEADER}: missing shared status-entity driver"
+        )
     return failures
 
 
@@ -263,6 +300,15 @@ def run_self_test() -> None:
         (
             {"button_grid_image.h": "for (int i = 0; i < count; i++) {}\n"},
             ("reset every image-card context, including disabled slots",),
+        ),
+        (
+            {
+                "button_grid_status_entity_driver.h": (
+                    "inline bool status_entity_driver_setup_visual() {}\n"
+                    "inline bool status_entity_driver_bind_data() {}\n"
+                )
+            },
+            ("missing shared status-entity lifecycle guard",),
         ),
         (
             {
