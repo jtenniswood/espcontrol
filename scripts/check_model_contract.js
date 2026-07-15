@@ -131,6 +131,112 @@ assert.strictEqual(
   "1,2d,3w",
   "grid serialization preserves sparse spanned layout"
 );
+
+const transferCard = {
+  entity: "media_player.kitchen",
+  label: "Morning, Mix = 50%",
+  icon: "Music",
+  icon_on: "Auto",
+  sensor: "playlist",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: nestedPlaylistOptions,
+  size: 3,
+};
+const transferSubpageCard = {
+  entity: "",
+  label: "Downstairs",
+  icon: "Home Floor 0",
+  icon_on: "Auto",
+  sensor: "generic",
+  unit: "",
+  type: "subpage",
+  precision: "",
+  options: "",
+  size: 4,
+  subpage: {
+    order: ["B", "1w"],
+    back_label: "Return Home",
+    buttons: [{
+      entity: "light.kitchen",
+      label: "Kitchen",
+      icon: "Lightbulb",
+      icon_on: "Lightbulb",
+      sensor: "",
+      unit: "",
+      type: "",
+      precision: "",
+      options: "confirm_on,confirm_message=Turn on%3F",
+    }],
+  },
+};
+const transferCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [transferCard, transferSubpageCard],
+);
+assert(!transferCode.includes("\n"), "card transfer code is compact single-line JSON");
+const parsedTransfer = plain(model.parseCardTransferCode(transferCode));
+assert.strictEqual(parsedTransfer.format, "espcontrol.cards", "card transfer format marker is stable");
+assert.strictEqual(parsedTransfer.version, 1, "card transfer format starts at version 1");
+assert.deepStrictEqual(parsedTransfer.source, { device: "panel-a", firmware: "2026.7.0" },
+  "card transfer keeps source device and firmware");
+assert.deepStrictEqual(parsedTransfer.cards[0], transferCard,
+  "card transfer preserves punctuation-heavy card configuration and size");
+assert.deepStrictEqual(parsedTransfer.cards[1], transferSubpageCard,
+  "card transfer preserves a structured subpage");
+const extraLargeSubpageCard = {
+  ...transferSubpageCard,
+  subpage: {
+    ...transferSubpageCard.subpage,
+    order: ["B", "1q"],
+    buttons: [{ ...model.cloneCardConfig(transferCard), options: transferCard.options + ",media_cover_art" }],
+  },
+};
+const extraLargeSubpageCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [extraLargeSubpageCard],
+);
+assert.deepStrictEqual(
+  plain(model.parseCardTransferCode(extraLargeSubpageCode).cards[0]),
+  plain(extraLargeSubpageCard),
+  "card transfer accepts a 3x3 card inside a subpage",
+);
+const extraLargeTransferCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [{ ...transferCard, size: model.CARD_SIZE_EXTRA_LARGE }],
+);
+assert.strictEqual(
+  model.parseCardTransferCode(extraLargeTransferCode).cards[0].size,
+  model.CARD_SIZE_EXTRA_LARGE,
+  "card transfer accepts the supported 3x3 card size",
+);
+
+function assertTransferError(value, expected) {
+  assert.throws(
+    () => model.parseCardTransferCode(typeof value === "string" ? value : JSON.stringify(value)),
+    (error) => String(error.cardTransferMessage || error.message).includes(expected),
+  );
+}
+
+assertTransferError("not json", "could not read the JSON");
+assertTransferError({ format: "other", version: 1, source: { device: "", firmware: "" }, cards: [transferCard] },
+  "unsupported format");
+assertTransferError({ format: "espcontrol.cards", version: 2, source: { device: "", firmware: "" }, cards: [transferCard] },
+  "newer version");
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [] },
+  "no cards");
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_EXTRA_LARGE + 1 }] },
+  "invalid size");
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, options: 42 }] },
+  "invalid options field");
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, subpage: transferSubpageCard.subpage }] },
+  "only a Subpage card");
+assertTransferError({
+  format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" },
+  cards: [{ ...transferSubpageCard, subpage: { ...transferSubpageCard.subpage, order: ["B", "99"] } }],
+}, "invalid order");
+assertTransferError("x".repeat(model.CARD_TRANSFER_MAX_BYTES + 1), "too large");
 const currentLayout = model.parseGridOrder(current.layoutImport.order, 20, 5);
 assert.deepStrictEqual(
   plain(currentLayout.grid.slice(0, current.layoutImport.expectedGridPrefix.length)),

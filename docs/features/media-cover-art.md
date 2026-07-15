@@ -22,6 +22,8 @@ You will find these controls in **Settings > Sleep & Schedule > Media Cover Art*
 - **Hide for external source inputs** - hides cover art when the selected media player source is `TV` or `Line-in`.
 - **Advanced Filtering** - reveals **Only Show When**, which limits cover art to matching media player attributes, such as `app_id=com.apple.TVMusic` or `app_id=com.apple.TVMusic; media_content_type=music`.
 
+Playback time and the progress bar appear only when Home Assistant provides a usable media duration. Live radio streams without a duration continue to show artwork and track details without an empty progress line.
+
 If cover art is shown for `TV` or `Line-in` instead of hidden, the artist line shows **Source** because these inputs normally do not provide artist data.
 
 Cover art is separate from the normal [Screensaver](/features/screensaver) mode. Use Screensaver when you want the panel to dim, show a clock, or turn off after inactivity.
