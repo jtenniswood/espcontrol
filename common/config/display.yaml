@@ -59,7 +59,7 @@ script:
           ClockBarVisibility visibility = clock_bar_resolve_visibility(
               id(clock_bar_enabled).state,
               id(main_page)->obj,
-              id(display_mode_controller).current_mode(),
+              id(display_mode_controller).target_mode(),
               id(display_mode_controller).target_schedule_inactive());
           bool reserve_clock_bar_space = visibility.reserve_space;
           bool visible = visibility.visible;

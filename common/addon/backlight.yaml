@@ -24,6 +24,9 @@ globals:
   - id: screensaver_wake_touch_guard_skip_once
     type: bool
     initial_value: 'false'
+  - id: screensaver_wake_restore_pending
+    type: bool
+    initial_value: 'false'
   - id: screensaver_sensor_sleep_pending
     type: bool
     initial_value: 'false'
@@ -970,6 +973,9 @@ script:
       - script.stop: cover_art_delay_timer
       - script.stop: cover_art_show_track_overlay
       - lambda: |-
+          id(screensaver_wake_restore_pending) =
+              !id(display_mode_controller).target_mode_is(
+                  espcontrol::DisplayMode::ACTIVE);
           id(display_mode_controller).clear(espcontrol::DisplayRequestSource::IDLE_TIMER);
           id(display_mode_controller).clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR);
           id(display_mode_controller).clear(espcontrol::DisplayRequestSource::SETUP_TIMEOUT);
@@ -1013,8 +1019,11 @@ script:
       - if:
           condition:
             lambda: |-
-              return !id(display_mode_controller).current_mode_is(
-                  espcontrol::DisplayMode::ACTIVE);
+              const bool restore_pending = id(screensaver_wake_restore_pending);
+              id(screensaver_wake_restore_pending) = false;
+              return restore_pending ||
+                  !id(display_mode_controller).current_mode_is(
+                      espcontrol::DisplayMode::ACTIVE);
           then:
             - script.stop: screensaver_idle_check
             - if:

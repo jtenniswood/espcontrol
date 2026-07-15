@@ -1543,7 +1543,17 @@ def firmware_screensaver_wake_guard_errors(backlight_path: Path, cover_art_path:
         if body is None:
             errors.append(f"{rel}: missing screensaver_wake script")
         else:
-            marker = "return !id(display_mode_controller).current_mode_is("
+            pending_restore_tokens = (
+                "id: screensaver_wake_restore_pending",
+                "id(screensaver_wake_restore_pending) =",
+                "!id(display_mode_controller).target_mode_is(",
+                "const bool restore_pending = id(screensaver_wake_restore_pending);",
+                "id(screensaver_wake_restore_pending) = false;",
+                "return restore_pending ||",
+            )
+            if any(token not in text for token in pending_restore_tokens):
+                errors.append(f"{rel}: restore ACTIVE when touch cancels a pending sleep transition")
+            marker = "const bool restore_pending = id(screensaver_wake_restore_pending);"
             if marker not in body:
                 errors.append(f"{rel}: keep the normal screensaver wake branch explicit")
             else:
@@ -1579,6 +1589,19 @@ def firmware_screensaver_wake_guard_errors(backlight_path: Path, cover_art_path:
             if "lvgl.widget.hide: cover_art_wake_touch_guard" not in body:
                 errors.append(f"{rel}: hide the cover art wake touch guard after release")
     return errors
+
+
+def firmware_clock_bar_pending_wake_errors(display_path: Path, root: Path) -> list[str]:
+    if not display_path.exists():
+        return []
+    rel = display_path.relative_to(root)
+    text = display_path.read_text(encoding="utf-8")
+    body = yaml_script_body(text, "clock_bar_apply")
+    if body is None:
+        return [f"{rel}: missing clock_bar_apply script"]
+    if "id(display_mode_controller).target_mode()" not in body:
+        return [f"{rel}: resolve clock bar visibility from the pending display target"]
+    return []
 
 
 def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) -> list[str]:
@@ -2196,6 +2219,7 @@ def run_scan() -> int:
     errors.extend(firmware_image_card_startup_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_artwork_image_auth_errors(ARTWORK_IMAGE_PATH, ROOT))
     errors.extend(firmware_screensaver_wake_guard_errors(BACKLIGHT_PATH, COVER_ART_PATH, ROOT))
+    errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_overlay_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_override_errors(BACKLIGHT_PATH, ROOT))
@@ -4776,12 +4800,23 @@ def run_self_test() -> int:
     )
     expect_screensaver_wake_guard_errors(
         "normal wake arms delayed guard",
+        "globals:\n"
+        "  - id: screensaver_wake_restore_pending\n"
+        "    type: bool\n"
+        "    initial_value: 'false'\n"
         "script:\n"
         "  - id: screensaver_wake\n"
         "    then:\n"
+        "      - lambda: |-\n"
+        "          id(screensaver_wake_restore_pending) =\n"
+        "              !id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "      - if:\n"
         "          condition:\n"
-        "            lambda: 'return !id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE);'\n"
+        "            lambda: |-\n"
+        "              const bool restore_pending = id(screensaver_wake_restore_pending);\n"
+        "              id(screensaver_wake_restore_pending) = false;\n"
+        "              return restore_pending ||\n"
+        "                  !id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "          then:\n"
         "            - globals.set:\n"
         "                id: screensaver_wake_touch_guard_active\n"
@@ -4795,12 +4830,23 @@ def run_self_test() -> int:
     )
     expect_screensaver_wake_guard_errors(
         "normal wake clears stale guard while cover art remains guarded",
+        "globals:\n"
+        "  - id: screensaver_wake_restore_pending\n"
+        "    type: bool\n"
+        "    initial_value: 'false'\n"
         "script:\n"
         "  - id: screensaver_wake\n"
         "    then:\n"
+        "      - lambda: |-\n"
+        "          id(screensaver_wake_restore_pending) =\n"
+        "              !id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "      - if:\n"
         "          condition:\n"
-        "            lambda: 'return !id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE);'\n"
+        "            lambda: |-\n"
+        "              const bool restore_pending = id(screensaver_wake_restore_pending);\n"
+        "              id(screensaver_wake_restore_pending) = false;\n"
+        "              return restore_pending ||\n"
+        "                  !id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "          then:\n"
         "            - if:\n"
         "                condition:\n"
