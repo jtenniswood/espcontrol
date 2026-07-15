@@ -15,7 +15,7 @@ You will find these controls in **Settings > Sleep & Schedule > Media Cover Art*
 - **Show Cover Art** - enables the cover art display and keeps the screen awake while artwork is shown.
 - **Media Player Entity** - chooses the media player entity to watch, such as `media_player.living_room`.
 - **Show After** - chooses how long cover art waits before appearing, from 3 seconds to 5 minutes.
-- **Show After** also controls when cover art returns after touch. Each new touch restarts the delay, so cover art waits until you have finished using the cards.
+- **Show After** also controls how long cover art waits before returning after you dismiss it by touch. The countdown restarts after every touch, so cover art returns only after the selected time has passed since your most recent touch.
 - **Show Track Details For** - controls how long track information is shown over the artwork on the 4-inch square displays.
 - **Advanced Options** - contains playback, source, and filtering controls you may not need every day.
 - **Keep Screen Awake During Playback** - is on by default and prevents the display from sleeping while media plays. It does not bypass the **Show After** delay.
