@@ -41,7 +41,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     temperatureUnit: "Auto", clockBarOn: false, _clockBarStateValues: {}, clockBarTimeOn: true,
     networkStatusOn: true, voiceServicesOn: false, networkTransport: "wifi", wifiStrengthPercent: 100,
     temperatureDegreeSymbolOn: true, subpageChevronsOn: true, presenceEntity: "",
-    mediaPlayerSleepPreventionOn: false, mediaPlayerSleepPreventionEntity: "",
+    mediaPlayerSleepPreventionOn: true, mediaPlayerSleepPreventionEntity: "",
     coverArtScreensaverOn: false, coverArtMediaPlayerEntity: "", coverArtAttributeConditions: "",
     coverArtFilteringEnabled: false, coverArtDelay: 10, coverArtTrackOverlayDuration: 5,
     coverArtHideExternalInputOn: true, homeAssistantArtworkProtocol: "http", coverArtHomeAssistantPort: 8123,

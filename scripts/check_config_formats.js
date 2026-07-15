@@ -329,6 +329,10 @@ assert.strictEqual(hooks.cardRequiresSquareSize({ type: "media", sensor: "cover_
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 7), 7, "cover art keeps 3x3 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 6), 1, "cover art rejects non-square sizes");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 8), 8, "camera cards keep max-wide size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 9), 9, "camera cards keep max-tall size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 8), 1, "non-camera cards reject max-wide size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 9), 1, "non-camera cards reject max-tall size");
 const coverArtActionButton = { type: "media", sensor: "cover_art", options: "" };
 assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "play_pause", "cover art defaults to play/pause action");
 hooks.setMediaCoverArtAction(coverArtActionButton, "control_modal");
@@ -645,6 +649,12 @@ assert.deepStrictEqual(Array.from(importedExtraTallOrder.grid.slice(0, 11)), [1,
 const importedExtraWideOrder = hooks.importedButtonOrderFor("1x,2,3", {});
 assert.strictEqual(importedExtraWideOrder.sizes["1"], 6, "imported extra wide sizing is preserved");
 assert.deepStrictEqual(Array.from(importedExtraWideOrder.grid.slice(0, 5)), [1, -1, -1, 2, 3], "extra wide spans three columns");
+const importedMaxWideOrder = hooks.importedButtonOrderFor("1h", {});
+assert.strictEqual(importedMaxWideOrder.sizes["1"], 8, "imported max-wide sizing is preserved");
+assert.deepStrictEqual(Array.from(importedMaxWideOrder.grid.slice(0, 8)), [1, -1, -1, 0, 0, -1, -1, -1], "max-wide spans three columns and two rows");
+const importedMaxTallOrder = hooks.importedButtonOrderFor("1v", {});
+assert.strictEqual(importedMaxTallOrder.sizes["1"], 9, "imported max-tall sizing is preserved");
+assert.deepStrictEqual(Array.from(importedMaxTallOrder.grid.slice(0, 12)), [1, -1, 0, 0, 0, -1, -1, 0, 0, 0, -1, -1], "max-tall spans two columns and three rows");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, false, 60, 3600), true, "short timeout allowed before limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 60, 3600), false, "short timeout blocked after old limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 10, 3600), true, "short timeout allowed after new limits load");

@@ -47,6 +47,14 @@ export function normalizeScheduleWakeTimeout(value: unknown): number {
   return Math.round(n);
 }
 
+export function normalizeCoverArtDelay(value: unknown): number {
+  const n = parseFloat(String(value));
+  if (!Number.isFinite(n)) return 10;
+  if (n < 3) return 3;
+  if (n > 300) return 300;
+  return Math.round(n);
+}
+
 export function normalizeScheduleWakeBrightness(value: unknown): number {
   const n = parseFloat(String(value));
   if (!Number.isFinite(n) || n <= 0) return 10;
@@ -366,12 +374,16 @@ export function normalizeBackupPanelSettings(
       : current.ntpServer3,
     screensaverMode: normalizeScreensaverMode(settings.screensaver_mode),
     presenceSensorEntity: String(settings.presence_sensor_entity || ""),
-    mediaPlayerSleepPrevention: !!settings.media_player_sleep_prevention,
+    mediaPlayerSleepPrevention: objectValue(settings, "media_player_sleep_prevention") != null
+      ? !!settings.media_player_sleep_prevention
+      : true,
     mediaPlayerSleepPreventionEntity: String(settings.media_player_sleep_prevention_entity || settings.cover_art_media_player_entity || ""),
     coverArtScreensaver: !!settings.cover_art_screensaver,
     coverArtMediaPlayerEntity: String(settings.cover_art_media_player_entity || settings.media_player_sleep_prevention_entity || ""),
     coverArtAttributeConditions: String(settings.cover_art_attribute_conditions || settings.cover_art_conditions || ""),
-    coverArtDelay: objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
+    coverArtDelay: normalizeCoverArtDelay(
+      objectValue(settings, "cover_art_delay") != null ? settings.cover_art_delay : 10,
+    ),
     coverArtTrackOverlayDuration: objectValue(settings, "cover_art_track_overlay_duration") != null ? settings.cover_art_track_overlay_duration : 5,
     coverArtHideExternalInput: objectValue(settings, "cover_art_hide_external_input") != null
       ? !!settings.cover_art_hide_external_input

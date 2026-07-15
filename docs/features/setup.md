@@ -86,8 +86,13 @@ Right-click a card and open **Size** to choose:
 
 - **Single** - normal one-slot card.
 - **Tall** - spans two rows.
+- **Extra Tall** - spans three rows.
 - **Wide** - spans two columns.
+- **Extra Wide** - spans three columns.
 - **Large** - spans a 2 x 2 area.
+- **Extra Large** - spans a 3 x 3 area and is available for Media cover-art cards.
+- **Max wide** - spans a 3 x 2 area and is available for Camera cards.
+- **Max tall** - spans a 2 x 3 area and is available for Camera cards.
 
 If a card already occupies the space needed for a larger size, the setup page tries to move it to the next available slot. If there is not enough room, the size change is not applied.
 
