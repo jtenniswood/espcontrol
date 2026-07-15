@@ -91,10 +91,11 @@ if proxy_404_start < 0 or proxy_404_end < 0:
 proxy_404_recovery = cover_art[proxy_404_start:proxy_404_end]
 if "script.execute: cover_art_resubscribe" in proxy_404_recovery:
     raise SystemExit("Cover art proxy 404 recovery must reuse subscriptions instead of retaining one-shot reads")
+if "id(cover_art_runtime).sources.clear()" in proxy_404_recovery:
+    raise SystemExit("Cover art proxy 404 recovery must preserve newly queued subscription candidates")
 for required in (
-    "id(cover_art_runtime).sources.clear()",
     "id(cover_art_runtime).refresh_needed = true",
-    "waiting for the subscribed artwork update",
+    "preserving subscribed artwork candidates while waiting for an update",
 ):
     if required not in proxy_404_recovery:
         raise SystemExit(f"Cover art proxy 404 recovery contract missing: {required}")

@@ -778,8 +778,7 @@ script:
                                  !id(cover_art_media_player_entity).state.empty();
                       then:
                         - lambda: |-
-                            ESP_LOGW("cover_art", "Home Assistant artwork proxy returned 404; waiting for the subscribed artwork update");
-                            id(cover_art_runtime).sources.clear();
+                            ESP_LOGW("cover_art", "Home Assistant artwork proxy returned 404; preserving subscribed artwork candidates while waiting for an update");
                             id(cover_art_runtime).refresh_needed = true;
                   - if:
                       condition:
