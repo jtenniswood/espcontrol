@@ -341,7 +341,9 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART);'
+            lambda: |-
+              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||
+                     id(cover_art_manual_pause_until_ms) != 0;
           then:
             - script.stop: cover_art_delay_timer
             - lambda: |-
