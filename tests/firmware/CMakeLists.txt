@@ -47,6 +47,12 @@ target_compile_options(bmp_stream_test PRIVATE -Wall -Wextra -Werror)
 target_include_directories(bmp_stream_test PRIVATE ../../components/artwork_image)
 add_test(NAME bmp_stream_test COMMAND bmp_stream_test)
 
+add_executable(p4_scaling_test p4_scaling_test.cpp)
+target_compile_features(p4_scaling_test PRIVATE cxx_std_17)
+target_compile_options(p4_scaling_test PRIVATE -Wall -Wextra -Werror)
+target_include_directories(p4_scaling_test PRIVATE ../../components/artwork_image)
+add_test(NAME p4_scaling_test COMMAND p4_scaling_test)
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 file(GLOB SAVED_CONFIG_FIXTURES
   CONFIGURE_DEPENDS

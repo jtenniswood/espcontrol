@@ -1,4 +1,5 @@
 #include "p4_jpeg_backend.h"
+#include "p4_scaling.h"
 
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
 
@@ -83,6 +84,23 @@ static bool scale_cover(const uint8_t *source, uint32_t stride_pixels, uint32_t 
   ppa_client_handle_t handle = scaler();
   if (handle == nullptr || target_width == 0 || target_height == 0) return false;
 
+  uint32_t crop_width = source_width;
+  uint32_t crop_height = source_height;
+  if (static_cast<uint64_t>(source_width) * target_height >
+      static_cast<uint64_t>(source_height) * target_width) {
+    crop_width = std::max<uint32_t>(1, static_cast<uint64_t>(source_height) * target_width / target_height);
+  } else {
+    crop_height = std::max<uint32_t>(1, static_cast<uint64_t>(source_width) * target_height / target_width);
+  }
+
+  uint32_t scale_x_steps = p4::exact_scale_steps(crop_width, target_width);
+  uint32_t scale_y_steps = p4::exact_scale_steps(crop_height, target_height);
+  if (scale_x_steps == 0 || scale_y_steps == 0) {
+    ESP_LOGD(TAG, "PPA cannot exactly scale %ux%u to %ux%u; using CPU scaling",
+             crop_width, crop_height, target_width, target_height);
+    return false;
+  }
+
   static constexpr size_t ALIGNMENT = 64;
   size_t target_size = static_cast<size_t>(target_width) * target_height * 2;
   size_t required = (target_size + ALIGNMENT - 1) & ~(ALIGNMENT - 1);
@@ -93,15 +111,6 @@ static bool scale_cover(const uint8_t *source, uint32_t stride_pixels, uint32_t 
     memory.scaled_capacity = memory.scaled == nullptr ? 0 : required;
   }
   if (memory.scaled == nullptr) return false;
-
-  uint32_t crop_width = source_width;
-  uint32_t crop_height = source_height;
-  if (static_cast<uint64_t>(source_width) * target_height >
-      static_cast<uint64_t>(source_height) * target_width) {
-    crop_width = std::max<uint32_t>(1, static_cast<uint64_t>(source_height) * target_width / target_height);
-  } else {
-    crop_height = std::max<uint32_t>(1, static_cast<uint64_t>(source_width) * target_height / target_width);
-  }
 
   ppa_srm_oper_config_t config{};
   config.in.buffer = source;
@@ -118,8 +127,8 @@ static bool scale_cover(const uint8_t *source, uint32_t stride_pixels, uint32_t 
   config.out.pic_h = target_height;
   config.out.srm_cm = PPA_SRM_COLOR_MODE_RGB565;
   config.rotation_angle = PPA_SRM_ROTATION_ANGLE_0;
-  config.scale_x = static_cast<float>(target_width) / crop_width;
-  config.scale_y = static_cast<float>(target_height) / crop_height;
+  config.scale_x = static_cast<float>(scale_x_steps) / p4::SCALE_FRACTION_STEPS;
+  config.scale_y = static_cast<float>(scale_y_steps) / p4::SCALE_FRACTION_STEPS;
   config.mode = PPA_TRANS_MODE_BLOCKING;
   esp_err_t error = ppa_do_scale_rotate_mirror(handle, &config);
   if (error != ESP_OK) {
