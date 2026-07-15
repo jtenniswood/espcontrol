@@ -1814,10 +1814,15 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             and "script.execute: screensaver_wake" in wake_body
         )
         controller_presence_wake = (
-            "script.execute: display_mode_clear_automatic" in wake_body
+            not typed_presence_wake
+            and "script.execute: display_mode_clear_automatic" in wake_body
             and "screen_schedule_night_active(" in text
             and "DisplayRequestSource::SCREEN_SCHEDULE" in text
         )
+        if typed_presence_wake and "script.execute: display_mode_clear_automatic" not in wake_body:
+            errors.append(
+                f"{rel}: clear stale automatic sleep when presence leaves the visible mode unchanged"
+            )
         if typed_presence_wake and "id(cover_art_screensaver_active)" in wake_body:
             errors.append(f"{rel}: leave active cover art unchanged on presence detection")
         if controller_presence_wake and (
@@ -4933,6 +4938,27 @@ def run_self_test() -> int:
         "night schedule overrides timer and sensor screensaver",
         valid_schedule_screensaver_override,
         (),
+        valid_schedule_sleep_order,
+    )
+    typed_presence_wake = valid_schedule_screensaver_override.replace(
+        "            - script.execute: screensaver_wake\n",
+        "            - lambda: 'return espcontrol::presence_can_wake_display(transition);'\n"
+        "            - script.execute: screensaver_wake\n"
+        "            - script.execute: display_mode_clear_automatic\n",
+        1,
+    )
+    expect_screen_schedule_screensaver_override_errors(
+        "typed presence wake clears hidden automatic sleep",
+        typed_presence_wake,
+        (),
+        valid_schedule_sleep_order,
+    )
+    expect_screen_schedule_screensaver_override_errors(
+        "typed presence wake leaves hidden automatic sleep stale",
+        typed_presence_wake.replace(
+            "            - script.execute: display_mode_clear_automatic\n", "", 1
+        ),
+        ("clear stale automatic sleep",),
         valid_schedule_sleep_order,
     )
     migrated_schedule_reconcile = (

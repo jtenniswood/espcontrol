@@ -731,6 +731,10 @@ script:
                         id(display_mode_controller).resolve());
                 then:
                   - script.execute: screensaver_wake
+                else:
+                  # Presence must clear a sleep request recorded while the room
+                  # was empty, even when cover art or normal cards remain visible.
+                  - script.execute: display_mode_clear_automatic
 
   - id: screensaver_presence_sleep
     mode: restart
