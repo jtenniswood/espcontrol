@@ -40,9 +40,9 @@ constexpr lv_coord_t CLIMATE_MODAL_COMPACT_CONTROL_OPTION_CHIP_GAP_REF_PX = 12;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_SQUARE_OPTION_CHIP_W_REF_PX = 280;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_SQUARE_TAB_REF_PX = 50;
 constexpr lv_coord_t CLIMATE_MODAL_LARGE_SQUARE_TAB_CONTENT_GAP_REF_PX = 30;
-constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 4;
-constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX = 178;
-constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX = 132;
+constexpr lv_coord_t CLIMATE_MODAL_ROOMY_LANDSCAPE_OPTION_CHIP_BOTTOM_PX = 4;
+constexpr lv_coord_t CLIMATE_MODAL_ROOMY_LANDSCAPE_OPTION_TILE_MAX_PX = 178;
+constexpr lv_coord_t CLIMATE_MODAL_ROOMY_LANDSCAPE_OPTION_TILE_MIN_PX = 132;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX = 162;
 constexpr lv_coord_t CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX = 124;
 constexpr lv_coord_t CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_MAX_PX = 220;
@@ -802,7 +802,7 @@ inline lv_coord_t climate_control_wide_option_tile_max(const ControlModalLayout 
     return CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_MAX_PX;
   return climate_control_uses_wide_landscape_modal_tuning(layout)
     ? CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX
-    : CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MAX_PX;
+    : CLIMATE_MODAL_ROOMY_LANDSCAPE_OPTION_TILE_MAX_PX;
 }
 
 inline lv_coord_t climate_control_wide_option_tile_min(const ControlModalLayout &layout) {
@@ -810,7 +810,7 @@ inline lv_coord_t climate_control_wide_option_tile_min(const ControlModalLayout 
     return CLIMATE_MODAL_COMPACT_PORTRAIT_OPTION_TILE_MIN_PX;
   return climate_control_uses_wide_landscape_modal_tuning(layout)
     ? CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX
-    : CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_TILE_MIN_PX;
+    : CLIMATE_MODAL_ROOMY_LANDSCAPE_OPTION_TILE_MIN_PX;
 }
 
 inline lv_coord_t climate_control_option_tile_height(const ControlModalLayout &layout,
@@ -1922,7 +1922,7 @@ inline void climate_control_layout_modal(ClimateControlCtx *ctx) {
     ? CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX
     : (climate_control_uses_large_landscape_modal_tuning(layout)
       ? CLIMATE_MODAL_LARGE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX
-      : (roomy_landscape ? CLIMATE_MODAL_WIDE_LANDSCAPE_OPTION_CHIP_BOTTOM_PX : layout.inset));
+      : (roomy_landscape ? CLIMATE_MODAL_ROOMY_LANDSCAPE_OPTION_CHIP_BOTTOM_PX : layout.inset));
   lv_obj_align(ui.chips, LV_ALIGN_BOTTOM_MID, 0, -chip_bottom);
   if (ui.menu_view) {
     lv_obj_set_size(ui.menu_view, layout.panel_w, layout.panel_h);

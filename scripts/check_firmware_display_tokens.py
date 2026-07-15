@@ -61,7 +61,20 @@ def check_root(root: Path) -> list[str]:
     failures: list[str] = []
     for path in firmware_headers(root):
         filename = path.name
-        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        constant_lines: dict[str, int] = {}
+        for line_no, line in enumerate(lines, start=1):
+            constant = re.search(r"\bconstexpr\s+[^;=]+\b([A-Z][A-Z0-9_]+)\s*=", line)
+            if constant:
+                name = constant.group(1)
+                if name in constant_lines:
+                    rel = path.relative_to(root)
+                    failures.append(
+                        f"{rel}:{line_no}: keep firmware constant names unique "
+                        f"({name} was first declared on line {constant_lines[name]})"
+                    )
+                else:
+                    constant_lines[name] = line_no
             for pattern, message, allowed_files in RULES:
                 if filename in allowed_files:
                     continue
@@ -115,6 +128,15 @@ def run_self_test() -> None:
         (
             {"button_grid_climate.h": "if (control_modal_uses_jc1060_tuning(layout)) return true;\n"},
             ("name modal layout decisions by semantic profile rather than a device model",),
+        ),
+        (
+            {
+                "button_grid_climate.h": (
+                    "constexpr int CLIMATE_MODAL_WIDE_OPTION_GAP = 12;\n"
+                    "constexpr int CLIMATE_MODAL_WIDE_OPTION_GAP = 16;\n"
+                )
+            },
+            ("keep firmware constant names unique",),
         ),
     )
     for files, expected in cases:
