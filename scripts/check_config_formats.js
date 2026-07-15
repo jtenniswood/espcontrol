@@ -329,6 +329,10 @@ assert.strictEqual(hooks.cardRequiresSquareSize({ type: "media", sensor: "cover_
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 7), 7, "cover art keeps 3x3 size");
 assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 6), 1, "cover art rejects non-square sizes");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 8), 8, "camera cards keep max-wide size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "image" }, 9), 9, "camera cards keep max-tall size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 8), 1, "non-camera cards reject max-wide size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "sensor" }, 9), 1, "non-camera cards reject max-tall size");
 const coverArtActionButton = { type: "media", sensor: "cover_art", options: "" };
 assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "play_pause", "cover art defaults to play/pause action");
 hooks.setMediaCoverArtAction(coverArtActionButton, "control_modal");
@@ -570,13 +574,13 @@ const sensorOptionSpecs = hooks.cardContractOptions("sensor");
 const sensorOptionByName = Object.fromEntries(sensorOptionSpecs.map((option) => [option.name, option]));
 assert.deepStrictEqual(
   Array.from(sensorOptionSpecs, (option) => option.name),
-  ["large_numbers", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+  ["large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
   "sensor option specs preserve current option order"
 );
 assert.deepStrictEqual(
   Array.from(sensorOptionByName.large_numbers.supportedWhen.precisionNot),
-  ["icon", "text"],
-  "sensor large-number option spec excludes icon and text sensor modes"
+  ["icon", "text", "time"],
+  "sensor large-number option spec excludes icon, text, and time sensor modes"
 );
 assert.strictEqual(
   hooks.cardContractOptionSupportedFor("sensor", "large_numbers", { precision: "" }),
@@ -593,6 +597,12 @@ assert.strictEqual(
   false,
   "sensor large-number option blocks icon mode"
 );
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("sensor", "large_numbers", { precision: "time" }),
+  false,
+  "sensor large-number option blocks time mode"
+);
+assert.deepStrictEqual(Array.from(sensorOptionByName.time_unit.values), ["", "seconds", "minutes", "hours", "days"], "time sensor input unit choices are contract-backed");
 assert.strictEqual(sensorOptionByName.active_color.hidden, true, "sensor active-colour option spec remains hidden");
 assert.strictEqual(sensorOptionByName.active_color.migration, "drop", "sensor active-colour option spec documents cleanup");
 assert.strictEqual(
@@ -645,6 +655,12 @@ assert.deepStrictEqual(Array.from(importedExtraTallOrder.grid.slice(0, 11)), [1,
 const importedExtraWideOrder = hooks.importedButtonOrderFor("1x,2,3", {});
 assert.strictEqual(importedExtraWideOrder.sizes["1"], 6, "imported extra wide sizing is preserved");
 assert.deepStrictEqual(Array.from(importedExtraWideOrder.grid.slice(0, 5)), [1, -1, -1, 2, 3], "extra wide spans three columns");
+const importedMaxWideOrder = hooks.importedButtonOrderFor("1h", {});
+assert.strictEqual(importedMaxWideOrder.sizes["1"], 8, "imported max-wide sizing is preserved");
+assert.deepStrictEqual(Array.from(importedMaxWideOrder.grid.slice(0, 8)), [1, -1, -1, 0, 0, -1, -1, -1], "max-wide spans three columns and two rows");
+const importedMaxTallOrder = hooks.importedButtonOrderFor("1v", {});
+assert.strictEqual(importedMaxTallOrder.sizes["1"], 9, "imported max-tall sizing is preserved");
+assert.deepStrictEqual(Array.from(importedMaxTallOrder.grid.slice(0, 12)), [1, -1, 0, 0, 0, -1, -1, 0, 0, 0, -1, -1], "max-tall spans two columns and three rows");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, false, 60, 3600), true, "short timeout allowed before limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 60, 3600), false, "short timeout blocked after old limits load");
 assert.strictEqual(hooks.screensaverTimeoutSupportedFor(10, true, 10, 3600), true, "short timeout allowed after new limits load");
@@ -806,6 +822,20 @@ assert.strictEqual(
 
 const parsedActiveSensor = hooks.parseButtonConfig(";;;;binary_sensor.patio_door;;sensor;text;active_color");
 assert.strictEqual(hooks.sensorActiveColorEnabled(parsedActiveSensor), false, "sensor active colour removed");
+
+const autoTimeSensor = hooks.parseButtonConfig("sensor.ups_runtime;UPS Runtime;Clock;Bell;sensor.ups_runtime;hours;sensor;time;large_numbers,time_unit=weeks,state_labels");
+assert.strictEqual(autoTimeSensor.precision, "time", "time sensor mode round-trips");
+assert.strictEqual(autoTimeSensor.unit, "", "time sensor clears the normal unit field");
+assert.strictEqual(autoTimeSensor.icon, "Auto", "time sensor clears icon settings");
+assert.strictEqual(autoTimeSensor.icon_on, "Auto", "time sensor clears on icon settings");
+assert.strictEqual(autoTimeSensor.options, "", "invalid time units normalize to Auto and incompatible options are removed");
+assert.strictEqual(hooks.sensorTimeUnit(autoTimeSensor), "", "Auto time unit is represented by an omitted option");
+hooks.setSensorTimeUnit(autoTimeSensor, "hours");
+assert.strictEqual(autoTimeSensor.options, "time_unit=hours", "manual time unit persists");
+assert.strictEqual(hooks.sensorTimeUnit(autoTimeSensor), "hours", "manual time unit reads back");
+autoTimeSensor.precision = "";
+autoTimeSensor.options = hooks.normalizeSensorOptions(autoTimeSensor.options, autoTimeSensor.precision);
+assert.strictEqual(autoTimeSensor.options, "", "switching away from Time removes the time unit");
 
 const stateLabelSensor = hooks.parseButtonConfig(";;;;sensor.bin_level;;sensor;text;state_labels,state_input=high,state_output=Please%20empty,state_input_2=low,state_output_2=Full");
 assert.strictEqual(hooks.sensorStateLabelsEnabled(stateLabelSensor), true, "sensor text state labels enabled");

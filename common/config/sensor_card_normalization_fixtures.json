@@ -45,6 +45,51 @@
     }
   },
   {
+    "name": "time sensor auto unit omits time unit and incompatible settings",
+    "input": "sensor.ups_runtime;UPS Runtime;Clock;Bell;sensor.ups_runtime;hours;sensor;time;large_numbers,state_labels,state_input=on,state_output=Running",
+    "expected": {
+      "entity": "sensor.ups_runtime",
+      "label": "UPS Runtime",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.ups_runtime",
+      "unit": "",
+      "type": "sensor",
+      "precision": "time",
+      "options": ""
+    }
+  },
+  {
+    "name": "time sensor preserves valid manual unit",
+    "input": "sensor.ups_runtime;UPS Runtime;Auto;Auto;sensor.ups_runtime;;sensor;time;time_unit=hours,large_numbers",
+    "expected": {
+      "entity": "sensor.ups_runtime",
+      "label": "UPS Runtime",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.ups_runtime",
+      "unit": "",
+      "type": "sensor",
+      "precision": "time",
+      "options": "time_unit=hours"
+    }
+  },
+  {
+    "name": "time sensor invalid manual unit normalizes to auto",
+    "input": "sensor.ups_runtime;UPS Runtime;Auto;Auto;sensor.ups_runtime;;sensor;time;time_unit=weeks",
+    "expected": {
+      "entity": "sensor.ups_runtime",
+      "label": "UPS Runtime",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.ups_runtime",
+      "unit": "",
+      "type": "sensor",
+      "precision": "time",
+      "options": ""
+    }
+  },
+  {
     "name": "text sensor preserves state translations",
     "input": "sensor.bin_level;Bin;Trash Can;Auto;sensor.bin_level;;sensor;text;large_numbers,active_color,state_labels,state_input=high,state_output=Please%20empty,state_input_2=low,state_output_2=Full",
     "expected": {

@@ -39,8 +39,13 @@ export function installConfigCodecModule(): GlobalDescriptors {
     function cardRequiresSquareSize(this: any, b?: any) {
         return !!(b && b.type === "media" && mediaEditorMode(b.sensor) === "cover_art");
     }
+    function cardSupportsMaxSize(this: any, b?: any) {
+        return !!(b && b.type === "image");
+    }
     function normalizeCardSizeForConfig(this: any, b?: any, size?: any) {
         size = size || CARD_SIZE_SINGLE;
+        if (size === CARD_SIZE_MAX_WIDE || size === CARD_SIZE_MAX_TALL)
+            return cardSupportsMaxSize(b) ? size : CARD_SIZE_SINGLE;
         if (!cardRequiresSquareSize(b))
             return size;
         return size === CARD_SIZE_LARGE || size === CARD_SIZE_EXTRA_LARGE
@@ -52,6 +57,11 @@ export function installConfigCodecModule(): GlobalDescriptors {
             return;
         if (wasLegacyTextSensor && !b.icon)
             b.icon = "Auto";
+        if (!sensorCardIsLocal(b) && b.precision === "time") {
+            b.unit = "";
+            b.icon = "Auto";
+            b.icon_on = "Auto";
+        }
         if (sensorCardIsLocal(b)) {
             b.type = "sensor";
             b.sensor = SENSOR_CARD_LOCAL_SENSOR;
@@ -846,6 +856,7 @@ export function installConfigCodecModule(): GlobalDescriptors {
         "normalizeWithRegisteredCardType": staticGlobal(normalizeWithRegisteredCardType),
         "normalizeButtonConfig": staticGlobal(normalizeButtonConfig),
         "cardRequiresSquareSize": staticGlobal(cardRequiresSquareSize),
+        "cardSupportsMaxSize": staticGlobal(cardSupportsMaxSize),
         "normalizeCardSizeForConfig": staticGlobal(normalizeCardSizeForConfig),
         "isBrightnessSliderType": staticGlobal(isBrightnessSliderType),
         "isFanCardType": staticGlobal(isFanCardType),

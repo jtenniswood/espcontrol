@@ -336,6 +336,7 @@ constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_PRECISION = "state_precisi
 constexpr const char *CARD_CONTRACT_OPTION_NAME_STATE_UNIT = "state_unit";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_SUBPAGE_KIND = "subpage_kind";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_TEMPERATURE_STEP = "temperature_step";
+constexpr const char *CARD_CONTRACT_OPTION_NAME_TIME_UNIT = "time_unit";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_VACUUM_MODE = "vacuum_mode";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_VOLUME_MAX = "volume_max";
 constexpr const char *CARD_CONTRACT_OPTION_NAME_WEATHER_MODE = "weather_mode";

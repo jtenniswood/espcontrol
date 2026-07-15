@@ -36,7 +36,7 @@ The setup page uses these card names and grouped modes on the device. For a quic
 | **[Option Select](/card-types/option-select)** | Opens a live `select` or `input_select` option list through the Action card. | Yes, as a select entity |
 | **[Webhook](/card-types/webhooks)** | Calls an HTTP URL directly from the panel for other automation platforms and webhook services. | URL |
 | **[Trigger](/card-types/buttons)** | Fires an event to Home Assistant for use in automations. | No |
-| **[Sensor](/card-types/sensors)** | Shows a live numeric reading, text state, or icon state from Home Assistant or a local device sensor. | Yes for Home Assistant, local sensor key for Local Sensor source |
+| **[Sensor](/card-types/sensors)** | Shows a live numeric reading, readable duration, text state, or icon state from Home Assistant or a local device sensor. | Yes for Home Assistant, local sensor key for Local Sensor source |
 | **[Doors & Windows](/card-types/doors-windows)** | Shows a door or window contact sensor with open and closed icons. | Yes, as **Sensor Entity** |
 | **[Presence](/card-types/presence)** | Shows whether a person, room, or motion sensor is active. | Yes, as **Sensor Entity** |
 | **[Slider](/card-types/sliders)** | Controls light brightness or fan speed with a draggable fill bar. | Yes |
@@ -78,14 +78,21 @@ When the entity is not active, the card goes back to its off icon and normal lab
 
 Drag and drop any card to reposition it. If you drop it onto an occupied space, the existing card shifts to the next available slot.
 
+To copy cards to another controller without replacing its other settings, use **Copy Code** and **Paste Code**. See [Copying Cards Between Controllers](/features/subpages#copying-cards-between-controllers) for the steps and compatibility notes.
+
 ### Card Sizes
 
 Right-click a card and open **Size** to choose:
 
 - **Single** - normal one-slot card.
 - **Tall** - spans two rows.
+- **Extra Tall** - spans three rows.
 - **Wide** - spans two columns.
+- **Extra Wide** - spans three columns.
 - **Large** - spans a 2 x 2 area.
+- **Extra Large** - spans a 3 x 3 area and is available for Media cover-art cards.
+- **Max wide** - spans a 3 x 2 area and is available for Camera cards.
+- **Max tall** - spans a 2 x 3 area and is available for Camera cards.
 
 If a card already occupies the space needed for a larger size, the setup page tries to move it to the next available slot. If there is not enough room, the size change is not applied.
 

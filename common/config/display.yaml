@@ -10,12 +10,31 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
+  - id: media_player_sleep_prevention_default_on_migrated
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
 
 esphome:
   on_boot:
     # Apply restored clock-bar visibility before subpages copy main-page padding.
     - priority: -150
       then:
+        - lambda: |-
+            bool preferences_changed = false;
+            if (!id(media_player_sleep_prevention_default_on_migrated)) {
+              id(media_player_sleep_prevention_enabled).turn_on();
+              id(media_player_sleep_prevention_default_on_migrated) = true;
+              preferences_changed = true;
+            }
+            float cover_art_delay_seconds = id(cover_art_delay).state;
+            if (std::isnan(cover_art_delay_seconds) || cover_art_delay_seconds < 3.0f) {
+              auto call = id(cover_art_delay).make_call();
+              call.set_value(3.0f);
+              call.perform();
+              preferences_changed = true;
+            }
+            if (preferences_changed) global_preferences->sync();
         - lambda: |-
             std::vector<std::string> restored_clock_bar_temperature_entities =
                 parse_clock_bar_temperature_entities(id(clock_bar_temperature_entities).state);
@@ -349,7 +368,7 @@ switch:
     internal: true
     id: media_player_sleep_prevention_enabled
     optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: RESTORE_DEFAULT_ON
     icon: "mdi:speaker-play"
     entity_category: config
     web_server:
@@ -728,7 +747,7 @@ number:
     name: "${entity_screen_saver_cover_art_delay}"
     internal: true
     id: cover_art_delay
-    min_value: 0
+    min_value: 3
     max_value: 300
     step: 1
     initial_value: 10

@@ -5,7 +5,7 @@ It records the pre-migration baseline; it does not move executable behaviour int
 
 - Contract types: 40
 - Runtime-only types: 4
-- Baseline cases: 88
+- Baseline cases: 89
 
 | Contract type | Classification | Runtime driver | Capabilities | Canonical saved type | Web registration | Firmware family | Cases |
 |---|---|---|---|---|---|---|---:|
@@ -41,7 +41,7 @@ It records the pre-migration baseline; it does not move executable behaviour int
 | push | canonical | push | actions, subpage | push | push | PUSH | 1 |
 | screen_lock | canonical | screen_lock | subscriptions, actions, subpage | screen_lock | screen_lock | SCREEN_LOCK | 1 |
 | webhook | canonical | webhook | subscriptions, actions, subpage | webhook | webhook | WEBHOOK | 2 |
-| sensor | canonical | sensor | informationOnly, subscriptions, runtimeAllocation, subpage | sensor | sensor | SENSOR | 4 |
+| sensor | canonical | sensor | informationOnly, subscriptions, runtimeAllocation, subpage | sensor | sensor | SENSOR | 5 |
 | local_sensor | accepted_legacy_input | sensor | informationOnly, subscriptions, subpage | sensor | sensor | LOCAL_SENSOR | 1 |
 | slider | canonical | numeric | subscriptions, actions, numericControl, runtimeAllocation, subpage | slider | slider | SLIDER | 1 |
 | subpage | canonical | subpage | actions, runtimeAllocation | subpage | subpage | SUBPAGE | 1 |

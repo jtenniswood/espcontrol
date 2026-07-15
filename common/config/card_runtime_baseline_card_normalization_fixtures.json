@@ -1080,6 +1080,21 @@
     }
   },
   {
+    "name": "sensor: time",
+    "input": "~,,Auto,Auto,sensor.example,,sensor,time,",
+    "expected": {
+      "entity": "",
+      "label": "",
+      "icon": "Auto",
+      "icon_on": "Auto",
+      "sensor": "sensor.example",
+      "unit": "",
+      "type": "sensor",
+      "precision": "time",
+      "options": ""
+    }
+  },
+  {
     "name": "sensor: text",
     "input": "~,,Auto,Auto,sensor.example,,sensor,text,",
     "expected": {

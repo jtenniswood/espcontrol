@@ -2267,6 +2267,38 @@
       }
     },
     {
+      "name": "sensor: time",
+      "sourceKind": "contract",
+      "sourceType": "sensor",
+      "mode": "time",
+      "canonicalType": "sensor",
+      "web": {
+        "registration": "sensor",
+        "picker": {
+          "main": true,
+          "subpage": true,
+          "infoOnly": true
+        },
+        "preview": {
+          "available": true,
+          "fingerprint": "c4e0e96a5f0624df"
+        }
+      },
+      "firmware": {
+        "family": "SENSOR"
+      },
+      "lifecycle": {
+        "subscriptions": [
+          "state",
+          "attributes"
+        ],
+        "actions": [
+          "none"
+        ],
+        "modalOwner": "none"
+      }
+    },
+    {
       "name": "sensor: text",
       "sourceKind": "contract",
       "sourceType": "sensor",

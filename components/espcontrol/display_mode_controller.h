@@ -40,6 +40,18 @@ struct DisplayTransition {
   uint32_t generation{0};
 };
 
+inline bool presence_can_wake_display(const DisplayTransition &transition) {
+  if (!transition.winning_source.has_value()) return false;
+  const DisplayRequestSource source = *transition.winning_source;
+  const bool automatic_screensaver =
+      source == DisplayRequestSource::IDLE_TIMER ||
+      source == DisplayRequestSource::PRESENCE_SENSOR;
+  if (!automatic_screensaver) return false;
+  return transition.target_mode == DisplayMode::DISPLAY_OFF ||
+         transition.target_mode == DisplayMode::DIMMED ||
+         transition.target_mode == DisplayMode::CLOCK;
+}
+
 class DisplayModeController {
  public:
   DisplayModeController() = default;

@@ -104,7 +104,7 @@ export function installStylesModule(): GlobalDescriptors {
         "overflow:hidden;word-break:break-word;min-height:0}" +
         ".sp-image-label-shadow{position:absolute;inset:1px -1px -1px 1px;color:rgba(0,0,0,.5)}" +
         ".sp-image-label-main{position:relative;color:#fff}" +
-        ".sp-btn-double .sp-image-label-text,.sp-btn-wide .sp-image-label-text,.sp-btn-extra-tall .sp-image-label-text,.sp-btn-extra-wide .sp-image-label-text,.sp-btn-big .sp-image-label-text,.sp-btn-extra-large .sp-image-label-text{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+        ".sp-btn-double .sp-image-label-text,.sp-btn-wide .sp-image-label-text,.sp-btn-extra-tall .sp-image-label-text,.sp-btn-extra-wide .sp-image-label-text,.sp-btn-big .sp-image-label-text,.sp-btn-extra-large .sp-image-label-text,.sp-btn-max-wide .sp-image-label-text,.sp-btn-max-tall .sp-image-label-text{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-media-h-slider{position:absolute;left:8%;right:8%;bottom:10%;height:7.5%;border-radius:999px;" +
         "background:var(--screen-tertiary);overflow:hidden;pointer-events:none}" +
         ".sp-media-h-slider span{display:block;width:62%;height:100%;background:#fff;border-radius:999px}" +
@@ -134,6 +134,8 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-btn-extra-large .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-btn-extra-large .sp-btn-label-row .sp-btn-label{-webkit-line-clamp:var(--btn-lines-dbl)}" +
         ".sp-btn-extra-large .sp-media-now-title{-webkit-line-clamp:var(--btn-lines-dbl)}" +
+        ".sp-btn-max-wide{grid-row:span 2;grid-column:span 3}" +
+        ".sp-btn-max-tall{grid-row:span 3;grid-column:span 2}" +
         ".sp-empty-cell{border:2px dashed rgba(255,255,255,.15);background:transparent;" +
         "border-radius:var(--empty-r);display:flex;align-items:center;justify-content:center;" +
         "cursor:pointer;transition:border-color .2s,background-color .2s}" +
@@ -213,6 +215,33 @@ export function installStylesModule(): GlobalDescriptors {
         "color:var(--text2);display:flex;align-items:center;justify-content:center;" +
         "font-size:20px;cursor:pointer;z-index:1;line-height:1;padding:0;" +
         "box-shadow:var(--shadow-1);transition:background .2s,border-color .2s,color .2s}" +
+        ".sp-transfer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:260;" +
+        "display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;" +
+        "backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}" +
+        ".sp-transfer-dialog{position:relative;width:min(620px,100%);max-height:90vh;overflow:auto;" +
+        "box-sizing:border-box;padding:24px;background:var(--bg);border:1px solid var(--border);" +
+        "border-radius:var(--radius);box-shadow:var(--shadow-3);color:var(--text);" +
+        "font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}" +
+        ".sp-transfer-dialog h2{margin:0 44px 12px 0;font-size:1.2rem;font-weight:600}" +
+        ".sp-transfer-dialog p{margin:0 0 14px;color:var(--text2);line-height:1.45}" +
+        ".sp-transfer-close{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:999px;" +
+        "border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;" +
+        "display:flex;align-items:center;justify-content:center;padding:0;z-index:1;line-height:1;" +
+        "box-shadow:var(--shadow-1);touch-action:manipulation;" +
+        "transition:background .2s,border-color .2s,color .2s,box-shadow .2s}" +
+        ".sp-transfer-close:hover{background:var(--border);border-color:#4a4d54;color:var(--text)}" +
+        ".sp-transfer-close:focus-visible{outline:none;border-color:var(--accent);" +
+        "box-shadow:0 0 0 3px var(--accent-soft)}" +
+        ".sp-transfer-close-icon{width:20px;height:20px;display:block;fill:currentColor;pointer-events:none}" +
+        ".sp-transfer-dialog .sp-transfer-code{width:100%;min-height:170px;box-sizing:border-box;" +
+        "font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:400;" +
+        "font-size:.78rem;word-break:break-all}" +
+        ".sp-transfer-note{margin-top:10px!important;font-size:.82rem}" +
+        ".sp-transfer-error{min-height:20px;margin-top:8px;font-size:.86rem;color:#ff8b8b}" +
+        ".sp-transfer-actions{justify-content:flex-end}" +
+        "@media(max-width:600px){.sp-transfer-overlay{padding:0}.sp-transfer-dialog{width:100%;height:100%;" +
+        "max-height:none;border:0;border-radius:0;padding:20px}.sp-transfer-code{min-height:45vh}" +
+        ".sp-transfer-actions{position:sticky;bottom:0;background:var(--bg);padding-top:12px}}" +
         ".sp-settings-close:hover{background:var(--border);border-color:#4a4d54;color:var(--text)}" +
         ".sp-settings-close:focus-visible{outline:none;border-color:var(--accent);" +
         "box-shadow:0 0 0 3px var(--accent-soft)}" +
@@ -342,8 +371,8 @@ export function installStylesModule(): GlobalDescriptors {
         "font-weight:500;cursor:pointer;font-family:inherit;" +
         "transition:background .25s,opacity .25s,box-shadow .25s}" +
         ".sp-action-btn:active{opacity:.85}" +
-        ".sp-delete-btn,.sp-hide-btn{background:var(--surface2);color:var(--text);display:inline-flex;align-items:center;gap:6px}" +
-        ".sp-delete-btn:hover,.sp-hide-btn:hover{background:var(--border);color:var(--text)}" +
+        ".sp-delete-btn,.sp-hide-btn,.sp-cancel-btn{background:var(--surface2);color:var(--text);display:inline-flex;align-items:center;gap:6px}" +
+        ".sp-delete-btn:hover,.sp-hide-btn:hover,.sp-cancel-btn:hover{background:var(--border);color:var(--text)}" +
         ".sp-save-btn{background:var(--accent);color:#fff}" +
         ".sp-save-btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-1)}" +
         ".sp-edit-subpage-btn{background:var(--accent);color:#fff}" +
