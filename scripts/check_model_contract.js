@@ -185,6 +185,23 @@ assert.deepStrictEqual(parsedTransfer.cards[0], transferCard,
   "card transfer preserves punctuation-heavy card configuration and size");
 assert.deepStrictEqual(parsedTransfer.cards[1], transferSubpageCard,
   "card transfer preserves a structured subpage");
+const extraLargeSubpageCard = {
+  ...transferSubpageCard,
+  subpage: {
+    ...transferSubpageCard.subpage,
+    order: ["B", "1q"],
+    buttons: [{ ...model.cloneCardConfig(transferCard), options: transferCard.options + ",media_cover_art" }],
+  },
+};
+const extraLargeSubpageCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [extraLargeSubpageCard],
+);
+assert.deepStrictEqual(
+  plain(model.parseCardTransferCode(extraLargeSubpageCode).cards[0]),
+  plain(extraLargeSubpageCard),
+  "card transfer accepts a 3x3 card inside a subpage",
+);
 const extraLargeTransferCode = model.createCardTransferCode(
   { device: "panel-a", firmware: "2026.7.0" },
   [{ ...transferCard, size: model.CARD_SIZE_EXTRA_LARGE }],

@@ -82,7 +82,7 @@ function normalizeTransferSubpage(value: unknown, context: string): StructuredSu
     if (typeof item !== "string") return false;
     if (!item) return true;
     if (/^B(?:d|w|b|t|x)?$/.test(item)) return true;
-    const match = /^(\d+)(?:d|w|b|t|x)?$/.exec(item);
+    const match = /^(\d+)(?:d|w|b|t|x|q)?$/.exec(item);
     return !!match && Number(match[1]) >= 1 && Number(match[1]) <= buttons.length;
   })) {
     throw transferError("Invalid card code - " + context + " has an invalid order");
