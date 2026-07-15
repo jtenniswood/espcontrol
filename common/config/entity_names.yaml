@@ -24,6 +24,7 @@ substitutions:
   entity_subpage_config_ext_6_suffix: " Config Ext 6"
   entity_subpage_config_ext_7_prefix: "Subpage "
   entity_subpage_config_ext_7_suffix: " Config Ext 7"
+  entity_display_restart: "Restart"
   entity_indoor_temp_enable: "Indoor Temp Enable"
   entity_outdoor_temp_enable: "Outdoor Temp Enable"
   entity_screen_clock_bar: "Screen: Clock Bar"

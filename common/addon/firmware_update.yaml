@@ -30,7 +30,7 @@ esphome:
                   condition:
                     lambda: |-
                       auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                      return id(screen_schedule_asleep) ||
+                      return id(display_mode_controller).target_schedule_inactive() ||
                              screen_schedule_waiting_for_time(
                                id(screen_schedule_trigger).state,
                                id(schedule_enabled).state,

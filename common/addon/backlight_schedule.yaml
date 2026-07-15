@@ -85,8 +85,6 @@ esphome:
               now.is_valid() ? now.hour : 0,
               (int) id(schedule_on_hour).state,
               (int) id(schedule_off_hour).state);
-          id(screen_schedule_asleep) = !id(connectivity_setup_display_active) &&
-              (waiting_for_time || (schedule_night && !id(schedule_mode_always_on)));
       - script.execute: screen_schedule_boot_guard
 
 # =============================================================================
@@ -136,15 +134,19 @@ switch:
                 auto call = id(screen_schedule_trigger).make_call();
                 call.set_value("disabled");
                 call.perform();
-      - globals.set:
-          id: backlight_manual_off
-          value: 'false'
+      - lambda: |-
+          id(display_mode_controller).clear(
+              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set:
           id: manual_wake_ms
           value: '0'
       - if:
           condition:
-            lambda: 'return id(screen_schedule_asleep);'
+            lambda: |-
+              const auto transition = id(display_mode_controller).resolve();
+              return transition.target_mode != espcontrol::DisplayMode::ACTIVE &&
+                  (transition.winning_source == espcontrol::DisplayRequestSource::BOOT_GUARD ||
+                   transition.winning_source == espcontrol::DisplayRequestSource::SCREEN_SCHEDULE);
           then:
             - script.execute: screen_schedule_wake
           else:
@@ -221,7 +223,9 @@ text:
       then:
         - if:
             condition:
-              lambda: 'return id(is_clock_showing);'
+              lambda: |-
+                return id(display_mode_controller).current_mode_is(
+                    espcontrol::DisplayMode::CLOCK);
             then:
               - lambda: 'apply_clock_screensaver_text_color(id(clock_label), id(schedule_clock_text_color).state);'
 
@@ -366,7 +370,8 @@ number:
         - if:
             condition:
               lambda: |-
-                if (id(display_asleep)) return false;
+                if (!id(display_mode_controller).current_mode_is(
+                      espcontrol::DisplayMode::ACTIVE)) return false;
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
                 return screen_schedule_night_active(
                          id(screen_schedule_trigger).state,
@@ -399,7 +404,9 @@ number:
       then:
         - if:
             condition:
-              lambda: 'return id(is_clock_showing);'
+              lambda: |-
+                return id(display_mode_controller).current_mode_is(
+                    espcontrol::DisplayMode::CLOCK);
             then:
               - script.execute: clock_screensaver_refresh_brightness
 
@@ -452,7 +459,9 @@ script:
   - id: screen_schedule_boot_guard
     mode: restart
     then:
-      - globals.set: { id: backlight_manual_off, value: 'false' }
+      - lambda: |-
+          id(display_mode_controller).clear(
+              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
 
@@ -462,7 +471,9 @@ script:
   - id: screen_schedule_sleep
     mode: restart
     then:
-      - globals.set: { id: backlight_manual_off, value: 'false' }
+      - lambda: |-
+          id(display_mode_controller).clear(
+              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
 
@@ -473,7 +484,9 @@ script:
     mode: restart
     then:
       - script.stop: screen_schedule_wake_timeout_check
-      - globals.set: { id: backlight_manual_off, value: 'false' }
+      - lambda: |-
+          id(display_mode_controller).clear(
+              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
@@ -487,7 +500,9 @@ script:
     mode: restart
     then:
       - script.stop: screen_schedule_wake_timeout_check
-      - globals.set: { id: backlight_manual_off, value: 'false' }
+      - lambda: |-
+          id(display_mode_controller).clear(
+              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
@@ -502,7 +517,9 @@ script:
       - script.stop: screensaver_idle_check
       - script.stop: home_screen_idle_check
       - script.stop: screen_schedule_wake_timeout_check
-      - globals.set: { id: backlight_manual_off, value: 'false' }
+      - lambda: |-
+          id(display_mode_controller).clear(
+              espcontrol::DisplayRequestSource::MANUAL_SLEEP);
       - globals.set: { id: manual_wake_ms, value: '0' }
       - script.execute: display_mode_reconcile
       - script.wait: display_mode_apply_transition
@@ -553,7 +570,8 @@ script:
           return (int) (timeout_s * 1000.0f);
       - lambda: |-
           if (!id(schedule_enabled).state || id(manual_wake_ms) == 0 ||
-              id(backlight_manual_off)) {
+              id(display_mode_controller).request_active(
+                  espcontrol::DisplayRequestSource::MANUAL_SLEEP)) {
             return;
           }
 
@@ -589,12 +607,20 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (id(display_asleep) && !id(cover_art_screensaver_active)) return;
+          if (!id(display_mode_controller).target_mode_is(
+                espcontrol::DisplayMode::ACTIVE) &&
+              !id(display_mode_controller).target_mode_is(
+                espcontrol::DisplayMode::COVER_ART)) return;
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-          if (id(screen_schedule_asleep)) {
-            if (id(schedule_mode_clock)) return;
-            id(backlight_force_display_off).execute();
-            return;
+          if (id(display_mode_controller).target_source_is(
+                espcontrol::DisplayRequestSource::SCREEN_SCHEDULE)) {
+            if (id(display_mode_controller).target_mode_is(
+                  espcontrol::DisplayMode::CLOCK)) return;
+            if (id(display_mode_controller).target_mode_is(
+                  espcontrol::DisplayMode::DISPLAY_OFF)) {
+              id(backlight_force_display_off).execute();
+              return;
+            }
           }
           if (screen_schedule_waiting_for_time(
                 id(screen_schedule_trigger).state,
@@ -690,8 +716,10 @@ interval:
       - if:
           condition:
             lambda: |-
-              return (id(screen_schedule_asleep) &&
-                      !id(schedule_mode_clock)) ||
+              return (id(display_mode_controller).target_source_is(
+                          espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                      id(display_mode_controller).target_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF)) ||
                      screen_schedule_waiting_for_time(
                        id(screen_schedule_trigger).state,
                        id(schedule_enabled).state,
