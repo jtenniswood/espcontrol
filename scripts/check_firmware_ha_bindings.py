@@ -811,6 +811,11 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         if "request_update_url(id(cover_art_runtime).effective_download_url)" not in download_body:
             errors.append(f"{rel}: download through the refresh-aware artwork URL")
         if (
+            "const bool replacing_active_download = id(cover_art_runtime).download_active();" not in download_body
+            or 'replacing_active_download ? "Re-queuing" : "Downloading"' not in download_body
+        ):
+            errors.append(f"{rel}: coalesce changed cover art URLs into the queued image request")
+        if (
             "needs_artwork_refresh" not in download_body
             or "id(cover_art_runtime).refresh_needed || !id(cover_art_runtime).image_available" not in download_body
         ):
@@ -4204,6 +4209,15 @@ def run_self_test() -> int:
         ),
     )
     expect_cover_art_refresh_errors(
+        "queued cover art changes are not coalesced",
+        "script:\n"
+        "  - id: cover_art_download\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          id(cover_art_runtime).effective_download_url = id(cover_art_downloaded_image)->request_update_url(id(cover_art_runtime).effective_download_url);\n",
+        ("coalesce changed cover art URLs into the queued image request",),
+    )
+    expect_cover_art_refresh_errors(
         "cover art touch delay ignores later touches",
         "script:\n"
         "  - id: cover_art_pause_after_touch\n"
@@ -4236,10 +4250,12 @@ def run_self_test() -> int:
         "          then:\n"
         "            - script.execute: cover_art_show_track_overlay\n"
         "      - lambda: |-\n"
+        "          const bool replacing_active_download = id(cover_art_runtime).download_active();\n"
         "          if (url.find(\"/api/media_player_proxy/\") != std::string::npos) {\n"
         "            url += url.find('?') == std::string::npos ? \"?time=\" : \"&time=\";\n"
         "          }\n"
         "          const bool needs_artwork_refresh = id(cover_art_runtime).refresh_needed || !id(cover_art_runtime).image_available;\n"
+        "          ESP_LOGI(\"cover_art\", \"%s\", replacing_active_download ? \"Re-queuing\" : \"Downloading\");\n"
         "          id(cover_art_runtime).effective_download_url = id(cover_art_downloaded_image)->request_update_url(id(cover_art_runtime).effective_download_url);\n"
         "  - id: cover_art_deferred_download\n"
         "    then:\n"

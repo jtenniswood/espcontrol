@@ -884,13 +884,10 @@ script:
                   - lambda: |-
                       ESP_LOGD("cover_art", "Keeping current artwork visible during replacement download");
             - lambda: |-
-                if (id(cover_art_runtime).download_active()) {
-                  if (id(cover_art_runtime).active_download_source_url == id(cover_art_runtime).source_url) {
-                    ESP_LOGD("cover_art", "Artwork download already active for current URL; skipping duplicate request");
-                  } else {
-                    ESP_LOGI("cover_art", "Artwork URL changed during active download; deferring follow-up request");
-                    id(cover_art_runtime).refresh_needed = true;
-                  }
+                const bool replacing_active_download = id(cover_art_runtime).download_active();
+                if (replacing_active_download &&
+                    id(cover_art_runtime).active_download_source_url == id(cover_art_runtime).source_url) {
+                  ESP_LOGD("cover_art", "Artwork download already active for current URL; skipping duplicate request");
                   return;
                 }
                 if (id(cover_art_runtime).source_url != id(cover_art_runtime).retry_url) {
@@ -913,7 +910,8 @@ script:
                     : id(cover_art_runtime).source_url;
                 id(cover_art_download_generation) = id(cover_art_transition_generation);
                 id(cover_art_runtime).begin_download(effective_url);
-                ESP_LOGI("cover_art", "Downloading artwork URL (%u chars, download %u chars, active=%s, image_available=%s, refresh_needed=%s)",
+                ESP_LOGI("cover_art", "%s artwork URL (%u chars, download %u chars, active=%s, image_available=%s, refresh_needed=%s)",
+                         replacing_active_download ? "Re-queuing" : "Downloading",
                          (unsigned) id(cover_art_runtime).source_url.size(),
                          (unsigned) id(cover_art_runtime).effective_download_url.size(),
                          id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ? "true" : "false",
