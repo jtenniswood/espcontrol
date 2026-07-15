@@ -291,7 +291,8 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
         if (
             "id: display_takeover_begin" not in backlight_text
             or "id: display_takeover_end" not in backlight_text
-            or "id: cover_art_screensaver_active" not in backlight_text
+            or "id: display_mode_controller" not in backlight_text
+            or "cover_art_screensaver_active" in backlight_text
         ):
             errors.append("common/addon/backlight.yaml: centralize typed display-takeover lifecycle")
 
@@ -1130,7 +1131,7 @@ def valid_sleep_takeover_files() -> dict[str, str]:
         "common/addon/backlight.yaml": (
             "globals:\n"
             "  - id: screensaver_sensor_sleep_pending\n"
-            "  - id: cover_art_screensaver_active\n"
+            "  - id: display_mode_controller\n"
             "script:\n"
             "  - id: display_takeover_begin\n"
             "    then:\n"

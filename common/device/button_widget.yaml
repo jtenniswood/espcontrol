@@ -70,7 +70,9 @@ button:
         else:
           - if:
               condition:
-                lambda: 'return !(id(display_asleep) || id(screen_schedule_asleep) || id(screensaver_display_off_active) || id(screensaver_dimmed_active) || id(cover_art_screensaver_active));'
+                lambda: |-
+                  return id(display_mode_controller).target_mode_is(
+                      espcontrol::DisplayMode::ACTIVE);
               then:
                 - lambda: 'handle_button_press(id(button_${num}_config).state, ${num}, id(button_${num}));'
   on_short_click:
@@ -86,7 +88,9 @@ button:
         else:
           - if:
               condition:
-                lambda: 'return id(display_asleep) || id(screen_schedule_asleep) || id(screensaver_display_off_active) || id(screensaver_dimmed_active) || id(cover_art_screensaver_active);'
+                lambda: |-
+                  return !id(display_mode_controller).target_mode_is(
+                      espcontrol::DisplayMode::ACTIVE);
               then:
                 - script.execute: screensaver_wake
               else:
@@ -104,7 +108,9 @@ button:
         else:
           - if:
               condition:
-                lambda: 'return id(display_asleep) || id(screen_schedule_asleep) || id(screensaver_display_off_active) || id(screensaver_dimmed_active) || id(cover_art_screensaver_active);'
+                lambda: |-
+                  return !id(display_mode_controller).target_mode_is(
+                      espcontrol::DisplayMode::ACTIVE);
               then:
                 - script.execute: screensaver_wake
               else:

@@ -173,7 +173,22 @@ class DisplayModeController {
   }
 
   uint32_t generation() const { return generation_; }
+  DisplayMode target_mode() const { return resolve().target_mode; }
+  bool target_mode_is(DisplayMode mode) const { return target_mode() == mode; }
   DisplayMode current_mode() const { return current_mode_; }
+  bool current_mode_is(DisplayMode mode) const { return current_mode_ == mode; }
+  bool target_source_is(DisplayRequestSource source) const {
+    return resolve().winning_source == source;
+  }
+  bool current_source_is(DisplayRequestSource source) const {
+    return current_source_ == source;
+  }
+  bool target_schedule_inactive() const {
+    const DisplayTransition transition = resolve();
+    return transition.target_mode != DisplayMode::ACTIVE &&
+        (transition.winning_source == DisplayRequestSource::BOOT_GUARD ||
+         transition.winning_source == DisplayRequestSource::SCREEN_SCHEDULE);
+  }
   const std::optional<DisplayRequestSource> &current_source() const {
     return current_source_;
   }
@@ -253,49 +268,6 @@ class DisplayModeController {
   std::optional<DisplayTakeoverKind> current_takeover_;
 };
 
-struct LegacyDisplayState {
-  bool display_asleep{false};
-  bool screen_schedule_asleep{false};
-  bool backlight_manual_off{false};
-  bool temporary_user_wake{false};
-  bool display_off_active{false};
-  bool dimmed_active{false};
-  bool clock_showing{false};
-  bool cover_art_active{false};
-  bool interactive_takeover{false};
-  bool critical_takeover{false};
-  bool setup_screen{false};
-};
-
-struct LegacyModeResult {
-  DisplayMode mode{DisplayMode::ACTIVE};
-  bool stable{true};
-};
-
-inline LegacyModeResult derive_legacy_display_mode(const LegacyDisplayState &state) {
-  if (state.critical_takeover || state.interactive_takeover) {
-    const bool clean = !state.display_asleep && !state.display_off_active &&
-                       !state.dimmed_active && !state.clock_showing &&
-                       !state.cover_art_active;
-    return {DisplayMode::ACTIVE, clean};
-  }
-
-  const unsigned visible_count = static_cast<unsigned>(state.display_off_active) +
-                                 static_cast<unsigned>(state.dimmed_active) +
-                                 static_cast<unsigned>(state.clock_showing) +
-                                 static_cast<unsigned>(state.cover_art_active);
-  const bool presentation_consistent = visible_count <= 1 &&
-      (visible_count == 0 || state.display_asleep);
-
-  if (state.display_off_active) return {DisplayMode::DISPLAY_OFF, presentation_consistent};
-  if (state.dimmed_active) return {DisplayMode::DIMMED, presentation_consistent};
-  if (state.clock_showing) return {DisplayMode::CLOCK, presentation_consistent};
-  if (state.cover_art_active) return {DisplayMode::COVER_ART, presentation_consistent};
-  if (state.display_asleep && state.setup_screen) return {DisplayMode::SETUP_DIMMED, true};
-  if (state.display_asleep) return {DisplayMode::SETUP_DIMMED, false};
-  return {DisplayMode::ACTIVE, presentation_consistent};
-}
-
 inline const char *display_mode_name(DisplayMode mode) {
   switch (mode) {
     case DisplayMode::ACTIVE: return "active";
@@ -307,114 +279,6 @@ inline const char *display_mode_name(DisplayMode mode) {
   }
   return "unknown";
 }
-
-struct DisplayShadowObservation {
-  DisplayTransition decision;
-  LegacyModeResult legacy;
-  bool decision_changed{false};
-  bool mismatch{false};
-  bool mismatch_changed{false};
-};
-
-class DisplayModeShadowObserver {
- public:
-  DisplayShadowObservation observe(const LegacyDisplayState &state,
-                                   bool presence_owned_sleep = false,
-                                   bool boot_guard_active = false,
-                                   bool schedule_active_ui = false) {
-    set_takeover(DisplayTakeoverKind::CRITICAL, state.critical_takeover,
-                 critical_takeover_active_);
-    set_takeover(DisplayTakeoverKind::INTERACTIVE, state.interactive_takeover,
-                 interactive_takeover_active_);
-
-    set_request(DisplayRequestSource::MANUAL_SLEEP, state.backlight_manual_off,
-                DisplayMode::DISPLAY_OFF);
-    set_request(DisplayRequestSource::USER_WAKE,
-                state.temporary_user_wake && !state.backlight_manual_off,
-                DisplayMode::ACTIVE);
-    set_request(DisplayRequestSource::BOOT_GUARD, boot_guard_active,
-                DisplayMode::DISPLAY_OFF);
-
-    const bool schedule_visible = state.screen_schedule_asleep &&
-                                  (state.display_off_active || state.clock_showing);
-    const DisplayMode schedule_mode = state.clock_showing ? DisplayMode::CLOCK
-                                                          : DisplayMode::DISPLAY_OFF;
-    set_request(DisplayRequestSource::SCREEN_SCHEDULE,
-                schedule_visible || schedule_active_ui,
-                schedule_active_ui ? DisplayMode::ACTIVE : schedule_mode);
-    set_request(DisplayRequestSource::MEDIA_PLAYBACK, state.cover_art_active,
-                DisplayMode::COVER_ART);
-
-    const bool automatic_sleep = state.display_asleep && !state.screen_schedule_asleep &&
-                                 !state.backlight_manual_off && !state.cover_art_active &&
-                                 (state.display_off_active || state.dimmed_active ||
-                                  state.clock_showing);
-    DisplayMode automatic_mode = DisplayMode::DISPLAY_OFF;
-    if (state.dimmed_active) automatic_mode = DisplayMode::DIMMED;
-    if (state.clock_showing) automatic_mode = DisplayMode::CLOCK;
-    set_request(DisplayRequestSource::PRESENCE_SENSOR,
-                automatic_sleep && presence_owned_sleep, automatic_mode);
-    set_request(DisplayRequestSource::IDLE_TIMER,
-                automatic_sleep && !presence_owned_sleep, automatic_mode);
-    set_request(DisplayRequestSource::SETUP_TIMEOUT,
-                state.display_asleep && state.setup_screen,
-                DisplayMode::SETUP_DIMMED);
-
-    DisplayShadowObservation observation;
-    observation.decision = controller_.resolve();
-    observation.legacy = derive_legacy_display_mode(state);
-    observation.mismatch = !observation.legacy.stable ||
-                           observation.decision.target_mode != observation.legacy.mode;
-    observation.decision_changed = !has_previous_decision_ ||
-        observation.decision.target_mode != previous_mode_ ||
-        observation.decision.winning_source != previous_source_ ||
-        observation.decision.winning_takeover != previous_takeover_;
-    observation.mismatch_changed = !has_previous_decision_ ||
-        observation.mismatch != previous_mismatch_ ||
-        observation.legacy.mode != previous_legacy_mode_ ||
-        observation.legacy.stable != previous_legacy_stable_;
-
-    previous_mode_ = observation.decision.target_mode;
-    previous_source_ = observation.decision.winning_source;
-    previous_takeover_ = observation.decision.winning_takeover;
-    previous_mismatch_ = observation.mismatch;
-    previous_legacy_mode_ = observation.legacy.mode;
-    previous_legacy_stable_ = observation.legacy.stable;
-    has_previous_decision_ = true;
-    controller_.complete_transition(observation.decision);
-    return observation;
-  }
-
- private:
-  void set_request(DisplayRequestSource source, bool active, DisplayMode mode) {
-    if (active) {
-      controller_.request(source, mode);
-    } else {
-      controller_.clear(source);
-    }
-  }
-
-  void set_takeover(DisplayTakeoverKind kind, bool active, bool &tracked) {
-    if (active == tracked) return;
-    if (active) {
-      controller_.begin_takeover(kind);
-    } else {
-      controller_.end_takeover(kind);
-    }
-    tracked = active;
-  }
-
-  DisplayModeController controller_;
-  bool critical_takeover_active_{false};
-  bool interactive_takeover_active_{false};
-  bool has_previous_decision_{false};
-  DisplayMode previous_mode_{DisplayMode::ACTIVE};
-  std::optional<DisplayRequestSource> previous_source_;
-  std::optional<DisplayTakeoverKind> previous_takeover_;
-  bool previous_mismatch_{false};
-  DisplayMode previous_legacy_mode_{DisplayMode::ACTIVE};
-  bool previous_legacy_stable_{true};
-};
 
 inline const char *display_request_source_name(
     const std::optional<DisplayRequestSource> &source) {

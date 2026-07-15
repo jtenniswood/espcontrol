@@ -429,12 +429,8 @@ esphome:
                 return clock_bar_should_show(
                     id(clock_bar_enabled).state,
                     id(main_page)->obj,
-                    id(display_asleep),
-                    id(screen_schedule_asleep),
-                    id(is_clock_showing),
-                    id(cover_art_screensaver_active),
-                    id(screensaver_display_off_active),
-                    id(screensaver_dimmed_active));
+                    id(display_mode_controller).current_mode(),
+                    id(display_mode_controller).target_schedule_inactive());
               },
               []() {
                 id(screensaver_presence_wake).execute();
