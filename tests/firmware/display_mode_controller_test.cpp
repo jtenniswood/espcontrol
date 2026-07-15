@@ -256,6 +256,44 @@ int main() {
   CHECK(rapid.current_source() == DisplayRequestSource::IDLE_TIMER);
   CHECK(!rapid.current_takeover().has_value());
 
+  // Requests continue to change while an interactive image modal is open.
+  // Automatic idle and media remain deferred, while schedule/manual sleep can
+  // still replace the modal; releasing the takeover resolves live state.
+  DisplayModeController takeover;
+  CHECK(takeover.begin_takeover(DisplayTakeoverKind::INTERACTIVE));
+  CHECK(takeover.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED));
+  CHECK(takeover.request(DisplayRequestSource::MEDIA_PLAYBACK, DisplayMode::COVER_ART));
+  CHECK(decision_is(takeover, DisplayMode::ACTIVE, std::nullopt,
+                    DisplayTakeoverKind::INTERACTIVE));
+  CHECK(takeover.request(DisplayRequestSource::SCREEN_SCHEDULE, DisplayMode::CLOCK));
+  CHECK(decision_is(takeover, DisplayMode::CLOCK,
+                    DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(takeover.clear(DisplayRequestSource::SCREEN_SCHEDULE));
+  CHECK(decision_is(takeover, DisplayMode::ACTIVE, std::nullopt,
+                    DisplayTakeoverKind::INTERACTIVE));
+  CHECK(takeover.clear(DisplayRequestSource::MEDIA_PLAYBACK));
+  CHECK(takeover.end_takeover(DisplayTakeoverKind::INTERACTIVE));
+  CHECK(decision_is(takeover, DisplayMode::DIMMED,
+                    DisplayRequestSource::IDLE_TIMER));
+
+  // Critical alarm takeovers remain visible while schedule, presence, media,
+  // and manual requests change, then release to the current winner.
+  CHECK(takeover.begin_takeover(DisplayTakeoverKind::CRITICAL));
+  CHECK(takeover.request(DisplayRequestSource::PRESENCE_SENSOR,
+                         DisplayMode::DISPLAY_OFF));
+  CHECK(takeover.request(DisplayRequestSource::MEDIA_PLAYBACK,
+                         DisplayMode::COVER_ART));
+  CHECK(takeover.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                         DisplayMode::CLOCK));
+  CHECK(takeover.request(DisplayRequestSource::MANUAL_SLEEP,
+                         DisplayMode::DISPLAY_OFF));
+  CHECK(decision_is(takeover, DisplayMode::ACTIVE, std::nullopt,
+                    DisplayTakeoverKind::CRITICAL));
+  CHECK(takeover.clear(DisplayRequestSource::MANUAL_SLEEP));
+  CHECK(takeover.end_takeover(DisplayTakeoverKind::CRITICAL));
+  CHECK(decision_is(takeover, DisplayMode::CLOCK,
+                    DisplayRequestSource::SCREEN_SCHEDULE));
+
   // Nested takeovers only finish when every owner has ended its takeover.
   CHECK(controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE));
   CHECK(controller.begin_takeover(DisplayTakeoverKind::INTERACTIVE));

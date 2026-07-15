@@ -48,8 +48,8 @@ struct GridConfig {
   int subpage_chevron_text_width_percent = 94;
   std::string temperature_unit;
   std::string timezone;
-  std::function<void()> suspend_display_takeover;
-  std::function<void()> resume_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
   esphome::artwork_image::ArtworkImage **image_card_images = nullptr;
   esphome::artwork_image::ArtworkImage **image_card_modal_images = nullptr;
   int image_card_image_count = 0;
@@ -238,8 +238,8 @@ inline void clear_media_cover_art(MediaNowPlayingCtx *ctx) {
     ctx->cover_art->entity_id.clear();
     ctx->cover_art->base_url.clear();
     ctx->cover_art->base_url_provider = nullptr;
-    ctx->cover_art->suspend_display_takeover = nullptr;
-    ctx->cover_art->resume_display_takeover = nullptr;
+    ctx->cover_art->begin_display_takeover = nullptr;
+    ctx->cover_art->end_display_takeover = nullptr;
     ctx->cover_art->diagnostics_enabled = false;
     ctx->cover_art->media_artwork = false;
     ctx->cover_art->media_overlay = nullptr;
@@ -300,8 +300,8 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->entity_id = p.entity;
   art->base_url = cfg.home_assistant_base_url ? cfg.home_assistant_base_url() : "";
   art->base_url_provider = cfg.home_assistant_base_url;
-  art->suspend_display_takeover = cfg.suspend_display_takeover;
-  art->resume_display_takeover = cfg.resume_display_takeover;
+  art->begin_display_takeover = cfg.begin_display_takeover;
+  art->end_display_takeover = cfg.end_display_takeover;
   art->refresh_interval_ms = 0;
   art->timer_only = false;
   art->modal_fit = false;
@@ -1445,8 +1445,8 @@ inline void grid_phase2(
           lv_obj_get_style_text_color(s.text_lbl, LV_PART_MAIN),
           display_main_width_percent(display),
           false,
-          cfg.suspend_display_takeover,
-          cfg.resume_display_takeover);
+          cfg.begin_display_takeover,
+          cfg.end_display_takeover);
         grid_track_alarm_card_runtime(s.btn, ctx);
         lv_obj_set_user_data(s.btn, ctx);
         subscribe_alarm_state(ctx);
@@ -1476,8 +1476,8 @@ inline void grid_phase2(
         alarm_action_card->tertiary_color = sensor_val;
         alarm_action_card->width_compensation_percent = display_main_width_percent(display);
         alarm_action_card->grid_cols = COLS;
-        alarm_action_card->suspend_display_takeover = cfg.suspend_display_takeover;
-        alarm_action_card->resume_display_takeover = cfg.resume_display_takeover;
+        alarm_action_card->begin_display_takeover = cfg.begin_display_takeover;
+        alarm_action_card->end_display_takeover = cfg.end_display_takeover;
         alarm_set_card_state_colors(alarm_action_card, alarm_action_card->on_color);
 
         AlarmActionCtx *action_ctx = grid_track_alarm_action_runtime(s.btn, new AlarmActionCtx());
@@ -1674,8 +1674,7 @@ inline void grid_phase2(
               : lv_obj_get_style_text_font(s.text_lbl, LV_PART_MAIN),
             display_icon_font(display),
             display_volume_width_percent(display),
-            s.sensor_lbl, s.unit_lbl,
-            cfg.suspend_display_takeover, cfg.resume_display_takeover);
+            s.sensor_lbl, s.unit_lbl);
           grid_track_runtime_allocation(s.btn, ctx);
           subscribe_media_volume_state(ctx);
           if (p.label.empty()) subscribe_friendly_name(s.text_lbl, p.entity);
@@ -2177,8 +2176,8 @@ inline void grid_phase2(
             lv_obj_get_style_text_color(sub_slot.text_lbl, LV_PART_MAIN),
             display_main_width_percent(display),
             false,
-            cfg.suspend_display_takeover,
-            cfg.resume_display_takeover);
+            cfg.begin_display_takeover,
+            cfg.end_display_takeover);
           grid_delete_alarm_card_with_owner(sb_btn, ctx);
           ctx->grid_page = sub_scr;
           lv_obj_set_user_data(sb_btn, ctx);
@@ -2215,8 +2214,8 @@ inline void grid_phase2(
           alarm_action_card->tertiary_color = sensor_val;
           alarm_action_card->width_compensation_percent = display_main_width_percent(display);
           alarm_action_card->grid_cols = COLS;
-          alarm_action_card->suspend_display_takeover = cfg.suspend_display_takeover;
-          alarm_action_card->resume_display_takeover = cfg.resume_display_takeover;
+          alarm_action_card->begin_display_takeover = cfg.begin_display_takeover;
+          alarm_action_card->end_display_takeover = cfg.end_display_takeover;
           AlarmActionCtx *action_ctx = grid_delete_alarm_action_with_owner(sb_btn, new AlarmActionCtx());
           action_ctx->card = alarm_action_card;
           action_ctx->mode = alarm_action_valid(sb_cfg.sensor) ? sb_cfg.sensor : "away";
@@ -2476,8 +2475,7 @@ inline void grid_phase2(
                 : lv_obj_get_style_text_font(sub_slot.text_lbl, LV_PART_MAIN),
               display_icon_font(display),
               display_volume_width_percent(display),
-              sub_slot.sensor_lbl, sub_slot.unit_lbl,
-              cfg.suspend_display_takeover, cfg.resume_display_takeover);
+              sub_slot.sensor_lbl, sub_slot.unit_lbl);
             grid_delete_with_owner(sb_btn, ctx);
             subscribe_media_volume_state(ctx);
             if (sb_cfg.label.empty()) subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);

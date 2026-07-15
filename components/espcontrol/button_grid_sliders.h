@@ -107,8 +107,6 @@ struct MediaVolumeCtx {
   const lv_font_t *unit_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *icon_font = nullptr;
-  std::function<void()> suspend_display_takeover;
-  std::function<void()> resume_display_takeover;
   std::function<void(int)> apply_percent;
   std::function<bool()> mic_muted;
   std::function<void(bool)> set_mic_muted;

@@ -82,6 +82,7 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
     navigation_path = firmware_dir / "button_grid_navigation.h"
     grid_path = firmware_dir / "button_grid_grid.h"
     image_path = firmware_dir / "button_grid_image.h"
+    alarm_path = firmware_dir / "button_grid_alarm.h"
     backlight_path = root / "common" / "addon" / "backlight.yaml"
     schedule_path = root / "common" / "addon" / "backlight_schedule.yaml"
     generator_path = root / "scripts" / "generate_device_slots.py"
@@ -153,14 +154,25 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
                 "components/espcontrol/button_grid_image.h: name image modal guards after display takeover, not home idle"
             )
         if (
-            "suspend_display_takeover" not in text
-            or "resume_display_takeover" not in text
-            or "ctx->suspend_display_takeover" not in text
-            or "ctx->resume_display_takeover" not in text
+            "begin_display_takeover" not in text
+            or "end_display_takeover" not in text
+            or "DisplayTakeoverKind::INTERACTIVE" not in text
         ):
             errors.append(
-                "components/espcontrol/button_grid_image.h: keep image modal display-takeover suspend/resume hooks"
+                "components/espcontrol/button_grid_image.h: use typed interactive takeover hooks"
             )
+
+    if not alarm_path.exists():
+        errors.append("components/espcontrol/button_grid_alarm.h: wire critical display takeovers")
+    else:
+        text = alarm_path.read_text(encoding="utf-8")
+        if (
+            "begin_display_takeover" not in text
+            or "end_display_takeover" not in text
+            or "DisplayTakeoverKind::CRITICAL" not in text
+            or "critical_takeover_active" not in text
+        ):
+            errors.append("components/espcontrol/button_grid_alarm.h: use typed critical takeover hooks")
 
     if not grid_path.exists():
         errors.append("components/espcontrol/button_grid_grid.h: register the display-takeover modal hook")
@@ -178,43 +190,35 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
             errors.append(
                 "common/addon/backlight.yaml: keep display-takeover suspension separate from home-return idle"
             )
-        if "display_takeover_suspended" not in text:
-            errors.append("common/addon/backlight.yaml: track display-takeover suspension explicitly")
+        if "display_takeover_suspended" in text:
+            errors.append("common/addon/backlight.yaml: remove the compatibility takeover boolean")
         if "screensaver_sensor_sleep_pending" not in text:
             errors.append("common/addon/backlight.yaml: preserve pending sensor-mode sleep while image modals are active")
-        resume_restore_body = yaml_script_body(text, "display_takeover_resume_restore")
-        if resume_restore_body is None:
-            errors.append("common/addon/backlight.yaml: restore deferred display takeover targets after modal close")
-        else:
-            if (
-                "id(screensaver_sensor_sleep_pending)" not in resume_restore_body
-                or "script.execute: screensaver_sleep_sensor" not in resume_restore_body
-                or "!id(presence_detected)" not in resume_restore_body
-            ):
-                errors.append(
-                    "common/addon/backlight.yaml: re-check pending sensor-mode sleep when display takeover resumes"
-                )
-            if (
-                "id(cover_art_media_playing)" not in resume_restore_body
-                or "show_cover_art_view" not in resume_restore_body
-            ):
-                errors.append("common/addon/backlight.yaml: restore cover art when display takeover resumes")
-            if (
-                "home_screen_idle_restore" not in resume_restore_body
-                or "screensaver_idle_check" not in resume_restore_body
-            ):
-                errors.append(
-                    "common/addon/backlight.yaml: restore home and screensaver timers when display takeover resumes"
-                )
+        begin_body = yaml_script_body(text, "display_takeover_begin")
+        end_body = yaml_script_body(text, "display_takeover_end")
+        if (
+            begin_body is None
+            or "begin_takeover" not in begin_body
+            or "script.execute: display_mode_reconcile" not in begin_body
+            or "script.stop:" in begin_body
+        ):
+            errors.append("common/addon/backlight.yaml: begin typed takeovers through the controller")
+        if (
+            end_body is None
+            or "end_takeover" not in end_body
+            or "script.execute: display_mode_reconcile" not in end_body
+            or "display_takeover_resume_restore" in text
+        ):
+            errors.append("common/addon/backlight.yaml: resolve current requests when a takeover ends")
         sleep_timer_body = yaml_script_body(text, "screensaver_sleep_timer")
         if sleep_timer_body is None:
             errors.append("common/addon/backlight.yaml: keep the screensaver sleep timer script")
         elif (
-            "display_takeover_suspended" not in sleep_timer_body
-            or "Skipping automatic sleep while image modal is active" not in sleep_timer_body
+            "DisplayTakeoverKind::INTERACTIVE" not in sleep_timer_body
+            or "display_mode_request_automatic" not in sleep_timer_body
         ):
             errors.append(
-                "common/addon/backlight.yaml: block automatic screensaver sleep while image modals are active"
+                "common/addon/backlight.yaml: record automatic requests beneath interactive takeovers"
             )
         if home_idle_body is None:
             errors.append("common/addon/backlight.yaml: keep the home-screen idle return script")
@@ -256,19 +260,19 @@ def firmware_modal_sleep_takeover_errors(root: Path) -> list[str]:
                 "scripts/generate_device_slots.py: image modal display guard must not stop the home-return timer"
             )
         if (
-            "cfg.suspend_display_takeover" not in text
-            or "cfg.resume_display_takeover" not in text
-            or "id(display_takeover_suspend).execute();" not in text
-            or "id(display_takeover_resume).execute();" not in text
+            "cfg.begin_display_takeover" not in text
+            or "cfg.end_display_takeover" not in text
+            or "id(display_takeover_begin).execute(static_cast<int>(kind));" not in text
+            or "id(display_takeover_end).execute(static_cast<int>(kind));" not in text
         ):
-            errors.append("scripts/generate_device_slots.py: generate explicit display-takeover guard hooks")
+            errors.append("scripts/generate_device_slots.py: generate typed display-takeover hooks")
         backlight_text = backlight_path.read_text(encoding="utf-8") if backlight_path.exists() else ""
         if (
-            "id: display_takeover_suspend" not in backlight_text
-            or "id: display_takeover_resume" not in backlight_text
+            "id: display_takeover_begin" not in backlight_text
+            or "id: display_takeover_end" not in backlight_text
             or "id: cover_art_screensaver_active" not in backlight_text
         ):
-            errors.append("common/addon/backlight.yaml: centralize display-takeover lifecycle cleanup")
+            errors.append("common/addon/backlight.yaml: centralize typed display-takeover lifecycle")
 
     if not schedule_path.exists():
         errors.append("common/addon/backlight_schedule.yaml: close modals before scheduled takeover")
@@ -1055,45 +1059,35 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "set_backlight_display_takeover_callback(navigation_close_modals_for_display_takeover);\n"
         ),
         "components/espcontrol/button_grid_image.h": (
-            "std::function<void()> suspend_display_takeover;\n"
-            "std::function<void()> resume_display_takeover;\n"
-            "if (ctx->suspend_display_takeover) ctx->suspend_display_takeover();\n"
-            "if (ctx && ctx->resume_display_takeover) ctx->resume_display_takeover();\n"
+            "std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;\n"
+            "std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;\n"
+            "ctx->begin_display_takeover(espcontrol::DisplayTakeoverKind::INTERACTIVE);\n"
+            "ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::INTERACTIVE);\n"
+        ),
+        "components/espcontrol/button_grid_alarm.h": (
+            "std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;\n"
+            "std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;\n"
+            "bool critical_takeover_active = false;\n"
+            "ctx->begin_display_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);\n"
+            "ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);\n"
         ),
         "common/addon/backlight.yaml": (
             "globals:\n"
-            "  - id: display_takeover_suspended\n"
             "  - id: screensaver_sensor_sleep_pending\n"
+            "  - id: cover_art_screensaver_active\n"
             "script:\n"
-            "  - id: display_takeover_suspend\n"
+            "  - id: display_takeover_begin\n"
             "    then:\n"
-            "      - globals.set: { id: cover_art_screensaver_active, value: 'false' }\n"
-            "  - id: display_takeover_resume\n"
+            "      - lambda: 'id(display_mode_controller).begin_takeover(static_cast<espcontrol::DisplayTakeoverKind>(takeover_kind));'\n"
+            "      - script.execute: display_mode_reconcile\n"
+            "  - id: display_takeover_end\n"
             "    then:\n"
-            "      - script.execute: display_takeover_resume_restore\n"
-            "  - id: display_takeover_resume_restore\n"
-            "    then:\n"
-            "      - if:\n"
-            "          condition:\n"
-            "            lambda: |-\n"
-            "              return id(screensaver_sensor_sleep_pending) && !id(presence_detected);\n"
-            "          then:\n"
-            "            - script.execute: screensaver_sleep_sensor\n"
-            "      - if:\n"
-            "          condition:\n"
-            "            lambda: 'return id(cover_art_media_playing);'\n"
-            "          then:\n"
-            "            - script.execute: show_cover_art_view\n"
-            "          else:\n"
-            "            - script.execute: home_screen_idle_restore\n"
-            "            - script.execute: screensaver_idle_check\n"
+            "      - lambda: 'id(display_mode_controller).end_takeover(static_cast<espcontrol::DisplayTakeoverKind>(takeover_kind));'\n"
+            "      - script.execute: display_mode_reconcile\n"
             "  - id: screensaver_sleep_timer\n"
             "    then:\n"
-            "      - if:\n"
-            "          condition:\n"
-            "            lambda: 'return !id(display_takeover_suspended);'\n"
-            "          else:\n"
-            "            - lambda: 'Skipping automatic sleep while image modal is active'\n"
+            "      - lambda: 'id(display_mode_controller).takeover_active(espcontrol::DisplayTakeoverKind::INTERACTIVE);'\n"
+            "      - script.execute: display_mode_request_automatic\n"
             "  - id: home_screen_idle_check\n"
             "    then:\n"
             "      - lambda: |-\n"
@@ -1106,11 +1100,11 @@ def valid_sleep_takeover_files() -> dict[str, str]:
             "backlight_close_modals_for_display_takeover();\n"
         ),
         "scripts/generate_device_slots.py": (
-            "cfg.suspend_display_takeover = []() {\n"
-            "  id(display_takeover_suspend).execute();\n"
+            "cfg.begin_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {\n"
+            "  id(display_takeover_begin).execute(static_cast<int>(kind));\n"
             "};\n"
-            "cfg.resume_display_takeover = []() {\n"
-            "  id(display_takeover_resume).execute();\n"
+            "cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {\n"
+            "  id(display_takeover_end).execute(static_cast<int>(kind));\n"
             "};\n"
         ),
     }
@@ -1378,27 +1372,12 @@ def run_self_test() -> int:
         ("progress drawing gated",),
     )
     home_idle_gated = valid_sleep_takeover_files()
-    home_idle_gated["common/addon/backlight.yaml"] = (
-        "globals:\n"
-        "  - id: display_takeover_suspended\n"
-        "  - id: screensaver_sensor_sleep_pending\n"
-        "script:\n"
-        "  - id: screensaver_sleep_timer\n"
-        "    then:\n"
-        "      - if:\n"
-        "          condition:\n"
-        "            lambda: 'return !id(display_takeover_suspended);'\n"
-        "          else:\n"
-        "            - lambda: 'Skipping automatic sleep while image modal is active'\n"
-        "  - id: home_screen_idle_check\n"
-        "    then:\n"
-        "      - if:\n"
-        "          condition:\n"
-        "            lambda: 'return !id(display_takeover_suspended);'\n"
-        "          then:\n"
-        "            - lambda: 'navigation_return_home(id(main_page)->obj);'\n"
-        "Skipping automatic display-off while image modal is active\n"
-        "backlight_close_modals_for_display_takeover();\n"
+    home_idle_gated["common/addon/backlight.yaml"] = home_idle_gated[
+        "common/addon/backlight.yaml"
+    ].replace(
+        "          navigation_return_home(id(main_page)->obj);\n",
+        "          if (id(display_takeover_suspended)) return;\n"
+        "          navigation_return_home(id(main_page)->obj);\n",
     )
     expect_sleep_takeover_errors(
         "home return gated by display takeover",
@@ -1407,13 +1386,12 @@ def run_self_test() -> int:
     )
     image_guard_stops_home_idle = valid_sleep_takeover_files()
     image_guard_stops_home_idle["scripts/generate_device_slots.py"] = (
-        "cfg.suspend_display_takeover = []() {\n"
-        "  id(display_takeover_suspended) = true;\n"
+        "cfg.begin_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {\n"
+        "  id(display_takeover_begin).execute(static_cast<int>(kind));\n"
         "  id(home_screen_idle_check).stop();\n"
         "};\n"
-        "cfg.resume_display_takeover = []() {\n"
-        "  id(display_takeover_suspended) = false;\n"
-        "  id(display_takeover_resume_restore).execute();\n"
+        "cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {\n"
+        "  id(display_takeover_end).execute(static_cast<int>(kind));\n"
         "};\n"
     )
     expect_sleep_takeover_errors(
@@ -1421,16 +1399,18 @@ def run_self_test() -> int:
         image_guard_stops_home_idle,
         ("must not stop the home-return timer",),
     )
-    missing_sensor_resume = valid_sleep_takeover_files()
-    missing_sensor_resume["common/addon/backlight.yaml"] = (
-        missing_sensor_resume["common/addon/backlight.yaml"]
-        .replace("              return id(screensaver_sensor_sleep_pending) && !id(presence_detected);\n", "              return false;\n")
-        .replace("            - script.execute: screensaver_sleep_sensor\n", "")
+    missing_takeover_reconcile = valid_sleep_takeover_files()
+    missing_takeover_reconcile["common/addon/backlight.yaml"] = (
+        missing_takeover_reconcile["common/addon/backlight.yaml"].replace(
+            "      - script.execute: display_mode_reconcile\n"
+            "  - id: screensaver_sleep_timer\n",
+            "  - id: screensaver_sleep_timer\n",
+        )
     )
     expect_sleep_takeover_errors(
-        "image modal close misses pending sensor sleep",
-        missing_sensor_resume,
-        ("re-check pending sensor-mode sleep",),
+        "takeover end misses request resolution",
+        missing_takeover_reconcile,
+        ("resolve current requests when a takeover ends",),
     )
     print("Firmware modal allocation self-tests passed.")
     return 0

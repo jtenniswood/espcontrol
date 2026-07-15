@@ -44,8 +44,8 @@ struct ImageCardCtx {
   std::string url;
   std::string modal_url;
   std::string access_token;
-  std::function<void()> suspend_display_takeover;
-  std::function<void()> resume_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
   uint32_t refresh_interval_ms = 0;
   uint32_t next_refresh_ms = 0;
   uint32_t retry_deadline_ms = 0;
@@ -667,8 +667,8 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].source_url.clear();
     contexts[i].url.clear();
     contexts[i].access_token.clear();
-    contexts[i].suspend_display_takeover = nullptr;
-    contexts[i].resume_display_takeover = nullptr;
+    contexts[i].begin_display_takeover = nullptr;
+    contexts[i].end_display_takeover = nullptr;
     contexts[i].refresh_interval_ms = 0;
     contexts[i].next_refresh_ms = 0;
     contexts[i].retry_deadline_ms = 0;
@@ -1625,7 +1625,9 @@ inline void image_card_abort_modal_open(ImageCardCtx *ctx, const char *reason) {
   image_card_clear_widget_source(ui.image_widget);
   control_modal_delete_overlay(ControlModalKind::IMAGE_CARD, ui.overlay);
   ui = ImageCardModalUi();
-  if (ctx && ctx->resume_display_takeover) ctx->resume_display_takeover();
+  if (ctx && ctx->end_display_takeover) {
+    ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::INTERACTIVE);
+  }
   image_card_schedule_modal_cleanup(ctx);
 }
 
@@ -1638,7 +1640,9 @@ inline void image_card_hide_modal() {
   image_card_clear_widget_source(ui.image_widget);
   control_modal_delete_overlay(ControlModalKind::IMAGE_CARD, ui.overlay);
   ui = ImageCardModalUi();
-  if (ctx && ctx->resume_display_takeover) ctx->resume_display_takeover();
+  if (ctx && ctx->end_display_takeover) {
+    ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::INTERACTIVE);
+  }
   image_card_schedule_modal_cleanup(ctx);
 }
 
@@ -1675,8 +1679,10 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
-  if (ctx->suspend_display_takeover) ctx->suspend_display_takeover();
-  image_card_log_diagnostics(ctx, "modal-display-takeover-suspended");
+  if (ctx->begin_display_takeover) {
+    ctx->begin_display_takeover(espcontrol::DisplayTakeoverKind::INTERACTIVE);
+  }
+  image_card_log_diagnostics(ctx, "modal-display-takeover-began");
   image_card_style_modal_back_button(ui.back_btn, shell.layout);
 
   lv_obj_set_style_bg_color(ui.panel, lv_color_hex(DARK_OVERLAY), LV_PART_MAIN);
@@ -2010,8 +2016,8 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
   ctx->entity_id = p.entity;
   ctx->base_url = cfg.home_assistant_base_url ? cfg.home_assistant_base_url() : "";
   ctx->base_url_provider = cfg.home_assistant_base_url;
-  ctx->suspend_display_takeover = cfg.suspend_display_takeover;
-  ctx->resume_display_takeover = cfg.resume_display_takeover;
+  ctx->begin_display_takeover = cfg.begin_display_takeover;
+  ctx->end_display_takeover = cfg.end_display_takeover;
   ctx->refresh_interval_ms = image_card_refresh_interval_ms(p);
   ctx->timer_only = image_card_timer_only_refresh(p);
   ctx->modal_fit = image_card_modal_fit_enabled(p);

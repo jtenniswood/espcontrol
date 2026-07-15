@@ -25,8 +25,8 @@ struct AlarmCardCtx {
   lv_obj_t *page = nullptr;
   TransientStatusLabel *status_label = nullptr;
   lv_timer_t *pending_action_timer = nullptr;
-  std::function<void()> suspend_display_takeover;
-  std::function<void()> resume_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
   uint32_t arm_delay_started_ms = 0;
   int arm_delay_seconds = -1;
   int arm_delay_total_seconds = -1;
@@ -44,7 +44,7 @@ struct AlarmCardCtx {
   bool show_status_icon = false;
   bool show_status_label = false;
   bool pending_action_had_code = false;
-  bool display_takeover_suspended = false;
+  bool critical_takeover_active = false;
   bool arming_modal_auto_opened = false;
 };
 
@@ -483,9 +483,11 @@ inline bool alarm_display_takeover_active() {
 inline void alarm_release_arming_takeover(AlarmCardCtx *ctx) {
   if (!ctx) return;
   if (alarm_arming_takeover_ctx() == ctx) alarm_arming_takeover_ctx() = nullptr;
-  if (ctx->display_takeover_suspended) {
-    ctx->display_takeover_suspended = false;
-    if (ctx->resume_display_takeover) ctx->resume_display_takeover();
+  if (ctx->critical_takeover_active) {
+    ctx->critical_takeover_active = false;
+    if (ctx->end_display_takeover) {
+      ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);
+    }
   }
   AlarmControlModalUi &ui = alarm_control_modal_ui();
   if (ctx->arming_modal_auto_opened && ui.active == ctx) {
@@ -514,9 +516,11 @@ inline void alarm_refresh_arming_takeover(AlarmCardCtx *ctx) {
     lv_obj_move_foreground(ui.overlay);
   }
 
-  if (!ctx->display_takeover_suspended) {
-    ctx->display_takeover_suspended = true;
-    if (ctx->suspend_display_takeover) ctx->suspend_display_takeover();
+  if (!ctx->critical_takeover_active) {
+    ctx->critical_takeover_active = true;
+    if (ctx->begin_display_takeover) {
+      ctx->begin_display_takeover(espcontrol::DisplayTakeoverKind::CRITICAL);
+    }
   }
 }
 
@@ -1458,8 +1462,8 @@ inline AlarmCardCtx *create_alarm_card_context(
     lv_color_t text_color,
     int width_compensation_percent,
     bool build_default_page = false,
-    std::function<void()> suspend_display_takeover = nullptr,
-    std::function<void()> resume_display_takeover = nullptr) {
+    std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover = nullptr,
+    std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover = nullptr) {
   AlarmCardCtx *ctx = new AlarmCardCtx();
   ctx->entity_id = p.entity;
   ctx->label = p.label.empty() ? espcontrol_i18n(std::string("Alarm")) : p.label;
@@ -1478,8 +1482,8 @@ inline AlarmCardCtx *create_alarm_card_context(
   ctx->tertiary_color = tertiary_color;
   ctx->width_compensation_percent = width_compensation_percent;
   ctx->grid_cols = cols > 0 ? cols : 1;
-  ctx->suspend_display_takeover = suspend_display_takeover;
-  ctx->resume_display_takeover = resume_display_takeover;
+  ctx->begin_display_takeover = begin_display_takeover;
+  ctx->end_display_takeover = end_display_takeover;
   ctx->status_label = create_transient_status_label(
     slot.text_lbl, ctx->show_status_label ? "--" : ctx->label);
   alarm_set_card_state_colors(ctx, ctx->on_color);

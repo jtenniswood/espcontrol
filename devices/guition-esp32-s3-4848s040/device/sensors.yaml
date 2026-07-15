@@ -56,11 +56,11 @@ script:
           cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
           cfg.temperature_unit = id(temperature_unit_select).current_option();
           cfg.timezone = id(timezone_select).current_option();
-          cfg.suspend_display_takeover = []() {
-            id(display_takeover_suspend).execute();
+          cfg.begin_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+            id(display_takeover_begin).execute(static_cast<int>(kind));
           };
-          cfg.resume_display_takeover = []() {
-            id(display_takeover_resume).execute();
+          cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+            id(display_takeover_end).execute(static_cast<int>(kind));
           };
           cfg.home_assistant_base_url = []() {
             std::string base = id(cover_art_home_assistant_base_url);
@@ -134,11 +134,11 @@ esphome:
             cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
-            cfg.suspend_display_takeover = []() {
-              id(display_takeover_suspend).execute();
+            cfg.begin_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+              id(display_takeover_begin).execute(static_cast<int>(kind));
             };
-            cfg.resume_display_takeover = []() {
-              id(display_takeover_resume).execute();
+            cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+              id(display_takeover_end).execute(static_cast<int>(kind));
             };
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);
@@ -237,11 +237,11 @@ esphome:
             cfg.climate_option_value_font = id(font_text_body)->get_lv_font();
             cfg.temperature_unit = id(temperature_unit_select).current_option();
             cfg.timezone = id(timezone_select).current_option();
-            cfg.suspend_display_takeover = []() {
-              id(display_takeover_suspend).execute();
+            cfg.begin_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+              id(display_takeover_begin).execute(static_cast<int>(kind));
             };
-            cfg.resume_display_takeover = []() {
-              id(display_takeover_resume).execute();
+            cfg.end_display_takeover = [](espcontrol::DisplayTakeoverKind kind) {
+              id(display_takeover_end).execute(static_cast<int>(kind));
             };
             cfg.home_assistant_base_url = []() {
               std::string base = id(cover_art_home_assistant_base_url);

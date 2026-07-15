@@ -256,9 +256,13 @@ light:
       then:
         - if:
             condition:
-              lambda: 'return id(display_takeover_suspended);'
+              lambda: |-
+                return id(display_mode_controller).takeover_active(
+                           espcontrol::DisplayTakeoverKind::INTERACTIVE) ||
+                       id(display_mode_controller).takeover_active(
+                           espcontrol::DisplayTakeoverKind::CRITICAL);
             then:
-              - lambda: 'ESP_LOGD("backlight", "Restoring backlight after OFF event while image modal is active");'
+              - lambda: 'ESP_LOGD("backlight", "Restoring backlight after OFF event during display takeover");'
               - delay: 10ms
               - script.execute: backlight_apply_brightness
             else:
