@@ -1584,7 +1584,9 @@ script:
     then:
       - delay: !lambda |-
           float seconds = id(cover_art_delay).state;
-          if (std::isnan(seconds) || seconds < 0.0f) seconds = 10.0f;
+          if (std::isnan(seconds)) seconds = 10.0f;
+          if (seconds < 3.0f) seconds = 3.0f;
+          if (seconds > 300.0f) seconds = 300.0f;
           uint32_t delay_ms = (uint32_t)(seconds * 1000.0f);
           int32_t pause_remaining_ms = id(cover_art_manual_pause_until_ms) != 0
               ? (int32_t)(id(cover_art_manual_pause_until_ms) - millis())

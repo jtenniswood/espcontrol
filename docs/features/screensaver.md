@@ -45,6 +45,8 @@ To use this, enter the name of your motion or presence sensor from Home Assistan
 
 Below the presence entity, use **Then** to choose whether the panel dims the screen, shows the clock, or turns the display off when nobody is detected. This uses the same options as Timer mode.
 
+Presence wakes the panel from those dimmed, clock, or display-off states. When the normal cards or media cover art are already visible, presence does not change the page or restart the cover-art timer.
+
 Switching back to Timer keeps the sensor name saved, so you can return to Sensor mode later without typing it in again.
 
 ::: tip

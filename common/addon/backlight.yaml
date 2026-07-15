@@ -636,24 +636,14 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    if (!id(display_mode_controller).target_mode_is(
-                          espcontrol::DisplayMode::COVER_ART)) return false;
-                    if (!id(schedule_enabled).state) return true;
-                    auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                    return screen_schedule_normal_active(
-                        id(screen_schedule_trigger).state,
-                        id(schedule_enabled).state,
-                        id(presence_detected),
-                        now.is_valid(),
-                        now.is_valid() ? now.hour : 0,
-                        (int) id(schedule_on_hour).state,
-                        (int) id(schedule_off_hour).state);
+                    return espcontrol::presence_can_wake_display(
+                        id(display_mode_controller).resolve());
                 then:
                   - script.execute: screensaver_wake
                 else:
+                  # Presence must clear a sleep request recorded while the room
+                  # was empty, even when cover art or normal cards remain visible.
                   - script.execute: display_mode_clear_automatic
-                  - script.execute: screensaver_idle_check
-                  - script.execute: home_screen_idle_check
 
   - id: screensaver_presence_sleep
     mode: restart
@@ -1055,18 +1045,15 @@ script:
               const bool cover_art_touch_return_pending =
                 id(cover_art_manual_pause_until_ms) != 0 &&
                 (int32_t)(id(cover_art_manual_pause_until_ms) - millis()) > 0;
-              const bool cover_art_immediate_return =
-                id(cover_art_manual_pause_until_ms) != 0 &&
-                !std::isnan(id(cover_art_delay).state) && id(cover_art_delay).state <= 0.0f;
               float show_after_seconds = id(cover_art_delay).state;
-              if (std::isnan(show_after_seconds) || show_after_seconds < 0.0f) show_after_seconds = 10.0f;
+              if (std::isnan(show_after_seconds)) show_after_seconds = 10.0f;
+              if (show_after_seconds < 3.0f) show_after_seconds = 3.0f;
               const bool cover_art_disabled_mode_delay =
                 id(screensaver_mode).state != "timer" &&
                 id(screensaver_mode).state != "sensor" &&
                 show_after_seconds > 0.0f;
               return (id(media_player_sleep_prevention_enabled).state ||
                       cover_art_touch_return_pending ||
-                      cover_art_immediate_return ||
                       cover_art_disabled_mode_delay) &&
                      id(cover_art_media_playing) &&
                      id(cover_art_screensaver_enabled).state &&

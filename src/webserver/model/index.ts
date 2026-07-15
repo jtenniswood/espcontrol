@@ -91,6 +91,7 @@ export {
   normalizeBackupPanelSettings,
   normalizeBackupScreenSettings,
   normalizeClockBrightness,
+  normalizeCoverArtDelay,
   normalizeHexColor,
   normalizeHour,
   normalizeHomeAssistantArtworkPort,

@@ -746,6 +746,7 @@ declare global {
   var normalizeMediaNumberDisplayMode: any;
   var normalizeMediaOptions: any;
   var normalizeCardSizeForConfig: any;
+  var normalizeCoverArtDelay: any;
   var normalizeMediaVolumeMax: any;
   var normalizeNetworkTransport: any;
   var normalizeNtpServer: any;
