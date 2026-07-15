@@ -1277,6 +1277,10 @@ script:
             espcontrol::cover_art::progress_available(duration);
           if (!progress_available) {
             id(cover_art_media_duration) = 0.0f;
+            id(cover_art_media_position) = 0.0f;
+            id(cover_art_position_anchor) = 0.0f;
+            id(cover_art_position_anchor_epoch) = 0;
+            id(cover_art_last_position_timestamp) = 0;
             id(cover_art_last_progress_percent) = -1;
             lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
             lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
@@ -2225,7 +2229,17 @@ script:
                   cover_entity != id(cover_art_media_player_entity).state) return;
               std::string value = string_ref_limited(duration, HA_SHORT_STATE_MAX_LEN);
               float next_duration = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
-              if (!espcontrol::cover_art::progress_available(next_duration)) next_duration = 0.0f;
+              const bool current_progress_available =
+                espcontrol::cover_art::progress_available(id(cover_art_media_duration));
+              const bool next_progress_available =
+                espcontrol::cover_art::progress_available(next_duration);
+              if (!next_progress_available) next_duration = 0.0f;
+              if (!next_progress_available || !current_progress_available) {
+                id(cover_art_media_position) = 0.0f;
+                id(cover_art_position_anchor) = 0.0f;
+                id(cover_art_position_anchor_epoch) = 0;
+                id(cover_art_last_position_timestamp) = 0;
+              }
               if (std::fabs(next_duration - id(cover_art_media_duration)) < 0.05f) return;
               id(cover_art_media_duration) = next_duration;
               id(cover_art_last_progress_percent) = -1;

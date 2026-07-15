@@ -1335,6 +1335,10 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
         token not in refresh_body
         for token in (
             "espcontrol::cover_art::progress_available(duration)",
+            "id(cover_art_media_position) = 0.0f",
+            "id(cover_art_position_anchor) = 0.0f",
+            "id(cover_art_position_anchor_epoch) = 0",
+            "id(cover_art_last_position_timestamp) = 0",
             "lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF)",
             'lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00")',
             "lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN)",
@@ -1345,11 +1349,17 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
     ):
         errors.append(f"{rel}: hide and reset unavailable cover art progress")
 
-    if (
-        "if (!espcontrol::cover_art::progress_available(next_duration)) "
-        "next_duration = 0.0f;"
-    ) not in text:
+    if "if (!next_progress_available) next_duration = 0.0f;" not in text:
         errors.append(f"{rel}: normalize invalid cover art durations")
+    if any(
+        token not in text
+        for token in (
+            "const bool current_progress_available =",
+            "const bool next_progress_available =",
+            "if (!next_progress_available || !current_progress_available)",
+        )
+    ):
+        errors.append(f"{rel}: reset cover art position when progress availability changes")
 
     return errors
 
@@ -4538,6 +4548,10 @@ def run_self_test() -> int:
         "    then:\n"
         "      - lambda: |-\n"
         "          bool available = espcontrol::cover_art::progress_available(duration);\n"
+        "          id(cover_art_media_position) = 0.0f;\n"
+        "          id(cover_art_position_anchor) = 0.0f;\n"
+        "          id(cover_art_position_anchor_epoch) = 0;\n"
+        "          id(cover_art_last_position_timestamp) = 0;\n"
         "          lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);\n"
         "          lv_label_set_text(id(cover_art_time_label), \"0:00  /  0:00\");\n"
         "          lv_obj_add_flag(id(cover_art_time_label), LV_OBJ_FLAG_HIDDEN);\n"
@@ -4553,7 +4567,10 @@ def run_self_test() -> int:
         "      - lambda: |-\n"
         "          return espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
         "# duration callback\n"
-        "if (!espcontrol::cover_art::progress_available(next_duration)) next_duration = 0.0f;\n"
+        "const bool current_progress_available = espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+        "const bool next_progress_available = espcontrol::cover_art::progress_available(next_duration);\n"
+        "if (!next_progress_available) next_duration = 0.0f;\n"
+        "if (!next_progress_available || !current_progress_available) {}\n"
     )
     expect_cover_art_progress_visibility_errors(
         "cover art progress hides without duration",
@@ -4577,7 +4594,7 @@ def run_self_test() -> int:
             "",
         )
         .replace(
-            "if (!espcontrol::cover_art::progress_available(next_duration)) next_duration = 0.0f;\n",
+            "if (!next_progress_available) next_duration = 0.0f;\n",
             "",
         ),
         (
@@ -4587,6 +4604,14 @@ def run_self_test() -> int:
             "hide and reset unavailable cover art progress",
             "normalize invalid cover art durations",
         ),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art progress keeps stale position state",
+        cover_art_progress_visibility.replace(
+            "          id(cover_art_media_position) = 0.0f;\n",
+            "",
+        ),
+        ("hide and reset unavailable cover art progress",),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",
