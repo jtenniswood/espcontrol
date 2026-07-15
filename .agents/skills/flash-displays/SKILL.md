@@ -1,5 +1,5 @@
 ---
-name: Flash Display
+name: flash-displays
 description: Flash EspControl display firmware from this repository using ESPHome. Use when the user invokes /flash-displays with no extra display name, or asks to flash, reflash, update, or upload firmware to all known displays in sequence, or to a specific display such as 7inch, 7-inch P4, 10inch, 10-inch P4, P4-86, 4.3-inch P4, 4-inch P4, or 4-inch S3, over an explicitly supplied OTA target or USB.
 ---
 
@@ -18,6 +18,8 @@ Use the local development ESPHome configs to flash the known EspControl displays
 | `4inch P4`, `4-inch P4`, `P4-86`, `86 Panel`, `Waveshare P4-86`, `esp32-p4-86` | `devices/esp32-p4-86` | `192.168.6.104` |
 | `4.3inch P4`, `4.3-inch P4`, `P4 4.3inch`, `P4 4.3-inch`, `JC4880P443` | `devices/guition-esp32-p4-jc4880p443` | `192.168.6.101` |
 | `4inch S3`, `4-inch S3`, `4848S040` | `devices/guition-esp32-s3-4848s040` | `192.168.6.105` |
+
+Treat the 10-inch panel at `192.168.6.103` as V1 hardware. Always flash it with the V1 `JC8012P4A1` configuration in `devices/guition-esp32-p4-jc8012p4a1`; never substitute a V2 or other 10-inch panel configuration because that firmware will not work on this panel.
 
 All screens can also be flashed over USB when explicitly requested. Use the selected screen's config directory and the local serial target, normally `/dev/cu.usbmodem201301`.
 
@@ -38,6 +40,7 @@ Use `dev.yaml` by default. If the user names another YAML file, use that file in
 - If the user explicitly says `dev`, `dev file`, or `dev.yaml`, use `dev.yaml` instead.
 - If the user gives a bare filename such as `esphome.yaml`, resolve it inside the selected display's config directory.
 - If the user gives a repo-relative path such as `devices/guition-esp32-p4-jc8012p4a1/esphome.yaml`, resolve it from the repository root.
+- For every 10-inch flash, require the selected YAML to resolve inside `devices/guition-esp32-p4-jc8012p4a1`, which is the V1 configuration. If a request points to a V2 or different panel directory, stop and clarify instead of flashing it.
 - Only use YAML files inside this repository. If the selected file does not exist, ask for the correct file instead of guessing.
 - Do not create, copy, commit, or print `secrets.yaml`. YAML files may reference `!secret wifi_ssid` and `!secret wifi_password`, but the secrets file itself must stay local and uncommitted.
 
@@ -83,11 +86,11 @@ esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc1060p470
 esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
 
-# 10-inch P4 over OTA
+# 10-inch P4 V1 over OTA
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc8012p4a1
 esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device 192.168.6.103 --no-logs
 
-# 10-inch P4 over USB, only when explicitly requested
+# 10-inch P4 V1 over USB, only when explicitly requested
 cd /Users/jtenniswood/Git/espcontrol/devices/guition-esp32-p4-jc8012p4a1
 esphome -s espcontrol_component_url file:///Users/jtenniswood/Git/espcontrol run dev.yaml --device /dev/cu.usbmodem201301 --no-logs
 
