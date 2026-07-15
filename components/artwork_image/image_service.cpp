@@ -21,6 +21,14 @@ void ImageService::complete(ArtworkImage *owner) {
   this->dispatch_next_();
 }
 
+void ImageService::complete_and_request(ArtworkImage *owner, uint32_t generation,
+                                        ImageRequestPriority priority) {
+  if (owner == nullptr || this->active_ != owner) return;
+  this->queue_.enqueue(owner, generation, priority);
+  this->active_ = nullptr;
+  this->dispatch_next_();
+}
+
 void ImageService::cancel(ArtworkImage *owner) {
   this->queue_.remove(owner);
   if (this->active_ == owner) this->active_ = nullptr;

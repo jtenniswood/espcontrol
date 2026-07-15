@@ -384,12 +384,10 @@ void ArtworkImage::start_update_() {
     this->end_connection_();
     if (this->has_newer_pending_update_()) {
       this->complete_service_request_();
-      this->start_pending_update_();
       return;
     }
     this->download_finished_callback_.call(true);
     this->complete_service_request_();
-    this->start_pending_update_();
     return;
   }
   if (http_code != HTTP_CODE_OK) {
@@ -1115,7 +1113,6 @@ void ArtworkImage::finish_download_() {
     ESP_LOGI(TAG, "Discarding completed artwork because a newer URL is queued");
     this->end_connection_();
     this->complete_service_request_();
-    this->start_pending_update_();
     return;
   }
   if (!this->promote_decode_buffer_()) {
@@ -1144,7 +1141,6 @@ void ArtworkImage::finish_download_() {
   App.feed_wdt();
   this->log_state_("download-callback-finished");
   this->complete_service_request_();
-  this->start_pending_update_();
 }
 
 void ArtworkImage::fail_download_() {
@@ -1152,17 +1148,26 @@ void ArtworkImage::fail_download_() {
     ESP_LOGW(TAG, "Skipping stale artwork failure because a newer URL is queued");
     this->end_connection_();
     this->complete_service_request_();
-    this->start_pending_update_();
     return;
   }
   this->end_connection_();
   this->download_error_callback_.call();
   this->complete_service_request_();
-  this->start_pending_update_();
 }
 
 void ArtworkImage::complete_service_request_() {
   if (!this->service_active_) return;
+  if (this->update_pending_ && !this->pending_url_.empty()) {
+    this->url_ = this->pending_url_;
+    this->pending_url_.clear();
+    this->update_pending_ = false;
+    this->service_generation_++;
+    this->service_pending_ = true;
+    this->service_active_ = false;
+    ESP_LOGI(TAG, "Re-queued latest artwork update");
+    ImageService::instance().complete_and_request(this, this->service_generation_, this->request_priority_);
+    return;
+  }
   this->service_active_ = false;
   ImageService::instance().complete(this);
 }
@@ -1184,18 +1189,6 @@ void ArtworkImage::queue_pending_update_(const std::string &url) {
   ESP_LOGW(TAG, "Artwork update %s while busy; latest URL will run after current work finishes",
            replaced ? "re-queued" : "queued");
   this->log_state_("update-queued");
-}
-
-void ArtworkImage::start_pending_update_() {
-  if (!this->update_pending_ || this->is_busy_()) {
-    return;
-  }
-  std::string url = this->pending_url_;
-  this->pending_url_.clear();
-  this->update_pending_ = false;
-  ESP_LOGI(TAG, "Starting queued artwork update");
-  this->url_ = url;
-  this->update();
 }
 
 void ArtworkImage::log_state_(const char *stage) {

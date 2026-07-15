@@ -159,7 +159,6 @@ class ArtworkImage : public PollingComponent,
     return this->update_pending_ && !this->pending_url_.empty() && this->pending_url_ != this->url_;
   }
   void queue_pending_update_(const std::string &url);
-  void start_pending_update_();
   bool start_service_update_(uint32_t generation);
   void start_update_();
   void complete_service_request_();

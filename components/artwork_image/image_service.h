@@ -78,6 +78,7 @@ class ImageService {
 
   void request(ArtworkImage *owner, uint32_t generation, ImageRequestPriority priority);
   void complete(ArtworkImage *owner);
+  void complete_and_request(ArtworkImage *owner, uint32_t generation, ImageRequestPriority priority);
   void cancel(ArtworkImage *owner);
 
   bool is_active(const ArtworkImage *owner) const { return this->active_ == owner; }
