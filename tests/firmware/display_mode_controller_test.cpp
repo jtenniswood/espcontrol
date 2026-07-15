@@ -42,6 +42,25 @@ int main() {
   CHECK(controller.target_mode_is(DisplayMode::ACTIVE));
   CHECK(controller.current_mode_is(DisplayMode::ACTIVE));
   CHECK(!controller.transition_required(controller.resolve()));
+  CHECK(!presence_can_wake_display(controller.resolve()));
+
+  for (DisplayMode mode : {DisplayMode::DISPLAY_OFF, DisplayMode::DIMMED,
+                           DisplayMode::CLOCK}) {
+    DisplayModeController presence_wake;
+    CHECK(presence_wake.request(DisplayRequestSource::PRESENCE_SENSOR, mode));
+    CHECK(presence_can_wake_display(presence_wake.resolve()));
+  }
+  DisplayModeController idle_wake;
+  CHECK(idle_wake.request(DisplayRequestSource::IDLE_TIMER, DisplayMode::DIMMED));
+  CHECK(presence_can_wake_display(idle_wake.resolve()));
+  DisplayModeController cover_art_presence;
+  CHECK(cover_art_presence.request(DisplayRequestSource::MEDIA_PLAYBACK,
+                                   DisplayMode::COVER_ART));
+  CHECK(!presence_can_wake_display(cover_art_presence.resolve()));
+  DisplayModeController scheduled_presence;
+  CHECK(scheduled_presence.request(DisplayRequestSource::SCREEN_SCHEDULE,
+                                   DisplayMode::CLOCK));
+  CHECK(!presence_can_wake_display(scheduled_presence.resolve()));
 
   // Every higher-priority policy beats every lower-priority policy.
   for (int higher = 1; higher <= 8; ++higher) {
