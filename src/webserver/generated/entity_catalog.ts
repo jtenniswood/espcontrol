@@ -48,6 +48,10 @@ export const ENTITY_CATALOG = {
       "domain": "text",
       "template": "Subpage {slot} Config Ext 7"
     },
+    "display_restart": {
+      "domain": "button",
+      "name": "Restart"
+    },
     "indoor_temp_enable": {
       "domain": "switch",
       "name": "Indoor Temp Enable"
