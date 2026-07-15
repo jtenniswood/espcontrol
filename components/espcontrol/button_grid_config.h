@@ -21,6 +21,7 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_PHASE3 = 1u << 2;
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #endif
 #include "display_color.h"
+#include "button_grid_limits.h"
 
 inline std::function<void()> &dashboard_content_changed_callback() {
   static std::function<void()> callback;
@@ -36,13 +37,6 @@ inline void notify_dashboard_content_changed() {
   if (callback) callback();
 }
 
-#ifndef ESPCONTROL_MAX_GRID_SLOTS
-#define ESPCONTROL_MAX_GRID_SLOTS 25
-#endif
-
-constexpr int MAX_GRID_SLOTS = ESPCONTROL_MAX_GRID_SLOTS;
-static_assert(MAX_GRID_SLOTS > 0, "ESPCONTROL_MAX_GRID_SLOTS must be positive");
-constexpr int MAX_SUBPAGE_ITEMS = MAX_GRID_SLOTS * MAX_GRID_SLOTS;
 #include "button_grid_card_runtime.h"
 #include <cstdlib>
 

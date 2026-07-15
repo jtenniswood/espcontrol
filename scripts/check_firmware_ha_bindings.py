@@ -32,11 +32,51 @@ CONNECTIVITY_PATHS = (
     ROOT / "common" / "addon" / "connectivity_deployed.yaml",
     ROOT / "common" / "addon" / "connectivity_ethernet.yaml",
 )
+DISPLAY_LIFECYCLE_ROOTS = (
+    ROOT / "common",
+    ROOT / "devices",
+    ROOT / "components" / "espcontrol",
+)
+REMOVED_DISPLAY_LIFECYCLE_SYMBOLS = (
+    "display_asleep",
+    "screen_schedule_asleep",
+    "backlight_manual_off",
+    "screensaver_display_off_active",
+    "screensaver_dimmed_active",
+    "is_clock_showing",
+    "cover_art_screensaver_active",
+    "setup_screen_dimmed_shadow_active",
+    "display_mode_shadow_observer",
+    "LegacyDisplayState",
+    "LegacyModeResult",
+    "DisplayShadowObservation",
+    "DisplayModeShadowObserver",
+)
 
 
 def firmware_weather_header_path(firmware_dir: Path) -> Path:
     weather_path = firmware_dir / "button_grid_weather_forecast.h"
     return weather_path if weather_path.exists() else firmware_dir / "button_grid_config.h"
+
+
+def firmware_display_controller_ownership_errors(
+    roots: tuple[Path, ...], root: Path
+) -> list[str]:
+    errors: list[str] = []
+    for scan_root in roots:
+        if not scan_root.exists():
+            continue
+        for path in scan_root.rglob("*"):
+            if path.suffix not in {".yaml", ".h", ".cpp"}:
+                continue
+            text = path.read_text(encoding="utf-8")
+            removed = [symbol for symbol in REMOVED_DISPLAY_LIFECYCLE_SYMBOLS if symbol in text]
+            if removed:
+                errors.append(
+                    f"{path.relative_to(root)}: use display_mode_controller ownership; "
+                    f"removed compatibility state remains ({', '.join(removed)})"
+                )
+    return errors
 
 
 def package_api_navigate_enabled(package_path: Path, root: Path) -> bool:
@@ -384,6 +424,22 @@ def firmware_card_disabled_state_errors(firmware_dir: Path, root: Path) -> list[
         text = path.read_text(encoding="utf-8")
         if re.search(r"lv_obj_has_state\s*\([^;\n]*LV_STATE_DISABLED", text):
             errors.append(f"{rel}: card tap handlers must not ignore taps because a card is disabled")
+
+    return errors
+
+
+def firmware_media_card_availability_errors(firmware_dir: Path, root: Path) -> list[str]:
+    path = firmware_dir / "button_grid_media.h"
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    if "media_control_apply_availability(ctx->btn, ctx->btn" in text:
+        errors.append(f"{rel}: do not dim or disable media cards for unavailable entity states")
+    if "media_control_apply_availability(ui.panel, ui.panel" in text:
+        errors.append(f"{rel}: do not dim the media control panel for unavailable entity states")
 
     return errors
 
@@ -759,7 +815,7 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         ):
             errors.append(f"{rel}: refresh Home Assistant media proxy artwork when no image is currently available")
         replacement_match = re.search(
-            r"(?ms)id\(cover_art_screensaver_active\).*?"
+            r"(?ms)target_mode_is\(espcontrol::DisplayMode::COVER_ART\).*?"
             r"id\(cover_art_runtime\)\.image_available.*?"
             r"id\(cover_art_runtime\)\.refresh_needed.*?"
             r"!\$\{cover_art_live_image_updates\}.*?"
@@ -845,10 +901,59 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: prefer a real artist name over the external-source fallback label")
     pause_body = yaml_script_body(text, "cover_art_pause_after_touch")
     if pause_body is not None and (
-        "return id(cover_art_screensaver_active);" not in pause_body
+        "target_mode_is(espcontrol::DisplayMode::COVER_ART)" not in pause_body
         or "id(cover_art_manual_pause_until_ms) = 1;" not in pause_body
     ):
         errors.append(f"{rel}: only arm cover art return after an active cover-art dismissal")
+    return errors
+
+
+def firmware_cover_art_playback_grace_errors(path: Path, root: Path) -> list[str]:
+    if not path.exists():
+        return []
+    rel = path.relative_to(root)
+    text = path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    delayed_body = yaml_script_body(text, "cover_art_delayed_playback_stopped")
+    if not delayed_body:
+        errors.append(f"{rel}: buffer brief non-playing states between tracks")
+    else:
+        if "delay: 2s" not in delayed_body:
+            errors.append(f"{rel}: keep the cover art stop grace period at two seconds")
+        if "script.execute: cover_art_playback_stopped" not in delayed_body:
+            errors.append(f"{rel}: apply a sustained playback stop after the grace period")
+        if (
+            'state != "playing"' not in delayed_body
+            or 'state != "buffering"' not in delayed_body
+            or 'state != "paused"' not in delayed_body
+        ):
+            errors.append(f"{rel}: recheck playback before applying a delayed stop")
+
+    if "id(cover_art_delayed_playback_stopped).execute(" not in text:
+        errors.append(f"{rel}: delay non-playing playback transitions")
+    if not re.search(
+        r"id\(cover_art_delay_interrupted_by_transition\)\s*=\s*"
+        r"id\(cover_art_delay_interrupted_by_transition\)\s*\|\|\s*"
+        r"id\(cover_art_delay_timer\)\.is_running\(\);\s+"
+        r"id\(cover_art_delay_timer\)\.stop\(\);\s+"
+        r"id\(cover_art_delayed_playback_stopped\)\.execute\([^;]*\);",
+        text,
+    ):
+        errors.append(f"{rel}: remember and cancel a pending cover art opening when playback stops")
+    if (
+        "bool restart_cover_art_delay = id(cover_art_delay_interrupted_by_transition);" not in text
+        or "if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();" not in text
+    ):
+        errors.append(f"{rel}: restart an interrupted cover art opening when playback resumes")
+    if text.count("id(cover_art_delayed_playback_stopped).stop();") < 2:
+        errors.append(f"{rel}: cancel a pending stop when playback resumes or pauses")
+    if "url.empty() && id(cover_art_delayed_playback_stopped).is_running()" not in text:
+        errors.append(f"{rel}: keep cached artwork when Home Assistant clears it during a brief playback transition")
+
+    stopped_body = yaml_script_body(text, "cover_art_playback_stopped")
+    if not stopped_body or "script.stop: cover_art_delayed_playback_stopped" not in stopped_body:
+        errors.append(f"{rel}: cancel pending playback grace during an immediate stop")
     return errors
 
 
@@ -863,6 +968,120 @@ def firmware_cover_art_disable_errors(path: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: missing cover_art_disable script")
     elif "switch.turn_off: media_player_sleep_prevention_enabled" in body:
         errors.append(f"{rel}: keep media sleep prevention independent when cover art is disabled")
+    return errors
+
+
+def firmware_cover_art_lifecycle_controller_errors(
+    backlight_path: Path, cover_art_path: Path, root: Path
+) -> list[str]:
+    if not backlight_path.exists() or not cover_art_path.exists():
+        return []
+    backlight_rel = backlight_path.relative_to(root)
+    cover_art_rel = cover_art_path.relative_to(root)
+    backlight_text = backlight_path.read_text(encoding="utf-8")
+    cover_art_text = cover_art_path.read_text(encoding="utf-8")
+    errors: list[str] = []
+
+    adapter = yaml_script_body(backlight_text, "display_mode_apply_transition") or ""
+    request = yaml_script_body(backlight_text, "display_mode_request_cover_art") or ""
+    clear = yaml_script_body(backlight_text, "display_mode_clear_cover_art") or ""
+    reconcile = yaml_script_body(backlight_text, "display_mode_reconcile") or ""
+    effect = yaml_script_body(cover_art_text, "display_mode_effect_cover_art") or ""
+    hide_effect = yaml_script_body(cover_art_text, "cover_art_hide_effect") or ""
+    hide_adapter = yaml_script_body(cover_art_text, "hide_cover_art_view") or ""
+    disable = yaml_script_body(cover_art_text, "cover_art_disable") or ""
+    playback_restore = yaml_script_body(
+        cover_art_text, "cover_art_return_home_after_playback"
+    ) or ""
+
+    adapter_markers = (
+        "target_mode == static_cast<int>(espcontrol::DisplayMode::COVER_ART)",
+        "id: display_mode_effect_cover_art",
+        "id: cover_art_hide_effect",
+    )
+    if (
+        any(marker not in adapter for marker in adapter_markers)
+        or "complete_transition(" not in adapter
+        or "espcontrol::DisplayMode::COVER_ART);" not in adapter
+    ):
+        errors.append(f"{backlight_rel}: route cover art presentation exclusively through the display adapter")
+    if (
+        "DisplayRequestSource::MEDIA_PLAYBACK" not in request
+        or "DisplayMode::COVER_ART" not in request
+        or "script.execute: display_mode_reconcile" not in request
+        or "script.wait: display_mode_reconcile" not in request
+        or "script.wait: display_mode_apply_transition" not in request
+    ):
+        errors.append(f"{backlight_rel}: create cover art through a controller media request")
+    if (
+        "DisplayRequestSource::MEDIA_PLAYBACK" not in clear
+        or ".clear(" not in clear
+        or "script.execute: display_mode_reconcile" not in clear
+        or "script.wait: display_mode_reconcile" not in clear
+        or "script.wait: display_mode_apply_transition" not in clear
+    ):
+        errors.append(f"{backlight_rel}: dismiss cover art by clearing its controller media request")
+    if (
+        "script.execute: display_mode_clear_cover_art" not in hide_adapter
+        or "script.wait: display_mode_clear_cover_art" not in hide_adapter
+    ):
+        errors.append(
+            f"{cover_art_rel}: keep hide_cover_art_view synchronous for compatibility callers"
+        )
+    if "script.wait: display_mode_clear_cover_art" not in disable:
+        errors.append(f"{cover_art_rel}: wait for controller dismissal before releasing cover art resources")
+    if "script.wait: display_mode_clear_cover_art" not in playback_restore:
+        errors.append(f"{cover_art_rel}: wait for controller dismissal before restoring playback UI")
+    if "DisplayRequestSource::MEDIA_PLAYBACK" in reconcile:
+        errors.append(f"{backlight_rel}: do not rebuild media requests from the compatibility cover art flag")
+    if (
+        "previous_cover_generation" not in reconcile
+        or "id(cover_art_transition_generation) = transition.generation" not in reconcile
+        or "id(cover_art_download_generation) = transition.generation" not in reconcile
+        or "!transition_required" not in reconcile
+    ):
+        errors.append(
+            f"{backlight_rel}: preserve active cover art across lower-priority generation changes"
+        )
+
+    if "cover_art_screensaver_active" in cover_art_text or "cover_art_screensaver_active" in backlight_text:
+        errors.append(f"{cover_art_rel}: use controller mode ownership instead of a compatibility cover art flag")
+
+    if (
+        "transition_is_current(" not in effect
+        or "espcontrol::DisplayMode::COVER_ART" not in effect
+        or "lv_obj_move_foreground(id(cover_art_screensaver))" not in effect
+    ):
+        errors.append(f"{cover_art_rel}: guard the controller-owned cover art effect by transition generation")
+    if (
+        "transition_is_current(" not in hide_effect
+        or "artwork_image.release: cover_art_downloaded_image" not in hide_effect
+        or 'std::string("${device_slug}") == "guition-esp32-s3-4848s040"' not in hide_effect
+    ):
+        errors.append(f"{cover_art_rel}: preserve guarded S3 image release when cover art is hidden")
+
+    guarded_scripts = {
+        "cover_art_delay_timer": "generation_is_current(",
+        "cover_art_apply_downloaded_image": "cover_art_download_generation",
+        "cover_art_deferred_download": "transition_is_current(",
+        "cover_art_retry_download": "cover_art_download_generation",
+        "cover_art_refresh_progress": "transition_is_current(",
+        "cover_art_delayed_playback_stopped": "generation_is_current(",
+    }
+    for script_id, marker in guarded_scripts.items():
+        body = yaml_script_body(cover_art_text, script_id) or ""
+        if marker not in body:
+            errors.append(f"{cover_art_rel}: guard {script_id} against obsolete display generations")
+    stopped_body = yaml_script_body(cover_art_text, "cover_art_delayed_playback_stopped") or ""
+    if (
+        "id: cover_art_media_playing" not in stopped_body
+        or "id: cover_art_delay_interrupted_by_transition" not in stopped_body
+        or "script.execute: display_mode_clear_cover_art" not in stopped_body
+        or "script.wait: display_mode_clear_cover_art" not in stopped_body
+    ):
+        errors.append(
+            f"{cover_art_rel}: retire stopped playback state before clearing an obsolete cover art request"
+        )
     return errors
 
 
@@ -893,6 +1112,15 @@ def firmware_media_sleep_prevention_errors(
                 errors.append(f"{rel}: do not let cover art alone keep the idle timer awake")
         sleep_body = yaml_script_body(text, "screensaver_sleep_timer")
         if sleep_body is not None:
+            if "id(cover_art_media_playing)" in sleep_body and not re.search(
+                r"id\(cover_art_last_playback_state\)[\s\S]{0,240}"
+                r'state != "playing"[\s\S]{0,120}'
+                r'state != "buffering"[\s\S]{0,120}'
+                r'state != "paused"[\s\S]{0,240}'
+                r"script\.execute:\s*screensaver_idle_check",
+                sleep_body,
+            ):
+                errors.append(f"{rel}: keep the normal screensaver idle during cover art stop grace")
             cover_art_sleep_match = re.search(
                 r"id\(cover_art_screensaver_enabled\)\.state[\s\S]{0,360}"
                 r"id\(cover_art_media_playing\)[\s\S]{0,360}"
@@ -919,6 +1147,15 @@ def firmware_media_sleep_prevention_errors(
         ):
             errors.append(f"{rel}: restart positive Show After delay after touches in disabled screensaver mode")
 
+        takeover_restore_body = yaml_script_body(text, "display_takeover_resume_restore")
+        if takeover_restore_body is not None and "script.execute: show_cover_art_view" in takeover_restore_body:
+            if (
+                "id(cover_art_last_playback_state)" not in takeover_restore_body
+                or 'state == "playing"' not in takeover_restore_body
+                or 'state == "buffering"' not in takeover_restore_body
+            ):
+                errors.append(f"{rel}: keep takeover restore from showing cover art during stop grace")
+
     if display_path.exists():
         rel = display_path.relative_to(root)
         text = display_path.read_text(encoding="utf-8")
@@ -932,7 +1169,7 @@ def firmware_media_sleep_prevention_errors(
         if playback_started_body is None:
             errors.append(f"{rel}: missing cover_art_playback_started script")
         elif (
-            "script.execute: cover_art_delay_timer" in playback_started_body
+            "script.execute: cover_art_start_delay" in playback_started_body
             and (
                 "id(media_player_sleep_prevention_enabled).state" not in playback_started_body
                 or 'id(screensaver_mode).state != "timer"' not in playback_started_body
@@ -1306,7 +1543,17 @@ def firmware_screensaver_wake_guard_errors(backlight_path: Path, cover_art_path:
         if body is None:
             errors.append(f"{rel}: missing screensaver_wake script")
         else:
-            marker = "lambda: 'return id(display_asleep) ||"
+            pending_restore_tokens = (
+                "id: screensaver_wake_restore_pending",
+                "id(screensaver_wake_restore_pending) =",
+                "!id(display_mode_controller).target_mode_is(",
+                "const bool restore_pending = id(screensaver_wake_restore_pending);",
+                "id(screensaver_wake_restore_pending) = false;",
+                "return restore_pending ||",
+            )
+            if any(token not in text for token in pending_restore_tokens):
+                errors.append(f"{rel}: restore ACTIVE when touch cancels a pending sleep transition")
+            marker = "const bool restore_pending = id(screensaver_wake_restore_pending);"
             if marker not in body:
                 errors.append(f"{rel}: keep the normal screensaver wake branch explicit")
             else:
@@ -1344,6 +1591,19 @@ def firmware_screensaver_wake_guard_errors(backlight_path: Path, cover_art_path:
     return errors
 
 
+def firmware_clock_bar_pending_wake_errors(display_path: Path, root: Path) -> list[str]:
+    if not display_path.exists():
+        return []
+    rel = display_path.relative_to(root)
+    text = display_path.read_text(encoding="utf-8")
+    body = yaml_script_body(text, "clock_bar_apply")
+    if body is None:
+        return [f"{rel}: missing clock_bar_apply script"]
+    if "id(display_mode_controller).target_mode()" not in body:
+        return [f"{rel}: resolve clock bar visibility from the pending display target"]
+    return []
+
+
 def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) -> list[str]:
     errors: list[str] = []
     if not backlight_path.exists():
@@ -1352,13 +1612,22 @@ def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) 
     rel = backlight_path.relative_to(root)
     text = backlight_path.read_text(encoding="utf-8")
     sleep_body = yaml_script_body(text, "screensaver_sleep_timer")
+    adapter_body = yaml_script_body(text, "display_mode_apply_transition")
     show_body = yaml_script_body(text, "show_clock_view")
     keep_on_top_body = yaml_script_body(text, "clock_screensaver_keep_on_top")
 
     if sleep_body is None:
         errors.append(f"{rel}: missing screensaver_sleep_timer script")
     else:
-        show_index = sleep_body.find("script.execute: show_clock_view")
+        activation_markers = (
+            "script.execute: show_clock_view",
+            "espcontrol::DisplayMode::CLOCK",
+        )
+        activation_indexes = [
+            sleep_body.find(marker) for marker in activation_markers
+            if sleep_body.find(marker) != -1
+        ]
+        show_index = min(activation_indexes) if activation_indexes else -1
         if show_index == -1:
             errors.append(f"{rel}: keep clock screensaver activation explicit")
         else:
@@ -1375,6 +1644,11 @@ def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) 
             if any(token in pre_clock_show for token in cleanup_tokens):
                 errors.append(f"{rel}: let the clock screensaver overlay the existing UI without closing it")
 
+        if "espcontrol::DisplayMode::CLOCK" in sleep_body and (
+            adapter_body is None or "id: show_clock_view" not in adapter_body
+        ):
+            errors.append(f"{rel}: route controller clock decisions through show_clock_view")
+
     if show_body is None:
         errors.append(f"{rel}: missing show_clock_view script")
     elif (
@@ -1388,7 +1662,7 @@ def firmware_clock_screensaver_overlay_errors(backlight_path: Path, root: Path) 
         errors.append(f"{rel}: missing clock screensaver keep-on-top script")
     else:
         required_keep_on_top_tokens = (
-            "if (!id(is_clock_showing)) return;",
+            "current_mode_is(",
             "hide_clock_bar_top_layer_widgets(",
             "refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));",
             "lv_obj_move_foreground(id(clock_screensaver));",
@@ -1424,14 +1698,17 @@ def firmware_screen_schedule_screensaver_overlay_errors(cover_art_path: Path, ro
     rel = cover_art_path.relative_to(root)
     text = cover_art_path.read_text(encoding="utf-8")
     show_body = yaml_script_body(text, "show_cover_art_view")
+    effect_body = yaml_script_body(text, "display_mode_effect_cover_art")
 
     if show_body is None:
         errors.append(f"{rel}: missing show_cover_art_view script")
     else:
         if "screen_schedule_blocks_cover_art(" not in show_body:
             errors.append(f"{rel}: prevent cover art from overriding active screen schedule night mode")
-        if "lv_obj_move_foreground(id(cover_art_screensaver))" not in show_body:
-            errors.append(f"{rel}: raise the cover art screensaver above any existing top-layer elements")
+    if effect_body is None:
+        errors.append(f"{rel}: missing display_mode_effect_cover_art script")
+    elif "lv_obj_move_foreground(id(cover_art_screensaver))" not in effect_body:
+        errors.append(f"{rel}: raise the cover art screensaver above any existing top-layer elements")
 
     delay_body = yaml_script_body(text, "cover_art_delay_timer")
     if delay_body is None:
@@ -1469,18 +1746,154 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             errors.append(f"{rel}: let the night screen schedule override timer screensaver actions")
 
     schedule_off_body = yaml_script_body(text, "backlight_schedule_display_off")
+    controller_off_body = yaml_script_body(text, "display_mode_effect_off")
+    adapter_body = yaml_script_body(text, "display_mode_apply_transition")
+    reconcile_body = yaml_script_body(text, "display_mode_reconcile")
     if schedule_off_body is None:
         errors.append(f"{rel}: missing backlight_schedule_display_off script")
-    elif (
+    elif not (
+        adapter_body is not None
+        and "target_mode != static_cast<int>(espcontrol::DisplayMode::COVER_ART)" in adapter_body
+        and "id: cover_art_hide_effect" in adapter_body
+        and controller_off_body is not None
+        and "script.stop: cover_art_delay_timer" in controller_off_body
+    ) and (
         "script.stop: cover_art_delay_timer" not in schedule_off_body
         or "script.execute: hide_cover_art_view" not in schedule_off_body
     ):
         errors.append(f"{rel}: screen schedule display-off should clear cover art before forcing the screen off")
 
+    if reconcile_body is not None and "DisplayRequestSource::SCREEN_SCHEDULE" in reconcile_body:
+        controller_owns_cover_art = (
+            adapter_body is not None
+            and "espcontrol::DisplayMode::COVER_ART" in adapter_body
+            and "id: cover_art_hide_effect" in adapter_body
+            and "DisplayRequestSource::MEDIA_PLAYBACK" not in reconcile_body
+        )
+        legacy_clears_cover_art = (
+            "if (schedule_night && id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART))" in reconcile_body
+            or (
+                "if (id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART))" in reconcile_body
+                and "id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) = false;" in reconcile_body
+                and "id(hide_cover_art_view).execute();" in reconcile_body
+            )
+        )
+        if not controller_owns_cover_art and not legacy_clears_cover_art:
+            errors.append(f"{rel}: scheduled night modes should clear active cover art before resolving")
+
+    schedule_path = backlight_path.with_name("backlight_schedule.yaml")
+    if schedule_path.exists():
+        schedule_rel = schedule_path.relative_to(root)
+        schedule_text = schedule_path.read_text(encoding="utf-8")
+        brightness_body = yaml_script_body(schedule_text, "backlight_apply_brightness")
+        if brightness_body is not None:
+            active_target = brightness_body.find(
+                "target_mode_is(\n                espcontrol::DisplayMode::ACTIVE)"
+            )
+            cover_art_target = brightness_body.find(
+                "target_mode_is(\n                espcontrol::DisplayMode::COVER_ART)"
+            )
+            if active_target == -1 or cover_art_target == -1:
+                errors.append(
+                    f"{schedule_rel}: apply brightness from the pending active display target during wake transitions"
+                )
+
+            schedule_source = brightness_body.find(
+                "DisplayRequestSource::SCREEN_SCHEDULE"
+            )
+            schedule_off = brightness_body.find(
+                "target_mode_is(\n                  espcontrol::DisplayMode::DISPLAY_OFF)",
+                schedule_source,
+            )
+            force_off = brightness_body.find(
+                "id(backlight_force_display_off).execute();", schedule_off
+            )
+            always_on = brightness_body.find("id(schedule_mode_always_on)")
+            if not (
+                schedule_source != -1
+                and schedule_off != -1
+                and force_off != -1
+                and always_on != -1
+            ):
+                errors.append(
+                    f"{schedule_rel}: only blank display-off schedules so Always On can apply its configured brightness"
+                )
+        migrated_live_schedule = (
+            reconcile_body is not None
+            and "schedule_was_active" in reconcile_body
+            and "DisplayRequestSource::BOOT_GUARD" in reconcile_body
+            and "DisplayRequestSource::SCREEN_SCHEDULE" in reconcile_body
+        )
+        if migrated_live_schedule:
+            boot_guard_index = schedule_text.find("script.execute: screen_schedule_boot_guard")
+            boot_guard_prefix = schedule_text[:boot_guard_index] if boot_guard_index != -1 else ""
+            if (
+                "priority: -190" not in boot_guard_prefix
+                or "screen_schedule_waiting_for_time(" not in boot_guard_prefix
+                or "screen_schedule_night_active(" not in boot_guard_prefix
+                or "script.execute: screen_schedule_boot_guard" not in schedule_text
+            ):
+                errors.append(
+                    f"{schedule_rel}: publish the live fail-dark schedule before the loading screen can light the panel"
+                )
+
+            loading_path = backlight_path.parent.parent / "device" / "screen_loading.yaml"
+            if loading_path.exists():
+                loading_rel = loading_path.relative_to(root)
+                loading_text = loading_path.read_text(encoding="utf-8")
+                setup_index = loading_text.find("id: connectivity_setup_display_active")
+                setup_true_index = loading_text.find("value: 'true'", setup_index)
+                reconcile_index = loading_text.find("script.execute: display_mode_reconcile", setup_true_index)
+                if not (0 <= setup_index < setup_true_index < reconcile_index):
+                    errors.append(
+                        f"{loading_rel}: bypass the boot guard before showing WiFi setup"
+                    )
+                if reconcile_body is None or (
+                    "id(connectivity_setup_display_active)" not in reconcile_body
+                    or "!connectivity_setup" not in reconcile_body
+                ):
+                    errors.append(
+                        f"{rel}: let connectivity setup override boot guard and scheduled night requests"
+                    )
+        sleep_body = yaml_script_body(schedule_text, "screen_schedule_sleep")
+        if sleep_body is None:
+            errors.append(f"{schedule_rel}: missing screen_schedule_sleep script")
+        else:
+            asleep_index = sleep_body.find("id: screen_schedule_asleep")
+            asleep_true_index = sleep_body.find("value: 'true'", asleep_index)
+            request_index = sleep_body.find("DisplayRequestSource::SCREEN_SCHEDULE")
+            reconcile_index = sleep_body.find("script.execute: display_mode_reconcile")
+            controller_reconciles_live_schedule = (
+                "screen_schedule_night_active(" in text
+                and "controller.request(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE" in text
+                and "schedule_was_active" in text
+                and "controller.clear(espcontrol::DisplayRequestSource::IDLE_TIMER)" in text
+                and "controller.clear(espcontrol::DisplayRequestSource::PRESENCE_SENSOR)" in text
+                and "restore_value: true" not in text[text.find("id: screen_schedule_asleep"):text.find("id: backlight_manual_off")]
+                and "id: screen_schedule_asleep" not in sleep_body
+                and reconcile_index != -1
+            )
+            if not controller_reconciles_live_schedule and not (
+                0 <= asleep_index <= asleep_true_index < request_index < reconcile_index
+            ):
+                errors.append(
+                    f"{schedule_rel}: set the schedule-asleep marker before reconciling display-off"
+                )
+
     wake_body = yaml_script_body(text, "screensaver_presence_wake")
     if wake_body is None:
         errors.append(f"{rel}: missing screensaver_presence_wake script")
     else:
+        controller_presence_wake = (
+            "script.execute: display_mode_clear_automatic" in wake_body
+            and "screen_schedule_night_active(" in text
+            and "DisplayRequestSource::SCREEN_SCHEDULE" in text
+        )
+        if controller_presence_wake and (
+            "target_mode_is(\n                          espcontrol::DisplayMode::COVER_ART)" not in wake_body
+            or "script.execute: screensaver_wake" not in wake_body
+        ):
+            errors.append(f"{rel}: clear cover art when presence wakes the screensaver")
         wake_index = wake_body.find("script.execute: screensaver_wake")
         pre_wake_body = wake_body[:wake_index] if wake_index != -1 else wake_body
         required_tokens = (
@@ -1488,13 +1901,15 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             "screen_schedule_night_active(",
             "id(screen_schedule_check).execute();",
         )
-        if wake_index == -1 or any(token not in pre_wake_body for token in required_tokens):
+        if not controller_presence_wake and (
+            wake_index == -1 or any(token not in pre_wake_body for token in required_tokens)
+        ):
             errors.append(f"{rel}: let the night screen schedule override sensor screensaver wake")
         disabled_wake_index = pre_wake_body.rfind("if (!id(schedule_enabled).state) return true;")
         schedule_check_index = pre_wake_body.find("id(screen_schedule_check).execute();")
-        if disabled_wake_index == -1 or (
+        if not controller_presence_wake and (disabled_wake_index == -1 or (
             schedule_check_index != -1 and disabled_wake_index < schedule_check_index
-        ):
+        )):
             errors.append(f"{rel}: let sensor screensaver wake when the screen schedule is disabled")
 
     return errors
@@ -1771,11 +2186,13 @@ def firmware_c6_update_status_errors(path: Path, root: Path) -> list[str]:
 
 def run_scan() -> int:
     errors = firmware_ha_binding_errors(FIRMWARE_DIR, ROOT)
+    errors.extend(firmware_display_controller_ownership_errors(DISPLAY_LIFECYCLE_ROOTS, ROOT))
     errors.extend(firmware_ha_boundary_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_request_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_todo_disconnect_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_action_card_availability_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_card_disabled_state_errors(FIRMWARE_DIR, ROOT))
+    errors.extend(firmware_media_card_availability_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_action_card_script_fields_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_local_sensor_binding_order_errors(FIRMWARE_DIR, ROOT))
     errors.extend(firmware_time_reconnect_errors(TIME_ADDON_PATH, ROOT))
@@ -1788,7 +2205,9 @@ def run_scan() -> int:
     errors.extend(firmware_cover_art_external_input_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_stale_image_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_refresh_errors(COVER_ART_PATH, ROOT))
+    errors.extend(firmware_cover_art_playback_grace_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_cover_art_disable_errors(COVER_ART_PATH, ROOT))
+    errors.extend(firmware_cover_art_lifecycle_controller_errors(BACKLIGHT_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_media_sleep_prevention_errors(BACKLIGHT_PATH, DISPLAY_CONFIG_PATH, COVER_ART_PATH, ROOT))
     errors.extend(firmware_touch_cover_art_delay_errors(DEVICE_TOUCH_PATHS, ROOT))
     errors.extend(firmware_media_sleep_prevention_subscription_errors(DEVICE_SENSOR_PATHS, ROOT))
@@ -1800,6 +2219,7 @@ def run_scan() -> int:
     errors.extend(firmware_image_card_startup_errors(FIRMWARE_DIR, CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_artwork_image_auth_errors(ARTWORK_IMAGE_PATH, ROOT))
     errors.extend(firmware_screensaver_wake_guard_errors(BACKLIGHT_PATH, COVER_ART_PATH, ROOT))
+    errors.extend(firmware_clock_bar_pending_wake_errors(DISPLAY_CONFIG_PATH, ROOT))
     errors.extend(firmware_clock_screensaver_overlay_errors(BACKLIGHT_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_overlay_errors(COVER_ART_PATH, ROOT))
     errors.extend(firmware_screen_schedule_screensaver_override_errors(BACKLIGHT_PATH, ROOT))
@@ -1924,6 +2344,20 @@ def expect_action_card_availability_errors(name: str, text: str, expected: tuple
         (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
 
         errors = firmware_action_card_availability_errors(firmware_dir, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_media_card_availability_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        firmware_dir = root / "components" / "espcontrol"
+        firmware_dir.mkdir(parents=True)
+        (firmware_dir / "button_grid_media.h").write_text(text, encoding="utf-8")
+
+        errors = firmware_media_card_availability_errors(firmware_dir, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -2134,6 +2568,20 @@ def expect_cover_art_refresh_errors(name: str, text: str, expected: tuple[str, .
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
+def expect_cover_art_playback_grace_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        path = root / "common" / "device" / "screen_cover_art.yaml"
+        path.parent.mkdir(parents=True)
+        path.write_text(text, encoding="utf-8")
+
+        errors = firmware_cover_art_playback_grace_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
 def expect_cover_art_disable_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -2142,6 +2590,30 @@ def expect_cover_art_disable_errors(name: str, text: str, expected: tuple[str, .
         path.write_text(text, encoding="utf-8")
 
         errors = firmware_cover_art_disable_errors(path, root)
+        for item in expected:
+            assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
+        if not expected:
+            assert not errors, f"{name}: expected no errors, got {errors!r}"
+
+
+def expect_cover_art_lifecycle_controller_errors(
+    name: str,
+    backlight_text: str,
+    cover_art_text: str,
+    expected: tuple[str, ...],
+) -> None:
+    with TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        backlight_path = root / "common" / "addon" / "backlight.yaml"
+        cover_art_path = root / "common" / "device" / "screen_cover_art.yaml"
+        backlight_path.parent.mkdir(parents=True)
+        cover_art_path.parent.mkdir(parents=True)
+        backlight_path.write_text(backlight_text, encoding="utf-8")
+        cover_art_path.write_text(cover_art_text, encoding="utf-8")
+
+        errors = firmware_cover_art_lifecycle_controller_errors(
+            backlight_path, cover_art_path, root
+        )
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
         if not expected:
@@ -2313,12 +2785,17 @@ def expect_screen_schedule_screensaver_override_errors(
     name: str,
     text: str,
     expected: tuple[str, ...],
+    schedule_text: str | None = None,
 ) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         path = root / "common" / "addon" / "backlight.yaml"
         path.parent.mkdir(parents=True)
         path.write_text(text, encoding="utf-8")
+        if schedule_text is not None:
+            path.with_name("backlight_schedule.yaml").write_text(
+                schedule_text, encoding="utf-8"
+            )
         errors = firmware_screen_schedule_screensaver_override_errors(path, root)
         for item in expected:
             assert any(item in error for error in errors), f"{name}: missing {item!r} in {errors!r}"
@@ -3081,6 +3558,27 @@ def run_self_test() -> int:
         "}\n",
         (),
     )
+    expect_media_card_availability_errors(
+        "unavailable entity dims media card",
+        "inline void media_playback_apply_state_to_control(MediaPlaybackState *state, MediaControlCtx *ctx) {\n"
+        "  media_control_apply_availability(ctx->btn, ctx->btn, ctx->available);\n"
+        "}\n",
+        ("do not dim or disable media cards",),
+    )
+    expect_media_card_availability_errors(
+        "unavailable entity dims media panel",
+        "inline void media_control_refresh_modal(MediaControlCtx *ctx) {\n"
+        "  media_control_apply_availability(ui.panel, ui.panel, ctx->available, false);\n"
+        "}\n",
+        ("do not dim the media control panel",),
+    )
+    expect_media_card_availability_errors(
+        "media progress remains guarded",
+        "inline void media_control_refresh_progress(MediaControlCtx *ctx) {\n"
+        "  media_control_apply_availability(ui.progress_slider, ui.progress_slider, has_duration);\n"
+        "}\n",
+        (),
+    )
     expect_action_card_script_fields_errors(
         "script fields sent as service data",
         "inline void action_card_add_script_field_variables(esphome::api::HomeassistantActionRequest &req) {\n"
@@ -3522,7 +4020,7 @@ def run_self_test() -> int:
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
-        "              return id(cover_art_screensaver_active) &&\n"
+        "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) &&\n"
         "                     id(cover_art_runtime).image_available &&\n"
         "                     id(cover_art_runtime).refresh_needed &&\n"
         "                     !${cover_art_live_image_updates};\n"
@@ -3587,6 +4085,52 @@ def run_self_test() -> int:
         "          ha_get_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n",
         (),
     )
+    expect_cover_art_playback_grace_errors(
+        "missing cover art playback grace",
+        "script:\n"
+        "  - id: cover_art_playback_stopped\n"
+        "    then:\n"
+        "      - lambda: id(cover_art_media_playing) = false;\n",
+        (
+            "buffer brief non-playing states between tracks",
+            "delay non-playing playback transitions",
+            "remember and cancel a pending cover art opening when playback stops",
+            "restart an interrupted cover art opening when playback resumes",
+            "cancel a pending stop when playback resumes or pauses",
+            "keep cached artwork when Home Assistant clears it during a brief playback transition",
+            "cancel pending playback grace during an immediate stop",
+        ),
+    )
+    expect_cover_art_playback_grace_errors(
+        "cover art playback grace present",
+        "script:\n"
+        "  - id: cover_art_resubscribe\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          bool restart_cover_art_delay = id(cover_art_delay_interrupted_by_transition);\n"
+        "          if (!was_playing || restart_cover_art_delay) id(cover_art_playback_started).execute();\n"
+        "          id(cover_art_delayed_playback_stopped).stop();\n"
+        "          id(cover_art_delayed_playback_stopped).stop();\n"
+        "          id(cover_art_delay_interrupted_by_transition) =\n"
+        "            id(cover_art_delay_interrupted_by_transition) || id(cover_art_delay_timer).is_running();\n"
+        "          id(cover_art_delay_timer).stop();\n"
+        "          id(cover_art_delayed_playback_stopped).execute();\n"
+        "          if (url.empty() && id(cover_art_delayed_playback_stopped).is_running()) return;\n"
+        "  - id: cover_art_delayed_playback_stopped\n"
+        "    mode: restart\n"
+        "    then:\n"
+        "      - delay: 2s\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              return state != \"playing\" && state != \"buffering\" && state != \"paused\";\n"
+        "          then:\n"
+        "            - script.execute: cover_art_playback_stopped\n"
+        "  - id: cover_art_playback_stopped\n"
+        "    then:\n"
+        "      - script.stop: cover_art_delayed_playback_stopped\n",
+        (),
+    )
     expect_cover_art_disable_errors(
         "independent media sleep prevention when cover art is disabled",
         "script:\n"
@@ -3603,6 +4147,95 @@ def run_self_test() -> int:
         "      - switch.turn_off: media_player_sleep_prevention_enabled\n",
         ("keep media sleep prevention independent",),
     )
+    valid_cover_art_adapter = (
+        "script:\n"
+        "  - id: display_mode_apply_transition\n"
+        "    then:\n"
+        "      - lambda: 'return target_mode == static_cast<int>(espcontrol::DisplayMode::COVER_ART);'\n"
+        "      - script.execute:\n"
+        "          id: display_mode_effect_cover_art\n"
+        "      - script.execute:\n"
+        "          id: cover_art_hide_effect\n"
+        "      - lambda: 'id(display_mode_controller).complete_transition(generation, espcontrol::DisplayMode::COVER_ART);'\n"
+        "  - id: display_mode_request_cover_art\n"
+        "    then:\n"
+        "      - lambda: 'id(display_mode_controller).request(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK, espcontrol::DisplayMode::COVER_ART);'\n"
+        "      - script.execute: display_mode_reconcile\n"
+        "      - script.wait: display_mode_reconcile\n"
+        "      - script.wait: display_mode_apply_transition\n"
+        "  - id: display_mode_clear_cover_art\n"
+        "    then:\n"
+        "      - lambda: 'id(display_mode_controller).clear(espcontrol::DisplayRequestSource::MEDIA_PLAYBACK);'\n"
+        "      - script.execute: display_mode_reconcile\n"
+        "      - script.wait: display_mode_reconcile\n"
+        "      - script.wait: display_mode_apply_transition\n"
+        "  - id: display_mode_reconcile\n"
+        "    then:\n"
+        "      - lambda: 'auto transition = controller.resolve(); bool transition_required = controller.transition_required(transition); if (!transition_required) { auto previous_cover_generation = id(cover_art_transition_generation); id(cover_art_transition_generation) = transition.generation; if (id(cover_art_download_generation) == previous_cover_generation) id(cover_art_download_generation) = transition.generation; }'\n"
+    )
+    valid_cover_art_effects = (
+        "globals:\n"
+        "  - id: cover_art_transition_generation\n"
+        "script:\n"
+        "  - id: display_mode_effect_cover_art\n"
+        "    then:\n"
+        "      - lambda: 'id(display_mode_controller).transition_is_current(generation, espcontrol::DisplayMode::COVER_ART); lv_obj_move_foreground(id(cover_art_screensaver));'\n"
+        "  - id: cover_art_hide_effect\n"
+        "    then:\n"
+        "      - lambda: 'id(display_mode_controller).transition_is_current(generation, target); return std::string(\"${device_slug}\") == \"guition-esp32-s3-4848s040\";'\n"
+        "      - artwork_image.release: cover_art_downloaded_image\n"
+        "  - id: hide_cover_art_view\n"
+        "    then:\n"
+        "      - script.execute: display_mode_clear_cover_art\n"
+        "      - script.wait: display_mode_clear_cover_art\n"
+        "  - id: cover_art_disable\n"
+        "    then:\n"
+        "      - script.wait: display_mode_clear_cover_art\n"
+        "  - id: cover_art_return_home_after_playback\n"
+        "    then:\n"
+        "      - script.wait: display_mode_clear_cover_art\n"
+        "  - id: cover_art_delay_timer\n"
+        "    then:\n"
+        "      - lambda: 'id(display_mode_controller).generation_is_current(generation);'\n"
+        "  - id: cover_art_apply_downloaded_image\n"
+        "    then:\n"
+        "      - lambda: 'return id(cover_art_download_generation);'\n"
+        "  - id: cover_art_deferred_download\n"
+        "    then:\n"
+        "      - lambda: 'id(display_mode_controller).transition_is_current(generation, mode);'\n"
+        "  - id: cover_art_retry_download\n"
+        "    then:\n"
+        "      - lambda: 'return id(cover_art_download_generation);'\n"
+        "  - id: cover_art_refresh_progress\n"
+        "    then:\n"
+        "      - lambda: 'id(display_mode_controller).transition_is_current(generation, mode);'\n"
+        "  - id: cover_art_delayed_playback_stopped\n"
+        "    then:\n"
+        "      - lambda: 'id(display_mode_controller).generation_is_current(generation);'\n"
+        "      - globals.set: { id: cover_art_delay_interrupted_by_transition, value: 'false' }\n"
+        "      - globals.set: { id: cover_art_media_playing, value: 'false' }\n"
+        "      - script.execute: display_mode_clear_cover_art\n"
+        "      - script.wait: display_mode_clear_cover_art\n"
+    )
+    expect_cover_art_lifecycle_controller_errors(
+        "controller-owned cover art lifecycle",
+        valid_cover_art_adapter,
+        valid_cover_art_effects,
+        (),
+    )
+    expect_cover_art_lifecycle_controller_errors(
+        "legacy cover art lifecycle",
+        "script:\n  - id: display_mode_reconcile\n    then: []\n",
+        "script:\n  - id: show_cover_art_view\n    then: []\n",
+        (
+            "route cover art presentation exclusively through the display adapter",
+            "create cover art through a controller media request",
+            "dismiss cover art by clearing its controller media request",
+            "guard the controller-owned cover art effect",
+            "preserve guarded S3 image release",
+            "guard cover_art_delay_timer",
+        ),
+    )
     expect_media_sleep_prevention_errors(
         "cover art alone keeps media awake",
         "script:\n"
@@ -3611,7 +4244,7 @@ def run_self_test() -> int:
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
-        "              return id(cover_art_screensaver_active) ||\n"
+        "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
         "                     ((id(media_player_sleep_prevention_enabled).state ||\n"
         "                       id(cover_art_screensaver_enabled).state) &&\n"
         "                      id(media_player_playing));\n",
@@ -3623,7 +4256,7 @@ def run_self_test() -> int:
         "script:\n"
         "  - id: cover_art_playback_started\n"
         "    then:\n"
-        "      - script.execute: cover_art_delay_timer\n",
+        "      - script.execute: cover_art_start_delay\n",
         (
             "do not let cover art alone keep the idle timer awake",
             "do not turn on media sleep prevention",
@@ -3638,7 +4271,7 @@ def run_self_test() -> int:
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
-        "              return id(cover_art_screensaver_active) ||\n"
+        "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
         "                     (id(media_player_sleep_prevention_enabled).state &&\n"
         "                      id(media_player_playing));\n"
         "  - id: screensaver_wake\n"
@@ -3669,7 +4302,7 @@ def run_self_test() -> int:
         "                      id(screensaver_mode).state != \"sensor\") ||\n"
         "                     id(display_asleep);\n"
         "          then:\n"
-        "            - script.execute: cover_art_delay_timer\n"
+        "            - script.execute: cover_art_start_delay\n"
         "          else:\n"
         "            - script.execute: screensaver_idle_check\n",
         (),
@@ -3682,11 +4315,20 @@ def run_self_test() -> int:
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
-        "              return id(cover_art_screensaver_active) ||\n"
+        "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
         "                     (id(media_player_sleep_prevention_enabled).state &&\n"
         "                      id(media_player_playing));\n"
         "  - id: screensaver_sleep_timer\n"
         "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: |-\n"
+        "              const std::string &state = id(cover_art_last_playback_state);\n"
+        "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
+        "                     (id(cover_art_media_playing) &&\n"
+        "                      state != \"playing\" && state != \"buffering\" && state != \"paused\");\n"
+        "          then:\n"
+        "            - script.execute: screensaver_idle_check\n"
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
@@ -3722,7 +4364,7 @@ def run_self_test() -> int:
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
-        "              return id(cover_art_screensaver_active) ||\n"
+        "              return id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) ||\n"
         "                     (id(media_player_sleep_prevention_enabled).state &&\n"
         "                      id(media_player_playing));\n"
         "  - id: screensaver_sleep_timer\n"
@@ -3752,7 +4394,24 @@ def run_self_test() -> int:
         "            - script.execute: cover_art_delay_timer\n"
         "          else:\n"
         "            - script.execute: screensaver_idle_check\n",
-        ("start cover art directly after the normal screensaver timeout",),
+        (
+            "start cover art directly after the normal screensaver timeout",
+            "keep the normal screensaver idle during cover art stop grace",
+        ),
+    )
+    expect_media_sleep_prevention_errors(
+        "takeover restore trusts delayed playing flag",
+        "script:\n"
+        "  - id: display_takeover_resume_restore\n"
+        "    then:\n"
+        "      - if:\n"
+        "          condition:\n"
+        "            lambda: 'return id(cover_art_media_playing);'\n"
+        "          then:\n"
+        "            - script.execute: show_cover_art_view\n",
+        "",
+        "",
+        ("keep takeover restore from showing cover art during stop grace",),
     )
     expect_media_control_low_heap_metadata_errors(
         "low heap media modal keeps title and artist",
@@ -4141,12 +4800,23 @@ def run_self_test() -> int:
     )
     expect_screensaver_wake_guard_errors(
         "normal wake arms delayed guard",
+        "globals:\n"
+        "  - id: screensaver_wake_restore_pending\n"
+        "    type: bool\n"
+        "    initial_value: 'false'\n"
         "script:\n"
         "  - id: screensaver_wake\n"
         "    then:\n"
+        "      - lambda: |-\n"
+        "          id(screensaver_wake_restore_pending) =\n"
+        "              !id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "      - if:\n"
         "          condition:\n"
-        "            lambda: 'return id(display_asleep) || id(screen_schedule_asleep);'\n"
+        "            lambda: |-\n"
+        "              const bool restore_pending = id(screensaver_wake_restore_pending);\n"
+        "              id(screensaver_wake_restore_pending) = false;\n"
+        "              return restore_pending ||\n"
+        "                  !id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "          then:\n"
         "            - globals.set:\n"
         "                id: screensaver_wake_touch_guard_active\n"
@@ -4160,17 +4830,28 @@ def run_self_test() -> int:
     )
     expect_screensaver_wake_guard_errors(
         "normal wake clears stale guard while cover art remains guarded",
+        "globals:\n"
+        "  - id: screensaver_wake_restore_pending\n"
+        "    type: bool\n"
+        "    initial_value: 'false'\n"
         "script:\n"
         "  - id: screensaver_wake\n"
         "    then:\n"
+        "      - lambda: |-\n"
+        "          id(screensaver_wake_restore_pending) =\n"
+        "              !id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "      - if:\n"
         "          condition:\n"
-        "            lambda: 'return id(display_asleep) || id(screen_schedule_asleep);'\n"
+        "            lambda: |-\n"
+        "              const bool restore_pending = id(screensaver_wake_restore_pending);\n"
+        "              id(screensaver_wake_restore_pending) = false;\n"
+        "              return restore_pending ||\n"
+        "                  !id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::ACTIVE);\n"
         "          then:\n"
         "            - if:\n"
         "                condition:\n"
         "                  lambda: |-\n"
-        "                    bool keep_cover_art_guard = id(cover_art_screensaver_active) && id(screensaver_wake_touch_guard_skip_once);\n"
+        "                    bool keep_cover_art_guard = id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) && id(screensaver_wake_touch_guard_skip_once);\n"
         "                    id(screensaver_wake_touch_guard_skip_once) = false;\n"
         "                    return keep_cover_art_guard;\n"
         "                else:\n"
@@ -4203,7 +4884,7 @@ def run_self_test() -> int:
         "  - id: clock_screensaver_keep_on_top\n"
         "    then:\n"
         "      - lambda: |-\n"
-        "          if (!id(is_clock_showing)) return;\n"
+        "          if (!id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::CLOCK)) return;\n"
         "          hide_clock_bar_top_layer_widgets(nullptr, 0, nullptr, nullptr);\n"
         "          refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));\n"
         "          lv_obj_move_foreground(id(clock_screensaver));\n"
@@ -4239,7 +4920,7 @@ def run_self_test() -> int:
         "  - id: clock_screensaver_keep_on_top\n"
         "    then:\n"
         "      - lambda: |-\n"
-        "          if (!id(is_clock_showing)) return;\n"
+        "          if (!id(display_mode_controller).current_mode_is(espcontrol::DisplayMode::CLOCK)) return;\n"
         "          hide_clock_bar_top_layer_widgets(nullptr, 0, nullptr, nullptr);\n"
         "          refresh_screensaver_fullscreen(id(clock_screensaver), id(dim_screensaver_touch_guard));\n"
         "          lv_obj_move_foreground(id(clock_screensaver));\n"
@@ -4327,10 +5008,64 @@ def run_self_test() -> int:
         "      - script.stop: cover_art_delay_timer\n"
         "      - script.execute: hide_cover_art_view\n"
     )
+    valid_schedule_sleep_order = (
+        "script:\n"
+        "  - id: screen_schedule_sleep\n"
+        "    then:\n"
+        "      - globals.set:\n"
+        "          id: screen_schedule_asleep\n"
+        "          value: 'true'\n"
+        "      - lambda: |-\n"
+        "          id(display_mode_controller).request(\n"
+        "              espcontrol::DisplayRequestSource::SCREEN_SCHEDULE,\n"
+        "              espcontrol::DisplayMode::DISPLAY_OFF);\n"
+        "      - script.execute: display_mode_reconcile\n"
+    )
     expect_screen_schedule_screensaver_override_errors(
         "night schedule overrides timer and sensor screensaver",
         valid_schedule_screensaver_override,
         (),
+        valid_schedule_sleep_order,
+    )
+    migrated_schedule_reconcile = (
+        valid_schedule_screensaver_override
+        + "  - id: display_mode_reconcile\n"
+        "    then:\n"
+        "      - lambda: |-\n"
+        "          if (schedule_night) {\n"
+        "            controller.request(espcontrol::DisplayRequestSource::SCREEN_SCHEDULE,\n"
+        "                               espcontrol::DisplayMode::CLOCK);\n"
+        "            if (id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART)) {\n"
+        "              id(display_mode_controller).target_mode_is(espcontrol::DisplayMode::COVER_ART) = false;\n"
+        "              id(hide_cover_art_view).execute();\n"
+        "            }\n"
+        "          }\n"
+    )
+    expect_screen_schedule_screensaver_override_errors(
+        "migrated schedule clears active cover art",
+        migrated_schedule_reconcile,
+        (),
+        valid_schedule_sleep_order,
+    )
+    expect_screen_schedule_screensaver_override_errors(
+        "migrated schedule leaves active cover art visible",
+        migrated_schedule_reconcile.replace(
+            "              id(hide_cover_art_view).execute();\n", "", 1
+        ),
+        ("scheduled night modes should clear active cover art",),
+        valid_schedule_sleep_order,
+    )
+    expect_screen_schedule_screensaver_override_errors(
+        "schedule display-off reconciles before publishing its marker",
+        valid_schedule_screensaver_override,
+        ("set the schedule-asleep marker before reconciling display-off",),
+        valid_schedule_sleep_order.replace(
+            "      - globals.set:\n"
+            "          id: screen_schedule_asleep\n"
+            "          value: 'true'\n",
+            "",
+            1,
+        ),
     )
     expect_screen_schedule_screensaver_override_errors(
         "timer screensaver bypasses night schedule",

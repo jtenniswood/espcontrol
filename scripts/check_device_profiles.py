@@ -9,7 +9,7 @@ from pathlib import Path
 
 import device_matrix
 import generate_device_slots
-from device_profiles import ROOT, load_device_profiles, public_device_capabilities
+from device_profiles import ROOT, load_device_profiles, public_device_capabilities, web_config
 import check_public_firmware
 
 
@@ -58,8 +58,18 @@ def assert_profile_slugs(profile_slugs: list[str], values: list[str], label: str
     assert values == profile_slugs, f"{label} slugs differ: {values} != {profile_slugs}"
 
 
-def image_card_limit(profile: dict) -> int:
-    return int(profile["firmware"].get("display", {}).get("imageCardDownloaders", 4))
+def image_slot_capacity(profile: dict) -> int:
+    return int(profile["capabilities"]["imageSlots"])
+
+
+def test_zero_image_capacity_disables_all_image_card_pickers(profiles: dict[str, dict]) -> None:
+    for slug, profile in profiles.items():
+        if image_slot_capacity(profile) != 0:
+            continue
+        disabled = set(web_config(profile).get("disabledCardTypes", []))
+        assert {"image", "media_cover_art"} <= disabled, (
+            f"{slug}: zero image capacity must disable Image and Media Cover Art cards"
+        )
 
 
 def test_public_device_capabilities(profile_slugs: list[str]) -> None:
@@ -83,6 +93,12 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
         assert capability["screenSize"] in grid, f"{stem}: grid snippet missing screen size"
         assert capability["resolution"] in grid, f"{stem}: grid snippet missing resolution"
         assert capability["chipFamily"] in grid, f"{stem}: grid snippet missing chip family"
+        image_capacity_text = (
+            "Not supported"
+            if capability["imageSlots"] == 0
+            else f'Up to {capability["imageSlots"]} simultaneous Image or Media Cover Art cards'
+        )
+        assert image_capacity_text in grid, f"{stem}: grid snippet missing image capacity"
         assert f'`{capability["installSlug"]}`' in grid, f"{stem}: grid snippet missing install slug"
         relay_text = "No built-in relays" if capability["relays"] == 0 else f"{capability['relays']} built-in relay"
         assert relay_text in grid, f"{stem}: grid snippet missing relay availability"
@@ -92,22 +108,34 @@ def test_public_device_capabilities(profile_slugs: list[str]) -> None:
 
 
 def test_generated_web(profiles: dict[str, dict]) -> None:
-    expected_slugs = set(profiles)
-    actual_slugs = {path.name for path in WEB_OUTPUT_DIR.iterdir() if path.is_dir()}
-    stale_slugs = sorted(actual_slugs - expected_slugs)
-    assert not stale_slugs, (
-        "generated web bundle folder has no device profile: " + ", ".join(stale_slugs)
-    )
+    path = WEB_OUTPUT_DIR / "www.js"
+    assert path.is_file(), "shared generated web bundle is missing"
+    text = path.read_text(encoding="utf-8")
 
     for slug, profile in profiles.items():
-        path = WEB_OUTPUT_DIR / slug / "www.js"
-        assert path.is_file(), f"{slug}: generated web bundle is missing"
-        text = path.read_text(encoding="utf-8")
-        assert slug in text, f"{slug}: generated web bundle has wrong device id"
-        limit = image_card_limit(profile)
-        assert f"imageCardLimit:{limit}" in text or f'"imageCardLimit":{limit}' in text, (
-            f"{slug}: generated web bundle has wrong image card limit"
+        assert slug in text, f"{slug}: shared generated web bundle is missing the device profile"
+        loader_path = WEB_OUTPUT_DIR / slug / "www.js"
+        loader = loader_path.read_text(encoding="utf-8")
+        assert len(loader) < 1024, f"{slug}: compatibility loader unexpectedly contains a full web bundle"
+        assert 'new URL("../www.js"' in loader and slug in loader, (
+            f"{slug}: compatibility loader does not launch the shared bundle"
         )
+        capacity = image_slot_capacity(profile)
+        assert f"imageSlotCapacity:{capacity}" in text or f'"imageSlotCapacity":{capacity}' in text, (
+            f"{slug}: generated web bundle has wrong image slot capacity"
+        )
+
+    core = (ROOT / "common" / "device" / "core_infra.yaml").read_text(encoding="utf-8")
+    assert "webserver/www.js?device=${device_slug}" in core, "hosted web URL does not select a shared profile"
+    assert 'ESPCONTROL_DEVICE_SLUG=\\"${device_slug}\\"' in core, "firmware build does not expose its profile slug"
+    server = (ROOT / "components" / "web_server_idf" / "web_server_idf.cpp").read_text(encoding="utf-8")
+    assert '\\"device_slug\\"' in server and "ESPCONTROL_DEVICE_PROFILE" in server, (
+        "firmware metadata endpoint does not expose the shared web profile"
+    )
+    for slug in profiles:
+        for suffix in (".yaml", ".factory.yaml"):
+            build = (ROOT / "builds" / f"{slug}{suffix}").read_text(encoding="utf-8")
+            assert 'docs/public/webserver/www.js"' in build, f"{slug}{suffix}: firmware does not embed shared web bundle"
 
 
 def test_generated_yaml(profiles: dict[str, dict]) -> None:
@@ -121,17 +149,17 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
         assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
-        limit = image_card_limit(profile)
-        if limit > 0:
-            package_name = "image_cards.yaml" if limit == 4 else f"image_cards_{limit}.yaml"
+        capacity = image_slot_capacity(profile)
+        if capacity > 0:
+            package_name = "image_cards.yaml" if capacity == 4 else f"image_cards_{capacity}.yaml"
             assert package_name in package, f"{slug}: packages.yaml missing {package_name}"
-            assert f"cfg.image_card_image_count = {limit};" in sensors, (
+            assert f"cfg.image_card_image_count = {capacity};" in sensors, (
                 f"{slug}: sensors.yaml missing image-card downloader count"
             )
-            assert f"id(image_card_download_{limit})," in sensors, (
+            assert f"id(image_card_download_{capacity})," in sensors, (
                 f"{slug}: sensors.yaml missing final image-card tile downloader"
             )
-            assert f"id(image_card_modal_download_{limit})," in sensors, (
+            assert f"id(image_card_modal_download_{capacity})," in sensors, (
                 f"{slug}: sensors.yaml missing final image-card modal downloader"
             )
         else:
@@ -328,7 +356,7 @@ def test_climate_card_icon_glyphs() -> None:
 
 def test_weather_card_visual_matches_preview() -> None:
     cards = BUTTON_GRID_CARDS.read_text(encoding="utf-8")
-    styles = (ROOT / "src" / "webserver" / "modules" / "styles.js").read_text(encoding="utf-8")
+    styles = (ROOT / "src" / "webserver" / "application" / "styles.ts").read_text(encoding="utf-8")
     subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
     weather_forecast = BUTTON_GRID_WEATHER_FORECAST.read_text(encoding="utf-8")
     assert ".sp-type-badge{display:none}" in styles, "web preview type badges should remain visually hidden"
@@ -584,6 +612,7 @@ def main() -> int:
     assert profile_slugs == compatibility_required_slugs(), "current compatibility device slug fixture is stale"
     test_public_device_capabilities(profile_slugs)
     test_generated_web(profiles)
+    test_zero_image_capacity_disables_all_image_card_pickers(profiles)
     test_generated_yaml(profiles)
     test_upgrades_do_not_reset_saved_panel_config()
     test_local_voice_generation_uses_capability()

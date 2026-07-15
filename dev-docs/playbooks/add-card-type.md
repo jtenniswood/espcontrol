@@ -6,7 +6,7 @@ configured, rendered, previewed, or saved.
 ## Edit First
 
 - `common/config/card_contract.json`
-- `src/webserver/types/<type>.js`
+- `src/webserver/cards/<type>.ts`
 - `components/espcontrol/button_grid_<type>.h`
 
 Only edit these first. Add parser or wiring files after the contract, web type,
@@ -22,10 +22,13 @@ and firmware behavior show the real shape of the change.
 ## Checklist
 
 - [ ] Add or update the card entry in `common/config/card_contract.json`.
+- [ ] Add or update its `runtime.specs` entry with a permitted driver and every
+      capability flag. Add an exhaustive mode mapping when a saved field selects
+      different behaviour.
 - [ ] Add or update the web settings and preview in
-      `src/webserver/types/<type>.js`.
+      `src/webserver/cards/<type>.ts`.
 - [ ] If options are saved, preserve them in
-      `src/webserver/modules/config_codec.js`.
+      `src/webserver/application/config_codec.ts`.
 - [ ] Add or update firmware rendering/runtime behavior in
       `components/espcontrol/button_grid_<type>.h`.
 - [ ] Include the card header from `components/espcontrol/button_grid.h`.
@@ -35,6 +38,11 @@ and firmware behavior show the real shape of the change.
       `components/espcontrol/button_grid_config.h`.
 - [ ] Add or update compatibility fixtures when the saved shape changes:
       `compatibility/fixtures/product_compatibility.json`.
+- [ ] Add every meaningful mode to `common/config/card_runtime_inventory.json`,
+      including expected subscriptions, actions, and modal ownership.
+- [ ] Cover normalisation, picker visibility, preview, reload persistence,
+      main-grid/subpage wiring, reconnect subscriptions, actions, runtime
+      allocation, modal dismissal, and cleanup as applicable.
 
 ## Regenerate
 
@@ -63,6 +71,6 @@ Expected generated files commonly include:
 
 | Level | Run | Stop when |
 |---|---|---|
-| Minimum | `npm run check:card-contract-outputs`<br>`npm run check:model-contract`<br>`npm run check:backup-contract` | The change only affects the card contract, web model, saved options, or compatibility shape, and no release-facing generated files changed unexpectedly. |
+| Minimum | `npm run check:card-contract-outputs`<br>`npm run check:card-runtime-coverage`<br>`npm run check:model-contract`<br>`npm run check:backup-contract`<br>`npm run check:firmware-parser` | The change only affects the card contract, generated runtime metadata, web model, saved options, or compatibility shape, and no release-facing generated files changed unexpectedly. |
 | Recommended | `npm run check:product` | Most card changes can stop here after generated card outputs, backup compatibility, web smoke, firmware card runtime, and release-facing metadata checks pass. |
-| Release-grade | `npm run check:fast` | Use before publishing, or when the card change touches shared firmware runtime, broad web setup behavior, generated product surfaces, or multiple card types. |
+| Release-grade | `npm run check:fast` plus all supported-display compiles | Use before publishing, or when the card change touches shared firmware runtime, lifecycle/registry code, broad web setup behavior, generated product surfaces, or multiple card types. Keep physical device testing separate from automated compile results. |

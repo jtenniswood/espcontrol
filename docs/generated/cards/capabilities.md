@@ -20,8 +20,8 @@ This generated reference lists stable setup facts from the shared card contract.
 | Climate | climate | climate | Yes | Own picker item | Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers | Visible |
 | All Controls | climate_control | climate | Yes | Climate (climate) | Label Display: label, status, actual, target; Icon & Temperatures: icon, actual, target; Temperature Step: 1, 0.5; Large Temperature Numbers; Visible Tabs | Hidden |
 | Cover | cover | cover | Yes | Own picker item | Type: modal, default, tilt, toggle, open, close, stop, set_position; Position: 0-100; Visible Tabs: position, controls, tilt, presets | Visible |
-| Doors & Windows | door_window | binary_sensor, sensor | Yes | Own picker item | None | Visible |
-| Presence | presence | binary_sensor, sensor, text_sensor | Yes | Own picker item | None | Visible |
+| Doors & Windows | door_window | binary_sensor, sensor | Yes | Own picker item | Lit When Open | Visible |
+| Presence | presence | binary_sensor, sensor, text_sensor | Yes | Own picker item | Lit When Detected | Visible |
 | Fans | fan_direction | fan | Yes | Fans (fan_speed) | None | Visible |
 | Fans | fan_oscillate | fan | Yes | Fans (fan_speed) | None | Visible |
 | Fans | fan_preset | fan | Yes | Fans (fan_speed) | None | Visible |
@@ -36,7 +36,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Lights | light_temperature | light | Yes | Lights (light_brightness) | None | Visible |
 | Lights | light_control | light | Yes | Lights (light_brightness) | Visible Tabs: power, brightness, temperature, color | Hidden |
 | Lock | lock | lock | Yes | Own picker item | Type: default, lock, unlock | Visible |
-| Media | media | media_player | Yes | Own picker item | Type: control_modal, play_pause, previous, next, volume, position, now_playing, playlist; Type: default, state; Controls: default, progress, play_pause; Maximum Volume: 1-100; Label Display: label, status; Top Left Display: icon, volume; Media Content ID / URI; Player Source / Input; Large Media Numbers | Visible |
+| Media | media | media_player | Yes | Own picker item | Type: control_modal, play_pause, previous, next, volume, position, now_playing, cover_art, playlist; Type: default, state; Controls: default, progress, play_pause; Press Action: play_pause, control_modal; Maximum Volume: 1-100; Label Display: label, status; Top Left Display: icon, volume; Media Content ID / URI; Player Source / Input; Large Media Numbers | Visible |
 | Option Select | option_select | select, input_select | Yes | Own picker item | None | Hidden |
 | Trigger | push | None | Yes | Own picker item | None | Visible |
 | Screen Lock | screen_lock | None | Yes | Own picker item | None | Visible |

@@ -8,11 +8,12 @@ const vm = require("vm");
 const { loadBuiltWebSource } = require("./web_source");
 
 const ROOT = path.resolve(__dirname, "..");
-const SOURCE = path.join(ROOT, "src", "webserver", "entry.js");
+const SOURCE = path.join(ROOT, "src", "webserver", "entry.ts");
 const COMPAT_FIXTURES = path.join(ROOT, "compatibility", "fixtures", "product_compatibility.json");
 const CONFIG_DIR = path.join(ROOT, "common", "config");
 const CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "card_normalization_fixtures.json");
 const IMAGE_CARD_NORMALIZATION_FIXTURES = path.join(ROOT, "common", "config", "image_card_normalization_fixtures.json");
+const CARD_CONTRACT = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, "card_contract.json"), "utf8"));
 
 function loadHooks(search) {
   const sandbox = {
@@ -218,6 +219,21 @@ assertButtonTypeSpecBacked("sensor", "sensor card");
 assertButtonTypeSpecBacked("slider", "slider card");
 assertButtonTypeSpecBacked("cover", "cover card");
 assertButtonTypeSpecBacked("light_brightness", "light brightness card");
+for (const [type, expectedRuntimeSpec] of Object.entries(CARD_CONTRACT.runtime.specs)) {
+  if (!hooks.buttonTypeRuntimeSpec(type)) continue;
+  const actualRuntimeSpec = hooks.buttonTypeGeneratedRuntimeSpec(type);
+  assert(actualRuntimeSpec, `${type || "switch"} generated runtime spec is merged into its web registration`);
+  assert.deepStrictEqual(
+    JSON.parse(JSON.stringify(actualRuntimeSpec)),
+    expectedRuntimeSpec,
+    `${type || "switch"} web registration uses the generated runtime spec`
+  );
+}
+assert.deepStrictEqual(
+  Array.from(hooks.buttonTypesMissingRuntimeSpec()),
+  ["media_cover_art"],
+  "only the documented obsolete helper registration lacks a standalone runtime spec"
+);
 assertButtonTypeSpecBacked("light_switch", "light switch card");
 assertButtonTypeSpecBacked("light_temperature", "light temperature card");
 assertButtonTypeSpecBacked("light_control", "full light control card");
@@ -303,11 +319,22 @@ assert.strictEqual(hooks.internalRelayDefaultIcon("push"), "Gesture Tap", "inter
 assert.strictEqual(hooks.internalRelayDefaultOnIcon(), "Lightbulb", "internal relay on icon is spec-backed");
 assert.deepStrictEqual(
   Array.from(hooks.mediaModeOptionValues()),
-  ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
+  ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
   "media mode options are spec-backed"
 );
 assert.strictEqual(hooks.mediaEditorMode("controls"), "play_pause", "legacy media controls mode maps through spec");
+assert.strictEqual(hooks.mediaEditorMode("cover_art"), "cover_art", "cover art media mode maps through spec");
 assert.strictEqual(hooks.mediaEditorMode("bad"), "play_pause", "invalid media mode falls back through spec");
+assert.strictEqual(hooks.cardRequiresSquareSize({ type: "media", sensor: "cover_art" }), true, "cover art cards require square sizes");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 4), 4, "cover art keeps 2x2 size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 7), 7, "cover art keeps 3x3 size");
+assert.strictEqual(hooks.normalizeCardSizeForConfig({ type: "media", sensor: "cover_art" }, 6), 1, "cover art rejects non-square sizes");
+const coverArtActionButton = { type: "media", sensor: "cover_art", options: "" };
+assert.strictEqual(hooks.mediaCoverArtAction(coverArtActionButton), "play_pause", "cover art defaults to play/pause action");
+hooks.setMediaCoverArtAction(coverArtActionButton, "control_modal");
+assert.strictEqual(coverArtActionButton.options, "cover_art_action=control_modal", "cover art stores the optional controls action");
+hooks.setMediaCoverArtAction(coverArtActionButton, "play_pause");
+assert.strictEqual(coverArtActionButton.options, "", "cover art omits its default action");
 assert.deepStrictEqual(
   Array.from(hooks.mediaNowPlayingControlValues()),
   ["", "progress", "play_pause"],
@@ -1664,6 +1691,30 @@ assertButtonRoundTrip(hooks, "media now playing play pause control", {
   precision: "play_pause",
 }, false);
 
+assertButtonRoundTrip(hooks, "media cover art card", {
+  entity: "media_player.office",
+  label: "Cover Art",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "cover_art",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "cover_art_action=control_modal",
+}, false);
+
+assertButtonMigration(hooks, "legacy media cover art option becomes cover art subtype", "media_player.office;Now Playing;Auto;Auto;now_playing;;media;progress;media_cover_art", {
+  entity: "media_player.office",
+  label: "Now Playing",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "cover_art",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "",
+});
+
 assertButtonRoundTrip(hooks, "media control modal card", {
   entity: "media_player.living_room",
   label: "Living Room",
@@ -2066,6 +2117,17 @@ const imageCardForLimit = {
   precision: "",
   options: "",
 };
+const mediaCoverArtCardForLimit = {
+  entity: "media_player.office",
+  label: "Cover Art",
+  icon: "Auto",
+  icon_on: "Auto",
+  sensor: "cover_art",
+  unit: "",
+  type: "media",
+  precision: "",
+  options: "",
+};
 const switchCardForImageLimit = {
   entity: "switch.kitchen",
   label: "Kitchen",
@@ -2087,8 +2149,12 @@ const imageLimitSnapshot = {
     },
   },
 };
-assert.strictEqual(hooks.imageCardLimit(), 6, "image card editor limit matches the built device profile");
+assert.strictEqual(hooks.imageSlotCapacity(), 6, "image card editor capacity matches the built device profile");
 assert.strictEqual(hooks.imageCardCountForTest(imageLimitSnapshot), 6, "image card count spans main page and subpages");
+assert.strictEqual(hooks.imageCardCountForTest({
+  grid: [1, 2],
+  buttons: [imageCardForLimit, mediaCoverArtCardForLimit],
+}), 2, "cover art media cards use image-card firmware slots");
 assert.strictEqual(hooks.imageCardCandidateAllowedForTest(imageLimitSnapshot, {
   isSub: false,
   slot: 5,
@@ -2878,7 +2944,7 @@ assertSubpageRoundTrip(hooks, "alarm action subpage", {
 }, true);
 
 assertSubpageRoundTrip(hooks, "media subpage", {
-  order: ["1", "B", "2", "3", "4", "5", "6", "7"],
+  order: ["1", "B", "2", "3", "4", "5", "6", "7", "8"],
   buttons: [
     buttonShape({ entity: "media_player.living_room", label: "Play/Pause", icon: "Auto", sensor: "play_pause", type: "media" }),
     buttonShape({ entity: "media_player.living_room", label: "Previous", icon: "Auto", sensor: "previous", type: "media" }),
@@ -2886,6 +2952,7 @@ assertSubpageRoundTrip(hooks, "media subpage", {
     buttonShape({ entity: "media_player.kitchen", label: "Kitchen", icon: "Auto", sensor: "volume", type: "media", options: "volume_max=40" }),
     buttonShape({ entity: "media_player.office", label: "Office", icon: "Progress Clock", sensor: "position", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "", icon: "Auto", sensor: "now_playing", type: "media" }),
+    buttonShape({ entity: "media_player.office", label: "Cover Art", icon: "Auto", sensor: "cover_art", type: "media" }),
     buttonShape({ entity: "media_player.office", label: "Morning Mix", icon: "Music", sensor: "playlist", type: "media", options: "playlist_content_id=spotify%3Aplaylist%3A12345" }),
   ],
 }, true);

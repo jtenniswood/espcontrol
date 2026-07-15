@@ -52,7 +52,7 @@ def test_future_release_uses_latest_tag() -> None:
     original_root = release_changelog.ROOT
     try:
         release_changelog.ROOT = repo
-        write(repo, "src/webserver/types/light_temperature.js", "export const type = 'light';\n")
+        write(repo, "src/webserver/cards/light_temperature.ts", "export const type = 'light';\n")
         commit(repo, "Add light brightness card type (#12)")
         full_hash = git(repo, "rev-parse", "HEAD")
         text = release_changelog.build_changelog(
@@ -124,13 +124,13 @@ def test_device_build_change_reports_specific_device() -> None:
     assert "All supported displays may be affected" not in text
 
 
-def test_generated_web_bundle_change_reports_specific_device() -> None:
+def test_shared_web_bundle_change_reports_all_devices() -> None:
     tmp, repo = with_temp_repo()
     original_root = release_changelog.ROOT
     try:
         release_changelog.ROOT = repo
-        write(repo, "docs/public/webserver/guition-esp32-p4-jc1060p470/www.js", "console.log('web');\n")
-        commit(repo, "Fix 7inch P4 setup page")
+        write(repo, "docs/public/webserver/www.js", "console.log('web');\n")
+        commit(repo, "Update shared setup page")
         text = release_changelog.build_changelog(
             "v1.1.0",
             release_changelog.default_from_ref("v1.1.0", "HEAD"),
@@ -141,8 +141,7 @@ def test_generated_web_bundle_change_reports_specific_device() -> None:
         release_changelog.ROOT = original_root
         tmp.cleanup()
 
-    assert "Affected devices: `guition-esp32-p4-jc1060p470`" in text
-    assert "All supported displays may be affected" not in text
+    assert "All supported displays may be affected" in text
 
 
 def test_shared_display_assets_are_user_facing() -> None:
@@ -283,7 +282,7 @@ def main() -> int:
     test_future_release_uses_latest_tag()
     test_existing_tag_uses_previous_tag()
     test_device_build_change_reports_specific_device()
-    test_generated_web_bundle_change_reports_specific_device()
+    test_shared_web_bundle_change_reports_all_devices()
     test_shared_display_assets_are_user_facing()
     test_device_manifest_change_affects_all_devices()
     test_public_device_profile_change_is_user_facing()

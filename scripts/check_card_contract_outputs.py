@@ -44,6 +44,17 @@ def option_constant_name(option_name: str) -> str:
     return f"CARD_CONTRACT_OPTION_NAME_{normalized}"
 
 
+def runtime_enum_name(value: str, empty_name: str = "SWITCH") -> str:
+    if not value:
+        return empty_name
+    return re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_").upper()
+
+
+def runtime_capability_enum_name(value: str) -> str:
+    words = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
+    return f"CAPABILITY_{runtime_enum_name(words)}"
+
+
 def header_option_constants(header: str) -> dict[str, str]:
     return {
         name: json.loads(value)
@@ -58,6 +69,18 @@ def assert_contains(text: str, needle: str, label: str) -> None:
 def assert_ts_contract(data: dict, ts: str) -> None:
     assert_contains(
         ts,
+        f"export const CARD_CONTRACT_VERSION = {data['contractVersion']} as const;",
+        "typed web card contract version",
+    )
+    assert_contains(
+        ts,
+        "export const CARD_CONTRACT_MIGRATION_ACTIONS:",
+        "typed web card contract migration actions",
+    )
+    for hook in data["normalizationHooks"]:
+        assert_contains(ts, json.dumps(hook), f"typed web card contract hook {hook}")
+    assert_contains(
+        ts,
         f"export const CARD_CONFIG_FIELDS = {json.dumps(data['fields'])} as const",
         "typed web card contract",
     )
@@ -66,6 +89,12 @@ def assert_ts_contract(data: dict, ts: str) -> None:
         f"export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {json.dumps(option_names(data), indent=2)};",
         "typed web card contract option names",
     )
+    assert_contains(
+        ts,
+        f"export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {json.dumps(data['runtime']['specs'], indent=2)};",
+        "typed web card runtime registry",
+    )
+    assert_contains(ts, "export function resolveCardRuntimeSpec(config: CardConfig)", "typed web card runtime resolver")
     for card_type, card in data["cards"].items():
         assert_contains(ts, json.dumps(card_type), f"web card contract card {card_type_name(card_type)}")
         assert_contains(ts, json.dumps(card["label"]), f"web card contract card {card_type_name(card_type)} label")
@@ -84,6 +113,11 @@ def assert_ts_contract(data: dict, ts: str) -> None:
 
 
 def assert_h_contract(data: dict, header: str) -> None:
+    assert_contains(
+        header,
+        f"constexpr int CARD_CONTRACT_VERSION = {data['contractVersion']};",
+        "firmware card contract version",
+    )
     for card_type, card in data["cards"].items():
         escaped_type = re.escape(cpp_string(card_type))
         escaped_label = re.escape(cpp_string(card["label"]))
@@ -103,6 +137,46 @@ def assert_h_contract(data: dict, header: str) -> None:
             rf"if \(type == {escaped_type}\) return {expected_subpage};",
             header,
         ), f"firmware card contract subpage rule missing for {card_type_name(card_type)}"
+
+    runtime = data["runtime"]
+    for driver in runtime["drivers"]:
+        assert_contains(
+            header,
+            f"  {runtime_enum_name(driver)},",
+            f"firmware card runtime driver {driver}",
+        )
+    for capability in runtime["capabilities"]:
+        assert_contains(
+            header,
+            runtime_capability_enum_name(capability),
+            f"firmware card runtime capability {capability}",
+        )
+    for card_type, spec in runtime["specs"].items():
+        type_name = runtime_enum_name(card_type)
+        driver_name = runtime_enum_name(spec["driver"])
+        case_match = re.search(
+            rf"case CardTypeId::{type_name}: return \{{type, CardDriverId::{driver_name}, static_cast<uint16_t>\(([^)]*)\)\}};",
+            header,
+        )
+        assert case_match, f"firmware card runtime spec missing for {card_type_name(card_type)}"
+        mask = case_match.group(1)
+        for capability, enabled in spec["capabilities"].items():
+            capability_name = runtime_capability_enum_name(capability)
+            assert (capability_name in mask) == enabled, (
+                f"firmware card runtime capability {capability} differs for {card_type_name(card_type)}"
+            )
+        for mode, mode_driver in spec.get("modes", {}).items():
+            assert_contains(
+                header,
+                f"if (mode == {cpp_string(mode)}) return CardDriverId::{runtime_enum_name(mode_driver)};",
+                f"firmware card runtime mode {card_type_name(card_type)} {mode or '<default>'}",
+            )
+        if "modeField" in spec:
+            assert_contains(
+                header,
+                f"spec.driver = resolve_card_driver(spec.type, config.{spec['modeField']});",
+                f"firmware card runtime mode field {card_type_name(card_type)}",
+            )
 
     for card_type, code in data["subpageTypeCodes"].items():
         assert_contains(

@@ -5,6 +5,9 @@
   "devices": {
     "guition-esp32-p4-jc1060p470": {
       "slots": 15,
+      "capabilities": {
+        "imageSlots": 6
+      },
       "public": {
         "name": "Guition JC1060P470",
         "docsPath": "/screens/jc1060p470",
@@ -99,8 +102,8 @@
         },
         "display": {
           "wrapTallLabels": true,
-          "imageCardDownloaders": 6,
           "volumeWidthCompensationPercent": 95,
+          "mediaArtworkWidthCompensationPercent": 98,
           "coverArt": {
             "cover_art_size": "600",
             "cover_art_decode_size": "600",
@@ -184,6 +187,9 @@
     },
     "guition-esp32-p4-jc4880p443": {
       "slots": 6,
+      "capabilities": {
+        "imageSlots": 6
+      },
       "public": {
         "name": "Guition JC4880P443",
         "docsPath": "/screens/jc4880p443",
@@ -277,7 +283,6 @@
         },
         "display": {
           "wrapTallLabels": false,
-          "imageCardDownloaders": 6,
           "refreshRebuildsSubpages": true,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
@@ -359,6 +364,9 @@
     },
     "guition-esp32-p4-jc8012p4a1": {
       "slots": 20,
+      "capabilities": {
+        "imageSlots": 6
+      },
       "public": {
         "name": "Guition JC8012P4A1",
         "docsPath": "/screens/jc8012p4a1",
@@ -452,7 +460,6 @@
         },
         "display": {
           "wrapTallLabels": true,
-          "imageCardDownloaders": 6,
           "imageCardDiagnostics": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
@@ -533,6 +540,9 @@
     },
     "guition-esp32-p4-jc8012p4a1-v2": {
       "slots": 20,
+      "capabilities": {
+        "imageSlots": 6
+      },
       "public": {
         "name": "Guition JC8012P4A1 new panel (2624+)",
         "docsPath": "/screens/jc8012p4a1-v2",
@@ -626,7 +636,6 @@
         },
         "display": {
           "wrapTallLabels": true,
-          "imageCardDownloaders": 6,
           "imageCardDiagnostics": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
@@ -707,6 +716,9 @@
     },
     "esp32-p4-86": {
       "slots": 9,
+      "capabilities": {
+        "imageSlots": 6
+      },
       "public": {
         "name": "ESP32-P4 86 Panel",
         "docsPath": "/screens/p4-86",
@@ -800,7 +812,6 @@
           "climateOptionValue": "font_text_body"
         },
         "display": {
-          "imageCardDownloaders": 6,
           "wrapTallLabels": false,
           "coverArt": {
             "cover_art_size": "720",
@@ -894,6 +905,9 @@
     },
     "guition-esp32-s3-4848s040": {
       "slots": 9,
+      "capabilities": {
+        "imageSlots": 0
+      },
       "public": {
         "name": "Guition 4848S040",
         "docsPath": "/screens/4848s040",
@@ -997,7 +1011,6 @@
         },
         "display": {
           "wrapTallLabels": false,
-          "imageCardDownloaders": 0,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
           "subpageChevronTextWidthPercent": 96,

@@ -782,7 +782,6 @@ inline void media_playback_apply_state_to_control(MediaPlaybackState *state,
     }
   }
 
-  media_control_apply_availability(ctx->btn, ctx->btn, ctx->available);
   set_card_checked_state(ctx->btn, ctx->available && ctx->playing);
   media_control_refresh_parent_card(ctx);
   MediaControlModalUi &ui = media_control_modal_ui();
@@ -1728,7 +1727,6 @@ inline void media_control_refresh_modal(MediaControlCtx *ctx) {
   std::string artist = media_control_artist_text(ctx);
   if (ui.title_lbl) lv_label_set_text(ui.title_lbl, title.c_str());
   if (ui.artist_lbl) lv_label_set_text(ui.artist_lbl, artist.c_str());
-  media_control_apply_availability(ui.panel, ui.panel, ctx->available, false);
   media_control_refresh_play_icon(ctx);
   media_control_refresh_progress(ctx);
   media_control_refresh_volume(ctx);
@@ -2428,14 +2426,25 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
       s.btn, s.icon_lbl, s.sensor_container, s.sensor_lbl, s.unit_lbl, s.text_lbl, p);
     return;
   }
-  if (mode == "now_playing") {
+  if (mode == "now_playing" || mode == "cover_art") {
     lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN);
     lv_color_t text_color = lv_obj_get_style_text_color(s.sensor_lbl, LV_PART_MAIN);
     MediaNowPlayingCtx *ctx = new MediaNowPlayingCtx();
     ctx->btn = s.btn;
-    ctx->play_pause_background = media_now_playing_play_pause_enabled(p);
-    if (media_now_playing_progress_enabled(p)) {
+    ctx->play_pause_background = mode == "now_playing" && media_now_playing_play_pause_enabled(p);
+    if (mode == "now_playing" && media_now_playing_progress_enabled(p)) {
       ctx->progress_slider = setup_media_progress_background(s.btn, secondary_color, tertiary_color, p.entity);
+    }
+    lv_obj_set_user_data(s.sensor_container, (void *)ctx);
+    if (mode == "cover_art") {
+      if (s.icon_lbl) lv_obj_add_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (s.sensor_lbl) lv_obj_add_flag(s.sensor_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (s.unit_lbl) lv_obj_add_flag(s.unit_lbl, LV_OBJ_FLAG_HIDDEN);
+      if (s.text_lbl) {
+        lv_label_set_text(s.text_lbl, "");
+        lv_obj_add_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN);
+      }
+      return;
     }
     lv_obj_t *title_lbl = lv_label_create(s.btn);
     lv_obj_set_style_text_color(title_lbl, text_color, LV_PART_MAIN);
@@ -2443,11 +2452,10 @@ inline void setup_media_card(BtnSlot &s, const ParsedCfg &p, uint32_t on_color,
     s.sensor_lbl = title_lbl;
     ctx->title_lbl = title_lbl;
     ctx->artist_lbl = s.text_lbl;
-    lv_obj_set_user_data(s.sensor_container, (void *)ctx);
     setup_media_now_playing_layout(
       s.btn, s.icon_lbl, s.sensor_lbl, s.text_lbl, media_title_font, pad,
       row_span == 1, ctx->play_pause_background,
-      media_now_playing_progress_enabled(p) ? pad : 0);
+      mode == "now_playing" && media_now_playing_progress_enabled(p) ? pad : 0);
     return;
   }
   if (mode == "position") {
@@ -2608,9 +2616,7 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
                                                    const lv_font_t *icon_font,
                                                    int width_compensation_percent = 100,
                                                    lv_obj_t *pct_lbl = nullptr,
-                                                   lv_obj_t *unit_lbl = nullptr,
-                                                   std::function<void()> suspend_display_takeover = nullptr,
-                                                   std::function<void()> resume_display_takeover = nullptr) {
+                                                   lv_obj_t *unit_lbl = nullptr) {
   MediaVolumeCtx *ctx = new MediaVolumeCtx();
   ctx->entity_id = p.entity;
   ctx->label = media_label(p);
@@ -2628,8 +2634,6 @@ inline MediaVolumeCtx *create_media_volume_context(lv_obj_t *btn,
   ctx->unit_font = unit_font;
   ctx->label_font = label_font;
   ctx->icon_font = icon_font;
-  ctx->suspend_display_takeover = suspend_display_takeover;
-  ctx->resume_display_takeover = resume_display_takeover;
   if (btn) lv_obj_set_user_data(btn, ctx);
   return ctx;
 }

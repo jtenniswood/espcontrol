@@ -85,17 +85,10 @@ esphome:
                 - lambda: 'return !wifi::global_wifi_component->has_sta();'
             then:
               - globals.set:
-                  id: display_asleep
-                  value: 'false'
-              - globals.set:
-                  id: screen_schedule_asleep
-                  value: 'false'
-              - globals.set:
-                  id: screensaver_display_off_active
-                  value: 'false'
-              - globals.set:
-                  id: screensaver_dimmed_active
-                  value: 'false'
+                  id: connectivity_setup_display_active
+                  value: 'true'
+              - script.execute: display_mode_reconcile
+              - script.wait: display_mode_apply_transition
               - lambda: |-
                   lv_label_set_text(id(loading_status_icon), "${icon_wifi}");
                   lv_label_set_text(id(loading_status_title), espcontrol_i18n("WiFi Setup"));
@@ -107,7 +100,7 @@ esphome:
             condition:
               lambda: |-
                 return wifi::global_wifi_component->has_sta() &&
-                       (id(screen_schedule_asleep) ||
+                       (id(display_mode_controller).target_schedule_inactive() ||
                         screen_schedule_waiting_for_time(
                           id(screen_schedule_trigger).state,
                           id(schedule_enabled).state,

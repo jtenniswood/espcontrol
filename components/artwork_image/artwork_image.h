@@ -132,6 +132,7 @@ class ArtworkImage : public PollingComponent,
   int get_content_height() const { return this->buffer_content_height_; }
   int get_content_offset_x() const { return this->buffer_offset_x_; }
   int get_content_offset_y() const { return this->buffer_offset_y_; }
+  ImageResizeMode get_resize_mode() const { return this->resize_mode_; }
   image::ImageType image_type() const { return this->type_; }
 
  protected:

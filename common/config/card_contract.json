@@ -1,4 +1,38 @@
 {
+  "contractVersion": 1,
+  "normalizationHooks": [
+    "normalize_action_fields",
+    "action_large_numbers_supported",
+    "normalize_action_options",
+    "normalize_media_fields",
+    "normalize_media_options",
+    "normalize_fan_fields",
+    "normalize_fan_options",
+    "normalize_date_time_fields",
+    "normalize_date_time_options",
+    "normalize_mower_fields",
+    "normalize_occupancy_fields",
+    "normalize_occupancy_options",
+    "normalize_access_fields",
+    "normalize_access_options",
+    "normalize_security_fields",
+    "normalize_security_options",
+    "normalize_weather_fields",
+    "normalize_weather_options",
+    "normalize_image_fields",
+    "normalize_image_options",
+    "normalize_climate_fields",
+    "normalize_climate_options",
+    "normalize_light_control_options",
+    "normalize_webhook_fields",
+    "normalize_webhook_options",
+    "normalize_subpage_fields",
+    "normalize_subpage_options",
+    "normalize_switch_options",
+    "normalize_sensor_fields",
+    "normalize_sensor_options",
+    "normalize_vacuum_fields"
+  ],
   "fields": [
     "entity",
     "label",
@@ -10,11 +44,118 @@
     "precision",
     "options"
   ],
+  "runtime": {
+    "drivers": [
+      "toggle",
+      "action",
+      "vacuum",
+      "lawn_mower",
+      "alarm",
+      "alarm_action",
+      "date_time",
+      "climate",
+      "cover",
+      "cover_modal",
+      "cover_position",
+      "cover_tilt",
+      "cover_toggle",
+      "cover_command",
+      "status_entity",
+      "fan",
+      "fan_control",
+      "access",
+      "internal",
+      "numeric",
+      "light_temperature",
+      "light_control",
+      "media",
+      "media_control",
+      "media_play_pause",
+      "media_transport",
+      "media_volume",
+      "media_position",
+      "media_now_playing",
+      "media_cover_art",
+      "media_playlist",
+      "option_select",
+      "push",
+      "screen_lock",
+      "webhook",
+      "sensor",
+      "subpage",
+      "weather",
+      "image"
+    ],
+    "capabilities": [
+      "informationOnly",
+      "subscriptions",
+      "actions",
+      "numericControl",
+      "modal",
+      "runtimeAllocation",
+      "subpage"
+    ],
+    "specs": {
+      "": {"driver": "toggle", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "action": {"driver": "action", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "vacuum": {"driver": "vacuum", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "lawn_mower": {"driver": "lawn_mower", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "alarm": {"driver": "alarm", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
+      "alarm_action": {"driver": "alarm_action", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "calendar": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "clock": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "climate": {"driver": "climate", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true}},
+      "climate_control": {"driver": "climate", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true}},
+      "cover": {
+        "driver": "cover",
+        "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true},
+        "modeField": "sensor",
+        "defaultDriver": "cover_modal",
+        "modes": {"modal": "cover_modal", "": "cover_position", "tilt": "cover_tilt", "toggle": "cover_toggle", "open": "cover_command", "close": "cover_command", "stop": "cover_command", "set_position": "cover_command"}
+      },
+      "door_window": {"driver": "status_entity", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "presence": {"driver": "status_entity", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "fan_direction": {"driver": "fan", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "fan_oscillate": {"driver": "fan", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "fan_preset": {"driver": "fan", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "fan_speed": {"driver": "fan", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "fan_control": {"driver": "fan_control", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "fan_switch": {"driver": "fan", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "garage": {"driver": "access", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "gate": {"driver": "access", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "internal": {"driver": "internal", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "light_brightness": {"driver": "numeric", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "light_switch": {"driver": "toggle", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "light_temperature": {"driver": "light_temperature", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "light_control": {"driver": "light_control", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "lock": {"driver": "access", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "media": {
+        "driver": "media",
+        "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true},
+        "modeField": "sensor",
+        "defaultDriver": "media_play_pause",
+        "modes": {"control_modal": "media_control", "play_pause": "media_play_pause", "previous": "media_transport", "next": "media_transport", "volume": "media_volume", "position": "media_position", "now_playing": "media_now_playing", "cover_art": "media_cover_art", "playlist": "media_playlist"}
+      },
+      "option_select": {"driver": "option_select", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "push": {"driver": "push", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "screen_lock": {"driver": "screen_lock", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "webhook": {"driver": "webhook", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "sensor": {"driver": "sensor", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "local_sensor": {"driver": "sensor", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "slider": {"driver": "numeric", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": false, "runtimeAllocation": true, "subpage": true}},
+      "subpage": {"driver": "subpage", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": false}},
+      "timezone": {"driver": "date_time", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "weather": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
+      "image": {"driver": "image", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": true, "numericControl": false, "modal": true, "runtimeAllocation": true, "subpage": true}},
+      "weather_forecast": {"driver": "weather", "capabilities": {"informationOnly": true, "subscriptions": true, "actions": false, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}}
+    }
+  },
   "optionNames": [
     "state_low_label",
     "state_high_label",
     "image_refresh",
-    "image_refresh_mode"
+    "image_refresh_mode",
+    "media_cover_art"
   ],
   "cards": {
     "": {
@@ -25,7 +166,8 @@
         {
           "name": "large_numbers",
           "label": "Large Active Display Numbers",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         },
         {
           "name": "confirmation_mode",
@@ -33,6 +175,7 @@
           "kind": "choice",
           "values": ["", "off", "on", "both"],
           "defaultValue": "",
+          "omitDefault": true,
           "storage": ["confirm_off", "confirm_on"]
         },
         {
@@ -40,13 +183,15 @@
           "label": "On State Pattern",
           "kind": "choice",
           "values": ["", "stripes"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "omitDefault": true
         },
         {
           "name": "confirm_message",
           "label": "Message",
           "kind": "text",
           "defaultValue": "Turn off this device?",
+          "omitDefault": true,
           "defaultValueByMode": {
             "off": "Turn off this device?",
             "on": "Turn on this device?",
@@ -57,15 +202,33 @@
           "name": "confirm_yes",
           "label": "Confirm Button",
           "kind": "text",
-          "defaultValue": "Yes"
+          "defaultValue": "Yes",
+          "omitDefault": true
         },
         {
           "name": "confirm_no",
           "label": "Cancel Button",
           "kind": "text",
-          "defaultValue": "No"
+          "defaultValue": "No",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "default_if_empty", "value": "Auto" },
+          "icon_on": { "policy": "default_if_empty", "value": "Auto" },
+          "sensor": { "policy": "keep" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "" },
+          "precision": { "policy": "keep" },
+          "options": { "policy": "hook", "hook": "normalize_switch_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["large_numbers", "on_pattern", "confirm_off", "confirm_on", "confirm_message", "confirm_yes", "confirm_no"],
+        "optionHook": "normalize_switch_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -86,38 +249,113 @@
         {
           "name": "large_numbers",
           "label": "Large State Numbers",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true,
+          "applicabilityHook": "action_large_numbers_supported"
+        },
+        {
+          "name": "state_entity",
+          "label": "State Entity",
+          "kind": "text",
+          "hidden": true,
+          "docsHidden": true,
+          "omitDefault": true
+        },
+        {
+          "name": "state_unit",
+          "label": "State Unit",
+          "kind": "text",
+          "hidden": true,
+          "docsHidden": true,
+          "omitDefault": true,
+          "applicability": [
+            { "source": "option", "name": "state_entity", "operator": "present" },
+            { "source": "option", "name": "state_precision", "operator": "in", "value": ["icon", "text"], "negate": true }
+          ]
+        },
+        {
+          "name": "state_precision",
+          "label": "State Precision",
+          "kind": "choice",
+          "values": ["", "0", "1", "2", "icon", "text"],
+          "defaultValue": "",
+          "hidden": true,
+          "docsHidden": true,
+          "omitDefault": true,
+          "applicability": [
+            { "source": "option", "name": "state_entity", "operator": "present" }
+          ]
         },
         {
           "name": "confirmation_required",
           "label": "Confirmation Required",
           "kind": "flag",
-          "storage": ["confirm_on"]
+          "storage": ["confirm_on"],
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" }
+          ]
         },
         {
           "name": "script_fields",
           "label": "Fields",
-          "kind": "text"
+          "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" }
+          ]
         },
         {
           "name": "confirm_message",
           "label": "Message",
           "kind": "text",
-          "defaultValue": "Run this script?"
+          "defaultValue": "Run this script?",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+            { "source": "option", "name": "confirm_on", "operator": "present" }
+          ]
         },
         {
           "name": "confirm_yes",
           "label": "Confirm Button",
           "kind": "text",
-          "defaultValue": "Yes"
+          "defaultValue": "Yes",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+            { "source": "option", "name": "confirm_on", "operator": "present" }
+          ]
         },
         {
           "name": "confirm_no",
           "label": "Cancel Button",
           "kind": "text",
-          "defaultValue": "No"
+          "defaultValue": "No",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "script.turn_on" },
+            { "source": "option", "name": "confirm_on", "operator": "present" }
+          ]
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_action_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_action_fields" },
+          "sensor": { "policy": "hook", "hook": "normalize_action_fields" },
+          "unit": { "policy": "hook", "hook": "normalize_action_fields" },
+          "type": { "policy": "hook", "hook": "normalize_action_fields" },
+          "precision": { "policy": "hook", "hook": "normalize_action_fields" },
+          "options": { "policy": "hook", "hook": "normalize_action_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["state_entity", "state_unit", "state_precision", "large_numbers", "script_fields", "confirm_on", "confirm_message", "confirm_yes", "confirm_no"],
+        "optionHook": "normalize_action_options",
+        "migrationActions": ["legacy_local_action", "legacy_option_select", "legacy_vacuum_start", "legacy_vacuum_dock"]
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -140,9 +378,39 @@
           "label": "Type",
           "kind": "choice",
           "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"],
-          "defaultValue": "start_stop"
+          "defaultValue": "start_stop",
+          "storageField": "sensor",
+          "omitDefault": false
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_vacuum_fields" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "allowed", "values": ["status", "start_stop", "dock", "pause_resume", "clean_spot", "locate", "clean_area"], "aliases": { "vacuum.start": "start_stop", "vacuum.return_to_base": "dock" }, "fallback": "start_stop" },
+          "unit": { "policy": "hook", "hook": "normalize_vacuum_fields" },
+          "type": { "policy": "default", "value": "vacuum" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": [],
+        "migrationActions": ["legacy_vacuum_start", "legacy_vacuum_dock"],
+        "hookData": {
+          "normalize_vacuum_fields": {
+            "preserveUnitForModes": ["clean_area"],
+            "defaultIcons": {
+              "dock": "Robot Vacuum Variant",
+              "clean_spot": "Vacuum",
+              "locate": "Robot Vacuum Alert",
+              "clean_area": "Vacuum Outline",
+              "default": "Robot Vacuum"
+            }
+          }
+        }
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -165,9 +433,26 @@
           "label": "Type",
           "kind": "choice",
           "values": ["status", "start_mowing", "dock", "pause_resume"],
-          "defaultValue": "start_mowing"
+          "defaultValue": "start_mowing",
+          "storageField": "sensor",
+          "omitDefault": false
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_mower_fields" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "hook", "hook": "normalize_mower_fields" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "lawn_mower" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -190,42 +475,65 @@
           "label": "Type",
           "kind": "choice",
           "values": ["control_panel", "away", "home", "night", "vacation", "disarm"],
-          "defaultValue": "control_panel"
+          "defaultValue": "control_panel",
+          "storageField": "type",
+          "omitDefault": false
         },
         {
           "name": "pin_arm",
           "label": "PIN required for arming",
           "kind": "flag",
-          "defaultValue": "1"
+          "defaultValue": "1",
+          "omitDefault": true
         },
         {
           "name": "pin_disarm",
           "label": "PIN required for disarming",
           "kind": "flag",
-          "defaultValue": "1"
+          "defaultValue": "1",
+          "omitDefault": true
         },
         {
           "name": "actions",
           "label": "Visible Actions",
           "kind": "choice",
           "values": ["away", "home", "night", "vacation", "disarm"],
-          "defaultValue": "away|home|disarm"
+          "defaultValue": "away|home|disarm",
+          "omitDefault": true
         },
         {
           "name": "icon_display",
           "label": "Icon Display",
           "kind": "choice",
           "values": ["static", "status"],
-          "defaultValue": "status"
+          "defaultValue": "status",
+          "omitDefault": true
         },
         {
           "name": "label_display",
           "label": "Label Display",
           "kind": "choice",
           "values": ["name", "status"],
-          "defaultValue": "status"
+          "defaultValue": "status",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_security_fields" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "alarm" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_security_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["pin_arm", "pin_disarm", "actions", "icon_display", "label_display"],
+        "optionHook": "normalize_security_options"
+      },
       "behavior": {
         "alarm": {
           "controlPanelValue": "control_panel",
@@ -287,6 +595,22 @@
       "allowInSubpage": true,
       "pickerKey": "alarm",
       "domains": ["alarm_control_panel"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "hook", "hook": "normalize_security_fields" },
+          "icon": { "policy": "hook", "hook": "normalize_security_fields" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "hook", "hook": "normalize_security_fields" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "alarm_action" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_security_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": [],
+        "optionHook": "normalize_security_options"
+      },
       "default": {
         "entity": "",
         "label": "Arm Away",
@@ -309,14 +633,33 @@
           "label": "Type",
           "kind": "choice",
           "values": ["clock", "datetime", "", "timezone"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "type",
+          "omitDefault": false
         },
         {
           "name": "large_numbers",
           "label": "Large Clock",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "hook", "hook": "normalize_date_time_fields" },
+          "label": { "policy": "clear" },
+          "icon": { "policy": "default", "value": "Auto" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "calendar" },
+          "precision": { "policy": "allowed", "values": ["", "datetime"], "fallback": "" },
+          "options": { "policy": "hook", "hook": "normalize_date_time_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["large_numbers"],
+        "optionHook": "normalize_date_time_options"
+      },
       "default": {
         "entity": "sensor.date",
         "label": "",
@@ -340,14 +683,33 @@
           "label": "Type",
           "kind": "choice",
           "values": ["clock", "datetime", "", "timezone"],
-          "defaultValue": "clock"
+          "defaultValue": "clock",
+          "storageField": "type",
+          "omitDefault": false
         },
         {
           "name": "large_numbers",
           "label": "Large Clock",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "clear" },
+          "label": { "policy": "clear" },
+          "icon": { "policy": "default", "value": "Auto" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "clock" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_date_time_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["large_numbers"],
+        "optionHook": "normalize_date_time_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -370,28 +732,48 @@
           "label": "Label Display",
           "kind": "choice",
           "values": ["label", "status", "actual", "target"],
-          "defaultValue": "label"
+          "defaultValue": "label",
+          "omitDefault": true
         },
         {
           "name": "number_display",
           "label": "Icon & Temperatures",
           "kind": "choice",
           "values": ["icon", "actual", "target"],
-          "defaultValue": "target"
+          "defaultValue": "target",
+          "omitDefault": true
         },
         {
           "name": "temperature_step",
           "label": "Temperature Step",
           "kind": "choice",
           "values": ["1", "0.5"],
-          "defaultValue": "1"
+          "defaultValue": "1",
+          "omitDefault": true
         },
         {
           "name": "large_numbers",
           "label": "Large Temperature Numbers",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_climate_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_climate_fields" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "alias", "aliases": { "climate": "climate_control" } },
+          "precision": { "policy": "hook", "hook": "normalize_climate_fields" },
+          "options": { "policy": "hook", "hook": "normalize_climate_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["label_display", "number_display", "temperature_step", "large_numbers"],
+        "optionHook": "normalize_climate_options"
+      },
       "behavior": {
         "climate": {
           "defaultLabelDisplay": "label",
@@ -424,34 +806,55 @@
           "label": "Label Display",
           "kind": "choice",
           "values": ["label", "status", "actual", "target"],
-          "defaultValue": "label"
+          "defaultValue": "label",
+          "omitDefault": true
         },
         {
           "name": "number_display",
           "label": "Icon & Temperatures",
           "kind": "choice",
           "values": ["icon", "actual", "target"],
-          "defaultValue": "target"
+          "defaultValue": "target",
+          "omitDefault": true
         },
         {
           "name": "temperature_step",
           "label": "Temperature Step",
           "kind": "choice",
           "values": ["1", "0.5"],
-          "defaultValue": "1"
+          "defaultValue": "1",
+          "omitDefault": true
         },
         {
           "name": "large_numbers",
           "label": "Large Temperature Numbers",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         },
         {
           "name": "climate_tabs",
           "label": "Visible Tabs",
           "kind": "text",
-          "defaultValue": "temperature|mode|preset|fan|swing"
+          "defaultValue": "temperature|mode|preset|fan|swing",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_climate_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_climate_fields" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "alias", "aliases": { "climate": "climate_control" } },
+          "precision": { "policy": "hook", "hook": "normalize_climate_fields" },
+          "options": { "policy": "hook", "hook": "normalize_climate_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["label_display", "number_display", "temperature_step", "large_numbers", "climate_tabs"],
+        "optionHook": "normalize_climate_options"
+      },
       "behavior": {
         "climate": {
           "defaultLabelDisplay": "label",
@@ -482,13 +885,17 @@
           "label": "Type",
           "kind": "choice",
           "values": ["modal", "", "tilt", "toggle", "open", "close", "stop", "set_position"],
-          "defaultValue": "modal"
+          "defaultValue": "modal",
+          "storageField": "sensor",
+          "omitDefault": false
         },
         {
           "name": "cover_position",
           "label": "Position",
           "kind": "number",
           "defaultValue": "50",
+          "storageField": "unit",
+          "omitDefault": false,
           "min": 0,
           "max": 100,
           "step": 1
@@ -498,9 +905,26 @@
           "label": "Visible Tabs",
           "kind": "text",
           "values": ["position", "controls", "tilt", "presets"],
-          "defaultValue": "position|controls|tilt|presets"
+          "defaultValue": "position|controls|tilt|presets",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "hook", "hook": "normalize_access_fields" },
+          "unit": { "policy": "hook", "hook": "normalize_access_fields" },
+          "type": { "policy": "default", "value": "cover" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_access_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["cover_tabs"],
+        "optionHook": "normalize_access_options"
+      },
       "behavior": {
         "cover": {
           "commandServices": {
@@ -527,6 +951,30 @@
       "label": "Doors & Windows",
       "allowInSubpage": true,
       "domains": ["binary_sensor", "sensor"],
+      "options": [
+        {
+          "name": "active_color",
+          "label": "Lit When Open",
+          "kind": "flag",
+          "omitDefault": true
+        }
+      ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "clear" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_occupancy_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_occupancy_fields" },
+          "sensor": { "policy": "keep" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "door_window" },
+          "precision": { "policy": "hook", "hook": "normalize_occupancy_fields" },
+          "options": { "policy": "hook", "hook": "normalize_occupancy_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["active_color"],
+        "optionHook": "normalize_occupancy_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -543,6 +991,30 @@
       "label": "Presence",
       "allowInSubpage": true,
       "domains": ["binary_sensor", "sensor", "text_sensor"],
+      "options": [
+        {
+          "name": "active_color",
+          "label": "Lit When Detected",
+          "kind": "flag",
+          "omitDefault": true
+        }
+      ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "clear" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_occupancy_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_occupancy_fields" },
+          "sensor": { "policy": "keep" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "presence" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_occupancy_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["active_color"],
+        "optionHook": "normalize_occupancy_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -560,6 +1032,21 @@
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
       "domains": ["fan"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "fan_direction" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -577,6 +1064,21 @@
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
       "domains": ["fan"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "fan_oscillate" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -594,6 +1096,21 @@
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
       "domains": ["fan"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "fan_preset" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -610,6 +1127,21 @@
       "label": "Fans",
       "allowInSubpage": true,
       "domains": ["fan"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "fan_speed" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -632,9 +1164,26 @@
           "name": "fan_tabs",
           "label": "Visible Tabs",
           "kind": "text",
-          "defaultValue": "power|speed|preset|oscillation|direction"
+          "defaultValue": "power|speed|preset|oscillation|direction",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "fan_control" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_fan_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["fan_tabs"],
+        "optionHook": "normalize_fan_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -652,6 +1201,21 @@
       "allowInSubpage": true,
       "pickerKey": "fan_speed",
       "domains": ["fan"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_fan_fields" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "fan_switch" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -674,16 +1238,35 @@
           "label": "Interaction",
           "kind": "choice",
           "values": ["", "open", "close"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "sensor",
+          "omitDefault": false
         },
         {
           "name": "label_display",
           "label": "Display",
           "kind": "choice",
           "values": ["label", "status"],
-          "defaultValue": "label"
+          "defaultValue": "label",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "hook", "hook": "normalize_access_fields" },
+          "sensor": { "policy": "hook", "hook": "normalize_access_fields" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "garage" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_access_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["label_display"],
+        "optionHook": "normalize_access_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -706,16 +1289,35 @@
           "label": "Interaction",
           "kind": "choice",
           "values": ["", "open", "close", "stop"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "sensor",
+          "omitDefault": false
         },
         {
           "name": "label_display",
           "label": "Display",
           "kind": "choice",
           "values": ["label", "status"],
-          "defaultValue": "label"
+          "defaultValue": "label",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "hook", "hook": "normalize_access_fields" },
+          "sensor": { "policy": "hook", "hook": "normalize_access_fields" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "gate" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_access_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["label_display"],
+        "optionHook": "normalize_access_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -738,7 +1340,9 @@
           "label": "Mode",
           "kind": "choice",
           "values": ["switch", "push"],
-          "defaultValue": "switch"
+          "defaultValue": "switch",
+          "storageField": "sensor",
+          "omitDefault": false
         }
       ],
       "behavior": {
@@ -749,6 +1353,21 @@
           },
           "defaultIconOn": "Lightbulb"
         }
+      },
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "keep" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "internal" },
+          "precision": { "policy": "keep" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
       },
       "default": {
         "entity": "",
@@ -766,6 +1385,21 @@
       "label": "Lights",
       "allowInSubpage": true,
       "domains": ["light"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "light_brightness" },
+          "precision": { "policy": "keep" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -783,6 +1417,21 @@
       "allowInSubpage": true,
       "pickerKey": "light_brightness",
       "domains": ["light"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "light_switch" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -810,6 +1459,21 @@
           "legacySensorValues": ["kelvin"]
         }
       },
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "keep" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "light_temperature" },
+          "precision": { "policy": "keep" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -834,9 +1498,26 @@
           "label": "Visible Tabs",
           "kind": "text",
           "values": ["power", "brightness", "temperature", "color"],
-          "defaultValue": "power|brightness|temperature|color"
+          "defaultValue": "power|brightness|temperature|color",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "light_control" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_light_control_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["light_tabs"],
+        "optionHook": "normalize_light_control_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -859,9 +1540,26 @@
           "label": "Type",
           "kind": "choice",
           "values": ["", "lock", "unlock"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "sensor",
+          "omitDefault": false
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "hook", "hook": "normalize_access_fields" },
+          "sensor": { "policy": "hook", "hook": "normalize_access_fields" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "lock" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "behavior": {
         "lock": {
           "commandServices": {
@@ -895,22 +1593,46 @@
           "name": "media_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "playlist"],
-          "defaultValue": "play_pause"
+          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
+          "defaultValue": "play_pause",
+          "storageField": "sensor",
+          "omitDefault": false,
+          "aliases": { "controls": "play_pause" }
         },
         {
           "name": "media_display",
           "label": "Type",
           "kind": "choice",
           "values": ["", "state"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "precision",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["play_pause", "position"] }
+          ]
         },
         {
           "name": "media_now_playing_controls",
           "label": "Controls",
           "kind": "choice",
           "values": ["", "progress", "play_pause"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "precision",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "now_playing" }
+          ]
+        },
+        {
+          "name": "cover_art_action",
+          "label": "Press Action",
+          "kind": "choice",
+          "values": ["play_pause", "control_modal"],
+          "defaultValue": "play_pause",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "cover_art" }
+          ]
         },
         {
           "name": "volume_max",
@@ -919,26 +1641,42 @@
           "min": 1,
           "max": 100,
           "step": 1,
-          "defaultValue": "100"
+          "defaultValue": "100",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "volume"] }
+          ]
         },
         {
           "name": "label_display",
           "label": "Label Display",
           "kind": "choice",
           "values": ["label", "status"],
-          "defaultValue": "status"
+          "defaultValue": "status",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "control_modal" }
+          ]
         },
         {
           "name": "number_display",
           "label": "Top Left Display",
           "kind": "choice",
           "values": ["icon", "volume"],
-          "defaultValue": "icon"
+          "defaultValue": "icon",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "control_modal" }
+          ]
         },
         {
           "name": "playlist_content_id",
           "label": "Media Content ID / URI",
-          "kind": "text"
+          "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "playlist" }
+          ]
         },
         {
           "name": "playlist_content_type",
@@ -946,19 +1684,47 @@
           "kind": "text",
           "defaultValue": "playlist",
           "hidden": true,
-          "docsHidden": true
+          "docsHidden": true,
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "playlist" }
+          ]
         },
         {
           "name": "playlist_player_source",
           "label": "Player Source / Input",
-          "kind": "text"
+          "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "equals", "value": "playlist" }
+          ]
         },
         {
           "name": "large_numbers",
           "label": "Large Media Numbers",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["volume", "position"] }
+          ]
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "hook", "hook": "normalize_media_fields" },
+          "icon": { "policy": "hook", "hook": "normalize_media_fields" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "hook", "hook": "normalize_media_fields" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "media" },
+          "precision": { "policy": "hook", "hook": "normalize_media_fields" },
+          "options": { "policy": "hook", "hook": "normalize_media_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["label_display", "number_display", "cover_art_action", "volume_max", "playlist_content_id", "playlist_content_type", "playlist_player_source", "large_numbers"],
+        "optionHook": "normalize_media_options"
+      },
       "behavior": {
         "media": {
           "defaultMode": "play_pause",
@@ -1012,6 +1778,21 @@
           "defaultIconOn": "Auto"
         }
       },
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "keep" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "push" },
+          "precision": { "policy": "keep" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1028,6 +1809,21 @@
       "label": "Screen Lock",
       "allowInSubpage": true,
       "domains": [],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "clear" },
+          "label": { "policy": "clear" },
+          "icon": { "policy": "default", "value": "Lock" },
+          "icon_on": { "policy": "default", "value": "Lock Open" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "screen_lock" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1049,9 +1845,26 @@
           "name": "webhook_headers",
           "label": "Headers",
           "kind": "text",
-          "defaultValue": ""
+          "defaultValue": "",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_webhook_fields" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "hook", "hook": "normalize_webhook_fields" },
+          "unit": { "policy": "hook", "hook": "normalize_webhook_fields" },
+          "type": { "policy": "default", "value": "webhook" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_webhook_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["webhook_headers"],
+        "optionHook": "normalize_webhook_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1073,6 +1886,10 @@
           "name": "large_numbers",
           "label": "Large Sensor Numbers",
           "kind": "flag",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "in", "value": ["icon", "text"], "negate": true }
+          ],
           "supportedWhen": {
             "precisionNot": ["icon", "text"]
           }
@@ -1083,6 +1900,10 @@
           "kind": "flag",
           "hidden": true,
           "migration": "drop",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "type", "operator": "present", "negate": true }
+          ],
           "supportedWhen": {
             "never": true
           }
@@ -1091,6 +1912,10 @@
           "name": "state_labels",
           "label": "Status Translation",
           "kind": "flag",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
@@ -1099,6 +1924,10 @@
           "name": "state_input",
           "label": "Input Status",
           "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
@@ -1107,6 +1936,10 @@
           "name": "state_output",
           "label": "Display Text",
           "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
@@ -1115,6 +1948,10 @@
           "name": "state_input_2",
           "label": "Input Status 2",
           "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
@@ -1123,11 +1960,32 @@
           "name": "state_output_2",
           "label": "Display Text 2",
           "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "text" }
+          ],
           "supportedWhen": {
             "precision": ["text"]
           }
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "hook", "hook": "normalize_sensor_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_sensor_fields" },
+          "sensor": { "policy": "hook", "hook": "normalize_sensor_fields" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "sensor" },
+          "precision": { "policy": "hook", "hook": "normalize_sensor_fields" },
+          "options": { "policy": "hook", "hook": "normalize_sensor_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["large_numbers", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+        "optionHook": "normalize_sensor_options",
+        "migrationActions": ["legacy_local_sensor", "legacy_text_sensor", "legacy_sensor_state_high_label", "legacy_sensor_state_low_label"]
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1162,6 +2020,21 @@
       "label": "Slider",
       "allowInSubpage": true,
       "domains": ["light", "fan"],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "keep" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "slider" },
+          "precision": { "policy": "keep" },
+          "options": { "policy": "clear" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": []
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1184,14 +2057,32 @@
           "label": "Subpage Type",
           "kind": "choice",
           "values": ["", "switch", "lights", "climate", "presence", "media", "alarm", "cover", "garage", "gate", "lock", "vacuum", "lawn_mower", "weather", "sensor", "image"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "omitDefault": true
         },
         {
           "name": "large_numbers",
           "label": "Large State Numbers",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "hook", "hook": "normalize_subpage_fields" },
+          "icon": { "policy": "hook", "hook": "normalize_subpage_fields" },
+          "icon_on": { "policy": "hook", "hook": "normalize_subpage_fields" },
+          "sensor": { "policy": "hook", "hook": "normalize_subpage_fields" },
+          "unit": { "policy": "hook", "hook": "normalize_subpage_fields" },
+          "type": { "policy": "default", "value": "subpage" },
+          "precision": { "policy": "hook", "hook": "normalize_subpage_fields" },
+          "options": { "policy": "hook", "hook": "normalize_subpage_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["subpage_kind", "large_numbers"],
+        "optionHook": "normalize_subpage_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1215,14 +2106,33 @@
           "label": "Type",
           "kind": "choice",
           "values": ["clock", "datetime", "", "timezone"],
-          "defaultValue": "timezone"
+          "defaultValue": "timezone",
+          "storageField": "type",
+          "omitDefault": false
         },
         {
           "name": "large_numbers",
           "label": "Large Clock",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "hook", "hook": "normalize_date_time_fields" },
+          "label": { "policy": "clear" },
+          "icon": { "policy": "default", "value": "Auto" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "timezone" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_date_time_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["large_numbers"],
+        "optionHook": "normalize_date_time_options"
+      },
       "default": {
         "entity": "UTC (GMT+0)",
         "label": "",
@@ -1245,17 +2155,37 @@
           "label": "Type",
           "kind": "choice",
           "values": ["", "today", "tomorrow"],
-          "defaultValue": ""
+          "defaultValue": "",
+          "storageField": "precision",
+          "omitDefault": true
         },
         {
           "name": "large_numbers",
           "label": "Large Temperature Numbers",
           "kind": "flag",
+          "omitDefault": true,
           "supportedWhen": {
             "precision": ["today", "tomorrow"]
           }
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "hook", "hook": "normalize_weather_fields" },
+          "icon": { "policy": "keep" },
+          "icon_on": { "policy": "keep" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "keep" },
+          "type": { "policy": "default", "value": "weather" },
+          "precision": { "policy": "hook", "hook": "normalize_weather_fields" },
+          "options": { "policy": "hook", "hook": "normalize_weather_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["large_numbers"],
+        "migrationActions": ["legacy_weather_forecast"],
+        "optionHook": "normalize_weather_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1276,21 +2206,40 @@
         {
           "name": "image_label",
           "label": "Show Label",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         },
         {
           "name": "image_icon",
           "label": "Show Icon",
-          "kind": "flag"
+          "kind": "flag",
+          "omitDefault": true
         },
         {
           "name": "image_modal_mode",
           "label": "Expanded Image",
           "kind": "choice",
           "values": ["fill", "fit"],
-          "defaultValue": "fill"
+          "defaultValue": "fill",
+          "omitDefault": true
         }
       ],
+      "normalization": {
+        "fields": {
+          "entity": { "policy": "keep" },
+          "label": { "policy": "hook", "hook": "normalize_image_fields" },
+          "icon": { "policy": "hook", "hook": "normalize_image_fields" },
+          "icon_on": { "policy": "default", "value": "Auto" },
+          "sensor": { "policy": "clear" },
+          "unit": { "policy": "clear" },
+          "type": { "policy": "default", "value": "image" },
+          "precision": { "policy": "clear" },
+          "options": { "policy": "hook", "hook": "normalize_image_options" }
+        },
+        "unknownOptions": "drop",
+        "canonicalOptionOrder": ["image_label", "image_icon", "image_modal_mode"],
+        "optionHook": "normalize_image_options"
+      },
       "default": {
         "entity": "",
         "label": "",
@@ -1319,6 +2268,72 @@
         "precision": "tomorrow",
         "options": ""
       }
+    }
+  },
+  "migrationActions": {
+    "legacy_local_action": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "local" }
+      ],
+      "set": { "type": "action", "sensor": "local", "unit": "", "precision": "", "options": "", "icon_on": "Auto" },
+      "hook": "normalize_action_fields"
+    },
+    "legacy_option_select": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "option_select" }
+      ],
+      "set": { "type": "action", "sensor": "input_select.select_option", "unit": "", "precision": "", "options": "", "icon_on": "Auto" },
+      "hook": "normalize_action_fields"
+    },
+    "legacy_vacuum_start": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "action" },
+        { "source": "field", "name": "sensor", "operator": "equals", "value": "vacuum.start" }
+      ],
+      "set": { "type": "vacuum", "sensor": "start_stop", "unit": "", "precision": "", "options": "", "icon_on": "Auto" },
+      "hook": "normalize_vacuum_fields"
+    },
+    "legacy_vacuum_dock": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "action" },
+        { "source": "field", "name": "sensor", "operator": "equals", "value": "vacuum.return_to_base" }
+      ],
+      "set": { "type": "vacuum", "sensor": "dock", "unit": "", "precision": "", "options": "", "icon_on": "Auto" },
+      "hook": "normalize_vacuum_fields"
+    },
+    "legacy_local_sensor": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "local_sensor" }
+      ],
+      "set": { "type": "sensor", "sensor": "local", "icon_on": "Auto", "options": "" },
+      "hook": "normalize_sensor_fields"
+    },
+    "legacy_text_sensor": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "text_sensor" }
+      ],
+      "set": { "type": "sensor", "entity": "", "label": "", "unit": "", "precision": "text", "icon_on": "Auto" },
+      "hook": "normalize_sensor_fields"
+    },
+    "legacy_weather_forecast": {
+      "when": [
+        { "source": "field", "name": "type", "operator": "equals", "value": "weather_forecast" }
+      ],
+      "set": { "type": "weather", "precision": "tomorrow" }
+    },
+    "legacy_sensor_state_high_label": {
+      "when": [
+        { "source": "option", "name": "state_high_label", "operator": "present" }
+      ],
+      "set": { "type": "sensor" },
+      "hook": "normalize_sensor_options"
+    },
+    "legacy_sensor_state_low_label": {
+      "when": [
+        { "source": "option", "name": "state_low_label", "operator": "present" }
+      ],
+      "set": { "type": "sensor" },
+      "hook": "normalize_sensor_options"
     }
   },
   "migrationAliases": {
@@ -1397,6 +2412,7 @@
     "subpage": true,
     "timezone": true
   },
+  "retiredSubpageTypeCodes": [],
   "subpageTypeCodes": {
     "action": "A",
     "calendar": "D",

@@ -44,12 +44,8 @@ esp32:
       # Keep the ESP32 task watchdog long enough for display startup while
       # remaining compatible with ESPHome 2026.4 and newer.
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"
-      # ESPHome 2026.5 / ESP-IDF 5.5.2 can make ESP-Hosted preallocate a
-      # large internal DMA buffer pool before ESPHome starts. On P4 display
-      # builds this can fail with "HS_MP: mempool create failed: no mem" and
-      # trigger OTA rollback, so use dynamic buffers and keep hosted task
-      # stacks in PSRAM.
-      CONFIG_ESP_HOSTED_USE_MEMPOOL: "n"
+      # Keep hosted task stacks in PSRAM so the display and audio paths retain
+      # enough internal memory for DMA-capable allocations.
       CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM: "y"
       # The ESP32-C6 hosted WiFi link shares scarce internal/DMA memory with
       # the full-duplex TDM audio path. Keep network bursts small while testing
@@ -216,8 +212,10 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(screen_schedule_asleep) &&
-                        !id(schedule_mode_clock)) ||
+                return (id(display_mode_controller).target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(display_mode_controller).target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
@@ -227,7 +225,9 @@ light:
             else:
               - if:
                   condition:
-                    lambda: 'return id(screensaver_display_off_active);'
+                    lambda: |-
+                      return id(display_mode_controller).current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
     on_turn_off:
@@ -235,10 +235,8 @@ light:
         - if:
             condition:
               lambda: |-
-                return !id(display_asleep) &&
-                       !id(screen_schedule_asleep) &&
-                       !id(screensaver_display_off_active) &&
-                       !id(screensaver_dimmed_active);
+                return id(display_mode_controller).target_mode_is(
+                    espcontrol::DisplayMode::ACTIVE);
             then:
               - script.execute: screen_schedule_manual_sleep
 

@@ -10,6 +10,7 @@
 #endif
 
 #include "esphome/core/version.h"
+#include "artwork_controller.h"
 #include <cstring>
 
 constexpr uint32_t IMAGE_CARD_STARTUP_RETRY_MS = 45000;
@@ -43,8 +44,8 @@ struct ImageCardCtx {
   std::string url;
   std::string modal_url;
   std::string access_token;
-  std::function<void()> suspend_display_takeover;
-  std::function<void()> resume_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;
+  std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
   uint32_t refresh_interval_ms = 0;
   uint32_t next_refresh_ms = 0;
   uint32_t retry_deadline_ms = 0;
@@ -55,6 +56,7 @@ struct ImageCardCtx {
   uint32_t last_tile_request_started_ms = 0;
   uint32_t last_modal_request_started_ms = 0;
   int width_compensation_percent = 100;
+  int media_artwork_width_compensation_percent = 100;
   bool active = false;
   bool callbacks_bound = false;
   bool modal_callbacks_bound = false;
@@ -66,6 +68,11 @@ struct ImageCardCtx {
   bool modal_fit = false;
   bool diagnostics_enabled = false;
   bool access_token_request_pending = false;
+  bool media_artwork = false;
+  lv_obj_t *media_overlay = nullptr;
+  std::string pending_fallback_picture;
+  espcontrol::artwork::SourceCandidates media_artwork_sources;
+  lv_timer_t *media_artwork_timer = nullptr;
   lv_timer_t *modal_cleanup_timer = nullptr;
   uint8_t startup_download_errors = 0;
 };
@@ -412,6 +419,28 @@ inline void image_card_hide(ImageCardCtx *ctx) {
   if (ctx->widget) lv_obj_add_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN);
 }
 
+inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->media_artwork) return;
+  image_card_release_download_slot(ctx);
+  image_card_clear_widget_source(ctx->widget);
+  if (ctx->image) ctx->image->release();
+  ctx->image_ready = false;
+  ctx->requested_once = false;
+  ctx->source_url.clear();
+  ctx->url.clear();
+  ctx->pending_fallback_picture.clear();
+  ctx->media_artwork_sources.clear();
+  if (ctx->media_artwork_timer) {
+    lv_timer_del(ctx->media_artwork_timer);
+    ctx->media_artwork_timer = nullptr;
+  }
+  ctx->next_picture_retry_ms = 0;
+  ctx->next_download_retry_ms = 0;
+  ctx->last_download_completed_ms = 0;
+  image_card_hide(ctx);
+  if (ctx->media_overlay) lv_obj_add_flag(ctx->media_overlay, LV_OBJ_FLAG_HIDDEN);
+}
+
 inline void image_card_layout_modal_loading(ImageCardCtx *ctx) {
   ImageCardModalUi &ui = image_card_modal_ui();
   if (!ctx || ui.active != ctx || !ui.panel || !ui.loading_widget) return;
@@ -518,6 +547,10 @@ inline void image_card_apply_downloaded(ImageCardCtx *ctx) {
   image_card_set_widget_source(ctx->widget, ctx->image);
   lv_obj_clear_flag(ctx->widget, LV_OBJ_FLAG_HIDDEN);
   lv_obj_move_background(ctx->widget);
+  if (ctx->media_overlay) {
+    lv_obj_clear_flag(ctx->media_overlay, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ctx->media_overlay);
+  }
   lv_obj_invalidate(ctx->widget);
   if (ctx->btn) lv_obj_invalidate(ctx->btn);
   notify_dashboard_content_changed();
@@ -634,8 +667,8 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].source_url.clear();
     contexts[i].url.clear();
     contexts[i].access_token.clear();
-    contexts[i].suspend_display_takeover = nullptr;
-    contexts[i].resume_display_takeover = nullptr;
+    contexts[i].begin_display_takeover = nullptr;
+    contexts[i].end_display_takeover = nullptr;
     contexts[i].refresh_interval_ms = 0;
     contexts[i].next_refresh_ms = 0;
     contexts[i].retry_deadline_ms = 0;
@@ -646,6 +679,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].last_tile_request_started_ms = 0;
     contexts[i].last_modal_request_started_ms = 0;
     contexts[i].width_compensation_percent = 100;
+    contexts[i].media_artwork_width_compensation_percent = 100;
     if (contexts[i].modal_cleanup_timer) {
       lv_timer_del(contexts[i].modal_cleanup_timer);
       contexts[i].modal_cleanup_timer = nullptr;
@@ -657,6 +691,14 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].modal_fit = false;
     contexts[i].diagnostics_enabled = false;
     contexts[i].access_token_request_pending = false;
+    contexts[i].media_artwork = false;
+    contexts[i].media_overlay = nullptr;
+    contexts[i].pending_fallback_picture.clear();
+    contexts[i].media_artwork_sources.clear();
+    if (contexts[i].media_artwork_timer) {
+      lv_timer_del(contexts[i].media_artwork_timer);
+      contexts[i].media_artwork_timer = nullptr;
+    }
     contexts[i].startup_download_errors = 0;
     contexts[i].image = (i < count && cfg.image_card_images) ? cfg.image_card_images[i] : nullptr;
     contexts[i].modal_image = (i < count && cfg.image_card_modal_images) ? cfg.image_card_modal_images[i] : nullptr;
@@ -701,17 +743,35 @@ inline bool image_card_position_widget(lv_obj_t *btn, lv_obj_t *widget,
 }
 
 inline void image_card_apply_widget_geometry(lv_obj_t *btn, lv_obj_t *widget,
-                                             esphome::artwork_image::ArtworkImage *image) {
+                                             esphome::artwork_image::ArtworkImage *image,
+                                             lv_coord_t target_width_override = 0) {
   if (!image) return;
   lv_coord_t width = 0;
   lv_coord_t height = 0;
   if (!image_card_position_widget(btn, widget, &width, &height)) return;
+  lv_coord_t target_width = target_width_override > 0 ? target_width_override : width;
   image_card_apply_tile_image_align(widget);
   lv_obj_t *loading = image_card_loading_widget(widget);
   image_card_position_widget(btn, loading);
   image_card_refresh_loading_layout(loading);
-  image->set_target_size(width, height);
+  image->set_target_size(target_width, height);
   image->set_resize_mode(esphome::artwork_image::ImageResizeMode::COVER);
+}
+
+inline lv_coord_t image_card_media_artwork_target_width(ImageCardCtx *ctx, lv_coord_t width) {
+  if (!ctx || !ctx->media_artwork || width <= 0) return width;
+  int percent = normalize_width_compensation_percent(ctx->media_artwork_width_compensation_percent);
+  return std::max<lv_coord_t>(1, static_cast<lv_coord_t>(
+    (static_cast<int64_t>(width) * percent + 50) / 100));
+}
+
+inline void image_card_apply_context_widget_geometry(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->image) return;
+  lv_coord_t width = 0;
+  lv_coord_t height = 0;
+  if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
+  image_card_apply_widget_geometry(
+    ctx->btn, ctx->widget, ctx->image, image_card_media_artwork_target_width(ctx, width));
 }
 
 inline void image_card_reset_resized_tile(ImageCardCtx *ctx) {
@@ -728,7 +788,7 @@ inline void image_card_refresh_tile_geometry(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   int previous_width = ctx->image->get_fixed_width();
   int previous_height = ctx->image->get_fixed_height();
-  image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
+  image_card_apply_context_widget_geometry(ctx);
   int current_width = ctx->image->get_fixed_width();
   int current_height = ctx->image->get_fixed_height();
   if (current_width <= 0 || current_height <= 0 ||
@@ -844,7 +904,7 @@ inline void image_card_tile_request_size(lv_coord_t target_width, lv_coord_t tar
 inline void image_card_apply_active_geometry(ImageCardCtx *ctx) {
   if (!ctx || !ctx->image) return;
   if (image_card_modal_active_for(ctx) && image_card_apply_modal_geometry(ctx, ctx->image)) return;
-  image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
+  image_card_apply_context_widget_geometry(ctx);
 }
 
 inline void setup_image_card(BtnSlot &s) {
@@ -1081,6 +1141,10 @@ inline std::string image_card_entity_proxy_path(const std::string &entity_id) {
   return "";
 }
 
+inline bool image_card_prefer_local_picture(ImageCardCtx *ctx) {
+  return ctx && ctx->media_artwork;
+}
+
 inline std::string image_card_entity_proxy_url(ImageCardCtx *ctx) {
   if (!ctx) return "";
   return image_card_join_url(image_card_base_url(ctx), image_card_entity_proxy_path(ctx->entity_id));
@@ -1148,17 +1212,23 @@ inline std::string image_card_append_query_param(const std::string &url,
 
 inline bool image_card_home_assistant_proxy_url(const std::string &url) {
   return url.find("/api/camera_proxy/") != std::string::npos ||
+         url.find("/api/image_proxy/") != std::string::npos ||
+         url.find("/api/media_player_proxy/") != std::string::npos;
+}
+
+inline bool image_card_protected_home_assistant_proxy_url(const std::string &url) {
+  return url.find("/api/camera_proxy/") != std::string::npos ||
          url.find("/api/image_proxy/") != std::string::npos;
 }
 
 inline bool image_card_home_assistant_proxy_authed(const std::string &url) {
-  return !image_card_home_assistant_proxy_url(url) || image_card_query_has_param(url, "token");
+  return !image_card_protected_home_assistant_proxy_url(url) || image_card_query_has_param(url, "token");
 }
 
 inline std::string image_card_sized_url(const std::string &url,
                                         lv_coord_t width,
                                         lv_coord_t height) {
-  if (!image_card_home_assistant_proxy_url(url) || width <= 0 || height <= 0) {
+  if (!image_card_protected_home_assistant_proxy_url(url) || width <= 0 || height <= 0) {
     return url;
   }
   std::string next = image_card_append_query_param(url, "width", static_cast<int>(width));
@@ -1166,6 +1236,10 @@ inline std::string image_card_sized_url(const std::string &url,
 }
 
 inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef picture);
+inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
+                                                    esphome::StringRef picture,
+                                                    bool local);
+inline void image_card_request_media_artwork(ImageCardCtx *ctx);
 inline bool image_card_context_current(ImageCardCtx *ctx,
                                        const std::string &entity_id,
                                        uint32_t generation);
@@ -1238,6 +1312,40 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
     }
     return;
   }
+  if (image_card_prefer_local_picture(ctx)) {
+    const uint32_t generation = ha_subscription_generation();
+    bool requested_local = ha_get_attribute(
+      entity_id,
+      std::string("entity_picture_local"),
+      std::function<void(esphome::StringRef)>(
+        [ctx, entity_id, generation](esphome::StringRef picture) {
+          if (!image_card_context_current(ctx, entity_id, generation)) return;
+          std::string local = string_ref_limited(picture, 4096);
+          if (!local.empty() && local != "unknown" && local != "unavailable") {
+            ctx->pending_fallback_picture.clear();
+            image_card_handle_picture(ctx, picture);
+            return;
+          }
+          if (!ctx->pending_fallback_picture.empty()) {
+            std::string fallback = ctx->pending_fallback_picture;
+            ctx->pending_fallback_picture.clear();
+            image_card_handle_picture(ctx, esphome::StringRef(fallback));
+            return;
+          }
+          bool fallback_requested = ha_get_attribute(
+            entity_id,
+            std::string("entity_picture"),
+            std::function<void(esphome::StringRef)>(
+              [ctx, entity_id, generation](esphome::StringRef fallback_picture) {
+                if (!image_card_context_current(ctx, entity_id, generation)) return;
+                image_card_handle_picture(ctx, fallback_picture);
+              })
+          );
+          if (!fallback_requested) image_card_handle_picture(ctx, picture);
+        })
+    );
+    if (requested_local) return;
+  }
   const uint32_t generation = ha_subscription_generation();
   bool requested = ha_get_attribute(
     entity_id,
@@ -1245,6 +1353,11 @@ inline void image_card_request_picture(ImageCardCtx *ctx) {
     std::function<void(esphome::StringRef)>(
       [ctx, entity_id, generation](esphome::StringRef picture) {
         if (!image_card_context_current(ctx, entity_id, generation)) return;
+        if (image_card_prefer_local_picture(ctx)) {
+          ctx->pending_fallback_picture = string_ref_limited(picture, 4096);
+          image_card_request_picture(ctx);
+          return;
+        }
         image_card_handle_picture(ctx, picture);
       })
   );
@@ -1290,6 +1403,10 @@ inline void subscribe_image_card_entity_state(ImageCardCtx *ctx,
     std::function<void(esphome::StringRef)>(
       [ctx, entity_id, generation](esphome::StringRef) {
         if (!image_card_context_current(ctx, entity_id, generation)) return;
+        if (ctx->media_artwork) {
+          image_card_request_media_artwork(ctx);
+          return;
+        }
         image_card_request_picture(ctx);
       })
   );
@@ -1325,6 +1442,8 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   esphome::artwork_image::ImageResizeMode resize_mode =
     esphome::artwork_image::ImageResizeMode::COVER;
   if (!image_card_position_widget(ctx->btn, ctx->widget, &width, &height)) return;
+  lv_coord_t decode_width = image_card_media_artwork_target_width(ctx, width);
+  lv_coord_t decode_height = height;
   lv_obj_t *loading = image_card_loading_widget(ctx->widget);
   image_card_position_widget(ctx->btn, loading);
   image_card_refresh_loading_layout(loading);
@@ -1343,7 +1462,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
     image_card_log_diagnostics(ctx, "tile-refresh-queued", width, height);
     return;
   }
-  if (!image_card_memory_available(ctx, "tile", width, height)) {
+  if (!image_card_memory_available(ctx, "tile", decode_width, decode_height)) {
     ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
     if (!ctx->image_ready) {
       image_card_hide(ctx);
@@ -1353,7 +1472,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   }
   int request_width = 0;
   int request_height = 0;
-  image_card_tile_request_size(width, height, &request_width, &request_height);
+  image_card_tile_request_size(decode_width, decode_height, &request_width, &request_height);
   ctx->url = image_card_cache_bust_url(
     image_card_sized_url(ctx->source_url, request_width, request_height));
   ctx->requested_once = true;
@@ -1363,7 +1482,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   ctx->next_download_retry_ms = 0;
   ctx->last_tile_request_started_ms = now;
   image_card_schedule_next_refresh(ctx, now);
-  ctx->image->set_target_size(width, height);
+  ctx->image->set_target_size(decode_width, decode_height);
   ctx->image->set_resize_mode(resize_mode);
   ESP_LOGI("image_card", "Downloading camera image for %s", ctx->entity_id.c_str());
   image_card_log_diagnostics(ctx, "tile-download-start", request_width, request_height);
@@ -1472,7 +1591,7 @@ inline void image_card_finish_modal_cleanup(ImageCardCtx *ctx) {
     ctx->modal_image->release();
     ctx->modal_url.clear();
   }
-  image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
+  image_card_apply_context_widget_geometry(ctx);
   if (!ctx->source_url.empty()) {
     image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, "tile");
   }
@@ -1506,7 +1625,9 @@ inline void image_card_abort_modal_open(ImageCardCtx *ctx, const char *reason) {
   image_card_clear_widget_source(ui.image_widget);
   control_modal_delete_overlay(ControlModalKind::IMAGE_CARD, ui.overlay);
   ui = ImageCardModalUi();
-  if (ctx && ctx->resume_display_takeover) ctx->resume_display_takeover();
+  if (ctx && ctx->end_display_takeover) {
+    ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::INTERACTIVE);
+  }
   image_card_schedule_modal_cleanup(ctx);
 }
 
@@ -1519,7 +1640,9 @@ inline void image_card_hide_modal() {
   image_card_clear_widget_source(ui.image_widget);
   control_modal_delete_overlay(ControlModalKind::IMAGE_CARD, ui.overlay);
   ui = ImageCardModalUi();
-  if (ctx && ctx->resume_display_takeover) ctx->resume_display_takeover();
+  if (ctx && ctx->end_display_takeover) {
+    ctx->end_display_takeover(espcontrol::DisplayTakeoverKind::INTERACTIVE);
+  }
   image_card_schedule_modal_cleanup(ctx);
 }
 
@@ -1556,8 +1679,10 @@ inline void image_card_open_modal(ImageCardCtx *ctx) {
   ui.overlay = shell.overlay;
   ui.panel = shell.panel;
   ui.back_btn = shell.close_btn;
-  if (ctx->suspend_display_takeover) ctx->suspend_display_takeover();
-  image_card_log_diagnostics(ctx, "modal-display-takeover-suspended");
+  if (ctx->begin_display_takeover) {
+    ctx->begin_display_takeover(espcontrol::DisplayTakeoverKind::INTERACTIVE);
+  }
+  image_card_log_diagnostics(ctx, "modal-display-takeover-began");
   image_card_style_modal_back_button(ui.back_btn, shell.layout);
 
   lv_obj_set_style_bg_color(ui.panel, lv_color_hex(DARK_OVERLAY), LV_PART_MAIN);
@@ -1643,6 +1768,10 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
   if (url.empty()) {
     ESP_LOGW("image_card", "No usable image URL for %s", ctx->entity_id.c_str());
     image_card_log_diagnostics(ctx, "picture-no-url");
+    if (ctx->media_artwork) {
+      image_card_clear_media_artwork(ctx);
+      return;
+    }
     if (ctx->image_ready) return;
     image_card_hide(ctx);
     if (image_card_startup_retry_active(ctx)) {
@@ -1652,6 +1781,41 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
       image_card_set_loading_state(ctx, "Unavailable", true);
     }
     return;
+  }
+  if (!image_card_home_assistant_proxy_authed(url) &&
+      image_card_valid_access_token(ctx->access_token)) {
+    url = image_card_proxy_path_with_token(url, ctx->access_token);
+  }
+  if (!image_card_home_assistant_proxy_authed(url) &&
+      !ctx->access_token_request_pending) {
+    const std::string entity_id = ctx->entity_id;
+    const std::string retry_picture = raw;
+    const uint32_t generation = ha_subscription_generation();
+    ctx->access_token_request_pending = true;
+    bool requested = ha_get_attribute(
+      entity_id,
+      std::string("access_token"),
+      std::function<void(esphome::StringRef)>(
+        [ctx, entity_id, retry_picture, generation](esphome::StringRef token_ref) {
+          if (!image_card_context_current(ctx, entity_id, generation)) return;
+          ctx->access_token_request_pending = false;
+          std::string token = string_ref_limited(token_ref, 512);
+          if (!image_card_valid_access_token(token)) {
+            ctx->access_token.clear();
+            image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
+            image_card_set_loading_state(ctx, "Loading", true);
+            return;
+          }
+          ctx->access_token = token;
+          image_card_handle_picture(ctx, esphome::StringRef(retry_picture));
+        })
+    );
+    if (requested) {
+      image_card_schedule_picture_retry(ctx, IMAGE_CARD_RETRY_INTERVAL_MS);
+      image_card_set_loading_state(ctx, "Loading", true);
+      return;
+    }
+    ctx->access_token_request_pending = false;
   }
   if (!image_card_home_assistant_proxy_authed(url)) {
     ESP_LOGW("image_card", "Skipping unauthenticated Home Assistant image proxy for %s",
@@ -1687,6 +1851,79 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
   } else if (ctx->next_refresh_ms == 0) {
     image_card_schedule_next_refresh(ctx);
   }
+}
+
+inline void image_card_process_media_artwork(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || !ctx->media_artwork) return;
+  const espcontrol::artwork::SourceSelection selection =
+      ctx->media_artwork_sources.select(ctx->source_url, false);
+  const std::string &chosen = selection.primary;
+  if (chosen.empty()) {
+    image_card_clear_media_artwork(ctx);
+    return;
+  }
+  image_card_handle_picture(ctx, esphome::StringRef(chosen));
+}
+
+inline void image_card_media_artwork_timer_cb(lv_timer_t *timer) {
+  ImageCardCtx *ctx = static_cast<ImageCardCtx *>(lv_timer_get_user_data(timer));
+  if (ctx && ctx->media_artwork_timer == timer) ctx->media_artwork_timer = nullptr;
+  lv_timer_del(timer);
+  image_card_process_media_artwork(ctx);
+}
+
+inline void image_card_schedule_media_artwork_process(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || !ctx->media_artwork) return;
+  if (ctx->media_artwork_timer) lv_timer_del(ctx->media_artwork_timer);
+  ctx->media_artwork_timer = lv_timer_create(image_card_media_artwork_timer_cb, 300, ctx);
+  if (!ctx->media_artwork_timer) image_card_process_media_artwork(ctx);
+}
+
+inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
+                                                    esphome::StringRef picture,
+                                                    bool local) {
+  if (!ctx || !ctx->active || !ctx->media_artwork) return;
+  std::string raw = string_ref_limited(picture, 4096);
+  std::string url = image_card_join_url(image_card_base_url(ctx), raw);
+  // These two attribute requests run independently. A delayed remote callback
+  // must not discard a newer local proxy URL that has already arrived.
+  ctx->media_artwork_sources.update(
+      local, url,
+      espcontrol::artwork::RemoteUpdatePolicy::PRESERVE_LOCAL);
+  if (local) {
+    if (!url.empty() && url != ctx->source_url) ctx->startup_download_errors = 0;
+    if (!url.empty()) ctx->pending_fallback_picture.clear();
+  } else {
+    ctx->pending_fallback_picture = raw;
+    if (!url.empty() && url != ctx->source_url) {
+      ctx->startup_download_errors = 0;
+    }
+  }
+  image_card_schedule_media_artwork_process(ctx);
+}
+
+inline void image_card_request_media_artwork(ImageCardCtx *ctx) {
+  if (!ctx || !ctx->active || !ctx->media_artwork || ctx->entity_id.empty()) return;
+  const std::string entity_id = ctx->entity_id;
+  const uint32_t generation = ha_subscription_generation();
+  ha_get_attribute(
+    entity_id,
+    std::string("entity_picture"),
+    std::function<void(esphome::StringRef)>(
+      [ctx, entity_id, generation](esphome::StringRef picture) {
+        if (!image_card_context_current(ctx, entity_id, generation)) return;
+        image_card_handle_media_artwork_picture(ctx, picture, false);
+      })
+  );
+  ha_get_attribute(
+    entity_id,
+    std::string("entity_picture_local"),
+    std::function<void(esphome::StringRef)>(
+      [ctx, entity_id, generation](esphome::StringRef picture) {
+        if (!image_card_context_current(ctx, entity_id, generation)) return;
+        image_card_handle_media_artwork_picture(ctx, picture, true);
+      })
+  );
 }
 
 inline void refresh_image_cards() {
@@ -1779,14 +2016,18 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
   ctx->entity_id = p.entity;
   ctx->base_url = cfg.home_assistant_base_url ? cfg.home_assistant_base_url() : "";
   ctx->base_url_provider = cfg.home_assistant_base_url;
-  ctx->suspend_display_takeover = cfg.suspend_display_takeover;
-  ctx->resume_display_takeover = cfg.resume_display_takeover;
+  ctx->begin_display_takeover = cfg.begin_display_takeover;
+  ctx->end_display_takeover = cfg.end_display_takeover;
   ctx->refresh_interval_ms = image_card_refresh_interval_ms(p);
   ctx->timer_only = image_card_timer_only_refresh(p);
   ctx->modal_fit = image_card_modal_fit_enabled(p);
+  ctx->media_artwork = false;
+  ctx->media_overlay = nullptr;
+  ctx->pending_fallback_picture.clear();
   ctx->diagnostics_enabled = cfg.image_card_diagnostics;
   ctx->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
   ctx->width_compensation_percent = cfg.width_compensation_percent;
+  ctx->media_artwork_width_compensation_percent = 100;
   image_card_log_diagnostics(ctx, "bind-card");
   image_card_apply_widget_geometry(ctx->btn, ctx->widget, ctx->image);
   image_card_set_loading_state(ctx, "Loading", true);

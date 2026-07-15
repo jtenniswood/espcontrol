@@ -29,4 +29,4 @@ web_server:
   port: 80
   version: 3
   js_url: ""
-  js_include: "../docs/public/webserver/guition-esp32-p4-jc1060p470/www.js"
+  js_include: "../docs/public/webserver/www.js"

@@ -29,7 +29,7 @@ web_server:
   port: 80
   version: 3
   js_url: ""
-  js_include: "../docs/public/webserver/guition-esp32-s3-4848s040/www.js"
+  js_include: "../docs/public/webserver/www.js"
 
 wifi:
   ap:

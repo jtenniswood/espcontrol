@@ -23,12 +23,14 @@ CONTRACT_INCLUDE_ALLOWLIST = {
 # guard still blocks direct generated-contract access in that file.
 MODE_ARRAY_ALLOWLIST = CARD_RUNTIME_BOUNDARY_FILES | {
     "button_grid_alarm.h",
+    # Generated from the same contract and compiled only by the parity test.
+    "button_grid_saved_config_shadow_generated.h",
 }
 
 DIRECT_CONTRACT_PATTERN = re.compile(r"\b(?:card_contract_[A-Za-z0-9_]+|CARD_CONTRACT_[A-Z0-9_]+)\b")
 CONTRACT_INCLUDE_PATTERN = re.compile(r'#\s*include\s+[<"]button_grid_contract_generated\.h[>"]')
 MODE_ARRAY_PATTERN = re.compile(
-    r"\{[^}\n]*\"(?:play_pause|previous|next|volume|position|now_playing|"
+    r"\{[^}\n]*\"(?:play_pause|previous|next|volume|position|now_playing|cover_art|"
     r"open|close|stop|set_position|tilt|toggle|lock|unlock|away|home|night|vacation|disarm)\""
 )
 SERVICE_MAPPING_PATTERN = re.compile(
@@ -41,6 +43,7 @@ SERVICE_MAPPING_PATTERN = re.compile(
 
 LAWN_MOWER_HEADER = "button_grid_lawn_mower.h"
 GRID_HEADER = "button_grid_grid.h"
+ACTION_HEADER = "button_grid_actions.h"
 IMAGE_HEADER = "button_grid_image.h"
 
 
@@ -117,6 +120,15 @@ def check_root(root: Path) -> list[str]:
     grid_header = root / "components" / "espcontrol" / GRID_HEADER
     if grid_header.exists():
         text = grid_header.read_text(encoding="utf-8")
+        if (
+            "card_runtime_context(p)" not in text
+            or "card_runtime_information_only(context)" not in text
+            or "espcontrol::cards::Surface::SUBPAGE" not in text
+            or "Legacy setup fallback" not in text
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: route main and subpage setup through the shared card context"
+            )
         if 'parent_subpage_kind == "lawn_mower"' not in text or "lawn_mower_state_active_ref" not in text:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route mower subpage parent indicators through mower active-state handling"
@@ -133,6 +145,18 @@ def check_root(root: Path) -> list[str]:
         if image_reset_pos < 0 or subpage_clear_pos < 0 or image_reset_pos > subpage_clear_pos:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: reset image-card contexts before deleting subpage screens"
+            )
+    action_header = root / "components" / "espcontrol" / ACTION_HEADER
+    if action_header.exists():
+        text = action_header.read_text(encoding="utf-8")
+        click_body = function_body(text, "handle_button_click")
+        if click_body is not None and (
+            "card_runtime_context(p)" not in click_body
+            or "card_runtime_passive(context)" not in click_body
+            or "Legacy action fallback" not in click_body
+        ):
+            failures.append(
+                f"components/espcontrol/{ACTION_HEADER}: route passive checks through the shared card context"
             )
     image_header = root / "components" / "espcontrol" / IMAGE_HEADER
     if image_header.exists():

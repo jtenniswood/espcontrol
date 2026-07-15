@@ -1,27 +1,27 @@
 # Web Configurator
 
 The web configurator is the browser setup page loaded from a device's web
-server. It is written as plain JavaScript modules and bundled into a single
+server. It is written in TypeScript and bundled into a single
 `www.js` file per supported device.
 
 ## Source Layout
 
 | Path | Purpose |
 |---|---|
-| `src/webserver/entry.js` | Bundle entry point. |
-| `src/webserver/modules/` | Shared state, rendering, API, backup, settings, preview, and codec logic. |
-| `src/webserver/types/` | Card-specific settings panels and previews. |
+| `src/webserver/entry.ts` | Composition root. It installs application modules and card registrations in one deliberate order. |
+| `src/webserver/application/` | Shared state, rendering, API, backup, settings, preview, and codec modules. Each file exports an explicit installer. |
+| `src/webserver/cards/` | Card-specific settings panels and previews. Each file exports an explicit registration function. |
 | `src/webserver/model/*.ts` | Typed model sources. |
 | `src/webserver/state/*.ts` | Typed device configuration, application state factory, event aliases, and event parsing. |
 | `src/webserver/api/*.ts` | Injectable HTTP transport, ordered POST queue, typed request results, and failure classification. |
-| `src/webserver/generated/card_contract.ts` | Typed card metadata generated from the shared contract. |
-| `scripts/web_modules.json` | Explicit order for shared modules. |
+| `src/webserver/generated/*.ts` | Typed card metadata, entity catalogue, and icon data generated from their shared sources. |
+| `src/webserver/testing/*.ts` | Browser test hooks, included only in test bundles. |
 | `docs/public/webserver/<slug>/www.js` | Generated per-device bundles used for bundled firmware and hosted compatibility. |
 
-Files in `src/webserver/types/` are discovered by the build. Shared files in
-`src/webserver/modules/` must be listed in `scripts/web_modules.json`.
-The TypeScript model and generated card contract are imported directly by the
-bundle build, with no separate JavaScript generation step.
+`entry.ts` imports every application installer and card registration directly.
+The visible call order is the runtime order; the build does not discover files,
+sort filenames, concatenate source, or depend on import side effects.
+All TypeScript and generated data are imported directly by the bundle build.
 The application exposes one mutable state instance created by
 `createInitialState(deviceConfig)`; tests create isolated instances from the
 same factory.
@@ -63,7 +63,7 @@ Button 2 Config
 ```
 
 The setup page serializes card settings to a compact string. Firmware parses the
-same string on-device. Keep `src/webserver/modules/config_codec.js` and
+same string on-device. Keep `src/webserver/application/config_codec.ts` and
 `components/espcontrol/button_grid_config.h` in sync.
 
 To inspect what the device actually stored, read the matching ESPHome web server
@@ -82,23 +82,26 @@ REST response shows the exact compact string firmware will parse.
 For a card type named `example`, create or update:
 
 ```text
-src/webserver/types/example.js
+src/webserver/cards/example.ts
 ```
 
 The usual registration shape is:
 
 ```js
-registerButtonType("example", {
-  label: function () { return cardContractCardLabel("example"); },
-  defaultConfig: function () { return cardContractDefaultConfig("example"); },
-  renderPreview: function (b, helpers) { /* return preview pieces */ },
-  renderSettings: function (panel, b, helpers) { /* add form fields */ },
-  onSelect: function (b) { /* initialize fields */ },
-});
+export function registerExampleCardTypes(): void {
+  registerButtonType("example", {
+    label: function () { return cardContractCardLabel("example"); },
+    defaultConfig: function () { return cardContractDefaultConfig("example"); },
+    renderPreview: function (b, helpers) { /* return preview pieces */ },
+    renderSettings: function (panel, b, helpers) { /* add form fields */ },
+    onSelect: function (b) { /* initialize fields */ },
+  });
+}
 ```
 
 Prefer contract helpers for labels, defaults, picker behavior, and visibility so
-the setup page stays aligned with firmware metadata.
+the setup page stays aligned with firmware metadata. Import and call the new
+registration function in the deliberate card order in `entry.ts`.
 
 ## Preview and Persistence Rules
 

@@ -5,7 +5,7 @@ fixtures are parsed or serialized.
 
 ## Edit First
 
-- `src/webserver/modules/config_codec.js`
+- `src/webserver/application/config_codec.ts`
 - `components/espcontrol/button_grid_config.h`
 - `compatibility/fixtures/product_compatibility.json`
 

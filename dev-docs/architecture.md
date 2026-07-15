@@ -33,7 +33,7 @@ full source-to-output ownership table lives in
 [`source-of-truth.md`](source-of-truth.md).
 
 - `common/config/entity_names.yaml`
-- `src/webserver/modules/entity_catalog.js`
+- `src/webserver/generated/entity_catalog.ts`
 - `src/webserver/generated/card_contract.ts`
 - `components/espcontrol/button_grid_contract_generated.h`
 - `components/espcontrol/i18n_generated.h`
@@ -78,7 +78,7 @@ common/config/card_contract.json
 
 common/config/entity_names.json
   -> common/config/entity_names.yaml
-  -> src/webserver/modules/entity_catalog.js
+  -> src/webserver/generated/entity_catalog.ts
 
 devices/manifest.json
   -> docs/public/device-profiles.json

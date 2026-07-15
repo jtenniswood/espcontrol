@@ -1256,7 +1256,8 @@ inline bool climate_option_selected(ClimateControlCtx *ctx,
                                     const std::string &value) {
   if (!ctx) return false;
   if (kind == "hvac") return climate_hvac_service_value(value) == ctx->hvac_mode;
-  return value == climate_option_current_value(ctx, kind);
+  std::string current = climate_option_current_value(ctx, kind);
+  return climate_lower(climate_trim(value)) == climate_lower(climate_trim(current));
 }
 
 inline const char *climate_option_icon(const std::string &kind, const std::string &value) {
@@ -2056,7 +2057,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     ui.tab_row, find_icon("Fan"), ctx->icon_font,
     ClimateControlTab::FAN, ctx->width_compensation_percent);
   ui.swing_tab = climate_control_create_tab_button(
-    ui.tab_row, find_icon("Swap Horizontal"), ctx->icon_font,
+    ui.tab_row, find_icon("Arrow Up Down"), ctx->icon_font,
     ClimateControlTab::SWING, ctx->width_compensation_percent);
 
   ui.menu_view = lv_obj_create(ui.panel);

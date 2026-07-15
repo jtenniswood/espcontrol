@@ -88,5 +88,20 @@
       "precision": "",
       "options": ""
     }
+  },
+  {
+    "name": "script action trims saved text and omits padded defaults",
+    "input": "script.turn_on;Run Script;Flash;Auto;script.turn_on;;action;;state_entity=%20sensor.power%20,state_unit=%20W%20,script_fields=%20level%3A%204%20,confirm_on,confirm_message=%20Run%20this%20script?%20,confirm_yes=%20Proceed%20,confirm_no=%20Cancel%20",
+    "expected": {
+      "entity": "script.turn_on",
+      "label": "Run Script",
+      "icon": "Flash",
+      "icon_on": "Auto",
+      "sensor": "script.turn_on",
+      "unit": "",
+      "type": "action",
+      "precision": "",
+      "options": "state_entity=sensor.power,state_unit=W,script_fields=level%3A 4,confirm_on,confirm_yes=Proceed,confirm_no=Cancel"
+    }
   }
 ]

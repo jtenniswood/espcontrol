@@ -51,6 +51,15 @@ LOCKFILES = (
 )
 
 
+def path_is_within(path: Path, root: Path) -> bool:
+    """Return whether path is inside root without requiring Python 3.9."""
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
 def validate_registry(tasks: tuple[Task, ...] = TASKS) -> dict[str, Task]:
     registry: dict[str, Task] = {}
     for item in tasks:
@@ -527,7 +536,7 @@ class CacheKeyBuilder:
         for command in item.commands:
             if len(command) > 1 and Path(command[1]).suffix == ".py":
                 candidate = (self.root / command[1]).absolute()
-                if candidate.is_relative_to(self.root.absolute()) and candidate.exists():
+                if path_is_within(candidate, self.root.absolute()) and candidate.exists():
                     pending.append(candidate)
 
         discovered: set[Path] = set()
@@ -553,7 +562,7 @@ class CacheKeyBuilder:
                     local = next((path.absolute() for path in candidates if path.exists()), None)
                     if (
                         local is not None
-                        and local.is_relative_to(self.root.absolute())
+                        and path_is_within(local, self.root.absolute())
                         and local not in discovered
                     ):
                         pending.append(local)
@@ -1206,7 +1215,7 @@ def self_test() -> None:
     for alias, command in public_aliases.items():
         if alias in profile_aliases or alias == "check:parallel":
             continue
-        task_id = alias.removeprefix("check:")
+        task_id = alias[len("check:"):]
         if task_id not in registry:
             raise AssertionError(f"{alias} has no matching registered task")
         expected_command = f"python3 scripts/check_tasks.py run-task {task_id}"
@@ -1259,7 +1268,7 @@ def self_test() -> None:
     ):
         raise AssertionError("browser cache policy omits required web, layout, or environment inputs")
     for task_id in ("config", "backup-contract", "web-smoke"):
-        if not {"scripts/web_source.js", "scripts/web_modules.json"} <= set(registry[task_id].inputs):
+        if not {"scripts/web_source.js", "scripts/build_web_bundle.js"} <= set(registry[task_id].inputs):
             raise AssertionError(f"{task_id} cache keys omit shared web-source helpers")
     for task_id in ("config", "model-contract"):
         if "compatibility/fixtures/product_compatibility.json" not in registry[task_id].inputs:
@@ -1283,6 +1292,8 @@ def self_test() -> None:
         raise AssertionError("cover-art cache keys omit the downloader source")
     if "common/config/*_card_normalization_fixtures.json" not in registry["firmware-parser"].inputs:
         raise AssertionError("firmware parser cache keys omit normalization fixtures")
+    if "common/config/card_normalization_fixtures.json" not in registry["saved-config-parity"].inputs:
+        raise AssertionError("saved config parity cache keys omit base normalization fixtures")
     if "components/espcontrol/sun_calc.h" not in registry["timezones"].inputs:
         raise AssertionError("timezone cache keys omit the firmware timezone table")
     if registry["timezones"].cache != "never":
@@ -1938,7 +1949,7 @@ def self_test() -> None:
         ):
             raise AssertionError(f"{maintainer_doc} does not select maintainer documentation checks")
 
-    web_selected, _, web_fallback = changed_plan(["src/webserver/modules/example.js"])
+    web_selected, _, web_fallback = changed_plan(["src/webserver/application/example.ts"])
     if web_fallback is not None or "web-smoke" not in task_ids(web_selected):
         raise AssertionError("web changes do not select web checks")
 
@@ -1956,7 +1967,7 @@ def self_test() -> None:
         "components/espcontrol/button_grid_config_parser.h",
         "common/config/card_normalization_fixtures.json",
         "scripts/generate_saved_config_parser_test.py",
-        "src/webserver/modules/config_codec.js",
+        "src/webserver/application/config_codec.ts",
     ):
         saved_config_selected, _, _ = changed_plan([saved_config_input])
         if "firmware-tests" not in task_ids(saved_config_selected):

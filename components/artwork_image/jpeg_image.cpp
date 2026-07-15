@@ -103,21 +103,24 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
   int target_w = this->image_->get_fixed_width();
   int target_h = this->image_->get_fixed_height();
   if (target_w > 0 && target_h > 0) {
-    // Choose the IDCT output closest to the target artwork size. When two
-    // options are equally close, prefer the smaller decode to reduce libjpeg's
-    // temporary memory peak on ESP32-S3.
+    // Choose the smallest useful IDCT output. Cover mode must retain enough
+    // pixels in both dimensions for the final crop; other modes may prefer a
+    // smaller decode to reduce libjpeg's temporary memory peak on ESP32-S3.
     constexpr unsigned int denoms[] = {1, 2, 4, 8};
     unsigned int best_denom = 1;
     int best_w = 0;
     int best_h = 0;
     long best_score = LONG_MAX;
     uint64_t best_area = UINT64_MAX;
+    const bool cover_mode = this->image_->get_resize_mode() == ImageResizeMode::COVER;
+    bool found_candidate = false;
     for (unsigned int denom : denoms) {
       this->cinfo_.scale_num = 1;
       this->cinfo_.scale_denom = denom;
       jpeg_calc_output_dimensions(&this->cinfo_);
       int candidate_w = static_cast<int>(this->cinfo_.output_width);
       int candidate_h = static_cast<int>(this->cinfo_.output_height);
+      if (cover_mode && (candidate_w < target_w || candidate_h < target_h)) continue;
       long score = std::labs(candidate_w - target_w) + std::labs(candidate_h - target_h);
       uint64_t area = static_cast<uint64_t>(candidate_w) * static_cast<uint64_t>(candidate_h);
       if (score < best_score || (score == best_score && area < best_area)) {
@@ -126,8 +129,10 @@ int JpegDecoder::start_decode_(uint8_t *buffer, size_t size) {
         best_denom = denom;
         best_w = candidate_w;
         best_h = candidate_h;
+        found_candidate = true;
       }
     }
+    if (cover_mode && !found_candidate) best_denom = 1;
     this->cinfo_.scale_num = 1;
     this->cinfo_.scale_denom = best_denom;
     jpeg_calc_output_dimensions(&this->cinfo_);

@@ -42,6 +42,7 @@ export {
 
 export {
   CARD_SIZE_DEFINITIONS,
+  CARD_SIZE_EXTRA_LARGE,
   CARD_SIZE_EXTRA_TALL,
   CARD_SIZE_EXTRA_WIDE,
   CARD_SIZE_LARGE,
@@ -127,6 +128,21 @@ export type {
 export type {
   DraftCardConfig,
 } from "./card";
+
+export {
+  MEDIA_CARD_CONFIG_VERSION,
+  decodeMediaCardConfigV1,
+} from "./media_card";
+
+export type {
+  MediaCardConfigV1,
+  MediaCardMode,
+  MediaControlLabelDisplay,
+  MediaControlNumberDisplay,
+  MediaCoverArtAction,
+  MediaNowPlayingControl,
+  MediaStateDisplay,
+} from "./media_card";
 
 export type {
   CardTransferEntry,

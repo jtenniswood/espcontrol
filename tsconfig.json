@@ -13,13 +13,7 @@
     "target": "ES2022"
   },
   "include": [
-    "src/webserver/contracts/**/*.ts",
-    "src/webserver/api/**/*.ts",
-    "src/webserver/features/**/*.ts",
-    "src/webserver/device_config.ts",
-    "src/webserver/generated/**/*.ts",
-    "src/webserver/model/**/*.ts",
-    "src/webserver/state/**/*.ts",
+    "src/webserver/**/*.ts",
     "tests/web/**/*.ts"
   ]
 }

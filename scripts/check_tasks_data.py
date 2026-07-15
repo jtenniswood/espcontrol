@@ -64,7 +64,7 @@ FAST = ("fast", "ci", "all")
 CI = ("ci", "all")
 RELEASE = ("release",)
 MAINTAINER_DOCS = ("dev-docs/**", "DEVELOPERS.md", "README.md", "product/README.md")
-WEB_SOURCE_HELPERS = ("scripts/web_source.js", "scripts/build_web_bundle.js", "scripts/web_modules.json")
+WEB_SOURCE_HELPERS = ("scripts/web_source.js", "scripts/build_web_bundle.js")
 WEB_BUNDLE_INPUTS = ("devices/**", "common/addon/time.yaml")
 WEB_BUNDLE_BUILD_HELPERS = (
     "scripts/build.py",
@@ -83,12 +83,14 @@ TASKS = (
          domains=("firmware",),
          inputs=(
              "tests/firmware/**",
+             "components/espcontrol/button_grid_limits.h",
+             "components/espcontrol/button_grid_string.h",
              "components/espcontrol/button_grid_config_parser.h",
              "components/espcontrol/button_grid_subpages.h",
              "common/config/card_normalization_fixtures.json",
              "common/config/*_card_normalization_fixtures.json",
              "scripts/generate_saved_config_parser_test.py",
-             "src/webserver/modules/config_codec.js",
+             "src/webserver/application/config_codec.ts",
          ), parallel_safe=True,
          cache="never"),
     task("web-unit", ("node", "--test", "tests/web/unit/**/*.test.js"), profiles=FAST,
@@ -98,8 +100,9 @@ TASKS = (
          domains=("firmware", "web"),
          inputs=("tests/mutations/**", "tests/firmware/**", "tests/web/unit/**", "scripts/run_mutations.py"),
          cache="never"),
-    task("generated", ("python3", "scripts/build.py", "--check"), profiles=PRODUCT,
-         domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "src/webserver/**", "compatibility/**", "scripts/build.py", "scripts/build_web_bundle.js", "scripts/web_source.js", "scripts/web_modules.json"),
+    task("generated", ("python3", "scripts/build.py", "--check"),
+         ("python3", "scripts/build.py", "--self-test"), profiles=PRODUCT,
+         domains=("product", "firmware", "web", "docs"), inputs=("common/**", "devices/**", "builds/**", "components/espcontrol/**", "src/webserver/**", "compatibility/**", "scripts/build.py", "scripts/build_web_bundle.js", "scripts/web_source.js"),
          generated_inputs=("components/espcontrol/*_generated.h", "docs/generated/**", "docs/public/**", "product/product_snapshot.json"),
          parallel_safe=True, cache="never"),
     task("device-manifest", ("python3", "scripts/check_device_manifest.py"),
@@ -122,7 +125,7 @@ TASKS = (
     task("dev-docs", ("python3", "scripts/check_dev_docs.py", "--check"), profiles=FAST,
          domains=("docs",), inputs=MAINTAINER_DOCS + (
              "scripts/check_dev_docs.py", "package.json", ".github/workflows/**",
-             "common/config/card_contract.json", "src/webserver/types/**",
+             "common/config/card_contract.json", "src/webserver/cards/**",
              "components/espcontrol/button_grid*.h",
          ), cache_inputs=(
              "common/**", "components/**", "compatibility/**", "devices/**",
@@ -156,7 +159,18 @@ TASKS = (
     task("types", ("npm", "exec", "--", "tsc", "--noEmit"), profiles=FAST,
          domains=("web",), inputs=("src/**/*.ts", "tsconfig.json", "package-lock.json"),
          parallel_safe=True, cache_tools=("node_modules/.bin/tsc",)),
-    task("firmware-parser", ("python3", "scripts/check_firmware_parser.py"), dependencies=("device-slots",), profiles=FAST,
+    task("saved-config-parity", ("node", "scripts/check_saved_config_parity.js"), dependencies=("generated",), profiles=FAST,
+         domains=("firmware", "web"), inputs=("components/espcontrol/button_grid_config_parser.h", "components/espcontrol/button_grid_card_runtime.h", "components/espcontrol/button_grid_contract_generated.h", "components/espcontrol/button_grid_saved_config_vacuum_generated.h", "common/config/card_normalization_fixtures.json", "common/config/*_card_normalization_fixtures.json", "src/webserver/**", "scripts/check_saved_config_parity.js") + WEB_SOURCE_HELPERS + WEB_BUNDLE_INPUTS,
+         cache_inputs=WEB_BUNDLE_BUILD_HELPERS,
+         parallel_safe=True, cache_tools=("c++", "g++", "clang++", "node")),
+    task("saved-config-shadow", ("node", "scripts/check_saved_config_shadow.js"), dependencies=("generated",), profiles=FAST,
+         domains=("firmware", "web", "product"), inputs=("common/config/card_contract.json", "common/config/vacuum_mower_card_normalization_fixtures.json", "common/config/sensor_card_normalization_fixtures.json", "common/config/confirmation_card_normalization_fixtures.json", "common/config/baseline_card_normalization_fixtures.json", "common/config/media_card_normalization_fixtures.json", "components/espcontrol/button_grid_config_parser.h", "components/espcontrol/button_grid_saved_config_vacuum_generated.h", "components/espcontrol/button_grid_saved_config_shadow_generated.h", "src/webserver/generated/saved_config_shadow.ts", "src/webserver/**", "scripts/check_saved_config_shadow.js") + WEB_SOURCE_HELPERS,
+         cache_inputs=WEB_BUNDLE_BUILD_HELPERS,
+         parallel_safe=True, cache_tools=("c++", "g++", "clang++", "node")),
+    task("saved-config-production", ("node", "scripts/check_saved_config_production.js"), dependencies=("generated",), profiles=FAST,
+         domains=("firmware", "web", "product"), inputs=("common/config/card_contract.json", "components/espcontrol/button_grid_config_parser.h", "components/espcontrol/button_grid_saved_config_*_generated.h", "src/webserver/application/config_codec.ts", "src/webserver/cards/vacuum.ts", "src/webserver/generated/saved_config_*.ts", "scripts/check_saved_config_production.js"),
+         parallel_safe=True, cache_tools=("c++", "g++", "clang++", "node")),
+    task("firmware-parser", ("python3", "scripts/check_firmware_parser.py"), dependencies=("device-slots", "saved-config-parity"), profiles=FAST,
          domains=("firmware",), inputs=("components/**", "common/config/*_card_normalization_fixtures.json", "scripts/check_firmware_parser.py"),
          parallel_safe=True, cache_tools=("c++", "g++", "clang++")),
     task("firmware-modals", ("python3", "scripts/check_firmware_modals.py"),
@@ -185,6 +199,21 @@ TASKS = (
          domains=("docs", "workflow"), inputs=("docs/**", "scripts/check_release_changelog.py"), cache="never"),
     task("card-contract-outputs", ("python3", "scripts/check_card_contract_outputs.py"), dependencies=("generated",), profiles=PRODUCT,
          domains=("product", "firmware", "web", "docs"), inputs=("common/config/card_contract.json", "scripts/check_card_contract_outputs.py"), parallel_safe=True),
+    task("card-runtime-coverage", ("node", "scripts/generate_card_runtime_coverage.js", "--check"), dependencies=("generated",), profiles=PRODUCT,
+         domains=("product", "firmware", "web", "docs"),
+         inputs=(
+             "common/config/card_contract.json",
+             "common/config/card_runtime_inventory.json",
+             "components/espcontrol/button_grid_card_registry.h",
+             "src/webserver/**",
+             "scripts/generate_card_runtime_coverage.js",
+         ) + WEB_SOURCE_HELPERS + WEB_BUNDLE_INPUTS,
+         generated_inputs=(
+             "common/config/card_runtime_baseline_card_normalization_fixtures.json",
+             "compatibility/fixtures/card_runtime_surface_baseline.json",
+             "docs/generated/cards/runtime-coverage.md",
+         ),
+         cache_inputs=WEB_BUNDLE_BUILD_HELPERS, parallel_safe=True, cache_tools=("node",)),
     task("device-slots", ("python3", "scripts/generate_device_slots.py", "--check"), profiles=PRODUCT,
          domains=("firmware", "product"), inputs=("common/assets/**", "devices/**", "scripts/generate_device_slots.py"), generated_inputs=("devices/*/packages.yaml", "devices/*/device/sensors.yaml"), parallel_safe=True),
     task("icon-groups", ("python3", "scripts/check_icon_groups.py"), dependencies=("generated",), profiles=FAST,

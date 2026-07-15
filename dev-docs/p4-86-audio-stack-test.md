@@ -54,7 +54,7 @@ Audio configuration:
 Network and memory workaround:
 
 - `network.enable_high_performance: false`
-- ESP hosted mempool disabled.
+- ESP hosted transport mempool placed in PSRAM.
 - Hosted task stack placed in PSRAM.
 - WiFi/LWIP allocations are biased towards PSRAM.
 - Normal ESP WiFi and hosted WiFi remote buffer counts are reduced.

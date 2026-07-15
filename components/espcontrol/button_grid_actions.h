@@ -698,14 +698,14 @@ inline uint32_t next_media_playlist_call_id() {
 
 inline void send_media_playlist_action(const ParsedCfg &p) {
   if (p.entity.empty()) return;
-  std::string content_id = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_ID_OPTION);
+  const auto config = espcontrol::media::decode_config_v1(p);
+  const std::string &content_id = config.playlist_content_id;
   if (content_id.empty()) {
     ESP_LOGW("media", "Playlist button for %s has no media content ID", p.entity.c_str());
     return;
   }
-  std::string content_type = cfg_option_value(p.options, MEDIA_PLAYLIST_CONTENT_TYPE_OPTION);
-  if (content_type.empty()) content_type = "playlist";
-  std::string player_source = cfg_option_value(p.options, MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION);
+  const std::string &content_type = config.playlist_content_type;
+  const std::string &player_source = config.playlist_player_source;
   ESP_LOGI("media", "Playlist button: entity=%s content_type=%s content_id=%s playback_device=%s",
            p.entity.c_str(), content_type.c_str(), content_id.c_str(),
            player_source.empty() ? "(none)" : player_source.c_str());
@@ -792,6 +792,7 @@ struct MediaVolumeCtx;
 inline void media_volume_open_modal(MediaVolumeCtx *ctx);
 struct MediaControlCtx;
 inline void media_control_open_modal(MediaControlCtx *ctx);
+inline MediaControlCtx *grid_media_control_runtime_for_owner(lv_obj_t *owner);
 struct ClimateControlCtx;
 inline void climate_control_open_modal(ClimateControlCtx *ctx);
 struct ImageCardCtx;
@@ -824,13 +825,14 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   (void) btn_obj;
   if (media_fast_press_consume(slot_num)) return;
   ParsedCfg p = parse_cfg(cfg);
+  const auto context = card_runtime_context(p);
   ESP_LOGI("button", "Main button %d clicked: type=%s entity=%s mode=%s label=%s",
            slot_num, p.type.c_str(), p.entity.c_str(), p.sensor.c_str(), p.label.c_str());
-  if (p.type == "sensor" || p.type == "text_sensor" || p.type == "local_sensor" ||
-      p.type == "door_window" ||
-      p.type == "presence" ||
-      p.type == "calendar" || p.type == "clock" || p.type == "timezone" ||
-      p.type == "weather_forecast") return;
+  if (card_runtime_passive(context)) return;
+  if (context.legacy_dispatch) {
+    ESP_LOGD("card_runtime", "Legacy action fallback: type=%s driver=%u",
+             p.type.c_str(), static_cast<unsigned>(context.runtime.driver));
+  }
   if (p.type == "screen_lock") {
     screen_lock_toggle();
   } else if (p.type == "push") {
@@ -951,6 +953,13 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       send_media_playlist_action(p);
     } else if (mode == "now_playing" && p.precision == "play_pause") {
       send_media_playback_action(p.entity, "play_pause");
+    } else if (mode == "cover_art") {
+      if (media_cover_art_press_action(p) == "control_modal") {
+        MediaControlCtx *ctx = grid_media_control_runtime_for_owner(btn_obj);
+        if (ctx) media_control_open_modal(ctx);
+      } else {
+        send_media_playback_action(p.entity, "play_pause");
+      }
     } else if (media_playback_button_mode(mode)) {
       send_media_playback_action(p.entity, mode);
     }

@@ -17,6 +17,7 @@
 #include <algorithm>
 #include "esphome/components/lvgl/lvgl_esphome.h"
 #include "clock_bar.h"
+#include "display_mode_controller.h"
 #include "sun_calc.h"
 #include "temperature_unit.h"
 

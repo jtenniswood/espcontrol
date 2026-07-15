@@ -51,8 +51,18 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         "`npm run check:card-contract-outputs` and `npm run check:product`",
     ),
     SourceTruthRow(
+        "common/config/card_runtime_inventory.json",
+        (
+            "common/config/card_runtime_baseline_card_normalization_fixtures.json",
+            "compatibility/fixtures/card_runtime_surface_baseline.json",
+            "docs/generated/cards/runtime-coverage.md",
+        ),
+        "node scripts/generate_card_runtime_coverage.js",
+        "`npm run check:card-runtime-coverage` and `npm run check:saved-config-parity`",
+    ),
+    SourceTruthRow(
         "common/config/entity_names.json",
-        ("common/config/entity_names.yaml", "src/webserver/modules/entity_catalog.js"),
+        ("common/config/entity_names.yaml", "src/webserver/generated/entity_catalog.ts"),
         "python3 scripts/build.py entities",
         "`python3 scripts/build.py entities --check` and `npm run check:product`",
     ),
@@ -79,7 +89,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
         (
             "generated sections inside `common/assets/icon_glyphs.yaml`",
             "generated sections inside `components/espcontrol/icons.h`",
-            "generated sections inside `src/webserver/entry.js`",
+            "`src/webserver/generated/icons.ts`",
         ),
         "python3 scripts/build.py icons",
         "`python3 scripts/build.py icons --check` and `npm run check:product`",
@@ -104,7 +114,7 @@ SOURCE_TRUTH_ROWS: tuple[SourceTruthRow, ...] = (
     ),
     SourceTruthRow(
         "src/webserver/",
-        ("docs/public/webserver/*/www.js",),
+        ("docs/public/webserver/www.js",),
         "python3 scripts/build.py www",
         "`npm run check:web-smoke` and `npm run check:product`",
     ),
@@ -175,7 +185,13 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:product` when firmware, web, backup, or release-facing generated output changes",
     ),
     CheckMatrixRow(
-        "`src/webserver/`, `scripts/web_modules.json`",
+        "`common/config/card_runtime_inventory.json`, card registrations, or the firmware family registry",
+        "Card runtime coverage, legacy classification, picker/preview baseline, and lifecycle responsibilities",
+        "`npm run check:card-runtime-coverage`",
+        "`npm run check:product` when the reviewed baseline or a runtime registration changes",
+    ),
+    CheckMatrixRow(
+        "`src/webserver/`",
         "Web configurator behavior, settings panels, preview rendering, backup UI, served `www.js` bundles",
         "`npm run check:web-smoke`",
         "`npm run check:web-browser-smoke` for browser behavior; `npm run check:product` before release-facing commits",
@@ -187,7 +203,7 @@ CHECK_MATRIX_ROWS: tuple[CheckMatrixRow, ...] = (
         "`npm run check:fast` or compile affected firmware when display layout or device behavior changes",
     ),
     CheckMatrixRow(
-        "`src/webserver/modules/config_codec.js`, `components/espcontrol/button_grid_config.h`, `compatibility/fixtures/product_compatibility.json`",
+        "`src/webserver/application/config_codec.ts`, `components/espcontrol/button_grid_config.h`, `compatibility/fixtures/product_compatibility.json`",
         "Saved card strings, backup/import/export shape, migration compatibility",
         "`npm run check:backup-contract` and `npm run check:firmware-parser`",
         "`npm run check:product` when compact config, backup, or migration behavior changes",
@@ -278,7 +294,7 @@ def validate_check_guidance(value: str) -> str:
     for alias in re.findall(r"npm run (check:[\w:-]+)", value):
         if alias not in aliases:
             raise ValueError(f"developer guidance references an unregistered check alias: {alias}")
-        task_id = alias.removeprefix("check:")
+        task_id = alias[len("check:"):]
         if task_id not in task_ids and task_id not in PROFILES and alias != "check:release-preflight":
             raise ValueError(f"developer guidance references an unknown task: {task_id}")
     return value
@@ -311,7 +327,7 @@ def package_scripts() -> set[str]:
 
 def web_registration_map() -> dict[str, str]:
     out: dict[str, str] = {}
-    for path in sorted((ROOT / "src/webserver/types").glob("*.js")):
+    for path in sorted((ROOT / "src/webserver/cards").glob("*.ts")):
         text = path.read_text()
         for match in re.finditer(r"registerButtonType\(\s*([\"'])(.*?)\1", text):
             out[match.group(2)] = rel(path)
@@ -326,6 +342,7 @@ def web_registration_map() -> dict[str, str]:
 
 def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
     out = {card_type: [] for card_type in card_types}
+    runtime_boundary = "components/espcontrol/button_grid_card_runtime.h"
     extra_by_type = {
         "weather": ["components/espcontrol/button_grid_weather_forecast.h"],
     }
@@ -340,8 +357,14 @@ def firmware_header_map(card_types: list[str]) -> dict[str, list[str]]:
             needles = (f'"{card_type}"',)
         for path in headers:
             text = path.read_text(errors="ignore")
+            for include in re.findall(r'#include\s+"(button_grid_saved_config_[^"/]*_generated\.h)"', text):
+                generated = path.parent / include
+                if generated.exists():
+                    text += "\n" + generated.read_text(errors="ignore")
             if any(needle in text for needle in needles):
                 out[card_type].append(rel(path))
+        if runtime_boundary not in out[card_type]:
+            out[card_type].append(runtime_boundary)
         for extra in extra_by_type.get(card_type, []):
             if extra not in out[card_type]:
                 out[card_type].append(extra)
@@ -418,7 +441,7 @@ def generated_card_map() -> str:
         + markdown_table(("Public card page", "Covered saved type"), public_rows),
         "## Generated Matrix\n\n"
         "This table is generated from the card contract, `registerButtonType(...)` calls in "
-        "`src/webserver/types/`, and matching firmware header references under "
+        "`src/webserver/cards/`, and matching firmware header references under "
         "`components/espcontrol/`.\n\n"
         + markdown_table((
             "Type",
