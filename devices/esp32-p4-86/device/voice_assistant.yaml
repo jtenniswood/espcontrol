@@ -644,8 +644,6 @@ script:
       - script.wait: hide_cover_art_view
       - lambda: |-
           navigation_return_home(id(main_page)->obj);
-          id(display_asleep) = false;
-          id(cover_art_screensaver_active) = false;
       - delay: 50ms
       - script.execute: clock_bar_apply
 

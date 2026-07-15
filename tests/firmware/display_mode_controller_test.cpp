@@ -39,6 +39,8 @@ static DisplayMode expected_mode_for_priority(int priority) {
 int main() {
   DisplayModeController controller;
   CHECK(decision_is(controller, DisplayMode::ACTIVE));
+  CHECK(controller.target_mode_is(DisplayMode::ACTIVE));
+  CHECK(controller.current_mode_is(DisplayMode::ACTIVE));
   CHECK(!controller.transition_required(controller.resolve()));
 
   // Every higher-priority policy beats every lower-priority policy.
@@ -52,6 +54,8 @@ int main() {
   }
 
   CHECK(controller.request(DisplayRequestSource::SETUP_TIMEOUT, DisplayMode::SETUP_DIMMED));
+  CHECK(controller.target_source_is(DisplayRequestSource::SETUP_TIMEOUT));
+  CHECK(!controller.current_source_is(DisplayRequestSource::SETUP_TIMEOUT));
   CHECK(controller.transition_required(controller.resolve()));
   CHECK(decision_is(controller, DisplayMode::SETUP_DIMMED,
                     DisplayRequestSource::SETUP_TIMEOUT));
@@ -301,48 +305,6 @@ int main() {
   CHECK(controller.takeover_active(DisplayTakeoverKind::INTERACTIVE));
   CHECK(controller.end_takeover(DisplayTakeoverKind::INTERACTIVE));
   CHECK(!controller.end_takeover(DisplayTakeoverKind::INTERACTIVE));
-
-  LegacyDisplayState legacy;
-  CHECK(derive_legacy_display_mode(legacy).mode == DisplayMode::ACTIVE);
-  legacy.display_asleep = true;
-  legacy.clock_showing = true;
-  CHECK(derive_legacy_display_mode(legacy).mode == DisplayMode::CLOCK);
-  CHECK(derive_legacy_display_mode(legacy).stable);
-  legacy.display_off_active = true;
-  CHECK(!derive_legacy_display_mode(legacy).stable);
-  legacy = {};
-  legacy.display_asleep = true;
-  CHECK(!derive_legacy_display_mode(legacy).stable);
-  legacy.setup_screen = true;
-  CHECK(derive_legacy_display_mode(legacy).stable);
-  CHECK(derive_legacy_display_mode(legacy).mode == DisplayMode::SETUP_DIMMED);
-
-  DisplayModeShadowObserver observer;
-  legacy = {};
-  auto observation = observer.observe(legacy);
-  CHECK(observation.decision_changed);
-  CHECK(!observation.mismatch);
-  observation = observer.observe(legacy);
-  CHECK(!observation.decision_changed);
-  legacy.display_asleep = true;
-  legacy.display_off_active = true;
-  observation = observer.observe(legacy);
-  CHECK(observation.decision.target_mode == DisplayMode::DISPLAY_OFF);
-  CHECK(!observation.mismatch);
-  legacy.backlight_manual_off = true;
-  legacy.temporary_user_wake = true;
-  observation = observer.observe(legacy);
-  CHECK(observation.decision.winning_source == DisplayRequestSource::MANUAL_SLEEP);
-  legacy = {};
-  legacy.critical_takeover = true;
-  observation = observer.observe(legacy);
-  CHECK(observation.decision.winning_takeover == DisplayTakeoverKind::CRITICAL);
-  legacy.critical_takeover = false;
-  legacy.cover_art_active = true;
-  legacy.display_asleep = true;
-  observation = observer.observe(legacy);
-  CHECK(observation.decision.target_mode == DisplayMode::COVER_ART);
-  CHECK(!observation.mismatch);
 
   return EXIT_SUCCESS;
 }

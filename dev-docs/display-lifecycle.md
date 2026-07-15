@@ -47,68 +47,21 @@ The shared controller introduced by later work uses these values:
 Brightness is deliberately not a mode. The winning request selects the existing
 normal, scheduled, temporary-wake, dimmed, or clock brightness calculation.
 
-## Current state flags
+## Controller-owned and supporting state
 
-These flags are compatibility state during the staged migration. They are not a
-model to reproduce inside the controller.
+The controller is the only source of presentation state. Readers use its target
+mode for pending decisions and interaction blocking, and its current mode for
+the presentation whose effects have completed. The winning request source
+distinguishes schedule-owned clock or off states from idle-owned equivalents.
 
-| Flag | Current meaning | Notes |
-|---|---|---|
-| `display_asleep` | The normal active UI is not fully awake. | Also becomes true for setup dimming, so it cannot identify a mode alone. |
-| `screen_schedule_asleep` | The schedule owns the current clock or off state. | Compatibility output only; boot behaviour is recalculated from live schedule and time inputs. |
-| `backlight_manual_off` | A touchscreen long-press requested display off. | Cleared by the next wake. |
-| `manual_wake_ms` | Start time of a temporary off-hours wake. | Zero means no temporary wake. |
-| `screensaver_display_off_active` | The display-off presentation is selected. | Physical PWM must also be off. |
-| `screensaver_dimmed_active` | The dimmed presentation is selected. | Requires the dim touch guard. |
-| `is_clock_showing` | The full-screen clock overlay is visible. | Schedule ownership is tracked separately. |
-| `cover_art_screensaver_active` | The cover-art presentation is visible. | Download/cache state is separate from lifecycle state. |
-| `display_takeover_suspended` | Automatic display effects are suspended for a modal. | Currently shared by interactive and critical takeovers. |
-| `screensaver_sensor_sleep_pending` | Presence requested sleep while a takeover blocked it. | Used by the current takeover restoration path. |
-| `screensaver_wake_touch_guard_active` | The first wake touch is being swallowed. | Supporting interaction state, not a display mode. |
+Supporting state remains outside the controller when it is not itself a display
+mode. This includes the temporary-wake timer, touch-guard windows, pending
+presence requests, persisted schedule and brightness settings, connectivity
+setup state, media eligibility, and artwork download/cache/metadata state.
 
-## Flag-to-mode transition table
-
-`0` means false or zero, `1` means true or non-zero, and `-` means the flag does
-not distinguish that row. Rows describe stable states after an effect completes,
-not brief values observed part-way through a fade.
-
-| Visible state | `display_asleep` | schedule asleep | manual off | temp wake | off active | dim active | clock | cover art | takeover | Controller mode / source |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| Normal UI | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | `ACTIVE` / default |
-| Temporary off-hours wake | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | `ACTIVE` / `USER_WAKE` |
-| Scheduled Screen Dimmed period | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | `ACTIVE` / `SCREEN_SCHEDULE` |
-| Setup page dimmed after timeout | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | `SETUP_DIMMED` / `SETUP_TIMEOUT` |
-| Idle or presence dimmed | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | `DIMMED` / `IDLE_TIMER` or `PRESENCE_SENSOR` |
-| Idle or presence clock | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | `CLOCK` / `IDLE_TIMER` or `PRESENCE_SENSOR` |
-| Scheduled clock | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | `CLOCK` / `SCREEN_SCHEDULE` |
-| Eligible media cover art | 1 | - | 0 | 0 | 0 | 0 | 0 | 1 | 0 | `COVER_ART` / `MEDIA_PLAYBACK` |
-| Idle or presence display off | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | `DISPLAY_OFF` / `IDLE_TIMER` or `PRESENCE_SENSOR` |
-| Scheduled display off or boot guard | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | `DISPLAY_OFF` / `SCREEN_SCHEDULE` or `BOOT_GUARD` |
-| Manual display off | 1 | 0 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | `DISPLAY_OFF` / `MANUAL_SLEEP` |
-| Interactive image takeover | 0 | - | 0 | - | 0 | 0 | 0 | 0 | 1 | `ACTIVE` with `INTERACTIVE` takeover |
-| Alarm arming or triggered takeover | 0 | - | - | - | 0 | 0 | 0 | 0 | 1 | `ACTIVE` with `CRITICAL` takeover |
-
-The cover-art row permits a stale schedule marker in the current implementation,
-but schedule blocking is evaluated before activation. The controller must resolve
-the live schedule request and must not depend on that stale marker.
-
-### Invalid or transitional combinations
-
-Every other combination of the presentation flags is ambiguous or invalid. The
-adapter must converge it to the winning mode rather than preserve it. In
-particular:
-
-| Combination | Required interpretation |
-|---|---|
-| More than one of off, dimmed, clock, or cover art is visible | Re-resolve requests and apply only the winner. Never expose two presentations. |
-| `display_asleep == false` with any off, dimmed, clock, or cover-art flag | Treat the presentation flag as stale and re-apply the winning transition. |
-| `display_asleep == true` with no presentation flag while not on setup | Do not infer a saved transient mode; resolve current inputs. |
-| Off active while PWM or logical backlight remains on | Complete the off effect immediately; logical and physical backlight state must agree. |
-| Dimmed inactive while the dim touch guard is visible | Hide the guard before accepting normal UI interaction. |
-| Dimmed active while the dim touch guard is hidden | Restore the guard before the mode is considered complete. |
-| Takeover active while an automatic delayed effect finishes | Reject the obsolete effect; the takeover remains visible. |
-| Enabled time-based schedule is waiting for valid time at boot | Select `DISPLAY_OFF` from `BOOT_GUARD`, regardless of the restored schedule marker; do not restore clock or another transient mode. |
-| Manual off and temporary wake both set | Manual sleep wins and clears the temporary wake. |
+There are no mirrored presentation booleans. A request change invalidates older
+effect generations, and the adapter converges the physical display directly to
+the controller's current decision.
 
 ## Request priority
 
@@ -180,11 +133,11 @@ These are true after every completed transition:
    clock and day/night clock brightness for an idle-owned clock.
 6. Cover-art download and cache state may outlive `COVER_ART`, but it cannot make
    the presentation visible without a current winning media request.
-7. The adapter is the only writer of compatibility presentation flags once a
-   mode is migrated. Existing readers may remain during the staged migration.
+7. The controller is the sole owner of target and current presentation state;
+   no compatibility presentation flags mirror its decision.
 8. Every accepted request, clear, or takeover change creates a newer transition
    generation. A delayed callback must match the current generation before it
-   changes widgets, flags, brightness, downloads, progress, or presentation.
+   changes widgets, brightness, downloads, progress, or presentation.
 9. Completing an obsolete generation has no effect, including no flag cleanup
    that could damage the current mode.
 10. Releasing a takeover or clearing a request resolves live inputs; it never
@@ -198,7 +151,7 @@ tests. `gN` denotes a transition generation.
 | Sequence | Events | Expected decisions and checks |
 |---|---|---|
 | Default boot | Boot, valid time, schedule normal | Resolve `ACTIVE`; normal UI and normal brightness; idle timer starts. |
-| Fail-dark boot | Enabled time-based schedule; boot; time invalid; repeat with and without a saved schedule-asleep marker | `BOOT_GUARD` requests `DISPLAY_OFF` in both cases; PWM remains off. When time becomes valid, clear boot guard and resolve the live schedule. |
+| Fail-dark boot | Enabled time-based schedule; boot; time invalid; repeat before and after upgrading saved settings | `BOOT_GUARD` requests `DISPLAY_OFF` in both cases; PWM remains off. When time becomes valid, clear boot guard and resolve the live schedule. |
 | Idle dim | `ACTIVE`; idle timeout; configured action Dim | `IDLE_TIMER` requests `DIMMED` at `g1`; normal UI remains beneath the dim guard; dim brightness applies. |
 | Idle clock | `ACTIVE`; idle timeout; configured action Clock | `IDLE_TIMER` requests `CLOCK`; full-screen clock alone is visible at day/night clock brightness. |
 | Idle off | `ACTIVE`; idle timeout; configured action Off | `IDLE_TIMER` requests `DISPLAY_OFF`; fade completes, off page is selected, logical backlight and PWM are off. |
@@ -216,7 +169,7 @@ tests. `gN` denotes a transition generation.
 | Schedule changes during interactive modal | Open image modal; enter scheduled off or clock | Schedule outranks interactive takeover, closes it, and applies off or clock. Entering normal hours before modal close is resolved from live schedule state. |
 | Media changes during interactive modal | Open image modal; eligible playback starts or stops; close modal | Modal remains visible. On close, current media eligibility decides whether `COVER_ART` wins. |
 | Critical alarm takeover | Any mode; alarm enters arming delay or triggered; other requests change; alarm clears | `CRITICAL` selects active UI with alarm overlay. No lower request changes presentation. On release, resolve all current requests. |
-| Rapid opposing requests | Idle requests off `g1`; touch requests active `g2`; schedule requests clock `g3`; old fade callback from `g1` fires | Final mode is `CLOCK` from `g3`; callbacks from `g1` and `g2` are rejected and cannot change widgets, flags, or PWM. |
+| Rapid opposing requests | Idle requests off `g1`; touch requests active `g2`; schedule requests clock `g3`; old fade callback from `g1` fires | Final mode is `CLOCK` from `g3`; callbacks from `g1` and `g2` are rejected and cannot change widgets or PWM. |
 | Setup timeout | Static setup page; 120 seconds; schedule inactive | `SETUP_TIMEOUT` selects `SETUP_DIMMED` at 50%. A schedule or boot-guard off request outranks it. |
 | Home Assistant reconnect | Any stable mode; API disconnect/reconnect; entities and time refresh | Re-resolve updated schedule, presence, media, and alarm inputs without publishing new entities or losing saved settings. |
 
