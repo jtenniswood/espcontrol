@@ -1403,26 +1403,35 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
     if "current_progress_available" in duration_handler:
         errors.append(f"{rel}: preserve fresh cover art position when duration arrives late")
 
-    title_handler_match = re.search(
-        r"handle_media_title\s*=\s*.*?\{(?P<body>.*?)\n\s*\};\n\s*if\s*\(!already_subscribed\)",
-        text,
-        re.DOTALL,
-    )
-    title_handler = title_handler_match.group("body") if title_handler_match else ""
-    title_assignment = title_handler.find("id(cover_art_title) = next")
-    duration_reset = title_handler.find("id(cover_art_media_duration) = 0.0f")
-    if title_assignment < 0 or duration_reset < 0 or duration_reset > title_assignment:
-        errors.append(f"{rel}: mark stale cover art duration unavailable before revealing a new track")
-    if any(
-        token in title_handler
-        for token in (
-            "id(cover_art_media_position) = 0.0f",
-            "id(cover_art_position_anchor) = 0.0f",
-            "id(cover_art_position_anchor_epoch) = 0",
-            "id(cover_art_last_position_timestamp) = 0",
-        )
+    for metadata_name, assignment in (
+        ("title", "id(cover_art_title) = next"),
+        ("artist", "id(cover_art_artist) = next"),
+        ("source", "id(cover_art_media_source) = next"),
     ):
-        errors.append(f"{rel}: preserve fresh cover art position when title metadata arrives late")
+        handler_match = re.search(
+            rf"handle_media_{metadata_name}\s*=\s*.*?\{{(?P<body>.*?)\n\s*\}};\n\s*if\s*\(!already_subscribed\)",
+            text,
+            re.DOTALL,
+        )
+        handler = handler_match.group("body") if handler_match else ""
+        metadata_assignment = handler.find(assignment)
+        duration_reset = handler.find("id(cover_art_media_duration) = 0.0f")
+        if metadata_assignment < 0 or duration_reset < 0 or duration_reset > metadata_assignment:
+            errors.append(
+                f"{rel}: mark stale cover art duration unavailable when media {metadata_name} changes"
+            )
+        if any(
+            token in handler
+            for token in (
+                "id(cover_art_media_position) = 0.0f",
+                "id(cover_art_position_anchor) = 0.0f",
+                "id(cover_art_position_anchor_epoch) = 0",
+                "id(cover_art_last_position_timestamp) = 0",
+            )
+        ):
+            errors.append(
+                f"{rel}: preserve fresh cover art position when {metadata_name} metadata arrives late"
+            )
 
     return errors
 
@@ -4687,6 +4696,18 @@ def run_self_test() -> int:
         "  id(cover_art_title) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
+        "# artist callback\n"
+        "std::function<void(esphome::StringRef)> handle_media_artist = [](esphome::StringRef artist) {\n"
+        "  id(cover_art_media_duration) = 0.0f;\n"
+        "  id(cover_art_artist) = next;\n"
+        "};\n"
+        "if (!already_subscribed) {}\n"
+        "# source callback\n"
+        "std::function<void(esphome::StringRef)> handle_media_source = [](esphome::StringRef source) {\n"
+        "  id(cover_art_media_duration) = 0.0f;\n"
+        "  id(cover_art_media_source) = next;\n"
+        "};\n"
+        "if (!already_subscribed) {}\n"
         "# duration callback\n"
         "std::function<void(esphome::StringRef)> handle_media_duration = [](esphome::StringRef duration) {\n"
         "  const bool next_progress_available = espcontrol::cover_art::progress_available(next_duration);\n"
@@ -4757,7 +4778,7 @@ def run_self_test() -> int:
             "",
             1,
         ),
-        ("mark stale cover art duration unavailable before revealing a new track",),
+        ("mark stale cover art duration unavailable when media title changes",),
     )
     expect_cover_art_progress_visibility_errors(
         "cover art title change discards a fresh position",
@@ -4768,6 +4789,26 @@ def run_self_test() -> int:
             1,
         ),
         ("preserve fresh cover art position when title metadata arrives late",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art artist change keeps stale duration",
+        cover_art_progress_visibility.replace(
+            "handle_media_artist = [](esphome::StringRef artist) {\n"
+            "  id(cover_art_media_duration) = 0.0f;\n",
+            "handle_media_artist = [](esphome::StringRef artist) {\n",
+            1,
+        ),
+        ("mark stale cover art duration unavailable when media artist changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art source change keeps stale duration",
+        cover_art_progress_visibility.replace(
+            "handle_media_source = [](esphome::StringRef source) {\n"
+            "  id(cover_art_media_duration) = 0.0f;\n",
+            "handle_media_source = [](esphome::StringRef source) {\n",
+            1,
+        ),
+        ("mark stale cover art duration unavailable when media source changes",),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",

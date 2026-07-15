@@ -1920,6 +1920,8 @@ script:
               std::string next = string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_artist)) return;
+              id(cover_art_media_duration) = 0.0f;
+              id(cover_art_last_progress_percent) = -1;
               id(cover_art_artist) = next;
               mark_artwork_refresh_needed();
               id(cover_art_sync_track_text).execute();
@@ -1990,6 +1992,8 @@ script:
                               normalized_source == "line in";
               if (next == id(cover_art_media_source) &&
                   external == id(cover_art_external_input_active)) return;
+              id(cover_art_media_duration) = 0.0f;
+              id(cover_art_last_progress_percent) = -1;
               id(cover_art_media_source) = next;
               id(cover_art_external_input_active) = external;
               mark_artwork_refresh_needed();
