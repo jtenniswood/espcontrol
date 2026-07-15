@@ -1888,10 +1888,24 @@
           "kind": "flag",
           "omitDefault": true,
           "applicability": [
-            { "source": "field", "name": "precision", "operator": "in", "value": ["icon", "text"], "negate": true }
+            { "source": "field", "name": "precision", "operator": "in", "value": ["icon", "text", "time"], "negate": true }
           ],
           "supportedWhen": {
-            "precisionNot": ["icon", "text"]
+            "precisionNot": ["icon", "text", "time"]
+          }
+        },
+        {
+          "name": "time_unit",
+          "label": "Input Unit",
+          "kind": "choice",
+          "values": ["", "seconds", "minutes", "hours", "days"],
+          "defaultValue": "",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "precision", "operator": "equals", "value": "time" }
+          ],
+          "supportedWhen": {
+            "precision": ["time"]
           }
         },
         {
@@ -1982,7 +1996,7 @@
           "options": { "policy": "hook", "hook": "normalize_sensor_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["large_numbers", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+        "canonicalOptionOrder": ["large_numbers", "time_unit", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
         "optionHook": "normalize_sensor_options",
         "migrationActions": ["legacy_local_sensor", "legacy_text_sensor", "legacy_sensor_state_high_label", "legacy_sensor_state_low_label"]
       },

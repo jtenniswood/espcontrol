@@ -116,9 +116,10 @@ inline bool normalize_saved_config_sensor_shadow(Config &config) {
   if (config.type != "sensor") return false;
   if (config.icon.empty()) config.icon = "Auto";
   if (config.icon_on.empty()) config.icon_on = "Auto";
+  if (config.sensor != "local" && config.precision == "time") { config.unit.clear(); config.icon = "Auto"; config.icon_on = "Auto"; }
   if (config.sensor == "local") { config.icon_on = "Auto"; config.options.clear(); if (config.precision != "text" && config.precision != "1" && config.precision != "2") config.precision.clear(); if (config.precision != "text" && (config.icon.empty() || config.icon == "Auto")) config.icon = "Auto"; return true; }
   const std::string source = config.options; std::string out;
-  if (config.precision != "icon" && config.precision != "text") append_large_numbers_option(out, source);
+  if (config.precision != "icon" && config.precision != "text" && config.precision != "time") append_large_numbers_option(out, source);
   if (config.precision == "text" && cfg_option_token_present(source, "state_labels")) {
     saved_config_shadow_append_option(out, "state_labels"); std::string input = cfg_option_value(source, "state_input"); std::string output = cfg_option_value(source, "state_output");
     if (input.empty() && !cfg_option_value(source, "state_high_label").empty()) { input = "high"; if (output.empty()) output = cfg_option_value(source, "state_high_label"); }
@@ -131,6 +132,7 @@ inline bool normalize_saved_config_sensor_shadow(Config &config) {
     if (!input_2_trimmed.empty()) saved_config_shadow_append_option(out, "state_input_2", input_2_trimmed);
     if (!output_2_trimmed.empty()) saved_config_shadow_append_option(out, "state_output_2", output_2_trimmed);
   }
+  if (config.precision == "time") { const std::string time_unit = cfg_option_value(source, "time_unit"); if (time_unit == "seconds" || time_unit == "minutes" || time_unit == "hours" || time_unit == "days") saved_config_shadow_append_option(out, "time_unit", time_unit); }
   config.options = out; return true;
 }
 

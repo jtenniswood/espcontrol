@@ -102,6 +102,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
     "unknownOptions": "drop",
     "canonicalOptionOrder": [
       "large_numbers",
+      "time_unit",
       "state_labels",
       "state_input",
       "state_output",
@@ -356,6 +357,7 @@ export function normalizeSavedConfigSensorShadow(input: Partial<CardConfig>): Ca
   if (config.type === "text_sensor") { config.type = "sensor"; config.precision = "text"; config.entity = ""; config.label = ""; config.unit = ""; config.icon_on = "Auto"; }
   if (config.type === "local_sensor") { config.type = "sensor"; config.sensor = "local"; config.icon_on = "Auto"; config.options = ""; }
   if (config.type !== "sensor") return null;
+  if (config.sensor !== "local" && config.precision === "time") { config.unit = ""; config.icon = "Auto"; config.icon_on = "Auto"; }
   if (config.sensor === "local") {
     config.icon_on = "Auto"; config.options = "";
     if (["text", "1", "2"].indexOf(config.precision) < 0) config.precision = "";
@@ -363,7 +365,7 @@ export function normalizeSavedConfigSensorShadow(input: Partial<CardConfig>): Ca
     return config;
   }
   const source = config.options; const out: string[] = [];
-  if (config.precision !== "icon" && config.precision !== "text") {
+  if (config.precision !== "icon" && config.precision !== "text" && config.precision !== "time") {
     if (optionValue(source, "large_numbers") === "off") out.push("large_numbers=off");
     else if (optionPresent(source, "large_numbers")) out.push("large_numbers");
   }
@@ -377,6 +379,7 @@ export function normalizeSavedConfigSensorShadow(input: Partial<CardConfig>): Ca
       if (trimmed) out.push(name + "=" + encodeOptionValue(trimmed));
     }
   }
+  if (config.precision === "time") { const timeUnit = optionValue(source, "time_unit"); if (["seconds", "minutes", "hours", "days"].indexOf(timeUnit) >= 0) out.push("time_unit=" + timeUnit); }
   config.options = out.join(","); return config;
 }
 

@@ -11,6 +11,7 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
     var CARD_ON_PATTERN_OPTION: any = cardContractOptionName("on_pattern");
     var SENSOR_LARGE_NUMBERS_OPTION: any = cardContractOptionName("large_numbers");
     var SENSOR_LARGE_NUMBERS_OFF_VALUE: any = "off";
+    var SENSOR_TIME_UNIT_OPTION: any = cardContractOptionName("time_unit");
     var SENSOR_ACTIVE_COLOR_OPTION: any = cardContractOptionName("active_color");
     var SWITCH_CONFIRM_OFF_OPTION: any = cardContractOptionName("confirm_off");
     var SWITCH_CONFIRM_ON_OPTION: any = cardContractOptionName("confirm_on");
@@ -103,6 +104,7 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
         "CARD_ON_PATTERN_OPTION": liveGlobal(() => CARD_ON_PATTERN_OPTION, (value?: any) => { CARD_ON_PATTERN_OPTION = value; }),
         "SENSOR_LARGE_NUMBERS_OPTION": liveGlobal(() => SENSOR_LARGE_NUMBERS_OPTION, (value?: any) => { SENSOR_LARGE_NUMBERS_OPTION = value; }),
         "SENSOR_LARGE_NUMBERS_OFF_VALUE": liveGlobal(() => SENSOR_LARGE_NUMBERS_OFF_VALUE, (value?: any) => { SENSOR_LARGE_NUMBERS_OFF_VALUE = value; }),
+        "SENSOR_TIME_UNIT_OPTION": liveGlobal(() => SENSOR_TIME_UNIT_OPTION, (value?: any) => { SENSOR_TIME_UNIT_OPTION = value; }),
         "SENSOR_ACTIVE_COLOR_OPTION": liveGlobal(() => SENSOR_ACTIVE_COLOR_OPTION, (value?: any) => { SENSOR_ACTIVE_COLOR_OPTION = value; }),
         "SWITCH_CONFIRM_OFF_OPTION": liveGlobal(() => SWITCH_CONFIRM_OFF_OPTION, (value?: any) => { SWITCH_CONFIRM_OFF_OPTION = value; }),
         "SWITCH_CONFIRM_ON_OPTION": liveGlobal(() => SWITCH_CONFIRM_ON_OPTION, (value?: any) => { SWITCH_CONFIRM_ON_OPTION = value; }),
