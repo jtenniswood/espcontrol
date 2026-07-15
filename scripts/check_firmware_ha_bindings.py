@@ -3833,25 +3833,25 @@ def run_self_test() -> int:
     )
     expect_local_sensor_binding_order_errors(
         "local sensor subtype reaches HA binding",
-        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const CardPalette &palette) {\n"
+        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const Context &context, const CardPalette &palette) {\n"
         "  if (p.type == \"sensor\") return true;\n"
         "}\n"
         "if (bind_image_card(s, p, cfg)) continue;\n"
-        "if (bind_basic_sensor_card(s, p, palette)) continue;\n",
+        "if (bind_basic_sensor_card(s, p, context, palette)) continue;\n",
         ("keep local sensor subtypes out of bind_basic_sensor_card", "skip local sensor subtypes"),
     )
     expect_local_sensor_binding_order_errors(
         "local sensor subtype skipped before HA binding",
-        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const CardPalette &palette) {\n"
+        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const Context &context, const CardPalette &palette) {\n"
         "  if (sensor_card_local_sensor(p)) return false;\n"
         "  if (p.type == \"sensor\") return true;\n"
         "}\n"
         "if (bind_image_card(s, p, cfg)) continue;\n"
         "if (p.type == \"local_sensor\" || sensor_card_local_sensor(p)) continue;\n"
-        "if (bind_basic_sensor_card(s, p, palette)) continue;\n"
+        "if (bind_basic_sensor_card(s, p, context, palette)) continue;\n"
         "if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;\n"
         "if (sb_cfg.type == \"local_sensor\" || sensor_card_local_sensor(sb_cfg)) continue;\n"
-        "if (bind_basic_sensor_card(sub_slot, sb_cfg, palette)) continue;\n",
+        "if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)) continue;\n",
         (),
     )
     expect_time_reconnect_errors(
