@@ -741,8 +741,9 @@ def firmware_cover_art_external_input_errors(path: Path, root: Path) -> list[str
         errors.append(f"{rel}: subscribe to the media player source attribute")
     if "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART)" not in text:
         errors.append(f"{rel}: release retired cover art Home Assistant subscriptions")
-    if 'ha_get_attribute(cover_entity, std::string("source"), handle_media_source)' not in text:
-        errors.append(f"{rel}: refresh the media player source attribute")
+    resubscribe_body = yaml_script_body(text, "cover_art_resubscribe") or ""
+    if "ha_get_" in resubscribe_body:
+        errors.append(f"{rel}: avoid retained one-shot reads in the cover art subscription lifecycle")
     if ('normalized_source == "tv"' not in text or
             'normalized_source == "line-in"' not in text or
             'normalized_source == "line in"' not in text or
@@ -857,7 +858,7 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
     cached_body = yaml_script_body(text, "cover_art_use_cached_artwork")
     if cached_body and "id(cover_art_runtime).select_source(chosen);" not in cached_body:
         errors.append(f"{rel}: mark changed cached artwork URLs as stale before downloading")
-    resubscribe_body = yaml_script_body(text, "cover_art_resubscribe")
+    resubscribe_body = yaml_script_body(text, "cover_art_resubscribe") or ""
     if resubscribe_body and "if (!url.empty() && url != id(cover_art_runtime).source_url)" not in resubscribe_body:
         errors.append(f"{rel}: mark changed Home Assistant artwork attributes as stale")
 
@@ -879,8 +880,9 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
 
     if text.count("mark_artwork_refresh_needed();") < 4:
         errors.append(f"{rel}: mark title, artist, album, and source changes as artwork refresh triggers")
-    if 'std::string("media_album_name"), handle_media_album' not in text:
-        errors.append(f"{rel}: subscribe to and refresh the media_album_name attribute")
+    if ('std::string("media_album_name")' not in resubscribe_body or
+            "handle_media_album" not in resubscribe_body):
+        errors.append(f"{rel}: subscribe to the media_album_name attribute")
     if "id(cover_art_runtime).refresh_needed = true" not in text:
         errors.append(f"{rel}: set stale artwork state when track/source metadata changes")
     playback_started_body = yaml_script_body(text, "cover_art_playback_started")
@@ -1271,6 +1273,8 @@ def firmware_media_control_low_heap_metadata_errors(firmware_dir: Path, root: Pa
             or f'std::string("{attr}")' not in metadata_helper
         ):
             errors.append(f"{rel}: keep {attr} subscribed for the S3 media modal")
+    if 'state->entity_id, std::string("media_artist")' in metadata_helper:
+        errors.append(f"{rel}: avoid duplicate one-shot metadata reads on every track change")
     progress_in_always_on = "media_playback_subscribe_progress(state)" in always_on
     progress_in_low_heap_excluded = "media_playback_subscribe_progress(state)" in low_heap_excluded
     for attr in ("media_duration", "media_position", "media_position_updated_at"):
@@ -4140,7 +4144,7 @@ def run_self_test() -> int:
         "            handle_media_source,\n"
         "            HA_SUBSCRIPTION_SCOPE_COVER_ART\n"
         "          );\n"
-        "          ha_get_attribute(cover_entity, std::string(\"source\"), handle_media_source);\n",
+        "          // Live subscriptions supply both initial values and updates.\n",
         (),
     )
     expect_cover_art_stale_image_errors(
@@ -4196,7 +4200,7 @@ def run_self_test() -> int:
         "          id(cover_art_runtime).source_url;\n",
         (
             "track/source metadata changes as stale artwork",
-            "subscribe to and refresh the media_album_name attribute",
+            "subscribe to the media_album_name attribute",
         ),
     )
     expect_cover_art_refresh_errors(
@@ -4287,7 +4291,7 @@ def run_self_test() -> int:
         "            id(cover_art_runtime).refresh_needed = true;\n"
         "          }\n"
         "          ha_subscribe_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n"
-        "          ha_get_attribute(cover_entity, std::string(\"media_album_name\"), handle_media_album);\n",
+        "          // Live subscriptions supply both initial values and updates.\n",
         (),
     )
     expect_cover_art_playback_grace_errors(
