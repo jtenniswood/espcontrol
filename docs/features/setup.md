@@ -78,6 +78,8 @@ When the entity is not active, the card goes back to its off icon and normal lab
 
 Drag and drop any card to reposition it. If you drop it onto an occupied space, the existing card shifts to the next available slot.
 
+To copy cards to another controller without replacing its other settings, use **Copy Code** and **Paste Code**. See [Copying Cards Between Controllers](/features/subpages#copying-cards-between-controllers) for the steps and compatibility notes.
+
 ### Card Sizes
 
 Right-click a card and open **Size** to choose:
@@ -100,3 +102,30 @@ Open **Settings > System > Home Assistant Settings** to change **Home Assistant 
 ## Apply Configuration
 
 After making changes, tap **Apply Configuration** at the bottom of the page. The panel restarts and loads your new settings — you'll see a message while it reconnects.
+
+## Restart From Home Assistant
+
+Each EspControl device has an enabled **Restart** button in Home Assistant. Open **Settings > Devices & services > ESPHome**, choose your EspControl device, and look under its configuration controls. Pressing **Restart** safely restarts the display without changing its cards, brightness, schedules, or other saved settings.
+
+You can also press the button from a Home Assistant automation. Replace `button.your_panel_restart` with the Restart entity shown for your display:
+
+```yaml
+actions:
+  - action: button.press
+    target:
+      entity_id: button.your_panel_restart
+```
+
+If the automation runs when Home Assistant starts, wait until the Restart entity is available before pressing it:
+
+```yaml
+actions:
+  - wait_template: >
+      {{ states.button.your_panel_restart is not none
+         and not is_state('button.your_panel_restart', 'unavailable') }}
+  - action: button.press
+    target:
+      entity_id: button.your_panel_restart
+```
+
+The web setup page's **Apply Configuration** button remains separate: use it after saving web settings, and use the Home Assistant **Restart** entity when you only need to restart the display.
