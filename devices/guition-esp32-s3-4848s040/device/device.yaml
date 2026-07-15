@@ -242,8 +242,10 @@ light:
             condition:
               lambda: |-
                 auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
-                return (id(screen_schedule_asleep) &&
-                        !id(schedule_mode_clock)) ||
+                return (id(display_mode_controller).target_source_is(
+                            espcontrol::DisplayRequestSource::SCREEN_SCHEDULE) &&
+                        id(display_mode_controller).target_mode_is(
+                            espcontrol::DisplayMode::DISPLAY_OFF)) ||
                        screen_schedule_waiting_for_time(
                          id(screen_schedule_trigger).state,
                          id(schedule_enabled).state,
@@ -253,7 +255,9 @@ light:
             else:
               - if:
                   condition:
-                    lambda: 'return id(screensaver_display_off_active);'
+                    lambda: |-
+                      return id(display_mode_controller).current_mode_is(
+                          espcontrol::DisplayMode::DISPLAY_OFF);
                   then:
                     - script.execute: screensaver_wake
     on_turn_off:
@@ -261,10 +265,8 @@ light:
         - if:
             condition:
               lambda: |-
-                return !id(display_asleep) &&
-                       !id(screen_schedule_asleep) &&
-                       !id(screensaver_display_off_active) &&
-                       !id(screensaver_dimmed_active);
+                return id(display_mode_controller).target_mode_is(
+                    espcontrol::DisplayMode::ACTIVE);
             then:
               - script.execute: screen_schedule_manual_sleep
 
