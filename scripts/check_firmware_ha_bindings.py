@@ -1441,6 +1441,7 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
     for metadata_name, assignment in (
         ("title", "id(cover_art_title) = next"),
         ("artist", "id(cover_art_artist) = next"),
+        ("album", "id(cover_art_album) = next"),
         ("source", "id(cover_art_media_source) = next"),
     ):
         handler_match = re.search(
@@ -4761,6 +4762,12 @@ def run_self_test() -> int:
         "  id(cover_art_artist) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
+        "# album callback\n"
+        "std::function<void(esphome::StringRef)> handle_media_album = [](esphome::StringRef album) {\n"
+        "  invalidate_stale_media_duration();\n"
+        "  id(cover_art_album) = next;\n"
+        "};\n"
+        "if (!already_subscribed) {}\n"
         "# source callback\n"
         "std::function<void(esphome::StringRef)> handle_media_source = [](esphome::StringRef source) {\n"
         "  invalidate_stale_media_duration();\n"
@@ -4859,6 +4866,16 @@ def run_self_test() -> int:
             1,
         ),
         ("mark stale cover art duration unavailable when media artist changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art album change keeps stale duration",
+        cover_art_progress_visibility.replace(
+            "handle_media_album = [](esphome::StringRef album) {\n"
+            "  invalidate_stale_media_duration();\n",
+            "handle_media_album = [](esphome::StringRef album) {\n",
+            1,
+        ),
+        ("mark stale cover art duration unavailable when media album changes",),
     )
     expect_cover_art_progress_visibility_errors(
         "cover art source change keeps stale duration",
