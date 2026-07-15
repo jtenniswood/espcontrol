@@ -861,10 +861,12 @@ def firmware_cover_art_refresh_errors(path: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: prefer a real artist name over the external-source fallback label")
     pause_body = yaml_script_body(text, "cover_art_pause_after_touch")
     if pause_body is not None and (
-        "return id(cover_art_screensaver_active);" not in pause_body
-        or "id(cover_art_manual_pause_until_ms) = 1;" not in pause_body
+        "return id(cover_art_screensaver_active) ||" not in pause_body
+        or "id(cover_art_manual_pause_until_ms) != 0;" not in pause_body
+        or "if (seconds < 3.0f) seconds = 3.0f;" not in pause_body
+        or "id(cover_art_manual_pause_until_ms) = 1;" in pause_body
     ):
-        errors.append(f"{rel}: only arm cover art return after an active cover-art dismissal")
+        errors.append(f"{rel}: restart the three-second-minimum cover art delay after every dismissal touch")
     return errors
 
 
@@ -1096,21 +1098,13 @@ def firmware_media_sleep_prevention_errors(
             )
             if cover_art_sleep_match and cover_art_sleep_match.group(1) != "show_cover_art_view":
                 errors.append(f"{rel}: start cover art directly after the normal screensaver timeout")
-        if (
-            "cover_art_touch_return_pending" in text
-            and "id(cover_art_delay).state <= 0.0f" not in text
-        ):
-            errors.append(f"{rel}: re-arm cover art after touch when Show After is immediate")
-        if (
-            "const bool cover_art_immediate_return" in text
-            and "id(cover_art_manual_pause_until_ms) != 0 &&" not in text
-        ):
-            errors.append(f"{rel}: gate immediate cover art return to an actual dismissal")
-        if "const bool cover_art_immediate_return" in text and (
-            "const bool cover_art_disabled_mode_delay" not in text
-            or 'id(screensaver_mode).state != "timer"' not in text
+        if "const bool cover_art_immediate_return" in text:
+            errors.append(f"{rel}: remove the retired immediate cover art return path")
+        if "const bool cover_art_disabled_mode_delay" in text and (
+            'id(screensaver_mode).state != "timer"' not in text
             or 'id(screensaver_mode).state != "sensor"' not in text
             or "show_after_seconds > 0.0f" not in text
+            or "if (show_after_seconds < 3.0f) show_after_seconds = 3.0f;" not in text
         ):
             errors.append(f"{rel}: restart positive Show After delay after touches in disabled screensaver mode")
 
@@ -1128,6 +1122,26 @@ def firmware_media_sleep_prevention_errors(
         text = display_path.read_text(encoding="utf-8")
         if "switch.turn_on: media_player_sleep_prevention_enabled" in text:
             errors.append(f"{rel}: do not turn on media sleep prevention when cover art is enabled")
+        if re.search(r"(?m)^\s+id: media_player_sleep_prevention_enabled\s*$", text):
+            sleep_prevention_index = text.find("id: media_player_sleep_prevention_enabled")
+            sleep_prevention_end = text.find("\n  - platform:", sleep_prevention_index + 1)
+            sleep_prevention_body = text[sleep_prevention_index:sleep_prevention_end]
+            if "restore_mode: RESTORE_DEFAULT_ON" not in sleep_prevention_body:
+                errors.append(f"{rel}: default media sleep prevention on")
+            migration_tokens = (
+                "id: media_player_sleep_prevention_default_on_migrated",
+                "if (!id(media_player_sleep_prevention_default_on_migrated))",
+                "id(media_player_sleep_prevention_enabled).turn_on();",
+                "id(media_player_sleep_prevention_default_on_migrated) = true;",
+            )
+            if any(token not in text for token in migration_tokens):
+                errors.append(f"{rel}: migrate media sleep prevention on exactly once")
+        if re.search(r"(?m)^\s+id: cover_art_delay\s*$", text):
+            cover_art_delay_index = text.find("id: cover_art_delay")
+            cover_art_delay_end = text.find("\n  - platform:", cover_art_delay_index + 1)
+            cover_art_delay_body = text[cover_art_delay_index:cover_art_delay_end]
+            if "min_value: 3" not in cover_art_delay_body:
+                errors.append(f"{rel}: keep the cover art Show After minimum at three seconds")
 
     if cover_art_path.exists():
         rel = cover_art_path.relative_to(root)
@@ -1795,11 +1809,17 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
     if wake_body is None:
         errors.append(f"{rel}: missing screensaver_presence_wake script")
     else:
+        typed_presence_wake = (
+            "presence_can_wake_display(" in wake_body
+            and "script.execute: screensaver_wake" in wake_body
+        )
         controller_presence_wake = (
             "script.execute: display_mode_clear_automatic" in wake_body
             and "screen_schedule_night_active(" in text
             and "DisplayRequestSource::SCREEN_SCHEDULE" in text
         )
+        if typed_presence_wake and "id(cover_art_screensaver_active)" in wake_body:
+            errors.append(f"{rel}: leave active cover art unchanged on presence detection")
         if controller_presence_wake and (
             "id(cover_art_screensaver_active)" not in wake_body
             or "script.execute: screensaver_wake" not in wake_body
@@ -1812,13 +1832,13 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
             "screen_schedule_night_active(",
             "id(screen_schedule_check).execute();",
         )
-        if not controller_presence_wake and (
+        if not typed_presence_wake and not controller_presence_wake and (
             wake_index == -1 or any(token not in pre_wake_body for token in required_tokens)
         ):
             errors.append(f"{rel}: let the night screen schedule override sensor screensaver wake")
         disabled_wake_index = pre_wake_body.rfind("if (!id(schedule_enabled).state) return true;")
         schedule_check_index = pre_wake_body.find("id(screen_schedule_check).execute();")
-        if not controller_presence_wake and (disabled_wake_index == -1 or (
+        if not typed_presence_wake and not controller_presence_wake and (disabled_wake_index == -1 or (
             schedule_check_index != -1 and disabled_wake_index < schedule_check_index
         )):
             errors.append(f"{rel}: let sensor screensaver wake when the screen schedule is disabled")
@@ -4190,9 +4210,8 @@ def run_self_test() -> int:
         "      - if:\n"
         "          condition:\n"
         "            lambda: |-\n"
-        "              const bool cover_art_immediate_return =\n"
-        "                id(cover_art_manual_pause_until_ms) != 0 &&\n"
-        "                id(cover_art_delay).state <= 0.0f;\n"
+        "              float show_after_seconds = id(cover_art_delay).state;\n"
+        "              if (show_after_seconds < 3.0f) show_after_seconds = 3.0f;\n"
         "              const bool cover_art_disabled_mode_delay =\n"
         "                id(screensaver_mode).state != \"timer\" &&\n"
         "                id(screensaver_mode).state != \"sensor\" &&\n"

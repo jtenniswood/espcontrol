@@ -344,19 +344,15 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return id(cover_art_screensaver_active);'
+            lambda: |-
+              return id(cover_art_screensaver_active) ||
+                     id(cover_art_manual_pause_until_ms) != 0;
           then:
             - script.stop: cover_art_delay_timer
             - lambda: |-
                 float seconds = id(cover_art_delay).state;
-                if (std::isnan(seconds) || seconds < 0.0f) seconds = 10.0f;
-                if (seconds <= 0.0f) {
-                  // A non-zero sentinel distinguishes a real cover-art dismissal
-                  // from an ordinary touchscreen wake when return is immediate.
-                  id(cover_art_manual_pause_until_ms) = 1;
-                  ESP_LOGI("cover_art", "Cover art returns immediately after touch");
-                  return;
-                }
+                if (std::isnan(seconds)) seconds = 10.0f;
+                if (seconds < 3.0f) seconds = 3.0f;
                 if (seconds > 300.0f) seconds = 300.0f;
                 uint32_t duration_ms = (uint32_t)(seconds * 1000.0f);
                 id(cover_art_manual_pause_until_ms) = millis() + duration_ms;
@@ -1564,7 +1560,9 @@ script:
     then:
       - delay: !lambda |-
           float seconds = id(cover_art_delay).state;
-          if (std::isnan(seconds) || seconds < 0.0f) seconds = 10.0f;
+          if (std::isnan(seconds)) seconds = 10.0f;
+          if (seconds < 3.0f) seconds = 3.0f;
+          if (seconds > 300.0f) seconds = 300.0f;
           uint32_t delay_ms = (uint32_t)(seconds * 1000.0f);
           int32_t pause_remaining_ms = id(cover_art_manual_pause_until_ms) != 0
               ? (int32_t)(id(cover_art_manual_pause_until_ms) - millis())

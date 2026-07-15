@@ -255,6 +255,9 @@ assert.strictEqual(layoutPlan.buttons[1].entity, "light.kitchen", "backup layout
 
 assert.strictEqual(model.normalizeTemperatureUnit("fahrenheit"), "\u00B0F", "temperature unit normalization");
 assert.strictEqual(model.normalizeScheduleWakeTimeout(1), 10, "wake timeout minimum");
+assert.strictEqual(model.normalizeCoverArtDelay(0), 3, "legacy immediate cover art delay migrates to three seconds");
+assert.strictEqual(model.normalizeCoverArtDelay(60), 60, "valid cover art delay remains unchanged");
+assert.strictEqual(model.normalizeCoverArtDelay(900), 300, "cover art delay clamps to the supported maximum");
 assert.strictEqual(model.normalizeScheduleClockBrightness(0), 10, "schedule clock brightness fallback");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort("80"), 80, "Home Assistant artwork port accepts custom port");
 assert.strictEqual(model.normalizeHomeAssistantArtworkPort(""), 8123, "Home Assistant artwork port defaults to 8123");
@@ -350,6 +353,39 @@ assert.strictEqual(panelSettings.coverArtHomeAssistantProtocol, "https", "panel 
 assert.strictEqual(panelSettings.coverArtHomeAssistantPort, 80, "panel Home Assistant artwork port imports");
 assert.strictEqual(panelSettings.autoUpdate, false, "panel firmware auto-update imports");
 assert.strictEqual(panelSettings.updateFrequency, "Weekly", "panel firmware update frequency imports");
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({}, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h", clockFormatOptions: ["12h", "24h"],
+    ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"], ntpServer1: "0.pool.ntp.org",
+    ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org", coverArtHomeAssistantProtocol: "http",
+    coverArtHomeAssistantPort: 8123, autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
+  }).mediaPlayerSleepPrevention,
+  true,
+  "missing media sleep prevention setting defaults on",
+);
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({ media_player_sleep_prevention: false, cover_art_delay: 0 }, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h", clockFormatOptions: ["12h", "24h"],
+    ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"], ntpServer1: "0.pool.ntp.org",
+    ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org", coverArtHomeAssistantProtocol: "http",
+    coverArtHomeAssistantPort: 8123, autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
+  }).mediaPlayerSleepPrevention,
+  false,
+  "explicit media sleep prevention setting remains off",
+);
+assert.strictEqual(
+  model.normalizeBackupPanelSettings({ cover_art_delay: 0 }, {
+    timezone: "UTC (GMT+0)", language: "en", clockFormat: "12h", clockFormatOptions: ["12h", "24h"],
+    ntpDefaults: ["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org"], ntpServer1: "0.pool.ntp.org",
+    ntpServer2: "1.pool.ntp.org", ntpServer3: "2.pool.ntp.org", coverArtHomeAssistantProtocol: "http",
+    coverArtHomeAssistantPort: 8123, autoUpdate: true, updateFrequency: "Daily",
+    updateFrequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"], screenRotationOptions: ["0", "90", "180", "270"],
+  }).coverArtDelay,
+  3,
+  "legacy backup cover art delay migrates to three seconds",
+);
 assert.strictEqual(
   model.normalizeBackupPanelSettings({
     media_player_sleep_prevention_entity: "media_player.living",

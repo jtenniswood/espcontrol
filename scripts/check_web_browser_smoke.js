@@ -816,11 +816,12 @@ async function assertSettingsPage(page, label, options = {}) {
   await coverArtCard
     .locator("#sp-set-ss-cover-art-enable + .sp-toggle-track")
     .click();
-  assert(
+  assert.strictEqual(
     await coverArtCard
       .getByText("Keep Screen Awake During Playback", { exact: true })
       .isVisible(),
-    `${label}: keep-screen-awake option should render when cover art is enabled`,
+    false,
+    `${label}: keep-screen-awake option should remain inside collapsed advanced options`,
   );
   assert(
     await coverArtCard.locator("#sp-set-ss-cover-art-player").isVisible(),
@@ -829,6 +830,13 @@ async function assertSettingsPage(page, label, options = {}) {
   assert(
     await coverArtCard.locator("#sp-set-ss-cover-art-delay").isVisible(),
     `${label}: cover art show-after field should render when cover art is enabled`,
+  );
+  assert.deepStrictEqual(
+    await coverArtCard.locator("#sp-set-ss-cover-art-delay option").evaluateAll(
+      (options) => options.map((option) => option.value),
+    ),
+    ["3", "5", "10", "30", "60", "300"],
+    `${label}: cover art show-after options should start at three seconds`,
   );
   assert.strictEqual(
     await page.locator("#sp-set-ss-track-overlay").count(),
@@ -847,6 +855,12 @@ async function assertSettingsPage(page, label, options = {}) {
     `${label}: cover art conditions field should be hidden until advanced filtering is enabled`,
   );
   await coverArtCard.getByText("Advanced Options", { exact: true }).click();
+  assert(
+    await coverArtCard
+      .getByText("Keep Screen Awake During Playback", { exact: true })
+      .isVisible(),
+    `${label}: keep-screen-awake option should render inside advanced options`,
+  );
   assert(
     await coverArtCard
       .getByText("Hide for external source inputs", { exact: true })
