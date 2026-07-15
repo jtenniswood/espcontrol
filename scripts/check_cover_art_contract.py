@@ -75,4 +75,20 @@ for required in (
 ):
     if required not in downloader:
         raise SystemExit(f"Artwork downloader memory contract missing: {required}")
+
+cover_art = (ROOT / "common" / "device" / "screen_cover_art.yaml").read_text(encoding="utf-8")
+proxy_404_start = cover_art.find("last_error_was_ha_media_proxy_not_found()")
+proxy_404_end = cover_art.find("- script.execute: cover_art_retry_download", proxy_404_start)
+if proxy_404_start < 0 or proxy_404_end < 0:
+    raise SystemExit("Cover art proxy 404 recovery contract missing")
+proxy_404_recovery = cover_art[proxy_404_start:proxy_404_end]
+if "script.execute: cover_art_resubscribe" in proxy_404_recovery:
+    raise SystemExit("Cover art proxy 404 recovery must reuse subscriptions instead of retaining one-shot reads")
+for required in (
+    "id(cover_art_runtime).sources.clear()",
+    "id(cover_art_runtime).refresh_needed = true",
+    "waiting for the subscribed artwork update",
+):
+    if required not in proxy_404_recovery:
+        raise SystemExit(f"Cover art proxy 404 recovery contract missing: {required}")
 print("Cover art policy, layout, and state contract checks passed.")
