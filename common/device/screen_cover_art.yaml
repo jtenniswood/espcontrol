@@ -71,6 +71,9 @@ globals:
   - id: cover_art_media_duration
     type: float
     initial_value: '0.0'
+  - id: cover_art_last_duration_callback_ms
+    type: uint32_t
+    initial_value: '0'
   - id: cover_art_media_position
     type: float
     initial_value: '0.0'
@@ -1806,6 +1809,16 @@ script:
             id(cover_art_runtime).retry_url.clear();
             id(cover_art_runtime).retry_count = 0;
           };
+          std::function<void()> invalidate_stale_media_duration = []() {
+            const uint32_t last_duration_ms = id(cover_art_last_duration_callback_ms);
+            const bool duration_callback_is_fresh =
+              last_duration_ms != 0 &&
+              (uint32_t)(millis() - last_duration_ms) <= 250;
+            if (!duration_callback_is_fresh) {
+              id(cover_art_media_duration) = 0.0f;
+            }
+            id(cover_art_last_progress_percent) = -1;
+          };
 
           std::function<void(esphome::StringRef)> handle_playback_state =
             [cover_entity, subscription_generation](esphome::StringRef state) {
@@ -1874,18 +1887,17 @@ script:
                    state_requested ? "requested" : "failed", cover_entity.c_str());
 
           std::function<void(esphome::StringRef)> handle_media_title =
-            [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef title) {
+            [cover_entity, subscription_generation, mark_artwork_refresh_needed,
+             invalidate_stale_media_duration](esphome::StringRef title) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_media_player_entity).state) return;
               std::string next = string_ref_limited(title, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_title)) return;
-              // A title change defines a new track. Invalidate the previous
-              // track's duration before any overlay can reveal it. Preserve
-              // position callbacks that may already belong to the new track.
-              id(cover_art_media_duration) = 0.0f;
-              id(cover_art_last_progress_percent) = -1;
+              // Hide an older track's duration, but keep a duration callback
+              // that arrived immediately before this metadata update.
+              invalidate_stale_media_duration();
               lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
               lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
               id(cover_art_title) = next;
@@ -1915,15 +1927,15 @@ script:
           ESP_LOGI("cover_art", "Title refresh %s", title_requested ? "requested" : "failed");
 
           std::function<void(esphome::StringRef)> handle_media_artist =
-            [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef artist) {
+            [cover_entity, subscription_generation, mark_artwork_refresh_needed,
+             invalidate_stale_media_duration](esphome::StringRef artist) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_media_player_entity).state) return;
               std::string next = string_ref_limited(artist, HA_STATE_TEXT_MAX_LEN);
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_artist)) return;
-              id(cover_art_media_duration) = 0.0f;
-              id(cover_art_last_progress_percent) = -1;
+              invalidate_stale_media_duration();
               id(cover_art_artist) = next;
               mark_artwork_refresh_needed();
               id(cover_art_sync_track_text).execute();
@@ -1979,7 +1991,8 @@ script:
           #endif
 
           std::function<void(esphome::StringRef)> handle_media_source =
-            [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef source) {
+            [cover_entity, subscription_generation, mark_artwork_refresh_needed,
+             invalidate_stale_media_duration](esphome::StringRef source) {
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_media_player_entity).state) return;
@@ -1994,8 +2007,7 @@ script:
                               normalized_source == "line in";
               if (next == id(cover_art_media_source) &&
                   external == id(cover_art_external_input_active)) return;
-              id(cover_art_media_duration) = 0.0f;
-              id(cover_art_last_progress_percent) = -1;
+              invalidate_stale_media_duration();
               id(cover_art_media_source) = next;
               id(cover_art_external_input_active) = external;
               mark_artwork_refresh_needed();
@@ -2237,6 +2249,7 @@ script:
               if (!id(cover_art_screensaver_enabled).state ||
                   subscription_generation != id(cover_art_subscription_generation) ||
                   cover_entity != id(cover_art_media_player_entity).state) return;
+              id(cover_art_last_duration_callback_ms) = millis();
               std::string value = string_ref_limited(duration, HA_SHORT_STATE_MAX_LEN);
               float next_duration = value.empty() ? 0.0f : strtof(value.c_str(), nullptr);
               const bool next_progress_available =

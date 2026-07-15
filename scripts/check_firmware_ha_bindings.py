@@ -1405,6 +1405,38 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
         errors.append(f"{rel}: reset cover art position when duration becomes unavailable")
     if "current_progress_available" in duration_handler:
         errors.append(f"{rel}: preserve fresh cover art position when duration arrives late")
+    if "id(cover_art_last_duration_callback_ms) = millis()" not in duration_handler:
+        errors.append(f"{rel}: track cover art duration callback freshness")
+
+    duration_invalidator_match = re.search(
+        r"invalidate_stale_media_duration\s*=\s*\[\]\(\)\s*\{(?P<body>.*?)\n\s*\};",
+        text,
+        re.DOTALL,
+    )
+    duration_invalidator = (
+        duration_invalidator_match.group("body") if duration_invalidator_match else ""
+    )
+    if any(
+        token not in duration_invalidator
+        for token in (
+            "id(cover_art_last_duration_callback_ms)",
+            "millis() - last_duration_ms",
+            "duration_callback_is_fresh",
+            "if (!duration_callback_is_fresh)",
+            "id(cover_art_media_duration) = 0.0f",
+        )
+    ):
+        errors.append(f"{rel}: preserve fresh cover art duration when metadata arrives late")
+    if any(
+        token in duration_invalidator
+        for token in (
+            "id(cover_art_media_position) = 0.0f",
+            "id(cover_art_position_anchor) = 0.0f",
+            "id(cover_art_position_anchor_epoch) = 0",
+            "id(cover_art_last_position_timestamp) = 0",
+        )
+    ):
+        errors.append(f"{rel}: preserve fresh cover art position while invalidating stale metadata")
 
     for metadata_name, assignment in (
         ("title", "id(cover_art_title) = next"),
@@ -1418,8 +1450,12 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
         )
         handler = handler_match.group("body") if handler_match else ""
         metadata_assignment = handler.find(assignment)
-        duration_reset = handler.find("id(cover_art_media_duration) = 0.0f")
-        if metadata_assignment < 0 or duration_reset < 0 or duration_reset > metadata_assignment:
+        duration_invalidation = handler.find("invalidate_stale_media_duration()")
+        if (
+            metadata_assignment < 0
+            or duration_invalidation < 0
+            or duration_invalidation > metadata_assignment
+        ):
             errors.append(
                 f"{rel}: mark stale cover art duration unavailable when media {metadata_name} changes"
             )
@@ -4705,26 +4741,35 @@ def run_self_test() -> int:
         "    then:\n"
         "      - lambda: |-\n"
         "          return espcontrol::cover_art::progress_available(id(cover_art_media_duration));\n"
+        "std::function<void()> invalidate_stale_media_duration = []() {\n"
+        "  const uint32_t last_duration_ms = id(cover_art_last_duration_callback_ms);\n"
+        "  const bool duration_callback_is_fresh = last_duration_ms != 0 &&\n"
+        "    (uint32_t)(millis() - last_duration_ms) <= 250;\n"
+        "  if (!duration_callback_is_fresh) {\n"
+        "    id(cover_art_media_duration) = 0.0f;\n"
+        "  }\n"
+        "};\n"
         "# title callback\n"
         "std::function<void(esphome::StringRef)> handle_media_title = [](esphome::StringRef title) {\n"
-        "  id(cover_art_media_duration) = 0.0f;\n"
+        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_title) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
         "# artist callback\n"
         "std::function<void(esphome::StringRef)> handle_media_artist = [](esphome::StringRef artist) {\n"
-        "  id(cover_art_media_duration) = 0.0f;\n"
+        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_artist) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
         "# source callback\n"
         "std::function<void(esphome::StringRef)> handle_media_source = [](esphome::StringRef source) {\n"
-        "  id(cover_art_media_duration) = 0.0f;\n"
+        "  invalidate_stale_media_duration();\n"
         "  id(cover_art_media_source) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
         "# duration callback\n"
         "std::function<void(esphome::StringRef)> handle_media_duration = [](esphome::StringRef duration) {\n"
+        "  id(cover_art_last_duration_callback_ms) = millis();\n"
         "  const bool next_progress_available = espcontrol::cover_art::progress_available(next_duration);\n"
         "  if (!next_progress_available) {\n"
         "    next_duration = 0.0f;\n"
@@ -4789,7 +4834,7 @@ def run_self_test() -> int:
     expect_cover_art_progress_visibility_errors(
         "cover art track change keeps stale duration",
         cover_art_progress_visibility.replace(
-            "  id(cover_art_media_duration) = 0.0f;\n",
+            "  invalidate_stale_media_duration();\n",
             "",
             1,
         ),
@@ -4798,8 +4843,8 @@ def run_self_test() -> int:
     expect_cover_art_progress_visibility_errors(
         "cover art title change discards a fresh position",
         cover_art_progress_visibility.replace(
-            "  id(cover_art_media_duration) = 0.0f;\n",
-            "  id(cover_art_media_duration) = 0.0f;\n"
+            "  invalidate_stale_media_duration();\n",
+            "  invalidate_stale_media_duration();\n"
             "  id(cover_art_media_position) = 0.0f;\n",
             1,
         ),
@@ -4809,7 +4854,7 @@ def run_self_test() -> int:
         "cover art artist change keeps stale duration",
         cover_art_progress_visibility.replace(
             "handle_media_artist = [](esphome::StringRef artist) {\n"
-            "  id(cover_art_media_duration) = 0.0f;\n",
+            "  invalidate_stale_media_duration();\n",
             "handle_media_artist = [](esphome::StringRef artist) {\n",
             1,
         ),
@@ -4819,11 +4864,20 @@ def run_self_test() -> int:
         "cover art source change keeps stale duration",
         cover_art_progress_visibility.replace(
             "handle_media_source = [](esphome::StringRef source) {\n"
-            "  id(cover_art_media_duration) = 0.0f;\n",
+            "  invalidate_stale_media_duration();\n",
             "handle_media_source = [](esphome::StringRef source) {\n",
             1,
         ),
         ("mark stale cover art duration unavailable when media source changes",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art metadata discards a fresh duration",
+        cover_art_progress_visibility.replace(
+            "  if (!duration_callback_is_fresh) {\n",
+            "  if (true) {\n",
+            1,
+        ),
+        ("preserve fresh cover art duration when metadata arrives late",),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",
