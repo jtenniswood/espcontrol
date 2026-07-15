@@ -608,6 +608,12 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   setup_toggle_visual(s, p);
 }
 
+template<typename T>
+inline T *grid_track_runtime_allocation(lv_obj_t *owner, T *ptr);
+
+template<typename T>
+inline T *grid_delete_with_owner(lv_obj_t *owner, T *ptr);
+
 inline bool bind_basic_sensor_card(
     BtnSlot &s, const ParsedCfg &p,
     const espcontrol::cards::Context &context, const CardPalette &palette) {
@@ -624,6 +630,14 @@ inline bool bind_basic_sensor_card(
     if (!p.sensor.empty()) {
       if (p.precision == "icon") {
         subscribe_sensor_icon_state(s.btn, s.icon_lbl, p);
+      } else if (p.precision == "time") {
+        // Dynamic subpage slots are deleted with their LVGL owner on rebuild.
+        TimeSensorCtx *ctx = s.config == nullptr
+          ? grid_delete_with_owner(s.btn, new TimeSensorCtx())
+          : grid_track_runtime_allocation(s.btn, new TimeSensorCtx());
+        ctx->sensor_lbl = s.sensor_lbl;
+        ctx->unit_lbl = s.unit_lbl;
+        subscribe_time_sensor_value(ctx, p.sensor, cfg_option_value(p.options, SENSOR_TIME_UNIT_OPTION));
       } else {
         subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision),
           s.unit_lbl, p.unit, s.btn,

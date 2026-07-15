@@ -234,6 +234,10 @@ constexpr const char *card_runtime_option_name_state_output_2() {
   return CARD_CONTRACT_OPTION_NAME_STATE_OUTPUT_2;
 }
 
+constexpr const char *card_runtime_option_name_time_unit() {
+  return CARD_CONTRACT_OPTION_NAME_TIME_UNIT;
+}
+
 constexpr const char *card_runtime_option_name_state_low_label() {
   return CARD_CONTRACT_OPTION_NAME_STATE_LOW_LABEL;
 }

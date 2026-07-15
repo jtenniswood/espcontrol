@@ -92,6 +92,7 @@ font:
     glyphs:
       - "0123456789.-°/%"
       - ":"
+      - " dhms"
 
   # Large sensor values
   - file: "gfonts://Roboto@Thin"
