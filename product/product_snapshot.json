@@ -117,6 +117,12 @@
           "climateOptionValue": "font_text_body"
         },
         "display": {
+          "modal": {
+            "layoutFamily": "wide-landscape",
+            "density": "comfortable",
+            "memoryTier": "standard",
+            "baseTouchTarget": 57
+          },
           "wrapTallLabels": true,
           "volumeWidthCompensationPercent": 95,
           "mediaArtworkWidthCompensationPercent": 98,
@@ -303,6 +309,12 @@
           "climateOptionValue": "font_text_body"
         },
         "display": {
+          "modal": {
+            "layoutFamily": "compact-portrait",
+            "density": "compact",
+            "memoryTier": "standard",
+            "baseTouchTarget": 46
+          },
           "wrapTallLabels": false,
           "refreshRebuildsSubpages": true,
           "subpageChevronX": 3,
@@ -489,6 +501,12 @@
           "imageCardDiagnostics": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
+          "modal": {
+            "layoutFamily": "large-landscape",
+            "density": "spacious",
+            "memoryTier": "standard",
+            "baseTouchTarget": 76
+          },
           "coverArt": {
             "cover_art_size": "800",
             "cover_art_decode_size": "800",
@@ -670,6 +688,12 @@
           "imageCardDiagnostics": true,
           "subpageChevronX": 4,
           "subpageChevronY": -2,
+          "modal": {
+            "layoutFamily": "large-landscape",
+            "density": "spacious",
+            "memoryTier": "standard",
+            "baseTouchTarget": 76
+          },
           "coverArt": {
             "cover_art_size": "800",
             "cover_art_decode_size": "800",
@@ -847,6 +871,12 @@
           "climateOptionValue": "font_text_body"
         },
         "display": {
+          "modal": {
+            "layoutFamily": "large-square",
+            "density": "comfortable",
+            "memoryTier": "standard",
+            "baseTouchTarget": 69
+          },
           "wrapTallLabels": false,
           "coverArt": {
             "cover_art_size": "720",
@@ -1049,6 +1079,12 @@
           "climateOptionValue": "font_text_body"
         },
         "display": {
+          "modal": {
+            "layoutFamily": "compact-square",
+            "density": "compact",
+            "memoryTier": "constrained",
+            "baseTouchTarget": 46
+          },
           "wrapTallLabels": false,
           "subpageChevronX": 3,
           "subpageChevronY": -2,
