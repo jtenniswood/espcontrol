@@ -131,6 +131,24 @@ assert.strictEqual(
   "1,2d,3w",
   "grid serialization preserves sparse spanned layout"
 );
+assert.deepStrictEqual(plain(model.parseGridOrder("1h", 9, 3)), {
+  grid: [1, -1, -1, -1, -1, -1, 0, 0, 0],
+  sizes: { 1: 8 },
+}, "max-wide grid order reserves three columns across two rows");
+assert.deepStrictEqual(plain(model.parseGridOrder("1v", 9, 3)), {
+  grid: [1, -1, 0, -1, -1, 0, -1, -1, 0],
+  sizes: { 1: 9 },
+}, "max-tall grid order reserves two columns across three rows");
+assert.strictEqual(
+  model.serializeGridOrder([1, -1, -1, -1, -1, -1, 0, 0, 0], { 1: 8 }),
+  "1h",
+  "max-wide grid order serializes with its saved token"
+);
+assert.strictEqual(
+  model.serializeGridOrder([1, -1, 0, -1, -1, 0, -1, -1, 0], { 1: 9 }),
+  "1v",
+  "max-tall grid order serializes with its saved token"
+);
 
 const transferCard = {
   entity: "media_player.kitchen",
@@ -211,6 +229,31 @@ assert.strictEqual(
   model.CARD_SIZE_EXTRA_LARGE,
   "card transfer accepts the supported 3x3 card size",
 );
+const maxTallTransferCode = model.createCardTransferCode(
+  { device: "panel-a", firmware: "2026.7.0" },
+  [{ ...transferCard, type: "camera", size: model.CARD_SIZE_MAX_TALL }],
+);
+assert.strictEqual(
+  model.parseCardTransferCode(maxTallTransferCode).cards[0].size,
+  model.CARD_SIZE_MAX_TALL,
+  "card transfer accepts the supported 2x3 camera card size",
+);
+const maxWideSubpageCard = {
+  ...transferSubpageCard,
+  subpage: {
+    ...transferSubpageCard.subpage,
+    order: ["B", "1h"],
+    buttons: [{ ...model.cloneCardConfig(transferCard), type: "camera" }],
+  },
+};
+assert.deepStrictEqual(
+  plain(model.parseCardTransferCode(model.createCardTransferCode(
+    { device: "panel-a", firmware: "2026.7.0" },
+    [maxWideSubpageCard],
+  )).cards[0]),
+  plain(maxWideSubpageCard),
+  "card transfer accepts a 3x2 camera card inside a subpage",
+);
 
 function assertTransferError(value, expected) {
   assert.throws(
@@ -226,7 +269,7 @@ assertTransferError({ format: "espcontrol.cards", version: 2, source: { device: 
   "newer version");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [] },
   "no cards");
-assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_EXTRA_LARGE + 1 }] },
+assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, size: model.CARD_SIZE_MAX_TALL + 1 }] },
   "invalid size");
 assertTransferError({ format: "espcontrol.cards", version: 1, source: { device: "", firmware: "" }, cards: [{ ...transferCard, options: 42 }] },
   "invalid options field");
