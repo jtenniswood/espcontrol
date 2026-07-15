@@ -23,16 +23,17 @@ merge. Use `/pr-review` when feedback already exists and needs action.
 
 ### 1. Identify the PR
 
-Use the PR number or URL if the user provides one. Otherwise inspect open PRs
-and choose the current branch's PR if one exists; if not, choose the most
-recent open PR and state that assumption.
+Use the PR number or URL if the user provides one. Otherwise use the single PR
+that the current chat is already active in, based on the existing chat context
+or linked PR context. If the chat does not identify exactly one PR with
+confidence, stop and ask the user for the PR number or URL before continuing.
+
+Never choose a PR from the open PR list, by recency, or from an unrelated
+checked-out branch. Do not guess or silently substitute another PR.
 
 Prefer GitHub connector tools when available. Otherwise use `gh`:
 
 ```bash
-gh pr status
-gh pr list --state open --limit 10 \
-  --json number,title,author,headRefName,baseRefName,reviewDecision,updatedAt,url
 gh pr view <number> \
   --json number,title,body,headRefName,baseRefName,reviewDecision,statusCheckRollup,url
 ```
