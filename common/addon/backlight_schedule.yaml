@@ -607,17 +607,20 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (!id(display_mode_controller).current_mode_is(
+          if (!id(display_mode_controller).target_mode_is(
                 espcontrol::DisplayMode::ACTIVE) &&
-              !id(display_mode_controller).current_mode_is(
+              !id(display_mode_controller).target_mode_is(
                 espcontrol::DisplayMode::COVER_ART)) return;
           auto now = panel_time_or_fallback(id(panel_time).now(), id(homeassistant_time).now());
           if (id(display_mode_controller).target_source_is(
                 espcontrol::DisplayRequestSource::SCREEN_SCHEDULE)) {
             if (id(display_mode_controller).target_mode_is(
                   espcontrol::DisplayMode::CLOCK)) return;
-            id(backlight_force_display_off).execute();
-            return;
+            if (id(display_mode_controller).target_mode_is(
+                  espcontrol::DisplayMode::DISPLAY_OFF)) {
+              id(backlight_force_display_off).execute();
+              return;
+            }
           }
           if (screen_schedule_waiting_for_time(
                 id(screen_schedule_trigger).state,

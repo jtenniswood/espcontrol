@@ -1762,6 +1762,39 @@ def firmware_screen_schedule_screensaver_override_errors(backlight_path: Path, r
     if schedule_path.exists():
         schedule_rel = schedule_path.relative_to(root)
         schedule_text = schedule_path.read_text(encoding="utf-8")
+        brightness_body = yaml_script_body(schedule_text, "backlight_apply_brightness")
+        if brightness_body is not None:
+            active_target = brightness_body.find(
+                "target_mode_is(\n                espcontrol::DisplayMode::ACTIVE)"
+            )
+            cover_art_target = brightness_body.find(
+                "target_mode_is(\n                espcontrol::DisplayMode::COVER_ART)"
+            )
+            if active_target == -1 or cover_art_target == -1:
+                errors.append(
+                    f"{schedule_rel}: apply brightness from the pending active display target during wake transitions"
+                )
+
+            schedule_source = brightness_body.find(
+                "DisplayRequestSource::SCREEN_SCHEDULE"
+            )
+            schedule_off = brightness_body.find(
+                "target_mode_is(\n                  espcontrol::DisplayMode::DISPLAY_OFF)",
+                schedule_source,
+            )
+            force_off = brightness_body.find(
+                "id(backlight_force_display_off).execute();", schedule_off
+            )
+            always_on = brightness_body.find("id(schedule_mode_always_on)")
+            if not (
+                schedule_source != -1
+                and schedule_off != -1
+                and force_off != -1
+                and always_on != -1
+            ):
+                errors.append(
+                    f"{schedule_rel}: only blank display-off schedules so Always On can apply its configured brightness"
+                )
         migrated_live_schedule = (
             reconcile_body is not None
             and "schedule_was_active" in reconcile_body
