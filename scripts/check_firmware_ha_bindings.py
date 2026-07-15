@@ -1410,17 +1410,19 @@ def firmware_cover_art_progress_visibility_errors(path: Path, root: Path) -> lis
     )
     title_handler = title_handler_match.group("body") if title_handler_match else ""
     title_assignment = title_handler.find("id(cover_art_title) = next")
-    if title_assignment < 0 or any(
-        title_handler.find(token) < 0 or title_handler.find(token) > title_assignment
+    duration_reset = title_handler.find("id(cover_art_media_duration) = 0.0f")
+    if title_assignment < 0 or duration_reset < 0 or duration_reset > title_assignment:
+        errors.append(f"{rel}: mark stale cover art duration unavailable before revealing a new track")
+    if any(
+        token in title_handler
         for token in (
-            "id(cover_art_media_duration) = 0.0f",
             "id(cover_art_media_position) = 0.0f",
             "id(cover_art_position_anchor) = 0.0f",
             "id(cover_art_position_anchor_epoch) = 0",
             "id(cover_art_last_position_timestamp) = 0",
         )
     ):
-        errors.append(f"{rel}: reset stale cover art progress before revealing a new track")
+        errors.append(f"{rel}: preserve fresh cover art position when title metadata arrives late")
 
     return errors
 
@@ -4682,10 +4684,6 @@ def run_self_test() -> int:
         "# title callback\n"
         "std::function<void(esphome::StringRef)> handle_media_title = [](esphome::StringRef title) {\n"
         "  id(cover_art_media_duration) = 0.0f;\n"
-        "  id(cover_art_media_position) = 0.0f;\n"
-        "  id(cover_art_position_anchor) = 0.0f;\n"
-        "  id(cover_art_position_anchor_epoch) = 0;\n"
-        "  id(cover_art_last_position_timestamp) = 0;\n"
         "  id(cover_art_title) = next;\n"
         "};\n"
         "if (!already_subscribed) {}\n"
@@ -4753,13 +4751,23 @@ def run_self_test() -> int:
         ("preserve fresh cover art position when duration arrives late",),
     )
     expect_cover_art_progress_visibility_errors(
-        "cover art track change keeps stale progress",
+        "cover art track change keeps stale duration",
         cover_art_progress_visibility.replace(
             "  id(cover_art_media_duration) = 0.0f;\n",
             "",
             1,
         ),
-        ("reset stale cover art progress before revealing a new track",),
+        ("mark stale cover art duration unavailable before revealing a new track",),
+    )
+    expect_cover_art_progress_visibility_errors(
+        "cover art title change discards a fresh position",
+        cover_art_progress_visibility.replace(
+            "  id(cover_art_media_duration) = 0.0f;\n",
+            "  id(cover_art_media_duration) = 0.0f;\n"
+            "  id(cover_art_media_position) = 0.0f;\n",
+            1,
+        ),
+        ("preserve fresh cover art position when title metadata arrives late",),
     )
     expect_image_card_entity_errors(
         "legacy camera-only image card guard",

@@ -1880,12 +1880,9 @@ script:
               if (next == "unknown" || next == "unavailable") next.clear();
               if (next == id(cover_art_title)) return;
               // A title change defines a new track. Invalidate the previous
-              // track's timing before any overlay can reveal it.
+              // track's duration before any overlay can reveal it. Preserve
+              // position callbacks that may already belong to the new track.
               id(cover_art_media_duration) = 0.0f;
-              id(cover_art_media_position) = 0.0f;
-              id(cover_art_position_anchor) = 0.0f;
-              id(cover_art_position_anchor_epoch) = 0;
-              id(cover_art_last_position_timestamp) = 0;
               id(cover_art_last_progress_percent) = -1;
               lv_bar_set_value(id(cover_art_progress_bar), 0, LV_ANIM_OFF);
               lv_label_set_text(id(cover_art_time_label), "0:00  /  0:00");
