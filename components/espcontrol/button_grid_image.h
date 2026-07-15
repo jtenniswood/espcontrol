@@ -22,6 +22,7 @@ constexpr uint32_t IMAGE_CARD_MODAL_REFRESH_DELAY_MS = 1000;
 constexpr uint32_t IMAGE_CARD_MODAL_REQUEST_DELAY_MS = 100;
 constexpr uint32_t IMAGE_CARD_MODAL_CLEANUP_DELAY_MS = 100;
 constexpr uint32_t IMAGE_CARD_MODAL_CLOSE_GUARD_MS = 350;
+constexpr uint32_t IMAGE_CARD_MEDIA_ARTWORK_DEBOUNCE_MS = 300;
 constexpr uint8_t IMAGE_CARD_STARTUP_DOWNLOAD_RETRIES = 10;
 constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;
 constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;
@@ -1986,7 +1987,8 @@ inline void image_card_media_artwork_timer_cb(lv_timer_t *timer) {
 inline void image_card_schedule_media_artwork_process(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
   if (ctx->media_artwork_timer) lv_timer_del(ctx->media_artwork_timer);
-  ctx->media_artwork_timer = lv_timer_create(image_card_media_artwork_timer_cb, 300, ctx);
+  ctx->media_artwork_timer = lv_timer_create(
+    image_card_media_artwork_timer_cb, IMAGE_CARD_MEDIA_ARTWORK_DEBOUNCE_MS, ctx);
   if (!ctx->media_artwork_timer) image_card_process_media_artwork(ctx);
 }
 
@@ -2009,6 +2011,15 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
     if (!url.empty() && url != ctx->source_url) {
       ctx->startup_download_errors = 0;
     }
+  }
+  if (espcontrol::artwork::source_response_can_apply_immediately(local, !url.empty())) {
+    if (ctx->media_artwork_timer) {
+      lv_timer_del(ctx->media_artwork_timer);
+      ctx->media_artwork_timer = nullptr;
+    }
+    image_card_log_diagnostics(ctx, "media-artwork-local-immediate");
+    image_card_process_media_artwork(ctx);
+    return;
   }
   image_card_schedule_media_artwork_process(ctx);
 }
