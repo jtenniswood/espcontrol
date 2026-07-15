@@ -1851,10 +1851,6 @@ script:
             ESP_LOGI("cover_art", "Playback state subscription %s for %s",
                      state_subscribed ? "ready" : "failed", cover_entity.c_str());
           }
-          bool state_requested = ha_get_state(cover_entity, handle_playback_state);
-          ESP_LOGI("cover_art", "Playback state refresh %s for %s",
-                   state_requested ? "requested" : "failed", cover_entity.c_str());
-
           std::function<void(esphome::StringRef)> handle_media_title =
             [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef title) {
               if (!id(cover_art_screensaver_enabled).state ||
@@ -1886,9 +1882,6 @@ script:
             );
             ESP_LOGI("cover_art", "Title subscription %s", title_subscribed ? "ready" : "failed");
           }
-          bool title_requested = ha_get_attribute(cover_entity, std::string("media_title"), handle_media_title);
-          ESP_LOGI("cover_art", "Title refresh %s", title_requested ? "requested" : "failed");
-
           std::function<void(esphome::StringRef)> handle_media_artist =
             [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef artist) {
               if (!id(cover_art_screensaver_enabled).state ||
@@ -1917,9 +1910,6 @@ script:
             );
             ESP_LOGI("cover_art", "Artist subscription %s", artist_subscribed ? "ready" : "failed");
           }
-          bool artist_requested = ha_get_attribute(cover_entity, std::string("media_artist"), handle_media_artist);
-          ESP_LOGI("cover_art", "Artist refresh %s", artist_requested ? "requested" : "failed");
-
           #ifndef ESPCONTROL_LOW_HEAP_COVER_ART
           std::function<void(esphome::StringRef)> handle_media_album =
             [cover_entity, subscription_generation, mark_artwork_refresh_needed](esphome::StringRef album) {
@@ -1947,8 +1937,6 @@ script:
             );
             ESP_LOGI("cover_art", "Album subscription %s", album_subscribed ? "ready" : "failed");
           }
-          bool album_requested = ha_get_attribute(cover_entity, std::string("media_album_name"), handle_media_album);
-          ESP_LOGI("cover_art", "Album refresh %s", album_requested ? "requested" : "failed");
           #endif
 
           std::function<void(esphome::StringRef)> handle_media_source =
@@ -1991,9 +1979,6 @@ script:
             );
             ESP_LOGI("cover_art", "Source subscription %s", source_subscribed ? "ready" : "failed");
           }
-          bool source_requested = ha_get_attribute(cover_entity, std::string("source"), handle_media_source);
-          ESP_LOGI("cover_art", "Source refresh %s", source_requested ? "requested" : "failed");
-
           auto parse_cover_art_conditions = []() {
             std::vector<std::pair<std::string, std::string>> conditions;
             std::string text = id(cover_art_attribute_conditions).state;
@@ -2096,9 +2081,6 @@ script:
               ESP_LOGI("cover_art", "Attribute condition subscription %s for %s",
                        condition_subscribed ? "ready" : "failed", attribute_name.c_str());
             }
-            bool condition_requested = ha_get_attribute(cover_entity, attribute_name, handle_condition);
-            ESP_LOGI("cover_art", "Attribute condition refresh %s for %s",
-                     condition_requested ? "requested" : "failed", attribute_name.c_str());
           }
 
           auto handle_picture_change =
@@ -2182,26 +2164,6 @@ script:
                      picture_subscribed ? "ready" : "failed",
                      local_picture_subscribed ? "ready" : "failed");
           }
-          bool picture_requested = ha_get_attribute(
-            cover_entity,
-            std::string("entity_picture"),
-            std::function<void(esphome::StringRef)>(
-              [handle_picture_change](esphome::StringRef picture) {
-                handle_picture_change(picture, false);
-              })
-          );
-          bool local_picture_requested = ha_get_attribute(
-            cover_entity,
-            std::string("entity_picture_local"),
-            std::function<void(esphome::StringRef)>(
-              [handle_picture_change](esphome::StringRef picture) {
-                handle_picture_change(picture, true);
-              })
-          );
-          ESP_LOGI("cover_art", "Artwork refresh entity_picture=%s entity_picture_local=%s",
-                   picture_requested ? "requested" : "failed",
-                   local_picture_requested ? "requested" : "failed");
-
           #ifndef ESPCONTROL_LOW_HEAP_COVER_ART
           std::function<void(esphome::StringRef)> handle_media_duration =
             [cover_entity, subscription_generation](esphome::StringRef duration) {
@@ -2223,8 +2185,6 @@ script:
               HA_SUBSCRIPTION_SCOPE_COVER_ART
             );
           }
-          ha_get_attribute(cover_entity, std::string("media_duration"), handle_media_duration);
-
           std::function<void(esphome::StringRef)> handle_media_position =
             [cover_entity, subscription_generation](esphome::StringRef position) {
               if (!id(cover_art_screensaver_enabled).state ||
@@ -2254,8 +2214,6 @@ script:
               HA_SUBSCRIPTION_SCOPE_COVER_ART
             );
           }
-          ha_get_attribute(cover_entity, std::string("media_position"), handle_media_position);
-
           std::function<void(esphome::StringRef)> handle_media_position_updated_at =
             [cover_entity, subscription_generation](esphome::StringRef updated_at) {
               if (!id(cover_art_screensaver_enabled).state ||
@@ -2289,7 +2247,6 @@ script:
               HA_SUBSCRIPTION_SCOPE_COVER_ART
             );
           }
-          ha_get_attribute(cover_entity, std::string("media_position_updated_at"), handle_media_position_updated_at);
           #endif
 
   - id: cover_art_playback_started
