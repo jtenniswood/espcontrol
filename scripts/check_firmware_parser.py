@@ -495,6 +495,10 @@ int main() {
   assert(!numeric_state_positive_ref("0"));
   assert(!numeric_state_positive_ref("-1"));
   assert(!numeric_state_positive_ref("unknown"));
+  assert(sensor_active_color_state_ref("on", false));
+  assert(sensor_active_color_state_ref("42", true));
+  assert(!sensor_active_color_state_ref("42", false));
+  assert(!sensor_active_color_state_ref("0", true));
   auto action_confirm = parse_cfg("script.goodnight;Goodnight;Script Text Play;Auto;script.turn_on;;action;;confirm_on,confirm_message=Run%20bedtime%3F,confirm_yes=Run,confirm_no=Cancel");
   assert(action_script_confirmation_enabled(action_confirm));
   assert(switch_confirmation_message(action_confirm) == "Run bedtime?");

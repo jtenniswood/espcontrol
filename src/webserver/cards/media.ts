@@ -5,10 +5,17 @@ export function registerMediaCardTypes(): GlobalDescriptors {
         var card: any = cardContractCard("media");
         return card && card.behavior && card.behavior.media || {};
     }
+    function mediaCoverArtCardsSupported(this: any) {
+        var disabled: any = CFG.disabledCardTypes || [];
+        return disabled.indexOf("media_cover_art") === -1;
+    }
     function mediaModeOptionValues(this: any) {
         var spec: any = cardContractOptionSpec("media", "media_mode");
-        return spec && spec.values ? spec.values.slice() :
+        var values: any = spec && spec.values ? spec.values.slice() :
             ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"];
+        return mediaCoverArtCardsSupported() ? values : values.filter(function (this: any, value?: any) {
+            return value !== "cover_art";
+        });
     }
     function mediaDefaultMode(this: any) {
         return mediaBehaviorSpec().defaultMode || "play_pause";
@@ -59,21 +66,27 @@ export function registerMediaCardTypes(): GlobalDescriptors {
             "All Controls",
         ].indexOf(label) >= 0;
     }
+    function mediaModeOptions(this: any) {
+        var options: any = [
+            ["control_modal", "All Controls"],
+            ["play_pause", "Play/Pause Button"],
+            ["previous", "Previous Button"],
+            ["next", "Next Button"],
+            ["volume", "Volume Button"],
+            ["position", "Track Position"],
+            ["now_playing", "Now Playing"],
+            ["cover_art", "Cover Art"],
+            ["playlist", "Media Content"],
+        ];
+        return mediaCoverArtCardsSupported() ? options : options.filter(function (this: any, option?: any) {
+            return option[0] !== "cover_art";
+        });
+    }
     var MEDIA_CARD_METADATA: any = {
         mode: {
             label: "Type",
             idSuffix: "media-mode",
-            options: [
-                ["control_modal", "All Controls"],
-                ["play_pause", "Play/Pause Button"],
-                ["previous", "Previous Button"],
-                ["next", "Next Button"],
-                ["volume", "Volume Button"],
-                ["position", "Track Position"],
-                ["now_playing", "Now Playing"],
-                ["cover_art", "Cover Art"],
-                ["playlist", "Media Content"],
-            ],
+            options: mediaModeOptions,
             value: function (this: any, b?: any) {
                 return mediaEditorValidMode(b.sensor);
             },

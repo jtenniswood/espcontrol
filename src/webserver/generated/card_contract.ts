@@ -3073,21 +3073,24 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       },
       {
         "name": "active_color",
-        "label": "Active Color",
+        "label": "Lit When Active",
         "kind": "flag",
-        "hidden": true,
-        "migration": "drop",
         "omitDefault": true,
         "applicability": [
           {
             "source": "field",
-            "name": "type",
-            "operator": "present",
+            "name": "precision",
+            "operator": "in",
+            "value": [
+              "time"
+            ],
             "negate": true
           }
         ],
         "supportedWhen": {
-          "never": true
+          "precisionNot": [
+            "time"
+          ]
         }
       },
       {
@@ -3226,6 +3229,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
       "canonicalOptionOrder": [
         "large_numbers",
         "time_unit",
+        "active_color",
         "state_labels",
         "state_input",
         "state_output",

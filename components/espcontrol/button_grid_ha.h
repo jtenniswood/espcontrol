@@ -24,6 +24,7 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_ALL = 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1u << 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_PHASE3 = 1u << 2;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS = 1u << 3;
 #define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
 #endif
 
@@ -112,7 +113,8 @@ inline void ha_reset_deferred_state_requests() {
 #define ESPCONTROL_HA_DEFERRED_HELPERS_DEFINED 1
 
 inline void bump_ha_subscription_generation() {
-  ha_read_coordinator().bump_generation(HA_SUBSCRIPTION_SCOPE_DEFAULT);
+  ha_read_coordinator().bump_generation(
+      HA_SUBSCRIPTION_SCOPE_DEFAULT | HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS);
 }
 #define ESPCONTROL_HA_GENERATION_HELPERS_DEFINED 1
 

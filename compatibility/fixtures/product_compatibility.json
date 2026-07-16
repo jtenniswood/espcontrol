@@ -213,7 +213,7 @@
           "unit": "",
           "type": "sensor",
           "precision": "text",
-          "options": ""
+          "options": "active_color"
         }
       },
       "media_controls_alias": {

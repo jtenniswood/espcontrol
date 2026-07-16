@@ -195,7 +195,8 @@ inline bool sensor_driver_bind_data(
   }
   if (!config.sensor.empty()) {
     if (config.precision == "icon") {
-      subscribe_sensor_icon_state(slot.btn, slot.icon_lbl, config);
+      subscribe_sensor_icon_state(
+        slot.btn, slot.icon_lbl, config, sensor_active_color_enabled(config));
     } else if (config.precision == "time") {
       TimeSensorCtx *time = slot.config == nullptr
         ? grid_delete_with_owner(slot.btn, new TimeSensorCtx())

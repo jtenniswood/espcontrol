@@ -537,6 +537,10 @@ inline std::string sensor_card_options_normalized(const std::string &options,
        large_numbers_explicitly_disabled(options))) {
     append_large_numbers_option(out, options);
   }
+  if (precision != "time" && cfg_option_token_present(options, "active_color")) {
+    if (!out.empty()) out += ",";
+    out += "active_color";
+  }
   if (precision == "text" && cfg_option_token_present(options, SENSOR_STATE_LABELS_OPTION)) {
     if (!out.empty()) out += ",";
     out += SENSOR_STATE_LABELS_OPTION;
@@ -1576,6 +1580,7 @@ constexpr uint32_t HA_SUBSCRIPTION_SCOPE_ALL = 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_DEFAULT = 1u << 0;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART = 1u << 1;
 constexpr uint32_t HA_SUBSCRIPTION_SCOPE_PHASE3 = 1u << 2;
+constexpr uint32_t HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS = 1u << 3;
 #define ESPCONTROL_HA_SUBSCRIPTION_SCOPE_CONSTANTS_DEFINED 1
 #endif
 
@@ -1696,6 +1701,12 @@ inline bool is_entity_on_ref(esphome::StringRef state) {
          value == "unlocked" || value == "unlocking" || value == "jammed";
 }
 
+inline bool sensor_active_color_state_ref(esphome::StringRef state,
+                                          bool numeric_mode) {
+  return is_entity_on_ref(state) ||
+         (numeric_mode && numeric_state_positive_ref(state));
+}
+
 inline bool presence_detected_ref(esphome::StringRef state) {
   std::string value = normalized_state_text(state);
   return value == "detected" || is_entity_on_ref(state);
@@ -1738,7 +1749,8 @@ inline void bump_ha_subscription_generation() {
   generation++;
   if (generation == 0) generation = 1;
   ha_reset_deferred_state_requests();
-  ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_DEFAULT);
+  ha_reset_subscription_callbacks(
+      HA_SUBSCRIPTION_SCOPE_DEFAULT | HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS);
 }
 #endif
 

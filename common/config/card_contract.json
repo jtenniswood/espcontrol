@@ -1908,16 +1908,14 @@
         },
         {
           "name": "active_color",
-          "label": "Active Color",
+          "label": "Lit When Active",
           "kind": "flag",
-          "hidden": true,
-          "migration": "drop",
           "omitDefault": true,
           "applicability": [
-            { "source": "field", "name": "type", "operator": "present", "negate": true }
+            { "source": "field", "name": "precision", "operator": "in", "value": ["time"], "negate": true }
           ],
           "supportedWhen": {
-            "never": true
+            "precisionNot": ["time"]
           }
         },
         {
@@ -1994,7 +1992,7 @@
           "options": { "policy": "hook", "hook": "normalize_sensor_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["large_numbers", "time_unit", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
+        "canonicalOptionOrder": ["large_numbers", "time_unit", "active_color", "state_labels", "state_input", "state_output", "state_input_2", "state_output_2"],
         "optionHook": "normalize_sensor_options",
         "migrationActions": ["legacy_local_sensor", "legacy_text_sensor", "legacy_sensor_state_high_label", "legacy_sensor_state_low_label"]
       },

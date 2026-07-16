@@ -603,12 +603,31 @@ assert.strictEqual(
   "sensor large-number option blocks time mode"
 );
 assert.deepStrictEqual(Array.from(sensorOptionByName.time_unit.values), ["", "seconds", "minutes", "hours", "days"], "time sensor input unit choices are contract-backed");
-assert.strictEqual(sensorOptionByName.active_color.hidden, true, "sensor active-colour option spec remains hidden");
-assert.strictEqual(sensorOptionByName.active_color.migration, "drop", "sensor active-colour option spec documents cleanup");
+assert.strictEqual(sensorOptionByName.active_color.label, "Lit When Active", "sensor active-colour option has a user-facing label");
+assert.deepStrictEqual(
+  Array.from(sensorOptionByName.active_color.supportedWhen.precisionNot),
+  ["time"],
+  "sensor active-colour option excludes Time mode"
+);
 assert.strictEqual(
   hooks.cardContractOptionSupportedFor("sensor", "active_color", { precision: "text" }),
+  true,
+  "sensor active-colour option supports Text mode"
+);
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("sensor", "active_color", { precision: "icon" }),
+  true,
+  "sensor active-colour option supports Icon mode"
+);
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("sensor", "active_color", { precision: "" }),
+  true,
+  "sensor active-colour option supports Numeric mode"
+);
+assert.strictEqual(
+  hooks.cardContractOptionSupportedFor("sensor", "active_color", { precision: "time" }),
   false,
-  "sensor active-colour option cleanup is spec-backed"
+  "sensor active-colour option blocks Time mode"
 );
 assert.deepStrictEqual(Object.assign({}, hooks.cardContractMigrationAlias("weather_forecast")), {
   type: "weather",
@@ -821,7 +840,7 @@ assert.strictEqual(
 );
 
 const parsedActiveSensor = hooks.parseButtonConfig(";;;;binary_sensor.patio_door;;sensor;text;active_color");
-assert.strictEqual(hooks.sensorActiveColorEnabled(parsedActiveSensor), false, "sensor active colour removed");
+assert.strictEqual(hooks.sensorActiveColorEnabled(parsedActiveSensor), true, "sensor active colour enabled");
 
 const autoTimeSensor = hooks.parseButtonConfig("sensor.ups_runtime;UPS Runtime;Clock;Bell;sensor.ups_runtime;hours;sensor;time;large_numbers,time_unit=weeks,state_labels");
 assert.strictEqual(autoTimeSensor.precision, "time", "time sensor mode round-trips");
@@ -851,7 +870,7 @@ assert.strictEqual(numericStateLabelSensor.options, "", "sensor state labels are
 
 assertButtonMigration(
   hooks,
-  "text sensor drops hidden active colour option",
+  "text sensor drops large numbers but keeps active colour",
   "sensor.patio_door;Patio Door;Door Closed;Auto;binary_sensor.patio_door;;sensor;text;large_numbers,active_color",
   {
     entity: "sensor.patio_door",
@@ -862,7 +881,7 @@ assertButtonMigration(
     unit: "",
     type: "sensor",
     precision: "text",
-    options: "",
+    options: "active_color",
   }
 );
 

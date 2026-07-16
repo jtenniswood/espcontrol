@@ -41,7 +41,7 @@
       "unit": "",
       "type": "sensor",
       "precision": "icon",
-      "options": ""
+      "options": "active_color"
     }
   },
   {
@@ -101,7 +101,7 @@
       "unit": "",
       "type": "sensor",
       "precision": "text",
-      "options": "state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full"
+      "options": "active_color,state_labels,state_input=high,state_output=Please empty,state_input_2=low,state_output_2=Full"
     }
   },
   {

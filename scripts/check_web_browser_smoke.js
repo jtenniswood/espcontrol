@@ -1712,7 +1712,19 @@ async function assertEmptyCellSettings(page, posts, label) {
     ["Numeric", "Time", "Text", "Icon"],
     `${label}: Home Assistant Sensor uses the Numeric, Time, Text, and Icon Type dropdown`,
   );
+  const sensorActiveColor = page.locator("#sp-inp-sensor-active-color");
+  const sensorActiveColorRow = sensorActiveColor.locator("xpath=../..");
+  assert(
+    await sensorActiveColorRow.isVisible(),
+    `${label}: Numeric Sensor exposes Lit When Active`,
+  );
+  await sensorActiveColorRow.getByText("Lit When Active", { exact: true }).click();
   await page.locator("#sp-inp-sensor-type").selectOption("time");
+  assert.strictEqual(
+    await sensorActiveColorRow.isVisible(),
+    false,
+    `${label}: Time Sensor hides Lit When Active`,
+  );
   assert(
     await page.locator("#sp-inp-time-unit").isVisible(),
     `${label}: Time type shows the input unit dropdown`,
@@ -1729,6 +1741,11 @@ async function assertEmptyCellSettings(page, posts, label) {
   );
   await page.locator("#sp-inp-time-unit").selectOption("hours");
   await page.locator("#sp-inp-sensor-type").selectOption("numeric");
+  assert.strictEqual(
+    await sensorActiveColor.isChecked(),
+    false,
+    `${label}: switching through Time clears Lit When Active`,
+  );
   await page.locator("#sp-inp-sensor-type").selectOption("time");
   assert.strictEqual(
     await page.locator("#sp-inp-time-unit").inputValue(),

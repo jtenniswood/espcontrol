@@ -51,6 +51,11 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 return !sensorCardIsLocal(b) && b.precision !== "icon" && b.precision !== "text" && b.precision !== "time";
             },
         },
+        activeColor: {
+            label: "Lit When Active",
+            idSuffix: "sensor-active-color",
+            checked: sensorActiveColorEnabled,
+        },
         preview: {
             iconBadge: "toggle-switch",
             numericBadge: "gauge",
@@ -194,6 +199,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 label: "On Icon",
             });
             panel.appendChild(iconSection);
+            var activeColorToggle: any = helpers.renderCardActiveColorToggle(panel, b, helpers, SENSOR_CARD_METADATA.activeColor, setSensorActiveColorEnabled);
             var hasStateLabels: any = sensorStateLabelsEnabled(b);
             var advancedToggleSection: any = helpers.toggleSection("Advanced", helpers.idPrefix + "sensor-advanced-toggle", hasStateLabels);
             var advancedToggle: any = advancedToggleSection.toggle;
@@ -261,6 +267,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                 timeSection.classList.toggle("sp-visible", displayMode === "time");
                 textSection.classList.toggle("sp-visible", isTextMode);
                 iconSection.classList.toggle("sp-visible", displayMode === "icon");
+                activeColorToggle.row.style.display = displayMode === "time" ? "none" : "";
                 syncAdvancedVisibility();
                 if (displayMode === "time")
                     timeUnitField.select.value = sensorTimeUnit(b);
@@ -338,6 +345,7 @@ export function registerSensorCardTypes(): GlobalDescriptors {
                     resetIconPicker(onIconPicker, "Auto", "cog");
                     precisionSelect.value = "0";
                 }
+                activeColorToggle.input.checked = sensorActiveColorEnabled(b);
             }
             setMode(displayMode, false);
         },

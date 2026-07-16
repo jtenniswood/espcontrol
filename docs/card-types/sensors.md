@@ -59,13 +59,16 @@ For **Text** mode:
 2. The live state from Home Assistant is shown where a Switch card label would normally appear.
 3. Open **Advanced** if you want to replace raw Home Assistant states with friendlier labels. For example, you can show `Please empty` when the sensor reports `high`, and `Full` when another sensor state reports `low`.
 
+For **Numeric**, **Text**, or **Icon** mode, turn on **Lit When Active** if you want the card background to use the active/on colour while Home Assistant reports an active state. This is useful for status sensors such as a washing machine running or a door being open. The option is not shown in Time mode.
+
 ## How It Works on the Panel
 
 - Icon mode treats active Home Assistant states such as `on`, `true`, `home`, `playing`, `open`, or `unlocked` as active and uses the on icon when configured.
+- When **Lit When Active** is enabled, Text and Icon cards use the active/on background colour for those active states. Numeric cards treat any positive value as active. All three return to the Sensor card colour when the state is inactive, zero, unknown, or unavailable.
 - Numeric mode displays the current value in large text, with the unit beside it and the label underneath.
 - Time mode listens for both the value and its Home Assistant unit when **Input Unit** is Auto. A change to either one updates the card. Missing or unsupported unit metadata leaves the value blank rather than guessing.
-- Numeric mode uses the fixed **tertiary** background colour, so it remains visually distinct from Switch and Trigger cards.
-- Text mode uses the same tertiary colour as Numeric mode, while keeping the normal Switch-style icon and label layout.
+- Numeric mode normally uses the fixed **tertiary** background colour, so it remains visually distinct from Switch and Trigger cards.
+- Text mode normally uses the same tertiary colour as Numeric mode, while keeping the normal Switch-style icon and label layout.
 - Text mode capitalises each word in the Home Assistant text and preserves line breaks. Advanced status translation is applied before the text is shown. Very long values are limited to roughly 256 characters so the panel stays responsive.
 
 ## Example Sensors

@@ -103,6 +103,7 @@ export const SAVED_CONFIG_SHADOW_PILOT_POLICIES: Readonly<Record<string, CardNor
     "canonicalOptionOrder": [
       "large_numbers",
       "time_unit",
+      "active_color",
       "state_labels",
       "state_input",
       "state_output",
@@ -369,6 +370,7 @@ export function normalizeSavedConfigSensorShadow(input: Partial<CardConfig>): Ca
     if (optionValue(source, "large_numbers") === "off") out.push("large_numbers=off");
     else if (optionPresent(source, "large_numbers")) out.push("large_numbers");
   }
+  if (config.precision !== "time" && optionPresent(source, "active_color")) out.push("active_color");
   if (config.precision === "text" && optionPresent(source, "state_labels")) {
     out.push("state_labels");
     let stateInput = optionValue(source, "state_input"); let stateOutput = optionValue(source, "state_output");

@@ -120,6 +120,7 @@ inline bool normalize_saved_config_sensor_shadow(Config &config) {
   if (config.sensor == "local") { config.icon_on = "Auto"; config.options.clear(); if (config.precision != "text" && config.precision != "1" && config.precision != "2") config.precision.clear(); if (config.precision != "text" && (config.icon.empty() || config.icon == "Auto")) config.icon = "Auto"; return true; }
   const std::string source = config.options; std::string out;
   if (config.precision != "icon" && config.precision != "text" && config.precision != "time") append_large_numbers_option(out, source);
+  if (config.precision != "time" && cfg_option_token_present(source, "active_color")) saved_config_shadow_append_option(out, "active_color");
   if (config.precision == "text" && cfg_option_token_present(source, "state_labels")) {
     saved_config_shadow_append_option(out, "state_labels"); std::string input = cfg_option_value(source, "state_input"); std::string output = cfg_option_value(source, "state_output");
     if (input.empty() && !cfg_option_value(source, "state_high_label").empty()) { input = "high"; if (output.empty()) output = cfg_option_value(source, "state_high_label"); }

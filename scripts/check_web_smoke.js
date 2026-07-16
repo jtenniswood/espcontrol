@@ -241,6 +241,22 @@ for (const [slug, device] of Object.entries(manifest.devices || {})) {
       `${slug}: generated web UI must not preview disabled weather forecast modes`
     );
   }
+  if (device.capabilities.imageSlots === 0) {
+    assert(
+      !Array.from(generatedHooks.mediaModeOptionValues()).includes("cover_art"),
+      `${slug}: generated web UI must hide Media Cover Art from the Media card type list`
+    );
+    assert.strictEqual(
+      generatedHooks.mediaEditorMode("cover_art"),
+      "play_pause",
+      `${slug}: generated web UI must normalize unsupported Media Cover Art cards`
+    );
+    assert.strictEqual(
+      generatedHooks.buttonTypeVisibleInPickerFor("media_cover_art", false),
+      false,
+      `${slug}: generated web UI must hide Media Cover Art from the main card picker`
+    );
+  }
   assert(
     sandbox.__domEvents.some((event) => event.type === "DOMContentLoaded" && typeof event.listener === "function"),
     `${slug}: generated web UI must register DOMContentLoaded startup wiring`

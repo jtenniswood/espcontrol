@@ -98,6 +98,8 @@ inline bool media_control_modal_mode(const std::string &mode) {
 
 struct MediaPlaybackState;
 inline bool media_playback_state_has_progress(const std::string &entity_id);
+inline MediaPlaybackState *media_playback_prepare_cover_art_progress(
+  const std::string &entity_id, bool playing);
 
 inline std::string media_status_text(const std::string &state) {
   if (state == "playing") return espcontrol_i18n(std::string("Playing"));
@@ -198,10 +200,14 @@ inline MediaPlaybackState *media_playback_ensure_state(const std::string &entity
 inline void media_playback_attach_control(MediaPlaybackState *state, MediaControlCtx *ctx);
 inline void media_playback_subscribe_playback_state(MediaPlaybackState *state);
 inline void media_playback_subscribe_metadata(MediaPlaybackState *state);
-inline void media_playback_subscribe_progress(MediaPlaybackState *state);
+inline void media_playback_subscribe_progress(
+  MediaPlaybackState *state,
+  uint32_t scope = HA_SUBSCRIPTION_SCOPE_DEFAULT);
 inline void media_playback_subscribe_volume(MediaPlaybackState *state);
 inline void media_playback_subscribe_friendly_name(MediaPlaybackState *state);
+inline void media_playback_refresh_progress_timer(MediaPlaybackState *state);
 inline void media_playback_apply_metadata_consumers(MediaPlaybackState *state);
+inline void media_playback_apply_progress_consumers(MediaPlaybackState *state);
 
 inline void delete_media_control_context(MediaControlCtx *ctx) {
   if (!ctx) return;
@@ -431,6 +437,7 @@ struct MediaPlaybackState {
   bool state_subscribed = false;
   bool metadata_subscribed = false;
   bool progress_subscribed = false;
+  uint32_t progress_subscription_scope = 0;
   bool volume_subscribed = false;
   bool content_subscribed = false;
   bool friendly_name_subscribed = false;
@@ -449,6 +456,7 @@ struct MediaPlaybackState {
   bool has_duration = false;
   bool has_position = false;
   float duration = 0.0f;
+  uint32_t last_duration_callback_ms = 0;
   float position_seconds = 0.0f;
   uint32_t position_updated_ms = 0;
   bool position_updated_at_known = false;
@@ -479,6 +487,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->state_subscribed = false;
   state->metadata_subscribed = false;
   state->progress_subscribed = false;
+  state->progress_subscription_scope = 0;
   state->volume_subscribed = false;
   state->content_subscribed = false;
   state->friendly_name_subscribed = false;
@@ -497,6 +506,7 @@ inline void media_playback_reset_state(MediaPlaybackState *state,
   state->has_duration = false;
   state->has_position = false;
   state->duration = 0.0f;
+  state->last_duration_callback_ms = 0;
   state->position_seconds = 0.0f;
   state->position_updated_ms = 0;
   state->position_updated_at_known = false;
@@ -583,6 +593,44 @@ inline void media_playback_set_artist(MediaPlaybackState *state,
   if (!media_playback_generation_valid(state, generation)) return;
   state->artist = media_playback_metadata_value(value, HA_STATE_TEXT_MAX_LEN);
   media_playback_apply_metadata_consumers(state);
+}
+
+inline void media_playback_set_playing_hint(MediaPlaybackState *state, bool playing) {
+  if (!state || state->playing == playing) return;
+  bool was_playing = state->playing;
+  float paused_position_seconds = was_playing
+    ? media_playback_current_position_seconds(state)
+    : state->position_seconds;
+  state->playing = playing;
+  if (was_playing && !playing) {
+    state->position_seconds = paused_position_seconds;
+    state->position_updated_ms = esphome::millis();
+    state->position_updated_at_known = false;
+    state->position_updated_at_ms = 0;
+  }
+  media_playback_apply_progress_consumers(state);
+  media_playback_refresh_progress_timer(state);
+}
+
+inline void media_playback_invalidate_stale_progress(
+    const std::string &entity_id, uint32_t fresh_window_ms = 250) {
+  MediaPlaybackState *state = media_playback_find_state(entity_id);
+  if (!state) return;
+  const uint32_t last_duration_ms = state->last_duration_callback_ms;
+  const bool duration_callback_is_fresh =
+    last_duration_ms != 0 &&
+    (uint32_t)(esphome::millis() - last_duration_ms) <= fresh_window_ms;
+  if (duration_callback_is_fresh) return;
+  state->duration = 0.0f;
+  state->has_duration = false;
+  state->last_duration_callback_ms = 0;
+  state->position_seconds = 0.0f;
+  state->position_updated_ms = 0;
+  state->position_updated_at_known = false;
+  state->position_updated_at_ms = 0;
+  state->has_position = false;
+  media_playback_apply_progress_consumers(state);
+  media_playback_refresh_progress_timer(state);
 }
 
 inline void media_playback_apply_state_to_slider(MediaPlaybackState *state,
@@ -842,6 +890,7 @@ inline void media_playback_attach_slider(MediaPlaybackState *state, SliderCtx *c
   if (state->sliders.size() < MEDIA_PLAYBACK_STATE_CONSUMERS_MAX) {
     state->sliders.push_back(ctx);
     media_playback_apply_state_to_slider(state, ctx);
+    media_playback_refresh_progress_timer(state);
     return;
   }
   ESP_LOGW("media", "No shared media playback slider slot available for %s",
@@ -859,6 +908,7 @@ inline void media_playback_attach_control(MediaPlaybackState *state, MediaContro
   if (state->controls.size() < MEDIA_PLAYBACK_STATE_CONSUMERS_MAX) {
     state->controls.push_back(ctx);
     media_playback_apply_state_to_control(state, ctx);
+    media_playback_refresh_progress_timer(state);
     return;
   }
   ESP_LOGW("media", "No shared media control slot available for %s",
@@ -947,6 +997,11 @@ inline void media_playback_progress_timer_cb(lv_timer_t *timer) {
 
 inline void media_playback_refresh_progress_timer(MediaPlaybackState *state) {
   if (!state || !state->progress_subscribed) return;
+  const bool has_timer_consumer = !state->sliders.empty() || !state->controls.empty();
+  if (!has_timer_consumer) {
+    if (state->progress_timer) lv_timer_pause(state->progress_timer);
+    return;
+  }
   if (!state->progress_timer) {
     state->progress_timer = lv_timer_create(media_playback_progress_timer_cb, 1000, state);
   }
@@ -1023,9 +1078,11 @@ inline void media_playback_subscribe_metadata(MediaPlaybackState *state) {
   ha_get_attribute(entity_id, std::string("source"), handle_media_source);
 }
 
-inline void media_playback_subscribe_progress(MediaPlaybackState *state) {
+inline void media_playback_subscribe_progress(MediaPlaybackState *state,
+                                              uint32_t scope) {
   if (!state || state->progress_subscribed || state->entity_id.empty()) return;
   state->progress_subscribed = true;
+  state->progress_subscription_scope = scope;
   const std::string entity_id = state->entity_id;
   const uint32_t generation = state->generation;
 
@@ -1034,13 +1091,15 @@ inline void media_playback_subscribe_progress(MediaPlaybackState *state) {
     std::function<void(esphome::StringRef)>(
       [state, generation](esphome::StringRef val) {
         if (!media_playback_generation_valid(state, generation)) return;
+        state->last_duration_callback_ms = esphome::millis();
         float duration = 0.0f;
         if (!parse_float_ref(val, duration) || duration < 0.0f) duration = 0.0f;
         state->duration = duration;
         state->has_duration = duration > 0.0f;
         media_playback_apply_progress_consumers(state);
         media_playback_refresh_progress_timer(state);
-      })
+      }),
+    scope
   );
 
   ha_subscribe_attribute(
@@ -1057,7 +1116,8 @@ inline void media_playback_subscribe_progress(MediaPlaybackState *state) {
         state->has_position = true;
         media_playback_apply_progress_consumers(state);
         media_playback_refresh_progress_timer(state);
-      })
+      }),
+    scope
   );
 
   ha_subscribe_attribute(
@@ -1077,7 +1137,8 @@ inline void media_playback_subscribe_progress(MediaPlaybackState *state) {
         }
         media_playback_apply_progress_consumers(state);
         media_playback_refresh_progress_timer(state);
-      })
+      }),
+    scope
   );
   media_playback_refresh_progress_timer(state);
 }
@@ -1159,15 +1220,53 @@ inline void media_playback_subscribe_state(MediaPlaybackState *state) {
   media_playback_subscribe_progress(state);
 }
 
+inline void media_playback_reset_cover_art_progress_subscriptions() {
+  for (MediaPlaybackState *state : media_playback_states()) {
+    if (!state || !state->used || !state->progress_subscribed ||
+        (state->progress_subscription_scope &
+         HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS) == 0) {
+      continue;
+    }
+    state->progress_subscribed = false;
+    state->progress_subscription_scope = 0;
+    state->duration = 0.0f;
+    state->has_duration = false;
+    state->last_duration_callback_ms = 0;
+    state->position_seconds = 0.0f;
+    state->position_updated_ms = 0;
+    state->position_updated_at_known = false;
+    state->position_updated_at_ms = 0;
+    state->has_position = false;
+    if (state->progress_timer) lv_timer_pause(state->progress_timer);
+    media_playback_apply_progress_consumers(state);
+    if (!state->sliders.empty() || !state->controls.empty()) {
+      media_playback_subscribe_progress(state);
+    }
+  }
+}
+
+inline MediaPlaybackState *media_playback_prepare_cover_art_progress(
+    const std::string &entity_id, bool playing) {
+  if (entity_id.empty() || !ha_api_available()) return nullptr;
+  MediaPlaybackState *state = media_playback_ensure_state(entity_id);
+  if (!state) return nullptr;
+  media_playback_set_playing_hint(state, playing);
+  media_playback_subscribe_progress(
+      state,
+      HA_SUBSCRIPTION_SCOPE_COVER_ART |
+          HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS);
+  return state;
+}
+
 inline bool media_playback_state_snapshot(const std::string &entity_id,
                                           bool &playing,
                                           float &duration,
                                           float &position) {
   MediaPlaybackState *state = media_playback_find_state(entity_id);
-  if (!state || !state->has_duration || !state->has_position) return false;
+  if (!state || !state->has_duration) return false;
   playing = state->playing;
   duration = state->duration;
-  position = media_playback_current_position_seconds(state);
+  position = state->has_position ? media_playback_current_position_seconds(state) : 0.0f;
   return duration > 0.0f;
 }
 
