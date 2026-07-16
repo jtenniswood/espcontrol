@@ -23,7 +23,6 @@ api:
         ESP_LOGI("api", "API client connected: %s", client_info.c_str());
         bool is_home_assistant = client_info.find("Home Assistant") != std::string::npos;
         if (is_home_assistant && ha_api_connected()) {
-          id(ha_reconnect_flow).stop();
           id(ha_restore_after_api).execute();
           if (!client_address.empty()) {
             std::string host = client_address;
@@ -89,7 +88,6 @@ api:
         weather_forecast_cancel_pending_requests();
         cover_stop_cancel_pending_request();
         todo_cancel_pending_request("api disconnected");
-    - script.execute: ha_reconnect_flow
 
 interval:
   - interval: 5s

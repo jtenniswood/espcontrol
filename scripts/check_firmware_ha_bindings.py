@@ -2375,41 +2375,37 @@ def firmware_connectivity_api_errors(paths: tuple[Path, ...], root: Path) -> lis
         )
         if api_connected_match and "on_client_connected:" in api_connected_match.group("body"):
             api_connected_body = api_connected_match.group("body")
-            if "script.stop: ha_reconnect_flow" not in api_connected_body:
-                errors.append(f"{rel}: stop the pending Home Assistant waiting screen when HA reconnects")
+            if "ha_reconnect_flow" in api_connected_body:
+                errors.append(f"{rel}: do not manage a Home Assistant waiting screen on reconnect")
             if "script.execute: ha_restore_after_api" not in api_connected_body:
-                errors.append(f"{rel}: restore the display immediately when Home Assistant reconnects")
+                errors.append(f"{rel}: continue initial setup when Home Assistant connects")
             if "wait_until:" in api_connected_body or "timeout: 2s" in api_connected_body:
-                errors.append(f"{rel}: do not delay display restore after Home Assistant reconnects")
+                errors.append(f"{rel}: do not delay initial setup when Home Assistant connects")
         restore_body = yaml_script_body(text, "ha_restore_after_api")
         if restore_body is None:
-            errors.append(f"{rel}: define the immediate Home Assistant display restore script")
-        elif "ha_api_connected()" not in restore_body or "navigate_after_api" not in restore_body:
-            errors.append(f"{rel}: return from the Home Assistant waiting screen on API reconnect")
-        body = yaml_script_body(text, "ha_reconnect_flow")
-        if body is None:
-            errors.append(f"{rel}: show a delayed Home Assistant waiting screen after HA disconnects")
+            errors.append(f"{rel}: define the Home Assistant initial-setup continuation script")
         elif (
-            "delay: 5s" not in body
-            or "ha_api_state_connected()" not in body
-            or "Connecting to\\nHome Assistant" not in body
-            or 'lv_label_set_text(id(ha_setup_instructions), "");' not in body
-            or "lvgl.page.show: ha_setup_page" not in body
+            "ha_api_connected()" not in restore_body
+            or "lv_scr_act() == id(ha_setup_page)->obj" not in restore_body
+            or restore_body.count("script.execute: navigate_after_api") != 1
         ):
-            errors.append(f"{rel}: keep the Home Assistant waiting screen delayed and tied to HA state connection")
+            errors.append(f"{rel}: only navigate away when the initial Home Assistant setup page is active")
+        body = yaml_script_body(text, "ha_reconnect_flow")
+        if body is not None or "Connecting to\\nHome Assistant" in text:
+            errors.append(f"{rel}: keep the current display visible when Home Assistant disconnects")
     return errors
 
 
-def firmware_ha_reconnect_flow_errors(core_infra_path: Path, root: Path) -> list[str]:
+def firmware_ha_connection_screen_errors(core_infra_path: Path, root: Path) -> list[str]:
     if not core_infra_path.exists():
         return []
     rel = core_infra_path.relative_to(root)
     text = core_infra_path.read_text(encoding="utf-8")
     errors: list[str] = []
-    if "on_client_disconnected:" not in text or "script.execute: ha_reconnect_flow" not in text:
-        errors.append(f"{rel}: start the Home Assistant waiting screen flow when HA disconnects")
+    if "ha_reconnect_flow" in text:
+        errors.append(f"{rel}: do not start a display flow when Home Assistant disconnects")
     if "on_client_connected:" not in text or "id(ha_restore_after_api).execute();" not in text:
-        errors.append(f"{rel}: restore the display immediately when Home Assistant reconnects")
+        errors.append(f"{rel}: continue initial setup when Home Assistant connects")
     if "apply_registered_ha_control_availability" in text:
         errors.append(f"{rel}: do not dim registered cards when HA disconnects")
     return errors
@@ -2493,7 +2489,7 @@ def run_scan() -> int:
     errors.extend(firmware_navigation_target_errors(FIRMWARE_DIR, API_NAVIGATE_PATH, DEVICE_PACKAGE_PATHS, ROOT))
     errors.extend(firmware_todo_disabled_errors(DEVICE_DEVICE_PATHS, ROOT))
     errors.extend(firmware_connectivity_api_errors(CONNECTIVITY_PATHS, ROOT))
-    errors.extend(firmware_ha_reconnect_flow_errors(CORE_INFRA_PATH, ROOT))
+    errors.extend(firmware_ha_connection_screen_errors(CORE_INFRA_PATH, ROOT))
     errors.extend(firmware_c6_update_status_errors(C6_FIRMWARE_UPDATE_PATH, ROOT))
     if errors:
         print("Firmware Home Assistant binding check failed:")
@@ -5864,7 +5860,6 @@ def run_self_test() -> int:
         "          lambda: 'return ha_api_state_connected();'\n"
         "api:\n"
         "  on_client_connected:\n"
-        "    - script.stop: ha_reconnect_flow\n"
         "    - script.execute: ha_restore_after_api\n"
         "script:\n"
         "  - id: ha_restore_after_api\n"
@@ -5874,19 +5869,41 @@ def run_self_test() -> int:
         "          condition:\n"
         "            lambda: 'return ha_api_connected();'\n"
         "          then:\n"
-        "            - script.execute: navigate_after_api\n"
-        "  - id: ha_reconnect_flow\n"
-        "    mode: restart\n"
+        "            - if:\n"
+        "                condition:\n"
+        "                  lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'\n"
+        "                then:\n"
+        "                  - script.execute: navigate_after_api\n",
+        (),
+    )
+    expect_connectivity_api_errors(
+        "removed home assistant reconnect screen",
+        "wifi:\n"
+        "  on_connect:\n"
+        "    - if:\n"
+        "        condition:\n"
+        "          lambda: 'return ha_api_state_connected();'\n"
+        "api:\n"
+        "  on_client_connected:\n"
+        "    - script.stop: ha_reconnect_flow\n"
+        "    - script.execute: ha_restore_after_api\n"
+        "script:\n"
+        "  - id: ha_restore_after_api\n"
         "    then:\n"
-        "      - delay: 5s\n"
         "      - if:\n"
         "          condition:\n"
-        "            lambda: 'return !ha_api_state_connected();'\n"
+        "            lambda: 'return ha_api_connected();'\n"
         "          then:\n"
-        "            - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Connecting to\\nHome Assistant\"));'\n"
-        "            - lambda: 'lv_label_set_text(id(ha_setup_instructions), \"\");'\n"
-        "            - lvgl.page.show: ha_setup_page\n",
-        (),
+        "            - if:\n"
+        "                condition:\n"
+        "                  lambda: 'return lv_scr_act() == id(ha_setup_page)->obj;'\n"
+        "                then:\n"
+        "                  - script.execute: navigate_after_api\n"
+        "  - id: ha_reconnect_flow\n"
+        "    then:\n"
+        "      - lambda: 'lv_label_set_text(id(ha_setup_title), espcontrol_i18n(\"Connecting to\\nHome Assistant\"));'\n"
+        "      - lvgl.page.show: ha_setup_page\n",
+        ("keep the current display visible",),
     )
     print("Firmware Home Assistant binding self-tests passed.")
     return 0
