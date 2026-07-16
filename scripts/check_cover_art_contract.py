@@ -124,10 +124,22 @@ for required in (
 image_cards = (ROOT / "components" / "espcontrol" / "button_grid_image.h").read_text(encoding="utf-8")
 for required in (
     "image_card_uses_background_pipeline(next->image, next->source_url)",
-    "image_card_uses_background_pipeline(ctx->modal_image, ctx->source_url)",
 ):
     if required not in image_cards:
         raise SystemExit(f"Image card background-pipeline contract missing: {required}")
+modal_request_start = image_cards.find(
+    "inline bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {"
+)
+modal_request_end = image_cards.find(
+    "\ninline void image_card_schedule_source_refresh", modal_request_start
+)
+if modal_request_start < 0 or modal_request_end < 0:
+    raise SystemExit("Image card modal-request contract missing")
+modal_request = image_cards[modal_request_start:modal_request_end]
+if "ui.request_timer = lv_timer_create(" not in modal_request:
+    raise SystemExit("Image card modal requests must let the preview paint before refreshing")
+if "image_pipeline_can_start_followup_inline" in modal_request:
+    raise SystemExit("Image card modal requests must not bypass their preview-paint delay")
 modal_open_start = image_cards.find("inline void image_card_open_modal(ImageCardCtx *ctx) {")
 modal_open_end = image_cards.find("\ninline void image_card_handle_picture", modal_open_start)
 if modal_open_start < 0 or modal_open_end < 0:
