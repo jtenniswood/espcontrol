@@ -103,10 +103,14 @@ are shared by the main grid and subpages. Switch, Light Switch, Fan Switch,
 Push, Internal, Webhook, Screen Lock, Action, local-action compatibility, and
 Alarm Action use the shared `BASIC_ACTION` lifecycle boundary while retaining
 their existing confirmation, service, local relay, HTTP, PIN, and state-display
-implementations. Option-select compatibility deliberately remains on fallback
-until the selectable-control family migration. Other families remain on the existing
-`Family` dispatch until their reviewed migration PR switches them one family at
-a time.
+implementations. Slider, Light Brightness, Light Temperature, Fan Speed, Fan
+Oscillate, Fan Direction, Fan Preset, canonical Option Select, and Action
+option-select compatibility use the shared `NUMERIC_SELECTABLE` lifecycle
+boundary while retaining their existing slider, fan-action, and selection-modal
+behaviour. Cover slider modes and the combined Fan Control card remain on the
+existing `Family` dispatch for their later reviewed migrations. Other families
+also remain on that dispatch until their reviewed migration PR switches them
+one family at a time.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and
