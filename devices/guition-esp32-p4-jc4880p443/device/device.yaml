@@ -29,6 +29,7 @@ esp32:
       enable_idf_experimental_features: yes
       execute_from_psram: true
     sdkconfig_options:
+      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
       # HTTPS firmware checks need more stack on ESP32-P4; the default main
       # task stack can trip the stack protector during mbedTLS setup.
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
@@ -124,7 +125,8 @@ esp32_hosted:
   d1_pin: GPIO15
   d2_pin: GPIO16
   d3_pin: GPIO17
-  sdio_frequency: 20MHz
+  # Camera snapshots benefit from the ESP-Hosted default high-speed link.
+  sdio_frequency: 40MHz
 
 # ---------------------------------------------------------------------------
 # PSRAM (video frame buffer memory)

@@ -71,10 +71,23 @@ inline Family family_for_runtime_type(espcontrol::card_runtime::CardTypeId type)
 }
 
 inline bool driver_uses_legacy_dispatch(
-    espcontrol::card_runtime::CardDriverId driver) {
+    const espcontrol::card_runtime::CardRuntimeSpec &runtime) {
   using Driver = espcontrol::card_runtime::CardDriverId;
-  switch (driver) {
+  switch (runtime.driver) {
     case Driver::STATUS_ENTITY: return false;
+    case Driver::DATE_TIME:
+    case Driver::SENSOR:
+    case Driver::WEATHER:
+    case Driver::TOGGLE:
+    case Driver::ACTION:
+    case Driver::ALARM_ACTION:
+    case Driver::INTERNAL:
+    case Driver::PUSH:
+    case Driver::SCREEN_LOCK:
+    case Driver::WEBHOOK:
+      return false;
+    case Driver::FAN:
+      return runtime.type != espcontrol::card_runtime::CardTypeId::FAN_SWITCH;
     default: return true;
   }
 }
@@ -89,7 +102,12 @@ inline Context context_for(const std::string &type, const std::string &mode,
   context.surface = surface;
   context.known = context.runtime.type != CardTypeId::UNKNOWN;
   context.allow_in_subpage = has_capability(context.runtime, CAPABILITY_SUBPAGE);
-  context.legacy_dispatch = driver_uses_legacy_dispatch(context.runtime.driver);
+  context.legacy_dispatch = driver_uses_legacy_dispatch(context.runtime);
+  if (context.runtime.type == CardTypeId::ACTION &&
+      card_contract_is_option_select_action(mode)) {
+    // Option-select compatibility migrates with the selectable-control family.
+    context.legacy_dispatch = true;
+  }
 
   // These saved-config types predate the generated contract. Keep them on the
   // established dispatcher until they receive their own generated definition.
@@ -101,6 +119,7 @@ inline Context context_for(const std::string &type, const std::string &mode,
     context.runtime.capabilities = static_cast<uint16_t>(
         CAPABILITY_SUBSCRIPTIONS | CAPABILITY_ACTIONS |
         CAPABILITY_RUNTIME_ALLOCATION | CAPABILITY_SUBPAGE);
+    context.legacy_dispatch = false;
   } else if (!context.known && type == "text_sensor") {
     context.family = Family::SENSOR;
     context.known = true;
@@ -108,6 +127,7 @@ inline Context context_for(const std::string &type, const std::string &mode,
     context.runtime.driver = CardDriverId::SENSOR;
     context.runtime.capabilities = static_cast<uint16_t>(
         CAPABILITY_INFORMATION_ONLY | CAPABILITY_SUBSCRIPTIONS | CAPABILITY_SUBPAGE);
+    context.legacy_dispatch = false;
   } else if (!context.known && type == "todo") {
     context.family = Family::TODO;
     context.known = true;
@@ -256,14 +276,6 @@ constexpr const char *card_runtime_option_name_image_icon() {
 
 constexpr const char *card_runtime_option_name_image_modal_mode() {
   return CARD_CONTRACT_OPTION_NAME_IMAGE_MODAL_MODE;
-}
-
-constexpr const char *card_runtime_option_name_image_refresh() {
-  return CARD_CONTRACT_OPTION_NAME_IMAGE_REFRESH;
-}
-
-constexpr const char *card_runtime_option_name_image_refresh_mode() {
-  return CARD_CONTRACT_OPTION_NAME_IMAGE_REFRESH_MODE;
 }
 
 constexpr const char *card_runtime_option_name_media_cover_art() {

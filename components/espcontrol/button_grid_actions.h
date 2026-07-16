@@ -818,6 +818,12 @@ inline void cover_control_open_modal(CoverControlCtx *ctx);
 struct LightControlCtx;
 inline void light_control_open_modal(LightControlCtx *ctx);
 
+namespace espcontrol::cards {
+inline bool basic_action_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config,
+    int slot_number, lv_obj_t *button);
+}
+
 // Handle a main-grid button press: dispatch push event, subpage nav,
 // slider toggle, or entity toggle based on the config string.
 inline void handle_button_click(const std::string &cfg, int slot_num,
@@ -833,32 +839,15 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     ESP_LOGD("card_runtime", "Legacy action fallback: type=%s driver=%u",
              p.type.c_str(), static_cast<unsigned>(context.runtime.driver));
   }
-  if (p.type == "screen_lock") {
-    screen_lock_toggle();
-  } else if (p.type == "push") {
-    std::string label = p.label;
-    if (label.empty()) {
-      char buf[16];
-      snprintf(buf, sizeof(buf), "Push %d", slot_num);
-      label = buf;
-    }
-    esphome::api::HomeassistantActionRequest req;
-    if (!ha_action_begin(req, "esphome.push_button_pressed", true, 2)) return;
-    ha_action_add_data(req, "label", label.c_str());
-    char slot_buf[8];
-    snprintf(slot_buf, sizeof(slot_buf), "%d", slot_num);
-    ha_action_add_data(req, "slot", slot_buf);
-    ha_action_send(req);
-  } else if (p.type == "subpage") {
+  if (espcontrol::cards::basic_action_driver_handle_main_click(
+        context, p, slot_num, btn_obj)) return;
+  if (p.type == "subpage") {
     lv_obj_t *sub_scr = (lv_obj_t *)lv_obj_get_user_data(btn_obj);
     if (sub_scr)
       lv_scr_load_anim(sub_scr, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
   } else if (p.type == "alarm") {
     AlarmCardCtx *ctx = (AlarmCardCtx *)lv_obj_get_user_data(btn_obj);
     if (alarm_card_context_valid(ctx)) alarm_card_open_page(ctx);
-  } else if (p.type == "alarm_action") {
-    AlarmActionCtx *ctx = (AlarmActionCtx *)lv_obj_get_user_data(btn_obj);
-    if (alarm_action_context_valid(ctx)) alarm_action_activate(ctx);
   } else if (fan_non_speed_card_type(p.type)) {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_card_handle_click(ctx);
@@ -902,19 +891,9 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       set_card_checked_state(btn_obj, true);
       send_toggle_action(p.entity);
     }
-  } else if (p.type == "internal") {
-    if (!p.entity.empty()) send_internal_relay_action(p);
-  } else if (p.type == "local" || action_card_local_action(p)) {
-    if (!p.entity.empty()) send_local_action(p.entity);
-  } else if (p.type == "action") {
-    if (action_card_option_select(p)) {
-      OptionSelectCtx *ctx = (OptionSelectCtx *)lv_obj_get_user_data(btn_obj);
-      if (ctx) option_select_open_modal(ctx);
-    } else if (action_script_confirmation_enabled(p) && btn_obj) {
-      switch_confirmation_open_modal(p, btn_obj, false);
-    } else {
-      send_action_card_action(p);
-    }
+  } else if (action_card_option_select(p)) {
+    OptionSelectCtx *ctx = (OptionSelectCtx *)lv_obj_get_user_data(btn_obj);
+    if (ctx) option_select_open_modal(ctx);
   } else if (p.type == "vacuum") {
     VacuumCardCtx *ctx = (VacuumCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) {
@@ -936,8 +915,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       fallback.mode = lawn_mower_card_mode(p.sensor);
       send_lawn_mower_card_action(&fallback);
     }
-  } else if (p.type == "webhook") {
-    send_webhook_action(p);
   } else if (p.type == "todo") {
     TodoCardCtx *ctx = (TodoCardCtx *)lv_obj_get_user_data(btn_obj);
     if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);

@@ -116,15 +116,11 @@ export function installAppTestHooksConfig(): GlobalDescriptors {
             setMediaPlaylistContentId: setMediaPlaylistContentId,
             setMediaPlaylistContentType: setMediaPlaylistContentType,
             setMediaPlaylistPlayerSource: setMediaPlaylistPlayerSource,
-            imageRefreshIntervalValues: imageRefreshIntervalValues,
-            imageRefreshModeValues: imageRefreshModeValues,
             imageModalModeValues: imageModalModeValues,
             normalizeImageOptions: normalizeImageOptions,
             imageLabelEnabled: imageLabelEnabled,
             imageIconEnabled: imageIconEnabled,
             imageModalMode: imageModalMode,
-            imageRefreshInterval: imageRefreshInterval,
-            imageRefreshMode: imageRefreshMode,
             imageSlotCapacity: imageSlotCapacity,
             imageCardCountForTest: function (this: any, snapshot?: any, candidate?: any) {
                 var oldGrid: any = state.grid;

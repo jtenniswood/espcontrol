@@ -46,6 +46,12 @@ GRID_HEADER = "button_grid_grid.h"
 ACTION_HEADER = "button_grid_actions.h"
 IMAGE_HEADER = "button_grid_image.h"
 STATUS_ENTITY_HEADER = "button_grid_status_entity_driver.h"
+DATE_TIME_HEADER = "button_grid_date_time_driver.h"
+DATE_TIME_CARDS_HEADER = "button_grid_datetime_cards.h"
+SENSOR_HEADER = "button_grid_sensor_driver.h"
+WEATHER_HEADER = "button_grid_weather_driver.h"
+BASIC_ACTION_HEADER = "button_grid_basic_action_driver.h"
+CARDS_HEADER = "button_grid_cards.h"
 
 
 def service_mapping_line_allowed(line: str) -> bool:
@@ -134,16 +140,40 @@ def check_root(root: Path) -> list[str]:
         if (
             "status_entity_driver_setup_visual( s, p, context, palette)" not in compact_grid
             or "status_entity_driver_bind_data( s, p, context, palette)" not in compact_grid
+            or "date_time_driver_setup_visual( s, p, context, palette)" not in compact_grid
+            or "date_time_driver_bind_data(s, p, context)" not in compact_grid
+            or "sensor_driver_setup_visual( s, p, context, palette)" not in compact_grid
+            or "sensor_driver_bind_data( s, p, context, palette)" not in compact_grid
+            or "weather_driver_setup_visual( s, p, context, palette, display)" not in compact_grid
+            or "weather_driver_bind_data(s, p, context)" not in compact_grid
+            or "basic_action_driver_setup_visual(s, p, context)" not in compact_grid
+            or "basic_action_driver_bind_main( s, p, context, cfg, palette, display, main_page_obj, COLS, toggle_state)" not in compact_grid
+            or "basic_action_driver_bind_subpage( sub_slot, sb_cfg, context, action_environment)" not in compact_grid
             or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
             or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
         ):
             failures.append(
-                f"components/espcontrol/{GRID_HEADER}: route main and subpage status entities through the shared driver"
+                f"components/espcontrol/{GRID_HEADER}: route main and subpage migrated cards through shared drivers"
             )
-        for direct_branch in ('p.type == "door_window"', 'p.type == "presence"'):
+        for direct_branch in (
+            'p.type == "door_window"', 'p.type == "presence"',
+            'p.type == "clock"', 'p.type == "timezone"',
+            'p.type == "calendar"', 'p.type == "sensor"',
+            'p.type == "local_sensor"', 'p.type == "text_sensor"',
+            'p.type == "weather"', 'p.type == "weather_forecast"',
+            'sb_cfg.type == "calendar"', 'sb_cfg.type == "sensor"',
+            'sb_cfg.type == "local_sensor"', 'sb_cfg.type == "text_sensor"',
+            'sb_cfg.type == "weather"', 'sb_cfg.type == "weather_forecast"',
+            'p.type == "screen_lock"', 'p.type == "push"',
+            'p.type == "alarm_action"', 'p.type == "internal"',
+            'p.type == "local"', 'p.type == "webhook"',
+            'sb_cfg.type == "screen_lock"', 'sb_cfg.type == "push"',
+            'sb_cfg.type == "alarm_action"', 'sb_cfg.type == "internal"',
+            'sb_cfg.type == "local"', 'sb_cfg.type == "webhook"',
+        ):
             if direct_branch in text:
                 failures.append(
-                    f"components/espcontrol/{GRID_HEADER}: keep status-entity type overrides inside the shared driver"
+                    f"components/espcontrol/{GRID_HEADER}: keep migrated type overrides inside shared drivers"
                 )
         if 'parent_subpage_kind == "lawn_mower"' not in text or "lawn_mower_state_active_ref" not in text:
             failures.append(
@@ -170,6 +200,7 @@ def check_root(root: Path) -> list[str]:
             "card_runtime_context(p)" not in click_body
             or "card_runtime_passive(context)" not in click_body
             or "Legacy action fallback" not in click_body
+            or "basic_action_driver_handle_main_click(" not in click_body
         ):
             failures.append(
                 f"components/espcontrol/{ACTION_HEADER}: route passive checks through the shared card context"
@@ -203,6 +234,127 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{STATUS_ENTITY_HEADER}: missing shared status-entity driver"
         )
+    date_time_header = root / "components" / "espcontrol" / DATE_TIME_HEADER
+    if date_time_header.exists():
+        text = date_time_header.read_text(encoding="utf-8")
+        required = (
+            "date_time_driver_setup_visual",
+            "date_time_driver_bind_data",
+            "date_time_driver_attach_interaction",
+            "date_time_driver_refresh_layout",
+            "date_time_driver_cleanup",
+            "context.runtime.type == Type::CALENDAR",
+            "context.runtime.type == Type::CLOCK",
+            "context.runtime.type == Type::TIMEZONE",
+            "register_calendar_card",
+            "subscribe_calendar_date_source",
+            "register_timezone_card",
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_HEADER}: missing shared date-time lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{DATE_TIME_HEADER}: missing shared date-time driver"
+        )
+    date_time_cards_header = root / "components" / "espcontrol" / DATE_TIME_CARDS_HEADER
+    if date_time_cards_header.exists():
+        text = date_time_cards_header.read_text(encoding="utf-8")
+        for legacy_setup in ("setup_calendar_card", "setup_clock_card", "setup_timezone_card"):
+            if legacy_setup in text:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: keep {legacy_setup} inside the shared date-time driver"
+                )
+    sensor_header = root / "components" / "espcontrol" / SENSOR_HEADER
+    if sensor_header.exists():
+        text = sensor_header.read_text(encoding="utf-8")
+        required = (
+            "sensor_driver_setup_visual",
+            "sensor_driver_bind_data",
+            "sensor_driver_attach_interaction",
+            "sensor_driver_refresh_layout",
+            "sensor_driver_cleanup",
+            "sensor_driver_register_local_value",
+            "subscribe_sensor_text_card_value",
+            "subscribe_sensor_icon_state",
+            "subscribe_time_sensor_value",
+            "subscribe_sensor_value",
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{SENSOR_HEADER}: missing shared sensor lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{SENSOR_HEADER}: missing shared sensor driver"
+        )
+    weather_header = root / "components" / "espcontrol" / WEATHER_HEADER
+    if weather_header.exists():
+        text = weather_header.read_text(encoding="utf-8")
+        required = (
+            "weather_driver_setup_visual",
+            "weather_driver_bind_data",
+            "weather_driver_attach_interaction",
+            "weather_driver_refresh_layout",
+            "weather_driver_cleanup",
+            "register_weather_forecast_card",
+            "subscribe_weather_state",
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{WEATHER_HEADER}: missing shared weather lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{WEATHER_HEADER}: missing shared weather driver"
+        )
+    basic_action_header = root / "components" / "espcontrol" / BASIC_ACTION_HEADER
+    if basic_action_header.exists():
+        text = basic_action_header.read_text(encoding="utf-8")
+        required = (
+            "basic_action_driver_setup_visual",
+            "basic_action_driver_bind_main",
+            "basic_action_driver_bind_subpage",
+            "basic_action_driver_attach_interaction",
+            "basic_action_driver_refresh_layout",
+            "basic_action_driver_cleanup",
+            "basic_action_driver_handle_main_click",
+            "basic_action_driver_bind_toggle",
+            "basic_action_driver_bind_action_state",
+            "basic_action_driver_bind_alarm_action",
+            "basic_action_driver_bind_fan_switch",
+            "send_webhook_action",
+            "send_internal_relay_action",
+            "screen_lock_toggle",
+            "esphome.push_button_pressed",
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{BASIC_ACTION_HEADER}: missing shared basic-action lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{BASIC_ACTION_HEADER}: missing shared basic-action driver"
+        )
+    cards_header = root / "components" / "espcontrol" / CARDS_HEADER
+    if cards_header.exists():
+        text = cards_header.read_text(encoding="utf-8")
+        for legacy_setup in (
+            "setup_sensor_card",
+            "setup_text_sensor_card",
+            "setup_local_sensor_card",
+            "setup_weather_card",
+            "setup_weather_forecast_card",
+        ):
+            if legacy_setup in text:
+                failures.append(
+                    f"components/espcontrol/{CARDS_HEADER}: keep {legacy_setup} inside its shared information driver"
+                )
     return failures
 
 
@@ -309,6 +461,42 @@ def run_self_test() -> None:
                 )
             },
             ("missing shared status-entity lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_date_time_driver.h": (
+                    "inline bool date_time_driver_setup_visual() {}\n"
+                    "inline bool date_time_driver_bind_data() {}\n"
+                )
+            },
+            ("missing shared date-time lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_sensor_driver.h": (
+                    "inline bool sensor_driver_setup_visual() {}\n"
+                    "inline bool sensor_driver_bind_data() {}\n"
+                )
+            },
+            ("missing shared sensor lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_weather_driver.h": (
+                    "inline bool weather_driver_setup_visual() {}\n"
+                    "inline bool weather_driver_bind_data() {}\n"
+                )
+            },
+            ("missing shared weather lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_basic_action_driver.h": (
+                    "inline bool basic_action_driver_setup_visual() {}\n"
+                    "inline bool basic_action_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared basic-action lifecycle guard",),
         ),
         (
             {

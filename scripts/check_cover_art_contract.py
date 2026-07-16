@@ -80,9 +80,79 @@ for required in (
     "peak_download_buffer_size_",
     "Artwork download exceeded transfer limit",
     "shrink_to(0)",
+    "new (std::nothrow) P4PipelineJob()",
+    "P4_PIPELINE_PENDING_SLOTS",
+    "P4_PIPELINE_COMPLETED_SLOTS",
+    "can_use_p4_pipeline(this->url_)",
 ):
     if required not in downloader:
         raise SystemExit(f"Artwork downloader memory contract missing: {required}")
+if """if (effective_url == this->url_) {
+      if (this->update_pending_) {
+        this->update_pending_ = false;
+        this->pending_url_.clear();
+""" not in downloader:
+    raise SystemExit("Artwork downloader must cancel a stale pending URL when the source returns to the active URL")
+if "std::make_shared<P4PipelineJob>" in downloader:
+    raise SystemExit("P4 artwork jobs must fail cleanly instead of throwing during allocation")
+if "std::vector<P4PipelineResult *> completed_" in downloader:
+    raise SystemExit("P4 artwork result publication must not allocate while holding the pipeline lock")
+if "header_names_" in downloader:
+    raise SystemExit("P4 artwork requests must remove moved headers without retaining allocating copies")
+for forbidden in (
+    "job->url = url",
+    "job->headers = headers",
+):
+    if forbidden in downloader:
+        raise SystemExit(f"P4 artwork job metadata must use checked or moved storage: {forbidden}")
+for required in (
+    "job->url = static_cast<char *>(heap_caps_malloc(",
+    "job->headers = std::move(headers)",
+    "if (job->cancelled.load()) {\n      delete result;\n      this->reset_client_();",
+):
+    if required not in downloader:
+        raise SystemExit(f"P4 artwork job safety contract missing: {required}")
+
+jpeg_decoder = (ROOT / "components" / "artwork_image" / "jpeg_image.cpp").read_text(encoding="utf-8")
+for required in (
+    """if (!this->set_size(target_width, target_height)) {
+      p4_release_jpeg_workspace();
+      return DECODE_ERROR_OUT_OF_MEMORY;
+    }""",
+    """if (!this->set_size(info.width, info.height)) {
+      p4_release_jpeg_workspace();
+      return DECODE_ERROR_OUT_OF_MEMORY;
+    }""",
+):
+    if required not in jpeg_decoder:
+        raise SystemExit("P4 JPEG workspace must be released after image buffer allocation failure")
+
+image_cards = (ROOT / "components" / "espcontrol" / "button_grid_image.h").read_text(encoding="utf-8")
+for required in (
+    "image_card_uses_background_pipeline(next->image, next->source_url)",
+):
+    if required not in image_cards:
+        raise SystemExit(f"Image card background-pipeline contract missing: {required}")
+modal_request_start = image_cards.find(
+    "inline bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {"
+)
+modal_request_end = image_cards.find(
+    "\ninline void image_card_schedule_source_refresh", modal_request_start
+)
+if modal_request_start < 0 or modal_request_end < 0:
+    raise SystemExit("Image card modal-request contract missing")
+modal_request = image_cards[modal_request_start:modal_request_end]
+if "ui.request_timer = lv_timer_create(" not in modal_request:
+    raise SystemExit("Image card modal requests must let the preview paint before refreshing")
+if "image_pipeline_can_start_followup_inline" in modal_request:
+    raise SystemExit("Image card modal requests must not bypass their preview-paint delay")
+modal_open_start = image_cards.find("inline void image_card_open_modal(ImageCardCtx *ctx) {")
+modal_open_end = image_cards.find("\ninline void image_card_handle_picture", modal_open_start)
+if modal_open_start < 0 or modal_open_end < 0:
+    raise SystemExit("Image card modal-open contract missing")
+modal_open = image_cards[modal_open_start:modal_open_end]
+if "ctx->next_download_retry_ms = 0;" in modal_open:
+    raise SystemExit("Opening an image modal must preserve an already scheduled tile retry")
 
 cover_art = (ROOT / "common" / "device" / "screen_cover_art.yaml").read_text(encoding="utf-8")
 resubscribe_start = cover_art.find("  - id: cover_art_resubscribe")
@@ -118,4 +188,23 @@ if 'state->entity_id, std::string("media_artist")' in metadata:
     raise SystemExit("Media track changes must not retain duplicate one-shot metadata reads")
 if "state->artist.clear()" in metadata:
     raise SystemExit("Media title updates must preserve an unchanged subscribed artist")
+
+grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+media_art_start = grid.find("inline void subscribe_media_cover_art(")
+media_art_end = grid.find("\ninline void setup_card_visual(", media_art_start)
+if media_art_start < 0 or media_art_end < 0:
+    raise SystemExit("Media card cover art subscription contract missing")
+media_art = grid[media_art_start:media_art_end]
+for required in (
+    'std::string("entity_picture")',
+    'std::string("entity_picture_local")',
+    "image_card_request_media_artwork(art)",
+):
+    if required not in media_art:
+        raise SystemExit(f"Media card cover art subscription contract missing: {required}")
+if "subscribe_image_card_entity_state" in media_art:
+    raise SystemExit(
+        "Media card cover art must not add a general entity-state subscription "
+        "on top of its picture subscriptions"
+    )
 print("Cover art policy, layout, and state contract checks passed.")

@@ -5,6 +5,7 @@
 
 using espcontrol::artwork::SourceCandidates;
 using espcontrol::artwork::RemoteUpdatePolicy;
+using espcontrol::artwork::source_response_can_apply_immediately;
 using espcontrol::cover_art::RuntimeState;
 
 int main() {
@@ -40,6 +41,12 @@ int main() {
   selected = sources.select("", false);
   assert(selected.primary == "local-new");
   assert(selected.fallback == "remote-old");
+
+  // A valid local proxy is already preferred and can skip the media-card
+  // debounce. Remote or empty responses must retain fallback scheduling.
+  assert(source_response_can_apply_immediately(true, true));
+  assert(!source_response_can_apply_immediately(false, true));
+  assert(!source_response_can_apply_immediately(true, false));
 
   // When a stable local proxy URL still points at the previous track, a fresh
   // remote URL wins for the refresh and the local URL remains the fallback.

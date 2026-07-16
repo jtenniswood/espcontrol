@@ -338,8 +338,6 @@ int main() {
   auto image_default = parse_cfg("camera.front_door;;Auto;Auto;;;image;;");
   assert(image_default.type == "image");
   assert(image_default.options == "");
-  assert(image_card_refresh_interval_ms(image_default) == 0);
-  assert(!image_card_timer_only_refresh(image_default));
   assert(!image_card_modal_fit_enabled(image_default));
   auto lawn_mower = parse_cfg("lawn_mower.backyard;Backyard Mower;Auto;Bell;pause_resume;ignored;lawn_mower;2;large_numbers");
   assert(lawn_mower.type == "lawn_mower");
@@ -377,8 +375,6 @@ int main() {
   auto image_label_refresh = parse_cfg("~camera.front_door,Front%20Door,Auto,Auto,,,image,,image_label%2Cimage_refresh=30%2Cimage_refresh_mode=timer");
   assert(image_label_refresh.label == "Front Door");
   assert(image_label_refresh.options == "image_label");
-  assert(image_card_refresh_interval_ms(image_label_refresh) == 0);
-  assert(!image_card_timer_only_refresh(image_label_refresh));
   auto image_fit_refresh = parse_cfg("~camera.front_door,,Auto,Auto,,,image,,image_modal_mode=fit%2Cimage_refresh=30%2Cimage_refresh_mode=timer");
   assert(image_fit_refresh.options == "image_modal_mode=fit");
   assert(image_card_modal_fit_enabled(image_fit_refresh));
@@ -394,15 +390,10 @@ int main() {
   auto image_refresh = parse_cfg("~camera.front_door,,Auto,Auto,,,image,,image_refresh=30%2Cimage_refresh_mode=timer");
   assert(image_refresh.type == "image");
   assert(image_refresh.options == "");
-  assert(image_card_refresh_interval_ms(image_refresh) == 0);
-  assert(!image_card_timer_only_refresh(image_refresh));
   auto image_refresh_default_mode = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_refresh=60,image_refresh_mode=bad");
   assert(image_refresh_default_mode.options == "");
-  assert(image_card_refresh_interval_ms(image_refresh_default_mode) == 0);
-  assert(!image_card_timer_only_refresh(image_refresh_default_mode));
   auto image_refresh_invalid = parse_cfg("camera.front_door;;Auto;Auto;;;image;;image_refresh=5,image_refresh_mode=timer");
   assert(image_refresh_invalid.options == "");
-  assert(image_card_refresh_interval_ms(image_refresh_invalid) == 0);
 
   auto light_control_default_tabs = parse_cfg("light.kitchen;Kitchen;Lightbulb Outline;Lightbulb;;;light_control;;light_tabs=power%7Cbrightness%7Ctemperature%7Ccolor");
   assert(light_control_default_tabs.type == "light_control");

@@ -18,6 +18,7 @@ DEVICE_CAPABILITIES_JSON = ROOT / "docs" / "public" / "device-profiles.json"
 DEVICE_DOCS_DIR = ROOT / "docs" / "generated" / "screens"
 COMPAT_FIXTURES = ROOT / "compatibility" / "fixtures" / "product_compatibility.json"
 BUTTON_GRID_CARDS = ROOT / "components" / "espcontrol" / "button_grid_cards.h"
+BUTTON_GRID_WEATHER_DRIVER = ROOT / "components" / "espcontrol" / "button_grid_weather_driver.h"
 BUTTON_GRID_WEATHER_FORECAST = ROOT / "components" / "espcontrol" / "button_grid_weather_forecast.h"
 REQUIRED_SETUP_ICON_GLYPHS = {
     r'"\U000F012C"': "mdi-check",
@@ -159,8 +160,8 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert f"id(image_card_download_{capacity})," in sensors, (
                 f"{slug}: sensors.yaml missing final image-card tile downloader"
             )
-            assert f"id(image_card_modal_download_{capacity})," in sensors, (
-                f"{slug}: sensors.yaml missing final image-card modal downloader"
+            assert "cfg.image_card_modal_image = id(image_card_modal_download_1);" in sensors, (
+                f"{slug}: sensors.yaml missing shared image-card modal downloader"
             )
         else:
             assert "image_cards:" not in package, f"{slug}: zero image-card profile should not include image cards"
@@ -356,33 +357,37 @@ def test_climate_card_icon_glyphs() -> None:
 
 def test_weather_card_visual_matches_preview() -> None:
     cards = BUTTON_GRID_CARDS.read_text(encoding="utf-8")
+    weather_driver = BUTTON_GRID_WEATHER_DRIVER.read_text(encoding="utf-8")
+    weather_visuals = cards + weather_driver
     styles = (ROOT / "src" / "webserver" / "application" / "styles.ts").read_text(encoding="utf-8")
     subpages = (ROOT / "components" / "espcontrol" / "button_grid_subpages.h").read_text(encoding="utf-8")
     weather_forecast = BUTTON_GRID_WEATHER_FORECAST.read_text(encoding="utf-8")
     assert ".sp-type-badge{display:none}" in styles, "web preview type badges should remain visually hidden"
-    assert "set_weather_card_badge" not in cards, (
+    assert "set_weather_card_badge" not in weather_visuals, (
         "device weather cards should not show the hidden web preview type badge"
     )
-    assert 'set_weather_card_badge(s, "Weather Cloudy")' not in cards, (
+    assert 'set_weather_card_badge(s, "Weather Cloudy")' not in weather_visuals, (
         "current weather device card should not render a visible weather badge"
     )
-    assert 'lv_label_set_text(s.text_lbl, espcontrol_i18n("Cloudy"))' in cards, (
+    assert 'lv_label_set_text(slot.text_lbl, espcontrol_i18n("Cloudy"))' in weather_driver, (
         "current weather device card should render the same label as the web preview"
     )
-    assert 'set_weather_card_badge(s, "Weather Partly Cloudy")' not in cards, (
+    assert 'set_weather_card_badge(s, "Weather Partly Cloudy")' not in weather_visuals, (
         "forecast weather device card should not render a visible forecast badge"
     )
     assert '"HA Actions"' not in weather_forecast, (
         "forecast weather errors should keep the configured/default label like the web preview"
     )
-    assert 'lv_label_set_text(s.unit_lbl, display_temperature_unit_symbol())' in cards, (
+    assert 'lv_label_set_text(slot.unit_lbl, display_temperature_unit_symbol())' in weather_driver, (
         "forecast weather placeholder should show the configured unit like the web preview"
     )
     assert 'lv_label_set_text(ref.unit_lbl, normalized_unit.c_str())' in weather_forecast, (
         "forecast weather unavailable state should keep showing the configured unit"
     )
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
-    setup_match = re.search(r"inline void setup_card_visual\([\s\S]*?if \(is_text_sensor_card", grid)
+    setup_start = grid.find("inline void setup_card_visual")
+    setup_end = grid.find("inline bool bind_basic_sensor_card", setup_start)
+    setup_visual = grid[setup_start:setup_end] if setup_start >= 0 and setup_end >= 0 else ""
     assert (
         "inline void reset_card_slot_dynamic_children" in grid
         and "lv_obj_del(child);" in grid
@@ -390,14 +395,12 @@ def test_weather_card_visual_matches_preview() -> None:
         and "lv_obj_clear_state(s.btn, LV_STATE_CHECKED);" in grid
         and "lv_obj_clear_state(s.btn, LV_STATE_DISABLED);" in grid
         and "lv_obj_set_style_opa(s.btn, LV_OPA_COVER, LV_PART_MAIN);" in grid
-        and setup_match
-        and "reset_card_slot_dynamic_children(s);" in setup_match.group(0)
+        and "reset_card_slot_dynamic_children(s);" in setup_visual
     ), "weather cards must clear stale widget children, active states, and opacity before rendering"
     assert (
-        setup_match
-        and "lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_match.group(0)
-        and "lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_match.group(0)
-        and "lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);" in setup_match.group(0)
+        "lv_obj_align(s.icon_lbl, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_visual
+        and "lv_obj_align(s.sensor_container, LV_ALIGN_TOP_LEFT, 0, 0);" in setup_visual
+        and "lv_obj_align(s.text_lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);" in setup_visual
     ), "weather cards must reset inherited icon, value, and label placement before rendering"
     assert "inline std::string normalize_weather_state" in weather_forecast, (
         "current weather device cards should normalize equivalent weather state spellings before mapping icons"
@@ -498,17 +501,17 @@ def test_weather_card_visual_matches_preview() -> None:
 
 
 def test_weather_card_mode_visibility_reset() -> None:
-    cards = BUTTON_GRID_CARDS.read_text(encoding="utf-8")
+    weather_driver = BUTTON_GRID_WEATHER_DRIVER.read_text(encoding="utf-8")
     match = re.search(
-        r"inline void setup_weather_card\(BtnSlot &s,[\s\S]*?\n\}",
-        cards,
+        r"inline bool weather_driver_setup_visual\([\s\S]*?\n\}",
+        weather_driver,
     )
     assert match, "current weather setup is missing"
     body = match.group(0)
-    assert "lv_obj_clear_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN)" in body, (
+    assert "lv_obj_clear_flag(slot.icon_lbl, LV_OBJ_FLAG_HIDDEN)" in body, (
         "current weather cards must restore the icon after forecast mode hid it"
     )
-    assert "lv_obj_add_flag(s.sensor_container, LV_OBJ_FLAG_HIDDEN)" in body, (
+    assert "lv_obj_add_flag(slot.sensor_container, LV_OBJ_FLAG_HIDDEN)" in body, (
         "current weather cards must hide the forecast sensor row"
     )
 
@@ -563,6 +566,7 @@ def test_temperature_unit_changes_refresh_weather_cards() -> None:
 def test_current_weather_state_keeps_normal_card_visuals() -> None:
     subscriptions = (ROOT / "components" / "espcontrol" / "button_grid_subscriptions.h").read_text(encoding="utf-8")
     grid = (ROOT / "components" / "espcontrol" / "button_grid_grid.h").read_text(encoding="utf-8")
+    weather_driver = BUTTON_GRID_WEATHER_DRIVER.read_text(encoding="utf-8")
     match = re.search(
         r"inline void subscribe_weather_state\([\s\S]*?\n\}",
         subscriptions,
@@ -582,13 +586,12 @@ def test_current_weather_state_keeps_normal_card_visuals() -> None:
     assert "weather_forecast_cancel_pending_requests();" in grid, (
         "dashboard reconfiguration must cancel stale weather forecast action responses"
     )
+    assert grid.count("if (bind_basic_sensor_card(") >= 2, (
+        "main-grid and subpage weather cards must use the same shared binding path"
+    )
     assert (
-        "if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)) continue;" in grid
-        and "if (bind_passive_card_sources(sub_slot, sb_cfg)) continue;" in grid
-    ), "subpage weather cards must use the same passive weather binding path as main-grid weather cards"
-    assert (
-        "if (p.type == \"weather\")" in grid
-        and "subscribe_weather_state(s.icon_lbl, s.text_lbl, p.entity)" in grid
+        "if (weather_driver_shows_forecast(config)) return true;" in weather_driver
+        and "subscribe_weather_state(slot.icon_lbl, slot.text_lbl, config.entity)" in weather_driver
     ), "subpage weather cards must use the same weather binding as main-grid weather cards"
 
 

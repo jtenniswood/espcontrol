@@ -4361,8 +4361,6 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "image_icon": "image_icon",
   "image_label": "image_label",
   "image_modal_mode": "image_modal_mode",
-  "image_refresh": "image_refresh",
-  "image_refresh_mode": "image_refresh_mode",
   "internal_mode": "internal_mode",
   "label_display": "label_display",
   "large_numbers": "large_numbers",

@@ -92,8 +92,21 @@ The generated web `CARD_RUNTIME_SPECS` registry is attached to matching
 in `button_grid_contract_generated.h`. Door/Window and Presence cards now use
 the shared handwritten `STATUS_ENTITY` lifecycle driver for main-grid and
 subpage visual setup, data binding, passive interaction, layout refresh, and
-cleanup. Other families remain on the existing `Family` dispatch until their
-reviewed migration PR switches them one family at a time.
+cleanup. Calendar, Clock, and Timezone use the shared handwritten `DATE_TIME`
+lifecycle driver for the same stages; Calendar keeps its Home Assistant date
+subscription, while Clock and Timezone share one local-time update registry.
+Sensor and its `local_sensor`/`text_sensor` compatibility forms use the shared
+`SENSOR` driver, including numeric, text, icon, duration, and local ESPHome data
+binding. Weather and forecast compatibility use the shared `WEATHER` driver
+while retaining the specialised forecast request registry. All of these paths
+are shared by the main grid and subpages. Switch, Light Switch, Fan Switch,
+Push, Internal, Webhook, Screen Lock, Action, local-action compatibility, and
+Alarm Action use the shared `BASIC_ACTION` lifecycle boundary while retaining
+their existing confirmation, service, local relay, HTTP, PIN, and state-display
+implementations. Option-select compatibility deliberately remains on fallback
+until the selectable-control family migration. Other families remain on the existing
+`Family` dispatch until their reviewed migration PR switches them one family at
+a time.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and

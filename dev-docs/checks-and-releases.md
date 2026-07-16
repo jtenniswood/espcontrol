@@ -138,6 +138,26 @@ Run `python3 scripts/build.py` after changing:
 Run `python3 scripts/generate_device_slots.py` after changing device font roles
 or slot/profile data that affects generated `sensors.yaml`.
 
+## Camera Performance Test Endpoint
+
+Use the controllable local camera endpoint when comparing P4 image changes or
+reproducing slow and broken responses:
+
+```bash
+python3 scripts/camera_test_endpoint.py --image path/to/camera-snapshot.jpg
+```
+
+The endpoint is available at `http://<computer-ip>:8765/camera.jpg`. Query
+parameters can add delayed headers, delayed chunks, chunk counts, HTTP errors,
+or malformed image data. For example,
+`?header_delay_ms=500&chunk_delay_ms=100&chunks=8` simulates a slow camera while
+`?status=503` and `?malformed=1` exercise failure handling. Run
+`python3 scripts/camera_test_endpoint.py --self-test` to verify the harness.
+
+When measuring on a panel, capture the firmware's response, first-byte,
+transfer, decode, and total timing log entries. Compare the same image, panel,
+network transport, and Home Assistant path before and after a change.
+
 ## Release-Sensitive Files
 
 Treat these as release-facing:

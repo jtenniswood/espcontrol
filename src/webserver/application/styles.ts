@@ -205,6 +205,7 @@ export function installStylesModule(): GlobalDescriptors {
         ".sp-settings-modal{position:relative;background:var(--bg);border:1px solid var(--border);" +
         "border-radius:var(--radius);width:90%;max-width:420px;max-height:80vh;" +
         "overflow-y:auto;box-shadow:var(--shadow-3);margin:40px;scrollbar-color:#fff transparent}" +
+        ".sp-settings-modal.sp-card-type-picker-open{max-width:720px}" +
         ".sp-settings-modal::-webkit-scrollbar{width:10px}" +
         ".sp-settings-modal::-webkit-scrollbar-track{background:transparent}" +
         ".sp-settings-modal::-webkit-scrollbar-thumb{background:#fff;border-radius:999px}" +

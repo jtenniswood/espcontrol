@@ -13,6 +13,7 @@ artwork_image:
     priority: TILE
     buffer_size: 8192
     allow_insecure_local_urls: true
+    p4_pipeline: TILE
 
   - url: "https://placehold.co/1x1/000000/000000.jpg"
     id: image_card_download_2
@@ -24,6 +25,7 @@ artwork_image:
     priority: TILE
     buffer_size: 8192
     allow_insecure_local_urls: true
+    p4_pipeline: TILE
 
   - url: "https://placehold.co/1x1/000000/000000.jpg"
     id: image_card_download_3
@@ -35,6 +37,7 @@ artwork_image:
     priority: TILE
     buffer_size: 8192
     allow_insecure_local_urls: true
+    p4_pipeline: TILE
 
   - url: "https://placehold.co/1x1/000000/000000.jpg"
     id: image_card_download_4
@@ -46,6 +49,7 @@ artwork_image:
     priority: TILE
     buffer_size: 8192
     allow_insecure_local_urls: true
+    p4_pipeline: TILE
 
   - url: "https://placehold.co/1x1/000000/000000.jpg"
     id: image_card_download_5
@@ -57,6 +61,7 @@ artwork_image:
     priority: TILE
     buffer_size: 8192
     allow_insecure_local_urls: true
+    p4_pipeline: TILE
 
   - url: "https://placehold.co/1x1/000000/000000.jpg"
     id: image_card_download_6
@@ -68,6 +73,7 @@ artwork_image:
     priority: TILE
     buffer_size: 8192
     allow_insecure_local_urls: true
+    p4_pipeline: TILE
 
   - url: "https://placehold.co/1x1/000000/000000.jpg"
     id: image_card_modal_download_1
@@ -79,61 +85,7 @@ artwork_image:
     priority: MODAL
     buffer_size: 8192
     allow_insecure_local_urls: true
-
-  - url: "https://placehold.co/1x1/000000/000000.jpg"
-    id: image_card_modal_download_2
-    format: AUTO
-    type: RGB565
-    byte_order: LITTLE_ENDIAN
-    resize: 1x1
-    resize_mode: COVER
-    priority: MODAL
-    buffer_size: 8192
-    allow_insecure_local_urls: true
-
-  - url: "https://placehold.co/1x1/000000/000000.jpg"
-    id: image_card_modal_download_3
-    format: AUTO
-    type: RGB565
-    byte_order: LITTLE_ENDIAN
-    resize: 1x1
-    resize_mode: COVER
-    priority: MODAL
-    buffer_size: 8192
-    allow_insecure_local_urls: true
-
-  - url: "https://placehold.co/1x1/000000/000000.jpg"
-    id: image_card_modal_download_4
-    format: AUTO
-    type: RGB565
-    byte_order: LITTLE_ENDIAN
-    resize: 1x1
-    resize_mode: COVER
-    priority: MODAL
-    buffer_size: 8192
-    allow_insecure_local_urls: true
-
-  - url: "https://placehold.co/1x1/000000/000000.jpg"
-    id: image_card_modal_download_5
-    format: AUTO
-    type: RGB565
-    byte_order: LITTLE_ENDIAN
-    resize: 1x1
-    resize_mode: COVER
-    priority: MODAL
-    buffer_size: 8192
-    allow_insecure_local_urls: true
-
-  - url: "https://placehold.co/1x1/000000/000000.jpg"
-    id: image_card_modal_download_6
-    format: AUTO
-    type: RGB565
-    byte_order: LITTLE_ENDIAN
-    resize: 1x1
-    resize_mode: COVER
-    priority: MODAL
-    buffer_size: 8192
-    allow_insecure_local_urls: true
+    p4_pipeline: MODAL
 
 interval:
   - interval: 250ms

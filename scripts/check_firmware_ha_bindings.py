@@ -365,6 +365,29 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
 
+    driver_path = firmware_dir / "button_grid_basic_action_driver.h"
+    if driver_path.exists():
+        driver_rel = driver_path.relative_to(root)
+        driver_text = driver_path.read_text(encoding="utf-8")
+        required = (
+            "basic_action_driver_bind_action_state",
+            "subscribe_action_card_display_state",
+            "case Driver::PUSH:",
+            '"Push %d"',
+            'ha_action_add_data(request, "slot", slot_buffer)',
+            '"esphome.push_button_pressed"',
+        )
+        for needle in required:
+            if needle not in driver_text:
+                errors.append(
+                    f"{driver_rel}: preserve shared Action state and Trigger event behavior ({needle})"
+                )
+        if "register_ha_control_availability" in driver_text:
+            errors.append(
+                f"{driver_rel}: keep stateless Action and Trigger cards tappable while Home Assistant availability is pending"
+            )
+        return errors
+
     stateless_main_pattern = re.compile(
         r"std::string\s+state_entity\s*=\s*action_card_state_entity\(p\);"
         r"(?P<body>.*?)continue;",
@@ -473,26 +496,46 @@ def firmware_action_card_script_fields_errors(firmware_dir: Path, root: Path) ->
 
 
 def firmware_local_sensor_binding_order_errors(firmware_dir: Path, root: Path) -> list[str]:
-    path = firmware_dir / "button_grid_grid.h"
-    if not path.exists():
+    grid_path = firmware_dir / "button_grid_grid.h"
+    driver_path = firmware_dir / "button_grid_sensor_driver.h"
+    if not grid_path.exists():
         return []
-    rel = path.relative_to(root)
-    text = path.read_text(encoding="utf-8")
+    grid_rel = grid_path.relative_to(root)
+    grid_text = grid_path.read_text(encoding="utf-8")
     errors: list[str] = []
 
-    if "if (sensor_card_local_sensor(p)) return false;" not in text:
-        errors.append(f"{rel}: keep local sensor subtypes out of bind_basic_sensor_card")
+    if not driver_path.exists():
+        errors.append(f"{grid_rel}: bind local sensor subtypes through the shared sensor driver")
+        return errors
 
-    for match in re.finditer(r"if\s*\(\s*bind_basic_sensor_card\s*\(", text):
+    driver_rel = driver_path.relative_to(root)
+    driver_text = driver_path.read_text(encoding="utf-8")
+    bind_match = re.search(
+        r"inline\s+bool\s+sensor_driver_bind_data\s*\([^)]*\)\s*\{(?P<body>.*?)\n\}",
+        driver_text,
+        re.DOTALL,
+    )
+    if bind_match is None:
+        errors.append(f"{driver_rel}: keep local sensor binding in sensor_driver_bind_data")
+    else:
+        bind_body = bind_match.group("body")
+        local_start = bind_body.find("if (sensor_driver_is_local(config, context))")
+        ha_text_start = bind_body.find("if (is_text_sensor_card(config))")
+        ha_sensor_start = bind_body.find("if (!config.sensor.empty())")
+        if local_start < 0 or "sensor_driver_register_local_value(slot, config)" not in bind_body:
+            errors.append(f"{driver_rel}: bind local sensor values through the local registry")
+        elif any(start >= 0 and local_start > start for start in (ha_text_start, ha_sensor_start)):
+            errors.append(f"{driver_rel}: bind local sensor values before Home Assistant sensor subscriptions")
+
+    if "sensor_driver_bind_data(" not in grid_text:
+        errors.append(f"{grid_rel}: bind sensor cards through the shared sensor driver")
+
+    for match in re.finditer(r"if\s*\(\s*bind_basic_sensor_card\s*\(", grid_text):
         bind_start = match.start()
-        image_start = text.rfind("if (bind_image_card", 0, bind_start)
-        line_no = text.count("\n", 0, bind_start) + 1
+        image_start = grid_text.rfind("if (bind_image_card", 0, bind_start)
+        line_no = grid_text.count("\n", 0, bind_start) + 1
         if image_start < 0:
-            errors.append(f"{rel}:{line_no}: bind image cards before basic sensor cards")
-            continue
-        pre_bind_window = text[image_start:bind_start]
-        if "sensor_card_local_sensor" not in pre_bind_window:
-            errors.append(f"{rel}:{line_no}: skip local sensor subtypes before Home Assistant sensor binding")
+            errors.append(f"{grid_rel}:{line_no}: bind image cards before basic sensor cards")
 
     return errors
 
@@ -1577,8 +1620,8 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: request expanded image-card downloads through the modal downloader")
     if "image_card_set_widget_source(ui.image_widget, ctx->modal_image)" not in text:
         errors.append(f"{rel}: swap expanded image cards to the modal-quality image after it downloads")
-    if "ctx->modal_image->release()" not in text:
-        errors.append(f"{rel}: release modal image-card buffers when the modal closes")
+    if "ImageCardModalCache" not in text or "image_card_modal_cache" not in text:
+        errors.append(f"{rel}: retain one shared modal image cache for instant reopen")
     if 'image_card_set_loading_state(loading, "Too many")' not in text:
         errors.append(f"{rel}: show a visible image-card limit message when downloaders run out")
     modal_refresh = re.search(
@@ -1588,11 +1631,13 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
     )
     if not modal_refresh:
         errors.append(f"{rel}: keep modal-quality image refresh enabled on the 4.3-inch P4 screen")
-    if (
-        "image_card_tile_prefetches_modal_quality" not in text
-        or "!control_modal_current_uses_compact_portrait_tuning()" not in text
-    ):
-        errors.append(f"{rel}: keep 4.3-inch P4 tile downloads sized to the tile before modal open")
+    tile_size = re.search(
+        r"inline\s+void\s+image_card_tile_request_size[^\{]*\{[^\}]*image_card_limit_target_size",
+        text,
+        re.S,
+    )
+    if not tile_size or "image_card_high_quality_request_size" in text:
+        errors.append(f"{rel}: size every image-card tile request to its on-screen bounds")
     if "Closing image modal" not in text:
         errors.append(f"{rel}: log image-card modal close events")
     if "image_card_abort_modal_open" not in text or "modal shell setup failed" not in text:
@@ -1608,6 +1653,24 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         or "image_card_queue_modal_source_request(ctx)" not in text
     ):
         errors.append(f"{rel}: show the cached image-card tile while modal-quality image loads")
+    modal_failure = re.search(
+        r"inline\s+void\s+image_card_show_modal_download_failure[^\{]*\{(?P<body>.*?)\n\}",
+        text,
+        re.S,
+    )
+    modal_failure_body = modal_failure.group("body") if modal_failure else ""
+    modal_error_handler = re.search(
+        r"inline\s+void\s+image_card_handle_modal_download_error[^\{]*\{(?P<body>.*?)\n\}",
+        text,
+        re.S,
+    )
+    modal_error_body = modal_error_handler.group("body") if modal_error_handler else ""
+    if (
+        "image_card_modal_has_preview(ctx)" not in modal_failure_body
+        or 'image_card_show_modal_loading(ctx, "Unavailable")' not in modal_failure_body
+        or "image_card_show_modal_download_failure(ctx)" not in modal_error_body
+    ):
+        errors.append(f"{rel}: keep an error state when image-card modals have no preview")
     if "lv_obj_set_style_clip_corner(ui.panel, true, LV_PART_MAIN)" not in text:
         errors.append(f"{rel}: clip image card modal content to rounded panel corners")
     if "image_card_apply_corner_clip" not in text:
@@ -1664,12 +1727,9 @@ def firmware_image_card_startup_errors(
         or "image_card_context_current(ctx, image_card_entity_id, image_card_generation)" not in text
     ):
         errors.append(f"{rel}: ignore stale image-card entity_picture callbacks after grid rebuild")
-    if (
-        ("image_card_tile_request_size(width, height" not in text and
-         "image_card_tile_request_size(decode_width, decode_height" not in text)
-        or "image_card_high_quality_request_size" not in text
-    ):
-        errors.append(f"{rel}: request high-quality Home Assistant image card source downloads")
+    if ("image_card_tile_request_size(width, height" not in text and
+        "image_card_tile_request_size(decode_width, decode_height" not in text):
+        errors.append(f"{rel}: request display-sized Home Assistant image card downloads")
     if "image_card_sized_url(ctx->source_url, request_width, request_height)" not in text:
         errors.append(f"{rel}: request bounded Home Assistant image card proxy downloads")
     if '"/api/camera_proxy/"' not in text or '"/api/image_proxy/"' not in text:
@@ -2564,12 +2624,15 @@ def expect_action_card_script_fields_errors(name: str, text: str, expected: tupl
             assert not errors, f"{name}: expected no errors, got {errors!r}"
 
 
-def expect_local_sensor_binding_order_errors(name: str, text: str, expected: tuple[str, ...]) -> None:
+def expect_local_sensor_binding_order_errors(
+    name: str, files: dict[str, str], expected: tuple[str, ...]
+) -> None:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         firmware_dir = root / "components" / "espcontrol"
         firmware_dir.mkdir(parents=True)
-        (firmware_dir / "button_grid_grid.h").write_text(text, encoding="utf-8")
+        for filename, text in files.items():
+            (firmware_dir / filename).write_text(text, encoding="utf-8")
 
         errors = firmware_local_sensor_binding_order_errors(firmware_dir, root)
         for item in expected:
@@ -3832,26 +3895,39 @@ def run_self_test() -> int:
         (),
     )
     expect_local_sensor_binding_order_errors(
-        "local sensor subtype reaches HA binding",
-        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const Context &context, const CardPalette &palette) {\n"
-        "  if (p.type == \"sensor\") return true;\n"
-        "}\n"
-        "if (bind_image_card(s, p, cfg)) continue;\n"
-        "if (bind_basic_sensor_card(s, p, context, palette)) continue;\n",
-        ("keep local sensor subtypes out of bind_basic_sensor_card", "skip local sensor subtypes"),
+        "local sensor subtype reaches HA subscription first",
+        {
+            "button_grid_grid.h":
+                "if (bind_image_card(s, p, cfg)) continue;\n"
+                "if (sensor_driver_bind_data(s, p, context, palette)) return true;\n"
+                "if (bind_basic_sensor_card(s, p, context, palette)) continue;\n",
+            "button_grid_sensor_driver.h":
+                "inline bool sensor_driver_bind_data(BtnSlot &slot, const ParsedCfg &config, const Context &context) {\n"
+                "  if (!config.sensor.empty()) subscribe_sensor_value();\n"
+                "  if (sensor_driver_is_local(config, context)) {\n"
+                "    sensor_driver_register_local_value(slot, config);\n"
+                "    return true;\n"
+                "  }\n"
+                "}\n",
+        },
+        ("bind local sensor values before Home Assistant sensor subscriptions",),
     )
     expect_local_sensor_binding_order_errors(
-        "local sensor subtype skipped before HA binding",
-        "inline bool bind_basic_sensor_card(BtnSlot &s, const ParsedCfg &p, const Context &context, const CardPalette &palette) {\n"
-        "  if (sensor_card_local_sensor(p)) return false;\n"
-        "  if (p.type == \"sensor\") return true;\n"
-        "}\n"
-        "if (bind_image_card(s, p, cfg)) continue;\n"
-        "if (p.type == \"local_sensor\" || sensor_card_local_sensor(p)) continue;\n"
-        "if (bind_basic_sensor_card(s, p, context, palette)) continue;\n"
-        "if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;\n"
-        "if (sb_cfg.type == \"local_sensor\" || sensor_card_local_sensor(sb_cfg)) continue;\n"
-        "if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)) continue;\n",
+        "local sensor subtype binds through shared driver",
+        {
+            "button_grid_grid.h":
+                "if (bind_image_card(s, p, cfg)) continue;\n"
+                "if (sensor_driver_bind_data(s, p, context, palette)) return true;\n"
+                "if (bind_basic_sensor_card(s, p, context, palette)) continue;\n",
+            "button_grid_sensor_driver.h":
+                "inline bool sensor_driver_bind_data(BtnSlot &slot, const ParsedCfg &config, const Context &context) {\n"
+                "  if (sensor_driver_is_local(config, context)) {\n"
+                "    sensor_driver_register_local_value(slot, config);\n"
+                "    return true;\n"
+                "  }\n"
+                "  if (!config.sensor.empty()) subscribe_sensor_value();\n"
+                "}\n",
+        },
         (),
     )
     expect_time_reconnect_errors(
@@ -5023,17 +5099,18 @@ def run_self_test() -> int:
             "use a separate modal image downloader for expanded image-card quality",
             "request expanded image-card downloads through the modal downloader",
             "swap expanded image cards to the modal-quality image after it downloads",
-            "release modal image-card buffers when the modal closes",
+            "retain one shared modal image cache for instant reopen",
             "support six concurrent image cards on P4 displays",
             "check free memory before image-card downloads",
             "include PSRAM in image-card memory checks",
             "show a visible image-card limit message when downloaders run out",
             "keep modal-quality image refresh enabled on the 4.3-inch P4 screen",
-            "keep 4.3-inch P4 tile downloads sized to the tile before modal open",
+            "size every image-card tile request to its on-screen bounds",
             "log image-card modal close events",
             "clean up partially-created image card modals",
             "keep image-card modal loading overlay centered",
             "show the cached image-card tile while modal-quality image loads",
+            "keep an error state when image-card modals have no preview",
             "clip image card modal content to rounded panel corners",
             "preserve image card rounded corners while pressed",
             "apply image card corner clipping to the pressed state",
@@ -5046,6 +5123,8 @@ def run_self_test() -> int:
         "constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;\n"
         "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;\n"
         "constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;\n"
+        "struct ImageCardModalCache {};\n"
+        "inline ImageCardModalCache &image_card_modal_cache();\n"
         "inline lv_style_selector_t image_card_pressed_selector() { return LV_STATE_PRESSED; }\n"
         "inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {}\n"
         "inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,\n"
@@ -5055,10 +5134,6 @@ def run_self_test() -> int:
         "}\n"
         "inline bool image_card_modal_refresh_supported() {\n"
         "  return true;\n"
-        "}\n"
-        "inline bool image_card_tile_prefetches_modal_quality() {\n"
-        "  return image_card_modal_refresh_supported() &&\n"
-        "         !control_modal_current_uses_compact_portrait_tuning();\n"
         "}\n"
         "inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,\n"
         "                                         int *target_width, int *target_height) {}\n"
@@ -5070,11 +5145,10 @@ def run_self_test() -> int:
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->image->set_target_size(width, height);\n"
         "  image_card_tile_request_size(width, height, &request_width, &request_height);\n"
-        "  ctx->url = image_card_cache_bust_url(image_card_sized_url(ctx->source_url, request_width, request_height));\n"
+        "  ctx->url = image_card_sized_url(ctx->source_url, request_width, request_height);\n"
         "}\n"
         "inline void image_card_tile_request_size(lv_coord_t target_width, lv_coord_t target_height,\n"
         "                                        int *request_width, int *request_height) {\n"
-        "  image_card_high_quality_request_size(target_width, target_height, request_width, request_height);\n"
         "  image_card_limit_target_size(target_width, target_height, request_width, request_height);\n"
         "}\n"
         "inline void image_card_refresh_tile_geometry(ImageCardCtx *ctx) {\n"
@@ -5085,6 +5159,16 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_request_modal_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->modal_image->request_update_url(ctx->modal_url, max_source_dim);\n"
+        "}\n"
+        "inline void image_card_show_modal_download_failure(ImageCardCtx *ctx) {\n"
+        "  if (image_card_modal_has_preview(ctx)) {\n"
+        "    image_card_hide_modal_loading(ctx);\n"
+        "  } else {\n"
+        "    image_card_show_modal_loading(ctx, \"Unavailable\");\n"
+        "  }\n"
+        "}\n"
+        "inline void image_card_handle_modal_download_error(ImageCardCtx *ctx) {\n"
+        "  image_card_show_modal_download_failure(ctx);\n"
         "}\n"
         "inline void image_card_abort_modal_open(ImageCardCtx *ctx, const char *reason) {\n"
         "  ESP_LOGW(\"image_card\", \"modal shell setup failed\");\n"
@@ -5101,7 +5185,6 @@ def run_self_test() -> int:
         "  }\n"
         "  ctx->image->cancel_update();\n"
         "  ESP_LOGI(\"image_card\", \"Closing image modal for %s\", ctx->entity_id.c_str());\n"
-        "  ctx->modal_image->release();\n"
         "}\n"
         "inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cfg,\n"
         "                            const ThemePalette &palette) {\n"
@@ -5131,7 +5214,7 @@ def run_self_test() -> int:
             "refresh image cards when the camera/image entity state changes",
             "ignore stale image-card callbacks after grid rebuild",
             "ignore stale image-card entity_picture callbacks after grid rebuild",
-            "request high-quality Home Assistant image card source downloads",
+            "request display-sized Home Assistant image card downloads",
             "request bounded Home Assistant image card proxy downloads",
             "recognize Home Assistant camera and image proxy URLs",
             "start image-card refresh when Home Assistant API connects",
@@ -5177,11 +5260,11 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
         "  image_card_tile_request_size(width, height, &request_width, &request_height);\n"
-        "  ctx->url = image_card_cache_bust_url(image_card_sized_url(ctx->source_url, request_width, request_height));\n"
+        "  ctx->url = image_card_sized_url(ctx->source_url, request_width, request_height);\n"
         "}\n"
         "inline void image_card_tile_request_size(lv_coord_t target_width, lv_coord_t target_height,\n"
         "                                        int *request_width, int *request_height) {\n"
-        "  image_card_high_quality_request_size(target_width, target_height, request_width, request_height);\n"
+        "  image_card_limit_target_size(target_width, target_height, request_width, request_height);\n"
         "}\n"
         "inline void refresh_image_cards() {\n"
         "  if (!ha_api_connected()) return;\n"

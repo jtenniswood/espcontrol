@@ -56,6 +56,9 @@ export function installButtonSettingsModule(): GlobalDescriptors {
     function renderButtonSettings(this: any, forceOpen?: any) {
         var container: any = els.buttonSettings;
         container.innerHTML = "";
+        var settingsModal: any = els.settingsOverlay ? els.settingsOverlay.querySelector(".sp-settings-modal") : null;
+        if (settingsModal)
+            settingsModal.classList.remove("sp-card-type-picker-open");
         var c: any = ctx();
         if (isConfigLocked()) {
             hideSettingsOverlay();
@@ -377,23 +380,6 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 ["2", "10.21"],
             ], value || "0", onChange);
         }
-        function selectDefaultCardType(this: any, option?: any) {
-            if (!option || option.disabled)
-                return null;
-            var pickerType: any = option.key;
-            var newType: any = defaultButtonTypeForPicker(pickerType);
-            b.type = newType;
-            if (state.settingsDraft && state.settingsDraft.key === draftKey) {
-                state.settingsDraft.typeSelected = true;
-            }
-            var td: any = BUTTON_TYPES[newType];
-            if (td && td.onSelect)
-                td.onSelect(b);
-            if (state.settingsDraft && state.settingsDraft.key === draftKey) {
-                state.settingsDraft.autoSelectedButton = cloneButtonConfig(b);
-            }
-            return pickerType;
-        }
         function clearAutomaticTypeDefaults(this: any) {
             var draft: any = state.settingsDraft;
             var automatic: any = draft && draft.key === draftKey && draft.autoSelectedButton;
@@ -409,6 +395,8 @@ export function installButtonSettingsModule(): GlobalDescriptors {
         function selectCardType(this: any, newType?: any) {
             var pickerType: any = newType;
             newType = defaultButtonTypeForPicker(newType);
+            var wasNewDraftWithoutType: any = isNewDraft && state.settingsDraft &&
+                state.settingsDraft.key === draftKey && !state.settingsDraft.typeSelected;
             var keepMediaEntity: any = (pickerType === "media_control" || pickerType === "media_cover_art") && b.type === "media";
             clearAutomaticTypeDefaults();
             if (isNewDraft && b.type === "action" && newType !== "action") {
@@ -442,8 +430,42 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 b.precision = "";
                 b.options = normalizeMediaOptions(b.options, b.sensor);
             }
+            if (wasNewDraftWithoutType && state.settingsDraft && state.settingsDraft.key === draftKey) {
+                state.settingsDraft.autoSelectedButton = cloneButtonConfig(b);
+            }
             saveField("type", b.type);
             renderButtonSettings();
+        }
+        function renderCardTypeGrid(this: any, options?: any) {
+            var field: any = document.createElement("div");
+            field.className = "sp-field sp-card-type-picker-field";
+            field.appendChild(fieldLabel("Card", "sp-card-type-picker"));
+            var grid: any = document.createElement("div");
+            grid.className = "sp-card-type-grid";
+            grid.id = "sp-card-type-picker";
+            grid.setAttribute("role", "list");
+            (options || []).forEach(function (this: any, o?: any) {
+                var item: any = document.createElement("button");
+                item.type = "button";
+                item.className = "sp-card-type-option";
+                item.disabled = !!o.disabled;
+                item.setAttribute("data-card-type", o.key);
+                item.setAttribute("aria-label", o.label + " card type");
+                item.appendChild(mdiIcon(o.icon || "card-outline", "sp-card-type-icon mdi"));
+                var copy: any = document.createElement("span");
+                copy.className = "sp-card-type-copy";
+                copy.appendChild(textSpan(o.label, "sp-card-type-title"));
+                copy.appendChild(textSpan(o.description || "", "sp-card-type-description"));
+                item.appendChild(copy);
+                item.addEventListener("click", function (this: any) {
+                    if (item.disabled)
+                        return;
+                    selectCardType(o.key);
+                });
+                grid.appendChild(item);
+            });
+            field.appendChild(grid);
+            return field;
         }
         function renderActiveDisplaySettings(this: any, panel?: any, button?: any, idPrefix?: any) {
             var hasIconOn: any = button.icon_on && button.icon_on !== "Auto";
@@ -562,13 +584,11 @@ export function installButtonSettingsModule(): GlobalDescriptors {
                 selectedTypeKey = "media_cover_art";
             var typeOpts: any = buttonTypePickerOptionList(c.isSub, selectedTypeKey);
             if (isNewDraftWithoutType) {
-                for (var defaultTypeIndex: any = 0; defaultTypeIndex < typeOpts.length; defaultTypeIndex++) {
-                    selectedTypeKey = selectDefaultCardType(typeOpts[defaultTypeIndex]);
-                    if (selectedTypeKey)
-                        break;
-                }
-                rawTypeDef = BUTTON_TYPES[b.type || ""] || BUTTON_TYPES[""];
-                typeDef = rawTypeDef;
+                if (settingsModal)
+                    settingsModal.classList.add("sp-card-type-picker-open");
+                panel.appendChild(renderCardTypeGrid(typeOpts));
+                container.appendChild(panel);
+                return;
             }
             var tf: any = document.createElement("div");
             tf.className = "sp-field";
