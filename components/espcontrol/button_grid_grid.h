@@ -141,6 +141,19 @@ inline FanCardCtx *grid_delete_fan_card_with_owner(
 inline FanCardCtx *grid_track_fan_card_runtime(
     lv_obj_t *owner, FanCardCtx *ctx);
 inline void refresh_slider_card_layout(BtnSlot &slot);
+inline bool bind_garage_status_card(
+    BtnSlot &slot, const ParsedCfg &config,
+    TransientStatusLabel **status_label_out);
+inline bool bind_gate_status_card(
+    BtnSlot &slot, const ParsedCfg &config,
+    TransientStatusLabel **status_label_out);
+inline LockCardCtx *bind_lock_status_card(
+    BtnSlot &slot, const ParsedCfg &config,
+    TransientStatusLabel **status_label_out);
+inline TransientStatusLabel *grid_track_transient_status_label_runtime(
+    lv_obj_t *owner, TransientStatusLabel *ctx);
+inline TransientStatusLabel *grid_delete_transient_status_label_with_owner(
+    lv_obj_t *owner, TransientStatusLabel *ctx);
 
 #include "button_grid_status_entity_driver.h"
 
@@ -186,6 +199,7 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
 #include "button_grid_basic_action_driver.h"
 #include "button_grid_numeric_selectable_driver.h"
 #include "button_grid_cleaning_driver.h"
+#include "button_grid_access_cover_driver.h"
 
 inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
                                         int row_span = 1) {
@@ -379,6 +393,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::basic_action_driver_cleanup(s, p, context);
   espcontrol::cards::numeric_selectable_driver_cleanup(s, p, context);
   espcontrol::cards::cleaning_driver_cleanup(s, p, context);
+  espcontrol::cards::access_cover_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
@@ -456,12 +471,12 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
     espcontrol::cards::cleaning_driver_refresh_layout(s, p, context);
     return;
   }
-  if (p.type == "garage") {
-    setup_garage_card(s, p);
-    return;
-  }
-  if (p.type == "gate") {
-    setup_gate_card(s, p);
+  if (espcontrol::cards::access_cover_driver_setup_visual(
+        s, p, context, palette)) {
+    espcontrol::cards::access_cover_driver_attach_interaction(
+      s, p, context);
+    espcontrol::cards::access_cover_driver_refresh_layout(
+      s, p, context);
     return;
   }
   if (subpage_parent_sensor_state_enabled(p)) {
@@ -469,10 +484,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s, p, display_sensor_font(display), cfg.subpage_chevrons_enabled,
       cfg.subpage_chevron_x, cfg.subpage_chevron_y,
       cfg.subpage_chevron_text_width_percent);
-    return;
-  }
-  if (p.type == "lock") {
-    setup_lock_card(s, p);
     return;
   }
   if (family == espcontrol::cards::Family::ALARM) {
@@ -485,14 +496,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
   if (family == espcontrol::cards::Family::COVER && cover_modal_mode(p.sensor)) {
     setup_cover_modal_card(s, p);
-    return;
-  }
-  if (family == espcontrol::cards::Family::COVER && cover_command_mode(p.sensor)) {
-    setup_cover_command_card(s, p);
-    return;
-  }
-  if (family == espcontrol::cards::Family::COVER && cover_toggle_mode(p.sensor)) {
-    setup_cover_toggle_card(s, p);
     return;
   }
   if (family == espcontrol::cards::Family::TODO) {
@@ -734,9 +737,9 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     }
   } else if (p.type == "media") {
     refresh_media_card_layout(s, p, cfg, row_span);
-  } else if (p.type == "cover" && !cover_modal_mode(p.sensor) &&
-             !cover_command_mode(p.sensor) && !cover_toggle_mode(p.sensor)) {
-    refresh_slider_card_layout(s);
+  } else {
+    espcontrol::cards::access_cover_driver_refresh_layout(
+      s, p, card_runtime_context(p));
   }
 }
 
@@ -910,6 +913,18 @@ inline T *grid_delete_with_owner(lv_obj_t *owner, T *ptr) {
 
 inline void grid_delete_alarm_card_runtime_ptr(void *ptr);
 inline void grid_delete_transient_status_label(TransientStatusLabel *ctx);
+
+inline TransientStatusLabel *grid_delete_transient_status_label_with_owner(
+    lv_obj_t *owner, TransientStatusLabel *ctx) {
+  if (owner != nullptr && ctx != nullptr) {
+    lv_obj_add_event_cb(owner, [](lv_event_t *event) {
+      grid_delete_transient_status_label(
+        static_cast<TransientStatusLabel *>(
+          lv_event_get_user_data(event)));
+    }, LV_EVENT_DELETE, ctx);
+  }
+  return ctx;
+}
 
 inline AlarmActionCtx *grid_delete_alarm_action_with_owner(lv_obj_t *owner,
                                                            AlarmActionCtx *ctx) {
@@ -1256,27 +1271,8 @@ inline void grid_phase2(
           s, p, context, palette, display)) continue;
     if (espcontrol::cards::cleaning_driver_bind_main(
           s, p, context)) continue;
-    if (p.type == "garage") {
-      if (!garage_command_mode(p.sensor) || garage_card_show_status(p)) {
-        TransientStatusLabel *status_label = nullptr;
-        bind_garage_status_card(s, p, &status_label);
-        grid_track_transient_status_label_runtime(s.btn, status_label);
-      }
-      continue;
-    }
-    if (p.type == "gate") {
-      if (!p.entity.empty()) {
-        if (gate_command_mode(p.sensor)) {
-          subscribe_control_availability(s.btn, s.btn, p.entity);
-        }
-      }
-      if (!gate_command_mode(p.sensor) || gate_card_show_status(p)) {
-        TransientStatusLabel *status_label = nullptr;
-        bind_gate_status_card(s, p, &status_label);
-        grid_track_transient_status_label_runtime(s.btn, status_label);
-      }
-      continue;
-    }
+    if (espcontrol::cards::access_cover_driver_bind_main(
+          s, p, context)) continue;
     if (subpage_parent_sensor_state_enabled(p)) {
       if (subpage_parent_text_state_enabled(p)) {
         subscribe_text_sensor_value(s.text_lbl, p.sensor);
@@ -1322,16 +1318,6 @@ inline void grid_phase2(
       }
       continue;
     }
-    if (p.type == "lock") {
-      if (!p.entity.empty()) {
-        if (!lock_command_mode(p.sensor)) {
-          TransientStatusLabel *status_label = nullptr;
-          grid_track_runtime_allocation(s.btn, bind_lock_status_card(s, p, &status_label));
-          grid_track_transient_status_label_runtime(s.btn, status_label);
-        }
-      }
-      continue;
-    }
     if (family == espcontrol::cards::Family::ALARM) {
       if (!p.entity.empty()) {
         AlarmCardCtx *ctx = create_alarm_card_context(
@@ -1368,30 +1354,6 @@ inline void grid_phase2(
           display_icon_font(display),
           display_main_width_percent(display));
         subscribe_fan_card_state(ctx);
-      }
-      continue;
-    }
-    if (p.type == "cover" && cover_command_mode(p.sensor)) {
-      lv_obj_set_user_data(s.btn, nullptr);
-      if (!p.entity.empty()) {
-        if (p.label.empty())
-          subscribe_friendly_name(s.text_lbl, p.entity);
-        CoverCommandCtx *ctx = create_cover_command_context(p);
-        grid_track_runtime_allocation(s.btn, ctx);
-        lv_obj_set_user_data(s.btn, ctx);
-        subscribe_cover_command_features(ctx);
-      }
-      continue;
-    }
-    if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
-      if (!p.entity.empty()) {
-        TransientStatusLabel *status_label = create_transient_status_label(
-          s.text_lbl, p.label.empty() ? espcontrol_i18n(std::string("Cover")) : p.label);
-        grid_track_transient_status_label_runtime(s.btn, status_label);
-        subscribe_cover_toggle_state(s.btn, s.icon_lbl, status_label,
-          slider_icon_off(p.type, p.entity, p.icon), slider_icon_on(p.type, p.entity, p.icon, p.icon_on), p.entity);
-        if (p.label.empty())
-          subscribe_friendly_name(status_label, p.entity);
       }
       continue;
     }
@@ -1564,18 +1526,6 @@ inline void grid_phase2(
       continue;
     }
 
-    if (p.type == "cover") {
-      lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(s.sensor_container);
-      bool sl_has_icon_on = slider_has_alt_icon(p.type, p.icon_on);
-      const char *sl_icon_on_cp = sl_has_icon_on ? slider_icon_on(p.type, p.entity, p.icon, p.icon_on) : nullptr;
-      const char *sl_icon_off_cp = sl_has_icon_on ? slider_icon_off(p.type, p.entity, p.icon) : nullptr;
-      subscribe_slider_state(s.btn, s.icon_lbl, slider,
-        sl_has_icon_on, sl_icon_off_cp, sl_icon_on_cp, p.entity,
-        p.type == "cover" && cover_tilt_mode(p.sensor));
-      if (p.label.empty())
-        subscribe_friendly_name(s.text_lbl, p.entity);
-      continue;
-    }
     has_sensor[idx - 1] = !p.sensor.empty();
     sensor_text_mode[idx - 1] = has_sensor[idx - 1] && p.precision == "text";
 
@@ -1837,6 +1787,16 @@ inline void grid_phase2(
         };
       if (espcontrol::cards::cleaning_driver_bind_subpage(
             sub_slot, sb_cfg, context, cleaning_environment)) continue;
+      espcontrol::cards::AccessCoverDriverSubpageEnvironment
+        access_cover_environment;
+      access_cover_environment.add_parent_indicator =
+        [&](const std::string &entity_id) { add_parent_indicator(entity_id); };
+      access_cover_environment.add_toggle_click =
+        [&](lv_obj_t *button, const std::string &entity_id, bool checked) {
+          add_subpage_toggle_click(button, entity_id, checked);
+        };
+      if (espcontrol::cards::access_cover_driver_bind_subpage(
+            sub_slot, sb_cfg, context, access_cover_environment)) continue;
       if (sb_cfg.type == "cover" && cover_modal_mode(sb_cfg.sensor)) {
         if (!sb_cfg.entity.empty()) {
           CoverControlCtx *ctx = create_cover_control_context(
@@ -1863,99 +1823,6 @@ inline void grid_phase2(
             CoverControlCtx *ctx = (CoverControlCtx *)lv_obj_get_user_data(target);
             if (ctx) cover_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, nullptr);
-        }
-        continue;
-      }
-      if (sb_cfg.type == "cover" && cover_command_mode(sb_cfg.sensor)) {
-        if (!sb_cfg.entity.empty()) {
-          if (sb_cfg.label.empty())
-            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
-          CoverCommandCtx *ctx = grid_delete_with_owner(sb_btn, create_cover_command_context(sb_cfg));
-          subscribe_cover_command_features(ctx);
-          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            CoverCommandCtx *c = (CoverCommandCtx *)lv_event_get_user_data(e);
-            if (c) send_cover_command_action(*c);
-          }, LV_EVENT_CLICKED, ctx);
-        }
-        continue;
-      }
-      if (sb_cfg.type == "cover" && cover_toggle_mode(sb_cfg.sensor)) {
-        if (!sb_cfg.entity.empty()) {
-          TransientStatusLabel *status_label = create_transient_status_label(
-            sub_slot.text_lbl, sb_cfg.label.empty() ? espcontrol_i18n(std::string("Cover")) : sb_cfg.label);
-          subscribe_cover_toggle_state(sub_slot.btn, sub_slot.icon_lbl, status_label,
-            slider_icon_off(sb_cfg.type, sb_cfg.entity, sb_cfg.icon),
-            slider_icon_on(sb_cfg.type, sb_cfg.entity, sb_cfg.icon, sb_cfg.icon_on),
-            sb_cfg.entity);
-          if (sb_cfg.label.empty())
-            subscribe_friendly_name(status_label, sb_cfg.entity);
-          add_parent_indicator(sb_cfg.entity);
-          add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
-        }
-        continue;
-      }
-      if (sb_cfg.type == "garage") {
-        if (!sb_cfg.entity.empty()) {
-          if (garage_command_mode(sb_cfg.sensor)) {
-            if (garage_card_show_status(sb_cfg)) {
-              bind_garage_status_card(sub_slot, sb_cfg);
-              add_parent_indicator(sb_cfg.entity);
-            }
-            ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
-            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
-              if (c) send_cover_command_action(*c);
-            }, LV_EVENT_CLICKED, ctx);
-          } else {
-            if (bind_garage_status_card(sub_slot, sb_cfg)) {
-              add_parent_indicator(sb_cfg.entity);
-              add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
-            }
-          }
-        }
-        continue;
-      }
-      if (sb_cfg.type == "gate") {
-        if (!sb_cfg.entity.empty()) {
-          if (gate_command_mode(sb_cfg.sensor)) {
-            subscribe_control_availability(sub_slot.btn, sub_slot.btn, sb_cfg.entity);
-            if (gate_card_show_status(sb_cfg)) {
-              bind_gate_status_card(sub_slot, sb_cfg);
-              add_parent_indicator(sb_cfg.entity);
-            }
-            ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
-            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
-              if (c) send_cover_command_action(*c);
-            }, LV_EVENT_CLICKED, ctx);
-          } else {
-            if (bind_gate_status_card(sub_slot, sb_cfg)) {
-              add_parent_indicator(sb_cfg.entity);
-              add_subpage_toggle_click(sb_btn, sb_cfg.entity, true);
-            }
-          }
-        }
-        continue;
-      }
-      if (sb_cfg.type == "lock") {
-        if (!sb_cfg.entity.empty()) {
-          if (lock_command_mode(sb_cfg.sensor)) {
-            ParsedCfg *ctx = grid_delete_with_owner(sb_btn, new ParsedCfg(sb_cfg));
-            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              ParsedCfg *c = (ParsedCfg *)lv_event_get_user_data(e);
-              if (c) send_lock_command_action(*c);
-            }, LV_EVENT_CLICKED, ctx);
-          } else {
-            LockCardCtx *lock_ctx = bind_lock_status_card(sub_slot, sb_cfg);
-            if (lock_ctx) {
-              grid_delete_with_owner(sb_btn, lock_ctx);
-              add_parent_indicator(sb_cfg.entity);
-              lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-                LockCardCtx *ctx = (LockCardCtx *)lv_event_get_user_data(e);
-                if (ctx) send_lock_action(ctx);
-              }, LV_EVENT_CLICKED, lock_ctx);
-            }
-          }
         }
         continue;
       }
@@ -2202,30 +2069,6 @@ inline void grid_phase2(
             LightControlCtx *ctx = (LightControlCtx *)lv_event_get_user_data(e);
             if (ctx) light_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
-        }
-        continue;
-      }
-      if (sb_cfg.type == "cover") {
-        if (!sb_cfg.entity.empty()) {
-          lv_obj_t *slider = (lv_obj_t *)lv_obj_get_user_data(sub_slot.sensor_container);
-          bool sl_has_icon_on = slider_has_alt_icon(sb_cfg.type, sb_cfg.icon_on);
-          const char *sl_icon_on = sl_has_icon_on
-            ? slider_icon_on(sb_cfg.type, sb_cfg.entity, sb_cfg.icon, sb_cfg.icon_on) : nullptr;
-          const char *sl_icon_off = sl_has_icon_on
-            ? slider_icon_off(sb_cfg.type, sb_cfg.entity, sb_cfg.icon) : nullptr;
-          if (slider) {
-            subscribe_slider_state(sub_slot.btn, sub_slot.icon_lbl, slider,
-              sl_has_icon_on, sl_icon_off, sl_icon_on, sb_cfg.entity,
-              sb_cfg.type == "cover" && cover_tilt_mode(sb_cfg.sensor));
-          }
-          if (sb_cfg.label.empty())
-            subscribe_friendly_name(sub_slot.text_lbl, sb_cfg.entity);
-          add_parent_indicator(sb_cfg.entity);
-          std::string *eid = grid_delete_with_owner(sb_btn, new std::string(sb_cfg.entity));
-          lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-            std::string *en = (std::string *)lv_event_get_user_data(e);
-            if (en && !en->empty()) send_slider_action(*en, -1);
-          }, LV_EVENT_CLICKED, eid);
         }
         continue;
       }

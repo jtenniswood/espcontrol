@@ -93,6 +93,11 @@ inline bool driver_uses_legacy_dispatch(
       return false;
     case Driver::VACUUM:
     case Driver::LAWN_MOWER:
+    case Driver::ACCESS:
+    case Driver::COVER_COMMAND:
+    case Driver::COVER_TOGGLE:
+    case Driver::COVER_POSITION:
+    case Driver::COVER_TILT:
       return false;
     default: return true;
   }

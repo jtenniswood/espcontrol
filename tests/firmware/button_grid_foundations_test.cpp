@@ -59,6 +59,9 @@ int main() {
   const auto option_select = card_runtime_context("option_select");
   const auto vacuum = card_runtime_context("vacuum");
   const auto mower = card_runtime_context("lawn_mower");
+  const auto garage = card_runtime_context("garage");
+  const auto gate = card_runtime_context("gate");
+  const auto lock = card_runtime_context("lock");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
       door.legacy_dispatch || presence.legacy_dispatch ||
       clock.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
@@ -95,6 +98,10 @@ int main() {
       vacuum.runtime.driver != espcontrol::card_runtime::CardDriverId::VACUUM ||
       mower.runtime.driver != espcontrol::card_runtime::CardDriverId::LAWN_MOWER ||
       vacuum.legacy_dispatch || mower.legacy_dispatch ||
+      garage.runtime.driver != espcontrol::card_runtime::CardDriverId::ACCESS ||
+      gate.runtime.driver != espcontrol::card_runtime::CardDriverId::ACCESS ||
+      lock.runtime.driver != espcontrol::card_runtime::CardDriverId::ACCESS ||
+      garage.legacy_dispatch || gate.legacy_dispatch || lock.legacy_dispatch ||
       !card_runtime_information_only(image) || card_runtime_passive(image) ||
       !image.legacy_dispatch) {
     return EXIT_FAILURE;
@@ -105,12 +112,31 @@ int main() {
   };
   const auto cover = card_runtime_context(
       TestConfig{"cover", "tilt"}, espcontrol::cards::Surface::SUBPAGE);
+  const auto cover_position = card_runtime_context(
+      TestConfig{"cover", ""});
+  const auto cover_toggle = card_runtime_context(
+      TestConfig{"cover", "toggle"});
+  const auto cover_command = card_runtime_context(
+      TestConfig{"cover", "open"});
+  const auto cover_modal = card_runtime_context(
+      TestConfig{"cover", "modal"});
   const auto option_select_compatibility = card_runtime_context(
       TestConfig{"action", card_runtime_option_select_canonical_action()});
   if (cover.runtime.type != espcontrol::card_runtime::CardTypeId::COVER ||
       cover.runtime.driver != espcontrol::card_runtime::CardDriverId::COVER_TILT ||
       cover.surface != espcontrol::cards::Surface::SUBPAGE ||
-      !cover.allow_in_subpage) {
+      !cover.allow_in_subpage || cover.legacy_dispatch ||
+      cover_position.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::COVER_POSITION ||
+      cover_toggle.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::COVER_TOGGLE ||
+      cover_command.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::COVER_COMMAND ||
+      cover_position.legacy_dispatch || cover_toggle.legacy_dispatch ||
+      cover_command.legacy_dispatch ||
+      cover_modal.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::COVER_MODAL ||
+      !cover_modal.legacy_dispatch) {
     return EXIT_FAILURE;
   }
   if (option_select_compatibility.legacy_dispatch ||
