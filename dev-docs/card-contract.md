@@ -270,10 +270,10 @@ order:
    `components/espcontrol/button_grid_<type>.h`.
 5. Include the new header from `components/espcontrol/button_grid.h`.
 6. While legacy dispatch remains active, assign the type to a `Family` in
-   `button_grid_card_registry.h`, then wire its visual and runtime adapters in
-   `button_grid_grid.h`. Both the main grid and subpages must route through the
-   same implementation; surface-specific ownership or navigation can remain in
-   the adapter.
+   `button_grid_card_registry.h`. When migrating it, add a shared lifecycle
+   driver that owns visual setup, data binding, interaction, layout, cleanup,
+   and main/subpage click dispatch. Surface-specific ownership or navigation
+   can remain in that driver's environment adapter.
 7. If firmware parsing must understand new fields or options, update
    `components/espcontrol/button_grid_config.h`.
 8. If the card opens a full-screen modal, add a `ControlModalKind` value and use

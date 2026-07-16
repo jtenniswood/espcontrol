@@ -91,6 +91,9 @@ inline bool driver_uses_legacy_dispatch(
       return false;
     case Driver::FAN:
       return false;
+    case Driver::VACUUM:
+    case Driver::LAWN_MOWER:
+      return false;
     default: return true;
   }
 }

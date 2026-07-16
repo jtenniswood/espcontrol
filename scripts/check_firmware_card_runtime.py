@@ -52,6 +52,7 @@ SENSOR_HEADER = "button_grid_sensor_driver.h"
 WEATHER_HEADER = "button_grid_weather_driver.h"
 BASIC_ACTION_HEADER = "button_grid_basic_action_driver.h"
 NUMERIC_SELECTABLE_HEADER = "button_grid_numeric_selectable_driver.h"
+CLEANING_HEADER = "button_grid_cleaning_driver.h"
 CARDS_HEADER = "button_grid_cards.h"
 
 
@@ -153,6 +154,9 @@ def check_root(root: Path) -> list[str]:
             or "numeric_selectable_driver_setup_visual( s, p, context, palette, display)" not in compact_grid
             or "numeric_selectable_driver_bind_main( s, p, context, palette, display)" not in compact_grid
             or "numeric_selectable_driver_bind_subpage( sub_slot, sb_cfg, context, numeric_environment)" not in compact_grid
+            or "cleaning_driver_setup_visual(s, p, context)" not in compact_grid
+            or "cleaning_driver_bind_main( s, p, context)" not in compact_grid
+            or "cleaning_driver_bind_subpage( sub_slot, sb_cfg, context, cleaning_environment)" not in compact_grid
             or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
             or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
         ):
@@ -182,12 +186,17 @@ def check_root(root: Path) -> list[str]:
             'sb_cfg.type == "light_temperature"', 'sb_cfg.type == "fan_speed"',
             'sb_cfg.type == "fan_oscillate"', 'sb_cfg.type == "fan_direction"',
             'sb_cfg.type == "fan_preset"', 'sb_cfg.type == "option_select"',
+            'family == espcontrol::cards::Family::VACUUM',
+            'family == espcontrol::cards::Family::MOWER',
         ):
             if direct_branch in text:
                 failures.append(
                     f"components/espcontrol/{GRID_HEADER}: keep migrated type overrides inside shared drivers"
                 )
-        if 'parent_subpage_kind == "lawn_mower"' not in text or "lawn_mower_state_active_ref" not in text:
+        if (
+            "cleaning_environment.add_mower_parent_indicator" not in text
+            or "lawn_mower_state_active_ref" not in text
+        ):
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route mower subpage parent indicators through mower active-state handling"
             )
@@ -214,6 +223,7 @@ def check_root(root: Path) -> list[str]:
             or "Legacy action fallback" not in click_body
             or "basic_action_driver_handle_main_click(" not in click_body
             or "numeric_selectable_driver_handle_main_click(" not in click_body
+            or "cleaning_driver_handle_main_click(" not in click_body
         ):
             failures.append(
                 f"components/espcontrol/{ACTION_HEADER}: route passive checks through the shared card context"
@@ -389,6 +399,37 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{NUMERIC_SELECTABLE_HEADER}: missing shared numeric/selectable driver"
         )
+    cleaning_header = root / "components" / "espcontrol" / CLEANING_HEADER
+    if cleaning_header.exists():
+        text = cleaning_header.read_text(encoding="utf-8")
+        required = (
+            "cleaning_driver_setup_visual",
+            "cleaning_driver_bind_main",
+            "cleaning_driver_bind_subpage",
+            "cleaning_driver_attach_interaction",
+            "cleaning_driver_refresh_layout",
+            "cleaning_driver_cleanup",
+            "cleaning_driver_handle_main_click",
+            "cleaning_driver_refresh_translated_text",
+            "cleaning_driver_refresh_subpage_translated_text",
+            "create_vacuum_card_context",
+            "subscribe_vacuum_card_state",
+            "send_vacuum_card_action",
+            "create_lawn_mower_card_context",
+            "subscribe_lawn_mower_card_state",
+            "send_lawn_mower_card_action",
+            '"vacuum"',
+            '"lawn_mower"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{CLEANING_HEADER}: missing shared cleaning lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{CLEANING_HEADER}: missing shared cleaning driver"
+        )
     cards_header = root / "components" / "espcontrol" / CARDS_HEADER
     if cards_header.exists():
         text = cards_header.read_text(encoding="utf-8")
@@ -554,6 +595,15 @@ def run_self_test() -> None:
                 )
             },
             ("missing shared numeric/selectable lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_cleaning_driver.h": (
+                    "inline bool cleaning_driver_setup_visual() {}\n"
+                    "inline bool cleaning_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared cleaning lifecycle guard",),
         ),
         (
             {

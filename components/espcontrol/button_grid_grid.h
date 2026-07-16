@@ -185,6 +185,7 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
 #include "button_grid_weather_driver.h"
 #include "button_grid_basic_action_driver.h"
 #include "button_grid_numeric_selectable_driver.h"
+#include "button_grid_cleaning_driver.h"
 
 inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
                                         int row_span = 1) {
@@ -377,6 +378,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::weather_driver_cleanup(s, p, context);
   espcontrol::cards::basic_action_driver_cleanup(s, p, context);
   espcontrol::cards::numeric_selectable_driver_cleanup(s, p, context);
+  espcontrol::cards::cleaning_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
@@ -449,6 +451,11 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s, p, context);
     return;
   }
+  if (espcontrol::cards::cleaning_driver_setup_visual(s, p, context)) {
+    espcontrol::cards::cleaning_driver_attach_interaction(s, p, context);
+    espcontrol::cards::cleaning_driver_refresh_layout(s, p, context);
+    return;
+  }
   if (p.type == "garage") {
     setup_garage_card(s, p);
     return;
@@ -486,14 +493,6 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   }
   if (family == espcontrol::cards::Family::COVER && cover_toggle_mode(p.sensor)) {
     setup_cover_toggle_card(s, p);
-    return;
-  }
-  if (family == espcontrol::cards::Family::VACUUM) {
-    setup_vacuum_card(s, p);
-    return;
-  }
-  if (family == espcontrol::cards::Family::MOWER) {
-    setup_lawn_mower_card(s, p);
     return;
   }
   if (family == espcontrol::cards::Family::TODO) {
@@ -793,12 +792,10 @@ inline void grid_refresh_layout(
     navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     refresh_card_layout(s, p, cfg, row_span);
-    if (p.type == "vacuum") {
-      refresh_vacuum_card_translated_text(
-        s.text_lbl, static_cast<VacuumCardCtx *>(lv_obj_get_user_data(s.btn)), p);
-    }
+    espcontrol::cards::cleaning_driver_refresh_translated_text(
+      s, p, card_runtime_context(p));
   }
-  refresh_subpage_vacuum_card_translated_text();
+  espcontrol::cards::cleaning_driver_refresh_subpage_translated_text();
   ESP_LOGI("sensors", "Grid refresh: layout done (%lu ms)", esphome::millis());
 }
 
@@ -1257,6 +1254,8 @@ inline void grid_phase2(
           toggle_state)) continue;
     if (espcontrol::cards::numeric_selectable_driver_bind_main(
           s, p, context, palette, display)) continue;
+    if (espcontrol::cards::cleaning_driver_bind_main(
+          s, p, context)) continue;
     if (p.type == "garage") {
       if (!garage_command_mode(p.sensor) || garage_card_show_status(p)) {
         TransientStatusLabel *status_label = nullptr;
@@ -1393,26 +1392,6 @@ inline void grid_phase2(
           slider_icon_off(p.type, p.entity, p.icon), slider_icon_on(p.type, p.entity, p.icon, p.icon_on), p.entity);
         if (p.label.empty())
           subscribe_friendly_name(status_label, p.entity);
-      }
-      continue;
-    }
-    if (family == espcontrol::cards::Family::VACUUM) {
-      lv_obj_set_user_data(s.btn, nullptr);
-      if (!p.entity.empty() && vacuum_card_mode_needs_state(p.sensor)) {
-        VacuumCardCtx *ctx = create_vacuum_card_context(s, p);
-        grid_track_runtime_allocation(s.btn, ctx);
-        subscribe_vacuum_card_state(ctx);
-        lv_obj_set_user_data(s.btn, ctx);
-      }
-      continue;
-    }
-    if (family == espcontrol::cards::Family::MOWER) {
-      lv_obj_set_user_data(s.btn, nullptr);
-      if (!p.entity.empty() && lawn_mower_card_mode_needs_state(p.sensor)) {
-        LawnMowerCardCtx *ctx = create_lawn_mower_card_context(s, p);
-        grid_track_runtime_allocation(s.btn, ctx);
-        subscribe_lawn_mower_card_state(ctx);
-        lv_obj_set_user_data(s.btn, ctx);
       }
       continue;
     }
@@ -1848,6 +1827,16 @@ inline void grid_phase2(
         [&](const std::string &entity_id) { add_parent_indicator(entity_id); };
       if (espcontrol::cards::numeric_selectable_driver_bind_subpage(
             sub_slot, sb_cfg, context, numeric_environment)) continue;
+      espcontrol::cards::CleaningDriverSubpageEnvironment
+        cleaning_environment;
+      cleaning_environment.add_parent_indicator =
+        [&](const std::string &entity_id) { add_parent_indicator(entity_id); };
+      cleaning_environment.add_mower_parent_indicator =
+        [&](const std::string &entity_id) {
+          add_parent_indicator(entity_id, lawn_mower_state_active_ref);
+        };
+      if (espcontrol::cards::cleaning_driver_bind_subpage(
+            sub_slot, sb_cfg, context, cleaning_environment)) continue;
       if (sb_cfg.type == "cover" && cover_modal_mode(sb_cfg.sensor)) {
         if (!sb_cfg.entity.empty()) {
           CoverControlCtx *ctx = create_cover_control_context(
@@ -2020,41 +2009,6 @@ inline void grid_phase2(
             FanCardCtx *ctx = (FanCardCtx *)lv_event_get_user_data(e);
             if (ctx) fan_control_open_modal(ctx);
           }, LV_EVENT_CLICKED, ctx);
-        }
-        continue;
-      }
-      if (family == espcontrol::cards::Family::VACUUM) {
-        if (!sb_cfg.entity.empty()) {
-          VacuumCardCtx *ctx = create_vacuum_card_context(sub_slot, sb_cfg);
-          grid_delete_with_owner(sb_btn, ctx);
-          register_subpage_vacuum_card_text(sub_slot.text_lbl, ctx, sb_cfg);
-          if (vacuum_card_mode_needs_state(sb_cfg.sensor)) {
-            subscribe_vacuum_card_state(ctx);
-          }
-          add_parent_indicator(sb_cfg.entity);
-          if (!vacuum_card_read_only(sb_cfg)) {
-            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              VacuumCardCtx *ctx = (VacuumCardCtx *)lv_event_get_user_data(e);
-              send_vacuum_card_action(ctx);
-            }, LV_EVENT_CLICKED, ctx);
-          }
-        }
-        continue;
-      }
-      if (family == espcontrol::cards::Family::MOWER) {
-        if (!sb_cfg.entity.empty()) {
-          LawnMowerCardCtx *ctx = create_lawn_mower_card_context(sub_slot, sb_cfg);
-          grid_delete_with_owner(sb_btn, ctx);
-          if (lawn_mower_card_mode_needs_state(sb_cfg.sensor)) {
-            subscribe_lawn_mower_card_state(ctx);
-          }
-          add_parent_indicator(sb_cfg.entity, lawn_mower_state_active_ref);
-          if (!lawn_mower_card_read_only(sb_cfg)) {
-            lv_obj_add_event_cb(sb_btn, [](lv_event_t *e) {
-              LawnMowerCardCtx *ctx = (LawnMowerCardCtx *)lv_event_get_user_data(e);
-              send_lawn_mower_card_action(ctx);
-            }, LV_EVENT_CLICKED, ctx);
-          }
         }
         continue;
       }

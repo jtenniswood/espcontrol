@@ -57,6 +57,8 @@ int main() {
   const auto fan_direction = card_runtime_context("fan_direction");
   const auto fan_preset = card_runtime_context("fan_preset");
   const auto option_select = card_runtime_context("option_select");
+  const auto vacuum = card_runtime_context("vacuum");
+  const auto mower = card_runtime_context("lawn_mower");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
       door.legacy_dispatch || presence.legacy_dispatch ||
       clock.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
@@ -90,6 +92,9 @@ int main() {
       light_temperature.legacy_dispatch || fan_speed.legacy_dispatch ||
       fan_oscillate.legacy_dispatch || fan_direction.legacy_dispatch ||
       fan_preset.legacy_dispatch || option_select.legacy_dispatch ||
+      vacuum.runtime.driver != espcontrol::card_runtime::CardDriverId::VACUUM ||
+      mower.runtime.driver != espcontrol::card_runtime::CardDriverId::LAWN_MOWER ||
+      vacuum.legacy_dispatch || mower.legacy_dispatch ||
       !card_runtime_information_only(image) || card_runtime_passive(image) ||
       !image.legacy_dispatch) {
     return EXIT_FAILURE;

@@ -824,6 +824,8 @@ inline bool basic_action_driver_handle_main_click(
     int slot_number, lv_obj_t *button);
 inline bool numeric_selectable_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool cleaning_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
 }
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
@@ -844,6 +846,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   if (espcontrol::cards::basic_action_driver_handle_main_click(
         context, p, slot_num, btn_obj)) return;
   if (espcontrol::cards::numeric_selectable_driver_handle_main_click(
+        context, p, btn_obj)) return;
+  if (espcontrol::cards::cleaning_driver_handle_main_click(
         context, p, btn_obj)) return;
   if (p.type == "subpage") {
     lv_obj_t *sub_scr = (lv_obj_t *)lv_obj_get_user_data(btn_obj);
@@ -891,27 +895,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
     if (!p.entity.empty()) {
       set_card_checked_state(btn_obj, true);
       send_toggle_action(p.entity);
-    }
-  } else if (p.type == "vacuum") {
-    VacuumCardCtx *ctx = (VacuumCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) {
-      send_vacuum_card_action(ctx);
-    } else if (!vacuum_card_read_only(p)) {
-      VacuumCardCtx fallback;
-      fallback.entity_id = p.entity;
-      fallback.mode = vacuum_card_mode(p.sensor);
-      fallback.area_id = p.unit;
-      send_vacuum_card_action(&fallback);
-    }
-  } else if (p.type == "lawn_mower") {
-    LawnMowerCardCtx *ctx = (LawnMowerCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) {
-      send_lawn_mower_card_action(ctx);
-    } else if (!lawn_mower_card_read_only(p)) {
-      LawnMowerCardCtx fallback;
-      fallback.entity_id = p.entity;
-      fallback.mode = lawn_mower_card_mode(p.sensor);
-      send_lawn_mower_card_action(&fallback);
     }
   } else if (p.type == "todo") {
     TodoCardCtx *ctx = (TodoCardCtx *)lv_obj_get_user_data(btn_obj);
