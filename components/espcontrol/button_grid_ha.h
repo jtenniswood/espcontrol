@@ -65,6 +65,42 @@ inline bool ha_internal_heap_available(const char *stage,
   return true;
 }
 
+// Last-known Home Assistant state per subscribed entity/attribute. Home
+// Assistant only sends current values for subscriptions it learns about at
+// connect time (APIConnection announces state_subs_ once per connection), so a
+// subscription created later — e.g. the live "Apply Configuration" grid
+// rebuild — would only ever see future changes, leaving rebuilt tiles on their
+// default ("off") state. Every incoming push is cached here and replayed to
+// new subscriptions so rebuilt tiles reflect the current state immediately.
+struct HaStateCacheEntry {
+  std::string entity_id;
+  std::string attribute;
+  std::string value;
+};
+
+inline std::vector<HaStateCacheEntry> &ha_state_cache() {
+  static std::vector<HaStateCacheEntry> cache;
+  return cache;
+}
+
+inline std::string *ha_state_cache_find(const std::string &entity_id,
+                                        const std::string &attribute) {
+  for (auto &entry : ha_state_cache()) {
+    if (entry.entity_id == entity_id && entry.attribute == attribute) return &entry.value;
+  }
+  return nullptr;
+}
+
+inline void ha_state_cache_store(const std::string &entity_id,
+                                 const std::string &attribute,
+                                 esphome::StringRef state) {
+  if (std::string *value = ha_state_cache_find(entity_id, attribute)) {
+    value->assign(state.c_str(), state.size());
+    return;
+  }
+  ha_state_cache().push_back({entity_id, attribute, std::string(state.c_str(), state.size())});
+}
+
 struct EspHomeHaReadTransport {
   using State = esphome::StringRef;
   using Callback = HomeAssistantStateCallback;
@@ -81,7 +117,16 @@ struct EspHomeHaReadTransport {
                  const std::string &attribute,
                  Callback callback) {
     esphome::api::global_api_server->subscribe_home_assistant_state(
-        entity_id, attribute, std::move(callback));
+        entity_id, attribute,
+        [entity_id, attribute, callback](esphome::StringRef state) {
+          ha_state_cache_store(entity_id, attribute, state);
+          callback(state);
+        });
+    // Replay the last-known value so runtime re-subscribes start correct; the
+    // cache is empty at boot, so boot subscriptions are unaffected.
+    if (const std::string *cached = ha_state_cache_find(entity_id, attribute)) {
+      callback(esphome::StringRef(*cached));
+    }
   }
 };
 

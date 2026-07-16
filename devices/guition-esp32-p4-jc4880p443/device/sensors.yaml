@@ -157,7 +157,8 @@ script:
           grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3, sp_ext4, sp_ext5, sp_ext6, sp_ext7,
             id(button_order).state,
             id(button_on_color).state,
-            id(main_page)->obj);
+            id(main_page)->obj, id(config_apply_reconstruct));
+          id(config_apply_reconstruct) = false;
       - script.execute: clock_bar_apply
 
 esphome:

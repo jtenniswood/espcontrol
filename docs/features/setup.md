@@ -105,9 +105,9 @@ The **Settings** tab also includes display, brightness, screensaver, backup, and
 
 Open **Settings > System > Home Assistant Settings** to change **Home Assistant Port** if your Home Assistant instance does not use the default `8123` port. Camera/image cards and media artwork downloads use this port when loading images from Home Assistant.
 
-## Apply Configuration
+## Changes Apply Automatically
 
-After making changes, tap **Apply Configuration** at the bottom of the page. The panel restarts and loads your new settings — you'll see a message while it reconnects.
+Edits take effect on the panel by themselves a few seconds after you make them — no apply step and no restart. Layout changes (moving or resizing cards, grid size, rotation) show up immediately.
 
 ## Restart From Home Assistant
 
@@ -134,4 +134,4 @@ actions:
       entity_id: button.your_panel_restart
 ```
 
-The web setup page's **Apply Configuration** button remains separate: use it after saving web settings, and use the Home Assistant **Restart** entity when you only need to restart the display.
+Setup-page changes apply automatically; use the Home Assistant **Restart** entity when you need to restart the display itself.
