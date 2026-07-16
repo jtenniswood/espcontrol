@@ -10,6 +10,7 @@ using esphome::artwork_image::image_pipeline_modal_can_open;
 using esphome::artwork_image::image_pipeline_modal_cache_matches;
 using esphome::artwork_image::image_pipeline_can_start_followup_inline;
 using esphome::artwork_image::image_pipeline_cached_target_changed;
+using esphome::artwork_image::image_resize_aspect_differs;
 using esphome::artwork_image::image_pipeline_should_cancel_modal_cleanup;
 using esphome::artwork_image::image_pipeline_should_preempt_stale_modal;
 using esphome::artwork_image::p4_pipeline_transfer_capacity;
@@ -90,6 +91,14 @@ int main() {
   assert(image_pipeline_cached_target_changed(true, 320, 240, 480, 320));
   assert(!image_pipeline_cached_target_changed(true, 320, 240, 320, 240));
   assert(!image_pipeline_cached_target_changed(false, 320, 240, 480, 320));
+
+  // Square album artwork still needs cover scaling when its card is wide or
+  // tall. Matching source/target ratios can safely skip that work.
+  assert(image_resize_aspect_differs(600, 600, 480, 320));
+  assert(image_resize_aspect_differs(600, 600, 320, 480));
+  assert(!image_resize_aspect_differs(600, 600, 320, 320));
+  assert(!image_resize_aspect_differs(1200, 800, 480, 320));
+  assert(image_resize_aspect_differs(1200, 800, 320, 480));
 
   // PPA stores scale in sixteenth-step units. The old arbitrary ratio was
   // truncated (for example 0.672 to 0.625), leaving noisy right/bottom strips.

@@ -3,20 +3,22 @@ export function installPublicFirmwareInstallModule(): GlobalDescriptors {
     // ── Public Firmware Web OTA ────────────────────────────────────────────
     function ensurePublicFirmwareOtaUrl(this: any, info?: any) {
         info = info || selectedFirmwareInfo();
+        var requestedVersion: any = info && info.latest_version ? info.latest_version : "";
         if (info && info.ota_url)
             return Promise.resolve(info.ota_url);
-        if (state.firmwareOtaUrl)
+        if (!isSpecificFirmwareVersion(requestedVersion) && state.firmwareOtaUrl)
             return Promise.resolve(state.firmwareOtaUrl);
         return getJsonQuietly(publicFirmwareVersionsUrl(), function (this: any, d?: any) {
             setPublicFirmwareVersions(firmwareInfosFromPublicVersions(d));
         }).then(function (this: any) {
-            info = selectedFirmwareInfo();
+            info = firmwareInfoForVersion(requestedVersion);
             if (info && info.ota_url)
                 return info.ota_url;
             return getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
                 setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
             }).then(function (this: any) {
-                return state.firmwareOtaUrl || "";
+                info = firmwareInfoForVersion(requestedVersion);
+                return info && info.ota_url ? info.ota_url : "";
             });
         });
     }
@@ -26,8 +28,10 @@ export function installPublicFirmwareInstallModule(): GlobalDescriptors {
     }
     function installPublicFirmwareViaWebOta(this: any, info?: any) {
         info = info || selectedFirmwareInfo();
+        var installingLatest: any = !info ||
+            firmwareVersionsSame(info.latest_version, state.firmwareLatestVersion);
         return getJsonQuietly(publicFirmwareManifestUrl(), function (this: any, d?: any) {
-            if (!info || selectedFirmwareIsLatest())
+            if (installingLatest)
                 setPublicFirmwareInfo(firmwareInfoFromPublicManifest(d));
         }).then(function (this: any) {
             info = info || selectedFirmwareInfo();

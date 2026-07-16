@@ -395,7 +395,6 @@ export function installSettingsPageModule(): GlobalDescriptors {
         appendSettingsSection(config, "System", [
             systemSettingsCards.backupCard,
             systemSettingsCards.firmwareCard,
-            systemSettingsCards.wifiFirmwareCard,
             systemSettingsCards.homeAssistantSettingsCard,
         ]);
         page.appendChild(config);

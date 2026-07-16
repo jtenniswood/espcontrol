@@ -72,6 +72,7 @@ struct ImageCardCtx {
   lv_obj_t *media_overlay = nullptr;
   std::string pending_fallback_picture;
   espcontrol::artwork::SourceCandidates media_artwork_sources;
+  uint8_t media_artwork_retry_mask = 0;
   lv_timer_t *media_artwork_timer = nullptr;
   lv_timer_t *modal_cleanup_timer = nullptr;
   uint8_t startup_download_errors = 0;
@@ -480,6 +481,7 @@ inline void image_card_clear_media_artwork(ImageCardCtx *ctx) {
   ctx->url.clear();
   ctx->pending_fallback_picture.clear();
   ctx->media_artwork_sources.clear();
+  ctx->media_artwork_retry_mask = 0;
   if (ctx->media_artwork_timer) {
     lv_timer_del(ctx->media_artwork_timer);
     ctx->media_artwork_timer = nullptr;
@@ -801,6 +803,7 @@ inline void reset_image_card_pool(const GridConfig &cfg) {
     contexts[i].media_overlay = nullptr;
     contexts[i].pending_fallback_picture.clear();
     contexts[i].media_artwork_sources.clear();
+    contexts[i].media_artwork_retry_mask = 0;
     if (contexts[i].media_artwork_timer) {
       lv_timer_del(contexts[i].media_artwork_timer);
       contexts[i].media_artwork_timer = nullptr;
@@ -1349,10 +1352,37 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
 inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
                                                     esphome::StringRef picture,
                                                     bool local);
+inline void image_card_request_picture(ImageCardCtx *ctx);
 inline void image_card_request_media_artwork(ImageCardCtx *ctx);
 inline bool image_card_context_current(ImageCardCtx *ctx,
                                        const std::string &entity_id,
                                        uint32_t generation);
+
+inline void image_card_request_current_picture(ImageCardCtx *ctx) {
+  if (!ctx) return;
+  if (ctx->media_artwork) {
+    image_card_request_media_artwork(ctx);
+  } else {
+    image_card_request_picture(ctx);
+  }
+}
+
+// Explicit refreshes (for example after Home Assistant reconnects) must read
+// both artwork attributes. Timed retries keep the mask so they only resubmit
+// the source that previously failed to queue.
+inline void image_card_refresh_current_picture(ImageCardCtx *ctx) {
+  if (!ctx) return;
+  if (ctx->media_artwork) {
+    ctx->media_artwork_retry_mask = 0;
+    ctx->media_artwork_sources.clear();
+    ctx->pending_fallback_picture.clear();
+    if (ctx->media_artwork_timer) {
+      lv_timer_del(ctx->media_artwork_timer);
+      ctx->media_artwork_timer = nullptr;
+    }
+  }
+  image_card_request_current_picture(ctx);
+}
 
 inline void image_card_schedule_picture_retry(ImageCardCtx *ctx, uint32_t delay_ms) {
   if (!ctx || !ctx->active) return;
@@ -1935,7 +1965,10 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
     }
     return;
   }
-  ctx->next_picture_retry_ms = 0;
+  if (espcontrol::artwork::artwork_picture_response_clears_retry(
+        ctx->media_artwork, ctx->media_artwork_retry_mask)) {
+    ctx->next_picture_retry_ms = 0;
+  }
   uint32_t now = esphome::millis();
   bool source_changed = ctx->source_url != url;
   if (ctx->image_ready && ctx->source_url == url && ctx->last_download_completed_ms != 0 &&
@@ -1985,6 +2018,8 @@ inline void image_card_handle_media_artwork_picture(ImageCardCtx *ctx,
                                                     esphome::StringRef picture,
                                                     bool local) {
   if (!ctx || !ctx->active || !ctx->media_artwork) return;
+  ctx->media_artwork_retry_mask = espcontrol::artwork::artwork_source_mark_received(
+    ctx->media_artwork_retry_mask, local);
   std::string raw = string_ref_limited(picture, 4096);
   std::string url = image_card_join_url(image_card_base_url(ctx), raw);
   // These two attribute requests run independently. A delayed remote callback
@@ -2017,24 +2052,41 @@ inline void image_card_request_media_artwork(ImageCardCtx *ctx) {
   if (!ctx || !ctx->active || !ctx->media_artwork || ctx->entity_id.empty()) return;
   const std::string entity_id = ctx->entity_id;
   const uint32_t generation = ha_subscription_generation();
-  ha_get_attribute(
-    entity_id,
-    std::string("entity_picture"),
-    std::function<void(esphome::StringRef)>(
-      [ctx, entity_id, generation](esphome::StringRef picture) {
-        if (!image_card_context_current(ctx, entity_id, generation)) return;
-        image_card_handle_media_artwork_picture(ctx, picture, false);
-      })
-  );
-  ha_get_attribute(
-    entity_id,
-    std::string("entity_picture_local"),
-    std::function<void(esphome::StringRef)>(
-      [ctx, entity_id, generation](esphome::StringRef picture) {
-        if (!image_card_context_current(ctx, entity_id, generation)) return;
-        image_card_handle_media_artwork_picture(ctx, picture, true);
-      })
-  );
+  uint8_t request_mask = espcontrol::artwork::artwork_source_request_mask(
+    ctx->media_artwork_retry_mask);
+  bool remote_queued = true;
+  if ((request_mask & espcontrol::artwork::ARTWORK_SOURCE_REMOTE) != 0) {
+    remote_queued = ha_get_attribute(
+      entity_id,
+      std::string("entity_picture"),
+      std::function<void(esphome::StringRef)>(
+        [ctx, entity_id, generation](esphome::StringRef picture) {
+          if (!image_card_context_current(ctx, entity_id, generation)) return;
+          image_card_handle_media_artwork_picture(ctx, picture, false);
+        })
+    );
+  }
+  bool local_queued = true;
+  if ((request_mask & espcontrol::artwork::ARTWORK_SOURCE_LOCAL) != 0) {
+    local_queued = ha_get_attribute(
+      entity_id,
+      std::string("entity_picture_local"),
+      std::function<void(esphome::StringRef)>(
+        [ctx, entity_id, generation](esphome::StringRef picture) {
+          if (!image_card_context_current(ctx, entity_id, generation)) return;
+          image_card_handle_media_artwork_picture(ctx, picture, true);
+        })
+    );
+  }
+  ctx->media_artwork_retry_mask = espcontrol::artwork::artwork_source_failed_mask(
+    request_mask, remote_queued, local_queued);
+  if (ctx->media_artwork_retry_mask != 0) {
+    image_card_log_diagnostics(ctx, "media-artwork-retry-queued");
+    image_card_schedule_picture_retry(
+      ctx,
+      ha_api_connected() ? IMAGE_CARD_API_RETRY_INTERVAL_MS : IMAGE_CARD_RETRY_INTERVAL_MS);
+    if (!ctx->image_ready) image_card_set_loading_state(ctx, "Loading", true);
+  }
 }
 
 inline void refresh_image_cards() {
@@ -2049,7 +2101,7 @@ inline void refresh_image_cards() {
       image_card_set_loading_state(ctx, "Loading", true);
     }
     ctx->next_picture_retry_ms = 0;
-    image_card_request_picture(ctx);
+    image_card_refresh_current_picture(ctx);
   }
 }
 
@@ -2062,7 +2114,7 @@ inline void image_card_refresh_due() {
     if (ctx->next_picture_retry_ms != 0 &&
         (int32_t)(now - ctx->next_picture_retry_ms) >= 0) {
       ctx->next_picture_retry_ms = 0;
-      image_card_request_picture(ctx);
+      image_card_request_current_picture(ctx);
     }
     if (ctx->next_download_retry_ms != 0 &&
         (int32_t)(now - ctx->next_download_retry_ms) >= 0) {
@@ -2112,6 +2164,7 @@ inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cf
   ctx->media_artwork = false;
   ctx->media_overlay = nullptr;
   ctx->pending_fallback_picture.clear();
+  ctx->media_artwork_retry_mask = 0;
   ctx->diagnostics_enabled = cfg.image_card_diagnostics;
   ctx->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
   ctx->width_compensation_percent = cfg.width_compensation_percent;

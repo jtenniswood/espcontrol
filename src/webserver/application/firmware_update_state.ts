@@ -12,12 +12,20 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
     function publicFirmwareInstallAvailable(this: any) {
         return publicFirmwareReleaseKnown() && !installedFirmwareMatchesPublicRelease();
     }
-    function firmwareInstallAvailable(this: any) {
-        var info: any = selectedFirmwareInfo();
+    function latestFirmwareInfo(this: any) {
+        return findFirmwareVersionInfo(state.firmwareLatestVersion) || latestFirmwareInfoFromState();
+    }
+    function latestFirmwareInstallAvailable(this: any) {
+        var info: any = latestFirmwareInfo();
         return state.firmwareInstallControlsSupported === true &&
             !!info &&
             isSpecificFirmwareVersion(info.latest_version) &&
-            !selectedFirmwareMatchesInstalled();
+            !installedFirmwareMatchesPublicRelease();
+    }
+    function latestFirmwareInstallAction(this: any) {
+        if (!latestFirmwareInstallAvailable())
+            return "check";
+        return firmwareUpdateAvailable() ? "install" : "check_then_install";
     }
     function latestFirmwareInfoFromState(this: any) {
         if (!isSpecificFirmwareVersion(state.firmwareLatestVersion))
@@ -44,57 +52,72 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
             return latest;
         return null;
     }
+    function firmwareInfoForVersion(this: any, version?: any) {
+        return isSpecificFirmwareVersion(version) ? findFirmwareVersionInfo(version) : selectedFirmwareInfo();
+    }
     function selectedFirmwareInfo(this: any) {
         return findFirmwareVersionInfo(state.firmwareSelectedVersion) ||
             (state.firmwareVersionOptions.length ? state.firmwareVersionOptions[0] : null) ||
             latestFirmwareInfoFromState();
     }
-    function selectedFirmwareVersion(this: any) {
-        var info: any = selectedFirmwareInfo();
-        return info ? info.latest_version : "";
+    function previousFirmwareInfos(this: any) {
+        return state.firmwareVersionOptions.filter(function (this: any, info?: any) {
+            var version: any = info && info.latest_version;
+            return isSpecificFirmwareVersion(version) &&
+                !firmwareVersionsSame(version, state.firmwareLatestVersion) &&
+                !firmwareVersionsSame(version, state.firmwareVersion);
+        });
     }
-    function selectedFirmwareIsLatest(this: any) {
-        var version: any = selectedFirmwareVersion();
-        return !version || !publicFirmwareReleaseKnown() ||
-            firmwareVersionsSame(version, state.firmwareLatestVersion);
+    function selectedPreviousFirmwareInfo(this: any) {
+        var options: any = previousFirmwareInfos();
+        for (var i: any = 0; i < options.length; i++) {
+            if (firmwareVersionsSame(options[i].latest_version, state.firmwareSelectedVersion)) {
+                return options[i];
+            }
+        }
+        return options.length ? options[0] : null;
     }
-    function selectedFirmwareMatchesInstalled(this: any) {
-        var version: any = selectedFirmwareVersion();
-        return isSpecificFirmwareVersion(version) &&
-            isSpecificFirmwareVersion(state.firmwareVersion) &&
-            firmwareVersionsSame(state.firmwareVersion, version);
+    function previousFirmwareInstallAvailable(this: any) {
+        var info: any = selectedPreviousFirmwareInfo();
+        return state.firmwareInstallControlsSupported === true &&
+            !!info &&
+            !firmwareVersionsSame(info.latest_version, state.firmwareVersion);
     }
     function firmwareVersionSelectorVisible(this: any) {
-        return state.firmwareVersionIndexLoaded && state.firmwareVersionOptions.length > 1;
+        return state.firmwareVersionIndexLoaded && previousFirmwareInfos().length > 0;
     }
     function syncFirmwareVersionSelect(this: any) {
         if (!els.fwVersionSelect)
             return;
-        var options: any = state.firmwareVersionOptions;
+        var options: any = previousFirmwareInfos();
         els.fwVersionSelect.innerHTML = "";
         if (!options.length) {
-            if (els.fwVersionField)
-                els.fwVersionField.style.display = "none";
+            state.firmwareSelectedVersion = "";
+            syncPreviousFirmwareUi();
             return;
         }
-        if (!findFirmwareVersionInfo(state.firmwareSelectedVersion)) {
-            state.firmwareSelectedVersion = options[0].latest_version;
-        }
+        state.firmwareSelectedVersion = selectedPreviousFirmwareInfo().latest_version;
         for (var i: any = 0; i < options.length; i++) {
             var info: any = options[i];
             var option: any = document.createElement("option");
             option.value = info.latest_version;
-            option.textContent = info.latest_version +
-                (i === 0 || firmwareVersionsSame(info.latest_version, state.firmwareLatestVersion) ? " (Latest)" : "");
-            if (firmwareVersionsSame(info.latest_version, state.firmwareVersion)) {
-                option.textContent += " (Installed)";
-            }
+            option.textContent = info.latest_version;
             els.fwVersionSelect.appendChild(option);
         }
         els.fwVersionSelect.value = state.firmwareSelectedVersion;
-        if (els.fwVersionField) {
-            els.fwVersionField.style.display =
-                firmwareUpdateControlsVisible() && firmwareVersionSelectorVisible() ? "" : "none";
+        syncPreviousFirmwareUi();
+    }
+    function syncPreviousFirmwareUi(this: any) {
+        var show: any = firmwareUpdateControlsVisible() && firmwareVersionSelectorVisible();
+        if (els.fwPreviousPanel)
+            els.fwPreviousPanel.style.display = show ? "" : "none";
+        var busy: any = state.firmwareUpdateState === "INSTALLING" || state.firmwareChecking;
+        if (els.fwVersionSelect)
+            els.fwVersionSelect.disabled = busy || !show;
+        if (els.fwPreviousInstallBtn) {
+            els.fwPreviousInstallBtn.disabled = busy || !show || !previousFirmwareInstallAvailable();
+            els.fwPreviousInstallBtn.className = "sp-fw-btn" + (busy ? " sp-fw-btn-busy" : "");
+            els.fwPreviousInstallBtn.textContent = state.firmwareUpdateState === "INSTALLING" ? "Installing…" : "Install";
         }
     }
     function setPublicFirmwareInfo(this: any, info?: any) {
@@ -141,16 +164,9 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
             isSpecificFirmwareVersion(state.firmwareVersion) &&
             firmwareVersionsSame(state.firmwareVersion, state.firmwareLatestVersion);
     }
-    function publicFirmwareStatusHtml(this: any) {
-        var info: any = selectedFirmwareInfo() || latestFirmwareInfoFromState();
-        var isLatest: any = selectedFirmwareIsLatest();
-        var version: any = info && info.latest_version ? info.latest_version : state.firmwareLatestVersion;
-        var releaseUrl: any = info && info.release_url ? info.release_url : state.firmwareReleaseUrl;
-        var status: any = (isLatest ? "Latest public version: " : "Selected firmware version: ") + escHtml(version);
-        if (releaseUrl) {
-            status += ' <a href="' + escAttr(releaseUrl) + '" target="_blank" rel="noopener">release notes</a>';
-        }
-        return status;
+    function firmwareUpToDateStatusAvailable(this: any) {
+        return state.firmwareUpdateState === "NO UPDATE" &&
+            (!publicFirmwareReleaseKnown() || installedFirmwareMatchesPublicRelease());
     }
     function firmwareUpdateControlsVisible(this: any) {
         return state.firmwareUpdateControlsSupported === true;
@@ -161,14 +177,18 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
             els.fwActions.style.display = show ? "" : "none";
         if (els.fwStatus)
             els.fwStatus.style.display = show ? "" : "none";
-        if (els.fwVersionField) {
-            els.fwVersionField.style.display = show && firmwareVersionSelectorVisible() ? "" : "none";
-        }
+        if (els.autoUpdatePanel)
+            els.autoUpdatePanel.style.display = show ? "" : "none";
+        if (els.autoUpdateBadge)
+            els.autoUpdateBadge.classList.toggle("sp-hidden", !state.autoUpdate);
+        if (els.firmwareUpdatesBadge)
+            els.firmwareUpdatesBadge.classList.toggle("sp-hidden", !latestFirmwareInstallAvailable());
         if (els.setAutoUpdateRow)
             els.setAutoUpdateRow.style.display = show ? "" : "none";
         if (els.updateFreqWrap) {
             els.updateFreqWrap.style.display = show && state.autoUpdate ? "" : "none";
         }
+        syncPreviousFirmwareUi();
     }
     function renderFirmwareUpdateStatus(this: any) {
         if (!els.fwStatus)
@@ -176,41 +196,23 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
         var cls: any = "sp-fw-status";
         var status: any = "";
         var inlineStatus: any = "";
-        if (state.firmwareUpdateState === "INSTALLING") {
-            status = state.firmwareInstallStatus || "Installing update\u2026";
-            cls += " sp-update-installing";
+        if (els.fwLatestVersion) {
+            if (publicFirmwareReleaseKnown()) {
+                els.fwLatestVersion.textContent = state.firmwareLatestVersion;
+            }
+            else if (state.firmwareChecking) {
+                els.fwLatestVersion.textContent = "Checking\u2026";
+            }
+            else {
+                els.fwLatestVersion.textContent = "Not checked";
+            }
         }
-        else if (state.firmwareInstallError) {
+        if (state.firmwareInstallError) {
             status = escHtml(state.firmwareInstallError);
             cls += " sp-update-error";
         }
-        else if (firmwareInstallAvailable()) {
-            status = publicFirmwareStatusHtml();
-            cls += " sp-update-available";
-        }
-        else if (state.firmwareUpdateState === "NO UPDATE") {
-            if (selectedFirmwareMatchesInstalled()) {
-                inlineStatus = selectedFirmwareIsLatest() ? "Up to date" : "Installed";
-            }
-            else if (publicFirmwareReleaseKnown() &&
-                isSpecificFirmwareVersion(state.firmwareVersion) &&
-                !installedFirmwareMatchesPublicRelease()) {
-                status = publicFirmwareStatusHtml();
-            }
-            else {
-                inlineStatus = "Up to date";
-            }
-        }
-        else if (publicFirmwareReleaseKnown()) {
-            if (selectedFirmwareMatchesInstalled()) {
-                inlineStatus = selectedFirmwareIsLatest() ? "Up to date" : "Installed";
-            }
-            else {
-                status = publicFirmwareStatusHtml();
-            }
-        }
-        else if (state.firmwareChecking) {
-            status = "Checking public firmware\u2026";
+        else if (firmwareUpToDateStatusAvailable()) {
+            inlineStatus = "Up to date";
         }
         els.fwStatus.className = cls;
         els.fwStatus.innerHTML = status;
@@ -225,21 +227,14 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
                 els.fwCheckBtn.disabled = true;
                 els.fwCheckBtn.textContent = "Installing\u2026";
             }
-            else if (selectedFirmwareMatchesInstalled() && !selectedFirmwareIsLatest()) {
-                els.fwCheckBtn.disabled = true;
-                els.fwCheckBtn.textContent = "Installed";
-            }
-            else if (firmwareInstallAvailable()) {
+            else if (latestFirmwareInstallAvailable()) {
                 els.fwCheckBtn.disabled = false;
-                els.fwCheckBtn.textContent = selectedFirmwareIsLatest() ? "Install Update" : "Install Version";
+                els.fwCheckBtn.textContent = "Install Update";
             }
             else {
                 els.fwCheckBtn.disabled = state.firmwareChecking;
                 els.fwCheckBtn.textContent = state.firmwareChecking ? "Checking\u2026" : "Check for Update";
             }
-        }
-        if (els.fwVersionSelect) {
-            els.fwVersionSelect.disabled = state.firmwareUpdateState === "INSTALLING" || state.firmwareChecking;
         }
         syncFirmwareUpdateUi();
     }
@@ -347,7 +342,7 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
                 return;
             if (!publicFirmwareInstallAvailable())
                 return;
-            installPublicFirmwareViaWebOta();
+            installPublicFirmwareViaWebOta(latestFirmwareInfo());
         }, FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS);
     }
     return {
@@ -357,20 +352,24 @@ export function installFirmwareUpdateStateModule(): GlobalDescriptors {
         "FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS": liveGlobal(() => FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS, (value?: any) => { FIRMWARE_WEB_OTA_FALLBACK_DELAY_MS = value; }),
         "firmwareUpdateAvailable": staticGlobal(firmwareUpdateAvailable),
         "publicFirmwareInstallAvailable": staticGlobal(publicFirmwareInstallAvailable),
-        "firmwareInstallAvailable": staticGlobal(firmwareInstallAvailable),
+        "latestFirmwareInfo": staticGlobal(latestFirmwareInfo),
+        "latestFirmwareInstallAvailable": staticGlobal(latestFirmwareInstallAvailable),
+        "latestFirmwareInstallAction": staticGlobal(latestFirmwareInstallAction),
         "latestFirmwareInfoFromState": staticGlobal(latestFirmwareInfoFromState),
         "findFirmwareVersionInfo": staticGlobal(findFirmwareVersionInfo),
+        "firmwareInfoForVersion": staticGlobal(firmwareInfoForVersion),
         "selectedFirmwareInfo": staticGlobal(selectedFirmwareInfo),
-        "selectedFirmwareVersion": staticGlobal(selectedFirmwareVersion),
-        "selectedFirmwareIsLatest": staticGlobal(selectedFirmwareIsLatest),
-        "selectedFirmwareMatchesInstalled": staticGlobal(selectedFirmwareMatchesInstalled),
+        "previousFirmwareInfos": staticGlobal(previousFirmwareInfos),
+        "selectedPreviousFirmwareInfo": staticGlobal(selectedPreviousFirmwareInfo),
+        "previousFirmwareInstallAvailable": staticGlobal(previousFirmwareInstallAvailable),
         "firmwareVersionSelectorVisible": staticGlobal(firmwareVersionSelectorVisible),
         "syncFirmwareVersionSelect": staticGlobal(syncFirmwareVersionSelect),
+        "syncPreviousFirmwareUi": staticGlobal(syncPreviousFirmwareUi),
         "setPublicFirmwareInfo": staticGlobal(setPublicFirmwareInfo),
         "setPublicFirmwareVersions": staticGlobal(setPublicFirmwareVersions),
         "publicFirmwareReleaseKnown": staticGlobal(publicFirmwareReleaseKnown),
         "installedFirmwareMatchesPublicRelease": staticGlobal(installedFirmwareMatchesPublicRelease),
-        "publicFirmwareStatusHtml": staticGlobal(publicFirmwareStatusHtml),
+        "firmwareUpToDateStatusAvailable": staticGlobal(firmwareUpToDateStatusAvailable),
         "firmwareUpdateControlsVisible": staticGlobal(firmwareUpdateControlsVisible),
         "syncFirmwareUpdateUi": staticGlobal(syncFirmwareUpdateUi),
         "renderFirmwareUpdateStatus": staticGlobal(renderFirmwareUpdateStatus),

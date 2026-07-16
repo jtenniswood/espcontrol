@@ -103,6 +103,31 @@ function routeContentType(url) {
   return "text/plain";
 }
 
+function publicFirmwareManifest(slug) {
+  return {
+    version: "v1.13.0",
+    builds: [{
+      ota: {
+        path: `${slug}.ota.bin`,
+        md5: "0123456789abcdef0123456789abcdef",
+      },
+    }],
+  };
+}
+
+function publicFirmwareVersions(slug) {
+  return {
+    device: slug,
+    versions: ["v1.13.0", "v1.12.0", "v1.11.0"].map((version, index) => ({
+      version,
+      ota: {
+        path: index === 0 ? `${slug}.ota.bin` : `versions/${version}/${slug}.ota.bin`,
+        md5: "0123456789abcdef0123456789abcdef",
+      },
+    })),
+  };
+}
+
 async function installRoutes(context, slug) {
   const scriptPath = path.join(WEB_OUTPUT_DIR, "www.js");
   assert(
@@ -137,6 +162,24 @@ async function installRoutes(context, slug) {
     if (requestUrl.hostname === "espcontrol.test") {
       await route.fulfill({ status: 204, contentType: "text/plain", body: "" });
       return;
+    }
+    if (requestUrl.hostname === "jtenniswood.github.io") {
+      if (requestUrl.pathname.endsWith("/manifest.json")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(publicFirmwareManifest(slug)),
+        });
+        return;
+      }
+      if (requestUrl.pathname.endsWith("/versions.json")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(publicFirmwareVersions(slug)),
+        });
+        return;
+      }
     }
     await route.fulfill({
       status: 200,
@@ -231,6 +274,13 @@ function seededEvents() {
       option: ["http", "https"],
     },
     { id: "switch-firmware__auto_update", state: "ON", value: true },
+    { id: "text_sensor-firmware__version", state: "v1.12.0" },
+    {
+      id: "update-firmware__update",
+      state: "UPDATE AVAILABLE",
+      current_version: "v1.12.0",
+      latest_version: "v1.13.0",
+    },
     {
       id: "select-firmware__update_frequency",
       state: "Daily",
@@ -727,6 +777,169 @@ async function assertSettingsPage(page, label, options = {}) {
     ["Display", "Sleep & Schedule", "Preferences", "System"],
     `${label}: settings groups should be ordered by purpose`,
   );
+  const firmwareCard = page
+    .locator("#sp-settings .card")
+    .filter({
+      has: page.locator(".card-header h3", { hasText: /^Firmware$/ }),
+    })
+    .first();
+  assert(
+    await firmwareCard.isVisible(),
+    `${label}: firmware settings card should render`,
+  );
+  if (options.exerciseInteractions) {
+    await firmwareCard.locator(":scope > .card-header").click();
+    await page.waitForSelector("#sp-fw-updates-panel", { state: "visible" });
+    assert.deepStrictEqual(
+      await firmwareCard
+        .locator(".sp-fw-subpanels > .sp-disclosure")
+        .evaluateAll((nodes) => nodes.map((node) => node.id)),
+      ["sp-fw-updates-panel", "sp-fw-auto-panel", "sp-fw-wifi-panel", "sp-fw-previous-panel"],
+      `${label}: firmware sub-panels should use the requested order`,
+    );
+    assert.strictEqual(
+      await page.locator("#sp-fw-updates-panel .sp-disclosure-button > span").first().innerText(),
+      "Firmware updates",
+      `${label}: firmware update details should have a clear panel title`,
+    );
+    assert.strictEqual(
+      await page.locator("#sp-fw-updates-panel .sp-disclosure-button").getAttribute("aria-expanded"),
+      "false",
+      `${label}: firmware updates should start closed`,
+    );
+    assert(
+      await page.locator("#sp-fw-updates-panel .sp-disclosure-badge").isVisible(),
+      `${label}: available firmware should show an update badge while closed`,
+    );
+    await page.locator("#sp-fw-updates-panel .sp-disclosure-button").click();
+    assert(
+      await page.locator("#sp-fw-updates-panel .sp-fw-overview").isVisible(),
+      `${label}: firmware update details should render inside the panel`,
+    );
+    assert.strictEqual(
+      await page.locator("#sp-fw-updates-panel .sp-disclosure-badge").isVisible(),
+      false,
+      `${label}: firmware update badge should hide while open`,
+    );
+    assert.strictEqual(
+      await page.locator("#sp-fw-auto-panel").getAttribute("class"),
+      "sp-disclosure",
+      `${label}: auto updates should start closed`,
+    );
+    assert(
+      await page.locator("#sp-fw-auto-panel .sp-disclosure-badge").isVisible(),
+      `${label}: enabled auto updates should show an On badge while closed`,
+    );
+    await page.locator("#sp-fw-auto-panel .sp-disclosure-button").click();
+    assert.strictEqual(
+      await page.locator("#sp-fw-auto-panel .sp-disclosure-button").getAttribute("aria-expanded"),
+      "true",
+      `${label}: auto updates should expose its expanded state`,
+    );
+    assert.strictEqual(
+      await page.locator("#sp-fw-auto-panel .sp-disclosure-badge").isVisible(),
+      false,
+      `${label}: auto-update badge should hide while open`,
+    );
+    assert(
+      await page.locator("#sp-set-update-freq").isVisible(),
+      `${label}: enabled auto updates should show frequency inside the panel`,
+    );
+    assert.deepStrictEqual(
+      await firmwareCard
+        .locator(
+          ".sp-fw-label, .sp-fw-version, .sp-disclosure-button, .sp-toggle-label, .sp-select, .sp-fw-btn",
+        )
+        .evaluateAll((nodes) => [
+          ...new Set(nodes.map((node) => getComputedStyle(node).fontSize)),
+        ]),
+      ["14px"],
+      `${label}: firmware labels, values, headings, fields, and actions should use one primary font size`,
+    );
+    assert.strictEqual(
+      await page.locator("#sp-fw-previous-panel .sp-disclosure-button").getAttribute("aria-expanded"),
+      "false",
+      `${label}: previous firmware should start closed`,
+    );
+    await page.locator("#sp-fw-previous-panel .sp-disclosure-button").click();
+    assert.deepStrictEqual(
+      await page.locator("#sp-set-firmware-version option").evaluateAll(
+        (options) => options.map((option) => option.value),
+      ),
+      ["v1.11.0"],
+      `${label}: previous firmware should exclude latest and installed versions`,
+    );
+    assert.strictEqual(
+      await page.locator("#sp-fw-previous-panel .sp-fw-btn").isEnabled(),
+      true,
+      `${label}: a previous firmware selection should enable Install`,
+    );
+    const confirmPromise = page.waitForEvent("dialog");
+    const installClick = page.locator("#sp-fw-previous-panel .sp-fw-btn").click();
+    const confirmDialog = await confirmPromise;
+    assert.strictEqual(
+      confirmDialog.message(),
+      "Install older firmware v1.11.0? The display will restart during installation.",
+      `${label}: previous firmware installation should require confirmation`,
+    );
+    await confirmDialog.dismiss();
+    await installClick;
+    assert.strictEqual(
+      await page
+        .locator("#sp-settings .card-header h3")
+        .filter({ hasText: /^WiFi$/ })
+        .count(),
+      0,
+      `${label}: WiFi firmware should not remain a standalone settings card`,
+    );
+    await page.evaluate(() => window.__seedEspState([
+      { id: "text_sensor-esp32_c6__current_firmware", state: "2.12.8" },
+      { id: "text_sensor-esp32_c6__latest_firmware", state: "2.12.9" },
+      { id: "button-firmware_esp32_c6__install_update", state: "" },
+    ]));
+    const wifiPanel = page.locator("#sp-fw-wifi-panel");
+    assert(await wifiPanel.isVisible(), `${label}: supported WiFi firmware panel should render`);
+    assert(
+      await wifiPanel.locator(".sp-disclosure-badge").isVisible(),
+      `${label}: WiFi update badge should show while the closed panel has an update`,
+    );
+    await wifiPanel.locator(".sp-disclosure-button").click();
+    assert.strictEqual(
+      await wifiPanel.locator(".sp-disclosure-badge").isVisible(),
+      false,
+      `${label}: WiFi update badge should hide while open`,
+    );
+    assert.deepStrictEqual(
+      await wifiPanel.locator(".sp-fw-version").evaluateAll(
+        (nodes) => nodes.map((node) => node.textContent),
+      ),
+      ["2.12.8", "2.12.9"],
+      `${label}: WiFi panel should show current and available versions`,
+    );
+    assert.strictEqual(
+      await firmwareCard
+        .locator(".sp-fw-overview .sp-fw-actions")
+        .evaluate((node) => getComputedStyle(node).justifyContent),
+      "flex-end",
+      `${label}: firmware actions should align with the version values`,
+    );
+    await page.evaluate(() => window.__seedEspState([{
+      id: "update-firmware__update",
+      state: "INSTALLING",
+      current_version: "v1.12.0",
+      latest_version: "v1.13.0",
+    }]));
+    assert.strictEqual(
+      await firmwareCard.locator(".sp-fw-overview .sp-fw-btn").innerText(),
+      "Installing…",
+      `${label}: install progress should stay in the action button`,
+    );
+    assert.strictEqual(
+      await firmwareCard.locator(".sp-fw-overview .sp-fw-status").innerText(),
+      "",
+      `${label}: install progress should not be duplicated below the action`,
+    );
+  }
   const clockBarCard = page
     .locator("#sp-settings .card")
     .filter({ hasText: "Clock Bar" })
@@ -3141,10 +3354,15 @@ async function runCase(browser, testCase) {
     }
   } catch (error) {
     fs.mkdirSync(FAILURE_DIR, { recursive: true });
-    await page.screenshot({
-      path: path.join(FAILURE_DIR, `${testCase.name}-${testCase.slug}.png`),
-      fullPage: true,
-    });
+    try {
+      await page.screenshot({
+        path: path.join(FAILURE_DIR, `${testCase.name}-${testCase.slug}.png`),
+        fullPage: true,
+        timeout: 5000,
+      });
+    } catch (screenshotError) {
+      console.error(`${testCase.name}: could not capture failure screenshot: ${screenshotError.message}`);
+    }
     throw error;
   } finally {
     await context.close();

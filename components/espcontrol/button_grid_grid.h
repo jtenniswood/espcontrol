@@ -316,6 +316,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->media_artwork = true;
   art->media_overlay = overlay;
   art->pending_fallback_picture.clear();
+  art->media_artwork_retry_mask = 0;
   art->diagnostics_enabled = cfg.image_card_diagnostics;
   art->retry_deadline_ms = esphome::millis() + IMAGE_CARD_STARTUP_RETRY_MS;
   art->width_compensation_percent = cfg.width_compensation_percent;

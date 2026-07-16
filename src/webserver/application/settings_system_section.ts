@@ -14,16 +14,33 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         backupBody.appendChild(backupRow);
         var backupCard: any = makeCollapsibleCard("Backup", backupBody, true);
         var fwBody: any = document.createElement("div");
-        var fwVersionRow: any = document.createElement("div");
-        fwVersionRow.className = "sp-fw-row";
+        var fwOverview: any = document.createElement("div");
+        fwOverview.className = "sp-fw-overview";
+        var fwCurrentRow: any = document.createElement("div");
+        fwCurrentRow.className = "sp-fw-row sp-fw-info-row";
+        var fwCurrentLabel: any = document.createElement("span");
+        fwCurrentLabel.className = "sp-fw-label";
+        fwCurrentLabel.textContent = "Current version";
         var fwVersionLabel: any = document.createElement("span");
         fwVersionLabel.className = "sp-fw-version";
-        fwVersionRow.appendChild(fwVersionLabel);
+        fwCurrentRow.appendChild(fwCurrentLabel);
+        fwCurrentRow.appendChild(fwVersionLabel);
         els.fwVersionLabel = fwVersionLabel;
         renderFirmwareVersion();
-        refreshFirmwareVersion();
+        var fwLatestRow: any = document.createElement("div");
+        fwLatestRow.className = "sp-fw-row sp-fw-info-row";
+        var fwLatestLabel: any = document.createElement("span");
+        fwLatestLabel.className = "sp-fw-label";
+        fwLatestLabel.textContent = "Available version";
+        var fwLatestValue: any = document.createElement("span");
+        fwLatestValue.className = "sp-fw-version";
+        fwLatestRow.appendChild(fwLatestLabel);
+        fwLatestRow.appendChild(fwLatestValue);
+        els.fwLatestVersion = fwLatestValue;
+        fwOverview.appendChild(fwCurrentRow);
+        fwOverview.appendChild(fwLatestRow);
         var fwActions: any = document.createElement("div");
-        fwActions.className = "sp-fw-actions";
+        fwActions.className = "sp-fw-actions sp-fw-actions-full";
         els.fwActions = fwActions;
         var fwInlineStatus: any = document.createElement("span");
         fwInlineStatus.className = "sp-fw-inline-status";
@@ -33,16 +50,15 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         fwCheckBtn.addEventListener("click", function (this: any) {
             if (!firmwareUpdateControlsVisible())
                 return;
-            if (firmwareInstallAvailable()) {
-                var selectedInfo: any = selectedFirmwareInfo();
-                var installingLatest: any = selectedFirmwareIsLatest();
-                var updateReady: any = installingLatest && firmwareUpdateAvailable();
-                state.firmwareInstallTargetVersion = selectedInfo && selectedInfo.latest_version ?
-                    selectedInfo.latest_version :
+            var installAction: any = latestFirmwareInstallAction();
+            if (installAction !== "check") {
+                var latestInfo: any = latestFirmwareInfo();
+                state.firmwareInstallTargetVersion = latestInfo && latestInfo.latest_version ?
+                    latestInfo.latest_version :
                     state.firmwareLatestVersion;
-                state.firmwareInstallPostPending = installingLatest && !updateReady;
+                state.firmwareInstallPostPending = installAction === "check_then_install";
                 state.firmwareChecking = false;
-                if (updateReady) {
+                if (installAction === "install") {
                     state.firmwareUpdateState = "INSTALLING";
                     state.firmwareInstallStatus = "Installing update\u2026";
                     renderFirmwareUpdateStatus();
@@ -50,16 +66,13 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
                     postFirmwareUpdateInstall();
                     startFirmwareInstallRefresh();
                 }
-                else if (installingLatest) {
+                else {
                     state.firmwareUpdateState = "INSTALLING";
                     state.firmwareInstallStatus = "Checking update before install\u2026";
                     renderFirmwareUpdateStatus();
                     postFirmwareUpdateCheck();
                     scheduleFirmwareWebOtaFallback();
                     startFirmwareInstallRefresh();
-                }
-                else {
-                    installPublicFirmwareViaWebOta(selectedInfo);
                 }
                 return;
             }
@@ -79,32 +92,23 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
             }, 10000);
         });
         fwActions.appendChild(fwCheckBtn);
-        fwVersionRow.appendChild(fwActions);
         els.fwCheckBtn = fwCheckBtn;
-        fwBody.appendChild(fwVersionRow);
+        fwOverview.appendChild(fwActions);
         var fwStatus: any = document.createElement("div");
         fwStatus.className = "sp-fw-status";
-        fwBody.appendChild(fwStatus);
+        fwOverview.appendChild(fwStatus);
         els.fwStatus = fwStatus;
         renderFirmwareUpdateStatus();
-        var fwVersionField: any = document.createElement("div");
-        fwVersionField.className = "sp-field sp-fw-version-field";
-        fwVersionField.style.display = "none";
-        fwVersionField.appendChild(fieldLabel("Install Version", "sp-set-firmware-version"));
-        var fwVersionSelect: any = document.createElement("select");
-        fwVersionSelect.className = "sp-select";
-        fwVersionSelect.id = "sp-set-firmware-version";
-        fwVersionSelect.addEventListener("change", function (this: any) {
-            state.firmwareSelectedVersion = this.value;
-            renderFirmwareUpdateStatus();
-        });
-        fwVersionField.appendChild(fwVersionSelect);
-        fwBody.appendChild(fwVersionField);
-        els.fwVersionField = fwVersionField;
-        els.fwVersionSelect = fwVersionSelect;
-        syncFirmwareVersionSelect();
+        var firmwareSubpanels: any = document.createElement("div");
+        firmwareSubpanels.className = "sp-fw-subpanels";
+        var firmwareUpdatesBadge: any = disclosureBadge("Update available", "Firmware update available");
+        var firmwareUpdatesPanel: any = inlineDisclosure("Firmware updates", fwOverview, false, firmwareUpdatesBadge);
+        firmwareUpdatesPanel.id = "sp-fw-updates-panel";
+        els.firmwareUpdatesBadge = firmwareUpdatesBadge;
+        firmwareSubpanels.appendChild(firmwareUpdatesPanel);
+        var autoUpdateBody: any = document.createElement("div");
         var autoUpdateToggle: any = toggleRow("Auto Update", "sp-set-auto-update", state.autoUpdate);
-        fwBody.appendChild(autoUpdateToggle.row);
+        autoUpdateBody.appendChild(autoUpdateToggle.row);
         autoUpdateToggle.input.addEventListener("change", function (this: any) {
             if (!firmwareUpdateControlsVisible()) {
                 syncFirmwareUpdateUi();
@@ -117,7 +121,9 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         els.setAutoUpdateRow = autoUpdateToggle.row;
         els.setAutoUpdate = autoUpdateToggle.input;
         var freqWrap: any = document.createElement("div");
+        freqWrap.className = "sp-field";
         freqWrap.style.display = state.autoUpdate ? "" : "none";
+        freqWrap.appendChild(fieldLabel("Update Frequency", "sp-set-update-freq"));
         var freqSelect: any = document.createElement("select");
         freqSelect.className = "sp-select";
         freqSelect.id = "sp-set-update-freq";
@@ -135,17 +141,21 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
             postFirmwareUpdateFrequency(state.updateFrequency);
         });
         freqWrap.appendChild(freqSelect);
-        fwBody.appendChild(freqWrap);
+        autoUpdateBody.appendChild(freqWrap);
         els.updateFreqWrap = freqWrap;
         els.setUpdateFreq = freqSelect;
-        syncFirmwareUpdateUi();
-        var firmwareCard: any = makeCollapsibleCard("Firmware", fwBody, true);
+        var autoUpdateBadge: any = disclosureBadge("On", "Automatic firmware updates on");
+        var autoUpdatePanel: any = inlineDisclosure("Auto updates", autoUpdateBody, false, autoUpdateBadge);
+        autoUpdatePanel.id = "sp-fw-auto-panel";
+        els.autoUpdateBadge = autoUpdateBadge;
+        els.autoUpdatePanel = autoUpdatePanel;
+        firmwareSubpanels.appendChild(autoUpdatePanel);
         var wifiFirmwareBody: any = document.createElement("div");
         var c6CurrentRow: any = document.createElement("div");
         c6CurrentRow.className = "sp-fw-row sp-fw-info-row";
         var c6CurrentLabel: any = document.createElement("span");
         c6CurrentLabel.className = "sp-fw-label";
-        c6CurrentLabel.textContent = "Current C6 Firmware";
+        c6CurrentLabel.textContent = "Current";
         var c6CurrentValue: any = document.createElement("span");
         c6CurrentValue.className = "sp-fw-version";
         c6CurrentRow.appendChild(c6CurrentLabel);
@@ -156,7 +166,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         c6LatestRow.className = "sp-fw-row sp-fw-info-row";
         var c6LatestLabel: any = document.createElement("span");
         c6LatestLabel.className = "sp-fw-label";
-        c6LatestLabel.textContent = "Available C6 Firmware";
+        c6LatestLabel.textContent = "Available";
         var c6LatestValue: any = document.createElement("span");
         c6LatestValue.className = "sp-fw-version";
         c6LatestRow.appendChild(c6LatestLabel);
@@ -165,9 +175,7 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         els.c6FirmwareLatest = c6LatestValue;
         var c6Actions: any = document.createElement("div");
         c6Actions.className = "sp-fw-actions sp-fw-actions-full";
-        var c6UpdateBtn: any = document.createElement("button");
-        c6UpdateBtn.className = "sp-fw-btn";
-        c6UpdateBtn.textContent = "Check for Update";
+        var c6UpdateBtn: any = createActionButton("sp-fw-btn", "Check for Update");
         c6UpdateBtn.addEventListener("click", function (this: any) {
             if (!state.c6FirmwareUpdateControlsSupported)
                 return;
@@ -197,9 +205,52 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         c6Status.className = "sp-fw-status";
         wifiFirmwareBody.appendChild(c6Status);
         els.c6FirmwareStatus = c6Status;
-        var wifiFirmwareCard: any = makeCollapsibleCard("WiFi", wifiFirmwareBody, true);
-        els.c6FirmwareCard = wifiFirmwareCard;
+        var c6Badge: any = disclosureBadge("Update available", "WiFi firmware update available");
+        var wifiFirmwarePanel: any = inlineDisclosure("WiFi firmware", wifiFirmwareBody, false, c6Badge);
+        wifiFirmwarePanel.id = "sp-fw-wifi-panel";
+        els.c6FirmwareBadge = c6Badge;
+        els.c6FirmwareCard = wifiFirmwarePanel;
+        firmwareSubpanels.appendChild(wifiFirmwarePanel);
+        var previousFirmwareBody: any = document.createElement("div");
+        var fwVersionField: any = document.createElement("div");
+        fwVersionField.className = "sp-field sp-fw-version-field";
+        fwVersionField.appendChild(fieldLabel("Version", "sp-set-firmware-version"));
+        var fwVersionSelect: any = document.createElement("select");
+        fwVersionSelect.className = "sp-select";
+        fwVersionSelect.id = "sp-set-firmware-version";
+        fwVersionSelect.addEventListener("change", function (this: any) {
+            state.firmwareSelectedVersion = this.value;
+            syncPreviousFirmwareUi();
+        });
+        fwVersionField.appendChild(fwVersionSelect);
+        previousFirmwareBody.appendChild(fwVersionField);
+        els.fwVersionField = fwVersionField;
+        els.fwVersionSelect = fwVersionSelect;
+        var previousFirmwareActions: any = document.createElement("div");
+        previousFirmwareActions.className = "sp-fw-previous-actions";
+        var previousFirmwareInstallBtn: any = createActionButton("sp-fw-btn", "Install");
+        previousFirmwareInstallBtn.addEventListener("click", function (this: any) {
+            var info: any = selectedPreviousFirmwareInfo();
+            if (!info || !firmwareUpdateControlsVisible())
+                return;
+            if (!window.confirm("Install older firmware " + info.latest_version + "? The display will restart during installation.")) {
+                return;
+            }
+            installPublicFirmwareViaWebOta(info);
+        });
+        previousFirmwareActions.appendChild(previousFirmwareInstallBtn);
+        previousFirmwareBody.appendChild(previousFirmwareActions);
+        els.fwPreviousInstallBtn = previousFirmwareInstallBtn;
+        var previousFirmwarePanel: any = inlineDisclosure("Previous firmware", previousFirmwareBody, false);
+        previousFirmwarePanel.id = "sp-fw-previous-panel";
+        els.fwPreviousPanel = previousFirmwarePanel;
+        firmwareSubpanels.appendChild(previousFirmwarePanel);
+        fwBody.appendChild(firmwareSubpanels);
+        var firmwareCard: any = makeCollapsibleCard("Firmware", fwBody, true);
+        syncFirmwareVersionSelect();
+        syncFirmwareUpdateUi();
         syncC6FirmwareUi();
+        refreshFirmwareVersion();
         var homeAssistantSettingsBody: any = document.createElement("div");
         var haProtocolField: any = document.createElement("div");
         haProtocolField.className = "sp-field";
@@ -246,7 +297,6 @@ export function installSettingsSystemSectionModule(): GlobalDescriptors {
         return {
             backupCard: backupCard,
             firmwareCard: firmwareCard,
-            wifiFirmwareCard: wifiFirmwareCard,
             homeAssistantSettingsCard: homeAssistantSettingsCard,
         };
     }
