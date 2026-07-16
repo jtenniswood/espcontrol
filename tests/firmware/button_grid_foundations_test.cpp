@@ -39,6 +39,16 @@ int main() {
   const auto legacy_text_sensor = card_runtime_context("text_sensor");
   const auto weather = card_runtime_context("weather");
   const auto weather_forecast = card_runtime_context("weather_forecast");
+  const auto toggle = card_runtime_context("");
+  const auto action = card_runtime_context("action");
+  const auto alarm_action = card_runtime_context("alarm_action");
+  const auto fan_switch = card_runtime_context("fan_switch");
+  const auto internal = card_runtime_context("internal");
+  const auto light_switch = card_runtime_context("light_switch");
+  const auto local_action = card_runtime_context("local");
+  const auto push = card_runtime_context("push");
+  const auto screen_lock = card_runtime_context("screen_lock");
+  const auto webhook = card_runtime_context("webhook");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
       door.legacy_dispatch || presence.legacy_dispatch ||
       clock.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
@@ -53,6 +63,11 @@ int main() {
       weather.runtime.driver != espcontrol::card_runtime::CardDriverId::WEATHER ||
       weather_forecast.runtime.driver != espcontrol::card_runtime::CardDriverId::WEATHER ||
       weather.legacy_dispatch || weather_forecast.legacy_dispatch ||
+      toggle.legacy_dispatch || action.legacy_dispatch ||
+      alarm_action.legacy_dispatch || fan_switch.legacy_dispatch ||
+      internal.legacy_dispatch || light_switch.legacy_dispatch ||
+      local_action.legacy_dispatch || push.legacy_dispatch ||
+      screen_lock.legacy_dispatch || webhook.legacy_dispatch ||
       !card_runtime_information_only(image) || card_runtime_passive(image) ||
       !image.legacy_dispatch) {
     return EXIT_FAILURE;
@@ -63,10 +78,17 @@ int main() {
   };
   const auto cover = card_runtime_context(
       TestConfig{"cover", "tilt"}, espcontrol::cards::Surface::SUBPAGE);
+  const auto option_select_compatibility = card_runtime_context(
+      TestConfig{"action", card_runtime_option_select_canonical_action()});
   if (cover.runtime.type != espcontrol::card_runtime::CardTypeId::COVER ||
       cover.runtime.driver != espcontrol::card_runtime::CardDriverId::COVER_TILT ||
       cover.surface != espcontrol::cards::Surface::SUBPAGE ||
       !cover.allow_in_subpage) {
+    return EXIT_FAILURE;
+  }
+  if (!option_select_compatibility.legacy_dispatch ||
+      option_select_compatibility.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::ACTION) {
     return EXIT_FAILURE;
   }
   const auto todo = card_runtime_context("todo");

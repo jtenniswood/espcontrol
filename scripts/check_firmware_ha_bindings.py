@@ -365,6 +365,29 @@ def firmware_action_card_availability_errors(firmware_dir: Path, root: Path) -> 
     text = path.read_text(encoding="utf-8")
     errors: list[str] = []
 
+    driver_path = firmware_dir / "button_grid_basic_action_driver.h"
+    if driver_path.exists():
+        driver_rel = driver_path.relative_to(root)
+        driver_text = driver_path.read_text(encoding="utf-8")
+        required = (
+            "basic_action_driver_bind_action_state",
+            "subscribe_action_card_display_state",
+            "case Driver::PUSH:",
+            '"Push %d"',
+            'ha_action_add_data(request, "slot", slot_buffer)',
+            '"esphome.push_button_pressed"',
+        )
+        for needle in required:
+            if needle not in driver_text:
+                errors.append(
+                    f"{driver_rel}: preserve shared Action state and Trigger event behavior ({needle})"
+                )
+        if "register_ha_control_availability" in driver_text:
+            errors.append(
+                f"{driver_rel}: keep stateless Action and Trigger cards tappable while Home Assistant availability is pending"
+            )
+        return errors
+
     stateless_main_pattern = re.compile(
         r"std::string\s+state_entity\s*=\s*action_card_state_entity\(p\);"
         r"(?P<body>.*?)continue;",

@@ -99,7 +99,12 @@ Sensor and its `local_sensor`/`text_sensor` compatibility forms use the shared
 `SENSOR` driver, including numeric, text, icon, duration, and local ESPHome data
 binding. Weather and forecast compatibility use the shared `WEATHER` driver
 while retaining the specialised forecast request registry. All of these paths
-are shared by the main grid and subpages. Other families remain on the existing
+are shared by the main grid and subpages. Switch, Light Switch, Fan Switch,
+Push, Internal, Webhook, Screen Lock, Action, local-action compatibility, and
+Alarm Action use the shared `BASIC_ACTION` lifecycle boundary while retaining
+their existing confirmation, service, local relay, HTTP, PIN, and state-display
+implementations. Option-select compatibility deliberately remains on fallback
+until the selectable-control family migration. Other families remain on the existing
 `Family` dispatch until their reviewed migration PR switches them one family at
 a time.
 
