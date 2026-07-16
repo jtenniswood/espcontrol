@@ -1615,8 +1615,8 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         errors.append(f"{rel}: request expanded image-card downloads through the modal downloader")
     if "image_card_set_widget_source(ui.image_widget, ctx->modal_image)" not in text:
         errors.append(f"{rel}: swap expanded image cards to the modal-quality image after it downloads")
-    if "ctx->modal_image->release()" not in text:
-        errors.append(f"{rel}: release modal image-card buffers when the modal closes")
+    if "ImageCardModalCache" not in text or "image_card_modal_cache" not in text:
+        errors.append(f"{rel}: retain one shared modal image cache for instant reopen")
     if 'image_card_set_loading_state(loading, "Too many")' not in text:
         errors.append(f"{rel}: show a visible image-card limit message when downloaders run out")
     modal_refresh = re.search(
@@ -1626,11 +1626,13 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
     )
     if not modal_refresh:
         errors.append(f"{rel}: keep modal-quality image refresh enabled on the 4.3-inch P4 screen")
-    if (
-        "image_card_tile_prefetches_modal_quality" not in text
-        or "!control_modal_current_uses_compact_portrait_tuning()" not in text
-    ):
-        errors.append(f"{rel}: keep 4.3-inch P4 tile downloads sized to the tile before modal open")
+    tile_size = re.search(
+        r"inline\s+void\s+image_card_tile_request_size[^\{]*\{[^\}]*image_card_limit_target_size",
+        text,
+        re.S,
+    )
+    if not tile_size or "image_card_high_quality_request_size" in text:
+        errors.append(f"{rel}: size every image-card tile request to its on-screen bounds")
     if "Closing image modal" not in text:
         errors.append(f"{rel}: log image-card modal close events")
     if "image_card_abort_modal_open" not in text or "modal shell setup failed" not in text:
@@ -1646,6 +1648,24 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
         or "image_card_queue_modal_source_request(ctx)" not in text
     ):
         errors.append(f"{rel}: show the cached image-card tile while modal-quality image loads")
+    modal_failure = re.search(
+        r"inline\s+void\s+image_card_show_modal_download_failure[^\{]*\{(?P<body>.*?)\n\}",
+        text,
+        re.S,
+    )
+    modal_failure_body = modal_failure.group("body") if modal_failure else ""
+    modal_error_handler = re.search(
+        r"inline\s+void\s+image_card_handle_modal_download_error[^\{]*\{(?P<body>.*?)\n\}",
+        text,
+        re.S,
+    )
+    modal_error_body = modal_error_handler.group("body") if modal_error_handler else ""
+    if (
+        "image_card_modal_has_preview(ctx)" not in modal_failure_body
+        or 'image_card_show_modal_loading(ctx, "Unavailable")' not in modal_failure_body
+        or "image_card_show_modal_download_failure(ctx)" not in modal_error_body
+    ):
+        errors.append(f"{rel}: keep an error state when image-card modals have no preview")
     if "lv_obj_set_style_clip_corner(ui.panel, true, LV_PART_MAIN)" not in text:
         errors.append(f"{rel}: clip image card modal content to rounded panel corners")
     if "image_card_apply_corner_clip" not in text:
@@ -1702,12 +1722,9 @@ def firmware_image_card_startup_errors(
         or "image_card_context_current(ctx, image_card_entity_id, image_card_generation)" not in text
     ):
         errors.append(f"{rel}: ignore stale image-card entity_picture callbacks after grid rebuild")
-    if (
-        ("image_card_tile_request_size(width, height" not in text and
-         "image_card_tile_request_size(decode_width, decode_height" not in text)
-        or "image_card_high_quality_request_size" not in text
-    ):
-        errors.append(f"{rel}: request high-quality Home Assistant image card source downloads")
+    if ("image_card_tile_request_size(width, height" not in text and
+        "image_card_tile_request_size(decode_width, decode_height" not in text):
+        errors.append(f"{rel}: request display-sized Home Assistant image card downloads")
     if "image_card_sized_url(ctx->source_url, request_width, request_height)" not in text:
         errors.append(f"{rel}: request bounded Home Assistant image card proxy downloads")
     if '"/api/camera_proxy/"' not in text or '"/api/image_proxy/"' not in text:
@@ -5066,17 +5083,18 @@ def run_self_test() -> int:
             "use a separate modal image downloader for expanded image-card quality",
             "request expanded image-card downloads through the modal downloader",
             "swap expanded image cards to the modal-quality image after it downloads",
-            "release modal image-card buffers when the modal closes",
+            "retain one shared modal image cache for instant reopen",
             "support six concurrent image cards on P4 displays",
             "check free memory before image-card downloads",
             "include PSRAM in image-card memory checks",
             "show a visible image-card limit message when downloaders run out",
             "keep modal-quality image refresh enabled on the 4.3-inch P4 screen",
-            "keep 4.3-inch P4 tile downloads sized to the tile before modal open",
+            "size every image-card tile request to its on-screen bounds",
             "log image-card modal close events",
             "clean up partially-created image card modals",
             "keep image-card modal loading overlay centered",
             "show the cached image-card tile while modal-quality image loads",
+            "keep an error state when image-card modals have no preview",
             "clip image card modal content to rounded panel corners",
             "preserve image card rounded corners while pressed",
             "apply image card corner clipping to the pressed state",
@@ -5089,6 +5107,8 @@ def run_self_test() -> int:
         "constexpr int IMAGE_CARD_MAX_CONTEXTS = 6;\n"
         "constexpr int IMAGE_CARD_MODAL_MAX_TARGET_SIDE_PX = 800;\n"
         "constexpr size_t IMAGE_CARD_MEMORY_HEADROOM_BYTES = 96 * 1024;\n"
+        "struct ImageCardModalCache {};\n"
+        "inline ImageCardModalCache &image_card_modal_cache();\n"
         "inline lv_style_selector_t image_card_pressed_selector() { return LV_STATE_PRESSED; }\n"
         "inline void image_card_apply_corner_clip(lv_obj_t *obj, lv_coord_t radius) {}\n"
         "inline bool image_card_memory_available(ImageCardCtx *ctx, const char *stage,\n"
@@ -5098,10 +5118,6 @@ def run_self_test() -> int:
         "}\n"
         "inline bool image_card_modal_refresh_supported() {\n"
         "  return true;\n"
-        "}\n"
-        "inline bool image_card_tile_prefetches_modal_quality() {\n"
-        "  return image_card_modal_refresh_supported() &&\n"
-        "         !control_modal_current_uses_compact_portrait_tuning();\n"
         "}\n"
         "inline void image_card_limit_target_size(lv_coord_t source_width, lv_coord_t source_height,\n"
         "                                         int *target_width, int *target_height) {}\n"
@@ -5113,11 +5129,10 @@ def run_self_test() -> int:
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->image->set_target_size(width, height);\n"
         "  image_card_tile_request_size(width, height, &request_width, &request_height);\n"
-        "  ctx->url = image_card_cache_bust_url(image_card_sized_url(ctx->source_url, request_width, request_height));\n"
+        "  ctx->url = image_card_sized_url(ctx->source_url, request_width, request_height);\n"
         "}\n"
         "inline void image_card_tile_request_size(lv_coord_t target_width, lv_coord_t target_height,\n"
         "                                        int *request_width, int *request_height) {\n"
-        "  image_card_high_quality_request_size(target_width, target_height, request_width, request_height);\n"
         "  image_card_limit_target_size(target_width, target_height, request_width, request_height);\n"
         "}\n"
         "inline void image_card_refresh_tile_geometry(ImageCardCtx *ctx) {\n"
@@ -5128,6 +5143,16 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_request_modal_source_url(ImageCardCtx *ctx) {\n"
         "  ctx->modal_image->request_update_url(ctx->modal_url, max_source_dim);\n"
+        "}\n"
+        "inline void image_card_show_modal_download_failure(ImageCardCtx *ctx) {\n"
+        "  if (image_card_modal_has_preview(ctx)) {\n"
+        "    image_card_hide_modal_loading(ctx);\n"
+        "  } else {\n"
+        "    image_card_show_modal_loading(ctx, \"Unavailable\");\n"
+        "  }\n"
+        "}\n"
+        "inline void image_card_handle_modal_download_error(ImageCardCtx *ctx) {\n"
+        "  image_card_show_modal_download_failure(ctx);\n"
         "}\n"
         "inline void image_card_abort_modal_open(ImageCardCtx *ctx, const char *reason) {\n"
         "  ESP_LOGW(\"image_card\", \"modal shell setup failed\");\n"
@@ -5144,7 +5169,6 @@ def run_self_test() -> int:
         "  }\n"
         "  ctx->image->cancel_update();\n"
         "  ESP_LOGI(\"image_card\", \"Closing image modal for %s\", ctx->entity_id.c_str());\n"
-        "  ctx->modal_image->release();\n"
         "}\n"
         "inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cfg,\n"
         "                            const ThemePalette &palette) {\n"
@@ -5174,7 +5198,7 @@ def run_self_test() -> int:
             "refresh image cards when the camera/image entity state changes",
             "ignore stale image-card callbacks after grid rebuild",
             "ignore stale image-card entity_picture callbacks after grid rebuild",
-            "request high-quality Home Assistant image card source downloads",
+            "request display-sized Home Assistant image card downloads",
             "request bounded Home Assistant image card proxy downloads",
             "recognize Home Assistant camera and image proxy URLs",
             "start image-card refresh when Home Assistant API connects",
@@ -5220,11 +5244,11 @@ def run_self_test() -> int:
         "}\n"
         "inline void image_card_request_source_url(ImageCardCtx *ctx) {\n"
         "  image_card_tile_request_size(width, height, &request_width, &request_height);\n"
-        "  ctx->url = image_card_cache_bust_url(image_card_sized_url(ctx->source_url, request_width, request_height));\n"
+        "  ctx->url = image_card_sized_url(ctx->source_url, request_width, request_height);\n"
         "}\n"
         "inline void image_card_tile_request_size(lv_coord_t target_width, lv_coord_t target_height,\n"
         "                                        int *request_width, int *request_height) {\n"
-        "  image_card_high_quality_request_size(target_width, target_height, request_width, request_height);\n"
+        "  image_card_limit_target_size(target_width, target_height, request_width, request_height);\n"
         "}\n"
         "inline void refresh_image_cards() {\n"
         "  if (!ha_api_connected()) return;\n"

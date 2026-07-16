@@ -153,8 +153,6 @@
   "optionNames": [
     "state_low_label",
     "state_high_label",
-    "image_refresh",
-    "image_refresh_mode",
     "media_cover_art"
   ],
   "cards": {

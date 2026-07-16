@@ -35,6 +35,9 @@ class JpegDecoder : public ImageDecoder {
   bool is_decoding() const override { return this->decode_started_ && !this->is_finished(); }
 
  protected:
+#if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
+  int decode_hardware_(uint8_t *buffer, size_t size);
+#endif
   int start_decode_(uint8_t *buffer, size_t size);
   int decode_scanlines_();
   void cleanup_();

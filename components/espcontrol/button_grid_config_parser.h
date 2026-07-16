@@ -42,8 +42,6 @@ constexpr const char *SENSOR_TIME_UNIT_OPTION = card_runtime_option_name_time_un
 constexpr const char *IMAGE_LABEL_OPTION = card_runtime_option_name_image_label();
 constexpr const char *IMAGE_ICON_OPTION = card_runtime_option_name_image_icon();
 constexpr const char *IMAGE_MODAL_MODE_OPTION = card_runtime_option_name_image_modal_mode();
-constexpr const char *IMAGE_REFRESH_OPTION = card_runtime_option_name_image_refresh();
-constexpr const char *IMAGE_REFRESH_MODE_OPTION = card_runtime_option_name_image_refresh_mode();
 constexpr const char *MEDIA_COVER_ART_OPTION = card_runtime_option_name_media_cover_art();
 constexpr const char *MEDIA_COVER_ART_ACTION_OPTION = card_runtime_option_name_cover_art_action();
 constexpr const char *LIGHT_CONTROL_TABS_OPTION = card_runtime_option_name_light_tabs();
@@ -368,16 +366,6 @@ inline std::string weather_card_options_normalized(const std::string &options,
   return out;
 }
 
-inline std::string normalize_image_refresh_interval(const std::string &value) {
-  return value == "10" || value == "30" || value == "60" || value == "300"
-    ? value
-    : "off";
-}
-
-inline std::string normalize_image_refresh_mode(const std::string &value) {
-  return value == "timer" ? "timer" : "changes_timer";
-}
-
 inline std::string normalize_image_modal_mode(const std::string &value) {
   return card_runtime_image_modal_mode(value);
 }
@@ -515,16 +503,6 @@ inline std::string fan_control_card_options_normalized(const std::string &option
     cfg_option_value(options, FAN_CONTROL_TABS_OPTION));
   if (tabs == FAN_CONTROL_DEFAULT_TABS_VALUE) return "";
   return std::string(FAN_CONTROL_TABS_OPTION) + "=" + encode_compact_field(tabs);
-}
-
-inline uint32_t image_card_refresh_interval_ms(const ParsedCfg &p) {
-  (void) p;
-  return 0;
-}
-
-inline bool image_card_timer_only_refresh(const ParsedCfg &p) {
-  (void) p;
-  return false;
 }
 
 inline bool image_card_label_enabled(const ParsedCfg &p) {

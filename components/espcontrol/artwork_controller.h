@@ -17,6 +17,13 @@ enum class RemoteUpdatePolicy {
   PRESERVE_LOCAL,
 };
 
+// A usable local proxy response is already the preferred source, so there is
+// no benefit in waiting for the remote fallback response before applying it.
+constexpr bool source_response_can_apply_immediately(bool local_response,
+                                                     bool usable_url) {
+  return local_response && usable_url;
+}
+
 // Owns the ordering rules for Home Assistant's remote and local artwork URLs.
 // A new remote URL starts a new artwork generation, so any cached local URL is
 // discarded until the matching local attribute arrives.

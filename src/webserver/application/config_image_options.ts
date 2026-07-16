@@ -1,36 +1,14 @@
 import { liveGlobal, staticGlobal, type GlobalDescriptors } from "../runtime/globals";
 export function installConfigImageOptionsModule(): GlobalDescriptors {
     // ── Image Card Options ─────────────────────────────────────────────
-    function imageRefreshIntervalValues(this: any) {
-        var spec: any = cardContractOptionSpec("image", IMAGE_REFRESH_OPTION);
-        return spec && spec.values ? spec.values.slice() : ["off", "10", "30", "60", "300"];
-    }
-    function imageRefreshModeValues(this: any) {
-        var spec: any = cardContractOptionSpec("image", IMAGE_REFRESH_MODE_OPTION);
-        return spec && spec.values ? spec.values.slice() : ["changes_timer", "timer"];
-    }
     function imageModalModeValues(this: any) {
         var spec: any = cardContractOptionSpec("image", IMAGE_MODAL_MODE_OPTION);
         return spec && spec.values ? spec.values.slice() : [];
-    }
-    function normalizeImageRefreshInterval(this: any, value?: any) {
-        value = String(value || "").trim();
-        return imageRefreshIntervalValues().indexOf(value) >= 0 ? value : "off";
-    }
-    function normalizeImageRefreshMode(this: any, value?: any) {
-        value = String(value || "").trim();
-        return imageRefreshModeValues().indexOf(value) >= 0 ? value : "changes_timer";
     }
     function normalizeImageModalMode(this: any, value?: any) {
         value = String(value || "").trim();
         var fallback: any = cardContractOptionDefaultValue("image", IMAGE_MODAL_MODE_OPTION, "fill");
         return imageModalModeValues().indexOf(value) >= 0 ? value : fallback;
-    }
-    function imageRefreshInterval(this: any, b?: any) {
-        return normalizeImageRefreshInterval(configOptionValue(b && b.options, IMAGE_REFRESH_OPTION));
-    }
-    function imageRefreshMode(this: any, b?: any) {
-        return normalizeImageRefreshMode(configOptionValue(b && b.options, IMAGE_REFRESH_MODE_OPTION));
     }
     function imageSlotCapacity(this: any) {
         return IMAGE_SLOT_CAPACITY;
@@ -173,31 +151,9 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
         b.options = normalizeImageOptions(b.options);
         return b.options;
     }
-    function setImageRefreshInterval(this: any, b?: any, value?: any) {
-        if (!b)
-            return "";
-        var interval: any = normalizeImageRefreshInterval(value);
-        b.options = setConfigOptionValue(b.options, IMAGE_REFRESH_OPTION, interval === "off" ? "" : interval);
-        b.options = normalizeImageOptions(b.options);
-        return b.options;
-    }
-    function setImageRefreshMode(this: any, b?: any, value?: any) {
-        if (!b)
-            return "";
-        var mode: any = normalizeImageRefreshMode(value);
-        b.options = setConfigOptionValue(b.options, IMAGE_REFRESH_MODE_OPTION, mode === "changes_timer" ? "" : mode);
-        b.options = normalizeImageOptions(b.options);
-        return b.options;
-    }
     return {
-        "imageRefreshIntervalValues": staticGlobal(imageRefreshIntervalValues),
-        "imageRefreshModeValues": staticGlobal(imageRefreshModeValues),
         "imageModalModeValues": staticGlobal(imageModalModeValues),
-        "normalizeImageRefreshInterval": staticGlobal(normalizeImageRefreshInterval),
-        "normalizeImageRefreshMode": staticGlobal(normalizeImageRefreshMode),
         "normalizeImageModalMode": staticGlobal(normalizeImageModalMode),
-        "imageRefreshInterval": staticGlobal(imageRefreshInterval),
-        "imageRefreshMode": staticGlobal(imageRefreshMode),
         "imageSlotCapacity": staticGlobal(imageSlotCapacity),
         "imageSlotCapacityMessage": staticGlobal(imageSlotCapacityMessage),
         "isImageCard": staticGlobal(isImageCard),
@@ -216,7 +172,5 @@ export function installConfigImageOptionsModule(): GlobalDescriptors {
         "setImageLabelEnabled": staticGlobal(setImageLabelEnabled),
         "setImageIconEnabled": staticGlobal(setImageIconEnabled),
         "setImageModalMode": staticGlobal(setImageModalMode),
-        "setImageRefreshInterval": staticGlobal(setImageRefreshInterval),
-        "setImageRefreshMode": staticGlobal(setImageRefreshMode),
     };
 }

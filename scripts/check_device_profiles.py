@@ -160,8 +160,8 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
             assert f"id(image_card_download_{capacity})," in sensors, (
                 f"{slug}: sensors.yaml missing final image-card tile downloader"
             )
-            assert f"id(image_card_modal_download_{capacity})," in sensors, (
-                f"{slug}: sensors.yaml missing final image-card modal downloader"
+            assert "cfg.image_card_modal_image = id(image_card_modal_download_1);" in sensors, (
+                f"{slug}: sensors.yaml missing shared image-card modal downloader"
             )
         else:
             assert "image_cards:" not in package, f"{slug}: zero image-card profile should not include image cards"

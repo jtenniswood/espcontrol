@@ -31,8 +31,9 @@ If your Home Assistant instance uses a custom port, open **Settings > System > H
 ## How It Works on the Panel
 
 - The card asks Home Assistant for the entity picture and downloads it through Home Assistant.
-- The small card shows a resized snapshot so it fits the grid tile.
-- Tapping the card opens a larger image view with a back button.
+- The small card requests a snapshot sized for its grid tile, which avoids downloading and processing more pixels than the tile can show.
+- Tapping the card opens the larger view immediately. A recent tile is shown while the larger image loads, when one is available.
+- Recently loaded images are kept for reuse when you move between pages, so returning to a camera page does not normally start from a blank tile.
 - The card refreshes when Home Assistant reports a new entity picture or an entity state update.
 - If the image cannot be loaded, the card shows **Loading**, **Unavailable**, **Configure**, or **Too many** instead of leaving a blank tile.
 - Camera cards can be used on the main page or inside subpages.
@@ -47,6 +48,8 @@ If you see a **Too many** message or a warning while saving, reduce the number o
 
 For best results, use a few important camera snapshots rather than filling a whole page with cameras. Wider or larger card sizes usually make camera images easier to recognise.
 
+Camera performance also depends on the connection between the panel and Home Assistant. The 7-inch JC1060P470 and ESP32-P4 86 Panel support an advanced Ethernet-only firmware option for manual ESPHome installs. A wired connection can give camera snapshots more consistent load times where 2.4 GHz WiFi is busy or weak. See the relevant screen page before switching, because moving between WiFi and Ethernet firmware should be done over USB.
+
 ## Troubleshooting
 
 | Problem | What to check |
@@ -56,3 +59,4 @@ For best results, use a few important camera snapshots rather than filling a who
 | The card says **Too many** | Remove or move some Camera cards so the panel has enough image download slots. |
 | The picture is cropped | Change **Expanded Image** to **Show full image**. |
 | The picture does not update often | Check whether the Home Assistant camera entity itself is updating its snapshot image. |
+| Images remain slow on several cards | Check the panel's WiFi signal and Home Assistant response time. On supported Ethernet models, consider the advanced wired firmware option. |
