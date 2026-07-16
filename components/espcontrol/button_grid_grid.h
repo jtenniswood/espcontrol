@@ -52,7 +52,7 @@ struct GridConfig {
   std::function<void(espcontrol::DisplayTakeoverKind)> begin_display_takeover;
   std::function<void(espcontrol::DisplayTakeoverKind)> end_display_takeover;
   esphome::artwork_image::ArtworkImage **image_card_images = nullptr;
-  esphome::artwork_image::ArtworkImage **image_card_modal_images = nullptr;
+  esphome::artwork_image::ArtworkImage *image_card_modal_image = nullptr;
   int image_card_image_count = 0;
   bool image_card_diagnostics = false;
   std::function<std::string()> home_assistant_base_url;
@@ -260,7 +260,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   if (!media_ctx || !media_ctx->btn) return;
   clear_media_cover_art(media_ctx);
   if (!media_cover_art_enabled(p) || p.entity.empty()) return;
-  ImageCardCtx *art = acquire_image_card_context(cfg);
+  ImageCardCtx *art = acquire_image_card_context(cfg, p.entity);
   if (!art) {
     ESP_LOGW("media_card", "No image downloader available for media cover art: %s",
              p.entity.c_str());
@@ -302,8 +302,6 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   art->base_url_provider = cfg.home_assistant_base_url;
   art->begin_display_takeover = cfg.begin_display_takeover;
   art->end_display_takeover = cfg.end_display_takeover;
-  art->refresh_interval_ms = 0;
-  art->timer_only = false;
   art->modal_fit = false;
   art->media_artwork = true;
   art->media_overlay = overlay;
@@ -315,6 +313,7 @@ inline void setup_media_cover_art(BtnSlot &s, const ParsedCfg &p,
   media_ctx->cover_art = art;
   media_ctx->cover_overlay = overlay;
   if (image_only && media_ctx->btn) lv_obj_set_user_data(media_ctx->btn, art);
+  if (art->image_ready) image_card_set_widget_source(img, art->image);
   media_cover_art_refresh_geometry(media_ctx);
   image_card_log_diagnostics(art, "bind-media-artwork");
 }
@@ -343,7 +342,6 @@ inline void subscribe_media_cover_art(MediaNowPlayingCtx *ctx,
       })
   );
   subscribe_image_card_access_token(art, entity_id);
-  subscribe_image_card_entity_state(art, entity_id);
   image_card_request_media_artwork(art);
 }
 

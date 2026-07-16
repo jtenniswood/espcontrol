@@ -421,12 +421,8 @@ def cfg_lines(device: dict) -> list[str]:
         for num in range(1, image_card_count + 1):
             lines.append(f"              id(image_card_download_{num}),")
         lines.append("            };")
-        lines.append("            static esphome::artwork_image::ArtworkImage *image_card_modal_downloaders[] = {")
-        for num in range(1, image_card_count + 1):
-            lines.append(f"              id(image_card_modal_download_{num}),")
-        lines.append("            };")
         lines.append("            cfg.image_card_images = image_card_downloaders;")
-        lines.append("            cfg.image_card_modal_images = image_card_modal_downloaders;")
+        lines.append("            cfg.image_card_modal_image = id(image_card_modal_download_1);")
         lines.append(f"            cfg.image_card_image_count = {image_card_count};")
     if device.get("image_card_diagnostics"):
         lines.append("            cfg.image_card_diagnostics = true;")

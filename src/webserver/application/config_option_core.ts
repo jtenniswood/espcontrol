@@ -47,8 +47,6 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
     var IMAGE_LABEL_OPTION: any = cardContractOptionName("image_label");
     var IMAGE_ICON_OPTION: any = cardContractOptionName("image_icon");
     var IMAGE_MODAL_MODE_OPTION: any = cardContractOptionName("image_modal_mode");
-    var IMAGE_REFRESH_OPTION: any = cardContractOptionName("image_refresh");
-    var IMAGE_REFRESH_MODE_OPTION: any = cardContractOptionName("image_refresh_mode");
     var LIGHT_CONTROL_TABS_OPTION: any = cardContractOptionName("light_tabs");
     var COVER_CONTROL_TABS_OPTION: any = cardContractOptionName("cover_tabs");
     var CLIMATE_CONTROL_TABS_OPTION: any = cardContractOptionName("climate_tabs");
@@ -140,8 +138,6 @@ export function installConfigOptionCoreModule(): GlobalDescriptors {
         "IMAGE_LABEL_OPTION": liveGlobal(() => IMAGE_LABEL_OPTION, (value?: any) => { IMAGE_LABEL_OPTION = value; }),
         "IMAGE_ICON_OPTION": liveGlobal(() => IMAGE_ICON_OPTION, (value?: any) => { IMAGE_ICON_OPTION = value; }),
         "IMAGE_MODAL_MODE_OPTION": liveGlobal(() => IMAGE_MODAL_MODE_OPTION, (value?: any) => { IMAGE_MODAL_MODE_OPTION = value; }),
-        "IMAGE_REFRESH_OPTION": liveGlobal(() => IMAGE_REFRESH_OPTION, (value?: any) => { IMAGE_REFRESH_OPTION = value; }),
-        "IMAGE_REFRESH_MODE_OPTION": liveGlobal(() => IMAGE_REFRESH_MODE_OPTION, (value?: any) => { IMAGE_REFRESH_MODE_OPTION = value; }),
         "LIGHT_CONTROL_TABS_OPTION": liveGlobal(() => LIGHT_CONTROL_TABS_OPTION, (value?: any) => { LIGHT_CONTROL_TABS_OPTION = value; }),
         "COVER_CONTROL_TABS_OPTION": liveGlobal(() => COVER_CONTROL_TABS_OPTION, (value?: any) => { COVER_CONTROL_TABS_OPTION = value; }),
         "CLIMATE_CONTROL_TABS_OPTION": liveGlobal(() => CLIMATE_CONTROL_TABS_OPTION, (value?: any) => { CLIMATE_CONTROL_TABS_OPTION = value; }),

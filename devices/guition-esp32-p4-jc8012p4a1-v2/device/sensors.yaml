@@ -88,16 +88,8 @@ script:
             id(image_card_download_5),
             id(image_card_download_6),
           };
-          static esphome::artwork_image::ArtworkImage *image_card_modal_downloaders[] = {
-            id(image_card_modal_download_1),
-            id(image_card_modal_download_2),
-            id(image_card_modal_download_3),
-            id(image_card_modal_download_4),
-            id(image_card_modal_download_5),
-            id(image_card_modal_download_6),
-          };
           cfg.image_card_images = image_card_downloaders;
-          cfg.image_card_modal_images = image_card_modal_downloaders;
+          cfg.image_card_modal_image = id(image_card_modal_download_1);
           cfg.image_card_image_count = 6;
           cfg.image_card_diagnostics = true;
           cfg.home_assistant_base_url = []() {
@@ -202,16 +194,8 @@ esphome:
               id(image_card_download_5),
               id(image_card_download_6),
             };
-            static esphome::artwork_image::ArtworkImage *image_card_modal_downloaders[] = {
-              id(image_card_modal_download_1),
-              id(image_card_modal_download_2),
-              id(image_card_modal_download_3),
-              id(image_card_modal_download_4),
-              id(image_card_modal_download_5),
-              id(image_card_modal_download_6),
-            };
             cfg.image_card_images = image_card_downloaders;
-            cfg.image_card_modal_images = image_card_modal_downloaders;
+            cfg.image_card_modal_image = id(image_card_modal_download_1);
             cfg.image_card_image_count = 6;
             cfg.image_card_diagnostics = true;
             cfg.home_assistant_base_url = []() {
@@ -385,16 +369,8 @@ esphome:
               id(image_card_download_5),
               id(image_card_download_6),
             };
-            static esphome::artwork_image::ArtworkImage *image_card_modal_downloaders[] = {
-              id(image_card_modal_download_1),
-              id(image_card_modal_download_2),
-              id(image_card_modal_download_3),
-              id(image_card_modal_download_4),
-              id(image_card_modal_download_5),
-              id(image_card_modal_download_6),
-            };
             cfg.image_card_images = image_card_downloaders;
-            cfg.image_card_modal_images = image_card_modal_downloaders;
+            cfg.image_card_modal_image = id(image_card_modal_download_1);
             cfg.image_card_image_count = 6;
             cfg.image_card_diagnostics = true;
             cfg.home_assistant_base_url = []() {

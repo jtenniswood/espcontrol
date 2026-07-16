@@ -50,6 +50,7 @@ CONF_PLACEHOLDER = "placeholder"
 CONF_TRANSPARENCY = "transparency"
 CONF_UPDATE = "update"
 CONF_RESIZE_MODE = "resize_mode"
+CONF_P4_PIPELINE = "p4_pipeline"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ artwork_image_ns = cg.esphome_ns.namespace("artwork_image")
 
 ImageFormat = artwork_image_ns.enum("ImageFormat")
 ImageResizeMode = artwork_image_ns.enum("ImageResizeMode")
+P4PipelinePriority = artwork_image_ns.enum("P4PipelinePriority")
 
 
 class Format:
@@ -181,6 +183,9 @@ ARTWORK_IMAGE_SCHEMA = (
             cv.Optional(CONF_PLACEHOLDER): cv.use_id(Image_),
             cv.Optional(CONF_BUFFER_SIZE, default=65536): cv.int_range(256, 524288),
             cv.Optional(CONF_ALLOW_INSECURE_LOCAL_URLS, default=False): cv.boolean,
+            cv.Optional(CONF_P4_PIPELINE, default="DISABLED"): cv.one_of(
+                "DISABLED", "TILE", "MODAL", upper=True
+            ),
             cv.Optional(CONF_ON_DOWNLOAD_FINISHED): automation.validate_automation({}),
             cv.Optional(CONF_ON_ERROR): automation.validate_automation({}),
         }
@@ -306,6 +311,11 @@ async def to_code(config):
     )
     await cg.register_component(var, config)
     await cg.register_parented(var, config[CONF_HTTP_REQUEST_ID])
+    cg.add(
+        var.set_p4_pipeline_priority(
+            getattr(P4PipelinePriority, f"P4_PIPELINE_{config[CONF_P4_PIPELINE]}")
+        )
+    )
 
     for key, value in config.get(CONF_REQUEST_HEADERS, {}).items():
         if isinstance(value, Lambda):
