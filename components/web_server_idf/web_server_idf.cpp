@@ -591,7 +591,9 @@ StringRef digest_param(StringRef params, const char *key) {
     size_t name_start = i;
     while (i < n && base[i] != '=' && base[i] != ',')
       i++;
-    if (i >= n || base[i] == ',')
+    if (i >= n)
+      break;
+    if (base[i] == ',')
       continue;
     size_t name_len = i - name_start;
     while (name_len > 0 && base[name_start + name_len - 1] == ' ')
