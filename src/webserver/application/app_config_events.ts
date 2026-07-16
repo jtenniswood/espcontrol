@@ -34,7 +34,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-button_(\d+)_config$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applyButtonConfigStateEvent(slot, val);
                 },
@@ -43,7 +43,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-subpage_(\d+)_config$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applySubpageConfigStateEvent(slot, "main", val);
                 },
@@ -52,7 +52,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-subpage_(\d+)_config_ext$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applySubpageConfigStateEvent(slot, "ext", val);
                 },
@@ -61,7 +61,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-subpage_(\d+)_config_ext_2$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applySubpageConfigStateEvent(slot, "ext2", val);
                 },
@@ -70,7 +70,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-subpage_(\d+)_config_ext_3$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applySubpageConfigStateEvent(slot, "ext3", val);
                 },
@@ -79,7 +79,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-subpage_(\d+)_config_ext_4$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applySubpageConfigStateEvent(slot, "ext4", val);
                 },
@@ -88,7 +88,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-subpage_(\d+)_config_ext_5$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applySubpageConfigStateEvent(slot, "ext5", val);
                 },
@@ -97,7 +97,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-subpage_(\d+)_config_ext_6$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applySubpageConfigStateEvent(slot, "ext6", val);
                 },
@@ -106,7 +106,7 @@ export function installAppConfigEventsModule(): GlobalDescriptors {
                 re: /^text-subpage_(\d+)_config_ext_7$/,
                 fn: function (this: any, m?: any, val?: any) {
                     var slot: any = parseInt(m[1], 10);
-                    if (slot < 1 || slot > TOTAL_SLOTS)
+                    if (slot < 1 || slot > state.buttons.length)
                         return;
                     applySubpageConfigStateEvent(slot, "ext7", val);
                 },

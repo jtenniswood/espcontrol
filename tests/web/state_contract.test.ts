@@ -27,6 +27,9 @@ function deviceConfig(overrides: Partial<DeviceConfig> = {}): DeviceConfig {
     slots: 4,
     cols: 2,
     rows: 2,
+    maxCols: 5,
+    maxRows: 5,
+    maxSlots: 25,
     screenSize: "test",
     dragMode: "swap",
     dragAnimation: true,
@@ -42,8 +45,8 @@ export function runStateContractTests(): void {
     features: { screenRotation: true, screenRotationDefault: "180", screenRotationOptions: ["0", "180"] },
   }));
   const second = createInitialState(deviceConfig());
-  equal(first.grid.length, 4, "startup creates one grid slot per device slot");
-  equal(first.buttons.length, 4, "startup creates one card per device slot");
+  equal(first.grid.length, 4, "startup creates one grid slot per default device slot");
+  equal(first.buttons.length, 25, "startup creates one card per compiled slot (maxSlots)");
   equal(first.buttons[0]?.icon, "Auto", "startup card defaults remain compatible");
   equal(first.screenRotation, "180", "startup uses the device rotation default");
   equal(first.screenRotationInitialReady, false, "rotation-capable devices wait for the initial event");

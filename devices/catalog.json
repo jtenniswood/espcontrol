@@ -34,7 +34,9 @@
           "cols": 5,
           "rows": 4,
           "firmwareGrid": "5x4",
-          "portraitCols": 4
+          "portraitCols": 4,
+          "maxCols": 5,
+          "maxRows": 5
         },
         "rotation": {
           "enabled": true,
@@ -395,7 +397,9 @@
           "cols": 5,
           "rows": 3,
           "firmwareGrid": "3x5",
-          "portraitCols": 3
+          "portraitCols": 3,
+          "maxCols": 5,
+          "maxRows": 5
         },
         "rotation": {
           "enabled": true,
@@ -571,7 +575,9 @@
           "cols": 2,
           "rows": 3,
           "firmwareGrid": "3x2",
-          "portraitCols": 3
+          "portraitCols": 3,
+          "maxCols": 5,
+          "maxRows": 5
         },
         "rotation": {
           "enabled": true,
@@ -778,7 +784,9 @@
         "layout": {
           "cols": 3,
           "rows": 3,
-          "firmwareGrid": "3x3"
+          "firmwareGrid": "3x3",
+          "maxCols": 5,
+          "maxRows": 5
         },
         "rotation": {
           "enabled": true,
@@ -954,7 +962,9 @@
         "layout": {
           "cols": 3,
           "rows": 3,
-          "firmwareGrid": "3x3"
+          "firmwareGrid": "3x3",
+          "maxCols": 4,
+          "maxRows": 4
         },
         "rotation": {
           "enabled": true,

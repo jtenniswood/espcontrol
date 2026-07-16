@@ -9,7 +9,7 @@ from pathlib import Path
 
 import device_matrix
 import generate_device_slots
-from device_profiles import ROOT, load_device_profiles, public_device_capabilities, web_config
+from device_profiles import MAX_GRID_SLOTS, ROOT, load_device_profiles, public_device_capabilities, web_config
 import check_public_firmware
 
 
@@ -145,11 +145,43 @@ def test_generated_yaml(profiles: dict[str, dict]) -> None:
         device_path = ROOT / "devices" / slug / "device" / "device.yaml"
         sensor_path = ROOT / "devices" / slug / "device" / "sensors.yaml"
         package = package_path.read_text(encoding="utf-8")
-        device_path.read_text(encoding="utf-8")
+        device_yaml = device_path.read_text(encoding="utf-8")
         sensors = sensor_path.read_text(encoding="utf-8")
         assert f'device_slug: "{slug}"' in package, f"{slug}: packages.yaml missing device slug"
         assert f'firmware_manifest_slug: "{slug}"' in package, f"{slug}: packages.yaml missing manifest slug"
-        assert f"cfg.num_slots = {profile['slots']};" in sensors, f"{slug}: sensors.yaml missing slot count"
+        layout = profile["layout"]
+        max_slots = layout["maxCols"] * layout["maxRows"]
+        # The compiled firmware ceiling must match the catalog max, or the grid
+        # settings clamp silently on-device. Devices without the build flag use
+        # the header default (device_profiles.MAX_GRID_SLOTS).
+        flag_match = re.search(r"-DESPCONTROL_MAX_GRID_SLOTS=(\d+)", device_yaml)
+        compiled_max = int(flag_match.group(1)) if flag_match else MAX_GRID_SLOTS
+        assert compiled_max == max_slots, (
+            f"{slug}: firmware MAX_GRID_SLOTS ({compiled_max}) must equal "
+            f"layout.maxCols*maxRows ({max_slots}); update the "
+            f"-DESPCONTROL_MAX_GRID_SLOTS build flag in device.yaml or the catalog"
+        )
+        # The active grid is read from the runtime settings, not hardcoded.
+        assert "cfg.num_slots = grid_cols_setting * grid_rows_setting;" in sensors, (
+            f"{slug}: sensors.yaml must size the grid from the runtime row/column settings"
+        )
+        assert f"if (grid_cols_setting < 1) grid_cols_setting = {layout['cols']};" in sensors, (
+            f"{slug}: sensors.yaml missing default column fallback"
+        )
+        assert f"if (grid_rows_setting < 1) grid_rows_setting = {layout['rows']};" in sensors, (
+            f"{slug}: sensors.yaml missing default row fallback"
+        )
+        # The compiled widget pool must match the ceiling every other layer
+        # (packages, BtnSlot arrays, lvgl widgets) is sized against.
+        btn_packages = package.count("!include { file: ../../common/config/button_template")
+        assert btn_packages == max_slots, (
+            f"{slug}: packages.yaml has {btn_packages} button packages, expected {max_slots}"
+        )
+        lvgl = (ROOT / "devices" / slug / "device" / "lvgl.yaml").read_text(encoding="utf-8")
+        widget_includes = lvgl.count("common/device/button_widget.yaml")
+        assert widget_includes == max_slots, (
+            f"{slug}: lvgl.yaml has {widget_includes} button widgets, expected {max_slots}"
+        )
         capacity = image_slot_capacity(profile)
         if capacity > 0:
             package_name = "image_cards.yaml" if capacity == 4 else f"image_cards_{capacity}.yaml"

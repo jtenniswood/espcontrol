@@ -69,6 +69,9 @@ export function installGridModule(): GlobalDescriptors {
     }
     function applyButtonOrderValue(this: any, val?: any, skipRender?: any) {
         orderReceived = !!(val && val.trim());
+        // Keep the untruncated order so a later grid-dimension change can
+        // re-parse it at the new size without losing off-grid placements.
+        state.buttonOrderRaw = val || "";
         state.sizes = {};
         state.grid = parseOrder(val);
         state.selectedSlots = state.selectedSlots.filter(function (this: any, s?: any) {
@@ -85,6 +88,7 @@ export function installGridModule(): GlobalDescriptors {
     }
     function applyImportedButtonOrder(this: any, orderStr?: any, importedSizes?: any) {
         state.sizes = importedSizes || {};
+        state.buttonOrderRaw = orderStr || "";
         state.grid = parseOrder(orderStr);
     }
     function clearSpans(this: any, grid?: any, maxSlots?: any) {

@@ -95,3 +95,5 @@ substitutions:
   entity_esp32_c6_check_for_update: "Firmware ESP32-C6: Check for Update"
   entity_esp32_c6_install_update: "Firmware ESP32-C6: Install Update"
   entity_screen_rotation: "Screen: Rotation"
+  entity_grid_columns: "Grid Columns"
+  entity_grid_rows: "Grid Rows"

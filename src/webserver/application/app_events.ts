@@ -22,6 +22,7 @@ export function installAppEventsModule(): GlobalDescriptors {
             pendingSliderSubpageMigrations = {};
             refreshFirmwareVersion();
             refreshScreensaverTimeout();
+            refreshGridDimensions();
         }
         function handleDisconnected(this: any, source?: any) {
             setConfigLocked(true, "Reconnecting to device\u2026");

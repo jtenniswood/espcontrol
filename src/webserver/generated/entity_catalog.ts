@@ -555,6 +555,20 @@ export const ENTITY_CATALOG = {
     "screen_rotation": {
       "domain": "select",
       "name": "Screen: Rotation"
+    },
+    "grid_columns": {
+      "domain": "number",
+      "name": "Grid Columns",
+      "objectIds": [
+        "grid_columns"
+      ]
+    },
+    "grid_rows": {
+      "domain": "number",
+      "name": "Grid Rows",
+      "objectIds": [
+        "grid_rows"
+      ]
     }
   },
   "groups": {
@@ -649,7 +663,9 @@ export const ENTITY_CATALOG = {
       "voice_services"
     ],
     "settings_optional": [
-      "screen_rotation"
+      "screen_rotation",
+      "grid_columns",
+      "grid_rows"
     ]
   }
 } as const;

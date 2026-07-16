@@ -16,6 +16,14 @@
 struct GridConfig {
   int num_slots;
   int cols;
+  // The device's default grid (in the active orientation). Icons render at
+  // full size for this grid and scale down as the user makes the grid denser.
+  // 0 means "unknown" -> fall back to the active grid (no scaling).
+  int base_cols = 0;
+  int base_rows = 0;
+  // Total compiled button slots (the ceiling the grid can grow to). All of
+  // them are built once at boot so the grid can grow live without a restart.
+  int compiled_slots = 0;
   bool width_compensation_vertical = false;
   bool wrap_tall_labels;
   bool info_only = false;
@@ -694,9 +702,53 @@ inline void refresh_slider_card_layout(BtnSlot &s) {
   if (slider) slider_refresh_geometry(slider);
 }
 
+// Minimum icon zoom (256 = 100%) so glyphs stay legible in the densest grids.
+constexpr int32_t GRID_ICON_MIN_ZOOM = 96;  // ~37.5%
+
+inline void apply_density_scaled_transform(lv_obj_t *obj, int32_t zoom, int32_t comp,
+                                           bool vertical) {
+  if (!obj) return;
+  int32_t comp_axis = comp * zoom / 256;
+  lv_obj_set_style_transform_scale_x(obj, vertical ? zoom : comp_axis, LV_PART_MAIN);
+  lv_obj_set_style_transform_scale_y(obj, vertical ? comp_axis : zoom, LV_PART_MAIN);
+}
+
+// Scale a card's icon and label to match its cell size: 100% at the device's
+// default grid, smaller as the grid gets denser, and larger (up to 100%) for
+// cards that span multiple cells. Glyphs are only ever downscaled, so they
+// stay sharp. The density factor is folded into the width-compensation
+// transform already applied to these labels, so call this after
+// display_apply_slot_text_width — density wins for the icon and label while
+// the other slot elements keep plain width compensation.
+inline void apply_card_content_density(BtnSlot &s, const GridConfig &cfg,
+                                       const DisplayProfile &display,
+                                       int col_span, int row_span) {
+  int cols = cfg.cols > 0 ? cfg.cols : 1;
+  int slots = bounded_grid_slots(cfg.num_slots);
+  int rows = (slots + cols - 1) / cols;
+  if (rows < 1) rows = 1;
+  int base_cols = cfg.base_cols > 0 ? cfg.base_cols : cols;
+  int base_rows = cfg.base_rows > 0 ? cfg.base_rows : rows;
+  if (col_span < 1) col_span = 1;
+  if (row_span < 1) row_span = 1;
+  int32_t zoom_w = (int32_t) base_cols * col_span * 256 / cols;
+  int32_t zoom_h = (int32_t) base_rows * row_span * 256 / rows;
+  int32_t zoom = zoom_w < zoom_h ? zoom_w : zoom_h;
+  if (zoom > 256) zoom = 256;
+  if (zoom < GRID_ICON_MIN_ZOOM) zoom = GRID_ICON_MIN_ZOOM;
+  int32_t comp = (int32_t) width_compensation_scale(display_main_width_percent(display));
+  bool vertical = width_compensation_vertical_axis();
+  apply_density_scaled_transform(s.icon_lbl, zoom, comp, vertical);
+  // Text legibility degrades faster than icon clarity, so labels shrink at
+  // half the icon's rate: blended midway toward full size (icon at 60% ->
+  // label at 80%). Spanning cards still cap at 100%.
+  int32_t label_zoom = (256 + zoom) / 2;
+  apply_density_scaled_transform(s.text_lbl, label_zoom, comp, vertical);
+}
+
 inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
                                 const GridConfig &cfg,
-                                int row_span = 1) {
+                                int row_span = 1, int col_span = 1) {
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   const auto context = card_runtime_context(p);
   if (cfg.label_lines > 0) {
@@ -705,8 +757,10 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
     lv_label_set_long_mode(s.text_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(s.text_lbl, lv_pct(100));
   }
-  display_apply_main_width(s.icon_lbl, display);
   display_apply_slot_text_width(s, display);
+  // Density scaling runs before the driver dispatch below so cards handled by
+  // an early-returning driver (e.g. subpage navigation) are scaled too.
+  apply_card_content_density(s, cfg, display, col_span, row_span);
   if (espcontrol::cards::navigation_driver_refresh_layout(
         s, p, context, cfg)) return;
 
@@ -775,7 +829,8 @@ inline void grid_refresh_layout(
     ParsedCfg p = parse_cfg(s.config->state);
     navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
-    refresh_card_layout(s, p, cfg, row_span);
+    int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
+    refresh_card_layout(s, p, cfg, row_span, col_span);
     espcontrol::cards::cleaning_driver_refresh_translated_text(
       s, p, card_runtime_context(p));
   }
@@ -870,7 +925,28 @@ inline void grid_phase1(
     display_apply_main_width(s.icon_lbl, display);
     display_apply_slot_text_width(s, display);
     setup_card_visual(s, p, context, cfg, palette, row_span, col_span);
-    refresh_card_layout(s, p, cfg, row_span);
+    refresh_card_layout(s, p, cfg, row_span, col_span);
+  }
+  // Build the remaining compiled slots once, kept hidden. Card widgets are only
+  // ever constructed here (at boot), so pre-building the whole pool lets the
+  // user grow the grid later through the live refresh path with no restart.
+  int compiled = cfg.compiled_slots > NS ? cfg.compiled_slots : NS;
+  if (compiled > MAX_GRID_SLOTS) compiled = MAX_GRID_SLOTS;
+  bool built[MAX_GRID_SLOTS] = {};
+  for (int pos = 0; pos < NS; pos++) {
+    int idx = order.positions[pos];
+    if (idx >= 1 && idx <= compiled) built[idx - 1] = true;
+  }
+  for (int i = 0; i < compiled; i++) {
+    if (built[i]) continue;
+    auto &s = slots[i];
+    ParsedCfg p = parse_cfg(s.config->state);
+    const auto context = card_runtime_context(p);
+    setup_card_visual(s, p, context, cfg, palette, 1, 1);
+    // setup_card_visual un-hides the button (reset_card_slot_dynamic_children);
+    // keep spare slots hidden until the grid grows to activate them. A hidden
+    // object takes no input and is skipped by layout, so this alone suffices.
+    lv_obj_add_flag(s.btn, LV_OBJ_FLAG_HIDDEN);
   }
   screen_lock_apply();
   ESP_LOGI("sensors", "Phase 1: done (%lu ms)", esphome::millis());
@@ -1604,8 +1680,8 @@ inline void grid_phase2(
     BtnSlot back_slot = create_dynamic_card_slot(
       back_btn, sp_icon_fnt, display_sensor_font(display), sp_btn_fnt, sp_txt_color,
       cfg.subpage_chevron_font);
-    display_apply_main_width(back_slot.icon_lbl, display);
     display_apply_slot_text_width(back_slot, display);
+    apply_card_content_density(back_slot, cfg, display, sp_ord.back_col_span, sp_ord.back_row_span);
     lv_label_set_text(back_slot.icon_lbl, "\U000F0141");
     lv_label_set_text(back_slot.text_lbl, sp_back_label.c_str());
 
@@ -1664,8 +1740,8 @@ inline void grid_phase2(
       BtnSlot sub_slot = create_dynamic_card_slot(
         sb_btn, sp_icon_fnt, display_sensor_font(display), sp_btn_fnt, sp_txt_color,
         cfg.subpage_chevron_font);
-      display_apply_main_width(sub_slot.icon_lbl, display);
       display_apply_slot_text_width(sub_slot, display);
+      apply_card_content_density(sub_slot, cfg, display, cs, rs);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);
 
       if (espcontrol::cards::image_driver_bind_subpage(

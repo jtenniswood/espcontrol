@@ -16,6 +16,10 @@ DEVICE_CATALOG = ROOT / "devices" / "catalog.json"
 COMMON_ASSETS = ROOT / "common" / "assets"
 DEVICES_DIR = ROOT / "devices"
 
+# Mirror of ESPCONTROL_MAX_GRID_SLOTS in components/espcontrol/button_grid_limits.h.
+# The compiled main-grid ceiling (maxCols * maxRows) must not exceed this.
+MAX_GRID_SLOTS = 25
+
 VALID_CHIP_FAMILIES = {"ESP32-P4", "ESP32-S3"}
 VALID_DRAG_MODES = {"swap", "displace"}
 VALID_ROTATIONS = {"0", "90", "180", "270"}
@@ -365,6 +369,10 @@ def validate_layout(slug: str, device: dict[str, Any], errors: list[str]) -> Non
     if "portraitCols" in layout and not is_positive_int(layout.get("portraitCols")):
         errors.append(device_error(slug, "layout.portraitCols must be a positive integer when set"))
 
+    for key in ("maxCols", "maxRows"):
+        if not is_positive_int(layout.get(key)):
+            errors.append(device_error(slug, f"layout.{key} must be a positive integer"))
+
     firmware_grid = layout.get("firmwareGrid")
     if not isinstance(firmware_grid, str) or not re.fullmatch(r"[1-9]\d*x[1-9]\d*", firmware_grid):
         errors.append(device_error(slug, "layout.firmwareGrid must look like '3x5'"))
@@ -376,6 +384,29 @@ def validate_layout(slug: str, device: dict[str, Any], errors: list[str]) -> Non
                 device_error(
                     slug,
                     f"slots must equal layout.cols * layout.rows ({slots} != {expected_slots})",
+                )
+            )
+
+    # The compiled ceiling must contain the default grid and stay within the
+    # firmware cap. Both runtime dimensions are bounded independently, so the
+    # product maxCols * maxRows sizes the compiled slot arrays.
+    if is_positive_int(layout.get("maxCols")) and is_positive_int(layout.get("cols")):
+        if layout["maxCols"] < layout["cols"]:
+            errors.append(device_error(slug, "layout.maxCols must be >= layout.cols"))
+    if is_positive_int(layout.get("maxRows")) and is_positive_int(layout.get("rows")):
+        if layout["maxRows"] < layout["rows"]:
+            errors.append(device_error(slug, "layout.maxRows must be >= layout.rows"))
+    if "portraitCols" in layout and is_positive_int(layout.get("portraitCols")) and is_positive_int(layout.get("maxCols")):
+        if layout["portraitCols"] > layout["maxCols"]:
+            errors.append(device_error(slug, "layout.portraitCols must be <= layout.maxCols"))
+    if is_positive_int(layout.get("maxCols")) and is_positive_int(layout.get("maxRows")):
+        max_slots = layout["maxCols"] * layout["maxRows"]
+        if max_slots > MAX_GRID_SLOTS:
+            errors.append(
+                device_error(
+                    slug,
+                    f"layout.maxCols * layout.maxRows must be <= {MAX_GRID_SLOTS} "
+                    f"(got {max_slots})",
                 )
             )
 
@@ -888,6 +919,9 @@ def web_config(profile: dict[str, Any]) -> dict[str, Any]:
         "slots": profile["slots"],
         "cols": layout["cols"],
         "rows": layout["rows"],
+        "maxCols": layout["maxCols"],
+        "maxRows": layout["maxRows"],
+        "maxSlots": layout["maxCols"] * layout["maxRows"],
         "screenSize": profile["public"]["screenSize"],
         "largeSensorUnitOffsetPercent": profile["settings"]["largeSensorUnitOffsetPercent"],
         "imageSlotCapacity": image_slot_capacity,
@@ -917,6 +951,10 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "slug": profile["slug"],
         "slots": profile["slots"],
         "cols": layout["cols"],
+        "rows": layout["rows"],
+        "max_cols": layout["maxCols"],
+        "max_rows": layout["maxRows"],
+        "max_slots": layout["maxCols"] * layout["maxRows"],
         "grid": layout["firmwareGrid"],
         "icon_font": fonts["icon"],
         "sensor_font": fonts["sensor"],

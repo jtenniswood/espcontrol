@@ -893,6 +893,14 @@ declare global {
   var refreshEntityDatalist: any;
   var refreshFirmwareVersion: any;
   var refreshScreensaverTimeout: any;
+  var refreshGridDimensions: any;
+  var clampGridCols: any;
+  var clampGridRows: any;
+  var gridColumnsMax: any;
+  var gridRowsMax: any;
+  var applyGridDimensions: any;
+  var setGridDimensions: any;
+  var syncGridDimensionInputs: any;
   var registerButtonType: any;
   var registerCoverLikeCardType: any;
   var registerEspControlTestHookGroup: any;

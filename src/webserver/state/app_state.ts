@@ -30,8 +30,14 @@ export function defaultTimezoneOptionsForDevice(deviceConfig: DeviceConfig): str
 }
 
 export function createInitialState(deviceConfig: DeviceConfig): AppState {
+  // The active grid array tracks the default grid at startup and is re-sized to
+  // the chosen dimensions when a button order or grid-dimension setting loads.
+  // The per-slot card configs are sized to the compiled ceiling so incoming
+  // config for any compiled slot (up to maxSlots) always has a home, even
+  // before the user's chosen dimensions are known.
+  const maxSlots = deviceConfig.maxSlots || deviceConfig.slots;
   const grid = Array.from({ length: deviceConfig.slots }, () => 0);
-  const buttons = Array.from({ length: deviceConfig.slots }, emptyCardConfig);
+  const buttons = Array.from({ length: maxSlots }, emptyCardConfig);
   return {
     grid, sizes: {}, buttons, theme: defaultTheme(), onColor: DEFAULT_COLOR_PRESET.on,
     selectedSlots: [], lastClickedSlot: -1, clockBarSelectedItem: "", activeTab: "screen",
@@ -63,6 +69,7 @@ export function createInitialState(deviceConfig: DeviceConfig): AppState {
     screenRotationOptions: deviceConfig.features?.screenRotationOptions?.slice() || ["0", "90", "180", "270"],
     screenRotationDeviceOptions: null, screenRotationInitialReady: !deviceConfig.features?.screenRotation,
     screenRotationInitialTimer: null,
+    gridCols: deviceConfig.cols, gridRows: deviceConfig.rows, buttonOrderRaw: "",
     pendingButtonOrderRaw: null, sunrise: "", sunset: "", firmwareVersion: "", firmwareLatestVersion: "",
     firmwareUpdateState: "", firmwareReleaseUrl: "", firmwareChecking: false,
     firmwareVersionRefreshPending: false, firmwareInstallTargetVersion: "", firmwareInstallPostPending: false,

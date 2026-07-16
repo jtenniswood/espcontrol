@@ -287,6 +287,8 @@ export interface BackupPanelSettingsState {
   screensaverTimeout: unknown;
   homeScreenTimeout: unknown;
   screenRotation: string;
+  gridColumns: number | null;
+  gridRows: number | null;
 }
 
 function normalizeScreensaverMode(value: unknown): string {
@@ -297,6 +299,14 @@ function normalizeScreensaverMode(value: unknown): string {
 function normalizeScreenRotationValue(value: unknown, options: readonly string[]): string {
   const rotation = String(value == null ? "" : value);
   return options.indexOf(rotation) !== -1 ? rotation : "0";
+}
+
+// A backup may predate this feature (null) or carry a grid larger than the
+// device it is restored onto; the web app clamps to the device ceiling when
+// applying, so here only positive integers survive.
+function normalizeGridDimensionValue(value: unknown): number | null {
+  const n = parseInt(String(value == null ? "" : value), 10);
+  return Number.isFinite(n) && n >= 1 ? n : null;
 }
 
 function normalizeUpdateFrequency(value: unknown, options: readonly string[], fallback: string): string {
@@ -412,5 +422,7 @@ export function normalizeBackupPanelSettings(
     screensaverTimeout: settings.screensaver_timeout || 300,
     homeScreenTimeout: objectValue(settings, "home_screen_timeout") != null ? settings.home_screen_timeout : 60,
     screenRotation: normalizeScreenRotationValue(settings.screen_rotation, current.screenRotationOptions),
+    gridColumns: normalizeGridDimensionValue(settings.grid_columns),
+    gridRows: normalizeGridDimensionValue(settings.grid_rows),
   };
 }

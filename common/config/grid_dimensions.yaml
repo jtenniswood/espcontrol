@@ -1,0 +1,50 @@
+# =============================================================================
+# MAIN GRID DIMENSIONS - user-configurable rows and columns
+# =============================================================================
+# Two persisted number entities let the setup page change how many columns and
+# rows the main button grid uses. Bounds and defaults are supplied per device
+# as substitutions emitted into packages.yaml by
+# scripts/generate_device_slots.py:
+#   grid_default_cols / grid_default_rows - the grid a fresh device boots with
+#   grid_max_cols / grid_max_rows         - the compiled ceiling (widgets exist)
+# Changing either value re-runs refresh_button_grid, which rebuilds the grid at
+# runtime from the new dimensions. The product never exceeds the compiled slot
+# pool because each dimension is bounded independently.
+# =============================================================================
+
+number:
+  - platform: template
+    name: "${entity_grid_columns}"
+    id: grid_cols_number
+    internal: true
+    disabled_by_default: true
+    entity_category: config
+    icon: "mdi:view-column-outline"
+    mode: box
+    optimistic: true
+    restore_value: true
+    min_value: 1
+    max_value: ${grid_max_cols}
+    step: 1
+    initial_value: ${grid_default_cols}
+    on_value:
+      then:
+        - script.execute: refresh_button_grid
+
+  - platform: template
+    name: "${entity_grid_rows}"
+    id: grid_rows_number
+    internal: true
+    disabled_by_default: true
+    entity_category: config
+    icon: "mdi:view-agenda-outline"
+    mode: box
+    optimistic: true
+    restore_value: true
+    min_value: 1
+    max_value: ${grid_max_rows}
+    step: 1
+    initial_value: ${grid_default_rows}
+    on_value:
+      then:
+        - script.execute: refresh_button_grid

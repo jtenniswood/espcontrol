@@ -11,7 +11,7 @@
   "summary": {
     "deviceProfiles": 6,
     "cardTypes": 40,
-    "entityNames": 82,
+    "entityNames": 84,
     "icons": 320,
     "structuralIcons": 16,
     "compatibilityFixtureGroups": 2
@@ -34,7 +34,9 @@
         "cols": 5,
         "rows": 3,
         "firmwareGrid": "3x5",
-        "portraitCols": 3
+        "portraitCols": 3,
+        "maxCols": 5,
+        "maxRows": 5
       },
       "rotation": {
         "enabled": true,
@@ -227,7 +229,9 @@
         "cols": 2,
         "rows": 3,
         "firmwareGrid": "3x2",
-        "portraitCols": 3
+        "portraitCols": 3,
+        "maxCols": 5,
+        "maxRows": 5
       },
       "rotation": {
         "enabled": true,
@@ -415,7 +419,9 @@
         "cols": 5,
         "rows": 4,
         "firmwareGrid": "5x4",
-        "portraitCols": 4
+        "portraitCols": 4,
+        "maxCols": 5,
+        "maxRows": 5
       },
       "rotation": {
         "enabled": true,
@@ -602,7 +608,9 @@
         "cols": 5,
         "rows": 4,
         "firmwareGrid": "5x4",
-        "portraitCols": 4
+        "portraitCols": 4,
+        "maxCols": 5,
+        "maxRows": 5
       },
       "rotation": {
         "enabled": true,
@@ -788,7 +796,9 @@
       "layout": {
         "cols": 3,
         "rows": 3,
-        "firmwareGrid": "3x3"
+        "firmwareGrid": "3x3",
+        "maxCols": 5,
+        "maxRows": 5
       },
       "rotation": {
         "enabled": true,
@@ -987,7 +997,9 @@
       "layout": {
         "cols": 3,
         "rows": 3,
-        "firmwareGrid": "3x3"
+        "firmwareGrid": "3x3",
+        "maxCols": 4,
+        "maxRows": 4
       },
       "rotation": {
         "enabled": true,
@@ -6472,6 +6484,28 @@
         "key": "screen_rotation",
         "domain": "select",
         "name": "Screen: Rotation",
+        "groups": [
+          "settings_optional"
+        ]
+      },
+      {
+        "key": "grid_columns",
+        "domain": "number",
+        "name": "Grid Columns",
+        "objectIds": [
+          "grid_columns"
+        ],
+        "groups": [
+          "settings_optional"
+        ]
+      },
+      {
+        "key": "grid_rows",
+        "domain": "number",
+        "name": "Grid Rows",
+        "objectIds": [
+          "grid_rows"
+        ],
         "groups": [
           "settings_optional"
         ]

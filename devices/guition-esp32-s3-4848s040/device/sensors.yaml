@@ -32,12 +32,30 @@ script:
             BTN_SLOT(7),
             BTN_SLOT(8),
             BTN_SLOT(9),
+            BTN_SLOT(10),
+            BTN_SLOT(11),
+            BTN_SLOT(12),
+            BTN_SLOT(13),
+            BTN_SLOT(14),
+            BTN_SLOT(15),
+            BTN_SLOT(16),
           };
           #undef BTN_SLOT
           if (!id(screen_rotation_ready)) return;
           GridConfig cfg = {};
-          cfg.num_slots = 9;
-          cfg.cols = 3;
+          int grid_cols_setting = (int) (id(grid_cols_number).state + 0.5f);
+          int grid_rows_setting = (int) (id(grid_rows_number).state + 0.5f);
+          if (grid_cols_setting < 1) grid_cols_setting = 3;
+          if (grid_rows_setting < 1) grid_rows_setting = 3;
+          if (grid_cols_setting * grid_rows_setting > 16) {
+            grid_cols_setting = 3;
+            grid_rows_setting = 3;
+          }
+          cfg.num_slots = grid_cols_setting * grid_rows_setting;
+          cfg.compiled_slots = 16;
+          cfg.cols = grid_cols_setting;
+          cfg.base_cols = 3;
+          cfg.base_rows = 3;
           cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
           cfg.subpage_chevron_x = 3;
           cfg.subpage_chevron_y = -2;
@@ -115,11 +133,29 @@ esphome:
               BTN_SLOT(7),
               BTN_SLOT(8),
               BTN_SLOT(9),
+              BTN_SLOT(10),
+              BTN_SLOT(11),
+              BTN_SLOT(12),
+              BTN_SLOT(13),
+              BTN_SLOT(14),
+              BTN_SLOT(15),
+              BTN_SLOT(16),
             };
             #undef BTN_SLOT
             GridConfig cfg = {};
-            cfg.num_slots = 9;
-            cfg.cols = 3;
+            int grid_cols_setting = (int) (id(grid_cols_number).state + 0.5f);
+            int grid_rows_setting = (int) (id(grid_rows_number).state + 0.5f);
+            if (grid_cols_setting < 1) grid_cols_setting = 3;
+            if (grid_rows_setting < 1) grid_rows_setting = 3;
+            if (grid_cols_setting * grid_rows_setting > 16) {
+              grid_cols_setting = 3;
+              grid_rows_setting = 3;
+            }
+            cfg.num_slots = grid_cols_setting * grid_rows_setting;
+            cfg.compiled_slots = 16;
+            cfg.cols = grid_cols_setting;
+            cfg.base_cols = 3;
+            cfg.base_rows = 3;
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
             cfg.subpage_chevron_x = 3;
             cfg.subpage_chevron_y = -2;
@@ -198,26 +234,37 @@ esphome:
               BTN_SLOT(7),
               BTN_SLOT(8),
               BTN_SLOT(9),
+              BTN_SLOT(10),
+              BTN_SLOT(11),
+              BTN_SLOT(12),
+              BTN_SLOT(13),
+              BTN_SLOT(14),
+              BTN_SLOT(15),
+              BTN_SLOT(16),
             };
             esphome::text::Text *sp_cfgs[] = {
               SP_CFG(1), SP_CFG(2), SP_CFG(3), SP_CFG(4),
               SP_CFG(5), SP_CFG(6), SP_CFG(7), SP_CFG(8),
-              SP_CFG(9),
+              SP_CFG(9), SP_CFG(10), SP_CFG(11), SP_CFG(12),
+              SP_CFG(13), SP_CFG(14), SP_CFG(15), SP_CFG(16),
             };
             esphome::text::Text *sp_ext[] = {
               SP_EXT(1), SP_EXT(2), SP_EXT(3), SP_EXT(4),
               SP_EXT(5), SP_EXT(6), SP_EXT(7), SP_EXT(8),
-              SP_EXT(9),
+              SP_EXT(9), SP_EXT(10), SP_EXT(11), SP_EXT(12),
+              SP_EXT(13), SP_EXT(14), SP_EXT(15), SP_EXT(16),
             };
             esphome::text::Text *sp_ext2[] = {
               SP_EXT2(1), SP_EXT2(2), SP_EXT2(3), SP_EXT2(4),
               SP_EXT2(5), SP_EXT2(6), SP_EXT2(7), SP_EXT2(8),
-              SP_EXT2(9),
+              SP_EXT2(9), SP_EXT2(10), SP_EXT2(11), SP_EXT2(12),
+              SP_EXT2(13), SP_EXT2(14), SP_EXT2(15), SP_EXT2(16),
             };
             esphome::text::Text *sp_ext3[] = {
               SP_EXT3(1), SP_EXT3(2), SP_EXT3(3), SP_EXT3(4),
               SP_EXT3(5), SP_EXT3(6), SP_EXT3(7), SP_EXT3(8),
-              SP_EXT3(9),
+              SP_EXT3(9), SP_EXT3(10), SP_EXT3(11), SP_EXT3(12),
+              SP_EXT3(13), SP_EXT3(14), SP_EXT3(15), SP_EXT3(16),
             };
             #undef BTN_SLOT
             #undef SP_CFG
@@ -225,8 +272,19 @@ esphome:
             #undef SP_EXT2
             #undef SP_EXT3
             GridConfig cfg = {};
-            cfg.num_slots = 9;
-            cfg.cols = 3;
+            int grid_cols_setting = (int) (id(grid_cols_number).state + 0.5f);
+            int grid_rows_setting = (int) (id(grid_rows_number).state + 0.5f);
+            if (grid_cols_setting < 1) grid_cols_setting = 3;
+            if (grid_rows_setting < 1) grid_rows_setting = 3;
+            if (grid_cols_setting * grid_rows_setting > 16) {
+              grid_cols_setting = 3;
+              grid_rows_setting = 3;
+            }
+            cfg.num_slots = grid_cols_setting * grid_rows_setting;
+            cfg.compiled_slots = 16;
+            cfg.cols = grid_cols_setting;
+            cfg.base_cols = 3;
+            cfg.base_rows = 3;
             cfg.subpage_chevrons_enabled = id(subpage_chevrons_enabled).state;
             cfg.subpage_chevron_x = 3;
             cfg.subpage_chevron_y = -2;

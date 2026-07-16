@@ -72,6 +72,8 @@ export function installAppBackupModule(): GlobalDescriptors {
                 screensaver_timeout: state.screensaverTimeout,
                 home_screen_timeout: state.homeScreenTimeout,
                 screen_rotation: state.screenRotation,
+                grid_columns: state.gridCols,
+                grid_rows: state.gridRows,
             },
             screen: {
                 brightness_day: Math.round(state.brightnessDayVal),
@@ -136,7 +138,11 @@ export function installAppBackupModule(): GlobalDescriptors {
                 }
                 var backupPlan: any;
                 try {
-                    backupPlan = planBackupImport(data, { device: DEVICE_ID, slots: NUM_SLOTS });
+                    // Plan against the compiled slot ceiling, not the currently
+                    // active grid, so a backup saved at a larger grid keeps every
+                    // card. The active dimensions are applied afterwards from the
+                    // imported grid settings.
+                    backupPlan = planBackupImport(data, { device: DEVICE_ID, slots: CFG.maxSlots || NUM_SLOTS });
                 }
                 catch (e) {
                     showBanner((e as any).backupMessage || "Invalid config file \u2014 missing required fields", "error");
@@ -149,7 +155,11 @@ export function installAppBackupModule(): GlobalDescriptors {
                 setPostThrottle(importPostThrottleMs);
                 resetPostQueueError();
                 postText(entityName("button_on_color"), backupPlan.config.button_on_color);
-                for (var i: any = 0; i < NUM_SLOTS; i++) {
+                // Apply every compiled slot, not just the active grid, so configs
+                // for slots the imported grid exposes are restored and pushed to
+                // the device (backupPlan.buttons is sized to the slot ceiling).
+                var importSlotCount: any = backupPlan.buttons.length;
+                for (var i: any = 0; i < importSlotCount; i++) {
                     var b: any = backupPlan.buttons[i];
                     var n: any = i + 1;
                     state.buttons[i] = backupNormalizeButtonConfig(b);
@@ -257,6 +267,12 @@ export function installAppBackupModule(): GlobalDescriptors {
                     var importedScreenRotation: any = importedSettings.screenRotation;
                     if (CFG.features && CFG.features.screenRotation)
                         postSelect(entityName("screen_rotation"), importedScreenRotation);
+                    // Grid dimensions were applied to state.buttonOrderRaw above
+                    // via applyImportedButtonOrder; re-flow at the imported size
+                    // (clamped to this device's ceiling) and persist.
+                    setGridDimensions(
+                        importedSettings.gridColumns != null ? importedSettings.gridColumns : state.gridCols,
+                        importedSettings.gridRows != null ? importedSettings.gridRows : state.gridRows);
                     state.clockBarTemperatureEntities = importedSettings.clockBarTemperatureEntities;
                     state._clockBarTemperatureEntitiesReceived = true;
                     state._indoorOn = importedSettings.indoorTempEnable;

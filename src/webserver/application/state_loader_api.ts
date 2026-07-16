@@ -154,6 +154,39 @@ export function installStateLoaderApiModule(): GlobalDescriptors {
             }
         });
     }
+    function readNumberEntity(this: any, key?: any) {
+        return getJsonQuietly("/number/" + encodeURIComponent(entityName(key)) + "?detail=all")
+            .then(function (this: any, data?: any) {
+                if (data)
+                    return data;
+                var objectIds: any = entityObjectIds(key);
+                if (!objectIds.length)
+                    return null;
+                return getJsonQuietly("/number/" + encodeURIComponent(objectIds[0]) + "?detail=all");
+            });
+    }
+    function numberEntityValue(this: any, data?: any, fallback?: any) {
+        if (!data)
+            return fallback;
+        rememberEntityPostPath(data);
+        var value: any = data.state != null ? data.state : data.value;
+        return value != null ? value : fallback;
+    }
+    // Grid dimensions are internal number entities, so read them explicitly on
+    // connect. Both are applied together; applyGridDimensions re-parses the
+    // saved button order at the resulting size (see grid_dimensions_state).
+    function refreshGridDimensions(this: any) {
+        Promise.all([readNumberEntity("grid_columns"), readNumberEntity("grid_rows")])
+            .then(function (this: any, results?: any) {
+                var colsData: any = results[0];
+                var rowsData: any = results[1];
+                if (!colsData && !rowsData)
+                    return;
+                applyGridDimensions(
+                    numberEntityValue(colsData, state.gridCols),
+                    numberEntityValue(rowsData, state.gridRows));
+            });
+    }
     function waitForReboot(this: any) {
         if (_eventSource) {
             _eventSource.close();
@@ -174,6 +207,7 @@ export function installStateLoaderApiModule(): GlobalDescriptors {
         "loadInitialState": staticGlobal(loadInitialState),
         "refreshFirmwareVersion": staticGlobal(refreshFirmwareVersion),
         "refreshScreensaverTimeout": staticGlobal(refreshScreensaverTimeout),
+        "refreshGridDimensions": staticGlobal(refreshGridDimensions),
         "waitForReboot": staticGlobal(waitForReboot),
     };
 }

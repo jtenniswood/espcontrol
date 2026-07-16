@@ -15,6 +15,9 @@ export interface DeviceConfig {
   readonly slots: number;
   readonly cols: number;
   readonly rows: number;
+  readonly maxCols: number;
+  readonly maxRows: number;
+  readonly maxSlots: number;
   readonly screenSize: string;
   readonly dragMode: "swap" | "displace";
   readonly dragAnimation: boolean;
@@ -163,6 +166,9 @@ export interface AppState {
   screenRotationInitialReady: boolean;
   screenRotationInitialTimer: number | null;
   pendingButtonOrderRaw: string | null;
+  gridCols: number;
+  gridRows: number;
+  buttonOrderRaw: string;
   sunrise: string;
   sunset: string;
   firmwareVersion: string;

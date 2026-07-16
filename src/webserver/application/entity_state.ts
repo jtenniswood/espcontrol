@@ -32,7 +32,13 @@ export function installEntityStateModule(): GlobalDescriptors {
     }
     function entityStateItemsForSlots(this: any, keys?: any) {
         var items: any = [];
-        for (var i: any = 1; i <= TOTAL_SLOTS; i++) {
+        // Fetch every compiled slot, not just the active grid: the stored grid
+        // dimensions load asynchronously (so TOTAL_SLOTS may still be the
+        // default here), and card configs can occupy any compiled slot
+        // regardless of the currently active size. Missing them breaks the
+        // preview and would silently drop those cards from backup exports.
+        var slotCount: any = (state.buttons && state.buttons.length) || TOTAL_SLOTS;
+        for (var i: any = 1; i <= slotCount; i++) {
             keys.forEach(function (this: any, key?: any) {
                 items.push([entityDef(key).domain, entityNameForSlot(key, i)]);
             });

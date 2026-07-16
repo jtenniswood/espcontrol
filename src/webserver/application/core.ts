@@ -7,6 +7,10 @@ export function installCore(): GlobalDescriptors {
     var TOTAL_SLOTS: any = NUM_SLOTS;
     var GRID_COLS: any = CFG.cols;
     var GRID_ROWS: any = CFG.rows;
+    // Preview icon scale relative to the default grid (matches the firmware:
+    // icons shrink as the grid gets denser, never upscale). Recomputed in
+    // syncPreviewOrientation and applied to --btn-icon.
+    var ICON_SCALE: any = 1;
     function isPortraitRotation(this: any, value?: any) {
         value = String(value == null ? "0" : value);
         return value === "90" || value === "270";
@@ -80,8 +84,9 @@ export function installCore(): GlobalDescriptors {
             r.setProperty("--btn-border", scaledCqw(btn.borderWidth, scale));
         else
             r.removeProperty("--btn-border");
-        r.setProperty("--btn-icon", scaledCqw(btn.iconSize, scale));
-        r.setProperty("--btn-label", scaledCqw(btn.labelSize, scale));
+        r.setProperty("--btn-icon", scaledCqw(btn.iconSize * ICON_SCALE, scale));
+        // Labels shrink at half the icon's rate (see apply_card_content_density).
+        r.setProperty("--btn-label", scaledCqw(btn.labelSize * (1 + ICON_SCALE) / 2, scale));
         r.setProperty("--btn-label-weight", String(btn.labelWeight || 400));
         r.setProperty("--btn-lines", String(btn.labelLines || 1));
         r.setProperty("--btn-lines-dbl", String(btn.labelLinesDouble || btn.labelLines || 1));
@@ -93,12 +98,49 @@ export function installCore(): GlobalDescriptors {
         r.setProperty("--subpage-right", scaledCqw(subpageBadge.right, scale));
         r.setProperty("--subpage-fs", scaledCqw(subpageBadge.fontSize, scale));
     }
+    function clampGridDimension(this: any, value?: any, fallback?: any, max?: any) {
+        var n: any = parseInt(value, 10);
+        if (!isFinite(n) || n < 1)
+            n = fallback;
+        if (isFinite(max) && max >= 1 && n > max)
+            n = max;
+        return n;
+    }
+    // The active grid comes from the user-chosen columns/rows, bounded by the
+    // device's compiled ceiling. In portrait the display is rotated, so the
+    // column and row choices swap to match the firmware (cfg.cols = portrait
+    // ? rows : cols). NUM_SLOTS is the product either way.
+    function activeGridDimensions(this: any) {
+        var userCols: any = clampGridDimension(state.gridCols, CFG.cols, CFG.maxCols);
+        var userRows: any = clampGridDimension(state.gridRows, CFG.rows, CFG.maxRows);
+        var portrait: any = isPortraitRotation(state.screenRotation) && CFG.portrait;
+        var cols: any = portrait ? userRows : userCols;
+        var rows: any = portrait ? userCols : userRows;
+        // Icon scale mirrors the firmware (apply_card_icon_density): full size at
+        // the device's default grid, shrinking as it gets denser, floored so it
+        // stays legible, and never upscaled.
+        var baseCols: any = portrait ? CFG.rows : CFG.cols;
+        var baseRows: any = portrait ? CFG.cols : CFG.rows;
+        var iconScale: any = Math.min(baseCols / (cols || 1), baseRows / (rows || 1));
+        if (!isFinite(iconScale) || iconScale > 1) iconScale = 1;
+        if (iconScale < 0.375) iconScale = 0.375;
+        return {
+            slots: userCols * userRows,
+            cols: cols,
+            rows: rows,
+            iconScale: iconScale,
+        };
+    }
     function syncPreviewOrientation(this: any) {
         var layout: any = activeLayout();
         var screen: any = layout.screen || CFG.screen;
         var scale: any = previewLayoutScale(layout);
-        GRID_COLS = layout.cols || CFG.cols;
-        GRID_ROWS = layout.rows || Math.ceil(NUM_SLOTS / GRID_COLS);
+        var dims: any = activeGridDimensions();
+        NUM_SLOTS = dims.slots;
+        TOTAL_SLOTS = dims.slots;
+        GRID_COLS = dims.cols;
+        GRID_ROWS = dims.rows;
+        ICON_SCALE = dims.iconScale;
         var r: any = document.documentElement.style;
         r.setProperty("--screen-w", screen.width || CFG.screen.width);
         r.setProperty("--screen-aspect", screen.aspect || CFG.screen.aspect);

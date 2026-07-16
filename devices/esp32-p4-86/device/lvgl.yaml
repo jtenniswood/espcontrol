@@ -90,15 +90,15 @@ lvgl:
               - script.execute: network_status_open_info
 
   # ---------------------------------------------------------------------------
-  # Main page (fixed 3x3 grid of button widgets)
+  # Main page (button widget pool; grid dimensions set at runtime)
   # ---------------------------------------------------------------------------
   pages:
     - id: main_page
       scrollbar_mode: "off"
       layout:
         type: grid
-        grid_columns: [FR(1), FR(1), FR(1)]
-        grid_rows: [FR(1), FR(1), FR(1)]
+        grid_columns: [FR(1), FR(1), FR(1), FR(1), FR(1)]
+        grid_rows: [FR(1), FR(1), FR(1), FR(1), FR(1)]
         pad_row: ${main_page_card_gap}
         pad_column: ${main_page_card_gap}
       width: 100%
@@ -119,3 +119,19 @@ lvgl:
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "7" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "8" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "9" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "10" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "11" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "12" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "13" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "14" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "15" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "16" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "17" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "18" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "19" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "20" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "21" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "22" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "23" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "24" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "25" } }

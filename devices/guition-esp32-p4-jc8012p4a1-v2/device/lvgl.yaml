@@ -73,7 +73,7 @@ lvgl:
       layout:
         type: grid
         grid_columns: [FR(1), FR(1), FR(1), FR(1), FR(1)]
-        grid_rows: [FR(1), FR(1), FR(1), FR(1)]
+        grid_rows: [FR(1), FR(1), FR(1), FR(1), FR(1)]
         pad_row: ${main_page_card_gap}
         pad_column: ${main_page_card_gap}
       width: 100%
@@ -105,3 +105,8 @@ lvgl:
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "18" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "19" } }
         - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "20" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "21" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "22" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "23" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "24" } }
+        - !include { file: ../../../common/device/button_widget.yaml, vars: { num: "25" } }

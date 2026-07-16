@@ -25,6 +25,7 @@ import { installStateModule } from "./application/state";
 import { installLanguageStateModule } from "./application/language_state";
 import { installEnvironmentStateModule } from "./application/environment_state";
 import { installScreenRotationStateModule } from "./application/screen_rotation_state";
+import { installGridDimensionsStateModule } from "./application/grid_dimensions_state";
 import { installScreenScheduleStateModule } from "./application/screen_schedule_state";
 import { installNtpStateModule } from "./application/ntp_state";
 import { installAppearanceStateModule } from "./application/appearance_state";
@@ -154,6 +155,7 @@ function startEspControl(): void {
   installGlobals(installLanguageStateModule());
   installGlobals(installEnvironmentStateModule());
   installGlobals(installScreenRotationStateModule());
+  installGlobals(installGridDimensionsStateModule());
   installGlobals(installScreenScheduleStateModule());
   installGlobals(installNtpStateModule());
   installGlobals(installAppearanceStateModule());

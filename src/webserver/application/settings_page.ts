@@ -223,6 +223,37 @@ export function installSettingsPageModule(): GlobalDescriptors {
             rotationCard = makeCollapsibleCard("Rotation", rotationBody, true);
             els.setScreenRotation = rotSelect;
         }
+        var gridDimensionsCard: any = null;
+        (function (this: any) {
+            var gridBody: any = document.createElement("div");
+            function gridDimensionField(this: any, id?: any, label?: any, maxValue?: any, current?: any, onCommit?: any) {
+                var field: any = document.createElement("div");
+                field.className = "sp-field";
+                field.appendChild(fieldLabel(label, id));
+                var input: any = document.createElement("input");
+                input.className = "sp-input sp-input--no-stepper";
+                input.id = id;
+                input.type = "number";
+                input.min = "1";
+                input.max = String(maxValue);
+                input.step = "1";
+                input.inputMode = "numeric";
+                input.value = String(current);
+                input.addEventListener("change", function (this: any) { onCommit(this.value); });
+                field.appendChild(input);
+                gridBody.appendChild(field);
+                return input;
+            }
+            var colInput: any = gridDimensionField("sp-set-grid-columns", "Columns", gridColumnsMax(), state.gridCols, function (this: any, value?: any) {
+                setGridDimensions(value, state.gridRows);
+            });
+            var rowInput: any = gridDimensionField("sp-set-grid-rows", "Rows", gridRowsMax(), state.gridRows, function (this: any, value?: any) {
+                setGridDimensions(state.gridCols, value);
+            });
+            els.setGridColumns = colInput;
+            els.setGridRows = rowInput;
+            gridDimensionsCard = makeCollapsibleCard("Grid", gridBody, true);
+        })();
         var tempBody: any = document.createElement("div");
         var unitField: any = document.createElement("div");
         unitField.className = "sp-field";
@@ -381,6 +412,7 @@ export function installSettingsPageModule(): GlobalDescriptors {
             coverArtCard,
             voiceServicesCard,
             rotationCard,
+            gridDimensionsCard,
         ]);
         appendSettingsSection(config, "Sleep & Schedule", [
             idleCard,
