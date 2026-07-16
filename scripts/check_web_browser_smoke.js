@@ -342,7 +342,6 @@ function assertNoLayoutBreaks(result, label, options = {}) {
   assert(result.appVisible, `${label}: #sp-app should be visible`);
   assert(result.screenVisible, `${label}: .sp-screen should be visible`);
   assert(result.mainVisible, `${label}: .sp-main should be visible`);
-  assert(result.applyVisible, `${label}: apply controls should be visible`);
   assert(result.gridChildren > 0, `${label}: grid should render cells`);
   assert(
     result.visibleGridChildren > 0,
@@ -394,7 +393,6 @@ async function measureCoreLayout(page) {
     var app = document.querySelector("#sp-app");
     var screen = document.querySelector(".sp-screen");
     var main = document.querySelector(".sp-main");
-    var apply = document.querySelector(".sp-apply-btn");
     var mainRect = rectFor(main);
     var children = Array.from(document.querySelectorAll(".sp-main > *")).map(
       function (el, index) {
@@ -432,7 +430,6 @@ async function measureCoreLayout(page) {
       appVisible: visible(rectFor(app)),
       screenVisible: visible(rectFor(screen)),
       mainVisible: visible(mainRect),
-      applyVisible: visible(rectFor(apply)),
       gridChildren: children.length,
       visibleGridChildren: visibleChildren.length,
       visibleCards: document.querySelectorAll(".sp-main > .sp-btn").length,
@@ -2881,26 +2878,6 @@ async function assertEditSmoke(page, posts, errors) {
   );
 }
 
-async function assertApplySmoke(page, posts, errors) {
-  const before = posts.length;
-  await page.getByRole("button", { name: "Apply Configuration" }).click();
-  await waitForPost(
-    posts,
-    {
-      domain: "button",
-      name: "Apply Configuration",
-      action: "press",
-    },
-    "apply configuration",
-    before,
-  );
-  assert.deepStrictEqual(
-    errors,
-    [],
-    "browser errors were reported during edit interactions",
-  );
-}
-
 async function openPasteCardCodeDialog(page) {
   const emptyCell = page.locator(".sp-main .sp-empty-cell").first();
   assert(await emptyCell.isVisible(), "card transfer test requires an empty destination cell");
@@ -3918,7 +3895,6 @@ async function runCase(browser, testCase) {
       await assertBackupImportSmoke(page, posts, testCase);
       await assertEditSmoke(page, posts, errors);
       await assertCardTransferSmoke(page, posts, testCase.name);
-      await assertApplySmoke(page, posts, errors);
     } else if (testCase.exerciseDeviceMocks) {
       await assertBackupImportSmoke(page, posts, testCase);
     }

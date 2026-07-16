@@ -1568,7 +1568,8 @@ inline void grid_phase2(
     esphome::text::Text **sp_ext7_configs,
     const std::string &order_str,
     const std::string &on_hex,
-    lv_obj_t *main_page_obj) {
+    lv_obj_t *main_page_obj,
+    bool reconstruct_main_cards = false) {
   ESP_LOGI("sensors", "Phase 2: subscriptions + subpages start (%lu ms)", esphome::millis());
   grid_log_memory("start");
   set_display_temperature_unit(cfg.temperature_unit, cfg.timezone);
@@ -1649,6 +1650,15 @@ inline void grid_phase2(
     const auto context = card_runtime_context(p);
     int row_span = order.row_span[idx - 1] > 0 ? order.row_span[idx - 1] : 1;
     int col_span = order.col_span[idx - 1] > 0 ? order.col_span[idx - 1] : 1;
+    // Live "Apply Configuration": rebuild the tile's widgets so a changed card
+    // type/entity takes effect without a reboot. The phase-2 prologue above
+    // already freed the previous config's runtime contexts/subscriptions, so
+    // this reconstructs against a clean slot; the loop below then wires up the
+    // new config. Only requested on an explicit apply (not layout refreshes).
+    if (reconstruct_main_cards) {
+      setup_card_visual(s, p, context, cfg, palette, row_span, col_span);
+      refresh_card_layout(s, p, cfg, row_span, col_span);
+    }
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
     if (espcontrol::cards::image_driver_bind_main(
@@ -1990,10 +2000,11 @@ inline void grid_phase2(
     esphome::text::Text **sp_ext3_configs,
     const std::string &order_str,
     const std::string &on_hex,
-    lv_obj_t *main_page_obj) {
+    lv_obj_t *main_page_obj,
+    bool reconstruct_main_cards = false) {
   grid_phase2(slots, cfg, sp_configs, sp_ext_configs, sp_ext2_configs, sp_ext3_configs,
     nullptr, nullptr, nullptr, nullptr,
-    order_str, on_hex, main_page_obj);
+    order_str, on_hex, main_page_obj, reconstruct_main_cards);
 }
 
 inline void grid_phase2(
@@ -2002,9 +2013,10 @@ inline void grid_phase2(
     esphome::text::Text **sp_ext_configs,
     const std::string &order_str,
     const std::string &on_hex,
-    lv_obj_t *main_page_obj) {
+    lv_obj_t *main_page_obj,
+    bool reconstruct_main_cards = false) {
   grid_phase2(slots, cfg, sp_configs, sp_ext_configs, nullptr, nullptr,
-    order_str, on_hex, main_page_obj);
+    order_str, on_hex, main_page_obj, reconstruct_main_cards);
 }
 
 // ── Phase 3: Temperature + presence/media subscriptions ───────────────

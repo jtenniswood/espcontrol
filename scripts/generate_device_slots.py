@@ -670,7 +670,10 @@ def script_block(device: dict) -> str:
             else "          grid_phase2(slots, cfg, sp_cfgs, sp_ext, sp_ext2, sp_ext3,",
             "            id(button_order).state,",
             "            id(button_on_color).state,",
-            "            id(main_page)->obj);",
+            # config_apply_reconstruct rebuilds each tile's widgets so a live
+            # "Apply Configuration" applies card changes without a reboot.
+            "            id(main_page)->obj, id(config_apply_reconstruct));",
+            "          id(config_apply_reconstruct) = false;",
         ]
         return "\n".join(
             [

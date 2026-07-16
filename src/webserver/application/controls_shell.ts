@@ -161,7 +161,6 @@ export function installControlsShellModule(): GlobalDescriptors {
         });
         page.appendChild(overlay);
         els.settingsOverlay = overlay;
-        page.appendChild(buildApplyBar());
         parent.appendChild(page);
         els.screenPage = page;
     }
@@ -178,11 +177,14 @@ export function installControlsShellModule(): GlobalDescriptors {
             if (document.activeElement && "blur" in document.activeElement) {
                 (document.activeElement as HTMLElement).blur();
             }
-            setConfigLocked(true, "Restarting device\u2026");
+            setConfigLocked(true, "Applying changes\u2026");
             setTimeout(function (this: any) {
                 postButtonPress("Apply Configuration").then(function (this: any, response?: any) {
                     if (response && response.ok) {
-                        waitForReboot();
+                        // Applied live on-device (grid rebuilt in place, no reboot).
+                        // The device debounces the rebuild ~3s; unlock once it has
+                        // had time to take effect. The event stream stays connected.
+                        setTimeout(function (this: any) { setConfigLocked(false); }, 4500);
                     }
                     else if (response) {
                         setConfigLocked(false);
@@ -193,7 +195,7 @@ export function installControlsShellModule(): GlobalDescriptors {
         bar.appendChild(btn);
         var note: any = document.createElement("div");
         note.className = "sp-apply-note";
-        note.textContent = "Restarts the device to apply changes";
+        note.textContent = "Applies your changes to the display";
         bar.appendChild(note);
         return bar;
     }
