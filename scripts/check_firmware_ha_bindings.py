@@ -532,7 +532,7 @@ def firmware_local_sensor_binding_order_errors(firmware_dir: Path, root: Path) -
 
     for match in re.finditer(r"if\s*\(\s*bind_basic_sensor_card\s*\(", grid_text):
         bind_start = match.start()
-        image_start = grid_text.rfind("if (bind_image_card", 0, bind_start)
+        image_start = grid_text.rfind("image_driver_bind_main", 0, bind_start)
         line_no = grid_text.count("\n", 0, bind_start) + 1
         if image_start < 0:
             errors.append(f"{grid_rel}:{line_no}: bind image cards before basic sensor cards")
@@ -1481,6 +1481,7 @@ def firmware_cover_art_low_heap_progress_errors(
         if any(
             token not in cover_cleanup_body
             for token in (
+                "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS)",
                 "HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS",
                 "state->progress_subscribed = false",
                 "state->progress_subscription_scope = 0",
@@ -1489,6 +1490,10 @@ def firmware_cover_art_low_heap_progress_errors(
             )
         ):
             errors.append(f"{rel}: release cover-art-owned progress and preserve active card consumers")
+        elif cover_cleanup_body.find(
+            "ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS)"
+        ) > cover_cleanup_body.find("state->progress_subscribed = false"):
+            errors.append(f"{rel}: release cover-art progress callbacks before clearing local state")
     else:
         errors.append(f"{media_path.relative_to(root)}: missing media card helpers")
 
@@ -1876,12 +1881,19 @@ def firmware_image_card_quality_errors(firmware_dir: Path, root: Path) -> list[s
     if "image_card_tile_request_size" not in text:
         errors.append(f"{rel}: keep small-display image card tile downloads sized to the tile")
 
-    grid_path = firmware_dir / "button_grid_grid.h"
-    if grid_path.exists():
-        grid_rel = grid_path.relative_to(root)
-        grid_text = grid_path.read_text(encoding="utf-8")
-        if "image_card_refresh_tile_geometry(ctx)" not in grid_text:
-            errors.append(f"{grid_rel}: update active image-card geometry during grid refresh")
+    driver_path = firmware_dir / "button_grid_image_driver.h"
+    if driver_path.exists():
+        driver_rel = driver_path.relative_to(root)
+        driver_text = driver_path.read_text(encoding="utf-8")
+        if "image_card_refresh_tile_geometry(image_context)" not in driver_text:
+            errors.append(f"{driver_rel}: update active image-card geometry during grid refresh")
+    else:
+        grid_path = firmware_dir / "button_grid_grid.h"
+        if grid_path.exists():
+            grid_rel = grid_path.relative_to(root)
+            grid_text = grid_path.read_text(encoding="utf-8")
+            if "image_card_refresh_tile_geometry(ctx)" not in grid_text:
+                errors.append(f"{grid_rel}: update active image-card geometry during grid refresh")
     return errors
 
 
@@ -2472,6 +2484,7 @@ def firmware_navigation_target_errors(
 ) -> list[str]:
     errors: list[str] = []
     navigation_path = firmware_dir / "button_grid_navigation.h"
+    navigation_driver_path = firmware_dir / "button_grid_navigation_driver.h"
     grid_path = firmware_dir / "button_grid_grid.h"
 
     if not navigation_path.exists():
@@ -2507,8 +2520,16 @@ def firmware_navigation_target_errors(
             errors.append(f"{grid_rel}: register every displayed home-screen card for Home Assistant navigation")
         if "navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);" not in grid_text:
             errors.append(f"{grid_rel}: refresh displayed home-screen card targets during layout-only updates")
-        if "navigation_register_subpage(" not in grid_text:
-            errors.append(f"{grid_rel}: preserve subpage navigation registration")
+    if not navigation_driver_path.exists():
+        errors.append("components/espcontrol/button_grid_navigation_driver.h: preserve subpage navigation registration")
+    else:
+        navigation_driver_rel = navigation_driver_path.relative_to(root)
+        navigation_driver_text = navigation_driver_path.read_text(encoding="utf-8")
+        if (
+            "navigation_driver_own_subpage(" not in navigation_driver_text
+            or "navigation_register_subpage(" not in navigation_driver_text
+        ):
+            errors.append(f"{navigation_driver_rel}: preserve subpage navigation registration")
 
     if not api_navigate_path.exists():
         errors.append("common/device/api_navigate.yaml: route voice aliases through the navigate action")
@@ -3345,6 +3366,7 @@ def expect_navigation_target_errors(
     name: str,
     navigation_text: str,
     grid_text: str,
+    navigation_driver_text: str,
     api_text: str,
     package_texts: dict[str, str],
     local_voice_slugs: tuple[str, ...],
@@ -3358,6 +3380,8 @@ def expect_navigation_target_errors(
         api_path.parent.mkdir(parents=True)
         (firmware_dir / "button_grid_navigation.h").write_text(navigation_text, encoding="utf-8")
         (firmware_dir / "button_grid_grid.h").write_text(grid_text, encoding="utf-8")
+        (firmware_dir / "button_grid_navigation_driver.h").write_text(
+            navigation_driver_text, encoding="utf-8")
         api_path.write_text(api_text, encoding="utf-8")
         manifest_path = root / "devices" / "manifest.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -4101,7 +4125,7 @@ def run_self_test() -> int:
         "local sensor subtype reaches HA subscription first",
         {
             "button_grid_grid.h":
-                "if (bind_image_card(s, p, cfg)) continue;\n"
+                "if (image_driver_bind_main(s, p, context, cfg)) continue;\n"
                 "if (sensor_driver_bind_data(s, p, context, palette)) return true;\n"
                 "if (bind_basic_sensor_card(s, p, context, palette)) continue;\n",
             "button_grid_sensor_driver.h":
@@ -4119,7 +4143,7 @@ def run_self_test() -> int:
         "local sensor subtype binds through shared driver",
         {
             "button_grid_grid.h":
-                "if (bind_image_card(s, p, cfg)) continue;\n"
+                "if (image_driver_bind_main(s, p, context, cfg)) continue;\n"
                 "if (sensor_driver_bind_data(s, p, context, palette)) return true;\n"
                 "if (bind_basic_sensor_card(s, p, context, palette)) continue;\n",
             "button_grid_sensor_driver.h":
@@ -5023,6 +5047,7 @@ def run_self_test() -> int:
         "  media_playback_apply_progress_consumers(state);\n"
         "}\n"
         "inline void media_playback_reset_cover_art_progress_subscriptions() {\n"
+        "  ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS);\n"
         "  if ((state->progress_subscription_scope & HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS) == 0) return;\n"
         "  state->progress_subscribed = false;\n"
         "  state->progress_subscription_scope = 0;\n"
@@ -6116,8 +6141,8 @@ def run_self_test() -> int:
         "navigation_clear_home_targets();\n"
         "navigation_register_home_target(idx, pos, p.label, scfg, s.btn);\n"
         "navigation_clear_home_targets();\n"
-        "navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);\n"
-        "navigation_register_subpage(\n",
+        "navigation_register_home_target(idx, pos, p.label, s.config->state, s.btn);\n",
+        "inline bool navigation_driver_own_subpage() { navigation_register_subpage( }\n",
         "if (navigation_is_voice_target(target) && !navigation_has_home_label_target(target)) { ${navigate_voice_target_code} } else { espcontrol_navigate(target, id(main_page)->obj); }\n",
         {
             "esp32-p4-86": "navigate_voice_target_code: |-\n  if (id(voice_services_enabled).state) { id(open_device_volume_control).execute(); }\n",

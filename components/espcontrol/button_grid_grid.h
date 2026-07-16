@@ -200,6 +200,8 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
 #include "button_grid_numeric_selectable_driver.h"
 #include "button_grid_cleaning_driver.h"
 #include "button_grid_access_cover_driver.h"
+#include "button_grid_navigation_driver.h"
+#include "button_grid_image_driver.h"
 
 inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
                                         int row_span = 1) {
@@ -394,6 +396,8 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
   espcontrol::cards::numeric_selectable_driver_cleanup(s, p, context);
   espcontrol::cards::cleaning_driver_cleanup(s, p, context);
   espcontrol::cards::access_cover_driver_cleanup(s, p, context);
+  espcontrol::cards::navigation_driver_cleanup(s, p, context);
+  espcontrol::cards::image_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
@@ -420,8 +424,9 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
 
   screen_lock_register_controlled_button(s.btn);
 
-  if (family == espcontrol::cards::Family::IMAGE) {
-    setup_image_card(s);
+  if (espcontrol::cards::image_driver_setup_visual(s, p, context)) {
+    espcontrol::cards::image_driver_attach_interaction(s, p, context);
+    espcontrol::cards::image_driver_refresh_layout(s, p, context);
     return;
   }
   if (espcontrol::cards::sensor_driver_setup_visual(
@@ -479,11 +484,10 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s, p, context);
     return;
   }
-  if (subpage_parent_sensor_state_enabled(p)) {
-    setup_subpage_parent_state_card(
-      s, p, display_sensor_font(display), cfg.subpage_chevrons_enabled,
-      cfg.subpage_chevron_x, cfg.subpage_chevron_y,
-      cfg.subpage_chevron_text_width_percent);
+  if (espcontrol::cards::navigation_driver_setup_visual(
+        s, p, context, cfg, display)) {
+    espcontrol::cards::navigation_driver_attach_interaction(s, p, context);
+    espcontrol::cards::navigation_driver_refresh_layout(s, p, context, cfg);
     return;
   }
   if (family == espcontrol::cards::Family::ALARM) {
@@ -703,38 +707,15 @@ inline void refresh_card_layout(BtnSlot &s, const ParsedCfg &p,
   }
   display_apply_main_width(s.icon_lbl, display);
   display_apply_slot_text_width(s, display);
-  if (p.type == "subpage") {
-    set_subpage_chevron_visible(
-      s, cfg.subpage_chevrons_enabled, cfg.subpage_chevron_x,
-      cfg.subpage_chevron_y, cfg.subpage_chevron_text_width_percent);
-  }
+  if (espcontrol::cards::navigation_driver_refresh_layout(
+        s, p, context, cfg)) return;
 
   if (espcontrol::cards::numeric_selectable_driver_refresh_layout(
         s, p, context)) return;
 
-  if (p.type == "image") {
-    ImageCardCtx *ctx = s.btn
-      ? static_cast<ImageCardCtx *>(lv_obj_get_user_data(s.btn))
-      : nullptr;
-    if (ctx && ctx->active) {
-      image_card_refresh_tile_geometry(ctx);
-    } else {
-      lv_obj_t *widget = s.sensor_container
-        ? static_cast<lv_obj_t *>(lv_obj_get_user_data(s.sensor_container))
-        : nullptr;
-      if (widget) {
-        image_card_position_widget(s.btn, widget);
-        lv_obj_t *loading = image_card_loading_widget(widget);
-        image_card_position_widget(s.btn, loading);
-        image_card_refresh_loading_layout(loading);
-      }
-    }
-    if (s.text_lbl && !lv_obj_has_flag(s.text_lbl, LV_OBJ_FLAG_HIDDEN)) {
-      image_card_align_label_stack(s.text_lbl, s.btn);
-    }
-    if (s.icon_lbl && !lv_obj_has_flag(s.icon_lbl, LV_OBJ_FLAG_HIDDEN)) {
-      image_card_align_icon(s.icon_lbl, s.btn);
-    }
+  if (espcontrol::cards::image_driver_refresh_layout(
+        s, p, context)) {
+    return;
   } else if (p.type == "media") {
     refresh_media_card_layout(s, p, cfg, row_span);
   } else {
@@ -815,7 +796,7 @@ inline void grid_phase1(
   const DisplayProfile display = display_profile_from_grid_config(cfg);
   display_activate_profile(display);
   // Clear image references before visual setup removes their old LVGL widgets.
-  reset_image_card_pool(cfg);
+  espcontrol::cards::image_driver_reset_pool(cfg);
   int NS = bounded_grid_slots(cfg.num_slots);
   int COLS = cfg.cols > 0 ? cfg.cols : 1;
   if (COLS > MAX_GRID_SLOTS) COLS = MAX_GRID_SLOTS;
@@ -1152,11 +1133,12 @@ inline void grid_release_main_runtime_allocations(BtnSlot *slots, int slot_count
   }
 }
 
-inline void grid_clear_subpage_parent_targets(BtnSlot *slots, int slot_count) {
+inline void grid_clear_navigation_targets(BtnSlot *slots, int slot_count) {
   if (slots == nullptr) return;
   for (int i = 0; i < slot_count; i++) {
     ParsedCfg p = parse_cfg(slots[i].config->state);
-    if (p.type == "subpage") lv_obj_set_user_data(slots[i].btn, nullptr);
+    const auto context = card_runtime_context(p);
+    espcontrol::cards::navigation_driver_cleanup(slots[i], p, context);
   }
 }
 
@@ -1195,11 +1177,12 @@ inline void grid_phase2(
   static const char* icon_off_cp[MAX_GRID_SLOTS] = {};
   static const char* icon_on_cp[MAX_GRID_SLOTS] = {};
 
-  static bool sp_child_was_on[MAX_SUBPAGE_ITEMS] = {};
   static std::string sp_entity_ids[MAX_SUBPAGE_ITEMS];
-  static int sp_child_alloc_idx = 0;
   static int sp_entity_alloc_idx = 0;
-  sp_child_alloc_idx = 0;
+  static espcontrol::cards::NavigationDriverChildIndicators
+    navigation_child_indicators;
+  espcontrol::cards::navigation_driver_reset_child_indicators(
+    navigation_child_indicators);
   sp_entity_alloc_idx = 0;
   memset(has_sensor, 0, sizeof(has_sensor));
   memset(sensor_text_mode, 0, sizeof(sensor_text_mode));
@@ -1209,10 +1192,10 @@ inline void grid_phase2(
   reset_climate_control_refs();
   clear_internal_relay_watchers();
   grid_release_main_runtime_allocations(slots, NS);
-  grid_clear_subpage_parent_targets(slots, NS);
+  grid_clear_navigation_targets(slots, NS);
   navigation_clear_home_targets();
   // Image-card contexts may still point at widgets inside subpage screens.
-  reset_image_card_pool(cfg);
+  espcontrol::cards::image_driver_reset_pool(cfg);
   navigation_clear_subpages();
   clear_subpage_vacuum_card_text_refs();
 
@@ -1256,7 +1239,8 @@ inline void grid_phase2(
     bool is_1x1_card = card_span_is_single(row_span, col_span);
     if (cfg.info_only && info_only_hidden_card_type(context)) continue;
     navigation_register_home_target(idx, pos, p.label, scfg, s.btn);
-    if (bind_image_card(s, p, cfg)) continue;
+    if (espcontrol::cards::image_driver_bind_main(
+          s, p, context, cfg)) continue;
     if (bind_basic_sensor_card(s, p, context, palette)) continue;
     espcontrol::cards::ToggleDriverState toggle_state;
     toggle_state.has_sensor = &has_sensor[idx - 1];
@@ -1273,51 +1257,14 @@ inline void grid_phase2(
           s, p, context)) continue;
     if (espcontrol::cards::access_cover_driver_bind_main(
           s, p, context)) continue;
-    if (subpage_parent_sensor_state_enabled(p)) {
-      if (subpage_parent_text_state_enabled(p)) {
-        subscribe_text_sensor_value(s.text_lbl, p.sensor);
-      } else {
-        subscribe_sensor_value(s.sensor_lbl, p.sensor, parse_precision(p.precision),
-          s.unit_lbl, p.unit);
-        if (p.label.empty())
-          subscribe_friendly_name(s.text_lbl, p.sensor);
-      }
-      continue;
-    }
-    if (subpage_parent_icon_entity_state_enabled(p)) {
-      has_sensor[idx - 1] = false;
-      sensor_text_mode[idx - 1] = false;
-      has_icon_on[idx - 1] = !p.icon_on.empty() && p.icon_on != "Auto";
-      if (has_icon_on[idx - 1])
-        icon_on_cp[idx - 1] = find_icon(p.icon_on.c_str());
-
-      if (p.icon.empty() || p.icon == "Auto") {
-        icon_off_cp[idx - 1] = domain_default_icon(p.entity.substr(0, p.entity.find('.')));
-      } else {
-        icon_off_cp[idx - 1] = find_icon(p.icon.c_str());
-      }
-
-      if (p.label.empty())
-        subscribe_friendly_name(s.text_lbl, p.entity);
-
-      std::string parent_subpage_kind = normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind"));
-      if (parent_subpage_kind == "climate") {
-        subscribe_climate_subpage_parent_indicator(
-          p.entity, s.btn, s.icon_lbl, has_icon_on[idx - 1],
-          icon_off_cp[idx - 1], icon_on_cp[idx - 1]);
-      } else if (parent_subpage_kind == "lawn_mower") {
-        subscribe_toggle_state(s.btn, s.icon_lbl, s.sensor_container,
-          &has_sensor[idx - 1], &sensor_text_mode[idx - 1],
-          &has_icon_on[idx - 1], &icon_off_cp[idx - 1], &icon_on_cp[idx - 1],
-          nullptr, p.entity, false, lawn_mower_state_active_ref);
-      } else {
-        subscribe_toggle_state(s.btn, s.icon_lbl, s.sensor_container,
-          &has_sensor[idx - 1], &sensor_text_mode[idx - 1],
-          &has_icon_on[idx - 1], &icon_off_cp[idx - 1], &icon_on_cp[idx - 1],
-          nullptr, p.entity, false);
-      }
-      continue;
-    }
+    espcontrol::cards::NavigationDriverParentState navigation_state;
+    navigation_state.has_sensor = &has_sensor[idx - 1];
+    navigation_state.sensor_text_mode = &sensor_text_mode[idx - 1];
+    navigation_state.has_icon_on = &has_icon_on[idx - 1];
+    navigation_state.icon_off = &icon_off_cp[idx - 1];
+    navigation_state.icon_on = &icon_on_cp[idx - 1];
+    if (espcontrol::cards::navigation_driver_bind_main(
+          s, p, context, navigation_state)) continue;
     if (family == espcontrol::cards::Family::ALARM) {
       if (!p.entity.empty()) {
         AlarmCardCtx *ctx = create_alarm_card_context(
@@ -1601,21 +1548,10 @@ inline void grid_phase2(
   lv_coord_t mp_pad_row = lv_obj_get_style_pad_row(main_page_obj, LV_PART_MAIN);
   lv_coord_t mp_pad_col = lv_obj_get_style_pad_column(main_page_obj, LV_PART_MAIN);
 
-  static int sp_on_count[MAX_GRID_SLOTS] = {};
-  memset(sp_on_count, 0, sizeof(sp_on_count));
-
   for (int si = 0; si < NS; si++) {
     ParsedCfg p = parse_cfg(slots[si].config->state);
-    if (p.type != "subpage") continue;
-    bool sp_indicator = p.sensor == "indicator" && p.entity.empty();
-
-    bool sp_has_icon_on = !p.icon_on.empty() && p.icon_on != "Auto";
-    const char* sp_icon_on_glyph = sp_has_icon_on ? find_icon(p.icon_on.c_str()) : nullptr;
-    const char* sp_icon_off_glyph = nullptr;
-    if (sp_has_icon_on) {
-      sp_icon_off_glyph = (p.icon.empty() || p.icon == "Auto")
-        ? "\U000F024B" : find_icon(p.icon.c_str());
-    }
+    const auto parent_context = card_runtime_context(p);
+    if (!espcontrol::cards::navigation_driver_matches(parent_context)) continue;
 
     std::string sp_cfg = optional_text_state(sp_configs, si) +
       optional_text_state(sp_ext_configs, si) +
@@ -1642,10 +1578,8 @@ inline void grid_phase2(
         break;
       }
     }
-    navigation_register_subpage(
-      si + 1, display_order,
-      normalize_subpage_kind(cfg_option_value(p.options, "subpage_kind")),
-      sub_scr);
+    espcontrol::cards::navigation_driver_own_subpage(
+      slots[si], p, parent_context, si + 1, display_order, sub_scr);
     lv_obj_set_style_bg_color(sub_scr, lv_obj_get_style_bg_color(main_page_obj, LV_PART_MAIN), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(sub_scr, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_layout(sub_scr, LV_LAYOUT_GRID);
@@ -1682,20 +1616,9 @@ inline void grid_phase2(
 
     auto add_parent_indicator = [&](const std::string &entity_id,
                                     bool (*is_active_state)(esphome::StringRef) = is_entity_on_ref) {
-      if (!sp_indicator || entity_id.empty()) return;
-      lv_obj_t *parent_btn = slots[si].btn;
-      lv_obj_t *parent_icon = slots[si].icon_lbl;
-      int parent_idx = si;
-      int cwi = sp_child_alloc_idx++;
-      if (cwi >= MAX_SUBPAGE_ITEMS) {
-        ESP_LOGW("sensors", "Too many subpage state indicators; skipping %s", entity_id.c_str());
-        return;
-      }
-      sp_child_was_on[cwi] = false;
-      subscribe_subpage_parent_indicator(
-        entity_id, parent_btn, parent_icon, parent_idx,
-        &sp_child_was_on[cwi], sp_has_icon_on,
-        sp_icon_off_glyph, sp_icon_on_glyph, sp_on_count, is_active_state);
+      espcontrol::cards::navigation_driver_add_child_indicator(
+        navigation_child_indicators, slots[si], si, p, parent_context,
+        entity_id, is_active_state);
     };
 
     auto add_subpage_toggle_click = [&](lv_obj_t *btn, const std::string &entity_id, bool set_checked) {
@@ -1745,7 +1668,8 @@ inline void grid_phase2(
       display_apply_slot_text_width(sub_slot, display);
       setup_card_visual(sub_slot, sb_cfg, context, cfg, palette, rs, cs);
 
-      if (bind_image_card(sub_slot, sb_cfg, cfg, true)) continue;
+      if (espcontrol::cards::image_driver_bind_subpage(
+            sub_slot, sb_cfg, context, cfg)) continue;
       if (bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)) continue;
       espcontrol::cards::BasicActionSubpageEnvironment action_environment;
       action_environment.grid_config = &cfg;
@@ -1756,17 +1680,28 @@ inline void grid_phase2(
       action_environment.grid_cols = COLS;
       action_environment.add_parent_indicator =
         [&](const std::string &entity_id) { add_parent_indicator(entity_id); };
-      action_environment.parent_indicator_enabled = sp_indicator;
-      action_environment.child_allocation_index = &sp_child_alloc_idx;
+      action_environment.parent_indicator_enabled =
+        espcontrol::cards::navigation_driver_aggregates_child_state(
+          p, parent_context);
+      action_environment.child_allocation_index =
+        &navigation_child_indicators.next_child;
       action_environment.child_capacity = MAX_SUBPAGE_ITEMS;
-      action_environment.child_was_on = sp_child_was_on;
+      action_environment.child_was_on =
+        navigation_child_indicators.child_was_on;
       action_environment.parent_btn = slots[si].btn;
       action_environment.parent_icon = slots[si].icon_lbl;
       action_environment.parent_index = si;
-      action_environment.parent_has_icon_on = sp_has_icon_on;
-      action_environment.parent_icon_off = sp_icon_off_glyph;
-      action_environment.parent_icon_on = sp_icon_on_glyph;
-      action_environment.parent_on_count = sp_on_count;
+      action_environment.parent_has_icon_on =
+        espcontrol::cards::navigation_driver_parent_has_alt_icon(
+          p, parent_context);
+      action_environment.parent_icon_off =
+        espcontrol::cards::navigation_driver_parent_icon_off(
+          p, parent_context);
+      action_environment.parent_icon_on =
+        espcontrol::cards::navigation_driver_parent_icon_on(
+          p, parent_context);
+      action_environment.parent_on_count =
+        navigation_child_indicators.parent_on_count;
       if (espcontrol::cards::basic_action_driver_bind_subpage(
             sub_slot, sb_cfg, context, action_environment)) continue;
       espcontrol::cards::NumericSelectableSubpageEnvironment
@@ -2129,7 +2064,6 @@ inline void grid_phase2(
       }
     }
 
-    lv_obj_set_user_data(slots[si].btn, (void *)sub_scr);
   }
   screen_lock_apply();
   refresh_weather_forecast_cards();

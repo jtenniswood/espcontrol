@@ -62,6 +62,7 @@ int main() {
   const auto garage = card_runtime_context("garage");
   const auto gate = card_runtime_context("gate");
   const auto lock = card_runtime_context("lock");
+  const auto subpage = card_runtime_context("subpage");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
       door.legacy_dispatch || presence.legacy_dispatch ||
       clock.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
@@ -102,8 +103,12 @@ int main() {
       gate.runtime.driver != espcontrol::card_runtime::CardDriverId::ACCESS ||
       lock.runtime.driver != espcontrol::card_runtime::CardDriverId::ACCESS ||
       garage.legacy_dispatch || gate.legacy_dispatch || lock.legacy_dispatch ||
+      subpage.runtime.driver != espcontrol::card_runtime::CardDriverId::SUBPAGE ||
+      subpage.legacy_dispatch || subpage.allow_in_subpage ||
+      !card_runtime_has_capability(
+        subpage, espcontrol::card_runtime::CAPABILITY_ACTIONS) ||
       !card_runtime_information_only(image) || card_runtime_passive(image) ||
-      !image.legacy_dispatch) {
+      image.legacy_dispatch) {
     return EXIT_FAILURE;
   }
   struct TestConfig {

@@ -54,6 +54,8 @@ BASIC_ACTION_HEADER = "button_grid_basic_action_driver.h"
 NUMERIC_SELECTABLE_HEADER = "button_grid_numeric_selectable_driver.h"
 CLEANING_HEADER = "button_grid_cleaning_driver.h"
 ACCESS_COVER_HEADER = "button_grid_access_cover_driver.h"
+NAVIGATION_DRIVER_HEADER = "button_grid_navigation_driver.h"
+IMAGE_DRIVER_HEADER = "button_grid_image_driver.h"
 CARDS_HEADER = "button_grid_cards.h"
 
 
@@ -161,6 +163,12 @@ def check_root(root: Path) -> list[str]:
             or "access_cover_driver_setup_visual( s, p, context, palette)" not in compact_grid
             or "access_cover_driver_bind_main( s, p, context)" not in compact_grid
             or "access_cover_driver_bind_subpage( sub_slot, sb_cfg, context, access_cover_environment)" not in compact_grid
+            or "navigation_driver_setup_visual( s, p, context, cfg, display)" not in compact_grid
+            or "navigation_driver_bind_main( s, p, context, navigation_state)" not in compact_grid
+            or "navigation_driver_own_subpage( slots[si], p, parent_context, si + 1, display_order, sub_scr)" not in compact_grid
+            or "image_driver_setup_visual(s, p, context)" not in compact_grid
+            or "image_driver_bind_main( s, p, context, cfg)" not in compact_grid
+            or "image_driver_bind_subpage( sub_slot, sb_cfg, context, cfg)" not in compact_grid
             or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
             or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
         ):
@@ -201,6 +209,8 @@ def check_root(root: Path) -> list[str]:
             'p.type == "cover" && cover_toggle_mode',
             'sb_cfg.type == "cover" && cover_command_mode',
             'sb_cfg.type == "cover" && cover_toggle_mode',
+            'p.type == "subpage"', 'p.type != "subpage"',
+            'p.type == "image"', 'sb_cfg.type == "image"',
         ):
             if direct_branch in text:
                 failures.append(
@@ -220,7 +230,7 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: include full light controls in generic subpage parent indicators"
             )
-        image_reset_pos = text.find("reset_image_card_pool(cfg);")
+        image_reset_pos = text.find("image_driver_reset_pool(cfg);")
         subpage_clear_pos = text.find("navigation_clear_subpages();")
         if image_reset_pos < 0 or subpage_clear_pos < 0 or image_reset_pos > subpage_clear_pos:
             failures.append(
@@ -238,6 +248,8 @@ def check_root(root: Path) -> list[str]:
             or "numeric_selectable_driver_handle_main_click(" not in click_body
             or "cleaning_driver_handle_main_click(" not in click_body
             or "access_cover_driver_handle_main_click(" not in click_body
+            or "navigation_driver_handle_main_click(" not in click_body
+            or "image_driver_handle_main_click(" not in click_body
         ):
             failures.append(
                 f"components/espcontrol/{ACTION_HEADER}: route passive checks through the shared card context"
@@ -250,6 +262,8 @@ def check_root(root: Path) -> list[str]:
                 'p.type == "cover" && cover_command_mode',
                 'p.type == "cover" && cover_toggle_mode',
                 'else if (p.type == "cover")',
+                'p.type == "subpage"',
+                'p.type == "image"',
             ):
                 if direct_branch in click_body:
                     failures.append(
@@ -491,6 +505,58 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover driver"
         )
+    navigation_driver_header = root / "components" / "espcontrol" / NAVIGATION_DRIVER_HEADER
+    if navigation_driver_header.exists():
+        text = navigation_driver_header.read_text(encoding="utf-8")
+        required = (
+            "navigation_driver_setup_visual",
+            "navigation_driver_bind_main",
+            "navigation_driver_attach_interaction",
+            "navigation_driver_refresh_layout",
+            "navigation_driver_cleanup",
+            "navigation_driver_handle_main_click",
+            "navigation_driver_reset_child_indicators",
+            "navigation_driver_add_child_indicator",
+            "navigation_driver_own_subpage",
+            "subscribe_subpage_parent_indicator",
+            "subscribe_climate_subpage_parent_indicator",
+            "navigation_register_subpage",
+            '"subpage"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{NAVIGATION_DRIVER_HEADER}: missing shared navigation lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{NAVIGATION_DRIVER_HEADER}: missing shared navigation driver"
+        )
+    image_driver_header = root / "components" / "espcontrol" / IMAGE_DRIVER_HEADER
+    if image_driver_header.exists():
+        text = image_driver_header.read_text(encoding="utf-8")
+        required = (
+            "image_driver_setup_visual",
+            "image_driver_bind_main",
+            "image_driver_bind_subpage",
+            "image_driver_attach_interaction",
+            "image_driver_refresh_layout",
+            "image_driver_cleanup",
+            "image_driver_reset_pool",
+            "image_driver_handle_main_click",
+            "image_card_bind_runtime",
+            "reset_image_card_pool",
+            '"image"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{IMAGE_DRIVER_HEADER}: missing shared image lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{IMAGE_DRIVER_HEADER}: missing shared image driver"
+        )
     cards_header = root / "components" / "espcontrol" / CARDS_HEADER
     if cards_header.exists():
         text = cards_header.read_text(encoding="utf-8")
@@ -674,6 +740,24 @@ def run_self_test() -> None:
                 )
             },
             ("missing shared access/cover lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_navigation_driver.h": (
+                    "inline bool navigation_driver_setup_visual() {}\n"
+                    "inline bool navigation_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared navigation lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_image_driver.h": (
+                    "inline bool image_driver_setup_visual() {}\n"
+                    "inline bool image_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared image lifecycle guard",),
         ),
         (
             {

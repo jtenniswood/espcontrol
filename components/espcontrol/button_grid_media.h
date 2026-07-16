@@ -1221,6 +1221,7 @@ inline void media_playback_subscribe_state(MediaPlaybackState *state) {
 }
 
 inline void media_playback_reset_cover_art_progress_subscriptions() {
+  ha_reset_subscription_callbacks(HA_SUBSCRIPTION_SCOPE_COVER_ART_PROGRESS);
   for (MediaPlaybackState *state : media_playback_states()) {
     if (!state || !state->used || !state->progress_subscribed ||
         (state->progress_subscription_scope &

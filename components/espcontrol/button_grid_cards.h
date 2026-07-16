@@ -224,23 +224,6 @@ inline const char *presence_detected_icon(const ParsedCfg &p) {
   return find_icon("Motion Sensor");
 }
 
-inline bool subpage_parent_sensor_state_enabled(const ParsedCfg &p) {
-  return p.type == "subpage" &&
-         !p.sensor.empty() &&
-         p.sensor != "indicator";
-}
-
-inline bool subpage_parent_text_state_enabled(const ParsedCfg &p) {
-  return subpage_parent_sensor_state_enabled(p) &&
-         p.precision == "text";
-}
-
-inline bool subpage_parent_icon_entity_state_enabled(const ParsedCfg &p) {
-  return p.type == "subpage" &&
-         p.sensor == "indicator" &&
-         !p.entity.empty();
-}
-
 inline void setup_subpage_parent_state_card(BtnSlot &s, const ParsedCfg &p,
                                             const lv_font_t *value_font,
                                             bool subpage_chevron_enabled = true,

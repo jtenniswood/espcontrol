@@ -2124,9 +2124,9 @@ inline void image_card_refresh_due() {
   }
 }
 
-inline bool bind_image_card(BtnSlot &s, const ParsedCfg &p, const GridConfig &cfg,
-                            bool bind_click_handler = false) {
-  if (p.type != "image") return false;
+inline bool image_card_bind_runtime(BtnSlot &s, const ParsedCfg &p,
+                                    const GridConfig &cfg,
+                                    bool bind_click_handler = false) {
   lv_obj_t *widget = s.sensor_container
     ? static_cast<lv_obj_t *>(lv_obj_get_user_data(s.sensor_container))
     : nullptr;
