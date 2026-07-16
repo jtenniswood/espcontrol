@@ -69,8 +69,8 @@ int main() {
   assert(!image_pipeline_should_preempt_stale_modal(true, true, false, true));
   assert(!image_pipeline_should_preempt_stale_modal(true, true, true, false));
 
-  // The P4 background worker can accept the next tile or modal immediately.
-  // Loop-based targets retain their UI-friendly scheduling delay.
+  // The P4 background worker can accept the next queued tile immediately.
+  // Modal work remains deferred separately so the preview paints first.
   assert(image_pipeline_can_start_followup_inline(true));
   assert(!image_pipeline_can_start_followup_inline(false));
 

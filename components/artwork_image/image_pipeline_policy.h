@@ -73,9 +73,9 @@ constexpr bool image_pipeline_should_preempt_stale_modal(bool switching_context,
          shares_modal_image;
 }
 
-// Starting the next request inline is safe only when download and decode work
-// run on the background pipeline. Loop-based targets retain their short delay
-// so rendering can progress between image requests.
+// Starting the next queued tile inline is safe only when download and decode
+// work run on the background pipeline. Modal requests are still deferred so
+// LVGL can paint the cached preview before full-resolution work starts.
 constexpr bool image_pipeline_can_start_followup_inline(bool background_pipeline) {
   return background_pipeline;
 }

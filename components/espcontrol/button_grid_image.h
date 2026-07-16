@@ -1655,13 +1655,6 @@ inline bool image_card_queue_modal_source_request(ImageCardCtx *ctx) {
   ImageCardModalUi &ui = image_card_modal_ui();
   if (!image_card_modal_has_preview(ctx)) image_card_show_modal_loading(ctx, "Loading");
   image_card_cancel_modal_request_timer();
-  if (esphome::artwork_image::image_pipeline_can_start_followup_inline(
-        image_card_uses_background_pipeline(ctx->modal_image, ctx->source_url))) {
-    image_card_log_diagnostics(ctx, "modal-request-immediate");
-    bool requested = image_card_request_modal_source_url(ctx);
-    if (!requested) image_card_show_modal_download_failure(ctx);
-    return requested;
-  }
   ui.request_timer = lv_timer_create(
     image_card_modal_request_timer_cb, IMAGE_CARD_MODAL_REQUEST_DELAY_MS, ctx);
   if (!ui.request_timer) {
