@@ -44,6 +44,9 @@ static constexpr int LOCAL_ARTWORK_HTTP_TIMEOUT_MS = 6500;
 #ifdef USE_ARTWORK_IMAGE_PNG_SUPPORT
 #include "png_image.h"
 #endif
+#ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
+#include "bmp_image.h"
+#endif
 
 namespace esphome {
 namespace artwork_image {
@@ -547,7 +550,7 @@ ArtworkImage::ArtworkImage(const std::string &url, int width, int height, ImageF
                          uint32_t download_buffer_size, bool is_big_endian, bool allow_insecure_local_urls)
     : Image(nullptr, 0, 0, type, transparency),
       buffer_(nullptr),
-      download_buffer_(download_buffer_size),
+      download_buffer_(0),
       download_buffer_initial_size_(download_buffer_size),
       // Compressed JPEG/PNG data can be larger than the resized RGB565 output.
       // Keep the transfer limit independent from the decoded image dimensions.
@@ -564,6 +567,11 @@ ArtworkImage::ArtworkImage(const std::string &url, int width, int height, ImageF
   this->set_url(url);
 }
 
+ArtworkImage::~ArtworkImage() {
+  this->end_connection_();
+  this->cancel_service_request_();
+}
+
 void ArtworkImage::draw(int x, int y, display::Display *display, Color color_on, Color color_off) {
   if (this->data_start_) {
     Image::draw(x, y, display, color_on, color_off);
@@ -576,6 +584,7 @@ void ArtworkImage::release() {
   this->update_pending_ = false;
   this->pending_url_.clear();
   this->end_connection_();
+  this->cancel_service_request_();
   this->retire_active_buffer_();
   this->cleanup_retired_buffers_(true);
 }
@@ -666,8 +675,20 @@ std::string ArtworkImage::request_update_url(const std::string &url, int max_sou
   if (!this->validate_url_(effective_url)) {
     return "";
   }
+  if (this->service_pending_) {
+    this->url_ = effective_url;
+    this->service_generation_++;
+    ImageService::instance().request(this, this->service_generation_, this->request_priority_);
+    ESP_LOGD(TAG, "Updated queued artwork request before it started");
+    return effective_url;
+  }
   if (this->is_busy_()) {
     if (effective_url == this->url_) {
+      if (this->update_pending_) {
+        this->update_pending_ = false;
+        this->pending_url_.clear();
+        ESP_LOGI(TAG, "Cancelled superseded queued artwork update after source returned to active URL");
+      }
       ESP_LOGI(TAG, "Artwork update already in progress for URL; ignoring duplicate request");
       return effective_url;
     }
@@ -685,14 +706,34 @@ void ArtworkImage::cancel_update() {
   if (this->is_busy_()) {
     ESP_LOGW(TAG, "Cancelling in-flight artwork update");
     this->end_connection_();
+    this->cancel_service_request_();
   }
 }
 
 void ArtworkImage::update() {
-  if (this->is_busy_()) {
+  if (this->service_pending_) {
+    this->service_generation_++;
+    ImageService::instance().request(this, this->service_generation_, this->request_priority_);
+    return;
+  }
+  if (this->service_active_ || this->downloader_ != nullptr || this->decoder_ != nullptr) {
     this->queue_pending_update_(this->url_);
     return;
   }
+  this->service_generation_++;
+  this->service_pending_ = true;
+  ImageService::instance().request(this, this->service_generation_, this->request_priority_);
+}
+
+bool ArtworkImage::start_service_update_(uint32_t generation) {
+  if (!this->service_pending_ || generation != this->service_generation_) return false;
+  this->service_pending_ = false;
+  this->service_active_ = true;
+  this->start_update_();
+  return true;
+}
+
+void ArtworkImage::start_update_() {
   this->last_http_status_ = 0;
   this->last_error_was_ha_media_proxy_ = false;
   this->peak_download_buffer_size_ = this->download_buffer_.size();
@@ -713,7 +754,7 @@ void ArtworkImage::update() {
   std::string accept_mime_type;
   switch (this->format_) {
     case ImageFormat::AUTO:
-      accept_mime_type = "image/jpeg, image/png";
+      accept_mime_type = "image/jpeg, image/png, image/bmp";
       break;
 #ifdef USE_ARTWORK_IMAGE_JPEG_SUPPORT
     case ImageFormat::JPEG:
@@ -725,6 +766,11 @@ void ArtworkImage::update() {
       accept_mime_type = "image/png";
       break;
 #endif  // USE_ARTWORK_IMAGE_PNG_SUPPORT
+#ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
+    case ImageFormat::BMP:
+      accept_mime_type = "image/bmp";
+      break;
+#endif
     default:
       accept_mime_type = "image/*";
   }
@@ -768,11 +814,11 @@ void ArtworkImage::update() {
     ESP_LOGI(TAG, "Server returned HTTP 304 (Not Modified). Download skipped.");
     this->end_connection_();
     if (this->has_newer_pending_update_()) {
-      this->start_pending_update_();
+      this->complete_service_request_();
       return;
     }
     this->download_finished_callback_.call(true);
-    this->start_pending_update_();
+    this->complete_service_request_();
     return;
   }
   if (http_code != HTTP_CODE_OK) {
@@ -1168,8 +1214,12 @@ bool ArtworkImage::consume_p4_pipeline_result_() {
   if (result->status == HTTP_CODE_NOT_MODIFIED) {
     delete result;
     this->log_timing_("not-modified", 0);
+    if (this->has_newer_pending_update_()) {
+      this->complete_service_request_();
+      return true;
+    }
     this->download_finished_callback_.call(true);
-    this->start_pending_update_();
+    this->complete_service_request_();
     return true;
   }
   if (result->size < 12 || result->size > this->max_download_buffer_size_) {
@@ -1322,6 +1372,10 @@ ImageFormat ArtworkImage::detect_format_() {
       ESP_LOGD(TAG, "Detected PNG from magic bytes");
       return ImageFormat::PNG;
     }
+    if (data[0] == 'B' && data[1] == 'M') {
+      ESP_LOGD(TAG, "Detected BMP from magic bytes");
+      return ImageFormat::BMP;
+    }
     if (this->detect_heic_()) {
       ESP_LOGW(TAG, "Detected HEIC/HEIF from file signature");
       return ImageFormat::HEIC;
@@ -1338,6 +1392,10 @@ ImageFormat ArtworkImage::detect_format_() {
     if (ct.find("image/png") != std::string::npos) {
       ESP_LOGD(TAG, "Detected PNG from Content-Type: %s", ct.c_str());
       return ImageFormat::PNG;
+    }
+    if (ct.find("image/bmp") != std::string::npos || ct.find("image/x-ms-bmp") != std::string::npos) {
+      ESP_LOGD(TAG, "Detected BMP from Content-Type: %s", ct.c_str());
+      return ImageFormat::BMP;
     }
     if (ct.find("image/heic") != std::string::npos || ct.find("image/heif") != std::string::npos) {
       ESP_LOGW(TAG, "Detected HEIC/HEIF from Content-Type: %s", ct.c_str());
@@ -1422,6 +1480,12 @@ bool ArtworkImage::create_decoder_(ImageFormat format, size_t total_size) {
   if (format == ImageFormat::PNG) {
     ESP_LOGD(TAG, "Allocating PNG decoder");
     this->decoder_ = make_unique<PngDecoder>(this);
+  }
+#endif
+#ifdef USE_ARTWORK_IMAGE_BMP_SUPPORT
+  if (format == ImageFormat::BMP) {
+    ESP_LOGD(TAG, "Allocating BMP decoder");
+    this->decoder_ = make_unique<BmpDecoder>(this);
   }
 #endif
   if (!this->decoder_) {
@@ -1638,7 +1702,7 @@ void ArtworkImage::finish_download_() {
   if (this->has_newer_pending_update_()) {
     ESP_LOGI(TAG, "Discarding completed artwork because a newer URL is queued");
     this->end_connection_();
-    this->start_pending_update_();
+    this->complete_service_request_();
     return;
   }
   if (!this->promote_decode_buffer_()) {
@@ -1669,21 +1733,45 @@ void ArtworkImage::finish_download_() {
   this->download_finished_callback_.call(false);
   App.feed_wdt();
   this->log_state_("download-callback-finished");
-  this->start_pending_update_();
+  this->complete_service_request_();
 }
 
 void ArtworkImage::fail_download_() {
   if (this->has_newer_pending_update_()) {
     ESP_LOGW(TAG, "Skipping stale artwork failure because a newer URL is queued");
     this->end_connection_();
-    this->start_pending_update_();
+    this->complete_service_request_();
     return;
   }
   const size_t bytes_read = this->downloader_ ? this->downloader_->get_bytes_read() : 0;
   this->log_timing_("error", bytes_read);
   this->end_connection_();
   this->download_error_callback_.call();
-  this->start_pending_update_();
+  this->complete_service_request_();
+}
+
+void ArtworkImage::complete_service_request_() {
+  if (!this->service_active_) return;
+  if (this->update_pending_ && !this->pending_url_.empty()) {
+    this->url_ = this->pending_url_;
+    this->pending_url_.clear();
+    this->update_pending_ = false;
+    this->service_generation_++;
+    this->service_pending_ = true;
+    this->service_active_ = false;
+    ESP_LOGI(TAG, "Re-queued latest artwork update");
+    ImageService::instance().complete_and_request(this, this->service_generation_, this->request_priority_);
+    return;
+  }
+  this->service_active_ = false;
+  ImageService::instance().complete(this);
+}
+
+void ArtworkImage::cancel_service_request_() {
+  if (!this->service_pending_ && !this->service_active_) return;
+  this->service_pending_ = false;
+  this->service_active_ = false;
+  ImageService::instance().cancel(this);
 }
 
 void ArtworkImage::queue_pending_update_(const std::string &url) {
@@ -1696,18 +1784,6 @@ void ArtworkImage::queue_pending_update_(const std::string &url) {
   ESP_LOGW(TAG, "Artwork update %s while busy; latest URL will run after current work finishes",
            replaced ? "re-queued" : "queued");
   this->log_state_("update-queued");
-}
-
-void ArtworkImage::start_pending_update_() {
-  if (!this->update_pending_ || this->is_busy_()) {
-    return;
-  }
-  std::string url = this->pending_url_;
-  this->pending_url_.clear();
-  this->update_pending_ = false;
-  ESP_LOGI(TAG, "Starting queued artwork update");
-  this->url_ = url;
-  this->update();
 }
 
 void ArtworkImage::log_state_(const char *stage) {
@@ -1739,7 +1815,9 @@ void ArtworkImage::end_connection_() {
   this->decoder_.reset();
   this->discard_decode_buffer_();
   this->download_buffer_.reset();
-  this->download_buffer_.shrink_to(this->download_buffer_initial_size_);
+  // Staging memory belongs to the active service request only. Completed image
+  // surfaces stay resident, but compressed transfer bytes are returned to PSRAM.
+  this->download_buffer_.shrink_to(0);
 }
 
 bool ArtworkImage::validate_url_(const std::string &url) {

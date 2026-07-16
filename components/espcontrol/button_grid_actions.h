@@ -826,6 +826,8 @@ inline bool numeric_selectable_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
 inline bool cleaning_driver_handle_main_click(
     const Context &context, const ParsedCfg &config, lv_obj_t *button);
+inline bool access_cover_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
 }
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
@@ -849,6 +851,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
         context, p, btn_obj)) return;
   if (espcontrol::cards::cleaning_driver_handle_main_click(
         context, p, btn_obj)) return;
+  if (espcontrol::cards::access_cover_driver_handle_main_click(
+        context, p, btn_obj)) return;
   if (p.type == "subpage") {
     lv_obj_t *sub_scr = (lv_obj_t *)lv_obj_get_user_data(btn_obj);
     if (sub_scr)
@@ -865,37 +869,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "light_control") {
     LightControlCtx *ctx = (LightControlCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) light_control_open_modal(ctx);
-  } else if (p.type == "garage") {
-    if (garage_command_mode(p.sensor)) {
-      send_cover_command_action(p);
-    } else if (!p.entity.empty()) {
-      set_card_checked_state(btn_obj, true);
-      send_toggle_action(p.entity);
-    }
-  } else if (p.type == "gate") {
-    if (gate_command_mode(p.sensor)) {
-      send_cover_command_action(p);
-    } else if (!p.entity.empty()) {
-      set_card_checked_state(btn_obj, true);
-      send_toggle_action(p.entity);
-    }
-  } else if (p.type == "lock") {
-    if (lock_command_mode(p.sensor)) {
-      send_lock_command_action(p);
-    } else {
-      LockCardCtx *ctx = (LockCardCtx *)lv_obj_get_user_data(btn_obj);
-      if (ctx) send_lock_action(ctx);
-      else send_lock_action(p.entity, "");
-    }
-  } else if (p.type == "cover" && cover_command_mode(p.sensor)) {
-    CoverCommandCtx *ctx = (CoverCommandCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) send_cover_command_action(*ctx);
-    else send_cover_command_action(p);
-  } else if (p.type == "cover" && cover_toggle_mode(p.sensor)) {
-    if (!p.entity.empty()) {
-      set_card_checked_state(btn_obj, true);
-      send_toggle_action(p.entity);
-    }
   } else if (p.type == "todo") {
     TodoCardCtx *ctx = (TodoCardCtx *)lv_obj_get_user_data(btn_obj);
     if (todo_card_context_valid(ctx)) todo_card_open_modal(ctx);
@@ -927,8 +900,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "image") {
     ImageCardCtx *ctx = (ImageCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) image_card_open_modal(ctx);
-  } else if (p.type == "cover") {
-    if (!p.entity.empty()) send_slider_action(p.entity, -1, cover_tilt_mode(p.sensor));
   } else {
     if (!p.entity.empty()) {
       bool currently_on = btn_obj && lv_obj_has_state(btn_obj, LV_STATE_CHECKED);

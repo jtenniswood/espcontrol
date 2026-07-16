@@ -79,7 +79,7 @@ for required in (
     "max_download_buffer_size_",
     "peak_download_buffer_size_",
     "Artwork download exceeded transfer limit",
-    "shrink_to(this->download_buffer_initial_size_)",
+    "shrink_to(0)",
     "new (std::nothrow) P4PipelineJob()",
     "P4_PIPELINE_PENDING_SLOTS",
     "P4_PIPELINE_COMPLETED_SLOTS",
@@ -87,6 +87,12 @@ for required in (
 ):
     if required not in downloader:
         raise SystemExit(f"Artwork downloader memory contract missing: {required}")
+if """if (effective_url == this->url_) {
+      if (this->update_pending_) {
+        this->update_pending_ = false;
+        this->pending_url_.clear();
+""" not in downloader:
+    raise SystemExit("Artwork downloader must cancel a stale pending URL when the source returns to the active URL")
 if "std::make_shared<P4PipelineJob>" in downloader:
     raise SystemExit("P4 artwork jobs must fail cleanly instead of throwing during allocation")
 if "std::vector<P4PipelineResult *> completed_" in downloader:

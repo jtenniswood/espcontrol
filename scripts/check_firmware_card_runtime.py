@@ -53,6 +53,7 @@ WEATHER_HEADER = "button_grid_weather_driver.h"
 BASIC_ACTION_HEADER = "button_grid_basic_action_driver.h"
 NUMERIC_SELECTABLE_HEADER = "button_grid_numeric_selectable_driver.h"
 CLEANING_HEADER = "button_grid_cleaning_driver.h"
+ACCESS_COVER_HEADER = "button_grid_access_cover_driver.h"
 CARDS_HEADER = "button_grid_cards.h"
 
 
@@ -157,6 +158,9 @@ def check_root(root: Path) -> list[str]:
             or "cleaning_driver_setup_visual(s, p, context)" not in compact_grid
             or "cleaning_driver_bind_main( s, p, context)" not in compact_grid
             or "cleaning_driver_bind_subpage( sub_slot, sb_cfg, context, cleaning_environment)" not in compact_grid
+            or "access_cover_driver_setup_visual( s, p, context, palette)" not in compact_grid
+            or "access_cover_driver_bind_main( s, p, context)" not in compact_grid
+            or "access_cover_driver_bind_subpage( sub_slot, sb_cfg, context, access_cover_environment)" not in compact_grid
             or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
             or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
         ):
@@ -188,6 +192,15 @@ def check_root(root: Path) -> list[str]:
             'sb_cfg.type == "fan_preset"', 'sb_cfg.type == "option_select"',
             'family == espcontrol::cards::Family::VACUUM',
             'family == espcontrol::cards::Family::MOWER',
+            'p.type == "garage"', 'p.type == "gate"', 'p.type == "lock"',
+            'sb_cfg.type == "garage"', 'sb_cfg.type == "gate"',
+            'sb_cfg.type == "lock"',
+            'if (p.type == "cover") {',
+            'if (sb_cfg.type == "cover") {',
+            'p.type == "cover" && cover_command_mode',
+            'p.type == "cover" && cover_toggle_mode',
+            'sb_cfg.type == "cover" && cover_command_mode',
+            'sb_cfg.type == "cover" && cover_toggle_mode',
         ):
             if direct_branch in text:
                 failures.append(
@@ -224,10 +237,24 @@ def check_root(root: Path) -> list[str]:
             or "basic_action_driver_handle_main_click(" not in click_body
             or "numeric_selectable_driver_handle_main_click(" not in click_body
             or "cleaning_driver_handle_main_click(" not in click_body
+            or "access_cover_driver_handle_main_click(" not in click_body
         ):
             failures.append(
                 f"components/espcontrol/{ACTION_HEADER}: route passive checks through the shared card context"
             )
+        if click_body is not None:
+            for direct_branch in (
+                'p.type == "garage"',
+                'p.type == "gate"',
+                'p.type == "lock"',
+                'p.type == "cover" && cover_command_mode',
+                'p.type == "cover" && cover_toggle_mode',
+                'else if (p.type == "cover")',
+            ):
+                if direct_branch in click_body:
+                    failures.append(
+                        f"components/espcontrol/{ACTION_HEADER}: keep migrated access/cover clicks inside the shared driver"
+                    )
     image_header = root / "components" / "espcontrol" / IMAGE_HEADER
     if image_header.exists():
         text = image_header.read_text(encoding="utf-8")
@@ -430,6 +457,40 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{CLEANING_HEADER}: missing shared cleaning driver"
         )
+    access_cover_header = root / "components" / "espcontrol" / ACCESS_COVER_HEADER
+    if access_cover_header.exists():
+        text = access_cover_header.read_text(encoding="utf-8")
+        required = (
+            "access_cover_driver_setup_visual",
+            "access_cover_driver_bind_main",
+            "access_cover_driver_bind_subpage",
+            "access_cover_driver_attach_interaction",
+            "access_cover_driver_refresh_layout",
+            "access_cover_driver_cleanup",
+            "access_cover_driver_handle_main_click",
+            "bind_garage_status_card",
+            "bind_gate_status_card",
+            "bind_lock_status_card",
+            "subscribe_cover_command_features",
+            "subscribe_cover_toggle_state",
+            "subscribe_slider_state",
+            "send_cover_command_action",
+            "send_lock_command_action",
+            "send_slider_action",
+            '"garage"',
+            '"gate"',
+            '"lock"',
+            '"cover"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{ACCESS_COVER_HEADER}: missing shared access/cover driver"
+        )
     cards_header = root / "components" / "espcontrol" / CARDS_HEADER
     if cards_header.exists():
         text = cards_header.read_text(encoding="utf-8")
@@ -604,6 +665,15 @@ def run_self_test() -> None:
                 )
             },
             ("missing shared cleaning lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_access_cover_driver.h": (
+                    "inline bool access_cover_driver_setup_visual() {}\n"
+                    "inline bool access_cover_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared access/cover lifecycle guard",),
         ),
         (
             {

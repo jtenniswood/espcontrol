@@ -107,10 +107,14 @@ implementations. Slider, Light Brightness, Light Temperature, Fan Speed, Fan
 Oscillate, Fan Direction, Fan Preset, canonical Option Select, and Action
 option-select compatibility use the shared `NUMERIC_SELECTABLE` lifecycle
 boundary while retaining their existing slider, fan-action, and selection-modal
-behaviour. Cover slider modes and the combined Fan Control card remain on the
-existing `Family` dispatch for their later reviewed migrations. Other families
-also remain on that dispatch until their reviewed migration PR switches them
-one family at a time.
+behaviour. Vacuum and Lawn Mower use the shared cleaning lifecycle driver while
+retaining their existing state-aware services and unavailable-state handling.
+Garage, Gate, Lock, and the Cover command, toggle, position, and tilt modes use
+the shared access/cover lifecycle boundary while retaining their existing
+status, supported-feature, availability, and action handling. Cover modal and
+the combined Fan Control card remain on the existing `Family` dispatch for
+their later reviewed migrations. Other families also remain on that dispatch
+until their reviewed migration PR switches them one family at a time.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and

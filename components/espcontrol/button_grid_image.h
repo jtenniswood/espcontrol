@@ -102,7 +102,7 @@ inline ImageCardCtx *image_card_contexts() {
 
 inline void image_card_schedule_source_refresh(ImageCardCtx *ctx, uint32_t delay_ms,
                                                const char *reason);
-inline void image_card_request_source_url(ImageCardCtx *ctx);
+inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed = false);
 
 inline bool image_card_uses_background_pipeline(
     esphome::artwork_image::ArtworkImage *image, const std::string &url) {
@@ -130,7 +130,6 @@ inline void image_card_start_next_queued_download(ImageCardCtx *finished_ctx) {
     return;
   }
 }
-
 inline void image_card_release_download_slot(ImageCardCtx *ctx, bool start_next = true) {
   if (!ctx) return;
   ctx->download_active = false;
@@ -1557,7 +1556,7 @@ inline bool image_card_context_current(ImageCardCtx *ctx,
          ctx->entity_id == entity_id;
 }
 
-inline void image_card_request_source_url(ImageCardCtx *ctx) {
+inline void image_card_request_source_url(ImageCardCtx *ctx, bool source_changed) {
   if (!ctx || !ctx->active || !ctx->image || ctx->source_url.empty()) return;
   uint32_t now = esphome::millis();
   if (image_card_modal_active_for(ctx)) {
@@ -1576,14 +1575,15 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   lv_obj_t *loading = image_card_loading_widget(ctx->widget);
   image_card_position_widget(ctx->btn, loading);
   image_card_refresh_loading_layout(loading);
-  if (ctx->download_active) {
+  bool replace_pending_request = ctx->download_active && source_changed;
+  if (ctx->download_active && !source_changed) {
     ESP_LOGD("image_card", "Skipping duplicate image refresh while download is active for %s",
              ctx->entity_id.c_str());
     image_card_log_diagnostics(ctx, "tile-refresh-duplicate", width, height);
     return;
   }
   ImageCardCtx *active_download = image_card_active_download_context();
-  if (active_download && active_download != ctx) {
+  if (!replace_pending_request && active_download && active_download != ctx) {
     ctx->download_queued = true;
     ctx->next_download_retry_ms = now + IMAGE_CARD_API_RETRY_INTERVAL_MS;
     ESP_LOGD("image_card", "Deferring image refresh for %s while %s is downloading",
@@ -1591,7 +1591,7 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
     image_card_log_diagnostics(ctx, "tile-refresh-queued", width, height);
     return;
   }
-  if (!image_card_memory_available(ctx, "tile", decode_width, decode_height)) {
+  if (!replace_pending_request && !image_card_memory_available(ctx, "tile", decode_width, decode_height)) {
     ctx->next_download_retry_ms = now + IMAGE_CARD_RETRY_INTERVAL_MS;
     if (!ctx->image_ready) {
       image_card_hide(ctx);
@@ -1611,7 +1611,8 @@ inline void image_card_request_source_url(ImageCardCtx *ctx) {
   ctx->last_tile_request_started_ms = now;
   ctx->image->set_target_size(decode_width, decode_height);
   ctx->image->set_resize_mode(resize_mode);
-  ESP_LOGI("image_card", "Downloading camera image for %s", ctx->entity_id.c_str());
+  ESP_LOGI("image_card", "%s camera image for %s",
+           replace_pending_request ? "Updating queued" : "Downloading", ctx->entity_id.c_str());
   image_card_log_diagnostics(ctx, "tile-download-start", request_width, request_height);
   int max_source_dim = request_width > request_height ? request_width : request_height;
   std::string effective_url = ctx->image->request_update_url(ctx->url, max_source_dim);
@@ -1969,6 +1970,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
     ctx->next_picture_retry_ms = 0;
   }
   uint32_t now = esphome::millis();
+  bool source_changed = ctx->source_url != url;
   if (ctx->image_ready && ctx->source_url == url && ctx->last_download_completed_ms != 0 &&
       (uint32_t)(now - ctx->last_download_completed_ms) < IMAGE_CARD_MIN_REPEAT_REFRESH_MS) {
     ESP_LOGD("image_card", "Skipping recent image refresh for %s", ctx->entity_id.c_str());
@@ -1982,7 +1984,7 @@ inline void image_card_handle_picture(ImageCardCtx *ctx, esphome::StringRef pict
     image_card_schedule_source_refresh(ctx, IMAGE_CARD_MODAL_REFRESH_DELAY_MS, "tile");
     return;
   }
-  image_card_request_source_url(ctx);
+  image_card_request_source_url(ctx, source_changed);
 }
 
 inline void image_card_process_media_artwork(ImageCardCtx *ctx) {

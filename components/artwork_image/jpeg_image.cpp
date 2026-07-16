@@ -189,7 +189,7 @@ int HOT JpegDecoder::decode(uint8_t *buffer, size_t size) {
     return 0;
   }
 #if defined(USE_ESP_IDF) && defined(CONFIG_IDF_TARGET_ESP32P4)
-  if (!this->decode_started_) {
+  if (!this->decode_started_ && this->image_->hardware_acceleration_enabled()) {
     int hardware_result = this->decode_hardware_(buffer, size);
     if (hardware_result != 0) return hardware_result;
     ESP_LOGD(TAG, "Using software JPEG fallback on ESP32-P4");

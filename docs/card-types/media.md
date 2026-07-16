@@ -66,6 +66,10 @@ Now Playing works best on wider or larger cards because it has more room for tra
 
 ## Cover Art
 
+::: info P4 screens only
+Cover Art cards are not supported on the 4-inch ESP32-S3 screen, so this type is not shown in that screen's web interface.
+:::
+
 Cover Art shows the current artwork reported by the selected media player. Choose a square card size: **1x1**, **2x2**, or **3x3**. EspControl crops the image to fill the tile without stretching it.
 
 Choose what happens when the artwork is tapped:

@@ -8,6 +8,7 @@
 
 #include "artwork_url.h"
 #include "image_decoder.h"
+#include "image_service.h"
 
 namespace esphome {
 namespace artwork_image {
@@ -28,6 +29,8 @@ enum ImageFormat {
   JPEG,
   /** PNG format. */
   PNG,
+  /** Uncompressed 1-bit or 24-bit BMP format. */
+  BMP,
   /** HEIC/HEIF image format. Detected for clear error reporting; decoder not bundled. */
   HEIC,
 };
@@ -65,7 +68,7 @@ class ArtworkImage : public PollingComponent,
               image::ImageType type, image::Transparency transparency, uint32_t buffer_size, bool is_big_endian,
               bool allow_insecure_local_urls);
 
-  ~ArtworkImage() { this->decoder_.reset(); }
+  ~ArtworkImage();
 
   void draw(int x, int y, display::Display *display, Color color_on, Color color_off) override;
 
@@ -95,6 +98,7 @@ class ArtworkImage : public PollingComponent,
     this->fixed_height_ = height;
   }
   void set_resize_mode(ImageResizeMode resize_mode) { this->resize_mode_ = resize_mode; }
+  void set_request_priority(ImageRequestPriority priority) { this->request_priority_ = priority; }
   void set_p4_pipeline_priority(P4PipelinePriority priority) {
     this->p4_pipeline_priority_ = priority;
   }
@@ -136,6 +140,8 @@ class ArtworkImage : public PollingComponent,
   }
 
   bool is_big_endian() const { return this->is_big_endian_; }
+  bool hardware_acceleration_enabled() const { return this->hardware_acceleration_enabled_; }
+  void set_hardware_acceleration(bool enabled) { this->hardware_acceleration_enabled_ = enabled; }
   int get_fixed_width() const { return this->fixed_width_; }
   int get_fixed_height() const { return this->fixed_height_; }
   int get_content_width() const { return this->buffer_content_width_; }
@@ -157,13 +163,17 @@ class ArtworkImage : public PollingComponent,
   bool detect_heic_();
   bool create_decoder_(ImageFormat format, size_t total_size);
   bool is_busy_() const {
-    return this->downloader_ != nullptr || this->decoder_ != nullptr || this->p4_pipeline_pending_;
+    return this->service_pending_ || this->service_active_ || this->downloader_ != nullptr ||
+           this->decoder_ != nullptr || this->p4_pipeline_pending_;
   }
   bool has_newer_pending_update_() const {
     return this->update_pending_ && !this->pending_url_.empty() && this->pending_url_ != this->url_;
   }
   void queue_pending_update_(const std::string &url);
-  void start_pending_update_();
+  bool start_service_update_(uint32_t generation);
+  void start_update_();
+  void complete_service_request_();
+  void cancel_service_request_();
   void log_state_(const char *stage);
 
   RAMAllocator<uint8_t> allocator_{};
@@ -242,6 +252,7 @@ class ArtworkImage : public PollingComponent,
 
   const ImageFormat format_;
   ImageResizeMode resize_mode_;
+  ImageRequestPriority request_priority_{ImageRequestPriority::BACKGROUND};
   image::Image *placeholder_{nullptr};
 
   std::string url_{""};
@@ -260,6 +271,7 @@ class ArtworkImage : public PollingComponent,
    */
   bool is_big_endian_;
   bool allow_insecure_local_urls_;
+  bool hardware_acceleration_enabled_{true};
   /**
    * Actual width of the current image. If fixed_width_ is specified,
    * this will be equal to it; otherwise it will be set once the decoding
@@ -303,6 +315,9 @@ class ArtworkImage : public PollingComponent,
   uint32_t decode_started_ms_{0};
   bool update_pending_{false};
   std::string pending_url_{""};
+  uint32_t service_generation_{0};
+  bool service_pending_{false};
+  bool service_active_{false};
   P4PipelinePriority p4_pipeline_priority_{P4_PIPELINE_DISABLED};
   bool p4_pipeline_pending_{false};
   uint32_t p4_pipeline_generation_{0};
@@ -314,6 +329,7 @@ class ArtworkImage : public PollingComponent,
   friend void ImageDecoder::draw_rgb565_block(int x, int y, int w, int h, const uint8_t *data);
   friend void ImageDecoder::draw_rgb565_frame(int width, int height, size_t stride_bytes,
                                               const uint8_t *data);
+  friend class ImageService;
 };
 
 template<typename... Ts> class ArtworkImageSetUrlAction : public Action<Ts...> {
