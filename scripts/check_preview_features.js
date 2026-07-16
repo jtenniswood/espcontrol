@@ -14,4 +14,6 @@ const settingsTestModule = loadTypeScriptModule(path.resolve(__dirname, "..", "t
 settingsTestModule.runSettingsFeatureTests();
 const clipboardTestModule = loadTypeScriptModule(path.resolve(__dirname, "..", "tests", "web", "clipboard_feature.test.ts"));
 clipboardTestModule.runClipboardFeatureTests();
+const haDirectoryTestModule = loadTypeScriptModule(path.resolve(__dirname, "..", "tests", "web", "ha_directory_feature.test.ts"));
+haDirectoryTestModule.runHaDirectoryFeatureTests();
 console.log("Typed settings, backup, and preview feature tests passed.");

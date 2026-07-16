@@ -7,6 +7,7 @@ import * as PreviewFeature from "./features/preview";
 import * as BackupFeature from "./features/backup";
 import * as SettingsFeature from "./features/settings";
 import * as ClipboardFeature from "./features/clipboard";
+import * as HaDirectoryFeature from "./features/ha_directory";
 import * as UiTokens from "./state/ui_tokens";
 import * as AppState from "./state/app_state";
 import * as AppInstance from "./state/app_instance";
@@ -33,6 +34,7 @@ import { installArtworkStateModule } from "./application/artwork_state";
 import { installScreensaverStateModule } from "./application/screensaver_state";
 import { installFirmwareVersionStateModule } from "./application/firmware_version_state";
 import { installEntityStateModule } from "./application/entity_state";
+import { installHaEntityDirectoryModule } from "./application/ha_entity_directory";
 import { installClockBarStateModule } from "./application/clock_bar_state";
 import { installFirmwareUpdateStateModule } from "./application/firmware_update_state";
 import { installScreensaverTimeoutModule } from "./application/screensaver_timeout";
@@ -129,6 +131,7 @@ function startEspControl(): void {
     PreviewGridFeature,
     PreviewFeature,
     ClipboardFeature,
+    ...HaDirectoryFeature,
     createBackupFeature: BackupFeature.createBackupFeature,
     createSettingsUiFeature: SettingsFeature.createSettingsUiFeature,
     screensaverControlState: SettingsFeature.screensaverControlState,
@@ -161,6 +164,7 @@ function startEspControl(): void {
   installGlobals(installScreensaverStateModule());
   installGlobals(installFirmwareVersionStateModule());
   installGlobals(installEntityStateModule());
+  installGlobals(installHaEntityDirectoryModule());
   installGlobals(installClockBarStateModule());
   installGlobals(installFirmwareUpdateStateModule());
   installGlobals(installScreensaverTimeoutModule());

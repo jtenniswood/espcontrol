@@ -246,4 +246,7 @@ export interface AppState {
   settingsDraft: SettingsDraft | null;
   entityPostPaths: Record<string, string>;
   entityNames: Record<string, string[]>;
+  haEntityNames: Record<string, string>;
+  haDirectoryStatus: string;
+  haDirectoryStatusKind: string;
 }

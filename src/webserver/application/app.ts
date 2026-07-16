@@ -56,6 +56,7 @@ export function installAppModule(): GlobalDescriptors {
         renderButtonSettings();
         connectEvents();
         updateClock();
+        refreshHaEntityDirectory();
         document.addEventListener("click", hideContextMenu);
         document.addEventListener("mousedown", handleDocumentSelectionMouseDown);
         document.addEventListener("scroll", hideContextMenu, true);
