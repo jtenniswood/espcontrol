@@ -32,8 +32,11 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
     function statusBadge(this: any, label?: any) {
         return _settingsUiFeature.statusBadge(label);
     }
-    function inlineDisclosure(this: any, title?: any, bodyElement?: any, defaultOpen?: any) {
-        return _settingsUiFeature.inlineDisclosure(title, bodyElement, defaultOpen);
+    function disclosureBadge(this: any, text?: any, label?: any) {
+        return _settingsUiFeature.disclosureBadge(text, label);
+    }
+    function inlineDisclosure(this: any, title?: any, bodyElement?: any, defaultOpen?: any, badgeElement?: any) {
+        return _settingsUiFeature.inlineDisclosure(title, bodyElement, defaultOpen, badgeElement);
     }
     // ── Settings sync helpers ───────────────────────────────────────────
     function syncClockScreensaverControls(this: any) {
@@ -254,6 +257,7 @@ export function installSettingsPageHelpersModule(): GlobalDescriptors {
         "coverArtTrackOverlayDurationSupported": staticGlobal(coverArtTrackOverlayDurationSupported),
         "infoPanel": staticGlobal(infoPanel),
         "statusBadge": staticGlobal(statusBadge),
+        "disclosureBadge": staticGlobal(disclosureBadge),
         "inlineDisclosure": staticGlobal(inlineDisclosure),
         "syncClockScreensaverControls": staticGlobal(syncClockScreensaverControls),
         "syncMediaPlayerSleepPreventionUi": staticGlobal(syncMediaPlayerSleepPreventionUi),

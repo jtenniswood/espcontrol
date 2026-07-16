@@ -1303,6 +1303,18 @@ const mediaNowPlayingPreview = hooks.buttonTypePreviewFor("media", {
 assert(mediaNowPlayingPreview.iconHtml.includes("Midnight City"), "media now-playing preview keeps title text");
 assert(mediaNowPlayingPreview.labelHtml.includes("sp-media-now-artist"), "media now-playing preview keeps artist styling");
 
+const mediaCoverArtPreview = hooks.buttonTypePreviewFor("media", {
+  entity: "media_player.office",
+  sensor: "cover_art",
+  type: "media",
+});
+assert.strictEqual(mediaCoverArtPreview.buttonClass, "sp-image-card", "media cover art preview uses the image-card wrapper");
+assert(mediaCoverArtPreview.iconHtml.includes("sp-image-preview"), "media cover art preview uses the shared camera-card surface");
+assert(!mediaCoverArtPreview.iconHtml.includes("sp-media-cover-preview"), "media cover art preview omits the old decorative mock");
+assert(mediaCoverArtPreview.labelHtml.includes("sp-image-label"), "media cover art preview uses the shared padded image label");
+assert(mediaCoverArtPreview.labelHtml.includes("Cover Art"), "media cover art preview shows the Cover Art label");
+assert(!mediaCoverArtPreview.labelHtml.includes("Now Playing"), "media cover art preview does not show the now-playing label");
+
 const issue243Backup = {
   version: 1,
   device: "guition-esp32-p4-jc4880p443",
@@ -1442,10 +1454,11 @@ assert.deepStrictEqual(plain(hooks.firmwareInfosFromPublicVersions(publicVersion
 }]);
 assert.deepStrictEqual(plain(hooks.firmwareStateAfterVersionIndex("v1.12.0", publicVersionIndex)), {
   latest: "v1.12.0",
-  selected: "v1.12.0",
-  installAvailable: false,
+  selected: "v1.11.0",
+  installAvailable: true,
   selectorVisible: true,
-  installedSelected: true,
+  installedSelected: false,
+  previous: ["v1.11.0"],
 });
 assert.deepStrictEqual(plain(hooks.firmwareStateAfterVersionIndex("v1.12.0", publicVersionIndex, "v1.11.0")), {
   latest: "v1.12.0",
@@ -1453,7 +1466,13 @@ assert.deepStrictEqual(plain(hooks.firmwareStateAfterVersionIndex("v1.12.0", pub
   installAvailable: true,
   selectorVisible: true,
   installedSelected: false,
+  previous: ["v1.11.0"],
 });
+assert.strictEqual(
+  hooks.firmwareOtaUrlAfterVersionIndex("v1.12.0", publicVersionIndex, "v1.11.0"),
+  "https://jtenniswood.github.io/espcontrol/firmware/guition-esp32-p4-jc1060p470/guition-esp32-p4-jc1060p470.ota.bin",
+  "latest firmware OTA resolution must not follow the selected previous version"
+);
 assert.strictEqual(hooks.firmwareVersionLabelFor("", true), "Checking version...");
 assert.strictEqual(hooks.firmwareVersionLabelFor("", false), "Version unknown");
 assert.deepStrictEqual(plain(hooks.entityDetailPaths("text_sensor", hooks.entityLookupNames("firmware_version"))), [
@@ -1476,8 +1495,28 @@ assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", true), true);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("wifi", false), false);
 assert.strictEqual(hooks.firmwareUpdateControlsVisibleFor("ethernet", true), true);
 assert.strictEqual(
+  hooks.firmwareUpToDateStatusFor("v1.10.0", "v1.11.1", "NO UPDATE", false),
+  false,
+  "check-only firmware must not report up to date when the public release is newer"
+);
+assert.strictEqual(
+  hooks.firmwareUpToDateStatusFor("v1.11.1", "v1.11.1", "NO UPDATE", false),
+  true,
+  "matching installed and public versions may report up to date without install controls"
+);
+assert.strictEqual(
   hooks.firmwareVersionAfterUpdateInfo("Dev", { state: "NO UPDATE", latest_version: "v1.11.1" }).version,
   "v1.11.1"
+);
+assert.strictEqual(
+  hooks.firmwareVersionAfterUpdateInfo("v1.10.0", { state: "NO UPDATE", latest_version: "v1.11.1" }).installAction,
+  "check_then_install",
+  "public firmware discovered before the update entity should check and then install"
+);
+assert.strictEqual(
+  hooks.firmwareVersionAfterUpdateInfo("v1.10.0", { state: "UPDATE AVAILABLE", latest_version: "v1.11.1" }).installAction,
+  "install",
+  "a confirmed firmware update should install immediately"
 );
 assert.strictEqual(
   hooks.firmwareVersionAfterUpdateInfo("Dev", { state: "UPDATE AVAILABLE", latest_version: "v1.11.1" }).version,

@@ -49,6 +49,14 @@ int main() {
   const auto push = card_runtime_context("push");
   const auto screen_lock = card_runtime_context("screen_lock");
   const auto webhook = card_runtime_context("webhook");
+  const auto slider = card_runtime_context("slider");
+  const auto light_brightness = card_runtime_context("light_brightness");
+  const auto light_temperature = card_runtime_context("light_temperature");
+  const auto fan_speed = card_runtime_context("fan_speed");
+  const auto fan_oscillate = card_runtime_context("fan_oscillate");
+  const auto fan_direction = card_runtime_context("fan_direction");
+  const auto fan_preset = card_runtime_context("fan_preset");
+  const auto option_select = card_runtime_context("option_select");
   if (!card_runtime_information_only(door) || !card_runtime_passive(door) ||
       door.legacy_dispatch || presence.legacy_dispatch ||
       clock.runtime.driver != espcontrol::card_runtime::CardDriverId::DATE_TIME ||
@@ -68,6 +76,20 @@ int main() {
       internal.legacy_dispatch || light_switch.legacy_dispatch ||
       local_action.legacy_dispatch || push.legacy_dispatch ||
       screen_lock.legacy_dispatch || webhook.legacy_dispatch ||
+      slider.runtime.driver != espcontrol::card_runtime::CardDriverId::NUMERIC ||
+      light_brightness.runtime.driver != espcontrol::card_runtime::CardDriverId::NUMERIC ||
+      light_temperature.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::LIGHT_TEMPERATURE ||
+      fan_speed.runtime.driver != espcontrol::card_runtime::CardDriverId::FAN ||
+      fan_oscillate.runtime.driver != espcontrol::card_runtime::CardDriverId::FAN ||
+      fan_direction.runtime.driver != espcontrol::card_runtime::CardDriverId::FAN ||
+      fan_preset.runtime.driver != espcontrol::card_runtime::CardDriverId::FAN ||
+      option_select.runtime.driver !=
+        espcontrol::card_runtime::CardDriverId::OPTION_SELECT ||
+      slider.legacy_dispatch || light_brightness.legacy_dispatch ||
+      light_temperature.legacy_dispatch || fan_speed.legacy_dispatch ||
+      fan_oscillate.legacy_dispatch || fan_direction.legacy_dispatch ||
+      fan_preset.legacy_dispatch || option_select.legacy_dispatch ||
       !card_runtime_information_only(image) || card_runtime_passive(image) ||
       !image.legacy_dispatch) {
     return EXIT_FAILURE;
@@ -86,7 +108,7 @@ int main() {
       !cover.allow_in_subpage) {
     return EXIT_FAILURE;
   }
-  if (!option_select_compatibility.legacy_dispatch ||
+  if (option_select_compatibility.legacy_dispatch ||
       option_select_compatibility.runtime.driver !=
         espcontrol::card_runtime::CardDriverId::ACTION) {
     return EXIT_FAILURE;

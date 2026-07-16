@@ -7,8 +7,7 @@ export function installFirmwareVersionStateModule(): GlobalDescriptors {
     function renderFirmwareVersion(this: any) {
         if (!els.fwVersionLabel)
             return;
-        els.fwVersionLabel.innerHTML = '<span class="sp-fw-label">Installed </span>' +
-            escHtml(firmwareVersionLabel());
+        els.fwVersionLabel.textContent = firmwareVersionLabel();
     }
     function setFirmwareVersion(this: any, version?: any) {
         version = String(version == null ? "" : version).trim();

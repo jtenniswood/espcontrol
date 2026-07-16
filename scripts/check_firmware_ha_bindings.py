@@ -1706,6 +1706,21 @@ def firmware_image_card_startup_errors(
     errors: list[str] = []
     if "inline void refresh_image_cards()" not in text:
         errors.append(f"{rel}: refresh image cards when Home Assistant reconnects")
+    if (
+        "image_card_request_current_picture" not in text
+        or "if (ctx->media_artwork)" not in text
+        or "image_card_request_media_artwork(ctx);" not in text
+        or "image_card_refresh_current_picture(ctx);" not in text
+        or "ctx->media_artwork_retry_mask = 0;" not in text
+        or "ctx->media_artwork_sources.clear();" not in text
+        or "artwork_picture_response_clears_retry" not in text
+        or "inline void image_card_refresh_due()" not in text
+        or text.count("image_card_request_current_picture(ctx);") < 2
+        or "media_artwork_retry_mask" not in text
+        or "artwork_source_request_mask" not in text
+        or "artwork_source_failed_mask" not in text
+    ):
+        errors.append(f"{rel}: retry media cover artwork when Home Assistant reconnects")
     if "IMAGE_CARD_API_RETRY_INTERVAL_MS" not in text:
         errors.append(f"{rel}: retry image-card startup quickly after Home Assistant API connects")
     if "if (!ha_api_connected()) return;" not in text:
@@ -5208,6 +5223,7 @@ def run_self_test() -> int:
         "        refresh_weather_forecast_cards();\n",
         (
             "refresh image cards when Home Assistant reconnects",
+            "retry media cover artwork when Home Assistant reconnects",
             "retry image-card startup quickly after Home Assistant API connects",
             "arm image-card refresh from the Home Assistant API connection",
             "request image-card attributes once the Home Assistant API is connected",
@@ -5242,6 +5258,32 @@ def run_self_test() -> int:
         "  image_card_proxy_path_with_token(proxy_path, token);\n"
         "  ha_get_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
         "}\n"
+        "inline void image_card_request_media_artwork(ImageCardCtx *ctx) {\n"
+        "  uint8_t request_mask = artwork_source_request_mask(ctx->media_artwork_retry_mask);\n"
+        "  bool remote_queued = ha_get_attribute(ctx->entity_id, std::string(\"entity_picture\"), callback);\n"
+        "  bool local_queued = ha_get_attribute(ctx->entity_id, std::string(\"entity_picture_local\"), callback);\n"
+        "  ctx->media_artwork_retry_mask = artwork_source_failed_mask(request_mask, remote_queued, local_queued);\n"
+        "  if (ctx->media_artwork_retry_mask != 0) image_card_schedule_picture_retry(ctx, 250);\n"
+        "}\n"
+        "inline void image_card_request_current_picture(ImageCardCtx *ctx) {\n"
+        "  if (ctx->media_artwork) {\n"
+        "    image_card_request_media_artwork(ctx);\n"
+        "  } else {\n"
+        "    image_card_request_picture(ctx);\n"
+        "  }\n"
+        "}\n"
+        "inline void image_card_refresh_current_picture(ImageCardCtx *ctx) {\n"
+        "  if (ctx->media_artwork) {\n"
+        "    ctx->media_artwork_retry_mask = 0;\n"
+        "    ctx->media_artwork_sources.clear();\n"
+        "  }\n"
+        "  image_card_request_current_picture(ctx);\n"
+        "}\n"
+        "inline void image_card_handle_picture(ImageCardCtx *ctx) {\n"
+        "  if (artwork_picture_response_clears_retry(ctx->media_artwork, ctx->media_artwork_retry_mask)) {\n"
+        "    ctx->next_picture_retry_ms = 0;\n"
+        "  }\n"
+        "}\n"
         "inline bool image_card_context_current(ImageCardCtx *ctx,\n"
         "                                       const std::string &entity_id,\n"
         "                                       uint32_t generation) {\n"
@@ -5268,7 +5310,10 @@ def run_self_test() -> int:
         "}\n"
         "inline void refresh_image_cards() {\n"
         "  if (!ha_api_connected()) return;\n"
-        "  image_card_request_picture(ctx);\n"
+        "  image_card_refresh_current_picture(ctx);\n"
+        "}\n"
+        "inline void image_card_refresh_due() {\n"
+        "  image_card_request_current_picture(ctx);\n"
         "}\n",
         "api:\n"
         "  on_client_connected:\n"

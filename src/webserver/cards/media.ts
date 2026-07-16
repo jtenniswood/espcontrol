@@ -765,11 +765,14 @@ export function registerMediaCardTypes(): GlobalDescriptors {
                 };
             }
             if (mode === "cover_art") {
+                var coverArtColor: any = WEB_UI_COLORS.tertiary;
                 return {
                     buttonClass: "sp-image-card",
-                    iconHtml: '<span class="sp-media-cover-preview"></span>',
-                    labelHtml: '<span class="sp-btn-label-row"><span class="sp-btn-label">Now Playing</span>' +
-                        '<span class="sp-type-badge mdi mdi-' + MEDIA_CARD_METADATA.preview.badge + '"></span></span>',
+                    iconHtml: '<span class="sp-image-preview" style="background:#' +
+                        helpers.escHtml(coverArtColor) + '"></span>',
+                    labelHtml: '<span class="sp-image-label"><span class="sp-image-label-stack">' +
+                        '<span class="sp-image-label-text sp-image-label-shadow" aria-hidden="true">Cover Art</span>' +
+                        '<span class="sp-image-label-text sp-image-label-main">Cover Art</span></span></span>',
                 };
             }
             if (mode === "now_playing") {

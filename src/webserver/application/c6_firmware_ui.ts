@@ -20,6 +20,9 @@ export function installC6FirmwareUiModule(): GlobalDescriptors {
         var show: any = state.c6FirmwareUpdateControlsSupported === true;
         if (els.c6FirmwareCard)
             els.c6FirmwareCard.style.display = show ? "" : "none";
+        if (els.c6FirmwareBadge) {
+            els.c6FirmwareBadge.classList.toggle("sp-hidden", !c6FirmwareUpdateKnownAvailable());
+        }
         if (els.c6FirmwareCurrent) {
             els.c6FirmwareCurrent.textContent = displayC6FirmwareVersion(state.c6FirmwareCurrentVersion);
         }
@@ -29,18 +32,8 @@ export function installC6FirmwareUiModule(): GlobalDescriptors {
         if (els.c6FirmwareStatus) {
             var cls: any = "sp-fw-status";
             var status: any = "";
-            if (state.c6FirmwareInstalling) {
-                status = "Installing WiFi firmware update\u2026";
-                cls += " sp-update-installing";
-            }
-            else if (state.c6FirmwareChecking) {
-                status = "Checking WiFi firmware\u2026";
-            }
-            else if (c6FirmwareUpdateKnownAvailable()) {
-                status = "WiFi firmware update available.";
-                cls += " sp-update-available";
-            }
-            else if (state.c6FirmwareUpdateAvailable) {
+            if (!state.c6FirmwareInstalling && !state.c6FirmwareChecking &&
+                !c6FirmwareUpdateKnownAvailable() && state.c6FirmwareUpdateAvailable) {
                 status = state.c6FirmwareUpdateAvailable;
             }
             els.c6FirmwareStatus.className = cls;

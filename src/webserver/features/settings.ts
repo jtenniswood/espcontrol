@@ -20,7 +20,8 @@ export interface SettingsUiFeature {
   appendSettingsSection(parent: HTMLElement, title: string, cards: readonly (HTMLElement | null | undefined)[]): void;
   infoPanel(id: string, text: string): HTMLElement;
   statusBadge(label: string): HTMLElement;
-  inlineDisclosure(title: string, bodyElement: HTMLElement, defaultOpen: boolean): HTMLElement;
+  disclosureBadge(text: string, label?: string): HTMLElement;
+  inlineDisclosure(title: string, bodyElement: HTMLElement, defaultOpen: boolean, badgeElement?: HTMLElement): HTMLElement;
 }
 
 export function screensaverControlState(
@@ -89,7 +90,15 @@ export function createSettingsUiFeature(dependencies: SettingsUiDependencies): S
       badge.appendChild(textSpan("ON"));
       return badge;
     },
-    inlineDisclosure(title, bodyElement, defaultOpen) {
+    disclosureBadge(text, label) {
+      const badge = document.createElement("span");
+      badge.className = "sp-disclosure-badge";
+      badge.setAttribute("aria-label", label || text);
+      badge.appendChild(textSpan("", "sp-disclosure-badge-dot"));
+      badge.appendChild(textSpan(text));
+      return badge;
+    },
+    inlineDisclosure(title, bodyElement, defaultOpen, badgeElement) {
       const panel = document.createElement("div");
       panel.className = `sp-disclosure${defaultOpen ? " sp-open" : ""}`;
       const button = document.createElement("button");
@@ -98,9 +107,13 @@ export function createSettingsUiFeature(dependencies: SettingsUiDependencies): S
       button.setAttribute("aria-expanded", defaultOpen ? "true" : "false");
       const label = document.createElement("span");
       label.textContent = title;
+      const rightWrap = document.createElement("span");
+      rightWrap.className = "sp-disclosure-header-right";
       const chevron = createDisclosureChevron("sp-disclosure-chevron");
       button.appendChild(label);
-      button.appendChild(chevron);
+      if (badgeElement) rightWrap.appendChild(badgeElement);
+      rightWrap.appendChild(chevron);
+      button.appendChild(rightWrap);
       const body = document.createElement("div");
       body.className = "sp-disclosure-body";
       body.appendChild(bodyElement);

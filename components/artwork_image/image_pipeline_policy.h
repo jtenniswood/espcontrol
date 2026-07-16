@@ -116,6 +116,18 @@ constexpr bool image_pipeline_cached_target_changed(bool image_ready,
          (previous_width != current_width || previous_height != current_height);
 }
 
+// Resizing can skip its scale/crop work only when the source and target have
+// the same aspect ratio. A square source still needs cropping for a rectangular
+// target even though its own width and height are equal.
+constexpr bool image_resize_aspect_differs(int source_width, int source_height,
+                                           int target_width, int target_height) {
+  if (source_width <= 0 || source_height <= 0 || target_width <= 0 || target_height <= 0) {
+    return false;
+  }
+  return static_cast<int64_t>(source_width) * target_height !=
+         static_cast<int64_t>(source_height) * target_width;
+}
+
 struct P4CoverScalePlan {
   bool valid{false};
   uint32_t crop_width{0};

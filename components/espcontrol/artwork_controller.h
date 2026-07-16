@@ -2,6 +2,7 @@
 #define ESPCONTROL_ARTWORK_CONTROLLER_H
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 namespace espcontrol::artwork {
@@ -16,6 +17,45 @@ enum class RemoteUpdatePolicy {
   START_NEW_GENERATION,
   PRESERVE_LOCAL,
 };
+
+constexpr uint8_t ARTWORK_SOURCE_REMOTE = 1u << 0;
+constexpr uint8_t ARTWORK_SOURCE_LOCAL = 1u << 1;
+constexpr uint8_t ARTWORK_SOURCE_BOTH = ARTWORK_SOURCE_REMOTE | ARTWORK_SOURCE_LOCAL;
+
+constexpr uint8_t artwork_source_mask(bool local) {
+  return local ? ARTWORK_SOURCE_LOCAL : ARTWORK_SOURCE_REMOTE;
+}
+
+// A zero retry mask means this is a normal refresh and both sources should be
+// requested. A non-zero mask contains only the source reads that previously
+// failed to queue.
+constexpr uint8_t artwork_source_request_mask(uint8_t retry_mask) {
+  return retry_mask == 0 ? ARTWORK_SOURCE_BOTH : retry_mask;
+}
+
+constexpr uint8_t artwork_source_failed_mask(uint8_t request_mask,
+                                             bool remote_queued,
+                                             bool local_queued) {
+  uint8_t failed = 0;
+  if ((request_mask & ARTWORK_SOURCE_REMOTE) != 0 && !remote_queued) {
+    failed |= ARTWORK_SOURCE_REMOTE;
+  }
+  if ((request_mask & ARTWORK_SOURCE_LOCAL) != 0 && !local_queued) {
+    failed |= ARTWORK_SOURCE_LOCAL;
+  }
+  return failed;
+}
+
+constexpr uint8_t artwork_source_mark_received(uint8_t retry_mask, bool local) {
+  return retry_mask & static_cast<uint8_t>(~artwork_source_mask(local));
+}
+
+// A successful response must not cancel a retry that is still needed for the
+// other media-artwork source.
+constexpr bool artwork_picture_response_clears_retry(bool media_artwork,
+                                                     uint8_t retry_mask) {
+  return !media_artwork || retry_mask == 0;
+}
 
 // A usable local proxy response is already the preferred source, so there is
 // no benefit in waiting for the remote fallback response before applying it.

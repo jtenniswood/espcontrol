@@ -64,7 +64,8 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
                     version: state.firmwareVersion,
                     latest: state.firmwareLatestVersion,
                     updateState: state.firmwareUpdateState,
-                    installAvailable: firmwareInstallAvailable(),
+                    installAvailable: latestFirmwareInstallAvailable(),
+                    installAction: latestFirmwareInstallAction(),
                 };
                 state.firmwareVersion = oldVersion;
                 state.firmwareLatestVersion = oldLatest;
@@ -107,7 +108,7 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
                     updateState: state.firmwareUpdateState,
                     releaseUrl: state.firmwareReleaseUrl,
                     updateAvailable: firmwareUpdateAvailable(),
-                    installAvailable: firmwareInstallAvailable(),
+                    installAvailable: latestFirmwareInstallAvailable(),
                 };
                 state.firmwareVersion = oldVersion;
                 state.firmwareLatestVersion = oldLatest;
@@ -147,13 +148,14 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
                 setPublicFirmwareVersions(firmwareInfosFromPublicVersions(versionIndex));
                 if (selectedVersion)
                     state.firmwareSelectedVersion = selectedVersion;
-                var selected: any = selectedFirmwareInfo();
+                var selected: any = selectedPreviousFirmwareInfo();
                 var result: any = {
                     latest: state.firmwareLatestVersion,
                     selected: selected && selected.latest_version,
-                    installAvailable: firmwareInstallAvailable(),
+                    installAvailable: previousFirmwareInstallAvailable(),
                     selectorVisible: firmwareVersionSelectorVisible(),
-                    installedSelected: selectedFirmwareMatchesInstalled(),
+                    installedSelected: !!selected && firmwareVersionsSame(selected.latest_version, state.firmwareVersion),
+                    previous: previousFirmwareInfos().map(function (this: any, info?: any) { return info.latest_version; }),
                 };
                 state.firmwareVersion = oldVersion;
                 state.firmwareLatestVersion = oldLatest;
@@ -166,6 +168,51 @@ export function installAppTestHooksSettings(): GlobalDescriptors {
                 state.firmwareVersionOptions = oldOptions;
                 state.firmwareSelectedVersion = oldSelected;
                 state.firmwareVersionIndexLoaded = oldIndexLoaded;
+                return result;
+            },
+            firmwareOtaUrlAfterVersionIndex: function (this: any, requestedVersion?: any, versionIndex?: any, selectedVersion?: any) {
+                var oldLatest: any = state.firmwareLatestVersion;
+                var oldOtaUrl: any = state.firmwareOtaUrl;
+                var oldOtaFilename: any = state.firmwareOtaFilename;
+                var oldOtaMd5: any = state.firmwareOtaMd5;
+                var oldOptions: any = state.firmwareVersionOptions;
+                var oldSelected: any = state.firmwareSelectedVersion;
+                var oldIndexLoaded: any = state.firmwareVersionIndexLoaded;
+                state.firmwareLatestVersion = "";
+                state.firmwareOtaUrl = "";
+                state.firmwareOtaFilename = "";
+                state.firmwareOtaMd5 = "";
+                state.firmwareVersionOptions = [];
+                state.firmwareSelectedVersion = "";
+                state.firmwareVersionIndexLoaded = false;
+                setPublicFirmwareVersions(firmwareInfosFromPublicVersions(versionIndex));
+                if (selectedVersion)
+                    state.firmwareSelectedVersion = selectedVersion;
+                var info: any = firmwareInfoForVersion(requestedVersion);
+                var result: any = info && info.ota_url ? info.ota_url : "";
+                state.firmwareLatestVersion = oldLatest;
+                state.firmwareOtaUrl = oldOtaUrl;
+                state.firmwareOtaFilename = oldOtaFilename;
+                state.firmwareOtaMd5 = oldOtaMd5;
+                state.firmwareVersionOptions = oldOptions;
+                state.firmwareSelectedVersion = oldSelected;
+                state.firmwareVersionIndexLoaded = oldIndexLoaded;
+                return result;
+            },
+            firmwareUpToDateStatusFor: function (this: any, installedVersion?: any, latestVersion?: any, updateState?: any, installSupported?: any) {
+                var oldVersion: any = state.firmwareVersion;
+                var oldLatest: any = state.firmwareLatestVersion;
+                var oldUpdateState: any = state.firmwareUpdateState;
+                var oldInstallSupported: any = state.firmwareInstallControlsSupported;
+                state.firmwareVersion = installedVersion || "";
+                state.firmwareLatestVersion = latestVersion || "";
+                state.firmwareUpdateState = updateState || "";
+                state.firmwareInstallControlsSupported = !!installSupported;
+                var result: any = firmwareUpToDateStatusAvailable();
+                state.firmwareVersion = oldVersion;
+                state.firmwareLatestVersion = oldLatest;
+                state.firmwareUpdateState = oldUpdateState;
+                state.firmwareInstallControlsSupported = oldInstallSupported;
                 return result;
             },
             firmwareFailureStatusFor: function (this: any, message?: any) {

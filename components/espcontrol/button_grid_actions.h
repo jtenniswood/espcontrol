@@ -822,6 +822,8 @@ namespace espcontrol::cards {
 inline bool basic_action_driver_handle_main_click(
     const Context &context, const ParsedCfg &config,
     int slot_number, lv_obj_t *button);
+inline bool numeric_selectable_driver_handle_main_click(
+    const Context &context, const ParsedCfg &config, lv_obj_t *button);
 }
 
 // Handle a main-grid button press: dispatch push event, subpage nav,
@@ -841,6 +843,8 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   }
   if (espcontrol::cards::basic_action_driver_handle_main_click(
         context, p, slot_num, btn_obj)) return;
+  if (espcontrol::cards::numeric_selectable_driver_handle_main_click(
+        context, p, btn_obj)) return;
   if (p.type == "subpage") {
     lv_obj_t *sub_scr = (lv_obj_t *)lv_obj_get_user_data(btn_obj);
     if (sub_scr)
@@ -848,9 +852,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "alarm") {
     AlarmCardCtx *ctx = (AlarmCardCtx *)lv_obj_get_user_data(btn_obj);
     if (alarm_card_context_valid(ctx)) alarm_card_open_page(ctx);
-  } else if (fan_non_speed_card_type(p.type)) {
-    FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) fan_card_handle_click(ctx);
   } else if (p.type == "fan_control") {
     FanCardCtx *ctx = (FanCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) fan_control_open_modal(ctx);
@@ -891,9 +892,6 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
       set_card_checked_state(btn_obj, true);
       send_toggle_action(p.entity);
     }
-  } else if (action_card_option_select(p)) {
-    OptionSelectCtx *ctx = (OptionSelectCtx *)lv_obj_get_user_data(btn_obj);
-    if (ctx) option_select_open_modal(ctx);
   } else if (p.type == "vacuum") {
     VacuumCardCtx *ctx = (VacuumCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) {
@@ -946,9 +944,7 @@ inline void handle_button_click(const std::string &cfg, int slot_num,
   } else if (p.type == "image") {
     ImageCardCtx *ctx = (ImageCardCtx *)lv_obj_get_user_data(btn_obj);
     if (ctx) image_card_open_modal(ctx);
-  } else if (p.type == "light_temperature") {
-    // Tap does nothing; only dragging the slider sends commands.
-  } else if (brightness_slider_type(p.type) || p.type == "cover") {
+  } else if (p.type == "cover") {
     if (!p.entity.empty()) send_slider_action(p.entity, -1, cover_tilt_mode(p.sensor));
   } else {
     if (!p.entity.empty()) {

@@ -51,6 +51,7 @@ DATE_TIME_CARDS_HEADER = "button_grid_datetime_cards.h"
 SENSOR_HEADER = "button_grid_sensor_driver.h"
 WEATHER_HEADER = "button_grid_weather_driver.h"
 BASIC_ACTION_HEADER = "button_grid_basic_action_driver.h"
+NUMERIC_SELECTABLE_HEADER = "button_grid_numeric_selectable_driver.h"
 CARDS_HEADER = "button_grid_cards.h"
 
 
@@ -149,6 +150,9 @@ def check_root(root: Path) -> list[str]:
             or "basic_action_driver_setup_visual(s, p, context)" not in compact_grid
             or "basic_action_driver_bind_main( s, p, context, cfg, palette, display, main_page_obj, COLS, toggle_state)" not in compact_grid
             or "basic_action_driver_bind_subpage( sub_slot, sb_cfg, context, action_environment)" not in compact_grid
+            or "numeric_selectable_driver_setup_visual( s, p, context, palette, display)" not in compact_grid
+            or "numeric_selectable_driver_bind_main( s, p, context, palette, display)" not in compact_grid
+            or "numeric_selectable_driver_bind_subpage( sub_slot, sb_cfg, context, numeric_environment)" not in compact_grid
             or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
             or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
         ):
@@ -170,6 +174,14 @@ def check_root(root: Path) -> list[str]:
             'sb_cfg.type == "screen_lock"', 'sb_cfg.type == "push"',
             'sb_cfg.type == "alarm_action"', 'sb_cfg.type == "internal"',
             'sb_cfg.type == "local"', 'sb_cfg.type == "webhook"',
+            'p.type == "slider"', 'p.type == "light_brightness"',
+            'p.type == "light_temperature"', 'p.type == "fan_speed"',
+            'p.type == "fan_oscillate"', 'p.type == "fan_direction"',
+            'p.type == "fan_preset"', 'p.type == "option_select"',
+            'sb_cfg.type == "slider"', 'sb_cfg.type == "light_brightness"',
+            'sb_cfg.type == "light_temperature"', 'sb_cfg.type == "fan_speed"',
+            'sb_cfg.type == "fan_oscillate"', 'sb_cfg.type == "fan_direction"',
+            'sb_cfg.type == "fan_preset"', 'sb_cfg.type == "option_select"',
         ):
             if direct_branch in text:
                 failures.append(
@@ -201,6 +213,7 @@ def check_root(root: Path) -> list[str]:
             or "card_runtime_passive(context)" not in click_body
             or "Legacy action fallback" not in click_body
             or "basic_action_driver_handle_main_click(" not in click_body
+            or "numeric_selectable_driver_handle_main_click(" not in click_body
         ):
             failures.append(
                 f"components/espcontrol/{ACTION_HEADER}: route passive checks through the shared card context"
@@ -340,6 +353,41 @@ def check_root(root: Path) -> list[str]:
     elif grid_header.exists():
         failures.append(
             f"components/espcontrol/{BASIC_ACTION_HEADER}: missing shared basic-action driver"
+        )
+    numeric_selectable_header = root / "components" / "espcontrol" / NUMERIC_SELECTABLE_HEADER
+    if numeric_selectable_header.exists():
+        text = numeric_selectable_header.read_text(encoding="utf-8")
+        required = (
+            "numeric_selectable_driver_setup_visual",
+            "numeric_selectable_driver_bind_main",
+            "numeric_selectable_driver_bind_subpage",
+            "numeric_selectable_driver_attach_interaction",
+            "numeric_selectable_driver_refresh_layout",
+            "numeric_selectable_driver_cleanup",
+            "numeric_selectable_driver_handle_main_click",
+            "numeric_selectable_driver_bind_slider",
+            "numeric_selectable_driver_bind_light_temperature",
+            "numeric_selectable_driver_bind_fan_action",
+            "numeric_selectable_driver_bind_option_select",
+            "option_select_open_modal",
+            "fan_card_handle_click",
+            "send_slider_action",
+            '"light_brightness"',
+            '"light_temperature"',
+            '"fan_speed"',
+            '"fan_oscillate"',
+            '"fan_direction"',
+            '"fan_preset"',
+            '"option_select"',
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{NUMERIC_SELECTABLE_HEADER}: missing shared numeric/selectable lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{NUMERIC_SELECTABLE_HEADER}: missing shared numeric/selectable driver"
         )
     cards_header = root / "components" / "espcontrol" / CARDS_HEADER
     if cards_header.exists():
@@ -497,6 +545,15 @@ def run_self_test() -> None:
                 )
             },
             ("missing shared basic-action lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_numeric_selectable_driver.h": (
+                    "inline bool numeric_selectable_driver_setup_visual() {}\n"
+                    "inline bool numeric_selectable_driver_bind_main() {}\n"
+                )
+            },
+            ("missing shared numeric/selectable lifecycle guard",),
         ),
         (
             {

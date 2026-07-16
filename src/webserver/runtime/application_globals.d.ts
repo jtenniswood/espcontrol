@@ -505,12 +505,13 @@ declare global {
   var findPlacementCell: any;
   var firmwareInfoFromPublicManifest: any;
   var firmwareInfoFromPublicVersionEntry: any;
+  var firmwareInfoForVersion: any;
   var firmwareInfosFromPublicVersions: any;
-  var firmwareInstallAvailable: any;
   var firmwareInstallRefreshTimer: any;
   var firmwareInstallRefreshUntil: any;
   var firmwareUpdateAvailable: any;
   var firmwareUpdateControlsVisible: any;
+  var firmwareUpToDateStatusAvailable: any;
   var firmwareVersionFromMetadata: any;
   var firmwareVersionLabel: any;
   var firmwareVersionMatches: any;
@@ -570,6 +571,7 @@ declare global {
   var infoPanel: any;
   var init: any;
   var initIconPicker: any;
+  var disclosureBadge: any;
   var inlineDisclosure: any;
   var installPublicFirmwareViaWebOta: any;
   var installedFirmwareMatchesPublicRelease: any;
@@ -609,7 +611,10 @@ declare global {
   var languageLabel: any;
   var languageOptionsWithFallback: any;
   var largeNumbersExplicitlyDisabled: any;
+  var latestFirmwareInfo: any;
   var latestFirmwareInfoFromState: any;
+  var latestFirmwareInstallAction: any;
+  var latestFirmwareInstallAvailable: any;
   var lawnMowerModeBadgeIcon: any;
   var lawnMowerModeDefaultIcon: any;
   var lawnMowerModeValues: any;
@@ -880,7 +885,6 @@ declare global {
   var publicFirmwareManifestUrl: any;
   var publicFirmwareOtaFilename: any;
   var publicFirmwareReleaseKnown: any;
-  var publicFirmwareStatusHtml: any;
   var publicFirmwareVersionsUrl: any;
   var pushActionSpec: any;
   var pushDefaultIcon: any;
@@ -963,9 +967,10 @@ declare global {
   var selectClockBarItem: any;
   var selectField: any;
   var selectedFirmwareInfo: any;
-  var selectedFirmwareIsLatest: any;
-  var selectedFirmwareMatchesInstalled: any;
-  var selectedFirmwareVersion: any;
+  var previousFirmwareInfos: any;
+  var previousFirmwareInstallAvailable: any;
+  var selectedPreviousFirmwareInfo: any;
+  var syncPreviousFirmwareUi: any;
   var sensorActiveColorEnabled: any;
   var sensorCardIsLocal: any;
   var sensorLargeNumbersEnabled: any;

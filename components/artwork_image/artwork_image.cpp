@@ -602,7 +602,7 @@ size_t ArtworkImage::resize_(int width_in, int height_in) {
     content_width = width;
     content_height = height;
   } else if (width_in > 0 && height_in > 0) {
-    if (width_in != height_in) {
+    if (image_resize_aspect_differs(width_in, height_in, this->fixed_width_, this->fixed_height_)) {
       double width_scale = static_cast<double>(this->fixed_width_) / width_in;
       double height_scale = static_cast<double>(this->fixed_height_) / height_in;
       double scale = this->resize_mode_ == ImageResizeMode::COVER

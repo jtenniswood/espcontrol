@@ -82,12 +82,15 @@ inline bool driver_uses_legacy_dispatch(
     case Driver::ACTION:
     case Driver::ALARM_ACTION:
     case Driver::INTERNAL:
+    case Driver::NUMERIC:
+    case Driver::LIGHT_TEMPERATURE:
+    case Driver::OPTION_SELECT:
     case Driver::PUSH:
     case Driver::SCREEN_LOCK:
     case Driver::WEBHOOK:
       return false;
     case Driver::FAN:
-      return runtime.type != espcontrol::card_runtime::CardTypeId::FAN_SWITCH;
+      return false;
     default: return true;
   }
 }
@@ -105,8 +108,7 @@ inline Context context_for(const std::string &type, const std::string &mode,
   context.legacy_dispatch = driver_uses_legacy_dispatch(context.runtime);
   if (context.runtime.type == CardTypeId::ACTION &&
       card_contract_is_option_select_action(mode)) {
-    // Option-select compatibility migrates with the selectable-control family.
-    context.legacy_dispatch = true;
+    context.legacy_dispatch = false;
   }
 
   // These saved-config types predate the generated contract. Keep them on the
