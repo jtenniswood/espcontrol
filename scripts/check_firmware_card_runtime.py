@@ -46,6 +46,8 @@ GRID_HEADER = "button_grid_grid.h"
 ACTION_HEADER = "button_grid_actions.h"
 IMAGE_HEADER = "button_grid_image.h"
 STATUS_ENTITY_HEADER = "button_grid_status_entity_driver.h"
+DATE_TIME_HEADER = "button_grid_date_time_driver.h"
+DATE_TIME_CARDS_HEADER = "button_grid_datetime_cards.h"
 
 
 def service_mapping_line_allowed(line: str) -> bool:
@@ -134,16 +136,21 @@ def check_root(root: Path) -> list[str]:
         if (
             "status_entity_driver_setup_visual( s, p, context, palette)" not in compact_grid
             or "status_entity_driver_bind_data( s, p, context, palette)" not in compact_grid
+            or "date_time_driver_setup_visual( s, p, context, palette)" not in compact_grid
+            or "date_time_driver_bind_data(s, p, context)" not in compact_grid
             or "bind_basic_sensor_card(s, p, context, palette)" not in compact_grid
             or "bind_basic_sensor_card(sub_slot, sb_cfg, context, palette)" not in compact_grid
         ):
             failures.append(
-                f"components/espcontrol/{GRID_HEADER}: route main and subpage status entities through the shared driver"
+                f"components/espcontrol/{GRID_HEADER}: route main and subpage migrated cards through shared drivers"
             )
-        for direct_branch in ('p.type == "door_window"', 'p.type == "presence"'):
+        for direct_branch in (
+            'p.type == "door_window"', 'p.type == "presence"',
+            'p.type == "clock"', 'p.type == "timezone"',
+        ):
             if direct_branch in text:
                 failures.append(
-                    f"components/espcontrol/{GRID_HEADER}: keep status-entity type overrides inside the shared driver"
+                    f"components/espcontrol/{GRID_HEADER}: keep migrated type overrides inside shared drivers"
                 )
         if 'parent_subpage_kind == "lawn_mower"' not in text or "lawn_mower_state_active_ref" not in text:
             failures.append(
@@ -203,6 +210,36 @@ def check_root(root: Path) -> list[str]:
         failures.append(
             f"components/espcontrol/{STATUS_ENTITY_HEADER}: missing shared status-entity driver"
         )
+    date_time_header = root / "components" / "espcontrol" / DATE_TIME_HEADER
+    if date_time_header.exists():
+        text = date_time_header.read_text(encoding="utf-8")
+        required = (
+            "date_time_driver_setup_visual",
+            "date_time_driver_bind_data",
+            "date_time_driver_attach_interaction",
+            "date_time_driver_refresh_layout",
+            "date_time_driver_cleanup",
+            "context.runtime.type == Type::CLOCK",
+            "context.runtime.type == Type::TIMEZONE",
+            "register_timezone_card",
+        )
+        for needle in required:
+            if needle not in text:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_HEADER}: missing shared date-time lifecycle guard {needle}"
+                )
+    elif grid_header.exists():
+        failures.append(
+            f"components/espcontrol/{DATE_TIME_HEADER}: missing shared date-time driver"
+        )
+    date_time_cards_header = root / "components" / "espcontrol" / DATE_TIME_CARDS_HEADER
+    if date_time_cards_header.exists():
+        text = date_time_cards_header.read_text(encoding="utf-8")
+        for legacy_setup in ("setup_clock_card", "setup_timezone_card"):
+            if legacy_setup in text:
+                failures.append(
+                    f"components/espcontrol/{DATE_TIME_CARDS_HEADER}: keep {legacy_setup} inside the shared date-time driver"
+                )
     return failures
 
 
@@ -309,6 +346,15 @@ def run_self_test() -> None:
                 )
             },
             ("missing shared status-entity lifecycle guard",),
+        ),
+        (
+            {
+                "button_grid_date_time_driver.h": (
+                    "inline bool date_time_driver_setup_visual() {}\n"
+                    "inline bool date_time_driver_bind_data() {}\n"
+                )
+            },
+            ("missing shared date-time lifecycle guard",),
         ),
         (
             {

@@ -148,14 +148,6 @@ inline bool large_number_square_card_layout(int row_span, int col_span) {
   return card_span_is_large(row_span, col_span);
 }
 
-inline bool card_large_date_time_layout(const ParsedCfg &p, int row_span, int col_span) {
-  if (p.type == "clock") {
-    return large_number_square_card_layout(row_span, col_span) ||
-           card_span_is_wide(row_span, col_span);
-  }
-  return large_number_square_card_layout(row_span, col_span);
-}
-
 inline bool card_large_numbers_active_for_layout(const ParsedCfg &p, int row_span, int col_span) {
   return card_large_numbers_supported(p) && !card_large_numbers_disabled(p) && (
     large_number_square_card_layout(row_span, col_span) ||
@@ -172,11 +164,7 @@ inline void apply_wide_large_date_time_card_layout(const BtnSlot &s,
   if (s.sensor_container) lv_obj_align(s.sensor_container, align, 0, 0);
 }
 
-inline lv_align_t wide_large_date_time_card_align(const ParsedCfg &p) {
-  return (p.type == "clock" || (p.type == "calendar" && calendar_card_shows_time(p)))
-    ? LV_ALIGN_LEFT_MID
-    : LV_ALIGN_CENTER;
-}
+#include "button_grid_date_time_driver.h"
 
 inline void apply_card_label_line_clamp(lv_obj_t *label, const GridConfig &cfg,
                                         int row_span = 1) {
@@ -365,6 +353,7 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
              p.type.c_str(), static_cast<unsigned>(context.runtime.driver));
   }
   espcontrol::cards::status_entity_driver_cleanup(s, p, context);
+  espcontrol::cards::date_time_driver_cleanup(s, p, context);
   reset_card_slot_dynamic_children(s);
   apply_button_colors(s.btn, palette.has_on, palette.on_val,
     palette.has_off, palette.off_val);
@@ -427,41 +416,23 @@ inline void setup_card_visual(BtnSlot &s, const ParsedCfg &p,
       s, p, context, row_span, col_span);
     return;
   }
+  if (espcontrol::cards::date_time_driver_setup_visual(
+        s, p, context, palette)) {
+    espcontrol::cards::date_time_driver_attach_interaction(s, p, context);
+    espcontrol::cards::date_time_driver_refresh_layout(
+      s, p, context, display, row_span, col_span);
+    return;
+  }
   if (p.type == "calendar") {
     setup_calendar_card(s, p, palette.has_sensor_color, palette.sensor_val);
-    if (card_large_date_time_layout(p, row_span, col_span) &&
+    if (large_number_square_card_layout(row_span, col_span) &&
         card_large_numbers_active_for_layout(p, row_span, col_span) &&
         display_large_sensor_font(display)) {
       apply_large_sensor_number_style(
         s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
       if (wide_large_date_time_card_layout(row_span, col_span)) {
-        apply_wide_large_date_time_card_layout(s, wide_large_date_time_card_align(p));
-      }
-    }
-    return;
-  }
-  if (p.type == "clock") {
-    setup_clock_card(s, p, palette.has_sensor_color, palette.sensor_val);
-    if (card_large_date_time_layout(p, row_span, col_span) &&
-        card_large_numbers_active_for_layout(p, row_span, col_span) &&
-        display_large_sensor_font(display)) {
-      apply_large_sensor_number_style(
-        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
-      if (wide_large_date_time_card_layout(row_span, col_span)) {
-        apply_wide_large_date_time_card_layout(s, wide_large_date_time_card_align(p));
-      }
-    }
-    return;
-  }
-  if (p.type == "timezone") {
-    setup_timezone_card(s, p, palette.has_sensor_color, palette.sensor_val);
-    if (card_large_date_time_layout(p, row_span, col_span) &&
-        card_large_numbers_active_for_layout(p, row_span, col_span) &&
-        display_large_sensor_font(display)) {
-      apply_large_sensor_number_style(
-        s, display_large_sensor_font(display), display_large_sensor_unit_offset_percent(display));
-      if (wide_large_date_time_card_layout(row_span, col_span)) {
-        apply_wide_large_date_time_card_layout(s);
+        apply_wide_large_date_time_card_layout(
+          s, calendar_card_shows_time(p) ? LV_ALIGN_LEFT_MID : LV_ALIGN_CENTER);
       }
     }
     return;
@@ -621,6 +592,7 @@ inline bool bind_basic_sensor_card(
     const espcontrol::cards::Context &context, const CardPalette &palette) {
   if (espcontrol::cards::status_entity_driver_bind_data(
         s, p, context, palette)) return true;
+  if (espcontrol::cards::date_time_driver_bind_data(s, p, context)) return true;
   if (sensor_card_local_sensor(p)) return false;
   if (is_text_sensor_card(p)) {
     if (!p.sensor.empty())
@@ -658,7 +630,7 @@ inline bool bind_passive_card_sources(BtnSlot &s, const ParsedCfg &p) {
     subscribe_calendar_date_source(p.entity);
     return true;
   }
-  if (p.type == "clock" || p.type == "timezone" || weather_card_shows_forecast(p)) {
+  if (weather_card_shows_forecast(p)) {
     return true;
   }
   if (p.type == "weather") {

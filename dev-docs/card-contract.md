@@ -92,8 +92,12 @@ The generated web `CARD_RUNTIME_SPECS` registry is attached to matching
 in `button_grid_contract_generated.h`. Door/Window and Presence cards now use
 the shared handwritten `STATUS_ENTITY` lifecycle driver for main-grid and
 subpage visual setup, data binding, passive interaction, layout refresh, and
-cleanup. Other families remain on the existing `Family` dispatch until their
-reviewed migration PR switches them one family at a time.
+cleanup. Clock and Timezone use the shared handwritten `DATE_TIME` lifecycle
+driver for the same stages and share one local-time update registry across the
+main grid and subpages. Calendar deliberately remains on the existing fallback
+until the informational-card migration. Other families remain on the existing
+`Family` dispatch until their reviewed migration PR switches them one family at
+a time.
 
 The pre-driver-migration runtime baseline is authored in
 `common/config/card_runtime_inventory.json`. It classifies contract and
