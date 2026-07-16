@@ -1832,8 +1832,12 @@ script:
             ESP_LOGI("cover_art", "Refreshing artwork entity: %s", cover_entity.c_str());
           }
           #ifdef ESPCONTROL_LOW_HEAP_COVER_ART
-          media_playback_prepare_cover_art_progress(
-            cover_entity, id(cover_art_media_playing));
+          if (id(cover_art_screensaver_enabled).state) {
+            media_playback_prepare_cover_art_progress(
+              cover_entity, id(cover_art_media_playing));
+          } else {
+            media_playback_reset_cover_art_progress_subscriptions();
+          }
           #endif
           const int subscription_generation = id(cover_art_subscription_generation);
 

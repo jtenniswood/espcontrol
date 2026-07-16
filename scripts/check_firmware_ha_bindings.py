@@ -1523,6 +1523,14 @@ def firmware_cover_art_low_heap_progress_errors(
         )
     ):
         errors.append(f"{rel}: prepare and invalidate S3 shared cover art progress")
+    elif not re.search(
+        r"if \(id\(cover_art_screensaver_enabled\)\.state\) \{\s*"
+        r"media_playback_prepare_cover_art_progress\(.*?\}\s*else \{\s*"
+        r"media_playback_reset_cover_art_progress_subscriptions\(\);",
+        resubscribe_body,
+        re.DOTALL,
+    ):
+        errors.append(f"{rel}: keep S3 progress unsubscribed when cover art is disabled")
 
     disable_body = yaml_script_body(text, "cover_art_disable")
     if not disable_body or "script.execute: cover_art_resubscribe" not in disable_body:
@@ -5039,9 +5047,12 @@ def run_self_test() -> int:
         "    then:\n"
         "      - lambda: |-\n"
         "          #ifdef ESPCONTROL_LOW_HEAP_COVER_ART\n"
-        "          media_playback_prepare_cover_art_progress(cover_entity, id(cover_art_media_playing));\n"
+        "          if (id(cover_art_screensaver_enabled).state) {\n"
+        "            media_playback_prepare_cover_art_progress(cover_entity, id(cover_art_media_playing));\n"
+        "          } else {\n"
+        "            media_playback_reset_cover_art_progress_subscriptions();\n"
+        "          }\n"
         "          media_playback_invalidate_stale_progress(cover_entity);\n"
-        "          media_playback_reset_cover_art_progress_subscriptions();\n"
         "          #endif\n"
         "  - id: cover_art_disable\n"
         "    then:\n"
