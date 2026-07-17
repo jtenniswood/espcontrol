@@ -62,6 +62,37 @@ constexpr bool image_pipeline_should_cancel_modal_cleanup(bool has_separate_moda
   return has_separate_modal_image && !shared_modal_in_use;
 }
 
+// LVGL cover alignment stores scale as a whole number of fixed-point steps.
+// When that scale is rounded down, the rendered image can finish one pixel
+// short of the widget edge. Return the small horizontal overscan needed for a
+// clipped image widget to cover the intended target width.
+constexpr uint32_t cover_alignment_edge_overscan(uint32_t source_width,
+                                                 uint32_t source_height,
+                                                 uint32_t target_width,
+                                                 uint32_t target_height,
+                                                 uint32_t fractional_steps) {
+  if (source_width == 0 || source_height == 0 || target_width == 0 ||
+      target_height == 0 || fractional_steps == 0) {
+    return 0;
+  }
+  uint32_t scale_x = static_cast<uint32_t>(
+      static_cast<uint64_t>(target_width) * fractional_steps / source_width);
+  uint32_t scale_y = static_cast<uint32_t>(
+      static_cast<uint64_t>(target_height) * fractional_steps / source_height);
+  uint32_t scale = scale_x > scale_y ? scale_x : scale_y;
+  uint32_t rendered_width = static_cast<uint32_t>(
+      static_cast<uint64_t>(source_width) * scale / fractional_steps);
+  if (rendered_width >= target_width) return 0;
+
+  uint32_t required_scale = static_cast<uint32_t>(
+      (static_cast<uint64_t>(target_width) * fractional_steps + source_width - 1) /
+      source_width);
+  uint32_t expanded_width = static_cast<uint32_t>(
+      (static_cast<uint64_t>(required_scale) * source_width + fractional_steps - 1) /
+      fractional_steps);
+  return expanded_width > target_width ? expanded_width - target_width : 0;
+}
+
 // A newly opened card should preempt modal-quality work left by a different
 // card that is still inside its delayed cleanup window. Matching the shared
 // image buffer prevents unrelated artwork downloads from being cancelled.
