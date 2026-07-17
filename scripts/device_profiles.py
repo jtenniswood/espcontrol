@@ -941,6 +941,9 @@ def slot_device(profile: dict[str, Any]) -> dict[str, Any]:
         "display_mode": display.get("mode", "color"),
         "modal": copy.deepcopy(display["modal"]),
         "package": firmware.get("package"),
+        "media_cover_art_supported": "media_cover_art" not in set(
+            profile["web"].get("disabledCardTypes", [])
+        ),
     }
     if "portraitCols" in layout:
         slot["portrait_cols"] = layout["portraitCols"]

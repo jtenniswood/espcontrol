@@ -289,22 +289,19 @@ assert.strictEqual(
   "structured subpage cross-device import keeps readable object content"
 );
 
-const unsupportedImageBackup = {
+const supportedImageBackup = {
   version: 2,
   format: hooks.BACKUP_FORMAT,
   device: "panel-a",
   button_order: "1",
   buttons: [{ type: "image", entity: "camera.front_door", label: "Front Door" }],
 };
-throwsBackupMessage(
-  () => s3Hooks.planBackupImport(unsupportedImageBackup, {
-    device: "guition-esp32-s3-4848s040",
-    slots: 9,
-  }),
-  "This controller does not support the image card type in this backup."
-);
-throwsBackupMessage(
-  () => s3Hooks.planBackupImport({
+const supportedImagePlan = s3Hooks.planBackupImport(supportedImageBackup, {
+  device: "guition-esp32-s3-4848s040",
+  slots: 9,
+});
+assert.strictEqual(supportedImagePlan.buttons[0].type, "image", "S3 backup import accepts Camera Cards");
+const supportedImageSubpagePlan = s3Hooks.planBackupImport({
     version: 2,
     format: hooks.BACKUP_FORMAT,
     device: "panel-a",
@@ -320,8 +317,11 @@ throwsBackupMessage(
   }, {
     device: "guition-esp32-s3-4848s040",
     slots: 9,
-  }),
-  "This controller does not support the image card type in this backup."
+});
+assert.strictEqual(
+  supportedImageSubpagePlan.subpages["1"].buttons[0].type,
+  "image",
+  "S3 backup import accepts Camera Cards inside subpages",
 );
 
 throwsBackupMessage(

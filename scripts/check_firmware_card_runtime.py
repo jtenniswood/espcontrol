@@ -197,6 +197,16 @@ def check_root(root: Path) -> list[str]:
             failures.append(
                 f"components/espcontrol/{GRID_HEADER}: route main and subpage setup through the shared card context"
             )
+        media_cover_art_setup = function_body(text, "setup_media_cover_art")
+        if (
+            media_cover_art_setup is None
+            or "if (!cfg.media_cover_art_supported) return;" not in media_cover_art_setup
+            or media_cover_art_setup.find("if (!cfg.media_cover_art_supported) return;")
+            > media_cover_art_setup.find("acquire_image_card_context(cfg, p.entity)")
+        ):
+            failures.append(
+                f"components/espcontrol/{GRID_HEADER}: gate Media Cover Art before acquiring an image downloader"
+            )
         if (
             "status_entity_driver_setup_visual( s, p, context, palette)" not in compact_grid
             or "status_entity_driver_bind_data( s, p, context, palette)" not in compact_grid
