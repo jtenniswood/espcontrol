@@ -2955,6 +2955,7 @@ inline const char *media_default_icon(const std::string &mode,
                                       const std::string &icon) {
   if (!icon.empty() && icon != "Auto") return find_icon(icon.c_str());
   if (mode == "control_modal") return find_icon("Play Pause");
+  if (mode == "speaker_group") return find_icon("Speaker Multiple");
   if (mode == "previous") return find_icon("Skip Previous");
   if (mode == "next") return find_icon("Skip Next");
   if (mode == "play_pause") return find_icon("Play Pause");
@@ -2973,6 +2974,7 @@ inline std::string media_default_label(const std::string &mode) {
   if (mode == "position") return espcontrol_i18n(std::string("Position"));
   if (mode == "play_pause") return espcontrol_i18n(std::string("Play/Pause"));
   if (mode == "control_modal") return espcontrol_i18n(std::string("All Controls"));
+  if (mode == "speaker_group") return espcontrol_i18n(std::string("Speaker Group"));
   if (mode == "cover_art") return espcontrol_i18n(std::string("Cover Art"));
   if (mode == "playlist") return espcontrol_i18n(std::string("Playlist"));
   return espcontrol_i18n(std::string("Media"));

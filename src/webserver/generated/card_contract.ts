@@ -2583,6 +2583,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "kind": "choice",
         "values": [
           "control_modal",
+          "speaker_group",
           "play_pause",
           "previous",
           "next",
@@ -2706,7 +2707,25 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
             "operator": "in",
             "value": [
               "control_modal",
+              "speaker_group",
               "volume"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "speaker_group_entity",
+        "label": "Compatible Speakers Group",
+        "kind": "text",
+        "omitDefault": true,
+        "applicability": [
+          {
+            "source": "field",
+            "name": "sensor",
+            "operator": "in",
+            "value": [
+              "control_modal",
+              "speaker_group"
             ]
           }
         ]
@@ -2855,6 +2874,7 @@ export const CARD_CONTRACT_CARDS: Readonly<Record<string, CardTypeSpec>> = {
         "cover_art_action",
         "cover_art_details",
         "cover_art_secondary_entity",
+        "speaker_group_entity",
         "volume_max",
         "playlist_content_id",
         "playlist_content_type",
@@ -4129,6 +4149,7 @@ export const CARD_RUNTIME_SPECS: Readonly<Record<string, CardRuntimeSpec>> = {
     "defaultDriver": "media_play_pause",
     "modes": {
       "control_modal": "media_control",
+      "speaker_group": "media_group",
       "play_pause": "media_play_pause",
       "previous": "media_transport",
       "next": "media_transport",
@@ -4463,6 +4484,7 @@ export const CARD_CONTRACT_OPTION_NAMES: Readonly<Record<string, string>> = {
   "playlist_content_type": "playlist_content_type",
   "playlist_player_source": "playlist_player_source",
   "script_fields": "script_fields",
+  "speaker_group_entity": "speaker_group_entity",
   "state_entity": "state_entity",
   "state_high_label": "state_high_label",
   "state_input": "state_input",

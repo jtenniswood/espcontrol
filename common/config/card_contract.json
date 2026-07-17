@@ -70,6 +70,7 @@
       "light_control",
       "media",
       "media_control",
+      "media_group",
       "media_play_pause",
       "media_transport",
       "media_volume",
@@ -134,7 +135,7 @@
         "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": true, "modal": true, "runtimeAllocation": true, "subpage": true},
         "modeField": "sensor",
         "defaultDriver": "media_play_pause",
-        "modes": {"control_modal": "media_control", "play_pause": "media_play_pause", "previous": "media_transport", "next": "media_transport", "volume": "media_volume", "position": "media_position", "now_playing": "media_now_playing", "cover_art": "media_cover_art", "playlist": "media_playlist"}
+        "modes": {"control_modal": "media_control", "speaker_group": "media_group", "play_pause": "media_play_pause", "previous": "media_transport", "next": "media_transport", "volume": "media_volume", "position": "media_position", "now_playing": "media_now_playing", "cover_art": "media_cover_art", "playlist": "media_playlist"}
       },
       "option_select": {"driver": "option_select", "capabilities": {"informationOnly": false, "subscriptions": true, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": true, "subpage": true}},
       "push": {"driver": "push", "capabilities": {"informationOnly": false, "subscriptions": false, "actions": true, "numericControl": false, "modal": false, "runtimeAllocation": false, "subpage": true}},
@@ -1626,7 +1627,7 @@
           "name": "media_mode",
           "label": "Type",
           "kind": "choice",
-          "values": ["control_modal", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
+          "values": ["control_modal", "speaker_group", "play_pause", "previous", "next", "volume", "position", "now_playing", "cover_art", "playlist"],
           "defaultValue": "play_pause",
           "storageField": "sensor",
           "omitDefault": false,
@@ -1695,7 +1696,16 @@
           "defaultValue": "100",
           "omitDefault": true,
           "applicability": [
-            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "volume"] }
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "speaker_group", "volume"] }
+          ]
+        },
+        {
+          "name": "speaker_group_entity",
+          "label": "Compatible Speakers Group",
+          "kind": "text",
+          "omitDefault": true,
+          "applicability": [
+            { "source": "field", "name": "sensor", "operator": "in", "value": ["control_modal", "speaker_group"] }
           ]
         },
         {
@@ -1773,7 +1783,7 @@
           "options": { "policy": "hook", "hook": "normalize_media_options" }
         },
         "unknownOptions": "drop",
-        "canonicalOptionOrder": ["label_display", "number_display", "cover_art_action", "cover_art_details", "cover_art_secondary_entity", "volume_max", "playlist_content_id", "playlist_content_type", "playlist_player_source", "large_numbers"],
+        "canonicalOptionOrder": ["label_display", "number_display", "cover_art_action", "cover_art_details", "cover_art_secondary_entity", "speaker_group_entity", "volume_max", "playlist_content_id", "playlist_content_type", "playlist_player_source", "large_numbers"],
         "optionHook": "normalize_media_options"
       },
       "behavior": {

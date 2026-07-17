@@ -36,7 +36,7 @@ This generated reference lists stable setup facts from the shared card contract.
 | Lights | light_temperature | light | Yes | Lights (light_brightness) | None | Visible |
 | Lights | light_control | light | Yes | Lights (light_brightness) | Visible Tabs: power, brightness, temperature, color | Hidden |
 | Lock | lock | lock | Yes | Own picker item | Type: default, lock, unlock | Visible |
-| Media | media | media_player | Yes | Own picker item | Type: control_modal, play_pause, previous, next, volume, position, now_playing, cover_art, playlist; Type: default, state; Controls: default, progress, play_pause; Press Action: play_pause, control_modal; Show Track Details; External Source Media Entity; Maximum Volume: 1-100; Label Display: label, status; Top Left Display: icon, volume; Media Content ID / URI; Player Source / Input; Large Media Numbers | Visible |
+| Media | media | media_player | Yes | Own picker item | Type: control_modal, speaker_group, play_pause, previous, next, volume, position, now_playing, cover_art, playlist; Type: default, state; Controls: default, progress, play_pause; Press Action: play_pause, control_modal; Show Track Details; External Source Media Entity; Maximum Volume: 1-100; Compatible Speakers Group; Label Display: label, status; Top Left Display: icon, volume; Media Content ID / URI; Player Source / Input; Large Media Numbers | Visible |
 | Option Select | option_select | select, input_select | Yes | Own picker item | None | Hidden |
 | Trigger | push | None | Yes | Own picker item | None | Visible |
 | Screen Lock | screen_lock | None | Yes | Own picker item | None | Visible |

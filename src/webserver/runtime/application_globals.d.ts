@@ -118,6 +118,7 @@ declare global {
   var MEDIA_PLAYLIST_CONTENT_TYPE_OPTION: any;
   var MEDIA_PLAYLIST_PLAYER_SOURCE_OPTION: any;
   var MEDIA_PLAYLIST_SOURCE_DEFINITIONS: any;
+  var MEDIA_SPEAKER_GROUP_ENTITY_OPTION: any;
   var MEDIA_VOLUME_MAX_OPTION: any;
   var NETWORK_STATUS_ICON_UNAVAILABLE: any;
   var NTP_SERVER_DEFAULTS: any;
@@ -1059,6 +1060,8 @@ declare global {
   var setMediaPlaylistContentType: any;
   var setMediaPlaylistPlayerSource: any;
   var setMediaVolumeMax: any;
+  var mediaSpeakerGroupEntity: any;
+  var setMediaSpeakerGroupEntity: any;
   var setPostThrottle: any;
   var setPresenceActiveColorEnabled: any;
   var setPublicFirmwareInfo: any;

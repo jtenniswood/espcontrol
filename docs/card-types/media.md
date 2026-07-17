@@ -15,6 +15,7 @@ A Media card controls a Home Assistant `media_player` entity. It can work as a s
 1. Select a card and change its type to **Media**.
 2. Choose the media **Type**:
    - **All Controls**
+   - **Speaker Group**
    - **Play/Pause Button**
    - **Previous Button**
    - **Next Button**
@@ -86,6 +87,45 @@ Cover Art uses one of the display's shared image download slots. If all slots ar
 ## All Controls
 
 All Controls opens playback controls and volume in a popup. The parent card uses the play/pause icon, and can show either its fixed label or the current media player state. Its top-left area can show either the icon or the current volume number.
+
+Add a **Compatible Speakers Group** to include a fourth **Speakers** tab. The tab is shown only when the main player reports Home Assistant's grouping capability. Leaving this field empty keeps the existing three-tab popup unchanged.
+
+## Speaker Groups
+
+Speaker Group opens the same speaker panel directly, without the playback, progress, and single-player volume tabs. It lets you join and unjoin compatible speakers and control the volume of speakers that are currently grouped.
+
+### Create the Compatible Speakers Group
+
+EspControl needs a Home Assistant media-player Group helper as its list of possible speakers:
+
+1. In Home Assistant, open **Settings > Devices & Services > Helpers**.
+2. Create a **Group** helper containing the media players that can play together.
+3. Put only mutually compatible players in the helper. For example, keep Sonos players with other Sonos players supported by the same Home Assistant integration.
+4. In EspControl, select the main **Entity** that grouping actions should use.
+5. Enter the helper's `media_player` entity in **Compatible Speakers Group**, for example `media_player.downstairs_speakers`.
+
+Home Assistant does not expose enough integration-registry information through EspControl's device connection to prove that two players are compatible. The panel checks that the main player advertises grouping support, but the helper is the source of truth for which speakers to offer. Speakers already in the live group are also shown even when they are missing from the helper, so they can still be controlled or removed.
+
+The main speaker is always selected. Selecting another speaker sends `media_player.join` with the complete selected group; clearing one sends `media_player.unjoin` to that speaker. A row shows a pending state while Home Assistant handles the request. If an integration rejects an incompatible request, the selection is restored and the panel shows an error.
+
+### Group and Individual Volume
+
+Individual volume controls appear only for speakers in a multi-speaker group. **Group Volume** is the arithmetic mean of the available members' current levels. Moving it applies the same difference to each speaker instead of making every speaker equally loud.
+
+For example, `10%`, `25%`, and `40%` has a group level of `25%`. Moving Group Volume to `35%` sends `20%`, `35%`, and `50%`. Each result is limited to `0%` and the card's **Maximum Volume** setting. Group Volume remains disabled until every available member has reported a volume, which avoids losing the existing balance.
+
+### Permissions and Device Testing
+
+The panel must be allowed to run `media_player.join`, `media_player.unjoin`, and `media_player.volume_set`; see [Enable Actions](/getting-started/home-assistant-actions). Confirm grouping works in Home Assistant first because integration support varies.
+
+Before relying on the card, test with at least three compatible speakers:
+
+- Join and unjoin from both the All Controls tab and a standalone Speaker Group card.
+- Change membership and volume in Home Assistant and confirm the panel updates.
+- Confirm individual controls disappear after a speaker leaves the group.
+- Check relative group volume near both volume limits.
+- Try an unavailable speaker and, if practical, an intentionally incompatible join to confirm the error state recovers.
+- Reconnect or restart a speaker and confirm its state returns without reopening the card.
 
 ## Media Content
 

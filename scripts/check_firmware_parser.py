@@ -883,6 +883,7 @@ def main() -> int:
         subprocess.run([cxx, "-std=c++17", "-Wall", "-Wextra", str(source), "-o", str(binary)], check=True)
         subprocess.run([str(binary)], check=True)
     print("Firmware parser checks passed.")
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "check_firmware_media_group.py")], check=True)
     return 0
 
 
