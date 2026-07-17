@@ -6,7 +6,6 @@
 
 // ── Climate control card helpers ─────────────────────────────────────
 
-constexpr uint32_t CLIMATE_HEATING_COLOR = 0xA44A1C;
 constexpr uint32_t CLIMATE_COOLING_COLOR = 0x2979FF;
 constexpr int CLIMATE_SUPPORT_TARGET_TEMPERATURE =
   espcontrol::climate::SUPPORT_TARGET_TEMPERATURE;
@@ -126,6 +125,7 @@ struct ClimateControlCtx {
   const char *icon_on_glyph = nullptr;
   int width_compensation_percent = 100;
   const lv_font_t *number_font = nullptr;
+  const lv_font_t *range_number_font = nullptr;
   const lv_font_t *unit_font = nullptr;
   const lv_font_t *label_font = nullptr;
   const lv_font_t *option_title_font = nullptr;
@@ -1015,6 +1015,10 @@ inline uint32_t climate_modal_arc_color(ClimateControlCtx *ctx) {
   return ctx ? ctx->accent_color : DEFAULT_SLIDER_COLOR;
 }
 
+inline uint32_t climate_heating_color(ClimateControlCtx *ctx) {
+  return ctx ? ctx->accent_color : DEFAULT_SLIDER_COLOR;
+}
+
 inline int climate_modal_arc_value(ClimateControlCtx *ctx, bool temp_enabled, int target) {
   if (!ctx) return CLIMATE_DEFAULT_TARGET_TENTHS;
   int value = temp_enabled ? climate_clamp_tenths(ctx, target) : ctx->min_tenths;
@@ -1031,7 +1035,6 @@ inline int climate_target_from_modal_arc_value(ClimateControlCtx *ctx, int value
 
 inline uint32_t climate_active_color(ClimateControlCtx *ctx) {
   if (!ctx) return DEFAULT_SLIDER_COLOR;
-  if (ctx->hvac_action == "heating") return CLIMATE_HEATING_COLOR;
   return ctx->accent_color;
 }
 
@@ -1952,7 +1955,7 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
   climate_set_obj_visible(ui.high_handle_dot, show_dual_handles);
   if (show_dual_handles && ui.panel) {
     climate_layout_dual_handle_dots(ctx, climate_control_calc_layout(ctx));
-    climate_style_dual_handle(ui.low_handle_dot, CLIMATE_HEATING_COLOR, !ctx->edit_high);
+    climate_style_dual_handle(ui.low_handle_dot, climate_heating_color(ctx), !ctx->edit_high);
     climate_style_dual_handle(ui.high_handle_dot, CLIMATE_COOLING_COLOR, ctx->edit_high);
   }
   climate_raise_arc_markers();
@@ -1972,7 +1975,7 @@ inline void climate_control_set_modal_value(ClimateControlCtx *ctx) {
       ? climate_format_tenths(climate_display_low_target(ctx),
           climate_target_display_precision(ctx)).c_str()
       : "--");
-    climate_style_target_label(ui.low_target_lbl, CLIMATE_HEATING_COLOR,
+    climate_style_target_label(ui.low_target_lbl, climate_heating_color(ctx),
                                !ctx->edit_high);
   }
   if (ui.high_target_lbl) {
@@ -2358,7 +2361,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     lv_obj_add_flag(segment, LV_OBJ_FLAG_HIDDEN);
     return segment;
   };
-  ui.heat_arc = create_range_arc(CLIMATE_HEATING_COLOR);
+  ui.heat_arc = create_range_arc(climate_heating_color(ctx));
   ui.cool_arc = create_range_arc(CLIMATE_COOLING_COLOR);
   lv_obj_add_event_cb(ui.arc, [](lv_event_t *) {
     ClimateControlModalUi &ui = climate_control_modal_ui();
@@ -2430,7 +2433,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     lv_obj_add_flag(dot, LV_OBJ_FLAG_HIDDEN);
     return dot;
   };
-  ui.low_handle_dot = create_range_handle(CLIMATE_HEATING_COLOR);
+  ui.low_handle_dot = create_range_handle(climate_heating_color(ctx));
   ui.high_handle_dot = create_range_handle(CLIMATE_COOLING_COLOR);
 
   ui.target_row = lv_obj_create(ui.panel);
@@ -2441,7 +2444,7 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
   lv_obj_set_style_pad_column(ui.target_row, 4, LV_PART_MAIN);
   lv_obj_set_layout(ui.target_row, LV_LAYOUT_FLEX);
   lv_obj_set_style_flex_flow(ui.target_row, LV_FLEX_FLOW_ROW, LV_PART_MAIN);
-  lv_obj_set_style_flex_cross_place(ui.target_row, LV_FLEX_ALIGN_END, LV_PART_MAIN);
+  lv_obj_set_style_flex_cross_place(ui.target_row, LV_FLEX_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_clear_flag(ui.target_row, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_clear_flag(ui.target_row, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -2455,7 +2458,9 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     lv_obj_t *label = lv_label_create(ui.target_row);
     lv_obj_set_style_text_color(label, lv_color_hex(color), LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    if (ctx->number_font) lv_obj_set_style_text_font(label, ctx->number_font, LV_PART_MAIN);
+    const lv_font_t *range_font = ctx->range_number_font
+      ? ctx->range_number_font : ctx->number_font;
+    if (range_font) lv_obj_set_style_text_font(label, range_font, LV_PART_MAIN);
     apply_width_compensation(label, ctx->width_compensation_percent);
     lv_obj_add_flag(label, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
@@ -2468,15 +2473,17 @@ inline void climate_control_open_modal(ClimateControlCtx *ctx) {
     }, LV_EVENT_CLICKED, reinterpret_cast<void *>(static_cast<uintptr_t>(edit_high)));
     return label;
   };
-  ui.low_target_lbl = create_range_target_label(CLIMATE_HEATING_COLOR, false);
+  ui.low_target_lbl = create_range_target_label(climate_heating_color(ctx), false);
 
   ui.target_separator_lbl = lv_label_create(ui.target_row);
-  lv_label_set_text(ui.target_separator_lbl, "\xE2\x80\x93");
+  lv_label_set_text(ui.target_separator_lbl, "-");
   lv_obj_set_style_text_color(ui.target_separator_lbl,
                               lv_color_hex(DARK_TEXT_MUTED), LV_PART_MAIN);
   lv_obj_set_style_text_align(ui.target_separator_lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-  if (ctx->unit_font)
-    lv_obj_set_style_text_font(ui.target_separator_lbl, ctx->unit_font, LV_PART_MAIN);
+  const lv_font_t *range_font = ctx->range_number_font
+    ? ctx->range_number_font : ctx->number_font;
+  if (range_font)
+    lv_obj_set_style_text_font(ui.target_separator_lbl, range_font, LV_PART_MAIN);
   lv_obj_add_flag(ui.target_separator_lbl, LV_OBJ_FLAG_HIDDEN);
 
   ui.high_target_lbl = create_range_target_label(CLIMATE_COOLING_COLOR, true);
@@ -2607,7 +2614,8 @@ inline void setup_climate_control_button(lv_obj_t *btn, lv_obj_t *icon_lbl,
 inline ClimateControlCtx *create_climate_control_context(
     lv_obj_t *btn, lv_obj_t *icon_lbl, lv_obj_t *label_lbl, const ParsedCfg &p,
     uint32_t accent_color, uint32_t secondary_color, uint32_t tertiary_color,
-    const lv_font_t *number_font, const lv_font_t *unit_font,
+    const lv_font_t *number_font, const lv_font_t *range_number_font,
+    const lv_font_t *unit_font,
     const lv_font_t *label_font, const lv_font_t *option_title_font,
     const lv_font_t *option_value_font, const lv_font_t *option_menu_font,
     const lv_font_t *card_icon_font, const lv_font_t *icon_font,
@@ -2637,6 +2645,7 @@ inline ClimateControlCtx *create_climate_control_context(
   ctx->icon_off_glyph = (p.icon.empty() || p.icon == "Auto") ? find_icon("Thermostat") : find_icon(p.icon.c_str());
   ctx->icon_on_glyph = (p.icon_on.empty() || p.icon_on == "Auto") ? ctx->icon_off_glyph : find_icon(p.icon_on.c_str());
   ctx->number_font = number_font;
+  ctx->range_number_font = range_number_font ? range_number_font : number_font;
   ctx->unit_font = unit_font;
   ctx->label_font = label_font;
   ctx->option_title_font = option_title_font ? option_title_font : label_font;
