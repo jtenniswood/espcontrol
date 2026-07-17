@@ -183,8 +183,13 @@ void reusable_subscriptions_rebind_without_transport_growth() {
   require(coordinator.transport().subscriptions.size() == 1 &&
               coordinator.subscription_count() == 1,
           "reopening a reusable subscription grew the transport list");
+  require(coordinator.transport().reads.size() == 1,
+          "reopening a reusable subscription did not request current state");
+  coordinator.transport().deliver_read(0, "0.60");
+  require(second_calls == 1,
+          "reopened reusable subscription did not rehydrate current state");
   coordinator.transport().publish(0, "0.75");
-  require(first_calls == 1 && second_calls == 1,
+  require(first_calls == 1 && second_calls == 2,
           "rebound reusable callback did not receive state exactly once");
 }
 

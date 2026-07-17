@@ -242,7 +242,11 @@ def firmware_ha_boundary_errors(firmware_dir: Path, root: Path) -> list[str]:
         errors.append(f"{rel}: track Home Assistant subscription callbacks for generation cleanup")
     if "release_subscriptions" not in coordinator_text or "*ref.callback = nullptr" not in coordinator_text:
         errors.append(f"{rel}: release retired Home Assistant subscription callback bodies")
-    if "ref.entity_id != entity_id" not in coordinator_text or "*ref.callback = std::move(callback)" not in coordinator_text:
+    if (
+        "ref.entity_id != entity_id" not in coordinator_text
+        or "*callback_ref = std::move(callback)" not in coordinator_text
+        or "dispatch_one(entity_id, attribute, callback_ref, has_attribute, generation_)" not in coordinator_text
+    ):
         errors.append(f"{rel}: reuse released modal subscription wrappers without transport growth")
 
     return errors

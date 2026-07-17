@@ -65,7 +65,14 @@ class HaReadCoordinator {
             !ref.callback || *ref.callback) {
           continue;
         }
-        *ref.callback = std::move(callback);
+        std::shared_ptr<Callback> callback_ref = ref.callback;
+        *callback_ref = std::move(callback);
+        bool has_attribute = !attribute.empty();
+        if (callback_depth_ != 0 || !state_connected()) {
+          queue(entity_id, attribute, callback_ref, has_attribute);
+        } else {
+          dispatch_one(entity_id, attribute, callback_ref, has_attribute, generation_);
+        }
         return true;
       }
     }
